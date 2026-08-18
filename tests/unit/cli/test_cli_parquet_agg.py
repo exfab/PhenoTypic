@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import polars as pl
+from phenotypic.schema import EXPERIMENT
 
 from phenotypic._cli._cli_parquet_agg import (
     SOURCE_PATH_COLUMN,
@@ -34,4 +35,4 @@ def test_dataset_mapping_tolerates_source_path_separator_mismatch(monkeypatch):
     )
 
     assert frame is not None
-    assert frame["MetadataExperiment_Dataset"].to_list() == ["plate_A"]
+    assert frame[str(EXPERIMENT.DATASET)].to_list() == ["plate_A"]

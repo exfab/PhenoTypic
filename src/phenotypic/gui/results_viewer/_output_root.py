@@ -39,6 +39,7 @@ from phenotypic.gui.results_viewer._output_consistency import (
     OutputConsistencyReport,
     inspect_output_consistency,
 )
+from phenotypic.gui.results_viewer._metadata import normalize_viewer_frame
 from phenotypic.gui.results_viewer._processing_inventory import (
     ProcessingInventory,
     ProcessingInventoryAssurance,
@@ -63,13 +64,6 @@ logger = logging.getLogger(__name__)
 #: ops the user configured.
 _EXTERNAL_VIEWER_CACHE_SUBDIR = "viewer_cache"
 _SNAPSHOT_READ_ATTEMPTS = 2
-# Legacy master column shim. Post category-flip the canonical image-stem column
-# is ``str(METADATA.IMAGE_NAME) == "MetadataImage_ImageName"`` (== KEY_IMAGE_FILE).
-# Masters written before the flip used the pre-namespace ``Metadata_ImageName``;
-# this literal recognizes those old masters so they still load (aliased below to
-# the canonical column). Keep the literal — it is a legacy recognizer, not a live
-# column name.
-_IMAGENAME_COL = "Metadata_ImageName"
 
 
 class OutputSnapshotChangedError(RuntimeError):
@@ -338,14 +332,14 @@ class OutputRoot:
             detail="Loading clean and post-applied measurements.",
         )
         cancellation.raise_if_cancelled()
-        clean_master_df = pl.read_parquet(master_path)
+        clean_master_df = normalize_viewer_frame(pl.read_parquet(master_path))
 
         mirror_path = layout.mirror_parquet
         if mirror_path.is_file():
             logger.info(
                 "Loading post-applied measurements mirror from %s", mirror_path
             )
-            master_df = pl.read_parquet(mirror_path)
+            master_df = normalize_viewer_frame(pl.read_parquet(mirror_path))
         else:
             logger.info(
                 "Mirror %s not found; loading clean master from %s",
@@ -361,7 +355,7 @@ class OutputRoot:
         if not datasets:
             raise FileNotFoundError(
                 f"No datasets found in {layout.deliverables_base!s}. Expected a "
-                "MetadataExperiment_Dataset column or "
+                f"{KEY_DATASET} column or "
                 "deliverables/overlays/<dataset>/ dirs."
             )
 
@@ -958,13 +952,10 @@ def _ensure_required_columns(
 
     Real-world masters produced by older runs or by aggregators that
     skip ``include_dataset_column`` may lack one or both of these
-    columns. The dataset is recoverable from the on-disk layout
+    columns. Metadata spelling is normalized before this function is called.
+    The dataset is recoverable from the on-disk layout
     (``results/<dataset>/measurements/<stem>.parquet``) when a full-run
-    ``results/`` is present; the image stem (``KEY_IMAGE_FILE`` ==
-    ``MetadataImage_ImageName`` post category-flip) falls back to the
-    pre-flip legacy ``Metadata_ImageName`` column (``_IMAGENAME_COL``)
-    when present, so masters written before the namespace migration still
-    load.
+    ``results/`` is present.
 
     Args:
         df: Loaded master DataFrame.
@@ -979,21 +970,12 @@ def _ensure_required_columns(
         ValueError: If neither column can be derived (e.g. a standalone bundle
             whose master lacks ``Metadata_Dataset``).
     """
-    if KEY_IMAGE_FILE not in df.columns and _IMAGENAME_COL in df.columns:
-        logger.info(
-            "Master lacks %s; aliasing %s as the image stem column.",
-            KEY_IMAGE_FILE,
-            _IMAGENAME_COL,
-        )
-        df = df.with_columns(
-            pl.col(_IMAGENAME_COL).cast(pl.String).alias(KEY_IMAGE_FILE)
-        )
-
     if KEY_IMAGE_FILE not in df.columns:
         raise ValueError(
             f"Master measurements parquet is missing column {KEY_IMAGE_FILE!r} "
-            f"(and the {_IMAGENAME_COL!r} fallback). Re-run `python -m phenotypic` "
-            f"with the current version to regenerate the master."
+            "after metadata compatibility normalization. Re-run "
+            "`python -m phenotypic` with the current version to regenerate "
+            "the master."
         )
 
     if KEY_DATASET in df.columns:

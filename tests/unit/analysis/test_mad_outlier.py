@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from phenotypic.analysis import MADOutlierRemover
+from phenotypic.schema import IMAGE
 
 
 class TestMADOutlierRemover:
@@ -77,7 +78,9 @@ class TestMADOutlierRemover:
         assert len(filtered_data) < len(sample_data)
 
         # Check that original columns are preserved
-        assert set(filtered_data.columns) == set(sample_data.columns)
+        expected_columns = set(sample_data.columns) - {"ImageName"}
+        expected_columns.add(str(IMAGE.IMAGE_NAME))
+        assert set(filtered_data.columns) == expected_columns
 
         # Check that no outlier flag columns were added
         assert "is_outlier" not in filtered_data.columns
@@ -97,7 +100,9 @@ class TestMADOutlierRemover:
         # Check that extreme values are removed
         for group_name in sample_data["ImageName"].unique():
             original_group = sample_data[sample_data["ImageName"] == group_name]
-            filtered_group = filtered_data[filtered_data["ImageName"] == group_name]
+            filtered_group = filtered_data[
+                filtered_data[str(IMAGE.IMAGE_NAME)] == group_name
+            ]
 
             # Max value in filtered should be <= max in original
             assert filtered_group["Area"].max() <= original_group["Area"].max()
@@ -135,7 +140,9 @@ class TestMADOutlierRemover:
         original_groups = sample_data_multiple_groups.groupby(
             ["Plate", "ImageName"]
         ).size()
-        filtered_groups = filtered_data.groupby(["Plate", "ImageName"]).size()
+        filtered_groups = filtered_data.groupby(
+            ["Plate", str(IMAGE.IMAGE_NAME)]
+        ).size()
 
         assert len(original_groups) == len(filtered_groups)
 
@@ -288,7 +295,10 @@ class TestMADOutlierRemover:
 
         # Original data should be preserved internally
         assert not detector._original_data.empty
-        pd.testing.assert_frame_equal(detector._original_data, original_copy)
+        expected_original = original_copy.rename(
+            columns={"ImageName": str(IMAGE.IMAGE_NAME)}
+        )
+        pd.testing.assert_frame_equal(detector._original_data, expected_original)
 
         # Filtered data should be different
         assert len(filtered_data) < len(detector._original_data)
@@ -308,10 +318,10 @@ class TestMADOutlierRemover:
         assert len(filtered_parallel) == len(filtered_sequential)
 
         filtered_parallel_sorted = filtered_parallel.sort_values(
-            ["Plate", "ImageName", "Area"]
+            ["Plate", str(IMAGE.IMAGE_NAME), "Area"]
         ).reset_index(drop=True)
         filtered_sequential_sorted = filtered_sequential.sort_values(
-            ["Plate", "ImageName", "Area"]
+            ["Plate", str(IMAGE.IMAGE_NAME), "Area"]
         ).reset_index(drop=True)
 
         pd.testing.assert_frame_equal(

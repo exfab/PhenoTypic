@@ -2,21 +2,17 @@
 
 from .._measurement_info import Entry
 from .._rembi import REMBI_MODULE
-from .._tiers import IdentityInfo
+from .._tiers import MetadataInfo
 
 
-class PLATE_METADATA(IdentityInfo):
-    """Recommended ``MetadataPlate_*`` tags describing the assay plate and its array.
+class PLATE(MetadataInfo):
+    """Recommended metadata tags describing the assay plate and its array.
 
     These capture plate-level grouping and physical layout (plate id, batch, array
-    density, incubator position). Members render as ``MetadataPlate_<Label>`` (e.g.
-    ``MetadataPlate_PlateID``) in the ``Metadata`` column family shared with the
-    other experimental-tag enums. Recommended vocabulary, not a validator.
+    density, incubator position). Members render in the shared
+    ``Metadata_<Label>`` namespace with the other experimental-tag enums.
+    Recommended vocabulary, not a validator.
     """
-
-    @classmethod
-    def category(cls) -> str:
-        return "MetadataPlate"
 
     @classmethod
     def rembi_module(cls) -> REMBI_MODULE:

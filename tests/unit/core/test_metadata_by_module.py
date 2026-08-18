@@ -1,7 +1,9 @@
 import numpy as np
+import pandas as pd
+import pytest
 
 from phenotypic import Image
-from phenotypic.schema import REMBI_MODULE
+from phenotypic.schema import GENETIC, IMAGE, REMBI_MODULE
 
 
 def _img():
@@ -30,8 +32,6 @@ def test_by_module_accepts_str_module():
 
 
 def test_insert_metadata_orders_by_cluster():
-    import pandas as pd
-
     img = Image(np.zeros((8, 8, 3), dtype=np.uint8), name="sample")
     # Insertion order deliberately scrambles the canonical cluster order so the
     # test discriminates the cluster sort from the raw ChainMap iteration order:
@@ -51,3 +51,52 @@ def test_insert_metadata_orders_by_cluster():
     # Canonical cluster order: Strain (Genetic) < Media (Condition)
     # < Dataset (Experiment) < ImageName (framework Image, last).
     assert _pos("Strain") < _pos("Media") < _pos("Dataset") < _pos("ImageName")
+
+
+def test_framework_metadata_aliases_share_permissions_and_lookup_identity():
+    """Bare, current, and flat spellings cannot bypass framework protections."""
+    img = Image(np.zeros((8, 8, 3), dtype=np.uint8), name="original")
+
+    for alias in ("ImageName", str(IMAGE.IMAGE_NAME), "MetadataImage_ImageName"):
+        assert alias in img.metadata
+        assert img.metadata[alias] == img.name
+        assert img.metadata.get(alias) == img.name
+        img.metadata[alias] = "renamed"
+        assert img.name == "renamed"
+        with pytest.raises(PermissionError):
+            del img.metadata[alias]
+
+    for alias in ("UUID", str(IMAGE.UUID), "MetadataImage_UUID"):
+        assert alias in img.metadata
+        assert img.metadata[alias] == img.uuid
+        with pytest.raises(PermissionError):
+            img.metadata[alias] = "shadow"
+        with pytest.raises(PermissionError):
+            del img.metadata[alias]
+
+    assert "Metadata_ImageName" not in img._metadata.public
+    assert "Metadata_UUID" not in img._metadata.public
+
+
+def test_insert_metadata_recognizes_flat_framework_alias_already_in_frame():
+    """A flat frame input satisfies the IMAGE field instead of receiving a duplicate."""
+    img = Image(np.zeros((8, 8, 3), dtype=np.uint8), name="sample")
+    source = pd.DataFrame({"Metadata_ImageName": ["external"]})
+
+    result = img.metadata.insert_metadata(source)
+
+    assert list(result.columns).count("Metadata_ImageName") == 1
+    assert result[str(IMAGE.IMAGE_NAME)].tolist() == ["external"]
+
+
+def test_insert_metadata_preserves_bare_known_metadata_column() -> None:
+    """A bare known frame column is an existing schema member, not a new target."""
+    img = Image(np.zeros((8, 8, 3), dtype=np.uint8), name="sample")
+    img.metadata["Strain"] = "metadata-value"
+    source = pd.DataFrame({"Strain": ["frame-value"]})
+
+    result = img.metadata.insert_metadata(source)
+
+    assert result.columns.tolist().count("Strain") == 1
+    assert str(GENETIC.STRAIN) not in result.columns
+    assert result["Strain"].tolist() == ["frame-value"]

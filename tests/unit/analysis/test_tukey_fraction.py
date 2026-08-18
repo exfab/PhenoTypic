@@ -14,7 +14,7 @@ import pytest
 
 from phenotypic.analysis._helper._qc_math import tukey_outlier_fraction
 from phenotypic.analysis.qc import TukeyOutlierFraction
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 # --------------------------------------------------------------------------- #
@@ -232,7 +232,7 @@ class TestBehavioralEdges:
 
     def test_group_members_maps_keys_to_member_rows(self) -> None:
         data = pd.DataFrame({
-            str(METADATA.IMAGE_NAME): ["plate1.png"] * 4,
+            str(IMAGE.IMAGE_NAME): ["plate1.png"] * 4,
             "Object_Label": [1, 2, 3, 4],
             "Plate": ["P1"] * 4,
             "Metadata_Time": [0, 0, 0, 0],

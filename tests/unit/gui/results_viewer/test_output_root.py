@@ -13,7 +13,7 @@ from pathlib import Path
 import polars as pl
 
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.schema import METADATA
+from phenotypic.schema import EXPERIMENT, IMAGE
 
 
 def _seed_standalone_bundle(base: Path) -> None:
@@ -21,8 +21,8 @@ def _seed_standalone_bundle(base: Path) -> None:
     base.mkdir(parents=True, exist_ok=True)
     df = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["plate1", "plate1"],
-            str(METADATA.IMAGE_NAME): ["img001", "img001"],
+            "Metadata_Dataset": ["plate1", "plate1"],
+            str(IMAGE.IMAGE_NAME): ["img001", "img001"],
             "Object_Label": [1, 2],
         }
     )
@@ -43,7 +43,7 @@ def test_discover_standalone_deliverables_only(tmp_path: Path) -> None:
         cache_root=tmp_path / ".test-phenotypic-viewer-cache",
     )
     assert root.has_results is False
-    assert "plate1" in root.master_df["MetadataExperiment_Dataset"].unique().to_list()
+    assert "plate1" in root.master_df[str(EXPERIMENT.DATASET)].unique().to_list()
     # Overlay-backed picker still works.
     assert root.has_overlay("plate1", "img001") is True
     assert root.hdf_path("plate1", "img001") is None

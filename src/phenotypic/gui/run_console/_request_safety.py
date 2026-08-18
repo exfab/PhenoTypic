@@ -18,14 +18,16 @@ from phenotypic._cli._cli_directory_scanner import scan_directory_structure
 from phenotypic._cli._metadata_join import prepare_metadata_join_keys
 from phenotypic.gui.shell._metadata_context import (
     MetadataResolutionState,
+    normalize_metadata_input_columns,
     resolve_metadata_csv_state,
 )
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._source_context import sandbox_fingerprint
 from phenotypic.schema import (
-    EXPERIMENT_METADATA,
-    METADATA,
+    EXPERIMENT,
+    IMAGE,
 )
+from phenotypic.sdk_ import metadata_member_for_header
 
 __all__ = [
     "MetadataPreflight",
@@ -337,13 +339,13 @@ def _source_join_key_frame(
     """Project source inventory into keys emitted by CLI aggregation."""
     return pl.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): [
+            str(IMAGE.IMAGE_NAME): [
                 image.stem for _dataset, image in images
             ],
-            str(METADATA.SUFFIX): [
+            str(IMAGE.SUFFIX): [
                 image.suffix for _dataset, image in images
             ],
-            str(EXPERIMENT_METADATA.DATASET): [
+            str(EXPERIMENT.DATASET): [
                 dataset for dataset, _image in images
             ],
         }
@@ -369,6 +371,7 @@ def _unverified_measurement_join_columns(
             for column in metadata_columns
             if column not in source_set
             and "_" in column
+            and metadata_member_for_header(column) is None
         )
     )
 
@@ -424,7 +427,12 @@ def build_metadata_preflight(
     else:
         try:
             metadata_hash = _fingerprint_file(metadata_path)
-            metadata_frame = pl.read_csv(metadata_path)
+            # The selected CSV is metadata-only, so bare user columns also
+            # belong to its metadata namespace. The normalizer copies and
+            # rejects legacy/current conflicts before preflight uses it.
+            metadata_frame = normalize_metadata_input_columns(
+                pl.read_csv(metadata_path)
+            )
             metadata_rows = metadata_frame.height
         except (
             OSError,

@@ -25,7 +25,7 @@ from phenotypic.sdk_ import (
     pipeline_json_path,
 )
 from phenotypic.sdk_._qc_recipe import QcRecipe
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 _FIXTURES = Path(__file__).parents[3] / "fixtures" / "output_compatibility"
 
@@ -34,7 +34,7 @@ def _historical_pipeline(tmp_path: Path) -> Path:
     """Write the exact historical GridOccupancy shape and current metadata."""
     metadata = tmp_path / "layout.csv"
     pd.DataFrame({
-        str(METADATA.IMAGE_NAME): ["plate-a.png", "plate-a.png"],
+        str(IMAGE.IMAGE_NAME): ["plate-a.png", "plate-a.png"],
         "Object_Label": [1, 2],
     }).to_csv(metadata, index=False)
     payload = json.loads(
@@ -87,11 +87,10 @@ def test_preflight_maps_exact_historical_grid_shape_without_writes(
     assert params["metadata"].endswith("layout.csv")  # type: ignore[index]
     assert "metadata_source" not in params
     assert "cell_label" not in params
-    assert params["groupby"] == [str(METADATA.IMAGE_NAME)]  # type: ignore[index]
+    assert params["groupby"] == [str(IMAGE.IMAGE_NAME)]  # type: ignore[index]
     assert [issue.code for issue in report.issues] == [
         "qc.grid.metadata_source",
         "qc.grid.cell_label_null",
-        "qc.grid.groupby_alias",
     ]
 
 
@@ -100,8 +99,8 @@ def test_preflight_blocks_ambiguous_metadata_without_guessing(
 ) -> None:
     first = tmp_path / "first.csv"
     second = tmp_path / "second.csv"
-    pd.DataFrame({str(METADATA.IMAGE_NAME): ["a"]}).to_csv(first, index=False)
-    pd.DataFrame({str(METADATA.IMAGE_NAME): ["b"]}).to_csv(second, index=False)
+    pd.DataFrame({str(IMAGE.IMAGE_NAME): ["a"]}).to_csv(first, index=False)
+    pd.DataFrame({str(IMAGE.IMAGE_NAME): ["b"]}).to_csv(second, index=False)
     pipeline = tmp_path / "pipeline.json.pht-pipe"
     payload = json.loads(_historical_pipeline(tmp_path).read_text(encoding="utf-8"))
     params = payload["qc"][0]["params"]
@@ -205,7 +204,7 @@ def test_unreadable_recipe_mutation_never_writes_minimal_pipeline(
         ExpectedVsDetectedCount,
         {
             "metadata": str(tmp_path / "missing.csv"),
-            "groupby": [str(METADATA.IMAGE_NAME)],
+            "groupby": [str(IMAGE.IMAGE_NAME)],
         },
     )
 

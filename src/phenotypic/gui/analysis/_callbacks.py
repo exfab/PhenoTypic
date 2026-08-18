@@ -36,8 +36,9 @@ from dash import (
 )
 from dash.exceptions import PreventUpdate
 
-from phenotypic.schema import CULTURE_METADATA, GENETIC_METADATA
+from phenotypic.schema import CULTURE, GENETIC
 from phenotypic.sdk_ import ModulePath, paths_fingerprint
+from phenotypic.gui.shell._metadata_context import normalize_measurement_metadata_columns
 
 from phenotypic.gui._config import (
     CFG_MEASUREMENT_SCHEMA,
@@ -77,11 +78,11 @@ _RECONCILIATION_CACHE_SIZE = 64
 # per-section param forms ship in v2.
 _POST_DEFAULTS: dict[str, dict[str, Any]] = {
     "PrependString": {
-        "to_column": str(GENETIC_METADATA.STRAIN),
+        "to_column": str(GENETIC.STRAIN),
         "string": "strain_",
     },
     "AppendString": {
-        "to_column": str(GENETIC_METADATA.STRAIN),
+        "to_column": str(GENETIC.STRAIN),
         "string": "_x",
     },
     "ExpandMetadata": {
@@ -94,31 +95,31 @@ _POST_DEFAULTS: dict[str, dict[str, Any]] = {
 _FILTER_DEFAULTS: dict[str, dict[str, Any]] = {
     "TukeyOutlierRemover": {
         "on": "Shape_Area",
-        "groupby": [str(GENETIC_METADATA.STRAIN)],
+        "groupby": [str(GENETIC.STRAIN)],
     },
 }
 _EDGE_DEFAULTS: dict[str, dict[str, Any]] = {
     "EdgeCorrector": {
         "on": "Shape_Area",
-        "groupby": [str(GENETIC_METADATA.STRAIN)],
+        "groupby": [str(GENETIC.STRAIN)],
     },
 }
 _MODEL_DEFAULTS: dict[str, dict[str, Any]] = {
     "LogGrowthModel": {
         "on": "Shape_Area",
-        "groupby": [str(GENETIC_METADATA.STRAIN)],
-        "time_label": str(CULTURE_METADATA.TIME),
+        "groupby": [str(GENETIC.STRAIN)],
+        "time_label": str(CULTURE.TIME),
         "n_jobs": 1,
     },
     "LinearLagModel": {
         "on": "Shape_Area",
-        "groupby": [str(GENETIC_METADATA.STRAIN)],
-        "time_label": str(CULTURE_METADATA.TIME),
+        "groupby": [str(GENETIC.STRAIN)],
+        "time_label": str(CULTURE.TIME),
     },
     "LinearCapAndLagModel": {
         "on": "Shape_Area",
-        "groupby": [str(GENETIC_METADATA.STRAIN)],
-        "time_label": str(CULTURE_METADATA.TIME),
+        "groupby": [str(GENETIC.STRAIN)],
+        "time_label": str(CULTURE.TIME),
     },
 }
 
@@ -582,7 +583,9 @@ def register_callbacks(app: "dash.Dash") -> None:
                 f"Curated measurements not found at {measurements}."
             )
         try:
-            frame = pd.read_parquet(measurements)
+            frame = normalize_measurement_metadata_columns(
+                pd.read_parquet(measurements)
+            )
             node.analyze(frame)
         except Exception as exc:  # noqa: BLE001 - surfaced inline
             logger.warning(
@@ -924,7 +927,9 @@ def _run_inline(recipe: Any, output_root: "OutputRoot") -> Any:
     )
     start = time.time()
     try:
-        master_pl = pl.read_parquet(measurements)
+        master_pl = normalize_measurement_metadata_columns(
+            pl.read_parquet(measurements)
+        )
     except Exception as exc:  # noqa: BLE001
         return html.Span(
             f"Read failed: {exc}", style={"color": OI_VERMILION_TEXT}

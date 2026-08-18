@@ -26,7 +26,9 @@ from phenotypic._cli._cli_slurm_array_scripts import (
 from phenotypic._cli._cli_types import Dataset, ExecutionConfig
 from phenotypic.sdk_ import JobMetadataKey, atomic_write_json
 
-pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="SLURM not available on Windows"
+)
 
 
 class TestSLURMArrayLimitParsing:
@@ -53,7 +55,9 @@ class TestSLURMArrayLimitParsing:
             "small_limit",
         ],
     )
-    def test_calculate_optimal_array_chunks(self, num_images, array_limit, expected):
+    def test_calculate_optimal_array_chunks(
+        self, num_images, array_limit, expected
+    ):
         """Test chunking logic for various num_images and array_limit combinations."""
         chunks = calculate_optimal_array_chunks(num_images, array_limit)
         assert chunks == expected
@@ -230,8 +234,7 @@ class TestArrayJobScriptGeneration:
         assert "#SBATCH --mem=16G" in content
         assert "#SBATCH --time=01:00:00" in content
         assert (
-            "export PHENOTYPIC_PROCESSING_GENERATION=generation-123"
-            in content
+            "export PHENOTYPIC_PROCESSING_GENERATION=generation-123" in content
         )
 
         # Check image list
@@ -252,7 +255,9 @@ class TestArrayJobScriptGeneration:
         assert "IMAGE_LIST" in content
         assert "CURRENT_IMAGE=" in content
 
-    def test_generate_array_job_script_chunked(self, dataset, config, tmp_path):
+    def test_generate_array_job_script_chunked(
+        self, dataset, config, tmp_path
+    ):
         """Test array job script generation for chunked dataset."""
         output_dir = tmp_path / "output"
         script_path = generate_array_job_script(
@@ -270,7 +275,9 @@ class TestArrayJobScriptGeneration:
         # Should only include first 5 images
         assert "#SBATCH --array=0-4" in content
 
-    def test_generate_array_job_script_second_chunk(self, dataset, config, tmp_path):
+    def test_generate_array_job_script_second_chunk(
+        self, dataset, config, tmp_path
+    ):
         """Test array job script generation for second chunk."""
         output_dir = tmp_path / "output"
         script_path = generate_array_job_script(
@@ -421,10 +428,7 @@ class TestSLURMSubmissionErrors:
         from phenotypic.sdk_.slurm import SLURM_PYTHONPATH_ENV_VAR
         from phenotypic.sdk_.slurm._sbatch import submit_script
 
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="12345\n"
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="12345\n")
 
         with patch.dict(
             "os.environ",
@@ -437,9 +441,7 @@ class TestSLURMSubmissionErrors:
         command = mock_run.call_args.args[0]
         environment = mock_run.call_args.kwargs["env"]
         assert "--export=ALL" in command
-        assert environment[SLURM_PYTHONPATH_ENV_VAR] == (
-            "/reviewed/tune/src"
-        )
+        assert environment[SLURM_PYTHONPATH_ENV_VAR] == ("/reviewed/tune/src")
 
     @patch("phenotypic.sdk_.slurm._sbatch.subprocess.run")
     def test_submit_script_parsable_with_cluster(self, mock_run):
@@ -447,8 +449,7 @@ class TestSLURMSubmissionErrors:
         from phenotypic.sdk_.slurm._sbatch import submit_script
 
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="67890;cluster_name\n"
+            returncode=0, stdout="67890;cluster_name\n"
         )
 
         job_id = submit_script(Path("script.sh"))
@@ -459,10 +460,7 @@ class TestSLURMSubmissionErrors:
         """Test submission with dependency flag."""
         from phenotypic.sdk_.slurm._sbatch import submit_script
 
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="12345\n"
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="12345\n")
 
         job_id = submit_script(Path("script.sh"), dependency_job_id="11111")
         assert job_id == "12345"
@@ -486,9 +484,13 @@ class TestSLURMSubmissionErrors:
 class TestSLURMScriptChainSubmission:
     """Tests for shared SLURM script chain submission plumbing."""
 
-    def test_submit_slurm_script_chain_raises_for_empty_scripts(self, tmp_path):
+    def test_submit_slurm_script_chain_raises_for_empty_scripts(
+        self, tmp_path
+    ):
         """Empty script lists fail before dispatcher generation."""
-        from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
+        from phenotypic._cli._cli_slurm_submission import (
+            submit_slurm_script_chain,
+        )
 
         console = MagicMock()
 
@@ -509,7 +511,9 @@ class TestSLURMScriptChainSubmission:
         self, tmp_path
     ):
         """Dispatcher generation and submission receive scripts in input order."""
-        from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
+        from phenotypic._cli._cli_slurm_submission import (
+            submit_slurm_script_chain,
+        )
         from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
 
         output_dir = tmp_path / "output"
@@ -521,13 +525,16 @@ class TestSLURMScriptChainSubmission:
         dispatcher_scripts = [slurm_scripts_dir(output_dir) / "dispatch_1.sh"]
         console = MagicMock()
 
-        with patch(
-            "phenotypic._cli._cli_slurm_submission.generate_dispatcher_chain",
-            return_value=dispatcher_scripts,
-        ) as mock_generate_dispatcher_chain, patch(
-            "phenotypic._cli._cli_slurm_submission.submit_drip_feed_start",
-            return_value=(["123", "124"], None),
-        ) as mock_submit_drip_feed_start:
+        with (
+            patch(
+                "phenotypic._cli._cli_slurm_submission.generate_dispatcher_chain",
+                return_value=dispatcher_scripts,
+            ) as mock_generate_dispatcher_chain,
+            patch(
+                "phenotypic._cli._cli_slurm_submission.submit_drip_feed_start",
+                return_value=(["123", "124"], None),
+            ) as mock_submit_drip_feed_start,
+        ):
             result = submit_slurm_script_chain(
                 flat_chunk_scripts=chunk_scripts,
                 output_dir=output_dir,
@@ -540,23 +547,73 @@ class TestSLURMScriptChainSubmission:
             output_dir=output_dir,
             slurm_args=slurm_args,
             log_dir=logs_dir(output_dir) / "slurm",
+            continuation_dependency_kinds=("afterany",),
         )
         mock_submit_drip_feed_start.assert_called_once_with(
             chunk_scripts=chunk_scripts,
             dispatcher_scripts=dispatcher_scripts,
+            continuation_dependency_kind="afterany",
         )
         assert result.job_ids == ["123", "124"]
         assert result.warning is None
         assert result.flat_scripts == chunk_scripts
         assert result.dispatcher_scripts == dispatcher_scripts
 
-        console.print.assert_any_call("[bold cyan]Submitting jobs to SLURM...[/bold cyan]")
+        console.print.assert_any_call(
+            "[bold cyan]Submitting jobs to SLURM...[/bold cyan]"
+        )
         console.print.assert_any_call("  Chunk 0: [green]Job 123[/green]")
         console.print.assert_any_call(
             "  Dispatcher 1: [green]Job 124[/green] (depends on 123)"
         )
         console.print.assert_any_call(
             "  Remaining 1 chunk(s) will be auto-submitted as each completes"
+        )
+
+    def test_submit_slurm_script_chain_threads_mixed_edge_kinds(
+        self, tmp_path
+    ):
+        """The chain entry point preserves a mixed dependency sequence."""
+        from phenotypic._cli._cli_slurm_submission import (
+            submit_slurm_script_chain,
+        )
+        from phenotypic.sdk_ import slurm_scripts_dir
+
+        output_dir = tmp_path / "output"
+        scripts = slurm_scripts_dir(output_dir)
+        chunk_scripts = [scripts / f"chunk{i}.sh" for i in range(3)]
+        dispatcher_scripts = [
+            scripts / "dispatch_1.sh",
+            scripts / "dispatch_2.sh",
+        ]
+
+        with (
+            patch(
+                "phenotypic._cli._cli_slurm_submission.generate_dispatcher_chain",
+                return_value=dispatcher_scripts,
+            ) as generate,
+            patch(
+                "phenotypic._cli._cli_slurm_submission.submit_drip_feed_start",
+                return_value=(["123", "124"], None),
+            ) as submit,
+        ):
+            submit_slurm_script_chain(
+                flat_chunk_scripts=chunk_scripts,
+                output_dir=output_dir,
+                slurm_args={},
+                console=MagicMock(),
+                continuation_dependency_kinds=(
+                    "afterany",
+                    "afterok",
+                ),
+            )
+
+        assert generate.call_args.kwargs["continuation_dependency_kinds"] == (
+            "afterany",
+            "afterok",
+        )
+        assert submit.call_args.kwargs["continuation_dependency_kind"] == (
+            "afterany"
         )
 
 

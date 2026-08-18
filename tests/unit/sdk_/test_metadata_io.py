@@ -17,7 +17,7 @@ import pytest
 from PIL import Image as PIL_Image
 
 import phenotypic
-from phenotypic.schema import METADATA
+from phenotypic.schema import GENETIC, IMAGE
 from phenotypic.sdk_.constants_ import IO
 
 HAS_EXIFTOOL = shutil.which("exiftool") is not None
@@ -316,7 +316,7 @@ class TestProtectedMetadataPreservation:
         sample_gray_image.gray.imsave(filepath)
 
         loaded = phenotypic.Image.imread(filepath)
-        assert loaded._metadata.protected.get(METADATA.BIT_DEPTH) == original_bit_depth
+        assert loaded._metadata.protected.get(IMAGE.BIT_DEPTH) == original_bit_depth
 
     def test_image_name_not_overwritten(self, sample_gray_image, temp_image_dir):
         """Test that image name from filename takes precedence."""
@@ -681,7 +681,7 @@ class TestAccessorLoad:
 def _write_legacy_flat_hdf5(path, *, protected: dict, public: dict) -> None:
     """Write a minimal schema_version=1 flat-layout HDF5 with *bare* metadata keys.
 
-    Mirrors how PhenoTypic persisted images before the ``METADATA`` enum gained
+    Mirrors how PhenoTypic persisted images before the ``IMAGE`` enum gained
     its ``Metadata_`` category prefix: framework keys stored bare (``ImageName``,
     ``BitDepth``, …) in the ``protected_metadata`` / ``public_metadata`` attribute
     subgroups, and no ``schema_version`` root attr (so the loader dispatches to the
@@ -700,8 +700,8 @@ def _write_legacy_flat_hdf5(path, *, protected: dict, public: dict) -> None:
             pub.attrs[key] = val
 
 
-class TestLegacyMetadataKeyShim:
-    """Old HDF5 files with bare metadata keys load under the new Metadata_* keys."""
+class TestStoredMetadataKeyNormalization:
+    """Historical HDF metadata keys normalize through the SDK registry."""
 
     def test_remap_helper_maps_bare_to_prefixed(self):
         """The helper maps bare framework labels to their prefixed value."""
@@ -709,9 +709,9 @@ class TestLegacyMetadataKeyShim:
             _remap_legacy_metadata_key,
         )
 
-        assert _remap_legacy_metadata_key("ImageName") == METADATA.IMAGE_NAME.value
-        assert _remap_legacy_metadata_key("BitDepth") == METADATA.BIT_DEPTH.value
-        assert _remap_legacy_metadata_key("FileSuffix") == METADATA.SUFFIX.value
+        assert _remap_legacy_metadata_key("ImageName") == IMAGE.IMAGE_NAME.value
+        assert _remap_legacy_metadata_key("BitDepth") == IMAGE.BIT_DEPTH.value
+        assert _remap_legacy_metadata_key("FileSuffix") == IMAGE.SUFFIX.value
 
     def test_remap_helper_maps_generic_prefix_to_per_topic(self):
         """The helper folds the intermediate ``Metadata_<label>`` form onto per-topic.
@@ -725,29 +725,33 @@ class TestLegacyMetadataKeyShim:
             _remap_legacy_metadata_key,
         )
 
-        assert _remap_legacy_metadata_key("Metadata_ImageName") == METADATA.IMAGE_NAME.value
-        assert _remap_legacy_metadata_key("Metadata_BitDepth") == METADATA.BIT_DEPTH.value
-        assert _remap_legacy_metadata_key("Metadata_ImageType") == METADATA.IMAGE_TYPE.value
+        assert _remap_legacy_metadata_key("Metadata_ImageName") == IMAGE.IMAGE_NAME.value
+        assert _remap_legacy_metadata_key("Metadata_BitDepth") == IMAGE.BIT_DEPTH.value
+        assert _remap_legacy_metadata_key("Metadata_ImageType") == IMAGE.IMAGE_TYPE.value
 
-    def test_remap_helper_is_idempotent_and_passes_through_user_keys(self):
-        """Already-per-topic keys and arbitrary user keys pass through unchanged."""
+    def test_remap_helper_covers_topic_keys_and_preserves_unknown_bare_keys(self):
+        """Known topic forms normalize while arbitrary bare names remain unchanged."""
         from phenotypic._core._image_parts._image_io_handler import (
             _remap_legacy_metadata_key,
         )
 
         # Already per-topic prefixed (a current file's key) -> unchanged.
         assert (
-            _remap_legacy_metadata_key(METADATA.IMAGE_NAME.value)
-            == METADATA.IMAGE_NAME.value
+            _remap_legacy_metadata_key(IMAGE.IMAGE_NAME.value)
+            == IMAGE.IMAGE_NAME.value
         )
-        # Arbitrary biological tag a user supplied (bare) -> unchanged.
-        assert _remap_legacy_metadata_key("Strain") == "Strain"
+        # Bare known topic labels use the same SDK normalization path.
+        assert _remap_legacy_metadata_key("Strain") == GENETIC.STRAIN.value
+        assert _remap_legacy_metadata_key("Metadata_Strain") == GENETIC.STRAIN.value
+        assert _remap_legacy_metadata_key(GENETIC.STRAIN.value) == GENETIC.STRAIN.value
+        # Arbitrary bare public/imported keys retain the historical round-trip.
+        assert _remap_legacy_metadata_key("OperatorNote") == "OperatorNote"
         # A genuinely unknown generic-prefixed key has no per-topic home and must
-        # NOT be remapped (only framework METADATA labels are folded).
+        # NOT be remapped (only framework IMAGE labels are folded).
         assert _remap_legacy_metadata_key("Metadata_Foo") == "Metadata_Foo"
 
     def test_legacy_flat_hdf5_bare_keys_remapped_on_load(self, temp_image_dir):
-        """Legacy flat HDF5 with bare keys loads under prefixed METADATA keys.
+        """Legacy flat HDF5 with bare keys loads under prefixed IMAGE keys.
 
         Framework keys are remapped (with the legacy digit-string -> int
         coercion preserved), no stale bare keys survive, and arbitrary
@@ -764,7 +768,8 @@ class TestLegacyMetadataKeyShim:
             },
             public={
                 "FileSuffix": ".png",
-                "Strain": "BY4741",          # arbitrary user key -> untouched
+                "Strain": "BY4741",          # known topic label -> normalized
+                "OperatorNote": "late shift",  # unknown user key -> untouched
             },
         )
 
@@ -772,17 +777,166 @@ class TestLegacyMetadataKeyShim:
         prot = loaded._metadata.protected
         pub = loaded._metadata.public
 
-        # Framework keys remapped to the prefixed METADATA members ...
-        assert prot[METADATA.IMAGE_NAME] == "legacy_name"
-        assert prot[METADATA.BIT_DEPTH] == 8            # int-coerced
-        assert prot[METADATA.PARENT_UUID] == "parent-123"
-        assert pub[METADATA.SUFFIX] == ".png"
+        # Framework keys remapped to the prefixed IMAGE members ...
+        assert prot[IMAGE.IMAGE_NAME] == "legacy_name"
+        assert prot[IMAGE.BIT_DEPTH] == 8            # int-coerced
+        assert prot[IMAGE.PARENT_UUID] == "parent-123"
+        assert pub[IMAGE.SUFFIX] == ".png"
         # ... with no stale bare keys left behind.
         for bare in ("ImageName", "ImageType", "BitDepth", "ParentUUID", "FileSuffix"):
             assert bare not in prot
             assert bare not in pub
-        # Arbitrary, non-framework keys pass through unchanged.
-        assert pub["Strain"] == "BY4741"
+        # Known topic labels normalize; unknown bare user keys pass through.
+        assert pub[GENETIC.STRAIN] == "BY4741"
+        assert "Strain" not in pub
+        assert pub["OperatorNote"] == "late shift"
+
+    def test_hdf_roundtrip_normalizes_known_keys_and_preserves_custom_bare_keys(
+        self, temp_image_dir
+    ):
+        """New HDF writes mark the namespace and retain the custom-key contract."""
+        from phenotypic._core._image_parts._image_io_handler import (
+            _METADATA_SCHEMA_VERSION_ATTR,
+            _METADATA_SCHEMA_VERSION_FLAT,
+        )
+
+        img = phenotypic.Image(
+            arr=np.zeros((12, 16, 3), dtype=np.uint8), name="roundtrip"
+        )
+        img.metadata["Strain"] = "BY4741"
+        img.metadata["OperatorNote"] = "late shift"
+        path = temp_image_dir / "metadata_roundtrip.h5"
+
+        img.save2hdf5(path)
+
+        with h5py.File(path, "r") as f:
+            assert int(f.attrs["schema_version"]) == 2
+            assert (
+                int(f.attrs[_METADATA_SCHEMA_VERSION_ATTR])
+                == _METADATA_SCHEMA_VERSION_FLAT
+            )
+            attrs = f["metadata"]["public"].attrs
+            assert GENETIC.STRAIN.value in attrs
+            assert "Strain" not in attrs
+            assert "OperatorNote" in attrs
+
+        loaded = phenotypic.Image.load_hdf5(path)
+        assert loaded._metadata.public[GENETIC.STRAIN] == "BY4741"
+        assert loaded._metadata.public["OperatorNote"] == "late shift"
+
+    def test_v1_per_topic_key_loads_without_rewriting_source(self, temp_image_dir):
+        """A per-topic key normalizes in memory while its HDF stays untouched."""
+        from phenotypic._core._image_parts._image_io_handler import (
+            _METADATA_SCHEMA_VERSION_ATTR,
+            _METADATA_SCHEMA_VERSION_PER_TOPIC,
+        )
+
+        img = phenotypic.Image(
+            arr=np.zeros((12, 16, 3), dtype=np.uint8), name="future_flat"
+        )
+        path = temp_image_dir / "future_flat.h5"
+        img.save2hdf5(path)
+        with h5py.File(path, "r+") as f:
+            f.attrs[_METADATA_SCHEMA_VERSION_ATTR] = (
+                _METADATA_SCHEMA_VERSION_PER_TOPIC
+            )
+            attrs = f["metadata"]["public"].attrs
+            attrs["MetadataGenetic_Strain"] = json.dumps("BY4741")
+
+        loaded = phenotypic.Image.load_hdf5(path)
+
+        assert loaded._metadata.public[GENETIC.STRAIN] == "BY4741"
+        assert "MetadataGenetic_Strain" not in loaded._metadata.public
+        with h5py.File(path, "r") as f:
+            attrs = f["metadata"]["public"].attrs
+            assert "MetadataGenetic_Strain" in attrs
+            assert GENETIC.STRAIN.value not in attrs
+
+    def test_equal_normalization_collision_coalesces(self, temp_image_dir):
+        """Equivalent current and flat keys coalesce into one in-memory value."""
+        img = phenotypic.Image(
+            arr=np.zeros((12, 16, 3), dtype=np.uint8), name="equal_collision"
+        )
+        path = temp_image_dir / "equal_collision.h5"
+        img.save2hdf5(path)
+        with h5py.File(path, "r+") as f:
+            attrs = f["metadata"]["public"].attrs
+            attrs[GENETIC.STRAIN.value] = json.dumps("BY4741")
+            attrs["MetadataGenetic_Strain"] = json.dumps("BY4741")
+
+        loaded = phenotypic.Image.load_hdf5(path)
+
+        assert loaded._metadata.public == {GENETIC.STRAIN: "BY4741"}
+
+    def test_conflicting_normalization_collision_raises_without_rewrite(
+        self, temp_image_dir
+    ):
+        """Conflicting aliases fail descriptively and leave the HDF byte state intact."""
+        img = phenotypic.Image(
+            arr=np.zeros((12, 16, 3), dtype=np.uint8), name="conflict"
+        )
+        path = temp_image_dir / "conflict.h5"
+        img.save2hdf5(path)
+        with h5py.File(path, "r+") as f:
+            attrs = f["metadata"]["public"].attrs
+            attrs[GENETIC.STRAIN.value] = json.dumps("BY4741")
+            attrs["MetadataGenetic_Strain"] = json.dumps("BY4742")
+
+        with pytest.raises(
+            ValueError,
+            match=r"Conflicting stored metadata keys.*MetadataGenetic_Strain",
+        ):
+            phenotypic.Image.load_hdf5(path)
+
+        with h5py.File(path, "r") as f:
+            attrs = f["metadata"]["public"].attrs
+            assert json.loads(attrs[GENETIC.STRAIN.value]) == "BY4741"
+            assert json.loads(attrs["MetadataGenetic_Strain"]) == "BY4742"
+
+    @pytest.mark.parametrize(
+        ("current_value", "flat_value"),
+        [(True, 1), (1, 1.0)],
+        ids=["bool-vs-int", "int-vs-float"],
+    )
+    def test_hdf_collision_rejects_equal_but_type_different_values(
+        self, temp_image_dir, current_value, flat_value
+    ):
+        """Alias coalescing never erases scalar type distinctions."""
+        img = phenotypic.Image(
+            arr=np.zeros((12, 16, 3), dtype=np.uint8), name="typed_conflict"
+        )
+        path = temp_image_dir / "typed_conflict.h5"
+        img.save2hdf5(path)
+        with h5py.File(path, "r+") as f:
+            attrs = f["metadata"]["public"].attrs
+            attrs[GENETIC.STRAIN.value] = json.dumps(current_value)
+            attrs["MetadataGenetic_Strain"] = json.dumps(flat_value)
+
+        with pytest.raises(ValueError, match="Conflicting stored metadata keys"):
+            phenotypic.Image.load_hdf5(path)
+
+    def test_flat_metadata_marker_does_not_change_legacy_layout_dispatch(
+        self, temp_image_dir
+    ):
+        """Metadata namespace version 2 does not imply grouped HDF layout 2."""
+        from phenotypic._core._image_parts._image_io_handler import (
+            _METADATA_SCHEMA_VERSION_ATTR,
+            _METADATA_SCHEMA_VERSION_FLAT,
+        )
+
+        path = temp_image_dir / "flat_namespace_legacy_layout.h5"
+        _write_legacy_flat_hdf5(
+            path,
+            protected={"ImageName": "legacy_layout"},
+            public={"Metadata_Strain": "BY4741"},
+        )
+        with h5py.File(path, "r+") as f:
+            f.attrs[_METADATA_SCHEMA_VERSION_ATTR] = _METADATA_SCHEMA_VERSION_FLAT
+
+        loaded = phenotypic.Image.load_hdf5(path)
+
+        assert loaded.name == "legacy_layout"
+        assert loaded._metadata.public[GENETIC.STRAIN] == "BY4741"
 
     def test_legacy_v2_hdf5_has_no_duplicate_bare_keys(self, temp_image_dir):
         """A v2 file whose protected keys were stored bare loads without duplicates.
@@ -800,7 +954,7 @@ class TestLegacyMetadataKeyShim:
         # Rewrite prefixed protected attr names -> bare labels, in place.
         with h5py.File(path, "r+") as f:
             prot_attrs = f["metadata"]["protected"].attrs
-            for member in METADATA:
+            for member in IMAGE:
                 if member.value in prot_attrs:
                     val = prot_attrs[member.value]
                     del prot_attrs[member.value]
@@ -809,8 +963,7 @@ class TestLegacyMetadataKeyShim:
         loaded = phenotypic.Image.load_hdf5(path)
         prot = loaded._metadata.protected
 
-        # No bare framework keys survive; every protected key is MetadataImage_-prefixed.
-        assert all(str(k).startswith("MetadataImage_") for k in prot)
+        assert all(str(k).startswith("Metadata_") for k in prot)
         assert "ImageName" not in prot and "BitDepth" not in prot
         assert loaded.bit_depth == 8
 
@@ -834,7 +987,7 @@ class TestLegacyMetadataKeyShim:
         # in place, and add an unknown generic-prefixed user key that must survive.
         with h5py.File(path, "r+") as f:
             prot_attrs = f["metadata"]["protected"].attrs
-            for member in METADATA:
+            for member in IMAGE:
                 if member.value in prot_attrs:
                     val = prot_attrs[member.value]
                     del prot_attrs[member.value]
@@ -844,16 +997,16 @@ class TestLegacyMetadataKeyShim:
         loaded = phenotypic.Image.load_hdf5(path)
         prot = loaded._metadata.protected
 
-        # No generic-prefixed framework keys survive as duplicates ...
-        for stale in ("Metadata_BitDepth", "Metadata_ImageName", "Metadata_ImageType"):
-            assert stale not in prot
-        # ... they collapsed onto the canonical per-topic keys, values preserved.
-        assert prot[METADATA.IMAGE_TYPE] == "Image"
+        # Canonical framework keys remain deduplicated and values are preserved.
+        assert len([key for key in prot if key == IMAGE.BIT_DEPTH]) == 1
+        assert len([key for key in prot if key == IMAGE.IMAGE_NAME]) == 1
+        assert len([key for key in prot if key == IMAGE.IMAGE_TYPE]) == 1
+        assert prot[IMAGE.IMAGE_TYPE] == "Image"
         assert loaded.bit_depth == 16
-        # Every framework protected key is per-topic prefixed; the only non-per-topic
-        # protected key is the genuinely-unknown user key, passed through verbatim.
-        non_per_topic = [k for k in prot if not str(k).startswith("MetadataImage_")]
-        assert non_per_topic == ["Metadata_Foo"]
+        from phenotypic.sdk_ import metadata_owner_for_header
+
+        non_image = [k for k in prot if metadata_owner_for_header(k) is not IMAGE]
+        assert non_image == ["Metadata_Foo"]
         assert prot["Metadata_Foo"] == "bar"
 
     def test_legacy_png_bare_metadata_keys_remapped_on_imread(self, temp_image_dir):
@@ -878,7 +1031,8 @@ class TestLegacyMetadataKeyShim:
             },
             "public": {
                 "FileSuffix": ".png",
-                "Strain": "BY4741",          # arbitrary user key -> untouched
+                "Strain": "BY4741",          # known topic label -> normalized
+                "OperatorNote": "late shift",  # unknown user key -> untouched
             },
         }
         info = PngInfo()
@@ -896,29 +1050,132 @@ class TestLegacyMetadataKeyShim:
         assert "UUID" not in prot and "ImageName" not in prot
         assert loaded.name == "legacy"               # from filename, not payload
         # Non-critical framework key remapped + restored under its prefixed key.
-        assert prot[METADATA.PARENT_UUID] == "parent-9"
-        # Public framework key remapped; arbitrary user key untouched.
-        assert pub[METADATA.SUFFIX] == ".png"
+        assert prot[IMAGE.PARENT_UUID] == "parent-9"
+        # Public known keys normalize; unknown user keys remain bare.
+        assert pub[IMAGE.SUFFIX] == ".png"
         assert "FileSuffix" not in pub
-        assert pub["Strain"] == "BY4741"
+        assert pub[GENETIC.STRAIN] == "BY4741"
+        assert pub["OperatorNote"] == "late shift"
+
+    def test_embedded_png_equal_aliases_coalesce(self, temp_image_dir):
+        """The shared embedded-image restore path coalesces equal aliases."""
+        from PIL.PngImagePlugin import PngInfo
+
+        path = temp_image_dir / "embedded_equal.png"
+        payload = {
+            "phenotypic_version": "0.18.1",
+            "phenotypic_image_property": "Image.rgb",
+            "protected": {},
+            "public": {
+                GENETIC.STRAIN.value: "BY4741",
+                "MetadataGenetic_Strain": "BY4741",
+            },
+        }
+        info = PngInfo()
+        info.add_text(IO.PHENOTYPIC_METADATA_KEY, json.dumps(payload))
+        PIL_Image.fromarray(np.zeros((8, 8, 3), dtype=np.uint8)).save(
+            path, pnginfo=info
+        )
+
+        loaded = phenotypic.Image.imread(path)
+
+        assert loaded._metadata.public[GENETIC.STRAIN] == "BY4741"
+        assert "MetadataGenetic_Strain" not in loaded._metadata.public
+
+    def test_embedded_png_conflicting_protected_aliases_fail_before_skip(
+        self, temp_image_dir
+    ):
+        """Critical protected aliases are validated before ImageName is skipped."""
+        from PIL.PngImagePlugin import PngInfo
+
+        path = temp_image_dir / "embedded_conflict.png"
+        payload = {
+            "phenotypic_version": "0.18.1",
+            "phenotypic_image_property": "Image.rgb",
+            "protected": {
+                IMAGE.IMAGE_NAME.value: "first-name",
+                "MetadataImage_ImageName": "second-name",
+            },
+            "public": {},
+        }
+        info = PngInfo()
+        info.add_text(IO.PHENOTYPIC_METADATA_KEY, json.dumps(payload))
+        PIL_Image.fromarray(np.zeros((8, 8, 3), dtype=np.uint8)).save(
+            path, pnginfo=info
+        )
+
+        with pytest.raises(ValueError, match="Conflicting stored metadata keys"):
+            phenotypic.Image.imread(path)
 
     def test_backcompat_unpickler_remaps_moved_metadata_class(self):
-        """The back-compat unpickler maps the old METADATA import path to schema."""
+        """The unpickler maps ancient and previous-release classes to schema."""
         import io as _io
+        import phenotypic.schema as schema
 
         from phenotypic._core._image_parts._image_io_handler import (
             _BackCompatUnpickler,
         )
 
         unpickler = _BackCompatUnpickler(_io.BytesIO(b""))
-        # The moved symbol resolves to the current schema.METADATA. The legacy
+        # The moved symbol resolves to canonical schema.IMAGE. The legacy
         # path is the genuinely-old ``tools_`` location pre-existing pickles were
         # written with (the package has since been renamed to ``sdk_``); the
         # shim must keep matching it verbatim.
         assert (
             unpickler.find_class("phenotypic.tools_.constants_", "METADATA")
-            is METADATA
+            is IMAGE
         )
+        previous_release_classes = {
+            ("phenotypic.schema._metadata", "METADATA"): schema.IMAGE,
+            (
+                "phenotypic.schema._experimental_tags._genetic",
+                "GENETIC_METADATA",
+            ): schema.GENETIC,
+            (
+                "phenotypic.schema._experimental_tags._sample",
+                "SAMPLE_METADATA",
+            ): schema.SAMPLE,
+            (
+                "phenotypic.schema._experimental_tags._plate",
+                "PLATE_METADATA",
+            ): schema.PLATE,
+            (
+                "phenotypic.schema._experimental_tags._condition",
+                "CONDITION_METADATA",
+            ): schema.CONDITION,
+            (
+                "phenotypic.schema._experimental_tags._culture",
+                "CULTURE_METADATA",
+            ): schema.CULTURE,
+            (
+                "phenotypic.schema._experimental_tags._experiment",
+                "EXPERIMENT_METADATA",
+            ): schema.EXPERIMENT,
+            (
+                "phenotypic.schema._experimental_tags._study",
+                "STUDY_METADATA",
+            ): schema.STUDY,
+            (
+                "phenotypic.schema._experimental_tags._acquisition",
+                "ACQUISITION_METADATA",
+            ): schema.ACQUISITION,
+        }
+        for (module, name), canonical_owner in previous_release_classes.items():
+            assert unpickler.find_class(module, name) is canonical_owner
+            legacy_prefix = {
+                schema.IMAGE: "MetadataImage",
+                schema.GENETIC: "MetadataGenetic",
+                schema.SAMPLE: "MetadataSample",
+                schema.PLATE: "MetadataPlate",
+                schema.CONDITION: "MetadataCondition",
+                schema.CULTURE: "MetadataCulture",
+                schema.EXPERIMENT: "MetadataExperiment",
+                schema.STUDY: "MetadataStudy",
+                schema.ACQUISITION: "MetadataAcquisition",
+            }[canonical_owner]
+            for member in canonical_owner:
+                legacy_value = f"{legacy_prefix}_{member.label}"
+                assert canonical_owner(legacy_value) is member
         # ... and unmoved classes pass through unchanged.
         assert unpickler.find_class("numpy", "ndarray") is np.ndarray
 
@@ -933,8 +1190,38 @@ class TestLegacyMetadataKeyShim:
 
         loaded = phenotypic.Image.load_pickle(path)
         assert loaded.bit_depth == 8
-        assert loaded._metadata.public["Strain"] == "BY4741"
-        # Protected keys are the prefixed METADATA members; no bare keys.
+        assert loaded._metadata.public[GENETIC.STRAIN] == "BY4741"
         assert all(
-            str(k).startswith("MetadataImage_") for k in loaded._metadata.protected
+            str(k).startswith("Metadata_") for k in loaded._metadata.protected
         )
+
+    def test_pickle_equal_aliases_coalesce(self, temp_image_dir):
+        """Pickle payload sections use the same equal-alias coalescing path."""
+        img = phenotypic.Image(
+            arr=np.zeros((12, 16, 3), dtype=np.uint8), name="pickle_equal"
+        )
+        img._metadata.public = {
+            GENETIC.STRAIN.value: "BY4741",
+            "MetadataGenetic_Strain": "BY4741",
+        }
+        path = temp_image_dir / "pickle_equal.pkl"
+        img.save2pickle(path)
+
+        loaded = phenotypic.Image.load_pickle(path)
+
+        assert loaded._metadata.public == {GENETIC.STRAIN: "BY4741"}
+
+    def test_pickle_conflicting_aliases_raise(self, temp_image_dir):
+        """Conflicting aliases in a pickle fail instead of silently overwriting."""
+        img = phenotypic.Image(
+            arr=np.zeros((12, 16, 3), dtype=np.uint8), name="pickle_conflict"
+        )
+        img._metadata.public = {
+            GENETIC.STRAIN.value: "BY4741",
+            "MetadataGenetic_Strain": "BY4742",
+        }
+        path = temp_image_dir / "pickle_conflict.pkl"
+        img.save2pickle(path)
+
+        with pytest.raises(ValueError, match="Conflicting stored metadata keys"):
+            phenotypic.Image.load_pickle(path)

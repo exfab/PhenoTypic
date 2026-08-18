@@ -172,7 +172,7 @@ Output Options
    Alpha transparency of the label overlay (0.0-1.0). Default: 0.3.
 
 ``--no-dataset-column``
-   Exclude the ``MetadataExperiment_Dataset`` column from
+   Exclude the ``Metadata_Dataset`` column from
    ``master_measurements.csv``. The column is included by default.
 
 ``--metadata PATH``
@@ -183,6 +183,9 @@ Output Options
    rows with no matching CSV row *are* dropped. The join lands on
    ``deliverables/measurements.csv`` and its derivatives —
    ``master_measurements.csv`` stays a clean, metadata-free archive.
+   Metadata headers are normalized in memory to ``Metadata_<Label>``. Recompile
+   never mutates this external file; its regenerated bundle-owned metadata copy
+   is canonical.
 
 ``--study PATH``
    Optional ``study.yaml`` of REMBI Study-level fields (Title, License, Author,

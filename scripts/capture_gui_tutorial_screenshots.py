@@ -130,7 +130,7 @@ PIPELINE_DOC = {
 }
 
 METADATA_ROWS = [
-    "MetadataImage_ImageName,Metadata_StrainID,Metadata_MatingType,"
+    "Metadata_ImageName,Metadata_StrainID,Metadata_MatingType,"
     "Metadata_Media,Metadata_RunDate,Metadata_PlateNum,"
     "Metadata_Replicate,Grid_RowNum,Grid_ColNum",
     "plate_001.tif,SYN_001,a,YPD,2026-05-01,1,1,8,12",
@@ -229,6 +229,24 @@ def run_cli_once() -> None:
     print("[cli]   done")
 
 
+def _repair_cached_legacy_master(
+    full: Any, master_path: Path
+) -> tuple[Any, str]:
+    """Canonicalize a cached pre-flat-namespace tutorial master in place."""
+    from phenotypic.schema import IMAGE
+
+    canonical_image_name = str(IMAGE.IMAGE_NAME)
+    legacy_image_name = "MetadataImage_ImageName"
+    if (
+        canonical_image_name not in full.columns
+        and legacy_image_name in full.columns
+    ):
+        # This changes only the reusable capture fixture's serialized schema.
+        full = full.rename({legacy_image_name: canonical_image_name})
+        full.write_parquet(master_path)
+    return full, canonical_image_name
+
+
 def _seed_error_triage_labels() -> None:
     """Label the smallest-``Size_Area`` synthetic objects so the Error tab renders.
 
@@ -270,7 +288,6 @@ def _seed_error_triage_labels() -> None:
     from phenotypic.gui.results_viewer._qc_tab.review._review_state import ReviewState
     from phenotypic import ImagePipeline
     from phenotypic.analysis.qc import MaxModifiedZScore
-    from phenotypic.schema import METADATA
     from phenotypic.sdk_ import (
         BundleLayout,
         curation_labels_parquet_path,
@@ -285,16 +302,9 @@ def _seed_error_triage_labels() -> None:
         print("[seed] no master parquet — Error-tab label seeding skipped")
         return
 
-    full = pl.read_parquet(master_path)
-    canonical_image_name = str(METADATA.IMAGE_NAME)
-    if canonical_image_name not in full.columns and "Metadata_ImageName" in full.columns:
-        # The committed tutorial fixture predates the public MetadataImage
-        # category rename. Normalize the capture-only mirror before handing it
-        # to CurationLabels, which keys durable labels by the canonical name.
-        full = full.rename({"Metadata_ImageName": canonical_image_name})
-        # CurationLabels re-reads the clean master to key durable labels, so
-        # persist the normalized capture fixture before constructing the store.
-        full.write_parquet(master_path)
+    full, canonical_image_name = _repair_cached_legacy_master(
+        pl.read_parquet(master_path), master_path
+    )
     mirror_path = measurements_parquet_path(OUTPUT_DIR)
     mirror_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -379,20 +389,22 @@ def run_tune_once() -> None:
 
     if io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR).exists():
         resolved_spec = io.resolve_tuning_spec_path(TUNE_OUTPUT_DIR)
-        # Repair reusable pre-category-rename fixtures before the Setup capture.
+        # Repair reusable pre-category-rename compatibility fixtures before the
+        # Setup capture. These exact strings are the historical and canonical
+        # serialized headers, respectively; current fixtures are left unchanged.
         layout = TUNE_LAYOUT_CSV.read_text(encoding="utf-8")
-        if layout.startswith("Metadata_ImageName,"):
+        if layout.startswith("MetadataImage_ImageName,"):
             TUNE_LAYOUT_CSV.write_text(
                 layout.replace(
-                    "Metadata_ImageName,",
                     "MetadataImage_ImageName,",
+                    "Metadata_ImageName,",
                     1,
                 ),
                 encoding="utf-8",
             )
         setup_spec = resolved_spec.read_text(encoding="utf-8").replace(
-            "Metadata_ImageName",
             "MetadataImage_ImageName",
+            "Metadata_ImageName",
         )
         TUNE_SETUP_SPEC.write_text(setup_spec, encoding="utf-8")
         print(
@@ -429,7 +441,7 @@ def run_tune_once() -> None:
     # The layout: every loaded plate declares its nominal 96-colony (8x12) count
     # so the QC count scorer has a path-backed metadata source that round-trips.
     layout_rows = [
-        {"MetadataImage_ImageName": im.name, "Object_Label": label}
+        {"Metadata_ImageName": im.name, "Object_Label": label}
         for im in images
         for label in range(96)
     ]
@@ -448,7 +460,7 @@ def run_tune_once() -> None:
         search_space=space,
         scorer=QCScorer(
             check=ExpectedVsDetectedCount(
-                metadata=str(TUNE_LAYOUT_CSV), groupby=["MetadataImage_ImageName"]
+                metadata=str(TUNE_LAYOUT_CSV), groupby=["Metadata_ImageName"]
             )
         ),
         evaluator=Evaluator(),
@@ -961,7 +973,7 @@ def _seed_results_timeline_output() -> None:
         measurements_csv_path,
         measurements_parquet_path,
     )
-    from phenotypic.schema import EXPERIMENT_METADATA, METADATA
+    from phenotypic.schema import EXPERIMENT, IMAGE
 
     display_output_dir = (
         RESULTS_TIMELINE_OUTPUT_DIR.relative_to(REPO_ROOT)
@@ -982,8 +994,8 @@ def _seed_results_timeline_output() -> None:
             label += 1
             rows.append(
                 {
-                    str(EXPERIMENT_METADATA.DATASET): RESULTS_TIMELINE_DATASET,
-                    str(METADATA.IMAGE_NAME): f"p{plate}_t{img_no}",
+                    str(EXPERIMENT.DATASET): RESULTS_TIMELINE_DATASET,
+                    str(IMAGE.IMAGE_NAME): f"p{plate}_t{img_no}",
                     "Metadata_ImageNumber": img_no,
                     "Metadata_PlateNum": str(plate),
                     "Object_Label": label,

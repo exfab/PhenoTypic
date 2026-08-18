@@ -1073,7 +1073,7 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
     from phenotypic.gui.shell._metadata_context import (
         metadata_payload_from_path,
     )
-    from phenotypic.schema import METADATA
+    from phenotypic.schema import IMAGE
 
     sandbox = SandboxRoot.from_path(tmp_path)
     registry = RunRegistry()
@@ -1087,7 +1087,7 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
     (images / "plate_a.tif").write_bytes(b"one-image")
     output.mkdir()
     metadata.write_text(
-        f"{METADATA.IMAGE_NAME},Treatment\nplate_a,control\n",
+        f"{IMAGE.IMAGE_NAME},Treatment\nplate_a,control\n",
         encoding="utf-8",
     )
     metadata_payload = metadata_payload_from_path(sandbox, metadata)
@@ -1591,10 +1591,10 @@ def test_form_state_omits_ambient_metadata_until_explicit_include(
 ) -> None:
     from phenotypic.gui.run_console._callbacks import _form_inputs_to_state
     from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
-    from phenotypic.schema import METADATA
+    from phenotypic.schema import IMAGE
 
     csv_path = tmp_path / "layout.csv"
-    csv_path.write_text(f"{METADATA.IMAGE_NAME},Treatment\nplate_a,control\n")
+    csv_path.write_text(f"{IMAGE.IMAGE_NAME},Treatment\nplate_a,control\n")
     sandbox = SandboxRoot.from_path(tmp_path)
     payload = metadata_payload_from_path(sandbox, csv_path)
 

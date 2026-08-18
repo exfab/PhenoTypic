@@ -36,9 +36,9 @@ def test_resolved_module_is_total():
 
 
 def test_culture_time_members_are_biosample():
-    from phenotypic.schema import CULTURE_METADATA
-    assert CULTURE_METADATA.TIME.resolved_rembi_module is REMBI_MODULE.BIOSAMPLE
-    assert CULTURE_METADATA.TIME_UNIT.resolved_rembi_module is REMBI_MODULE.BIOSAMPLE
-    assert CULTURE_METADATA.TIMEPOINT.resolved_rembi_module is REMBI_MODULE.BIOSAMPLE
-    assert CULTURE_METADATA.FRAME_INDEX.resolved_rembi_module is REMBI_MODULE.BIOSAMPLE
-    assert CULTURE_METADATA.TEMPERATURE.resolved_rembi_module is REMBI_MODULE.SPECIMEN_PREP
+    from phenotypic.schema import CULTURE
+    assert CULTURE.TIME.resolved_rembi_module is REMBI_MODULE.BIOSAMPLE
+    assert CULTURE.TIME_UNIT.resolved_rembi_module is REMBI_MODULE.BIOSAMPLE
+    assert CULTURE.TIMEPOINT.resolved_rembi_module is REMBI_MODULE.BIOSAMPLE
+    assert CULTURE.FRAME_INDEX.resolved_rembi_module is REMBI_MODULE.BIOSAMPLE
+    assert CULTURE.TEMPERATURE.resolved_rembi_module is REMBI_MODULE.SPECIMEN_PREP

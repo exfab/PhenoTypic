@@ -15,7 +15,7 @@ from pathlib import Path
 from click.testing import CliRunner
 
 from phenotypic.phenotypicCLI import phenotypic_cli
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import metadata_csv_deliverable_path
 
 
@@ -31,7 +31,7 @@ def test_metadata_run_copies_source_csv_to_deliverables(
     # refactor (a byte-for-byte copy preserves the UTF-8 bytes).
     source = tmp_path / "meta.csv"
     source.write_text(
-        str(METADATA.IMAGE_NAME)
+        str(IMAGE.IMAGE_NAME)
         + ",Metadata_Strain\nplate_001,Säccharomyces\n",
         encoding="utf-8",
     )

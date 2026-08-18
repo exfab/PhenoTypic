@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import phenotypic.schema as schema
-from phenotypic.schema import Entry, MeasurementInfo
+from phenotypic.schema import Entry, MeasurementInfo, MetadataInfo
 from pytest import MonkeyPatch
 
 
@@ -43,6 +43,7 @@ def _canonical_public_classes() -> tuple[type[MeasurementInfo], ...]:
             name != "MeasurementInfo"
             and isinstance(value, type)
             and issubclass(value, MeasurementInfo)
+            and bool(getattr(value, "__members__", None))
             and value not in seen
         ):
             classes.append(value)
@@ -74,6 +75,19 @@ def test_build_pages_creates_exactly_two_reference_pages(
         for path in docs_root.rglob("*.rst")
     )
     assert pages == ["measurements/index.rst", "metadata/index.rst"]
+
+
+def test_memberless_public_bases_are_not_discovered(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    extension = _load_extension(monkeypatch)
+
+    assert schema.MetadataInfo in (
+        getattr(schema, name) for name in schema.__all__
+    )
+    assert schema.MetadataInfo not in extension._public_measurement_info_classes()
+    extension._build_pages(str(tmp_path))
 
 
 def test_setup_generates_pages_before_sphinx_source_discovery(
@@ -125,12 +139,12 @@ def test_every_canonical_public_class_appears_once_on_the_correct_page(
         heading = _class_heading(info_cls.__name__)
         expected_page = (
             metadata_page
-            if info_cls.category().startswith("Metadata")
+            if issubclass(info_cls, MetadataInfo)
             else measurements_page
         )
         other_page = (
             measurements_page
-            if info_cls.category().startswith("Metadata")
+            if issubclass(info_cls, MetadataInfo)
             else metadata_page
         )
         assert expected_page.count(heading) == 1
@@ -152,7 +166,7 @@ def test_class_order_follows_schema_export_order(
             [
                 info_cls
                 for info_cls in public_classes
-                if not info_cls.category().startswith("Metadata")
+                if not issubclass(info_cls, MetadataInfo)
             ],
         ),
         (
@@ -160,7 +174,7 @@ def test_class_order_follows_schema_export_order(
             [
                 info_cls
                 for info_cls in public_classes
-                if info_cls.category().startswith("Metadata")
+                if issubclass(info_cls, MetadataInfo)
             ],
         ),
     )
@@ -180,11 +194,7 @@ def test_future_classes_are_discovered_and_partitioned_automatically(
 
         VALUE = Entry("Value", "A future measurement value.")
 
-    class FUTURE_METADATA(MeasurementInfo):
-        @classmethod
-        def category(cls) -> str:
-            return "MetadataFuture"
-
+    class FUTURE_METADATA(MetadataInfo):
         VALUE = Entry("Value", "A future metadata value.")
 
     monkeypatch.setattr(

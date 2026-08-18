@@ -12,9 +12,9 @@ from typing import Any
 
 import pandas as pd
 
-from phenotypic.schema import REMBI_MODULE, header_to_module
+from phenotypic.schema import REMBI_MODULE
 
-from ._metadata_helpers import is_metadata_header
+from ._metadata_helpers import is_metadata_header, metadata_member_for_header
 
 # module -> manifest section key
 _SECTION = {
@@ -43,21 +43,26 @@ def build_rembi_manifest(
     image_metadata: list[dict],
     study_config: dict | None = None,
 ) -> dict:
-    idx = header_to_module()
     manifest: dict[str, dict] = {}
 
     # --- distinct-collapse sections (study/biosample/specimen/acquisition/uncat)
     for col in measurements.columns:
         if not is_metadata_header(str(col)):
             continue  # measurement/locator columns handled in analyzed_data
-        module = idx.get(col, REMBI_MODULE.UNCATEGORIZED)
+        member = metadata_member_for_header(str(col))
+        module = (
+            member.resolved_rembi_module
+            if member is not None
+            else REMBI_MODULE.UNCATEGORIZED
+        )
         section = _SECTION.get(module)
         if section is None:
             continue
         value = _distinct(measurements[col])
         if value is None:
             continue
-        manifest.setdefault(section, {})[_label_of(col)] = value
+        label = member.label if member is not None else _label_of(str(col))
+        manifest.setdefault(section, {})[label] = value
 
     # --- study file overrides csv constants
     if study_config:

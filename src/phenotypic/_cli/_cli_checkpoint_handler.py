@@ -333,7 +333,7 @@ def _publish_run_completion_marker(
 ) -> None:
     """Publish and fence ordinary completion for the exact active generation."""
     from ._cli_slurm_lifecycle import (
-        deactivate_generation,
+        _deactivate_generation_locked,
         lifecycle_lock_path,
         load_slurm_lifecycle,
     )
@@ -405,7 +405,7 @@ def _publish_run_completion_marker(
                 ),
             },
         )
-        if not deactivate_generation(output_dir, slurm_generation):
+        if not _deactivate_generation_locked(output_dir, slurm_generation):
             raise RuntimeError(
                 "SLURM completion marker was published but the generation "
                 "could not be deactivated"

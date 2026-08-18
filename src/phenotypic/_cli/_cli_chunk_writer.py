@@ -26,8 +26,9 @@ import click
 import polars as pl
 
 from ._cli_file_locking import file_lock
+from ._metadata_join import normalize_measurement_metadata_columns
 from ._cli_utils import scan_parquets
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA, OBJECT
+from phenotypic.schema import EXPERIMENT, IMAGE, OBJECT
 from phenotypic.sdk_ import (
     DIR_CHUNKS,
     CHUNK_STATE_JSON,
@@ -179,9 +180,7 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
         manifest_path,
         default={ChunkManifestKey.CHUNKS: [], ChunkManifestKey.TOTAL_ROWS: 0},
     )
-    datasets_in_chunk = (
-        chunk_df[str(EXPERIMENT_METADATA.DATASET)].unique().to_list()
-    )
+    datasets_in_chunk = chunk_df[str(EXPERIMENT.DATASET)].unique().to_list()
     entry = {
         ChunkManifestKey.NAME: chunk_name,
         ChunkManifestKey.ROWS: chunk_df.height,
@@ -227,7 +226,7 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
             lambda p: combined.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
 
-    for ds_name, ds_df in chunk_df.group_by(str(EXPERIMENT_METADATA.DATASET)):
+    for ds_name, ds_df in chunk_df.group_by(str(EXPERIMENT.DATASET)):
         _update_dataset_parquet(output_dir, str(ds_name[0]), ds_df)
 
     # Commit the chunk state LAST, once every artifact it describes is durable.
@@ -316,8 +315,8 @@ def _attach_image_identity(
 ) -> pl.DataFrame:
     """Attach the canonical image-identity columns to *df*.
 
-    Adds :data:`~phenotypic.schema.METADATA.IMAGE_NAME` (the image stem) and,
-    when not already present, :data:`~phenotypic.schema.METADATA.SUFFIX` (the
+    Adds :data:`~phenotypic.schema.IMAGE.IMAGE_NAME` (the image stem) and,
+    when not already present, :data:`~phenotypic.schema.IMAGE.SUFFIX` (the
     file extension). Non-clobbering: an existing ``Metadata_FileSuffix`` emitted
     upstream by ``insert_metadata`` is preserved rather than overwritten with a
     caller-supplied fallback. Replaces the retired ad-hoc per-image-file
@@ -332,9 +331,9 @@ def _attach_image_identity(
     Returns:
         The frame with the identity columns attached.
     """
-    exprs = [pl.lit(stem).alias(str(METADATA.IMAGE_NAME))]
-    if str(METADATA.SUFFIX) not in df.columns:
-        exprs.append(pl.lit(suffix).alias(str(METADATA.SUFFIX)))
+    exprs = [pl.lit(stem).alias(str(IMAGE.IMAGE_NAME))]
+    if str(IMAGE.SUFFIX) not in df.columns:
+        exprs.append(pl.lit(suffix).alias(str(IMAGE.SUFFIX)))
     return df.with_columns(exprs)
 
 
@@ -387,15 +386,13 @@ def _read_and_concat(parquet_files: list[Path]) -> _ConcatResult:
     consumed: list[Path] = []
     for pq_path, lf in lazy_frames.items():
         try:
-            df = lf.collect()
+            df = normalize_measurement_metadata_columns(lf.collect())
             df = _attach_image_identity(df, pq_path.stem)
-            if str(EXPERIMENT_METADATA.DATASET) not in df.columns:
+            if str(EXPERIMENT.DATASET) not in df.columns:
                 dataset_name = pq_path.parent.parent.name
                 df = df.insert_column(
                     0,
-                    pl.lit(dataset_name).alias(
-                        str(EXPERIMENT_METADATA.DATASET)
-                    ),
+                    pl.lit(dataset_name).alias(str(EXPERIMENT.DATASET)),
                 )
             frames.append(df)
             consumed.append(pq_path)
@@ -422,16 +419,20 @@ def _incremental_combined(
     Returns:
         Combined DataFrame.
     """
+    new_chunk = normalize_measurement_metadata_columns(new_chunk)
     if not existing_path.exists():
         return new_chunk
     try:
-        prev = pl.read_parquet(existing_path)
+        prev = normalize_measurement_metadata_columns(
+            pl.read_parquet(existing_path)
+        )
         return pl.concat([prev, new_chunk], how="diagonal_relaxed")
     except Exception as exc:
         logger.warning(
             "Failed to read existing combined file, rebuilding: %s", exc
         )
-        return _rebuild_combined(existing_path.parent / "chunks") or new_chunk
+        rebuilt = _rebuild_combined(existing_path.parent / "chunks")
+        return rebuilt if rebuilt is not None else new_chunk
 
 
 def _rebuild_combined(chunks_dir: Path) -> pl.DataFrame | None:
@@ -447,7 +448,11 @@ def _rebuild_combined(chunks_dir: Path) -> pl.DataFrame | None:
     frames: list[pl.DataFrame] = []
     for chunk_file in chunk_files:
         try:
-            frames.append(pl.read_parquet(chunk_file))
+            frames.append(
+                normalize_measurement_metadata_columns(
+                    pl.read_parquet(chunk_file)
+                )
+            )
         except Exception as exc:
             logger.warning("Failed to read chunk %s: %s", chunk_file, exc)
 
@@ -460,8 +465,8 @@ def _rebuild_combined(chunks_dir: Path) -> pl.DataFrame | None:
 #: Colony primary key -- one row per detected object per image per dataset,
 #: the grain of every per-image measurement parquet.
 _AGGREGATE_KEY: Final[tuple[str, ...]] = (
-    str(EXPERIMENT_METADATA.DATASET),
-    str(METADATA.IMAGE_NAME),
+    str(EXPERIMENT.DATASET),
+    str(IMAGE.IMAGE_NAME),
     str(OBJECT.LABEL),
 )
 
@@ -638,9 +643,12 @@ def _update_dataset_parquet(
         / DIR_MEASUREMENTS
         / DATASET_AGGREGATED_PARQUET
     )
+    new_df = normalize_measurement_metadata_columns(new_df)
     if agg_path.exists():
         try:
-            prev = pl.read_parquet(agg_path)
+            prev = normalize_measurement_metadata_columns(
+                pl.read_parquet(agg_path)
+            )
             new_df = pl.concat([prev, new_df], how="diagonal_relaxed")
         except Exception as exc:
             rebuilt = _rebuild_dataset_aggregate(agg_path, exc)

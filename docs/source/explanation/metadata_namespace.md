@@ -1,68 +1,130 @@
-# Metadata column namespace (REMBI modules)
+# Flat metadata namespace and semantic owners
 
-PhenoTypic's metadata columns are **self-describing, per-topic** headers of the
-form `Metadata<Topic>_<Label>` — for example `MetadataGenetic_Strain`,
-`MetadataCulture_Time`, `MetadataImage_ImageName`. Each metadata enum in
-`phenotypic.schema` owns one category prefix:
+PhenoTypic writes every metadata field as `Metadata_<Label>`. The prefix is
+short and predictable for people entering CSV headers, while the public enum
+that owns a label keeps its semantic category available to code:
 
-| Enum | Category prefix | REMBI module |
-|---|---|---|
-| `METADATA` (framework) | `MetadataImage` | ImageData |
-| `STUDY_METADATA` | `MetadataStudy` | Study |
-| `EXPERIMENT_METADATA` | `MetadataExperiment` | Study |
-| `GENETIC_METADATA` | `MetadataGenetic` | Biosample |
-| `SAMPLE_METADATA` | `MetadataSample` | Biosample |
-| `CONDITION_METADATA` | `MetadataCondition` | SpecimenPreparation |
-| `CULTURE_METADATA` | `MetadataCulture` | SpecimenPreparation |
-| `PLATE_METADATA` | `MetadataPlate` | SpecimenPreparation |
-| `ACQUISITION_METADATA` | `MetadataAcquisition` | ImageAcquisition |
+| Public enum | Example member | Emitted header | REMBI module |
+|---|---|---|---|
+| `IMAGE` | `IMAGE.IMAGE_NAME` | `Metadata_ImageName` | ImageData |
+| `STUDY` | `STUDY.TITLE` | `Metadata_Title` | Study |
+| `EXPERIMENT` | `EXPERIMENT.DATASET` | `Metadata_Dataset` | Study |
+| `GENETIC` | `GENETIC.STRAIN` | `Metadata_Strain` | Biosample |
+| `SAMPLE` | `SAMPLE.BIO_REPLICATE` | `Metadata_BioReplicate` | Biosample |
+| `CONDITION` | `CONDITION.MEDIA` | `Metadata_Media` | SpecimenPreparation |
+| `CULTURE` | `CULTURE.TIME` | `Metadata_Time` | Biosample |
+| `PLATE` | `PLATE.PLATE_ID` | `Metadata_PlateID` | SpecimenPreparation |
+| `ACQUISITION` | `ACQUISITION.INSTRUMENT` | `Metadata_Instrument` | ImageAcquisition |
 
-All prefixes share the `Metadata` **column family**. Code recognizes any metadata
-column with {func}`phenotypic.sdk_.is_metadata_header` (which matches every
-`Metadata<Topic>_` prefix *and* the generic `Metadata_` fallback) rather than a
-bare `"Metadata_"` string literal. The REMBI module is a separate axis exposed by
-`MeasurementInfo.rembi_module()` and folded into the run's `deliverables/rembi.yaml`
-manifest; the per-topic category prefix and the REMBI module are independent (the
-time straddler `MetadataCulture_Time` carries `rembi_module=Biosample`).
+All nine enums inherit {class}`phenotypic.schema.MetadataInfo`, whose
+`category()` is `"Metadata"`. Category strings therefore cannot distinguish
+owners. Use enum identity and the ownership APIs instead:
 
-This is a **recommended vocabulary, not a validator**: arbitrary metadata columns
-are always accepted. A user-supplied label that is not in the vocabulary keeps a
-generic `Metadata_<Label>` header and routes to the REMBI `Uncategorized` module.
+```python
+from phenotypic.schema import GENETIC, MetadataInfo
+from phenotypic.sdk_ import (
+    metadata_member_for_header,
+    metadata_owner_for_header,
+)
 
-```{seealso}
-To attach metadata to a run and emit the `deliverables/rembi.yaml` manifest, see
-the how-to guide {doc}`/how_to/pages/rembi_metadata` — it covers the `--metadata`
-sample CSV, the `--study` profile, and how columns fold into REMBI modules, with
-downloadable example files.
+member = metadata_member_for_header("Metadata_Strain")
+assert member is GENETIC.STRAIN
+assert metadata_owner_for_header("Metadata_Strain") is GENETIC
+assert "Metadata_Strain" in GENETIC.header_set()
+assert issubclass(metadata_owner_for_header("Strain"), MetadataInfo)
 ```
 
-## Column order (bio-semantic clusters)
+The lookup functions also accept a bare known label such as `Strain` and an
+exact historical spelling such as `MetadataGenetic_Strain`. Corresponding
+`metadata_member_for_label()` and `metadata_owner_for_label()` helpers are
+available when the input is conceptually a label. Unknown metadata remains
+valid but has no owner and routes to REMBI `Uncategorized`.
 
-Measurement sheets order the metadata front-block by a bench-scientist narrative,
-**not** by REMBI module:
+Use {func}`phenotypic.sdk_.is_metadata_header` to identify the metadata family.
+It recognizes canonical `Metadata_*` headers and the finite exact set of
+historical headers. It intentionally rejects arbitrary lookalikes such as
+`MetadataFoo_Bar`. Use {func}`phenotypic.sdk_.normalize_metadata_columns` at a
+DataFrame ingress boundary. It returns a copy, canonicalizes bare and historical
+headers, and coalesces duplicate aliases only when their dtypes are compatible
+and their overlapping non-null values agree.
 
-1. **Identity** — `MetadataSample_*`, `MetadataPlate_*`
-2. **Strain** — `MetadataGenetic_*`
-3. **Condition** — `MetadataCondition_*`, `MetadataCulture_*`
-4. **Design & provenance** — `MetadataExperiment_*`, `MetadataStudy_*`, `MetadataAcquisition_*`
+```{seealso}
+To attach metadata to a run and emit `deliverables/rembi.yaml`, see
+{doc}`/how_to/pages/rembi_metadata`.
+```
 
-Unknown/uncategorized `Metadata_*` tags trail the four clusters. Within a category,
-columns follow the enum's declaration order. The framework `MetadataImage_*` block is
-per-image provenance and is placed **after** the measurements, before the per-object
-`Object_Label` / `Bbox_*` / `Grid_*` info block. REMBI (`by_module`, the run manifest)
-remains a separate provenance axis and is unaffected by this ordering.
+## Column order
 
-## Migration note (namespace rename)
+Measurement sheets order the metadata front block by a bench-scientist
+narrative, not by spelling or REMBI module:
 
-Metadata columns are now per-REMBI-module prefixed (`MetadataGenetic_Strain`
-instead of the previous shared `Metadata_Strain`). The ad-hoc `Metadata_ImageFile`
-column was consolidated into `MetadataImage_ImageName` (plus
-`MetadataImage_FileSuffix`). This is a **clean break**:
+1. **Identity:** fields owned by `SAMPLE`, then `PLATE`
+2. **Strain:** fields owned by `GENETIC`
+3. **Condition:** fields owned by `CONDITION`, then `CULTURE`
+4. **Design and provenance:** fields owned by `EXPERIMENT`, `STUDY`, then
+   `ACQUISITION`
 
-- **Old output folders** still open in the GUI: curation state auto-migrates on
-  load (the legacy `Metadata_ImageFile` curation column is renamed on read), and
-  old `master_measurements.parquet` archives still load (the legacy
-  `Metadata_ImageName` column is recognized as the image-stem key).
-- **Old metadata columns will not auto-map** to their REMBI module (they read as
-  `Uncategorized`). To refresh a pre-migration run's measurement parquets to the
-  new namespace, re-run with `--mode recompile`.
+Unknown `Metadata_*` fields trail the known owner blocks. Within an owner,
+columns follow enum declaration order. The `IMAGE` block is per-image
+provenance and appears after measurements, before the per-object info block.
+REMBI classification is a separate provenance axis and does not drive this
+presentation order.
+
+## Compatibility and migration
+
+Stored-header compatibility is permanent. Ordinary reads normalize exact old
+headers such as `MetadataImage_ImageName` and `MetadataCulture_Time` in memory
+without rewriting their source. The previous Python enum class names remain as
+one-transition-release aliases: importing one emits `DeprecationWarning`, and
+the alias is absent from `phenotypic.schema.__all__` and schema discovery. New
+code should use `IMAGE`, `CULTURE`, and the other canonical owner names.
+
+`--mode recompile` is the explicit mutation boundary for a bundle. Local and
+SLURM recompiles preflight and migrate bundle-owned authoritative legacy data
+before aggregation. A conflict or failed target stops recompile before new
+aggregate outputs are published. Canonical bundles are an idempotent no-op
+apart from preflight.
+
+Migration uses source and plan fingerprints plus a prepared/applied receipt
+journal. CSV, parquet, typed pipeline JSON, and HDF metadata attributes are
+replaced atomically. HDF migration writes and validates a sibling copy, changes
+only metadata attributes and the metadata-schema marker, and leaves the HDF
+layout `schema_version`, arrays, grid state, and unrelated attributes alone.
+Receipts make an interrupted bundle migration resumable and can be passed to
+`rollback_metadata_migration()`.
+
+An external file supplied with `--metadata` is always read-only during
+recompile: PhenoTypic normalizes its contents in memory without writing to the
+source, and the regenerated bundle-owned `deliverables/metadata.csv` uses
+canonical headers. To mutate a standalone external file, call
+`migrate_metadata_file()` explicitly.
+
+```python
+from pathlib import Path
+from phenotypic.sdk_ import (
+    migrate_metadata_bundle,
+    migrate_metadata_file,
+    preflight_metadata_schema,
+    rollback_metadata_migration,
+)
+
+source = Path("metadata.csv")
+report = preflight_metadata_schema(source)
+result = migrate_metadata_file(
+    source,
+    expected_source_fingerprint=report.source_fingerprint,
+)
+
+bundle_report = preflight_metadata_schema(Path("out"))
+bundle_result = migrate_metadata_bundle(
+    Path("out"),
+    expected_plan_fingerprint=bundle_report.plan_fingerprint,
+)
+
+if bundle_result.receipt_path is not None:
+    rollback_metadata_migration(bundle_result.receipt_path)
+```
+
+Always inspect `status`, `conflicts`, and the proposed header maps in a
+preflight report before invoking standalone migration. A blocked report never
+mutates its target.

@@ -9,19 +9,33 @@ from __future__ import annotations
 
 import csv
 import logging
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
-from typing import Literal, TypeAlias, TypedDict
+from typing import TYPE_CHECKING, Literal, TypeAlias, TypedDict, cast, overload
 
+if TYPE_CHECKING:
+    import pandas as pd
+    import polars as pl
+
+from phenotypic.sdk_ import (
+    ensure_metadata_prefix,
+    is_metadata_header,
+    metadata_member_for_header,
+    metadata_member_for_label,
+    normalize_metadata_columns,
+)
+from phenotypic.sdk_._metadata_compatibility import LEGACY_HEADER_TO_CANONICAL
 from phenotypic.gui.shell._sandbox import (
     SandboxRoot,
     _is_safe_relative_path,
     _v1_selection_matches_sandbox,
 )
 from phenotypic.gui.shell._source_context import sandbox_fingerprint
-from phenotypic.schema import METADATA
+import phenotypic.schema as schema
+from phenotypic.schema import IMAGE, MeasurementInfo, MetadataInfo
 
 logger = logging.getLogger(__name__)
 
@@ -52,13 +66,202 @@ MetadataImageIdentityState: TypeAlias = Literal[
 ]
 
 # Ordered from the current public schema header through supported historical
-# spellings. This is the sole compatibility list for Browse metadata identity.
-METADATA_IMAGE_IDENTITY_COLUMNS = (
-    str(METADATA.IMAGE_NAME),
-    "Metadata_ImageName",
-    "Metadata_ImageFileName",
-    "ImageName",
+# spellings. Exact per-topic aliases come from the central permanent
+# compatibility registry rather than being duplicated in this GUI module.
+_LEGACY_IMAGE_NAME_HEADERS = tuple(
+    header
+    for header, canonical in LEGACY_HEADER_TO_CANONICAL.items()
+    if canonical == str(IMAGE.IMAGE_NAME)
 )
+METADATA_IMAGE_IDENTITY_COLUMNS = tuple(
+    dict.fromkeys(
+        (
+            str(IMAGE.IMAGE_NAME),
+            *_LEGACY_IMAGE_NAME_HEADERS,
+            "Metadata_ImageFileName",
+            "ImageName",
+        )
+    )
+)
+
+
+_EXTERNAL_QUALIFIED_HEADER = re.compile(r"^[A-Z][A-Za-z0-9]*_[A-Z][A-Za-z0-9]*$")
+
+
+def _is_known_nonmetadata_header(column: str) -> bool:
+    """Return whether a column is explicitly owned by a nonmetadata enum."""
+    for name in schema.__all__:
+        candidate = getattr(schema, name)
+        if not isinstance(candidate, type) or not issubclass(
+            candidate, MeasurementInfo
+        ):
+            continue
+        if issubclass(candidate, MetadataInfo):
+            continue
+        owner = cast(type[MeasurementInfo], candidate)
+        if owner.owns_header(column):
+            return True
+    return False
+
+
+def _is_gui_metadata_column(column: str) -> bool:
+    """Classify GUI table fields with the ExpectedVsDetectedCount policy."""
+    if (
+        metadata_member_for_header(column) is not None
+        or metadata_member_for_label(column) is not None
+        or is_metadata_header(column)
+    ):
+        return True
+    return not (
+        _is_known_nonmetadata_header(column)
+        or _EXTERNAL_QUALIFIED_HEADER.fullmatch(column) is not None
+    )
+
+
+def normalize_metadata_column_reference(column: str) -> str:
+    """Normalize one metadata config reference without relabeling measurements.
+
+    Known bare labels and either supported physical spelling are metadata
+    references. Bare and lower-snake unknown labels are generic metadata;
+    explicit schema measurement headers and external PascalCase-qualified
+    headers are retained verbatim.
+    """
+    name = str(column)
+    return ensure_metadata_prefix(name) if _is_gui_metadata_column(name) else name
+
+
+def _is_metadata_input_column(name: str) -> bool:
+    """Return whether one external-table field belongs to metadata handling."""
+    return _is_gui_metadata_column(name)
+
+
+def _normalize_frame_metadata_columns(
+    frame: object,
+) -> object:
+    """Copy-normalize selected metadata fields while preserving other columns.
+
+    ``normalize_metadata_columns`` is deliberately for metadata-only input: a
+    bare measurement name would otherwise become a generic metadata field. This
+    adapter selects only known or metadata-family fields, delegates their
+    coalescing and conflict checks to the shared normalizer, and preserves every
+    nonmetadata column, value, and relative position.
+    """
+    import pandas as pd
+    import polars as pl
+
+    if isinstance(frame, pd.DataFrame):
+        names = [str(column) for column in frame.columns]
+        positions = [
+            i
+            for i, name in enumerate(names)
+            if _is_metadata_input_column(name)
+        ]
+        if not positions:
+            return frame.copy(deep=True)
+        normalized_pandas = normalize_metadata_columns(frame.iloc[:, positions])
+        targets = {position: ensure_metadata_prefix(names[position]) for position in positions}
+        anchors = {
+            target: next(
+                (
+                    position
+                    for position in positions
+                    if names[position] == target
+                ),
+                next(position for position in positions if targets[position] == target),
+            )
+            for target in dict.fromkeys(targets.values())
+        }
+        pandas_series_by_anchor = {
+            anchor: normalized_pandas.iloc[:, index]
+            for index, anchor in enumerate(sorted(anchors.values()))
+        }
+        pieces = [
+            pandas_series_by_anchor[position]
+            if position in pandas_series_by_anchor
+            else frame.iloc[:, position].copy(deep=True)
+            for position in range(len(names))
+            if position not in positions or position in pandas_series_by_anchor
+        ]
+        return pd.concat(pieces, axis=1)
+    if isinstance(frame, pl.DataFrame):
+        names = list(frame.columns)
+        positions = [
+            i
+            for i, name in enumerate(names)
+            if _is_metadata_input_column(name)
+        ]
+        if not positions:
+            return frame.clone()
+        normalized_polars = cast(
+            "pl.DataFrame",
+            normalize_metadata_columns(
+                pl.DataFrame([frame.to_series(position) for position in positions])
+            ),
+        )
+        targets = {position: ensure_metadata_prefix(names[position]) for position in positions}
+        anchors = {
+            target: next(
+                (
+                    position
+                    for position in positions
+                    if names[position] == target
+                ),
+                next(position for position in positions if targets[position] == target),
+            )
+            for target in dict.fromkeys(targets.values())
+        }
+        polars_series_by_anchor = {
+            anchor: normalized_polars.to_series(index)
+            for index, anchor in enumerate(sorted(anchors.values()))
+        }
+        return pl.DataFrame(
+            [
+                polars_series_by_anchor[position]
+                if position in polars_series_by_anchor
+                else frame.to_series(position).clone()
+                for position in range(len(names))
+                if position not in positions or position in polars_series_by_anchor
+            ]
+        )
+    raise TypeError(
+        "metadata frame normalization requires a pandas or Polars "
+        f"DataFrame; got {type(frame).__name__}"
+    )
+
+
+@overload
+def normalize_measurement_metadata_columns(frame: "pd.DataFrame") -> "pd.DataFrame": ...
+
+
+@overload
+def normalize_measurement_metadata_columns(frame: "pl.DataFrame") -> "pl.DataFrame": ...
+
+
+def normalize_measurement_metadata_columns(frame: object) -> object:
+    """Copy-normalize metadata fields in a measurement frame.
+
+    Unlike a metadata CSV, a measurement frame contains qualified feature and
+    locator columns. Those remain untouched while metadata is normalized.
+    """
+    return _normalize_frame_metadata_columns(frame)
+
+
+@overload
+def normalize_metadata_input_columns(frame: "pd.DataFrame") -> "pd.DataFrame": ...
+
+
+@overload
+def normalize_metadata_input_columns(frame: "pl.DataFrame") -> "pl.DataFrame": ...
+
+
+def normalize_metadata_input_columns(frame: object) -> object:
+    """Copy-normalize an external metadata table without relabeling feature keys.
+
+    Bare unknown labels become generic metadata. Qualified nonmetadata columns
+    remain available as production join keys, which is essential for grid and
+    third-party measurement-level joins.
+    """
+    return _normalize_frame_metadata_columns(frame)
 
 
 class MetadataCsvValidation(TypedDict):
@@ -259,7 +462,7 @@ def metadata_payload_from_path(
         return None
     try:
         columns, rows = read_metadata_csv_table(resolved)
-    except (csv.Error, OSError, UnicodeError):
+    except (csv.Error, OSError, UnicodeError, ValueError):
         logger.warning("metadata CSV is unreadable: %s", resolved)
         return None
     try:
@@ -386,7 +589,7 @@ def read_metadata_row_for_image_stem(
         return MetadataLookupResult("unavailable", image_stem, [])
     try:
         columns, rows = read_metadata_csv_table(path)
-    except (csv.Error, OSError, UnicodeError):
+    except (csv.Error, OSError, UnicodeError, ValueError):
         return MetadataLookupResult("unavailable", image_stem, [])
     identity = resolve_metadata_image_identity(columns, rows)
     if identity.state == "missing":
@@ -541,21 +744,13 @@ def _legacy_metadata_csv_label(payload: object) -> str:
     return f"metadata: {label}"
 
 
-def _read_rows(path: Path) -> list[dict[str, str]]:
-    with path.open("r", encoding="utf-8-sig", newline="") as handle:
-        reader = csv.DictReader(handle)
-        return [
-            {str(key): "" if value is None else str(value) for key, value in row.items()}
-            for row in reader
-        ]
-
-
 def read_metadata_csv_table(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     """Return ``(column_names, rows)`` for a metadata CSV.
 
     Decoded with ``utf-8-sig`` so an Excel-authored BOM is stripped and never
     prefixes a ``﻿`` onto the first column name (which would silently
-    break the ``csv_image_col`` join). Matches :func:`_read_rows`.
+    break the ``csv_image_col`` join). The copied table is normalized through
+    the shared metadata boundary before it is returned.
 
     Args:
         path: Path to the metadata CSV (already sandbox-resolved by the caller).
@@ -564,14 +759,31 @@ def read_metadata_csv_table(path: Path) -> tuple[list[str], list[dict[str, str]]
         ``(columns, rows)`` where ``columns`` is the header order and each row
         is a ``{column: value}`` mapping (values stringified, ``None`` -> ``""``).
     """
+    import pandas as pd
+
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
-        reader = csv.DictReader(handle)
-        columns = list(reader.fieldnames or [])
-        rows = [
-            {str(key): "" if value is None else str(value) for key, value in row.items()}
-            for row in reader
-        ]
-    return columns, rows
+        raw_rows = list(csv.reader(handle))
+    if not raw_rows:
+        return [], []
+    columns = [str(column) for column in raw_rows[0]]
+    width = len(columns)
+    # ``csv.DictReader`` drops repeated headers. Preserve them here so the
+    # shared normalizer can coalesce legacy/current duplicates or reject a
+    # conflict before a GUI consumer observes the table.
+    values = [
+        ["" if value is None else str(value) for value in row[:width]]
+        + [""] * max(0, width - len(row))
+        for row in raw_rows[1:]
+    ]
+    metadata = pd.DataFrame(values, columns=columns).replace("", pd.NA)
+    normalized = normalize_metadata_input_columns(metadata)
+    normalized = normalized.fillna("")
+    normalized_columns = [str(column) for column in normalized.columns]
+    rows = [
+        {str(key): str(value) for key, value in row.items()}
+        for row in normalized.to_dict(orient="records")
+    ]
+    return normalized_columns, rows
 
 
 __all__ = [
@@ -587,6 +799,9 @@ __all__ = [
     "metadata_csv_label",
     "metadata_csv_title",
     "metadata_payload_from_path",
+    "normalize_metadata_input_columns",
+    "normalize_measurement_metadata_columns",
+    "normalize_metadata_column_reference",
     "normalize_metadata_image_identity",
     "read_metadata_csv_table",
     "read_metadata_row_for_image_stem",

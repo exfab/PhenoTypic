@@ -75,9 +75,23 @@ ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
 - `constants_.py` — framework constants for image data (image modes, image
   types, gamma encodings). `ConstantLabels` and framework-config enums
   (`GAMMA_ENCODINGS`, `PIPE_STATUS`) live here; they subclass `MeasurementInfo`,
-  which lives in the public `phenotypic.schema` package. The `METADATA` enum and
-  the experimental-tag vocabulary (`SAMPLE_METADATA`, `CONDITION_METADATA`, …)
-  now live in `phenotypic.schema` too, since they name `Metadata_*` columns/keys.
+  which lives in the public `phenotypic.schema` package. The `IMAGE` enum and
+  semantic metadata vocabulary (`SAMPLE`, `CONDITION`, …) live in
+  `phenotypic.schema` too, since they name `Metadata_*` columns/keys.
+- `_metadata_helpers.py` — the canonical metadata boundary. Use
+  `ensure_metadata_prefix` for bare/canonical/exact-legacy spellings,
+  `metadata_member_for_header` / `metadata_owner_for_header` for semantic
+  routing, and `normalize_metadata_columns` at DataFrame ingress. Never infer an
+  owner by parsing a prefix. `is_metadata_header` accepts canonical flat headers
+  and the finite exact legacy registry, not arbitrary `MetadataFoo_*` lookalikes.
+- `_metadata_migration.py` — explicit durable migration APIs:
+  `preflight_metadata_schema`, `migrate_metadata_file`,
+  `migrate_metadata_bundle`, and `rollback_metadata_migration`. Migration uses
+  fingerprints, prepared/applied receipts, atomic replacement, and copy-on-write
+  HDF updates. HDF layout `schema_version` is independent from the metadata
+  namespace marker. Bundle migration owns authoritative sources only; an
+  external `--metadata` CSV is normalized in memory and is never rewritten by
+  recompile.
 - `_io_constants.py` — CLI artifact filenames + directory names + JSON
   contract keys + environment variable names + path-builder helpers.
   Shared between the CLI and GUI; both should import from here rather than

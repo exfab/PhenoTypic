@@ -36,7 +36,7 @@ from pydantic import ValidationError
 
 from phenotypic.analysis.qc import ReplicateAgreement
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 # Renamed, prefixed summary columns per the contract (collision-proof).
 _SUMMARY_COLS = [
@@ -174,7 +174,7 @@ class TestDirectionalBoundaries:
         return pd.DataFrame(
             {
                 "Plate": ["P1", "P1"],
-                "MetadataCulture_Time": [0, 0],
+                "Metadata_Time": [0, 0],
                 "Size_Area": [mean - d, mean + d],
             }
         )
@@ -259,7 +259,7 @@ class TestNaNMetricIsPass:
         df = pd.DataFrame(
             {
                 "Plate": ["P1", "P1"],
-                "MetadataCulture_Time": [0, 1],
+                "Metadata_Time": [0, 1],
                 "Size_Area": [10.0, 20.0],
             }
         )
@@ -300,7 +300,7 @@ class TestSummaryNameCollision:
             {
                 # groupby column deliberately named "status" to collide.
                 "status": ["a", "a", "b", "b"],
-                "MetadataCulture_Time": [0, 0, 0, 0],
+                "Metadata_Time": [0, 0, 0, 0],
                 "Size_Area": [10.0, 20.0, 100.0, 100.5],
             }
         )
@@ -317,7 +317,7 @@ class TestSummaryNameCollision:
         df = pd.DataFrame(
             {
                 "Plate": ["P1"] * 4,
-                "MetadataCulture_Time": [0, 0, 1, 1],
+                "Metadata_Time": [0, 0, 1, 1],
                 # t=0 rel-SE small; t=1 rel-SE large.
                 "Size_Area": [100.0, 101.0, 100.0, 140.0],
             }
@@ -358,8 +358,8 @@ class TestGroupMembers:
         df = pd.DataFrame(
             {
                 "Plate": ["P1", "P1", "P2"],
-                "MetadataCulture_Time": [0, 0, 0],
-                str(METADATA.IMAGE_NAME): ["a.png", "a.png", "b.png"],
+                "Metadata_Time": [0, 0, 0],
+                str(IMAGE.IMAGE_NAME): ["a.png", "a.png", "b.png"],
                 "Object_Label": [1, 2, 1],
                 "Size_Area": [10.0, 11.0, 50.0],
             }
@@ -386,7 +386,7 @@ class TestGroupMembers:
         df = pd.DataFrame(
             {
                 "Plate": ["P1", "P1"],
-                "MetadataCulture_Time": [0, 0],
+                "Metadata_Time": [0, 0],
                 "Size_Area": [10.0, 11.0],
             }
         )

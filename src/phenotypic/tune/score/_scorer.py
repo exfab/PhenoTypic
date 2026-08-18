@@ -40,6 +40,7 @@ from pydantic import BaseModel, ConfigDict
 
 from phenotypic.sdk_.typing_ import polymorphic_field
 
+from ._metadata import normalize_measurement_metadata_columns
 from ._orient import Sense, to_cost
 
 
@@ -158,6 +159,8 @@ class Scorer(BaseModel, ABC):
             A mapping of term name → cost in ``[0,1]`` (``0`` perfect, ``1``
             worst). Keys are stable across images for per-term aggregation.
         """
+        if isinstance(measurements, pd.DataFrame):
+            measurements = normalize_measurement_metadata_columns(measurements)
         return {
             term: to_cost(
                 value, sense=self._TERM_SENSE, anchor=self._term_anchor(term)

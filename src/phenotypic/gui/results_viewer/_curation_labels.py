@@ -28,13 +28,15 @@ from typing import Literal
 
 import polars as pl
 
-from phenotypic.schema import CURATION, METADATA, OBJECT, ErrorCategory
+from phenotypic.schema import CURATION, IMAGE, OBJECT, ErrorCategory
 from phenotypic.sdk_ import BundleLayout, paths_fingerprint
 from phenotypic.sdk_._file_locking import ArtifactLockTimeout, exclusive_path_lock
 
+from ._metadata import normalize_viewer_frame
+
 logger = logging.getLogger(__name__)
 
-KEY_IMAGE_FILE: str = str(METADATA.IMAGE_NAME)
+KEY_IMAGE_FILE: str = str(IMAGE.IMAGE_NAME)
 KEY_OBJECT_LABEL: str = str(OBJECT.LABEL)
 KEY_CATEGORY: str = str(CURATION.ERROR_CATEGORY)  # "Curation_Category"
 KEY_CENTER_RR: str = "Bbox_CenterRR"
@@ -68,7 +70,7 @@ def _migrate_legacy_imagefile(df: pl.DataFrame) -> pl.DataFrame:
 
     Old ``curation_labels.parquet`` files were keyed on the retired ad-hoc
     column tracked by :data:`_LEGACY_IMAGE_FILE`. When such a frame is read,
-    rename that column to :data:`~phenotypic.schema.METADATA.IMAGE_NAME` so the
+    rename that column to :data:`~phenotypic.schema.IMAGE.IMAGE_NAME` so the
     durable curation state survives the consolidation. A frame that already
     carries the canonical column (or lacks the legacy one) is returned
     unchanged.
@@ -79,10 +81,34 @@ def _migrate_legacy_imagefile(df: pl.DataFrame) -> pl.DataFrame:
     Returns:
         The frame with the legacy column renamed when present, else *df*.
     """
-    canonical = str(METADATA.IMAGE_NAME)
-    if _LEGACY_IMAGE_FILE in df.columns and canonical not in df.columns:
-        return df.rename({_LEGACY_IMAGE_FILE: canonical})
-    return df
+    if _LEGACY_IMAGE_FILE not in df.columns:
+        return df
+    if KEY_IMAGE_FILE not in df.columns:
+        return df.rename({_LEGACY_IMAGE_FILE: KEY_IMAGE_FILE})
+
+    legacy = df.get_column(_LEGACY_IMAGE_FILE)
+    canonical = df.get_column(KEY_IMAGE_FILE)
+    if (
+        legacy.null_count() != len(legacy)
+        and canonical.null_count() != len(canonical)
+        and legacy.dtype != canonical.dtype
+    ):
+        raise ValueError(
+            f"Curation key columns {_LEGACY_IMAGE_FILE!r} and "
+            f"{KEY_IMAGE_FILE!r} have incompatible dtypes: "
+            f"{legacy.dtype} and {canonical.dtype}"
+        )
+    for old_value, new_value in zip(
+        legacy.to_list(), canonical.to_list(), strict=True
+    ):
+        if old_value is not None and new_value is not None and old_value != new_value:
+            raise ValueError(
+                f"Curation key columns {_LEGACY_IMAGE_FILE!r} and "
+                f"{KEY_IMAGE_FILE!r} contain conflicting non-null values"
+            )
+    return df.with_columns(
+        pl.coalesce(KEY_IMAGE_FILE, _LEGACY_IMAGE_FILE).alias(KEY_IMAGE_FILE)
+    ).drop(_LEGACY_IMAGE_FILE)
 
 
 def sanitize_category(name: str) -> str:
@@ -122,7 +148,7 @@ def _join_on_keys(
     how: Literal["anti", "semi"],
 ) -> pl.DataFrame:
     """Cast master key columns to (String, Int64) and {anti,semi}-join against the key frame."""
-    keyed = master_df.with_columns(
+    keyed = normalize_viewer_frame(master_df).with_columns(
         pl.col(KEY_COLUMNS[0]).cast(pl.String),
         pl.col(KEY_COLUMNS[1]).cast(pl.Int64),
     )
@@ -148,7 +174,7 @@ def _keys_of(df: pl.DataFrame) -> set[tuple[str, int]]:
     Returns:
         The ``(image_file, object_label)`` key set of the real (detected) rows.
     """
-    keyed = df.filter(pl.col(KEY_COLUMNS[1]).is_not_null())
+    keyed = normalize_viewer_frame(df).filter(pl.col(KEY_COLUMNS[1]).is_not_null())
     return {
         (str(f), int(lbl))
         for f, lbl in zip(
@@ -318,9 +344,10 @@ class CurationLabels:
         Returns:
             A ready-to-mutate :class:`CurationLabels`.
         """
+        normalized_master = normalize_viewer_frame(master_df)
         for _attempt in range(_LOAD_SNAPSHOT_ATTEMPTS):
             before = cls._source_fingerprint(layout)
-            candidate = cls._load_once(layout, master_df)
+            candidate = cls._load_once(layout, normalized_master)
             after = cls._source_fingerprint(layout)
             if before == after:
                 candidate._expected_source_fingerprint = after
@@ -390,14 +417,18 @@ class CurationLabels:
         path = layout.master_parquet
         if path.is_file():
             try:
-                return pl.read_parquet(path)
+                clean_master = pl.read_parquet(path)
             except Exception:  # noqa: BLE001 - a corrupt master is non-fatal here
                 logger.warning(
                     "Could not read clean master at %s; re-keying against the "
                     "mirror (labels for curated-out objects may be dropped).",
                     path,
                 )
-        return fallback
+            else:
+                # Schema conflicts are not corruption and must block rather
+                # than silently falling back to a different frame.
+                return normalize_viewer_frame(clean_master)
+        return fallback.clone()
 
     # -- registry IO ---------------------------------------------------------
     @staticmethod
@@ -438,7 +469,7 @@ class CurationLabels:
     @staticmethod
     def _read_labels_parquet(path: Path) -> list[tuple[str, int, str, float, float]]:
         """Read the labels parquet into raw tuples (no re-keying)."""
-        df = pl.read_parquet(path)
+        df = normalize_viewer_frame(pl.read_parquet(path))
         # Rename-on-load: legacy parquets keyed on the retired ad-hoc column
         # must be migrated to the canonical key before any lookup/join.
         df = _migrate_legacy_imagefile(df)
@@ -592,6 +623,7 @@ class CurationLabels:
     # -- queries -------------------------------------------------------------
     def filtered_df(self, master_df: pl.DataFrame) -> pl.DataFrame:
         """Return ``master_df`` with all labeled (removed) rows dropped."""
+        master_df = normalize_viewer_frame(master_df)
         if not self.labels:
             return master_df
         return _join_on_keys(master_df, self.labels, "anti")

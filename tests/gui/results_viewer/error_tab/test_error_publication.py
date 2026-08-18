@@ -32,7 +32,7 @@ from phenotypic.gui.results_viewer._error_tab._publication import (
     recover_error_publication,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.schema import ErrorCategory, METADATA
+from phenotypic.schema import ErrorCategory, IMAGE
 from phenotypic.sdk_ import (
     atomic_write_json,
     gui_launch_owner_path,
@@ -47,7 +47,7 @@ from tests._output_layout import (
     write_measurements_mirror,
 )
 
-KEY_IMAGE_FILE = str(METADATA.IMAGE_NAME)
+KEY_IMAGE_FILE = str(IMAGE.IMAGE_NAME)
 
 
 def _master() -> pl.DataFrame:
@@ -58,7 +58,7 @@ def _master() -> pl.DataFrame:
     good_n = 12
     return pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["plate-1"]
+            "Metadata_Dataset": ["plate-1"]
             * (debris_n + merged_n + good_n),
             KEY_IMAGE_FILE: ["img-1"] * (debris_n + merged_n + good_n),
             "Object_Label": list(range(1, debris_n + merged_n + good_n + 1)),

@@ -210,7 +210,7 @@ def test_draft_callback_serializes_only_opaque_receipt_for_credential_spec(
     pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     metadata = tmp_path / "layout.csv"
     metadata.write_text(
-        "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
+        "Metadata_ImageName,Object_Label\nplate.tif,1\n",
         encoding="utf-8",
     )
     existing = TuningSpec(
@@ -219,7 +219,7 @@ def test_draft_callback_serializes_only_opaque_receipt_for_credential_spec(
         scorer=QCScorer(
             check=ExpectedVsDetectedCount(
                 metadata=str(metadata),
-                groupby=["MetadataImage_ImageName"],
+                groupby=["Metadata_ImageName"],
             )
         ),
         evaluator=Evaluator(),
@@ -291,7 +291,7 @@ def test_write_receipt_does_not_bless_source_mutation_before_descriptor(
         encoding="utf-8",
     )
     metadata_path.write_text(
-        "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
+        "Metadata_ImageName,Object_Label\nplate.tif,1\n",
         encoding="utf-8",
     )
     draft = build_setup_draft(
@@ -362,7 +362,7 @@ def test_existing_spec_controls_preserve_seed_budget_and_storage(
 ) -> None:
     metadata = tmp_path / "layout.csv"
     metadata.write_text(
-        "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
+        "Metadata_ImageName,Object_Label\nplate.tif,1\n",
         encoding="utf-8",
     )
     pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
@@ -372,7 +372,7 @@ def test_existing_spec_controls_preserve_seed_budget_and_storage(
         scorer=QCScorer(
             check=ExpectedVsDetectedCount(
                 metadata=str(metadata),
-                groupby=["MetadataImage_ImageName"],
+                groupby=["Metadata_ImageName"],
             )
         ),
         evaluator=Evaluator(),
@@ -437,7 +437,7 @@ def test_existing_spec_trial_override_preserves_authored_strategy(
 ) -> None:
     metadata = tmp_path / "layout.csv"
     metadata.write_text(
-        "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
+        "Metadata_ImageName,Object_Label\nplate.tif,1\n",
         encoding="utf-8",
     )
     pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
@@ -447,7 +447,7 @@ def test_existing_spec_trial_override_preserves_authored_strategy(
         scorer=QCScorer(
             check=ExpectedVsDetectedCount(
                 metadata=str(metadata),
-                groupby=["MetadataImage_ImageName"],
+                groupby=["Metadata_ImageName"],
             )
         ),
         evaluator=Evaluator(),
@@ -508,7 +508,7 @@ def test_existing_grid_spec_never_emits_trial_override(
 ) -> None:
     metadata = tmp_path / "layout.csv"
     metadata.write_text(
-        "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
+        "Metadata_ImageName,Object_Label\nplate.tif,1\n",
         encoding="utf-8",
     )
     pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
@@ -525,7 +525,7 @@ def test_existing_grid_spec_never_emits_trial_override(
         scorer=QCScorer(
             check=ExpectedVsDetectedCount(
                 metadata=str(metadata),
-                groupby=["MetadataImage_ImageName"],
+                groupby=["Metadata_ImageName"],
             )
         ),
         evaluator=Evaluator(),

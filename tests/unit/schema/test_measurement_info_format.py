@@ -35,4 +35,4 @@ def test_every_member_has_entry_attribute_surface():
 
 def test_discovery_covers_known_enums():
     names = {c.__name__ for c in _all_concrete_info_classes()}
-    assert {"SHAPE", "SIZE", "METADATA", "GAMMA_ENCODINGS", "PIPE_STATUS"} <= names
+    assert {"SHAPE", "SIZE", "IMAGE", "GAMMA_ENCODINGS", "PIPE_STATUS"} <= names

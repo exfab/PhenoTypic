@@ -24,7 +24,7 @@ from phenotypic.sdk_ import (
 )
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from tests._output_layout import (
     write_master,
     write_measurements_mirror,
@@ -37,8 +37,8 @@ _INSTANCE_ID = "qc-SE-rebuild01"
 def _seed_output(root: Path) -> BundleLayout:
     frame = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["d1"] * 4,
-            str(METADATA.IMAGE_NAME): ["a", "a", "b", "b"],
+            "Metadata_Dataset": ["d1"] * 4,
+            str(IMAGE.IMAGE_NAME): ["a", "a", "b", "b"],
             "Object_Label": [1, 2, 1, 2],
             "Size_Area": [10.0, 11.0, 20.0, 40.0],
         }
@@ -52,7 +52,7 @@ def _seed_output(root: Path) -> BundleLayout:
                 cls=ReplicateAgreement,
                 params={
                     "on": "Size_Area",
-                    "groupby": [str(METADATA.IMAGE_NAME)],
+                    "groupby": [str(IMAGE.IMAGE_NAME)],
                     "min_replicates": 2,
                 },
                 instance_id=_INSTANCE_ID,
@@ -69,13 +69,13 @@ def _seed_count_output(root: Path) -> tuple[BundleLayout, Path]:
     """Seed a file-backed count QC recipe and return its metadata path."""
     frame = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["d1"] * 2,
-            str(METADATA.IMAGE_NAME): ["a", "a"],
+            "Metadata_Dataset": ["d1"] * 2,
+            str(IMAGE.IMAGE_NAME): ["a", "a"],
             "Object_Label": [1, 2],
         }
     )
     metadata = root / "layout.csv"
-    frame.select(str(METADATA.IMAGE_NAME), "Object_Label").write_csv(metadata)
+    frame.select(str(IMAGE.IMAGE_NAME), "Object_Label").write_csv(metadata)
     write_master(root, frame)
     write_measurements_mirror(root, frame)
     pipeline = ImagePipeline(name="qc-count-rebuild")
@@ -85,7 +85,7 @@ def _seed_count_output(root: Path) -> tuple[BundleLayout, Path]:
                 cls=ExpectedVsDetectedCount,
                 params={
                     "metadata": str(metadata),
-                    "groupby": [str(METADATA.IMAGE_NAME)],
+                    "groupby": [str(IMAGE.IMAGE_NAME)],
                 },
                 instance_id="qc-Count-rebuild01",
                 enabled=True,
@@ -314,7 +314,7 @@ def test_file_backed_qc_dependency_participates_in_idempotence(
 
     pl.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): ["a", "a", "a"],
+            str(IMAGE.IMAGE_NAME): ["a", "a", "a"],
             "Object_Label": [1, 2, 3],
         }
     ).write_csv(metadata)

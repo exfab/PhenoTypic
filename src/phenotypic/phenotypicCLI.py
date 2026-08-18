@@ -181,8 +181,15 @@ from phenotypic._cli._cli_utils import (
 )
 from phenotypic._cli._cli_recompile_slurm_scripts import (
     TASK_FINALIZE,
+    TASK_MEASUREMENTS,
     build_recompile_tasks,
     generate_recompile_slurm_scripts,
+    recompile_attempt_dir,
+    recompile_task_status_path,
+)
+from phenotypic._cli._cli_recompile_metadata_migration_slurm import (
+    generate_metadata_migration_slurm_scripts,
+    plan_metadata_schema_for_slurm_recompile,
 )
 from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
 from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
@@ -191,7 +198,7 @@ from phenotypic._cli._cli_validation import (
     validate_pipeline,
 )
 from phenotypic._cli._cli_constants import MAX_SLURM_TIME_MINUTES
-from phenotypic.schema import EXPERIMENT_METADATA
+from phenotypic.schema import EXPERIMENT
 from phenotypic.sdk_ import (
     DIR_PHENOTYPIC,
     DIR_RESULTS,
@@ -208,8 +215,8 @@ from phenotypic.sdk_ import (
     processing_report_html_path,
     progress_dir,
     RUN_LOG_DIRNAME,
-    recompile_dir,
     resolve_processing_state_path,
+    file_fingerprint,
 )
 from phenotypic.sdk_.slurm import parse_slurm_time
 from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
@@ -219,7 +226,7 @@ logger = logging.getLogger(__name__)
 
 # Resolved at import time so Click `help=` strings and echo messages track the
 # schema enum rather than hard-coding the column name literal.
-_DATASET_COL: str = str(EXPERIMENT_METADATA.DATASET)
+_DATASET_COL: str = str(EXPERIMENT.DATASET)
 
 
 def setup_logging(debug: bool = False):
@@ -2165,10 +2172,22 @@ def _handle_recompile_slurm(
     from phenotypic._cli._dashboard import generate_dashboard
 
     output_dir = Path(output_dir)
-    prog_dir = progress_dir(output_dir)
-    prog_dir.mkdir(parents=True, exist_ok=True)
     console = Console()
+    from phenotypic._cli._cli_slurm_lifecycle import new_slurm_generation
 
+    attempt_id = new_slurm_generation()
+
+    # The migration preflight is deliberately the first recompile operation
+    # that inspects bundle content. It is read-only, so a conflict produces no
+    # plan, script, status, dashboard, or scheduler submission artifact.
+    try:
+        migration_plan = plan_metadata_schema_for_slurm_recompile(
+            output_dir, attempt_id=attempt_id
+        )
+    except Exception as exc:
+        error_exit("Metadata migration blocked SLURM recompile", str(exc))
+
+    prog_dir = progress_dir(output_dir)
     job_meta = load_job_metadata(prog_dir)
     dataset_names = _discover_recompile_dataset_names(output_dir, job_meta)
     if not dataset_names:
@@ -2190,6 +2209,7 @@ def _handle_recompile_slurm(
         include_dataset_column=include_dataset_column,
         overlay_alpha=overlay_alpha,
         shard_size=shard_size,
+        attempt_id=attempt_id,
     )
     finalizer_task_index: Optional[int] = None
     if tasks and tasks[-1].get("task_type") == TASK_FINALIZE:
@@ -2198,6 +2218,25 @@ def _handle_recompile_slurm(
             str(metadata_csv) if metadata_csv else None
         )
         tasks[-1][JobMetadataKey.NO_QC] = no_qc
+        tasks[-1]["slurm_generation"] = attempt_id
+
+    has_measurement_tasks = any(
+        task.get("task_type") == TASK_MEASUREMENTS for task in tasks
+    )
+    if not has_measurement_tasks and not migration_plan.targets:
+        console.print(
+            "[yellow]No measurement sources require SLURM recompile; "
+            "running the safe local path.[/yellow]"
+        )
+        _handle_recompile(
+            output_dir,
+            metadata_csv,
+            include_dataset_column,
+            overlay_alpha,
+            -1,
+            no_qc=no_qc,
+        )
+        return
 
     console.print("[cyan]Querying SLURM array limits...[/cyan]")
     array_limit = get_slurm_array_limit()
@@ -2208,8 +2247,20 @@ def _handle_recompile_slurm(
         output_dir=output_dir,
         slurm_args=slurm_args,
         array_limit=array_limit,
+        attempt_id=attempt_id,
     )
-    if not tasks or not scripts or finalizer_task_index is None:
+    migration_scripts = generate_metadata_migration_slurm_scripts(
+        migration_plan,
+        slurm_args=slurm_args,
+        array_limit=array_limit,
+        attempt_id=attempt_id,
+        slurm_generation=attempt_id,
+        has_recompile_downstream=bool(scripts),
+    )
+    if (
+        migration_scripts is None
+        and (not tasks or not scripts or finalizer_task_index is None)
+    ):
         console.print(
             "[yellow]No recompile SLURM tasks/scripts were generated; "
             "running local recompile instead.[/yellow]"
@@ -2224,17 +2275,43 @@ def _handle_recompile_slurm(
         )
         return
 
-    submission = submit_slurm_script_chain(
-        flat_chunk_scripts=scripts,
-        output_dir=output_dir,
-        slurm_args=slurm_args,
-        console=console,
-    )
+    flat_scripts: list[Path] = []
+    dependency_kinds: list[str] | None = None
+    if migration_scripts is not None:
+        flat_scripts.extend(migration_scripts.shard_scripts)
+        flat_scripts.append(migration_scripts.finalizer_script)
+    flat_scripts.extend(scripts)
+    if migration_scripts is not None and scripts:
+        dependency_kinds = ["afterany"] * (len(flat_scripts) - 1)
+        barrier_edge = len(migration_scripts.shard_scripts)
+        dependency_kinds[barrier_edge] = "afterok"
+
+    submission_args: dict[str, Any] = {
+        "flat_chunk_scripts": flat_scripts,
+        "output_dir": output_dir,
+        "slurm_args": slurm_args,
+        "console": console,
+        "generation": attempt_id,
+    }
+    if dependency_kinds is not None:
+        submission_args["continuation_dependency_kinds"] = dependency_kinds
+    try:
+        _initialize_recompile_slurm_attempt(output_dir, attempt_id)
+    except Exception as exc:
+        error_exit("Could not initialize SLURM recompile attempt", str(exc))
+    try:
+        submission = submit_slurm_script_chain(**submission_args)
+    except Exception:
+        from phenotypic._cli._cli_slurm_lifecycle import deactivate_generation
+
+        deactivate_generation(output_dir, attempt_id)
+        raise
     flat_scripts = submission.flat_scripts
     job_ids = submission.job_ids
 
     recompile_manifest_path = (
-        recompile_dir(progress_dir(output_dir)) / RECOMPILE_TASK_MANIFEST_JSON
+        recompile_attempt_dir(output_dir, attempt_id)
+        / RECOMPILE_TASK_MANIFEST_JSON
     )
     job_metadata = {
         JobMetadataKey.START_TIME: datetime.now().isoformat(
@@ -2253,9 +2330,36 @@ def _handle_recompile_slurm(
         if metadata_csv
         else None,
         JobMetadataKey.INPUT_PATH: str(output_dir),
+        "slurm_generation": attempt_id,
         "recompile": {
+            "attempt_id": attempt_id,
             "task_manifest": str(recompile_manifest_path),
             "finalizer_task_index": finalizer_task_index,
+            "metadata_migration": {
+                "plan_fingerprint": migration_plan.report.plan_fingerprint,
+                "source_fingerprint": migration_plan.report.source_fingerprint,
+                "target_count": len(migration_plan.targets),
+                "task_manifest": (
+                    str(migration_plan.manifest_path)
+                    if migration_scripts is not None
+                    else None
+                ),
+                "finalizer_status": (
+                    str(migration_plan.finalizer_status_path)
+                    if migration_scripts is not None
+                    else None
+                ),
+                "barrier_dependency": (
+                    "afterok"
+                    if migration_scripts is not None and scripts
+                    else None
+                ),
+                "external_metadata_fingerprint": (
+                    file_fingerprint(metadata_csv)
+                    if metadata_csv is not None and metadata_csv.is_file()
+                    else None
+                ),
+            },
         },
     }
     metadata_path = prog_dir / JOB_METADATA_JSON
@@ -2265,19 +2369,58 @@ def _handle_recompile_slurm(
     )
     console.print(f"[green]Job metadata: {metadata_path}[/green]")
 
-    generate_dashboard(output_dir, execution_mode="slurm")
-    console.print(f"[green]Dashboard: {dashboard_html_path(output_dir)}[/green]")
+    if scripts:
+        generate_dashboard(output_dir, execution_mode="slurm")
+        console.print(
+            f"[green]Dashboard: {dashboard_html_path(output_dir)}[/green]"
+        )
 
     if wait:
-        console.print(
-            "\n[cyan]Waiting for recompile finalizer "
-            f"task {finalizer_task_index}...[/cyan]"
-        )
-        _wait_for_recompile_finalizer_status(output_dir, finalizer_task_index)
+        if finalizer_task_index is None:
+            console.print(
+                "\n[cyan]Waiting for metadata migration finalizer...[/cyan]"
+            )
+            _wait_for_metadata_migration_finalizer_status(
+                migration_plan.finalizer_status_path,
+                output_dir=output_dir,
+                slurm_generation=attempt_id,
+            )
+        elif migration_scripts is None:
+            console.print(
+                "\n[cyan]Waiting for recompile finalizer "
+                f"task {finalizer_task_index}...[/cyan]"
+            )
+            _wait_for_recompile_finalizer_status(
+                output_dir,
+                finalizer_task_index,
+                recompile_finalizer_status_path=recompile_task_status_path(
+                    recompile_manifest_path, finalizer_task_index
+                ),
+                slurm_generation=attempt_id,
+            )
+        else:
+            console.print(
+                "\n[cyan]Waiting for recompile finalizer "
+                f"task {finalizer_task_index}...[/cyan]"
+            )
+            _wait_for_recompile_finalizer_status(
+                output_dir,
+                finalizer_task_index,
+                migration_finalizer_status_path=(
+                    migration_plan.finalizer_status_path
+                ),
+                recompile_finalizer_status_path=recompile_task_status_path(
+                    recompile_manifest_path, finalizer_task_index
+                ),
+                slurm_generation=attempt_id,
+            )
         console.print("[bold green]SLURM recompilation complete[/bold green]")
     else:
-        click.echo("\nRecompile jobs submitted. Monitor progress with:")
-        click.echo(f"  Open: {dashboard_html_path(output_dir)}")
+        if scripts:
+            click.echo("\nRecompile jobs submitted. Monitor progress with:")
+            click.echo(f"  Open: {dashboard_html_path(output_dir)}")
+        else:
+            click.echo("\nMetadata migration jobs submitted. Monitor with:")
         click.echo("  squeue -u $USER --array")
         from phenotypic.sdk_ import logs_dir
 
@@ -2291,7 +2434,7 @@ def _discover_recompile_dataset_names(
     job_meta: Optional[dict[str, Any]],
 ) -> list[str]:
     """Discover datasets using the local recompile precedence."""
-    from phenotypic.sdk_ import DIR_MEASUREMENTS
+    from phenotypic.sdk_ import DIR_HDF, DIR_MEASUREMENTS
 
     results_dir = output_dir / DIR_RESULTS
     dataset_names: list[str] = []
@@ -2299,7 +2442,11 @@ def _discover_recompile_dataset_names(
         dataset_names = sorted(
             d.name
             for d in results_dir.iterdir()
-            if d.is_dir() and (d / DIR_MEASUREMENTS).is_dir()
+            if d.is_dir()
+            and (
+                (d / DIR_MEASUREMENTS).is_dir()
+                or (d / DIR_HDF).is_dir()
+            )
         )
 
     if not dataset_names and job_meta:
@@ -2308,6 +2455,28 @@ def _discover_recompile_dataset_names(
         )
 
     return dataset_names
+
+
+def _initialize_recompile_slurm_attempt(
+    output_dir: Path, attempt_id: str
+) -> None:
+    """Refuse a live prior launch and publish a fresh lifecycle fence."""
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        initialize_slurm_lifecycle,
+        load_slurm_lifecycle,
+    )
+
+    existing = load_slurm_lifecycle(output_dir)
+    if existing is not None and existing.get("active") is True:
+        previous = str(existing["generation"])
+        raise RuntimeError(
+            "Output has an active SLURM generation that may still own live "
+            f"jobs: {previous}. Wait for it to finish or explicitly cancel "
+            "that run before starting recompile."
+        )
+    initialize_slurm_lifecycle(
+        output_dir, generation=attempt_id, mode="recompile"
+    )
 
 
 def _build_recompile_job_metadata_datasets(
@@ -2359,26 +2528,40 @@ def _recompile_dataset_image_names(
 def _wait_for_recompile_finalizer_status(
     output_dir: Path,
     finalizer_task_index: int,
+    migration_finalizer_status_path: Path | None = None,
+    recompile_finalizer_status_path: Path | None = None,
+    slurm_generation: str | None = None,
     poll_interval: float = 10.0,
     timeout: Optional[float] = None,
 ) -> None:
-    """Wait until the recompile finalizer status is completed or failed."""
-    import json
+    """Wait until migration and recompile finalizers complete or fail."""
     import time
 
     from phenotypic.sdk_ import task_status_path
 
-    status_path = task_status_path(output_dir, finalizer_task_index)
+    status_path = recompile_finalizer_status_path or task_status_path(
+        output_dir, finalizer_task_index
+    )
     deadline = time.monotonic() + timeout if timeout is not None else None
     while True:
+        if migration_finalizer_status_path is not None:
+            migration_status = _read_recompile_wait_status(
+                migration_finalizer_status_path,
+                description="metadata migration finalizer",
+            )
+            if migration_status is not None:
+                migration_state = migration_status.get("status")
+                if migration_state == "failed":
+                    error = migration_status.get("error") or (
+                        "metadata migration finalizer failed"
+                    )
+                    raise RuntimeError(str(error))
+
         if status_path.exists():
-            try:
-                status = json.loads(status_path.read_text(encoding="utf-8"))
-            except Exception:
-                logger.warning(
-                    "Failed to read recompile status %s", status_path
-                )
-            else:
+            status = _read_recompile_wait_status(
+                status_path, description="recompile finalizer"
+            )
+            if status is not None:
                 state = status.get("status")
                 if state == "completed":
                     return
@@ -2386,11 +2569,95 @@ def _wait_for_recompile_finalizer_status(
                     error = status.get("error") or "recompile finalizer failed"
                     raise RuntimeError(str(error))
 
+        if slurm_generation is not None:
+            _raise_if_recompile_attempt_cannot_finish(
+                output_dir, slurm_generation
+            )
+
         if deadline is not None and time.monotonic() >= deadline:
             raise TimeoutError(
                 f"Timed out waiting for recompile finalizer status: {status_path}"
             )
         time.sleep(poll_interval)
+
+
+def _read_recompile_wait_status(
+    status_path: Path, *, description: str
+) -> dict[str, Any] | None:
+    """Read a finalizer status, tolerating an in-progress atomic replace."""
+    import json
+
+    if not status_path.exists():
+        return None
+    try:
+        payload = json.loads(status_path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.warning("Failed to read %s status %s", description, status_path)
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _wait_for_metadata_migration_finalizer_status(
+    status_path: Path,
+    *,
+    output_dir: Path | None = None,
+    slurm_generation: str | None = None,
+    poll_interval: float = 10.0,
+    timeout: Optional[float] = None,
+) -> None:
+    """Wait for a migration-only SLURM chain to complete or fail."""
+    import time
+
+    deadline = time.monotonic() + timeout if timeout is not None else None
+    while True:
+        status = _read_recompile_wait_status(
+            status_path, description="metadata migration finalizer"
+        )
+        if status is not None:
+            state = status.get("status")
+            if state == "completed":
+                return
+            if state == "failed":
+                error = status.get("error") or (
+                    "metadata migration finalizer failed"
+                )
+                raise RuntimeError(str(error))
+        if output_dir is not None and slurm_generation is not None:
+            _raise_if_recompile_attempt_cannot_finish(
+                output_dir, slurm_generation
+            )
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError(
+                "Timed out waiting for metadata migration finalizer status: "
+                f"{status_path}"
+            )
+        time.sleep(poll_interval)
+
+
+def _raise_if_recompile_attempt_cannot_finish(
+    output_dir: Path, slurm_generation: str
+) -> None:
+    """Fail a waiter when its scheduler attempt is terminal or superseded."""
+    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
+
+    state = load_slurm_lifecycle(output_dir)
+    if state is None:
+        return
+    found_generation = state.get("generation")
+    if found_generation != slurm_generation:
+        raise RuntimeError(
+            "SLURM recompile attempt was superseded before its finalizer "
+            f"published status: {slurm_generation}"
+        )
+    if state.get("active") is True:
+        return
+    error = state.get("terminal_error")
+    if error:
+        raise RuntimeError(str(error))
+    raise RuntimeError(
+        "SLURM recompile attempt became inactive before its finalizer "
+        f"published status: {slurm_generation}"
+    )
 
 
 def _handle_recompile(
@@ -2427,6 +2694,10 @@ def _handle_recompile(
     from rich.console import Console
 
     from phenotypic._cli._cli_output_manager import aggregate_measurements
+    from phenotypic._cli._cli_recompile_metadata_migration import (
+        RecompileMetadataMigrationError,
+        migrate_metadata_schema_for_recompile,
+    )
     from phenotypic._cli._cli_utils import load_job_metadata
     from phenotypic._cli._dashboard import (
         regenerate_dashboard_artifacts,
@@ -2445,6 +2716,23 @@ def _handle_recompile(
         f"[bold]Recompiling[/bold] from {output_dir} "
         f"({len(dataset_names)} dataset(s))"
     )
+
+    console.print("[cyan]Checking metadata schema...")
+    try:
+        migration = migrate_metadata_schema_for_recompile(output_dir)
+    except RecompileMetadataMigrationError as exc:
+        error_exit("Metadata schema migration blocked recompile", str(exc))
+        return
+    migrated_count = len(migration.migrated_targets)
+    skipped_count = len(migration.skipped_targets)
+    blocked_count = len(migration.blocked_targets)
+    console.print(
+        "[green]Metadata schema: "
+        f"migrated={migrated_count}, skipped={skipped_count}, "
+        f"blocked={blocked_count}"
+    )
+    if migration.receipt_path is not None:
+        console.print(f"[green]Migration receipt: {migration.receipt_path}")
 
     console.print("[cyan]Aggregating measurements...")
     master_path = aggregate_measurements(

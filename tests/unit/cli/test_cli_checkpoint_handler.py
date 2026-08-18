@@ -409,6 +409,60 @@ class TestRunFinalizeCoercion:
         assert marker["generation"] == generation
         assert load_slurm_lifecycle(output_dir)["active"] is False  # type: ignore[index]
 
+    def test_completion_marker_does_not_reacquire_lifecycle_lock(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Already-locked completion uses the lock-required fence helper."""
+        output_dir = tmp_path / "out"
+        generation = "1223456789abcdef0123456789abcdef"
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=generation,
+            mode="ordinary",
+        )
+        atomic_write_json(
+            resolve_manifest_json_path(output_dir),
+            {
+                "is_complete": True,
+                "completed": 1,
+                "failed": 0,
+                "total_images": 1,
+            },
+        )
+        depth = 0
+        acquisitions = 0
+
+        @contextmanager
+        def fail_on_nested_lock(*_args: object, **_kwargs: object):
+            nonlocal acquisitions, depth
+            if depth:
+                raise AssertionError("nested lifecycle lock acquisition")
+            depth += 1
+            acquisitions += 1
+            try:
+                yield
+            finally:
+                depth -= 1
+
+        with (
+            patch(
+                "phenotypic._cli._cli_checkpoint_handler.exclusive_path_lock",
+                fail_on_nested_lock,
+            ),
+            patch(
+                "phenotypic._cli._cli_slurm_lifecycle.exclusive_path_lock",
+                fail_on_nested_lock,
+            ),
+        ):
+            _publish_run_completion_marker(output_dir, generation)
+
+        assert acquisitions == 1
+        lifecycle = load_slurm_lifecycle(output_dir)
+        assert lifecycle is not None
+        assert lifecycle["active"] is False
+        assert run_completion_marker_path(output_dir).is_file()
+
     def test_old_finalizer_cannot_publish_after_new_generation(
         self,
         tmp_path: Path,

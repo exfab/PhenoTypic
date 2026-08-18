@@ -22,7 +22,7 @@ from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
 from phenotypic.sdk_ import measurements_parquet_path
 
 from tests._output_layout import write_master
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 def _make_master(tmp_root: Path) -> pl.DataFrame:
@@ -35,7 +35,7 @@ def _make_master(tmp_root: Path) -> pl.DataFrame:
     """
     df = pl.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): ["img-001", "img-001", "img-002", "img-002"],
+            str(IMAGE.IMAGE_NAME): ["img-001", "img-001", "img-002", "img-002"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_CenterRR": [10, 20, 30, 40],
             "Bbox_CenterCC": [50, 60, 70, 80],
@@ -195,7 +195,7 @@ def test_filtered_df_excludes_removed_rows(tmp_path: Path) -> None:
     out = state.filtered_df(master)
 
     assert out.height == master.height - 2
-    keys = set(zip(out[str(METADATA.IMAGE_NAME)].to_list(), out["Object_Label"].to_list()))
+    keys = set(zip(out[str(IMAGE.IMAGE_NAME)].to_list(), out["Object_Label"].to_list()))
     assert ("img-001", 1) not in keys
     assert ("img-002", 2) not in keys
 
@@ -206,7 +206,7 @@ def test_removed_count_in_intersects_with_filtered_set(tmp_path: Path) -> None:
     state = FilteredMeasurements.load(tmp_path, master)
 
     state.remove_many([("img-001", 1), ("img-002", 2)])
-    sub = master.filter(pl.col(str(METADATA.IMAGE_NAME)) == "img-001")
+    sub = master.filter(pl.col(str(IMAGE.IMAGE_NAME)) == "img-001")
     # Only one of the two removed keys is in the sub-frame.
     assert state.removed_count_in(sub) == 1
 
@@ -257,7 +257,7 @@ def test_load_warns_on_unknown_keys_in_existing_file(
     bad = master.filter(pl.col("Object_Label") == 1).vstack(
         pl.DataFrame(
             {
-                str(METADATA.IMAGE_NAME): ["img-999"],
+                str(IMAGE.IMAGE_NAME): ["img-999"],
                 "Object_Label": [42],
                 "Bbox_CenterRR": [0],
                 "Bbox_CenterCC": [0],
@@ -285,7 +285,7 @@ def test_load_raises_friendly_error_when_master_missing_key_columns(
     bad_master = pl.DataFrame(
         {"some_column": ["a", "b"], "other": [1, 2]}
     )
-    with pytest.raises(ValueError, match=str(METADATA.IMAGE_NAME)):
+    with pytest.raises(ValueError, match=str(IMAGE.IMAGE_NAME)):
         FilteredMeasurements.load(tmp_path, bad_master)
 
 
@@ -328,7 +328,7 @@ def test_concurrent_remove_and_restore_dont_interleave(tmp_path: Path) -> None:
 
     on_disk = pl.read_parquet(state.parquet_path)
     on_disk_keys = set(
-        zip(on_disk[str(METADATA.IMAGE_NAME)].to_list(), on_disk["Object_Label"].to_list())
+        zip(on_disk[str(IMAGE.IMAGE_NAME)].to_list(), on_disk["Object_Label"].to_list())
     )
     assert ("img-001", 2) not in on_disk_keys
     assert ("img-002", 2) not in on_disk_keys

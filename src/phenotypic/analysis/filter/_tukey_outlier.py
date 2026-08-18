@@ -10,6 +10,7 @@ from pydantic import field_validator, PrivateAttr
 
 from .._helper import _qc_math
 from ..abc_ import SetAnalyzer
+from ..abc_._set_analyzer import normalize_measurement_metadata_columns
 
 
 class TukeyOutlierRemover(SetAnalyzer):
@@ -139,6 +140,7 @@ class TukeyOutlierRemover(SetAnalyzer):
             - Groups are processed independently with their own fences
             - NaN values in measurement column are preserved in output
         """
+        data = normalize_measurement_metadata_columns(data)
         # Validate input
         if data is None or len(data) == 0:
             raise ValueError("Input data cannot be empty")

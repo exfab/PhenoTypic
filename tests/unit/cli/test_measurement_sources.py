@@ -10,7 +10,7 @@ from phenotypic._cli._measurement_sources import (
     discover_measurement_sources,
     measurement_sources_by_path,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import DATASET_AGGREGATED_PARQUET
 
 
@@ -32,7 +32,8 @@ def test_discover_measurement_sources_prefers_dataset_aggregated_file(
         / DATASET_AGGREGATED_PARQUET
     )
     raw = tmp_path / "results" / "plate_a" / "measurements" / "img.parquet"
-    _touch(agg)
+    agg.parent.mkdir(parents=True)
+    pl.DataFrame({str(IMAGE.IMAGE_NAME): ["plate-a"]}).write_parquet(agg)
     _touch(raw)
 
     sources = discover_measurement_sources(tmp_path, ["plate_a"])
@@ -50,7 +51,7 @@ def test_discover_measurement_sources_uses_individuals_for_uuid_aggregate(
     meas_dir.mkdir(parents=True)
     pl.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): [
+            str(IMAGE.IMAGE_NAME): [
                 "4815d217-4afc-40dd-ab6c-bbf1521f4109"
             ]
         }
@@ -114,7 +115,7 @@ def test_add_metadata_image_name_from_filename_derives_and_drops_filename() -> N
     out = add_metadata_image_name_from_filename(frame)
 
     assert "filename" not in out.columns
-    assert out[str(METADATA.IMAGE_NAME)].to_list() == ["img001"]
+    assert out[str(IMAGE.IMAGE_NAME)].to_list() == ["img001"]
     assert out["value"].to_list() == [7]
 
 
@@ -123,14 +124,14 @@ def test_add_metadata_image_name_from_filename_preserves_existing_column() -> No
     frame = pl.DataFrame(
         {
             "filename": ["/tmp/plate/wrong.parquet"],
-            str(METADATA.IMAGE_NAME): ["kept"],
+            str(IMAGE.IMAGE_NAME): ["kept"],
         }
     )
 
     out = add_metadata_image_name_from_filename(frame)
 
     assert "filename" not in out.columns
-    assert out[str(METADATA.IMAGE_NAME)].to_list() == ["kept"]
+    assert out[str(IMAGE.IMAGE_NAME)].to_list() == ["kept"]
 
 
 def test_add_metadata_image_name_from_filename_repairs_staged_uuid() -> None:
@@ -140,7 +141,7 @@ def test_add_metadata_image_name_from_filename_repairs_staged_uuid() -> None:
             "filename": [
                 "/tmp/plate/d000374_280_121_2026-04-11_16-55-18.parquet"
             ],
-            str(METADATA.IMAGE_NAME): [
+            str(IMAGE.IMAGE_NAME): [
                 "4815d217-4afc-40dd-ab6c-bbf1521f4109"
             ],
         }
@@ -148,7 +149,7 @@ def test_add_metadata_image_name_from_filename_repairs_staged_uuid() -> None:
 
     out = add_metadata_image_name_from_filename(frame)
 
-    assert out[str(METADATA.IMAGE_NAME)].to_list() == [
+    assert out[str(IMAGE.IMAGE_NAME)].to_list() == [
         "d000374_280_121_2026-04-11_16-55-18"
     ]
 
@@ -159,10 +160,10 @@ def test_add_metadata_image_name_does_not_infer_from_aggregate_filename() -> Non
     frame = pl.DataFrame(
         {
             "filename": [f"/tmp/plate/{DATASET_AGGREGATED_PARQUET}"],
-            str(METADATA.IMAGE_NAME): [uuid_name],
+            str(IMAGE.IMAGE_NAME): [uuid_name],
         }
     )
 
     out = add_metadata_image_name_from_filename(frame)
 
-    assert out[str(METADATA.IMAGE_NAME)].to_list() == [uuid_name]
+    assert out[str(IMAGE.IMAGE_NAME)].to_list() == [uuid_name]

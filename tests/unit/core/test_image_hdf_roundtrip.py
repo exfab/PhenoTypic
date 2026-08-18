@@ -17,7 +17,7 @@ import pytest
 
 from phenotypic import Image, GridImage
 from phenotypic.grid import AutoGridFinder, CenteredAutoGridFinder
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
 
 # Module-level slow marker: full HDF5 schema and back-compat matrix. The
@@ -211,7 +211,12 @@ def test_gridimage_idempotent_resave(tmp_path):
 
 
 def test_schema_version_marker(tmp_path):
-    """Root attrs + groups match the v2 layout for Image and GridImage."""
+    """Layout and metadata namespace markers describe independent contracts."""
+    from phenotypic._core._image_parts._image_io_handler import (
+        _METADATA_SCHEMA_VERSION_ATTR,
+        _METADATA_SCHEMA_VERSION_FLAT,
+    )
+
     # --- Image ------------------------------------------------------------
     img = Image(arr=_make_small_rgb(), name="schema_img")
     img_path = tmp_path / "schema_img.h5"
@@ -219,6 +224,10 @@ def test_schema_version_marker(tmp_path):
 
     with h5py.File(img_path, "r") as f:
         assert int(f.attrs["schema_version"]) == 2
+        assert (
+            int(f.attrs[_METADATA_SCHEMA_VERSION_ATTR])
+            == _METADATA_SCHEMA_VERSION_FLAT
+        )
         saved_class = f.attrs["phenotypic_class"]
         if isinstance(saved_class, bytes):
             saved_class = saved_class.decode()
@@ -240,6 +249,10 @@ def test_schema_version_marker(tmp_path):
 
     with h5py.File(grid_path, "r") as f:
         assert int(f.attrs["schema_version"]) == 2
+        assert (
+            int(f.attrs[_METADATA_SCHEMA_VERSION_ATTR])
+            == _METADATA_SCHEMA_VERSION_FLAT
+        )
         saved_class = f.attrs["phenotypic_class"]
         if isinstance(saved_class, bytes):
             saved_class = saved_class.decode()
@@ -249,6 +262,28 @@ def test_schema_version_marker(tmp_path):
         assert "grid_finder_json" in f["grid"]
         assert int(f["grid"].attrs["nrows"]) == 8
         assert int(f["grid"].attrs["ncols"]) == 12
+
+
+def test_metadata_schema_marker_belongs_to_image_owning_group(tmp_path):
+    """Nested image writes mark their group without duplicating the root marker."""
+    from phenotypic._core._image_parts._image_io_handler import (
+        _METADATA_SCHEMA_VERSION_ATTR,
+        _METADATA_SCHEMA_VERSION_FLAT,
+    )
+
+    img = Image(arr=_make_small_rgb(), name="nested")
+    path = tmp_path / "nested_image_group.h5"
+
+    with h5py.File(path, "w") as f:
+        image_group = f.require_group("images/nested")
+        img._save_image2hdfgroup(image_group)
+
+        assert _METADATA_SCHEMA_VERSION_ATTR not in f.attrs
+        assert (
+            int(image_group.attrs[_METADATA_SCHEMA_VERSION_ATTR])
+            == _METADATA_SCHEMA_VERSION_FLAT
+        )
+        assert int(image_group.attrs["schema_version"]) == 2
 
 
 # ===========================================================================
@@ -285,7 +320,7 @@ def test_back_compat_legacy_flat_hdf_loads(tmp_path):
     assert loaded._data.detect_mode == "gray"
     # The legacy bare framework key ("ImageName") is remapped on load to the
     # current Metadata_-prefixed key; the stale bare key does not survive.
-    assert loaded._metadata.protected.get(METADATA.IMAGE_NAME) == "legacy_plate"
+    assert loaded._metadata.protected.get(IMAGE.IMAGE_NAME) == "legacy_plate"
     assert "ImageName" not in loaded._metadata.protected
     # Arbitrary, non-framework public keys are passed through untouched.
     assert loaded._metadata.public.get("experiment") == "legacy_exp"

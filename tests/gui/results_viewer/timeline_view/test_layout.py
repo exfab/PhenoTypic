@@ -13,7 +13,7 @@ from phenotypic.gui.results_viewer.timeline_view._layout import (
     layout,
 )
 from tests._output_layout import write_master, write_measurements_mirror
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 def _walk(component):
@@ -48,8 +48,8 @@ def _walk_classnames(component) -> set[str]:
 def _root(tmp_path: Path, *, with_time: bool) -> OutputRoot:
     cli_out = tmp_path / "out"
     cols = {
-        "MetadataExperiment_Dataset": ["ds", "ds"],
-        str(METADATA.IMAGE_NAME): ["a", "b"],
+        "Metadata_Dataset": ["ds", "ds"],
+        str(IMAGE.IMAGE_NAME): ["a", "b"],
         "Metadata_PlateNum": ["1", "2"],
         "Object_Label": [1, 2],
         "Size_Area": [1.0, 2.0],

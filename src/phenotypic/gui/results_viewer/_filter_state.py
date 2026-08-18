@@ -20,6 +20,8 @@ from typing import Any
 
 import polars as pl
 
+from ._metadata import normalize_metadata_reference, normalize_viewer_frame
+
 logger = logging.getLogger(__name__)
 
 METHOD_IS_ANY_OF = "is_any_of"
@@ -88,7 +90,9 @@ class FilterRow:
         if compare_op not in COMPARE_OPS:
             compare_op = None
         return cls(
-            column=str(entry.get("column", "") or ""),
+            column=normalize_metadata_reference(
+                str(entry.get("column", "") or "")
+            ),
             method=method,
             values=[str(v) for v in raw_values],
             range_min=_coerce_float(entry.get("range_min")),
@@ -232,7 +236,7 @@ class FilterSpec:
         invalid user-supplied regex raising ``ComputeError``) is logged and
         skipped rather than crashing the viewer.
         """
-        result = df
+        result = normalize_viewer_frame(df)
         for row in self.rows:
             if not row.column:
                 continue

@@ -11,6 +11,10 @@ from phenotypic.sdk_.slurm import (
     generate_dispatcher_chain,
     submit_drip_feed_start,
 )
+from phenotypic.sdk_.slurm._dispatcher import (
+    SlurmDependencyKind,
+    _resolve_continuation_dependency_kinds,
+)
 
 
 @dataclass(frozen=True)
@@ -37,6 +41,8 @@ def submit_slurm_script_chain(
     slurm_args: Dict[str, Any],
     console: Any,
     finalizer_script: Path | None = None,
+    continuation_dependency_kinds: Sequence[SlurmDependencyKind] | None = None,
+    generation: str | None = None,
 ) -> SLURMScriptChainSubmission:
     """Generate and start a drip-feed SLURM dispatcher chain.
 
@@ -47,6 +53,9 @@ def submit_slurm_script_chain(
         console: Rich console-like object for status output.
         finalizer_script: Terminal publisher submitted after the final chunk
             becomes terminal.
+        continuation_dependency_kinds: Dependency kind for each
+            chunk-to-continuation edge. Defaults to ``afterany`` throughout.
+        generation: Optional explicit lifecycle generation for this chain.
 
     Returns:
         Submission result with job IDs and generated script paths.
@@ -63,12 +72,30 @@ def submit_slurm_script_chain(
         )
 
     log_dir = logs_dir(output_dir) / "slurm"
+    dependency_kinds = _resolve_continuation_dependency_kinds(
+        chunk_count=len(flat_scripts),
+        has_finalizer=finalizer_script is not None,
+        dependency_kinds=continuation_dependency_kinds,
+    )
+    initial_dependency_kind: SlurmDependencyKind = (
+        dependency_kinds[0] if dependency_kinds else "afterany"
+    )
+    generation_kwargs: dict[str, Any] = (
+        {"generation": generation} if generation is not None else {}
+    )
+    lifecycle_kwargs: dict[str, Any] = (
+        {"output_dir": output_dir, "generation": generation}
+        if generation is not None
+        else {}
+    )
     if finalizer_script is None:
         dispatcher_scripts = generate_dispatcher_chain(
             chunk_scripts=flat_scripts,
             output_dir=output_dir,
             slurm_args=slurm_args,
             log_dir=log_dir,
+            continuation_dependency_kinds=dependency_kinds,
+            **generation_kwargs,
         )
     else:
         dispatcher_scripts = generate_dispatcher_chain(
@@ -77,6 +104,8 @@ def submit_slurm_script_chain(
             slurm_args=slurm_args,
             log_dir=log_dir,
             finalizer_script=finalizer_script,
+            continuation_dependency_kinds=dependency_kinds,
+            **generation_kwargs,
         )
 
     console.print("[bold cyan]Submitting jobs to SLURM...[/bold cyan]")
@@ -85,12 +114,16 @@ def submit_slurm_script_chain(
         job_ids, warning = submit_drip_feed_start(
             chunk_scripts=flat_scripts,
             dispatcher_scripts=dispatcher_scripts,
+            continuation_dependency_kind=initial_dependency_kind,
+            **lifecycle_kwargs,
         )
     else:
         job_ids, warning = submit_drip_feed_start(
             chunk_scripts=flat_scripts,
             dispatcher_scripts=dispatcher_scripts,
             finalizer_script=finalizer_script,
+            continuation_dependency_kind=initial_dependency_kind,
+            **lifecycle_kwargs,
         )
 
     console.print(f"  Chunk 0: [green]Job {job_ids[0]}[/green]")

@@ -43,7 +43,7 @@ from phenotypic.gui.results_viewer._tile_routes import (
 )
 
 from tests._output_layout import write_master
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 # ---------------------------------------------------------------------------
@@ -148,8 +148,8 @@ def client_and_root(tmp_path: Path):
     # master_measurements.parquet under deliverables/.
     master = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": [dataset],
-            str(METADATA.IMAGE_NAME): [stem],
+            "Metadata_Dataset": [dataset],
+            str(IMAGE.IMAGE_NAME): [stem],
             "Object_Label": [1],
             "Bbox_CenterRR": [16.0],
             "Bbox_CenterCC": [16.0],
@@ -464,8 +464,8 @@ def test_manifest_missing_hdf_layer_falls_back_to_overlay(
     dataset, stem = "d1", "missing-layer"
     master = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": [dataset],
-            str(METADATA.IMAGE_NAME): [stem],
+            "Metadata_Dataset": [dataset],
+            str(IMAGE.IMAGE_NAME): [stem],
             "Object_Label": [1],
         }
     )

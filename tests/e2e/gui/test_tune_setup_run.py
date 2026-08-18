@@ -72,7 +72,7 @@ _LAUNCHER = textwrap.dedent(
     )
     metadata = sandbox_dir / "layout.csv"
     metadata.write_text(
-        "MetadataImage_ImageName,Object_Label\\nplate.cr3,1\\n",
+        "Metadata_ImageName,Object_Label\\nplate.cr3,1\\n",
         encoding="utf-8",
     )
     (sandbox_dir / "plate images").mkdir()
@@ -85,7 +85,7 @@ _LAUNCHER = textwrap.dedent(
         scorer=QCScorer(
             check=ExpectedVsDetectedCount(
                 metadata=str(metadata),
-                groupby=["MetadataImage_ImageName"],
+                groupby=["Metadata_ImageName"],
             )
         ),
         evaluator=Evaluator(),

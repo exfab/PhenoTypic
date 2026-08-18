@@ -34,12 +34,14 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import polars as pl
+from numpy.typing import NDArray
 
 from phenotypic.gui._design import COLOR_MUTED, OI_VERMILION
-from phenotypic.schema import CULTURE_METADATA, METADATA
+from phenotypic.schema import CULTURE, IMAGE
 from phenotypic.sdk_.viz.figures import SEQUENTIAL_COLORSCALE, apply_theme
 
 from .._filtered_state import KEY_OBJECT_LABEL
+from .._metadata import normalize_metadata_reference, normalize_viewer_frame
 
 #: Plotly-shaped copy of the brand sequential ramp (list-of-[pos, color]).
 _HEATMAP_COLORSCALE = [[pos, color] for pos, color in SEQUENTIAL_COLORSCALE]
@@ -67,8 +69,8 @@ _REMOVED_MARKER_MAX: float = 14.0
 # object-label curation key is single-sourced from ``_filtered_state``
 # (imported above as :data:`KEY_OBJECT_LABEL`) so it can never drift from
 # the curation layer.
-_META_IMAGE_FILE: str = str(METADATA.IMAGE_NAME)
-_META_TIME: str = str(CULTURE_METADATA.TIME)
+_META_IMAGE_FILE: str = str(IMAGE.IMAGE_NAME)
+_META_TIME: str = str(CULTURE.TIME)
 
 
 def build_heatmap_figure(
@@ -125,6 +127,8 @@ def build_heatmap_figure(
     # incidental copy is fine.
     if isinstance(frame, pd.DataFrame):
         frame = pl.from_pandas(frame)
+    frame = normalize_viewer_frame(frame)
+    color_col = normalize_metadata_reference(color_col)
 
     row_col, col_col = grid_row_col
     if row_col not in frame.columns or col_col not in frame.columns:
@@ -328,7 +332,9 @@ def _pivot_to_matrix(
     # ``pivot`` does not guarantee column ordering matches ``col_labels``,
     # so we reindex by name explicitly.
     pivoted = pivoted.sort(row_col)
-    matrix = np.full((len(row_labels), len(col_labels)), np.nan, dtype=float)
+    matrix: NDArray[np.float64] = np.full(
+        (len(row_labels), len(col_labels)), np.nan, dtype=float
+    )
     row_to_idx = {label: i for i, label in enumerate(row_labels)}
     col_to_idx = {str(label): i for i, label in enumerate(col_labels)}
 
@@ -417,7 +423,9 @@ def _build_removed_overlay(
 
     # The zero-opacity heatmap keeps the visible cell footprint clean
     # while still painting "removed" into Plotly's hover index.
-    overlay_z = np.full((len(row_labels), len(col_labels)), np.nan, dtype=float)
+    overlay_z: NDArray[np.float64] = np.full(
+        (len(row_labels), len(col_labels)), np.nan, dtype=float
+    )
     row_to_idx = {label: i for i, label in enumerate(row_labels)}
     col_to_idx = {label: i for i, label in enumerate(col_labels)}
     for r, c in zip(rows, cols):

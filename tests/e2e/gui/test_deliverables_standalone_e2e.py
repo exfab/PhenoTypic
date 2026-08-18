@@ -35,7 +35,7 @@ from playwright.sync_api import Page, expect
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ReplicateAgreement
-from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import CULTURE, EXPERIMENT, IMAGE
 from phenotypic.sdk_ import curation_labels_parquet_path
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
@@ -62,8 +62,8 @@ _DATASET = "ds1"
 _IMAGES = ("plate_001.tif", "plate_002.tif")
 _NROWS, _NCOLS = 3, 4
 _INSTANCE_ID = "qc-SE-standalone01"
-_DATASET_COLUMN = str(EXPERIMENT_METADATA.DATASET)
-_TIME_COLUMN = str(CULTURE_METADATA.TIME)
+_DATASET_COLUMN = str(EXPERIMENT.DATASET)
+_TIME_COLUMN = str(CULTURE.TIME)
 
 
 def _build_master() -> pl.DataFrame:
@@ -77,7 +77,7 @@ def _build_master() -> pl.DataFrame:
                 rows.append(
                     {
                         _DATASET_COLUMN: _DATASET,
-                        str(METADATA.IMAGE_NAME): image,
+                        str(IMAGE.IMAGE_NAME): image,
                         _TIME_COLUMN: 0.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,

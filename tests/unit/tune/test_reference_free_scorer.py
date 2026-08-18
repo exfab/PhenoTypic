@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
+from pydantic import ValidationError
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
@@ -72,13 +73,13 @@ def test_score_image_includes_count_term_when_count_check_configured(tmp_path):
     csv = tmp_path / "layout.csv"
     pd.DataFrame(
         {
-            "MetadataImage_ImageName": ["Synthetic96PlateWithObjects"] * 96,
+            "Metadata_ImageName": ["Synthetic96PlateWithObjects"] * 96,
             "Object_Label": list(range(96)),
         }
     ).to_csv(csv, index=False)
     scorer = ReferenceFreeScorer(
         count_check=ExpectedVsDetectedCount(
-            metadata=str(csv), groupby=["MetadataImage_ImageName"]
+            metadata=str(csv), groupby=["Metadata_ImageName"]
         )
     )
     image, measurements = _measured_plate()
@@ -132,7 +133,7 @@ def test_size_cv_term_is_low_cost_for_uniform_sizes():
     image, _ = _measured_plate()
     uniform = pd.DataFrame(
         {
-            "MetadataImage_ImageName": ["p"] * 24,
+            "Metadata_ImageName": ["p"] * 24,
             "Size_Area": [500.0] * 24,
             "Shape_Solidity": [0.95] * 24,
             "Shape_Circularity": [0.9] * 24,
@@ -145,11 +146,11 @@ def test_size_cv_term_is_low_cost_for_uniform_sizes():
 def test_size_cv_uses_replicate_groups_when_configured():
     # Two strains with *within-group* uniform sizes but very different means
     # → within-replicate CV is 0 (perfect) even though the pooled CV is large.
-    scorer = ReferenceFreeScorer(replicate_groupby=["MetadataGenetic_Strain"])
+    scorer = ReferenceFreeScorer(replicate_groupby=["Metadata_Strain"])
     image, _ = _measured_plate()
     frame = pd.DataFrame(
         {
-            "MetadataGenetic_Strain": ["A"] * 12 + ["B"] * 12,
+            "Metadata_Strain": ["A"] * 12 + ["B"] * 12,
             "Size_Area": [100.0] * 12 + [900.0] * 12,
         }
     )
@@ -158,6 +159,48 @@ def test_size_cv_uses_replicate_groups_when_configured():
     pooled = ReferenceFreeScorer().score_image(image, frame)["SizeCV"]
     assert grouped == pytest.approx(0.0)
     assert grouped < pooled
+
+
+def test_replicate_groupby_accepts_bare_and_flat_metadata_without_mutation():
+    scorer = ReferenceFreeScorer(replicate_groupby="BioReplicate")
+    image, _ = _measured_plate()
+    frame = pd.DataFrame(
+        {
+            "Metadata_BioReplicate": ["r1"] * 4 + ["r2"] * 4,
+            "Size_Area": [100.0] * 4 + [900.0] * 4,
+            "custom_measurement": list(range(8)),
+        }
+    )
+    original = frame.copy(deep=True)
+
+    grouped = scorer.score_image(image, frame)["SizeCV"]
+
+    assert scorer.replicate_groupby == ["Metadata_BioReplicate"]
+    assert grouped == pytest.approx(0.0)
+    pd.testing.assert_frame_equal(frame, original)
+
+
+def test_replicate_groupby_rejects_conflicting_metadata_columns_without_mutation():
+    scorer = ReferenceFreeScorer(replicate_groupby="BioReplicate")
+    image, _ = _measured_plate()
+    frame = pd.DataFrame(
+        {
+            "BioReplicate": ["r1", "r1"],
+            "Metadata_BioReplicate": ["r2", "r2"],
+            "Size_Area": [100.0, 100.0],
+        }
+    )
+    original = frame.copy(deep=True)
+
+    with pytest.raises(ValueError, match="conflicting non-null values"):
+        scorer.score_image(image, frame)
+
+    pd.testing.assert_frame_equal(frame, original)
+
+
+def test_replicate_groupby_prevalidator_rejects_invalid_input():
+    with pytest.raises(ValidationError, match="column references"):
+        ReferenceFreeScorer(replicate_groupby=123)  # type: ignore[arg-type]
 
 
 def test_empty_measurements_floor_to_worst_cost():
@@ -180,20 +223,20 @@ def test_keyword_only_construction():
 def test_round_trips_through_registry(tmp_path):
     csv = tmp_path / "layout.csv"
     pd.DataFrame(
-        {"MetadataImage_ImageName": ["p"] * 96, "Object_Label": list(range(96))}
+        {"Metadata_ImageName": ["p"] * 96, "Object_Label": list(range(96))}
     ).to_csv(csv, index=False)
     gt_dir = tmp_path / "gt_masks"
     gt_dir.mkdir()
     scorer = ReferenceFreeScorer(
         count_check=ExpectedVsDetectedCount(
-            metadata=str(csv), groupby=["MetadataImage_ImageName"]
+            metadata=str(csv), groupby=["Metadata_ImageName"]
         ),
-        replicate_groupby=["MetadataGenetic_Strain"],
+        replicate_groupby=["Metadata_Strain"],
         gt_masks_source=gt_dir,
     )
     reloaded = ReferenceFreeScorer.model_validate_json(scorer.model_dump_json())
     assert isinstance(reloaded, ReferenceFreeScorer)
-    assert reloaded.replicate_groupby == ["MetadataGenetic_Strain"]
+    assert reloaded.replicate_groupby == ["Metadata_Strain"]
     assert reloaded.gt_masks_source == gt_dir
     # the path-configured count check rehydrates from disk and still scores
     assert reloaded.count_check is not None

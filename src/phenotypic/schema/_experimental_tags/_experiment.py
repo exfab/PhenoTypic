@@ -2,23 +2,17 @@
 
 from .._measurement_info import Entry
 from .._rembi import REMBI_MODULE
-from .._tiers import IdentityInfo
+from .._tiers import MetadataInfo
 
 
-class EXPERIMENT_METADATA(IdentityInfo):
-    """Recommended ``MetadataExperiment_*`` tags for experiment-level bookkeeping.
+class EXPERIMENT(MetadataInfo):
+    """Recommended metadata tags for experiment-level bookkeeping.
 
     These group results by experiment/project and carry free-form provenance
-    (experiment id, project, dataset, protocol, notes). ``Dataset`` matches the
-    CLI-emitted ``MetadataExperiment_Dataset`` column. Members render as
-    ``MetadataExperiment_<Label>`` (e.g. ``MetadataExperiment_ExperimentID``) in the
-    ``Metadata`` column family shared with the other experimental-tag enums.
+    (experiment id, project, dataset, protocol, notes). Members render in the
+    shared ``Metadata_<Label>`` namespace with the other experimental-tag enums.
     Recommended vocabulary, not a validator.
     """
-
-    @classmethod
-    def category(cls) -> str:
-        return "MetadataExperiment"
 
     @classmethod
     def rembi_module(cls) -> REMBI_MODULE:
@@ -28,7 +22,7 @@ class EXPERIMENT_METADATA(IdentityInfo):
     PROJECT = Entry("Project", "Project name or identifier.")
     DATASET = Entry(
         "Dataset",
-        "Dataset name (matches the CLI-emitted MetadataExperiment_Dataset column).",
+        "Dataset name used to group CLI-emitted measurements.",
     )
     PROTOCOL = Entry("Protocol", "Protocol name or version followed.")
     NOTES = Entry("Notes", "Free-text notes or comments.")

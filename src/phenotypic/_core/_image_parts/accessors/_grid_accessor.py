@@ -12,7 +12,7 @@ import pandas as pd
 from skimage.color import label2rgb
 
 import phenotypic
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_.constants_ import IMAGE_TYPES
 from phenotypic.schema import OBJECT
 from phenotypic.schema import BBOX, GRID
@@ -544,7 +544,7 @@ class GridAccessor:
         section_image.objmap = objmap
 
         # Mark as grid section
-        section_image.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.GRID_SECTION.value
+        section_image.metadata[IMAGE.IMAGE_TYPE] = IMAGE_TYPES.GRID_SECTION.value
 
         return section_image
 

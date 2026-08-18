@@ -2,12 +2,14 @@
 
 import sys
 from pathlib import Path
+from typing import cast
 
 import pytest
 
 import phenotypic._cli._cli_slurm_lifecycle as lifecycle
 from phenotypic._cli._cli_slurm_lifecycle import CancellationResult
 from phenotypic.sdk_.slurm._dispatcher import (
+    SlurmDependencyKind,
     _infer_output_dir,
     generate_dispatcher_chain,
     generate_dispatcher_script,
@@ -19,7 +21,9 @@ from phenotypic.sdk_.slurm import (
     SLURM_PYTHONPATH_ENV_VAR,
 )
 
-pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="SLURM not available on Windows"
+)
 
 
 @pytest.fixture
@@ -93,6 +97,67 @@ def test_single_chunk_process_finalizer_depends_on_chunk(
     assert calls[0]["role"] == "chunk"
     assert calls[1]["role"] == "finalizer"
     assert calls[1]["dependencies"] == ("701",)
+    assert calls[1]["dependency_kind"] == "afterany"
+
+
+def test_initial_continuation_accepts_afterok(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The first dispatcher can be gated on successful chunk completion."""
+    scripts = slurm_scripts_dir(tmp_path)
+    scripts.mkdir(parents=True)
+    chunk = scripts / "chunk0.sh"
+    dispatcher = scripts / "dispatch_1.sh"
+    chunk.touch()
+    dispatcher.touch()
+    calls: list[dict[str, object]] = []
+
+    def fake_submit(_output_dir: Path, **kwargs: object) -> str:
+        calls.append(kwargs)
+        return str(700 + len(calls))
+
+    monkeypatch.setattr(lifecycle, "submit_with_lifecycle", fake_submit)
+
+    submit_drip_feed_start(
+        [chunk],
+        [dispatcher],
+        continuation_dependency_kind="afterok",
+    )
+
+    assert calls[1]["dependency_kind"] == "afterok"
+
+
+def test_initial_continuation_rejects_invalid_kind_before_submission(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An invalid initial edge cannot submit chunk zero or create state."""
+    scripts = slurm_scripts_dir(tmp_path)
+    scripts.mkdir(parents=True)
+    chunk = scripts / "chunk0.sh"
+    dispatcher = scripts / "dispatch_1.sh"
+    chunk.touch()
+    dispatcher.touch()
+    calls: list[dict[str, object]] = []
+
+    def fake_submit(_output_dir: Path, **kwargs: object) -> str:
+        calls.append(kwargs)
+        return "701"
+
+    monkeypatch.setattr(lifecycle, "submit_with_lifecycle", fake_submit)
+
+    with pytest.raises(ValueError, match="dependency_kind"):
+        submit_drip_feed_start(
+            [chunk],
+            [dispatcher],
+            continuation_dependency_kind=cast(
+                SlurmDependencyKind, "afterinvalid"
+            ),
+        )
+
+    assert calls == []
+    assert not lifecycle.lifecycle_state_path(tmp_path).exists()
 
 
 def test_last_dispatcher_carries_process_finalizer(
@@ -123,6 +188,28 @@ def test_last_dispatcher_carries_process_finalizer(
 
 
 class TestGenerateDispatcherScript:
+    def test_invalid_dependency_kind_writes_no_dispatcher_or_state(
+        self, tmp_path: Path, slurm_args: dict[str, object]
+    ) -> None:
+        """Invalid input fails before script and lifecycle state creation."""
+        output_dir = tmp_path / "output"
+        output = slurm_scripts_dir(output_dir) / "dispatch_1.sh"
+
+        with pytest.raises(ValueError, match="dependency_kind"):
+            generate_dispatcher_script(
+                next_chunk_script=tmp_path / "chunk1.sh",
+                next_dispatcher_script=None,
+                output_path=output,
+                slurm_args=slurm_args,
+                log_dir=tmp_path / "logs",
+                output_dir=output_dir,
+                dependency_kind=cast(
+                    SlurmDependencyKind, "afterinvalid"
+                ),
+            )
+
+        assert not output.exists()
+        assert not lifecycle.lifecycle_state_path(output_dir).exists()
 
     def test_script_submits_next_chunk(self, tmp_path, slurm_args):
         """Dispatcher delegates the next chunk to the lifecycle entry point."""
@@ -230,7 +317,9 @@ class TestGenerateDispatcherScript:
         content = output.read_text()
         assert "--partition=gpu" in content
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="chmod not effective on Windows")
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="chmod not effective on Windows"
+    )
     def test_dispatcher_is_executable(self, tmp_path, slurm_args):
         """Generated dispatcher script should be executable."""
         chunk_script = tmp_path / "chunk.sh"
@@ -268,7 +357,6 @@ class TestGenerateDispatcherScript:
 
 
 class TestGenerateDispatcherChain:
-
     def test_chain_length(self, chunk_scripts, tmp_path, slurm_args):
         """N chunks should produce N-1 dispatchers."""
         dispatchers = generate_dispatcher_chain(
@@ -327,7 +415,9 @@ class TestGenerateDispatcherChain:
             assert d.name == f"dispatch_{i + 1}.sh"
             assert d.parent == slurm_scripts_dir(tmp_path)
 
-    def test_dispatcher_chain_wiring(self, chunk_scripts, tmp_path, slurm_args):
+    def test_dispatcher_chain_wiring(
+        self, chunk_scripts, tmp_path, slurm_args
+    ):
         """Each dispatcher should reference the correct next chunk and dispatcher."""
         dispatchers = generate_dispatcher_chain(
             chunk_scripts=chunk_scripts,
@@ -351,8 +441,12 @@ class TestGenerateDispatcherChain:
         assert str(chunk_scripts[3]) in content2
         assert "no further dispatcher needed" in content2
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="chmod not effective on Windows")
-    def test_all_dispatchers_are_executable(self, chunk_scripts, tmp_path, slurm_args):
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="chmod not effective on Windows"
+    )
+    def test_all_dispatchers_are_executable(
+        self, chunk_scripts, tmp_path, slurm_args
+    ):
         """All generated dispatchers should be executable."""
         dispatchers = generate_dispatcher_chain(
             chunk_scripts=chunk_scripts,
@@ -372,6 +466,70 @@ class TestGenerateDispatcherChain:
             log_dir=tmp_path / "logs" / "slurm",
         )
         assert dispatchers == []
+
+    def test_mixed_dependency_kinds_follow_continuation_edges(
+        self, tmp_path, slurm_args
+    ):
+        """Generated dispatchers carry each later edge's dependency kind."""
+        scripts_dir = slurm_scripts_dir(tmp_path)
+        scripts_dir.mkdir(parents=True)
+        chunks = [scripts_dir / f"chunk{i}.sh" for i in range(3)]
+        for chunk in chunks:
+            chunk.touch()
+        finalizer = scripts_dir / "finalizer.sh"
+        finalizer.touch()
+
+        dispatchers = generate_dispatcher_chain(
+            chunk_scripts=chunks,
+            output_dir=tmp_path,
+            slurm_args=slurm_args,
+            log_dir=tmp_path / "logs" / "slurm",
+            finalizer_script=finalizer,
+            continuation_dependency_kinds=(
+                "afterany",
+                "afterok",
+                "afterany",
+            ),
+        )
+
+        assert "--dependency-kind afterok" in dispatchers[0].read_text()
+        assert "--dependency-kind afterany" in dispatchers[1].read_text()
+
+    def test_dependency_kind_count_must_match_edges(
+        self, chunk_scripts, tmp_path, slurm_args
+    ):
+        """A misaligned edge sequence fails before scripts are generated."""
+        with pytest.raises(ValueError, match="exactly 3 entries"):
+            generate_dispatcher_chain(
+                chunk_scripts=chunk_scripts,
+                output_dir=tmp_path,
+                slurm_args=slurm_args,
+                log_dir=tmp_path / "logs" / "slurm",
+                continuation_dependency_kinds=("afterok",),
+            )
+
+    def test_invalid_dependency_kind_writes_no_dispatchers(
+        self, chunk_scripts, tmp_path, slurm_args
+    ) -> None:
+        """Invalid aligned edge values fail before chain side effects."""
+        log_dir = tmp_path / "logs" / "slurm"
+
+        with pytest.raises(ValueError, match="dependency_kind"):
+            generate_dispatcher_chain(
+                chunk_scripts=chunk_scripts,
+                output_dir=tmp_path,
+                slurm_args=slurm_args,
+                log_dir=log_dir,
+                continuation_dependency_kinds=(
+                    "afterany",
+                    cast(SlurmDependencyKind, "afterinvalid"),
+                    "afterok",
+                ),
+            )
+
+        assert not log_dir.exists()
+        assert list(slurm_scripts_dir(tmp_path).glob("dispatch_*.sh")) == []
+        assert not lifecycle.lifecycle_state_path(tmp_path).exists()
 
 
 def test_initial_dispatcher_failure_fences_and_fails_launch(
@@ -400,7 +558,9 @@ def test_initial_dispatcher_failure_fences_and_fails_launch(
     monkeypatch.setattr(lifecycle, "submit_with_lifecycle", fake_submit)
     monkeypatch.setattr(lifecycle, "cancel_generation", fake_cancel)
 
-    with pytest.raises(RuntimeError, match="Initial dispatcher submission failed"):
+    with pytest.raises(
+        RuntimeError, match="Initial dispatcher submission failed"
+    ):
         submit_drip_feed_start([chunk], [dispatcher])
 
     assert cancelled == [

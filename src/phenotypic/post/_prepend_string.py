@@ -4,7 +4,12 @@ import pandas as pd
 from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
-from ._utils import affix_preserving_na, ensure_metadata_prefix
+from ._utils import (
+    affix_preserving_na,
+    coalesce_metadata_aliases,
+    ensure_metadata_prefix,
+    resolve_metadata_column,
+)
 
 
 class PrependString(PostMeasurement):
@@ -16,7 +21,7 @@ class PrependString(PostMeasurement):
     Args:
         column: Name of the metadata column to modify. The schema category
             prefix is added automatically if missing (e.g. ``SampleID`` ->
-            ``MetadataSample_SampleID``; unknown labels get a generic
+            ``Metadata_SampleID``; unknown labels get a generic
             ``Metadata_`` prefix).
         value: The string to prepend to each cell value.
 
@@ -35,19 +40,21 @@ class PrependString(PostMeasurement):
 
         >>> import pandas as pd
         >>> from phenotypic.post import PrependString
+        >>> from phenotypic.schema import SAMPLE
+        >>> sample_id = str(SAMPLE.SAMPLE_ID)
         >>> df = pd.DataFrame({
-        ...     "MetadataSample_SampleID": ["001", "002"],
+        ...     sample_id: ["001", "002"],
         ...     "Object_Label": [1, 2],
         ... })
         >>> op = PrependString(column="SampleID", value="WT-")
         >>> result = op.apply(df)
-        >>> list(result["MetadataSample_SampleID"])
+        >>> list(result[sample_id])
         ['WT-001', 'WT-002']
 
         An undetected colony's missing value stays missing:
 
-        >>> df.loc[1, "MetadataSample_SampleID"] = None
-        >>> list(op.apply(df)["MetadataSample_SampleID"])
+        >>> df.loc[1, sample_id] = None
+        >>> list(op.apply(df)[sample_id])
         ['WT-001', nan]
     """
 
@@ -69,13 +76,15 @@ class PrependString(PostMeasurement):
         Returns:
             DataFrame with the modified column. NA cells are left as NA.
         """
-        if self.column not in df.columns:
+        try:
+            result = coalesce_metadata_aliases(df, [self.column])
+            source_column = resolve_metadata_column(result.columns, self.column)
+        except KeyError:
             raise KeyError(
                 f"Column '{self.column}' not found in DataFrame. "
                 f"Available columns: {list(df.columns)}"
-            )
-        result = df.copy()
-        result[self.column] = affix_preserving_na(
-            result[self.column], prefix=self.value
+            ) from None
+        result[source_column] = affix_preserving_na(
+            result[source_column], prefix=self.value
         )
         return result

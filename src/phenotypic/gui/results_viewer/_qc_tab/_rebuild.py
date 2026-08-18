@@ -31,6 +31,7 @@ from phenotypic.sdk_ import (
     gui_launch_owner_path,
     paths_fingerprint,
 )
+from phenotypic.gui.results_viewer._metadata import normalize_viewer_frame
 from phenotypic.sdk_._qc_recipe._runner import (
     qc_publication_lock,
     qc_publication_lock_path,
@@ -378,7 +379,9 @@ def rebuild_qc_database(
                 "At least one enabled QC recipe entry is required for rebuild."
             )
         try:
-            measurements = pd.read_parquet(layout.mirror_parquet)
+            measurements = normalize_viewer_frame(
+                pd.read_parquet(layout.mirror_parquet)
+            )
         except Exception as exc:
             raise QcRebuildError(
                 f"The measurements mirror is incomplete or unreadable: {exc}"
