@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from ._measurement_sources import discover_measurement_sources
+from ._cli_completion import authorized_measurement_sources
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 from phenotypic.sdk_ import (
     DIR_HDF,
@@ -56,7 +57,9 @@ def build_recompile_tasks(
     output_dir = Path(output_dir)
     shard_size = max(1, int(shard_size))
 
-    # Flush trailing per-image parquets before resolving shards. This path
+    authorized_sources = authorized_measurement_sources(output_dir)
+
+    # Flush trailing per-image parquets before resolving legacy shards. This path
     # never reaches `aggregate_measurements` — the recompile worker
     # concatenates the shards itself — so without the flush,
     # `discover_measurement_sources` returns `_dataset_aggregated.parquet`
@@ -67,18 +70,26 @@ def build_recompile_tasks(
     # directory. No-op for unchunked runs and evenly-divided ones.
     from ._cli_chunk_writer import flush_trailing_measurements_if_chunked
 
-    flush_trailing_measurements_if_chunked(output_dir)
+    if authorized_sources is None:
+        flush_trailing_measurements_if_chunked(output_dir)
 
     tasks: list[dict[str, Any]] = []
     shard_id = 0
 
     for dataset_name in dataset_names:
-        source_files = [
-            source.path
-            for source in discover_measurement_sources(
-                output_dir, [dataset_name]
+        if authorized_sources is None:
+            source_files = [
+                source.path
+                for source in discover_measurement_sources(
+                    output_dir, [dataset_name]
+                )
+            ]
+        else:
+            source_files = sorted(
+                path
+                for path, dataset in authorized_sources.items()
+                if dataset == dataset_name
             )
-        ]
         for source_shard in _chunk_paths(source_files, shard_size):
             tasks.append(
                 {

@@ -14,6 +14,7 @@ import click
 import traceback
 from pathlib import Path
 from typing import Optional, Dict, Any, cast
+from uuid import uuid4
 
 import h5py  # type: ignore[import-untyped]
 import matplotlib
@@ -22,14 +23,87 @@ matplotlib.use("Agg")  # Non-interactive backend
 
 from phenotypic import Image, GridImage, ImagePipeline
 from ._cli_output_manager import OutputManager
-from ._cli_process_only import process_single_apply_only_core
-from ._cli_update_state import append_event, append_completion_event
-from ._cli_failure_tracker import append_failure
+from ._cli_process_only import (
+    process_only_output_path,
+    process_single_apply_only_core,
+)
+from ._cli_completion import publish_image_success
+from ._cli_update_state import (
+    PROCESSING_GENERATION_ENV_VAR,
+    SLURM_GENERATION_ENV_VAR,
+    append_event,
+    append_completion_event,
+)
+from ._cli_failure_tracker import (
+    PerImageScientificError,
+    append_failure,
+    append_terminal_failure,
+    compute_work_id,
+    file_sha256,
+    processing_configuration_digest_from_values,
+)
 from ._cli_utils import normalize_extension
 from phenotypic.sdk_ import EnvVar, HdfAttr, progress_dir
 from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
 
 logger = logging.getLogger(__name__)
+
+
+def _authoritative_lifecycle_epoch() -> str:
+    """Return the epoch fencing authoritative per-image publication."""
+    if os.environ.get(EnvVar.SLURM_JOB_ID):
+        return os.environ.get(SLURM_GENERATION_ENV_VAR, "slurm-unfenced")
+    return os.environ.get(PROCESSING_GENERATION_ENV_VAR, "local-unfenced")
+
+
+def _worker_work_identity(
+    *,
+    pipeline: Path,
+    image: Path,
+    input_root: Path | None,
+    dataset_name: str,
+    image_type: str,
+    nrows: int | None,
+    ncols: int | None,
+    bit_depth: int | None,
+    detect_mode: str,
+    layer: str | None,
+    ext: str,
+    include_dataset_column: bool,
+    overlay_alpha: float,
+    save_overlays: bool,
+    mode: str,
+) -> tuple[str, str]:
+    """Calculate the same work identity used by top-level selection."""
+    if input_root is None or input_root.is_file():
+        relative_path = image.name
+    else:
+        try:
+            relative_path = image.relative_to(input_root).as_posix()
+        except ValueError:
+            relative_path = image.name
+    return (
+        compute_work_id(
+            dataset=dataset_name,
+            relative_image_path=relative_path,
+            input_sha256=file_sha256(image),
+            pipeline_fingerprint=file_sha256(pipeline),
+            processing_config_digest=processing_configuration_digest_from_values(
+                image_type=image_type,
+                nrows=nrows,
+                ncols=ncols,
+                bit_depth=bit_depth,
+                detect_mode=detect_mode,
+                process_only_layer=layer if mode == "process" else None,
+                ext=normalize_extension(ext, ".tiff"),
+                include_dataset_column=include_dataset_column,
+                overlay_alpha=overlay_alpha,
+                save_overlays=save_overlays,
+            ),
+            mode=mode,
+        ),
+        relative_path,
+    )
 
 
 def process_single_image_core(
@@ -68,37 +142,36 @@ def process_single_image_core(
             will propagate to the caller. The caller is responsible for catching
             exceptions and handling failures appropriately.
     """
-    # Load pipeline
-    pipeline = ImagePipeline.from_json(pipeline_path)
+    try:
+        # Load, decode, and run the configured scientific computation. Output
+        # publication intentionally occurs after this boundary.
+        pipeline = ImagePipeline.from_json(pipeline_path)
+        image_cls = GridImage if image_type == "GridImage" else Image
 
-    # Determine image class
-    image_cls = GridImage if image_type == "GridImage" else Image
+        if image_type == "GridImage":
+            from ._cli_utils import resolve_grid_shape
 
-    if image_type == "GridImage":
-        from ._cli_utils import resolve_grid_shape
+            nrows, ncols = resolve_grid_shape(
+                cli_nrows=cli_nrows,
+                cli_ncols=cli_ncols,
+                pipeline_nrows=pipeline.nrows,
+                pipeline_ncols=pipeline.ncols,
+            )
+            read_kwargs = dict(read_kwargs)
+            read_kwargs["nrows"] = nrows
+            read_kwargs["ncols"] = ncols
 
-        nrows, ncols = resolve_grid_shape(
-            cli_nrows=cli_nrows,
-            cli_ncols=cli_ncols,
-            pipeline_nrows=pipeline.nrows,
-            pipeline_ncols=pipeline.ncols,
+        detect_mode = read_kwargs.pop("detect_mode", "gray")
+        image = image_cls.imread(image_path, **read_kwargs)
+        if detect_mode != "gray":
+            image.set_detect_mode(detect_mode)
+        measurements = pipeline.apply_and_measure(
+            image, inplace=True, apply_post=False
         )
-        read_kwargs = dict(read_kwargs)  # local copy; do not mutate caller's dict
-        read_kwargs["nrows"] = nrows
-        read_kwargs["ncols"] = ncols
-
-    # Load image
-    detect_mode = read_kwargs.pop("detect_mode", "gray")
-    image = image_cls.imread(image_path, **read_kwargs)
-
-    # Apply detect mode if not default
-    if detect_mode != "gray":
-        image.set_detect_mode(detect_mode)
-
-    # Execute pipeline. apply_post=False keeps per-image parquets clean;
-    # post ops are applied once in aggregate_measurements() against the
-    # full master so master_measurements.{csv,parquet} stay post-free.
-    measurements = pipeline.apply_and_measure(image, inplace=True, apply_post=False)
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise PerImageScientificError("full", exc) from exc
 
     # Get image stem for output filenames
     image_stem = image_path.stem
@@ -280,6 +353,10 @@ def process_single_hdf_measure_core(
     help="Root of the input tree, used to compute the mirrored output path "
     "in process mode.",
 )
+@click.option("--expected-work-id", default=None, hidden=True)
+@click.option("--expected-input-sha256", default=None, hidden=True)
+@click.option("--expected-pipeline-sha256", default=None, hidden=True)
+@click.option("--attempt-id", default=None, hidden=True)
 def main(
     pipeline: Path,
     image: Path,
@@ -298,6 +375,10 @@ def main(
     save_overlays: bool,
     layer: Optional[str],
     input_root: Optional[Path],
+    expected_work_id: Optional[str],
+    expected_input_sha256: Optional[str],
+    expected_pipeline_sha256: Optional[str],
+    attempt_id: Optional[str],
 ):
     """
     Process a single image with PhenoTypic pipeline.
@@ -305,6 +386,7 @@ def main(
     This is designed to be called by SLURM batch scripts for autonomous
     execution. It processes one image and logs completion to event log.
     """
+    attempt_id = attempt_id or uuid4().hex
     try:
         cli_mode = cast(CliMode, mode)
         measure_only = cli_mode == "measure"
@@ -315,6 +397,38 @@ def main(
             process_only_layer = cast(ProcessOnlyLayer, layer)
         elif layer is not None:
             raise click.UsageError("--layer can only be used with --mode process")
+
+        expected_identity = (
+            expected_work_id,
+            expected_input_sha256,
+            expected_pipeline_sha256,
+        )
+        if any(value is not None for value in expected_identity):
+            if not all(value for value in expected_identity):
+                raise RuntimeError("Incomplete immutable SLURM task identity")
+            if file_sha256(image) != expected_input_sha256:
+                raise RuntimeError("Input changed after SLURM worklist creation")
+            if file_sha256(pipeline) != expected_pipeline_sha256:
+                raise RuntimeError("Pipeline changed after SLURM worklist creation")
+            actual_work_id, _ = _worker_work_identity(
+                pipeline=pipeline,
+                image=image,
+                input_root=input_root,
+                dataset_name=dataset_name,
+                image_type=image_type,
+                nrows=nrows,
+                ncols=ncols,
+                bit_depth=bit_depth,
+                detect_mode=detect_mode,
+                layer=layer,
+                ext=ext,
+                include_dataset_column=include_dataset_column,
+                overlay_alpha=overlay_alpha,
+                save_overlays=save_overlays,
+                mode=mode,
+            )
+            if actual_work_id != expected_work_id:
+                raise RuntimeError("SLURM task work identity does not match worklist")
 
         # Process-only (apply-only) mode: run pipeline.apply() and export one
         # layer, mirroring the input tree. No measurement / aggregation output.
@@ -336,6 +450,8 @@ def main(
                     slurm_array_task_id=os.environ.get(
                         EnvVar.SLURM_ARRAY_TASK_ID, ""
                     ),
+                    attempt_id=attempt_id,
+                    work_id=expected_work_id or "",
                 )
             click.echo(
                 f"Processing (apply-only, {process_only_layer}) {image.name}..."
@@ -350,6 +466,41 @@ def main(
                 read_kwargs=process_only_read_kwargs,
                 cli_nrows=nrows,
                 cli_ncols=ncols,
+            )
+            work_id, relative_path = _worker_work_identity(
+                pipeline=pipeline,
+                image=image,
+                input_root=input_root,
+                dataset_name=dataset_name,
+                image_type=image_type,
+                nrows=nrows,
+                ncols=ncols,
+                bit_depth=bit_depth,
+                detect_mode=detect_mode,
+                layer=layer,
+                ext=ext,
+                include_dataset_column=include_dataset_column,
+                overlay_alpha=overlay_alpha,
+                save_overlays=save_overlays,
+                mode=mode,
+            )
+            publish_image_success(
+                output_dir,
+                work_id=work_id,
+                dataset=dataset_name,
+                relative_image_path=relative_path,
+                image_stem=image.stem,
+                mode="process",
+                attempt_id=attempt_id,
+                lifecycle_epoch=_authoritative_lifecycle_epoch(),
+                artifacts={
+                    "process_output": process_only_output_path(
+                        output_dir,
+                        image,
+                        input_root,
+                        process_only_layer,
+                    )
+                },
             )
             if event_log is not None:
                 append_completion_event(
@@ -379,6 +530,8 @@ def main(
                 status="started",
                 slurm_job_id=os.environ.get(EnvVar.SLURM_JOB_ID, ""),
                 slurm_array_task_id=os.environ.get(EnvVar.SLURM_ARRAY_TASK_ID, ""),
+                attempt_id=attempt_id,
+                work_id=expected_work_id or "",
             )
 
         if measure_only:
@@ -463,6 +616,46 @@ def main(
                 cli_nrows=nrows,
                 cli_ncols=ncols,
             )
+            work_id, relative_path = _worker_work_identity(
+                pipeline=pipeline,
+                image=image,
+                input_root=input_root,
+                dataset_name=dataset_name,
+                image_type=image_type,
+                nrows=nrows,
+                ncols=ncols,
+                bit_depth=bit_depth,
+                detect_mode=detect_mode,
+                layer=None,
+                ext=ext,
+                include_dataset_column=include_dataset_column,
+                overlay_alpha=overlay_alpha,
+                save_overlays=save_overlays,
+                mode=mode,
+            )
+            artifacts = {
+                "measurements": output_manager.get_output_path(
+                    dataset_name, "measurements", image.stem
+                ),
+                "hdf": output_manager.get_output_path(
+                    dataset_name, "hdf", image.stem
+                ),
+            }
+            if save_overlays:
+                artifacts["overlay"] = output_manager.get_output_path(
+                    dataset_name, "overlays", image.stem
+                )
+            publish_image_success(
+                output_dir,
+                work_id=work_id,
+                dataset=dataset_name,
+                relative_image_path=relative_path,
+                image_stem=image.stem,
+                mode="full",
+                attempt_id=attempt_id,
+                lifecycle_epoch=_authoritative_lifecycle_epoch(),
+                artifacts=artifacts,
+            )
 
         # Log completion if event log provided
         if event_log is not None:
@@ -480,6 +673,62 @@ def main(
     except Exception as e:
         error_msg = f"{type(e).__name__}: {str(e)}"
         tb = traceback.format_exc()
+
+        if isinstance(e, PerImageScientificError):
+            try:
+                lifecycle_epoch = _authoritative_lifecycle_epoch()
+                if os.environ.get(EnvVar.SLURM_JOB_ID):
+                    from ._cli_slurm_lifecycle import load_slurm_lifecycle
+
+                    lifecycle = load_slurm_lifecycle(output_dir)
+                    if (
+                        lifecycle is None
+                        or lifecycle.get("generation") != lifecycle_epoch
+                        or lifecycle.get("active") is not True
+                    ):
+                        raise RuntimeError(
+                            "stale SLURM lifecycle cannot commit terminal failure"
+                        )
+                work_id, relative_path = _worker_work_identity(
+                    pipeline=pipeline,
+                    image=image,
+                    input_root=input_root,
+                    dataset_name=dataset_name,
+                    image_type=image_type,
+                    nrows=nrows,
+                    ncols=ncols,
+                    bit_depth=bit_depth,
+                    detect_mode=detect_mode,
+                    layer=layer,
+                    ext=ext,
+                    include_dataset_column=include_dataset_column,
+                    overlay_alpha=overlay_alpha,
+                    save_overlays=save_overlays,
+                    mode=mode,
+                )
+                committed = append_terminal_failure(
+                    output_dir,
+                    work_id=work_id,
+                    dataset=dataset_name,
+                    relative_image_path=relative_path,
+                    failed_stage=e.stage,
+                    exception=e.cause,
+                    attempt_id=attempt_id,
+                    lifecycle_epoch=lifecycle_epoch,
+                    traceback=tb,
+                    slurm_job_id=os.environ.get(EnvVar.SLURM_JOB_ID, ""),
+                )
+                if not committed:
+                    logger.warning(
+                        "Scientific failure remains pending because its "
+                        "terminal record was not committed"
+                    )
+            except (OSError, RuntimeError, ValueError):
+                logger.warning(
+                    "Scientific failure remains pending because its work "
+                    "identity could not be committed",
+                    exc_info=True,
+                )
 
         click.echo(f"✗ Failed to process {image.name}: {error_msg}", err=True)
         click.echo(f"Traceback:\n{tb}", err=True)

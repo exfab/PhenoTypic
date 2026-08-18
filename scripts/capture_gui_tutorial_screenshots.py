@@ -275,6 +275,7 @@ def _seed_error_triage_labels() -> None:
         BundleLayout,
         curation_labels_parquet_path,
         master_measurements_parquet_path,
+        measurements_csv_path,
         measurements_parquet_path,
     )
     from phenotypic.sdk_._qc_recipe import QcRecipeEntry
@@ -347,6 +348,21 @@ def _seed_error_triage_labels() -> None:
     #     error class. The durable labels parquet (written in step 2) is what the
     #     reloaded viewer re-keys onto this full frame.
     full.write_parquet(mirror_path)
+    full.write_csv(measurements_csv_path(OUTPUT_DIR))
+
+    # The fixture mutates marker-authorized core files outside the live GUI
+    # mutation path. Refresh both marker-last publications so the Results
+    # viewer never observes a deliberately mixed tutorial snapshot.
+    from phenotypic._cli._cli_completion import (
+        publish_aggregate_snapshot,
+        publish_run_completion_evidence,
+    )
+
+    publish_aggregate_snapshot(OUTPUT_DIR)
+    publish_run_completion_evidence(
+        OUTPUT_DIR,
+        execution_epoch="gui-tutorial-capture",
+    )
     print(
         f"[seed] labeled {len(keys)} smallest-Size_Area objects as "
         f"'background_noise' and reviewed all QC image groups"

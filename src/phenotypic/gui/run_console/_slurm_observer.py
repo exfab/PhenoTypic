@@ -662,11 +662,12 @@ class SlurmLifecycleObserver:
         if inactive:
             if all_confirmed_inactive:
                 return _Observation(
-                    "cancelled",
+                    "failed",
                     job_ids,
                     primary,
                     logs,
-                    "cancellation fence is inactive and all jobs are inactive",
+                    "lifecycle ended terminal-incomplete without a current "
+                    "run-completion marker",
                     terminal=True,
                 )
             return _Observation(
@@ -1307,13 +1308,24 @@ def _run_marker_observation(
             (),
             "terminal marker is visible; awaiting terminal jobs and finalizer",
         )
-    if not _manifest_is_complete(record.output_dir):
+    from phenotypic._cli._cli_completion import (
+        current_success_counts,
+        valid_run_completion,
+    )
+
+    marker_authority = current_success_counts(record.output_dir) is not None
+    publication_incomplete = (
+        valid_run_completion(record.output_dir) is None
+        if marker_authority
+        else not _manifest_is_complete(record.output_dir)
+    )
+    if publication_incomplete:
         return _Observation(
             "reconciling",
             (),
             None,
             (),
-            "terminal marker is visible; awaiting complete manifest",
+            "terminal marker is visible; awaiting current publication evidence",
         )
     return _Observation(
         "complete", (), None, (), "SLURM publication completed", True

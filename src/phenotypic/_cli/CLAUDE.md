@@ -39,7 +39,9 @@ and runs three content-defined stages. The per-image stage cores live in
    apply post-ops + `measure(apply_post=False)`, atomically re-save the HDF,
    **delete the sidecar** (mandatory).
 
-**Resume is content-defined.** Plain `--resume` includes failed staged GPU images.
+**Continuation is automatic and content-defined.** Run the same command again;
+there is no `--resume` flag. Exact terminal failures remain skipped unless
+`--retry-failures` is supplied.
 A missing or invalid HDF selects Stage 1; a valid HDF without a sidecar selects
 Stage 2; and a valid HDF with a sidecar selects Stage 3. Stage 3 writes an atomic
 terminal marker after publishing the parquet, HDF, and plot, then deletes the
@@ -56,6 +58,36 @@ Use the shared `stage_event` context manager + `emit_missing_prereq` helpers in
 trio.
 
 ## SLURM chaining (`_cli_staged_slurm.py` + `_cli_staged_slurm_worker.py`)
+
+### Array trigger routing, not scheduler sidecar jobs
+
+Do not add a **scheduler sidecar job**, meaning an extra `sbatch` job intended
+to run in parallel beside an already active ordinary array. The cluster's
+allocation and submission bounds are consumed by the array cohort, so an
+outside sidecar may remain pending, starve the work it is meant to accompany,
+or exceed the bounded submission topology.
+
+Route ancillary work that must run with an ordinary array **through the array
+itself**. Insert a reserved trigger token into the array task-entry list and
+dispatch that token inside the generated array script. Follow the existing
+`_CHECKPOINT_SENTINEL = "__PHENOTYPIC_CHECKPOINT__"` and
+`_MANIFEST_SENTINEL = "__PHENOTYPIC_MANIFEST__"` pattern in
+`_cli_slurm_array_scripts.py`; do not submit a parallel helper job. A new
+trigger must:
+
+- use a collision-resistant reserved `__PHENOTYPIC_<ROLE>__` token;
+- be routed by an explicit array-worker branch rather than treated as an image;
+- be included when calculating the task-entry count and chunk size, so the
+  final `#SBATCH --array` length remains within `MaxArraySize`; and
+- have tests proving both the trigger routing and the absence of a standalone
+  parallel submission.
+
+This scheduler rule is unrelated to the staged GPU `.npy` objmap **sidecar
+file**. It also does not convert a terminal `afterany` finalizer into an array
+entry: a finalizer runs after the array becomes terminal and is not a parallel
+sidecar. The existing staged-GPU controller topology is a specialized,
+explicitly capacity-reserved design; do not generalize it into new ordinary
+array sidecars.
 
 > **Queue ordinary SLURM work through the drip-feed dispatcher, and staged GPU
 > work through its recoverable controller.** The CPU autonomous strategy and

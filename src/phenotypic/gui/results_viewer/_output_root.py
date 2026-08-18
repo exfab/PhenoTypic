@@ -244,6 +244,11 @@ class OutputRoot:
             cache_root=cache_root,
         )
         consistency = inspect_output_consistency(layout)
+        if not consistency.core_readable:
+            raise ValueError(
+                "Core aggregate files are not authorized by a valid "
+                "aggregate publication marker"
+            )
         last_change: OutputSnapshotChangedError | None = None
         for attempt in range(_SNAPSHOT_READ_ATTEMPTS):
             cancel.raise_if_cancelled()

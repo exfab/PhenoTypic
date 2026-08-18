@@ -44,7 +44,7 @@ from ._cli_slurm_lifecycle import (
 )
 from ._cli_staged_resume import stage3_completion_exists
 
-_MANIFEST_VERSION = 2
+_MANIFEST_VERSION = 3
 _STATE_FILENAME = "staged_orchestration.json"
 _FAILURES_FILENAME = "stage2_terminal_failures.jsonl"
 _DEACTIVATIONS_FILENAME = "staged_epoch_deactivations.jsonl"
@@ -60,6 +60,9 @@ class StagedManifestEntry:
     image_name: str
     stem: str
     input_path: str
+    work_id: str = ""
+    relative_image_path: str = ""
+    attempt_id: str = ""
 
     @property
     def identity(self) -> str:
@@ -235,10 +238,10 @@ def write_staged_manifest(
 def load_staged_manifest(path: Path) -> list[StagedManifestEntry]:
     """Load and validate a versioned staged manifest."""
     raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    if not isinstance(raw, dict) or raw.get("version") != _MANIFEST_VERSION:
+    if not isinstance(raw, dict) or raw.get("version") not in (2, _MANIFEST_VERSION):
         raise ValueError(
             f"Unsupported staged manifest version in {path}; "
-            f"expected {_MANIFEST_VERSION}"
+            f"expected 2 or {_MANIFEST_VERSION}"
         )
     images = raw.get("images")
     if not isinstance(images, list):

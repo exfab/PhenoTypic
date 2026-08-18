@@ -22,6 +22,7 @@ from typing import (
     Final,
     List,
     Literal,
+    Mapping,
     Optional,
     TYPE_CHECKING,
 )
@@ -59,7 +60,6 @@ from phenotypic.sdk_ import (
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
-    metadata_csv_deliverable_path,
     logs_dir,
     pipeline_json_path,
     pipeline_publication_lock,
@@ -948,27 +948,6 @@ def finalize_post_master_outputs(
     post_df = post_df.select(order_measurement_columns(post_df.columns))
     _seed_measurements(output_dir, post_df)
 
-    # Best-effort copy of the --metadata source CSV → deliverables/metadata.csv,
-    # so a portable, co-located copy of the FULL original mapping survives next to
-    # the run (the mirror is not a substitute for it: the left join keeps every
-    # metadata row but a later post op may filter rows away, and
-    # job_metadata.json only holds an absolute path useless once results move off
-    # the cluster). Content-only copy (shutil.copy, not copy2 — mtime is not
-    # preserved by design); re-running/--recompile overwrites it with a fresh
-    # copy, mirroring master_measurements.*. Guarded like the other finalize side
-    # effects: a failure is logged and never raised (spec §8.3 / D6).
-    if metadata_csv is not None:
-        try:
-            shutil.copy(
-                metadata_csv, metadata_csv_deliverable_path(output_dir)
-            )
-        except Exception:
-            logger.warning(
-                "Failed to copy --metadata CSV to deliverables/metadata.csv "
-                "(master/measurements still written)",
-                exc_info=True,
-            )
-
     # Always emit the REMBI run manifest (deliverables/rembi.yaml) from the
     # post-applied MIRROR — never the clean master — folding its per-colony rows
     # up to each REMBI module's scope. Best-effort like the metadata.csv copy:
@@ -1192,7 +1171,7 @@ def split_master_by_feature(
     return written
 
 
-def aggregate_measurements(
+def _aggregate_measurements_unlocked(
     output_dir: Path,
     dataset_names: List[str],
     include_dataset_column: bool = True,
@@ -1259,19 +1238,21 @@ def aggregate_measurements(
         pipeline has any :class:`PostMeasurement` op configured. Split
         and analysis failures never change the return value.
     """
-    # Chunked (SLURM) runs publish from `_dataset_aggregated.parquet`, which
-    # `discover_measurement_sources` prefers over the individual per-image
-    # parquets. Checkpoint sentinels fire only every `checkpoint_interval`
-    # images and no terminal sentinel is emitted, so the last partial group is
-    # never chunked and would be silently absent from the master. Flush it
-    # first. No-op for unchunked runs and for evenly-divided ones.
-    from ._cli_chunk_writer import flush_trailing_measurements_if_chunked
+    from ._cli_completion import authorized_measurement_sources
 
-    flush_trailing_measurements_if_chunked(output_dir)
+    authorized_sources = authorized_measurement_sources(output_dir)
+    if authorized_sources is None:
+        # Legacy chunked runs publish from `_dataset_aggregated.parquet`.
+        from ._cli_chunk_writer import flush_trailing_measurements_if_chunked
 
-    path_to_dataset = measurement_sources_by_path(
-        discover_measurement_sources(output_dir, dataset_names)
-    )
+        flush_trailing_measurements_if_chunked(output_dir)
+        path_to_dataset = measurement_sources_by_path(
+            discover_measurement_sources(output_dir, dataset_names)
+        )
+    else:
+        # Schema-3 terminal publication never trusts checkpoint aggregates or
+        # an unmarked per-image Parquet merely because it exists.
+        path_to_dataset = authorized_sources
 
     # -- Stage to $SCRATCH ---------------------------------------------
     scratch_dir = _stage_to_scratch(list(path_to_dataset.keys()))
@@ -1353,7 +1334,38 @@ def aggregate_measurements(
         study_config=study_config,
     )
 
+    if authorized_sources is not None:
+        from ._cli_completion import publish_aggregate_snapshot
+
+        publish_aggregate_snapshot(output_dir)
+
     return master_csv_path
+
+
+def aggregate_measurements(
+    output_dir: Path,
+    dataset_names: List[str],
+    include_dataset_column: bool = True,
+    metadata_csv: Optional[Path] = None,
+    pipeline: Optional["ImagePipeline"] = None,
+    no_qc: bool = False,
+    study_config: Optional[dict] = None,
+) -> Optional[Path]:
+    """Serialize aggregate publication across forward and recompile finalizers."""
+    from phenotypic.sdk_ import phenotypic_cache_dir
+    from phenotypic.sdk_._file_locking import exclusive_path_lock
+
+    lock_path = phenotypic_cache_dir(output_dir) / ".aggregate_publication.lock"
+    with exclusive_path_lock(lock_path, timeout=60.0):
+        return _aggregate_measurements_unlocked(
+            output_dir=output_dir,
+            dataset_names=dataset_names,
+            include_dataset_column=include_dataset_column,
+            metadata_csv=metadata_csv,
+            pipeline=pipeline,
+            no_qc=no_qc,
+            study_config=study_config,
+        )
 
 
 class OutputManager:
@@ -1616,6 +1628,8 @@ class OutputManager:
         image: "Image",
         dataset_name: str,
         image_stem: str,
+        *,
+        root_attributes: Mapping[str, str] | None = None,
     ) -> Optional[Path]:
         """Save processed image as HDF5 under ``results/<ds>/hdf/``.
 
@@ -1639,6 +1653,13 @@ class OutputManager:
         )
         try:
             image.save2hdf5(tmp_path)
+            if root_attributes:
+                import h5py
+
+                with h5py.File(tmp_path, "r+") as handle:
+                    for key, value in root_attributes.items():
+                        handle.attrs[key] = value
+                    handle.flush()
             os.replace(tmp_path, final_path)
             logger.info("Saved HDF5 for %s/%s", dataset_name, image_stem)
             return final_path

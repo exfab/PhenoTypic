@@ -30,10 +30,11 @@ By default, the CLI returns immediately after submitting SLURM jobs. To wait:
 python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ --wait
 ```
 
-## Resume on SLURM
+## Continue on SLURM
 
-Resume works the same way as local execution:
+Automatic continuation works the same way as local execution. Run the same
+command again:
 
 ```bash
-python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ --resume
+python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/
 ```

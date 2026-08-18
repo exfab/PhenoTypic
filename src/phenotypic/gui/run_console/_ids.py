@@ -104,7 +104,7 @@ RC_STORE_RECENTS_REFRESH = "rc-store-recents-refresh"
 #: Local / SLURM radio.
 RC_RADIO_MODE = "rc-radio-mode"
 
-#: Inline checklist with ``dry-run`` and ``resume`` options.
+#: Inline checklist with dry-run and terminal-failure retry options.
 RC_CHECKS_FLAGS = "rc-checks-flags"
 
 #: Advanced collapse wrapper.

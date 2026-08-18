@@ -29,8 +29,14 @@ from ._cli_staged_resume import (
     valid_staged_hdf,
     write_stage3_completion_marker,
 )
-from ._stages import StageTag
+from ._stages import (
+    STAGE_GPU_DETECT,
+    STAGE_MEASURE,
+    STAGE_PREPROCESS,
+    StageTag,
+)
 from ._cli_update_state import append_completion_event, append_event
+from ._cli_failure_tracker import PerImageScientificError
 
 ActiveCheck = Callable[[], None]
 
@@ -100,18 +106,29 @@ def stage1_preprocess_core(
     image_type: ImageTypeName,
     read_kwargs: Optional[Dict[str, Any]] = None,
     active_check: ActiveCheck | None = None,
+    work_id: str | None = None,
 ) -> None:
     """Read raw image, apply the pre-detector ops, save the staged HDF."""
-    read_kwargs = dict(read_kwargs or {})
-    image_cls = _image_class(image_type)
-    detect_mode = read_kwargs.pop("detect_mode", "gray")
-    image = image_cls.imread(image_path, **read_kwargs)
-    if detect_mode != "gray":
-        image.set_detect_mode(detect_mode)
-    plan.pre_pipeline.apply(image, inplace=True)
+    try:
+        read_kwargs = dict(read_kwargs or {})
+        image_cls = _image_class(image_type)
+        detect_mode = read_kwargs.pop("detect_mode", "gray")
+        image = image_cls.imread(image_path, **read_kwargs)
+        if detect_mode != "gray":
+            image.set_detect_mode(detect_mode)
+        plan.pre_pipeline.apply(image, inplace=True)
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise PerImageScientificError(STAGE_PREPROCESS, exc) from exc
     _check_active(active_check)
     saved_hdf = output_manager.save_image_hdf(
-        image, dataset_name, image_stem
+        image,
+        dataset_name,
+        image_stem,
+        root_attributes=(
+            {"phenotypic_work_id": work_id} if work_id is not None else None
+        ),
     )
     if saved_hdf is None or not valid_staged_hdf(saved_hdf):
         raise RuntimeError(
@@ -136,9 +153,14 @@ def stage2_detect_core(
     hdf = dataset_hdf_dir(output_dir, dataset_name) / f"{image_stem}.h5"
     image = image_cls.load_hdf5(hdf)  # read-only use; never re-saved here
     array = getattr(image, detector.input_layer)[:]
-    sample = detector._preprocess(array)
-    batch = detector._collate([sample])
-    result = detector._infer_batch(batch)[0]
+    try:
+        sample = detector._preprocess(array)
+        batch = detector._collate([sample])
+        result = detector._infer_batch(batch)[0]
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise PerImageScientificError(STAGE_GPU_DETECT, exc) from exc
     _check_active(active_check)
     write_sidecar(output_dir, dataset_name, image_stem, result)
 
@@ -177,6 +199,7 @@ def stage3_merge_measure_core(
     image_type: ImageTypeName,
     active_check: ActiveCheck | None = None,
     image_name: str | None = None,
+    work_id: str | None = None,
 ) -> None:
     """Merge the sidecar, apply post-ops + measure, re-save HDF, delete sidecar."""
     image_cls = _image_class(image_type)
@@ -185,19 +208,27 @@ def stage3_merge_measure_core(
     image.name = image_stem
 
     result = load_sidecar(output_dir, dataset_name, image_stem)
-    plan.gpu_detector._write_object_output(image, result)
+    try:
+        plan.gpu_detector._write_object_output(image, result)
 
-    # post-detector ops (refiners incl. watershed) then measurement. measure()
-    # runs only the measurement queue (apply_post=False keeps per-image parquets
-    # clean), so the refiners applied above do not run twice.
-    plan.post_pipeline.apply(image, inplace=True)
-    measurements = plan.post_pipeline.measure(image, apply_post=False)
+        # post-detector ops (refiners incl. watershed) then measurement.
+        plan.post_pipeline.apply(image, inplace=True)
+        measurements = plan.post_pipeline.measure(image, apply_post=False)
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise PerImageScientificError(STAGE_MEASURE, exc) from exc
 
     _check_active(active_check)
     output_manager.save_measurements(measurements, dataset_name, image_stem)
     _check_active(active_check)
     saved_hdf = output_manager.save_image_hdf(
-        image, dataset_name, image_stem
+        image,
+        dataset_name,
+        image_stem,
+        root_attributes=(
+            {"phenotypic_work_id": work_id} if work_id is not None else None
+        ),
     )  # atomic re-save
     if saved_hdf is None or not valid_staged_hdf(saved_hdf):
         raise RuntimeError(
@@ -215,12 +246,13 @@ def stage3_merge_measure_core(
         image_stem=image_stem,
         strict=True,
     )
-    _check_active(active_check)
-    write_stage3_completion_marker(
-        output_dir,
-        dataset_name,
-        image_name or image_stem,
-        image_stem,
-    )
-    _check_active(active_check)
-    delete_sidecar(output_dir, dataset_name, image_stem)  # mandatory cleanup
+    if work_id is None:
+        _check_active(active_check)
+        write_stage3_completion_marker(
+            output_dir,
+            dataset_name,
+            image_name or image_stem,
+            image_stem,
+        )
+        _check_active(active_check)
+        delete_sidecar(output_dir, dataset_name, image_stem)

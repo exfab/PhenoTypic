@@ -280,7 +280,7 @@ class TestStateManagement:
 
         state = create_initial_state(config, datasets, temp_output_dir)
 
-        assert state.version == "2.0.0"
+        assert state.version == "3.0.0"
         assert "test" in state.datasets
         assert state.execution_mode == "local"
 
@@ -975,11 +975,36 @@ class TestSLURMFeatures:
         assert result["time_min"] == 30
 
 
-class TestResumeMode:
-    """Tests for resume mode functionality."""
+class TestAutomaticContinuation:
+    """Tests for automatic continuation functionality."""
 
-    def test_resume_with_changed_input_images(self, runner, tmp_path):
-        """Test that resume fails when input images change (missing images)."""
+    def test_restart_and_overwrite_are_mutually_exclusive(
+        self, runner, tmp_path
+    ):
+        input_dir = tmp_path / "images"
+        input_dir.mkdir()
+        pipeline = tmp_path / "pipeline.json"
+        pipeline.write_text(json.dumps({"operations": []}))
+
+        result = runner.invoke(
+            phenotypic_cli,
+            [
+                "--pipeline",
+                str(pipeline),
+                "--input",
+                str(input_dir),
+                "--output",
+                str(tmp_path / "output"),
+                "--restart",
+                "--overwrite",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "--restart and --overwrite are mutually exclusive" in result.output
+
+    def test_continuation_with_changed_input_images(self, runner, tmp_path):
+        """Test that continuation fails when admitted input is missing."""
         from datetime import datetime
 
         # Create initial state
@@ -1025,7 +1050,7 @@ class TestResumeMode:
         # Now delete one image
         image1.unlink()
 
-        # Try to resume - should fail because input changed
+        # Repeat the command. Automatic continuation rejects the missing input.
         result = runner.invoke(
             phenotypic_cli,
             [
@@ -1035,7 +1060,6 @@ class TestResumeMode:
                 str(temp_input_dir),
                 "-o",
                 str(output_dir),
-                "--resume",
                 "--skip-validation",
             ],
         )
@@ -1044,37 +1068,7 @@ class TestResumeMode:
         assert result.exit_code != 0
         assert "changed" in result.output.lower() or "input" in result.output.lower()
 
-    def test_resume_with_no_state_file(self, runner, tmp_path):
-        """Test that resume fails gracefully when state file doesn't exist."""
-
-        temp_input_dir = tmp_path / "images"
-        temp_input_dir.mkdir()
-        (temp_input_dir / "image.jpg").write_text("dummy")
-
-        temp_pipeline = tmp_path / "pipeline.json"
-        temp_pipeline.write_text(json.dumps({"operations": []}))
-
-        output_dir = tmp_path / "output"
-        output_dir.mkdir()  # Create directory but NO state file
-
-        result = runner.invoke(
-            phenotypic_cli,
-            [
-                "--pipeline",
-                str(temp_pipeline),
-                "--input",
-                str(temp_input_dir),
-                "-o",
-                str(output_dir),
-                "--resume",
-                "--skip-validation",
-            ],
-        )
-
-        assert result.exit_code != 0
-        assert "processing state" in result.output.lower()
-
-    def test_resume_without_output_specified(self, runner, tmp_path):
+    def test_continuation_command_without_output_specified(self, runner, tmp_path):
         """Test that the public CLI requires --output."""
 
         temp_input_dir = tmp_path / "images"
@@ -1091,7 +1085,6 @@ class TestResumeMode:
                 str(temp_pipeline),
                 "--input",
                 str(temp_input_dir),
-                "--resume",
                 "--skip-validation",
             ],
         )
@@ -1099,7 +1092,7 @@ class TestResumeMode:
         assert result.exit_code != 0
         assert "--output" in result.output
 
-    def test_resume_rejects_active_staged_jobs(
+    def test_continuation_rejects_active_staged_jobs(
         self, runner, tmp_path, temp_pipeline, monkeypatch
     ):
         input_dir = tmp_path / "images"
@@ -1121,7 +1114,6 @@ class TestResumeMode:
                 str(input_dir),
                 "--output",
                 str(output_dir),
-                "--resume",
                 "--skip-validation",
             ],
         )
@@ -1129,7 +1121,7 @@ class TestResumeMode:
         assert result.exit_code != 0
         assert "123, 456" in result.output
 
-    def test_resume_rejects_indeterminate_ledgered_job(
+    def test_continuation_rejects_indeterminate_ledgered_job(
         self, runner, tmp_path, temp_pipeline, monkeypatch
     ):
         from phenotypic._cli._cli_staged_orchestration import append_job_ledger
@@ -1162,7 +1154,6 @@ class TestResumeMode:
                 str(input_dir),
                 "--output",
                 str(output_dir),
-                "--resume",
                 "--skip-validation",
             ],
         )
@@ -1427,7 +1418,7 @@ class TestEdgeCases:
         pil_img = PILImage.fromarray(grid_image.rgb[:].astype("uint8"))
         pil_img.save(input_dir / "image_004.jpg")
 
-        # Resume should fail with clear error about image set mismatch
+        # Automatic continuation should fail with an input-set mismatch.
         result = runner.invoke(
             phenotypic_cli,
             [
@@ -1437,7 +1428,6 @@ class TestEdgeCases:
                 str(input_dir),
                 "-o",
                 str(output_dir),
-                "--resume",
                 "--skip-validation",
             ],
         )
@@ -1646,15 +1636,20 @@ class TestNewCoverageGaps:
         """Test that generated SLURM scripts do NOT include --flat-mode (feature removed)."""
         from phenotypic._cli._cli_slurm_array_scripts import generate_array_job_script
 
+        pipeline_path = temp_output_dir / "pipeline.json"
+        pipeline_path.write_text("{}", encoding="utf-8")
+        images = [temp_output_dir / f"img{i}.png" for i in range(10)]
+        for image in images:
+            image.write_bytes(image.name.encode())
         dataset = Dataset(
             name="plate1",
-            images=[Path(f"img{i}.png") for i in range(10)],
+            images=images,
             input_dir=Path("."),
             output_dir=temp_output_dir,
         )
 
         config = ExecutionConfig(
-            pipeline_json=Path("pipeline.json"),
+            pipeline_json=pipeline_path,
             input_path=Path("."),
             output_dir=temp_output_dir,
             image_type="GridImage",
@@ -1695,15 +1690,20 @@ class TestNewCoverageGaps:
         import subprocess
         from phenotypic._cli._cli_slurm_array_scripts import generate_array_job_script
 
+        pipeline_path = temp_output_dir / "pipeline.json"
+        pipeline_path.write_text("{}", encoding="utf-8")
+        images = [temp_output_dir / f"img{i}.png" for i in range(5)]
+        for image in images:
+            image.write_bytes(image.name.encode())
         dataset = Dataset(
             name="test",
-            images=[Path(f"img{i}.png") for i in range(5)],
+            images=images,
             input_dir=Path("."),
             output_dir=temp_output_dir,
         )
 
         config = ExecutionConfig(
-            pipeline_json=Path("pipeline.json"),
+            pipeline_json=pipeline_path,
             input_path=Path("."),
             output_dir=temp_output_dir,
             image_type="GridImage",

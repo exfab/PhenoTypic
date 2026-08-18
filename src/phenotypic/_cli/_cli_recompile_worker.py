@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -255,8 +256,33 @@ def _run_finalizer_task(output_dir: Path, task: dict[str, Any]) -> None:
             f"{len(failed_measurements)} measurement shard task(s) failed"
         )
 
-    merged_df = _write_master_outputs_from_shards(output_dir)
-    _run_post_master_steps(output_dir, progress_dir, task, merged_df)
+    from phenotypic.sdk_ import phenotypic_cache_dir
+    from phenotypic.sdk_._file_locking import exclusive_path_lock
+
+    publication_lock = (
+        phenotypic_cache_dir(output_dir) / ".aggregate_publication.lock"
+    )
+    with exclusive_path_lock(publication_lock, timeout=60.0):
+        merged_df = _write_master_outputs_from_shards(output_dir)
+        _run_post_master_steps(output_dir, task, merged_df)
+        from ._cli_completion import current_success_counts
+
+        if merged_df is not None and current_success_counts(output_dir) is not None:
+            from ._cli_completion import (
+                current_run_is_complete,
+                publish_aggregate_snapshot,
+                publish_run_completion_evidence,
+            )
+
+            publish_aggregate_snapshot(output_dir)
+            if current_run_is_complete(output_dir) is True:
+                publish_run_completion_evidence(
+                    output_dir,
+                    execution_epoch=os.environ.get(
+                        "SLURM_JOB_ID", "recompile-slurm"
+                    ),
+                )
+        _regenerate_recompile_dashboard(output_dir, progress_dir, task)
 
 
 def _wait_for_non_finalizer_statuses(
@@ -346,18 +372,14 @@ def _write_master_outputs_from_shards(output_dir: Path) -> Any | None:
 
 def _run_post_master_steps(
     output_dir: Path,
-    progress_dir: Path,
     task: dict[str, Any],
     merged_df: Any | None,
 ) -> None:
-    """Run final outputs, rebuild the manifest, and generate the dashboard."""
+    """Run canonical post-master outputs before marker publication."""
     from ._cli_output_manager import (
         _load_pipeline_from_output_dir,
         finalize_post_master_outputs,
     )
-    from ._cli_utils import load_job_metadata
-    from ._dashboard import regenerate_dashboard_artifacts
-
     if merged_df is not None:
         # Single canonical post-master finalize: applies post to a copy of
         # the clean master, joins the external metadata CSV (when given)
@@ -377,6 +399,15 @@ def _run_post_master_steps(
             metadata_csv=metadata_csv,
             no_qc=no_qc,
         )
+
+
+
+def _regenerate_recompile_dashboard(
+    output_dir: Path, progress_dir: Path, task: dict[str, Any]
+) -> None:
+    """Rebuild display caches after marker-last publication succeeds."""
+    from ._cli_utils import load_job_metadata
+    from ._dashboard import regenerate_dashboard_artifacts
 
     job_meta = load_job_metadata(progress_dir)
     dataset_names = [str(name) for name in task.get("dataset_names", [])]

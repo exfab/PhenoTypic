@@ -206,6 +206,7 @@ class TestArrayJobScriptGeneration:
         """Test basic array job script generation."""
         output_dir = tmp_path / "output"
         config.processing_generation = "generation-123"
+        config.slurm_generation = "scheduler-generation-456"
         script_path = generate_array_job_script(
             dataset=dataset,
             array_indices=(0, 10),
@@ -216,6 +217,13 @@ class TestArrayJobScriptGeneration:
 
         assert script_path.exists()
         assert script_path.is_file()
+        content = script_path.read_text(encoding="utf-8")
+        assert "PHENOTYPIC_PROCESSING_GENERATION=generation-123" in content
+        assert "PHENOTYPIC_SLURM_GENERATION=scheduler-generation-456" in content
+        assert "--expected-work-id" in content
+        assert "--expected-input-sha256" in content
+        assert "--expected-pipeline-sha256" in content
+        assert "--attempt-id" in content
         if sys.platform != "win32":
             assert script_path.stat().st_mode & 0o111  # Executable
 
@@ -313,7 +321,7 @@ class TestArrayJobScriptGeneration:
         images = []
         for i in range(2500):
             img_path = tmp_path / f"image_{i:04d}.tif"
-            # Don't create actual files for performance
+            img_path.write_bytes(str(i).encode())
             images.append(img_path)
 
         large_dataset = Dataset(

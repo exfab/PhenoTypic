@@ -51,6 +51,7 @@ def test_load_migrates_and_reads_legacy_run(tmp_path: Path) -> None:
     legacy = tmp_path / "processing_state.json"
     (tmp_path / ".phenotypic").rename(tmp_path / "_tmp")  # extract
     (tmp_path / "_tmp" / "processing_state.json").rename(legacy)
+    (tmp_path / "_tmp" / ".processing_state.json.lock").unlink()
     (tmp_path / "_tmp").rmdir()
     assert legacy.is_file() and not new.exists()
     loaded = load_processing_state(tmp_path)

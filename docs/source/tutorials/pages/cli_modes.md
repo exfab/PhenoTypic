@@ -114,26 +114,26 @@ pipelines on two different images.
 
 ### Surviving interruptions
 
-`--resume` skips completed work. Staged GPU pipelines infer the earliest required
-stage from their HDF, sidecar, and Stage-3 marker, including images with recorded
-intermediate-stage failures. If everything is already done, the CLI says so and exits:
+Re-running the same compatible command skips completed work automatically.
+Staged GPU pipelines infer the earliest required stage from their HDF, sidecar,
+and Stage-3 marker. If everything is already done, the CLI says so and exits:
 
 ```bash
 python -m phenotypic --pipeline pipe.json --input ./plates --output ./out \
-    --image-type Image --resume
+    --image-type Image
 # ✓ All images already processed!
 ```
 
-Four flags control what happens to prior state, and the CLI enforces the
-combinations:
+Three flags control exceptional handling of prior state:
 
-- `--resume` — skip completed images. Staged GPU failures resume automatically.
-- `--retry-failures` — also re-process recorded CPU/legacy failures. **Requires `--resume`.**
-- `--restart` — clear the state file and start over. **Mutually exclusive with `--resume`.**
-- `--overwrite` — delete the output directory contents first. **Mutually exclusive with `--resume`.**
+- `--retry-failures` — also re-process exact terminal failures recorded for the
+  current computation.
+- `--restart` — clear current machine state and start a new lifecycle.
+- `--overwrite` — delete the output directory contents first.
 
-For CPU pipelines, use `--resume --retry-failures` after fixing whatever broke — a corrupt input
-file, an out-of-memory detector — to reprocess only the images that failed.
+Use `--retry-failures` after fixing a terminal scientific-processing failure to
+reprocess only the matching failed computations. Infrastructure failures, such
+as OOM or timeout, remain pending and are selected by an ordinary repeat call.
 
 ## `measure` — new numbers, same segmentation
 
@@ -149,17 +149,9 @@ There is no `--input`: the images are discovered from the output root. Passing
 one is an error.
 
 Because `measure` re-reads a finished segmentation rather than producing one, it
-refuses any flag that implies a fresh detection pass or that mutates run state.
-Each of these is rejected with a pointed message:
-
-```console
-$ python -m phenotypic --mode measure --pipeline pipe.json --output ./out --resume
-Error: --mode measure cannot be combined with --resume; --mode measure is a
-one-shot re-measurement run that does not touch processing state.
-```
-
-The same applies to `--restart`, `--retry-failures`, `--overwrite`, `--sample`,
-and `--dry-run`. `measure` is all-or-nothing over every HDF it finds.
+refuses flags that imply a fresh detection pass or mutate run state. This applies
+to `--restart`, `--retry-failures`, `--overwrite`, `--sample`, and `--dry-run`.
+`measure` is all-or-nothing over every HDF it finds.
 
 ```{note}
 Swap the *measurers* freely, but keep the detector consistent with the one that
@@ -355,8 +347,8 @@ python -m phenotypic -p pipe.json -i ./plates -o ./trial --sample 5 --random-see
 python -m phenotypic -p pipe.json -i ./plates -o ./out \
     --slurm slurm_partition=compute --slurm mem_gb=16 --slurm time=240
 
-# 4. Something died overnight — resume, retrying the failures.
-python -m phenotypic -p pipe.json -i ./plates -o ./out --resume --retry-failures
+# 4. Retry exact terminal scientific failures after fixing their cause.
+python -m phenotypic -p pipe.json -i ./plates -o ./out --retry-failures
 
 # 5. Add a texture measurer. No re-detection.
 python -m phenotypic -m measure -p pipe_with_texture.json -o ./out

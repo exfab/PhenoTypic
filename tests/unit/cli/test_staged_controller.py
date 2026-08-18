@@ -129,9 +129,7 @@ def test_controller_allows_one_zero_progress_retry_then_advances(
     assert state["phase"] == "stage3"
     assert [role for role, _ in submitted].count("stage2") == 2
     assert [role for role, _ in submitted].count("stage3") == 1
-    assert "plate\0image.tif" in terminal_stage2_identities(
-        tmp_path, "epoch-1"
-    )
+    assert terminal_stage2_identities(tmp_path, "epoch-1") == set()
 
 
 def test_controller_rearms_behind_discovered_active_array(

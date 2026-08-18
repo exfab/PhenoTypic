@@ -14,6 +14,7 @@ from typing import Any, Dict, Optional
 
 from phenotypic import GridImage, Image, ImagePipeline
 from phenotypic.sdk_.typing_ import ImageTypeName, ProcessOnlyLayer
+from ._cli_failure_tracker import PerImageScientificError
 
 logger = logging.getLogger(__name__)
 
@@ -75,28 +76,33 @@ def process_single_apply_only_core(
     Raises on failure (caller logs/handles), mirroring
     :func:`process_single_image_core`.
     """
-    pipeline = ImagePipeline.from_json(pipeline_path)
-    image_cls = GridImage if image_type == "GridImage" else Image
+    try:
+        pipeline = ImagePipeline.from_json(pipeline_path)
+        image_cls = GridImage if image_type == "GridImage" else Image
 
-    read_kwargs = dict(read_kwargs)
-    if image_type == "GridImage":
-        from ._cli_utils import resolve_grid_shape
+        read_kwargs = dict(read_kwargs)
+        if image_type == "GridImage":
+            from ._cli_utils import resolve_grid_shape
 
-        nrows, ncols = resolve_grid_shape(
-            cli_nrows=cli_nrows,
-            cli_ncols=cli_ncols,
-            pipeline_nrows=pipeline.nrows,
-            pipeline_ncols=pipeline.ncols,
-        )
-        read_kwargs["nrows"] = nrows
-        read_kwargs["ncols"] = ncols
+            nrows, ncols = resolve_grid_shape(
+                cli_nrows=cli_nrows,
+                cli_ncols=cli_ncols,
+                pipeline_nrows=pipeline.nrows,
+                pipeline_ncols=pipeline.ncols,
+            )
+            read_kwargs["nrows"] = nrows
+            read_kwargs["ncols"] = ncols
 
-    detect_mode = read_kwargs.pop("detect_mode", "gray")
-    image = image_cls.imread(image_path, **read_kwargs)
-    if detect_mode != "gray":
-        image.set_detect_mode(detect_mode)
+        detect_mode = read_kwargs.pop("detect_mode", "gray")
+        image = image_cls.imread(image_path, **read_kwargs)
+        if detect_mode != "gray":
+            image.set_detect_mode(detect_mode)
 
-    pipeline.apply(image, inplace=True)
+        pipeline.apply(image, inplace=True)
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise PerImageScientificError("process", exc) from exc
 
     out_path = process_only_output_path(output_dir, image_path, input_root, layer)
     write_process_only_layer(image, layer, out_path)

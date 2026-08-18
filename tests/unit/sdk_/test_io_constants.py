@@ -1064,6 +1064,26 @@ class TestClearMachineState:
         assert not (out / "processing_state.json").exists()
         assert not (out / "processing_events.log").exists()
 
+    def test_restart_preserves_terminal_failure_journal(
+        self, tmp_path: Path
+    ) -> None:
+        from phenotypic.sdk_ import (
+            clear_machine_state,
+            processing_state_path,
+            terminal_failures_jsonl_path,
+        )
+
+        processing_state_path(tmp_path).parent.mkdir(parents=True)
+        processing_state_path(tmp_path).write_text("{}", encoding="utf-8")
+        journal = terminal_failures_jsonl_path(tmp_path)
+        journal.write_text('{"work_id":"historical"}\n', encoding="utf-8")
+
+        assert clear_machine_state(tmp_path) is True
+        assert journal.read_text(encoding="utf-8") == (
+            '{"work_id":"historical"}\n'
+        )
+        assert not processing_state_path(tmp_path).exists()
+
     def test_noop_when_nothing_present(self, tmp_path: Path) -> None:
         from phenotypic.sdk_ import clear_machine_state
 

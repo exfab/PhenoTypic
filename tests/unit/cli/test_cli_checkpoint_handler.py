@@ -373,11 +373,13 @@ class TestRunFinalizeCoercion:
             patch(
                 "phenotypic._cli._dashboard._generator.generate_dashboard"
             ),
-            pytest.raises(RuntimeError, match="incomplete or failed manifest"),
         ):
             _run_finalize(output_dir, progress_dir)
 
         assert not run_completion_marker_path(output_dir).exists()
+        lifecycle = load_slurm_lifecycle(output_dir)
+        assert lifecycle is not None
+        assert lifecycle["active"] is False
 
     def test_completion_marker_is_idempotent_for_same_finished_generation(
         self,

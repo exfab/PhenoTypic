@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
@@ -24,7 +24,6 @@ from phenotypic.sdk_ import (
     PROCESSING_EVENTS_LOG,
     DashboardManifestKey,
     JobMetadataKey,
-    atomic_write_json,
     checkpoint_lock_filename,
     event_log_path,
     processing_report_html_path,
@@ -276,8 +275,14 @@ def _run_finalize(
     if aggregate_path is None:
         message = "No current-epoch measurements were available to aggregate"
         if epoch is not None:
-            raise RuntimeError(message)
-        logger.warning(message)
+            from ._cli_completion import current_success_counts
+
+            counts = current_success_counts(output_dir)
+            if counts is None or counts[0] > 0:
+                raise RuntimeError(message)
+            logger.warning("%s; closing terminal-incomplete lifecycle", message)
+        else:
+            logger.warning(message)
     _check_epoch()
 
     # Final manifest
@@ -318,9 +323,24 @@ def _run_finalize(
 
     if epoch is not None:
         _publish_staged_report_and_readme(output_dir, job_metadata, epoch)
-        from ._cli_staged_orchestration import mark_staged_complete
+        from ._cli_completion import (
+            current_run_is_complete,
+            publish_run_completion_evidence,
+        )
+        from ._cli_staged_orchestration import (
+            deactivate_orchestration,
+            mark_staged_complete,
+        )
 
-        mark_staged_complete(output_dir, epoch)
+        marker_completion = current_run_is_complete(output_dir)
+        if marker_completion is False:
+            deactivate_orchestration(output_dir, "terminal_incomplete")
+        else:
+            mark_staged_complete(output_dir, epoch)
+        if marker_completion is True:
+            publish_run_completion_evidence(
+                output_dir, execution_epoch=epoch
+            )
     elif slurm_generation is not None:
         _publish_run_completion_marker(output_dir, slurm_generation)
 
@@ -330,7 +350,7 @@ def _run_finalize(
 def _publish_run_completion_marker(
     output_dir: Path,
     slurm_generation: str,
-) -> None:
+) -> bool:
     """Publish and fence ordinary completion for the exact active generation."""
     from ._cli_slurm_lifecycle import (
         deactivate_generation,
@@ -352,64 +372,67 @@ def _publish_run_completion_marker(
                 existing = None
             if (
                 isinstance(existing, dict)
-                and existing.get("generation") == slurm_generation
+                and existing.get("execution_epoch", existing.get("generation"))
+                == slurm_generation
                 and existing.get("status") == "complete"
                 and existing.get("finalizer_succeeded") is True
             ):
-                return
+                return True
             raise RuntimeError(
                 "Cannot publish completion after the SLURM generation "
                 "was cancelled or superseded"
             )
-        try:
-            manifest = json.loads(
-                resolve_manifest_json_path(output_dir).read_text(
-                    encoding="utf-8"
+        from ._cli_completion import current_run_is_complete
+
+        complete = current_run_is_complete(output_dir)
+        if complete is None:
+            try:
+                manifest = json.loads(
+                    resolve_manifest_json_path(output_dir).read_text(
+                        encoding="utf-8"
+                    )
                 )
+            except (OSError, ValueError) as exc:
+                raise RuntimeError(
+                    "Cannot publish legacy SLURM completion without a valid manifest"
+                ) from exc
+            if not isinstance(manifest, dict):
+                raise RuntimeError("Final dashboard manifest is not a JSON object")
+            completed = manifest.get(DashboardManifestKey.COMPLETED)
+            failed = manifest.get(DashboardManifestKey.FAILED)
+            total = manifest.get(DashboardManifestKey.TOTAL_IMAGES)
+            complete = (
+                manifest.get(DashboardManifestKey.IS_COMPLETE) is True
+                and isinstance(completed, int)
+                and not isinstance(completed, bool)
+                and isinstance(failed, int)
+                and not isinstance(failed, bool)
+                and isinstance(total, int)
+                and not isinstance(total, bool)
+                and failed == 0
+                and completed == total
             )
-        except (OSError, ValueError) as exc:
-            raise RuntimeError(
-                "Cannot publish the SLURM completion marker without "
-                "a valid manifest"
-            ) from exc
-        if not isinstance(manifest, dict):
-            raise RuntimeError("Final dashboard manifest is not a JSON object")
-        completed = manifest.get(DashboardManifestKey.COMPLETED)
-        failed = manifest.get(DashboardManifestKey.FAILED)
-        total = manifest.get(DashboardManifestKey.TOTAL_IMAGES)
-        complete = (
-            manifest.get(DashboardManifestKey.IS_COMPLETE) is True
-            and isinstance(completed, int)
-            and not isinstance(completed, bool)
-            and isinstance(failed, int)
-            and not isinstance(failed, bool)
-            and isinstance(total, int)
-            and not isinstance(total, bool)
-            and failed == 0
-            and completed == total
-        )
         if not complete:
-            raise RuntimeError(
-                "Cannot publish the SLURM completion marker for an incomplete "
-                "or failed manifest"
+            if not deactivate_generation(output_dir, slurm_generation):
+                raise RuntimeError(
+                    "Incomplete SLURM generation could not be closed"
+                )
+            logger.info(
+                "SLURM generation is terminal-incomplete; no completion marker published"
             )
-        atomic_write_json(
-            marker_path,
-            {
-                "schema_version": 1,
-                "generation": slurm_generation,
-                "status": "complete",
-                "finalizer_succeeded": True,
-                "completed_at": datetime.now(timezone.utc).isoformat(
-                    timespec="milliseconds"
-                ),
-            },
+            return False
+        from ._cli_completion import publish_run_completion_evidence
+
+        publish_run_completion_evidence(
+            output_dir,
+            execution_epoch=slurm_generation,
         )
         if not deactivate_generation(output_dir, slurm_generation):
             raise RuntimeError(
                 "SLURM completion marker was published but the generation "
                 "could not be deactivated"
             )
+        return True
 
 
 def _publish_staged_report_and_readme(

@@ -9,6 +9,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, TypeVar
+from uuid import uuid4
 
 from phenotypic.sdk_ import (
     JobMetadataKey,
@@ -30,6 +31,7 @@ from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_execution_strategies import ExecutionStrategy
+from ._cli_failure_tracker import work_id_for_image
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
     completed_inventory_images,
@@ -135,7 +137,10 @@ def _stage_worker_body(
         f"--epoch {q(epoch)}",
     ]
     if resume:
-        parts.append("--resume")
+        # Internal worker contract, not a public lifecycle option. This keeps
+        # automatic continuation distinct from --restart after removing the
+        # public continuation flag.
+        parts.append("--reuse-existing")
     if markers_required:
         parts.append("--stage3-markers-required")
     if stage == 2:
@@ -487,16 +492,23 @@ class StagedSlurmStrategy(ExecutionStrategy):
     ) -> ExecutionResults:
         start = datetime.now()
         cfg = self.config
-        manifest = [
-            StagedManifestEntry(
-                dataset=ds.name,
-                image_name=img.name,
-                stem=img.stem,
-                input_path=str(Path(img).absolute()),
-            )
-            for ds in datasets
-            for img in ds.images
-        ]
+        manifest: list[StagedManifestEntry] = []
+        for dataset in datasets:
+            for image in dataset.images:
+                work_id, relative_path = work_id_for_image(
+                    cfg, dataset.name, image
+                )
+                manifest.append(
+                    StagedManifestEntry(
+                        dataset=dataset.name,
+                        image_name=image.name,
+                        stem=image.stem,
+                        input_path=str(Path(image).absolute()),
+                        work_id=work_id,
+                        relative_image_path=relative_path,
+                        attempt_id=uuid4().hex,
+                    )
+                )
 
         # Chunk to the TIGHTER of MaxArraySize and the conservative
         # MaxSubmitJobs estimate. Reserve slots for the running controller and

@@ -487,9 +487,8 @@ class TestFinalizeReemitsErrorDeliverables:
         assert tools_.measurements_parquet_path(output_dir).exists()
 
 
-class TestFinalizeCopiesMetadataCsv:
-    """``finalize_post_master_outputs`` copies the ``--metadata`` source CSV to
-    ``deliverables/metadata.csv`` (best-effort, never raising) — spec §8 / D6."""
+class TestFinalizeDoesNotCopyMetadataCsv:
+    """Finalization consumes only the already-snapshotted metadata path."""
 
     @staticmethod
     def _master_df() -> pl.DataFrame:
@@ -502,7 +501,7 @@ class TestFinalizeCopiesMetadataCsv:
             }
         )
 
-    def test_copies_metadata_csv_byte_for_byte(self, tmp_path: Path) -> None:
+    def test_does_not_copy_metadata_during_finalization(self, tmp_path: Path) -> None:
         import phenotypic.sdk_ as tools_
 
         output_dir = tmp_path / "out"
@@ -526,9 +525,7 @@ class TestFinalizeCopiesMetadataCsv:
             metadata_csv=source, no_qc=True,
         )
 
-        copied = tools_.metadata_csv_deliverable_path(output_dir)
-        assert copied.exists()
-        assert copied.read_bytes() == source.read_bytes()
+        assert not tools_.metadata_csv_deliverable_path(output_dir).exists()
 
     def test_no_metadata_csv_means_no_copy(self, tmp_path: Path) -> None:
         import phenotypic.sdk_ as tools_
@@ -545,15 +542,15 @@ class TestFinalizeCopiesMetadataCsv:
         # finalize still produced the mirror.
         assert tools_.measurements_parquet_path(output_dir).exists()
 
-    def test_missing_source_is_best_effort_no_raise(self, tmp_path: Path) -> None:
+    def test_missing_source_does_not_publish_metadata(self, tmp_path: Path) -> None:
         import phenotypic.sdk_ as tools_
 
         output_dir = tmp_path / "out"
         output_dir.mkdir()
         missing = tmp_path / "does_not_exist.csv"
 
-        # Must NOT raise even though the source is absent (the join itself is
-        # also guarded, so finalize completes and seeds the mirror).
+        # The metadata snapshot is a startup responsibility. Finalization may
+        # tolerate a missing legacy path, but it must never manufacture a copy.
         finalize_post_master_outputs(
             output_dir, self._master_df(), ImagePipeline(),
             metadata_csv=missing, no_qc=True,

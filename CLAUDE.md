@@ -45,19 +45,20 @@
 ### CLI
 
 - `uv run python -m phenotypic` — single pipeline on images/directories (parallel,
-  SLURM, resume)
+  SLURM, automatic continuation)
 - `uv run python -m phenotypic --mode process --layer {rgb|gray|detect_mat|objmap}` —
   apply-only export: runs `pipeline.apply()` and writes ONE image layer per input
   (via the accessor `imsave` — `rgb` integer TIFF, `gray`/`detect_mat` float TIFF,
   `objmap` 16-bit raw-label PNG), mirroring the input tree. Skips
   measurement/deliverables/QC/dashboard; machine-state lives under `.phenotypic/`.
-  Full local + SLURM + resume reuse.
+  Full local + SLURM continuation reuse. Run the same command again after an
+  interruption or when new compatible inputs appear; there is no `--resume` flag.
 - **GPU detectors stage automatically:** when a pipeline contains a `GpuDetector`,
   `python -m phenotypic` runs detection as three internal stages — CPU preprocess →
   resident-model GPU detect → CPU measure — reusing the per-image HDF. Stage 2 writes a
   per-image `.npy` objmap **sidecar** (HDF opened read-only); Stage 3 merges it into the
   final HDF, measures, and deletes the sidecar. The output folder is identical to a
-  single-pass run; resume is content-defined (valid HDF → sidecar → atomic Stage-3
+  single-pass run; continuation is content-defined (valid HDF → sidecar → atomic Stage-3
   completion marker) and progress is
   stage-tagged. `--mode process --layer objmap` exports objmaps after Stages 1–2.
   On SLURM, the stages submit through an **epoch-fenced recoverable controller**:
@@ -80,6 +81,20 @@
 - `uv run python -m phenotypic.tune run spec.json -i <images> -o <out>` —
   hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/
   `--storage-url`
+
+#### SLURM array auxiliary work
+
+- Do not submit scheduler **sidecar jobs** in parallel beside an active ordinary
+  array. Allocation/submission bounds are already consumed by the array cohort.
+- Route ancillary work through reserved trigger entries inside the array task
+  list, following the existing `__PHENOTYPIC_CHECKPOINT__` and
+  `__PHENOTYPIC_MANIFEST__` dispatch pattern. Count every trigger entry when
+  sizing chunks against `MaxArraySize`, and test that no standalone parallel job
+  is submitted.
+- This rule concerns scheduler jobs, not the staged GPU `.npy` objmap sidecar
+  file. A terminal `afterany` finalizer is also not a parallel sidecar.
+- See `src/phenotypic/_cli/CLAUDE.md` for the full routing contract. Root
+  `AGENTS.md` is a symlink to this file and therefore carries the same rule.
 
 ### GUI hub
 
