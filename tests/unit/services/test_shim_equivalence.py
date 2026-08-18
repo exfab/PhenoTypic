@@ -115,3 +115,58 @@ def test_discovery_stays_lazy():
     assert proc.stdout.strip() == "True", (
         "importing _services.registry eagerly built the registry"
     )
+
+
+def test_export_is_one_function():
+    from phenotypic._services.tune_spec import export_best_from_run as canonical
+    from phenotypic.gui.tune._export import export_best_from_run as shim
+
+    assert shim is canonical
+
+
+def test_export_shim_reexports_every_public_name():
+    """The shim surface is derived from the imports the repo actually makes.
+
+    ``_callbacks.py`` and ``tests/unit/gui/tune/test_export.py`` between them
+    pull all five functions plus ``PreparedPipelineExport``; the private
+    ``_params_from_best_params_payload`` travels too so the shim stays a
+    complete view of the original module rather than of its ``__all__``.
+    """
+    from phenotypic._services import tune_spec
+    from phenotypic.gui.tune import _export as shim
+
+    for name in (
+        "PreparedPipelineExport",
+        "_params_from_best_params_payload",
+        "export_best_from_run",
+        "export_pareto_pipeline",
+        "export_winning_pipeline",
+        "prepare_best_from_run",
+        "publish_prepared_export",
+    ):
+        assert getattr(shim, name) is getattr(tune_spec, name), name
+
+
+def test_command_is_one_function():
+    from phenotypic._services.tune_spec import build_tune_command as canonical
+    from phenotypic.gui.tune._command import build_tune_command as shim
+
+    assert shim is canonical
+
+
+def test_command_shim_reexports_every_public_name():
+    """``_layout.py:38``, ``_launch.py:26`` and ``_callbacks.py:55`` import these."""
+    from phenotypic._services import tune_spec
+    from phenotypic.gui.tune import _command as shim
+
+    for name in (
+        "DEFAULT_STORAGE_ENV",
+        "ExecutionTarget",
+        "StorageMode",
+        "ValidatedTuneCommand",
+        "build_tune_command",
+        "render_launch_command",
+        "render_tokens",
+        "storage_url_preflight_issue",
+    ):
+        assert getattr(shim, name) is getattr(tune_spec, name), name

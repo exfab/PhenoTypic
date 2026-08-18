@@ -117,3 +117,88 @@ would have shipped green while proving nothing.
 - `uv run --no-sync mypy src/phenotypic`: **421 errors in 125 files** — exactly
   the baseline, no new errors.
 - `uv run --no-sync ruff check <the five changed paths>`: clean.
+
+---
+
+## T7 part 1 — fold `_command.py` and `_export.py` (COMPLETE)
+
+Done ahead of the team lead's answer because **all three options on the table
+move these two modules unchanged** — neither touches the contested upward
+reaches. `_validation.py` and `_setup_authoring.py` are the only ones that do,
+and they are still held.
+
+| File | State |
+|---|---|
+| `src/phenotypic/_services/tune_spec.py` | 330 → 832 lines; two new sections with banners |
+| `src/phenotypic/gui/tune/_command.py` | 382 → 31 lines, shim |
+| `src/phenotypic/gui/tune/_export.py` | 109 → 28 lines, shim |
+| `tests/unit/services/test_shim_equivalence.py` | +4 tests |
+
+### Exported surface of `_services/tune_spec.py` after T7 part 1
+
+`__all__` (13): `PreparedPipelineExport`, `ValidatedTuneCommand`,
+`apply_space_edits`, `build_tune_command`, `export_best_from_run`,
+`export_pareto_pipeline`, `export_winning_pipeline`, `prepare_best_from_run`,
+`publish_prepared_export`, `render_launch_command`, `render_tokens`,
+`space_to_spec`, `storage_url_preflight_issue`.
+
+Also module-level and re-exported by a shim or imported by name elsewhere:
+`DEFAULT_STORAGE_ENV`, `ExecutionTarget`, `StorageMode`, `_RunRootLike`,
+`_apply_edits`, `_build_search_space`, `_default_qc_scorer`, `_editable_knobs`,
+`_is_tuning_spec`, `_load_space_source`, `_params_from_best_params_payload`,
+`_recover_typed_choices`, `_try_load_pipeline`, `_try_load_spec`, plus the
+module-private `_ENV_NAME`, `_INLINE_PASSWORD_ISSUE`, `_PORTABLE_PREFIX`,
+`_resolve_existing`, `_resolve_output`, `_storage_tokens`.
+
+Shim surfaces were AST-derived from every `from <module> import ...` in `src/`
+and `tests/`, per the X2/X3 standing instruction — not from the plan's list.
+That is how `_params_from_best_params_payload` and `render_tokens` got into the
+`_export` / `_command` shims.
+
+### How the upward imports were resolved (resolution-order option 1 throughout)
+
+- `_command.py:12` `gui.shell._sandbox.SandboxRoot` → `_services.sandbox`
+- `_command.py:13-17` `gui.tune._run_argv.{tune_run_argv,
+  tune_run_argv_from_tail, tune_run_tail}` → `_services.argv` **directly**, not
+  through the 15-line shim
+- `_export.py` had no upward imports at all
+
+**No allowlist entry was added.** `GUI_IMPORT_ALLOWLIST` still holds exactly one
+entry (`_services.runs -> gui.shell._classifier`).
+
+### Deviation
+
+**D4 — the merge is verbatim, including module-level import cost.** `_export.py`
+imported `ImagePipeline`, `TuningSpec`, `build_pipeline` and five `sdk_` helpers
+at module level; `tune_spec.py` previously deferred all of those into function
+bodies. Keeping the deferrals would have meant rewriting the moved code, which
+is the "a move that quietly takes a behaviour change with it" the review
+protocol names. So the imports moved up to module level and the four now-dead
+local imports (`resolve_tuning_spec_path`/`resolve_pipeline_config_path`,
+`TuningSpec`, `ImagePipeline`, `TuningSpec` in `space_to_spec`) were dropped
+rather than left shadowing identical objects. Verified: `phenotypic.tune._spec`,
+`phenotypic.tune._evaluation` and both shims are **optuna-free**, so
+`test_space_module_does_not_import_optuna` still holds, and
+`phenotypic.tune.TuningSpec is phenotypic.tune._spec.TuningSpec` is `True`.
+
+### Mutations run (all restored; `git status` verified)
+
+| # | Mutation | Result |
+|---|---|---|
+| M8 | `_export` shim redefines `export_best_from_run` | **FAIL** ×2 — `test_export_is_one_function`, `test_export_shim_reexports_every_public_name` |
+| M9 | drop `render_tokens` from the `_command` shim | **FAIL** — `test_command_shim_reexports_every_public_name` (AttributeError) |
+| M10 | pure half imports `SandboxRoot` through `gui.shell._sandbox` instead of `_services.sandbox` | **FAIL** ×2 — tier gate + `test_pure_half_does_not_import_the_gui`. This is precisely the mistake the brief warned about, and both guards catch it. |
+| M11 | pure half imports the argv builders through `gui.tune._run_argv` instead of `_services.argv` | **FAIL** — tier gate (`'phenotypic.gui.tune._run_argv'`) |
+
+### Gates at T7 part 1
+
+- `tests/unit/gui` + `tests/integration/gui` + `tests/unit/services`:
+  **1780 passed, 3 skipped, 2 deselected** (= 1776 at T6 + the 4 new shim tests).
+- `uv run --no-sync mypy src/phenotypic`: **421 errors in 125 files** — baseline.
+- `uv run --no-sync ruff check <the four changed paths>`: clean.
+
+## Still open
+
+`_validation.py` and `_setup_authoring.py` are **not** folded. Both depend on
+the team-lead decision recorded under *T7 blocker* above. Nothing else in T6/T7
+remains.
