@@ -1,0 +1,109 @@
+phenotypic.schema.ACQUISITION
+=============================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: ACQUISITION
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ACQUISITION.category
+      ~ACQUISITION.header_set
+      ~ACQUISITION.kind
+      ~ACQUISITION.tier
+      ~ACQUISITION.rembi_module
+      ~ACQUISITION.header_scheme
+      ~ACQUISITION.member_for_header
+      ~ACQUISITION.owns_header
+      ~ACQUISITION.get_labels
+      ~ACQUISITION.get_headers
+      ~ACQUISITION.rst_table
+      ~ACQUISITION.append_rst_to_doc
+      ~ACQUISITION.encode
+      ~ACQUISITION.replace
+      ~ACQUISITION.split
+      ~ACQUISITION.rsplit
+      ~ACQUISITION.join
+      ~ACQUISITION.capitalize
+      ~ACQUISITION.casefold
+      ~ACQUISITION.title
+      ~ACQUISITION.center
+      ~ACQUISITION.count
+      ~ACQUISITION.expandtabs
+      ~ACQUISITION.find
+      ~ACQUISITION.partition
+      ~ACQUISITION.index
+      ~ACQUISITION.ljust
+      ~ACQUISITION.lower
+      ~ACQUISITION.lstrip
+      ~ACQUISITION.rfind
+      ~ACQUISITION.rindex
+      ~ACQUISITION.rjust
+      ~ACQUISITION.rstrip
+      ~ACQUISITION.rpartition
+      ~ACQUISITION.splitlines
+      ~ACQUISITION.strip
+      ~ACQUISITION.swapcase
+      ~ACQUISITION.translate
+      ~ACQUISITION.upper
+      ~ACQUISITION.startswith
+      ~ACQUISITION.endswith
+      ~ACQUISITION.removeprefix
+      ~ACQUISITION.removesuffix
+      ~ACQUISITION.isascii
+      ~ACQUISITION.islower
+      ~ACQUISITION.isupper
+      ~ACQUISITION.istitle
+      ~ACQUISITION.isspace
+      ~ACQUISITION.isdecimal
+      ~ACQUISITION.isdigit
+      ~ACQUISITION.isnumeric
+      ~ACQUISITION.isalpha
+      ~ACQUISITION.isalnum
+      ~ACQUISITION.isidentifier
+      ~ACQUISITION.isprintable
+      ~ACQUISITION.zfill
+      ~ACQUISITION.format
+      ~ACQUISITION.format_map
+      ~ACQUISITION.maketrans
+      ~ACQUISITION.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ACQUISITION.CATEGORY
+      ~ACQUISITION.resolved_kind
+      ~ACQUISITION.resolved_tier
+      ~ACQUISITION.resolved_rembi_module
+      ~ACQUISITION.use_label
+      ~ACQUISITION.use_badge
+      ~ACQUISITION.IMAGING_DATE
+      ~ACQUISITION.INSTRUMENT
+      ~ACQUISITION.EXPERIMENTER
+      ~ACQUISITION.RESOLUTION
+      ~ACQUISITION.EXPOSURE_TIME
+      ~ACQUISITION.label
+      ~ACQUISITION.desc
+      ~ACQUISITION.bio_desc
+      ~ACQUISITION.image
+      ~ACQUISITION.pair
+      ~ACQUISITION.tier_override
+      ~ACQUISITION.derivation_type
+      ~ACQUISITION.derives_from
+      ~ACQUISITION.rembi_module_override
+   
+   

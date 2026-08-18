@@ -672,10 +672,11 @@ To force local execution instead:</p>
 </pre></div>
 </div>
 </section>
-<section id="resume-on-slurm">
-<h2>Resume on SLURM<a class="headerlink" href="#resume-on-slurm" title="Link to this heading">#</a></h2>
-<p>Resume works the same way as local execution:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/<span class="w"> </span>--resume
+<section id="continue-on-slurm">
+<h2>Continue on SLURM<a class="headerlink" href="#continue-on-slurm" title="Link to this heading">#</a></h2>
+<p>Automatic continuation works the same way as local execution. Run the same
+command again:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/
 </pre></div>
 </div>
 </section>
@@ -707,7 +708,7 @@ To force local execution instead:</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#automatic-slurm-detection">Automatic SLURM Detection</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#slurm-arguments">SLURM Arguments</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wait-for-completion">Wait for Completion</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#resume-on-slurm">Resume on SLURM</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#continue-on-slurm">Continue on SLURM</a></li>
 </ul>
   </nav></div>
 

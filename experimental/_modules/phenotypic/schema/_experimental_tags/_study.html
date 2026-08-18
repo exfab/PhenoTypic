@@ -578,6 +578,9 @@
     
     <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../../schema.html" class="nav-link">phenotypic.schema</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.schema._experimental_tags._study</span></li>
   </ul>
 </nav>
@@ -600,30 +603,23 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._rembi</span><span class="w"> </span><span class="kn">import</span> <span class="n">REMBI_MODULE</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdentityInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetadataInfo</span>
 
 
-<div class="viewcode-block" id="STUDY_METADATA">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.STUDY_METADATA.html#phenotypic.schema.STUDY_METADATA">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">STUDY_METADATA</span><span class="p">(</span><span class="n">IdentityInfo</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recommended ``MetadataStudy_*`` tags for the REMBI Study component.</span>
+<div class="viewcode-block" id="STUDY">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.STUDY.html#phenotypic.schema.STUDY">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">STUDY</span><span class="p">(</span><span class="n">MetadataInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recommended metadata tags for the REMBI Study component.</span>
 
 <span class="sd">    One set per run (title, authors, license, …). Mirrors REMBI&#39;s Study field</span>
-<span class="sd">    names. Members render as ``MetadataStudy_&lt;Label&gt;`` (e.g.</span>
-<span class="sd">    ``MetadataStudy_Title``). Structured REMBI lists (authors/publications/links)</span>
-<span class="sd">    are flattened to scalar tags whose value may be a delimited string.</span>
+<span class="sd">    names. Members render in the shared ``Metadata_&lt;Label&gt;`` namespace.</span>
+<span class="sd">    Structured REMBI lists (authors/publications/links) are flattened to scalar</span>
+<span class="sd">    tags whose value may be a delimited string.</span>
 <span class="sd">    Recommended vocabulary, not a validator.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="STUDY_METADATA.category">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.STUDY_METADATA.html#phenotypic.schema.STUDY_METADATA.category">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;MetadataStudy&quot;</span></div>
-
-
-<div class="viewcode-block" id="STUDY_METADATA.rembi_module">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.STUDY_METADATA.html#phenotypic.schema.STUDY_METADATA.rembi_module">[docs]</a>
+<div class="viewcode-block" id="STUDY.rembi_module">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.STUDY.html#phenotypic.schema.STUDY.rembi_module">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">rembi_module</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">REMBI_MODULE</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">STUDY</span></div>

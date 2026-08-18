@@ -1,0 +1,112 @@
+phenotypic.schema.IMAGE
+=======================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: IMAGE
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~IMAGE.category
+      ~IMAGE.header_set
+      ~IMAGE.kind
+      ~IMAGE.tier
+      ~IMAGE.rembi_module
+      ~IMAGE.header_scheme
+      ~IMAGE.member_for_header
+      ~IMAGE.owns_header
+      ~IMAGE.get_labels
+      ~IMAGE.get_headers
+      ~IMAGE.rst_table
+      ~IMAGE.append_rst_to_doc
+      ~IMAGE.encode
+      ~IMAGE.replace
+      ~IMAGE.split
+      ~IMAGE.rsplit
+      ~IMAGE.join
+      ~IMAGE.capitalize
+      ~IMAGE.casefold
+      ~IMAGE.title
+      ~IMAGE.center
+      ~IMAGE.count
+      ~IMAGE.expandtabs
+      ~IMAGE.find
+      ~IMAGE.partition
+      ~IMAGE.index
+      ~IMAGE.ljust
+      ~IMAGE.lower
+      ~IMAGE.lstrip
+      ~IMAGE.rfind
+      ~IMAGE.rindex
+      ~IMAGE.rjust
+      ~IMAGE.rstrip
+      ~IMAGE.rpartition
+      ~IMAGE.splitlines
+      ~IMAGE.strip
+      ~IMAGE.swapcase
+      ~IMAGE.translate
+      ~IMAGE.upper
+      ~IMAGE.startswith
+      ~IMAGE.endswith
+      ~IMAGE.removeprefix
+      ~IMAGE.removesuffix
+      ~IMAGE.isascii
+      ~IMAGE.islower
+      ~IMAGE.isupper
+      ~IMAGE.istitle
+      ~IMAGE.isspace
+      ~IMAGE.isdecimal
+      ~IMAGE.isdigit
+      ~IMAGE.isnumeric
+      ~IMAGE.isalpha
+      ~IMAGE.isalnum
+      ~IMAGE.isidentifier
+      ~IMAGE.isprintable
+      ~IMAGE.zfill
+      ~IMAGE.format
+      ~IMAGE.format_map
+      ~IMAGE.maketrans
+      ~IMAGE.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~IMAGE.CATEGORY
+      ~IMAGE.resolved_kind
+      ~IMAGE.resolved_tier
+      ~IMAGE.resolved_rembi_module
+      ~IMAGE.use_label
+      ~IMAGE.use_badge
+      ~IMAGE.UUID
+      ~IMAGE.IMAGE_NAME
+      ~IMAGE.PARENT_IMAGE_NAME
+      ~IMAGE.PARENT_UUID
+      ~IMAGE.IMFORMAT
+      ~IMAGE.IMAGE_TYPE
+      ~IMAGE.BIT_DEPTH
+      ~IMAGE.SUFFIX
+      ~IMAGE.label
+      ~IMAGE.desc
+      ~IMAGE.bio_desc
+      ~IMAGE.image
+      ~IMAGE.pair
+      ~IMAGE.tier_override
+      ~IMAGE.derivation_type
+      ~IMAGE.derives_from
+      ~IMAGE.rembi_module_override
+   
+   

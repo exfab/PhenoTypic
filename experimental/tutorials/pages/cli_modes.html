@@ -787,24 +787,24 @@ pipelines on two different images.</p>
 </section>
 <section id="surviving-interruptions">
 <h3>Surviving interruptions<a class="headerlink" href="#surviving-interruptions" title="Link to this heading">#</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">--resume</span></code> skips completed work. Staged GPU pipelines infer the earliest required
-stage from their HDF, sidecar, and Stage-3 marker, including images with recorded
-intermediate-stage failures. If everything is already done, the CLI says so and exits:</p>
+<p>Re-running the same compatible command skips completed work automatically.
+Staged GPU pipelines infer the earliest required stage from their HDF, sidecar,
+and Stage-3 marker. If everything is already done, the CLI says so and exits:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipe.json<span class="w"> </span>--input<span class="w"> </span>./plates<span class="w"> </span>--output<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--image-type<span class="w"> </span>Image<span class="w"> </span>--resume
+<span class="w">    </span>--image-type<span class="w"> </span>Image
 <span class="c1"># ✓ All images already processed!</span>
 </pre></div>
 </div>
-<p>Four flags control what happens to prior state, and the CLI enforces the
-combinations:</p>
+<p>Three flags control exceptional handling of prior state:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--resume</span></code> — skip completed images. Staged GPU failures resume automatically.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code> — also re-process recorded CPU/legacy failures. <strong>Requires <code class="docutils literal notranslate"><span class="pre">--resume</span></code>.</strong></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--restart</span></code> — clear the state file and start over. <strong>Mutually exclusive with <code class="docutils literal notranslate"><span class="pre">--resume</span></code>.</strong></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--overwrite</span></code> — delete the output directory contents first. <strong>Mutually exclusive with <code class="docutils literal notranslate"><span class="pre">--resume</span></code>.</strong></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code> — also re-process exact terminal failures recorded for the
+current computation.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--restart</span></code> — clear current machine state and start a new lifecycle.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--overwrite</span></code> — delete the output directory contents first.</p></li>
 </ul>
-<p>For CPU pipelines, use <code class="docutils literal notranslate"><span class="pre">--resume</span> <span class="pre">--retry-failures</span></code> after fixing whatever broke — a corrupt input
-file, an out-of-memory detector — to reprocess only the images that failed.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code> after fixing a terminal scientific-processing failure to
+reprocess only the matching failed computations. Infrastructure failures, such
+as OOM or timeout, remain pending and are selected by an ordinary repeat call.</p>
 </section>
 </section>
 <section id="measure-new-numbers-same-segmentation">
@@ -818,15 +818,9 @@ sitting in <code class="docutils literal notranslate"><span class="pre">results/
 <p>There is no <code class="docutils literal notranslate"><span class="pre">--input</span></code>: the images are discovered from the output root. Passing
 one is an error.</p>
 <p>Because <code class="docutils literal notranslate"><span class="pre">measure</span></code> re-reads a finished segmentation rather than producing one, it
-refuses any flag that implies a fresh detection pass or that mutates run state.
-Each of these is rejected with a pointed message:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>measure<span class="w"> </span>--pipeline<span class="w"> </span>pipe.json<span class="w"> </span>--output<span class="w"> </span>./out<span class="w"> </span>--resume
-<span class="go">Error: --mode measure cannot be combined with --resume; --mode measure is a</span>
-<span class="go">one-shot re-measurement run that does not touch processing state.</span>
-</pre></div>
-</div>
-<p>The same applies to <code class="docutils literal notranslate"><span class="pre">--restart</span></code>, <code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code>, <code class="docutils literal notranslate"><span class="pre">--overwrite</span></code>, <code class="docutils literal notranslate"><span class="pre">--sample</span></code>,
-and <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>. <code class="docutils literal notranslate"><span class="pre">measure</span></code> is all-or-nothing over every HDF it finds.</p>
+refuses flags that imply a fresh detection pass or mutate run state. This applies
+to <code class="docutils literal notranslate"><span class="pre">--restart</span></code>, <code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code>, <code class="docutils literal notranslate"><span class="pre">--overwrite</span></code>, <code class="docutils literal notranslate"><span class="pre">--sample</span></code>, and <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>.
+<code class="docutils literal notranslate"><span class="pre">measure</span></code> is all-or-nothing over every HDF it finds.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Swap the <em>measurers</em> freely, but keep the detector consistent with the one that
@@ -843,6 +837,15 @@ rebuilds the progress manifest, and regenerates the progress dashboard.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>recompile<span class="w"> </span>--output<span class="w"> </span>./out
 </pre></div>
 </div>
+<p>Before aggregation, recompile preflights and automatically migrates
+bundle-owned authoritative metadata to the flat <code class="docutils literal notranslate"><span class="pre">Metadata_&lt;Label&gt;</span></code> namespace.
+The same ordering applies locally and on SLURM. A blocked or failed migration
+aborts before aggregate outputs are published; a canonical bundle is an
+idempotent no-op. The migration receipt printed by the CLI can be used for
+rollback. HDF inputs are migrated copy-on-write, and an external file passed via
+<code class="docutils literal notranslate"><span class="pre">--metadata</span></code> is copied byte-for-byte to <code class="docutils literal notranslate"><span class="pre">deliverables/metadata.csv</span></code> before work,
+then normalized in memory. Neither the external file nor that provenance
+snapshot is rewritten by migration.</p>
 <p>Reach for it when the <em>numbers</em> are right but the <em>presentation</em> is not:</p>
 <ul class="simple">
 <li><p>You deleted or corrupted <code class="docutils literal notranslate"><span class="pre">dashboard.html</span></code>.</p></li>
@@ -1004,7 +1007,7 @@ before cancelling every active job in its ledger.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">--overlay-alpha</span></code> (default <code class="docutils literal notranslate"><span class="pre">0.3</span></code>) — opacity of the label overlay in the
 saved overlay PNGs.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--no-dataset-column</span></code> — drop the <code class="docutils literal notranslate"><span class="pre">MetadataExperiment_Dataset</span></code> column, which is
+<li><p><code class="docutils literal notranslate"><span class="pre">--no-dataset-column</span></code> — drop the <code class="docutils literal notranslate"><span class="pre">Metadata_Dataset</span></code> column, which is
 included by default and is what makes multi-dataset analysis possible.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--no-qc</span></code> — skip the QC compute step. QC otherwise runs whenever the pipeline
 has a non-empty <code class="docutils literal notranslate"><span class="pre">qc</span></code> section, and re-running it resets GUI review progress.</p></li>
@@ -1025,8 +1028,8 @@ python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w
 python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>-p<span class="w"> </span>pipe.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--slurm<span class="w"> </span><span class="nv">slurm_partition</span><span class="o">=</span>compute<span class="w"> </span>--slurm<span class="w"> </span><span class="nv">mem_gb</span><span class="o">=</span><span class="m">16</span><span class="w"> </span>--slurm<span class="w"> </span><span class="nv">time</span><span class="o">=</span><span class="m">240</span>
 
-<span class="c1"># 4. Something died overnight — resume, retrying the failures.</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>-p<span class="w"> </span>pipe.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span>--resume<span class="w"> </span>--retry-failures
+<span class="c1"># 4. Retry exact terminal scientific failures after fixing their cause.</span>
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>-p<span class="w"> </span>pipe.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span>--retry-failures
 
 <span class="c1"># 5. Add a texture measurer. No re-detection.</span>
 python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>-m<span class="w"> </span>measure<span class="w"> </span>-p<span class="w"> </span>pipe_with_texture.json<span class="w"> </span>-o<span class="w"> </span>./out

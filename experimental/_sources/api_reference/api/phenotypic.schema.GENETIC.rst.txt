@@ -1,0 +1,113 @@
+phenotypic.schema.GENETIC
+=========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: GENETIC
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GENETIC.category
+      ~GENETIC.header_set
+      ~GENETIC.kind
+      ~GENETIC.tier
+      ~GENETIC.rembi_module
+      ~GENETIC.header_scheme
+      ~GENETIC.member_for_header
+      ~GENETIC.owns_header
+      ~GENETIC.get_labels
+      ~GENETIC.get_headers
+      ~GENETIC.rst_table
+      ~GENETIC.append_rst_to_doc
+      ~GENETIC.encode
+      ~GENETIC.replace
+      ~GENETIC.split
+      ~GENETIC.rsplit
+      ~GENETIC.join
+      ~GENETIC.capitalize
+      ~GENETIC.casefold
+      ~GENETIC.title
+      ~GENETIC.center
+      ~GENETIC.count
+      ~GENETIC.expandtabs
+      ~GENETIC.find
+      ~GENETIC.partition
+      ~GENETIC.index
+      ~GENETIC.ljust
+      ~GENETIC.lower
+      ~GENETIC.lstrip
+      ~GENETIC.rfind
+      ~GENETIC.rindex
+      ~GENETIC.rjust
+      ~GENETIC.rstrip
+      ~GENETIC.rpartition
+      ~GENETIC.splitlines
+      ~GENETIC.strip
+      ~GENETIC.swapcase
+      ~GENETIC.translate
+      ~GENETIC.upper
+      ~GENETIC.startswith
+      ~GENETIC.endswith
+      ~GENETIC.removeprefix
+      ~GENETIC.removesuffix
+      ~GENETIC.isascii
+      ~GENETIC.islower
+      ~GENETIC.isupper
+      ~GENETIC.istitle
+      ~GENETIC.isspace
+      ~GENETIC.isdecimal
+      ~GENETIC.isdigit
+      ~GENETIC.isnumeric
+      ~GENETIC.isalpha
+      ~GENETIC.isalnum
+      ~GENETIC.isidentifier
+      ~GENETIC.isprintable
+      ~GENETIC.zfill
+      ~GENETIC.format
+      ~GENETIC.format_map
+      ~GENETIC.maketrans
+      ~GENETIC.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GENETIC.CATEGORY
+      ~GENETIC.resolved_kind
+      ~GENETIC.resolved_tier
+      ~GENETIC.resolved_rembi_module
+      ~GENETIC.use_label
+      ~GENETIC.use_badge
+      ~GENETIC.ORGANISM
+      ~GENETIC.STRAIN
+      ~GENETIC.GENOTYPE
+      ~GENETIC.BACKGROUND
+      ~GENETIC.ALLELE
+      ~GENETIC.PLASMID
+      ~GENETIC.SELECTION_MARKER
+      ~GENETIC.MATING_TYPE
+      ~GENETIC.PLOIDY
+      ~GENETIC.label
+      ~GENETIC.desc
+      ~GENETIC.bio_desc
+      ~GENETIC.image
+      ~GENETIC.pair
+      ~GENETIC.tier_override
+      ~GENETIC.derivation_type
+      ~GENETIC.derives_from
+      ~GENETIC.rembi_module_override
+   
+   

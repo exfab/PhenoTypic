@@ -12,8 +12,8 @@ Click the `Run` tab (or navigate to `/run/`):
 ![Run console form.](../../_static/gui_images/run_local/01_run_console_form.png)
 
 The form has three pickers (Pipeline JSON, Input directory, Output
-directory), a Local/SLURM mode radio, two short-flag checkboxes (Dry-run,
-Resume), an `Advanced` collapse for the long-tail flags (`--sample`,
+directory), a Local/SLURM mode radio, two short-flag checkboxes (Dry-run and
+Retry terminal failures), an `Advanced` collapse for the long-tail flags (`--sample`,
 `--nrows`, `--ncols`, `--image-type`, `Workers` → `--njobs`), and a
 `SLURM config` collapse covered on the [next page](05_run_slurm.md).
 The `Log level` field in `Advanced` is reserved — the GUI accepts a
@@ -56,6 +56,8 @@ selected output before taking further action.
 ## Run
 
 Clicking `Run` spawns `python -m phenotypic --mode full <args>` (no `--dry-run`).
+Repeating a compatible run automatically continues its existing lifecycle and
+processes newly eligible work; there is no separate continuation checkbox.
 While the subprocess is alive:
 
 - The log tail polls the ring buffer on a short interval. Lines arrive in

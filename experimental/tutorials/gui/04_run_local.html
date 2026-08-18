@@ -668,8 +668,8 @@ panel shows the live progress dashboard.</p>
 <p>Click the <code class="docutils literal notranslate"><span class="pre">Run</span></code> tab (or navigate to <code class="docutils literal notranslate"><span class="pre">/run/</span></code>):</p>
 <p><img alt="Run console form." src="../../_images/01_run_console_form.png" /></p>
 <p>The form has three pickers (Pipeline JSON, Input directory, Output
-directory), a Local/SLURM mode radio, two short-flag checkboxes (Dry-run,
-Resume), an <code class="docutils literal notranslate"><span class="pre">Advanced</span></code> collapse for the long-tail flags (<code class="docutils literal notranslate"><span class="pre">--sample</span></code>,
+directory), a Local/SLURM mode radio, two short-flag checkboxes (Dry-run and
+Retry terminal failures), an <code class="docutils literal notranslate"><span class="pre">Advanced</span></code> collapse for the long-tail flags (<code class="docutils literal notranslate"><span class="pre">--sample</span></code>,
 <code class="docutils literal notranslate"><span class="pre">--nrows</span></code>, <code class="docutils literal notranslate"><span class="pre">--ncols</span></code>, <code class="docutils literal notranslate"><span class="pre">--image-type</span></code>, <code class="docutils literal notranslate"><span class="pre">Workers</span></code> → <code class="docutils literal notranslate"><span class="pre">--njobs</span></code>), and a
 <code class="docutils literal notranslate"><span class="pre">SLURM</span> <span class="pre">config</span></code> collapse covered on the <a class="reference internal" href="05_run_slurm.html"><span class="std std-doc">next page</span></a>.
 The <code class="docutils literal notranslate"><span class="pre">Log</span> <span class="pre">level</span></code> field in <code class="docutils literal notranslate"><span class="pre">Advanced</span></code> is reserved — the GUI accepts a
@@ -707,6 +707,8 @@ selected output before taking further action.</p>
 <section id="run">
 <h2>Run<a class="headerlink" href="#run" title="Link to this heading">#</a></h2>
 <p>Clicking <code class="docutils literal notranslate"><span class="pre">Run</span></code> spawns <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--mode</span> <span class="pre">full</span> <span class="pre">&lt;args&gt;</span></code> (no <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>).
+Repeating a compatible run automatically continues its existing lifecycle and
+processes newly eligible work; there is no separate continuation checkbox.
 While the subprocess is alive:</p>
 <ul class="simple">
 <li><p>The log tail polls the ring buffer on a short interval. Lines arrive in

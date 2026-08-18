@@ -33,17 +33,18 @@
    
       Entry
       MeasurementInfo
+      MetadataInfo
       REMBI_MODULE
-      METADATA
       METADATA_MATCH
-      ACQUISITION_METADATA
-      CONDITION_METADATA
-      CULTURE_METADATA
-      EXPERIMENT_METADATA
-      GENETIC_METADATA
-      PLATE_METADATA
-      SAMPLE_METADATA
-      STUDY_METADATA
+      IMAGE
+      GENETIC
+      SAMPLE
+      PLATE
+      CONDITION
+      CULTURE
+      EXPERIMENT
+      STUDY
+      ACQUISITION
       BBOX
       ColorComposition
       ColorHSV

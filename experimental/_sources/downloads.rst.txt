@@ -72,7 +72,7 @@ Downloadable Notebooks
     .. grid-item-card:: Tutorial 6: Batch Processing
         :shadow: md
 
-        When you have dozens or hundreds of plates to process, running Python code one image at a time is not practical. PhenoTypic's **command-line interface** (CLI) lets you apply a saved pipeline to an entire directory of plate images with built-in parallelism, checkpointing, and resume.
+        When you have dozens or hundreds of plates to process, running Python code one image at a time is not practical. PhenoTypic's **command-line interface** (CLI) lets you apply a saved pipeline to an entire directory of plate images with built-in parallelism, checkpointing, and automatic continuation.
 
         +++
         :download:`Download notebook <tutorials/notebooks/06_batch_processing.ipynb>`

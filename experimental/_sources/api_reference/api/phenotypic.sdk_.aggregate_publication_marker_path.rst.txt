@@ -1,0 +1,6 @@
+phenotypic.sdk\_.aggregate\_publication\_marker\_path
+=====================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: aggregate_publication_marker_path

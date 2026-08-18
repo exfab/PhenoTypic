@@ -608,7 +608,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">regionprops</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">METADATA</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE_TYPES</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
 
@@ -765,7 +765,7 @@
 <span class="sd">            Extract colony names for tracking:</span>
 
 <span class="sd">            &gt;&gt;&gt; colony_names = [</span>
-<span class="sd">            ...     obj.metadata[METADATA.IMAGE_NAME]</span>
+<span class="sd">            ...     obj.metadata[IMAGE.IMAGE_NAME]</span>
 <span class="sd">            ...     for obj in plate.objects</span>
 <span class="sd">            ... ]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -829,7 +829,7 @@
         <span class="n">current_object</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">props</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
         <span class="n">label</span> <span class="o">=</span> <span class="n">current_object</span><span class="o">.</span><span class="n">label</span>
         <span class="n">object_image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="p">[</span><span class="n">current_object</span><span class="o">.</span><span class="n">slice</span><span class="p">]</span>
-        <span class="n">object_image</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="n">METADATA</span><span class="o">.</span><span class="n">IMAGE_TYPE</span><span class="p">]</span> <span class="o">=</span> <span class="n">IMAGE_TYPES</span><span class="o">.</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">object_image</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="n">IMAGE</span><span class="o">.</span><span class="n">IMAGE_TYPE</span><span class="p">]</span> <span class="o">=</span> <span class="n">IMAGE_TYPES</span><span class="o">.</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">value</span>
         <span class="n">object_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[</span><span class="n">object_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">!=</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">return</span> <span class="n">object_image</span></div>
 

@@ -1,0 +1,109 @@
+phenotypic.schema.EXPERIMENT
+============================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: EXPERIMENT
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~EXPERIMENT.category
+      ~EXPERIMENT.header_set
+      ~EXPERIMENT.kind
+      ~EXPERIMENT.tier
+      ~EXPERIMENT.rembi_module
+      ~EXPERIMENT.header_scheme
+      ~EXPERIMENT.member_for_header
+      ~EXPERIMENT.owns_header
+      ~EXPERIMENT.get_labels
+      ~EXPERIMENT.get_headers
+      ~EXPERIMENT.rst_table
+      ~EXPERIMENT.append_rst_to_doc
+      ~EXPERIMENT.encode
+      ~EXPERIMENT.replace
+      ~EXPERIMENT.split
+      ~EXPERIMENT.rsplit
+      ~EXPERIMENT.join
+      ~EXPERIMENT.capitalize
+      ~EXPERIMENT.casefold
+      ~EXPERIMENT.title
+      ~EXPERIMENT.center
+      ~EXPERIMENT.count
+      ~EXPERIMENT.expandtabs
+      ~EXPERIMENT.find
+      ~EXPERIMENT.partition
+      ~EXPERIMENT.index
+      ~EXPERIMENT.ljust
+      ~EXPERIMENT.lower
+      ~EXPERIMENT.lstrip
+      ~EXPERIMENT.rfind
+      ~EXPERIMENT.rindex
+      ~EXPERIMENT.rjust
+      ~EXPERIMENT.rstrip
+      ~EXPERIMENT.rpartition
+      ~EXPERIMENT.splitlines
+      ~EXPERIMENT.strip
+      ~EXPERIMENT.swapcase
+      ~EXPERIMENT.translate
+      ~EXPERIMENT.upper
+      ~EXPERIMENT.startswith
+      ~EXPERIMENT.endswith
+      ~EXPERIMENT.removeprefix
+      ~EXPERIMENT.removesuffix
+      ~EXPERIMENT.isascii
+      ~EXPERIMENT.islower
+      ~EXPERIMENT.isupper
+      ~EXPERIMENT.istitle
+      ~EXPERIMENT.isspace
+      ~EXPERIMENT.isdecimal
+      ~EXPERIMENT.isdigit
+      ~EXPERIMENT.isnumeric
+      ~EXPERIMENT.isalpha
+      ~EXPERIMENT.isalnum
+      ~EXPERIMENT.isidentifier
+      ~EXPERIMENT.isprintable
+      ~EXPERIMENT.zfill
+      ~EXPERIMENT.format
+      ~EXPERIMENT.format_map
+      ~EXPERIMENT.maketrans
+      ~EXPERIMENT.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~EXPERIMENT.CATEGORY
+      ~EXPERIMENT.resolved_kind
+      ~EXPERIMENT.resolved_tier
+      ~EXPERIMENT.resolved_rembi_module
+      ~EXPERIMENT.use_label
+      ~EXPERIMENT.use_badge
+      ~EXPERIMENT.EXPERIMENT_ID
+      ~EXPERIMENT.PROJECT
+      ~EXPERIMENT.DATASET
+      ~EXPERIMENT.PROTOCOL
+      ~EXPERIMENT.NOTES
+      ~EXPERIMENT.label
+      ~EXPERIMENT.desc
+      ~EXPERIMENT.bio_desc
+      ~EXPERIMENT.image
+      ~EXPERIMENT.pair
+      ~EXPERIMENT.tier_override
+      ~EXPERIMENT.derivation_type
+      ~EXPERIMENT.derives_from
+      ~EXPERIMENT.rembi_module_override
+   
+   

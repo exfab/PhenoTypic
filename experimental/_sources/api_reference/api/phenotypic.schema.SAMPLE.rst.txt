@@ -1,0 +1,114 @@
+phenotypic.schema.SAMPLE
+========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: SAMPLE
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SAMPLE.category
+      ~SAMPLE.header_set
+      ~SAMPLE.kind
+      ~SAMPLE.tier
+      ~SAMPLE.rembi_module
+      ~SAMPLE.header_scheme
+      ~SAMPLE.member_for_header
+      ~SAMPLE.owns_header
+      ~SAMPLE.get_labels
+      ~SAMPLE.get_headers
+      ~SAMPLE.rst_table
+      ~SAMPLE.append_rst_to_doc
+      ~SAMPLE.encode
+      ~SAMPLE.replace
+      ~SAMPLE.split
+      ~SAMPLE.rsplit
+      ~SAMPLE.join
+      ~SAMPLE.capitalize
+      ~SAMPLE.casefold
+      ~SAMPLE.title
+      ~SAMPLE.center
+      ~SAMPLE.count
+      ~SAMPLE.expandtabs
+      ~SAMPLE.find
+      ~SAMPLE.partition
+      ~SAMPLE.index
+      ~SAMPLE.ljust
+      ~SAMPLE.lower
+      ~SAMPLE.lstrip
+      ~SAMPLE.rfind
+      ~SAMPLE.rindex
+      ~SAMPLE.rjust
+      ~SAMPLE.rstrip
+      ~SAMPLE.rpartition
+      ~SAMPLE.splitlines
+      ~SAMPLE.strip
+      ~SAMPLE.swapcase
+      ~SAMPLE.translate
+      ~SAMPLE.upper
+      ~SAMPLE.startswith
+      ~SAMPLE.endswith
+      ~SAMPLE.removeprefix
+      ~SAMPLE.removesuffix
+      ~SAMPLE.isascii
+      ~SAMPLE.islower
+      ~SAMPLE.isupper
+      ~SAMPLE.istitle
+      ~SAMPLE.isspace
+      ~SAMPLE.isdecimal
+      ~SAMPLE.isdigit
+      ~SAMPLE.isnumeric
+      ~SAMPLE.isalpha
+      ~SAMPLE.isalnum
+      ~SAMPLE.isidentifier
+      ~SAMPLE.isprintable
+      ~SAMPLE.zfill
+      ~SAMPLE.format
+      ~SAMPLE.format_map
+      ~SAMPLE.maketrans
+      ~SAMPLE.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SAMPLE.CATEGORY
+      ~SAMPLE.resolved_kind
+      ~SAMPLE.resolved_tier
+      ~SAMPLE.resolved_rembi_module
+      ~SAMPLE.use_label
+      ~SAMPLE.use_badge
+      ~SAMPLE.SAMPLE_ID
+      ~SAMPLE.BIO_REPLICATE
+      ~SAMPLE.COND_REPLICATE
+      ~SAMPLE.TECHNICAL_REPLICATE
+      ~SAMPLE.CLONE
+      ~SAMPLE.LIBRARY_ID
+      ~SAMPLE.SOURCE_PLATE
+      ~SAMPLE.SOURCE_WELL
+      ~SAMPLE.BARCODE
+      ~SAMPLE.CONTROL
+      ~SAMPLE.label
+      ~SAMPLE.desc
+      ~SAMPLE.bio_desc
+      ~SAMPLE.image
+      ~SAMPLE.pair
+      ~SAMPLE.tier_override
+      ~SAMPLE.derivation_type
+      ~SAMPLE.derives_from
+      ~SAMPLE.rembi_module_override
+   
+   

@@ -1,0 +1,39 @@
+phenotypic.sdk\_.MetadataMigrationReport
+========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: MetadataMigrationReport
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MetadataMigrationReport.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MetadataMigrationReport.blocked_count
+      ~MetadataMigrationReport.compatible_count
+      ~MetadataMigrationReport.conflicts
+      ~MetadataMigrationReport.migratable_count
+      ~MetadataMigrationReport.source
+      ~MetadataMigrationReport.status
+      ~MetadataMigrationReport.source_fingerprint
+      ~MetadataMigrationReport.plan_fingerprint
+      ~MetadataMigrationReport.targets
+   
+   

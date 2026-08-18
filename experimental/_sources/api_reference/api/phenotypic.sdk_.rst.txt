@@ -16,6 +16,7 @@
       :toctree:
       :nosignatures:
    
+      aggregate_publication_marker_path
       atomic_write_bytes
       atomic_write_json
       atomic_write_parquet
@@ -27,8 +28,18 @@
       is_metadata_header
       metadata_category_for_label
       metadata_category_prefixes
+      metadata_member_for_header
+      metadata_member_for_label
       metadata_only_mask
+      metadata_owner_for_header
+      metadata_owner_for_label
+      normalize_metadata_columns
       order_measurement_columns
+      migrate_metadata_bundle
+      migrate_metadata_file
+      preflight_metadata_schema
+      rollback_metadata_migration
+      validated_published_metadata_migration_targets
       timed_execution
       analysis_full_parquet_path
       analysis_manifest_path
@@ -66,6 +77,7 @@
       generalization_path
       generation_staging_path
       gui_launch_owner_path
+      image_completion_marker_path
       has_config_suffix
       job_metadata_path
       load_image_from_hdf
@@ -85,6 +97,7 @@
       named_analysis_parquet_path
       named_analysis_paths
       metadata_csv_deliverable_path
+      terminal_failures_jsonl_path
       matches_any_suffix
       migrate_legacy_machine_state
       migrate_legacy_qc
@@ -158,6 +171,9 @@
       LazyWidgetMixin
       NormControlMixin
       NormalizedOutputMixin
+      MetadataMigrationReport
+      MetadataMigrationResult
+      MetadataMigrationTarget
       ChunkManifestKey
       ChunkStateKey
       DashboardManifestKey

@@ -1,0 +1,40 @@
+phenotypic.sdk\_.MetadataMigrationResult
+========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: MetadataMigrationResult
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MetadataMigrationResult.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MetadataMigrationResult.blocked_targets
+      ~MetadataMigrationResult.conflicts
+      ~MetadataMigrationResult.migrated_targets
+      ~MetadataMigrationResult.skipped_targets
+      ~MetadataMigrationResult.status
+      ~MetadataMigrationResult.source
+      ~MetadataMigrationResult.source_fingerprint
+      ~MetadataMigrationResult.resulting_fingerprint
+      ~MetadataMigrationResult.plan_fingerprint
+      ~MetadataMigrationResult.receipt_path
+   
+   

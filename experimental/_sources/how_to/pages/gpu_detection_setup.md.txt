@@ -459,11 +459,12 @@ path when processing a directory:
 The output folder is identical to a single-pass run — staging is an internal
 optimization, not a different output contract.
 
-**Resume is content-defined.** Re-running the same command classifies each image:
+**Continuation is content-defined.** Re-running the same command classifies each image:
 a missing or invalid HDF selects Stage 1, a valid HDF without a sidecar selects
 Stage 2, and a valid HDF with a sidecar selects Stage 3. Stage 3 writes an atomic
 completion marker after publishing the parquet, HDF, and plot, then deletes the
-sidecar. Plain `--resume` automatically includes failed staged images.
+sidecar. Exact terminal scientific failures are retried only when
+`--retry-failures` is supplied; interrupted infrastructure work remains pending.
 Progress is **stage-tagged** in the event log, so the run dashboard can show how
 far each image has moved through the three stages. If Stage 1 fails for an image
 (e.g. an unreadable file), Stages 2 and 3 skip it and record a structured failure

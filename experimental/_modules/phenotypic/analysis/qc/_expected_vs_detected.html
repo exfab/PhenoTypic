@@ -607,6 +607,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">ClassVar</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -620,8 +621,16 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._quality_check</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityCheck</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlotQc</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span><span class="p">,</span> <span class="n">QUALITY_COUNT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ColumnRef</span><span class="p">,</span>
+    <span class="n">ensure_metadata_prefix</span><span class="p">,</span>
+    <span class="n">is_metadata_header</span><span class="p">,</span>
+    <span class="n">metadata_member_for_header</span><span class="p">,</span>
+    <span class="n">metadata_member_for_label</span><span class="p">,</span>
+    <span class="n">normalize_metadata_columns</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">MetadataInfo</span><span class="p">,</span> <span class="n">OBJECT</span><span class="p">,</span> <span class="n">QUALITY_COUNT</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">schema</span>
 
 <span class="c1"># ``metadata`` is a single, unified field that accepts **either** an</span>
 <span class="c1"># in-memory layout :class:`pandas.DataFrame` (an &quot;array&quot;) **or** a path</span>
@@ -658,6 +667,150 @@
         <span class="p">]</span>
     <span class="p">}),</span>
 <span class="p">]</span>
+
+
+<span class="n">_EXTERNAL_QUALIFIED_HEADER</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^[A-Z][A-Za-z0-9]*_[A-Z][A-Za-z0-9]*$&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_known_nonmetadata_header</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether *column* belongs to an explicit non-metadata schema enum.&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">schema</span><span class="o">.</span><span class="n">__all__</span><span class="p">:</span>
+        <span class="n">candidate</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="n">MeasurementInfo</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="n">MetadataInfo</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">candidate</span><span class="o">.</span><span class="n">owns_header</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_layout_metadata_column</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether a layout column belongs to the metadata namespace.</span>
+
+<span class="sd">    Known metadata headers and labels always normalize. Explicit known</span>
+<span class="sd">    non-metadata schema headers remain unchanged. Unknown external headers must</span>
+<span class="sd">    use two PascalCase segments (for example, ``ExternalMeasure_BatchKey``);</span>
+<span class="sd">    lower snake-case labels such as ``batch_id`` remain bare layout metadata.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">is_metadata_header</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">metadata_member_for_header</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="ow">or</span> <span class="n">metadata_member_for_label</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span>
+        <span class="n">_is_known_nonmetadata_header</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">_EXTERNAL_QUALIFIED_HEADER</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalize_layout_column_reference</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a layout-context column reference to its emitted spelling.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ensure_metadata_prefix</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">if</span> <span class="n">_is_layout_metadata_column</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">else</span> <span class="n">column</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalize_layout_columns</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize layout metadata while preserving qualified non-metadata fields.</span>
+
+<span class="sd">    Unlike a metadata-only sidecar, a layout frame can carry qualified object,</span>
+<span class="sd">    measurement, or arbitrary external columns. Those are retained unchanged.</span>
+<span class="sd">    Every bare and lower snake-case column is metadata in this file-oriented</span>
+<span class="sd">    context, so generic labels such as ``Foo`` become ``Metadata_Foo`` through</span>
+<span class="sd">    the SDK normalizer.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">source_names</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+    <span class="n">metadata_positions</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">position</span>
+        <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">source_names</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_is_layout_metadata_column</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">metadata_positions</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">frame</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">metadata</span> <span class="o">=</span> <span class="n">normalize_metadata_columns</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">metadata_positions</span><span class="p">])</span>
+    <span class="n">groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">metadata_positions</span><span class="p">:</span>
+        <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+            <span class="n">_normalize_layout_column_reference</span><span class="p">(</span><span class="n">source_names</span><span class="p">[</span><span class="n">position</span><span class="p">]),</span> <span class="p">[]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
+    <span class="n">anchors</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">target</span><span class="p">:</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">position</span> <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">positions</span> <span class="k">if</span> <span class="n">source_names</span><span class="p">[</span><span class="n">position</span><span class="p">]</span> <span class="o">==</span> <span class="n">target</span><span class="p">),</span>
+            <span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">target</span><span class="p">,</span> <span class="n">positions</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">}</span>
+    <span class="n">normalized_by_anchor</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">anchor</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">index</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">anchor</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">anchors</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+    <span class="p">}</span>
+    <span class="n">consumed</span> <span class="o">=</span> <span class="p">{</span><span class="n">position</span> <span class="k">for</span> <span class="n">positions</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">positions</span><span class="p">}</span>
+    <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">normalized_by_anchor</span><span class="p">[</span><span class="n">position</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">normalized_by_anchor</span>
+        <span class="k">else</span> <span class="n">frame</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">position</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">source_names</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">position</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">consumed</span> <span class="ow">or</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">normalized_by_anchor</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalize_measurement_join_columns</span><span class="p">(</span>
+    <span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">groupby</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize only join keys and known metadata aliases in measurement data.</span>
+
+<span class="sd">    Measurements are mixed tables, unlike layout files. Known metadata aliases</span>
+<span class="sd">    always normalize; otherwise, layout-style normalization applies only to a</span>
+<span class="sd">    column that supplies one of this check&#39;s configured grouping keys. This</span>
+<span class="sd">    keeps unrelated custom measures such as ``custom_score`` and ``note_text``</span>
+<span class="sd">    exactly as callers supplied them.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">source_names</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+    <span class="n">metadata_positions</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">position</span>
+        <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">source_names</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">is_metadata_header</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="n">metadata_member_for_header</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">or</span> <span class="n">metadata_member_for_label</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">or</span> <span class="p">(</span>
+                <span class="n">_is_layout_metadata_column</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">_normalize_layout_column_reference</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="ow">in</span> <span class="n">groupby</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">metadata_positions</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">frame</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">metadata</span> <span class="o">=</span> <span class="n">normalize_metadata_columns</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">metadata_positions</span><span class="p">])</span>
+    <span class="n">groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">metadata_positions</span><span class="p">:</span>
+        <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+            <span class="n">_normalize_layout_column_reference</span><span class="p">(</span><span class="n">source_names</span><span class="p">[</span><span class="n">position</span><span class="p">]),</span> <span class="p">[]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
+    <span class="n">anchors</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">target</span><span class="p">:</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">position</span> <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">positions</span> <span class="k">if</span> <span class="n">source_names</span><span class="p">[</span><span class="n">position</span><span class="p">]</span> <span class="o">==</span> <span class="n">target</span><span class="p">),</span>
+            <span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">target</span><span class="p">,</span> <span class="n">positions</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">}</span>
+    <span class="n">normalized_by_anchor</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">anchor</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">index</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">anchor</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">anchors</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+    <span class="p">}</span>
+    <span class="n">consumed</span> <span class="o">=</span> <span class="p">{</span><span class="n">position</span> <span class="k">for</span> <span class="n">positions</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">positions</span><span class="p">}</span>
+    <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">normalized_by_anchor</span><span class="p">[</span><span class="n">position</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">normalized_by_anchor</span>
+        <span class="k">else</span> <span class="n">frame</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">position</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">source_names</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">position</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">consumed</span> <span class="ow">or</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">normalized_by_anchor</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="ExpectedVsDetectedCount">
@@ -751,17 +904,19 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.analysis.qc import (</span>
 <span class="sd">        ...     ExpectedVsDetectedCount,</span>
 <span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.schema import IMAGE</span>
+<span class="sd">        &gt;&gt;&gt; image_name = str(IMAGE.IMAGE_NAME)</span>
 <span class="sd">        &gt;&gt;&gt; metadata = pd.DataFrame({</span>
-<span class="sd">        ...     &quot;MetadataImage_ImageName&quot;: [&quot;plate1.png&quot;] * 96,</span>
+<span class="sd">        ...     image_name: [&quot;plate1.png&quot;] * 96,</span>
 <span class="sd">        ...     &quot;Object_Label&quot;: list(range(96)),</span>
 <span class="sd">        ... })</span>
 <span class="sd">        &gt;&gt;&gt; measurements = pd.DataFrame({</span>
-<span class="sd">        ...     &quot;MetadataImage_ImageName&quot;: [&quot;plate1.png&quot;] * 95,</span>
+<span class="sd">        ...     image_name: [&quot;plate1.png&quot;] * 95,</span>
 <span class="sd">        ...     &quot;Object_Label&quot;: list(range(95)),</span>
 <span class="sd">        ... })</span>
 <span class="sd">        &gt;&gt;&gt; chk = ExpectedVsDetectedCount(</span>
 <span class="sd">        ...     metadata=metadata,</span>
-<span class="sd">        ...     groupby=[&quot;MetadataImage_ImageName&quot;],</span>
+<span class="sd">        ...     groupby=[image_name],</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; result = chk.analyze(measurements)  # doctest: +SKIP</span>
 <span class="sd">        &gt;&gt;&gt; &quot;QC_Count_Metric&quot; in result.columns  # doctest: +SKIP</span>
@@ -771,16 +926,16 @@
 <span class="sd">        the metric is infinite and the key is recorded:</span>
 
 <span class="sd">        &gt;&gt;&gt; metadata = pd.DataFrame({</span>
-<span class="sd">        ...     &quot;MetadataImage_ImageName&quot;: [&quot;plate1.png&quot;] * 96,</span>
+<span class="sd">        ...     image_name: [&quot;plate1.png&quot;] * 96,</span>
 <span class="sd">        ...     &quot;Object_Label&quot;: list(range(96)),</span>
 <span class="sd">        ... })</span>
 <span class="sd">        &gt;&gt;&gt; measurements = pd.DataFrame({</span>
-<span class="sd">        ...     &quot;MetadataImage_ImageName&quot;: [&quot;plate2.png&quot;] * 10,</span>
+<span class="sd">        ...     image_name: [&quot;plate2.png&quot;] * 10,</span>
 <span class="sd">        ...     &quot;Object_Label&quot;: list(range(10)),</span>
 <span class="sd">        ... })</span>
 <span class="sd">        &gt;&gt;&gt; chk = ExpectedVsDetectedCount(</span>
 <span class="sd">        ...     metadata=metadata,</span>
-<span class="sd">        ...     groupby=[&quot;MetadataImage_ImageName&quot;],</span>
+<span class="sd">        ...     groupby=[image_name],</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; _ = chk.analyze(measurements)  # doctest: +SKIP</span>
 <span class="sd">        &gt;&gt;&gt; chk.unmatched_groups  # doctest: +SKIP</span>
@@ -809,6 +964,12 @@
 
     <span class="n">_metadata</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
     <span class="n">_expected_counts</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;groupby&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_layout_groupby_references</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the layout namespace rule to every configured grouping key.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">_normalize_layout_column_reference</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">value</span><span class="p">]</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
@@ -923,8 +1084,8 @@
 <span class="sd">                or ``str``) to a ``.csv``/``.parquet`` file.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            The resolved DataFrame. If ``metadata`` is already a</span>
-<span class="sd">            DataFrame it is returned as-is (no copy).</span>
+<span class="sd">            A copied resolved DataFrame with layout metadata normalized. Known</span>
+<span class="sd">            object, grid, bounding-box, and measurement headers are retained.</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            FileNotFoundError: If ``metadata`` is a path that does not</span>
@@ -932,7 +1093,7 @@
 <span class="sd">            ValueError: If the path has an unsupported suffix.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">metadata</span>
+            <span class="k">return</span> <span class="n">_normalize_layout_columns</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
 
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
@@ -942,9 +1103,9 @@
 
         <span class="n">suffix</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.csv&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">_normalize_layout_columns</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.parquet&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">_normalize_layout_columns</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
             <span class="s2">&quot;metadata path must be a .csv or .parquet file; got &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;suffix </span><span class="si">{</span><span class="n">suffix</span><span class="si">!r}</span><span class="s2">&quot;</span>
@@ -1069,7 +1230,7 @@
 <span class="sd">            The augmented frame from :meth:`QualityCheck.analyze`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">unmatched_groups</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">_normalize_measurement_join_columns</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="ExpectedVsDetectedCount.inspect">

@@ -700,7 +700,7 @@ it emits <strong>no manifest</strong>. The manifest is produced by full measure 
 strain, media, timepoint, plate, replicate. Example:</p>
 <div class="literal-block-wrapper docutils container" id="id1">
 <div class="code-block-caption"><span class="caption-text">metadata.csv — per-image sample metadata</span><a class="headerlink" href="#id1" title="Link to this code">#</a></div>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MetadataImage_ImageName,MetadataGenetic_Strain,MetadataGenetic_MatingType,MetadataCondition_Media,MetadataCulture_Temperature,MetadataCulture_Time,MetadataCulture_TimeUnit,MetadataPlate_PlateID,MetadataSample_BioReplicate
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Metadata_ImageName,Metadata_Strain,Metadata_MatingType,Metadata_Media,Metadata_Temperature,Metadata_Time,Metadata_TimeUnit,Metadata_PlateID,Metadata_BioReplicate
 plate_001_t24.tif,BY4741,a,YPD,30,24,h,P1,1
 plate_001_t48.tif,BY4741,a,YPD,30,48,h,P1,1
 plate_002_t24.tif,BY4742,alpha,YPD,30,24,h,P2,1
@@ -712,7 +712,7 @@ plate_002_t48.tif,BY4742,alpha,YPD,30,48,h,P2,1
 column whose name it shares with them</strong>. So a column only participates in the
 join if its header <em>exactly</em> matches a measurement column:</p>
 <ul class="simple">
-<li><p>Join per <strong>image</strong>: give the CSV a <code class="docutils literal notranslate"><span class="pre">MetadataImage_ImageName</span></code> column (the
+<li><p>Join per <strong>image</strong>: give the CSV a <code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code> column (the
 image filename, matching the framework’s image-name column). Each row then
 broadcasts to every colony of that image — the pattern shown above.</p></li>
 <li><p>Join per <strong>colony</strong>: additionally include <code class="docutils literal notranslate"><span class="pre">Grid_RowNum</span></code> and <code class="docutils literal notranslate"><span class="pre">Grid_ColNum</span></code>.
@@ -733,48 +733,29 @@ never detected, filter on that column:</p>
 <p>The run also logs a <code class="docutils literal notranslate"><span class="pre">WARNING</span></code> naming how many CSV rows matched nothing.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>The join key must match the measurement column name <strong>exactly</strong>. After the
-REMBI namespace migration the image-name column is <code class="docutils literal notranslate"><span class="pre">MetadataImage_ImageName</span></code>
-(not the old <code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code>). A CSV that still uses the old header shares
-no column with the measurements and the join is skipped with a warning.
+<p>The join key must match after metadata normalization. The canonical image-name
+column is <code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code>; a bare <code class="docutils literal notranslate"><span class="pre">ImageName</span></code> or exact historical
+<code class="docutils literal notranslate"><span class="pre">MetadataImage_ImageName</span></code> header is accepted and normalized in memory. Unknown
+headers are treated as metadata and receive the <code class="docutils literal notranslate"><span class="pre">Metadata_</span></code> prefix.
 Duplicate keys in the CSV multiply rows (also warned). Note the join is
 directional: <em>measurement</em> rows with no matching CSV row <strong>are</strong> dropped, so a
 CSV that omits an imaged plate silently removes it from the mirror.</p>
 </div>
-<p><strong>Column names decide the REMBI module.</strong> Use the recommended
-<code class="docutils literal notranslate"><span class="pre">Metadata&lt;Topic&gt;_&lt;Label&gt;</span></code> vocabulary and each column routes itself to the right
-manifest section:</p>
-<div class="pst-scrollable-table-container"><table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p>CSV prefix</p></th>
-<th class="head"><p>REMBI module → manifest section</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataGenetic_*</span></code>, <code class="docutils literal notranslate"><span class="pre">MetadataSample_*</span></code></p></td>
-<td><p>Biosample → <code class="docutils literal notranslate"><span class="pre">biosample</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_*</span></code>, <code class="docutils literal notranslate"><span class="pre">MetadataPlate_*</span></code></p></td>
-<td><p>SpecimenPreparation → <code class="docutils literal notranslate"><span class="pre">specimen_preparation</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Temperature</span></code>/<code class="docutils literal notranslate"><span class="pre">_Day</span></code>/<code class="docutils literal notranslate"><span class="pre">_Humidity</span></code>/…</p></td>
-<td><p>SpecimenPreparation → <code class="docutils literal notranslate"><span class="pre">specimen_preparation</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Time</span></code>/<code class="docutils literal notranslate"><span class="pre">_TimeUnit</span></code>/<code class="docutils literal notranslate"><span class="pre">_Timepoint</span></code>/<code class="docutils literal notranslate"><span class="pre">_FrameIndex</span></code></p></td>
-<td><p><strong>Biosample</strong> → <code class="docutils literal notranslate"><span class="pre">biosample</span></code> (time-course modeled as a Biosample variable, per REMBI)</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataAcquisition_*</span></code></p></td>
-<td><p>ImageAcquisition → <code class="docutils literal notranslate"><span class="pre">image_acquisition</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataStudy_*</span></code>, <code class="docutils literal notranslate"><span class="pre">MetadataExperiment_*</span></code></p></td>
-<td><p>Study → <code class="docutils literal notranslate"><span class="pre">study</span></code></p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<p>Note the <code class="docutils literal notranslate"><span class="pre">MetadataCulture_</span></code> prefix <strong>straddles two modules</strong>: temperature and
-atmosphere describe how the specimen was prepared, but elapsed <em>time</em> is a
-biosample variable in REMBI, so <code class="docutils literal notranslate"><span class="pre">MetadataCulture_Time</span></code> lands in <code class="docutils literal notranslate"><span class="pre">biosample</span></code>.</p>
+<p><strong>Schema ownership decides the REMBI module.</strong> Use the recommended flat
+<code class="docutils literal notranslate"><span class="pre">Metadata_&lt;Label&gt;</span></code> vocabulary. PhenoTypic resolves each known label to its enum
+owner and routes that member to the right manifest section:</p>
+<p>| Enum owner | Example fields | REMBI module → manifest section |
+|—|—|
+| <code class="docutils literal notranslate"><span class="pre">GENETIC</span></code>, <code class="docutils literal notranslate"><span class="pre">SAMPLE</span></code> | <code class="docutils literal notranslate"><span class="pre">Metadata_Strain</span></code>, <code class="docutils literal notranslate"><span class="pre">Metadata_BioReplicate</span></code> | Biosample → <code class="docutils literal notranslate"><span class="pre">biosample</span></code> |
+| <code class="docutils literal notranslate"><span class="pre">CONDITION</span></code>, <code class="docutils literal notranslate"><span class="pre">PLATE</span></code> | <code class="docutils literal notranslate"><span class="pre">Metadata_Media</span></code>, <code class="docutils literal notranslate"><span class="pre">Metadata_PlateID</span></code> | SpecimenPreparation → <code class="docutils literal notranslate"><span class="pre">specimen_preparation</span></code> |
+| <code class="docutils literal notranslate"><span class="pre">CULTURE</span></code> preparation members | <code class="docutils literal notranslate"><span class="pre">Metadata_Temperature</span></code>, <code class="docutils literal notranslate"><span class="pre">Metadata_Humidity</span></code> | SpecimenPreparation → <code class="docutils literal notranslate"><span class="pre">specimen_preparation</span></code> |
+| <code class="docutils literal notranslate"><span class="pre">CULTURE</span></code> time members | <code class="docutils literal notranslate"><span class="pre">Metadata_Time</span></code>, <code class="docutils literal notranslate"><span class="pre">Metadata_TimeUnit</span></code>, <code class="docutils literal notranslate"><span class="pre">Metadata_Timepoint</span></code>, <code class="docutils literal notranslate"><span class="pre">Metadata_FrameIndex</span></code> | <strong>Biosample</strong> → <code class="docutils literal notranslate"><span class="pre">biosample</span></code> |
+| <code class="docutils literal notranslate"><span class="pre">ACQUISITION</span></code> | <code class="docutils literal notranslate"><span class="pre">Metadata_Instrument</span></code> | ImageAcquisition → <code class="docutils literal notranslate"><span class="pre">image_acquisition</span></code> |
+| <code class="docutils literal notranslate"><span class="pre">STUDY</span></code>, <code class="docutils literal notranslate"><span class="pre">EXPERIMENT</span></code> | <code class="docutils literal notranslate"><span class="pre">Metadata_Title</span></code>, <code class="docutils literal notranslate"><span class="pre">Metadata_Dataset</span></code> | Study → <code class="docutils literal notranslate"><span class="pre">study</span></code> |</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">CULTURE</span></code> owner <strong>straddles two modules</strong>: temperature and atmosphere
+describe specimen preparation, while elapsed <em>time</em> is a biosample variable.
+The owner member carries that distinction even though both fields share the
+same <code class="docutils literal notranslate"><span class="pre">Metadata_</span></code> prefix.</p>
 <p>This is a <strong>recommended vocabulary, not a validator</strong> — any column is accepted.
 A label outside the vocabulary keeps a generic <code class="docutils literal notranslate"><span class="pre">Metadata_&lt;Label&gt;</span></code> header and
 routes to the manifest’s <code class="docutils literal notranslate"><span class="pre">uncategorized</span></code> section. The full prefix vocabulary is
@@ -795,15 +776,15 @@ module as a small file you keep beside the dataset:</p>
 <span class="c1"># whole -- they do not vary from image to image -- and are folded into the</span>
 <span class="c1"># `study:` section of `deliverables/rembi.yaml`.</span>
 <span class="c1">#</span>
-<span class="c1"># Keys are the *bare* STUDY_METADATA / EXPERIMENT_METADATA labels (no</span>
-<span class="c1"># `MetadataStudy_` / `MetadataExperiment_` prefix). Any key given here</span>
+<span class="c1"># Keys are the *bare* STUDY / EXPERIMENT labels (no `Metadata_` prefix). Any</span>
+<span class="c1"># key given here</span>
 <span class="c1"># OVERRIDES a same-named constant `Metadata*` column coming from --metadata.</span>
 <span class="c1"># Every field is optional; delete the lines you do not need. This is a</span>
 <span class="c1"># recommended vocabulary, not a validator -- unknown keys are still emitted.</span>
-<span class="c1"># See the STUDY_METADATA / EXPERIMENT_METADATA schema pages for the full list.</span>
+<span class="c1"># See the STUDY / EXPERIMENT schema pages for the full list.</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
-<span class="c1"># --- REMBI Study fields (STUDY_METADATA) ---</span>
+<span class="c1"># --- REMBI Study fields (STUDY) ---</span>
 <span class="nt">Title</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Yeast</span><span class="nv"> </span><span class="s">deletion-collection</span><span class="nv"> </span><span class="s">colony-size</span><span class="nv"> </span><span class="s">time</span><span class="nv"> </span><span class="s">course&quot;</span>
 <span class="nt">Description</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;</span>
 <span class="w">  </span><span class="no">SGA-arrayed S. cerevisiae deletion library imaged on YPD at 30 C,</span>
@@ -817,7 +798,7 @@ module as a small file you keep beside the dataset:</p>
 <span class="nt">Acknowledgements</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Imaging</span><span class="nv"> </span><span class="s">performed</span><span class="nv"> </span><span class="s">at</span><span class="nv"> </span><span class="s">the</span><span class="nv"> </span><span class="s">Example</span><span class="nv"> </span><span class="s">Screening</span><span class="nv"> </span><span class="s">Core.&quot;</span>
 <span class="c1"># PrivateUntilDate: &quot;2027-01-01&quot;          # embargo date, if the study is private</span>
 
-<span class="c1"># --- Experiment-level bookkeeping (EXPERIMENT_METADATA, also REMBI Study) ---</span>
+<span class="c1"># --- Experiment-level bookkeeping (EXPERIMENT, also REMBI Study) ---</span>
 <span class="nt">Project</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SGA-Phenomics&quot;</span>
 <span class="nt">Dataset</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;sga-timecourse-2026&quot;</span>
 <span class="nt">Protocol</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://example.org/protocols/sga-pinning-v3&quot;</span>
@@ -825,12 +806,11 @@ module as a small file you keep beside the dataset:</p>
 </div>
 </div>
 <p><strong>Keys are the bare labels</strong> — <code class="docutils literal notranslate"><span class="pre">Title</span></code>, <code class="docutils literal notranslate"><span class="pre">Author</span></code>, <code class="docutils literal notranslate"><span class="pre">License</span></code>, … — <em>without</em> the
-<code class="docutils literal notranslate"><span class="pre">MetadataStudy_</span></code> / <code class="docutils literal notranslate"><span class="pre">MetadataExperiment_</span></code> prefix. A key given here <strong>overrides</strong>
+<code class="docutils literal notranslate"><span class="pre">Metadata_</span></code> prefix. A key given here <strong>overrides</strong>
 a same-named constant <code class="docutils literal notranslate"><span class="pre">Metadata*</span></code> column that came in via <code class="docutils literal notranslate"><span class="pre">--metadata</span></code>, so the
 study file is the single source of truth for run-level fields even if the CSV
 also carries them. Every field is optional. The available keys mirror the
-<a class="reference internal" href="../../measurements_ref/metadata/index.html#measurement-info-study-metadata"><span class="std std-ref">STUDY_METADATA</span></a> and
-<code class="docutils literal notranslate"><span class="pre">EXPERIMENT_METADATA</span></code> schema pages.</p>
+<a class="reference internal" href="../../measurements_ref/metadata/index.html#measurement-info-study"><span class="std std-ref">STUDY</span></a> and <code class="docutils literal notranslate"><span class="pre">EXPERIMENT</span></code> schema pages.</p>
 </section>
 <section id="the-output-deliverables-rembi-yaml">
 <h2>The output: <code class="docutils literal notranslate"><span class="pre">deliverables/rembi.yaml</span></code><a class="headerlink" href="#the-output-deliverables-rembi-yaml" title="Link to this heading">#</a></h2>
@@ -846,13 +826,13 @@ the two inputs above it looks like this:</p>
 <span class="w">  </span><span class="nt">Strain</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">BY4741</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">BY4742</span><span class="p p-Indicator">]</span><span class="w">        </span><span class="c1"># distinct values collapse to a list</span>
 <span class="w">  </span><span class="nt">MatingType</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">a</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">alpha</span><span class="p p-Indicator">]</span>
 <span class="w">  </span><span class="nt">BioReplicate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">  </span><span class="nt">Time</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">24</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">48</span><span class="p p-Indicator">]</span><span class="w">                  </span><span class="c1"># time-course variable (from MetadataCulture_Time)</span>
+<span class="w">  </span><span class="nt">Time</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">24</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">48</span><span class="p p-Indicator">]</span><span class="w">                  </span><span class="c1"># time-course variable (from Metadata_Time)</span>
 <span class="w">  </span><span class="nt">TimeUnit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h</span>
 <span class="nt">specimen_preparation</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">Media</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">YPD</span>
 <span class="w">  </span><span class="nt">Temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
 <span class="w">  </span><span class="nt">PlateID</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">P1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">P2</span><span class="p p-Indicator">]</span>
-<span class="nt">image_acquisition</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span><span class="w">             </span><span class="c1"># empty here — no MetadataAcquisition_* columns</span>
+<span class="nt">image_acquisition</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span><span class="w">             </span><span class="c1"># empty here — no ACQUISITION-owned columns</span>
 <span class="nt">image_data</span><span class="p">:</span><span class="w">                       </span><span class="c1"># ALWAYS present, from the run itself</span>
 <span class="w">  </span><span class="nt">n_images</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
 <span class="w">  </span><span class="nt">bit_depth</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">8</span><span class="p p-Indicator">]</span>
@@ -873,10 +853,13 @@ inputs.</p>
 </section>
 <section id="refreshing-a-pre-migration-run">
 <h2>Refreshing a pre-migration run<a class="headerlink" href="#refreshing-a-pre-migration-run" title="Link to this heading">#</a></h2>
-<p>Old output folders still open, but their metadata columns predate the
-per-module namespace and read as <code class="docutils literal notranslate"><span class="pre">uncategorized</span></code>. To remap an existing run’s
-measurement parquets to the current REMBI namespace, re-run with
-<code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">recompile</span></code>. Background on the rename is in the
+<p>Old output folders remain readable. Exact historical per-topic headers are
+normalized in memory and retain their schema ownership. To rewrite
+bundle-owned authoritative sources to flat headers and rebuild derived output,
+run <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">recompile</span></code>. Local and SLURM recompiles migrate before aggregation;
+a conflict stops publication. External <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> files are never modified,
+while the regenerated bundle-owned metadata copy uses canonical headers.
+Background, standalone migration, receipts, and rollback are described in the
 <a class="reference internal" href="../../explanation/metadata_namespace.html"><span class="doc">metadata namespace explanation</span></a>.</p>
 </section>
 </section>

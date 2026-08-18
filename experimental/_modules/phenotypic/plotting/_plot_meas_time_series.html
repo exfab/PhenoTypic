@@ -607,7 +607,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">PlotMeas</span><span class="p">,</span>
@@ -616,6 +616,13 @@
     <span class="n">canonical_group_key</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span><span class="p">,</span> <span class="n">ColumnRefList</span><span class="p">,</span> <span class="n">is_metadata_header</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._metadata</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">normalize_measurement_metadata_columns</span><span class="p">,</span>
+    <span class="n">normalize_metadata_column_reference</span><span class="p">,</span>
+    <span class="n">normalize_metadata_column_references</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">CULTURE</span><span class="p">,</span> <span class="n">GENETIC</span>
 
 
 <div class="viewcode-block" id="PlotMeasTimeSeries">
@@ -640,13 +647,27 @@
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;forbid&quot;</span><span class="p">)</span>
 
     <span class="n">page_by</span><span class="p">:</span> <span class="n">ColumnRefList</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
-            <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;MetadataGenetic_Strain&quot;</span><span class="p">]</span>
+            <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">GENETIC</span><span class="o">.</span><span class="n">STRAIN</span><span class="p">)]</span>
     <span class="p">)</span>
     <span class="n">environment_by</span><span class="p">:</span> <span class="n">ColumnRefList</span>
     <span class="n">replicate_by</span><span class="p">:</span> <span class="n">ColumnRefList</span>
-    <span class="n">time</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="s2">&quot;MetadataCulture_Time&quot;</span>
+    <span class="n">time</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">CULTURE</span><span class="o">.</span><span class="n">TIME</span><span class="p">)</span>
     <span class="n">measurements</span><span class="p">:</span> <span class="n">ColumnRefList</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">connect</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;page_by&quot;</span><span class="p">,</span> <span class="s2">&quot;environment_by&quot;</span><span class="p">,</span> <span class="s2">&quot;replicate_by&quot;</span><span class="p">,</span> <span class="s2">&quot;measurements&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_column_references</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Accept current and flat metadata references in plotting fields.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">normalize_metadata_column_references</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_time_reference</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Accept current and flat metadata references for the time axis.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;time must be a string column reference&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">normalize_metadata_column_reference</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_roles</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;PlotMeasTimeSeries&quot;</span><span class="p">:</span>
@@ -701,6 +722,7 @@
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
                     <span class="s2">&quot;PlotMeasTimeSeries.inspect requires a pandas DataFrame subject&quot;</span>
             <span class="p">)</span>
+        <span class="n">subject</span> <span class="o">=</span> <span class="n">normalize_measurement_metadata_columns</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">subject</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">PlotOutput</span><span class="p">(</span><span class="n">pages</span><span class="o">=</span><span class="p">())</span>
         <span class="n">configured</span><span class="o">.</span><span class="n">_validate_input_columns</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span>

@@ -638,6 +638,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">polymorphic_field</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">._metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">normalize_measurement_metadata_columns</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._orient</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sense</span><span class="p">,</span> <span class="n">to_cost</span>
 
 
@@ -760,6 +761,8 @@
 <span class="sd">            A mapping of term name → cost in ``[0,1]`` (``0`` perfect, ``1``</span>
 <span class="sd">            worst). Keys are stable across images for per-term aggregation.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">measurements</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+            <span class="n">measurements</span> <span class="o">=</span> <span class="n">normalize_measurement_metadata_columns</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">{</span>
             <span class="n">term</span><span class="p">:</span> <span class="n">to_cost</span><span class="p">(</span>
                 <span class="n">value</span><span class="p">,</span> <span class="n">sense</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_TERM_SENSE</span><span class="p">,</span> <span class="n">anchor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_term_anchor</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>

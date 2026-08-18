@@ -715,17 +715,19 @@
 <span class="sd">        &gt;&gt;&gt; from pathlib import Path</span>
 <span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.analysis import ExpectedVsDetectedCount</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.schema import IMAGE</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.tune.score import GroundTruthMasks, SupervisedScorer</span>
+<span class="sd">        &gt;&gt;&gt; image_name = str(IMAGE.IMAGE_NAME)</span>
 <span class="sd">        &gt;&gt;&gt; tmp = Path(tempfile.mkdtemp())</span>
 <span class="sd">        &gt;&gt;&gt; counts = tmp / &quot;counts.csv&quot;</span>
 <span class="sd">        &gt;&gt;&gt; _ = pd.DataFrame(</span>
-<span class="sd">        ...     {&quot;MetadataImage_ImageName&quot;: [&quot;Synthetic96PlateWithObjects&quot;] * 96,</span>
+<span class="sd">        ...     {image_name: [&quot;Synthetic96PlateWithObjects&quot;] * 96,</span>
 <span class="sd">        ...      &quot;Object_Label&quot;: list(range(96))}</span>
 <span class="sd">        ... ).to_csv(counts, index=False)</span>
 <span class="sd">        &gt;&gt;&gt; scorer = SupervisedScorer(</span>
 <span class="sd">        ...     gt=GroundTruthMasks(gt_masks_source=counts),</span>
 <span class="sd">        ...     count_check=ExpectedVsDetectedCount(</span>
-<span class="sd">        ...         metadata=str(counts), groupby=[&quot;MetadataImage_ImageName&quot;]</span>
+<span class="sd">        ...         metadata=str(counts), groupby=[image_name]</span>
 <span class="sd">        ...     ),</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; scorer.gt.modality()</span>

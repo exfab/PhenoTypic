@@ -596,85 +596,79 @@
                 <article class="bd-article">
                   
   <h1>Source code for phenotypic.sdk_._metadata_helpers</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Single source of truth for the metadata column namespace.</span>
-
-<span class="sd">Replaces every hardcoded ``&quot;Metadata_&quot;`` prefix literal across the codebase.</span>
-<span class="sd">Prefixes and labels are derived from the ``phenotypic.schema`` metadata enums,</span>
-<span class="sd">so they track the per-enum ``category()`` strings automatically: while every</span>
-<span class="sd">metadata enum still returns ``&quot;Metadata&quot;`` the namespace collapses to a single</span>
-<span class="sd">``&quot;Metadata_&quot;`` prefix, and once the categories flip to per-topic</span>
-<span class="sd">``Metadata&lt;Topic&gt;`` strings these helpers pick up the new prefixes with no</span>
-<span class="sd">caller changes.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;Metadata ownership, normalization, and presentation ordering.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">lru_cache</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">types</span><span class="w"> </span><span class="kn">import</span> <span class="n">MappingProxyType</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">cast</span><span class="p">,</span> <span class="n">overload</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_schema</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetadataInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._metadata_compatibility</span><span class="w"> </span><span class="kn">import</span> <span class="n">LEGACY_HEADER_TO_MEMBER</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+
+<span class="n">_FrameT</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;_FrameT&quot;</span><span class="p">,</span> <span class="s2">&quot;pd.DataFrame&quot;</span><span class="p">,</span> <span class="s2">&quot;pl.DataFrame&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_metadata_members</span><span class="p">(</span><span class="n">owner</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">MetadataInfo</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">MetadataInfo</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return one metadata owner&#39;s members with an explicit static type.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">Iterable</span><span class="p">[</span><span class="n">MetadataInfo</span><span class="p">],</span> <span class="n">owner</span><span class="p">))</span>
 
 
 <span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">_metadata_enums</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MeasurementInfo</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Every exported ``MeasurementInfo`` enum in the metadata namespace.</span>
-
-<span class="sd">    A metadata-namespace enum is one whose ``category()`` starts with</span>
-<span class="sd">    ``&quot;Metadata&quot;`` (the framework ``METADATA`` enum plus the experimental-tag</span>
-<span class="sd">    vocabulary). Cached: the schema export surface is fixed at import time.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_metadata_enums</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MetadataInfo</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return exported concrete metadata owners, deduplicated by class identity.&quot;&quot;&quot;</span>
+    <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MetadataInfo</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">seen</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MetadataInfo</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_schema</span><span class="o">.</span><span class="n">__all__</span><span class="p">:</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">_schema</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="k">if</span> <span class="p">(</span>
             <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span>
-            <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">MeasurementInfo</span><span class="p">)</span>
-            <span class="ow">and</span> <span class="n">obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">MeasurementInfo</span>
-            <span class="ow">and</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
-            <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">category</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Metadata&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">MetadataInfo</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">MetadataInfo</span>
+            <span class="ow">and</span> <span class="n">_metadata_members</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">obj</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen</span>
         <span class="p">):</span>
             <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+            <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
     <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
 
 
-<span class="c1">#: Bio-semantic cluster order for the metadata front-block (category granularity).</span>
-<span class="c1">#: The human-facing column axis. REMBI (header_to_module / by_module / manifest)</span>
-<span class="c1">#: remains a SEPARATE provenance axis and is not affected by this ordering.</span>
-<span class="n">_METADATA_CLUSTER_ORDER</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+<span class="c1">#: Bio-semantic owner order for the metadata front block. REMBI provenance is a</span>
+<span class="c1">#: separate axis and does not affect presentation ordering.</span>
+<span class="n">_METADATA_OWNER_ORDER</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MetadataInfo</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
     <span class="c1"># (1) Identity — who / where is this colony</span>
-    <span class="s2">&quot;MetadataSample&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;MetadataPlate&quot;</span><span class="p">,</span>
+    <span class="n">_schema</span><span class="o">.</span><span class="n">SAMPLE</span><span class="p">,</span>
+    <span class="n">_schema</span><span class="o">.</span><span class="n">PLATE</span><span class="p">,</span>
     <span class="c1"># (2) Strain — genetic identity</span>
-    <span class="s2">&quot;MetadataGenetic&quot;</span><span class="p">,</span>
+    <span class="n">_schema</span><span class="o">.</span><span class="n">GENETIC</span><span class="p">,</span>
     <span class="c1"># (3) Condition — chemical then temporal/physical environment</span>
-    <span class="s2">&quot;MetadataCondition&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;MetadataCulture&quot;</span><span class="p">,</span>
+    <span class="n">_schema</span><span class="o">.</span><span class="n">CONDITION</span><span class="p">,</span>
+    <span class="n">_schema</span><span class="o">.</span><span class="n">CULTURE</span><span class="p">,</span>
     <span class="c1"># (4) Design &amp; provenance</span>
-    <span class="s2">&quot;MetadataExperiment&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;MetadataStudy&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;MetadataAcquisition&quot;</span><span class="p">,</span>
+    <span class="n">_schema</span><span class="o">.</span><span class="n">EXPERIMENT</span><span class="p">,</span>
+    <span class="n">_schema</span><span class="o">.</span><span class="n">STUDY</span><span class="p">,</span>
+    <span class="n">_schema</span><span class="o">.</span><span class="n">ACQUISITION</span><span class="p">,</span>
     <span class="c1"># Framework per-image bookkeeping — last (relocated to the trailing region</span>
     <span class="c1"># of the measurement frame by order_measurement_columns()).</span>
-    <span class="s2">&quot;MetadataImage&quot;</span><span class="p">,</span>
+    <span class="n">_schema</span><span class="o">.</span><span class="n">IMAGE</span><span class="p">,</span>
 <span class="p">)</span>
 
 
 <span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">_cluster_ordered_enums</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MeasurementInfo</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;The metadata enums sorted by ``_METADATA_CLUSTER_ORDER`` (then stable).</span>
-
-<span class="sd">    An enum whose category is absent from the cluster order sorts last; the</span>
-<span class="sd">    coverage-gate test forbids that state, so it is a defensive fallback only.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">rank</span> <span class="o">=</span> <span class="p">{</span><span class="n">cat</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cat</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">_METADATA_CLUSTER_ORDER</span><span class="p">)}</span>
-    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span>
-        <span class="nb">sorted</span><span class="p">(</span><span class="n">_metadata_enums</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">rank</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">category</span><span class="p">(),</span> <span class="nb">len</span><span class="p">(</span><span class="n">rank</span><span class="p">)))</span>
-    <span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_cluster_ordered_enums</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MetadataInfo</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return metadata owners in the explicit bio-semantic order.&quot;&quot;&quot;</span>
+    <span class="n">discovered</span> <span class="o">=</span> <span class="n">_metadata_enums</span><span class="p">()</span>
+    <span class="n">rank</span> <span class="o">=</span> <span class="p">{</span><span class="n">owner</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">owner</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">_METADATA_OWNER_ORDER</span><span class="p">)}</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">discovered</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">owner</span><span class="p">:</span> <span class="n">rank</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">owner</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">rank</span><span class="p">))))</span>
 
 
 <span class="c1">#: Stride between metadata categories in ``canonical_metadata_order``. Must exceed</span>
@@ -696,19 +690,21 @@
 <span class="sd">    :func:`~phenotypic.schema.header_to_module`).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">enums</span> <span class="o">=</span> <span class="n">_cluster_ordered_enums</span><span class="p">()</span>
-    <span class="n">cat_rank</span> <span class="o">=</span> <span class="p">{</span><span class="n">e</span><span class="o">.</span><span class="n">category</span><span class="p">():</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">enums</span><span class="p">)}</span>
+    <span class="n">owner_rank</span> <span class="o">=</span> <span class="p">{</span><span class="n">owner</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">owner</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">enums</span><span class="p">)}</span>
     <span class="n">out</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">enum</span> <span class="ow">in</span> <span class="n">enums</span><span class="p">:</span>
         <span class="c1"># A hard raise (not an ``assert``, which ``python -O`` strips) — a stride</span>
         <span class="c1"># overflow would silently corrupt ordering, so it must fail loudly.</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">enum</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">_CATEGORY_STRIDE</span><span class="p">:</span>
+        <span class="n">members</span> <span class="o">=</span> <span class="n">_metadata_members</span><span class="p">(</span><span class="n">enum</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">members</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">_CATEGORY_STRIDE</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">enum</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">enum</span><span class="p">)</span><span class="si">}</span><span class="s2"> members, exceeding the &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">enum</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">members</span><span class="p">)</span><span class="si">}</span><span class="s2"> members, exceeding the &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;canonical-order category stride (</span><span class="si">{</span><span class="n">_CATEGORY_STRIDE</span><span class="si">}</span><span class="s2">)&quot;</span>
             <span class="p">)</span>
-        <span class="n">base</span> <span class="o">=</span> <span class="n">cat_rank</span><span class="p">[</span><span class="n">enum</span><span class="o">.</span><span class="n">category</span><span class="p">()]</span> <span class="o">*</span> <span class="n">_CATEGORY_STRIDE</span>
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">member</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">enum</span><span class="p">):</span>
-            <span class="n">out</span><span class="p">[</span><span class="n">member</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">i</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">owner_rank</span><span class="p">[</span><span class="n">enum</span><span class="p">]</span> <span class="o">*</span> <span class="n">_CATEGORY_STRIDE</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">member</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">members</span><span class="p">):</span>
+            <span class="n">member_rank</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">i</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">member</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="n">member_rank</span>
     <span class="k">return</span> <span class="n">out</span></div>
 
 
@@ -718,11 +714,11 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">order_measurement_columns</span><span class="p">(</span><span class="n">columns</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Canonical measurement-frame column order.</span>
 
-<span class="sd">    ``[front metadata] -&gt; [measurements] -&gt; [MetadataImage_*] -&gt; [info block]``.</span>
+<span class="sd">    ``[front metadata] -&gt; [measurements] -&gt; [IMAGE metadata] -&gt; [info block]``.</span>
 
 <span class="sd">    Front (user/experimental) metadata is cluster/definition ordered via</span>
 <span class="sd">    :func:`canonical_metadata_order`; unknown/uncategorized ``Metadata_*`` tags fall</span>
-<span class="sd">    to the end of the front block alphabetically. The framework ``MetadataImage_*``</span>
+<span class="sd">    to the end of the front block alphabetically. The framework ``IMAGE``-owned</span>
 <span class="sd">    block is per-image provenance and trails the measurements. The per-object info</span>
 <span class="sd">    block (``Object_Label`` + ``Bbox_*`` / ``Grid_*``) is detected by name and moves</span>
 <span class="sd">    last. Measurements keep their incoming relative order.</span>
@@ -730,10 +726,9 @@
 <span class="sd">    Pure over column-name strings, so both the pandas (``df[...]``) and polars</span>
 <span class="sd">    (``df.select(...)``) paths reuse it.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">METADATA</span><span class="p">,</span> <span class="n">OBJECT</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE</span><span class="p">,</span> <span class="n">OBJECT</span>
 
     <span class="n">rank</span> <span class="o">=</span> <span class="n">canonical_metadata_order</span><span class="p">()</span>
-    <span class="n">image_prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">METADATA</span><span class="o">.</span><span class="n">category</span><span class="p">()</span><span class="si">}</span><span class="s2">_&quot;</span>
     <span class="n">label</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">)</span>
 
     <span class="n">front</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -741,7 +736,7 @@
     <span class="n">info</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">meas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">image_prefix</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">metadata_owner_for_header</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="ow">is</span> <span class="n">IMAGE</span><span class="p">:</span>
             <span class="n">image_meta</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">is_metadata_header</span><span class="p">(</span><span class="n">c</span><span class="p">):</span>
             <span class="n">front</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
@@ -753,7 +748,12 @@
     <span class="c1"># use a 1000-stride, so len(rank) (~72) is not a valid &quot;after everything&quot;</span>
     <span class="c1"># sentinel — derive it from the actual max rank.</span>
     <span class="n">unknown_rank</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">rank</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
-    <span class="n">front</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="p">(</span><span class="n">rank</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">unknown_rank</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">)))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_known_member_rank</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="n">member</span> <span class="o">=</span> <span class="n">metadata_member_for_header</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">rank</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">member</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">unknown_rank</span><span class="p">)</span> <span class="k">if</span> <span class="n">member</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">unknown_rank</span>
+
+    <span class="n">front</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="p">(</span><span class="n">_known_member_rank</span><span class="p">(</span><span class="n">c</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">)))</span>
     <span class="c1"># Object_Label leads the info block; Bbox_*/Grid_* keep their incoming order</span>
     <span class="c1"># (stable sort) so the trailing block matches #180&#39;s info-frame geometry order.</span>
     <span class="n">info</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="n">label</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
@@ -763,22 +763,20 @@
 
 <div class="viewcode-block" id="metadata_category_prefixes">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_category_prefixes.html#phenotypic.sdk_.metadata_category_prefixes">[docs]</a>
-<span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">metadata_category_prefixes</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;All metadata category prefixes (e.g. ``&#39;MetadataGenetic_&#39;``) in cluster order.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical namespace prefix.</span>
 
-<span class="sd">    Ordered by the bio-semantic cluster order (``_METADATA_CLUSTER_ORDER``), then</span>
-<span class="sd">    deduplicated, so callers building bucket-priority lists get a stable, canonical</span>
-<span class="sd">    ordering. REMBI is a separate axis (see ``by_module`` / ``header_to_module``).</span>
+<span class="sd">    Deprecated:</span>
+<span class="sd">        Use :func:`is_metadata_header` for namespace detection or owner lookup</span>
+<span class="sd">        helpers for semantic routing.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">seen</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-    <span class="n">prefixes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">_cluster_ordered_enums</span><span class="p">():</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">category</span><span class="p">()</span><span class="si">}</span><span class="s2">_&quot;</span>
-        <span class="k">if</span> <span class="n">p</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
-            <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
-            <span class="n">prefixes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
-    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">prefixes</span><span class="p">)</span></div>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+        <span class="s2">&quot;metadata_category_prefixes() is deprecated; use is_metadata_header() &quot;</span>
+        <span class="s2">&quot;or metadata owner lookup helpers instead&quot;</span><span class="p">,</span>
+        <span class="ne">DeprecationWarning</span><span class="p">,</span>
+        <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">_GENERIC_PREFIX</span><span class="p">,)</span></div>
 
 
 
@@ -788,60 +786,557 @@
 <span class="n">_GENERIC_PREFIX</span> <span class="o">=</span> <span class="s2">&quot;Metadata_&quot;</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_flat_header</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical flat-namespace spelling for a bare metadata label.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_GENERIC_PREFIX</span><span class="si">}{</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">_MetadataRegistry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Immutable reverse indexes for all known metadata owners.&quot;&quot;&quot;</span>
+
+    <span class="n">header_to_member</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MetadataInfo</span><span class="p">]</span>
+    <span class="n">label_to_member</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MetadataInfo</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_register_unique</span><span class="p">(</span>
+    <span class="n">registry</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MetadataInfo</span><span class="p">],</span>
+    <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">member</span><span class="p">:</span> <span class="n">MetadataInfo</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">key_kind</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Register one key or fail if another metadata owner already claims it.&quot;&quot;&quot;</span>
+    <span class="n">existing</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">existing</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">existing</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">member</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Duplicate metadata </span><span class="si">{</span><span class="n">key_kind</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2">: &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">existing</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">existing</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> and &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">member</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">member</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="n">registry</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">member</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_build_metadata_registry</span><span class="p">(</span>
+    <span class="n">owners</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MetadataInfo</span><span class="p">]],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_MetadataRegistry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build fail-fast label/header indexes for concrete metadata owners.&quot;&quot;&quot;</span>
+    <span class="n">by_header</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MetadataInfo</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">by_label</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MetadataInfo</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">owner</span> <span class="ow">in</span> <span class="n">owners</span><span class="p">:</span>
+        <span class="n">members</span> <span class="o">=</span> <span class="n">_metadata_members</span><span class="p">(</span><span class="n">owner</span><span class="p">)</span>
+        <span class="n">declarations</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MetadataInfo</span><span class="p">],</span> <span class="n">owner</span><span class="o">.</span><span class="n">__members__</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">declarations</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">members</span><span class="p">):</span>
+            <span class="n">aliases</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">owner</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">member</span><span class="o">.</span><span class="n">label</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">member</span> <span class="ow">in</span> <span class="n">declarations</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">member</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="n">name</span>
+            <span class="p">]</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Duplicate metadata declarations are not allowed; Enum aliases &quot;</span>
+                <span class="s2">&quot;would hide label/header collisions: &quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">aliases</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="n">members</span><span class="p">:</span>
+            <span class="n">_register_unique</span><span class="p">(</span><span class="n">by_label</span><span class="p">,</span> <span class="n">member</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">member</span><span class="p">,</span> <span class="n">key_kind</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">)</span>
+            <span class="n">_register_unique</span><span class="p">(</span><span class="n">by_header</span><span class="p">,</span> <span class="n">member</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">member</span><span class="p">,</span> <span class="n">key_kind</span><span class="o">=</span><span class="s2">&quot;header&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_MetadataRegistry</span><span class="p">(</span>
+        <span class="n">header_to_member</span><span class="o">=</span><span class="n">MappingProxyType</span><span class="p">(</span><span class="n">by_header</span><span class="p">),</span>
+        <span class="n">label_to_member</span><span class="o">=</span><span class="n">MappingProxyType</span><span class="p">(</span><span class="n">by_label</span><span class="p">),</span>
+    <span class="p">)</span>
+
+
+<span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_metadata_registry</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">_MetadataRegistry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the validated immutable registry for the live schema.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_build_metadata_registry</span><span class="p">(</span><span class="n">_metadata_enums</span><span class="p">())</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_metadata_member_for_name</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetadataInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a bare, canonical, or exact historical metadata name.&quot;&quot;&quot;</span>
+    <span class="n">normalized_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">registry</span> <span class="o">=</span> <span class="n">_metadata_registry</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">registry</span><span class="o">.</span><span class="n">header_to_member</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">normalized_name</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">registry</span><span class="o">.</span><span class="n">label_to_member</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">normalized_name</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">LEGACY_HEADER_TO_MEMBER</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">normalized_name</span><span class="p">)</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="metadata_member_for_header">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_member_for_header.html#phenotypic.sdk_.metadata_member_for_header">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">metadata_member_for_header</span><span class="p">(</span><span class="n">header</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetadataInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the member for a bare, canonical, or exact historical header.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_metadata_member_for_name</span><span class="p">(</span><span class="n">header</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="metadata_owner_for_header">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_owner_for_header.html#phenotypic.sdk_.metadata_owner_for_header">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">metadata_owner_for_header</span><span class="p">(</span><span class="n">header</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">[</span><span class="n">MetadataInfo</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the owner for a bare, canonical, or exact historical header.&quot;&quot;&quot;</span>
+    <span class="n">member</span> <span class="o">=</span> <span class="n">metadata_member_for_header</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">member</span><span class="p">)</span> <span class="k">if</span> <span class="n">member</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="metadata_member_for_label">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_member_for_label.html#phenotypic.sdk_.metadata_member_for_label">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">metadata_member_for_label</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetadataInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the member for a bare, canonical, or exact historical label.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_metadata_member_for_name</span><span class="p">(</span><span class="n">label</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="metadata_owner_for_label">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_owner_for_label.html#phenotypic.sdk_.metadata_owner_for_label">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">metadata_owner_for_label</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">[</span><span class="n">MetadataInfo</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the owner for a bare, canonical, or exact historical label.&quot;&quot;&quot;</span>
+    <span class="n">member</span> <span class="o">=</span> <span class="n">metadata_member_for_label</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">member</span><span class="p">)</span> <span class="k">if</span> <span class="n">member</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+
 <div class="viewcode-block" id="is_metadata_header">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.is_metadata_header.html#phenotypic.sdk_.is_metadata_header">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">is_metadata_header</span><span class="p">(</span><span class="n">col</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;True if ``col`` is a metadata-family column.</span>
 
-<span class="sd">    Matches any per-topic ``Metadata&lt;Topic&gt;_`` prefix (e.g.</span>
-<span class="sd">    ``MetadataGenetic_``) *and* the generic ``Metadata_`` fallback used for</span>
-<span class="sd">    uncategorized user metadata, per the namespace design (spec §10.3): the</span>
-<span class="sd">    whole ``Metadata`` family is recognized, measurement/identity columns</span>
-<span class="sd">    (``Shape_``, ``Object_``, ...) are not.</span>
+<span class="sd">    Matches canonical ``Metadata_*`` columns and the exact finite set of</span>
+<span class="sd">    historical per-topic headers. Arbitrary lookalikes such as</span>
+<span class="sd">    ``MetadataFoo_Bar`` are rejected.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">s</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">_GENERIC_PREFIX</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
-        <span class="n">s</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">metadata_category_prefixes</span><span class="p">()</span>
-    <span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">_GENERIC_PREFIX</span><span class="p">)</span> <span class="ow">or</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">LEGACY_HEADER_TO_MEMBER</span></div>
 
 
 
 <div class="viewcode-block" id="ensure_metadata_prefix">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.ensure_metadata_prefix.html#phenotypic.sdk_.ensure_metadata_prefix">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">ensure_metadata_prefix</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prefix a bare metadata label with its schema category, else generic.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize a metadata name to the live schema&#39;s emitted spelling.</span>
 
-<span class="sd">    ``Strain -&gt; MetadataGenetic_Strain`` (the owning enum&#39;s category); an</span>
-<span class="sd">    unknown ``Foo -&gt; Metadata_Foo`` (kept, uncategorized). Names that already</span>
-<span class="sd">    carry a metadata prefix -- any ``Metadata&lt;Topic&gt;_`` category prefix or the</span>
-<span class="sd">    generic ``Metadata_`` -- pass through unchanged.</span>
+<span class="sd">    Bare labels, canonical flat headers, and exact historical per-topic headers</span>
+<span class="sd">    for known members all resolve centrally. Unknown bare labels receive the</span>
+<span class="sd">    generic prefix. Unknown canonical metadata headers remain unchanged.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">is_metadata_header</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="ow">or</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">_GENERIC_PREFIX</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">name</span>
-    <span class="n">category</span> <span class="o">=</span> <span class="n">metadata_category_for_label</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">category</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">category</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_GENERIC_PREFIX</span><span class="si">}{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span></div>
+    <span class="n">normalized_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">member</span> <span class="o">=</span> <span class="n">_metadata_member_for_name</span><span class="p">(</span><span class="n">normalized_name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">member</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">member</span><span class="o">.</span><span class="n">value</span>
+    <span class="k">if</span> <span class="n">is_metadata_header</span><span class="p">(</span><span class="n">normalized_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">normalized_name</span>
+    <span class="k">return</span> <span class="n">_flat_header</span><span class="p">(</span><span class="n">normalized_name</span><span class="p">)</span></div>
 
-
-
-<span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">_label_to_category</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Map each bare metadata label to the category of the enum that owns it.</span>
-
-<span class="sd">    The first enum (in schema export order) to declare a label wins, mirroring</span>
-<span class="sd">    the recommended-vocabulary contract where labels are unique across enums.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">out</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">_metadata_enums</span><span class="p">():</span>
-        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">out</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">category</span><span class="p">())</span>
-    <span class="k">return</span> <span class="n">out</span>
 
 
 <div class="viewcode-block" id="metadata_category_for_label">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_category_for_label.html#phenotypic.sdk_.metadata_category_for_label">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">metadata_category_for_label</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Category that owns a bare label (``&#39;Strain&#39; -&gt; &#39;MetadataGenetic&#39;``), or None.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">_label_to_category</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">label</span><span class="p">)</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the shared category for a known label, or ``None``.</span>
+
+<span class="sd">    Deprecated:</span>
+<span class="sd">        Use :func:`metadata_owner_for_label` or</span>
+<span class="sd">        :func:`metadata_member_for_label` for semantic routing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+        <span class="s2">&quot;metadata_category_for_label() is deprecated; use &quot;</span>
+        <span class="s2">&quot;metadata_owner_for_label() or metadata_member_for_label() instead&quot;</span><span class="p">,</span>
+        <span class="ne">DeprecationWarning</span><span class="p">,</span>
+        <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">owner</span> <span class="o">=</span> <span class="n">metadata_owner_for_label</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">owner</span><span class="o">.</span><span class="n">category</span><span class="p">()</span> <span class="k">if</span> <span class="n">owner</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_pandas_values_are_strings</span><span class="p">(</span><span class="n">series</span><span class="p">:</span> <span class="s2">&quot;pd.Series&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether every populated pandas value is a string.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">series</span><span class="p">[</span><span class="n">series</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_pandas_numeric_supertype</span><span class="p">(</span><span class="n">left_dtype</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">right_dtype</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return pandas&#39; nullable dtype for NumPy&#39;s numeric promotion result.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pandas.api.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_bool_dtype</span><span class="p">,</span> <span class="n">is_numeric_dtype</span>
+
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="ow">not</span> <span class="n">is_numeric_dtype</span><span class="p">(</span><span class="n">left_dtype</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="ow">not</span> <span class="n">is_numeric_dtype</span><span class="p">(</span><span class="n">right_dtype</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">is_bool_dtype</span><span class="p">(</span><span class="n">left_dtype</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">is_bool_dtype</span><span class="p">(</span><span class="n">right_dtype</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">left_numpy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">left_dtype</span><span class="p">,</span> <span class="s2">&quot;numpy_dtype&quot;</span><span class="p">,</span> <span class="n">left_dtype</span><span class="p">))</span>
+        <span class="n">right_numpy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">right_dtype</span><span class="p">,</span> <span class="s2">&quot;numpy_dtype&quot;</span><span class="p">,</span> <span class="n">right_dtype</span><span class="p">))</span>
+        <span class="n">promoted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">promote_types</span><span class="p">(</span><span class="n">left_numpy</span><span class="p">,</span> <span class="n">right_numpy</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">nullable_types</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span> <span class="n">pd</span><span class="o">.</span><span class="n">Int8Dtype</span><span class="p">(),</span>
+        <span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span> <span class="n">pd</span><span class="o">.</span><span class="n">Int16Dtype</span><span class="p">(),</span>
+        <span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span> <span class="n">pd</span><span class="o">.</span><span class="n">Int32Dtype</span><span class="p">(),</span>
+        <span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">,</span> <span class="mi">8</span><span class="p">):</span> <span class="n">pd</span><span class="o">.</span><span class="n">Int64Dtype</span><span class="p">(),</span>
+        <span class="p">(</span><span class="s2">&quot;u&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span> <span class="n">pd</span><span class="o">.</span><span class="n">UInt8Dtype</span><span class="p">(),</span>
+        <span class="p">(</span><span class="s2">&quot;u&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span> <span class="n">pd</span><span class="o">.</span><span class="n">UInt16Dtype</span><span class="p">(),</span>
+        <span class="p">(</span><span class="s2">&quot;u&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span> <span class="n">pd</span><span class="o">.</span><span class="n">UInt32Dtype</span><span class="p">(),</span>
+        <span class="p">(</span><span class="s2">&quot;u&quot;</span><span class="p">,</span> <span class="mi">8</span><span class="p">):</span> <span class="n">pd</span><span class="o">.</span><span class="n">UInt64Dtype</span><span class="p">(),</span>
+        <span class="p">(</span><span class="s2">&quot;f&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span> <span class="n">pd</span><span class="o">.</span><span class="n">Float32Dtype</span><span class="p">(),</span>
+        <span class="p">(</span><span class="s2">&quot;f&quot;</span><span class="p">,</span> <span class="mi">8</span><span class="p">):</span> <span class="n">pd</span><span class="o">.</span><span class="n">Float64Dtype</span><span class="p">(),</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">nullable_types</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">promoted</span><span class="o">.</span><span class="n">kind</span><span class="p">,</span> <span class="n">promoted</span><span class="o">.</span><span class="n">itemsize</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_pandas_common_dtype</span><span class="p">(</span><span class="n">left</span><span class="p">:</span> <span class="s2">&quot;pd.Series&quot;</span><span class="p">,</span> <span class="n">right</span><span class="p">:</span> <span class="s2">&quot;pd.Series&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Choose a lossless common dtype candidate for two pandas columns.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pandas.api.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_dtype_equal</span>
+
+    <span class="n">left_has_values</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">left</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">())</span>
+    <span class="n">right_has_values</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">right</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">())</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">left_has_values</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">right_has_values</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">left</span><span class="o">.</span><span class="n">dtype</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">left_has_values</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">right</span><span class="o">.</span><span class="n">dtype</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">right_has_values</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">left</span><span class="o">.</span><span class="n">dtype</span>
+    <span class="k">if</span> <span class="n">is_dtype_equal</span><span class="p">(</span><span class="n">left</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">right</span><span class="o">.</span><span class="n">dtype</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">left</span><span class="o">.</span><span class="n">dtype</span>
+    <span class="k">if</span> <span class="n">_pandas_values_are_strings</span><span class="p">(</span><span class="n">left</span><span class="p">)</span> <span class="ow">and</span> <span class="n">_pandas_values_are_strings</span><span class="p">(</span><span class="n">right</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">StringDtype</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_pandas_numeric_supertype</span><span class="p">(</span><span class="n">left</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">right</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_pandas_values_agree</span><span class="p">(</span><span class="n">left</span><span class="p">:</span> <span class="s2">&quot;pd.Series&quot;</span><span class="p">,</span> <span class="n">right</span><span class="p">:</span> <span class="s2">&quot;pd.Series&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether overlapping non-null pandas values compare equal.&quot;&quot;&quot;</span>
+    <span class="n">overlap</span> <span class="o">=</span> <span class="n">left</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">right</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">overlap</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">left</span><span class="p">[</span><span class="n">overlap</span><span class="p">]</span><span class="o">.</span><span class="n">eq</span><span class="p">(</span><span class="n">right</span><span class="p">[</span><span class="n">overlap</span><span class="p">])</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">())</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_scalar_values_equal</span><span class="p">(</span><span class="n">left</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">right</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compare scalar values without array/backend dtype coercion.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">right</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="n">math</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">left</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="n">math</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">right</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">left</span> <span class="o">==</span> <span class="n">right</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">and</span> <span class="n">result</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_pandas_values_equal_exact</span><span class="p">(</span><span class="n">left</span><span class="p">:</span> <span class="s2">&quot;pd.Series&quot;</span><span class="p">,</span> <span class="n">right</span><span class="p">:</span> <span class="s2">&quot;pd.Series&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compare pandas values and nulls scalar-by-scalar without coercion.&quot;&quot;&quot;</span>
+    <span class="n">left_null</span> <span class="o">=</span> <span class="n">left</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">right_null</span> <span class="o">=</span> <span class="n">right</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">left_null</span> <span class="o">!=</span> <span class="n">right_null</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">is_null</span><span class="p">,</span> <span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+        <span class="n">left_null</span><span class="p">,</span> <span class="n">left</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">right</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_null</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_scalar_values_equal</span><span class="p">(</span><span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_pandas_cast_losslessly</span><span class="p">(</span><span class="n">series</span><span class="p">:</span> <span class="s2">&quot;pd.Series&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;pd.Series | None&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cast through ``dtype`` and prove a roundtrip preserves values and nulls.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">casted</span> <span class="o">=</span> <span class="n">series</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">roundtripped</span> <span class="o">=</span> <span class="n">casted</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">OverflowError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_pandas_values_equal_exact</span><span class="p">(</span><span class="n">series</span><span class="p">,</span> <span class="n">casted</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_pandas_values_equal_exact</span><span class="p">(</span><span class="n">series</span><span class="p">,</span> <span class="n">roundtripped</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">casted</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalize_pandas_metadata_columns</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="s2">&quot;pd.DataFrame&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;pd.DataFrame&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a normalized deep copy of a pandas DataFrame.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+    <span class="n">source_names</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+    <span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">ensure_metadata_prefix</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">source_names</span><span class="p">]</span>
+    <span class="n">groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">target</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">targets</span><span class="p">):</span>
+        <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
+
+    <span class="n">combined</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;pd.Series&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">consumed</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">target</span><span class="p">,</span> <span class="n">positions</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">anchor</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">position</span> <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">positions</span> <span class="k">if</span> <span class="n">source_names</span><span class="p">[</span><span class="n">position</span><span class="p">]</span> <span class="o">==</span> <span class="n">target</span><span class="p">),</span>
+            <span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">merged</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="n">candidate</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">position</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">_pandas_values_agree</span><span class="p">(</span><span class="n">merged</span><span class="p">,</span> <span class="n">candidate</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Metadata columns normalizing to </span><span class="si">{</span><span class="n">target</span><span class="si">!r}</span><span class="s2"> contain &quot;</span>
+                    <span class="s2">&quot;conflicting non-null values&quot;</span>
+                <span class="p">)</span>
+            <span class="n">common_dtype</span> <span class="o">=</span> <span class="n">_pandas_common_dtype</span><span class="p">(</span><span class="n">merged</span><span class="p">,</span> <span class="n">candidate</span><span class="p">)</span>
+            <span class="n">left_cast</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">_pandas_cast_losslessly</span><span class="p">(</span><span class="n">merged</span><span class="p">,</span> <span class="n">common_dtype</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">common_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">)</span>
+            <span class="n">right_cast</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">_pandas_cast_losslessly</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="n">common_dtype</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">common_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">left_cast</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">right_cast</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Metadata columns normalizing to </span><span class="si">{</span><span class="n">target</span><span class="si">!r}</span><span class="s2"> have incompatible &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;dtypes that cannot share a lossless representation: &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">merged</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">candidate</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">merged</span> <span class="o">=</span> <span class="n">left_cast</span><span class="o">.</span><span class="n">combine_first</span><span class="p">(</span><span class="n">right_cast</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">OverflowError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Metadata columns normalizing to </span><span class="si">{</span><span class="n">target</span><span class="si">!r}</span><span class="s2"> could not be &quot;</span>
+                    <span class="s2">&quot;coalesced losslessly&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="n">merged</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">target</span>
+        <span class="n">combined</span><span class="p">[</span><span class="n">anchor</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged</span>
+        <span class="n">consumed</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">position</span> <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">positions</span> <span class="k">if</span> <span class="n">position</span> <span class="o">!=</span> <span class="n">anchor</span><span class="p">)</span>
+
+    <span class="n">output_columns</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">combined</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">frame</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">position</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+            <span class="n">targets</span><span class="p">[</span><span class="n">position</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">source_names</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">position</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">consumed</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">output_columns</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">frame</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">output_columns</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_polars_common_dtype</span><span class="p">(</span><span class="n">left</span><span class="p">:</span> <span class="s2">&quot;pl.Series&quot;</span><span class="p">,</span> <span class="n">right</span><span class="p">:</span> <span class="s2">&quot;pl.Series&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Choose a lossless common dtype candidate for two Polars columns.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+
+    <span class="n">left_has_values</span> <span class="o">=</span> <span class="n">left</span><span class="o">.</span><span class="n">null_count</span><span class="p">()</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">left</span><span class="p">)</span>
+    <span class="n">right_has_values</span> <span class="o">=</span> <span class="n">right</span><span class="o">.</span><span class="n">null_count</span><span class="p">()</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">right</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">left_has_values</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">right_has_values</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">left</span><span class="o">.</span><span class="n">dtype</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">left_has_values</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">right</span><span class="o">.</span><span class="n">dtype</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">right_has_values</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">left</span><span class="o">.</span><span class="n">dtype</span>
+    <span class="k">if</span> <span class="n">left</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">right</span><span class="o">.</span><span class="n">dtype</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">left</span><span class="o">.</span><span class="n">dtype</span>
+    <span class="n">textual_types</span> <span class="o">=</span> <span class="p">{</span><span class="n">pl</span><span class="o">.</span><span class="n">String</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">Categorical</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">Enum</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">left</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">base_type</span><span class="p">()</span> <span class="ow">in</span> <span class="n">textual_types</span> <span class="ow">and</span> <span class="n">right</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">base_type</span><span class="p">()</span> <span class="ow">in</span> <span class="n">textual_types</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">String</span>
+    <span class="k">return</span> <span class="n">_polars_numeric_supertype</span><span class="p">(</span><span class="n">left</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">right</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_polars_numeric_supertype</span><span class="p">(</span><span class="n">left_dtype</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">right_dtype</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the Polars dtype corresponding to NumPy numeric promotion.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+
+    <span class="n">numpy_types</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">Int8</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;int8&quot;</span><span class="p">),</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">Int16</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;int16&quot;</span><span class="p">),</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">Int32</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;int32&quot;</span><span class="p">),</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">Int64</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;int64&quot;</span><span class="p">),</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">UInt8</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;uint8&quot;</span><span class="p">),</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">UInt16</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;uint16&quot;</span><span class="p">),</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">UInt32</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;uint32&quot;</span><span class="p">),</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">UInt64</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;uint64&quot;</span><span class="p">),</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">Float32</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;float32&quot;</span><span class="p">),</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">Float64</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;float64&quot;</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="n">left_numpy</span> <span class="o">=</span> <span class="n">numpy_types</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">left_dtype</span><span class="o">.</span><span class="n">base_type</span><span class="p">())</span>
+    <span class="n">right_numpy</span> <span class="o">=</span> <span class="n">numpy_types</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">right_dtype</span><span class="o">.</span><span class="n">base_type</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">left_numpy</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">right_numpy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">promoted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">promote_types</span><span class="p">(</span><span class="n">left_numpy</span><span class="p">,</span> <span class="n">right_numpy</span><span class="p">)</span>
+    <span class="n">polars_types</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;int8&quot;</span><span class="p">):</span> <span class="n">pl</span><span class="o">.</span><span class="n">Int8</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;int16&quot;</span><span class="p">):</span> <span class="n">pl</span><span class="o">.</span><span class="n">Int16</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;int32&quot;</span><span class="p">):</span> <span class="n">pl</span><span class="o">.</span><span class="n">Int32</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;int64&quot;</span><span class="p">):</span> <span class="n">pl</span><span class="o">.</span><span class="n">Int64</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;uint8&quot;</span><span class="p">):</span> <span class="n">pl</span><span class="o">.</span><span class="n">UInt8</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;uint16&quot;</span><span class="p">):</span> <span class="n">pl</span><span class="o">.</span><span class="n">UInt16</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;uint32&quot;</span><span class="p">):</span> <span class="n">pl</span><span class="o">.</span><span class="n">UInt32</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;uint64&quot;</span><span class="p">):</span> <span class="n">pl</span><span class="o">.</span><span class="n">UInt64</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;float32&quot;</span><span class="p">):</span> <span class="n">pl</span><span class="o">.</span><span class="n">Float32</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;float64&quot;</span><span class="p">):</span> <span class="n">pl</span><span class="o">.</span><span class="n">Float64</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">polars_types</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">promoted</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_polars_values_agree</span><span class="p">(</span><span class="n">left</span><span class="p">:</span> <span class="s2">&quot;pl.Series&quot;</span><span class="p">,</span> <span class="n">right</span><span class="p">:</span> <span class="s2">&quot;pl.Series&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether overlapping non-null Polars values compare equal.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+    <span class="k">for</span> <span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">left</span><span class="o">.</span><span class="n">to_list</span><span class="p">(),</span> <span class="n">right</span><span class="o">.</span><span class="n">to_list</span><span class="p">(),</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">left_value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">right_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">left_value</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">right_value</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">math</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">left_value</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">math</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">right_value</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">left_value</span> <span class="o">!=</span> <span class="n">right_value</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_polars_values_equal_exact</span><span class="p">(</span><span class="n">left</span><span class="p">:</span> <span class="s2">&quot;pl.Series&quot;</span><span class="p">,</span> <span class="n">right</span><span class="p">:</span> <span class="s2">&quot;pl.Series&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compare Polars values and nulls scalar-by-scalar without coercion.&quot;&quot;&quot;</span>
+    <span class="n">left_null</span> <span class="o">=</span> <span class="n">left</span><span class="o">.</span><span class="n">is_null</span><span class="p">()</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+    <span class="n">right_null</span> <span class="o">=</span> <span class="n">right</span><span class="o">.</span><span class="n">is_null</span><span class="p">()</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">left_null</span> <span class="o">!=</span> <span class="n">right_null</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">is_null</span><span class="p">,</span> <span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+        <span class="n">left_null</span><span class="p">,</span> <span class="n">left</span><span class="o">.</span><span class="n">to_list</span><span class="p">(),</span> <span class="n">right</span><span class="o">.</span><span class="n">to_list</span><span class="p">(),</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_null</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_scalar_values_equal</span><span class="p">(</span><span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_polars_cast_losslessly</span><span class="p">(</span><span class="n">series</span><span class="p">:</span> <span class="s2">&quot;pl.Series&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;pl.Series | None&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cast through ``dtype`` and prove a roundtrip preserves values and nulls.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">casted</span> <span class="o">=</span> <span class="n">series</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">roundtripped</span> <span class="o">=</span> <span class="n">casted</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">PolarsError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">OverflowError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_polars_values_equal_exact</span><span class="p">(</span><span class="n">series</span><span class="p">,</span> <span class="n">casted</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_polars_values_equal_exact</span><span class="p">(</span><span class="n">series</span><span class="p">,</span> <span class="n">roundtripped</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">casted</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalize_polars_metadata_columns</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="s2">&quot;pl.DataFrame&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;pl.DataFrame&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a normalized clone of a Polars DataFrame.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+
+    <span class="n">source_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+    <span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">ensure_metadata_prefix</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">source_names</span><span class="p">]</span>
+    <span class="n">groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">target</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">targets</span><span class="p">):</span>
+        <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
+
+    <span class="n">combined</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;pl.Series&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">consumed</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">target</span><span class="p">,</span> <span class="n">positions</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">anchor</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">position</span> <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">positions</span> <span class="k">if</span> <span class="n">source_names</span><span class="p">[</span><span class="n">position</span><span class="p">]</span> <span class="o">==</span> <span class="n">target</span><span class="p">),</span>
+            <span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">merged</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">to_series</span><span class="p">(</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="n">candidate</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">to_series</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">_polars_values_agree</span><span class="p">(</span><span class="n">merged</span><span class="p">,</span> <span class="n">candidate</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Metadata columns normalizing to </span><span class="si">{</span><span class="n">target</span><span class="si">!r}</span><span class="s2"> contain &quot;</span>
+                    <span class="s2">&quot;conflicting non-null values&quot;</span>
+                <span class="p">)</span>
+            <span class="n">common_dtype</span> <span class="o">=</span> <span class="n">_polars_common_dtype</span><span class="p">(</span><span class="n">merged</span><span class="p">,</span> <span class="n">candidate</span><span class="p">)</span>
+            <span class="n">left_cast</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">_polars_cast_losslessly</span><span class="p">(</span><span class="n">merged</span><span class="p">,</span> <span class="n">common_dtype</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">common_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">)</span>
+            <span class="n">right_cast</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">_polars_cast_losslessly</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="n">common_dtype</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">common_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">left_cast</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">right_cast</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Metadata columns normalizing to </span><span class="si">{</span><span class="n">target</span><span class="si">!r}</span><span class="s2"> have incompatible &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;dtypes that cannot share a lossless representation: &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">merged</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">candidate</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">pair</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;__metadata_left&quot;</span><span class="p">:</span> <span class="n">left_cast</span><span class="p">,</span>
+                    <span class="s2">&quot;__metadata_right&quot;</span><span class="p">:</span> <span class="n">right_cast</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">merged</span> <span class="o">=</span> <span class="n">pair</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+                    <span class="n">pl</span><span class="o">.</span><span class="n">coalesce</span><span class="p">(</span><span class="s2">&quot;__metadata_left&quot;</span><span class="p">,</span> <span class="s2">&quot;__metadata_right&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">to_series</span><span class="p">()</span>
+            <span class="k">except</span> <span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">PolarsError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">OverflowError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Metadata columns normalizing to </span><span class="si">{</span><span class="n">target</span><span class="si">!r}</span><span class="s2"> could not be &quot;</span>
+                    <span class="s2">&quot;coalesced losslessly&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="n">combined</span><span class="p">[</span><span class="n">anchor</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+        <span class="n">consumed</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">position</span> <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">positions</span> <span class="k">if</span> <span class="n">position</span> <span class="o">!=</span> <span class="n">anchor</span><span class="p">)</span>
+
+    <span class="n">output_columns</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">combined</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">frame</span><span class="o">.</span><span class="n">to_series</span><span class="p">(</span><span class="n">position</span><span class="p">)</span><span class="o">.</span><span class="n">clone</span><span class="p">())</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">targets</span><span class="p">[</span><span class="n">position</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">source_names</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">position</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">consumed</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">output_columns</span><span class="p">)</span>
+
+
+<span class="nd">@overload</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">normalize_metadata_columns</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="s2">&quot;pd.DataFrame&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;pd.DataFrame&quot;</span><span class="p">:</span> <span class="o">...</span>
+
+
+<span class="nd">@overload</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">normalize_metadata_columns</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="s2">&quot;pl.DataFrame&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;pl.DataFrame&quot;</span><span class="p">:</span> <span class="o">...</span>
+
+
+<div class="viewcode-block" id="normalize_metadata_columns">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.normalize_metadata_columns.html#phenotypic.sdk_.normalize_metadata_columns">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">normalize_metadata_columns</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="n">_FrameT</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_FrameT</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize external metadata columns without mutating the input frame.</span>
+
+<span class="sd">    The input and output frame implementations match. Columns that normalize to</span>
+<span class="sd">    one target are coalesced only when their dtypes are compatible and all</span>
+<span class="sd">    overlapping non-null values agree. A conflict raises before any caller-owned</span>
+<span class="sd">    state is changed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_normalize_pandas_metadata_columns</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>  <span class="c1"># type: ignore[return-value]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_normalize_polars_metadata_columns</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>  <span class="c1"># type: ignore[return-value]</span>
+    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+        <span class="s2">&quot;normalize_metadata_columns requires a pandas or Polars DataFrame; &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span></div>
 
 
 

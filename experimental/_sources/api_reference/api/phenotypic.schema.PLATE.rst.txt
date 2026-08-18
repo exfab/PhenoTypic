@@ -1,0 +1,109 @@
+phenotypic.schema.PLATE
+=======================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: PLATE
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PLATE.category
+      ~PLATE.header_set
+      ~PLATE.kind
+      ~PLATE.tier
+      ~PLATE.rembi_module
+      ~PLATE.header_scheme
+      ~PLATE.member_for_header
+      ~PLATE.owns_header
+      ~PLATE.get_labels
+      ~PLATE.get_headers
+      ~PLATE.rst_table
+      ~PLATE.append_rst_to_doc
+      ~PLATE.encode
+      ~PLATE.replace
+      ~PLATE.split
+      ~PLATE.rsplit
+      ~PLATE.join
+      ~PLATE.capitalize
+      ~PLATE.casefold
+      ~PLATE.title
+      ~PLATE.center
+      ~PLATE.count
+      ~PLATE.expandtabs
+      ~PLATE.find
+      ~PLATE.partition
+      ~PLATE.index
+      ~PLATE.ljust
+      ~PLATE.lower
+      ~PLATE.lstrip
+      ~PLATE.rfind
+      ~PLATE.rindex
+      ~PLATE.rjust
+      ~PLATE.rstrip
+      ~PLATE.rpartition
+      ~PLATE.splitlines
+      ~PLATE.strip
+      ~PLATE.swapcase
+      ~PLATE.translate
+      ~PLATE.upper
+      ~PLATE.startswith
+      ~PLATE.endswith
+      ~PLATE.removeprefix
+      ~PLATE.removesuffix
+      ~PLATE.isascii
+      ~PLATE.islower
+      ~PLATE.isupper
+      ~PLATE.istitle
+      ~PLATE.isspace
+      ~PLATE.isdecimal
+      ~PLATE.isdigit
+      ~PLATE.isnumeric
+      ~PLATE.isalpha
+      ~PLATE.isalnum
+      ~PLATE.isidentifier
+      ~PLATE.isprintable
+      ~PLATE.zfill
+      ~PLATE.format
+      ~PLATE.format_map
+      ~PLATE.maketrans
+      ~PLATE.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PLATE.CATEGORY
+      ~PLATE.resolved_kind
+      ~PLATE.resolved_tier
+      ~PLATE.resolved_rembi_module
+      ~PLATE.use_label
+      ~PLATE.use_badge
+      ~PLATE.PLATE_ID
+      ~PLATE.BATCH
+      ~PLATE.ARRAY_DENSITY
+      ~PLATE.INCUBATOR_POSITION
+      ~PLATE.CONFIGURATION
+      ~PLATE.label
+      ~PLATE.desc
+      ~PLATE.bio_desc
+      ~PLATE.image
+      ~PLATE.pair
+      ~PLATE.tier_override
+      ~PLATE.derivation_type
+      ~PLATE.derives_from
+      ~PLATE.rembi_module_override
+   
+   

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Metadata column namespace (REMBI modules) &#8212; PhenoTypic</title>
+    <title>Flat metadata namespace and semantic owners &#8212; PhenoTypic</title>
   
   
   
@@ -567,7 +567,7 @@
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="measurement_classification_system.html">Measurement Classification: Phenotypes vs. Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="measurement_metrics_biological_meaning.html">Measurement Metrics and Their Biological Meaning</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Metadata column namespace (REMBI modules)</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Flat metadata namespace and semantic owners</a></li>
 <li class="toctree-l1"><a class="reference internal" href="edge_effects_in_plate_assays.html">Edge Effects in Plate-Based Assays</a></li>
 <li class="toctree-l1"><a class="reference internal" href="image_quality_noise_contrast_structure.html">Image Quality: Noise, Contrast, and Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="notebooks/linear_softplus_model.html">The Linear-Softplus and Double-Softplus Growth Models</a></li>
@@ -619,7 +619,7 @@
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">Explanation</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Metadata column namespace (REMBI modules)</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Flat metadata namespace and semantic owners</span></li>
   </ul>
 </nav>
 </div>
@@ -636,107 +636,176 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section class="tex2jax_ignore mathjax_ignore" id="metadata-column-namespace-rembi-modules">
-<h1>Metadata column namespace (REMBI modules)<a class="headerlink" href="#metadata-column-namespace-rembi-modules" title="Link to this heading">#</a></h1>
-<p>PhenoTypic’s metadata columns are <strong>self-describing, per-topic</strong> headers of the
-form <code class="docutils literal notranslate"><span class="pre">Metadata&lt;Topic&gt;_&lt;Label&gt;</span></code> — for example <code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Strain</span></code>,
-<code class="docutils literal notranslate"><span class="pre">MetadataCulture_Time</span></code>, <code class="docutils literal notranslate"><span class="pre">MetadataImage_ImageName</span></code>. Each metadata enum in
-<code class="docutils literal notranslate"><span class="pre">phenotypic.schema</span></code> owns one category prefix:</p>
+  <section class="tex2jax_ignore mathjax_ignore" id="flat-metadata-namespace-and-semantic-owners">
+<h1>Flat metadata namespace and semantic owners<a class="headerlink" href="#flat-metadata-namespace-and-semantic-owners" title="Link to this heading">#</a></h1>
+<p>PhenoTypic writes every generated scientific metadata field as
+<code class="docutils literal notranslate"><span class="pre">Metadata_&lt;Label&gt;</span></code>. The prefix is short and predictable for people entering CSV
+headers, while the public enum that owns a label keeps its semantic category
+available to code:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
-<tr class="row-odd"><th class="head"><p>Enum</p></th>
-<th class="head"><p>Category prefix</p></th>
+<tr class="row-odd"><th class="head"><p>Public enum</p></th>
+<th class="head"><p>Example member</p></th>
+<th class="head"><p>Emitted header</p></th>
 <th class="head"><p>REMBI module</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">METADATA</span></code> (framework)</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">MetadataImage</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">IMAGE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">IMAGE.IMAGE_NAME</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code></p></td>
 <td><p>ImageData</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">STUDY_METADATA</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">MetadataStudy</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">STUDY</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">STUDY.TITLE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Title</span></code></p></td>
 <td><p>Study</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">EXPERIMENT_METADATA</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">MetadataExperiment</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">EXPERIMENT</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">EXPERIMENT.DATASET</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Dataset</span></code></p></td>
 <td><p>Study</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GENETIC_METADATA</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">MetadataGenetic</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GENETIC</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">GENETIC.STRAIN</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Strain</span></code></p></td>
 <td><p>Biosample</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SAMPLE_METADATA</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SAMPLE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SAMPLE.BIO_REPLICATE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Metadata_BioReplicate</span></code></p></td>
 <td><p>Biosample</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CONDITION_METADATA</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CONDITION</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CONDITION.MEDIA</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Media</span></code></p></td>
 <td><p>SpecimenPreparation</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CULTURE_METADATA</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CULTURE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CULTURE.TIME</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Time</span></code></p></td>
+<td><p>Biosample</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PLATE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PLATE.PLATE_ID</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Metadata_PlateID</span></code></p></td>
 <td><p>SpecimenPreparation</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PLATE_METADATA</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">MetadataPlate</span></code></p></td>
-<td><p>SpecimenPreparation</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ACQUISITION_METADATA</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">MetadataAcquisition</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ACQUISITION</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ACQUISITION.INSTRUMENT</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Instrument</span></code></p></td>
 <td><p>ImageAcquisition</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>All prefixes share the <code class="docutils literal notranslate"><span class="pre">Metadata</span></code> <strong>column family</strong>. Code recognizes any metadata
-column with <a class="reference internal" href="../api_reference/api/phenotypic.sdk_.is_metadata_header.html#phenotypic.sdk_.is_metadata_header" title="phenotypic.sdk_.is_metadata_header"><code class="xref py py-func docutils literal notranslate"><span class="pre">phenotypic.sdk_.is_metadata_header()</span></code></a> (which matches every
-<code class="docutils literal notranslate"><span class="pre">Metadata&lt;Topic&gt;_</span></code> prefix <em>and</em> the generic <code class="docutils literal notranslate"><span class="pre">Metadata_</span></code> fallback) rather than a
-bare <code class="docutils literal notranslate"><span class="pre">&quot;Metadata_&quot;</span></code> string literal. The REMBI module is a separate axis exposed by
-<code class="docutils literal notranslate"><span class="pre">MeasurementInfo.rembi_module()</span></code> and folded into the run’s <code class="docutils literal notranslate"><span class="pre">deliverables/rembi.yaml</span></code>
-manifest; the per-topic category prefix and the REMBI module are independent (the
-time straddler <code class="docutils literal notranslate"><span class="pre">MetadataCulture_Time</span></code> carries <code class="docutils literal notranslate"><span class="pre">rembi_module=Biosample</span></code>).</p>
-<p>This is a <strong>recommended vocabulary, not a validator</strong>: arbitrary metadata columns
-are always accepted. A user-supplied label that is not in the vocabulary keeps a
-generic <code class="docutils literal notranslate"><span class="pre">Metadata_&lt;Label&gt;</span></code> header and routes to the REMBI <code class="docutils literal notranslate"><span class="pre">Uncategorized</span></code> module.</p>
+<p>All nine enums inherit <a class="reference internal" href="../api_reference/api/phenotypic.schema.MetadataInfo.html#phenotypic.schema.MetadataInfo" title="phenotypic.schema.MetadataInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">phenotypic.schema.MetadataInfo</span></code></a>, whose
+<code class="docutils literal notranslate"><span class="pre">category()</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;Metadata&quot;</span></code>. Category strings therefore cannot distinguish
+owners. Use enum identity and the ownership APIs instead:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GENETIC</span><span class="p">,</span> <span class="n">MetadataInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">metadata_member_for_header</span><span class="p">,</span>
+    <span class="n">metadata_owner_for_header</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">member</span> <span class="o">=</span> <span class="n">metadata_member_for_header</span><span class="p">(</span><span class="s2">&quot;Metadata_Strain&quot;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">member</span> <span class="ow">is</span> <span class="n">GENETIC</span><span class="o">.</span><span class="n">STRAIN</span>
+<span class="k">assert</span> <span class="n">metadata_owner_for_header</span><span class="p">(</span><span class="s2">&quot;Metadata_Strain&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="n">GENETIC</span>
+<span class="k">assert</span> <span class="s2">&quot;Metadata_Strain&quot;</span> <span class="ow">in</span> <span class="n">GENETIC</span><span class="o">.</span><span class="n">header_set</span><span class="p">()</span>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">metadata_owner_for_header</span><span class="p">(</span><span class="s2">&quot;Strain&quot;</span><span class="p">),</span> <span class="n">MetadataInfo</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The lookup functions also accept a bare known label such as <code class="docutils literal notranslate"><span class="pre">Strain</span></code> and an
+exact historical spelling such as <code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Strain</span></code>. Corresponding
+<code class="docutils literal notranslate"><span class="pre">metadata_member_for_label()</span></code> and <code class="docutils literal notranslate"><span class="pre">metadata_owner_for_label()</span></code> helpers are
+available when the input is conceptually a label. Unknown metadata remains
+valid but has no owner and routes to REMBI <code class="docutils literal notranslate"><span class="pre">Uncategorized</span></code>.</p>
+<p>Use <a class="reference internal" href="../api_reference/api/phenotypic.sdk_.is_metadata_header.html#phenotypic.sdk_.is_metadata_header" title="phenotypic.sdk_.is_metadata_header"><code class="xref py py-func docutils literal notranslate"><span class="pre">phenotypic.sdk_.is_metadata_header()</span></code></a> to identify the metadata family.
+It recognizes canonical <code class="docutils literal notranslate"><span class="pre">Metadata_*</span></code> headers and the finite exact set of
+historical headers. It intentionally rejects arbitrary lookalikes such as
+<code class="docutils literal notranslate"><span class="pre">MetadataFoo_Bar</span></code>. Use <a class="reference internal" href="../api_reference/api/phenotypic.sdk_.normalize_metadata_columns.html#phenotypic.sdk_.normalize_metadata_columns" title="phenotypic.sdk_.normalize_metadata_columns"><code class="xref py py-func docutils literal notranslate"><span class="pre">phenotypic.sdk_.normalize_metadata_columns()</span></code></a> at a
+DataFrame ingress boundary. It returns a copy, canonicalizes bare and historical
+headers, and coalesces duplicate aliases only when their dtypes are compatible
+and their overlapping non-null values agree.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p>To attach metadata to a run and emit the <code class="docutils literal notranslate"><span class="pre">deliverables/rembi.yaml</span></code> manifest, see
-the how-to guide <a class="reference internal" href="../how_to/pages/rembi_metadata.html"><span class="doc">Describe a run’s metadata with REMBI</span></a> — it covers the <code class="docutils literal notranslate"><span class="pre">--metadata</span></code>
-sample CSV, the <code class="docutils literal notranslate"><span class="pre">--study</span></code> profile, and how columns fold into REMBI modules, with
-downloadable example files.</p>
+<p>To attach metadata to a run and emit <code class="docutils literal notranslate"><span class="pre">deliverables/rembi.yaml</span></code>, see
+<a class="reference internal" href="../how_to/pages/rembi_metadata.html"><span class="doc">Describe a run’s metadata with REMBI</span></a>.</p>
 </div>
-<section id="column-order-bio-semantic-clusters">
-<h2>Column order (bio-semantic clusters)<a class="headerlink" href="#column-order-bio-semantic-clusters" title="Link to this heading">#</a></h2>
-<p>Measurement sheets order the metadata front-block by a bench-scientist narrative,
-<strong>not</strong> by REMBI module:</p>
+<section id="column-order">
+<h2>Column order<a class="headerlink" href="#column-order" title="Link to this heading">#</a></h2>
+<p>Measurement sheets order the metadata front block by a bench-scientist
+narrative, not by spelling or REMBI module:</p>
 <ol class="arabic simple">
-<li><p><strong>Identity</strong> — <code class="docutils literal notranslate"><span class="pre">MetadataSample_*</span></code>, <code class="docutils literal notranslate"><span class="pre">MetadataPlate_*</span></code></p></li>
-<li><p><strong>Strain</strong> — <code class="docutils literal notranslate"><span class="pre">MetadataGenetic_*</span></code></p></li>
-<li><p><strong>Condition</strong> — <code class="docutils literal notranslate"><span class="pre">MetadataCondition_*</span></code>, <code class="docutils literal notranslate"><span class="pre">MetadataCulture_*</span></code></p></li>
-<li><p><strong>Design &amp; provenance</strong> — <code class="docutils literal notranslate"><span class="pre">MetadataExperiment_*</span></code>, <code class="docutils literal notranslate"><span class="pre">MetadataStudy_*</span></code>, <code class="docutils literal notranslate"><span class="pre">MetadataAcquisition_*</span></code></p></li>
+<li><p><strong>Identity:</strong> fields owned by <code class="docutils literal notranslate"><span class="pre">SAMPLE</span></code>, then <code class="docutils literal notranslate"><span class="pre">PLATE</span></code></p></li>
+<li><p><strong>Strain:</strong> fields owned by <code class="docutils literal notranslate"><span class="pre">GENETIC</span></code></p></li>
+<li><p><strong>Condition:</strong> fields owned by <code class="docutils literal notranslate"><span class="pre">CONDITION</span></code>, then <code class="docutils literal notranslate"><span class="pre">CULTURE</span></code></p></li>
+<li><p><strong>Design and provenance:</strong> fields owned by <code class="docutils literal notranslate"><span class="pre">EXPERIMENT</span></code>, <code class="docutils literal notranslate"><span class="pre">STUDY</span></code>, then
+<code class="docutils literal notranslate"><span class="pre">ACQUISITION</span></code></p></li>
 </ol>
-<p>Unknown/uncategorized <code class="docutils literal notranslate"><span class="pre">Metadata_*</span></code> tags trail the four clusters. Within a category,
-columns follow the enum’s declaration order. The framework <code class="docutils literal notranslate"><span class="pre">MetadataImage_*</span></code> block is
-per-image provenance and is placed <strong>after</strong> the measurements, before the per-object
-<code class="docutils literal notranslate"><span class="pre">Object_Label</span></code> / <code class="docutils literal notranslate"><span class="pre">Bbox_*</span></code> / <code class="docutils literal notranslate"><span class="pre">Grid_*</span></code> info block. REMBI (<code class="docutils literal notranslate"><span class="pre">by_module</span></code>, the run manifest)
-remains a separate provenance axis and is unaffected by this ordering.</p>
+<p>Unknown <code class="docutils literal notranslate"><span class="pre">Metadata_*</span></code> fields trail the known owner blocks. Within an owner,
+columns follow enum declaration order. The <code class="docutils literal notranslate"><span class="pre">IMAGE</span></code> block is per-image
+provenance and appears after measurements, before the per-object info block.
+REMBI classification is a separate provenance axis and does not drive this
+presentation order.</p>
 </section>
-<section id="migration-note-namespace-rename">
-<h2>Migration note (namespace rename)<a class="headerlink" href="#migration-note-namespace-rename" title="Link to this heading">#</a></h2>
-<p>Metadata columns are now per-REMBI-module prefixed (<code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Strain</span></code>
-instead of the previous shared <code class="docutils literal notranslate"><span class="pre">Metadata_Strain</span></code>). The ad-hoc <code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code>
-column was consolidated into <code class="docutils literal notranslate"><span class="pre">MetadataImage_ImageName</span></code> (plus
-<code class="docutils literal notranslate"><span class="pre">MetadataImage_FileSuffix</span></code>). This is a <strong>clean break</strong>:</p>
-<ul class="simple">
-<li><p><strong>Old output folders</strong> still open in the GUI: curation state auto-migrates on
-load (the legacy <code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code> curation column is renamed on read), and
-old <code class="docutils literal notranslate"><span class="pre">master_measurements.parquet</span></code> archives still load (the legacy
-<code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code> column is recognized as the image-stem key).</p></li>
-<li><p><strong>Old metadata columns will not auto-map</strong> to their REMBI module (they read as
-<code class="docutils literal notranslate"><span class="pre">Uncategorized</span></code>). To refresh a pre-migration run’s measurement parquets to the
-new namespace, re-run with <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">recompile</span></code>.</p></li>
-</ul>
+<section id="compatibility-and-migration">
+<h2>Compatibility and migration<a class="headerlink" href="#compatibility-and-migration" title="Link to this heading">#</a></h2>
+<p>Stored-header compatibility is permanent. Ordinary reads normalize exact old
+headers such as <code class="docutils literal notranslate"><span class="pre">MetadataImage_ImageName</span></code> and <code class="docutils literal notranslate"><span class="pre">MetadataCulture_Time</span></code> in memory
+without rewriting their source. The previous Python enum class names remain as
+one-transition-release aliases: importing one emits <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code>, and
+the alias is absent from <code class="docutils literal notranslate"><span class="pre">phenotypic.schema.__all__</span></code> and schema discovery. New
+code should use <code class="docutils literal notranslate"><span class="pre">IMAGE</span></code>, <code class="docutils literal notranslate"><span class="pre">CULTURE</span></code>, and the other canonical owner names.</p>
+<p>The CLI’s <code class="docutils literal notranslate"><span class="pre">deliverables/metadata.csv</span></code> is a byte-exact startup snapshot of the
+configured input CSV. It is immutable provenance rather than a generated schema
+table, so it may retain historical headers. Readers normalize it in memory;
+generated measurement, analysis, QC, and REMBI outputs remain canonical.</p>
+<p><code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">recompile</span></code> is the explicit mutation boundary for a bundle. Local and
+SLURM recompiles preflight and migrate bundle-owned authoritative legacy data
+before aggregation. A conflict or failed target stops recompile before new
+aggregate outputs are published. Canonical bundles are an idempotent no-op
+apart from preflight.</p>
+<p>Migration uses source and plan fingerprints plus a prepared/applied receipt
+journal. CSV, parquet, typed pipeline JSON, and HDF metadata attributes are
+replaced atomically. HDF migration writes and validates a sibling copy, changes
+only metadata attributes and the metadata-schema marker, and leaves the HDF
+layout <code class="docutils literal notranslate"><span class="pre">schema_version</span></code>, arrays, grid state, and unrelated attributes alone.
+Receipts make an interrupted bundle migration resumable and can be passed to
+<code class="docutils literal notranslate"><span class="pre">rollback_metadata_migration()</span></code>.</p>
+<p>An external file supplied with <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> is always read-only during
+recompile: PhenoTypic normalizes its contents in memory without writing to the
+source, and the regenerated bundle-owned <code class="docutils literal notranslate"><span class="pre">deliverables/metadata.csv</span></code> uses
+canonical headers. To mutate a standalone external file, call
+<code class="docutils literal notranslate"><span class="pre">migrate_metadata_file()</span></code> explicitly.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">migrate_metadata_bundle</span><span class="p">,</span>
+    <span class="n">migrate_metadata_file</span><span class="p">,</span>
+    <span class="n">preflight_metadata_schema</span><span class="p">,</span>
+    <span class="n">rollback_metadata_migration</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">source</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;metadata.csv&quot;</span><span class="p">)</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">preflight_metadata_schema</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">migrate_metadata_file</span><span class="p">(</span>
+    <span class="n">source</span><span class="p">,</span>
+    <span class="n">expected_source_fingerprint</span><span class="o">=</span><span class="n">report</span><span class="o">.</span><span class="n">source_fingerprint</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">bundle_report</span> <span class="o">=</span> <span class="n">preflight_metadata_schema</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;out&quot;</span><span class="p">))</span>
+<span class="n">bundle_result</span> <span class="o">=</span> <span class="n">migrate_metadata_bundle</span><span class="p">(</span>
+    <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;out&quot;</span><span class="p">),</span>
+    <span class="n">expected_plan_fingerprint</span><span class="o">=</span><span class="n">bundle_report</span><span class="o">.</span><span class="n">plan_fingerprint</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">if</span> <span class="n">bundle_result</span><span class="o">.</span><span class="n">receipt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">rollback_metadata_migration</span><span class="p">(</span><span class="n">bundle_result</span><span class="o">.</span><span class="n">receipt_path</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Always inspect <code class="docutils literal notranslate"><span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">conflicts</span></code>, and the proposed header maps in a
+preflight report before invoking standalone migration. A blocked report never
+mutates its target.</p>
 </section>
 </section>
 
@@ -763,8 +832,8 @@ new namespace, re-run with <code class="docutils literal notranslate"><span clas
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#column-order-bio-semantic-clusters">Column order (bio-semantic clusters)</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-note-namespace-rename">Migration note (namespace rename)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#column-order">Column order</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#compatibility-and-migration">Compatibility and migration</a></li>
 </ul>
   </nav></div>
 

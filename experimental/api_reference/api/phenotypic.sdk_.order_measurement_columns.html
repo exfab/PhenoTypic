@@ -62,8 +62,8 @@
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.sdk_.order_measurement_columns.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="phenotypic.sdk_.timed_execution" href="phenotypic.sdk_.timed_execution.html" />
-    <link rel="prev" title="phenotypic.sdk_.metadata_only_mask" href="phenotypic.sdk_.metadata_only_mask.html" />
+    <link rel="next" title="phenotypic.sdk_.migrate_metadata_bundle" href="phenotypic.sdk_.migrate_metadata_bundle.html" />
+    <link rel="prev" title="phenotypic.sdk_.normalize_metadata_columns" href="phenotypic.sdk_.normalize_metadata_columns.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.18.1" />
@@ -818,17 +818,18 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.header_to_module.html">phenotypic.schema.header_to_module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.Entry.html">phenotypic.schema.Entry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html">phenotypic.schema.MeasurementInfo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MetadataInfo.html">phenotypic.schema.MetadataInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html">phenotypic.schema.REMBI_MODULE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.METADATA.html">phenotypic.schema.METADATA</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.METADATA_MATCH.html">phenotypic.schema.METADATA_MATCH</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ACQUISITION_METADATA.html">phenotypic.schema.ACQUISITION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CONDITION_METADATA.html">phenotypic.schema.CONDITION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CULTURE_METADATA.html">phenotypic.schema.CULTURE_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.EXPERIMENT_METADATA.html">phenotypic.schema.EXPERIMENT_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.GENETIC_METADATA.html">phenotypic.schema.GENETIC_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.PLATE_METADATA.html">phenotypic.schema.PLATE_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.SAMPLE_METADATA.html">phenotypic.schema.SAMPLE_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.STUDY_METADATA.html">phenotypic.schema.STUDY_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.IMAGE.html">phenotypic.schema.IMAGE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.GENETIC.html">phenotypic.schema.GENETIC</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.SAMPLE.html">phenotypic.schema.SAMPLE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.PLATE.html">phenotypic.schema.PLATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CONDITION.html">phenotypic.schema.CONDITION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CULTURE.html">phenotypic.schema.CULTURE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.EXPERIMENT.html">phenotypic.schema.EXPERIMENT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.STUDY.html">phenotypic.schema.STUDY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ACQUISITION.html">phenotypic.schema.ACQUISITION</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.BBOX.html">phenotypic.schema.BBOX</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ColorComposition.html">phenotypic.schema.ColorComposition</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ColorHSV.html">phenotypic.schema.ColorHSV</a></li>
@@ -867,6 +868,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.sdk_.html">phenotypic.sdk_</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.aggregate_publication_marker_path.html">phenotypic.sdk_.aggregate_publication_marker_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_bytes.html">phenotypic.sdk_.atomic_write_bytes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_json.html">phenotypic.sdk_.atomic_write_json</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_parquet.html">phenotypic.sdk_.atomic_write_parquet</a></li>
@@ -878,8 +880,18 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_metadata_header.html">phenotypic.sdk_.is_metadata_header</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_category_for_label.html">phenotypic.sdk_.metadata_category_for_label</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_category_prefixes.html">phenotypic.sdk_.metadata_category_prefixes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_member_for_header.html">phenotypic.sdk_.metadata_member_for_header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_member_for_label.html">phenotypic.sdk_.metadata_member_for_label</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_only_mask.html">phenotypic.sdk_.metadata_only_mask</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_owner_for_header.html">phenotypic.sdk_.metadata_owner_for_header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_owner_for_label.html">phenotypic.sdk_.metadata_owner_for_label</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.normalize_metadata_columns.html">phenotypic.sdk_.normalize_metadata_columns</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.sdk_.order_measurement_columns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_metadata_bundle.html">phenotypic.sdk_.migrate_metadata_bundle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_metadata_file.html">phenotypic.sdk_.migrate_metadata_file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.preflight_metadata_schema.html">phenotypic.sdk_.preflight_metadata_schema</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.rollback_metadata_migration.html">phenotypic.sdk_.rollback_metadata_migration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.validated_published_metadata_migration_targets.html">phenotypic.sdk_.validated_published_metadata_migration_targets</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.timed_execution.html">phenotypic.sdk_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_full_parquet_path.html">phenotypic.sdk_.analysis_full_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_manifest_path.html">phenotypic.sdk_.analysis_manifest_path</a></li>
@@ -917,6 +929,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.generalization_path.html">phenotypic.sdk_.generalization_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.generation_staging_path.html">phenotypic.sdk_.generation_staging_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.gui_launch_owner_path.html">phenotypic.sdk_.gui_launch_owner_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.image_completion_marker_path.html">phenotypic.sdk_.image_completion_marker_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.has_config_suffix.html">phenotypic.sdk_.has_config_suffix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.job_metadata_path.html">phenotypic.sdk_.job_metadata_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.load_image_from_hdf.html">phenotypic.sdk_.load_image_from_hdf</a></li>
@@ -936,6 +949,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.named_analysis_parquet_path.html">phenotypic.sdk_.named_analysis_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.named_analysis_paths.html">phenotypic.sdk_.named_analysis_paths</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_csv_deliverable_path.html">phenotypic.sdk_.metadata_csv_deliverable_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.terminal_failures_jsonl_path.html">phenotypic.sdk_.terminal_failures_jsonl_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.matches_any_suffix.html">phenotypic.sdk_.matches_any_suffix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_qc.html">phenotypic.sdk_.migrate_legacy_qc</a></li>
@@ -997,6 +1011,9 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.LazyWidgetMixin.html">phenotypic.sdk_.LazyWidgetMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.NormControlMixin.html">phenotypic.sdk_.NormControlMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.NormalizedOutputMixin.html">phenotypic.sdk_.NormalizedOutputMixin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.MetadataMigrationReport.html">phenotypic.sdk_.MetadataMigrationReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.MetadataMigrationResult.html">phenotypic.sdk_.MetadataMigrationResult</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.MetadataMigrationTarget.html">phenotypic.sdk_.MetadataMigrationTarget</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ChunkManifestKey.html">phenotypic.sdk_.ChunkManifestKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ChunkStateKey.html">phenotypic.sdk_.ChunkStateKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.DashboardManifestKey.html">phenotypic.sdk_.DashboardManifestKey</a></li>
@@ -1236,10 +1253,10 @@
 <dt class="sig sig-object py" id="phenotypic.sdk_.order_measurement_columns">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">order_measurement_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_metadata_helpers.html#order_measurement_columns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.order_measurement_columns" title="Link to this definition">#</a></dt>
 <dd><p>Canonical measurement-frame column order.</p>
-<p><code class="docutils literal notranslate"><span class="pre">[front</span> <span class="pre">metadata]</span> <span class="pre">-&gt;</span> <span class="pre">[measurements]</span> <span class="pre">-&gt;</span> <span class="pre">[MetadataImage_*]</span> <span class="pre">-&gt;</span> <span class="pre">[info</span> <span class="pre">block]</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">[front</span> <span class="pre">metadata]</span> <span class="pre">-&gt;</span> <span class="pre">[measurements]</span> <span class="pre">-&gt;</span> <span class="pre">[IMAGE</span> <span class="pre">metadata]</span> <span class="pre">-&gt;</span> <span class="pre">[info</span> <span class="pre">block]</span></code>.</p>
 <p>Front (user/experimental) metadata is cluster/definition ordered via
 <a class="reference internal" href="phenotypic.sdk_.canonical_metadata_order.html#phenotypic.sdk_.canonical_metadata_order" title="phenotypic.sdk_.canonical_metadata_order"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_metadata_order()</span></code></a>; unknown/uncategorized <code class="docutils literal notranslate"><span class="pre">Metadata_*</span></code> tags fall
-to the end of the front block alphabetically. The framework <code class="docutils literal notranslate"><span class="pre">MetadataImage_*</span></code>
+to the end of the front block alphabetically. The framework <code class="docutils literal notranslate"><span class="pre">IMAGE</span></code>-owned
 block is per-image provenance and trails the measurements. The per-object info
 block (<code class="docutils literal notranslate"><span class="pre">Object_Label</span></code> + <code class="docutils literal notranslate"><span class="pre">Bbox_*</span></code> / <code class="docutils literal notranslate"><span class="pre">Grid_*</span></code>) is detected by name and moves
 last. Measurements keep their incoming relative order.</p>

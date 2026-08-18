@@ -695,17 +695,19 @@
 <span class="sd">    Examples:</span>
 <span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.analysis import ExpectedVsDetectedCount</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.schema import IMAGE</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.tune.score import QCScorer</span>
+<span class="sd">        &gt;&gt;&gt; image_name = str(IMAGE.IMAGE_NAME)</span>
 <span class="sd">        &gt;&gt;&gt; layout = pd.DataFrame(</span>
-<span class="sd">        ...     {&quot;MetadataImage_ImageName&quot;: [&quot;p1&quot;] * 96, &quot;Object_Label&quot;: list(range(96))}</span>
+<span class="sd">        ...     {image_name: [&quot;p1&quot;] * 96, &quot;Object_Label&quot;: list(range(96))}</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; scorer = QCScorer(</span>
 <span class="sd">        ...     check=ExpectedVsDetectedCount(</span>
-<span class="sd">        ...         metadata=layout, groupby=[&quot;MetadataImage_ImageName&quot;]</span>
+<span class="sd">        ...         metadata=layout, groupby=[image_name]</span>
 <span class="sd">        ...     )</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; measured = pd.DataFrame(</span>
-<span class="sd">        ...     {&quot;MetadataImage_ImageName&quot;: [&quot;p1&quot;] * 96, &quot;Object_Label&quot;: list(range(96))}</span>
+<span class="sd">        ...     {image_name: [&quot;p1&quot;] * 96, &quot;Object_Label&quot;: list(range(96))}</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; # a perfect 96-well count match → zero cost</span>
 <span class="sd">        &gt;&gt;&gt; round(scorer.score_image(None, measured)[&quot;Count&quot;], 3)</span>

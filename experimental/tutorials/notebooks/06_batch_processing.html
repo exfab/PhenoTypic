@@ -664,13 +664,13 @@
 <h1>Tutorial 6: Batch Processing<a class="headerlink" href="#Tutorial-6:-Batch-Processing" title="Link to this heading">#</a></h1>
 <p>When you have dozens or hundreds of plates to process, running Python code one image at a time is not practical. PhenoTypic’s <strong>command-line interface</strong></p>
 <ol class="upperroman simple" start="151">
-<li><p>lets you apply a saved pipeline to an entire directory of plate images with built-in parallelism, checkpointing, and resume.</p></li>
+<li><p>lets you apply a saved pipeline to an entire directory of plate images with built-in parallelism, checkpointing, and automatic continuation.</p></li>
 </ol>
 <p><strong>What you will learn:</strong></p>
 <ol class="arabic simple">
 <li><p>Save a pipeline to JSON for CLI use</p></li>
 <li><p>Run batch processing from the command line</p></li>
-<li><p>Resume interrupted jobs</p></li>
+<li><p>Continue interrupted jobs</p></li>
 <li><p>Control parallelism and other options</p></li>
 </ol>
 <section id="Step-1:-Build-and-Save-a-Pipeline">
@@ -749,17 +749,16 @@ Pipeline saved!
 </div>
 <p>This runs 4 plates in parallel. By default, the CLI uses all available CPU cores.</p>
 </section>
-<section id="Step-5:-Resume-Interrupted-Jobs">
-<h2>Step 5: Resume Interrupted Jobs<a class="headerlink" href="#Step-5:-Resume-Interrupted-Jobs" title="Link to this heading">#</a></h2>
-<p>If a batch job is interrupted (crash, timeout, Ctrl+C), you can resume from where it left off:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>full<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>--output<span class="w"> </span>/path/to/output/<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--resume
+<section id="Step-5:-Continue-Interrupted-Jobs">
+<h2>Step 5: Continue Interrupted Jobs<a class="headerlink" href="#Step-5:-Continue-Interrupted-Jobs" title="Link to this heading">#</a></h2>
+<p>If a batch job is interrupted (crash, timeout, Ctrl+C), run the same command again to continue from where it left off:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>full<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>--output<span class="w"> </span>/path/to/output/
 </pre></div>
 </div>
 <p>The CLI reads the checkpoint file in the output directory and skips plates that were already processed. Only unfinished plates are reprocessed.</p>
 <p>To retry only plates that <em>failed</em> (not skipped):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>full<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>--output<span class="w"> </span>/path/to/output/<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--resume<span class="w"> </span>--retry-failures
+<span class="w">    </span>--retry-failures
 </pre></div>
 </div>
 </section>
@@ -810,7 +809,7 @@ Pipeline saved!
 <li><p><strong>Save your pipeline</strong> to JSON with <code class="docutils literal notranslate"><span class="pre">.to_json()</span></code></p></li>
 <li><p><strong>Run ``python -m phenotypic``</strong> with <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">full</span></code>, <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code>, <code class="docutils literal notranslate"><span class="pre">--input</span></code>, and <code class="docutils literal notranslate"><span class="pre">--output</span></code></p></li>
 <li><p><strong>``–njobs``</strong> controls parallelism</p></li>
-<li><p><strong>``–resume``</strong> picks up where you left off after interruptions</p></li>
+<li><p><strong>Repeat the same command</strong> to continue after interruptions</p></li>
 <li><p><strong>``–dry-run``</strong> and <strong>``–sample``</strong> let you test before committing to a full run</p></li>
 </ul>
 <p><strong>Next up:</strong> <a class="reference internal" href="07_measuring_and_exporting.html"><span class="doc">Tutorial 7: Measuring and Exporting</span></a> — extract size, shape, and intensity measurements from detected colonies.</p>
@@ -844,7 +843,7 @@ Pipeline saved!
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Step-2:-Run-Batch-Processing">Step 2: Run Batch Processing</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Step-3:-Specify-Image-Type-and-Grid-Dimensions">Step 3: Specify Image Type and Grid Dimensions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Step-4:-Parallelism">Step 4: Parallelism</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Step-5:-Resume-Interrupted-Jobs">Step 5: Resume Interrupted Jobs</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Step-5:-Continue-Interrupted-Jobs">Step 5: Continue Interrupted Jobs</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Useful-Flags">Useful Flags</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Clean-Up">Clean Up</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Summary">Summary</a></li>

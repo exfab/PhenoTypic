@@ -611,7 +611,12 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._set_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">normalize_measurement_metadata_columns</span><span class="p">,</span>
+    <span class="n">normalize_metadata_column_reference</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.qc._expected_vs_detected</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span><span class="p">,</span> <span class="n">QUALITY_OCCUPANCY</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
@@ -663,7 +668,7 @@
 <span class="sd">            :class:`ExpectedVsDetectedCount` (the path form round-trips</span>
 <span class="sd">            through JSON).</span>
 <span class="sd">        groupby: Columns that define one plate. Usually</span>
-<span class="sd">            ``[&quot;MetadataImage_ImageName&quot;]``. Must be present in both the</span>
+<span class="sd">            ``[str(IMAGE.IMAGE_NAME)]``. Must be present in both the</span>
 <span class="sd">            metadata frame and the measurement frame.</span>
 <span class="sd">        on: Base-class required column and curation member value. Defaults</span>
 <span class="sd">            to ``&quot;Object_Label&quot;``; occupancy does not count over it.</span>
@@ -692,17 +697,19 @@
 
 <span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.analysis.qc import GridOccupancy</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.schema import IMAGE</span>
+<span class="sd">        &gt;&gt;&gt; image_name = str(IMAGE.IMAGE_NAME)</span>
 <span class="sd">        &gt;&gt;&gt; metadata = pd.DataFrame({</span>
-<span class="sd">        ...     &quot;MetadataImage_ImageName&quot;: [&quot;p1.png&quot;] * 96,</span>
+<span class="sd">        ...     image_name: [&quot;p1.png&quot;] * 96,</span>
 <span class="sd">        ...     &quot;Object_Label&quot;: list(range(96)),</span>
 <span class="sd">        ... })</span>
 <span class="sd">        &gt;&gt;&gt; measurements = pd.DataFrame({</span>
-<span class="sd">        ...     &quot;MetadataImage_ImageName&quot;: [&quot;p1.png&quot;] * 92,</span>
+<span class="sd">        ...     image_name: [&quot;p1.png&quot;] * 92,</span>
 <span class="sd">        ...     &quot;Object_Label&quot;: list(range(92)),</span>
 <span class="sd">        ...     &quot;Grid_RowMajorIdx&quot;: list(range(90)) + [5, 17],</span>
 <span class="sd">        ... })</span>
 <span class="sd">        &gt;&gt;&gt; chk = GridOccupancy(</span>
-<span class="sd">        ...     metadata=metadata, groupby=[&quot;MetadataImage_ImageName&quot;]</span>
+<span class="sd">        ...     metadata=metadata, groupby=[image_name]</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; out = chk.analyze(measurements)</span>
 <span class="sd">        &gt;&gt;&gt; int(out[&quot;QC_Occupancy_Filled&quot;].iloc[0])</span>
@@ -720,6 +727,14 @@
     <span class="n">warn_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span>
     <span class="n">fail_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.90</span>
     <span class="n">cell_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;cell_label&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_cell_label</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Accept current, flat, and bare metadata cell identifiers.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cell_label must be a string column reference&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">normalize_metadata_column_reference</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
 <div class="viewcode-block" id="GridOccupancy.analyze">
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.GridOccupancy.html#phenotypic.analysis.GridOccupancy.analyze">[docs]</a>
@@ -741,6 +756,7 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            KeyError: If ``cell_label`` is missing from ``data``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">normalize_measurement_metadata_columns</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
                 <span class="s2">&quot;GridOccupancy requires the cell-id column &quot;</span>

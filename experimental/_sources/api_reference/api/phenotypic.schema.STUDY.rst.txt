@@ -1,0 +1,114 @@
+phenotypic.schema.STUDY
+=======================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: STUDY
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~STUDY.category
+      ~STUDY.header_set
+      ~STUDY.kind
+      ~STUDY.tier
+      ~STUDY.rembi_module
+      ~STUDY.header_scheme
+      ~STUDY.member_for_header
+      ~STUDY.owns_header
+      ~STUDY.get_labels
+      ~STUDY.get_headers
+      ~STUDY.rst_table
+      ~STUDY.append_rst_to_doc
+      ~STUDY.encode
+      ~STUDY.replace
+      ~STUDY.split
+      ~STUDY.rsplit
+      ~STUDY.join
+      ~STUDY.capitalize
+      ~STUDY.casefold
+      ~STUDY.title
+      ~STUDY.center
+      ~STUDY.count
+      ~STUDY.expandtabs
+      ~STUDY.find
+      ~STUDY.partition
+      ~STUDY.index
+      ~STUDY.ljust
+      ~STUDY.lower
+      ~STUDY.lstrip
+      ~STUDY.rfind
+      ~STUDY.rindex
+      ~STUDY.rjust
+      ~STUDY.rstrip
+      ~STUDY.rpartition
+      ~STUDY.splitlines
+      ~STUDY.strip
+      ~STUDY.swapcase
+      ~STUDY.translate
+      ~STUDY.upper
+      ~STUDY.startswith
+      ~STUDY.endswith
+      ~STUDY.removeprefix
+      ~STUDY.removesuffix
+      ~STUDY.isascii
+      ~STUDY.islower
+      ~STUDY.isupper
+      ~STUDY.istitle
+      ~STUDY.isspace
+      ~STUDY.isdecimal
+      ~STUDY.isdigit
+      ~STUDY.isnumeric
+      ~STUDY.isalpha
+      ~STUDY.isalnum
+      ~STUDY.isidentifier
+      ~STUDY.isprintable
+      ~STUDY.zfill
+      ~STUDY.format
+      ~STUDY.format_map
+      ~STUDY.maketrans
+      ~STUDY.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~STUDY.CATEGORY
+      ~STUDY.resolved_kind
+      ~STUDY.resolved_tier
+      ~STUDY.resolved_rembi_module
+      ~STUDY.use_label
+      ~STUDY.use_badge
+      ~STUDY.TITLE
+      ~STUDY.DESCRIPTION
+      ~STUDY.PRIVATE_UNTIL_DATE
+      ~STUDY.KEYWORDS
+      ~STUDY.AUTHOR
+      ~STUDY.LICENSE
+      ~STUDY.FUNDING
+      ~STUDY.PUBLICATIONS
+      ~STUDY.LINKS
+      ~STUDY.ACKNOWLEDGEMENTS
+      ~STUDY.label
+      ~STUDY.desc
+      ~STUDY.bio_desc
+      ~STUDY.image
+      ~STUDY.pair
+      ~STUDY.tier_override
+      ~STUDY.derivation_type
+      ~STUDY.derives_from
+      ~STUDY.rembi_module_override
+   
+   

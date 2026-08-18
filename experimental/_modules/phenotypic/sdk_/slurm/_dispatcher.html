@@ -611,12 +611,21 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._io_constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">slurm_scripts_dir</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">SLURM_PYTHONPATH_BOOTSTRAP_BASH</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">SlurmDependencyKind</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;afterany&quot;</span><span class="p">,</span> <span class="s2">&quot;afterok&quot;</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate_dependency_kind</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SlurmDependencyKind</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate one continuation dependency before any side effects.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;afterany&quot;</span><span class="p">,</span> <span class="s2">&quot;afterok&quot;</span><span class="p">}:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;dependency_kind must be &#39;afterany&#39; or &#39;afterok&#39;&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">SlurmDependencyKind</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_extract_partition</span><span class="p">(</span><span class="n">slurm_args</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -647,6 +656,7 @@
     <span class="n">generation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">chunk_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
     <span class="n">finalizer_script</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">dependency_kind</span><span class="p">:</span> <span class="n">SlurmDependencyKind</span> <span class="o">=</span> <span class="s2">&quot;afterany&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a dispatcher script that submits the next chunk and dispatcher.</span>
 
@@ -666,10 +676,13 @@
 <span class="sd">        chunk_index: Zero-based index of the chunk this dispatcher submits.</span>
 <span class="sd">        finalizer_script: Terminal finalizer submitted after the last chunk</span>
 <span class="sd">            becomes terminal.</span>
+<span class="sd">        dependency_kind: Dependency condition for the continuation submitted</span>
+<span class="sd">            after ``next_chunk_script``.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Path to the generated dispatcher script.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">validated_dependency_kind</span> <span class="o">=</span> <span class="n">_validate_dependency_kind</span><span class="p">(</span><span class="n">dependency_kind</span><span class="p">)</span>
     <span class="n">partition</span> <span class="o">=</span> <span class="n">_extract_partition</span><span class="p">(</span><span class="n">slurm_args</span><span class="p">)</span>
 
     <span class="n">lifecycle_output</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="ow">or</span> <span class="n">_infer_output_dir</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
@@ -686,6 +699,8 @@
         <span class="nb">str</span><span class="p">(</span><span class="n">chunk_index</span><span class="p">),</span>
         <span class="s2">&quot;--chunk-script&quot;</span><span class="p">,</span>
         <span class="nb">str</span><span class="p">(</span><span class="n">next_chunk_script</span><span class="p">),</span>
+        <span class="s2">&quot;--dependency-kind&quot;</span><span class="p">,</span>
+        <span class="n">validated_dependency_kind</span><span class="p">,</span>
     <span class="p">]</span>
     <span class="k">if</span> <span class="n">next_dispatcher_script</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">command</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;--dispatcher-script&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">next_dispatcher_script</span><span class="p">)])</span>
@@ -739,12 +754,14 @@
     <span class="n">slurm_args</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="n">log_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">finalizer_script</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">continuation_dependency_kinds</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">SlurmDependencyKind</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">generation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate dispatcher scripts for a chain of chunk scripts.</span>
 
 <span class="sd">    For *N* chunk scripts, generates *N-1* dispatcher scripts.  Each</span>
 <span class="sd">    dispatcher submits the next chunk and (if not last) the next</span>
-<span class="sd">    dispatcher with ``--dependency=afterany`` on that chunk.</span>
+<span class="sd">    dispatcher with the corresponding dependency kind on that chunk.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        chunk_scripts: Ordered list of array job chunk script paths.</span>
@@ -753,18 +770,31 @@
 <span class="sd">        log_dir: Directory for dispatcher log files.</span>
 <span class="sd">        finalizer_script: Terminal finalizer passed only to the last</span>
 <span class="sd">            dispatcher in the chain.</span>
+<span class="sd">        continuation_dependency_kinds: Dependency kind for every</span>
+<span class="sd">            chunk-to-continuation edge. The sequence has ``N - 1`` entries</span>
+<span class="sd">            without a finalizer and ``N`` entries with one. Defaults to</span>
+<span class="sd">            ``afterany`` for every edge.</span>
+<span class="sd">        generation: Optional explicit lifecycle generation. When supplied,</span>
+<span class="sd">            dispatcher scripts are isolated under that generation.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        List of dispatcher script paths (one fewer than ``chunk_scripts``,</span>
 <span class="sd">        since the last chunk does not need a dispatcher).  Empty if only</span>
 <span class="sd">        one chunk exists.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dependency_kinds</span> <span class="o">=</span> <span class="n">_resolve_continuation_dependency_kinds</span><span class="p">(</span>
+        <span class="n">chunk_count</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">chunk_scripts</span><span class="p">),</span>
+        <span class="n">has_finalizer</span><span class="o">=</span><span class="n">finalizer_script</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dependency_kinds</span><span class="o">=</span><span class="n">continuation_dependency_kinds</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunk_scripts</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">[]</span>
 
-    <span class="n">generation</span> <span class="o">=</span> <span class="n">_ensure_generation</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">lifecycle_generation</span> <span class="o">=</span> <span class="n">generation</span> <span class="ow">or</span> <span class="n">_ensure_generation</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
     <span class="n">log_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">script_dir</span> <span class="o">=</span> <span class="n">slurm_scripts_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">generation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">script_dir</span> <span class="o">=</span> <span class="n">script_dir</span> <span class="o">/</span> <span class="s2">&quot;dispatch&quot;</span> <span class="o">/</span> <span class="n">generation</span>
     <span class="n">script_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="n">num_dispatchers</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunk_scripts</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
@@ -791,10 +821,15 @@
             <span class="n">slurm_args</span><span class="o">=</span><span class="n">slurm_args</span><span class="p">,</span>
             <span class="n">log_dir</span><span class="o">=</span><span class="n">log_dir</span><span class="p">,</span>
             <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
-            <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+            <span class="n">generation</span><span class="o">=</span><span class="n">lifecycle_generation</span><span class="p">,</span>
             <span class="n">chunk_index</span><span class="o">=</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
             <span class="n">finalizer_script</span><span class="o">=</span><span class="p">(</span>
                 <span class="n">finalizer_script</span> <span class="k">if</span> <span class="n">next_dispatcher</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">),</span>
+            <span class="n">dependency_kind</span><span class="o">=</span><span class="p">(</span>
+                <span class="n">dependency_kinds</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">dependency_kinds</span><span class="p">)</span>
+                <span class="k">else</span> <span class="s2">&quot;afterany&quot;</span>
             <span class="p">),</span>
         <span class="p">)</span>
         <span class="n">dispatcher_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dispatcher_path</span><span class="p">)</span>
@@ -810,6 +845,9 @@
     <span class="n">dispatcher_scripts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">finalizer_script</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">continuation_dependency_kind</span><span class="p">:</span> <span class="n">SlurmDependencyKind</span> <span class="o">=</span> <span class="s2">&quot;afterany&quot;</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">generation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Submit the first chunk and first dispatcher to start a drip-feed chain.</span>
 
@@ -819,6 +857,10 @@
 <span class="sd">            :func:`generate_dispatcher_chain` (may be empty for single-chunk).</span>
 <span class="sd">        finalizer_script: Terminal finalizer submitted after the only chunk</span>
 <span class="sd">            when no dispatcher is required.</span>
+<span class="sd">        continuation_dependency_kind: Dependency condition for the initial</span>
+<span class="sd">            dispatcher or single-chunk finalizer.</span>
+<span class="sd">        output_dir: Explicit lifecycle output root for attempt-scoped chains.</span>
+<span class="sd">        generation: Explicit lifecycle generation for attempt-scoped chains.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Tuple of (job_ids, warning_message).  ``job_ids`` contains the</span>
@@ -829,6 +871,9 @@
 <span class="sd">    Raises:</span>
 <span class="sd">        RuntimeError: If the first chunk submission fails.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">validated_dependency_kind</span> <span class="o">=</span> <span class="n">_validate_dependency_kind</span><span class="p">(</span>
+        <span class="n">continuation_dependency_kind</span>
+    <span class="p">)</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_slurm_lifecycle</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
         <span class="n">cancel_generation</span><span class="p">,</span>
         <span class="n">submit_with_lifecycle</span><span class="p">,</span>
@@ -836,12 +881,12 @@
 
     <span class="n">job_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">warning</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">output_dir</span> <span class="o">=</span> <span class="n">_infer_output_dir</span><span class="p">(</span><span class="n">chunk_scripts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-    <span class="n">generation</span> <span class="o">=</span> <span class="n">_ensure_generation</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">lifecycle_output</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="ow">or</span> <span class="n">_infer_output_dir</span><span class="p">(</span><span class="n">chunk_scripts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">lifecycle_generation</span> <span class="o">=</span> <span class="n">generation</span> <span class="ow">or</span> <span class="n">_ensure_generation</span><span class="p">(</span><span class="n">lifecycle_output</span><span class="p">)</span>
 
     <span class="n">chunk0_job</span> <span class="o">=</span> <span class="n">submit_with_lifecycle</span><span class="p">(</span>
-        <span class="n">output_dir</span><span class="p">,</span>
-        <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+        <span class="n">lifecycle_output</span><span class="p">,</span>
+        <span class="n">generation</span><span class="o">=</span><span class="n">lifecycle_generation</span><span class="p">,</span>
         <span class="n">token</span><span class="o">=</span><span class="s2">&quot;chunk-0&quot;</span><span class="p">,</span>
         <span class="n">role</span><span class="o">=</span><span class="s2">&quot;chunk&quot;</span><span class="p">,</span>
         <span class="n">script_path</span><span class="o">=</span><span class="n">chunk_scripts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
@@ -852,12 +897,13 @@
     <span class="k">if</span> <span class="n">dispatcher_scripts</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">dispatch0_job</span> <span class="o">=</span> <span class="n">submit_with_lifecycle</span><span class="p">(</span>
-                <span class="n">output_dir</span><span class="p">,</span>
-                <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+                <span class="n">lifecycle_output</span><span class="p">,</span>
+                <span class="n">generation</span><span class="o">=</span><span class="n">lifecycle_generation</span><span class="p">,</span>
                 <span class="n">token</span><span class="o">=</span><span class="s2">&quot;dispatcher-1&quot;</span><span class="p">,</span>
                 <span class="n">role</span><span class="o">=</span><span class="s2">&quot;dispatcher&quot;</span><span class="p">,</span>
                 <span class="n">script_path</span><span class="o">=</span><span class="n">dispatcher_scripts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
                 <span class="n">dependencies</span><span class="o">=</span><span class="p">(</span><span class="n">chunk0_job</span><span class="p">,),</span>
+                <span class="n">dependency_kind</span><span class="o">=</span><span class="n">validated_dependency_kind</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">job_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dispatch0_job</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
@@ -866,7 +912,9 @@
                 <span class="n">chunk0_job</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-            <span class="n">cancellation</span> <span class="o">=</span> <span class="n">cancel_generation</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">generation</span><span class="p">)</span>
+            <span class="n">cancellation</span> <span class="o">=</span> <span class="n">cancel_generation</span><span class="p">(</span>
+                <span class="n">lifecycle_output</span><span class="p">,</span> <span class="n">lifecycle_generation</span>
+            <span class="p">)</span>
             <span class="n">detail</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="s2">&quot;the launch was fenced and all discovered jobs were cancelled&quot;</span>
                 <span class="k">if</span> <span class="n">cancellation</span><span class="o">.</span><span class="n">quiescent</span>
@@ -879,12 +927,13 @@
     <span class="k">elif</span> <span class="n">finalizer_script</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">finalizer_job</span> <span class="o">=</span> <span class="n">submit_with_lifecycle</span><span class="p">(</span>
-                <span class="n">output_dir</span><span class="p">,</span>
-                <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+                <span class="n">lifecycle_output</span><span class="p">,</span>
+                <span class="n">generation</span><span class="o">=</span><span class="n">lifecycle_generation</span><span class="p">,</span>
                 <span class="n">token</span><span class="o">=</span><span class="s2">&quot;finalizer&quot;</span><span class="p">,</span>
                 <span class="n">role</span><span class="o">=</span><span class="s2">&quot;finalizer&quot;</span><span class="p">,</span>
                 <span class="n">script_path</span><span class="o">=</span><span class="n">finalizer_script</span><span class="p">,</span>
                 <span class="n">dependencies</span><span class="o">=</span><span class="p">(</span><span class="n">chunk0_job</span><span class="p">,),</span>
+                <span class="n">dependency_kind</span><span class="o">=</span><span class="n">validated_dependency_kind</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">job_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">finalizer_job</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
@@ -893,7 +942,9 @@
                 <span class="n">chunk0_job</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-            <span class="n">cancellation</span> <span class="o">=</span> <span class="n">cancel_generation</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">generation</span><span class="p">)</span>
+            <span class="n">cancellation</span> <span class="o">=</span> <span class="n">cancel_generation</span><span class="p">(</span>
+                <span class="n">lifecycle_output</span><span class="p">,</span> <span class="n">lifecycle_generation</span>
+            <span class="p">)</span>
             <span class="n">detail</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="s2">&quot;the launch was fenced and all discovered jobs were cancelled&quot;</span>
                 <span class="k">if</span> <span class="n">cancellation</span><span class="o">.</span><span class="n">quiescent</span>
@@ -906,6 +957,29 @@
 
     <span class="k">return</span> <span class="n">job_ids</span><span class="p">,</span> <span class="n">warning</span></div>
 
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_continuation_dependency_kinds</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">chunk_count</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">has_finalizer</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">dependency_kinds</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">SlurmDependencyKind</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">SlurmDependencyKind</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return one validated dependency kind per continuation edge.&quot;&quot;&quot;</span>
+    <span class="n">edge_count</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">chunk_count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">has_finalizer</span> <span class="ow">and</span> <span class="n">chunk_count</span><span class="p">:</span>
+        <span class="n">edge_count</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">dependency_kinds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="nb">tuple</span><span class="p">[</span><span class="n">SlurmDependencyKind</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="p">(</span><span class="s2">&quot;afterany&quot;</span><span class="p">,)</span> <span class="o">*</span> <span class="n">edge_count</span>
+        <span class="p">)</span>
+    <span class="n">resolved</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">dependency_kinds</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">resolved</span><span class="p">)</span> <span class="o">!=</span> <span class="n">edge_count</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;continuation_dependency_kinds must contain exactly &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">edge_count</span><span class="si">}</span><span class="s2"> entries for </span><span class="si">{</span><span class="n">chunk_count</span><span class="si">}</span><span class="s2"> chunk script(s)&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">_validate_dependency_kind</span><span class="p">(</span><span class="n">kind</span><span class="p">)</span> <span class="k">for</span> <span class="n">kind</span> <span class="ow">in</span> <span class="n">resolved</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_infer_output_dir</span><span class="p">(</span><span class="n">script_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>

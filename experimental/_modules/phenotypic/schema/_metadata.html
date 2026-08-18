@@ -578,6 +578,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../schema.html" class="nav-link">phenotypic.schema</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.schema._metadata</span></li>
   </ul>
 </nav>
@@ -600,33 +603,25 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._rembi</span><span class="w"> </span><span class="kn">import</span> <span class="n">REMBI_MODULE</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdentityInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetadataInfo</span>
 
 
-<div class="viewcode-block" id="METADATA">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.METADATA.html#phenotypic.schema.METADATA">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">METADATA</span><span class="p">(</span><span class="n">IdentityInfo</span><span class="p">):</span>
+<div class="viewcode-block" id="IMAGE">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.IMAGE.html#phenotypic.schema.IMAGE">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">IMAGE</span><span class="p">(</span><span class="n">MetadataInfo</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Framework-populated image metadata keys.</span>
 
 <span class="sd">    These labels are set automatically by the image pipeline (not by the user) and</span>
 <span class="sd">    name the bookkeeping entries on the ``image.metadata`` accessor. Members render</span>
-<span class="sd">    as ``MetadataImage_&lt;Label&gt;`` (e.g. ``MetadataImage_ImageName``) in the</span>
-<span class="sd">    ``Metadata`` column family shared with the user-facing experimental tags in</span>
-<span class="sd">    :mod:`phenotypic.schema` (see :class:`SAMPLE_METADATA` and siblings).</span>
+<span class="sd">    in the shared ``Metadata_&lt;Label&gt;`` namespace alongside the user-facing tags in</span>
+<span class="sd">    :mod:`phenotypic.schema` (see :class:`SAMPLE` and siblings).</span>
 
 <span class="sd">    For the standardized *biological/experimental* vocabulary users supply via the</span>
 <span class="sd">    ``--metadata`` CSV, use the experimental-tag enums instead.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="METADATA.category">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.METADATA.html#phenotypic.schema.METADATA.category">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;MetadataImage&quot;</span></div>
-
-
-<div class="viewcode-block" id="METADATA.rembi_module">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.METADATA.html#phenotypic.schema.METADATA.rembi_module">[docs]</a>
+<div class="viewcode-block" id="IMAGE.rembi_module">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.IMAGE.html#phenotypic.schema.IMAGE.rembi_module">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">rembi_module</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">REMBI_MODULE</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">IMAGE_DATA</span></div>

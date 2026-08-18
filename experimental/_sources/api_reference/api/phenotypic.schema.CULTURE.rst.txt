@@ -1,0 +1,113 @@
+phenotypic.schema.CULTURE
+=========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: CULTURE
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CULTURE.category
+      ~CULTURE.header_set
+      ~CULTURE.kind
+      ~CULTURE.tier
+      ~CULTURE.rembi_module
+      ~CULTURE.header_scheme
+      ~CULTURE.member_for_header
+      ~CULTURE.owns_header
+      ~CULTURE.get_labels
+      ~CULTURE.get_headers
+      ~CULTURE.rst_table
+      ~CULTURE.append_rst_to_doc
+      ~CULTURE.encode
+      ~CULTURE.replace
+      ~CULTURE.split
+      ~CULTURE.rsplit
+      ~CULTURE.join
+      ~CULTURE.capitalize
+      ~CULTURE.casefold
+      ~CULTURE.title
+      ~CULTURE.center
+      ~CULTURE.count
+      ~CULTURE.expandtabs
+      ~CULTURE.find
+      ~CULTURE.partition
+      ~CULTURE.index
+      ~CULTURE.ljust
+      ~CULTURE.lower
+      ~CULTURE.lstrip
+      ~CULTURE.rfind
+      ~CULTURE.rindex
+      ~CULTURE.rjust
+      ~CULTURE.rstrip
+      ~CULTURE.rpartition
+      ~CULTURE.splitlines
+      ~CULTURE.strip
+      ~CULTURE.swapcase
+      ~CULTURE.translate
+      ~CULTURE.upper
+      ~CULTURE.startswith
+      ~CULTURE.endswith
+      ~CULTURE.removeprefix
+      ~CULTURE.removesuffix
+      ~CULTURE.isascii
+      ~CULTURE.islower
+      ~CULTURE.isupper
+      ~CULTURE.istitle
+      ~CULTURE.isspace
+      ~CULTURE.isdecimal
+      ~CULTURE.isdigit
+      ~CULTURE.isnumeric
+      ~CULTURE.isalpha
+      ~CULTURE.isalnum
+      ~CULTURE.isidentifier
+      ~CULTURE.isprintable
+      ~CULTURE.zfill
+      ~CULTURE.format
+      ~CULTURE.format_map
+      ~CULTURE.maketrans
+      ~CULTURE.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CULTURE.CATEGORY
+      ~CULTURE.resolved_kind
+      ~CULTURE.resolved_tier
+      ~CULTURE.resolved_rembi_module
+      ~CULTURE.use_label
+      ~CULTURE.use_badge
+      ~CULTURE.TIME
+      ~CULTURE.TIME_UNIT
+      ~CULTURE.TIMEPOINT
+      ~CULTURE.FRAME_INDEX
+      ~CULTURE.DAY
+      ~CULTURE.GENERATION
+      ~CULTURE.TEMPERATURE
+      ~CULTURE.HUMIDITY
+      ~CULTURE.ATMOSPHERE
+      ~CULTURE.label
+      ~CULTURE.desc
+      ~CULTURE.bio_desc
+      ~CULTURE.image
+      ~CULTURE.pair
+      ~CULTURE.tier_override
+      ~CULTURE.derivation_type
+      ~CULTURE.derives_from
+      ~CULTURE.rembi_module_override
+   
+   

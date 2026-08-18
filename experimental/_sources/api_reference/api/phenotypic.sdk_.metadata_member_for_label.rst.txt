@@ -1,0 +1,6 @@
+phenotypic.sdk\_.metadata\_member\_for\_label
+=============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: metadata_member_for_label

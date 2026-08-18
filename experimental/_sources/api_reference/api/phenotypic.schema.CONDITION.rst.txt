@@ -1,0 +1,117 @@
+phenotypic.schema.CONDITION
+===========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: CONDITION
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CONDITION.category
+      ~CONDITION.header_set
+      ~CONDITION.kind
+      ~CONDITION.tier
+      ~CONDITION.rembi_module
+      ~CONDITION.header_scheme
+      ~CONDITION.member_for_header
+      ~CONDITION.owns_header
+      ~CONDITION.get_labels
+      ~CONDITION.get_headers
+      ~CONDITION.rst_table
+      ~CONDITION.append_rst_to_doc
+      ~CONDITION.encode
+      ~CONDITION.replace
+      ~CONDITION.split
+      ~CONDITION.rsplit
+      ~CONDITION.join
+      ~CONDITION.capitalize
+      ~CONDITION.casefold
+      ~CONDITION.title
+      ~CONDITION.center
+      ~CONDITION.count
+      ~CONDITION.expandtabs
+      ~CONDITION.find
+      ~CONDITION.partition
+      ~CONDITION.index
+      ~CONDITION.ljust
+      ~CONDITION.lower
+      ~CONDITION.lstrip
+      ~CONDITION.rfind
+      ~CONDITION.rindex
+      ~CONDITION.rjust
+      ~CONDITION.rstrip
+      ~CONDITION.rpartition
+      ~CONDITION.splitlines
+      ~CONDITION.strip
+      ~CONDITION.swapcase
+      ~CONDITION.translate
+      ~CONDITION.upper
+      ~CONDITION.startswith
+      ~CONDITION.endswith
+      ~CONDITION.removeprefix
+      ~CONDITION.removesuffix
+      ~CONDITION.isascii
+      ~CONDITION.islower
+      ~CONDITION.isupper
+      ~CONDITION.istitle
+      ~CONDITION.isspace
+      ~CONDITION.isdecimal
+      ~CONDITION.isdigit
+      ~CONDITION.isnumeric
+      ~CONDITION.isalpha
+      ~CONDITION.isalnum
+      ~CONDITION.isidentifier
+      ~CONDITION.isprintable
+      ~CONDITION.zfill
+      ~CONDITION.format
+      ~CONDITION.format_map
+      ~CONDITION.maketrans
+      ~CONDITION.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CONDITION.CATEGORY
+      ~CONDITION.resolved_kind
+      ~CONDITION.resolved_tier
+      ~CONDITION.resolved_rembi_module
+      ~CONDITION.use_label
+      ~CONDITION.use_badge
+      ~CONDITION.MEDIA
+      ~CONDITION.CARBON_SOURCE
+      ~CONDITION.NITROGEN_SOURCE
+      ~CONDITION.PH
+      ~CONDITION.SUPPLEMENT
+      ~CONDITION.ANTIBIOTIC
+      ~CONDITION.INDUCER
+      ~CONDITION.TREATMENT
+      ~CONDITION.COMPOUND
+      ~CONDITION.CONCENTRATION
+      ~CONDITION.DOSE
+      ~CONDITION.STRESS
+      ~CONDITION.SALINITY
+      ~CONDITION.label
+      ~CONDITION.desc
+      ~CONDITION.bio_desc
+      ~CONDITION.image
+      ~CONDITION.pair
+      ~CONDITION.tier_override
+      ~CONDITION.derivation_type
+      ~CONDITION.derives_from
+      ~CONDITION.rembi_module_override
+   
+   

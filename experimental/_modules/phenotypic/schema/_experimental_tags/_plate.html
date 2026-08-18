@@ -578,6 +578,9 @@
     
     <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../../schema.html" class="nav-link">phenotypic.schema</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.schema._experimental_tags._plate</span></li>
   </ul>
 </nav>
@@ -600,29 +603,22 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._rembi</span><span class="w"> </span><span class="kn">import</span> <span class="n">REMBI_MODULE</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdentityInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetadataInfo</span>
 
 
-<div class="viewcode-block" id="PLATE_METADATA">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.PLATE_METADATA.html#phenotypic.schema.PLATE_METADATA">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">PLATE_METADATA</span><span class="p">(</span><span class="n">IdentityInfo</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recommended ``MetadataPlate_*`` tags describing the assay plate and its array.</span>
+<div class="viewcode-block" id="PLATE">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.PLATE.html#phenotypic.schema.PLATE">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PLATE</span><span class="p">(</span><span class="n">MetadataInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recommended metadata tags describing the assay plate and its array.</span>
 
 <span class="sd">    These capture plate-level grouping and physical layout (plate id, batch, array</span>
-<span class="sd">    density, incubator position). Members render as ``MetadataPlate_&lt;Label&gt;`` (e.g.</span>
-<span class="sd">    ``MetadataPlate_PlateID``) in the ``Metadata`` column family shared with the</span>
-<span class="sd">    other experimental-tag enums. Recommended vocabulary, not a validator.</span>
+<span class="sd">    density, incubator position). Members render in the shared</span>
+<span class="sd">    ``Metadata_&lt;Label&gt;`` namespace with the other experimental-tag enums.</span>
+<span class="sd">    Recommended vocabulary, not a validator.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="PLATE_METADATA.category">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.PLATE_METADATA.html#phenotypic.schema.PLATE_METADATA.category">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;MetadataPlate&quot;</span></div>
-
-
-<div class="viewcode-block" id="PLATE_METADATA.rembi_module">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.PLATE_METADATA.html#phenotypic.schema.PLATE_METADATA.rembi_module">[docs]</a>
+<div class="viewcode-block" id="PLATE.rembi_module">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.PLATE.html#phenotypic.schema.PLATE.rembi_module">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">rembi_module</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">REMBI_MODULE</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">SPECIMEN_PREP</span></div>

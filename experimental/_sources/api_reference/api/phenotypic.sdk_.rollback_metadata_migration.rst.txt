@@ -1,0 +1,6 @@
+phenotypic.sdk\_.rollback\_metadata\_migration
+==============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: rollback_metadata_migration

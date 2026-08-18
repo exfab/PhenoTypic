@@ -578,6 +578,9 @@
     
     <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../../schema.html" class="nav-link">phenotypic.schema</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.schema._experimental_tags._genetic</span></li>
   </ul>
 </nav>
@@ -600,31 +603,23 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._rembi</span><span class="w"> </span><span class="kn">import</span> <span class="n">REMBI_MODULE</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdentityInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetadataInfo</span>
 
 
-<div class="viewcode-block" id="GENETIC_METADATA">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.GENETIC_METADATA.html#phenotypic.schema.GENETIC_METADATA">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">GENETIC_METADATA</span><span class="p">(</span><span class="n">IdentityInfo</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recommended ``MetadataGenetic_*`` tags describing the organism and its genetics.</span>
+<div class="viewcode-block" id="GENETIC">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.GENETIC.html#phenotypic.schema.GENETIC">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GENETIC</span><span class="p">(</span><span class="n">MetadataInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recommended metadata tags describing the organism and its genetics.</span>
 
 <span class="sd">    These name the genetic identity of the colonies on a plate (species, strain,</span>
 <span class="sd">    genotype, markers). Like all experimental-tag enums they belong to the</span>
-<span class="sd">    ``Metadata`` column family, so members render as ``MetadataGenetic_&lt;Label&gt;``</span>
-<span class="sd">    (e.g. ``MetadataGenetic_Strain``) and slot directly into the ``--metadata`` CSV</span>
-<span class="sd">    join and the ``post/`` metadata operations. This is a recommended vocabulary,</span>
-<span class="sd">    not a validator: arbitrary metadata columns are still accepted.</span>
+<span class="sd">    shared ``Metadata_&lt;Label&gt;`` namespace and slot directly into the ``--metadata``</span>
+<span class="sd">    CSV join and the ``post/`` metadata operations. This is a recommended</span>
+<span class="sd">    vocabulary, not a validator: arbitrary metadata columns are still accepted.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="GENETIC_METADATA.category">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.GENETIC_METADATA.html#phenotypic.schema.GENETIC_METADATA.category">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;MetadataGenetic&quot;</span></div>
-
-
-<div class="viewcode-block" id="GENETIC_METADATA.rembi_module">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.GENETIC_METADATA.html#phenotypic.schema.GENETIC_METADATA.rembi_module">[docs]</a>
+<div class="viewcode-block" id="GENETIC.rembi_module">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.GENETIC.html#phenotypic.schema.GENETIC.rembi_module">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">rembi_module</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">REMBI_MODULE</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">BIOSAMPLE</span></div>

@@ -578,6 +578,9 @@
     
     <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../../schema.html" class="nav-link">phenotypic.schema</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.schema._experimental_tags._sample</span></li>
   </ul>
 </nav>
@@ -600,31 +603,23 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._rembi</span><span class="w"> </span><span class="kn">import</span> <span class="n">REMBI_MODULE</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdentityInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetadataInfo</span>
 
 
-<div class="viewcode-block" id="SAMPLE_METADATA">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.SAMPLE_METADATA.html#phenotypic.schema.SAMPLE_METADATA">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">SAMPLE_METADATA</span><span class="p">(</span><span class="n">IdentityInfo</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recommended ``MetadataSample_*`` tags identifying a sample and its provenance.</span>
+<div class="viewcode-block" id="SAMPLE">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.SAMPLE.html#phenotypic.schema.SAMPLE">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="p">(</span><span class="n">MetadataInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recommended metadata tags identifying a sample and its provenance.</span>
 
 <span class="sd">    These distinguish individual biological samples and track where each colony came</span>
-<span class="sd">    from (replicate, clone, source plate/well, library). Members render as</span>
-<span class="sd">    ``MetadataSample_&lt;Label&gt;`` (e.g. ``MetadataSample_BioReplicate``) in the</span>
-<span class="sd">    ``Metadata`` column family shared with the other experimental-tag enums.</span>
+<span class="sd">    from (replicate, clone, source plate/well, library). Members render in the</span>
+<span class="sd">    shared ``Metadata_&lt;Label&gt;`` namespace with the other experimental-tag enums.</span>
 <span class="sd">    Recommended vocabulary, not a validator: arbitrary metadata columns are still</span>
 <span class="sd">    accepted.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="SAMPLE_METADATA.category">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.SAMPLE_METADATA.html#phenotypic.schema.SAMPLE_METADATA.category">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;MetadataSample&quot;</span></div>
-
-
-<div class="viewcode-block" id="SAMPLE_METADATA.rembi_module">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.SAMPLE_METADATA.html#phenotypic.schema.SAMPLE_METADATA.rembi_module">[docs]</a>
+<div class="viewcode-block" id="SAMPLE.rembi_module">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.SAMPLE.html#phenotypic.schema.SAMPLE.rembi_module">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">rembi_module</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">REMBI_MODULE</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">BIOSAMPLE</span></div>

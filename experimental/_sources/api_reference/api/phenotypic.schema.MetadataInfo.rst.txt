@@ -1,0 +1,104 @@
+phenotypic.schema.MetadataInfo
+==============================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: MetadataInfo
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MetadataInfo.kind
+      ~MetadataInfo.category
+      ~MetadataInfo.tier
+      ~MetadataInfo.rembi_module
+      ~MetadataInfo.header_scheme
+      ~MetadataInfo.member_for_header
+      ~MetadataInfo.owns_header
+      ~MetadataInfo.get_labels
+      ~MetadataInfo.get_headers
+      ~MetadataInfo.rst_table
+      ~MetadataInfo.append_rst_to_doc
+      ~MetadataInfo.encode
+      ~MetadataInfo.replace
+      ~MetadataInfo.split
+      ~MetadataInfo.rsplit
+      ~MetadataInfo.join
+      ~MetadataInfo.capitalize
+      ~MetadataInfo.casefold
+      ~MetadataInfo.title
+      ~MetadataInfo.center
+      ~MetadataInfo.count
+      ~MetadataInfo.expandtabs
+      ~MetadataInfo.find
+      ~MetadataInfo.partition
+      ~MetadataInfo.index
+      ~MetadataInfo.ljust
+      ~MetadataInfo.lower
+      ~MetadataInfo.lstrip
+      ~MetadataInfo.rfind
+      ~MetadataInfo.rindex
+      ~MetadataInfo.rjust
+      ~MetadataInfo.rstrip
+      ~MetadataInfo.rpartition
+      ~MetadataInfo.splitlines
+      ~MetadataInfo.strip
+      ~MetadataInfo.swapcase
+      ~MetadataInfo.translate
+      ~MetadataInfo.upper
+      ~MetadataInfo.startswith
+      ~MetadataInfo.endswith
+      ~MetadataInfo.removeprefix
+      ~MetadataInfo.removesuffix
+      ~MetadataInfo.isascii
+      ~MetadataInfo.islower
+      ~MetadataInfo.isupper
+      ~MetadataInfo.istitle
+      ~MetadataInfo.isspace
+      ~MetadataInfo.isdecimal
+      ~MetadataInfo.isdigit
+      ~MetadataInfo.isnumeric
+      ~MetadataInfo.isalpha
+      ~MetadataInfo.isalnum
+      ~MetadataInfo.isidentifier
+      ~MetadataInfo.isprintable
+      ~MetadataInfo.zfill
+      ~MetadataInfo.format
+      ~MetadataInfo.format_map
+      ~MetadataInfo.maketrans
+      ~MetadataInfo.header_set
+      ~MetadataInfo.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MetadataInfo.CATEGORY
+      ~MetadataInfo.resolved_kind
+      ~MetadataInfo.resolved_tier
+      ~MetadataInfo.resolved_rembi_module
+      ~MetadataInfo.use_label
+      ~MetadataInfo.use_badge
+      ~MetadataInfo.label
+      ~MetadataInfo.desc
+      ~MetadataInfo.bio_desc
+      ~MetadataInfo.image
+      ~MetadataInfo.pair
+      ~MetadataInfo.tier_override
+      ~MetadataInfo.derivation_type
+      ~MetadataInfo.derives_from
+      ~MetadataInfo.rembi_module_override
+   
+   
