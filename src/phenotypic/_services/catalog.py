@@ -1,0 +1,373 @@
+"""Agent-facing projection of the operation registry.
+
+The MCP server hands an agent JSON, not Python objects. This module turns
+an :class:`~phenotypic._services.registry.OperationInfo` into a
+JSON-serializable descriptor: the verbatim ``model_json_schema()`` plus the
+handful of facts that schema structurally cannot state.
+
+Two of those gaps are why a raw schema dump is not enough on its own:
+
+* :data:`~phenotypic.sdk_.typing_.OperationField` erases its core type to
+  ``Any``, so a parameter that takes another operation reports an empty
+  ``{}`` branch and looks untyped.
+* :data:`~phenotypic.sdk_.typing_.NdArrayField` reports
+  ``{"type": "array", "items": {}}`` — no shape, no dtype. Flagging it
+  ``ndarray`` at least tells the agent it is not practically authorable.
+
+No GUI dependencies, and no measurement execution — this is pure
+introspection over classes the registry already discovered.
+"""
+
+from __future__ import annotations
+
+import re
+from typing import Any, Dict, List, Optional, get_args
+
+import numpy as np
+
+from phenotypic._services.registry import OperationInfo, ParamInfo, get_registry
+
+#: JSON Schema keywords that describe the *shape* of a property rather than
+#: constrain its value. Everything else a property declares — ``minimum``,
+#: ``exclusiveMinimum``, ``maxLength``, ``multipleOf``, … — is passed
+#: through as a constraint under its real JSON Schema spelling. Pydantic's
+#: ``Field(gt=0.0)`` reports ``exclusiveMinimum``, and the projection does
+#: not invent a ``gt`` spelling for it.
+_NON_CONSTRAINT_KEYS = frozenset(
+    {
+        "$defs",
+        "$ref",
+        "additionalProperties",
+        "allOf",
+        "anyOf",
+        "const",
+        "default",
+        "deprecated",
+        "description",
+        "discriminator",
+        "enum",
+        "examples",
+        "items",
+        "oneOf",
+        "prefixItems",
+        "properties",
+        "required",
+        "title",
+        "type",
+    }
+)
+
+#: Split on a period/question/exclamation mark followed by whitespace. The
+#: trailing ``\s`` is what keeps ``Typical range: 0.5--5.0`` intact — a
+#: decimal point has no space after it.
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s")
+
+
+def _first_sentence(text: Optional[str]) -> Optional[str]:
+    """Return the first sentence of *text*, or *text* when it has only one.
+
+    Args:
+        text: A parameter or class description, possibly ``None``.
+
+    Returns:
+        The leading sentence with surrounding whitespace collapsed, or
+        ``None`` when *text* is ``None`` or blank.
+    """
+    if not text:
+        return None
+    collapsed = " ".join(text.split())
+    if not collapsed:
+        return None
+    return _SENTENCE_END.split(collapsed, maxsplit=1)[0]
+
+
+def _describe(text: Optional[str], *, verbose: bool) -> Optional[str]:
+    """First sentence of *text*, or all of it when *verbose*."""
+    if not text:
+        return None
+    collapsed = " ".join(text.split())
+    return collapsed if verbose else _first_sentence(collapsed)
+
+
+def _annotation_holds_ndarray(hint: Any) -> bool:
+    """Whether ``np.ndarray`` appears anywhere in an annotation tree.
+
+    :data:`~phenotypic.sdk_.typing_.NdArrayField` is usually nested inside a
+    ``Union`` with a ``Literal`` of named shapes, so the marker is not at the
+    top level; this walks ``Annotated`` extras and every ``get_args`` branch,
+    mirroring
+    :func:`~phenotypic._services.registry._has_operation_field_marker`.
+
+    Args:
+        hint: A type annotation, possibly wrapped or nested.
+
+    Returns:
+        ``True`` if the annotation can carry a raw NumPy array.
+    """
+    if hint is np.ndarray:
+        return True
+    return any(_annotation_holds_ndarray(arg) for arg in get_args(hint))
+
+
+def _property_branches(prop: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """The property itself, or its ``anyOf`` / ``oneOf`` alternatives."""
+    for key in ("anyOf", "oneOf"):
+        branches = prop.get(key)
+        if isinstance(branches, list):
+            return [b for b in branches if isinstance(b, dict)]
+    return [prop]
+
+
+def _param_type(prop: Dict[str, Any], *, holds_ndarray: bool) -> Optional[str]:
+    """A compact type string for one property.
+
+    Reports the JSON Schema ``type`` when the property declares one, and a
+    ``"|"``-joined union of its branch types otherwise. A branch typed
+    ``array`` is reported as ``ndarray`` when the annotation can carry a
+    raw NumPy array — the schema says ``{"type": "array", "items": {}}``
+    for both a real list and an ``NdArrayField``.
+
+    Args:
+        prop: One entry from the schema's ``properties`` block.
+        holds_ndarray: Whether the live annotation contains ``np.ndarray``.
+
+    Returns:
+        The type string, or ``None`` when the schema declares no type at
+        all — which is what an operation-valued parameter looks like.
+    """
+    names: List[str] = []
+    for branch in _property_branches(prop):
+        declared = branch.get("type")
+        if not isinstance(declared, str):
+            continue
+        if declared == "array" and holds_ndarray:
+            declared = "ndarray"
+        if declared not in names:
+            names.append(declared)
+    return "|".join(names) if names else None
+
+
+def _param_choices(prop: Dict[str, Any]) -> Optional[List[Any]]:
+    """Closed value set for one property, or ``None``.
+
+    Reads ``enum`` from the property or from whichever ``anyOf`` branch
+    declares one — a ``Literal[...] | None`` field puts the enum on a
+    branch, not at the top level.
+    """
+    for branch in _property_branches(prop):
+        values = branch.get("enum")
+        if isinstance(values, list):
+            return list(values)
+    return None
+
+
+def _param_constraints(prop: Dict[str, Any]) -> Dict[str, Any]:
+    """Value constraints declared by one property, JSON Schema spelling."""
+    return {k: v for k, v in prop.items() if k not in _NON_CONSTRAINT_KEYS}
+
+
+def _layers_modified_for_class(cls: type) -> List[str]:
+    """Layers an operation of this class writes to.
+
+    Class-level twin of
+    :func:`~phenotypic._core._pipeline_parts._image_pipeline_core._layers_modified_by`,
+    which dispatches on ``isinstance`` and so needs an instance the catalog
+    does not have (many operations have required parameters). The two are
+    pinned together by
+    ``test_layers_modified_agrees_with_the_live_helper``.
+
+    A measurer returns ``[]`` rather than ``None``: it populates the
+    measurement table, not an image layer.
+
+    The entry guard is ``BaseOperation``, not ``ImageOperation`` — the
+    helper's own parameter type. ``MeasureFeatures``, ``PostMeasurement``
+    and ``PrefabPipeline`` are ``BaseOperation`` subclasses that are *not*
+    ``ImageOperation`` subclasses, so guarding on the narrower base would
+    silently report ``[]`` for all three.
+
+    Args:
+        cls: A ``BaseOperation`` subclass, or any other registered class.
+
+    Returns:
+        Layer names in the helper's order, or ``[]`` for a read-only
+        operation and for classes outside the operation hierarchy
+        (scorers, strategies, analyzers).
+    """
+    from phenotypic.abc_ import (
+        ImageCorrector,
+        ImageEnhancer,
+        MeasureFeatures,
+        ObjectDetector,
+        ObjectRefiner,
+    )
+    from phenotypic.abc_._base_operation import BaseOperation
+
+    if not (isinstance(cls, type) and issubclass(cls, BaseOperation)):
+        return []
+    if issubclass(cls, MeasureFeatures):
+        return []
+    if issubclass(cls, ImageCorrector):
+        return ["rgb", "gray", "detect_mat", "objmap"]
+    if issubclass(cls, ImageEnhancer):
+        return ["detect_mat"]
+    if issubclass(cls, (ObjectDetector, ObjectRefiner)):
+        return ["objmap"]
+    return ["rgb", "gray", "detect_mat", "objmap"]
+
+
+def _project_param(
+    param: ParamInfo,
+    prop: Dict[str, Any],
+    *,
+    verbose: bool,
+) -> Dict[str, Any]:
+    """Project one :class:`ParamInfo` plus its schema entry into a dict.
+
+    Args:
+        param: Registry metadata for the parameter.
+        prop: The parameter's entry in ``model_json_schema()["properties"]``,
+            or ``{}`` when the schema omits it.
+        verbose: Emit the full description rather than its first sentence.
+
+    Returns:
+        A JSON-serializable parameter descriptor.
+    """
+    holds_ndarray = _annotation_holds_ndarray(param.type_hint)
+    column_ref = param.column_ref
+    return {
+        "name": param.name,
+        "type": _param_type(prop, holds_ndarray=holds_ndarray),
+        "default": prop.get("default") if param.has_default else None,
+        "required": not param.has_default,
+        "description": _describe(param.description, verbose=verbose),
+        "constraints": _param_constraints(prop),
+        "is_operation": param.is_operation,
+        "is_pipeline": param.is_pipeline,
+        "is_list": param.is_list,
+        "is_optional": param.is_optional,
+        "choices": _param_choices(prop),
+        "column_ref": (
+            None
+            if column_ref is None
+            else {
+                "source": column_ref.source,
+                "multi": column_ref.multi,
+                "with_alt": column_ref.with_alt,
+            }
+        ),
+    }
+
+
+def describe_operation(name: str, *, verbose: bool = False) -> Dict[str, Any]:
+    """Project an ``OperationInfo`` into the agent-facing descriptor.
+
+    Args:
+        name: Operation, scorer, or strategy class name.
+        verbose: Return each parameter's full docstring text instead of its
+            first sentence. Descriptions are long — ``BlurGauss.sigma``'s
+            runs four sentences — and a 20-parameter detector spends the
+            agent's context on prose it did not ask for.
+
+    Returns:
+        A JSON-serializable dict carrying the verbatim
+        ``model_json_schema()`` plus the two facts that schema cannot
+        express — whether a parameter takes an operation, and whether it is
+        a raw array.
+
+    Raises:
+        KeyError: If *name* is not a registered class.
+
+    Example:
+        Read one parameter's real JSON Schema constraint:
+
+        >>> from phenotypic._services.catalog import describe_operation
+        >>> desc = describe_operation("FlattenIllumination")
+        >>> sigma = next(p for p in desc["params"] if p["name"] == "sigma")
+        >>> sigma["constraints"]
+        {'exclusiveMinimum': 0.0}
+    """
+    info = get_registry().get(name)
+    if info is None:
+        raise KeyError(f"Operation {name!r} not found in the catalog")
+
+    schema = info.cls.model_json_schema()
+    properties = schema.get("properties", {})
+
+    return {
+        "name": info.name,
+        "category": info.category,
+        "module": info.module,
+        "doc": _describe(info.docstring, verbose=verbose),
+        "json_schema": schema,
+        "params": [
+            _project_param(param, properties.get(param.name, {}), verbose=verbose)
+            for param in info.parameters.values()
+        ],
+        "layers_modified": _layers_modified_for_class(info.cls),
+    }
+
+
+def _summary_row(info: OperationInfo) -> Dict[str, Any]:
+    """One compact catalog row — no JSON schema, by design."""
+    return {
+        "name": info.name,
+        "category": info.category,
+        "summary": _first_sentence(info.docstring),
+        "n_params": len(info.parameters),
+        "has_nested_operations": any(
+            param.is_operation or param.is_pipeline
+            for param in info.parameters.values()
+        ),
+    }
+
+
+def list_operations(
+    category: Optional[str] = None,
+    query: Optional[str] = None,
+    limit: int = 100,
+) -> Dict[str, Any]:
+    """List catalog rows, optionally filtered by category and free text.
+
+    Rows are deliberately compact: full JSON schemas come from
+    :func:`describe_operation`, one operation at a time, so that browsing
+    the catalog cannot flood an agent's context.
+
+    Args:
+        category: Restrict to one registry category (``"Detector"``,
+            ``"Scorer"``, ``"Prefab"``, …). ``None`` lists every category.
+        query: Case-insensitive substring matched against the class name
+            and the docstring summary.
+        limit: Row cap. The response reports whether it truncated and how
+            many rows matched in total.
+
+    Returns:
+        ``{"operations": [...], "total": int, "truncated": bool}``, where
+        ``total`` counts every match, not just the returned rows.
+
+    Example:
+        >>> from phenotypic._services.catalog import list_operations
+        >>> result = list_operations(category="Detector", limit=1)
+        >>> result["truncated"]
+        True
+    """
+    rows = [
+        _summary_row(info)
+        for info in get_registry().get_all().values()
+        if category is None or info.category == category
+    ]
+
+    if query:
+        needle = query.lower()
+        rows = [
+            row
+            for row in rows
+            if needle in row["name"].lower()
+            or needle in (row["summary"] or "").lower()
+        ]
+
+    rows.sort(key=lambda row: (row["category"], row["name"]))
+    return {
+        "operations": rows[:limit],
+        "total": len(rows),
+        "truncated": len(rows) > limit,
+    }
