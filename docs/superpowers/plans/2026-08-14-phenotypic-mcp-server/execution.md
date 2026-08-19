@@ -83,10 +83,11 @@ phase overlaps and stays sequential.
 with **C8 ∥ C9 ∥ C4** — the two seams run in their own worktrees alongside the
 first keystone, and each takes its own gate before merge.
 
-**C8 is blocked pending the OME-Zarr impact review.** If an "image" becomes a
-zarr *directory* rather than a file, a line in the manifest changes meaning — and
-that manifest is bound to a human's approval. Do not dispatch C8 until that
-question is answered.
+**C8 was blocked pending the OME-Zarr impact review; it is now UNBLOCKED**
+(2026-08-19). The store is one-per-input-image but lives under `results/`, and
+ingesting third-party OME-Zarr as pipeline *input* is an explicit non-goal — the
+projection is write-only. Input images stay ordinary files, so a line in the
+manifest is unchanged and T19's two-file scope stands.
 
 ### C7 — P1 (JournalStorage), moved into Phase 1b (user ruling, 2026-08-19)
 

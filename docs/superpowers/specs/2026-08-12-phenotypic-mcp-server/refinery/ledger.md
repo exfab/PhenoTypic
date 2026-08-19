@@ -948,3 +948,32 @@ public `gpu` partition. *Correction to my earlier claim: that partition does
 exist — I said it did not.* The reason to prefer `exfab` is its queue, not
 validity. Both mistakes run correctly and simply never start, which is precisely
 the class of error an agent cannot diagnose.
+
+---
+
+## OME-Zarr final version — impact on this spec (verified 2026-08-19)
+
+Reviewed against `worktree-ome-zarr-image-store` @ `f3564336` (design.md + a
+6-phase, ~39-task plan). Citations are `design.md` line numbers.
+
+**VERDICT: small changes needed. Nothing blocks Phase 1b, and the one site that
+could have blocked it does not.**
+
+| # | Site | Verdict | Evidence |
+|---|---|---|---|
+| 6 | **§7 P8 / USER-26 `image_manifest`** | **NOT AT RISK** — the blocking question, answered | The store is "one per **input** image" (`:11`) but lives under `results/` (`:14`), and §8 Non-goals states *"Ingesting third-party OME-Zarr as pipeline input (the projection is **write-only**)"* (`:1075-1076`). **Input images stay ordinary files**, so a line in the manifest is unchanged and **C8 is unblocked** |
+| 5 | §7 P6 subset staging (symlink trees) | **NOT AT RISK** — same reason | Staging symlinks *input* images, which remain files. The directory-vs-file hazard applies to `results/`, not to what P6 links |
+| 4 | §5.4 staged-GPU `.npy` sidecar | **CHANGED, not invalidated** | The sidecar *survives* and becomes a **consumable marker** (`:560`, §3.4), deleted by Stage 3 via `delete_sidecar` (`:135-136`, `:594`), and it "does not fully disappear — Stage 2 retains its **raw** detector output" (`:634`). An earlier reviewer called this "the most exposed" site; it is the least |
+| 7 | **CONC-18 completion marker** | **ANSWERABLE NOW — closes a 4-round-open item** | *"Resume state is carried by **consumable markers**, never by NGFF metadata"* (`:43`), and the resume planner's `"complete"` branch depends on the marker's **absence** (`:138`, `:595-596`). CONC-18 asked for the contract phrased as *the engine's completion marker* rather than a named file — that is exactly the shape the store adopted |
+| 2 | §2.3 workspace layout | **AT RISK, cosmetic** | `results/<dataset>/hdf/<stem>.h5` → `results/<dataset>/zarr/<stem>.ome.zarr/` (`:14`, `:164`, `:1093` OQ4 **Confirmed**) |
+| 3 | §5.5 `deploy_status` progress unit | **AT RISK, cosmetic** | Scanners move from an `*.h5` glob to a **non-recursive** `*.ome.zarr` directory scan (`:800`). The plan flags the trap: a naive recursive port "recurses **into** every store: 400k stat calls at 10k images" |
+| 1 | §5.4 `mode` enumeration | **ALREADY MOOT** | USER-8 cut `mode`/`layer`/`sample` from the deploy tools and hardcodes `--mode full`. `migrate` takes "no `--pipeline`, no `--input`" (`:823`) and is not an MCP-reachable mode |
+
+**Sequencing:** Phase 1b (Tasks 10–20) does not touch the image store. The
+earlier note that **Phase 2C** should wait for OME-Zarr still stands, and OQ4
+being *Confirmed* means the path layout is now settled enough to write against.
+
+**Correction to an earlier claim of mine, again:** I wrote in round 1 that §5.4's
+`.npy` sidecar was "most exposed". Two reviewers refuted it then, and the final
+design confirms them — the sidecar is retained and *promoted* to a first-class
+consumable marker.
