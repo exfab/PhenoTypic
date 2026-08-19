@@ -371,3 +371,109 @@ def list_operations(
         "total": len(rows),
         "truncated": len(rows) > limit,
     }
+
+
+def _texture_scales(owner: Any) -> List[int]:
+    """Scales a texture measurer will emit headers for.
+
+    ``MeasureTexture.scale`` is instance state, and the header count depends
+    on it: 13 members x (4 angles + 1 average) = 65 columns *per scale*.
+
+    Args:
+        owner: The measurement operation instance that declared the enum.
+
+    Returns:
+        The instance's scales as a list, or ``[]`` when it declares none.
+    """
+    scale = getattr(owner, "scale", None)
+    if scale is None:
+        return []
+    if isinstance(scale, (int, np.integer)):
+        return [int(scale)]
+    return [int(value) for value in scale]
+
+
+def measurement_headers(info_cls: Any, owner: Any) -> List[str]:
+    """DataFrame headers one measurement enum will emit for *owner*.
+
+    Dispatches on ``info_cls.header_scheme()`` rather than calling
+    ``get_headers()`` blindly. A blanket call is wrong for two schemes and
+    for one of them it raises::
+
+        SIZE.header_scheme()    -> "static"   -> get_headers() -> ['Size_Area', ...]
+        TEXTURE.header_scheme() -> "texture"  -> get_headers() -> TypeError:
+                                     missing 1 required positional argument: 'scale'
+
+    Args:
+        info_cls: A :class:`~phenotypic.schema.MeasurementInfo` subclass.
+        owner: The live instance that declared it — a measurement operation
+            or a model fitter. Both schemes below read runtime state off it,
+            which is why the class alone is not enough.
+
+    Returns:
+        Header strings in emission order. Empty when a metric-qualified
+        enum's owner names no metric: there is no derivable header then,
+        and inventing a placeholder would be worse than reporting none.
+    """
+    from phenotypic.schema import qualified_header
+
+    scheme = info_cls.header_scheme()
+
+    if scheme == "texture":
+        matrix_name = getattr(owner, "matrix_name", None)
+        headers: List[str] = []
+        for scale in _texture_scales(owner):
+            headers.extend(info_cls.get_headers(scale, matrix_name))
+        return headers
+
+    if scheme == "metric_qualified":
+        # The ``<metric>`` segment is a runtime value: a ``ModelFitter``
+        # derives it from the column it was fitted on (``self.on``).
+        token = getattr(owner, "_metric_token", None)
+        if not token:
+            return []
+        return [qualified_header(member, token) for member in info_cls]
+
+    return list(info_cls.get_headers())
+
+
+def derive_columns(pipeline: Any) -> List[str]:
+    """Measurement columns a pipeline's ``measure()`` will produce.
+
+    Walks the pipeline's measurement operations, asks each live instance
+    which measurement schemas it is emitting
+    (``MeasureFeatures.get_measurement_infoclasses()`` — genuinely
+    instance-dependent, since ``MeasureColor`` includes or excludes members
+    based on ``include_XYZ`` / ``include_xy``), and expands each through
+    :func:`measurement_headers`.
+
+    Only the ``meas`` slot is walked. Post transforms rewrite the table
+    rather than declaring a schema, and an analysis model's
+    metric-qualified output lands in its own deliverable, not in the
+    measurement table.
+
+    Args:
+        pipeline: An :class:`~phenotypic.ImagePipeline`.
+
+    Returns:
+        Column names in emission order, de-duplicated — two measurers can
+        legitimately declare the same schema.
+
+    Example:
+        >>> from phenotypic import ImagePipeline
+        >>> from phenotypic.measure import MeasureSize
+        >>> from phenotypic._services.catalog import derive_columns
+        >>> "Size_Area" in derive_columns(ImagePipeline(meas=[MeasureSize()]))
+        True
+    """
+    columns: List[str] = []
+    seen: set[str] = set()
+
+    for measurer in getattr(pipeline, "_meas", {}).values():
+        for info_cls in measurer.get_measurement_infoclasses():
+            for header in measurement_headers(info_cls, measurer):
+                if header not in seen:
+                    seen.add(header)
+                    columns.append(header)
+
+    return columns
