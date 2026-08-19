@@ -213,3 +213,27 @@ def test_non_class_all_entries_are_ignored(discovered_registry):
     names = set(discovered_registry.get_all())
     assert "SAM2_AVAILABLE" not in names
     assert "MICROSAM_AVAILABLE" not in names
+
+
+def test_a_broken_tune_install_costs_only_the_tuning_categories(monkeypatch):
+    """Naming the tuning bases must not couple the GUI's catalog to ``tune``.
+
+    ``Scorer`` and ``StrategyConfig`` are the only base classes resolved
+    outside ``phenotypic.abc_``, and they are resolved before the per-module
+    guard in ``discover`` can help — an unguarded import there would take
+    the whole registry down with them.
+    """
+    import sys
+
+    from phenotypic._services.registry import OperationRegistry
+
+    monkeypatch.setitem(sys.modules, "phenotypic.tune.score", None)
+
+    registry = OperationRegistry()
+    registry.discover()
+
+    names = set(registry.get_all())
+    assert "QCScorer" not in names
+    assert "GridConfig" not in names
+    assert {"BlurGauss", "OtsuDetector", "FilamentousFungiPipeline"} <= names
+    assert "phenotypic.tune" in registry.skipped_imports

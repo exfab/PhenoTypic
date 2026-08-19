@@ -237,8 +237,7 @@ class OperationRegistry:
             else:
                 self._discover_from_module(module, category, base_class)
 
-    @staticmethod
-    def _discovery_targets() -> Dict[str, tuple[Any, Any]]:
+    def _discovery_targets(self) -> Dict[str, tuple[Any, Any]]:
         """Map each discoverable module to its ``(category, base_class)``.
 
         Keyed by the dotted module names in
@@ -256,7 +255,8 @@ class OperationRegistry:
         Returns:
             Dict mapping module name to ``(category, base_class)``. The
             sentinel category :data:`_ANALYZER_CATEGORIES` routes a module
-            to :meth:`_discover_analyzers` instead.
+            to :meth:`_discover_analyzers` instead. The tuning entries are
+            absent when ``phenotypic.tune`` cannot be imported.
         """
         from phenotypic.abc_ import (
             GridOperation,
@@ -268,10 +268,8 @@ class OperationRegistry:
             PostMeasurement,
             PrefabPipeline,
         )
-        from phenotypic.tune.score import Scorer
-        from phenotypic.tune.strategy import StrategyConfig
 
-        return {
+        targets: Dict[str, tuple[Any, Any]] = {
             "phenotypic.detect": ("Detector", ObjectDetector),
             "phenotypic.detect.nn": ("Detector", ObjectDetector),
             "phenotypic.measure": ("Measure", MeasureFeatures),
@@ -282,9 +280,24 @@ class OperationRegistry:
             "phenotypic.analysis": (_ANALYZER_CATEGORIES, None),
             "phenotypic.prefab": ("Prefab", PrefabPipeline),
             "phenotypic.post": ("Post", PostMeasurement),
-            "phenotypic.tune.score": ("Scorer", Scorer),
-            "phenotypic.tune.strategy": ("Strategy", StrategyConfig),
         }
+
+        # The two tuning bases are the only ones outside ``abc_``, so naming
+        # them here newly couples every registry consumer — the Dash GUI
+        # included — to ``phenotypic.tune`` importing cleanly. Guard it: a
+        # broken tune install should cost the catalog its scorers, not its
+        # entire contents. The per-module guard in :meth:`discover` cannot
+        # cover this, because the failure is in resolving the base class.
+        try:
+            from phenotypic.tune.score import Scorer
+            from phenotypic.tune.strategy import StrategyConfig
+        except ImportError as exc:
+            self._skipped_imports["phenotypic.tune"] = str(exc)
+            return targets
+
+        targets["phenotypic.tune.score"] = ("Scorer", Scorer)
+        targets["phenotypic.tune.strategy"] = ("Strategy", StrategyConfig)
+        return targets
 
     @property
     def skipped_imports(self) -> Dict[str, str]:
@@ -296,7 +309,7 @@ class OperationRegistry:
         """
         return dict(self._skipped_imports)
 
-    def _iter_public_classes(self, module: Any) -> List[tuple[str, type]]:
+    def _iter_public_classes(self, module: Any) -> List[tuple[str, Any]]:
         """Public classes of *module*, including lazily-exported ones.
 
         ``inspect.getmembers`` reads ``dir(module)``, which for a module
@@ -318,9 +331,13 @@ class OperationRegistry:
 
         Returns:
             ``(name, class)`` pairs, eager members first, then the
-            lazily-resolved ``__all__`` entries that are classes.
+            lazily-resolved ``__all__`` entries that are classes. Typed
+            ``Any`` rather than ``type`` to match what
+            ``inspect.getmembers`` hands callers: the walk cannot narrow
+            each class to the base its caller filters on, and the callers
+            read subclass-only attributes off it.
         """
-        found: List[tuple[str, type]] = []
+        found: List[tuple[str, Any]] = []
         seen: set[str] = set()
 
         for name, obj in inspect.getmembers(module, inspect.isclass):
