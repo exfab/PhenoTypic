@@ -266,7 +266,15 @@ for that duration.
 
 On a cluster this is nearly unreachable: `W2`/`W3` route to `sbatch` and take no
 slot. It bites on a workstation with no scheduler, and the honest answer there is
-that local batch work and interactive probing do not overlap. The alternative —
+that local batch work and interactive probing do not overlap.
+
+**Which is why a local `W2`/`W3` child is detached, not reaped at session end.**
+`LocalRunner` installs an `atexit` hook that SIGTERMs its children, and under it
+the bargain above is not payable: probing is suspended for hours by design, and
+then the run those hours were spent on dies with the session. So local batch
+children start with `start_new_session=True` and are **not** registered with that
+hook; restart reconciliation adopts them (§1.5, below). The suspension buys a
+result rather than buying nothing. The alternative —
 admitting `W1` alongside a reduced-worker local job — was considered and rejected
 as machinery serving a deployment this design does not target.
 

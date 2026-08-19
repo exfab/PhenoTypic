@@ -197,9 +197,25 @@ Three things this does not change, stated so the guarantee is not overread:
 
 - **The fallback is mandatory, not optional.** A host without elicitation gets the
   previous design exactly — `human_response` required, fabrication explicit — so
-  the server never depends on a capability it cannot confirm. `human_response` is
-  therefore **required-unless-elicited**, a signature decision taken now precisely
-  so adopting elicitation later is not a breaking change.
+  the server never depends on a capability it cannot confirm.
+
+  **`human_response` is therefore required *unconditionally*, on every tool that
+  takes a human decision.** An earlier draft made it "required-unless-elicited",
+  and that is a required-field rule that varies with host capability: the agent
+  cannot predict the signature from `tools/list`, and every such tool grows a
+  fallback branch in its contract rather than in its implementation. The
+  elicited-vs-asserted distinction is real and worth keeping — it just belongs in
+  the **response**, not the signature:
+
+  ```json
+  {"ack_source":"elicited"}   // the host prompted a human and this is their answer
+  {"ack_source":"agent_asserted"}   // no elicitation; the agent reports what it was told
+  ```
+
+  Same guarantee, one signature, and the distinction becomes an **auditable field
+  on the artifact** instead of something implicit in host configuration — which
+  is what a reader months later actually needs. It is also still not a breaking
+  change to adopt elicitation, because the parameter never moves.
 - **It is not authentication.** It confirms that *a* human at the host answered,
   not *which* human, and the server still runs with that user's rights (§6.4).
 - **Behaviour under §1.3's shared connection is unverified.** All subagents share
