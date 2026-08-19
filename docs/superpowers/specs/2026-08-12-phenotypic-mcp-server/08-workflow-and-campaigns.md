@@ -241,6 +241,8 @@ Three things this does not change, stated so the guarantee is not overread:
   ```json
   {"ack_source":"elicited"}   // the host prompted a human and this is their answer
   {"ack_source":"agent_asserted"}   // no elicitation; the agent reports what it was told
+  {"ack_source":"campaign_approved"} // an unattended deploy arm, consent carried
+                                     // forward from campaign_approve (§5.4, §10.4)
   ```
 
   Same guarantee, one signature, and the distinction becomes an **auditable field

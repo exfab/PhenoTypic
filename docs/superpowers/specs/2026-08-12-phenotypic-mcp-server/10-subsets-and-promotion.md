@@ -601,7 +601,11 @@ list and not a manifest file — so full scope on a filtered subset **needs a ne
 top-level CLI flag**. Reusable machinery exists:
 `_cli_staged_slurm_worker.py:422` already takes `--manifest` as an internal entry
 point. It is a **new §7 prerequisite and a new plan task**, and `argv_digest`
-(§5.4) digests the argv that names that manifest.
+(§5.4) binds it as **`image_manifest_digest`** — a digest of the file's
+*contents*, not of the argv that names it, since an argv digest is unchanged by a
+manifest whose contents drift. It is called `image_manifest` throughout and never
+bare "manifest", which in this spec already means `manifest.json`, the unrelated
+run-status artifact `deploy_status` polls (§5.5).
 
 This is what makes §9.3.0.2's descent reachable at the only scale that matters.
 Without it, a per-group winner could be deployed only at subset scale, and

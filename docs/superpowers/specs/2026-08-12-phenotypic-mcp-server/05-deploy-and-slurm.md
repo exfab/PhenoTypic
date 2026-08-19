@@ -296,7 +296,7 @@ Same arguments as `deploy_plan`, plus:
 |---|---|---|---|
 | `scope` | `"subset" \| "full"` | `"subset"` | `full` targets `subset.parent` — intersected with the subset's `group_filter` where it has one (§10.5). Its `plan_token` must have been minted at `scope:"full"`; **the human ack is taken here, not carried on the token** |
 | `plan_token` | `str` | — | **Required.** From a matching `deploy_plan`, or from an approved campaign arm |
-| `human_response` | `str` | — | **Required.** What the human actually said. Unconditional — see §8.2; there is no elicited-vs-not variant of this signature |
+| `human_response` | `str?` | — | **Required when `plan_token.kind == "plan"`** — a fresh spending decision. **Omitted when `kind == "campaign_arm"`**, which carries consent forward from `campaign_approve` (below) |
 | `note` | `str?` | `null` | Free-text context recorded alongside the approval |
 | `resume` | `bool` | `false` | Continue an interrupted run |
 | `retry_failures` | `bool` | `false` | Requires `resume` |
@@ -396,6 +396,32 @@ produced by `to_argv` plus the profile's `--slurm` pairs — including `--output
 It and the explicit `run_name` field are both kept: `argv_digest` also moves when
 a compute key changes, and the two failures deserve different messages.
 
+**`image_manifest_digest` binds the resolved image set (USER-26), and
+`argv_digest` cannot stand in for it.** At `full` scope with a non-null
+`group_filter`, `deploy_plan` resolves `parent ∩ group_filter` to a concrete list
+and writes it to **`.phenotypic-mcp/plans/<token>.images`** — under the token, so
+it shares the token's lifecycle. The record binds the file's content digest, and
+`deploy_start` re-derives and compares it.
+
+Binding the argv instead would be a null guard: `argv_digest` covers the argv
+*string*, which merely **names** the file, so a manifest whose *contents* changed
+between plan and start re-derives an identical `argv_digest` and passes every
+check — across a 24 h token lifetime, for a file the server itself collects. The
+property USER-26 was adopted to provide is that a human approves an image set
+which cannot subsequently drift, and only a content digest carries it.
+
+**Note the name.** This is *not* `manifest.json`, the run-status manifest
+`deploy_status` polls (§5.5, `_dashboard/_manifest_builder.py`). Two unrelated
+artifacts called "the manifest" in one section is a defect waiting to happen, so
+the image list is always **`image_manifest`** and never bare "manifest".
+
+**Collection must not race a live run.** Expired tokens are collected on the next
+`deploy_plan` or server start, but a full deploy is a multi-hour SLURM array that
+reads its `image_manifest` long after the token expired and was consumed —
+pulling the input list out from under a running job. **Collection skips any token
+whose `consumed_by` names a run that is not yet terminal**, and takes the
+`.images` file with the record when it does collect.
+
 The alternative — a **self-describing hash** of `(pipeline_digest,
 images_digest, compute)` — is tempting because it needs no storage and the
 server could recompute it. It is also **forgeable**: §2.5 publishes the exact
@@ -421,6 +447,30 @@ rendered from and the ack lands on the `deploy.approve` lineage row (§2.5) and
 the response's `ack_source`. A token that recorded an ack would be a second
 mutable state racing the gate, which is the contradiction the relocation
 dissolved.
+
+### Who supplies the human's words, and when
+
+`human_response` is keyed on the **token kind**, and the reason is that §10.4
+lets a campaign carry a **deploy arm** which the background launcher runs
+unattended. At 3am there is no human to ask, so an unconditional requirement
+leaves only two outcomes and both are bad: the launcher fabricates the field —
+the precise thing USER-22's audit trail exists to prevent — and records
+`ack_source: "agent_asserted"`, which is **false**, because a human *did*
+approve, at `campaign_approve`, for this arm, inside the budget they agreed; or
+campaign deploy arms are simply unlaunchable and §10.4's capability is specified
+but unreachable.
+
+So a `campaign_arm` token carries the consent forward. Its `deploy.approve`
+lineage row records **`ack_source: "campaign_approved"`** together with
+`campaign_id` and `arm_id`, which points at the approval that actually happened
+rather than inventing one that did not.
+
+**This is not USER-22 re-litigated.** USER-22's objection was to a required-field
+rule that varies with *host capability* — unpredictable from `tools/list`, and
+forcing a fallback branch into the tool contract. A rule keyed on the token kind
+is statically documentable, visible in the request the caller already makes, and
+leaves one signature. The elicitation still fires for every human decision; it
+just does not fire twice for the same one.
 
 ### The token's two producers, and what each can bind
 

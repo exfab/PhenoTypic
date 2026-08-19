@@ -601,7 +601,7 @@ lives only inside a paragraph:
 | Bound | Value | Owner |
 |---|---|---|
 | `executors.blocking` workers | 4 | §1.5 — filesystem, journal, subprocess waits, scheduler polling |
-| `executors.compute` workers | **1** | §1.5 — `W1` execution; a second expression of the one-probe invariant |
+| `executors.compute` workers | **= `local_slot_capacity`** (default 1) | §1.5 — the **probe-dispatch slot**, not a compute pool. Defined as the slot's capacity so the two cannot disagree (§1.5) |
 | `local_slot_capacity` | 1 | §1.5 — the local-OOM invariant; configuration, not a promise |
 | `limits.max_inflight_arms` | 8 | **server-wide**, across *all* campaigns — and the only bound on in-flight work, since an over-cap `sbatch` does not error but queues indefinitely on `Reason=AssocGrpCpuLimit`, so submission success is not backpressure |
 | `limits.max_inflight_local_runs` | = `local_slot_capacity` | **server-wide** — not a second knob; the slot already is this bound |

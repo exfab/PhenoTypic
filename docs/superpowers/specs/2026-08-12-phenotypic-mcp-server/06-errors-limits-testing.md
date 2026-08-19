@@ -214,6 +214,12 @@ ones most likely to rot into tautologies.
 - **Shim equivalence.** For each promoted symbol, assert the `gui.*` re-export
   and the `_services.*` original are the *same object* — catching the
   `_REGISTRY` double-singleton failure specifically.
+- **The two-lock ordering (§7 P2) has its own test**, because the registry half
+  above does not cover it: hold `exclusive_path_lock` on an owner-lock path from
+  one thread, then assert from another that ordinary `RunRegistry` methods remain
+  callable rather than blocking for the full 30 s spin. Without it the fix is
+  described and not verified, and the failure it guards is a stall — which looks
+  like slowness, not like a bug.
 - Existing GUI tests and the CI ledger gates (`FEATURES.md`, `WORKFLOWS.md`,
   smoke-capture) must stay green unchanged.
 
