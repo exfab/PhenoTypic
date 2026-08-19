@@ -139,3 +139,42 @@ as code; `SandboxRoot` thread-safety; staged-GPU controller internals.
 **Flow coverage:** 4 of 5 traced to completion. **Not reached:** the probe-worker
 subprocess lifecycle across a restart, and slot reconciliation against a live
 orphan — which CONC-2 independently found to be Critical.
+
+### general-reviewer — round 1, VERDICT REVISE (12 concerns, 1 Critical)
+
+| ID | Sev | Concern | Status |
+|---|---|---|---|
+| GEN-1 | **Critical** | **The spec specifies the pre-ruling model for both human gates.** `grep -rni "elicit\|fastmcp\|annotation"` over all 11 docs returns **nothing**, while §8.2 and §10.5 still assert the server "cannot verify that a human approved anything". D1a, D5 and D6 live only in the plan — so Phase 2C, which is written from §8/§10, would be built to the superseded contract | open · spec-change |
+| GEN-2 | Major | **`to_argv` cannot emit `deploy_*`'s own arguments** — no `--layer`, `--restart`, `--overwrite`, `--gpu-slurm`; `RunConsoleState` has no `mode`/`layer`/`restart` field; `--slurm k=v` lives in `gui/run_console/_slurm.py`, which P2 never promoted. This is the coverage gap *behind* FLOW-5: even with the values corrected, **no `_services` symbol can emit them** | open · spec-change · alias FLOW-5 (same site, disjoint content) |
+| GEN-3 | Major | Three mechanisms the spec names live under `phenotypic.gui` (`from_pipeline_dag`+`validate` for §3.2/§6.6, `deploy_tune_run` for §4.3, `_slurm_argv_extension` for §5.4), none in P2's list — and **the "never import gui" rule is already false**: the purity allowlist sanctions two upward edges, so anything importing `RunRegistry` transitively imports `phenotypic.gui`. All three probe **clean of Dash**, so this is an architecture-rule problem, not a dependency one | open · spec-change · needs-user-input |
+| GEN-4 | Major | OME-Zarr adds a **new mid-run refusal** — any dataset with `.h5` results and no store fails on every result-consuming mode — i.e. a fresh `sys.exit(1)` inside the subprocess `deploy_start` launches, the exact opaque-exit failure §5.4 pre-validates to prevent | open · spec-change |
+| GEN-5 | Major | `campaign_status{since}` **under-reports local SQLite studies**: `_optuna_store.py:88-89` enables WAL, so trials land in `study.db-wal` while `study.db` sits stat-unchanged. The default local path is reported frozen while progressing | open · spec-change |
+| GEN-6 | Major | `campaign_start`'s write-back can **silently revert a §10.4 amendment** — §2.6 CASes on `status`, which cannot detect an arm-set change, and amendments leave `status` unchanged on both sides | open · spec-change · aliases CONC-5 (same file, different mechanism) |
+| GEN-7 | Major | `promotion_request` has **no work class at all** and escalates `W0`→`W1` at runtime: §10.6.1 always sweeps headers over every parent image and, on mismatch, re-probes 2 — acquiring the slot implicitly | open · spec-change |
+| GEN-8 | Major | The killable store-open subprocess (§1.6's ninth new piece) has **no owning task**, and T18's private `_finalize.py` forces `python -c "from phenotypic.tune._tune_cli._finalize import …"` as a process boundary | open · spec-change |
+| GEN-9 | Minor | `subset_generate` is specified synchronous but may report `cost_class()=="W2"` — a synchronous `W2` has no contract in this design | open · spec-change |
+| GEN-10 | Minor | `subset_required`'s raw-path fallback is a concurrency-sensitive predicate evaluated per call, and carries no `hint` — contradicting §6.2's own rule | open · spec-change |
+| GEN-11 | Minor | §1.4 still says the lazy `__init__`s are "deferred cleanup, not a prerequisite" — **Task 2.5 landed them**, and there is no DR row | open · spec-change |
+| GEN-12 | Advisory | **Independently confirms FLOW-13** by grepping all 11 docs: three of the brief's five OME-Zarr exposures are false. Adds a real one — **`--mode migrate` inverts what `--input` means** (an output dir, no `--pipeline`), which would invert `SandboxRoot` resolution, subset scoping and the plan-token digest at once. **Narrows the sequencing call:** "2C waits for OME-Zarr" over-blocks — three of 2C's five tools are format-independent | open · spec-change |
+
+**Charter areas NOT reached:** `phase-1a` task documents; the four finding
+registers in full (worked from README summaries); **§6.5's test plan vs the tests
+that exist**; §9's skills and installer; §9.3/§9.4 domain content.
+
+---
+
+## Round 1 merge — cross-reviewer dedup and convergence
+
+**63 concerns, four `REVISE`.** Collapsing:
+
+| Convergence | Reviewers | Weight |
+|---|---|---|
+| **The OME-Zarr exposure in the brief is wrong** | FLOW-13 + GEN-12, by independent methods (grep of all 11 docs, plus reading the OME-Zarr design) | **The orchestrator's brief was wrong.** The spec never names the `.npy` sidecar; `deploy_status` reads a format-agnostic manifest; P6 stages *inputs*. Real coupling = the mode list, a migration guard, and `--input` inversion |
+| **The deploy surface is stale and unbuildable** | FLOW-5 (values wrong) + GEN-2 (no symbol can emit them) + SIMP-3 (drop `mode`/`layer` entirely) | Three lenses, one site. SIMP-3's cut would dissolve FLOW-5 *and* GEN-2 |
+| **`campaign_start` is not safe to run** | CONC-5, CONC-6, GEN-6, FLOW-8 | Four independent findings on one tool: races the write-back, has no execution model, reverts amendments, is not idempotent |
+| **The slot can be stranded** | CONC-1, CONC-2, CONC-11, CONC-12 | Two Criticals |
+| **`W0` blocks** | audit F3 + CONC-15 + GEN-7 + FLOW-15 | F3's table is incomplete; GEN-7 adds a tool with *no class at all* |
+
+**No true conflicts requiring the precedence table.** GEN-2 flags `CONFLICT with`
+data-flow's stale-contract finding, but inspection shows the same site with
+disjoint content — recorded as an alias, not a conflict.
