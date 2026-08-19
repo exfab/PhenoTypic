@@ -26,6 +26,30 @@ import phenotypic
 
 __version__ = phenotypic.__version__
 
+#: Submodules searched, in order, when resolving a class name written into a
+#: serialized pipeline. Order is load-bearing: resolution is first-match, so
+#: reordering changes which class a duplicate name resolves to.
+#:
+#: This is meant to become the single list the pipeline loader and the
+#: operation catalog share — keeping two copies is how ``phenotypic.detect.nn``
+#: ended up deserializable but invisible to the operation registry.
+PHENOTYPIC_CLASS_MODULES: tuple[str, ...] = (
+    "phenotypic.detect",
+    "phenotypic.measure",
+    "phenotypic.enhance",
+    "phenotypic.refine",
+    "phenotypic.grid",
+    "phenotypic.correction",
+    "phenotypic.analysis",
+    "phenotypic.prefab",
+    "phenotypic.post",
+    "phenotypic.detect.nn",
+    "phenotypic.tune",
+    "phenotypic.tune.score",
+    "phenotypic.tune.strategy",
+)
+
+
 @dataclass(frozen=True)
 class PipelineLoadWarning:
     """A single skipped analyzer entry from :meth:`SerializablePipeline.from_json`.
@@ -642,23 +666,7 @@ class SerializablePipeline(NapariPipelineViewer):
             return getattr(phenotypic, class_name)
 
         # Try common submodules
-        submodules = [
-            "phenotypic.detect",
-            "phenotypic.measure",
-            "phenotypic.enhance",
-            "phenotypic.refine",
-            "phenotypic.grid",
-            "phenotypic.correction",
-            "phenotypic.analysis",
-            "phenotypic.prefab",
-            "phenotypic.post",
-            "phenotypic.detect.nn",
-            "phenotypic.tune",
-            "phenotypic.tune.score",
-            "phenotypic.tune.strategy",
-        ]
-
-        for module_name in submodules:
+        for module_name in PHENOTYPIC_CLASS_MODULES:
             try:
                 module = importlib.import_module(module_name)
                 if hasattr(module, class_name):
