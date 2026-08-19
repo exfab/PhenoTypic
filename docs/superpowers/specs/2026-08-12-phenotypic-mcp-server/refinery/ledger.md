@@ -1001,3 +1001,47 @@ consumable marker.
   (`OPEN-QUESTIONS.md:422` says OPEN; `design.md:83-107` and plan `README.md:315`
   say settled). MCP is safe either way — it depends on neither `metadata_sha256`
   nor `finalization_input_digest`. Worth relaying to that team.
+
+---
+
+## User rulings, from the C8 cluster gate (permanent)
+
+Both settle the same defect class, and it is the one the whole manifest feature
+exists to prevent: **the set a human approved and the set that actually runs
+diverging, with every digest check still passing.** The gate found three
+instances; B2 (symlink aliases selecting extra images) is a code fix, these two
+are design.
+
+### USER-32 — a deploy carrying `--restart` requires a fresh output root
+`--restart` sets `continuing = False` (`phenotypicCLI.py:1486-1491`), which
+bypasses the manifest drift guard **while keeping `results/`, `deliverables/` and
+`qc/`**. So a re-deploy with a different manifest is accepted unchecked, and
+deliverables silently blend two separately-approved image sets — a state a human
+cannot untangle afterwards, because nothing records which rows came from which
+approval.
+
+`deploy_start {restart: true}` is therefore **refused against an output root that
+already holds deliverables from a different approved manifest**. One output root,
+one approved set. The cost is one extra `run_name`, which is trivial beside the
+alternative.
+
+Chosen over making `--restart` participate in the guard, which would require
+auditing every other flag that sets `continuing = False` for the same bypass —
+and a guard whose coverage depends on an audit is not a guard.
+
+### USER-33 — `--sample` and `--image-manifest` are mutually exclusive
+`--sample N` applies **after** the manifest, so a human could approve 312 images
+and have 20 run, with the manifest and its digest both unchanged. Both flags are
+emittable from the server, so this was reachable.
+
+Refused at the CLI with a hard error. The two flags express contradictory
+intents — you cannot meaningfully sample a set someone specifically approved —
+and refusing costs one error row and no new concept.
+
+Rejected: applying `--sample` first (makes the interaction order-dependent and
+subtle, which is how this class of bug arrives), and recording the thinning in
+the run record (the approval would say 312 while the run says 20, which is
+exactly the ambiguity the content digest was adopted to remove).
+
+**Both are server-side/spec obligations, not C8 code changes** — C8 was told
+explicitly not to touch them so the cluster stays one reviewable diff.
