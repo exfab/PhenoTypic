@@ -296,6 +296,51 @@ class OperationRegistry:
         """
         return dict(self._skipped_imports)
 
+    def _iter_public_classes(self, module: Any) -> List[tuple[str, type]]:
+        """Public classes of *module*, including lazily-exported ones.
+
+        ``inspect.getmembers`` reads ``dir(module)``, which for a module
+        that exports through a module-level ``__getattr__`` (and declares
+        no ``__dir__``) lists nothing — :mod:`phenotypic.detect.nn` is
+        exactly that shape, which is why its detectors were deserializable
+        by the pipeline loader but absent from the catalog. So the eager
+        walk is followed by an ``__all__``-driven ``getattr`` walk that
+        touches each declared export.
+
+        The guard sits at ``getattr`` time, not around the module import:
+        for a lazy loader the heavy optional dependency is pulled in when
+        the attribute is *touched*, so an absent ``torch`` raises here and
+        nowhere else. A failing export is recorded in
+        :attr:`skipped_imports` and the remaining exports still register.
+
+        Args:
+            module: An imported module to walk.
+
+        Returns:
+            ``(name, class)`` pairs, eager members first, then the
+            lazily-resolved ``__all__`` entries that are classes.
+        """
+        found: List[tuple[str, type]] = []
+        seen: set[str] = set()
+
+        for name, obj in inspect.getmembers(module, inspect.isclass):
+            seen.add(name)
+            found.append((name, obj))
+
+        for name in getattr(module, "__all__", ()):
+            if name in seen or name.startswith("_"):
+                continue
+            seen.add(name)
+            try:
+                obj = getattr(module, name)
+            except Exception as exc:  # noqa: BLE001 — heavy optional import
+                self._skipped_imports[f"{module.__name__}.{name}"] = str(exc)
+                continue
+            if inspect.isclass(obj):
+                found.append((name, obj))
+
+        return found
+
     def _discover_analyzers(self, module: Any) -> None:
         """Walk an analysis module and register filters + models.
 
@@ -308,7 +353,7 @@ class OperationRegistry:
         """
         from phenotypic.analysis.abc_ import EdgeCorrection, ModelFitter, QualityCheck, SetAnalyzer
 
-        for name, obj in inspect.getmembers(module, inspect.isclass):
+        for name, obj in self._iter_public_classes(module):
             if name.startswith("_"):
                 continue
             if not issubclass(obj, SetAnalyzer) or obj in (
@@ -357,7 +402,7 @@ class OperationRegistry:
                 scorers, and search-strategy configs sit on their own
                 hierarchies and are registered through the same walk.
         """
-        for name, obj in inspect.getmembers(module, inspect.isclass):
+        for name, obj in self._iter_public_classes(module):
             # Check if it's a subclass of base_class (but not the base itself)
             if (
                 issubclass(obj, base_class)

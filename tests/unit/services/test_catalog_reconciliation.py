@@ -148,3 +148,68 @@ def test_an_unimportable_module_is_recorded_not_fatal(monkeypatch):
     assert "phenotypic.detect.nn" in registry.skipped_imports
     assert "torch" in registry.skipped_imports["phenotypic.detect.nn"]
 
+
+# --------------------------------------------------------------------------
+# Task 10c: lazily-exported classes are catalog citizens too.
+# --------------------------------------------------------------------------
+
+
+def test_lazy_detect_nn_detectors_are_discoverable(discovered_registry):
+    """``detect.nn`` exports through ``__getattr__`` with no ``__dir__``.
+
+    ``inspect.getmembers`` reads ``dir(module)``, so an eager-only walk
+    finds nothing there and the entire staged-GPU path stays invisible.
+    """
+    names = set(discovered_registry.get_all())
+    assert "MicroSamDetector" in names, "detect.nn unreachable — staged GPU is invisible"
+    assert {"Sam2", "Sam3", "DinoSam2Detector"} <= names
+    assert discovered_registry.get("MicroSamDetector").category == "Detector"
+
+
+def test_the_eager_walk_alone_would_not_find_them():
+    """Pin *why* the ``__all__`` walk exists, so nobody simplifies it away."""
+    import inspect
+
+    import phenotypic.detect.nn as nn_module
+
+    eager = {name for name, _ in inspect.getmembers(nn_module, inspect.isclass)}
+    assert "MicroSamDetector" not in eager
+    assert "MicroSamDetector" in nn_module.__all__
+
+
+def test_a_failing_lazy_export_is_guarded_at_getattr_time(monkeypatch):
+    """The heavy import fires on ``getattr``, not on importing the module.
+
+    A ``try/except`` around ``import_module`` therefore never sees it; the
+    guard has to sit around the attribute access.
+    """
+    from phenotypic._services.registry import OperationRegistry
+
+    import phenotypic.detect.nn as nn_module
+
+    real_getattr = nn_module.__getattr__
+
+    def _fail_on_microsam(name):
+        if name == "MicroSamDetector":
+            raise ImportError("no module named 'micro_sam'")
+        return real_getattr(name)
+
+    # The lazy loader never binds the class onto the module, so patching
+    # ``__getattr__`` is enough — there is no cached attribute shadowing it.
+    assert "MicroSamDetector" not in vars(nn_module)
+    monkeypatch.setattr(nn_module, "__getattr__", _fail_on_microsam)
+
+    registry = OperationRegistry()
+    registry.discover()
+
+    names = set(registry.get_all())
+    assert "MicroSamDetector" not in names
+    assert "Sam2" in names, "one unavailable export must not sink its siblings"
+    assert "micro_sam" in registry.skipped_imports["phenotypic.detect.nn.MicroSamDetector"]
+
+
+def test_non_class_all_entries_are_ignored(discovered_registry):
+    """``detect.nn.__all__`` also carries the ``*_AVAILABLE`` booleans."""
+    names = set(discovered_registry.get_all())
+    assert "SAM2_AVAILABLE" not in names
+    assert "MICROSAM_AVAILABLE" not in names
