@@ -837,3 +837,67 @@ No rule was lost, checked three ways:
    scheduler is not admission control", §1.5's "regardless of how cancellation
    delivery tests out", §8.2's "That constraint is no longer real") and three
    punctuation/wrap differences on statements that survive verbatim.
+
+---
+
+# ROUND 4 — the cap. Loop closed.
+
+**Verdicts:** general **APPROVE** (both reviewers, ×2 independent reports),
+concurrency **REVISE** (3 items, ~15 lines, "I would expect to approve on sight
+of them"), data-flow **REVISE** ("narrowly, and not on the spec's decisions"),
+simplicity **REVISE** ("I would approve the propagation on its merits… none of
+them needs a round 5").
+
+**All four said the same thing in different words: the decisions are sound, and
+the remaining defects are edits, not design.** Every finding below is applied.
+
+### The growth question, finally answered — and I was wrong to expect narration
+
+Two reviewers measured it independently and agreed. Diff is **+732/−248**.
+Simplicity attributed all 54 hunks: **73% defining-section content** (arg tables,
+token record, §7 prerequisites, §6.5 tests, the per-kind table, schemas, the
+ABC). General's cut: **no new "an earlier draft…" reconstruction anywhere in the
+added text**. Round 2's diff was the mirror image of this.
+
+Simplicity said it plainly: *"I was wrong to expect a third repeat, and I am
+saying so."* It also corrected the trim's own accounting honestly — memorial mass
+went **309 → 213 lines**, i.e. **−96, not −161**; the larger figure counted
+§2.6's relocation churn. ~69% of SIMP-38's mass survives, disclosed rather than
+hidden.
+
+### What the round caught, by origin
+
+**Defects I introduced while fixing other defects — the round's real lesson:**
+
+| ID | What |
+|---|---|
+| GEN-33 (b) | `ack_source`'s third value reached §8.2 and the prose, not §5.4's **response line** — the enum an implementer builds from. Committed *while fixing* an instance of this exact defect |
+| GEN-33 (a) | My "clarification" of USER-17 **reversed its outcome** (refused → queued) and recorded itself as a clarification. Direction right; the framing hid it. See USER-28 |
+| GEN-34 | `contended`, invented to keep contaminated timings out of the approved estimate, lived in one paragraph and reached **no schema** — the defect the map exists to catch, on a field the map-writing sweep invented |
+| GEN-35 | My per-kind table **inverted `insert_op`** on the loop's most common sequence: insert → probe → keep → `set_params` means a kept insertion no longer carries its original params |
+| SIMP-41 | `image_manifest_digest` and `estimate.node_hours` bound over **two different sets**, the second being the figure §5.4 calls the one the human approves |
+
+**Genuine design holes:**
+
+| ID | What |
+|---|---|
+| FLOW-40 | USER-26 landed in the spec and **nowhere in the plan** — and the plan's coverage claim ("every P2–P7 item has an owning task") was the sentence *concealing* it, because it enumerated a fixed range instead of deriving one |
+| FLOW-41 | P8 scoped to a Click option, but `to_argv` has no manifest field and emits `--input` unconditionally — non-functional as specified |
+| GEN-37 | `group_filter` was a *selector* field, so a `user_named` subset could never carry one — on the path USER-24 recommends |
+| GEN-42 | `{}` vs `null` for an absent filter, re-compared at `deploy_start` → **every unfiltered full-scope deploy** returns `plan_stale` |
+| FLOW-43 | `launch_state`'s admission predicate and the relaunch predicate disagreed exactly on arms in `pending` |
+| FLOW-44/45 | Duplicate-class guard on one kind of three; §8.7 omitted the two record-time fields §3.2 matches on |
+| GEN-44 vs CONC-30 | **Two reviewers' fixes in direct conflict**, both half right. Resolved by separating two quantities that had been collapsed into one |
+
+### Still open, going to the user
+
+- **GEN-18** — `--restart`, `--slurm k=v`, `--gpu-slurm` have **no `_services`
+  emitter**, and P8 adds a fourth. Both general and data-flow flagged it as
+  *more* dangerous now: `argv_digest` is a **bound row of a consent-carrying
+  token** with a §6.5 test, and still nothing can emit these.
+- **CONC-8** — confirmed defect in shipped code (`RunRegistry.allocate` holds
+  `self._lock` across a 30 s `exclusive_path_lock`). Now §7 P2 with an
+  acceptance test. Worth reporting on `main` independently.
+- **SIMP-46** — §1.5 is 339 lines; four rules belong in tables that already
+  carry their siblings. ~25–30 lines out, nothing lost. Not applied.
+- GEN-4/5/6/8–12, FLOW-1/2/5, CONC-18 — untouched by any diff across four rounds.
