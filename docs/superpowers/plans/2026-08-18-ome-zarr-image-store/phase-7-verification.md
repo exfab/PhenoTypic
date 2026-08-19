@@ -599,6 +599,14 @@ git commit -m "docs: mark the OME-Zarr store design implemented"
 > Record the counts, compare against them, and treat any *increase* as this phase's.
 
 - [ ] `uv run sphinx-build -W` succeeds.
+- [ ] No consumer takes `Path.stem` of a store directory (ledger **C5**):
+      ```bash
+      grep -rn "\.stem" src/phenotypic/_cli/ | grep -v "store_stem"
+      ```
+      Every surviving hit must be provably operating on a *source image* path, not on a
+      `*.ome.zarr` directory. `.ome.zarr` is a double suffix, so `Path.stem` silently yields
+      `img.ome` and the wrong name propagates into parquet names and marker keys rather than
+      raising.
 - [ ] `ngff_store_geometry.py` exits 0 — **after** Phase 1's edit removing its
       `--pyramid-levels` documentation and its C6 claim block, which PRE-P3 descoped
       (ledger **ALGO-8**).

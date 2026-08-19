@@ -27,11 +27,55 @@ of its readers.
   DIR_ZARR: Final[str] = "zarr"
   def dataset_zarr_dir(output_dir: Path, dataset: str) -> Path
   def zarr_store_path(output_dir: Path, dataset: str, stem: str) -> Path
+  def store_stem(store_path: Path) -> str
   def load_image_from_store(store_path: Path, *, fallback: ImageTypeName = "Image") -> "_Image | _GridImage"
   BundleLayout.store_path(dataset: str, stem: str) -> Optional[Path]
   ```
 
 **Constraints specific to this task:**
+- ⚠️ **`store_stem` exists because `.ome.zarr` is a DOUBLE suffix and `Path.stem` is wrong
+  for it** (ledger **C5**). `Path.stem` strips only the *final* suffix:
+
+  ```python
+  >>> Path("img.ome.zarr").stem
+  'img.ome'          # NOT "img"
+  ```
+
+  Every consumer that currently does `path.stem` on an `.h5` is correct today and becomes
+  **silently wrong** the moment it is handed a store directory instead. The damage is not an
+  exception — it is a plausible-looking wrong name that propagates: `--mode measure` over a
+  migrated tree writes `img.ome.parquet`, publishes a completion marker with
+  `image_stem="img.ome"`, and then `zarr_store_path(out, ds, "img.ome")` resolves to
+  `img.ome.ome.zarr`, which does not exist, so every image reprocesses forever.
+
+  ```python
+  def store_stem(store_path: Path) -> str:
+      """Return the image stem of an ``*.ome.zarr`` store directory.
+
+      ``Path.stem`` is WRONG here -- it strips one suffix and leaves ``img.ome``.
+
+      Args:
+          store_path: A ``<stem>.ome.zarr`` directory.
+
+      Returns:
+          The bare stem, e.g. ``"img"`` for ``img.ome.zarr``.
+
+      Raises:
+          ValueError: If *store_path* does not end in ``.ome.zarr``.
+      """
+      name = store_path.name
+      if not name.endswith(STORE_SUFFIX):          # ".ome.zarr"
+          raise ValueError(f"not an OME-Zarr store directory: {store_path}")
+      return name[: -len(STORE_SUFFIX)]
+  ```
+
+  It **raises** rather than falling back to `.stem`, because a silent fallback is exactly the
+  failure being prevented — a caller handed the wrong kind of path should hear about it.
+
+  **Route every consumer through it.** The five that take `.stem` of a path that becomes a
+  store: `_cli_process_single.py:244` and `:250`, `_cli_execution_strategies.py:165`, `:168`,
+  `:173` and `:184`, and `_cli_staged_resume.py:178`. Phase 3 Task 3.6 owns those edits and
+  consumes this helper; a grep gate in Phase 7 keeps new ones from appearing.
 - `DIR_HDF` / `dataset_hdf_dir` / `HdfAttr` / `load_image_from_hdf` / `BundleLayout.hdf_path`
   are **kept** through Phase 5 — migration reads legacy trees and needs them. They are
   removed in Phase 6. Do not delete them here.
@@ -1630,8 +1674,15 @@ Expected: `ImportError: cannot import name 'assert_store_conforms' from 'tests._
 
 - [ ] **Step 3: Write the harness**
 
-Extend `tests/_ngff_conformance.py` (Task 1.4 created it with `_ome_xsd` and
-`assert_ome_xml_valid`; both are shown again here so this block reads as the finished file):
+Extend `tests/_ngff_conformance.py`. Task 1.4 created it with `_ome_xsd` and
+`assert_ome_xml_valid` in their **final** form; this task adds the JSON-schema half beneath
+them and **does not touch either function**.
+
+> **Do not re-paste those two bodies here** (ledger **M2**). An earlier draft restated them
+> in this block "so it reads as the finished file", and the two copies had already diverged —
+> this one carried the `type(exc).__name__` rider and Task 1.4's did not. Copying is what
+> *causes* drift, not what prevents it, and nothing checks that two prose copies agree. The
+> file's own content after Task 1.4 is the authority.
 
 ```python
 """Validate a written store against the vendored NGFF 0.5 JSON schemas.

@@ -1640,6 +1640,16 @@ _cli_sidecar.py is deleted only after every caller moved."
 
 ### Task 3.6: Directory scanning, recompile scripts, single-pass, tune
 
+> ⚠️ **Every `.stem` on a path that is now a store must become `store_stem`** (Phase 2
+> Task 2.1, ledger **C5**). `Path("img.ome.zarr").stem` is `"img.ome"` — `Path.stem` strips
+> only the final suffix, and `.ome.zarr` is two. This task is where store directories start
+> reaching those consumers, so it is where the bug would land.
+>
+> The five sites: `_cli_process_single.py:244`, `:250`; `_cli_execution_strategies.py:165`,
+> `:168`, `:173`, `:184`; `_cli_staged_resume.py:178`. Nothing raises if you miss one — the
+> run writes `img.ome.parquet`, publishes a marker keyed `"img.ome"`, and then looks for
+> `img.ome.ome.zarr`, finds nothing, and reprocesses every image on every run.
+
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_directory_scanner.py` (`scan_hdf_outputs` line 173,
   glob at line 217)

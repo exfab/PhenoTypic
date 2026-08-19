@@ -535,10 +535,15 @@ is withdrawn from the spec."
   (Missing-owner review, 2026-08-19: the file was in no task's `Files:` list.)
 - Modify: `src/phenotypic/phenotypicCLI.py` (`--mode` choices line 943; the mode-validation
   block at lines 1217–1244; the module docstring's mode list at lines 71–80 and 1183)
-- Modify: `src/phenotypic/sdk_/_metadata_migration.py` — add the `kinds` filter parameter
-  to `preflight_metadata_schema` and `migrate_metadata_bundle`, threaded into
-  `_discover_bundle_targets`. **Additive and default-off** (ledger **MIG-26**); no existing
-  caller changes behaviour.
+- Modify: `src/phenotypic/sdk_/_metadata_migration.py` — thread `kinds` through the **whole
+  receipt chain**, not just the two public entry points (ledger **MIG-26**, corrected by
+  **C10**): `preflight_metadata_schema` → `_discover_bundle_targets` (**3** call sites:
+  `:937`, `:952`, and `:1700` inside `_validate_receipt`) → `migrate_metadata_bundle` →
+  `_apply_receipt` (4 sites) → `_validate_receipt` (5 sites) → `_new_receipt` (`:972`), which
+  records `kinds` **in the receipt**. **Additive and default-off**: `kinds=None` reproduces
+  today's behaviour exactly, so `rollback_metadata_migration` (`:2403`) and
+  `validated_published_metadata_migration_targets` (`:1947`) are unaffected — both of which
+  the earlier draft wrongly claimed were not call sites at all.
 - Modify: `src/phenotypic/sdk_/_hdf_to_zarr.py` — `_conversion_is_faithful` (below) and the
   two new `MigrationReport` fields extend **Task 5.1's** module (ledger **GEN-42**).
 - Test: `tests/unit/cli/test_cli_migrate_mode.py` (create)
@@ -692,23 +697,68 @@ is withdrawn from the spec."
   this reason, and says so in its docstring: *"a recoverable run may have per-image HDF
   authority even when an earlier aggregate is absent."*
 
-  Treat any `report.status` outside `{compatible, applied}` as an abort **before** pass 2,
-  surfaced through `header_failures`. `preflight_metadata_schema` writing nothing is also what
-  makes pass-1 `--dry-run` free — state that, it is not incidental.
+  **Abort on the RESULT's status, not the report's** (ledger **C11**):
 
-  ⚠️ **The `.h5` exclusion needs a parameter that does not exist yet** (ledger **MIG-26**).
+  ```python
+  report = preflight_metadata_schema(layout, kinds=NON_IMAGE_KINDS)
+  if report.status == "blocked":
+      abort(report)                      # conflicts a human must resolve
+  result = migrate_metadata_bundle(layout, expected_plan_fingerprint=report.plan_fingerprint)
+  if result.status not in {"compatible", "applied"}:
+      abort(result)                      # surfaced through header_failures
+  ```
+
+  > **An earlier draft wrote `report.status not in {compatible, applied}` — which aborts on
+  > every tree migration exists for.** `_report_from_targets` (`:871-887`) can only return
+  > `blocked`, `migratable`, or `compatible`; **`"applied"` is exclusively a *result* status**
+  > (`_apply_receipt:2126`). A legacy bundle is by definition `"migratable"`, so the predicate
+  > rejected precisely its intended input. The real code it paraphrases checks the result
+  > (`_cli_recompile_metadata_migration.py:71`); `"migratable"` on the report is the signal to
+  > **proceed**, not to stop.
+
+  `preflight_metadata_schema` writing nothing is also what makes pass-1 `--dry-run` free —
+  state that, it is not incidental.
+
+  ⚠️ **The `.h5` exclusion needs a parameter that does not exist — and it must live IN THE
+  RECEIPT, not in the call** (ledger **MIG-26**, corrected by **C10**).
+
+  Nothing today can express "non-image targets only":
   `migrate_metadata_bundle(source, *, expected_plan_fingerprint)` takes no filter,
-  `preflight_metadata_schema(source)` takes one argument, `_discover_bundle_targets(layout)` is
-  private and takes only the layout, and `BundleLayout` is a frozen two-field dataclass. So a
-  caller **cannot** express "non-image targets only" today. Thread an explicit
-  `kinds: frozenset[TargetKind] | None = None` through `preflight_metadata_schema` and
-  `migrate_metadata_bundle` into `_discover_bundle_targets`, defaulting to `None` = today's
-  behaviour so the `rollback_metadata_migration` and standalone-bundle call sites are
-  untouched. Add a unit test asserting pass 1's target set contains no `.h5`.
+  `preflight_metadata_schema(source)` takes one argument, `_discover_bundle_targets(layout)`
+  is private and takes only the layout, and `BundleLayout` is a frozen two-field dataclass.
 
-  Without this the executor meets a constraint they are not authorized to satisfy, and both
-  likely resolutions are bad: silently drop the exclusion (MIG-25 lands in full), or edit
-  `_metadata_migration.py` off-plan.
+  > **A caller-only parameter DOES NOT WORK, and fails closed on every real tree.**
+  > `_discover_bundle_targets` has **three** call sites, not two — the third is inside
+  > **`_validate_receipt` (`:1700`)**, which re-derives the target set and raises
+  > `ValueError("Migration receipt target set is not authoritative")` when it disagrees with
+  > what the receipt records. A `kinds`-filtered pass 1 writes a receipt listing only
+  > non-`.h5` targets; `_validate_receipt` then re-derives the **unfiltered** set, sees a
+  > mismatch, and fails — on both branches of `migrate_metadata_bundle` (`:2306`, `:2329`).
+  > So the filter would abort pass 1 on every tree containing a single `.h5`, which is every
+  > tree being migrated. The claim that "the rollback and standalone-bundle call sites are
+  > untouched" was also false: `rollback_metadata_migration:2403` and
+  > `validated_published_metadata_migration_targets:1947` both call it.
+
+  **Record the filter in the receipt and re-derive from the receipt's own copy.** The receipt
+  is already the authority on what a migration covered; making it the authority on *scope* as
+  well is the change that keeps `_validate_receipt` honest instead of merely quiet:
+
+  1. `_new_receipt` (`:972`) stores `kinds` alongside the target list.
+  2. `_validate_receipt` (`:1700`) re-derives with **the receipt's** `kinds`, so its
+     authoritative-set check still has teeth — it catches a target set that drifted, and no
+     longer fires on one that was legitimately scoped.
+  3. `preflight_metadata_schema` and `migrate_metadata_bundle` take
+     `kinds: frozenset[TargetKind] | None = None`, threaded to `_discover_bundle_targets`.
+     `None` means today's behaviour, so **every existing caller is unchanged** — including
+     `rollback_metadata_migration`, which must keep re-deriving the full set.
+
+  The full chain this task's `Files:` must authorize: `preflight_metadata_schema` →
+  `_discover_bundle_targets` (**3** sites) → `migrate_metadata_bundle` → `_apply_receipt`
+  (4 sites) → `_validate_receipt` (5 sites) → `_new_receipt`.
+
+  Two tests, not one: pass 1's target set contains no `.h5`, **and** a filtered receipt
+  survives `_validate_receipt` on a tree that still has `.h5` files — the second is the one
+  that would have caught this.
 
   Three constraints on pass 1, all consequences of running it first:
 

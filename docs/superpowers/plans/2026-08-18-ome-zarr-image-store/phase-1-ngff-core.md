@@ -1701,8 +1701,21 @@ def assert_ome_xml_valid(xml: str) -> None:
     try:
         _ome_xsd().validate(xml)
     except xmlschema.XMLSchemaException as exc:
-        raise AssertionError(f"OME-XML is not valid against ome.xsd: {exc}") from exc
+        # Name the exception type: the widened catch also takes
+        # XMLSchemaOSError/XMLResourceOSError, and a disk error reported as
+        # "not valid against ome.xsd" would be misread as a conformance bug.
+        raise AssertionError(
+            f"OME-XML failed validation against ome.xsd "
+            f"[{type(exc).__name__}]: {exc}"
+        ) from exc
 ```
+
+> **This is the FINAL body of both functions — Phase 2 Task 2.5 does not restate them**
+> (ledger **M2**). An earlier draft gave them here *without* the `type(exc).__name__` rider
+> and again, with it, in Task 2.5's "extend" block: two bodies for one pair of functions,
+> differing in exactly the detail one of them was added to fix. A literal executor keeps the
+> first and silently loses the rider — which is the drift GEN-52 forbade, manufactured inside
+> the plan. There is now one definition, here.
 
 - [ ] **Step 3: Append to `ngff_.py`**
 
