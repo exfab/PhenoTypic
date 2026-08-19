@@ -280,11 +280,25 @@ Same arguments as `deploy_plan`, plus:
 
 | Arg | Type | Default | Meaning |
 |---|---|---|---|
-| `scope` | `"subset" \| "full"` | `"subset"` | `full` targets `subset.parent`; its `plan_token` must have been minted at `scope:"full"` with the human ack recorded (§10.5) |
+| `scope` | `"subset" \| "full"` | `"subset"` | `full` targets `subset.parent` — intersected with the subset's `group_filter` where it has one (§10.5). Its `plan_token` must have been minted at `scope:"full"`; **the human ack is taken here, not carried on the token** |
 | `plan_token` | `str` | — | **Required.** From a matching `deploy_plan`, or from an approved campaign arm |
+| `human_response` | `str` | — | **Required.** What the human actually said. Unconditional — see §8.2; there is no elicited-vs-not variant of this signature |
+| `note` | `str?` | `null` | Free-text context recorded alongside the approval |
 | `resume` | `bool` | `false` | Continue an interrupted run |
 | `retry_failures` | `bool` | `false` | Requires `resume` |
 | `restart` | `bool` | `false` | Clear machine state and start over |
+
+The response carries **`ack_source: "elicited" | "agent_asserted"`** (§8.2), which
+is what makes the distinction auditable on the artifact rather than implicit in
+host configuration.
+
+**The elicitation is raised before the slot is acquired and before `allocate`.**
+This ordering is the whole point of moving the gate here, and stating it in three
+words elsewhere is not enough: ask first, then allocate, then acquire. Reversed,
+a locally-routed `W3` would hold the exclusive slot across a human's think time —
+which under §1.5's own suspension rule blocks every subagent's probing for as
+long as the person takes to answer, reproducing the hazard the relocation was
+made to remove, one call later.
 
 **Plan-then-submit is mandatory.** `deploy_start` refuses without a
 `plan_token` whose recorded `(pipeline digest, images digest, compute)` matches

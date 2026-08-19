@@ -665,12 +665,27 @@ Every accepted step appends a lineage row, so the resulting pipeline explains
 itself:
 
 ```json
-{"event":"pipeline.step","id":"pipelines/edge-v3.json.pht-pipe","step":3,
- "edit":{"kind":"insert_op","slot":"ops","index":1,"class":"FocusEdgePhase"},
+{"event":"pipeline.step","step_id":"st_4c1f…","id":"pipelines/edge-v3.json.pht-pipe","step":3,
+ "edit":{"kind":"insert_op","slot":"ops","class":"FocusEdgePhase","params":{"k":3.0}},
+ "agent":"sub-7","state":"in_flight","lease_expires":"2026-08-12T16:02:00Z"}
+{"event":"pipeline.step.evidence","step_id":"st_4c1f…",
  "evidence":{"num_objects":{"before":61,"after":88},
-             "detect_mat.std":{"before":0.04,"after":0.11}},
- "decision":"keep"}
+             "detect_mat.std":{"before":0.04,"after":0.11}}}
 ```
+
+**Two appends, not one row mutated.** §2.5's `lineage.jsonl` is **append-only** —
+`atomic_append` under a file lock, with no update path — so "journal the step on
+acceptance and fill in the evidence when the probe returns" cannot be implemented
+as written. The step and its evidence are separate events correlated by
+**`step_id`**, and readers fold by it. Without the id there is nothing for the
+second append to attach to.
+
+**`in_flight` carries a lease** (`probe_timeout_s`). A subagent that dies
+mid-probe would otherwise leave a permanent *"a sibling is probing this now"* for
+that edit — and the advisory would then suppress the real evidence forever, in
+exactly the sibling case USER-9 added it for. Past `lease_expires`, a reader
+treats the step as abandoned rather than active: the signal degrades instead of
+inverting.
 
 **The row is appended in two parts, and the order matters.** The step is
 journalled the moment the edit is *accepted* — before its probe runs — carrying
@@ -683,6 +698,14 @@ The server derives it instead: an edit still present in the current pipeline was
 kept, one no longer present was reverted (§3.2). Deriving beats reporting here —
 a self-reported decision is a field an agent can omit, while the pipeline itself
 cannot lie about what it contains.
+
+**But the derivation has a limit, and the advisory must state it rather than
+round it off.** Up to 12 patches from N siblings mutate one pipeline in place, so
+"present" can mean *a different agent re-added it* and "absent" can mean *a later
+step removed it*. What the server can honestly report is **"still present in the
+current pipeline"** — not "kept by the agent that tried it". Under a single
+compacted agent, the case USER-9 actually cited, the two coincide; under
+concurrent siblings they do not, and §3.2's wording says the former.
 
 Writing the whole row at the end instead would be simpler and would break §3.2's
 `edit_previously_tried` in exactly the case it exists for: two sibling subagents

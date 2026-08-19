@@ -299,6 +299,42 @@ to spare may set `2`; nothing else changes, because every other rule here is
 written against "the slot", not against a number. `budget.max_concurrent_arms`
 is a *campaign* budget and never a memory guard.
 
+**`executors.compute.max_workers` is not an independent number — it *is*
+`local_slot_capacity`.** Fixing the pool at 1 while the slot is configurable
+makes the two disagree at any capacity above the default, which is precisely the
+disagreement the split was introduced to make impossible: the invariant below
+would be false by configuration, and a probe holding a slot but starved on a
+one-worker pool would burn `probe_timeout_s` and then report `local_slot_timeout`
+— "waited past `probe_timeout_s` for the slot" — when it had the slot all along.
+One number, stated once, and the pool and the slot cannot drift apart.
+
+**Whenever more than one CPU-heavy holder is admitted, probe responses carry
+`contended: true`, and such timings are not eligible as an estimate basis.** Two
+paths admit one: capacity above 1, and the orphan rule, which admits a `W1`
+beside a live orphan that is typically `LocalParallelStrategy` with `n_jobs=-1`
+— every core, the exact thrash this section opens by citing. The trade is
+defensible; staying silent about it is not, because probe timing is what §10.5
+calls "measured, not guessed" in the estimate a human approves, and what §8.7's
+keep/revert decisions are read from. A contended measurement that presents itself
+as a clean one corrupts both.
+
+**The server-wide arm ceiling is a queue, not a check.** USER-24 made per-group
+work N independent campaigns, so there are now N background launchers contending
+for one `limits.max_inflight_arms`. "Each launcher checks before launching" is
+not an admission protocol: nothing orders the claimants and nothing owns the
+counter, so one launcher can win repeatedly while another never does — and §9.3's
+own two-column example yields six campaigns against eight slots, making that the
+expected configuration rather than a corner.
+
+So the ceiling is **one `asyncio.Semaphore(max_inflight_arms)` acquired by every
+launcher**, which gives arrival-order admission for free. And because a starved
+arm otherwise looks identical to a healthy one — it sits in `queued` while
+`launch_state` reports `clean`, since a background task genuinely is alive —
+`campaign_status` reports **`queued_reason: "campaign_budget" | "server_ceiling"`**
+and, for the latter, a queue position. Without those two, the ceiling introduces
+a starvation mode the per-campaign budget never had, and hides it behind a
+healthy-looking poll.
+
 **A second local arm does not wait.** Arriving at a full slot it is told the slot
 is busy and returns — it does not park on the semaphore. This is what keeps the
 local path inside USER-1's submit-and-poll contract: a blocking acquire would
@@ -339,12 +375,27 @@ about how many probes are running. Both numbers are stated bounds (§1.6.1).
 `ImagePipeline.apply()` is synchronous, CPU-bound, and copies the image
 (`_image_pipeline_core.py:943-966`). Running it directly in an async handler
 would block the entire event loop — stalling `W0` calls from *other* subagents
-and silently falsifying "agent-side fan-out is free". **`W1` compute runs via
-`run_in_executor`**; the handler holds the slot and awaits, so `W0` dispatch
-stays responsive throughout.
+and silently falsifying "agent-side fan-out is free".
 
-`W1` also drops its `Image` objects before releasing the slot, so peak residency
-is one probe rather than a sawtooth that grows across a long-lived session.
+**`W1` does not run in the server process at all.** An earlier draft said it ran
+via `run_in_executor` on a worker thread, and §3.2 refuted that with the reason:
+a runaway op in a thread cannot be killed, so the caller returns while the thread
+keeps running and every later probe from every subagent deadlocks behind
+something Python cannot interrupt. The probe therefore executes in **a persistent,
+killable worker subprocess** (§3.2), and the server-side cost is a bounded pipe
+wait — not a computation.
+
+So `executors.compute` is **the probe-dispatch slot, not a compute pool**: one
+in-flight probe *request*, whichever process runs it. That is what makes the
+one-probe invariant hold across the slot and the pool for a single reason rather
+than two coincidentally-agreeing ones, and it is why the wait does not go on
+`blocking` despite being a subprocess wait — putting it there would make
+`blocking`'s four workers the real gate on probe concurrency and re-create the
+starvation the split exists to prevent.
+
+Peak memory residency is likewise the subprocess's, not the server's: §3.2 makes
+the equivalent claim correctly via RSS reset on respawn, which a thread could not
+offer.
 
 `W1` carries a second, independent guard: a hard cap on scope (default 4 images)
 and a wall-clock timeout. A mis-set slot still cannot melt the node.
