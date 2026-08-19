@@ -13,7 +13,7 @@ Phase 0 — TRIAGE (human + agent)
   Characterize the ASSAY before any pipeline exists: organism morphology
   (filamentous / round / mixed), colony-vs-background contrast, colony
   separation, plate format, imaging modality. Some of this only you know;
-  some is measurable from a probe. Produces assay.json (§9.3).
+  some is measurable from a probe. Produces the experiment profile (§9.3).
 
   ALSO establishes the DEVELOPMENT SUBSET (§10) — you name it, or the agent
   samples it with a recorded method. Everything below runs on the subset;
@@ -21,7 +21,7 @@ Phase 0 — TRIAGE (human + agent)
         │
         ▼
 Phase 1 — PLAN (human + agent, conversational, W0 + bounded W1)
-  Driven by the assay profile: prefab pipelines FIRST (§9.4), probed and
+  Driven by the experiment profile: prefab pipelines FIRST (§9.4), probed and
   compared, tuned before anything custom is authored. Nothing is submitted;
   every tool here is read-only or writes only draft artifacts.
 
@@ -76,7 +76,7 @@ This shapes three design choices that would otherwise look arbitrary:
   "created": "2026-08-12T13:40:02Z",
   "approved_at": "2026-08-12T13:52:17Z",
   "question": "Does phase-based edge detection beat the filamentous prefab on the low-contrast plates?",
-  "assay": "assays/plates.assay.json",
+  "experiment_profile": "profiles/plates.experiment.json",
   "subset_id": "subsets/plates-dev-24.subset.json",
   "metadata_csv": "data/tune_layout.csv",
   "objective": {"scorer": {"class": "QCScorer",
@@ -89,7 +89,7 @@ This shapes three design choices that would otherwise look arbitrary:
     {"id": "prefab-fil", "pipeline": "pipelines/filamentous-prefab.json.pht-pipe",
      "tune_spec": "tune/filamentous-prefab.setup.json.pht-tune",
      "pipeline_digest": "sha256:3e91…", "spec_digest": "sha256:c07b…",
-     "rationale": "baseline — FilamentousFungiPipeline, the assay-matched prefab"},
+     "rationale": "baseline — FilamentousFungiPipeline, the experiment profile-matched prefab"},
     {"id": "phase", "pipeline": "pipelines/phase-edge.json.pht-pipe",
      "tune_spec": "tune/phase-edge.setup.json.pht-tune",
      "rationale": "the hypothesis",
@@ -100,7 +100,7 @@ This shapes three design choices that would otherwise look arbitrary:
 }
 ```
 
-**Arms reference the assay, and custom arms cite the prefab they beat.**
+**Arms reference the experiment profile, and custom arms cite the prefab they beat.**
 `prefab_baseline` is the §9.4 convention: an arm whose pipeline is not a prefab
 or prefab derivative records which prefab came closest and how it scored. The
 server validates the field's *shape* and that the referenced study exists, but
@@ -288,7 +288,7 @@ change the arm set mid-launch. Writes to `campaign.json` are atomic and CAS on
 `{campaign_id}` → the `campaign.json` artifact verbatim: arms with their
 `pipeline`, `tune_spec`, `study_id`, `rationale`, `prefab_baseline`, and the
 `pipeline_digest` / `spec_digest` binding (§8.2), plus the objective, budget,
-compute, subset, and assay references.
+compute, subset, and experiment-profile references.
 
 **This is the session-recovery entry point.** An agent resuming after a context
 compaction typically holds one thing: a campaign id. `campaign_status` reports
@@ -301,7 +301,7 @@ this spec named nowhere.
 
 ```
 campaign_get {campaign_id}        -> arms, their pipeline/tune_spec/study_id,
-                                     subset_id, assay, objective
+                                     subset_id, experiment_profile, objective
 campaign_status {campaign_id}     -> where each arm actually got to
 workspace_lineage {id: <study>}   -> only if you need the provenance chain
 ```
@@ -381,18 +381,18 @@ What the planning conversation actually looks like, tool by tool:
 ```
 you:   "new Aspergillus set, low-contrast plates. Otsu is under-segmenting."
 
-agent: [skill: phenotypic-assay-triage]
+agent: [skill: phenotypic-experiment-triage]
        → asks: morphology? expected colonies/plate? → you: "filamentous, 96"
        pipeline_put {name:"fil-prefab", from_prefab:"FilamentousFungiPipeline"}
        pipeline_probe {pipeline_id:"fil-prefab", …} to measure contrast/separation
        → fil-prefab now exists and is reused below; re-materializing it would
          return already_exists (§2.2 collision policy)
-       → writes assay.json: morphology filamentous (human), contrast low (probe),
+       → writes the experiment profile: morphology filamentous (human), contrast low (probe),
          separation touching (probe), 8x12 arrayed
 
 agent: [skill: phenotypic-pipeline-construction — prefab-first]
        catalog_operations {category:"Prefab"}
-       → assay says filamentous + touching → candidates:
+       → the profile says filamentous + touching → candidates:
          FilamentousFungiPipeline (3 ops), HeavyWatershedPipeline (15)
        pipeline_put {name:"watershed", from_prefab:"HeavyWatershedPipeline"}
        (fil-prefab already materialized during triage — reuse, do not re-put)
@@ -522,7 +522,7 @@ when a custom pipeline finally does beat the prefab.
 
 ### Where it sits relative to prefab-first
 
-The two compose rather than compete: **start from the assay-matched prefab, then
+The two compose rather than compete: **start from the experiment profile-matched prefab, then
 iterate from there.** The prefab is the starting point of the loop, not an
 alternative to it — most explorations are "the prefab gets 61 of 96; what one
 change closes the gap?", which is a far better-posed question than building from

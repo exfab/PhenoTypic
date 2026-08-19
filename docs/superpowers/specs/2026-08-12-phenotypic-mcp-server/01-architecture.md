@@ -95,6 +95,13 @@ Consequences, all load-bearing:
 phenotypic/gui/*  →  re-export shims onto _services (GUI behaviour unchanged)
 ```
 
+**The transport is PyPI `fastmcp` 3.x**, added as an optional extra so the core
+package gains no dependency. Deliberately **not** the FastMCP 1.0 frozen inside
+the official `mcp` SDK: current guidance warns against it, and the capability
+this design most depends on — elicitation for the human gates (§8.2, §10.5) — is
+exactly what a frozen 1.0 is likely to lack. The tool layer stays
+transport-agnostic, so this is a dependency choice, not an architectural one.
+
 ### P2 is nine moves and one split — not a pure move
 
 An earlier draft of this section claimed the promotion was "a move, not a
@@ -247,6 +254,26 @@ clicks Run once). The slot is new code, listed as such in §1.6.
 | `W1` | in-process, **holds slot** | in-process, **holds slot** |
 | `W2` | subprocess, **holds slot** | `sbatch` fleet, no slot |
 | `W3` | subprocess, **holds slot** | `sbatch` array, no slot |
+
+### A locally-routed batch job suspends interactive probing
+
+Stated plainly because it is a real limitation, not an oversight. A `W2`/`W3`
+routed **local** holds the slot for its entire subprocess lifetime, and `W1`'s
+budget (`probe_timeout_s`, default 300 s) **includes slot wait** — so while a
+local study or deploy runs, every `pipeline_probe` from every subagent fails with
+`local_slot_timeout` rather than queueing. §8.7's exploration loop is unavailable
+for that duration.
+
+On a cluster this is nearly unreachable: `W2`/`W3` route to `sbatch` and take no
+slot. It bites on a workstation with no scheduler, and the honest answer there is
+that local batch work and interactive probing do not overlap. The alternative —
+admitting `W1` alongside a reduced-worker local job — was considered and rejected
+as machinery serving a deployment this design does not target.
+
+**Locally, run at most 1–2 campaign arms concurrently.** Each arm is a
+slot-holding subprocess; the slot already serializes them, but
+`budget.max_concurrent_arms` takes a lower effective cap under `local` routing,
+so a future change to the slot cannot turn a campaign into an OOM.
 
 ### Blocking work never blocks the event loop
 

@@ -11,7 +11,7 @@ configurations, tune them with `phenotypic.tune`, and deploy them over datasets
 — locally or on SLURM.
 
 The intended UX is **collaborative planning, then delegated execution, on a
-subset**: you and the agent characterize the assay and pick a development
+subset**: you and the agent characterize the experiment profile and pick a development
 subset, decide what is worth trying, write that agreement down as a *campaign*,
 and the agent executes it across parallel subagents without you in the loop —
 **bounded to the subset**. The full dataset is touched once, after a separate
@@ -41,7 +41,7 @@ the server makes wrong things impossible; the skills make right things likely.
 | 6 | [06-errors-limits-testing.md](06-errors-limits-testing.md) | Error taxonomy, limits, safety boundary, test plan |
 | 7 | [07-prerequisites.md](07-prerequisites.md) | P1 JournalStorage backend, P2 promotion, P3 catalog+descriptor, P4 `--screen` guard, rollout |
 | 8 | [08-workflow-and-campaigns.md](08-workflow-and-campaigns.md) | The phased UX and the campaign artifact |
-| 9 | [09-responsibilities-and-skills.md](09-responsibilities-and-skills.md) | Server-vs-skill boundary, assay triage, prefab-first construction, the four bundled skills |
+| 9 | [09-responsibilities-and-skills.md](09-responsibilities-and-skills.md) | Server-vs-skill boundary, experiment-profile triage, prefab-first construction, the four bundled skills |
 | 10 | [10-subsets-and-promotion.md](10-subsets-and-promotion.md) | The development subset as the unit of work, the `SubsetSelector` hierarchy, and the promotion gate before full-dataset compute |
 
 ## Executable evidence
@@ -115,5 +115,5 @@ index) · SLURM authority (named profiles + capped overrides) · coupling
 workspace root (`--workspace`, defaulting to CWD) · defaulting (explicit always)
 · deploy gate (plan-then-submit mandatory) · distributed storage (JournalStorage
 backend, gated on L1) · skill packaging (in-repo + `phenotypic-mcp setup`) ·
-assay scope (per-dataset) · assay validation (structure and provenance only —
+profile scope (per-dataset) · profile validation (structure and provenance only —
 never biology).

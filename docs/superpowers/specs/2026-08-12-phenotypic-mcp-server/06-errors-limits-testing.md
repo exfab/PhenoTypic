@@ -30,6 +30,7 @@ human prose and may change.
 | `arm_artifact_drift` | error | An arm's `.pht-tune` or pipeline digest changed between `campaign_put` and `campaign_start` (§8.2) |
 | `finalize_incomplete` | error | A `finalize_in_progress` marker is present; the study directory cannot be trusted (§4.5) |
 | `study_not_finished` | error | `tune_export_best` on a distributed study whose budget is not drained and whose jobs are still live (§4.5) |
+| `edit_previously_tried` | **advisory** | A `pipeline_patch` edit matches one already recorded in the exploration trail; carries that attempt's evidence and keep/revert decision. Advisory, never a refusal — the surrounding pipeline may have changed (§3.2) |
 | `stage_order_hint` | **advisory** | GUI DAG validator hint; never blocks |
 | `pipeline_empty` | error | Neither ops nor measurements — the CLI's own check |
 | `stale_target_ref` | error | A `select` ref built against a superseded pipeline digest |
@@ -47,8 +48,6 @@ human prose and may change.
 | `plan_required` | error | `deploy_start` without a `plan_token` (§5.4) |
 | `plan_stale` | error | Plan token's pipeline/images/compute digest no longer matches |
 | `campaign_not_approved` | error | `campaign_start` on a `draft` campaign |
-| `promotion_required` | error | `deploy_start {scope:"full"}` without a `promotion_token` (§10.5) |
-| `promotion_stale` | error | Promotion token's pipeline or parent-dataset digest changed since the review |
 | `campaign_arm_scope_full` | error | A campaign deploy arm targeting the full dataset — campaigns are subset-scoped (§10.4) |
 | `amendment_exceeds_envelope` | error | A mid-campaign amendment outside the approved budget, profile, or scorer |
 | `subset_required` | error | A subset-scoped tool given a raw parent path instead of a `subset_id` (§10.3.1) |

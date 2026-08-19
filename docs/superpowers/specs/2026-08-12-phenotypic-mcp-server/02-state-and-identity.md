@@ -103,12 +103,25 @@ The workspace root is a `SandboxRoot` (`gui/shell/_sandbox.py:62-90`). Every
 path argument in every tool resolves through it; anything landing outside is
 rejected before the tool does work.
 
-**Root selection:** `phenotypic-mcp --workspace <path>`, defaulting to the
-server process's CWD. Because subagents share one server (§1.3), there is
-exactly one CWD and the default is unambiguous. `workspace_info` always echoes
-the resolved root, and the server logs a startup warning when the root contains
-`.git` — a source checkout is a plausible launch directory and a poor place to
-accumulate run outputs.
+**Root selection:** `phenotypic-mcp --workspace <path>`. **There is no default —
+the root must be given explicitly, and it must contain the image data.**
+
+That second clause is load-bearing and was missing from an earlier draft. Every
+worked example in this spec reaches `data/plates`, `data/tune_layout.csv` and
+`data/plate_batches.csv` as though they sat inside the workspace, while
+`SandboxRoot.resolve()` follows symlinks and then rejects anything landing
+outside the root. So either the data is inside the root or the flagship workflow
+cannot start; there is no third option that does not introduce a second
+containment concept.
+
+The CWD default is dropped with it. A default that silently produces a workspace
+without the data is worse than a required argument, and §1.3's "exactly one CWD"
+argument only ever established that the default was *unambiguous*, never that it
+was *correct*.
+
+`workspace_info` always echoes the resolved root, and the server logs a startup
+warning when the root contains `.git` — a source checkout is a plausible launch
+directory and a poor place to accumulate run outputs.
 
 ```
 <workspace>/
@@ -116,8 +129,8 @@ accumulate run outputs.
 │   └── <name>.json.pht-pipe          # ImagePipeline.to_json()
 ├── tune/
 │   └── <name>.setup.json.pht-tune    # authored TuningSpec
-├── assays/
-│   └── <dataset>.assay.json          # §9.3 assay profile
+├── profiles/
+│   └── <dataset>.experiment.json          # §9.3 experiment profile
 ├── subsets/
 │   └── <name>.subset.json            # §10.2 development subset
 ├── campaigns/
@@ -151,7 +164,7 @@ accumulate run outputs.
                           gui_launch_owner.json}
 ```
 
-Only `pipelines/`, `tune/`, `assays/`, `subsets/`, `campaigns/`, `studies/`,
+Only `pipelines/`, `tune/`, `profiles/`, `subsets/`, `campaigns/`, `studies/`,
 `runs/` are this server's invention.
 **Everything inside `studies/<name>/` and `runs/<name>/` is written by the
 existing engines**, at paths owned by `sdk_/_io_constants.py`. The server never

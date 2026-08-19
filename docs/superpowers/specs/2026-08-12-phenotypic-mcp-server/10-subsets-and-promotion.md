@@ -271,7 +271,7 @@ recorded rationale.
 
 Records `selection.method: "user_named"` with the note. A human-picked subset is
 first-class — `user_named` is a selection method, not a lesser one — and this is
-the call `phenotypic-assay-triage` step 3 makes when you name the images
+the call `phenotypic-experiment-triage` step 3 makes when you name the images
 yourself.
 
 `subset_get {name}` returns the artifact plus whether staging used symlinks or

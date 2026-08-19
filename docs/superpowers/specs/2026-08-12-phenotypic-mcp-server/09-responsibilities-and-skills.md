@@ -44,14 +44,14 @@ Putting a rule in the wrong layer fails in a specific way:
 The clean statement: **the server makes wrong things impossible; the skill makes
 right things likely.**
 
-## 9.3 Upfront assay characterization
+## 9.3 Upfront experiment characterization
 
-Pipeline choice is driven by traits of the *assay*, not by the image file.
+Pipeline choice is driven by traits of the *experiment*, not by the image file.
 Several of the decisive ones cannot be measured from a plate image at all —
 whether the organism is filamentous or yeast-like is something you know and the
 agent does not.
 
-So Phase 1 (§8.1) opens with an **assay triage**, producing a durable artifact:
+So Phase 1 (§8.1) opens with an **experiment-profile triage**, producing a durable artifact:
 
 ### 9.3.0 The extensibility rule
 
@@ -67,7 +67,7 @@ So the artifact is an **open map of traits under a uniform envelope**:
 Adding a trait requires no server change, no schema bump, and no code — only a
 new row in the skill-owned registry (§9.3.4).
 
-`<workspace>/assays/<dataset>.assay.json`
+`<workspace>/profiles/<dataset>.experiment.json`
 
 ```json
 {
@@ -124,7 +124,7 @@ server knows:
 **Unknown trait keys round-trip verbatim.** The server preserves any trait it
 does not recognize, rather than dropping or rejecting it — the opposite of
 pydantic's `extra="forbid"` used elsewhere in this codebase, and a deliberate
-inversion. An older server reading a newer skill's assay must not silently
+inversion. An older server reading a newer skill's profile must not silently
 discard a trait; silent loss of a trait that drove a pipeline decision would
 make the artifact actively misleading. Forward compatibility is a correctness
 property here, not a convenience.
@@ -265,7 +265,7 @@ argument for asking rather than inferring.
 | Wrong field | What happens | Caught by? |
 |---|---|---|
 | **`plate.nrows`/`ncols`** | `QCScorer` scores against wrong expected counts, so **the objective itself is wrong**. Tuning optimizes toward a false target and every arm's cost is meaningless — while looking perfectly healthy. | **Nothing.** The worst failure in the system. |
-| **`morphology: round`** when filamentous | A peak detector finds one "colony" per dense region. Counts come out *plausible*, so QC may not flag it; the assay is silently under-counted. | Weakly — a size distribution with implausibly large objects |
+| **`morphology: round`** when filamentous | A peak detector finds one "colony" per dense region. Counts come out *plausible*, so QC may not flag it; the experiment profile is silently under-counted. | Weakly — a size distribution with implausibly large objects |
 | `morphology: filamentous` when round | Over-segmentation and hyphal metrics that measure noise | Probe object count far above expectation |
 | `separation: well_separated` when touching | Merged colonies counted as one; size distribution skews high with a long tail | Probe: count below expected, size tail |
 | `contrast: high` when low | Agent picks an Otsu prefab and tunes detector params, when the real fix was enhancement. Budget burned in the wrong subspace. | Probe: low object count, poor best-cost plateau |
@@ -284,7 +284,7 @@ The skill owns a declarative registry, shipped beside it as **data, not prose**,
 so traits and their routing rules can be added and audited without rewriting
 procedure text.
 
-`.claude/skills/phenotypic-assay-triage/traits.yaml`
+`.claude/skills/phenotypic-experiment-triage/traits.yaml`
 
 ```yaml
 version: 3
@@ -362,9 +362,9 @@ never enumerates traits.**
 
 **And the server never *acts* on a trait.** No trait value gates any tool's
 behaviour anywhere in the catalog — not scorer choice, not subset requirements,
-not GPU routing, not operation filtering. `assay_put` and `assay_get` are the
-only tools that touch the artifact; `campaign_put` stores the `assay` reference
-as a string without even checking the file resolves. **The assay is provenance
+not GPU routing, not operation filtering. `experiment_profile_put` and `experiment_profile_get` are the
+only tools that touch the artifact; `campaign_put` stores the `experiment_profile` reference
+as a string without even checking the file resolves. **The experiment profile is provenance
 for humans and input for skills; it is not an interlock.**
 
 That is deliberate (§9.1), but it should be read alongside §9.3.3's failure
@@ -389,7 +389,7 @@ Suppose plate-lid glare turns out to drive enhancement choice.
 | Add `imaging.lid_glare: [none, mild, severe]` to `traits.yaml` | skill | **no** |
 | Add a `rules:` row preferring a glare-tolerant enhancer | skill | **no** |
 | Skill starts asking about it in triage | skill | **no** |
-| Existing assays without the trait keep validating | — | **no** — traits are individually optional |
+| Existing profiles without the trait keep validating | — | **no** — traits are individually optional |
 | A newer skill's assay read by an older server | — | **no** — unknown keys round-trip |
 
 The only thing that would force a server change is a new **provenance** kind —
@@ -398,7 +398,7 @@ say `source: "instrument"` — and that is a genuinely structural addition worth
 
 ### 9.3.7 Scope
 
-**One assay profile per dataset**, at `<workspace>/assays/<dataset>.assay.json`.
+**One experiment profile per dataset**, at `<workspace>/profiles/<dataset>.experiment.json`.
 A workspace routinely holds more than one organism; a single per-workspace
 profile is correct until the day you add a second, and then it is silently wrong
 with no signal. Campaign arms reference the profile by path, so a leaderboard
@@ -429,7 +429,7 @@ what marks the `Heavy*` variants heavy — so a probe of it is not cheap despite
 the label. An agent ordering candidates by expected cost should use this column,
 not the adjective in the docstring.
 
-### Assay profile → candidate prefabs
+### Experiment profile → candidate prefabs
 
 This table is the human-readable rendering of the `rules:` block in
 `traits.yaml` (§9.3.4). It is **skill data, not server logic** — exactly the kind
@@ -440,7 +440,7 @@ Rules are evaluated **most-specific-first**, and morphology dominates: it
 constrains which detector family can work at all, whereas contrast and
 separation only modulate how much enhancement and refinement are needed.
 
-| Assay signal | First candidates |
+| Profile signal | First candidates |
 |---|---|
 | `morphology: filamentous` | `FilamentousFungiPipeline` (3) |
 | `morphology: round` + `separation: well_separated` + `contrast: high` | `RoundPeaksPipeline` (2) — genuinely the cheapest that can work |
@@ -461,7 +461,7 @@ when the cheaper family has been tried and failed, not first.
 
 ### The procedure
 
-1. Pick candidate prefabs from the assay profile — usually one or two, three at
+1. Pick candidate prefabs from the experiment profile — usually one or two, three at
    most.
 2. **Materialize each**: `pipeline_put {name:"fil-prefab",
    from_prefab:"FilamentousFungiPipeline"}`. A bare class name from the catalog
@@ -501,11 +501,11 @@ Four skills ship with the server. Each maps to one phase and states its
 tool sequence, so an agent that loads it knows both *what to do* and *which
 tools do it*.
 
-### `phenotypic-assay-triage`
+### `phenotypic-experiment-triage`
 
 **When:** at the start of any new dataset, before any pipeline exists.
-**Produces:** `assays/<dataset>.assay.json` **and** `subsets/<name>.subset.json`.
-**Tools:** `assay_put`, `assay_get`, `subset_put`, `subset_get`,
+**Produces:** `profiles/<dataset>.experiment.json` **and** `subsets/<name>.subset.json`.
+**Tools:** `experiment_profile_put`, `experiment_profile_get`, `subset_put`, `subset_get`,
 `pipeline_probe`, `catalog_operations`.
 **Procedure:**
 
@@ -517,7 +517,7 @@ tools do it*.
 4. Probe 2–4 subset images to measure contrast (`michelson_percell_median`,
    §9.3.2 — **not** Otsu's η, which §9.3.2 refutes as scale-invariant) and
    separation.
-5. `assay_put` with every trait carrying its `source`; `subset_put` with the
+5. `experiment_profile_put` with every trait carrying its `source`; `subset_put` with the
    measured `coverage` range.
 
 **Hard rule it teaches:** never write `source: "human"` for something the human
@@ -641,9 +641,9 @@ The implementation plan should treat per-harness support as one task each, with
 
 - ~~OQ-9.1 skill packaging~~ → in-repo authoring plus a
   `phenotypic-mcp setup` installer (§9.7).
-- ~~OQ-9.2 assay scope~~ → **per-dataset**, at
-  `<workspace>/assays/<dataset>.assay.json` (§9.3.7).
-- ~~OQ-9.3 assay validation~~ → **structure and provenance only**. The server
+- ~~OQ-9.2 profile scope~~ → **per-dataset**, at
+  `<workspace>/profiles/<dataset>.experiment.json` (§9.3.7).
+- ~~OQ-9.3 profile validation~~ → **structure and provenance only**. The server
   checks shape, required keys, and `source ∈ {human, probe, metadata,
   inferred}`; it never validates biological values, so the domain vocabulary can
   grow without a server release (§9.3.4).

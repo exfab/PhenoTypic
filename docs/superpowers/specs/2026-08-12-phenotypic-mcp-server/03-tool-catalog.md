@@ -5,10 +5,36 @@ Date: 2026-08-12
 
 ## 3.0 Conventions binding every tool
 
-**Naming.** `<group>_<verb>`, flat, no dots — `pipeline_put`, never `pipeline.put`.
-32 tools in nine groups: catalog (3), pipeline (5), workspace (4),
-assay (2, §9.3), subset (3, §10.3), tune (5, §4), deploy (3, §5),
-**campaign (5, §8)**, promotion (2, §10.5).
+**Naming.** `<group>_<verb>[_<object>]`, flat, no dots — `pipeline_put`, never
+`pipeline.put`. **26 tools in eight groups:** catalog (2), pipeline (4),
+workspace (4), experiment_profile (1, §9.3), subset (3, §10.3), tune (5, §4),
+deploy (3, §5), **campaign (4, §8)**.
+
+**Cut from an earlier 32-tool draft**, each because this spec already contained
+the argument against it:
+
+| Cut | Why, and where the capability went |
+|---|---|
+| `promotion_request`, `promotion_approve` | §10.5's own text: a full-dataset run "has no other way to obtain" a `plan_token`, so promotion was a second lock over a decision `deploy_plan {scope:"full"}` already gates. Its *content* — winner provenance, subset score, held-out gap, coverage warnings, §10.6.1's header sweep — moves onto that response, which already carries `pending_human_ack`/`ack_prompt` |
+| `experiment_profile_put` | §9.3.5: "the server never acts on a trait… it is not an interlock." The triage skill writes the file; `experiment_profile_get` remains so the server stays self-sufficient on a host that gives the agent MCP and nothing else |
+| `pipeline_diff` | Two `pipeline_get {format:"summary"}` calls, and an LLM diffs two JSON objects natively |
+| `campaign_get` | → `campaign_status {detail:"artifact"}`, mirroring `tune_status`/`deploy_status`'s two-detail shape |
+| `catalog_measurements` | `produces_columns` on `pipeline_put`/`patch`/`get` answers the workflow's actual question with the same machinery |
+
+`workspace_lineage` was proposed for cutting and **kept**: it is the only read
+path to §8.7's exploration trail, which is what stops an agent repeating an edit
+it already rejected (§3.2).
+
+**Every tool carries MCP annotations.** `title`, plus `readOnlyHint` and
+`destructiveHint`. This is not decoration: a host may auto-approve a `readOnly`
+tool and will raise a confirmation for a `destructive` one, so annotating the
+read tools and leaving `deploy_start`, `campaign_start`, `tune_start` and
+`workspace_cancel` unannotated enforces §9.1's server-vs-skill line **at the host
+level** rather than in prose. Two calls are non-obvious and are fixed here rather
+than left to an implementer: the `*_put` tools are **not** idempotent (they fail
+with `already_exists`), and `pipeline_patch` emphatically is not — its edits are
+cumulative, so the annotation is what stops a host retrying into a corrupted
+pipeline.
 
 **Every tool returns the same envelope.**
 
@@ -38,7 +64,7 @@ never `Path.suffix`, which sees only `.pht-tune`:
 |---|---|---|
 | `pipeline_id` | yes | `pipelines/<stem>` + `PIPELINE_CONFIG_SUFFIXES` |
 | `spec_id` | yes | `tune/<stem>` + `TUNING_CONFIG_SUFFIXES` |
-| `subset_id`, `assay` | yes | fixed `.subset.json` / `.assay.json` suffix |
+| `subset_id`, `experiment_profile` | yes | fixed `.subset.json` / `.experiment.json` suffix |
 | `study_id`, `run_id`, `campaign_id` | **no** | directories, no suffix to match — the full sandbox-relative form is required |
 
 **Token discipline.** List tools return compact rows; full JSON schemas come
@@ -140,49 +166,6 @@ Two gaps the raw schema cannot express, filled from `OperationInfo`/`ParamInfo`:
    `_OperationFieldMarker` walk instead.
 2. **`NdArrayField`'s schema is a bare `{"type":"array","items":{}}`** with no
    shape or dtype. Flagged `type: "ndarray"`; not agent-authorable in practice.
-
-### `catalog_measurements`
-
-| Arg | Type | Meaning |
-|---|---|---|
-| `measurer` | `str?` | Restrict to one `MeasureFeatures` class |
-
-**Header derivation must dispatch on `header_scheme()`.** A blanket
-`get_headers()` call is wrong, and for at least one measurer it raises:
-
-```
-SIZE.header_scheme()     -> "static"   -> get_headers()  -> ['Size_Area', …]
-TEXTURE.header_scheme()  -> "texture"  -> get_headers()  -> TypeError:
-                                          missing 1 required positional argument: 'scale'
-TEXTURE.get_headers(5)   -> ['Texture_AngularSecondMoment-deg000-scale05', …]
-```
-
-`TEXTURE` (`schema/_texture.py:144-181`) overrides `get_headers(scale,
-matrix_name=None)` with **no default for `scale`**, and `MeasureTexture` emits
-one header per (member × angle × scale) — 130 columns for `scale=[5,10]`, not the
-13 base labels. So the projection:
-
-1. reads `header_scheme()` per `MeasurementInfo` class (`static` /
-   `metric_qualified` / `texture`, per `schema/CLAUDE.md`);
-2. for `static`, calls `get_headers()`;
-3. for `texture`, calls `get_headers(scale, matrix_name)` once per entry in the
-   **live measurer instance's** `scale` list and merges;
-4. for `metric_qualified`, uses the qualified-header path.
-
-The source of the class list is the public instance method
-`MeasureFeatures.get_measurement_infoclasses()` (`abc_/_measure_features.py:333`),
-which is genuinely instance-dependent — `MeasureColor` includes or excludes
-members based on `self.include_XYZ` / `self.include_xy`.
-
-**Do not model this on the README generator.** An earlier draft cited "the same
-measurer→`MeasurementInfo` mapping the README generator uses". No such reusable
-mapping exists: `_cli_readme_generator.py:140-235` iterates `pipeline._meas` and
-renders `member.value` directly, never expanding texture headers — so it
-under-reports texture columns in generated READMEs today. Reusing it would
-inherit the bug. (Worth fixing there separately; out of scope here.)
-
-`desc` per column is the enum member's `desc` — the text users see. `bio_desc`
-is **never** returned; it is human-authored and frequently empty.
 
 ---
 
@@ -328,24 +311,32 @@ edit validates**, so a failing third edit leaves the artifact untouched.
                  "budget_note":"3 of 12 patches used"}}}
 ```
 
+**A repeated edit returns the prior attempt.** §8.7 records every accepted step
+in the lineage journal with its evidence and its keep/revert decision — and
+nothing in an earlier draft ever *read* that back. So an agent whose context was
+compacted re-tried edits it had already rejected, and sibling subagents each
+burned probe budget on the same dead end.
+
+When an edit matches one already recorded for this pipeline, the response carries
+an **advisory** issue with that attempt's evidence and decision:
+
+```json
+{"severity":"advisory","code":"edit_previously_tried","path":"edits[0]",
+ "message":"insert_op FocusEdgePhase at ops[1] was tried at step 3 and reverted.",
+ "hint":"num_objects 61→88, detect_mat.std 0.04→0.11; decision was 'revert'."}
+```
+
+**Advisory, never a refusal.** A deliberate retry is legitimate — the pipeline
+around the edit may have changed since — so the server surfaces the evidence and
+lets the agent decide. It costs nothing extra: the journal scan is the one
+`exploration` already performs for its step counter.
+
 **`exploration` is what makes §8.7's loop runnable.** That section states step
 and no-improvement caps "reported in the response", and the lineage journal
 already records a `step` counter — but without this block an agent would have to
 poll `workspace_lineage` and count rows to know it was on patch 11 of 12, which
 nothing instructs it to do. `tracked_signal` names the metric the streak is
 measured against, so "no improvement" is a defined claim rather than a vibe.
-
-### `pipeline_diff` (`W0`)
-
-| Arg | Type | Meaning |
-|---|---|---|
-| `a`, `b` | `str` | Two pipeline ids |
-
-Structural diff between two pipelines: ops added/removed/reordered, and
-per-parameter value changes. §1.5 lists "diff two pipelines" as a `W0` example,
-and comparing candidates before probing them saves serialized `LocalComputeSlot`
-time. Also the natural way to see what tuning actually changed:
-`pipeline_diff {a:"edge-v3", b:"edge-v3-tuned"}`.
 
 ### `pipeline_get` (`W0`)
 
@@ -515,7 +506,7 @@ two produces a tool that looks informative and tells the agent nothing.
   "in_flight":{"local":0,"slurm":2},
   "rehydrate_ms":184,
   "next_recommended":"pipeline_put",
-  "workflow":{"assay":"assays/plates.assay.json","subset":"subsets/plates-dev-24.subset.json",
+  "workflow":{"assay":"profiles/plates.experiment.json","subset":"subsets/plates-dev-24.subset.json",
               "blocked":[],"note":"assay and subset exist; pipelines may be authored and probed"},
   "counts":{"pipelines":3,"tune_specs":3,"assays":1,"subsets":1,
              "campaigns":1,"studies":1,"runs":0},
@@ -529,9 +520,9 @@ workspace-immutability rule (§2.2) and rehydration cost visible.
 
 **`next_recommended` and `workflow` make the ordering discoverable from data.**
 The workflow (§8.1) is otherwise taught only by the skills, so an agent that
-never loads `phenotypic-assay-triage` has no contract-level signal that an assay
+never loads `phenotypic-experiment-triage` has no contract-level signal that an experiment profile
 and a subset come before tuning. `workspace_info` is the natural first call, so
-it answers *what should I do next* — `assay_put` when `counts.assays == 0`,
+it answers *what should I do next* — `experiment_profile_put` when `counts.assays == 0`,
 `subset_generate` when there is no subset, and so on, with `blocked` naming any
 tool that would refuse right now and why. Skills teach judgment; this makes the
 bare ordering legible without them.
@@ -574,23 +565,21 @@ owner-record rows are distinguishable from manifest-only ones (§2.4).
 `LocalRunner.stop`. **Scoped to runs this server holds a `RunRegistry` record
 for**, so an agent cannot reach another session's work.
 
-### `assay_put` / `assay_get` (`W0`)
+### `experiment_profile_get` (`W0`)
 
-The assay profile (§9.3) needs a call path, or its validation contract describes
-logic nothing invokes.
+Reads back `profiles/<dataset>.experiment.json` (§9.3), echoing which traits are
+`human`-sourced — and therefore uncheckable — versus `probe`-sourced.
 
-`assay_put {dataset, traits, overwrite?, dry_run?}` writes
-`assays/<dataset>.assay.json`. It validates the **envelope only** (§9.3.5): each
-trait has `value` and `source`; `source ∈ {human, probe, metadata, inferred}`;
-`evidence` present and its `probe_ref` resolvable when `source: "probe"`. It
-never validates a biological value, and it **preserves unknown trait keys
-verbatim** rather than rejecting them — which means this is the one place in the
-server that must *not* use pydantic's `extra="forbid"`. The model is an explicit
-`traits: dict[str, TraitEnvelope]`, so unknown keys are ordinary data, not extra
-fields.
+**There is no `experiment_profile_put`.** §9.3.5 is explicit that "the server
+never acts on a trait… it is not an interlock", so a validating write tool was
+schema machinery over a file the server does not read. The
+`phenotypic-experiment-triage` skill writes it directly; §9.3 remains the format
+it writes to.
 
-`assay_get {dataset}` reads it back, echoing which traits are `human`-sourced
-(and therefore uncheckable) versus `probe`-sourced.
+`_get` is kept rather than also cut, because dropping it would assume the agent
+can read workspace files by other means — true in a host that also grants
+filesystem access, false for a host that grants MCP and nothing else, and §1.7
+keeps an HTTP transport addable.
 
 ### `workspace_lineage`
 
