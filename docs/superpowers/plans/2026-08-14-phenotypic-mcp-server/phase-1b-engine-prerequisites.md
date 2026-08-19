@@ -7,7 +7,7 @@
 > *Review protocol* and `execution.md`. A cluster with an unaddressed correctness
 > finding does not hand off to the next one.
 
-**Implements:** §7 P3, P4, P5, P6, P7. **Spec:**
+**Implements:** §7 P3, P4, P5, P6, P7, **P8**. **Spec:**
 [`../../specs/2026-08-12-phenotypic-mcp-server/07-prerequisites.md`](../../specs/2026-08-12-phenotypic-mcp-server/07-prerequisites.md)
 
 **Goal:** Close the five engine-side gaps that make the v1 tool surface

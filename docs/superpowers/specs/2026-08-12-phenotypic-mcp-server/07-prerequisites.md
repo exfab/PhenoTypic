@@ -510,7 +510,9 @@ P2 (_services promotion)   ──┐
 P3 (catalog + descriptor)  ──┤
 P4 (--screen guard)        ──┼──> MCP v1: catalog + pipeline + probe + campaigns
 P6 (subset staging)        ──┤        + local tune + deploy (W0/W1/W3)
-P7 (distributed finalize)  ──┘
+P7 (distributed finalize)  ──┤
+P8 (manifest input)        ──┘        (required for full scope on a
+                                       group-filtered subset — USER-21/26)
                               (P5, tune --slurm k=v, is independent — it only
                                retires §5.2.1's expressibility check)
 

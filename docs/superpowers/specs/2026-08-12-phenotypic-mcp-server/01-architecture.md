@@ -260,8 +260,10 @@ tracker with no exclusivity guard, because the GUI never needed one (a human
 clicks Run once). The slot is new code, listed as such in §1.6.
 
 **Second invariant, stated rather than derived: at most one `W1` probe is in
-flight process-wide.** This is true today only as a *consequence* of the slot —
-a probe holds it, so a second probe cannot start. A safety that exists only as a
+flight process-wide — and it does not depend on `local_slot_capacity`.** It rests
+on the single persistent warm probe worker (§3.2) and on `executors.compute`
+being 1, so raising the slot to 2 admits a second local *batch* run without
+admitting a second probe. A safety that exists only as a
 consequence of another rule is one refactor away from vanishing with nothing
 failing, and §3.2's single warm probe worker is written assuming it. So it is an
 invariant in its own right, and it is what the worker's liveness check answers
@@ -452,10 +454,13 @@ The split is not tidiness. With one shared pool, a burst of `campaign_status`
 store-opens — N arms × N subagents, each a blocking call — can occupy every
 worker and starve the probe **the compute slot has already admitted**: the slot
 guarantees the probe exclusivity and the pool takes it away, so the probe waits
-on a resource no rule in this section governs. Sizing `compute` at exactly one
-worker makes the pool a *second expression of the same one-probe invariant*
-rather than an independent scheduler, so the pool and the slot cannot disagree
-about how many probes are running. Both numbers are stated bounds (§1.6.1).
+on a resource no rule in this section governs. Sizing `compute` at exactly one worker
+matches the single warm probe worker it dispatches to, so the pool cannot admit
+a probe the worker cannot run. It is deliberately **not** tied to
+`local_slot_capacity`: the slot governs local batch admission and is
+configurable, probe dispatch is one regardless, and an intermediate draft that
+equated them made the one-probe invariant false at capacity 2. Both are stated
+bounds (§1.6.1).
 
 `ImagePipeline.apply()` is synchronous, CPU-bound, and copies the image
 (`_image_pipeline_core.py:943-966`). Running it directly in an async handler
@@ -611,6 +616,8 @@ What exists today versus what this design adds:
 | Persistent probe worker subprocess | **new** | §3.2 — nothing bounds an in-process `apply()` by wall clock; `LocalRunner` is fire-and-forget `Popen`, not a request/response worker |
 | Killable store-open subprocess | **new** | §4.4, §7 P7 — the nearest analogue (the GUI Monitor's live-open pool) is documented as deliberately *non*-killable |
 | Subset staging (materialize a file list as a directory) | **new** | §7 P6 — neither engine accepts a file list |
+| Top-level manifest input (`--manifest` + `RunConsoleState`/`to_argv`) | **new** | §7 **P8** — USER-26; two files, and the Click option alone is non-functional |
+| Concurrency substrate (executors, slot lease, launcher lease, CAS keys) | **new** | §1.5, §2.6 — the round-3 block; not derivable from the existing tier |
 | Plan token records | **new** | §5.4 — opaque ids over persisted records, not forgeable digests. Since the promotion fold it also carries the material the `deploy_start` gate is rendered from (`ack_prompt`, `decision_content`) — but **not** the ack itself, which is taken at `deploy_start` (USER-18) |
 
 Roughly: the server is a **thin adapter plus the non-mechanical rows of the
