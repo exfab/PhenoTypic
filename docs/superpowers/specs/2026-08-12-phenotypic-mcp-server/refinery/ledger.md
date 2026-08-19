@@ -438,3 +438,117 @@ behaviour; each carries its pass condition): does `fastmcp` deliver
 `CancelledError` on client disconnect; host timeout vs `probe_timeout_s`; whether
 subagent elicitation surfaces and how it is attributed; whether `Context` exposes
 `elicit`/`report_progress`; `tools/list` cost at 26 tools.
+
+---
+
+## Round 2 — full panel merged (4 reports, 48 concerns → 21 canonical)
+
+All four returned **VERDICT: REVISE**. No reviewer re-litigated a USER ruling.
+The panel reviewed the **round-1 snapshot**, so CONC-22/FLOW-17's Critical and
+CONC-17/19/24/25/27 were already settled by USER-17..20 mid-round; those are
+marked *pre-settled* and only their **residue** is carried forward.
+
+### The dominant cluster — §9.3.0.2 multi-group (9 concerns, 4 reviewers)
+
+**Every reviewer independently reached the same verdict: §9.3.0.2 is a design
+sketch, and every section that would have to carry it is unchanged.**
+
+| Canonical | Aliases | The finding |
+|---|---|---|
+| **MG-1** | GEN-13.2, SIMP-22, FLOW-22 | The mechanism rests on a class the spec elsewhere says **does not exist** (§10.3: "`MetadataGroupSubsetSelector` does not exist yet") while §9.3.0.2 says it "**already** joins the CSV to images". Its params are singular `group_key: str` + stratification concepts (`allocation`, `min_per_group`) that are **meaningless under a filter**; `SubsetSelector` is `extra="forbid"`, so neither a multi-column key nor a filter is addable without a model change. §10.3 and plan Task 14 were not touched |
+| **MG-2** | GEN-13.4, SIMP-21, FLOW-23, CONC-24 | The per-group breakdown **had no producer**. Settled in direction by USER-19; **GEN-23 makes it concrete and cheap** — `QCScorer`'s `check.analyze()` *already computes* a per-group `QC_Count_Metric` and `.mean()` throws it away (`tune/score/_qc_scorer.py:51-115`). The ask is to **persist a vector that already exists**, not to compute a new one. Still needs a §7 prerequisite and a plan task; has neither |
+| **MG-3** | GEN-14, SIMP-23, FLOW-22 | **`scope:"full"` on a group-scoped subset is incoherent.** §10.5 says full scope bypasses staging and runs against `subset.parent` — the whole dataset. So a group winner deploys **over every group**, the exact heterogeneity failure §9.3.0.2 exists to prevent. §9.3.0.2 asserts the opposite ("per-group deploy follows from staging"). Needs a ruling — it decides whether USER-13's "descend per-group" is reachable at the only scale that matters |
+| **MG-4** | GEN-13.1, FLOW-22 | `group_by` on the **profile** contradicts §9.3.5's never-acts-on-a-trait invariant, and the profile is the **wrong scope** (§9.3.7: one per dataset; groups are per metadata value). Three group identities — profile `group_by`, selector `group_key`, scorer `check.metadata` — **joined by nothing**. FLOW's fix: resolved grouping belongs on the **subset artifact**, with the profile's `group_by` as declaration + validation |
+| **MG-5** | GEN-23, SIMP-Q | §9.3.0.2's stated premise is **factually wrong**: expected counts are **per-image CSV rows**, not scorer config, so heterogeneous counts are already expressible under **one** scorer. The one-scorer invariant is not the obstacle the section claims, and the general-first pass is runnable across groups today |
+| **MG-6** | SIMP-24 | `groups` keys (`"neurospora|minimal"`) are a new serialization format with no escaping rule, no ordering rule, no partial match. A list of `{match:{col:val}, traits:{…}}` removes the encoding entirely |
+
+### The promotion fold — residue after USER-18
+
+| Canonical | Aliases | Status |
+|---|---|---|
+| ~~ack/token contradiction~~ | FLOW-17 **(Critical)**, CONC-22, GEN-16 | **pre-settled** by USER-18 |
+| ~~work class~~ | FLOW-21, GEN-16, CONC-22 | **pre-settled** — §5.3 now `W0` at subset / `W1` at full |
+| **PF-1** | GEN-15, FLOW-20 | **The token's binding set was never restated when it absorbed the gate.** No `human_ack`, no `parent_digest` field (prose says it binds one), **no `run_name`**, and not the resolved `array` width or the `estimate.node_hours` the human actually approved. So an ack for "480 images, ~18.4 node-hours" is spendable against a different output dir and a re-chunked array with every check passing. `argv_digest` is *undefined in the spec*, so whether it covers `--output` is undecidable |
+| **PF-2** | GEN-15, FLOW-24(a) | **The approval leaves no lineage row.** `promotion_approve` appended one; nothing replaced it. §2.5's event list has no approval event, so the most consequential human decision in the system is unreconstructable from the journal |
+| **PF-3** | FLOW-18 | `human_response` — the *mandatory* fallback — **has no parameter on either deploy tool**. Unimplementable as written |
+| **PF-4** | FLOW-29 | Ack-carrying tokens have no GC and no `run_name` binding, so an abandoned approved token stays spendable for 24 h |
+
+### Applied-fix propagation failures (the round's recurring defect)
+
+> *FLOW: "three of the four applied fixes left the section that argued the old
+> position untouched."* Four reviewers found this independently.
+
+| Canonical | Aliases | The finding |
+|---|---|---|
+| **PROP-1** | SIMP-20, FLOW-19, GEN | **§8.2 and §8.3 state opposite contracts one section apart.** §8.2 (rewritten) says `human_response` is "required-unless-elicited" and the no-verification concession "is no longer real"; §8.3's `campaign_approve` (untouched) says **required** and re-argues the retracted position, *citing §8.2 for a claim §8.2 just disowned*. **SIMP's fix is a simplification**: drop the conditional signature entirely — `human_response` unconditionally required, distinction moves to the response as `ack_source: "elicited" \| "agent_asserted"`. Same guarantee, predictable schema from `tools/list`, auditable on the artifact. Also fixes PF-3 |
+| **PROP-2** | SIMP-19, FLOW-25, GEN-21 | **Cutting `catalog_measurements` deleted the only specification of `produces_columns`** — the `header_scheme()` dispatch, `TEXTURE.get_headers()` raising `TypeError` without `scale`, live-instance scale expansion (130 columns not 13 labels), and the "do not model on `_cli_readme_generator`" warning. `produces_columns` ships on three surviving tools; §3.2:1000 and §7 P3 both still cite §3.1 for it. §7 P3 additionally reads "`produces_columns` and `produces_columns`" — a botched substitution. **Restore ~12 lines under `produces_columns`; the tool stays cut** |
+| **PROP-3** | SIMP-18, GEN-21 | **§5.4's staged-GPU paragraph is the one the `mode`/`layer` cut was made to delete, and it is still there.** With the params gone `process_only_layer` is always `None`, so staging is **unconditional**: the subsection's thesis ("It is not unconditional") is false and `staged_gpu` is a constant equal to `pipeline_requires_gpu`. An implementer will build a dispatch branch no input can select |
+| **PROP-4** | GEN-20, SIMP-25, FLOW-26/28 | **Residue in five places.** Rename reached prose only: `workflow.assay`, `counts.assays` (contradicting `counts.profiles` eight lines below), `workspace_list {kind:"assays"}`. CWD default still stated as settled in §2.7's resolved-OQ list and README. Promotion residue in §2.3's tree, §2.6's table, §10.6.1's narration. Plus **SIMP-25: the global replace inverted USER-13's point in ~6 places** by substituting the artifact name where the *biological* noun was meant ("characterize the experiment profile") |
+| **PROP-5** | GEN-19 | **The plan was never updated with the spec.** README's phase map has **every count wrong** and **2C still schedules `promotion(2)`, a cluster that no longer exists**; Tech Stack still says "the official `mcp` SDK", contradicting D1a two screens below *and* spec §1.4; D5 still costed at 32 registrations; D3 still names the pre-USER-13 skill |
+
+### `edit_previously_tried` — the writer gap (partially pre-settled)
+
+| Canonical | Aliases | Status |
+|---|---|---|
+| ~~write ordering~~ | CONC-25, FLOW-24(a)-part | **pre-settled** — §8.7 now journals `in_flight` on acceptance |
+| **EPT-1** | GEN-17, FLOW-24(a) | **`decision` has no writer at all.** My in-flight fix says the decision is "filled in when the probe completes" — but `pipeline_probe` does not know the agent's keep/revert choice; the *agent* decides after reading evidence, and **no tool in the 26-tool catalog takes a `decision` argument**. So the advisory can only ever return `decision: null` — the exact field that separates "tried and reverted" (don't repeat) from "tried and kept" (already in the pipeline) |
+| **EPT-2** | FLOW-24(b), SIMP-29 | **The match key cannot discriminate.** The recorded `edit` block is `{kind, slot, index, class}` with **no `params`**, so every `set_params` at the same slot/index collides — and `set_params` is the dominant edit kind in a tuning loop. Conversely `insert_op` with `sigma:2` and `sigma:9` collapse to one attempt. `index` is positional over a list the loop mutates. *(SIMP and FLOW propose opposite keys; see resolution)* |
+| **EPT-3** | FLOW-24 note | `exploration.budget_note` counts rows in a journal §2.5 says may be truncated, so §8.7's 12-patch bound **silently resets** — the number becomes wrong rather than absent |
+
+### Concurrency decisions the specialist says to take now
+
+CONC-1 (`asyncio.Semaphore(1)`, release-first/record-second in a `finally` at the
+innermost acquiring layer, **plus an unconditional wall-clock lease**), CONC-2
+(`(pid, create_time)` identity; **refuse rather than watch** an orphan), CONC-3
+(detach local children — *needs a ruling*), CONC-4/8/9/10 (artifact RMW under
+CAS; never nest the in-process lock inside the 30 s interprocess spin; publish
+`_REGISTRY` after `discover()`; stage via temp + `os.replace` + `.complete`),
+CONC-5/28 (**CAS on `(status, artifact_digest)`, never `status` alone** — one fix
+covers amendment-reversion, double-launch, and the elicitation-widened approval
+window), CONC-6/19 (`campaign_start` returns immediately; a per-campaign
+background task owns fan-out; arms gain a `queued` state; re-calling launches
+only arms with no `study_id`), CONC-11 (`launching → running` CAS never
+overwrites a terminal state), CONC-13/14, CONC-16, CONC-23 (**server-wide**
+in-flight ceiling; "sbatch accepted it" proves nothing because over-cap
+submissions queue on `AssocGrpCpuLimit`), CONC-26.
+
+**Refinement to USER-20 the specialist asks for:** *two* named executors, not
+one — `blocking` (`max_workers=4`) for filesystem/subprocess/journal, `compute`
+(`max_workers=1`) for `W1`. A shared pool lets a burst of `campaign_status`
+store-opens starve the probe the slot already admitted; splitting makes the
+compute pool a second expression of the one-probe invariant, so pool and slot
+cannot disagree. Both bounds become numbers in §1.6.
+
+**CONC-21 — elicitation rules no experiment can supply** (decide now, per
+USER-16): every elicitation message leads with the artifact id it approves;
+**single-flight per server** (a second returns `human_gate_busy`); timeout,
+decline and unsupported **all** map to the `human_response` fallback and **none**
+maps to approval.
+
+### Still open from round 1, unchanged by the diff
+
+GEN-4, 5, 6, 8, 9, 10, 11, 12; FLOW-1, 2, 5; CONC-18. GEN-6 confirmed still live,
+so **CONC-28 is real** — and is subsumed by the CONC-5 CAS fix above.
+
+### Advisory
+
+GEN-24/SIMP-29 (**SIMP-7 withdrawn** — USER-9 gave the `exploration` scan a
+second consumer, so the cut is no longer available; mark it `resolved`),
+SIMP-28 (strike the MCP-only-host rationale for keeping `experiment_profile_get`
+— that host cannot write the profile, supply `traits.yaml`, or place data under
+USER-11's root; keep the tool on the compacted-agent-read argument instead),
+SIMP-30 (**~35 lines of "an earlier draft…" memorials**; move §3.0's cut table to
+this ledger — normative text should say what *is*), SIMP-27/GEN-25/CONC (§9.3.0.2
+filed **above** §9.3.0.1 and forward-references it), FLOW-27 (root-must-contain-
+data can select a read-only root; fails at first `pipeline_put`, not startup —
+needs a startup check and an error code), GEN-25 (§3.0's `<group>_<verb>` naming
+rule is unparseable for `experiment_profile_get`).
+
+### One item that is neither decidable nor deferrable — it wants a measurement
+
+**§10.6.1's header sweep over a 480-image parent** is the load-bearing number
+under `deploy_plan`'s work class. It needs no server and no `fastmcp` — just
+tifffile/PIL over a directory. Per the repo's own convention it wants a script
+under `logic_validation_scripts/`, measuring cold- and warm-cache header-read
+wall time. **If it lands above ~1 s the sweep is not `W0` regardless of how the
+gate is arranged.** Cheap, and worth having before 2A rather than after.
