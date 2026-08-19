@@ -312,3 +312,39 @@ collision); FLOW-6..16; GEN-2..12; SIMP-4..12, 15..17.
 `group_by` lives on the profile, the subset, or both; what `scope:"full"` means
 for a group-scoped subset; and whether the per-group cost breakdown belongs to
 `campaign_status` or to the scorer.
+
+### USER-16 [settled-by-user (round 2)] — deferral criterion
+
+A concern may be dispositioned **`deferred-to-2A`** — carried as a named Phase 2A
+acceptance test rather than resolved in the spec — **only when its resolution
+depends on observing behaviour that does not exist yet.** The test must be
+written down with its pass condition; a deferral without one is an omission
+wearing a schedule.
+
+**Qualifies** (no server, no `fastmcp` dependency, nothing to observe):
+
+- Does `fastmcp` 3.x deliver `CancelledError` into a handler on host
+  cancellation? (CONC-1's fourth release path, audit F4)
+- Is the host's tool-call timeout above or below `probe_timeout_s = 300`?
+- Does an elicitation raised from a **subagent's** call surface to the human
+  under §1.3's shared connection — and to whom is it attributed when two are in
+  flight? (D6/USER-5, CONC round 1)
+- Can `fastmcp` set `isError` without discarding the response body? Does its
+  `Context` expose `elicit` and `report_progress`? (D1a)
+- What does `tools/list` actually cost per turn against §1.6.1's budget? (F5)
+
+**Does NOT qualify — these are design decisions, specifiable today:**
+
+- **CONC-1's release symmetry.** Naming the slot's primitive, requiring release
+  in `finally` at the innermost layer, and making the exit callback
+  release-first/record-second are decisions, not measurements. *Which* of the
+  four paths fires is observable later; *that all four must release* is not.
+- **CONC-2's orphan watcher.** Whether reconciliation installs a watcher or
+  refuses to claim the slot is a design choice. Only PID-reuse frequency is
+  empirical, and the fix (record `(pid, create_time)`) does not depend on it.
+- **CONC-17's handler concurrency model.** Choosing `async def` + one named
+  executor is a decision three other findings depend on; deferring it leaves
+  them unresolvable rather than pending.
+
+**The test:** if the concern would still need a decision *after* the experiment
+returned either result, it is design work and does not qualify.
