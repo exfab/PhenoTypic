@@ -1,0 +1,1004 @@
+--- docs/superpowers/specs/2026-08-12-phenotypic-mcp-server/refinery/snapshots/round-0-spec.md	2026-08-18 19:44:36.894177248 -0700
++++ docs/superpowers/specs/2026-08-12-phenotypic-mcp-server/refinery/snapshots/round-1-spec.md	2026-08-18 22:14:59.960192080 -0700
+@@ -95,6 +95,13 @@
+ phenotypic/gui/*  →  re-export shims onto _services (GUI behaviour unchanged)
+ ```
+ 
++**The transport is PyPI `fastmcp` 3.x**, added as an optional extra so the core
++package gains no dependency. Deliberately **not** the FastMCP 1.0 frozen inside
++the official `mcp` SDK: current guidance warns against it, and the capability
++this design most depends on — elicitation for the human gates (§8.2, §10.5) — is
++exactly what a frozen 1.0 is likely to lack. The tool layer stays
++transport-agnostic, so this is a dependency choice, not an architectural one.
++
+ ### P2 is nine moves and one split — not a pure move
+ 
+ An earlier draft of this section claimed the promotion was "a move, not a
+@@ -248,6 +255,26 @@
+ | `W2` | subprocess, **holds slot** | `sbatch` fleet, no slot |
+ | `W3` | subprocess, **holds slot** | `sbatch` array, no slot |
+ 
++### A locally-routed batch job suspends interactive probing
++
++Stated plainly because it is a real limitation, not an oversight. A `W2`/`W3`
++routed **local** holds the slot for its entire subprocess lifetime, and `W1`'s
++budget (`probe_timeout_s`, default 300 s) **includes slot wait** — so while a
++local study or deploy runs, every `pipeline_probe` from every subagent fails with
++`local_slot_timeout` rather than queueing. §8.7's exploration loop is unavailable
++for that duration.
++
++On a cluster this is nearly unreachable: `W2`/`W3` route to `sbatch` and take no
++slot. It bites on a workstation with no scheduler, and the honest answer there is
++that local batch work and interactive probing do not overlap. The alternative —
++admitting `W1` alongside a reduced-worker local job — was considered and rejected
++as machinery serving a deployment this design does not target.
++
++**Locally, run at most 1–2 campaign arms concurrently.** Each arm is a
++slot-holding subprocess; the slot already serializes them, but
++`budget.max_concurrent_arms` takes a lower effective cap under `local` routing,
++so a future change to the slot cannot turn a campaign into an OOM.
++
+ ### Blocking work never blocks the event loop
+ 
+ `ImagePipeline.apply()` is synchronous, CPU-bound, and copies the image
+@@ -485,12 +512,25 @@
+ path argument in every tool resolves through it; anything landing outside is
+ rejected before the tool does work.
+ 
+-**Root selection:** `phenotypic-mcp --workspace <path>`, defaulting to the
+-server process's CWD. Because subagents share one server (§1.3), there is
+-exactly one CWD and the default is unambiguous. `workspace_info` always echoes
+-the resolved root, and the server logs a startup warning when the root contains
+-`.git` — a source checkout is a plausible launch directory and a poor place to
+-accumulate run outputs.
++**Root selection:** `phenotypic-mcp --workspace <path>`. **There is no default —
++the root must be given explicitly, and it must contain the image data.**
++
++That second clause is load-bearing and was missing from an earlier draft. Every
++worked example in this spec reaches `data/plates`, `data/tune_layout.csv` and
++`data/plate_batches.csv` as though they sat inside the workspace, while
++`SandboxRoot.resolve()` follows symlinks and then rejects anything landing
++outside the root. So either the data is inside the root or the flagship workflow
++cannot start; there is no third option that does not introduce a second
++containment concept.
++
++The CWD default is dropped with it. A default that silently produces a workspace
++without the data is worse than a required argument, and §1.3's "exactly one CWD"
++argument only ever established that the default was *unambiguous*, never that it
++was *correct*.
++
++`workspace_info` always echoes the resolved root, and the server logs a startup
++warning when the root contains `.git` — a source checkout is a plausible launch
++directory and a poor place to accumulate run outputs.
+ 
+ ```
+ <workspace>/
+@@ -498,8 +538,8 @@
+ │   └── <name>.json.pht-pipe          # ImagePipeline.to_json()
+ ├── tune/
+ │   └── <name>.setup.json.pht-tune    # authored TuningSpec
+-├── assays/
+-│   └── <dataset>.assay.json          # §9.3 assay profile
++├── profiles/
++│   └── <dataset>.experiment.json          # §9.3 experiment profile
+ ├── subsets/
+ │   └── <name>.subset.json            # §10.2 development subset
+ ├── campaigns/
+@@ -533,7 +573,7 @@
+                           gui_launch_owner.json}
+ ```
+ 
+-Only `pipelines/`, `tune/`, `assays/`, `subsets/`, `campaigns/`, `studies/`,
++Only `pipelines/`, `tune/`, `profiles/`, `subsets/`, `campaigns/`, `studies/`,
+ `runs/` are this server's invention.
+ **Everything inside `studies/<name>/` and `runs/<name>/` is written by the
+ existing engines**, at paths owned by `sdk_/_io_constants.py`. The server never
+@@ -712,10 +752,36 @@
+ 
+ ## 3.0 Conventions binding every tool
+ 
+-**Naming.** `<group>_<verb>`, flat, no dots — `pipeline_put`, never `pipeline.put`.
+-32 tools in nine groups: catalog (3), pipeline (5), workspace (4),
+-assay (2, §9.3), subset (3, §10.3), tune (5, §4), deploy (3, §5),
+-**campaign (5, §8)**, promotion (2, §10.5).
++**Naming.** `<group>_<verb>[_<object>]`, flat, no dots — `pipeline_put`, never
++`pipeline.put`. **26 tools in eight groups:** catalog (2), pipeline (4),
++workspace (4), experiment_profile (1, §9.3), subset (3, §10.3), tune (5, §4),
++deploy (3, §5), **campaign (4, §8)**.
++
++**Cut from an earlier 32-tool draft**, each because this spec already contained
++the argument against it:
++
++| Cut | Why, and where the capability went |
++|---|---|
++| `promotion_request`, `promotion_approve` | §10.5's own text: a full-dataset run "has no other way to obtain" a `plan_token`, so promotion was a second lock over a decision `deploy_plan {scope:"full"}` already gates. Its *content* — winner provenance, subset score, held-out gap, coverage warnings, §10.6.1's header sweep — moves onto that response, which already carries `pending_human_ack`/`ack_prompt` |
++| `experiment_profile_put` | §9.3.5: "the server never acts on a trait… it is not an interlock." The triage skill writes the file; `experiment_profile_get` remains so the server stays self-sufficient on a host that gives the agent MCP and nothing else |
++| `pipeline_diff` | Two `pipeline_get {format:"summary"}` calls, and an LLM diffs two JSON objects natively |
++| `campaign_get` | → `campaign_status {detail:"artifact"}`, mirroring `tune_status`/`deploy_status`'s two-detail shape |
++| `catalog_measurements` | `produces_columns` on `pipeline_put`/`patch`/`get` answers the workflow's actual question with the same machinery |
++
++`workspace_lineage` was proposed for cutting and **kept**: it is the only read
++path to §8.7's exploration trail, which is what stops an agent repeating an edit
++it already rejected (§3.2).
++
++**Every tool carries MCP annotations.** `title`, plus `readOnlyHint` and
++`destructiveHint`. This is not decoration: a host may auto-approve a `readOnly`
++tool and will raise a confirmation for a `destructive` one, so annotating the
++read tools and leaving `deploy_start`, `campaign_start`, `tune_start` and
++`workspace_cancel` unannotated enforces §9.1's server-vs-skill line **at the host
++level** rather than in prose. Two calls are non-obvious and are fixed here rather
++than left to an implementer: the `*_put` tools are **not** idempotent (they fail
++with `already_exists`), and `pipeline_patch` emphatically is not — its edits are
++cumulative, so the annotation is what stops a host retrying into a corrupted
++pipeline.
+ 
+ **Every tool returns the same envelope.**
+ 
+@@ -745,7 +811,7 @@
+ |---|---|---|
+ | `pipeline_id` | yes | `pipelines/<stem>` + `PIPELINE_CONFIG_SUFFIXES` |
+ | `spec_id` | yes | `tune/<stem>` + `TUNING_CONFIG_SUFFIXES` |
+-| `subset_id`, `assay` | yes | fixed `.subset.json` / `.assay.json` suffix |
++| `subset_id`, `experiment_profile` | yes | fixed `.subset.json` / `.experiment.json` suffix |
+ | `study_id`, `run_id`, `campaign_id` | **no** | directories, no suffix to match — the full sandbox-relative form is required |
+ 
+ **Token discipline.** List tools return compact rows; full JSON schemas come
+@@ -848,49 +914,6 @@
+ 2. **`NdArrayField`'s schema is a bare `{"type":"array","items":{}}`** with no
+    shape or dtype. Flagged `type: "ndarray"`; not agent-authorable in practice.
+ 
+-### `catalog_measurements`
+-
+-| Arg | Type | Meaning |
+-|---|---|---|
+-| `measurer` | `str?` | Restrict to one `MeasureFeatures` class |
+-
+-**Header derivation must dispatch on `header_scheme()`.** A blanket
+-`get_headers()` call is wrong, and for at least one measurer it raises:
+-
+-```
+-SIZE.header_scheme()     -> "static"   -> get_headers()  -> ['Size_Area', …]
+-TEXTURE.header_scheme()  -> "texture"  -> get_headers()  -> TypeError:
+-                                          missing 1 required positional argument: 'scale'
+-TEXTURE.get_headers(5)   -> ['Texture_AngularSecondMoment-deg000-scale05', …]
+-```
+-
+-`TEXTURE` (`schema/_texture.py:144-181`) overrides `get_headers(scale,
+-matrix_name=None)` with **no default for `scale`**, and `MeasureTexture` emits
+-one header per (member × angle × scale) — 130 columns for `scale=[5,10]`, not the
+-13 base labels. So the projection:
+-
+-1. reads `header_scheme()` per `MeasurementInfo` class (`static` /
+-   `metric_qualified` / `texture`, per `schema/CLAUDE.md`);
+-2. for `static`, calls `get_headers()`;
+-3. for `texture`, calls `get_headers(scale, matrix_name)` once per entry in the
+-   **live measurer instance's** `scale` list and merges;
+-4. for `metric_qualified`, uses the qualified-header path.
+-
+-The source of the class list is the public instance method
+-`MeasureFeatures.get_measurement_infoclasses()` (`abc_/_measure_features.py:333`),
+-which is genuinely instance-dependent — `MeasureColor` includes or excludes
+-members based on `self.include_XYZ` / `self.include_xy`.
+-
+-**Do not model this on the README generator.** An earlier draft cited "the same
+-measurer→`MeasurementInfo` mapping the README generator uses". No such reusable
+-mapping exists: `_cli_readme_generator.py:140-235` iterates `pipeline._meas` and
+-renders `member.value` directly, never expanding texture headers — so it
+-under-reports texture columns in generated READMEs today. Reusing it would
+-inherit the bug. (Worth fixing there separately; out of scope here.)
+-
+-`desc` per column is the enum member's `desc` — the text users see. `bio_desc`
+-is **never** returned; it is human-authored and frequently empty.
+-
+ ---
+ 
+ ## 3.2 Pipeline group
+@@ -1035,6 +1058,26 @@
+                  "budget_note":"3 of 12 patches used"}}}
+ ```
+ 
++**A repeated edit returns the prior attempt.** §8.7 records every accepted step
++in the lineage journal with its evidence and its keep/revert decision — and
++nothing in an earlier draft ever *read* that back. So an agent whose context was
++compacted re-tried edits it had already rejected, and sibling subagents each
++burned probe budget on the same dead end.
++
++When an edit matches one already recorded for this pipeline, the response carries
++an **advisory** issue with that attempt's evidence and decision:
++
++```json
++{"severity":"advisory","code":"edit_previously_tried","path":"edits[0]",
++ "message":"insert_op FocusEdgePhase at ops[1] was tried at step 3 and reverted.",
++ "hint":"num_objects 61→88, detect_mat.std 0.04→0.11; decision was 'revert'."}
++```
++
++**Advisory, never a refusal.** A deliberate retry is legitimate — the pipeline
++around the edit may have changed since — so the server surfaces the evidence and
++lets the agent decide. It costs nothing extra: the journal scan is the one
++`exploration` already performs for its step counter.
++
+ **`exploration` is what makes §8.7's loop runnable.** That section states step
+ and no-improvement caps "reported in the response", and the lineage journal
+ already records a `step` counter — but without this block an agent would have to
+@@ -1042,18 +1085,6 @@
+ nothing instructs it to do. `tracked_signal` names the metric the streak is
+ measured against, so "no improvement" is a defined claim rather than a vibe.
+ 
+-### `pipeline_diff` (`W0`)
+-
+-| Arg | Type | Meaning |
+-|---|---|---|
+-| `a`, `b` | `str` | Two pipeline ids |
+-
+-Structural diff between two pipelines: ops added/removed/reordered, and
+-per-parameter value changes. §1.5 lists "diff two pipelines" as a `W0` example,
+-and comparing candidates before probing them saves serialized `LocalComputeSlot`
+-time. Also the natural way to see what tuning actually changed:
+-`pipeline_diff {a:"edge-v3", b:"edge-v3-tuned"}`.
+-
+ ### `pipeline_get` (`W0`)
+ 
+ | Arg | Type | Default | Meaning |
+@@ -1222,7 +1253,7 @@
+   "in_flight":{"local":0,"slurm":2},
+   "rehydrate_ms":184,
+   "next_recommended":"pipeline_put",
+-  "workflow":{"assay":"assays/plates.assay.json","subset":"subsets/plates-dev-24.subset.json",
++  "workflow":{"assay":"profiles/plates.experiment.json","subset":"subsets/plates-dev-24.subset.json",
+               "blocked":[],"note":"assay and subset exist; pipelines may be authored and probed"},
+   "counts":{"pipelines":3,"tune_specs":3,"assays":1,"subsets":1,
+              "campaigns":1,"studies":1,"runs":0},
+@@ -1236,9 +1267,10 @@
+ 
+ **`next_recommended` and `workflow` make the ordering discoverable from data.**
+ The workflow (§8.1) is otherwise taught only by the skills, so an agent that
+-never loads `phenotypic-assay-triage` has no contract-level signal that an assay
++never loads `phenotypic-experiment-triage` has no contract-level signal that an experiment profile
+ and a subset come before tuning. `workspace_info` is the natural first call, so
+-it answers *what should I do next* — `assay_put` when `counts.assays == 0`,
++it answers *what should I do next* — write an experiment profile when
++`counts.profiles == 0`,
+ `subset_generate` when there is no subset, and so on, with `blocked` naming any
+ tool that would refuse right now and why. Skills teach judgment; this makes the
+ bare ordering legible without them.
+@@ -1281,23 +1313,21 @@
+ `LocalRunner.stop`. **Scoped to runs this server holds a `RunRegistry` record
+ for**, so an agent cannot reach another session's work.
+ 
+-### `assay_put` / `assay_get` (`W0`)
+-
+-The assay profile (§9.3) needs a call path, or its validation contract describes
+-logic nothing invokes.
++### `experiment_profile_get` (`W0`)
+ 
+-`assay_put {dataset, traits, overwrite?, dry_run?}` writes
+-`assays/<dataset>.assay.json`. It validates the **envelope only** (§9.3.5): each
+-trait has `value` and `source`; `source ∈ {human, probe, metadata, inferred}`;
+-`evidence` present and its `probe_ref` resolvable when `source: "probe"`. It
+-never validates a biological value, and it **preserves unknown trait keys
+-verbatim** rather than rejecting them — which means this is the one place in the
+-server that must *not* use pydantic's `extra="forbid"`. The model is an explicit
+-`traits: dict[str, TraitEnvelope]`, so unknown keys are ordinary data, not extra
+-fields.
++Reads back `profiles/<dataset>.experiment.json` (§9.3), echoing which traits are
++`human`-sourced — and therefore uncheckable — versus `probe`-sourced.
+ 
+-`assay_get {dataset}` reads it back, echoing which traits are `human`-sourced
+-(and therefore uncheckable) versus `probe`-sourced.
++**There is no `experiment_profile_put`.** §9.3.5 is explicit that "the server
++never acts on a trait… it is not an interlock", so a validating write tool was
++schema machinery over a file the server does not read. The
++`phenotypic-experiment-triage` skill writes it directly; §9.3 remains the format
++it writes to.
++
++`_get` is kept rather than also cut, because dropping it would assume the agent
++can read workspace files by other means — true in a host that also grants
++filesystem access, false for a host that grants MCP and nothing else, and §1.7
++keeps an HTTP transport addable.
+ 
+ ### `workspace_lineage`
+ 
+@@ -2023,10 +2053,19 @@
+ | `scope` | `"subset" \| "full"` | `"subset"` | `full` plans against `subset.parent`; the only way to obtain a full-scope `plan_token` |
+ | `run_name` | `str` | — | Output directory under `runs/` |
+ | `compute` | `object?` | `{}` | `{profile, …overridable keys}` |
+-| `mode` | `"full" \| "measure" \| "process"` | `"full"` | CLI mode |
+-| `layer` | `str?` | `null` | Required when `mode="process"` |
+ | `metadata_csv` | `str?` | `null` | Joined onto the measurements mirror |
+-| `sample` | `int?` | `null` | Pilot subset |
++
++**`mode`, `layer` and `sample` are deliberately absent.** They existed because
++the CLI has them, not because any workflow section reaches for them: §8, §9.5 and
++§10 all describe tuning on a subset and deploying the winner. Keeping them forced
++§5.4's most intricate paragraph — `uses_staged_gpu_strategy` routes to the staged
++engine only when `process_only_layer` is `None` or `"objmap"`, so `staged_gpu`
++had to report a mode-dependent dispatch answer — and they are the spec's largest
++coupling to a storage redesign that is adding `--mode migrate` and changing what
++`--mode recompile` does. **v1 deploy is always the full pipeline.** `sample` goes
++with them: the subset *is* the thinning mechanism now, and two ways to shrink an
++input set is one too many. Add `mode` back when a workflow needs it, against
++whatever the enum is by then.
+ 
+ ```json
+ {"ok":true,"data":{
+@@ -2056,9 +2095,8 @@
+ 
+ | Arg | Type | Default | Meaning |
+ |---|---|---|---|
+-| `scope` | `"subset" \| "full"` | `"subset"` | `full` targets `subset.parent` and additionally requires `promotion_token` (§10.5) |
++| `scope` | `"subset" \| "full"` | `"subset"` | `full` targets `subset.parent`; its `plan_token` must have been minted at `scope:"full"` with the human ack recorded (§10.5) |
+ | `plan_token` | `str` | — | **Required.** From a matching `deploy_plan`, or from an approved campaign arm |
+-| `promotion_token` | `str?` | `null` | **Required when `scope: "full"`.** From `promotion_approve` |
+ | `resume` | `bool` | `false` | Continue an interrupted run |
+ | `retry_failures` | `bool` | `false` | Requires `resume` |
+ | `restart` | `bool` | `false` | Clear machine state and start over |
+@@ -2099,10 +2137,11 @@
+ | Expiry | `expires` (default 24 h); an expired token → `plan_stale`, not silent acceptance |
+ | Single use | `consumed_by` is CAS'd to the `run_id` on a successful `deploy_start`; a second use → `plan_stale`. Re-running a deploy means re-planning, which is cheap and keeps the preview honest |
+ 
+-`promotion_token` records are identical in shape with `kind: "promotion"`, and
+-additionally bind `parent_digest` — so a parent that gained images between
+-review and submit invalidates the token (`promotion_stale`, §10.5) rather than
+-quietly deploying over a dataset you did not review.
++A `scope:"full"` token additionally binds `parent_digest`, so a parent that
++gained images between the plan and the submission invalidates it (`plan_stale`,
++§10.5) rather than quietly deploying over a dataset you did not review. It also
++records the human ack, which is what makes it the promotion gate rather than
++merely a plan.
+ 
+ The token is satisfied two ways: a direct `deploy_plan` call, or membership in
+ an **approved campaign** (§8), which stamps a token per arm at approval time.
+@@ -2335,6 +2374,7 @@
+ | `arm_artifact_drift` | error | An arm's `.pht-tune` or pipeline digest changed between `campaign_put` and `campaign_start` (§8.2) |
+ | `finalize_incomplete` | error | A `finalize_in_progress` marker is present; the study directory cannot be trusted (§4.5) |
+ | `study_not_finished` | error | `tune_export_best` on a distributed study whose budget is not drained and whose jobs are still live (§4.5) |
++| `edit_previously_tried` | **advisory** | A `pipeline_patch` edit matches one already recorded in the exploration trail; carries that attempt's evidence and keep/revert decision. Advisory, never a refusal — the surrounding pipeline may have changed (§3.2) |
+ | `stage_order_hint` | **advisory** | GUI DAG validator hint; never blocks |
+ | `pipeline_empty` | error | Neither ops nor measurements — the CLI's own check |
+ | `stale_target_ref` | error | A `select` ref built against a superseded pipeline digest |
+@@ -2352,8 +2392,6 @@
+ | `plan_required` | error | `deploy_start` without a `plan_token` (§5.4) |
+ | `plan_stale` | error | Plan token's pipeline/images/compute digest no longer matches |
+ | `campaign_not_approved` | error | `campaign_start` on a `draft` campaign |
+-| `promotion_required` | error | `deploy_start {scope:"full"}` without a `promotion_token` (§10.5) |
+-| `promotion_stale` | error | Promotion token's pipeline or parent-dataset digest changed since the review |
+ | `campaign_arm_scope_full` | error | A campaign deploy arm targeting the full dataset — campaigns are subset-scoped (§10.4) |
+ | `amendment_exceeds_envelope` | error | A mid-campaign amendment outside the approved budget, profile, or scorer |
+ | `subset_required` | error | A subset-scoped tool given a raw parent path instead of a `subset_id` (§10.3.1) |
+@@ -2903,7 +2941,7 @@
+    the agent can reach NN/GPU detectors and prefabs (§3.1).
+ 2. **A JSON descriptor projection** over `OperationInfo`/`ParamInfo` — plus the
+    `header_scheme()`-dispatching column derivation for `produces_columns` and
+-   `catalog_measurements`, which is *not* the ~40-line job first estimated
++   `produces_columns`, which is *not* the ~40-line job first estimated
+    (`TEXTURE.get_headers()` raises `TypeError` without a `scale`; see §3.1).
+ 3. **The `phenotypic/subset/` subpackage** — `SubsetSelector` ABC plus
+    `RandomSubsetSelector`, `MetadataGroupSubsetSelector`, and the
+@@ -3052,7 +3090,7 @@
+   Characterize the ASSAY before any pipeline exists: organism morphology
+   (filamentous / round / mixed), colony-vs-background contrast, colony
+   separation, plate format, imaging modality. Some of this only you know;
+-  some is measurable from a probe. Produces assay.json (§9.3).
++  some is measurable from a probe. Produces the experiment profile (§9.3).
+ 
+   ALSO establishes the DEVELOPMENT SUBSET (§10) — you name it, or the agent
+   samples it with a recorded method. Everything below runs on the subset;
+@@ -3060,7 +3098,7 @@
+         │
+         ▼
+ Phase 1 — PLAN (human + agent, conversational, W0 + bounded W1)
+-  Driven by the assay profile: prefab pipelines FIRST (§9.4), probed and
++  Driven by the experiment profile: prefab pipelines FIRST (§9.4), probed and
+   compared, tuned before anything custom is authored. Nothing is submitted;
+   every tool here is read-only or writes only draft artifacts.
+ 
+@@ -3115,7 +3153,7 @@
+   "created": "2026-08-12T13:40:02Z",
+   "approved_at": "2026-08-12T13:52:17Z",
+   "question": "Does phase-based edge detection beat the filamentous prefab on the low-contrast plates?",
+-  "assay": "assays/plates.assay.json",
++  "experiment_profile": "profiles/plates.experiment.json",
+   "subset_id": "subsets/plates-dev-24.subset.json",
+   "metadata_csv": "data/tune_layout.csv",
+   "objective": {"scorer": {"class": "QCScorer",
+@@ -3128,7 +3166,7 @@
+     {"id": "prefab-fil", "pipeline": "pipelines/filamentous-prefab.json.pht-pipe",
+      "tune_spec": "tune/filamentous-prefab.setup.json.pht-tune",
+      "pipeline_digest": "sha256:3e91…", "spec_digest": "sha256:c07b…",
+-     "rationale": "baseline — FilamentousFungiPipeline, the assay-matched prefab"},
++     "rationale": "baseline — FilamentousFungiPipeline, the experiment profile-matched prefab"},
+     {"id": "phase", "pipeline": "pipelines/phase-edge.json.pht-pipe",
+      "tune_spec": "tune/phase-edge.setup.json.pht-tune",
+      "rationale": "the hypothesis",
+@@ -3139,7 +3177,7 @@
+ }
+ ```
+ 
+-**Arms reference the assay, and custom arms cite the prefab they beat.**
++**Arms reference the experiment profile, and custom arms cite the prefab they beat.**
+ `prefab_baseline` is the §9.4 convention: an arm whose pipeline is not a prefab
+ or prefab derivative records which prefab came closest and how it scored. The
+ server validates the field's *shape* and that the referenced study exists, but
+@@ -3222,14 +3260,33 @@
+ any future code comparing a campaign's declared scorer against an already-parsed
+ `deliverables/tuning_spec.json.pht-tune` object would hit case 1 directly.
+ 
+-**`status` is provenance, not security.** The server cannot verify that a human
+-approved anything; `campaign_approve` is a call the agent makes *after* you say
+-so in chat. It is recorded so the transcript and the artifact agree, and so
+-Phase 2 has a checkable precondition — not because it authenticates you.
++**`status` is confirmation where the host supports it, provenance where it does
++not.** An earlier draft conceded that "the server cannot verify that a human
++approved anything… an agent could fabricate the field", and mitigated by making
++fabrication explicit rather than silent. **That constraint is no longer real.**
++
++`campaign_approve` raises an **elicitation** — a form the *host* renders and the
++human answers. The response comes from the user's keyboard, not the agent's token
++stream, so approval becomes actual confirmation for the more expensive of the two
++irreversible steps rather than a field the agent fills in.
++
++Three things this does not change, stated so the guarantee is not overread:
++
++- **The fallback is mandatory, not optional.** A host without elicitation gets the
++  previous design exactly — `human_response` required, fabrication explicit — so
++  the server never depends on a capability it cannot confirm. `human_response` is
++  therefore **required-unless-elicited**, a signature decision taken now precisely
++  so adopting elicitation later is not a breaking change.
++- **It is not authentication.** It confirms that *a* human at the host answered,
++  not *which* human, and the server still runs with that user's rights (§6.4).
++- **Behaviour under §1.3's shared connection is unverified.** All subagents share
++  one server, and whether an elicitation raised from a subagent's call surfaces to
++  the human — and to whom it is attributed when two are in flight — must be tested
++  against the real host before this path is relied on.
+ 
+ ## 8.3 Campaign tools
+ 
+-Five tools, bringing the total to 32.
++Four tools.
+ 
+ ### `campaign_put` (`W0`) — draft the plan
+ 
+@@ -3322,16 +3379,16 @@
+ change the arm set mid-launch. Writes to `campaign.json` are atomic and CAS on
+ `status` (§2.6).
+ 
+-### `campaign_get` (`W0`) — read the stored campaign back
++### `campaign_status {detail:"artifact"}` — read the stored campaign back
+ 
+-`{campaign_id}` → the `campaign.json` artifact verbatim: arms with their
++`{campaign_id, detail:"artifact"}` → the `campaign.json` artifact verbatim: arms with their
+ `pipeline`, `tune_spec`, `study_id`, `rationale`, `prefab_baseline`, and the
+ `pipeline_digest` / `spec_digest` binding (§8.2), plus the objective, budget,
+-compute, subset, and assay references.
++compute, subset, and experiment-profile references.
+ 
+-**This is the session-recovery entry point.** An agent resuming after a context
++**This is the session-recovery entry point**, and it is a `detail` mode of `campaign_status` rather than a separate tool — mirroring `tune_status` and `deploy_status`, and retiring a sibling pair whose names invited confusion. An agent resuming after a context
+ compaction typically holds one thing: a campaign id. `campaign_status` reports
+-*progress* per arm but not the artifact ids, so without `campaign_get` the only
++*progress* per arm but not the artifact ids, so without `detail:"artifact"` the only
+ route back to a winning arm's pipeline was to know, unprompted, to call
+ `workspace_lineage {id: study_id}` and trace `tune.start`'s `parent` — a path
+ this spec named nowhere.
+@@ -3339,8 +3396,8 @@
+ **Recovery procedure**, stated once so it is not folklore:
+ 
+ ```
+-campaign_get {campaign_id}        -> arms, their pipeline/tune_spec/study_id,
+-                                     subset_id, assay, objective
++campaign_status {campaign_id, detail:"artifact"} -> arms, pipeline/tune_spec/study_id,
++                                     subset_id, experiment_profile, objective
+ campaign_status {campaign_id}     -> where each arm actually got to
+ workspace_lineage {id: <study>}   -> only if you need the provenance chain
+ ```
+@@ -3420,18 +3477,18 @@
+ ```
+ you:   "new Aspergillus set, low-contrast plates. Otsu is under-segmenting."
+ 
+-agent: [skill: phenotypic-assay-triage]
++agent: [skill: phenotypic-experiment-triage]
+        → asks: morphology? expected colonies/plate? → you: "filamentous, 96"
+        pipeline_put {name:"fil-prefab", from_prefab:"FilamentousFungiPipeline"}
+        pipeline_probe {pipeline_id:"fil-prefab", …} to measure contrast/separation
+        → fil-prefab now exists and is reused below; re-materializing it would
+          return already_exists (§2.2 collision policy)
+-       → writes assay.json: morphology filamentous (human), contrast low (probe),
++       → writes the experiment profile: morphology filamentous (human), contrast low (probe),
+          separation touching (probe), 8x12 arrayed
+ 
+ agent: [skill: phenotypic-pipeline-construction — prefab-first]
+        catalog_operations {category:"Prefab"}
+-       → assay says filamentous + touching → candidates:
++       → the profile says filamentous + touching → candidates:
+          FilamentousFungiPipeline (3 ops), HeavyWatershedPipeline (15)
+        pipeline_put {name:"watershed", from_prefab:"HeavyWatershedPipeline"}
+        (fil-prefab already materialized during triage — reuse, do not re-put)
+@@ -3561,7 +3618,7 @@
+ 
+ ### Where it sits relative to prefab-first
+ 
+-The two compose rather than compete: **start from the assay-matched prefab, then
++The two compose rather than compete: **start from the experiment profile-matched prefab, then
+ iterate from there.** The prefab is the starting point of the loop, not an
+ alternative to it — most explorations are "the prefab gets 61 of 96; what one
+ change closes the gap?", which is a far better-posed question than building from
+@@ -3632,14 +3689,14 @@
+ The clean statement: **the server makes wrong things impossible; the skill makes
+ right things likely.**
+ 
+-## 9.3 Upfront assay characterization
++## 9.3 Upfront experiment characterization
+ 
+-Pipeline choice is driven by traits of the *assay*, not by the image file.
++Pipeline choice is driven by traits of the *experiment*, not by the image file.
+ Several of the decisive ones cannot be measured from a plate image at all —
+ whether the organism is filamentous or yeast-like is something you know and the
+ agent does not.
+ 
+-So Phase 1 (§8.1) opens with an **assay triage**, producing a durable artifact:
++So Phase 1 (§8.1) opens with an **experiment-profile triage**, producing a durable artifact:
+ 
+ ### 9.3.0 The extensibility rule
+ 
+@@ -3655,7 +3712,7 @@
+ Adding a trait requires no server change, no schema bump, and no code — only a
+ new row in the skill-owned registry (§9.3.4).
+ 
+-`<workspace>/assays/<dataset>.assay.json`
++`<workspace>/profiles/<dataset>.experiment.json`
+ 
+ ```json
+ {
+@@ -3696,6 +3753,62 @@
+ required a registry row in the skill and **nothing else** — no server change, no
+ `schema_version` bump, no migration.
+ 
++### 9.3.0.2 Multi-group experiments — `group_by` and per-group overrides
++
++One experiment routinely holds several **species × media groups**, and they can
++need different pipelines, different parameters, and **different expected counts** —
++which is the scorer, not merely the pipeline. An earlier draft assumed
++homogeneity in three places at once: one profile per dataset, one `pipeline_id`
++per deploy (§5.4), one scorer per campaign (§8.2).
++
++**Grouping is by one or more metadata columns, named on the profile.** Not by
++directory layout: `scan_directory_structure`'s one-subdirectory-level rule cannot
++express `species × medium`, and the agent must be able to state the grouping it
++cares about rather than inherit whatever the tree happens to encode.
++
++```json
++{
++  "group_by": ["Metadata_Species", "Metadata_Medium"],
++  "traits": { "plate.format": {"value":"arrayed","source":"human"},
++              "imaging.modality": {"value":"flatbed_scanner","source":"metadata"} },
++  "groups": {
++    "neurospora|minimal": {
++      "traits": {"organism.morphology": {"value":"filamentous","source":"human"},
++                 "medium.opacity": {"value":"clear","source":"human"}}},
++    "aspergillus|rich": {
++      "traits": {"organism.morphology": {"value":"filamentous","source":"human"},
++                 "colony.contrast_vs_background": {"value":"low","source":"human"}}}
++  }
++}
++```
++
++Experiment-wide traits live in `traits`; a group's entry **overrides** them by
++key. `plate.format` and `imaging.modality` are usually shared;
++`organism.morphology`, `colony.contrast_vs_background` and `medium.opacity` are
++exactly what differs. The envelope needs no change — unknown keys already
++round-trip and every trait is already individually optional (§9.3.0.1).
++
++**The strategy is general-first.** Try one pipeline across the whole experiment,
++and descend to per-group only where evidence requires it — the same discipline as
++§9.4's prefab-first rule, and for the same reason: specializing before you have
++evidence buys complexity you cannot justify later. This is judgment, so per §9.1
++it lives in the skill; what the server must supply is the **mechanism** and the
++**signal**.
++
++- **Mechanism.** A subset selector may filter to a group, not merely stratify
++  across groups (§10.3) — `MetadataGroupSubsetSelector` already joins the CSV to
++  images, and selecting one group is that join with a predicate. A per-group
++  campaign then falls out of a per-group subset with no campaign change, and
++  §8.2's one-scorer invariant holds *within* a group, which is the only place it
++  was ever meaningful: comparing an *Aspergillus* arm against a *Neurospora* arm
++  never was. Per-group deploy follows from staging (§10.3.1), which already
++  materializes a subset as a directory tree.
++- **Signal.** `campaign_status` reports a **per-group cost breakdown** whenever
++  the subset is group-aware. Without it the strategy is unactionable: a winner
++  scoring 0.08 overall while failing one group entirely is invisible on a single
++  aggregate cost — the same shape as §9.3.3's worst failure, where a wrong
++  `plate.nrows` makes every arm's cost meaningless while looking healthy.
++
+ ### 9.3.0.1 The trait envelope
+ 
+ Every entry in `traits` has the same shape, and this is the only structure the
+@@ -3712,7 +3825,7 @@
+ **Unknown trait keys round-trip verbatim.** The server preserves any trait it
+ does not recognize, rather than dropping or rejecting it — the opposite of
+ pydantic's `extra="forbid"` used elsewhere in this codebase, and a deliberate
+-inversion. An older server reading a newer skill's assay must not silently
++inversion. An older server reading a newer skill's profile must not silently
+ discard a trait; silent loss of a trait that drove a pipeline decision would
+ make the artifact actively misleading. Forward compatibility is a correctness
+ property here, not a convenience.
+@@ -3853,7 +3966,7 @@
+ | Wrong field | What happens | Caught by? |
+ |---|---|---|
+ | **`plate.nrows`/`ncols`** | `QCScorer` scores against wrong expected counts, so **the objective itself is wrong**. Tuning optimizes toward a false target and every arm's cost is meaningless — while looking perfectly healthy. | **Nothing.** The worst failure in the system. |
+-| **`morphology: round`** when filamentous | A peak detector finds one "colony" per dense region. Counts come out *plausible*, so QC may not flag it; the assay is silently under-counted. | Weakly — a size distribution with implausibly large objects |
++| **`morphology: round`** when filamentous | A peak detector finds one "colony" per dense region. Counts come out *plausible*, so QC may not flag it; the experiment profile is silently under-counted. | Weakly — a size distribution with implausibly large objects |
+ | `morphology: filamentous` when round | Over-segmentation and hyphal metrics that measure noise | Probe object count far above expectation |
+ | `separation: well_separated` when touching | Merged colonies counted as one; size distribution skews high with a long tail | Probe: count below expected, size tail |
+ | `contrast: high` when low | Agent picks an Otsu prefab and tunes detector params, when the real fix was enhancement. Budget burned in the wrong subspace. | Probe: low object count, poor best-cost plateau |
+@@ -3872,7 +3985,7 @@
+ so traits and their routing rules can be added and audited without rewriting
+ procedure text.
+ 
+-`.claude/skills/phenotypic-assay-triage/traits.yaml`
++`.claude/skills/phenotypic-experiment-triage/traits.yaml`
+ 
+ ```yaml
+ version: 3
+@@ -3950,9 +4063,9 @@
+ 
+ **And the server never *acts* on a trait.** No trait value gates any tool's
+ behaviour anywhere in the catalog — not scorer choice, not subset requirements,
+-not GPU routing, not operation filtering. `assay_put` and `assay_get` are the
+-only tools that touch the artifact; `campaign_put` stores the `assay` reference
+-as a string without even checking the file resolves. **The assay is provenance
++not GPU routing, not operation filtering. `experiment_profile_get` is the
++only tools that touch the artifact; `campaign_put` stores the `experiment_profile` reference
++as a string without even checking the file resolves. **The experiment profile is provenance
+ for humans and input for skills; it is not an interlock.**
+ 
+ That is deliberate (§9.1), but it should be read alongside §9.3.3's failure
+@@ -3977,7 +4090,7 @@
+ | Add `imaging.lid_glare: [none, mild, severe]` to `traits.yaml` | skill | **no** |
+ | Add a `rules:` row preferring a glare-tolerant enhancer | skill | **no** |
+ | Skill starts asking about it in triage | skill | **no** |
+-| Existing assays without the trait keep validating | — | **no** — traits are individually optional |
++| Existing profiles without the trait keep validating | — | **no** — traits are individually optional |
+ | A newer skill's assay read by an older server | — | **no** — unknown keys round-trip |
+ 
+ The only thing that would force a server change is a new **provenance** kind —
+@@ -3986,7 +4099,7 @@
+ 
+ ### 9.3.7 Scope
+ 
+-**One assay profile per dataset**, at `<workspace>/assays/<dataset>.assay.json`.
++**One experiment profile per dataset**, at `<workspace>/profiles/<dataset>.experiment.json`.
+ A workspace routinely holds more than one organism; a single per-workspace
+ profile is correct until the day you add a second, and then it is silently wrong
+ with no signal. Campaign arms reference the profile by path, so a leaderboard
+@@ -4017,7 +4130,7 @@
+ the label. An agent ordering candidates by expected cost should use this column,
+ not the adjective in the docstring.
+ 
+-### Assay profile → candidate prefabs
++### Experiment profile → candidate prefabs
+ 
+ This table is the human-readable rendering of the `rules:` block in
+ `traits.yaml` (§9.3.4). It is **skill data, not server logic** — exactly the kind
+@@ -4028,7 +4141,7 @@
+ constrains which detector family can work at all, whereas contrast and
+ separation only modulate how much enhancement and refinement are needed.
+ 
+-| Assay signal | First candidates |
++| Profile signal | First candidates |
+ |---|---|
+ | `morphology: filamentous` | `FilamentousFungiPipeline` (3) |
+ | `morphology: round` + `separation: well_separated` + `contrast: high` | `RoundPeaksPipeline` (2) — genuinely the cheapest that can work |
+@@ -4049,7 +4162,7 @@
+ 
+ ### The procedure
+ 
+-1. Pick candidate prefabs from the assay profile — usually one or two, three at
++1. Pick candidate prefabs from the experiment profile — usually one or two, three at
+    most.
+ 2. **Materialize each**: `pipeline_put {name:"fil-prefab",
+    from_prefab:"FilamentousFungiPipeline"}`. A bare class name from the catalog
+@@ -4089,11 +4202,11 @@
+ tool sequence, so an agent that loads it knows both *what to do* and *which
+ tools do it*.
+ 
+-### `phenotypic-assay-triage`
++### `phenotypic-experiment-triage`
+ 
+ **When:** at the start of any new dataset, before any pipeline exists.
+-**Produces:** `assays/<dataset>.assay.json` **and** `subsets/<name>.subset.json`.
+-**Tools:** `assay_put`, `assay_get`, `subset_put`, `subset_get`,
++**Produces:** `profiles/<dataset>.experiment.json` **and** `subsets/<name>.subset.json`.
++**Tools:** `experiment_profile_get`, `subset_put`, `subset_get`,
+ `pipeline_probe`, `catalog_operations`.
+ **Procedure:**
+ 
+@@ -4105,7 +4218,8 @@
+ 4. Probe 2–4 subset images to measure contrast (`michelson_percell_median`,
+    §9.3.2 — **not** Otsu's η, which §9.3.2 refutes as scale-invariant) and
+    separation.
+-5. `assay_put` with every trait carrying its `source`; `subset_put` with the
++5. Write the profile with every trait carrying its `source` (the skill writes the
++   file directly — there is no `_put` tool); `subset_put` with the
+    measured `coverage` range.
+ 
+ **Hard rule it teaches:** never write `source: "human"` for something the human
+@@ -4118,7 +4232,7 @@
+ **Procedure:** §9.4 — prefab-first, probe-compare, tune-before-authoring, and the
+ justification convention for custom pipelines.
+ **Tools:** `catalog_operations`, `catalog_operation_detail`, `pipeline_put`,
+-`pipeline_probe`, `pipeline_patch`, `pipeline_diff`.
++`pipeline_probe`, `pipeline_patch`.
+ **Hard rule it teaches:** a probe result is evidence about *those two images*.
+ Two probes are not a validation.
+ 
+@@ -4130,9 +4244,9 @@
+ arm and a control arm, not only the hypothesis; size the budget from the probe
+ timing; narrow `needs_review` domains rather than accepting inferred bounds.
+ **Tools:** `tune_space`, `tune_put_spec`, `campaign_put`, `campaign_approve`,
+-`campaign_start`, `campaign_status`, `campaign_get`.
++`campaign_start`, `campaign_status`.
+ 
+-**Recovery:** resuming with only a campaign id, call `campaign_get` first — it
++**Recovery:** resuming with only a campaign id, call `campaign_status {detail:"artifact"}` first — it
+ returns the arms' `pipeline`/`tune_spec`/`study_id`, which `campaign_status` does
+ not carry. Then `campaign_status` for progress, and `workspace_lineage {id}` only
+ if you need the provenance chain (§8.3).
+@@ -4143,16 +4257,16 @@
+ ### `phenotypic-deploy-and-verify`
+ 
+ **When:** a winner exists and a full dataset is to be processed.
+-**Tools:** `deploy_plan`, `promotion_request`, `promotion_approve`,
+-`deploy_start`, `deploy_status`, `workspace_cancel`.
++**Tools:** `deploy_plan`, `deploy_start`, `deploy_status`, `workspace_cancel`.
+ **Procedure:**
+ 
+-1. `promotion_request` — assemble the decision: winner provenance, subset score
+-   and held-out gap, measured full-dataset estimate, coverage warnings.
++1. `deploy_plan {scope:"full"}` — assembles the decision: winner provenance,
++   subset score and held-out gap, measured full-dataset estimate, coverage
++   warnings, and the header sweep (§10.6.1).
+ 2. **Show the human that response and wait.** This is the gate; it is not
+    optional and it is not something the agent can conclude on its own.
+-3. `promotion_approve` only after they say so, then
+-   `deploy_plan {scope:"full"}` → `deploy_start {scope:"full"}`.
++3. `deploy_start {scope:"full"}` only after they say so, using the plan token
++   that approval minted.
+ 4. Poll `manifest.json`, not exit codes — without `--wait` the CLI exits 0 on
+    submission.
+ 5. Verify against the mirror (`measurements.*`), never the master, and report
+@@ -4181,7 +4295,7 @@
+ 
+ **Skills are authored in-repo** at `.claude/skills/phenotypic-*/SKILL.md`, so
+ they version in lockstep with the tool contract. This matters concretely: a skill
+-that instructs the agent to call `pipeline_diff` is *wrong* until that tool
++that instructs the agent to call a tool is *wrong* until that tool
+ exists, and only co-versioning makes that a reviewable diff rather than a
+ runtime surprise.
+ 
+@@ -4229,9 +4343,9 @@
+ 
+ - ~~OQ-9.1 skill packaging~~ → in-repo authoring plus a
+   `phenotypic-mcp setup` installer (§9.7).
+-- ~~OQ-9.2 assay scope~~ → **per-dataset**, at
+-  `<workspace>/assays/<dataset>.assay.json` (§9.3.7).
+-- ~~OQ-9.3 assay validation~~ → **structure and provenance only**. The server
++- ~~OQ-9.2 profile scope~~ → **per-dataset**, at
++  `<workspace>/profiles/<dataset>.experiment.json` (§9.3.7).
++- ~~OQ-9.3 profile validation~~ → **structure and provenance only**. The server
+   checks shape, required keys, and `source ∈ {human, probe, metadata,
+   inferred}`; it never validates biological values, so the domain vocabulary can
+   grow without a server release (§9.3.4).
+@@ -4508,7 +4622,7 @@
+ 
+ Records `selection.method: "user_named"` with the note. A human-picked subset is
+ first-class — `user_named` is a selection method, not a lesser one — and this is
+-the call `phenotypic-assay-triage` step 3 makes when you name the images
++the call `phenotypic-experiment-triage` step 3 makes when you name the images
+ yourself.
+ 
+ `subset_get {name}` returns the artifact plus whether staging used symlinks or
+@@ -4637,7 +4751,7 @@
+ opt-in.
+ 
+ The single exception is `scope: "full"`, which is the *point* of the promotion
+-gate and is guarded by `promotion_token`.
++gate and is guarded by a `scope:"full"` `plan_token` carrying the human ack (§10.5).
+ 
+ ## 10.4 What runs unattended (resolves OQ-8.1 and OQ-8.2)
+ 
+@@ -4662,89 +4776,82 @@
+ ## 10.5 The promotion gate
+ 
+ ```
+-promotion_request → [human says yes] → promotion_approve
+-                                            ↓
+-                          deploy_plan  {scope:"full"}   ← plan_token for the PARENT
+-                                            ↓
+-                          deploy_start {scope:"full"}   ← plan_token + promotion_token
+-```
+-
+-**Both** `deploy_plan` and `deploy_start` take `scope`. This matters: a campaign
+-arm can mint a `plan_token` only for `scope:"subset"` (§10.4), so a full-dataset
+-run has no other way to obtain one — the plan must be drawn explicitly against
+-the parent, which is also what produces the sbatch preview and array sizing for
+-480 images rather than 24.
+-
+-| `scope` | Requires | Runs against |
+-|---|---|---|
+-| `"subset"` (default) | `plan_token` | the subset's image list; reachable from a campaign arm |
+-| `"full"` | `plan_token` (scope=full) **and** `promotion_token` | `subset.parent` |
+-
+-`promotion_request` assembles the decision you are actually making, in one
+-response:
++deploy_plan  {scope:"full"}   → the decision, + an elicitation → [human says yes]
++                                     ↓
++deploy_start {scope:"full"}   ← the plan_token minted by that approval
++```
++
++**One gate, one token.** An earlier draft had a separate `promotion_request` →
++`promotion_approve` pair minting a second `promotion_token`, and this section's
++own text retired it: *"a campaign arm can mint a `plan_token` only for
++`scope:"subset"`, so a full-dataset run has no other way to obtain one — the plan
++must be drawn explicitly against the parent."* That already closes the loop. The
++plan token binds the pipeline digest and the parent digest, expires, and is
++single-use — every property a second token would add.
++
++What promotion genuinely contributed was **content**, not a second lock, so the
++content moves onto `deploy_plan {scope:"full"}`'s response, which already carries
++`pending_human_ack` and `ack_prompt`:
+ 
+ ```json
+ {"ok":true,"data":{
++  "scope":"full",
+   "pipeline":"pipelines/edge-v3-tuned.json.pht-pipe",
+   "provenance":{"from_study":"studies/phase-edge","trial":47,
+                 "prefab_baseline":{"pipeline":"FilamentousFungiPipeline","best_cost":0.31}},
+   "subset":{"name":"plates-dev-24","n_images":24,
+             "score":0.081,"gap":{"value":0.06,"verdict":"ok"}},
+   "full":{"path":"data/plates","n_images":480,"digest_matches_parent":true},
+-  "estimate":{"node_hours":18.4,"basis":"subset run: 3.4 s/image measured"},
++  "estimate":{"node_hours":18.4,"basis":"subset run: 3.4 s/image measured",
++              "extrapolation_check":"headers match (1024x1536, 16-bit, 3ch across
++                                     all 480); no re-probe needed"},
++  "plan_token":"pl_7f3a…","plan_expires":"2026-08-20T09:12:00Z",
++  "pending_human_ack":true,
++  "ack_prompt":"Deploy edge-v3-tuned across 480 images (~18.4 node-hours)? Subset
++                score 0.081, held-out gap 0.06 (ok). Coverage unverified.",
+   "warnings":[
+     {"code":"subset_coverage_unverified",
+-     "message":"Subset spans contrast_michelson 0.031–0.094 across 4 measured images. The
+-                parent's 480 images were NOT characterized, so whether the subset
+-                represents them is unknown, not confirmed. Selection was
+-                'user_named'."}]}}
++     "message":"Subset spans contrast_michelson 0.031–0.094 across 4 measured images.
++                The parent's 480 images were NOT characterized, so whether the subset
++                represents them is unknown, not confirmed. Selection was 'user_named'."}]}}
+ ```
+ 
+-Two properties this must have:
++**The elicitation fires here**, not two calls earlier — at the point of spend
++rather than at the start of a sequence the agent could still abandon. As in §8.2
++it is confirmation where the host supports it and provenance where it does not,
++with `human_response` required-unless-elicited and the same three caveats: the
++fallback is mandatory, it is not authentication, and behaviour under §1.3's
++shared connection is unverified.
++
++| `scope` | Requires | Runs against |
++|---|---|---|
++| `"subset"` (default) | `plan_token` | the subset's image list; reachable from a campaign arm |
++| `"full"` | `plan_token` minted at `scope:"full"` **with the human ack recorded** | `subset.parent` |
++
++The token binds `(pipeline digest, parent digest, scope)`. If the full dataset
++gained images between the plan and the submission, the token is stale and the
++decision is made again with `code: "plan_stale"` — the property `promotion_stale`
++used to provide.
++
++**Two properties this must keep**, unchanged from the two-tool design:
+ 
+ - **The estimate is measured, not guessed.** The subset run already produced real
+-  per-image timing, so the full-dataset node-hour figure has a basis. This is the
+-  strongest argument for subset-first development independent of safety: it makes
+-  the cost of the expensive step *knowable* before you commit.
++  per-image timing, so the node-hour figure has a basis. This is the strongest
++  argument for subset-first development independent of safety: it makes the cost
++  of the expensive step *knowable* before you commit.
+ - **Coverage is reported honestly, including its limits.** A winner tuned on 24
+-  easy plates may fail on the hard ones, and cost alone cannot reveal that. But
+-  v1 measures traits only on the subset — §10.3 rules full-parent
+-  characterization out of scope precisely because it is a substantial compute
+-  job. So the warning says the subset's range is **unverified against the
+-  parent**, not that a specific number of parent images fall outside it.
+-  Claiming the latter would require exactly the dataset-wide probing v1 defers,
+-  and asserting it anyway would be the more dangerous error: a false assurance
+-  of representativeness is worse than an admitted unknown.
++  easy plates may fail on the hard ones, and cost alone cannot reveal that. v1
++  measures traits only on the subset, so the warning says the range is
++  **unverified against the parent** — not that a specific number of parent images
++  fall outside it. Claiming the latter would need exactly the dataset-wide probing
++  v1 defers, and asserting it anyway is the more dangerous error: a false
++  assurance of representativeness is worse than an admitted unknown.
+ 
+ **Full scope bypasses staging deliberately**, running against `subset.parent`
+ directly — the `flat/`+`nested/` split (§10.3.1) exists only for subset-scoped
+-work. The parent's *structure* is not re-scanned at promotion, and does not need
+-to be: a structural regression (say a stray image dropped beside the `plateA/`
+-subdirectories, which would trip `scan_directory_structure`'s mixed-structure
+-rejection at submit time) also changes the parent's file-set digest, so
+-`digest_matches_parent: false` catches it first and forces a fresh
+-`promotion_request`. Stated because §10.3.1 makes fidelity an explicit check for
+-staging, and a reader is entitled to ask why the full path has no equivalent.
+-
+-`promotion_approve {promotion_id, human_response, note?}` records the decision,
+-mints the token, and appends a lineage row:
+-
+-```json
+-{"ok":true,"data":{"promotion_id":"prom_2c81","status":"approved",
+-  "promotion_token":"pm_5d17…","expires":"2026-08-14T09:12:00Z"}}
+-```
+-
+-`promotion_request`'s response carries `pending_human_ack: true` and an
+-`ack_prompt` summarizing the ask (winner, subset score, gap, node-hours,
+-coverage warnings), and `human_response` here is required — same reasoning as
+-§8.3: it cannot authenticate, but it makes skipping the human an explicit
+-fabrication rather than a silent default. The token is bound to `(pipeline digest, parent digest, scope)` — if the
+-full dataset gained images since the request, the token is stale and the review
+-happens again with `code: "promotion_stale"`.
+-
+-**The server cannot verify a human approved.** As with campaign approval (§8.2),
+-`promotion_approve` is a call the agent makes after you say so in chat. It is
+-provenance so the artifact and the transcript agree, not authentication.
++work. The parent's *structure* is not re-scanned at promotion and does not need to
++be: a structural regression also changes the parent's file-set digest, so
++`digest_matches_parent: false` catches it first and forces a fresh plan.
+ 
+ ## 10.6 Risks worth stating
+ 
+@@ -4842,8 +4949,21 @@
+   measured estimate.
+ # PhenoTypic MCP Server — Design Spec
+ 
+-**Status:** draft. All ten sections reviewed by independent reviewers and
+-revised — six blockers found and fixed across five review passes.
++**Status:** draft, **refinery round 1 applied**. Ten sections, nine review
++passes: five original, then an MCPB/deployment evaluation, an interface audit
++against official MCP guidance, and a four-reviewer refinery panel (general,
++data-flow, simplicity, concurrency) that returned **63 concerns and four REVISE
++verdicts**. Fifteen user rulings are recorded in `refinery/ledger.md` with their
++rationale.
++
++**What round 1 changed:** the catalog went **32 tools → 26** — promotion folded
++into `deploy_plan {scope:"full"}`, the `assay` artifact became
++`experiment_profile`, and `mode`/`layer`/`sample` left the deploy tools. §8.2's
++concession that the server "cannot verify that a human approved anything" was
++retired in favour of **elicitation**. §9.3 gained **multi-group experiments**
++(`group_by` + per-group trait overrides). And §3.2 gained the advisory that stops
++an agent repeating an edit it already rejected — a gap none of the 63 concerns
++found.
+ **Date:** 2026-08-12
+ 
+ ## What this is
+@@ -4853,7 +4973,7 @@
+ — locally or on SLURM.
+ 
+ The intended UX is **collaborative planning, then delegated execution, on a
+-subset**: you and the agent characterize the assay and pick a development
++subset**: you and the agent characterize the experiment profile and pick a development
+ subset, decide what is worth trying, write that agreement down as a *campaign*,
+ and the agent executes it across parallel subagents without you in the loop —
+ **bounded to the subset**. The full dataset is touched once, after a separate
+@@ -4883,7 +5003,7 @@
+ | 6 | [06-errors-limits-testing.md](06-errors-limits-testing.md) | Error taxonomy, limits, safety boundary, test plan |
+ | 7 | [07-prerequisites.md](07-prerequisites.md) | P1 JournalStorage backend, P2 promotion, P3 catalog+descriptor, P4 `--screen` guard, rollout |
+ | 8 | [08-workflow-and-campaigns.md](08-workflow-and-campaigns.md) | The phased UX and the campaign artifact |
+-| 9 | [09-responsibilities-and-skills.md](09-responsibilities-and-skills.md) | Server-vs-skill boundary, assay triage, prefab-first construction, the four bundled skills |
++| 9 | [09-responsibilities-and-skills.md](09-responsibilities-and-skills.md) | Server-vs-skill boundary, experiment-profile triage, prefab-first construction, the four bundled skills |
+ | 10 | [10-subsets-and-promotion.md](10-subsets-and-promotion.md) | The development subset as the unit of work, the `SubsetSelector` hierarchy, and the promotion gate before full-dataset compute |
+ 
+ ## Executable evidence
+@@ -4957,5 +5077,5 @@
+ workspace root (`--workspace`, defaulting to CWD) · defaulting (explicit always)
+ · deploy gate (plan-then-submit mandatory) · distributed storage (JournalStorage
+ backend, gated on L1) · skill packaging (in-repo + `phenotypic-mcp setup`) ·
+-assay scope (per-dataset) · assay validation (structure and provenance only —
++profile scope (per-dataset) · profile validation (structure and provenance only —
+ never biology).

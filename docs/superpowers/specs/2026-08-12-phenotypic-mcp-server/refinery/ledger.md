@@ -285,3 +285,30 @@ scorer, not merely the pipeline.
 **Open for round 2:** whether `group_by` lives on the profile, the subset, or
 both; the `scope:"full"` semantics above; and whether the per-group breakdown is
 a `campaign_status` field or a scorer responsibility.
+
+---
+
+## Round 1 → 2 status: what the rulings actually resolved
+
+**Applied** (verify these, do not re-raise): SIMP-1 (promotion folded into
+`deploy_plan {scope:"full"}`), SIMP-3 (`mode`/`layer`/`sample` gone), CONC-12
+(§1.5 states local batch suspends probing), FLOW-3 (§2.3 root mandatory and must
+contain the data), GEN-1 (D1a/D5/D6 written into §1.4/§3.0/§8.2/§10.5), USER-9
+(`edit_previously_tried` advisory), USER-13 (rename), USER-15 (§9.3.0.2
+multi-group).
+
+**Partially applied:** SIMP-2 (`experiment_profile_put` cut, `_get` **kept** —
+see USER-8's rationale), SIMP-13 (`pipeline_diff` and `campaign_get` cut;
+`get{raw}` and `save_overlay` **not** cut), SIMP-14 (`catalog_measurements` cut;
+Task 10c **undecided**), FLOW-5 (`mode` corrected; the continuation semantics and
+`output_not_empty` inversion **not** addressed).
+
+**Still open — the bulk.** Both concurrency Criticals (CONC-1 slot release across
+the thread boundary, CONC-2 orphan claims the slot with nothing to release it);
+FLOW-1/2 (probe measures a frame no engine uses); FLOW-4 (`flat/` staging
+collision); FLOW-6..16; GEN-2..12; SIMP-4..12, 15..17.
+
+**Three questions deliberately left for round 2** (from USER-15): whether
+`group_by` lives on the profile, the subset, or both; what `scope:"full"` means
+for a group-scoped subset; and whether the per-group cost breakdown belongs to
+`campaign_status` or to the scorer.
