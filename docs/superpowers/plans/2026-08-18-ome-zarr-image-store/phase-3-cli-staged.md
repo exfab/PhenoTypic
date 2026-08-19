@@ -1266,11 +1266,32 @@ In `classify_staged_image`, change only the probes (lines 196–221):
     ):
         return "complete"
 
+    # An explicit branch, NOT `stage2_done and raw.is_file()` (ledger FLOW-40).
+    # The token is only a flag; Stage 3's real INPUT is the raw .npy. Without
+    # this, a token-present/raw-missing image classifies "stage3" forever: the
+    # worker reports a missing prereq rather than a scientific failure -- an
+    # improvement -- but nothing ever routes it back to Stage 2, so it cannot
+    # recover.
+    #
+    # It must NOT be folded into `stage2_done`, because `not stage2_done` is a
+    # conjunct of the "complete" branch above: ANDing the raw in would flip a
+    # token-present/raw-missing image that has a parquet all the way to
+    # "complete".
+    if stage2_done and not stage2_raw_path(output_dir, dataset, stem).is_file():
+        return "stage2"
+
     return "stage3" if stage2_done else "stage2"
 ```
 
 Update `migrate_legacy_stage3_markers`, `clear_downstream_artifacts_for_stage1`, and
 `reconcile_stage3_publications` to use the store path and the token.
+
+**Both artifact-clearing sites in this file must clear the token AND the raw `.npy`** —
+`clear_downstream_artifacts_for_stage1` (`:318`) and `reconcile_stage3_publications`
+(`:364`). Token first at each, for the reason given in Task 3.3: deleting the raw and
+leaving the token makes the next Stage 3 replay into a `FileNotFoundError`, while the
+reverse merely orphans a `.npy`. Task 3.5 counts these among the six `delete_sidecar`
+sites, but **this task owns the file** (ledger **M6**).
 
 > **`clear_downstream_artifacts_for_stage1` deletes nothing extra.** An earlier draft of
 > this task said it must `rmtree` the store because "an `unlink` there raises
@@ -1434,18 +1455,25 @@ exercised and the test passes while production breaks (see Task 3.8)."
   concept is how the next reader concludes sidecars still exist.
 - `_cli_staged_slurm_worker.py:409` deletes the token on the work-id path. That is the
   counterpart to Task 3.3's preserved `work_id is None` guard; both must remain.
-- **`classify_staged_image` needs an explicit token-present/raw-missing branch** (ledger
-  **FLOW-40**). Fixing the SLURM worker's probe alone leaves the classifier computing
-  `stage2_done = stage2_token_exists(...)` and returning `"stage3" if stage2_done else
-  "stage2"`, so such an image is classified `"stage3"` **forever**: the worker now reports a
-  missing prereq instead of a scientific failure — an improvement — but nothing ever routes
-  it back to Stage 2, so it cannot recover.
+- **`classify_staged_image`'s token-present/raw-missing branch is Task 3.4's**, not this
+  task's — `_cli_staged_resume.py` is in 3.4's `Files:`, not ours, and 3.4 executes first.
+  The probe fix below is the half that belongs here; the classifier half must already be in
+  place for it to route anywhere.
 
-  **Do not simply AND the raw into `stage2_done`.** `not stage2_done` is a conjunct of the
-  `"complete"` branch, so the AND would flip a token-present/raw-missing image that has a
-  parquet all the way to `"complete"`. Add a separate branch: if the token exists and the raw
-  does not, return `"stage2"`.
-- **Stage 3's prereq probe must test BOTH the token and the raw array** (ledger **FLOW-17**).
+  > **Relocated (ledger C4).** An earlier draft put the classifier instruction in *this*
+  > task while Task 3.4 shipped the unpatched `return "stage3" if stage2_done else "stage2"`
+  > — so an executor would build the defect in 3.4, and only later read that it should not
+  > have. The two tasks are in different execution clusters, which makes that unrecoverable
+  > rather than merely awkward. This is the same wrong-task class as FLOW-38/FLOW-39,
+  > recurring on the very finding that named it.
+- **Stage 3's prereq probe must test BOTH the token and the raw array, at ALL FIVE sites**
+  (ledger **FLOW-17**, extended by **M7**). The same `sidecar_exists`-only gate appears at
+  `_cli_staged_strategy.py:175`, `:219` and `:353`, `_cli_staged_slurm_worker.py:196`, and
+  `_cli_staged_controller.py:81`. An earlier draft named only the SLURM worker; fixing one
+  leaves the other four routing a token-present/raw-missing image into Stage 3, where
+  `load_stage2_raw` raises inside `stage_event` and is reported as a terminal *scientific*
+  failure. Combined with the classifier branch (Task 3.4), such an image is otherwise
+  permanently unreachable.
   `_cli_staged_slurm_worker.py:352-360` gates Stage 3 on `sidecar_exists`, and Task 3.4 maps
   that to `stage2_token_exists`. But the token is now only a *flag*; Stage 3's actual **input**
   is the `.npy`. A token-present/raw-missing state (a partial cleanup, a truncated copy) raises
@@ -1456,7 +1484,8 @@ exercised and the test passes while production breaks (see Task 3.8)."
   There are **six**, all verified present: `_cli_staged_workers.py:258` (guarded),
   `_cli_staged_strategy.py:246` (local Stage 3, unconditional) and `:382`
   (`_export_objmap_layer`), `_cli_staged_slurm_worker.py:409`,
-  `_cli_staged_resume.py:364` (`reconcile_stage3_publications`), and
+  `_cli_staged_resume.py:364` (`reconcile_stage3_publications` — **Task 3.4 owns both
+  `_cli_staged_resume.py` sites and carries the instruction**, ledger M6), and
   `_cli_staged_resume.py:318` inside `clear_downstream_artifacts_for_stage1`.
 
   > **Miscount corrected (ledger FLOW-18).** An earlier draft said "five". The sixth site,

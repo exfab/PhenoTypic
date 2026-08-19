@@ -777,7 +777,7 @@ keeping Windows paths under MAX_PATH."
   def objmap_path(primary: str) -> str
   def build_phenotypic_attributes(*, image_class, series_names, pyramid_levels,
                                   metadata_sections, detect_mode, illuminant, gamma,
-                                  grid=None, work_id=None,
+                                  has_labels: bool = True, grid=None, work_id=None,
                                   phenotypic_version=None) -> dict
   def read_root_attributes(store_path: Path) -> dict
   def read_phenotypic_attributes(store_path: Path) -> dict
@@ -786,6 +786,16 @@ keeping Windows paths under MAX_PATH."
 **Constraints specific to this task:**
 - `series` and `labels` are **separate keys**: `series` maps a logical layer name to a
   group name, `labels` maps a label name to a nested path.
+- **`has_labels=False` omits the `labels` key entirely**, for a store written without an
+  objmap — which is what a GUI builder preview of a node that changed no labels is
+  (`save_intermediate_zarr`, Phase 2 Task 2.4). Defaults to `True` so every existing caller
+  is unchanged.
+
+  > **Added (ledger C3).** An earlier draft emitted `labels` unconditionally, so a preview
+  > store **declared** `labels.objmap = "gray/labels/objmap"` for a group that was never
+  > written — and `assert_store_conforms`'s own loop then raised `FileNotFoundError` walking
+  > to it. A guard added downstream in `_assert_reader_level_musts` did not help: it tested
+  > for an *empty* mapping, which nothing produced. The key has to be omitted at the source.
 - `primary_series` returns `"rgb"` when `rgb` is present, `"gray"` otherwise, and
   `objmap_path(primary)` returns `f"{primary}/{LABELS_GROUP}/{OBJMAP_LABEL}"`.
 - `work_id` is a constructor argument, never patched afterwards.
@@ -1154,7 +1164,15 @@ def build_phenotypic_attributes(
         ),
         PhenotypicAttr.IMAGE_CLASS: image_class,
         PhenotypicAttr.SERIES: {name: name for name in series_names},
-        PhenotypicAttr.LABELS: {OBJMAP_LABEL: objmap_path(primary)},
+        # Omitted entirely when the store carries no label image. An earlier
+        # draft emitted this unconditionally, so a preview store written by
+        # `save_intermediate_zarr(layers=("gray",))` DECLARED
+        # `labels.objmap = "gray/labels/objmap"` for a group that does not exist
+        # -- and `assert_store_conforms` then FileNotFoundError'd walking it.
+        # Ledger C3.
+        PhenotypicAttr.LABELS: (
+            {OBJMAP_LABEL: objmap_path(primary)} if has_labels else {}
+        ),
         PhenotypicAttr.PYRAMID: {
             "levels": int(pyramid_levels),
             "stop_px": PYRAMID_STOP_PX,

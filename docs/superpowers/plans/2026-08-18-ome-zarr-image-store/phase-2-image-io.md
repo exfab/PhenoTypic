@@ -1088,11 +1088,40 @@ A corrupt grid_finder warns and falls back, as the HDF path already does."
 - Produces:
   ```python
   def save_intermediate_zarr(self, path, layers: tuple[str, ...]) -> Path
+  def _save_store(self, path, *, series, write_objmap: bool, levels, work_id, durable) -> Path
   ```
   and a builder DAG manifest whose per-node key is `"store"` (not `"hdf"`) holding
   `"<name>.ome.zarr"`.
 
+  > **`series` and `write_objmap` are two different namespaces and must be two different
+  > arguments (ledger C1).** `series` ranges over `SERIES_ORDER = ("rgb","gray","detect_mat")`;
+  > `objmap` is the **label**, written separately and unconditionally by `save2zarr`. An
+  > earlier draft passed `series=tuple(layers)` with `layers ⊆ {rgb,gray,detect_mat,objmap}`,
+  > conflating them — and the real production callers make that fatal, not theoretical:
+  > `_layers_modified_by` (`_core/_pipeline_parts/_image_pipeline_core.py:100-126`) returns
+  > `("detect_mat",)` for **every** `ImageEnhancer` and `("objmap",)` for **every**
+  > `ObjectDetector`/`ObjectRefiner`, and those are what reaches `save_intermediate_zarr` at
+  > `:1046` and `:1052`. `primary_series(("detect_mat",))` raises `ValueError`; `("objmap",)`
+  > additionally `KeyError`s on `arrays["objmap"]`. The feature would have been dead for every
+  > enhancer and every detector while this task's own tests — which use only `("gray",)` and
+  > `("gray","detect_mat")` — passed.
+
 **Constraints specific to this task:**
+- ⚠️ **A preview store ALWAYS co-writes `gray` as its primary series** (user ruling,
+  2026-08-19). `layers` says what the node *changed*; the store additionally carries `gray` so
+  that it has a primary series at all. Without one there is no anchor for `objmap_path`, the
+  `labels` group, or the OME projection, and `primary_series` raises.
+
+  So `save_intermediate_zarr` splits `layers` into the two namespaces and unions in `gray`:
+
+  ```python
+  series = tuple(s for s in ngff_.SERIES_ORDER if s in set(layers) | {"gray"})
+  write_objmap = "objmap" in layers
+  ```
+
+  The alternative — permitting a primary-less store — was rejected: it creates a second store
+  shape that the loader, `assert_store_conforms`, and every reader must special-case forever,
+  to save one small array per preview node. One shape everywhere is worth more than the array.
 - `save_intermediate_zarr` writes a **single-level, no-pyramid** store —
   `levels=1` — a **private** argument on `_save_store`, not a CLI flag. Node previews are
   transient and small; pyramiding them would multiply builder-cache inodes for no gain.
@@ -1241,15 +1270,29 @@ Replace `save_intermediate_layers` with:
         unknown = set(layers) - valid
         if unknown:
             raise ValueError(f"Unknown layer names: {unknown}")
+        # `gray` is unioned in so the store always has a primary series; see the
+        # constraint above. `objmap` is the LABEL and travels separately -- it is
+        # not a member of SERIES_ORDER.
+        wanted = set(layers) | {"gray"}
         return self._save_store(
-            path, series=tuple(layers), levels=1, work_id=None, durable=False
+            path,
+            series=tuple(s for s in ngff_.SERIES_ORDER if s in wanted),
+            write_objmap="objmap" in layers,
+            levels=1,
+            work_id=None,
+            durable=False,
         )
 ```
 
-Refactor `save2zarr`'s body into `_save_store(path, *, series, levels, work_id, durable)`
-so both entry points share one implementation. `save2zarr` calls it with
-`series=tuple(self._series_names())` and `levels=ngff_.pyramid_level_count(...)`;
-`save_intermediate_zarr` calls it with `levels=1`. **`levels` is private** — there is no
+Refactor `save2zarr`'s body into
+`_save_store(path, *, series, write_objmap, levels, work_id, durable)` so both entry points
+share one implementation. `save2zarr` calls it with `series=tuple(self._series_names())`,
+`write_objmap=True`, and `levels=ngff_.pyramid_level_count(...)`; `save_intermediate_zarr`
+calls it with the split above and `levels=1`.
+
+**Inside `_save_store`, the objmap array, the `labels` group JSON, and the `labels` entry in
+`attributes.phenotypic` are all written only when `write_objmap` is true** — they are one
+decision, not three (ledger **C3**). **`levels` is private** — there is no
 CLI or public-API lever, so two stores in one tree can never disagree (P3).
 
 In `_image_pipeline_core.py`, change all five call sites. The two `save2hdf5(...)` calls at
@@ -1479,7 +1522,12 @@ def test_partial_omero_is_rejected(tmp_path: Path) -> None:
     this test covers the part the schema does enforce.
     """
     store = Image(load_synth_yeast_plate()).save2zarr(tmp_path / "p.ome.zarr")
-    group = store / "gray" / "zarr.json"
+    # `rgb`, NOT `gray` (ledger C2). P2/ALGO-2 omits `omero` from every
+    # FLOAT series and `gray` is float32, so `build_omero` returns {} for
+    # it -- indexing ["omero"] below raised KeyError in the test body,
+    # before `assert_store_conforms` was ever reached. `rgb` is the only
+    # series that ever carries the block.
+    group = store / "rgb" / "zarr.json"
     payload = json.loads(group.read_text(encoding="utf-8"))
     payload["attributes"]["ome"]["omero"]["channels"][0]["window"] = {"max": 255}
     group.write_text(json.dumps(payload), encoding="utf-8")
@@ -1743,7 +1791,11 @@ def assert_store_conforms(store_path: Path) -> None:
     for member in block[PhenotypicAttr.SERIES].values():
         _validate(_attributes(store / member), "image.schema", store / member)
 
-    for member in block[PhenotypicAttr.LABELS].values():
+    # A label-less store is valid (a builder preview of a node that changed no
+    # labels), and `.values()` on an omitted-or-empty mapping is correctly a
+    # no-op -- but only because Task 1.3 now omits the key rather than pointing
+    # it at a group that was never written. Ledger C3.
+    for member in block.get(PhenotypicAttr.LABELS, {}).values():
         _validate(_attributes(store / member), "label.schema", store / member)
 
     ome_group = store / OME_GROUP
@@ -1805,7 +1857,6 @@ def _assert_reader_level_musts(store: Path, block: dict, ome_xml: str) -> None:
         OBJMAP_LABEL,
         OME_GROUP,
         PhenotypicAttr,
-        objmap_path,
         primary_series,
     )
 
@@ -1813,9 +1864,10 @@ def _assert_reader_level_musts(store: Path, block: dict, ome_xml: str) -> None:
     primary = primary_series(series_names)
     # `objmap_path`, not a hand-built f-string: Task 1.3 declares it precisely
     # so no caller re-encodes the layout (ledger GEN-53).
-    # Read the path the STORE DECLARES, rather than re-deriving it: a
-    # re-derived path cannot fail, whereas this turns the loop below into a real
-    # check that the declared label path resolves (ledger ALGO-20).
+    # Read the path the STORE DECLARES, rather than re-deriving it with
+    # `objmap_path`: a re-derived path cannot fail, whereas this turns the loop
+    # below into a real check that the declared label path resolves (ledger
+    # ALGO-20). `.get` because a label-less store omits the key (ledger C3).
     labels = block[PhenotypicAttr.LABELS]
     label_member = labels.get(OBJMAP_LABEL) if labels else None
     # The LABEL GROUP IS IN THIS LOOP, deliberately (ledger ALGO-R2B-14).
