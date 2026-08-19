@@ -330,9 +330,9 @@ Two pieces:
    `tune.score`, `tune.strategy`, `detect.nn`. Reconcile to a shared constant so
    the agent can reach NN/GPU detectors and prefabs (§3.1).
 2. **A JSON descriptor projection** over `OperationInfo`/`ParamInfo` — plus the
-   `header_scheme()`-dispatching column derivation for `produces_columns` and
-   `produces_columns`, which is *not* the ~40-line job first estimated
-   (`TEXTURE.get_headers()` raises `TypeError` without a `scale`; see §3.1).
+   `header_scheme()`-dispatching column derivation for `produces_columns`,
+   which is *not* the ~40-line job first estimated
+   (`TEXTURE.get_headers()` raises `TypeError` without a `scale`; see §3.2).
 3. **The `phenotypic/subset/` subpackage** — `SubsetSelector` ABC plus
    `RandomSubsetSelector`, `MetadataGroupSubsetSelector`, and the
    `EmbeddingSubsetSelector` placeholder (§10.3). Must be added to

@@ -267,11 +267,35 @@ before `validate(state)` (`gui/builder/_validation.py:98`), and surfaces
          "requires_gpu":false}}
 ```
 
-`produces_columns` uses the `header_scheme()` dispatch of §3.1 over the **built
-pipeline's live measurer instances** — which is why it is computed after
-construction, when `MeasureTexture.scale` is actually known. It lets the agent
-confirm a pipeline yields the columns its scorer needs before running anything.
-`requires_gpu` comes from `pipeline_requires_gpu` and drives routing (§5).
+`produces_columns` derivation must dispatch on `header_scheme()` over the
+**built pipeline's live measurer instances** — a blanket `get_headers()` call is
+wrong, and for at least one measurer it raises:
+
+```
+SIZE.header_scheme()     -> "static"   -> get_headers()  -> ['Size_Area', …]
+TEXTURE.header_scheme()  -> "texture"  -> get_headers()  -> TypeError:
+                                          missing 1 required positional argument: 'scale'
+TEXTURE.get_headers(5)   -> ['Texture_AngularSecondMoment-deg000-scale05', …]
+```
+
+`TEXTURE` (`schema/_texture.py:144-181`) overrides `get_headers(scale,
+matrix_name=None)` with **no default for `scale`**, and `MeasureTexture` emits
+one header per (member × angle × scale) — 130 columns for `scale=[5,10]`, not
+the 13 base labels — which is why `produces_columns` is computed after
+construction, when `MeasureTexture.scale` is actually known. The class list
+comes from the live pipeline's `MeasureFeatures.get_measurement_infoclasses()`
+(`abc_/_measure_features.py:333`), which is genuinely instance-dependent —
+`MeasureColor` includes or excludes members based on `self.include_XYZ` /
+`self.include_xy`.
+
+**Do not model this on the README generator.** `_cli_readme_generator.py:140-235`
+iterates `pipeline._meas` and renders `member.value` directly, never expanding
+texture headers — so it under-reports texture columns in generated READMEs
+today. Reusing it would inherit the bug.
+
+It lets the agent confirm a pipeline yields the columns its scorer needs before
+running anything. `requires_gpu` comes from `pipeline_requires_gpu` and drives
+routing (§5).
 
 **Validation errors** are structured, using `extra="forbid"` plus
 `difflib.get_close_matches` — the same three-line stdlib technique used at
@@ -582,9 +606,9 @@ two produces a tool that looks informative and tells the agent nothing.
   "in_flight":{"local":0,"slurm":2},
   "rehydrate_ms":184,
   "next_recommended":"pipeline_put",
-  "workflow":{"assay":"profiles/plates.experiment.json","subset":"subsets/plates-dev-24.subset.json",
-              "blocked":[],"note":"assay and subset exist; pipelines may be authored and probed"},
-  "counts":{"pipelines":3,"tune_specs":3,"assays":1,"subsets":1,
+  "workflow":{"experiment_profile":"profiles/plates.experiment.json","subset":"subsets/plates-dev-24.subset.json",
+              "blocked":[],"note":"experiment profile and subset exist; pipelines may be authored and probed"},
+  "counts":{"pipelines":3,"tune_specs":3,"profiles":1,"subsets":1,
              "campaigns":1,"studies":1,"runs":0},
   "active_subset":"subsets/plates-dev-24.subset.json"}}
 ```
@@ -620,14 +644,14 @@ would turn a cheap `W0` orientation call into real work — contradicting §3.0'
 token discipline for the one tool an agent calls first.
 
 `next_recommended` is a single string and therefore a simplification: once an
-assay and subset exist, several tools are equally reasonable. It is advisory
+experiment profile and subset exist, several tools are equally reasonable. It is advisory
 ordering, not a scheduler.
 
 ### `workspace_list`
 
 | Arg | Type | Meaning |
 |---|---|---|
-| `kind` | `"pipelines" \| "tune_specs" \| "assays" \| "subsets" \| "campaigns" \| "studies" \| "runs" \| "all"` | Filter |
+| `kind` | `"pipelines" \| "tune_specs" \| "profiles" \| "subsets" \| "campaigns" \| "studies" \| "runs" \| "all"` | Filter |
 | `status` | `str?` | For studies/runs: `RunRegistry` status |
 
 `tune_specs` was missing from the first draft, which left authored specs
