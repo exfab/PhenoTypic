@@ -151,6 +151,33 @@ here because a reader of the spec alone would still find them open.
 
 ---
 
+## Interface audit — five findings to fix before the first handler exists
+
+From `MCP-INTERFACE-AUDIT.md` (13 findings). These five have asymmetric cost:
+cheap now, expensive once 32 handlers exist. **F2 is verified in-tree.**
+
+| # | Finding | Status |
+|---|---|---|
+| **F2** | **Nothing guards the server's own stdio protocol channel.** §3.2 makes exactly this argument one level down — the probe worker uses a dedicated pipe, "never the worker's stdout", because `tqdm` and a bare `print()` would corrupt the stream. The **server** speaks JSON-RPC on its own stdout and imports `phenotypic`, including `detect.nn`, which §3.1 *requires* be reachable. **Verified: 19 bare `print()` calls across `detect/`, `_core/`, `tune/`**, one of them at `detect/nn/_helper/_checkpoint_manager.py:830`. A single print corrupts the session for every subagent and surfaces as a host parse error nowhere near its cause. **Fix:** rebind `sys.stdout` → `stderr` before importing `phenotypic`; add as a seventh refusal in §6.4; test it. | **VERIFIED — highest priority** |
+| **F1** | **No tool descriptions anywhere, for any of the 32.** `tool-design.md` is emphatic: "the description is the contract… the only thing Claude reads before deciding whether to call the tool", and requires a "does NOT do" clause. §1.2 fixes `model_json_schema()` as the contract — but that is the *payload* `catalog_operation_detail` returns, not the MCP tool description. Two different contracts; the spec writes one. Under D1a, fastmcp takes descriptions from docstrings, so all 32 get improvised during implementation. Sibling-confusion pressure is unusually high here: `deploy_plan`/`deploy_start`, three `*_status` tools, `tune_status{progress}` vs `{results}`, `campaign_approve` vs `promotion_approve`. | open |
+| **F3** | **`W0` conflates "takes no compute slot" with "is instant".** §5.5 already corrects this for `deploy_status` but never carries the rule back to §1.5, and 6+ other `W0` tools do real blocking work on the shared event loop — `workspace_info` (rehydrate + `squeue`), first-call `catalog_operations` (discovery over 13 packages), `campaign_status` (N store-opens), `deploy_plan` (directory digest over a 480-image parent). Under §1.3's single connection each stalls every subagent, falsifying §3.4's "interleave freely". **Fix:** split §1.5's `W0` row into pure/inline vs I/O-bound/executor, and tag all 32. | open — compounds the `deploy_plan` defect already recorded in MAIN-MERGE.md |
+| **F4** | **MCP request cancellation vs the `LocalComputeSlot` is unspecified.** The spec covers timeout, OOM and server restart, never the host cancelling a request — the likeliest case with N subagents on one connection. If `CancelledError` does not release the slot, **every subsequent probe from every subagent blocks for the session**: the exact deadlock §3.2 rejected the in-process design to avoid. Also `probe_timeout_s=300` is set with no reference to the host's tool-call timeout. | open |
+| **F5** | **`outputSchema` is undecided, and under D1a may be decided for us.** fastmcp derives it from return annotations, so 32 handlers annotated `-> ToolEnvelope` publish 32 serialized copies in `tools/list` (~6.4k tokens/turn — JSON Schema has no cross-tool `$ref` sharing). **Fix:** decline explicitly in §3.0 and assert in Phase 2A that no tool publishes one. | open |
+
+Eight further findings (F6–F13) are in the audit document, including schema-level
+caps for `n_images`/`limit`, a `Literal` discriminator for `edits[].kind`, an
+unbounded `workspace_list`, declaring `logging: {}`, an `instructions` string,
+and versioning the tool contract independently of `phenotypic`.
+
+**Also from the audit:** Appendix A carries the full 32-row annotation matrix for
+D5 — 16 read-only, 16 write, with the non-obvious calls argued: the `*_put` tools
+are **not** idempotent, `pipeline_patch` emphatically not (cumulative edits — the
+annotation is what stops a host retrying into a corrupted pipeline),
+`tune_export_best` is a *write* despite its name, and `openWorldHint: true` on
+exactly the four tools that can trigger a gated checkpoint download.
+
+---
+
 ## Drift register — spec citations that no longer hold
 
 Found by verifying every load-bearing `file:line` in §1–§10 against
