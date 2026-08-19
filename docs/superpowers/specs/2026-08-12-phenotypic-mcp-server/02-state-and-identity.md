@@ -212,6 +212,17 @@ This buys four properties the server would otherwise build:
 4. **Boot recovery** — `rehydrate_from_sandbox` rebuilds the view by scanning
    for owner records and manifests.
 
+**One field is added: the record stores `(pid, create_time)`, and process
+identity is the pair.** `RunRecord` carries a bare `pid` today, which is not an
+identity — pids are reused, and a reused pid is indistinguishable from a live run
+under any check that looks at the number alone. `create_time` comes from
+`psutil.Process.create_time()` (or `/proc/<pid>/stat` field 22) at spawn, and any
+liveness decision — restart reconciliation (§1.5), `workspace_cancel`,
+`workspace_list`'s status column — compares both. A pid whose `create_time`
+differs is **dead**, full stop. This is what stops the server from either wedging
+the local path behind a run that finished hours ago or signalling somebody else's
+process.
+
 ### The limit of boot recovery, stated honestly
 
 `gui_launch_owner.json` is written **only** by code paths that call
@@ -307,16 +318,21 @@ three of the four hops reconstructible.
 | Shared resource | Guard | Provided by |
 |---|---|---|
 | Output directory claim | interprocess file lock + nonterminal-generation check | `RunRegistry.allocate` |
-| Run record mutation | generation-fenced CAS | `RunRegistry.compare_and_set` |
-| Local image compute | one process-wide `LocalComputeSlot` | new, §1.5 |
+| Run record mutation | generation-fenced CAS, **never onto a terminal status** | `RunRegistry.compare_and_set` |
+| Local image compute | one process-wide `LocalComputeSlot`: `asyncio.Semaphore(1)`, released in a `finally` at the innermost acquiring layer, under a wall-clock lease | new, §1.5 |
 | Artifact writes | `atomic_write_text` + explicit-overwrite policy | `sdk_` helpers, §2.2 |
-| Plan / promotion tokens | `atomic_write_text`; single-use CAS on `consumed_by` **under `exclusive_path_lock`** — `allocate`'s interprocess idiom, **not** `compare_and_set`'s in-process `threading.Lock`, since §2.3 treats overlapping server instances over one workspace as anticipated | new, §5.4 |
-| Subset staging dirs | Keyed by subset digest, so concurrent arms share one directory instead of racing; created idempotently | new, §10.3.1 |
-| `campaign.json` mutation | `atomic_write_text` + a status transition guard: `approve` and any amendment CAS on `status`, and **`campaign_start` snapshots the campaign it launched** rather than re-reading mid-fan-out | new, §8.3 |
+| Artifact **read-modify-write** | `exclusive_path_lock` on the artifact path + content-digest CAS; mismatch is `artifact_changed`, never `ok:true` | new, below |
+| Plan tokens | `atomic_write_text`; single-use CAS on `consumed_by` **under `exclusive_path_lock`** — `allocate`'s interprocess idiom, **not** `compare_and_set`'s in-process `threading.Lock`, since §2.3 treats overlapping server instances over one workspace as anticipated | new, §5.4 |
+| Subset staging dirs | Keyed by subset digest; idempotent **by completion** — temp dir → `os.replace` → `.complete` marker written last, and readers require the marker | new, §10.3.1 |
+| `campaign.json` mutation | `atomic_write_text` + a transition guard CASing on **`(status, artifact_digest)`**, never `status` alone; `campaign_start` snapshots the campaign it launched rather than re-reading mid-fan-out | new, §8.3 |
 | Lineage journal | `atomic_append` under file lock, **via `asyncio.to_thread`** | existing pattern, §2.5 |
-| Operation registry | immutable after discovery | `get_registry()` |
+| Operation registry | immutable after discovery, and the module-level `_REGISTRY` is **published only after `discover()` returns**, under a module-level lock | `get_registry()`, amended below |
 
 No tool mutates another tool's in-flight artifact. The one cross-tool write is
+`tune_export_best`, which writes a *new* pipeline file rather than editing the
+base — matching `build_pipeline`, which deep-copies rather than mutating
+(`tune/_evaluation/_builder.py:384`).
+
 **`deploy.approve` exists because the fold deleted the only writer of it.** The
 retired `promotion_approve` recorded the decision *and appended a lineage row*;
 collapsing it into `deploy_start` kept the decision and dropped the row, which
@@ -326,9 +342,76 @@ durable record at all** — only a token file that gets consumed and a
 written before the submission it authorizes, so an approval followed by a crash
 is still reconstructible.
 
-`tune_export_best`, which writes a *new* pipeline file rather than editing the
-base — matching `build_pipeline`, which deep-copies rather than mutating
-(`tune/_evaluation/_builder.py:384`).
+### The CAS key is `(status, artifact_digest)`, never `status` alone
+
+Status-only compare-and-set is the guard three separate defects slip past, and
+they slip past it for one reason: **an amendment can change what the artifact
+says while leaving `status` exactly where it was.** A §10.4 in-envelope amendment
+edits the arm set of an `approved` campaign and it is `approved` before and
+after, so a concurrent writer holding a stale snapshot passes the CAS and writes
+the pre-amendment arm set back. Nothing fails, and the campaign silently reverts.
+
+So every mutation of an artifact CASes on the pair: the expected `status` **and**
+the content digest of the bytes the caller read. A digest mismatch is
+`artifact_changed` (§6.2), and the caller re-reads rather than overwriting.
+
+Two things fall out of the same fix, which is why it is one fix and not three:
+
+- **Double launch needs no separate guard.** `campaign_start` moves
+  `approved → launching → running`, and a concurrent second call fails the
+  transition itself — `launching` is not `approved`. The state machine does the
+  work that a bespoke "already started?" check would have done less reliably.
+- **The elicitation window closes.** `campaign_approve` prompts a human, and a
+  human takes minutes; the window between reading the campaign and writing
+  `approved` is not milliseconds, it is however long somebody takes to read the
+  summary. So the digest is captured **when the elicitation prompt is built**,
+  and re-CAS'd after the answer comes back. If the artifact moved underneath, the
+  call fails with `campaign_changed_during_approval` and re-prompts against the
+  new content. Approving a summary that went stale while it was on screen is
+  exactly the failure elicitation was adopted to prevent, and without the
+  re-CAS elicitation *creates* it.
+
+### Post-start CAS never resurrects a terminal record
+
+Ordering, stated because the mechanism is already here and only the sequence was
+missing: **`allocate` → record `launching` → spawn → CAS `launching → running`,
+and that last CAS applies only if the record is still `launching`.**
+
+A local subprocess can die before the launcher's next statement runs — a missing
+module, a bad argument, an immediate OOM — and the exit observer will have
+already CAS'd the record to `failed`. An unconditional write-back to `running`
+then resurrects a dead run, and because `allocate` refuses a nonterminal
+generation on that output directory, the directory is blocked permanently by a
+process that does not exist. `compare_and_set`'s generation fence already
+provides the mechanism; the rule is simply that `running` is never written over
+a terminal status.
+
+### Two locks, one order
+
+**The in-process `threading.Lock` is never nested inside the interprocess file
+lock.** `exclusive_path_lock` spins to 30 s by design (§2.5), and a thread
+holding `RunRegistry`'s `threading.Lock` across that spin stalls every other
+handler in the process for the full timeout — the event-loop offload of §1.5
+does not help, because the contention is on the lock, not on the loop. This is
+not hypothetical: `allocate` (`_services/runs.py:317-337`) opens `with
+self._lock:` and takes `exclusive_path_lock` *inside* it today, which was
+correct for a GUI where one human clicks Run and is not correct for a server
+serving N subagents.
+
+The order is: **take the file lock first; take the `threading.Lock` only around
+the in-memory mutation, and release it before the file lock.** The in-memory
+critical section is a dict update measured in microseconds; the file lock is
+measured in seconds. Nesting them the other way round makes the cheap one wait
+on the expensive one.
+
+### The registry is published after it is populated
+
+`get_registry()` assigns the module-level `_REGISTRY` **before** `discover()`
+runs. A second thread arriving mid-discovery therefore gets a real object that is
+silently incomplete — not an error, not an empty registry, just a catalog missing
+whichever operations had not been imported yet. Discovery runs under a
+module-level lock and `_REGISTRY` is assigned only after `discover()` returns,
+so a loser thread waits and then sees the finished object.
 
 ## 2.7 Open questions
 

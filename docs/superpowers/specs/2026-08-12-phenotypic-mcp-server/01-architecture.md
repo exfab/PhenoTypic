@@ -246,6 +246,15 @@ There is **one** `LocalComputeSlot`: a process-wide semaphore of capacity 1.
 tracker with no exclusivity guard, because the GUI never needed one (a human
 clicks Run once). The slot is new code, listed as such in §1.6.
 
+**Second invariant, stated rather than derived: at most one `W1` probe is in
+flight process-wide.** This is true today only as a *consequence* of the slot —
+a probe holds it, so a second probe cannot start. A safety that exists only as a
+consequence of another rule is one refactor away from vanishing with nothing
+failing, and §3.2's single warm probe worker is written assuming it. So it is an
+invariant in its own right, and it is what the worker's liveness check answers
+to: before dispatching, the server verifies the warm worker is alive and
+respawns if not, rather than assuming the previous holder left it usable.
+
 **Routing table**
 
 | Class | `local` env | `slurm` env |
@@ -310,6 +319,23 @@ The rule is stated once, here, and the rest of the spec relies on it rather than
 re-deriving it per tool. Anywhere a handler touches the filesystem under a lock,
 a subprocess, or the scheduler, assume the offload.
 
+**Two executors, not one.** The offload target is not a single default pool. The
+server owns two named module-level `ThreadPoolExecutor`s:
+
+| Executor | Workers | Carries |
+|---|---|---|
+| `blocking` | 4 | filesystem reads and writes, the lineage journal's 30 s lock spin, subprocess waits, scheduler polling |
+| `compute` | 1 | `W1` pipeline execution |
+
+The split is not tidiness. With one shared pool, a burst of `campaign_status`
+store-opens — N arms × N subagents, each a blocking call — can occupy every
+worker and starve the probe **the compute slot has already admitted**: the slot
+guarantees the probe exclusivity and the pool takes it away, so the probe waits
+on a resource no rule in this section governs. Sizing `compute` at exactly one
+worker makes the pool a *second expression of the same one-probe invariant*
+rather than an independent scheduler, so the pool and the slot cannot disagree
+about how many probes are running. Both numbers are stated bounds (§1.6.1).
+
 `ImagePipeline.apply()` is synchronous, CPU-bound, and copies the image
 (`_image_pipeline_core.py:943-966`). Running it directly in an async handler
 would block the entire event loop — stalling `W0` calls from *other* subagents
@@ -328,6 +354,43 @@ server useless on a workstation — but they serialize on the same slot, and the
 tool result says so, so the agent learns the run is queued rather than
 mysteriously slow.
 
+### The slot primitive, and release symmetry
+
+`LocalComputeSlot` is an **`asyncio.Semaphore(1)`** (capacity
+`local_slot_capacity`, §1.5 above) owned by the event loop. Thread-side and
+process-side code — the `compute` executor's worker, the probe worker's exit
+observer, `LocalRunner`'s reap thread — **never touch it**. They signal through
+`loop.call_soon_threadsafe`, so every acquire and release happens on the loop
+thread and the semaphore needs no cross-thread synchronization of its own.
+
+**Release lives in a `finally` at the innermost layer that acquired it.** There
+are four exit paths — normal return, exception, cancellation, and subprocess
+reap — and the defect this rule prevents is a design where each path releases
+separately and one of them forgets. One acquiring layer, one `finally`, one
+release statement that all four paths run through.
+
+**The exit observer is release-first, record-second, and the record step is in
+its own `try`/`except`.** Ordering here is load-bearing: recording the run's
+terminal status takes `exclusive_path_lock`, which spins up to 30 s and can
+raise `artifact_lock_timeout`. If the release sits after the record, that
+timeout skips it and the slot is stranded for the life of the server — silently,
+because the reap thread swallows callback exceptions. Releasing first costs
+nothing and removes the whole class.
+
+**And the slot is acquired with a wall-clock lease, unconditionally.** The lease
+is `probe_timeout_s` for `W1` and, for a local `W2`/`W3`, the run's `--time` or
+a configured maximum. On expiry the slot auto-releases and the holder's record
+is marked `slot_lease_expired` (§6.2), which is a visible terminal state rather
+than a stuck one.
+
+This is specified **regardless of how cancellation delivery tests out** on the
+real host. Whether `fastmcp` delivers `CancelledError` on client disconnect
+decides only whether the lease is a backstop behind a working cancel path or the
+primary release path — it does not decide whether the lease exists. A design in
+which the only release is a callback the runtime may never invoke has no
+recovery at all, and the failure it produces (every later probe blocked, no
+error anywhere) is the least diagnosable one this section can create.
+
 ### Restart reconciliation
 
 The server may be killed without running `LocalRunner`'s `atexit` cleanup
@@ -337,9 +400,35 @@ the orphan, doubling contention.
 
 So on startup, **before serving any request**, the server runs
 `rehydrate_from_sandbox` and reconciles: for every nonterminal `RunRecord`, it
-checks whether the recorded PID is still live. A live orphan **claims the slot**;
-a dead one is CAS'd to `failed` with `status_detail` naming the lost server.
-Only then does the server accept work.
+decides whether that run is still alive. A dead one is CAS'd to `failed` with
+`status_detail` naming the lost server. Only then does the server accept work.
+
+**Liveness is decided on `(pid, create_time)`, and identity is the pair.** The
+run record stores both — `create_time` from `psutil.Process.create_time()`, or
+field 22 of `/proc/<pid>/stat` where `psutil` is unavailable — captured at spawn.
+At reconciliation a pid that resolves to a process whose `create_time` differs
+from the recorded one is **dead**: the pid was reused. A bare pid check gets this
+wrong in both directions, and both are bad — a reused pid makes a finished run
+look live and wedges the local path forever, and there is no version of the
+mistake in which the server is merely conservative.
+
+**A live orphan is refused, not watched.** An earlier draft had it *claim the
+slot*, which is a reservation with no releaser: the `Popen` belonged to the dead
+server, so no exit observer exists and the slot is held until this server dies
+too. The alternative — a watcher for a process the server does not own — is not
+available either, because Linux offers a non-parent no exit notification short
+of polling, and polling reintroduces exactly the daemon-thread callback the
+release-symmetry rule above just constrained.
+
+So the server **records** the orphan and refuses to admit local `W2`/`W3` beside
+it, with `local_slot_orphaned` (§6.2) naming the pid, the run id, and
+`workspace_cancel` as the way out. `W1` is still admitted: a probe is capped at
+`probe_max_images` and holds a wall-clock lease, so it is bounded contention
+rather than the unbounded thrash the slot exists to prevent, and suspending the
+agent's entire exploration loop on a stale record would be a worse trade.
+Refusing is less machinery than watching and it makes the stuck state **visible
+at the moment it bites**, with a named remedy, instead of leaving a server that
+is inexplicably unable to start anything.
 
 ### What the agent sees when routing bites
 
@@ -421,6 +510,41 @@ The binding consequence: under §1.3's single shared connection, any handler tha
 blocks stalls **every** subagent, not just its caller. §5.5 already carves
 `deploy_status {detail:"results"}` into the executor for exactly this reason;
 that carve-out is the rule, not an exception.
+
+### Stated bounds
+
+Every number the concurrency design depends on, in one table, so none of them
+lives only inside a paragraph:
+
+| Bound | Value | Owner |
+|---|---|---|
+| `executors.blocking` workers | 4 | §1.5 — filesystem, journal, subprocess waits, scheduler polling |
+| `executors.compute` workers | **1** | §1.5 — `W1` execution; a second expression of the one-probe invariant |
+| `local_slot_capacity` | 1 | §1.5 — the local-OOM invariant; configuration, not a promise |
+| `limits.max_inflight_arms` | 8 | **server-wide**, across *all* campaigns |
+| `limits.max_inflight_local_runs` | = `local_slot_capacity` | **server-wide** — not a second knob; the slot already is this bound |
+
+**The arm ceiling is server-wide, and that is the whole point.**
+`budget.max_concurrent_arms` (§8.2) is a *per-campaign* budget, so N campaigns ×
+M arms has no aggregate ceiling anywhere — and §9.3's own worked example, one
+campaign per metadata group, produces six campaigns from a two-column
+cross-product without anybody deciding to fan out. The ceiling is checked by the
+background launcher (§8.3) before each arm is launched, not by the tool handler,
+because the handler returns before most arms exist.
+
+`8` is a **policy default, not a derived number** — no measurement in this spec
+implies it. It is set where it is because §4.4's per-arm store-open subprocess
+is the cost that grows with in-flight arms, and because a ceiling an operator
+raises deliberately is safer than one discovered by exhausting an account cap.
+It is configuration; the invariant is that a ceiling exists and the launcher
+checks it.
+
+**On SLURM the scheduler is not admission control.** An over-cap submission does
+not error — it is accepted and **queues** with `Reason=AssocGrpCpuLimit` against
+the account's CPU/memory cap, indefinitely and invisibly. So "`sbatch` accepted
+it" proves nothing about whether the work will run, and a design that treats
+submission success as backpressure has no backpressure. The server's own ceiling
+is the only bound on how much work it puts in flight.
 
 ## 1.7 Non-goals
 
