@@ -99,8 +99,10 @@ def level_shapes(
 ) -> list[tuple[int, int]]:
     """Explicit (h, w) per level, halving with ceil, as the writer will.
 
-    ``levels=None`` uses the automatic count; an explicit value models the
-    ``--pyramid-levels N`` override.
+    ``levels=None`` uses the automatic count, which is the only count the
+    writer ever produces: depth is a pure function of the level-0 shape (spec
+    1.3, PRE-P3), so there is no user-facing override. The parameter exists so
+    the per-level cost can be exercised directly from the checks below.
     """
     shapes = [(height, width)]
     for _ in range((levels or level_count(height, width)) - 1):
@@ -281,37 +283,19 @@ def _check_file_counts() -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# C6 -- --pyramid-levels is a linear knob
-# ---------------------------------------------------------------------------
-
-
-def _check_tunable_levels() -> None:
-    """Each extra pyramid level costs a constant number of files."""
-    print("\nC6 -- --pyramid-levels N: marginal cost per level (sharded)")
-    for label, h, w in PLATES:
-        auto = level_count(h, w)
-        totals = []
-        for n in range(1, auto + 1):
-            d, m = store_files(h, w, sharded=True, levels=n)
-            totals.append(d + m)
-        deltas = {b - a for a, b in zip(totals, totals[1:])}
-        print(f"    {label:<28} auto={auto}  totals={totals}")
-        check(
-            f"{label}: cost per additional level is constant",
-            len(deltas) == 1,
-            f"deltas={sorted(deltas)}",
-        )
-        check(
-            f"{label}: that constant is 8 files/level (spec figure)",
-            deltas == {8},
-            f"deltas={sorted(deltas)}",
-        )
-        check(
-            f"{label}: --pyramid-levels 1 is the cheapest setting",
-            totals[0] == min(totals),
-            f"1 level = {totals[0]} files vs auto = {totals[-1]}",
-        )
+# C6 -- REMOVED (ledger ALGO-8).
+#
+# This block asserted that "each extra pyramid level costs a constant number of
+# files" and that "--pyramid-levels 1 is the cheapest setting". PRE-P3 descoped
+# that flag: pyramid depth is a pure function of the level-0 shape, so two
+# stores in one tree can never disagree, valid_staged_store needs no level
+# check, and a resumed run cannot produce mixed geometry. There is no knob to
+# tune, so there is nothing here to verify -- and Phase 1 Task 1.1 imports this
+# script as the normative geometry reference, where a claim block about a
+# non-existent flag is worse than no claim at all.
+#
+# The underlying figure is not lost: C4 already reports total file counts per
+# plate at the automatic depth, which is the only depth the writer produces.
 
 
 # ---------------------------------------------------------------------------
@@ -370,7 +354,6 @@ def main() -> NoReturn:
     _check_pyramid()
     _check_divisibility()
     _check_file_counts()
-    _check_tunable_levels()
     _check_label_downsampling()
 
     print()

@@ -36,10 +36,8 @@ dual reader.
 3. **NGFF 0.5 on Zarr format v3**, raising `requires-python` to
    `>=3.11, <3.13`. Python 3.10 is dropped.
 4. **Commit is rename-promote.** Every publishing stage builds a `.part`
-   directory and promotes it by directory rename. ~~Stage 2's in-store label
-   write is an intermediate, not a publish.~~ **Withdrawn 2026-08-19 (user
-   ruling, ledger GEN-37): Stage 2 does not write into the store at all** — see
-   the supersessions on §3.4 and §3.5. There is no Stage-2 publish to classify.
+   directory and promotes it by directory rename. Stage 2's in-store label
+   write is an intermediate, not a publish.
 5. **Resume state is carried by consumable markers**, never by NGFF metadata.
 6. **OME projection is write-only.** `attributes.phenotypic` is the sole source
    of truth on read.
@@ -559,26 +557,8 @@ Builds and promotes a complete store: `rgb` (when present), `gray`,
 
 ### 3.4 Stage 2 — the sidecar becomes a consumable marker
 
-Stage 2 writes its raw detector output to `.phenotypic/progress/stage2_raw/`
-and then a **consumable Stage-2 token**. It does **not** open the promoted store.
-
-> **Superseded (2026-08-19, user ruling).** This section previously read *"Stage 2
-> opens the promoted store and overwrites `labels/objmap` in place with the
-> detector output."* The user's clarification — *"the stage 2 objmap doesn't need
-> interop, only the final omezarr store"* — removes the only justification the
-> in-store write had left (see the correction at the end of §3.5, which had
-> already reduced it to "third-party interop").
->
-> Removing it dissolved four separate open concerns at once rather than fixing
-> one — FLOW-5, FLOW-12, D11, and B10 — and restored exact parity with the HDF
-> path. An in-store write here would also be visible to the GUI's *uncached crop
-> route* as raw, pre-`drop_frame_background` labels, which is precisely what a
-> viewer must not be shown.
->
-> Stage 3 replays from the retained raw array, never from the store's own objmap:
-> Stage 3 re-promotes over that objmap, so using it as input makes a retried
-> Stage 3 re-run `_write_object_output` on already-refined labels, and
-> `drop_frame_background` then deletes a real colony (**D1**).
+Stage 2 opens the promoted store and overwrites `labels/objmap` in place with
+the detector output, then writes a **consumable Stage-2 token**:
 
 ```text
 <output>/.phenotypic/progress/stage2_done/<dataset>/<stem>.json
@@ -619,8 +599,8 @@ store's label image holding raw detector output that disagrees with the parquet
 and with a single-pass run — violating the byte-identical-to-single-pass
 contract in [`_cli/CLAUDE.md`](../../../../src/phenotypic/_cli/CLAUDE.md).
 
-Stage 2's in-store write was argued to buy two things, not atomicity — but see
-the corrections below: **neither survived, and the write itself is withdrawn.**
+Stage 2's in-store write therefore buys two things, not atomicity: the `.npy`
+sidecar format disappears.
 
 > **Corrected (2026-08-19).** The claim that "the GUI can render a real objmap
 > mid-run" is **false** and is withdrawn. Tile-cache staleness is keyed on the
@@ -636,14 +616,7 @@ the corrections below: **neither survived, and the write itself is withdrawn.**
 > over the store's objmap and so cannot use it as its own replay input — without
 > the retained copy, a retried Stage 3 re-runs `_write_object_output` on
 > already-refined labels and `drop_frame_background` deletes a real colony. The
-> in-store write's remaining justification was **third-party interop**.
->
-> **And that justification was then withdrawn too (2026-08-19, user ruling —
-> ledger GEN-37).** Only the *final* store needs third-party interop; the
-> mid-run objmap does not. So the in-store write bought **nothing**: the sidecar
-> format did not disappear (the raw array is retained), the GUI never rendered a
-> real objmap mid-run, and interop is a property of the finished store. It is
-> removed — see the supersession on §3.4 and locked decision #4.
+> in-store write's remaining justification is **third-party interop**.
 
 ### 3.6 Resume validity
 
