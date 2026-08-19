@@ -7,7 +7,7 @@ matter which path a caller imports it through. ``_callbacks.py:62`` and
 
 from __future__ import annotations
 
-from phenotypic._services.tune_spec import (  # noqa: F401
+from phenotypic._services.tune_spec import (  # noqa: F401 - re-exported
     PreparedPipelineExport,
     _params_from_best_params_payload,
     export_best_from_run,
@@ -18,10 +18,10 @@ from phenotypic._services.tune_spec import (  # noqa: F401
 )
 
 __all__ = [
+    "PreparedPipelineExport",
     "export_best_from_run",
     "export_pareto_pipeline",
     "export_winning_pipeline",
     "prepare_best_from_run",
     "publish_prepared_export",
-    "PreparedPipelineExport",
 ]

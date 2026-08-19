@@ -6,7 +6,7 @@ path a caller imports it through.
 
 from __future__ import annotations
 
-from phenotypic._services.runs import (  # noqa: F401
+from phenotypic._services.runs import (
     RunMode,
     RunRecord,
     RunRegistry,
@@ -16,9 +16,8 @@ from phenotypic._services.runs import (  # noqa: F401
 
 __all__ = [
     "RunMode",
-    "RunStatus",
     "RunRecord",
     "RunRegistry",
+    "RunStatus",
     "run_status_is_nonterminal",
 ]
-

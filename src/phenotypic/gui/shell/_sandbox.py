@@ -8,7 +8,7 @@ because :mod:`phenotypic.gui.tune._setup_authoring` and
 
 from __future__ import annotations
 
-from phenotypic._services.sandbox import (  # noqa: F401
+from phenotypic._services.sandbox import (  # noqa: F401 - re-exported
     SandboxRoot,
     _is_safe_relative_path,
     _v1_selection_matches_sandbox,

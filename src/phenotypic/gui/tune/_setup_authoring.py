@@ -13,15 +13,15 @@ parenthesised imports that a single-line grep does not see.
 
 from __future__ import annotations
 
-from phenotypic._services.tune_spec import (  # noqa: F401
+from phenotypic._services.tune_spec import (  # noqa: F401 - re-exported
     SETUP_DRAFT_VERSION,
-    _normalize_setup_metadata_groupby,
     SetupAuthoringResult,
     SetupDraft,
     SetupDraftCache,
     SetupPathPayload,
     SetupPathResolution,
     SetupWriteReceipt,
+    _normalize_setup_metadata_groupby,
     authored_content_fingerprint,
     authored_setup_spec_path,
     build_authored_setup_spec,

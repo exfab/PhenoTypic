@@ -47,26 +47,14 @@ def test_argv_module_does_not_import_gui():
     Checked against the parsed import statements rather than a substring of
     the source: a raw ``"phenotypic.gui" not in source`` also matches prose in
     a docstring (it does — this module's docstring explains *why* it must not
-    import the GUI), while missing ``from phenotypic import gui``.
+    import the GUI), while missing ``from phenotypic import gui``. ``_boundary``
+    owns that walk; the tier-wide gate in ``test_import_purity.py`` runs the
+    same one, and sharing it is what stops the two from drifting into
+    disagreeing about what "reaches" means.
     """
-    import ast
-    import inspect
-
     from phenotypic._services import argv
 
-    tree = ast.parse(inspect.getsource(argv))
-    imported: list[str] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            imported += [alias.name for alias in node.names]
-        elif isinstance(node, ast.ImportFrom):
-            module = node.module or ""
-            imported.append(module)
-            imported += [f"{module}.{alias.name}" for alias in node.names]
+    from ._boundary import gui_modules_reached
 
-    offenders = [
-        name
-        for name in imported
-        if name == "phenotypic.gui" or name.startswith("phenotypic.gui.")
-    ]
+    offenders = sorted(gui_modules_reached(argv))
     assert not offenders, f"_services.argv imports from the GUI: {offenders}"

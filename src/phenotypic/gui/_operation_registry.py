@@ -6,7 +6,7 @@ in the promoted module's namespace, so both import paths share one instance.
 
 from __future__ import annotations
 
-from phenotypic._services.registry import (  # noqa: F401
+from phenotypic._services.registry import (
     ColumnRefSpec,
     OperationInfo,
     OperationRegistry,

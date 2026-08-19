@@ -6,7 +6,7 @@ one spelling of the ``phenotypic.tune run`` command line.
 
 from __future__ import annotations
 
-from phenotypic._services.argv import (  # noqa: F401
+from phenotypic._services.argv import (
     tune_run_argv,
     tune_run_argv_from_tail,
     tune_run_tail,

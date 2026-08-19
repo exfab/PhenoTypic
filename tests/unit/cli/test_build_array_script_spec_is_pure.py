@@ -14,7 +14,7 @@ are pinned by their own cases:
 * every ``ATTEMPT_IDS`` entry is a fresh ``uuid4()``, so no two renders of the
   same chunk are byte-identical (:func:`test_attempt_ids_are_the_only_drift`);
 * building a spec **reads** every image in the chunk and the pipeline JSON to
-  hash them (:func:`test_building_a_spec_reads_every_input_image`).
+  hash them (:func:`test_building_a_spec_reads_the_inputs_it_hashes`).
 
 Neither touches ``output_dir``, so neither weakens the preview guarantee -- but
 a preview caller pays a full read of the chunk and cannot expect the preview to
@@ -51,14 +51,20 @@ def _mask_attempt_ids(script: str) -> str:
     return masked
 
 
+@pytest.fixture
+def output_dir(tmp_path: Path) -> Path:
+    """An empty run output dir, so ``_tree_digest`` starts from a known state."""
+    path = tmp_path / "run"
+    path.mkdir()
+    return path
+
+
 def test_build_array_script_spec_writes_nothing(
-    tmp_path: Path, array_script_kwargs: Dict[str, Any]
+    output_dir: Path, array_script_kwargs: Dict[str, Any]
 ) -> None:
     """Building the spec must leave the output tree byte-identical."""
     from phenotypic._cli._cli_slurm_array_scripts import build_array_script_spec
 
-    output_dir = tmp_path / "run"
-    output_dir.mkdir()
     before = _tree_digest(output_dir)
 
     spec = build_array_script_spec(output_dir=output_dir, **array_script_kwargs)
@@ -68,7 +74,7 @@ def test_build_array_script_spec_writes_nothing(
 
 
 def test_generator_and_builder_agree(
-    tmp_path: Path, array_script_kwargs: Dict[str, Any]
+    output_dir: Path, array_script_kwargs: Dict[str, Any]
 ) -> None:
     """The real generator must consume the extracted builder, not duplicate it.
 
@@ -89,9 +95,6 @@ def test_generator_and_builder_agree(
         generate_array_job_script,
     )
 
-    output_dir = tmp_path / "run"
-    output_dir.mkdir()
-
     previewed = build_array_script_spec(
         output_dir=output_dir, **array_script_kwargs
     ).render()
@@ -103,7 +106,7 @@ def test_generator_and_builder_agree(
 
 
 def test_generator_consumes_the_builder(
-    tmp_path: Path,
+    output_dir: Path,
     array_script_kwargs: Dict[str, Any],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -126,9 +129,6 @@ def test_generator_consumes_the_builder(
         return spec
 
     monkeypatch.setattr(mod, "build_array_script_spec", _stamped_builder)
-
-    output_dir = tmp_path / "run"
-    output_dir.mkdir()
     written = Path(
         mod.generate_array_job_script(output_dir=output_dir, **array_script_kwargs)
     )
@@ -139,7 +139,7 @@ def test_generator_consumes_the_builder(
 
 
 def test_attempt_ids_are_the_only_drift(
-    tmp_path: Path, array_script_kwargs: Dict[str, Any]
+    output_dir: Path, array_script_kwargs: Dict[str, Any]
 ) -> None:
     """Pin the nondeterminism: fresh ``uuid4()`` attempt ids, nothing else.
 
@@ -149,9 +149,6 @@ def test_attempt_ids_are_the_only_drift(
     """
     from phenotypic._cli._cli_slurm_array_scripts import build_array_script_spec
 
-    output_dir = tmp_path / "run"
-    output_dir.mkdir()
-
     first = build_array_script_spec(output_dir=output_dir, **array_script_kwargs).render()
     second = build_array_script_spec(output_dir=output_dir, **array_script_kwargs).render()
 
@@ -160,7 +157,9 @@ def test_attempt_ids_are_the_only_drift(
 
 
 def test_building_a_spec_reads_the_inputs_it_hashes(
-    tmp_path: Path, array_script_kwargs: Dict[str, Any]
+    output_dir: Path,
+    array_script_kwargs: Dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Pin the read cost a preview caller inherits from the identity mechanism.
 
@@ -181,19 +180,11 @@ def test_building_a_spec_reads_the_inputs_it_hashes(
 
     import phenotypic._cli._cli_slurm_array_scripts as mod
 
-    mod_sha = mod.file_sha256
-    assert mod_sha is real_sha
+    assert mod.file_sha256 is real_sha
 
-    output_dir = tmp_path / "run"
-    output_dir.mkdir()
-
-    monkey = pytest.MonkeyPatch()
-    try:
-        monkey.setattr(mod, "file_sha256", _recording_sha)
-        monkey.setattr(_cli_failure_tracker, "file_sha256", _recording_sha)
-        build_array_script_spec(output_dir=output_dir, **array_script_kwargs)
-    finally:
-        monkey.undo()
+    monkeypatch.setattr(mod, "file_sha256", _recording_sha)
+    monkeypatch.setattr(_cli_failure_tracker, "file_sha256", _recording_sha)
+    build_array_script_spec(output_dir=output_dir, **array_script_kwargs)
 
     chunk_images = set(array_script_kwargs["dataset"].images)
     assert chunk_images <= set(hashed), "every chunk image is hashed"
@@ -201,13 +192,11 @@ def test_building_a_spec_reads_the_inputs_it_hashes(
 
 
 def test_generator_still_writes_the_script(
-    tmp_path: Path, array_script_kwargs: Dict[str, Any]
+    output_dir: Path, array_script_kwargs: Dict[str, Any]
 ) -> None:
     """Guards the other direction: the split must not have made the writer pure."""
     from phenotypic._cli._cli_slurm_array_scripts import generate_array_job_script
 
-    output_dir = tmp_path / "run"
-    output_dir.mkdir()
     before = _tree_digest(output_dir)
 
     written = Path(

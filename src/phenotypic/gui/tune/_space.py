@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from phenotypic._services.tune_spec import (  # noqa: F401
+from phenotypic._services.tune_spec import (  # noqa: F401 - re-exported
     _apply_edits,
     _build_search_space,
     _default_qc_scorer,

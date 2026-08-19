@@ -6,7 +6,7 @@ one flow; both are re-exported here unchanged.
 
 from __future__ import annotations
 
-from phenotypic._services.runs import (  # noqa: F401
+from phenotypic._services.runs import (
     LocalRunHandle,
     LocalRunner,
 )

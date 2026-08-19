@@ -3,29 +3,10 @@
 from __future__ import annotations
 
 import pkgutil
-import subprocess
-import sys
 
 import pytest
 
-# Two libraries are deliberately NOT listed, both for reasons that make them
-# look like coverage while providing none:
-#   dash_ag_grid — not installed here, so a probe importing it dies with
-#     ModuleNotFoundError and the test fails on the returncode assert rather
-#     than the leak assert.
-#   plotly — `import phenotypic` alone already pulls it in (verified), so no
-#     module in this or any other tier can satisfy the check. Forbidding it
-#     would make the gate unsatisfiable rather than strict.
-FORBIDDEN = ("dash", "dash_bootstrap_components", "flask", "werkzeug")
-
-# One subprocess per module: a single process would let module A's clean import
-# be vouched for by module B having already been imported, and vice versa.
-_PROBE = """
-import importlib, sys
-importlib.import_module({module!r})
-leaked = sorted(m for m in {forbidden!r} if m in sys.modules)
-print(",".join(leaked))
-"""
+from ._boundary import forbidden_imports_after_importing, gui_modules_reached
 
 
 def _service_modules() -> list[str]:
@@ -47,14 +28,7 @@ def test_services_package_exists_and_is_lazy():
 
 @pytest.mark.parametrize("module", _service_modules())
 def test_service_module_imports_no_dash(module: str) -> None:
-    proc = subprocess.run(
-        [sys.executable, "-c", _PROBE.format(module=module, forbidden=FORBIDDEN)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert proc.returncode == 0, f"{module} failed to import:\n{proc.stderr}"
-    leaked = [name for name in proc.stdout.strip().split(",") if name]
+    leaked = forbidden_imports_after_importing(module)
     assert not leaked, f"{module} dragged {leaked} into sys.modules"
 
 
@@ -80,45 +54,13 @@ GUI_IMPORT_ALLOWLIST: dict[str, set[str]] = {
 }
 
 
-def gui_modules_reached(module: str) -> set[str]:
-    """Every ``phenotypic.gui`` name a module's parsed imports reach.
-
-    Shared by the subset gate below and the per-entry equality pin, so the two
-    cannot drift into disagreeing about what "reaches" means.
-    """
-    import ast
-    import importlib
-    import inspect
-
-    tree = ast.parse(inspect.getsource(importlib.import_module(module)))
-    imported: list[str] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            imported.extend(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
-            imported.append(node.module)
-            imported.extend(f"{node.module}.{alias.name}" for alias in node.names)
-
-    return {
-        name
-        for name in imported
-        if name == "phenotypic.gui" or name.startswith("phenotypic.gui.")
-    }
-
-
 @pytest.mark.parametrize("module", _service_modules())
 def test_service_module_does_not_import_gui(module: str) -> None:
     """No ``_services`` module may import ``phenotypic.gui`` off-allowlist.
 
-    Parsed imports, not a source substring: a ``"phenotypic.gui" not in source``
-    check matches prose in a docstring (several of these modules explain *why*
-    they must not import the GUI) and misses ``from phenotypic import gui``.
-
-    The imported *names* are collected too, not just the module the ``from``
-    names. Without them ``from phenotypic import gui`` yields only
-    ``"phenotypic"`` and slips through — an aliased reach that the equivalent
-    check in ``test_argv_promotion.py`` has always caught, making this gate the
-    weaker of the two until it was fixed.
+    Parsed imports, never a source substring, and the imported *names* are
+    collected alongside the module they are pulled from — ``_boundary`` owns
+    the walk and documents why both choices are load-bearing.
     """
 
     reached = gui_modules_reached(module)

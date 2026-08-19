@@ -7,7 +7,7 @@ matter which path a caller imports it through. ``_layout.py:38``,
 
 from __future__ import annotations
 
-from phenotypic._services.tune_spec import (  # noqa: F401
+from phenotypic._services.tune_spec import (
     DEFAULT_STORAGE_ENV,
     ExecutionTarget,
     StorageMode,

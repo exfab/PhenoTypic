@@ -8,18 +8,9 @@ of its own content.
 
 from __future__ import annotations
 
-import subprocess
-import sys
-
 import pytest
 
-FORBIDDEN = ("dash", "dash_bootstrap_components", "flask", "werkzeug")
-
-_PROBE = """
-import importlib, sys
-importlib.import_module({module!r})
-print(",".join(sorted(m for m in {forbidden!r} if m in sys.modules)))
-"""
+from ._boundary import forbidden_imports_after_importing
 
 
 @pytest.mark.parametrize(
@@ -41,18 +32,7 @@ print(",".join(sorted(m for m in {forbidden!r} if m in sys.modules)))
 def test_submodule_import_does_not_execute_the_dash_app_factory(
     module: str,
 ) -> None:
-    proc = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            _PROBE.format(module=module, forbidden=FORBIDDEN),
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert proc.returncode == 0, f"{module} failed to import:\n{proc.stderr}"
-    leaked = [n for n in proc.stdout.strip().split(",") if n]
+    leaked = forbidden_imports_after_importing(module)
     assert not leaked, f"{module} dragged {leaked} in via its package __init__"
 
 

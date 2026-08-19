@@ -7,7 +7,7 @@ raised by the Setup view are the same class. ``_callbacks.py:87`` and
 
 from __future__ import annotations
 
-from phenotypic._services.tune_spec import (  # noqa: F401
+from phenotypic._services.tune_spec import (
     Blocks,
     Issue,
     can_deploy,

@@ -45,7 +45,7 @@ them would drag ``phenotypic.gui`` into the Dash-free tier.
 """
 from __future__ import annotations
 
-from phenotypic._services.argv import (  # noqa: F401
+from phenotypic._services.argv import (
     RunConsoleState,
     _coerce_optional_int,
     _coerce_optional_str,

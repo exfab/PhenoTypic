@@ -9,10 +9,10 @@ keeps resolving for the three GUI call sites that still use it.
 
 from __future__ import annotations
 
-import ast
-import inspect
 import subprocess
 import sys
+
+from ._boundary import gui_modules_reached, parsed_import_names, shallowest_modules
 
 
 def test_pure_half_is_importable_without_dash():
@@ -38,46 +38,6 @@ def test_pure_symbols_moved():
     assert callable(apply_space_edits)
 
 
-def _parsed_imports(module: object) -> list[str]:
-    """Every dotted name ``module``'s import statements name.
-
-    Parsed, never grepped. Both halves of this split discuss the other half in
-    prose — they have to, to explain why the split exists — so a source-text
-    check reports a docstring mention as an import and an aliased
-    ``from phenotypic import gui`` as clean.
-    """
-    tree = ast.parse(inspect.getsource(module))
-    names: list[str] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            names += [alias.name for alias in node.names]
-        elif isinstance(node, ast.ImportFrom):
-            base = node.module or ""
-            names.append(base)
-            names += [f"{base}.{alias.name}" for alias in node.names]
-    return names
-
-
-def _gui_modules_reached(module: object) -> set[str]:
-    """The ``phenotypic.gui`` *modules* ``module`` imports, at allowlist grain.
-
-    ``_parsed_imports`` yields both ``X`` and ``X.symbol`` for a ``from X import
-    symbol``. Only the shallowest name is a module, so keep the minimal elements
-    of the set: how many symbols a caller happens to pull from one module is not
-    a fact about how far it reaches.
-    """
-    reached = {
-        name
-        for name in _parsed_imports(module)
-        if name == "phenotypic.gui" or name.startswith("phenotypic.gui.")
-    }
-    return {
-        name
-        for name in reached
-        if not any(other != name and name.startswith(f"{other}.") for other in reached)
-    }
-
-
 def test_pure_half_reaches_exactly_its_allowlisted_gui_modules():
     """The pure half's GUI reach is *exactly* what the allowlist grants.
 
@@ -97,7 +57,7 @@ def test_pure_half_reaches_exactly_its_allowlisted_gui_modules():
 
     from .test_import_purity import GUI_IMPORT_ALLOWLIST
 
-    assert _gui_modules_reached(tune_spec) == GUI_IMPORT_ALLOWLIST[
+    assert shallowest_modules(gui_modules_reached(tune_spec)) == GUI_IMPORT_ALLOWLIST[
         "phenotypic._services.tune_spec"
     ], (
         "the pure half's GUI reach changed; every entry in "
@@ -116,7 +76,7 @@ def test_view_half_imports_the_pure_half():
     """
     from phenotypic.gui.tune import _space_view
 
-    assert "phenotypic._services.tune_spec" in _parsed_imports(_space_view)
+    assert "phenotypic._services.tune_spec" in parsed_import_names(_space_view)
 
 
 def test_legacy_import_path_still_works():
