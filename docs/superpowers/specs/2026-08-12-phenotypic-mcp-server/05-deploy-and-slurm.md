@@ -280,8 +280,30 @@ its own contents.
 {"token":"pl_7f3a…","kind":"plan","created":"…","expires":"…",
  "scope":"subset","pipeline_digest":"sha256:9c1e…","subset_id":"subsets/…",
  "subset_digest":"sha256:77b2…","compute":{"profile":"cpu-bulk","time":"02:00:00"},
+ "run_name":"runs/2026-08-12-plateA",
+ "array":{"requested":480,"chunks":1,"effective_limit":2500},
+ "estimate":{"node_hours":18.4},
  "argv_digest":"sha256:4b0a…","consumed_by":null}
 ```
+
+**The binding set is exhaustive, and it grew when the token absorbed the
+promotion gate.** While the token only meant "a plan was drawn", a stale one cost
+a re-plan. Now it carries a human's consent to a specific quantity of somebody
+else's compute, so anything quoted to that human has to be inside it:
+
+| Field | Why it binds |
+|---|---|
+| `run_name` | Otherwise an ack given for `runs/2026-08-12-plateA` is spendable against a different output directory with every digest still matching |
+| `array` | §5.3 resolves the width live from `scontrol`/`sacctmgr` (§5.2), so the cluster can re-chunk between plan and start. `compute` binds the *profile*, not the resolved width |
+| `estimate.node_hours` | The number quoted verbatim in `ack_prompt`. This is the figure the human actually approves, and it was outside the token entirely |
+
+**`argv_digest` is the SHA-256 of the rendered argv list**, joined with `\0`, as
+produced by `to_argv` plus the profile's `--slurm` pairs — including `--output`.
+It was previously named in the example record and defined nowhere, which left
+undecidable the very question `run_name` above turns on. Naming it settles that
+independently of the explicit `run_name` field; both are kept because
+`argv_digest` also moves when a compute key changes, and the two failures deserve
+different messages.
 
 The alternative — a **self-describing hash** of `(pipeline_digest,
 images_digest, compute)` — is tempting because it needs no storage and the
@@ -300,6 +322,7 @@ would make every restart silently invalidate approvals you had already given.
 | Validation | Re-derive the digests from the *current* request and compare; any mismatch → `plan_stale` naming which field moved |
 | Expiry | `expires` (default 24 h); an expired token → `plan_stale`, not silent acceptance |
 | Single use | `consumed_by` is CAS'd to the `run_id` on a successful `deploy_start`; a second use → `plan_stale`. Re-running a deploy means re-planning, which is cheap and keeps the preview honest |
+| Collection | Expired tokens are deleted on the next `deploy_plan` or server start. Without this, every plan the agent draws and abandons accumulates under `.phenotypic-mcp/plans/` indefinitely — and once a token can carry a human's consent, an abandoned one is not merely litter but a standing approval waiting for a matching request. Expiry already bounds the exposure to 24 h; collection is what stops it accruing |
 
 A `scope:"full"` token additionally binds `parent_digest`, so a parent that
 gained images between the plan and the submission invalidates it (`plan_stale`,

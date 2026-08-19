@@ -355,14 +355,48 @@ is only knowable *after* the probe — and that ordering breaks this feature in
 precisely the case it was added for. Two siblings patching the same edit
 concurrently are both mid-probe, neither has written anything, so neither sees
 the other and both spend the budget. So an accepted edit is journalled
-immediately as `in_flight`, and the decision is filled in when the probe
-completes. A match against an `in_flight` step advises *"a sibling is probing
-this now"* rather than quoting evidence that does not exist yet.
+immediately as `in_flight`; a match against an `in_flight` step advises *"a
+sibling is probing this now"* rather than quoting evidence that does not exist
+yet.
+
+**`decision` is derived, not reported.** No tool in the catalog takes a
+keep/revert argument, and none should: the choice is the *agent's*, made after
+reading evidence, and a self-reported field would be one more thing an agent can
+simply omit. The server does not need to be told. **It compares the recorded edit
+against the pipeline as it now stands** — if the op is still there, the step was
+kept; if it is gone, it was reverted. Both facts are already in the server's
+possession, so the advisory reports a state it can verify rather than a claim it
+received.
+
+**What counts as "the same edit" is the full canonical edit, parameters
+included.** The recorded block is `{kind, slot, class, params}` — an earlier
+draft omitted `params`, which collapses every `set_params` at one slot into a
+single attempt even though varying parameters is exactly what the loop is *for*,
+and merges `insert_op FocusEdgePhase sigma:2` with `sigma:9` into one. Matching
+on the whole edit means a repeat is a genuine repeat. It is deliberately
+conservative: the case the advisory is worth firing on — a compacted agent
+re-trying what it already rejected — is an exact repeat, and an advisory that
+fires on near-misses gets ignored, taking the true hit with it.
+
+`index` is **not** part of the match. It is a position in a list the loop
+mutates, so `ops[1]` at step 3 and `ops[1]` at step 9 need not name the same
+place; the op class and slot identify the edit stably where the index does not.
 
 This narrows the window to the patch call itself rather than closing it: two
 patches racing inside the same journal append still both proceed. That is
 acceptable for an advisory — the cost of a rare duplicate probe is one probe,
 and the alternative is a lock on the exploration hot path.
+
+**Both the advisory and `budget_note` read a journal §2.5 permits to be
+truncated**, and they degrade differently. A truncated journal yields *no*
+advisory, which an agent reads as "this edit is new" — silence meaning the
+opposite of what it should. And `budget_note`'s count restarts, so §8.7's
+12-patch bound silently resets: the number becomes **wrong rather than absent**,
+which is the worse of the two failures. So both carry `basis: "complete" |
+"truncated"`, and on `truncated` the advisory says it cannot rule out a prior
+attempt instead of implying there was none. §8.7 already calls the bounds
+advisory, so nothing breaks — but an advisory bound that lies about its own
+completeness is not advisory, it is misleading.
 
 **`exploration` is what makes §8.7's loop runnable.** That section states step
 and no-improvement caps "reported in the response", and the lineage journal

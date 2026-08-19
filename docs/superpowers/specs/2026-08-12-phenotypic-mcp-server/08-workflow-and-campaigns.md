@@ -552,8 +552,15 @@ itself:
 
 **The row is appended in two parts, and the order matters.** The step is
 journalled the moment the edit is *accepted* — before its probe runs — carrying
-the edit and `"decision":"in_flight"`. Evidence and the final `keep`/`revert`
-are filled in when the probe returns.
+the full edit (parameters included) and `"decision":"in_flight"`. Evidence is
+filled in when the probe returns.
+
+**The keep/revert decision is never written by a tool.** It is the agent's
+choice, taken after reading the evidence, and no tool in the catalog accepts it.
+The server derives it instead: an edit still present in the current pipeline was
+kept, one no longer present was reverted (§3.2). Deriving beats reporting here —
+a self-reported decision is a field an agent can omit, while the pipeline itself
+cannot lie about what it contains.
 
 Writing the whole row at the end instead would be simpler and would break §3.2's
 `edit_previously_tried` in exactly the case it exists for: two sibling subagents

@@ -276,7 +276,8 @@ cheap; it is listed as new work in §7 P3 rather than assumed.
 {"ts":"2026-08-12T14:02:11Z","event":"pipeline.put","id":"pipelines/edge-v3.json.pht-pipe","digest":"sha256:9c1e…","parent":null,"agent":"subagent-B"}
 {"ts":"2026-08-12T14:07:40Z","event":"tune.start","id":"studies/edge-v3-tpe","parent":"pipelines/edge-v3.json.pht-pipe"}
 {"ts":"2026-08-12T15:31:02Z","event":"tune.export_best","id":"pipelines/edge-v3-tuned.json.pht-pipe","parent":"studies/edge-v3-tpe","trial":47,"score":0.081}
-{"ts":"2026-08-12T15:44:19Z","event":"deploy.start","id":"runs/2026-08-12-plateA","parent":"pipelines/edge-v3-tuned.json.pht-pipe"}
+{"ts":"2026-08-12T15:43:55Z","event":"deploy.approve","id":"runs/2026-08-12-plateA","parent":"pipelines/edge-v3-tuned.json.pht-pipe","scope":"full","token":"pl_7f3a…","node_hours":18.4,"ack_source":"elicited","human_response":"yes, go ahead"}
+{"ts":"2026-08-12T15:44:19Z","event":"deploy.start","id":"runs/2026-08-12-plateA","parent":"pipelines/edge-v3-tuned.json.pht-pipe","scope":"full","subset_id":"subsets/plates-dev-24.subset.json"}
 ```
 
 **Digest format.** `digest` is `f"sha256:{...}"`, matching `bytes_fingerprint` /
@@ -316,6 +317,15 @@ three of the four hops reconstructible.
 | Operation registry | immutable after discovery | `get_registry()` |
 
 No tool mutates another tool's in-flight artifact. The one cross-tool write is
+**`deploy.approve` exists because the fold deleted the only writer of it.** The
+retired `promotion_approve` recorded the decision *and appended a lineage row*;
+collapsing it into `deploy_start` kept the decision and dropped the row, which
+would have left **the most consequential human decision in the system with no
+durable record at all** — only a token file that gets consumed and a
+`consumed_by` field that says a run happened, not that anyone agreed to it. It is
+written before the submission it authorizes, so an approval followed by a crash
+is still reconstructible.
+
 `tune_export_best`, which writes a *new* pipeline file rather than editing the
 base — matching `build_pipeline`, which deep-copies rather than mutating
 (`tune/_evaluation/_builder.py:384`).
