@@ -3,7 +3,7 @@
 #SBATCH --partition=short
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
-#SBATCH --time=00:45:00
+#SBATCH --time=02:00:00
 #SBATCH --output=/bigdata/exfab/anguy344/slurm_logs/%j.log
 set -euo pipefail
 
@@ -26,6 +26,16 @@ WORKTREE=/bigdata/exfab/anguy344/PhenoTypic/.worktrees/worktree-ome-zarr-image-s
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 
+# MANDATORY on a compute node. Without it the Qt tests reach
+# `pytestqt`'s `qapp` fixture, try to open a real display, and Qt calls abort()
+# -- SIGABRT, exit 134, killing the whole pytest process rather than failing one
+# test. Job 27561771 died exactly that way at 79%.
+#
+# Not a discovery: all three of the project's own CI workflows already set this
+# (run-pytest.yml:119, run-pytest-full.yml:55, gui-checks.yml:166). Any headless
+# runner needs it.
+export QT_QPA_PLATFORM=offscreen
+
 echo "Date:  $(date -Is)"
 echo "Node:  $(hostname -s)"
 echo "Job:   ${SLURM_JOB_ID}"
@@ -42,11 +52,23 @@ echo
 # starvation failure this job exists to rule out. Serial also matches how the
 # 946/1/32 baseline was measured -- apples to apples.
 # `-p no:randomly` for the same reason: fixed order, comparable counts.
+# `-o addopts=` clears the project default, which is
+#     addopts = "--verbose --capture=no -m 'not slow'"
+# `--capture=no` streams every line of test output straight to this log on
+# SHARED /bigdata storage. A first attempt (job 27561428) took 38 minutes to
+# reach a third of the suite on an idle 64-core node -- roughly 15x slower than
+# the same suite run interactively, where the output was piped to `tail` and
+# discarded. The I/O was the cost, not the tests.
+#
+# `-m "not slow"` is re-added explicitly, because clearing addopts drops it too
+# and the slow-marker sweep is deliberately excluded from the default lane.
+#
 # `|| status=$?` and not a bare call: `set -e` would abort the script the moment
 # pytest returned non-zero, so the summary lines below would never print on the
 # one outcome they matter most for -- a failure.
 status=0
-uv run pytest tests/unit -q --no-header -p no:randomly || status=$?
+uv run pytest tests/unit -q --no-header -p no:randomly \
+    -o addopts= -m "not slow" || status=$?
 
 echo
 echo "pytest exit status: ${status}"

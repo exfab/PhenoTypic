@@ -31,6 +31,20 @@
   (`test-qt` + the `napari` extra are required for the napari/Qt widget tests)
 - `source .venv/bin/activate` — manual venv activation
 
+### Running tests
+
+Use the **`run-phenotypic-test`** skill before any non-trivial pytest invocation —
+the full `tests/unit` suite, anything on a compute node, anything headless, or any
+run whose numbers you intend to quote as a baseline. Four traps here produce a
+**wrong answer** rather than a slow one: a missing `QT_QPA_PLATFORM=offscreen`
+aborts the interpreter at 79% with no summary; `-n auto` reads the node's core
+count instead of the allocation's and manufactures timeout failures; the default
+`addopts` streams uncaptured output and can triple the runtime when stdout is a
+file on shared storage; and `-x` silently truncates a run that then gets recorded
+as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
+(**`slurm-job`** skill), with a committed batch script at
+`docs/superpowers/plans/2026-08-18-ome-zarr-image-store/run_unit_suite.sbatch`.
+
 ### Linting & Type Checking
 
 - `uv run mypy src/phenotypic` — type checking
