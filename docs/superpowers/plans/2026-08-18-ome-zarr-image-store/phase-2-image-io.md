@@ -406,7 +406,8 @@ def test_pyramid_depth_is_uniform_across_every_series(
     levels = block[PhenotypicAttr.PYRAMID]["levels"]
     members = [
         *block[PhenotypicAttr.SERIES].values(),
-        *block[PhenotypicAttr.LABELS].values(),
+        # `.get`: a label-less store OMITS the key (Task 1.3, ledger C3).
+        *block.get(PhenotypicAttr.LABELS, {}).values(),
     ]
     for member in members:
         found = sorted(p.name for p in (store / member).iterdir() if p.name.isdigit())
@@ -802,9 +803,12 @@ paths sit side by side until Phase 6 removes the former.
         from phenotypic.sdk_ import ngff_
 
         block = ngff_.read_phenotypic_attributes(path)
-        member = block[ngff_.PhenotypicAttr.SERIES].get(layer) or block[
-            ngff_.PhenotypicAttr.LABELS
-        ].get(layer)
+        # `.get` on LABELS: a label-less store omits the key entirely
+        # (Task 1.3, ledger C3), so indexing it raises KeyError rather than
+        # falling through to the `member is None` branch below.
+        member = block[ngff_.PhenotypicAttr.SERIES].get(layer) or block.get(
+            ngff_.PhenotypicAttr.LABELS, {}
+        ).get(layer)
         if member is None:
             raise KeyError(f"Layer {layer!r} not found in {path}")
         from pathlib import Path as _Path
@@ -1919,7 +1923,7 @@ def _assert_reader_level_musts(store: Path, block: dict, ome_xml: str) -> None:
     # `objmap_path`: a re-derived path cannot fail, whereas this turns the loop
     # below into a real check that the declared label path resolves (ledger
     # ALGO-20). `.get` because a label-less store omits the key (ledger C3).
-    labels = block[PhenotypicAttr.LABELS]
+    labels = block.get(PhenotypicAttr.LABELS, {})
     label_member = labels.get(OBJMAP_LABEL) if labels else None
     # The LABEL GROUP IS IN THIS LOOP, deliberately (ledger ALGO-R2B-14).
     # `label.schema` declares only `image-label` and `version` under

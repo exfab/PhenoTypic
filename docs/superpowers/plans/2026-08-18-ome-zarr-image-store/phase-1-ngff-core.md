@@ -786,7 +786,9 @@ keeping Windows paths under MAX_PATH."
 **Constraints specific to this task:**
 - `series` and `labels` are **separate keys**: `series` maps a logical layer name to a
   group name, `labels` maps a label name to a nested path.
-- **`has_labels=False` omits the `labels` key entirely**, for a store written without an
+- **`has_labels=False` omits the `labels` key entirely — ABSENCE, never an empty mapping.**
+  Every reader must use `.get(PhenotypicAttr.LABELS, {})`; indexing raises `KeyError`. This
+  is for a store written without an
   objmap — which is what a GUI builder preview of a node that changed no labels is
   (`save_intermediate_zarr`, Phase 2 Task 2.4). Defaults to `True` so every existing caller
   is unchanged.
@@ -1118,6 +1120,7 @@ def build_phenotypic_attributes(
     detect_mode: str | None,
     illuminant: str | None,
     gamma: str | None,
+    has_labels: bool = True,
     grid: dict | None = None,
     work_id: str | None = None,
     phenotypic_version: str | None = None,
@@ -1156,6 +1159,13 @@ def build_phenotypic_attributes(
     import phenotypic
 
     primary = primary_series(series_names)
+    # `labels` is inserted CONDITIONALLY, below -- it is not a key with an empty
+    # default. An earlier draft emitted `labels: {}` when the store carried no
+    # label image, which reinstates the exact defect ledger C3 was raised for:
+    # the downstream guard in `_assert_reader_level_musts` tests for an EMPTY
+    # mapping, so an emitted `{}` either fires it spuriously or leaves the
+    # FileNotFoundError in place while the guard reads as correct. The contract
+    # is ABSENCE, not emptiness, and every reader must use `.get`.
     block: dict = {
         PhenotypicAttr.STORE_SCHEMA_VERSION: STORE_SCHEMA_VERSION,
         PhenotypicAttr.METADATA_SCHEMA_VERSION: METADATA_SCHEMA_VERSION,
@@ -1164,15 +1174,6 @@ def build_phenotypic_attributes(
         ),
         PhenotypicAttr.IMAGE_CLASS: image_class,
         PhenotypicAttr.SERIES: {name: name for name in series_names},
-        # Omitted entirely when the store carries no label image. An earlier
-        # draft emitted this unconditionally, so a preview store written by
-        # `save_intermediate_zarr(layers=("gray",))` DECLARED
-        # `labels.objmap = "gray/labels/objmap"` for a group that does not exist
-        # -- and `assert_store_conforms` then FileNotFoundError'd walking it.
-        # Ledger C3.
-        PhenotypicAttr.LABELS: (
-            {OBJMAP_LABEL: objmap_path(primary)} if has_labels else {}
-        ),
         PhenotypicAttr.PYRAMID: {
             "levels": int(pyramid_levels),
             "stop_px": PYRAMID_STOP_PX,
@@ -1199,6 +1200,9 @@ def build_phenotypic_attributes(
     }
     if work_id is not None:
         block[PhenotypicAttr.WORK_ID] = work_id
+    if has_labels:
+        block[PhenotypicAttr.LABELS] = {OBJMAP_LABEL: objmap_path(primary)}
+
     if grid is not None:
         block[PhenotypicAttr.GRID] = grid
     return block
@@ -3054,7 +3058,12 @@ def valid_staged_store(path: "Path") -> bool:
             return False
         members = [
             *block[PhenotypicAttr.SERIES].values(),
-            *block[PhenotypicAttr.LABELS].values(),
+            # `.get`: a label-less store OMITS the key (Task 1.3, ledger C3).
+            # This is a validity predicate -- it must RETURN FALSE on a store it
+            # does not accept, never raise. Indexing would make a label-less
+            # store a KeyError propagating out of resume classification and
+            # migration, both of which call this to decide what to do next.
+            *block.get(PhenotypicAttr.LABELS, {}).values(),
         ]
         if not members:
             return False
