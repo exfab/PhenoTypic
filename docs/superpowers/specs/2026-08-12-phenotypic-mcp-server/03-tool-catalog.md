@@ -655,6 +655,13 @@ two produces a tool that looks informative and tells the agent nothing.
   "next_recommended":"pipeline_put",
   "workflow":{"experiment_profile":"profiles/plates.experiment.json","subset":"subsets/plates-dev-24.subset.json",
               "blocked":[],"note":"experiment profile and subset exist; pipelines may be authored and probed"},
+  "compute":{"default_profile":"fungi-long",
+             "profiles":{"fungi-long":{"source":"project","time":"24:00:00",
+                                       "caps":{"max_time":"48:00:00"}},
+                         "cpu-bulk":{"source":"site",
+                                     "caps":{"max_cpus_per_task":{"value":8,"source":"project",
+                                                                  "site_ceiling":32}}}},
+             "config_files":["~/.phenotypic/mcp.toml","<root>/phenotypic-mcp.toml"]},
   "counts":{"pipelines":3,"tune_specs":3,"profiles":1,"subsets":1,
              "campaigns":1,"studies":1,"runs":0},
   "active_subset":"subsets/plates-dev-24.subset.json"}}

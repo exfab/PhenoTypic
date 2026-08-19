@@ -901,3 +901,50 @@ hidden.
 - **SIMP-46** — §1.5 is 339 lines; four rules belong in tables that already
   carry their siblings. ~25–30 lines out, nothing lost. Not applied.
 - GEN-4/5/6/8–12, FLOW-1/2/5, CONC-18 — untouched by any diff across four rounds.
+
+---
+
+## User rulings, post-loop (permanent)
+
+### USER-28 — the local queue is ratified (settles SIMP-45)
+**Queueing is right.** USER-17's original corollary said a second local arm is
+"refused, never parked". §1.5 now says local batch work is **queued, not
+refused**: the *handler* returns immediately with a `run_id`, `queued` status and
+a position, and the *run* waits in the background launcher.
+
+**This is a change of outcome, not of wording, and it is ratified as such** —
+round 3 made it inside an edit labelled a clarification, which is how it went
+unnoticed for a round. USER-17's hazard (a handler blocking for hours against a
+host timeout) is fully addressed by the handler returning immediately. Refusing
+would make the server useless on a workstation with no scheduler, the case §1.5
+exists to serve.
+
+### USER-29 — a visible per-project compute config (`<root>/phenotypic-mcp.toml`)
+**The agent must not decide SLURM parameters stochastically.** §5.2 already made
+it name a *profile* rather than supply a partition or account; USER-29 adds the
+missing per-project layer, because one user works across projects whose compute
+needs differ for reasons that have nothing to do with the user.
+
+**Visible, at the workspace root** — not under `.phenotypic-mcp/`, which is
+machine state the server owns and rewrites. This file is human-authored input,
+and a file constraining what an agent may submit on your behalf must be findable
+without being told it exists. Discovery is exact: USER-11 makes the root
+mandatory, so the server reads `<root>/phenotypic-mcp.toml` and never walks
+parents.
+
+**Narrow, never widen.** Site config is the ceiling; the project layer may lower
+a cap, add a profile, or pick a default; the agent may override only
+`overridable` keys within the *effective* caps. Widening is a **startup error**
+naming both values, never a silent clamp — a clamp teaches the author their file
+works. `workspace_info` reports the effective set with each value's originating
+layer, because a config whose result can only be discovered by submitting a job
+is one nobody will trust.
+
+**Two site-fact corrections folded in**, and they are the argument for the file:
+`cpu-bulk` carried `account = "exfab"` on the `batch` partition (the account
+belongs only with the `exfab` partition — and a wrong account **queues on
+`AssocGrpCpuLimit` indefinitely rather than failing**), and `gpu-short` used the
+public `gpu` partition. *Correction to my earlier claim: that partition does
+exist — I said it did not.* The reason to prefer `exfab` is its queue, not
+validity. Both mistakes run correctly and simply never start, which is precisely
+the class of error an agent cannot diagnose.

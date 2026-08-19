@@ -55,7 +55,11 @@ distributed_backend = "postgres"
 
 [slurm.profiles.cpu-bulk]
 partition     = "batch"
-account       = "exfab"
+# No `account` key. `--account=exfab` belongs only with the `exfab` partition;
+# elsewhere the default account is correct. Setting it here does not fail at
+# submit — the job QUEUES on `AssocGrpCpuLimit`, indefinitely and silently,
+# which is the failure mode an agent cannot diagnose and this file exists to
+# prevent.
 qos           = "normal"
 cpus_per_task = 8
 mem_gb        = 16
@@ -70,7 +74,8 @@ overridable   = ["time", "cpus_per_task", "mem_gb", "njobs", "n_workers"]
   max_n_workers     = 32
 
 [slurm.profiles.gpu-short]
-partition        = "gpu"
+partition        = "exfab"     # NOT the public `gpu` partition: it exists, but
+account          = "exfab"     # its queue is long. `exfab` requires this account.
 gpus_per_node    = 1
 time             = "02:00:00"
 overridable      = ["time"]
@@ -78,6 +83,12 @@ overridable      = ["time"]
   max_time  = "02:00:00"
   max_array = 16
 ```
+
+Note what the two corrections above have in common: **both are site facts an
+agent cannot derive and cannot detect getting wrong.** A wrong account queues
+rather than errors; a valid-but-congested partition runs correctly and simply
+never starts. Neither produces a diagnosable failure, which is the argument for
+naming them once in a file rather than deciding them per call.
 
 **Rules, enforced before any argv is built:**
 
@@ -174,6 +185,82 @@ startup, so a mis-specified profile fails when you load config rather than at
 `--slurm key=value` surface the forward CLI already has, at which point one
 profile serves both paths and the expressibility check becomes vestigial. Until
 then the check is what keeps the drop from being silent.
+
+## 5.2.2 The project layer — `<root>/phenotypic-mcp.toml`
+
+`~/.phenotypic/mcp.toml` is a **per-user** file, and one user works across
+several projects whose compute needs genuinely differ — a filamentous-fungi run
+at ~30 min/image and a yeast plate sweep do not want the same walltime, and
+nothing about the user is the reason. So a second layer sits in the workspace:
+
+```
+<workspace-root>/phenotypic-mcp.toml
+```
+
+**It is visible, at the root, deliberately.** Not under `.phenotypic-mcp/`, which
+is machine state the server owns and rewrites. This file is **human-authored
+input** — the same distinction that puts `pyproject.toml` at the root while
+`.venv/` hides. A file that constrains what an agent may submit on your behalf is
+one you must be able to find without being told it exists, and read without
+being told the syntax. Discovery is unambiguous because USER-11 already makes the
+workspace root mandatory: the server reads exactly `<root>/phenotypic-mcp.toml`
+and does not walk parent directories.
+
+```toml
+# Everything is optional. A project with no compute opinions omits the file.
+default_profile = "fungi-long"
+
+[slurm.profiles.fungi-long]           # a profile only this project needs
+partition     = "epyc"
+cpus_per_task = 16
+time          = "24:00:00"
+overridable   = ["time", "n_workers"]
+  [slurm.profiles.fungi-long.caps]
+  max_time      = "48:00:00"
+  max_n_workers = 16
+
+[slurm.profiles.cpu-bulk.caps]        # NARROW an inherited profile
+max_cpus_per_task = 8                 # site allows 32; this project says 8
+```
+
+### The rule that makes a project layer safe: narrow, never widen
+
+| Layer | Owned by | May |
+|---|---|---|
+| `~/.phenotypic/mcp.toml` | the user/operator | set the **ceiling** |
+| `<root>/phenotypic-mcp.toml` | the project | choose a default profile, add profiles, **lower** caps |
+| the tool call | the agent | override `overridable` keys, within the **effective** caps |
+
+**A project file may only make the effective cap smaller.** Raising
+`max_cpus_per_task` above the site value is a **startup error naming both
+values** — not a silent clamp, because a clamp teaches the author their file
+works. A project-defined profile is capped by the site's caps for any key the
+site constrains globally.
+
+This is what lets the file adapt per project without becoming a way to escape the
+operator's limits, and it is why the layering runs in this direction rather than
+last-write-wins.
+
+### Effective config is inspectable, not inferred
+
+`workspace_info` reports the **effective** profile set with each value's
+originating layer (`site` / `project` / `default`). A config system whose result
+can only be discovered by submitting a job is one nobody will trust, and an agent
+that cannot see the effective caps will guess at them — which is the behaviour
+the whole mechanism exists to remove.
+
+### Failure is loud
+
+| Condition | Behaviour |
+|---|---|
+| File absent | Fine. Site config applies unchanged |
+| Malformed TOML | **Startup error** naming file and line. Never "ignore and continue" — a config that silently does nothing is worse than none |
+| Widens a cap | **Startup error** naming key, project value, site ceiling |
+| Names an unknown profile as `default_profile` | Startup error listing the profiles that do exist |
+| Sets a reserved SBATCH key | Rejected exactly as §5.2 rule 4 rejects it from an agent |
+
+Startup, not first-use: a config error must surface when the server starts,
+while a human is present, not three hours into an overnight campaign.
 
 ## 5.3 `deploy_plan` (`W0` at `subset`, `W1` at `full`) — preview, never submit
 

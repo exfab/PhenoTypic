@@ -125,6 +125,8 @@ directory and a poor place to accumulate run outputs.
 
 ```
 <workspace>/
+├── phenotypic-mcp.toml               # §5.2.2 project compute config — HUMAN-authored,
+│                                     #   visible at the root, never written by the server
 ├── pipelines/
 │   └── <name>.json.pht-pipe          # ImagePipeline.to_json()
 ├── tune/
