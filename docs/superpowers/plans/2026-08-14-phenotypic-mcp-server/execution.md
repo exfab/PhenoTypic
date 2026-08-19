@@ -73,11 +73,33 @@ a manifest field to `RunConsoleState` and a branch to `to_argv`; `--restart`,
 function, the same shape of change. Opening `to_argv` twice for one class of
 defect is the waste the cluster rule exists to prevent.
 
-**C8 and C9 are the phase's only parallel-worktree candidates.** Verified
-zero-file-overlap: C8 owns `phenotypicCLI.py` + `_services/argv.py`, C9 owns
-`_services/runs.py`, and neither is touched by C4 (`catalog.py`), C5
-(`subset/`), C6 or C7 (both `tune/_tune_cli/_run.py`). Everything else in this
-phase overlaps and stays sequential.
+**C8 and C9 are parallel-worktree candidates — but NOT against C6.**
+
+*Corrected 2026-08-19, before dispatch.* An earlier version of this line claimed
+C8 had zero overlap with every other cluster. **It does not.** Task 16, inside
+C6, carries the instruction *"Edit `src/phenotypic/_services/argv.py`, not
+`gui/tune/_run_argv.py`"* (`phase-1b:103`) — because Task 8 already promoted the
+tune argv builder there. Task 19 edits the same file for the manifest field
+(`phase-1b:1236`). **Same file, and the collision rule that forced C6 to exist
+applies here too.**
+
+| Pair | Safe to parallel? | Shared file |
+|---|---|---|
+| C8 ∥ C4 | **yes** | C4 owns `catalog.py` only |
+| C9 ∥ anything | **yes** | C9 owns `_services/runs.py` alone |
+| **C8 ∥ C6** | **NO** | `_services/argv.py` |
+| C8 ∥ C5, C8 ∥ C7 | yes | no shared file |
+
+**So: `C8` and `C9` run in worktrees alongside `C4`, and `C8` must be gated and
+merged before `C6` is dispatched.** That sequences naturally — C6 already follows
+C4 — but it is a constraint, not a coincidence, and dropping it would put two
+agents in one function.
+
+This is the anti-pattern the skill names outright ("overlap kills parallelism —
+check shared files before fanning out"), and the check that caught it was
+mechanical: parse every task's `Files` block, intersect per cluster. Worth
+re-running whenever a task is added, since Tasks 19 and 20 were added after the
+original clustering and that is exactly how the overlap got in.
 
 **Sequence:** `C1 → C2 → C3 → [1a gates] → C4 → C6 → C7 → C5 → [1b gates]`
 with **C8 ∥ C9 ∥ C4** — the two seams run in their own worktrees alongside the
