@@ -105,3 +105,58 @@ now downstream of a storage change that is still being designed. Phase 1 and
 Phase 2A/2B do not touch it — they are catalog, pipeline, tune, and campaign
 work. **2C should not be written until the OME-Zarr design settles**, or it will
 be written against a storage layout and a mode list that are about to change.
+
+---
+
+## `deploy_plan` is no longer a `W0` call — a spec defect the merge created
+
+Found by C3 while re-applying Task 9 on the merged file; both halves verified
+independently at `_cli_slurm_array_scripts.py:388-401`.
+
+### 1. Building a spec reads every input image, twice
+
+```python
+work_id, _ = work_id_for_image(config, dataset.name, image_path)   # :388  hashes image + pipeline
+identity_rows.append((work_id, file_sha256(image_path), uuid4().hex))  # :389  hashes the image AGAIN
+... f"{shlex.quote(file_sha256(config.pipeline_json))}"            # :401
+```
+
+`file_sha256` streams the whole file in 1 MiB chunks. So building the spec for an
+N-image chunk costs **2N full image reads plus N pipeline reads**. Nothing is
+written — the purity guarantee Task 9 exists for still holds, and the purity test
+correctly passes — but the *cost* model does not.
+
+**§1.5 defines `W0` as "pure computation over metadata; **no image I/O**", and
+§5.3 classifies `deploy_plan` as `W0`.** That is now false. A plan over a
+480-image dataset reads 960 images. Under §1.5's routing table `W0` takes no
+`LocalComputeSlot` and runs inline on the event loop — so as specified, a single
+`deploy_plan` would block every other subagent's calls for the duration of a
+full-dataset hash. This is the same failure `run_in_executor` exists to prevent
+for `W1`, and §5.5 already had to carve out `detail: "results"` for exactly this
+reason.
+
+**Options, none free:** reclassify `deploy_plan` as `W1` (takes the slot, bounded
+by a timeout); keep it `W0` but force it through the executor as §5.5 does; or
+have the builder accept precomputed identity rows so a preview can skip hashing.
+The third is the only one that keeps a plan genuinely cheap, and it interacts
+with the OME-Zarr work, which is redesigning what a per-image identity even is.
+
+### 2. The spec is nondeterministic — a preview can never be byte-identical
+
+Every `ATTEMPT_IDS` entry is a fresh `uuid4().hex` (`:389`), regenerated at
+submit time. So the script `deploy_plan` shows and the script `deploy_start`
+submits **cannot** match byte-for-byte, and §5.3's `sbatch_preview` implies they
+do.
+
+C3 handled this correctly in the tests rather than papering over it: byte
+equality with **only** the `ATTEMPT_IDS` block masked, plus a second guard that
+builds twice and asserts the renders *differ* and match once masked (so the mask
+cannot quietly grow), plus a structural consumption proof. Mutation M6 — making a
+second field per-call random — fails both, which is what keeps the mask honest.
+
+**Phase 2C must choose:** present the preview as "modulo attempt ids", or thread
+attempt ids into the builder so a plan and its submission share them. The second
+is what makes a `plan_token` meaningful — §5.4 binds the token to an
+`argv_digest`, and a digest over a nondeterministic render is not a binding.
+
+**Both items go in the spec audit**, and both are further reasons Phase 2C waits.
