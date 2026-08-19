@@ -60,9 +60,26 @@ Execute as three tasks:
 
 | | Scope | Test |
 |---|---|---|
-| **10a** | Lift the `submodules` literal to `PHENOTYPIC_CLASS_MODULES`; both consumers read it. **Zero behaviour change.** | `test_one_shared_module_list` only |
+| **10a** | Lift the `submodules` literal to `PHENOTYPIC_CLASS_MODULES`, read by **one** consumer. **Zero behaviour change.** | `test_one_shared_module_list`, asserting the constant equals the old literal **in order** |
 | **10b** | Give prefabs, scorers and strategies their category + base class so `discover()` can actually find them | `test_registry_reaches_prefabs...`, `test_scorers_and_strategies...` |
 | **10c** | `__all__`-driven getattr walk so lazy modules (`detect.nn`) are discoverable; guard at getattr level | the `MicroSamDetector` assertion |
+
+**M-1, corrected before dispatch: 10a cannot have "both consumers" read it, and
+"zero behaviour change" cannot survive it.** `discover()`
+(`_services/registry.py:190-231`) consumes seven `(module, category, base_class)`
+triples plus `_discover_analyzers(analysis_module)` — it cannot read a bare
+module-name list until **10b** supplies categories and base classes. And if it
+could, adding the constant's other five entries (`prefab`, `detect.nn`, `tune`,
+`tune.score`, `tune.strategy`) is a behaviour change by definition. So 10a lifts
+the literal for **one** reader; "both consumers" moves to 10b, which asserts
+explicitly that `discover()` derives from the constant.
+
+**Order matters in the assertion, not just membership.** Resolution is
+first-match, so `test_one_shared_module_list` must compare the constant to the old
+literal *as a sequence*. Membership-only would pass on a reordering that silently
+changes which module wins a name collision — and would also pass on a pure lift
+that never wires the second consumer, which is how the original claim went
+unnoticed.
 
 10a is the cheap one and unblocks Task 14. **Do not start 10b/10c until 10a is committed** — it is the only part with no behavioural risk.
 
