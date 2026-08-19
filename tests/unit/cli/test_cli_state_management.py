@@ -192,6 +192,10 @@ def test_digest_resume_accepts_same_pipeline_from_new_path(tmp_path: Path) -> No
     config = SimpleNamespace(
         pipeline_json=replacement,
         input_path=state.input_path,
+        # Read unconditionally rather than through the tolerant
+        # "skip when the saved state lacks the key" loop, because absent has
+        # to mean "no manifest" for a state that predates --image-manifest.
+        image_manifest=None,
         image_type="Image",
         nrows=None,
         ncols=None,
@@ -218,6 +222,7 @@ def test_resume_rejects_changed_artifact_shaping_setting(
     config = SimpleNamespace(
         pipeline_json=pipeline,
         input_path=state.input_path,
+        image_manifest=None,
         image_type="Image",
         nrows=None,
         ncols=None,
