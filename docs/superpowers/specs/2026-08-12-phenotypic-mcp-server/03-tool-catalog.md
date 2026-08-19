@@ -486,6 +486,15 @@ So:
   cumulative-memory concern, since worker RSS resets on respawn.
 - Holding the `LocalComputeSlot` == the worker is busy, so `W1` and local
   `W2`/`W3` still serialize against one another exactly as §1.5 requires.
+- **The output directory is keyed on `(pipeline digest, image-set digest,
+  uuid4)`** — not on the pipeline id, and not on the pipeline digest alone.
+  The id is not unique over time: `pipeline_patch` mutates a pipeline in place up
+  to 12 times under one id (§8.7), so successive probes would write over each
+  other's parquet. The digest alone is not unique either, because the same
+  pipeline probed against two subsets produces two different results that would
+  collide on one path. The `uuid4` covers the remaining case — a repeat probe of
+  the same pipeline on the same images — so a path this tool has already handed
+  back in a response is never written over while the agent is still reading it.
 
 ```json
 {"ok":true,
@@ -494,7 +503,7 @@ So:
                  "rss_after_mb":812}],
    "measurements":{"n_rows":188,"columns":["Size_Area","Shape_Circularity"],
      "describe":{"Size_Area":{"count":188,"mean":412.3,"std":88.1,"min":95,"max":901}},
-     "parquet":".phenotypic-mcp/probes/edge-v3/measurements.parquet"},
+     "parquet":".phenotypic-mcp/probes/9c1e4a-77b2f0-0d3ac91e/measurements.parquet"},
    "benchmark":[{"process":"BlurGauss","type":"Operation","seconds":0.31,"rss_delta_mb":42.0}]},
  "routed":{"class":"W1","routed_to":"local","reason":"probe worker","queue_position":0}}
 ```

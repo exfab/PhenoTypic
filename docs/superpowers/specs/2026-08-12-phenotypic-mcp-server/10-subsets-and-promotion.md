@@ -382,8 +382,17 @@ Four properties it must have:
    project supports Windows — so the server probes once, falls back to copying,
    and **reports which it used** in `subset_get`. A silent copy of a large
    subset is a surprise worth surfacing.
-3. **Keyed by the subset digest**, so re-staging an unchanged subset is a no-op
-   and two concurrent arms share one staging directory rather than racing.
+3. **Keyed by the subset digest, and idempotent by *completion* — not by key.**
+   Sharing one directory per digest is what stops two arms racing to build it;
+   it is not what stops the second arm *reading* it half-built. A key-only
+   contract says "this directory exists", and `_load_images` takes whatever it
+   finds there, so a fleet can launch against a partial symlink tree and every
+   run silently trains on a subset of the subset. So the builder stages into a
+   temp directory, `os.replace`s it onto the digest-keyed name, and writes a
+   `.complete` marker **last**; a reader that does not find the marker treats
+   the directory as absent and waits or builds, never as usable. `os.replace` is
+   atomic within a filesystem, and the marker covers the window after the rename
+   in which the tree exists but the fidelity check (above) has not passed.
 4. **It lives under `.phenotypic-mcp/`**, not under `runs/` or the parent — it
    is server scratch, and `--restart`/`--overwrite` semantics must never reach
    the parent images through it.
