@@ -1055,6 +1055,7 @@ format conversion rewrites the whole results tree."
 >   headers, and **not** rewrite them.
 
 ```python
+import pytest
 from click.testing import CliRunner
 
 from phenotypic.phenotypicCLI import phenotypic_cli

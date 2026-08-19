@@ -1407,6 +1407,7 @@ from __future__ import annotations
 
 import re
 
+import numpy as np
 import pytest
 
 from phenotypic.sdk_ import ngff_
@@ -1665,6 +1666,17 @@ from __future__ import annotations
 
 import functools
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+# The annotation on `_ome_xsd` names `xmlschema`, whose real import is inside
+# the function body (kept there so importing this module costs nothing when the
+# XSD gate is not being used). Without a checker-visible binding, ruff reports
+# F821 undefined-name -- and F821 is NOT autofixable, so the next agent running
+# the CLAUDE.md-prescribed `ruff check --fix` gets a red result on a file the
+# plan declares byte-load-bearing. `from __future__ import annotations` already
+# means the annotation is never evaluated, so this costs nothing at runtime.
+if TYPE_CHECKING:
+    import xmlschema
 
 
 @functools.lru_cache(maxsize=1)
