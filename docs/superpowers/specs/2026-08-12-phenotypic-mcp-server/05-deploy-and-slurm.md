@@ -184,12 +184,33 @@ performs **no** submission and **no** writes under the run's output directory.
 **Its work class depends on `scope`, and a flat `W0` label was wrong.** At
 `scope:"subset"` it reads registered state and renders a spec — genuinely `W0`.
 At `scope:"full"` it additionally runs §10.6.1's parent header sweep, and on a
-mismatch escalates to a 2-image re-probe. Neither fits §1.6.1's `W0` row: a
-header sweep over a few hundred files is bounded and decode-free, but it is not
-"under a second", and the re-probe takes the compute slot outright. So
-`scope:"full"` is declared `W1` — bounded by the §1.6.1 probe caps, offloaded to
-a worker thread per §1.5, and honest about the slot. The response reports which
-path ran, and `estimate.basis` already says whether a re-probe happened.
+mismatch escalates to a 2-image re-probe.
+
+**The sweep is not the reason.** It was assumed to be too slow for `W0`; it was
+then measured, and it is not
+(`logic_validation_scripts/2026-08-12-phenotypic-mcp-server/header_sweep_cost.py`).
+**460 real images on GPFS: 0.081 s, 0.18 ms/image** — twelve times under the
+one-second ceiling, and flat from 480 images out to roughly 5,700. Tier 1 is
+comfortably `W0` at the scale §10.6.1's worked example describes.
+
+**The re-probe is the reason.** It takes the compute slot outright, and per §1.5
+it can then wait out `probe_timeout_s` behind a running local arm — unbounded in
+the way that actually matters. So `scope:"full"` is declared `W1`: bounded by the
+§1.6.1 probe caps, offloaded to a worker thread per §1.5, and honest about the
+slot. The response reports which path ran, and `estimate.basis` already says
+whether a re-probe happened.
+
+Two consequences of the measurement worth stating. First, **the sweep's class is
+dataset-size-dependent**: at ~0.18 ms/image it crosses one second near 5,700
+images and reaches ~9 s at 50,000, so a sufficiently large parent makes tier 1
+alone non-`W0`. The `W1` declaration already covers that, which is the useful
+outcome — the class is right for a reason the design did not originally have.
+Second, the measured cold and warm figures were **identical**, which means
+`posix_fadvise(DONTNEED)` does not evict from GPFS's own pagepool; the "cold"
+number is therefore an upper bound on optimism, not a true cold read. It does not
+change the conclusion at this scale — a 10× cold penalty still lands under the
+ceiling at 480 images — but a first-touch sweep on a genuinely cold filesystem
+has not been measured, and should not be claimed.
 
 **This requires a refactor, not a call-through.** The only existing generator
 that produces a full sbatch script, `generate_array_job_script`
@@ -380,20 +401,17 @@ blocks.
 
 ### GPU staging is automatic, and the plan says so
 
-A pipeline containing a `GpuDetector` (`pipeline_requires_gpu`) *usually*
+A pipeline containing a `GpuDetector` (`pipeline_requires_gpu`) *always*
 triggers the staged engine — CPU preprocess → resident-model GPU detect → CPU
 measure — not per-image processing. On SLURM that becomes an epoch-fenced
 controller with Stages 1 & 3 on the CPU profile and Stage 2 as a GPU array.
 
-**It is not unconditional, and `deploy_plan` must report the real answer.**
-`uses_staged_gpu_strategy` (`_cli_execution_strategies.py:1058-1068`) routes to
-the staged engine only when `process_only_layer` is `None` (any mode) or
-`"objmap"` (local only). So `mode="process"` with a `layer` other than `objmap`
-falls back to ordinary per-image `AutonomousSLURMStrategy` — which still
-auto-adds `slurm_gpus_per_node=1` (`:705-710`) but loads the model per image
-instead of once. `deploy_plan`'s `staged_gpu` flag reflects the actual dispatch,
-because a user told "staged" who then gets per-image model loading will see
-wildly different cost than the estimate promised.
+**It is unconditional.** `uses_staged_gpu_strategy`
+(`_cli_execution_strategies.py:1058-1068`) routes to the staged engine whenever
+`process_only_layer` is `None`, and with `mode`/`layer`/`sample` cut from the
+deploy tools (§5.3) that argument is always `None`. `deploy_plan`'s `staged_gpu`
+flag is therefore derived rather than independently computed: it is simply
+`requires_gpu`.
 
 The agent does not opt into staging and cannot opt out of it. What it must do is
 name a **GPU profile** for Stage 2 via `compute.gpu_profile`, which maps to
