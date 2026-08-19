@@ -325,7 +325,7 @@ three of the four hops reconstructible.
 
 | Shared resource | Guard | Provided by |
 |---|---|---|
-| Output directory claim | interprocess file lock + nonterminal-generation check | `RunRegistry.allocate` |
+| Output directory claim | interprocess file lock + nonterminal-generation check, with the in-process `threading.Lock` **never nested inside** the file lock | `RunRegistry.allocate`, amended by §7 P2 |
 | Run record mutation | generation-fenced CAS, **never onto a terminal status** | `RunRegistry.compare_and_set` |
 | Local image compute | one process-wide `LocalComputeSlot`: `asyncio.Semaphore(local_slot_capacity)` (default 1, configuration — USER-17), released in a `finally` at the innermost acquiring layer, under a wall-clock lease | new, §1.5 |
 | Artifact writes | `atomic_write_text` + explicit-overwrite policy | `sdk_` helpers, §2.2 |
@@ -334,7 +334,7 @@ three of the four hops reconstructible.
 | Subset staging dirs | Keyed by subset digest; idempotent **by completion** — temp dir → `os.replace` → `.complete` marker written last, and readers require the marker | new, §10.3.1 |
 | `campaign.json` mutation | `atomic_write_text` + a transition guard CASing on **`(status, artifact_digest)`**, never `status` alone; `campaign_start` snapshots the campaign it launched rather than re-reading mid-fan-out | new, §8.3 |
 | Lineage journal | `atomic_append` under file lock, **via `asyncio.to_thread`** | existing pattern, §2.5 |
-| Operation registry | immutable after discovery, and the module-level `_REGISTRY` is **published only after `discover()` returns**, under a module-level lock | `get_registry()`, amended below |
+| Operation registry | immutable after discovery, and the module-level `_REGISTRY` is **published only after `discover()` returns**, under a module-level lock | `get_registry()`, amended by §7 P2 |
 
 No tool mutates another tool's in-flight artifact. The one cross-tool write is
 `tune_export_best`, which writes a *new* pipeline file rather than editing the
@@ -393,33 +393,6 @@ generation on that output directory, the directory is blocked permanently by a
 process that does not exist. `compare_and_set`'s generation fence already
 provides the mechanism; the rule is simply that `running` is never written over
 a terminal status.
-
-### Two locks, one order
-
-**The in-process `threading.Lock` is never nested inside the interprocess file
-lock.** `exclusive_path_lock` spins to 30 s by design (§2.5), and a thread
-holding `RunRegistry`'s `threading.Lock` across that spin stalls every other
-handler in the process for the full timeout — the event-loop offload of §1.5
-does not help, because the contention is on the lock, not on the loop. This is
-not hypothetical: `allocate` (`_services/runs.py:317-337`) opens `with
-self._lock:` and takes `exclusive_path_lock` *inside* it today, which was
-correct for a GUI where one human clicks Run and is not correct for a server
-serving N subagents.
-
-The order is: **take the file lock first; take the `threading.Lock` only around
-the in-memory mutation, and release it before the file lock.** The in-memory
-critical section is a dict update measured in microseconds; the file lock is
-measured in seconds. Nesting them the other way round makes the cheap one wait
-on the expensive one.
-
-### The registry is published after it is populated
-
-`get_registry()` assigns the module-level `_REGISTRY` **before** `discover()`
-runs. A second thread arriving mid-discovery therefore gets a real object that is
-silently incomplete — not an error, not an empty registry, just a catalog missing
-whichever operations had not been imported yet. Discovery runs under a
-module-level lock and `_REGISTRY` is assigned only after `discover()` returns,
-so a loser thread waits and then sees the finished object.
 
 ## 2.7 Open questions
 

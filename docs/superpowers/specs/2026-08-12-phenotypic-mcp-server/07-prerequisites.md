@@ -321,6 +321,16 @@ is already pure; the ~150 lines that *build* the spec are entangled with the
 write. Extract `build_array_script_spec(...) -> SlurmArrayScriptSpec` (no I/O)
 and have both the real generator and `deploy_plan` call it.
 
+**Plus two concurrency fixes to the promoted code.** Both are defects in code
+that ships today — correct for a GUI where one human clicks Run, incorrect for a
+server serving N subagents (CONC-8, CONC-9). They are Phase 1b code fixes rather
+than server design, and the server depends on both:
+
+| Fix | Site as it ships | Rule |
+|---|---|---|
+| **Two locks, one order** | `RunRegistry.allocate` (`_services/runs.py:317-337`) opens `with self._lock:` and takes `exclusive_path_lock` *inside* it | The in-process `threading.Lock` is **never nested inside** the interprocess file lock. Take the file lock first; take the `threading.Lock` only around the in-memory mutation, and release it before the file lock. `exclusive_path_lock` spins to 30 s by design (§2.5), and a thread holding `RunRegistry`'s `threading.Lock` across that spin stalls **every** other handler in the process for the full timeout — §1.5's event-loop offload does not help, because the contention is on the lock, not on the loop. The in-memory critical section is a dict update measured in microseconds and the file lock is measured in seconds; nesting them the other way round makes the cheap one wait on the expensive one |
+| **The registry is published after it is populated** | `get_registry()` assigns the module-level `_REGISTRY` **before** `discover()` runs, unlocked | Discovery runs under a module-level lock and `_REGISTRY` is assigned **only after `discover()` returns**, so a loser thread waits and then sees the finished object. Publishing first hands a thread arriving mid-discovery a real object that is silently incomplete — not an error, not an empty registry, just a catalog missing whichever operations had not been imported yet |
+
 ## P3 — Catalog reconciliation and the JSON descriptor
 
 Two pieces:
