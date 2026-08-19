@@ -1,0 +1,1459 @@
+--- refinery/snapshots/round-2-spec.md	2026-08-19 02:17:32.161602523 -0700
++++ refinery/snapshots/round-3-spec.md	2026-08-19 03:22:28.371454319 -0700
+@@ -198,8 +198,8 @@
+ 
+ | Class | Meaning | Examples |
+ |---|---|---|
+-| `W0` introspect | Pure computation over metadata; no image I/O | list operations, describe schema, validate a spec, infer a search space, diff two pipelines |
+-| `W1` probe | Bounded image compute, interactive latency | apply a pipeline to 1–N images and return measurements + benchmark |
++| `W0` introspect | Pure computation over metadata; no image I/O | list operations, describe schema, validate a spec, infer a search space, summarize a pipeline |
++| `W1` probe | Bounded image compute, interactive latency — **or metadata-only image I/O that may escalate into it** | apply a pipeline to 1–N images and return measurements + benchmark; `deploy_plan {scope:"full"}`, which sweeps the parent's image **headers** and re-probes 2 images on a mismatch (§5.3) |
+ | `W2` study | Unbounded optimization | a tune study |
+ | `W3` deploy | Full-dataset processing | `python -m phenotypic` over a dataset tree |
+ 
+@@ -233,7 +233,8 @@
+ (`phenotypicCLI.py:788-792`, resolved via `os.cpu_count()`). That is precisely
+ the thrash this section exists to prevent.
+ 
+-There is **one** `LocalComputeSlot`: a process-wide semaphore of capacity 1.
++There is **one** `LocalComputeSlot`: a process-wide semaphore whose capacity is
++`local_slot_capacity`, configuration defaulting to 1 (below, and §1.6.1).
+ 
+ | Work | Acquires the slot? | Held for |
+ |---|---|---|
+@@ -242,6 +243,18 @@
+ | `W2`/`W3` routed `local` | **yes** | the entire subprocess lifetime, released on reap |
+ | `W2`/`W3` routed `slurm` | no | — (the scheduler is the arbiter) |
+ 
++**"While it computes" is not a hedge, and `deploy_plan {scope:"full"}` is why it
++is written that way.** A `pipeline_probe` acquires the slot for its whole
++handler, because its whole handler is image compute. `deploy_plan {full}` is
++`W1` for the escalation it *may* perform, not for the work it always does: its
++tier-1 path reads image headers — measured at 0.18 ms/image, 0.081 s for 460
++images (§5.3) — and takes no slot, and it acquires the slot only when the headers
++disagree and it re-probes 2 images. Read as unconditional, the row would make
++every full-scope preview block every subagent's probing behind a running local
++arm, and fail `local_slot_timeout` on the common path where the headers match.
++The class is `W1` because the escalation exists; the acquisition is where the
++compute is.
++
+ `LocalRunner` offers nothing to reuse here — it is a multi-handle subprocess
+ tracker with no exclusivity guard, because the GUI never needed one (a human
+ clicks Run once). The slot is new code, listed as such in §1.6.
+@@ -255,12 +268,20 @@
+ to: before dispatching, the server verifies the warm worker is alive and
+ respawns if not, rather than assuming the previous holder left it usable.
+ 
++**The invariant binds probe *execution*, not the `W1` label.** What may not
++overlap is a pipeline being applied to images through §3.2's warm probe worker.
++`deploy_plan {full}`'s tier-1 header sweep is `W1`-classed but is not a probe
++and does not go through the worker — it is header I/O on the `blocking`
++executor. Its escalation re-probe *is* a probe, dispatches through the same warm
++worker, and is bound by the same invariant. Stating this stops the reasonable
++reading in which every `W1` handler must queue behind the worker.
++
+ **Routing table**
+ 
+ | Class | `local` env | `slurm` env |
+ |---|---|---|
+ | `W0` | in-process, no slot | in-process, no slot |
+-| `W1` | in-process, **holds slot** | in-process, **holds slot** |
++| `W1` | in-process, **holds slot while it computes** | in-process, **holds slot while it computes** |
+ | `W2` | subprocess, **holds slot** | `sbatch` fleet, no slot |
+ | `W3` | subprocess, **holds slot** | `sbatch` array, no slot |
+ 
+@@ -287,11 +308,9 @@
+ admitting `W1` alongside a reduced-worker local job — was considered and rejected
+ as machinery serving a deployment this design does not target.
+ 
+-**Locally, the slot *is* the cap — there is not a second mechanism.** An
+-earlier draft also wrote "run at most 1–2 arms concurrently" beside a
+-capacity-1 slot, which is two owners for one invariant and the exact defect this
+-section opens by criticising: with capacity 1 the effective cap was always 1, and
+-the prose described a parallelism the same page forbade.
++**Locally, the slot *is* the cap — there is not a second mechanism.** Any
++separately-stated arm count beside it would be a second owner for one invariant,
++describing a parallelism the slot forbids.
+ 
+ So `LocalComputeSlot` owns the local-OOM invariant alone, and **its capacity is
+ configuration** (`local_slot_capacity`, default `1`). A workstation with memory
+@@ -299,12 +318,67 @@
+ written against "the slot", not against a number. `budget.max_concurrent_arms`
+ is a *campaign* budget and never a memory guard.
+ 
+-**A second local arm does not wait.** Arriving at a full slot it is told the slot
+-is busy and returns — it does not park on the semaphore. This is what keeps the
+-local path inside USER-1's submit-and-poll contract: a blocking acquire would
+-stall the call for the hours an arm actually takes, against a host timeout the
+-server does not control, and an abandoned coroutine would still be holding a
+-reservation nothing will ever release.
++**`executors.compute.max_workers` is not an independent number — it *is*
++`local_slot_capacity`.** Fixing the pool at 1 while the slot is configurable
++makes the two disagree at any capacity above the default, which is precisely the
++disagreement the split was introduced to make impossible: the invariant below
++would be false by configuration, and a probe holding a slot but starved on a
++one-worker pool would burn `probe_timeout_s` and then report `local_slot_timeout`
++— "waited past `probe_timeout_s` for the slot" — when it had the slot all along.
++One number, stated once, and the pool and the slot cannot drift apart.
++
++**Whenever more than one CPU-heavy holder is admitted, probe responses carry
++`contended: true`, and such timings are not eligible as an estimate basis.** Two
++paths admit one: capacity above 1, and the orphan rule, which admits a `W1`
++beside a live orphan that is typically `LocalParallelStrategy` with `n_jobs=-1`
++— every core, the exact thrash this section opens by citing. The trade is
++defensible; staying silent about it is not, because probe timing is what §10.5
++calls "measured, not guessed" in the estimate a human approves, and what §8.7's
++keep/revert decisions are read from. A contended measurement that presents itself
++as a clean one corrupts both.
++
++**The server-wide arm ceiling is a queue, not a check.** USER-24 made per-group
++work N independent campaigns, so there are now N background launchers contending
++for one `limits.max_inflight_arms`. "Each launcher checks before launching" is
++not an admission protocol: nothing orders the claimants and nothing owns the
++counter, so one launcher can win repeatedly while another never does — and §9.3's
++own two-column example yields six campaigns against eight slots, making that the
++expected configuration rather than a corner.
++
++So the ceiling is **one `asyncio.Semaphore(max_inflight_arms)` acquired by every
++launcher**, which gives arrival-order admission for free. And because a starved
++arm otherwise looks identical to a healthy one — it sits in `queued` while
++`launch_state` reports `clean`, since a background task genuinely is alive —
++`campaign_status` reports **`queued_reason: "campaign_budget" | "server_ceiling"
++| "local_slot"`** and, for the ceiling, a queue position. The third value matters:
++under local routing a `W2` arm holds the slot for its whole subprocess lifetime,
++so at `local_slot_capacity=1` a three-arm campaign starts one arm and the other
++two are waiting on the *slot* — which is neither of the first two reasons, and
++without a name for it those arms sit in a state the design does not describe.
++
++**The launcher's wake condition is the semaphore itself.** Acquiring
++`asyncio.Semaphore(max_inflight_arms)` parks the launcher until a release wakes
++it in arrival order — so "what wakes a blocked launcher" needs no poll interval
++and no separate signal; the same primitive that bounds admission provides it.
++On `workspace_cancel` the launcher is cancelled and stops launching further arms,
++leaving already-launched arms to their own lifecycle; on server shutdown it exits
++without launching more, and its lease expiry is what lets the next server see the
++fan-out as incomplete rather than merely idle. Without those two, the ceiling introduces
++a starvation mode the per-campaign budget never had, and hides it behind a
++healthy-looking poll.
++
++**A second local arm does not make its *caller* wait.** The handler returns
++immediately with a `run_id`, a `queued` status and a `queue_position`; the *run* then waits for the
++slot in the background launcher (below). What is forbidden is the handler parking
++on the semaphore — a blocking acquire would stall the call for the hours an arm
++actually takes, against a host timeout the server does not control, and an
++abandoned coroutine would hold a reservation nothing will ever release.
++
++So local batch work is **queued, not refused** — refusing would make the server
++useless on a workstation, which is the case §1.5 exists to serve. `W1` probes are
++the exception and genuinely fail rather than queue: `probe_timeout_s` includes
++slot wait by design, so a probe that cannot start promptly is not worth starting
++at all (`local_slot_timeout`, §6.2).
+ 
+ ### Blocking work never blocks the event loop
+ 
+@@ -339,12 +413,26 @@
+ `ImagePipeline.apply()` is synchronous, CPU-bound, and copies the image
+ (`_image_pipeline_core.py:943-966`). Running it directly in an async handler
+ would block the entire event loop — stalling `W0` calls from *other* subagents
+-and silently falsifying "agent-side fan-out is free". **`W1` compute runs via
+-`run_in_executor`**; the handler holds the slot and awaits, so `W0` dispatch
+-stays responsive throughout.
++and silently falsifying "agent-side fan-out is free".
+ 
+-`W1` also drops its `Image` objects before releasing the slot, so peak residency
+-is one probe rather than a sawtooth that grows across a long-lived session.
++**`W1` does not run in the server process at all** — not even on a worker thread
++via `run_in_executor`. A runaway op in a thread cannot be killed, so the caller
++returns while the thread keeps running and every later probe from every subagent
++deadlocks behind something Python cannot interrupt. The probe therefore executes
++in **a persistent, killable worker subprocess** (§3.2), and the server-side cost
++is a bounded pipe wait — not a computation.
++
++So `executors.compute` is **the probe-dispatch slot, not a compute pool**: one
++in-flight probe *request*, whichever process runs it. That is what makes the
++one-probe invariant hold across the slot and the pool for a single reason rather
++than two coincidentally-agreeing ones, and it is why the wait does not go on
++`blocking` despite being a subprocess wait — putting it there would make
++`blocking`'s four workers the real gate on probe concurrency and re-create the
++starvation the split exists to prevent.
++
++Peak memory residency is likewise the subprocess's, not the server's: §3.2 makes
++the equivalent claim correctly via RSS reset on respawn, which a thread could not
++offer.
+ 
+ `W1` carries a second, independent guard: a hard cap on scope (default 4 images)
+ and a wall-clock timeout. A mis-set slot still cannot melt the node.
+@@ -356,8 +444,8 @@
+ 
+ ### The slot primitive, and release symmetry
+ 
+-`LocalComputeSlot` is an **`asyncio.Semaphore(1)`** (capacity
+-`local_slot_capacity`, §1.5 above) owned by the event loop. Thread-side and
++`LocalComputeSlot` is an **`asyncio.Semaphore(local_slot_capacity)`** (§1.5
++above; default 1) owned by the event loop. Thread-side and
+ process-side code — the `compute` executor's worker, the probe worker's exit
+ observer, `LocalRunner`'s reap thread — **never touch it**. They signal through
+ `loop.call_soon_threadsafe`, so every acquire and release happens on the loop
+@@ -381,15 +469,10 @@
+ is `probe_timeout_s` for `W1` and, for a local `W2`/`W3`, the run's `--time` or
+ a configured maximum. On expiry the slot auto-releases and the holder's record
+ is marked `slot_lease_expired` (§6.2), which is a visible terminal state rather
+-than a stuck one.
+-
+-This is specified **regardless of how cancellation delivery tests out** on the
+-real host. Whether `fastmcp` delivers `CancelledError` on client disconnect
+-decides only whether the lease is a backstop behind a working cancel path or the
+-primary release path — it does not decide whether the lease exists. A design in
+-which the only release is a callback the runtime may never invoke has no
+-recovery at all, and the failure it produces (every later probe blocked, no
+-error anywhere) is the least diagnosable one this section can create.
++than a stuck one. The lease is unconditional because a design whose only release
++is a callback the runtime may never invoke has no recovery at all, and the
++failure it produces — every later probe blocked, no error anywhere — is the least
++diagnosable one this section can create.
+ 
+ ### Restart reconciliation
+ 
+@@ -412,10 +495,9 @@
+ look live and wedges the local path forever, and there is no version of the
+ mistake in which the server is merely conservative.
+ 
+-**A live orphan is refused, not watched.** An earlier draft had it *claim the
+-slot*, which is a reservation with no releaser: the `Popen` belonged to the dead
+-server, so no exit observer exists and the slot is held until this server dies
+-too. The alternative — a watcher for a process the server does not own — is not
++**A live orphan is refused, not watched.** Letting it *claim the slot* is a
++reservation with no releaser: the `Popen` belonged to the dead server, so no exit
++observer exists and the slot is held until this server dies too. Watching is not
+ available either, because Linux offers a non-parent no exit notification short
+ of polling, and polling reintroduces exactly the daemon-thread callback the
+ release-symmetry rule above just constrained.
+@@ -479,7 +561,7 @@
+ | Persistent probe worker subprocess | **new** | §3.2 — nothing bounds an in-process `apply()` by wall clock; `LocalRunner` is fire-and-forget `Popen`, not a request/response worker |
+ | Killable store-open subprocess | **new** | §4.4, §7 P7 — the nearest analogue (the GUI Monitor's live-open pool) is documented as deliberately *non*-killable |
+ | Subset staging (materialize a file list as a directory) | **new** | §7 P6 — neither engine accepts a file list |
+-| Plan token records | **new** | §5.4 — opaque ids over persisted records, not forgeable digests. Carries the human ack's binding set since the promotion fold (§10.5) |
++| Plan token records | **new** | §5.4 — opaque ids over persisted records, not forgeable digests. Since the promotion fold it also carries the material the `deploy_start` gate is rendered from (`ack_prompt`, `decision_content`) — but **not** the ack itself, which is taken at `deploy_start` (USER-18) |
+ 
+ Roughly: the server is a **thin adapter plus nine genuinely new pieces** —
+ descriptor projection + column derivation, profile governance, routing + slot,
+@@ -501,8 +583,8 @@
+ 
+ | Class | Requirement |
+ |---|---|
+-| **`W0`** | Returns in **under one second**, and **must never block the event loop**. A `W0` tool that performs real I/O — a filesystem walk, a subprocess, a store open, a directory digest — runs in the executor. `W0` means *takes no compute slot*; it does **not** mean *is instant*, and the two must not be conflated. |
+-| **`W1`** | Bounded by `limits.probe_max_images` (default 4) and `limits.probe_timeout_s` (default 300), inclusive of slot wait. The timeout must be reconciled with the host's own tool-call timeout — a server that outlives the host's patience holds the slot after the caller has given up. |
++| **`W0`** | Returns in **under one second**, and **must never block the event loop**. A `W0` tool that performs real I/O — a filesystem walk, a subprocess, a store open, a directory digest — runs in the executor. `W0` means *takes no compute slot*; it does **not** mean *is instant*, and the two must not be conflated. **One exemption: while a human-gate elicitation is outstanding.** That wait is an `await` on the loop, not a block of it — other subagents' calls are served throughout — and it is bounded by §8.2's single-flight rule. Both human gates (`campaign_approve`, `deploy_start`) rely on this; without it the `W0` row conflates latency with blocking and forbids a wait that costs the server nothing. |
++| **`W1`** | **Probe execution** is bounded by `limits.probe_max_images` (default 4) and `limits.probe_timeout_s` (default 300), inclusive of slot wait. The timeout must be reconciled with the host's own tool-call timeout — a server that outlives the host's patience holds the slot after the caller has given up. **`deploy_plan {scope:"full"}` is the one `W1` whose bound is not the image cap**: its tier-1 header sweep is bounded by the parent's size, measured at 0.18 ms/image and flat to ~5,700 images (§5.3), and only its escalation — 2 images — is subject to the cap. Applying the 4-image cap to it would refuse the tool at any real dataset size. |
+ | **`W2` / `W3`** | **No latency requirement.** Submit-and-poll: the tool returns on submission and progress is polled. |
+ | **Connection** | The `tools/list` payload is spent every turn by every subagent; it is a budgeted resource, not free. |
+ 
+@@ -521,7 +603,7 @@
+ | `executors.blocking` workers | 4 | §1.5 — filesystem, journal, subprocess waits, scheduler polling |
+ | `executors.compute` workers | **1** | §1.5 — `W1` execution; a second expression of the one-probe invariant |
+ | `local_slot_capacity` | 1 | §1.5 — the local-OOM invariant; configuration, not a promise |
+-| `limits.max_inflight_arms` | 8 | **server-wide**, across *all* campaigns |
++| `limits.max_inflight_arms` | 8 | **server-wide**, across *all* campaigns — and the only bound on in-flight work, since an over-cap `sbatch` does not error but queues indefinitely on `Reason=AssocGrpCpuLimit`, so submission success is not backpressure |
+ | `limits.max_inflight_local_runs` | = `local_slot_capacity` | **server-wide** — not a second knob; the slot already is this bound |
+ 
+ **The arm ceiling is server-wide, and that is the whole point.**
+@@ -539,13 +621,6 @@
+ It is configuration; the invariant is that a ceiling exists and the launcher
+ checks it.
+ 
+-**On SLURM the scheduler is not admission control.** An over-cap submission does
+-not error — it is accepted and **queues** with `Reason=AssocGrpCpuLimit` against
+-the account's CPU/memory cap, indefinitely and invisibly. So "`sbatch` accepted
+-it" proves nothing about whether the work will run, and a design that treats
+-submission success as backpressure has no backpressure. The server's own ceiling
+-is the only bound on how much work it puts in flight.
+-
+ ## 1.7 Non-goals
+ 
+ - **No new science.** No new scorer, detector, or metric.
+@@ -853,10 +928,18 @@
+ {"ts":"2026-08-12T14:02:11Z","event":"pipeline.put","id":"pipelines/edge-v3.json.pht-pipe","digest":"sha256:9c1e…","parent":null,"agent":"subagent-B"}
+ {"ts":"2026-08-12T14:07:40Z","event":"tune.start","id":"studies/edge-v3-tpe","parent":"pipelines/edge-v3.json.pht-pipe"}
+ {"ts":"2026-08-12T15:31:02Z","event":"tune.export_best","id":"pipelines/edge-v3-tuned.json.pht-pipe","parent":"studies/edge-v3-tpe","trial":47,"score":0.081}
+-{"ts":"2026-08-12T15:43:55Z","event":"deploy.approve","id":"runs/2026-08-12-plateA","parent":"pipelines/edge-v3-tuned.json.pht-pipe","scope":"full","token":"pl_7f3a…","node_hours":18.4,"ack_source":"elicited","human_response":"yes, go ahead"}
+-{"ts":"2026-08-12T15:44:19Z","event":"deploy.start","id":"runs/2026-08-12-plateA","parent":"pipelines/edge-v3-tuned.json.pht-pipe","scope":"full","subset_id":"subsets/plates-dev-24.subset.json"}
++{"ts":"2026-08-12T15:43:55Z","event":"deploy.approve","id":"runs/2026-08-12-plateA","parent":"pipelines/edge-v3-tuned.json.pht-pipe","scope":"full","token":"pl_7f3a…","group_filter":{"Metadata_Species":"A_nidulans"},"node_hours":18.4,"ack_source":"elicited","human_response":"yes, go ahead"}
++{"ts":"2026-08-12T15:44:19Z","event":"deploy.start","id":"runs/2026-08-12-plateA","parent":"pipelines/edge-v3-tuned.json.pht-pipe","scope":"full","subset_id":"subsets/plates-dev-24.subset.json","group_filter":{"Metadata_Species":"A_nidulans"}}
+ ```
+ 
++**Both deploy rows carry `group_filter`** (`null` at `scope:"subset"`, and
++`null` at full for an unfiltered subset). Without it a group-scoped full deploy
++is not reconstructible from the journal: `scope:"full"` plus a `subset_id` reads
++as "the whole parent", which is precisely what USER-21 ruled it is not. The
++approve row is where the human's consent is recorded, so it is where the image
++set that consent covers has to be legible — the token that bound it (§5.4) is
++single-use and its record is collectable.
++
+ **Digest format.** `digest` is `f"sha256:{...}"`, matching `bytes_fingerprint` /
+ `file_fingerprint` (`sdk_/_io_constants.py:154-179`). Note that
+ `pipeline_content_digest` (`_cli/_cli_staged_resume.py:64-66`) returns a **bare**
+@@ -883,16 +966,16 @@
+ 
+ | Shared resource | Guard | Provided by |
+ |---|---|---|
+-| Output directory claim | interprocess file lock + nonterminal-generation check | `RunRegistry.allocate` |
++| Output directory claim | interprocess file lock + nonterminal-generation check, with the in-process `threading.Lock` **never nested inside** the file lock | `RunRegistry.allocate`, amended by §7 P2 |
+ | Run record mutation | generation-fenced CAS, **never onto a terminal status** | `RunRegistry.compare_and_set` |
+-| Local image compute | one process-wide `LocalComputeSlot`: `asyncio.Semaphore(1)`, released in a `finally` at the innermost acquiring layer, under a wall-clock lease | new, §1.5 |
++| Local image compute | one process-wide `LocalComputeSlot`: `asyncio.Semaphore(local_slot_capacity)` (default 1, configuration — USER-17), released in a `finally` at the innermost acquiring layer, under a wall-clock lease | new, §1.5 |
+ | Artifact writes | `atomic_write_text` + explicit-overwrite policy | `sdk_` helpers, §2.2 |
+ | Artifact **read-modify-write** | `exclusive_path_lock` on the artifact path + content-digest CAS; mismatch is `artifact_changed`, never `ok:true` | new, below |
+ | Plan tokens | `atomic_write_text`; single-use CAS on `consumed_by` **under `exclusive_path_lock`** — `allocate`'s interprocess idiom, **not** `compare_and_set`'s in-process `threading.Lock`, since §2.3 treats overlapping server instances over one workspace as anticipated | new, §5.4 |
+ | Subset staging dirs | Keyed by subset digest; idempotent **by completion** — temp dir → `os.replace` → `.complete` marker written last, and readers require the marker | new, §10.3.1 |
+ | `campaign.json` mutation | `atomic_write_text` + a transition guard CASing on **`(status, artifact_digest)`**, never `status` alone; `campaign_start` snapshots the campaign it launched rather than re-reading mid-fan-out | new, §8.3 |
+ | Lineage journal | `atomic_append` under file lock, **via `asyncio.to_thread`** | existing pattern, §2.5 |
+-| Operation registry | immutable after discovery, and the module-level `_REGISTRY` is **published only after `discover()` returns**, under a module-level lock | `get_registry()`, amended below |
++| Operation registry | immutable after discovery, and the module-level `_REGISTRY` is **published only after `discover()` returns**, under a module-level lock | `get_registry()`, amended by §7 P2 |
+ 
+ No tool mutates another tool's in-flight artifact. The one cross-tool write is
+ `tune_export_best`, which writes a *new* pipeline file rather than editing the
+@@ -952,33 +1035,6 @@
+ provides the mechanism; the rule is simply that `running` is never written over
+ a terminal status.
+ 
+-### Two locks, one order
+-
+-**The in-process `threading.Lock` is never nested inside the interprocess file
+-lock.** `exclusive_path_lock` spins to 30 s by design (§2.5), and a thread
+-holding `RunRegistry`'s `threading.Lock` across that spin stalls every other
+-handler in the process for the full timeout — the event-loop offload of §1.5
+-does not help, because the contention is on the lock, not on the loop. This is
+-not hypothetical: `allocate` (`_services/runs.py:317-337`) opens `with
+-self._lock:` and takes `exclusive_path_lock` *inside* it today, which was
+-correct for a GUI where one human clicks Run and is not correct for a server
+-serving N subagents.
+-
+-The order is: **take the file lock first; take the `threading.Lock` only around
+-the in-memory mutation, and release it before the file lock.** The in-memory
+-critical section is a dict update measured in microseconds; the file lock is
+-measured in seconds. Nesting them the other way round makes the cheap one wait
+-on the expensive one.
+-
+-### The registry is published after it is populated
+-
+-`get_registry()` assigns the module-level `_REGISTRY` **before** `discover()`
+-runs. A second thread arriving mid-discovery therefore gets a real object that is
+-silently incomplete — not an error, not an empty registry, just a catalog missing
+-whichever operations had not been imported yet. Discovery runs under a
+-module-level lock and `_REGISTRY` is assigned only after `discover()` returns,
+-so a loser thread waits and then sees the finished object.
+-
+ ## 2.7 Open questions
+ 
+ *(None outstanding.)*
+@@ -1041,9 +1097,20 @@
+ list got wrong. **`pipeline_probe` mutates nothing and is still not
+ `readOnly`** — it holds the exclusive local slot, so auto-approving it lets a
+ host stall every other subagent's probing. And **`deploy_plan` is not `readOnly`
+-either**: at `scope:"full"` it sweeps every parent header and may re-probe
+-(§5.3), so a tool named like a read would otherwise be auto-approvable while
+-doing bounded `W1` work.
++either**, on both clauses at once: it **writes a plan-token record** at either
++scope (§5.4), which the mutation clause catches on its own, and at
++`scope:"full"` it sweeps every parent header and may re-probe (§5.3), which the
++cost clause catches. A tool named like a read would otherwise be auto-approvable
++while minting the object a full-dataset spend is authorized by.
++
++**MCP annotations are static per tool in `tools/list`, while this derivation is
++keyed on what a call does** — and `deploy_plan` is the tool where the two could
++diverge, since its class depends on `scope`. They do not diverge here: both
++scopes mint a token, so both land non-`readOnly`, and the published annotation is
++the union over the tool's possible calls. Where a future tool's scopes would
++disagree, the union is what is published — an annotation that is `readOnly` for
++some arguments and not others is not expressible in `tools/list`, and the safe
++side is the one that asks.
+ 
+ Two further calls are non-obvious and are fixed here rather than left to an
+ implementer: the `*_put` tools are **not** idempotent (they fail with
+@@ -1351,20 +1418,27 @@
+ ```
+ 
+ **A repeated edit returns the prior attempt.** §8.7 records every accepted step
+-in the lineage journal with its evidence and its keep/revert decision — and
+-nothing in an earlier draft ever *read* that back. So an agent whose context was
+-compacted re-tried edits it had already rejected, and sibling subagents each
+-burned probe budget on the same dead end.
++in the lineage journal — the canonical edit on acceptance, its evidence when the
++probe returns — and `pipeline_patch` **reads it back**. Without that read an
++agent whose context was compacted re-tries edits it already rejected, and sibling
++subagents each burn probe budget on the same dead end. **The journal records
++the edit and the evidence; it does not record a decision** — that is derived
++below, and no tool writes it.
+ 
+ When an edit matches one already recorded for this pipeline, the response carries
+ an **advisory** issue with that attempt's evidence and decision:
+ 
+ ```json
+ {"severity":"advisory","code":"edit_previously_tried","path":"edits[0]",
+- "message":"insert_op FocusEdgePhase at ops[1] was tried at step 3 and reverted.",
+- "hint":"num_objects 61→88, detect_mat.std 0.04→0.11; decision was 'revert'."}
++ "message":"insert_op FocusEdgePhase {k:3.0} in ops was tried at step 3.",
++ "hint":"num_objects 61→88, detect_mat.std 0.04→0.11; the op is not in the pipeline now, so the step reads as reverted.",
++ "decision":"revert","step_id":"st_4c1f…","basis":"complete"}
+ ```
+ 
++`decision` is one of `keep`, `revert`, `undetermined`, or `in_flight` (a sibling
++is probing this edit right now, §8.7). It is a **derived field of the advisory**,
++never a field of the journal row.
++
+ **Advisory, never a refusal.** A deliberate retry is legitimate — the pipeline
+ around the edit may have changed since — so the server surfaces the evidence and
+ lets the agent decide. The lookup rides the journal scan `exploration` already
+@@ -1372,37 +1446,66 @@
+ thread, so it does not put §2.5's 30 s lock wait on the event loop.
+ 
+ **The step is recorded when the edit is accepted, not when its probe returns.**
+-§8.7 originally journalled a step together with its keep/revert decision — which
+-is only knowable *after* the probe — and that ordering breaks this feature in
+-precisely the case it was added for. Two siblings patching the same edit
+-concurrently are both mid-probe, neither has written anything, so neither sees
+-the other and both spend the budget. So an accepted edit is journalled
+-immediately as `in_flight`; a match against an `in_flight` step advises *"a
+-sibling is probing this now"* rather than quoting evidence that does not exist
+-yet.
++Journalling a step together with its keep/revert decision — knowable only *after*
++the probe — breaks this feature in precisely the case it exists for: two siblings
++patching the same edit concurrently are both mid-probe, neither has written
++anything, so neither sees the other and both spend the budget. So an accepted
++edit is journalled immediately as `in_flight`; a match against an `in_flight`
++step advises *"a sibling is probing this now"* rather than quoting evidence that
++does not exist yet.
+ 
+ **`decision` is derived, not reported.** No tool in the catalog takes a
+ keep/revert argument, and none should: the choice is the *agent's*, made after
+ reading evidence, and a self-reported field would be one more thing an agent can
+ simply omit. The server does not need to be told. **It compares the recorded edit
+-against the pipeline as it now stands** — if the op is still there, the step was
+-kept; if it is gone, it was reverted. Both facts are already in the server's
+-possession, so the advisory reports a state it can verify rather than a claim it
+-received.
+-
+-**What counts as "the same edit" is the full canonical edit, parameters
+-included.** The recorded block is `{kind, slot, class, params}` — an earlier
+-draft omitted `params`, which collapses every `set_params` at one slot into a
+-single attempt even though varying parameters is exactly what the loop is *for*,
+-and merges `insert_op FocusEdgePhase sigma:2` with `sigma:9` into one. Matching
+-on the whole edit means a repeat is a genuine repeat. It is deliberately
++against the pipeline as it now stands**, and reports a state it can verify rather
++than a claim it received.
++
++**But "is the op still there" is the rule for exactly one of the six edit kinds,
++and stating it as the rule gets two of the others backwards or silent.**
++On `remove_op` the plain reading **inverts**: a kept removal leaves the op
++absent, which reads as *reverted*, and a reverted removal restores it, which
++reads as *kept* — the advisory would tell a compacted agent the exact opposite of
++what it did. On `move_op` and `set_params` the op is present under both outcomes,
++and `set_params` is the dominant edit kind in a tuning loop. On `set_grid` and
++`set_model` there is no list member to be present or absent at all.
++
++So both the match key and the derivation are **per kind**. The identity of an
++edit is *what it does to the pipeline*, not one schema applied to six shapes:
++
++| Kind | Canonical match key | `decision` derived by |
++|---|---|---|
++| `insert_op {slot, index, class, params}` | `{kind, slot, class, params}` | an op of `class` with those params **present** in `slot` ⇒ `keep`; absent ⇒ `revert` |
++| `remove_op {slot, index}` | `{kind, slot, class}` — `class` **resolved from `index` at record time**, since the edit itself carries neither `class` nor `params` | **inverted**: the op **absent** from `slot` ⇒ `keep`; present ⇒ `revert` |
++| `move_op {slot, from, to}` | `{kind, slot, class, order_after}` — `class` resolved from `from` at record time; `order_after` is the slot's ordered class sequence the move produced | `order_after` still equals the slot's current class sequence ⇒ `keep`; otherwise **`undetermined`** — a later unrelated edit also changes the sequence, and the server cannot attribute the difference |
++| `set_params {slot, index, params, merge}` | `{kind, slot, class, resolved_params}` — `class` resolved from `index`, and `resolved_params` is the **effective** parameter set after `merge` is applied, not the partial map the agent sent | the op of that class in `slot` currently carries `resolved_params` ⇒ `keep`; carries something else ⇒ `revert`. **`undetermined` when `slot` holds more than one op of that class**, because dropping `index` makes the two indistinguishable |
++| `set_grid {nrows, ncols}` | `{kind, nrows, ncols}` — no `slot`, no `class` | the pipeline's current grid equals the recorded pair ⇒ `keep`; otherwise ⇒ `revert` |
++| `set_model {class, params\|null}` | `{kind, class, params}` — no `slot` | the current model equals the recorded `(class, params)` ⇒ `keep`; otherwise ⇒ `revert`. A recorded `params: null` (model cleared) matches a currently-absent model |
++
++**`undetermined` is a real value and the advisory still fires.** The evidence —
++the before/after numbers from §8.7 — is what the agent most needs, and it is
++recorded regardless of whether the outcome is attributable. An advisory that
++suppressed itself whenever the decision was ambiguous would go silent on
++`set_params`, the kind the loop runs most. It says *"tried at step 7; outcome not
++attributable (two `BlurGauss` in `ops`)"* and quotes the numbers.
++
++**Parameters are part of the key wherever the kind carries them.** Omitting
++`params` collapses every `set_params` at one slot into a single attempt — even
++though varying parameters is exactly what the loop is *for* — and merges
++`insert_op FocusEdgePhase sigma:2` with `sigma:9` into one. Matching on the
++whole edit means a repeat is a genuine repeat, and the key is deliberately
+ conservative: the case the advisory is worth firing on — a compacted agent
+ re-trying what it already rejected — is an exact repeat, and an advisory that
+ fires on near-misses gets ignored, taking the true hit with it.
+ 
+-`index` is **not** part of the match. It is a position in a list the loop
+-mutates, so `ops[1]` at step 3 and `ops[1]` at step 9 need not name the same
+-place; the op class and slot identify the edit stably where the index does not.
++`index` is **not** part of any key. It is a position in a list the loop mutates,
++so `ops[1]` at step 3 and `ops[1]` at step 9 need not name the same place. But
++dropping it is only safe once `class` is resolved *at record time* for the three
++kinds that carry no `class` of their own — without that resolution `remove_op`
++and `move_op` have no discriminator left at all, and every removal from `ops`
++would canonicalize to the same edit as every other. Resolving the class at record
++time is what §8.7's journal row records, and it is why the row carries the full
++edit rather than the arguments as sent.
+ 
+ This narrows the window to the patch call itself rather than closing it: two
+ patches racing inside the same journal append still both proceed. That is
+@@ -2378,14 +2481,13 @@
+ somebody else's compute. `deploy_plan` makes the ask inspectable first, and it
+ performs **no** submission and **no** writes under the run's output directory.
+ 
+-**Its work class depends on `scope`, and a flat `W0` label was wrong.** At
+-`scope:"subset"` it reads registered state and renders a spec — genuinely `W0`.
+-At `scope:"full"` it additionally runs §10.6.1's parent header sweep, and on a
+-mismatch escalates to a 2-image re-probe.
+-
+-**The sweep is not the reason.** It was assumed to be too slow for `W0`; it was
+-then measured, and it is not
+-(`logic_validation_scripts/2026-08-12-phenotypic-mcp-server/header_sweep_cost.py`).
++**Its work class depends on `scope`.** At `scope:"subset"` it reads registered
++state and renders a spec — genuinely `W0`. At `scope:"full"` it additionally runs
++§10.6.1's parent header sweep, and on a mismatch escalates to a 2-image
++re-probe.
++
++**The sweep is not the reason.** Measured, it is comfortably inside `W0`
++(`logic_validation_scripts/2026-08-12-phenotypic-mcp-server/header_sweep_cost.py`):
+ **460 real images on GPFS: 0.081 s, 0.18 ms/image** — twelve times under the
+ one-second ceiling, and flat from 480 images out to roughly 5,700. Tier 1 is
+ comfortably `W0` at the scale §10.6.1's worked example describes.
+@@ -2432,7 +2534,7 @@
+ |---|---|---|---|
+ | `pipeline_id` | `str` | — | Pipeline to run |
+ | `subset_id` | `str` | — | Registered subset (§10.3.1) |
+-| `scope` | `"subset" \| "full"` | `"subset"` | `full` plans against `subset.parent`; the only way to obtain a full-scope `plan_token` |
++| `scope` | `"subset" \| "full"` | `"subset"` | `full` plans against `subset.parent`, **intersected with the subset's `group_filter` where it has one** (§10.2, §10.5); the only way to obtain a full-scope `plan_token` |
+ | `run_name` | `str` | — | Output directory under `runs/` |
+ | `compute` | `object?` | `{}` | `{profile, …overridable keys}` |
+ | `metadata_csv` | `str?` | `null` | Joined onto the measurements mirror |
+@@ -2457,7 +2559,8 @@
+   "sbatch_preview":"#!/bin/bash\n#SBATCH --partition=batch\n#SBATCH --account=exfab\n#SBATCH --array=0-99\n…",
+   "array":{"requested":100,"chunks":1,"effective_limit":512,"limit_source":"profile cap"},
+   "estimate":{"basis":"probe of 2 images at 3.4 s/image",
+-              "node_seconds":340,"wall_clock_hint":"~6 min at 100 concurrent"},
++              "node_seconds":340,"node_hours":0.094,
++              "wall_clock_hint":"~6 min at 100 concurrent"},
+   "requires_gpu":false,"staged_gpu":false,
+   "outputs":{"root":"runs/2026-08-12-plateA",
+              "deliverables":"runs/2026-08-12-plateA/deliverables"},
+@@ -2471,22 +2574,66 @@
+ response says the number is a default. An estimate presented without provenance
+ is worse than none.
+ 
++**`estimate` reports both `node_seconds` and `node_hours`, and `node_hours` is
++the bound one.** The two are the same number and the response carried only the
++first while §5.4's token bound the second and §10.5's promotion response
++reported the second — so the field the human approves was not in the schema of
++the tool that produces it. `node_hours` is the human-facing unit (it is what
++`ack_prompt` quotes); `node_seconds` stays because the per-arm campaign
++estimates (§8.3) are seconds-scale and mixing units across §5 and §8 is worse
++than carrying both.
++
++**At `scope:"full"` the response also echoes `group_filter`** — the map copied
++from the subset artifact, or `null` — so the agent can see at plan time which
++images a full-scope run will touch, rather than discovering the intersection at
++submission. It is the same value §5.4's token binds.
++
+ ## 5.4 `deploy_start` (`W3`) — submit
+ 
+ Same arguments as `deploy_plan`, plus:
+ 
+ | Arg | Type | Default | Meaning |
+ |---|---|---|---|
+-| `scope` | `"subset" \| "full"` | `"subset"` | `full` targets `subset.parent`; its `plan_token` must have been minted at `scope:"full"` with the human ack recorded (§10.5) |
++| `scope` | `"subset" \| "full"` | `"subset"` | `full` targets `subset.parent` — intersected with the subset's `group_filter` where it has one (§10.5). Its `plan_token` must have been minted at `scope:"full"`; **the human ack is taken here, not carried on the token** |
+ | `plan_token` | `str` | — | **Required.** From a matching `deploy_plan`, or from an approved campaign arm |
++| `human_response` | `str` | — | **Required.** What the human actually said. Unconditional — see §8.2; there is no elicited-vs-not variant of this signature |
++| `note` | `str?` | `null` | Free-text context recorded alongside the approval |
+ | `resume` | `bool` | `false` | Continue an interrupted run |
+ | `retry_failures` | `bool` | `false` | Requires `resume` |
+ | `restart` | `bool` | `false` | Clear machine state and start over |
+ 
++The response carries **`ack_source: "elicited" | "agent_asserted"`** (§8.2), which
++is what makes the distinction auditable on the artifact rather than implicit in
++host configuration.
++
++**The prompt is rendered by the server from the token, never passed in by the
++agent.** This is why the token carries `ack_prompt` and `decision_content` rather
++than only the digests. §10.5 mints the prompt at `deploy_plan` and calls it "text
++to show" — but `deploy_start` is where it is now shown, one call later, and if
++the server cannot reproduce it there are only two options and both are wrong:
++the agent supplies the text, which makes the numbers a human reads
++agent-chosen — the single thing §8.2 adopted elicitation to prevent — or the
++server re-renders from digests alone and silently drops the subset score,
++held-out gap and coverage warnings that §10.5 calls the decision content.
++Persisting both on the token closes it, and it is also what lets §8.2's rule
++"every elicitation leads with the artifact id it approves" be satisfied by a
++handler rather than by an agent's good manners.
++
++**The elicitation is raised before the slot is acquired and before `allocate`.**
++This ordering is the whole point of moving the gate here, and stating it in three
++words elsewhere is not enough: ask first, then allocate, then acquire. Reversed,
++a locally-routed `W3` would hold the exclusive slot across a human's think time —
++which under §1.5's own suspension rule blocks every subagent's probing for as
++long as the person takes to answer, reproducing the hazard the relocation was
++made to remove, one call later.
++
+ **Plan-then-submit is mandatory.** `deploy_start` refuses without a
+-`plan_token` whose recorded `(pipeline digest, images digest, compute)` matches
+-the request, returning `code: "plan_required"` or `"plan_stale"`. Every cluster
+-submission is therefore preceded by an inspectable preview.
++`plan_token` **whose every bound field re-derives equal from the current
++request** — the binding set below is the single statement of what those fields
++are, and nothing outside this section restates it. A missing token returns
++`code: "plan_required"`; a token that no longer matches returns `"plan_stale"`
++naming the field that moved. Every cluster submission is therefore preceded by
++an inspectable preview.
+ 
+ ### What a token *is*
+ 
+@@ -2498,30 +2645,56 @@
+ {"token":"pl_7f3a…","kind":"plan","created":"…","expires":"…",
+  "scope":"subset","pipeline_digest":"sha256:9c1e…","subset_id":"subsets/…",
+  "subset_digest":"sha256:77b2…","compute":{"profile":"cpu-bulk","time":"02:00:00"},
++ "parent_digest":null,"group_filter":null,
+  "run_name":"runs/2026-08-12-plateA",
+  "array":{"requested":480,"chunks":1,"effective_limit":2500},
+  "estimate":{"node_hours":18.4},
++ "ack_prompt":"Deploy edge-v3-tuned across 480 images (~18.4 node-hours)? …",
++ "decision_content":{"subset_score":0.081,"gap":0.06,"warnings":["subset_coverage_unverified"]},
+  "argv_digest":"sha256:4b0a…","consumed_by":null}
+ ```
+ 
+-**The binding set is exhaustive, and it grew when the token absorbed the
+-promotion gate.** While the token only meant "a plan was drawn", a stale one cost
+-a re-plan. Now it carries a human's consent to a specific quantity of somebody
+-else's compute, so anything quoted to that human has to be inside it:
++`parent_digest` and `group_filter` are `null` at `scope:"subset"` and populated
++at `scope:"full"`; the table below is what says which. They are **fields of the
++record at both scopes**, not fields that appear only at one — an optional key an
++implementer has to infer from an example is how `group_filter` came to have no
++storage location at all.
++
++**The binding set grew when the token absorbed the promotion gate.** While the
++token only meant "a plan was drawn", a stale one cost a re-plan. Now it carries a
++human's consent to a specific quantity of somebody else's compute, so anything
++quoted to that human has to be inside it.
++
++**The table below is that set, and it is the only statement of it.** Every bound
++field is here with the scope it binds under; no other section states a binding
++set, and any section that needs to talk about one cites this table. It is written
++that way because the set had been stated four times in four incompatible ways —
++three here and two in §10.5 — and the disagreement was invisible because each
++restatement read as a summary of the others rather than as a competing claim.
+ 
+-| Field | Why it binds |
+-|---|---|
+-| `run_name` | Otherwise an ack given for `runs/2026-08-12-plateA` is spendable against a different output directory with every digest still matching |
+-| `array` | §5.3 resolves the width live from `scontrol`/`sacctmgr` (§5.2), so the cluster can re-chunk between plan and start. `compute` binds the *profile*, not the resolved width |
+-| `estimate.node_hours` | The number quoted verbatim in `ack_prompt`. This is the figure the human actually approves, and it was outside the token entirely |
++| Field | Scope | Why it binds |
++|---|---|---|
++| `scope` | both | `subset` and `full` are different spends; a token minted for one is not the other |
++| `pipeline_digest` | both | The pipeline the human was quoted a cost for |
++| `subset_id` | both | Which registered subset the plan was drawn against |
++| `subset_digest` | both | The subset's own image list can be re-cut under the same name |
++| `compute` | both | The profile and its overrides — what the work costs per node |
++| `run_name` | both | Otherwise an ack given for `runs/2026-08-12-plateA` is spendable against a different output directory with every digest still matching |
++| `array` | both | §5.3 resolves the width live from `scontrol`/`sacctmgr` (§5.2), so the cluster can re-chunk between plan and start. `compute` binds the *profile*, not the resolved width |
++| `estimate.node_hours` | both | The number quoted verbatim in `ack_prompt`. This is the figure the human actually approves, and it was outside the token entirely |
++| `argv_digest` | both | The rendered invocation, defined below |
++| **`parent_digest`** | **`full` only** | A parent that gained images between the plan and the submission invalidates the token (`plan_stale`, §10.5) rather than quietly deploying over a dataset nobody reviewed. `null` at `subset` |
++| **`group_filter`** | **`full` only** | USER-21: full scope on a group-filtered subset is `parent ∩ group_filter`, so an ack given for one group's images cannot be spent on another's. The filter is copied from the subset artifact's `group_filter` (§10.2) at plan time and re-compared at start. `null` at `subset`, and `null` at `full` for a subset with no filter |
++
++`ack_prompt` and `decision_content` are **carried on the record but are not
++bound**: they are what the server re-renders the elicitation from, not inputs
++re-derived from the request, so there is nothing to compare them against. Their
++integrity comes from the bound fields they were computed from.
+ 
+ **`argv_digest` is the SHA-256 of the rendered argv list**, joined with `\0`, as
+ produced by `to_argv` plus the profile's `--slurm` pairs — including `--output`.
+-It was previously named in the example record and defined nowhere, which left
+-undecidable the very question `run_name` above turns on. Naming it settles that
+-independently of the explicit `run_name` field; both are kept because
+-`argv_digest` also moves when a compute key changes, and the two failures deserve
+-different messages.
++It and the explicit `run_name` field are both kept: `argv_digest` also moves when
++a compute key changes, and the two failures deserve different messages.
+ 
+ The alternative — a **self-describing hash** of `(pipeline_digest,
+ images_digest, compute)` — is tempting because it needs no storage and the
+@@ -2542,17 +2715,46 @@
+ | Single use | `consumed_by` is CAS'd to the `run_id` on a successful `deploy_start`; a second use → `plan_stale`. Re-running a deploy means re-planning, which is cheap and keeps the preview honest |
+ | Collection | Expired tokens are deleted on the next `deploy_plan` or server start. Without this, every plan the agent draws and abandons accumulates under `.phenotypic-mcp/plans/` indefinitely — and once a token can carry a human's consent, an abandoned one is not merely litter but a standing approval waiting for a matching request. Expiry already bounds the exposure to 24 h; collection is what stops it accruing |
+ 
+-A `scope:"full"` token additionally binds `parent_digest`, so a parent that
+-gained images between the plan and the submission invalidates it (`plan_stale`,
+-§10.5) rather than quietly deploying over a dataset you did not review. It also
+-records the human ack, which is what makes it the promotion gate rather than
+-merely a plan.
++The token **does not record the human ack** — USER-18 moved the ack to
++`deploy_start`, one call later, so the token carries the *material* the gate is
++rendered from and the ack lands on the `deploy.approve` lineage row (§2.5) and
++the response's `ack_source`. A token that recorded an ack would be a second
++mutable state racing the gate, which is the contradiction the relocation
++dissolved.
++
++### The token's two producers, and what each can bind
+ 
+ The token is satisfied two ways: a direct `deploy_plan` call, or membership in
+ an **approved campaign** (§8), which stamps a token per arm at approval time.
+ That keeps the human checkpoint in the planning phase where you actually are,
+ rather than inserting one into autonomous Phase-2 execution.
+ 
++**But a campaign arm cannot bind everything a `deploy_plan` token binds, and a
++binding table that does not say so leaves an implementer with four mandatory
++fields and no value for them.** At `campaign_approve` time
++the arm has no `run_name` (the study is named `studies/<campaign>-<arm>` later,
++at fan-out), no resolved `array` (nothing has consulted `scontrol`), no
++`estimate.node_hours` from a `deploy_plan` (the campaign's own per-arm estimate
++is a *tune* estimate, §8.3), and no `argv_digest` (no argv has been rendered).
++Running a full `deploy_plan` per arm at approval time is not what §8.3 does and
++would put a cluster query inside a `W0` handler.
++
++So a campaign-stamped token is a **distinct kind**, and the record says which:
++
++| `kind` | Minted by | Binds | `scope` |
++|---|---|---|---|
++| `"plan"` | `deploy_plan` | the full table above | `subset` or `full` |
++| `"campaign_arm"` | `campaign_approve` (§8.3) | `scope`, `pipeline_digest`, `subset_id`, `subset_digest`, `compute`, plus `campaign_id` and `arm_id` | **`subset` only** |
++
++`run_name`, `array`, `estimate.node_hours` and `argv_digest` are **absent, not
++null**, on a `campaign_arm` token, and validation does not look for them: the
++arm's spend is bounded by the campaign the human approved, whose own budget
++(`trials_per_arm`, `max_concurrent_arms`, `compute`) is the quantity that was
++quoted. `campaign_arm_scope_full` (§6.2) already refuses a campaign arm at full
++scope, which is what keeps the weaker binding set off the irreversible path —
++the full-dataset spend is reachable only through a `"plan"` token, which binds
++everything.
++
+ **`overwrite` is deliberately not exposed.** The CLI's `--overwrite` does
+ `shutil.rmtree(output_dir)` — it destroys `deliverables/`, every per-image HDF,
+ and any QC curation a human did. That is not an action an agent should be able
+@@ -2776,7 +2978,7 @@
+ | `arm_artifact_drift` | error | An arm's `.pht-tune` or pipeline digest changed between `campaign_put` and `campaign_start` (§8.2) |
+ | `finalize_incomplete` | error | A `finalize_in_progress` marker is present; the study directory cannot be trusted (§4.5) |
+ | `study_not_finished` | error | `tune_export_best` on a distributed study whose budget is not drained and whose jobs are still live (§4.5) |
+-| `edit_previously_tried` | **advisory** | A `pipeline_patch` edit matches one already recorded in the exploration trail; carries that attempt's evidence and keep/revert decision. Advisory, never a refusal — the surrounding pipeline may have changed (§3.2) |
++| `edit_previously_tried` | **advisory** | A `pipeline_patch` edit matches one already recorded in the exploration trail, under §3.2's **per-kind** canonical match key. Carries that attempt's evidence, its `step_id`, and a **derived** `decision` — `keep` \| `revert` \| `undetermined` \| `in_flight` — never one read off the journal, which stores no decision. `undetermined` still fires with the evidence. Advisory, never a refusal: the surrounding pipeline may have changed (§3.2) |
+ | `stage_order_hint` | **advisory** | GUI DAG validator hint; never blocks |
+ | `pipeline_empty` | error | Neither ops nor measurements — the CLI's own check |
+ | `stale_target_ref` | error | A `select` ref built against a superseded pipeline digest |
+@@ -2801,6 +3003,8 @@
+ | `subset_too_small_for_heldout` | **warning** | Subset under ~15: a single held-out plate makes the gap a one-sample estimate |
+ | `selector_unavailable` | error | `SubsetSelector.availability()` is `False` — e.g. `EmbeddingSubsetSelector`, which raises rather than falling back to random (§10.3) |
+ | `group_key_not_in_metadata` | error | `MetadataGroupSubsetSelector.group_key` names no column in `grouping_metadata`. **Carries the CSV's actual column list and a did-you-mean** — the agent cannot open the file itself, so an error without the columns leaves it guessing |
++| `group_filter_column_not_found` | error | A `SubsetSelector.group_filter` key names no column in `grouping_metadata` (§10.3). Carries the CSV's column list and a did-you-mean, for the same reason `group_key_not_in_metadata` does. Distinct from it because the filter is on the **ABC** and fires for selectors that have no `group_key` at all |
++| `group_filter_matches_nothing` | error | A `group_filter` matched no rows — at selection time, or at `deploy_plan {scope:"full"}` where the filter is re-applied to the parent (§10.5). An empty result is refused rather than returned: an empty subset passes every downstream shape check and produces a study of nothing, and an empty full-scope image set would otherwise deploy nothing while reporting success |
+ | `arm_scorer_mismatch` | error | A campaign arm's scorer differs from the campaign scorer (§8.2) |
+ | `screening_unsupported_on_slurm` | error | `--screen` + SLURM, which silently drops screening today. Ships: OQ-4.1 resolved to expose screening (default off), so the guard is needed (§7 P4). |
+ | `output_not_empty` | error | Deploy target non-empty; names `run_name`/`resume`/`restart` |
+@@ -2896,9 +3100,9 @@
+ |---|---|---|
+ | `probe_max_images` | 4 | Hard cap on `pipeline_probe.n_images` |
+ | `probe_timeout_s` | 300 | Wall clock on `W1`, including slot wait |
+-| Local compute concurrency | 1 | `LocalComputeSlot` (§1.5) |
++| `local_slot_capacity` | 1 | `LocalComputeSlot` (§1.5) — configuration, not a fixed 1; `executors.compute` workers **is** this number |
+ | `executors.blocking` workers | 4 | §1.5 — filesystem, journal, subprocess, scheduler |
+-| `executors.compute` workers | 1 | §1.5 — `W1`; the pool restates the one-probe invariant |
++| `executors.compute` workers | = `local_slot_capacity` | §1.5 — `W1`; not an independent knob, or the pool and the slot disagree above the default |
+ | `limits.max_inflight_arms` | 8 | **Server-wide**, all campaigns; checked by the background launcher (§8.3) |
+ | Slot lease | `probe_timeout_s` (`W1`) / run `--time` (local `W2`/`W3`) | §1.5 — auto-release; `slot_lease_expired` |
+ | Catalog list size | unbounded rows, compact fields | `catalog_operations` returns no schemas |
+@@ -3031,10 +3235,53 @@
+ - **Fan-out is idempotent:** kill the background launcher mid-fan-out; re-calling
+   `campaign_start` must launch only the arms with no `study_id` and must not
+   re-launch the ones already running (§8.3).
++- **Recovery is distinguished from a double launch:** with the launcher lease
++  live, a second `campaign_start` on a `running` campaign must be **refused**;
++  with the lease expired or naming a dead `(pid, create_time)`, the same call on
++  the same status must **proceed**. One test, two lease states, one status — this
++  is what pins `launch_state` to the lease rather than to timing (§8.2, §8.3).
++- **`write_generation` is not the CAS key:** a mutation whose `write_generation`
++  matches but whose `artifact_digest` does not must fail `artifact_changed`. This
++  fails if an implementer builds the counter as the guard (§2.6 owns the key;
++  §8.2 stores the counter as a read hint).
+ - **Cursor states:** an arm with no store yet must report as changed, never
+   `unchanged`; and a local SQLite study advancing only in `study.db-wal` must be
+   reported as moving (§8.3).
+ 
++### The group filter and the token's binding set
++
++- **`group_filter` is on the ABC, not on one selector:** a `RandomSubsetSelector`
++  with a `group_filter` must select only from the filtered candidates. The test
++  fails if the filter is implemented on `MetadataGroupSubsetSelector` (§10.3).
++- **A filtered subset records its filter:** `subset_generate` with a filter must
++  write `group_filter` at the artifact's top level *and* in `selection.params`;
++  an unfiltered one writes `{}` in both (§10.2).
++- **The token binds the filter:** a `scope:"full"` `plan_token` minted from a
++  filtered subset must be refused with `plan_stale` when replayed against the
++  same parent with a *different* filter, and accepted with the same one. This is
++  USER-21's guarantee, and without the artifact field it cannot be written at all
++  (§5.4).
++- **Every bound field is checked:** parametrize over §5.4's binding table and
++  mutate each field in turn; each must produce `plan_stale` **naming that field**.
++  The test fails if a field is in the table and not in the validator — which is
++  what "§5.4's table is the binding set" has to mean operationally.
++- **A campaign-arm token is a different kind:** a `"campaign_arm"` token must
++  validate without `run_name`/`array`/`estimate.node_hours`/`argv_digest`, and
++  must be refused at `scope:"full"` with `campaign_arm_scope_full` (§5.4, §6.2).
++
++### `edit_previously_tried` across all six edit kinds
++
++- **One case per kind** against §3.2's table, and specifically: a kept
++  `remove_op` must report `keep` (the op is **absent**), and a reverted one must
++  report `revert`. A test written only against `insert_op` passes while
++  `remove_op` reports the inverse of the truth, which is how the defect shipped.
++- **Two removals from one slot do not collide:** removing `BlurGauss` and
++  removing `OtsuDetector` from `ops` must be two distinct recorded edits. This
++  fails if the match key drops `index` without resolving `class` at record time.
++- **`undetermined` still carries evidence:** a `set_params` against a slot
++  holding two ops of one class must return the advisory with the numbers and
++  `decision: "undetermined"`, not silence.
++
+ ### Integration
+ 
+ - End-to-end on `load_synth_yeast_plate()`: put → probe → tune (local, grid,
+@@ -3388,6 +3635,16 @@
+ write. Extract `build_array_script_spec(...) -> SlurmArrayScriptSpec` (no I/O)
+ and have both the real generator and `deploy_plan` call it.
+ 
++**Plus two concurrency fixes to the promoted code.** Both are defects in code
++that ships today — correct for a GUI where one human clicks Run, incorrect for a
++server serving N subagents (CONC-8, CONC-9). They are Phase 1b code fixes rather
++than server design, and the server depends on both:
++
++| Fix | Site as it ships | Rule |
++|---|---|---|
++| **Two locks, one order** | `RunRegistry.allocate` (`_services/runs.py:317-337`) opens `with self._lock:` and takes `exclusive_path_lock` *inside* it | The in-process `threading.Lock` is **never nested inside** the interprocess file lock. Take the file lock first; take the `threading.Lock` only around the in-memory mutation, and release it before the file lock. `exclusive_path_lock` spins to 30 s by design (§2.5), and a thread holding `RunRegistry`'s `threading.Lock` across that spin stalls **every** other handler in the process for the full timeout — §1.5's event-loop offload does not help, because the contention is on the lock, not on the loop. The in-memory critical section is a dict update measured in microseconds and the file lock is measured in seconds; nesting them the other way round makes the cheap one wait on the expensive one |
++| **The registry is published after it is populated** | `get_registry()` assigns the module-level `_REGISTRY` **before** `discover()` runs, unlocked | Discovery runs under a module-level lock and `_REGISTRY` is assigned **only after `discover()` returns**, so a loser thread waits and then sees the finished object. Publishing first hands a thread arriving mid-discovery a real object that is silently incomplete — not an error, not an empty registry, just a catalog missing whichever operations had not been imported yet |
++
+ ## P3 — Catalog reconciliation and the JSON descriptor
+ 
+ Two pieces:
+@@ -3406,6 +3663,12 @@
+    `_find_class_in_phenotypic`'s submodule list in the same change that
+    reconciles it with `OperationRegistry.discover()`, so selectors resolve and
+    serialize by bare class name like every other extensible class.
++   **The ABC ships with `group_filter` from the first commit** (§10.3), not as a
++   later addition: the base model is `extra="forbid"`, so adding it afterwards is
++   a model change to every selector rather than an extra key, and §10.5's
++   full-scope resolution and §5.4's token binding both read it. It carries the
++   candidate-set restriction, the CSV join, and the two error codes
++   (`group_filter_column_not_found`, `group_filter_matches_nothing`) with it.
+ 4. **A directory-level digest helper.** `campaign_status.comparable` (§8.3) must
+    detect two arms tuned against different image sets, and nothing today can:
+    `bytes_fingerprint`, `file_fingerprint` (`sdk_/_io_constants.py:154,166`) and
+@@ -3494,6 +3757,39 @@
+ 
+ ---
+ 
++## P8 — A top-level manifest input for the full CLI
++
++USER-26 resolves `scope:"full"` on a group-filtered subset to
++`parent ∩ group_filter`, **resolved in place to a concrete image list at plan
++time and written as a manifest** — no copying, and the manifest is what the plan
++token's digest binds, so the human approves an image set that cannot drift
++(§10.5, §5.4).
++
++**The public CLI cannot consume one.** `--input` is a single `click.Path`
++(`phenotypicCLI.py:924-929`) — not `multiple=True`, and not a file-of-paths — so
++there is today no argv that expresses "these 312 images out of the parent's 480".
++Without this flag, USER-21's full-scope semantics are unimplementable and
++`argv_digest` (§5.4) has nothing to digest.
++
++**Precedent exists and is probably reusable.** `_cli_staged_slurm_worker.py:422`
++already takes `--manifest` as an *internal* entry point for the staged GPU
++engine, so the reading and validation of a manifest is not new — what is new is
++promoting it to a public top-level flag on `python -m phenotypic`, with the
++sandbox and identity rules the rest of §2 imposes.
++
++Distinguish it from **P6** rather than folding the two together: P6 materializes
++a *directory* for **subset**-scoped work because neither engine accepts a file
++list; P8 passes a *list* for **full**-scoped work, where materializing is exactly
++what must not happen (§10.3.1 §4 — a full-scale staging would touch the parent's
++images, which is the boundary the whole section exists to hold). Two mechanisms
++because the two scopes have opposite constraints, not because one was
++insufficient.
++
++Small, and genuinely new. Neither §1.6's reuse inventory nor the plan's task list
++contained it before USER-26.
++
++---
++
+ ## Rollout order
+ 
+ ```
+@@ -3613,6 +3909,11 @@
+   "experiment_profile": "profiles/plates.experiment.json",
+   "subset_id": "subsets/plates-dev-24.subset.json",
+   "metadata_csv": "data/tune_layout.csv",
++  "derived_from": {"campaign_id": "campaigns/fungal-general-first",
++                   "reason": "general-first winner failed the A_nidulans group"},
++  "write_generation": 7,
++  "launcher": {"pid": 48211, "create_time": 1786012345.7,
++               "expires": "2026-08-12T14:10:00Z"},
+   "objective": {"scorer": {"class": "QCScorer",
+                            // `metadata` is CORRECT — the shipped field name (§10.3)
+                            "params": {"check": {"metadata": "data/tune_layout.csv"}}},
+@@ -3623,17 +3924,45 @@
+     {"id": "prefab-fil", "pipeline": "pipelines/filamentous-prefab.json.pht-pipe",
+      "tune_spec": "tune/filamentous-prefab.setup.json.pht-tune",
+      "pipeline_digest": "sha256:3e91…", "spec_digest": "sha256:c07b…",
++     "state": "running", "study_id": "studies/fungal-edge-sweep-prefab-fil",
++     "queued_reason": null,
+      "rationale": "baseline — FilamentousFungiPipeline, the assay-matched prefab"},
+     {"id": "phase", "pipeline": "pipelines/phase-edge.json.pht-pipe",
+      "tune_spec": "tune/phase-edge.setup.json.pht-tune",
++     "state": "queued", "study_id": null, "queued_reason": "campaign_budget",
+      "rationale": "the hypothesis",
+      "prefab_baseline": {"pipeline": "FilamentousFungiPipeline", "best_cost": 0.31}},
+     {"id": "watershed", "pipeline": "pipelines/watershed.json.pht-pipe",
+-     "tune_spec": "tune/watershed.setup.json.pht-tune",   "rationale": "control"}
++     "tune_spec": "tune/watershed.setup.json.pht-tune",
++     "state": "pending", "study_id": null, "queued_reason": null,
++     "rationale": "control"}
+   ]
+ }
+ ```
+ 
++**Five fields above are the fan-out's state, and they live here because this is
++where the pydantic model is built from.** §8.3 argues each of them; none of them
++was in this schema, so an implementer building `campaign.json` from this section
++produced arms with no state field at all and a `campaign_status` with nothing to
++read.
++
++| Field | Where | Contract |
++|---|---|---|
++| `state` | per arm | `pending` → `queued` → `running` → terminal (`complete`/`failed`), per §8.3's arm-state table. `pending` is the value `campaign_put` writes |
++| `queued_reason` | per arm | `"campaign_budget"` \| `"server_ceiling"` \| `"local_slot"` \| `null` (§1.5). Non-null only while `state == "queued"`; a starved arm and a healthy one are otherwise identical on disk |
++| `study_id` | per arm | Written back by the launcher under CAS when the arm starts (§8.3). `null` until then, and its absence is precisely what makes the idempotent re-launch decidable |
++| `launcher` | campaign | The fan-out lease — `{pid, create_time, expires}`, the same treatment §2.4 gives `RunRecord`. Absent, expired, or a pid whose `create_time` does not match a live process means no launcher is alive, which is what makes `launch_state` derivable (§8.3) |
++| `derived_from` | campaign | Optional `{campaign_id, reason}`. USER-24's one breadcrumb: with grouping offloaded to the agent, N sibling per-group campaigns have no recorded relationship, and the fact that they descend from one experiment and one general-first failure would live only in the agent's context and vanish at the next compaction. The server records it and never acts on it |
++
++**`write_generation` is a read hint, not the CAS key.** It is a monotonic counter
++incremented on every successful write, and `campaign_status
++{detail:"artifact"}` reports it so a recovering agent or a peer server can tell a
++stale read from a current one without diffing content. **It is not what a
++mutation compares against** — §2.6's rule is `(status, artifact_digest)`, and the
++digest is the one that survives an artifact edited by a peer server whose counter
++this reader never saw. A counter cannot be the CAS key because it can be defeated
++by a writer the reader never observed.
++
+ **Arms reference the experiment profile, and custom arms cite the prefab they beat.**
+ `prefab_baseline` is the §9.4 convention: an arm whose pipeline is not a prefab
+ or prefab derivative records which prefab came closest and how it scored. The
+@@ -3718,9 +4047,7 @@
+ `deliverables/tuning_spec.json.pht-tune` object would hit case 1 directly.
+ 
+ **`status` is confirmation where the host supports it, provenance where it does
+-not.** An earlier draft conceded that "the server cannot verify that a human
+-approved anything… an agent could fabricate the field", and mitigated by making
+-fabrication explicit rather than silent. **That constraint is no longer real.**
++not.**
+ 
+ `campaign_approve` raises an **elicitation** — a form the *host* renders and the
+ human answers. The response comes from the user's keyboard, not the agent's token
+@@ -3734,12 +4061,12 @@
+   the server never depends on a capability it cannot confirm.
+ 
+   **`human_response` is therefore required *unconditionally*, on every tool that
+-  takes a human decision.** An earlier draft made it "required-unless-elicited",
+-  and that is a required-field rule that varies with host capability: the agent
+-  cannot predict the signature from `tools/list`, and every such tool grows a
+-  fallback branch in its contract rather than in its implementation. The
+-  elicited-vs-asserted distinction is real and worth keeping — it just belongs in
+-  the **response**, not the signature:
++  takes a human decision** — never "required-unless-elicited", which is a
++  required-field rule that varies with host capability: the agent cannot predict
++  the signature from `tools/list`, and every such tool grows a fallback branch in
++  its contract rather than in its implementation. The elicited-vs-asserted
++  distinction is real and worth keeping — it just belongs in the **response**,
++  not the signature:
+ 
+   ```json
+   {"ack_source":"elicited"}   // the host prompted a human and this is their answer
+@@ -3857,12 +4184,12 @@
+ blocking issue from `campaign_put` is unresolved, so approval cannot outrun
+ validation.
+ 
+-**Tokens are minted here, never by `campaign_put`.** An earlier draft showed
+-populated `plan_tokens` in `campaign_put`'s `draft` response — which would have
+-let an agent take a draft campaign's tokens straight to `deploy_start`, skipping
+-approval and the human checkpoint entirely. §8.2 is explicit that `status` is
+-provenance rather than security, so the gate has to be that the artifact an
+-unapproved campaign hands back contains nothing spendable.
++**Tokens are minted here, never by `campaign_put`.** Populated `plan_tokens` in
++`campaign_put`'s `draft` response would let an agent take a draft campaign's
++tokens straight to `deploy_start`, skipping approval and the human checkpoint
++entirely. §8.2 is explicit that `status` is provenance rather than security, so
++the gate has to be that the artifact an unapproved campaign hands back contains
++nothing spendable.
+ 
+ **The approval CAS runs twice, and it CASes on `(status, artifact_digest)`.**
+ Elicitation is what makes this necessary. The digest of the campaign artifact is
+@@ -3926,18 +4253,49 @@
+ 
+ **Re-calling `campaign_start` is idempotent, and that is what makes a kill
+ mid-fan-out recoverable.** It launches only arms with no `study_id` recorded;
+-arms that already have one are reported unchanged. The transition itself refuses
+-a concurrent second caller — `launching` is not `approved` — so this is a
+-*recovery* path, not a race. Nothing else in the design recovers a half-launched
++arms that already have one are reported unchanged.
++
++**The recovery call needs its own transition, because otherwise it is refused by
++the same guard that stops a double launch.** After a kill the artifact reads
++`running`, and a recovery call and a concurrent second caller are *the same call
++arriving at the same status*. Only one of these can be true at once: either the
++guard refuses everything non-`approved`, and recovery does not exist; or it
++admits `running`, and the double-launch protection is gone. So the transition is
++stated explicitly and takes two arms:
++
++| From | To | Admitted when |
++|---|---|---|
++| `approved` | `launching` | the initial launch |
++| `launching` \| `running` | `running` | **only if `launch_state == fan_out_incomplete`** — i.e. a recovery |
++
++A second live caller finds `launch_state == clean` and is refused; a caller after
++a kill finds `fan_out_incomplete` and proceeds. The discriminator is the state,
++not the timing, which is what makes it implementable.
++
++**Which makes `launch_state` load-bearing, so it must be derivable.** Defining
++`fan_out_incomplete` as "…with no background task alive" is not: nothing on disk
++records launcher liveness, §2.3 anticipates overlapping servers over one
++workspace, and a launcher legitimately parked on the ceiling is indistinguishable
++from one that no longer exists. So **the launcher writes a lease onto the
++campaign artifact — `launcher: {pid, create_time, expires}` — with exactly the
++`(pid, create_time)` treatment §2.4 gives `RunRecord`.** A lease that is absent,
++expired, or whose pid/create_time pair does not resolve to a live process means
++no launcher is alive. Nothing else in the design recovers a half-launched
+ campaign: `allocate` refuses the already-claimed output directories and the agent
+ has no way to tell which arms got out.
+ 
+-| Arm state | Meaning |
+-|---|---|
+-| `pending` | on the artifact, not yet accepted by the launcher |
+-| `queued` | accepted by the launcher, waiting on `max_concurrent_arms` or the server-wide ceiling; no `study_id` yet |
+-| `running` | launched; `study_id` recorded under CAS |
+-| terminal | `complete` / `failed`, from the study's own record |
++| Arm state | `queued_reason` | Meaning |
++|---|---|---|
++| `pending` | `null` | on the artifact, not yet accepted by the launcher |
++| `queued` | `"campaign_budget"` | accepted by the launcher, waiting on `budget.max_concurrent_arms`; no `study_id` yet |
++| `queued` | `"server_ceiling"` | waiting on `limits.max_inflight_arms`, the server-wide semaphore (§1.5); carries a queue position |
++| `queued` | `"local_slot"` | routed local and waiting on `LocalComputeSlot`. Under `local_slot_capacity=1` a three-arm campaign starts one arm and parks two here — which is neither of the other two reasons, and USER-17's "a second local arm is told the slot is busy and returns" applies to a *tool call*, not to the launcher, which holds the arm and retries |
++| `running` | `null` | launched; `study_id` recorded under CAS |
++| terminal | `null` | `complete` / `failed`, from the study's own record |
++
++All four fields — `state`, `queued_reason`, `study_id` and the campaign-level
++`launcher` lease — are declared on the artifact schema in §8.2. This table is
++their meaning; that schema is where they are stored.
+ 
+ ### `campaign_status {detail:"artifact"}` — read the stored campaign back
+ 
+@@ -3966,12 +4324,18 @@
+ stands.** Two fields beyond the artifact:
+ 
+ - **`write_generation`** — the artifact's own write counter, incremented on every
+-  CAS. It is what lets a recovering agent (or a second server) tell a stale read
+-  from a current one without diffing content, and it is the value a subsequent
+-  mutation CASes against.
++  successful write. It is what lets a recovering agent (or a second server) tell
++  a stale read from a current one without diffing content. **It is a hint, not
++  the CAS key**: mutations CAS on `(status, artifact_digest)` per §2.6, and the
++  schema that stores the counter is §8.2's. A counter cannot be the key here
++  because a peer server's write is invisible to a reader that never saw the
++  counter move, while the digest of the bytes actually read cannot be defeated
++  that way.
+ - **`launch_state`** — `clean` or `fan_out_incomplete`. `fan_out_incomplete` means
+-  the campaign is `launching` or `running` and at least one arm is `queued` with
+-  no `study_id`, with no background task alive to finish it.
++  the campaign is `launching` or `running`, at least one arm is `queued` with no
++  `study_id`, and **the `launcher` lease is absent, expired, or names a pid whose
++  `create_time` does not match a live process**. Liveness is read from the lease,
++  never inferred from the arms.
+ 
+ `launch_state` exists because **"never started" and "started by a server that
+ died" look identical on disk** — both are a campaign with arms and no studies —
+@@ -4199,31 +4563,62 @@
+ itself:
+ 
+ ```json
+-{"event":"pipeline.step","id":"pipelines/edge-v3.json.pht-pipe","step":3,
+- "edit":{"kind":"insert_op","slot":"ops","index":1,"class":"FocusEdgePhase"},
++{"event":"pipeline.step","step_id":"st_4c1f…","id":"pipelines/edge-v3.json.pht-pipe","step":3,
++ "edit":{"kind":"insert_op","slot":"ops","class":"FocusEdgePhase","params":{"k":3.0}},
++ "agent":"sub-7","state":"in_flight","lease_expires":"2026-08-12T16:02:00Z"}
++{"event":"pipeline.step.evidence","step_id":"st_4c1f…",
+  "evidence":{"num_objects":{"before":61,"after":88},
+-             "detect_mat.std":{"before":0.04,"after":0.11}},
+- "decision":"keep"}
++             "detect_mat.std":{"before":0.04,"after":0.11}}}
+ ```
+ 
+-**The row is appended in two parts, and the order matters.** The step is
++**Two appends, not one row mutated.** §2.5's `lineage.jsonl` is **append-only** —
++`atomic_append` under a file lock, with no update path — so "journal the step on
++acceptance and fill in the evidence when the probe returns" cannot be implemented
++as written. The step and its evidence are separate events correlated by
++**`step_id`**, and readers fold by it. Without the id there is nothing for the
++second append to attach to.
++
++**`in_flight` carries a lease** (`probe_timeout_s`). A subagent that dies
++mid-probe would otherwise leave a permanent *"a sibling is probing this now"* for
++that edit — and the advisory would then suppress the real evidence forever, in
++exactly the sibling case USER-9 added it for. Past `lease_expires`, a reader
++treats the step as abandoned rather than active: the signal degrades instead of
++inverting.
++
++**The row is appended in two parts, and the order matters** — §3.2 gives the
++reason: two siblings mid-probe on the same edit must be able to see each other,
++which end-writing makes impossible. The step is
+ journalled the moment the edit is *accepted* — before its probe runs — carrying
+-the full edit (parameters included) and `"decision":"in_flight"`. Evidence is
+-filled in when the probe returns.
+-
+-**The keep/revert decision is never written by a tool.** It is the agent's
+-choice, taken after reading the evidence, and no tool in the catalog accepts it.
+-The server derives it instead: an edit still present in the current pipeline was
+-kept, one no longer present was reverted (§3.2). Deriving beats reporting here —
+-a self-reported decision is a field an agent can omit, while the pipeline itself
+-cannot lie about what it contains.
+-
+-Writing the whole row at the end instead would be simpler and would break §3.2's
+-`edit_previously_tried` in exactly the case it exists for: two sibling subagents
+-patching the same edit are both mid-probe, so under end-writing neither has
+-journalled anything, neither sees the other, and both spend the budget the
+-advisory was added to save. An `in_flight` row is what makes a concurrent
+-attempt visible while it is still concurrent.
++the **canonical edit** (§3.2: the full edit with parameters, and with the target
++op's `class` resolved from its index at this moment, since three of the six edit
++kinds carry no class of their own and would otherwise be indistinguishable
++later). It carries `"state":"in_flight"`. Evidence is filled in by the second
++append when the probe returns.
++
++**There is no `decision` field on either row.** `state` is the row's own
++lifecycle — `in_flight` until its evidence append lands — and it is the only
++status the journal stores. The keep/revert decision is **derived** at read time
++from the pipeline as it then stands, per §3.2's per-kind table, which is where
++that rule is specified. Keeping it off the row is also what makes the
++append-only journal sufficient: a stored decision would have to be updated, and
++there is no update path.
++
++**The derivation has two limits, and the advisory states both rather than
++rounding them off.**
++
++*Attribution.* Up to 12 patches from N siblings mutate one pipeline in place, so
++"present" can mean *a different agent re-added it* and "absent" can mean *a later
++step removed it*. What the server can honestly report is **"still present in the
++current pipeline"** — not "kept by the agent that tried it". Under a single
++compacted agent, the case USER-9 actually cited, the two coincide; under
++concurrent siblings they do not, and §3.2's wording says the former.
++
++*Decidability per kind.* "Present" is the right test for `insert_op` and the
++**inverse** of the right test for `remove_op`; for `move_op` and for a
++`set_params` against a slot holding two ops of one class it decides nothing at
++all. §3.2's table is the normative statement — this section records the edit it
++needs, which is why the canonical edit and not the raw arguments go on the row —
++and `undetermined` is a reported outcome, not a suppressed advisory.
+ 
+ This is what makes an incrementally-built pipeline defensible months later:
+ not "the agent produced this", but *which* step produced which improvement, on
+@@ -4879,12 +5274,22 @@
+ **Procedure:**
+ 
+ 1. `deploy_plan {scope:"full"}` — assembles the decision: winner provenance,
+-   subset score and held-out gap, measured full-dataset estimate, coverage
+-   warnings, and the header sweep (§10.6.1).
+-2. **Show the human that response and wait.** This is the gate; it is not
+-   optional and it is not something the agent can conclude on its own.
+-3. `deploy_start {scope:"full"}` only after they say so, using the plan token
+-   that approval minted.
++   subset score and held-out gap, measured full-dataset estimate in
++   `node_hours`, coverage warnings, and the header sweep (§10.6.1). It mints the
++   `plan_token`. **No human is in this step** — it draws and binds, it does not
++   ask.
++2. **Read the response yourself and bring the human the parts that decide it** —
++   the node-hour figure, the held-out gap, and any coverage warning. This is
++   preparation for the gate, not the gate.
++3. `deploy_start {scope:"full", plan_token, human_response}` — **this call is the
++   gate.** The server raises the elicitation from inside it, rendering the prompt
++   from the token (§5.4), so the numbers the human sees are the server's, not
++   ours. `human_response` is **required unconditionally** (USER-22): it carries
++   what the human actually said. On a host with elicitation the server's own
++   prompt is authoritative and the response records
++   `ack_source: "elicited"`; on a host without it, the field is the whole record
++   of the decision and comes back `agent_asserted`. **Never invent it, and never
++   treat a timeout or a decline as a yes** — neither is a person agreeing.
+ 4. Poll `manifest.json`, not exit codes — without `--wait` the CLI exits 0 on
+    submission.
+ 5. Verify against the mirror (`measurements.*`), never the master, and report
+@@ -4892,8 +5297,8 @@
+ 
+ **Hard rules it teaches:** deletion and overwrite are the human's job at a
+ shell — if the output directory is occupied, ask rather than routing around it.
+-And a coverage warning on the promotion review is a reason to *say something*,
+-not a formality to pass through.
++And a coverage warning on the `deploy_plan {scope:"full"}` response is a reason
++to *say something*, not a formality to pass through.
+ 
+ ## 9.6 Skill/server boundary — worked cases
+ 
+@@ -5012,11 +5417,13 @@
+   "schema_version": 1,
+   "name": "plates-dev-24",
+   "parent": {"path": "data/plates", "digest": "sha256:1a4c…", "n_images": 480},
++  "group_filter": {"Metadata_Species": "A_nidulans"},
+   "selection": {
+     "method": "MetadataGroupSubsetSelector",
+     "params": {"n": 24, "seed": 0,
+                "grouping_metadata": "data/plate_batches.csv",
+-               "group_key": "Metadata_Batch", "allocation": "equal"},
++               "group_key": "Metadata_Batch", "allocation": "equal",
++               "group_filter": {"Metadata_Species": "A_nidulans"}},
+     "rationale": "8 batches x 3 plates each; equal allocation so the two rare
+                   low-contrast batches are not swamped by the six common ones"
+   },
+@@ -5032,7 +5439,7 @@
+ }
+ ```
+ 
+-Three things it must record, because each one changes how much the results mean:
++Four things it must record, because each one changes how much the results mean:
+ 
+ - **`parent` with a digest** — so a promotion can verify the full dataset has not
+   changed since development, and so `campaign_status.comparable` (§8.3) has its
+@@ -5048,6 +5455,16 @@
+   during triage. A subset that contains only easy plates will tune to a pipeline
+   that fails on the hard ones, and nothing downstream can detect that from the
+   cost alone.
++- **`group_filter`** — the `{column: value}` map the candidate set was restricted
++  to before selection (§10.3), or `{}` for an unfiltered subset. It is recorded
++  at top level as well as inside `selection.params` because two different readers
++  need it and only one of them is reading the selector: `deploy_plan
++  {scope:"full"}` resolves the run to `parent ∩ group_filter` and the plan token
++  binds it (USER-21, §5.4), so **a filtered subset that records no filter makes
++  that safety property uncarried** — a full-scope ack given for one group would be
++  spendable across every group with every digest still matching. A subset whose
++  `parent` is the whole dataset and whose filter is empty and one whose filter is
++  a single species are otherwise byte-indistinguishable in everything downstream.
+ 
+ ## 10.3 Where subsets come from — the selector hierarchy
+ 
+@@ -5068,11 +5485,14 @@
+     Args:
+         n: Target subset size.
+         seed: RNG seed; recorded on the artifact so a selection is reproducible.
++        group_filter: `{metadata column: value}` restricting the candidate set
++            *before* any selector runs. Empty means the whole parent.
+     """
+     model_config = ConfigDict(extra="forbid", validate_assignment=True)
+ 
+     n: int = Field(..., ge=1)
+     seed: int = 0
++    group_filter: dict[str, str] = Field(default_factory=dict)
+ 
+     @abstractmethod
+     def _select(self, candidates: list[ImageRef]) -> list[str]: ...
+@@ -5086,8 +5506,30 @@
+ ```
+ 
+ `SubsetSelection` is frozen and carries `images`, `method`, `params`, `seed`,
+-and a human-readable `rationale` — which becomes `selection` on the subset
+-artifact (§10.2).
++`group_filter`, and a human-readable `rationale` — which becomes `selection` on
++the subset artifact (§10.2).
++
++**`group_filter` is declared here, on the ABC, and it has to be.** USER-24
++offloaded grouping strategy to the agent and kept exactly this one primitive
++(§9.3.0.2 argues why); `model_config = ConfigDict(extra="forbid")` means a
++selector cannot accept it as an extra key, so a filter that exists only in prose
++is a filter no selector can be given. On the ABC rather than on
++`MetadataGroupSubsetSelector` because restricting a candidate set is one idea
++stated once: it composes with every selector — random-within-one-group works —
++and it leaves `allocation` and `min_per_group` meaning stratification *inside*
++the filtered set rather than becoming inert in a second mode.
++
++Its semantics, stated where they can be implemented from:
++
++| Aspect | Rule |
++|---|---|
++| When | Applied by `select()`'s template **before** `_select` is called, so no subclass implements it and none can skip it |
++| Source of the columns | The same `grouping_metadata` CSV the selector already reads, joined to images by parent-relative path. A selector with no CSV configured and a non-empty `group_filter` is a construction error, not an empty result |
++| Semantics | Conjunctive: every `{column: value}` pair must match. Values compare as strings against the CSV cell, after the `Metadata_` canonicalization §9.3 uses — never by raw prefix parsing |
++| Column absent from the CSV | `group_filter_column_not_found` (§6.2), carrying the CSV's actual column list and a did-you-mean, exactly as `group_key_not_in_metadata` does |
++| Matches no rows | `group_filter_matches_nothing` (§6.2). It is an error, not an empty subset: an empty subset would pass every downstream shape check and produce a study of nothing |
++| Recorded | On the artifact at top level **and** inside `selection.params` (§10.2), so a filtered subset is distinguishable from an unfiltered one by reading either |
++| Carried to full scope | `deploy_plan {scope:"full"}` reads it off the artifact and the plan token binds it (§5.4, USER-21) |
+ 
+ Two methods worth calling out:
+ 
+@@ -5408,13 +5850,11 @@
+ deploy_start {scope:"full"}   → the elicitation → [human says yes] → spend
+ ```
+ 
+-**One gate, one token.** An earlier draft had a separate `promotion_request` →
+-`promotion_approve` pair minting a second `promotion_token`, and this section's
+-own text retired it: *"a campaign arm can mint a `plan_token` only for
++**One gate, one token.** A campaign arm can mint a `plan_token` only for
+ `scope:"subset"`, so a full-dataset run has no other way to obtain one — the plan
+-must be drawn explicitly against the parent."* That already closes the loop. The
+-plan token binds the pipeline digest and the parent digest, expires, and is
+-single-use — every property a second token would add.
++must be drawn explicitly against the parent, and that already closes the loop.
++The plan token binds the pipeline digest and the parent digest, expires, and is
++single-use — every property a second `promotion_token` would add.
+ 
+ What promotion genuinely contributed was **content**, not a second lock, so the
+ content moves onto `deploy_plan {scope:"full"}`'s response — the winner
+@@ -5444,18 +5884,12 @@
+ ```
+ 
+ **The elicitation fires in `deploy_start`, not here** — at the point of spend,
+-which is what this section has said all along. An earlier draft put it on
+-`deploy_plan` and the result would not typecheck as a design: one handler
+-declared `W0` ("under a second, never blocking", §1.6.1) while sweeping every
+-parent header, possibly re-acquiring the compute slot, minting a token, *and*
+-waiting on a human; and its example response carried `plan_token` and
+-`pending_human_ack: true` together while the scope table below demanded a token
+-already minted "with the ack recorded". Both could not hold, and the ack became a
+-second mutable field racing `deploy_start`.
+-
+-So the two are separated by what they cost. `deploy_plan` **draws and binds**: it
+-reads, it computes the estimate, it mints the token, and it returns — no human is
+-in that path, so it stays honestly non-blocking. `ack_prompt` ships with it as
++and because an approval must not be able to go stale between the two calls
++(USER-18).
++
++The two are therefore separated by what they cost. `deploy_plan` **draws and
++binds**: it reads, it computes the estimate, it mints the token, and it returns —
++no human is in that path, so it stays honestly non-blocking. `ack_prompt` ships with it as
+ **text to show**, not a state to satisfy; there is no `pending_human_ack` field
+ and §2.6 needs no row for one. `deploy_start` **spends**, and asks first.
+ 
+@@ -5480,10 +5914,11 @@
+ the right order, since there is no point asking someone to approve a number that
+ is already stale.
+ 
+-The token binds `(pipeline digest, parent digest, scope)`. If the full dataset
+-gained images between the plan and the submission, the token is stale and the
+-decision is made again with `code: "plan_stale"` — the property `promotion_stale`
+-used to provide.
++**The binding set is §5.4's table, not a triple restated here.** What matters at
++this gate is the consequence: if the full dataset gained images between the plan
++and the submission, `parent_digest` no longer re-derives equal, the token is
++stale, and the decision is made again with `code: "plan_stale"` — the property
++`promotion_stale` used to provide.
+ 
+ **Two properties this must keep**, unchanged from the two-tool design:
+ 
+@@ -5512,13 +5947,35 @@
+ precisely the heterogeneity failure the filter exists to prevent, executed at
+ full scale with every digest check passing.
+ 
+-So `deploy_plan` carries the subset's `group_filter` through to full scope and
+-the run is `parent ∩ group_filter`. This costs nothing structurally: the filter is
+-a metadata predicate over the parent's images, which is the same join the subset
+-already performed, and it needs no staging. The token binds **`(parent_digest,
+-group_filter)`** rather than `parent_digest` alone — so an ack given for one
+-group's images cannot be spent on another's, and a filter that matches nothing at
+-full scale fails on the empty image set rather than silently widening.
++So `deploy_plan` carries the subset's `group_filter` (§10.2) through to full
++scope and the run is `parent ∩ group_filter`. The filter is a metadata predicate
++over the parent's images — the same join the subset already performed — so
++resolving *which* images is cheap. **`group_filter` is bound on the token at
++full scope**, per §5.4's binding table, which is what stops an ack given for one
++group's images being spent on another's; a filter that matches nothing at full
++scale fails on the empty image set rather than silently widening, with
++`group_filter_matches_nothing` (§6.2).
++
++**The intersection is resolved in place to a manifest — it does not stage, and
++"needs no staging" was not a free claim** (USER-26). `parent ∩ group_filter`
++**is** an arbitrary image list over the parent, and §1.6's new-pieces table
++justifies subset staging with "neither engine accepts a file list" — §10.3.1
++exists entirely to materialize such a list as a directory tree for that reason.
++
++So the server resolves the intersection to a **concrete image list at plan time**
++and writes it as a **manifest**; the run consumes the manifest. Nothing is
++copied, which is what keeps this section's bypasses-staging rule true and keeps
++the parent's images untouched (§10.3.1 §4). And the manifest is what the token's
++digest binds, so **the human approves an image set that cannot subsequently
++drift** — the property USER-21 was after, now with a carrier.
++
++**This buys a prerequisite the ruling did not know it was buying.** The public
++CLI's `--input` is a single `click.Path` (`phenotypicCLI.py:924-929`) — not a
++list and not a manifest file — so full scope on a filtered subset **needs a new
++top-level CLI flag**. Reusable machinery exists:
++`_cli_staged_slurm_worker.py:422` already takes `--manifest` as an internal entry
++point. It is a **new §7 prerequisite and a new plan task**, and `argv_digest`
++(§5.4) digests the argv that names that manifest.
+ 
+ This is what makes §9.3.0.2's descent reachable at the only scale that matters.
+ Without it, a per-group winner could be deployed only at subset scale, and
+@@ -5620,22 +6077,40 @@
+   measured estimate.
+ # PhenoTypic MCP Server — Design Spec
+ 
+-**Status:** draft, **refinery round 1 applied**. Ten sections, nine review
+-passes: five original, then an MCPB/deployment evaluation, an interface audit
+-against official MCP guidance, and a four-reviewer refinery panel (general,
+-data-flow, simplicity, concurrency) that returned **63 concerns and four REVISE
+-verdicts**. Fifteen user rulings are recorded in `refinery/ledger.md` with their
+-rationale.
++**Status:** draft, **refinery rounds 1–2 applied, round 3 propagation applied**.
++Ten sections, plus an MCPB/deployment evaluation, an interface audit against
++official MCP guidance, and a rotating four-reviewer refinery panel (general,
++data-flow, simplicity, concurrency). **Twenty-four user rulings are recorded in
++`refinery/ledger.md` with their rationale, and they are permanent** — a reviewer
++may not re-raise one absent new evidence.
+ 
+ **What round 1 changed:** the catalog went **32 tools → 26** — promotion folded
+ into `deploy_plan {scope:"full"}`, the `assay` artifact became
+ `experiment_profile`, and `mode`/`layer`/`sample` left the deploy tools. §8.2's
+ concession that the server "cannot verify that a human approved anything" was
+-retired in favour of **elicitation**. §9.3 gained **multi-group experiments**
+-(`group_by` + per-group trait overrides). And §3.2 gained the advisory that stops
+-an agent repeating an edit it already rejected — a gap none of the 63 concerns
++retired in favour of **elicitation**. And §3.2 gained the advisory that stops an
++agent repeating an edit it already rejected — a gap none of the 63 concerns
+ found.
+-**Date:** 2026-08-12
++
++**What round 2 changed:** the **human gate moved to `deploy_start`**, the point
++of spend (USER-18), with `human_response` unconditionally required and
++`ack_source` carrying the elicited-vs-asserted distinction in the response
++(USER-22). Handlers became `async` with two named executors (USER-20); the local
++slot became a configurable capacity that is the *sole* owner of the local-OOM
++invariant (USER-17); campaign fan-out became a background task with a launcher
++lease. And **multi-group experiments were offloaded to the agent** (USER-24):
++`group_by` on the profile, per-group trait overrides, and the per-group cost
++breakdown were all **deleted**, because one subset per group already gives one
++campaign per group whose aggregate cost *is* the group's cost. The server keeps
++exactly two things from that design — `group_filter` on the `SubsetSelector` ABC
++(§10.3), and `derived_from` on the campaign artifact (§8.2).
++
++**What round 3 changed:** no new decisions — a propagation sweep that carried
++eleven rulings from the sections that argue them into the argument tables,
++artifact schemas, error rows and plan decision records they had never reached.
++`refinery/defining-sections-map.md` is the standing check that stops that
++recurring.
++**Date:** 2026-08-12 (last propagated 2026-08-19)
+ 
+ ## What this is
+ 
+@@ -5725,7 +6200,16 @@
+ 
+ ## Open questions
+ 
+-**None.** Every question raised during design or by the five independent review
++**None.** The last one closed on 2026-08-19 by **USER-26**. For the record, it
++asked how `parent ∩ group_filter` — USER-21's resolution of `scope:"full"` on a
++group-filtered subset — reaches an engine that accepts no file list: through
++§10.3.1's staging, or restricted to filters expressible as whole `--input`
++subtrees? Neither. The intersection is resolved to a **manifest** at plan time
++and bound by the token's digest, so nothing is copied and the approved image set
++cannot drift. It carries a new §7 prerequisite: the public `--input` is a single
++`click.Path`, so a top-level manifest flag is new work.
++
++Every other question raised during design or by the independent review
+ passes has been resolved and recorded in the relevant section's "Resolved since
+ first draft" block.
+ 
