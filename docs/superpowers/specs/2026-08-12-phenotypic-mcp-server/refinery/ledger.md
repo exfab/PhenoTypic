@@ -371,3 +371,46 @@ returned either result, it is design work and does not qualify.
 **Its sequencing advice:** CONC-19, 20, 22 and 25 all resolve differently
 depending on how **CONC-1**'s primitive and release path are settled, so CONC-1
 and CONC-2 should be taken first. Both remain open from round 1.
+
+---
+
+## User rulings, round 2 (permanent — no reviewer may re-litigate absent new evidence)
+
+### USER-17 — the local arm cap is the slot's capacity (settles CONC-19)
+**There is one mechanism, not two.** The "1–2 local arms" prose in §1.5 is
+deleted. The `LocalComputeSlot` is the sole owner of the local-OOM invariant,
+and its **capacity is a configuration knob defaulting to 1**. A large node may
+set it to 2; the user's "1–2 arms" is therefore a *supported configuration
+range*, never a concurrency promise the spec makes on its own.
+
+**Corollary — no unbounded wait.** A second local arm arriving at a full slot is
+**told the slot is busy and returns**; it does not block awaiting it. This is
+what keeps the local path consistent with USER-1's submit-and-poll and removes
+the abandoned-coroutine orphan CONC-19 describes.
+
+### USER-18 — the human gate lives in `deploy_start` (settles CONC-22, Critical)
+`deploy_plan` returns to being a **genuine read-only preview**: fast, mints
+nothing, waits on no human, and is honestly `W0`. The elicitation fires in
+`deploy_start`, **which is where §10.5's own words already put "the point of
+spend"** — this makes the spec consistent with the rationale already written for
+it. The `plan_token` / `pending_human_ack` contradiction dissolves because there
+is only one state to carry, not two. §2.6 needs no ack row.
+
+The round-1 fold itself **stands** — no 27th tool. Only the gate moves.
+
+### USER-19 — the per-group cost breakdown is the scorer's output (settles CONC-24, closes USER-15's deferral)
+The scorer records per-group figures as **Optuna trial user attributes at
+scoring time**. `campaign_status` reads them; it never recomputes. This is what
+preserves the `since` polling economy — a recomputed breakdown would defeat the
+one thing `since` exists to buy.
+
+### USER-20 — handlers are async; blocking work is offloaded (settles CONC-17; unblocks CONC-1, 2, 19, 20, 25)
+Tool handlers are `async def`. **Anything that blocks goes to a worker thread** —
+subprocess waits, the lineage reads whose lock spins to 30 s, and SLURM polling.
+This is what `fastmcp` expects, it is what keeps the server answering an
+interactive probe during a long run, and **it is the only model under which
+§1.6.1's NFR table is satisfiable at all.**
+
+This was the decision the concurrency specialist identified as the one four of
+its findings hang from; it is now made, and those findings resolve against it
+rather than around it.
