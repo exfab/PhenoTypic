@@ -160,3 +160,42 @@ is what makes a `plan_token` meaningful — §5.4 binds the token to an
 `argv_digest`, and a digest over a nondeterministic render is not a binding.
 
 **Both items go in the spec audit**, and both are further reasons Phase 2C waits.
+
+---
+
+## C8/C9 — does JournalStorage survive a realistic fleet? YES, measured
+
+Asked by the user 2026-08-18 before deciding P1's sequencing, because their
+filamentous-fungi pipelines cost **~30 min per evaluation** and the answer
+decides whether distributed tuning is required for v1 rather than optional.
+
+C7 (job 27468703) had only shown 4 workers × 15 trials = 60 appends, as `srun`
+tasks in one allocation. That is not a fleet.
+
+| Run | Shape | Result |
+|---|---|---|
+| **C8** (job 27555140) | SLURM **array**, 8 tasks × 50 trials = 400 | **400 persisted intact** — but SLURM packed all 8 onto **one node** (c05), so this measures a single GPFS client. `--require-distinct-nodes` caught it rather than letting it be reported as a cross-node pass |
+| **C9** (job 27555152) | `srun -N8 -n8`, 8 **distinct** nodes, 50 trials each = 400 | **400 trials persisted intact across r44–r51.** verify rc=0 |
+
+**Conclusion: journal storage supports concurrent writes from a realistic
+multi-node fleet.** GPFS is not incidental to this — a job id boundary is
+invisible to the filesystem; what matters is 8 separate GPFS clients, which C9
+had and C8 did not.
+
+**One measured caveat, and it is why this conclusion is workload-specific.**
+C9's log carried optuna's own warning: *"taking longer than 10.0 seconds to
+acquire the lock file … Retrying"*. So `JournalFileSymlinkLock` **is** genuinely
+contended — refining C7's "no discrimination" reading: the lock does real work,
+GPFS would merely also have serialized those appends without it.
+
+The rate is what settles it:
+
+| | Appends/s |
+|---|---|
+| C9 (400 trials in ~20 s) | **~20** — produced the warning |
+| A 30-min-per-evaluation fleet, 8 workers | **~0.004** |
+
+**~4,500× headroom.** For expensive evaluations the contention is irrelevant, which
+matches C6's earlier throughput finding by a different route. **A fast pipeline
+(≈1 s/evaluation) at 32 workers would approach ~32 appends/s — above what was
+just measured to warn.** Record that limit rather than generalising this result.
