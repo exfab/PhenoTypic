@@ -37,39 +37,73 @@ commit at this point is documentation.
 
 ## Shared files — the parallelism constraint
 
-Two tasks that touch one file cannot run concurrently. These are every such file:
+Two tasks that **write** one file cannot run concurrently. Derived, not assumed:
 
-| File | Tasks |
+| File | Tasks that WRITE it |
 |---|---|
-| `sdk_/ngff_.py` | 1.1(create), 1.2, 1.3, 1.4, 1.5, 1.6 |
-| `phenotypicCLI.py` | 3.7, 5.3, 5.4, 5.7 |
-| `sdk_/_hdf_to_zarr.py` | 5.1(create), 5.2, 5.3, 5.6 |
-| `sdk_/_io_constants.py` | 2.1, 5.7, 6.3 |
-| `_core/_image_parts/_image_io_handler.py` | 2.2, 2.4, 6.2 |
-| `tests/_ngff_conformance.py` | 1.4(create), 2.5(extend) |
-| `_core/_image_parts/_grid_image_handler.py` | 2.3, 6.2 |
-| `gui/builder/_preview_cache.py` | 2.4, 4.4 |
-| `_cli/_cli_sidecar.py`, `tests/unit/cli/test_cli_sidecar.py` | 3.2, 3.5(delete) |
-| `_cli/_cli_staged_strategy.py` | 3.5, 3.7 |
-| `_cli/_cli_process_single.py` | 3.6, 3.7 |
-| `_cli/_cli_completion.py` | 3.8, 5.6 |
-| `gui/_shared/tiles.py` | 4.2, 4.3 |
-| `gui/builder/_preview_tiles.py` | 4.3, 4.4 |
-| `sdk_/_metadata_migration.py` | 5.3, 6.4 |
-| `pyproject.toml` | 0.1, 0.2 |
-| `.github/workflows/run-pytest{,-full}.yml` | 0.1, 7.2 |
+| `src/phenotypic/sdk_/ngff_.py` | 1.1(create), 1.2(modify), 1.3(modify), 1.4(modify), 1.5(modify), 1.6(modify) |
+| `src/phenotypic/phenotypicCLI.py` | 3.7(modify), 3.8(modify), 5.3(modify), 5.4(modify), 5.7(modify) |
+| `src/phenotypic/_cli/_cli_process_single.py` | 3.6(modify), 3.7(modify), 3.8(modify), 6.2(modify) |
+| `src/phenotypic/_cli/_cli_staged_workers.py` | 3.3(test), 3.3(modify), 3.7(modify), 6.2(modify) |
+| `src/phenotypic/sdk_/_hdf_to_zarr.py` | 5.1(create), 5.2(modify), 5.3(modify), 5.6(modify) |
+| `pyproject.toml` | 0.1(modify), 0.2(modify), 2.4(test) |
+| `src/phenotypic/_cli/_cli_output_manager.py` | 3.1(modify), 3.7(modify), 6.2(modify) |
+| `src/phenotypic/_cli/_cli_staged_slurm_worker.py` | 3.5(modify), 3.7(modify), 3.8(modify) |
+| `src/phenotypic/_core/_image_parts/_image_io_handler.py` | 2.2(modify), 2.4(modify), 6.2(modify) |
+| `src/phenotypic/sdk_/_io_constants.py` | 2.1(modify), 5.7(modify), 6.3(modify) |
+| `tests/integration/cli/test_staged_gpu_local.py` | 3.1(test), 3.3(test), 3.5(test) |
+| `.github/workflows/run-pytest-full.yml` | 0.1(modify), 7.2(modify) |
+| `.github/workflows/run-pytest.yml` | 0.1(modify), 7.2(modify) |
+| `src/phenotypic/_cli/_cli_completion.py` | 3.8(modify), 5.6(modify) |
+| `src/phenotypic/_cli/_cli_execution_strategies.py` | 3.6(modify), 3.8(modify) |
+| `src/phenotypic/_cli/_cli_sidecar.py` | 3.2(test), 3.5(delete) |
+| `src/phenotypic/_core/_image_parts/_grid_image_handler.py` | 2.3(modify), 6.2(modify) |
+| `src/phenotypic/gui/_shared/tiles.py` | 4.2(modify), 4.3(modify) |
+| `src/phenotypic/gui/builder/_preview_cache.py` | 2.4(modify), 4.4(modify) |
+| `src/phenotypic/gui/builder/_preview_tiles.py` | 4.3(modify), 4.4(modify) |
+| `src/phenotypic/sdk_/_metadata_migration.py` | 5.3(modify), 6.4(modify) |
+| `tests/_ngff_conformance.py` | 1.4(create), 2.5(create) |
+| `tests/gui/builder/test_preview_cache.py` | 2.4(test), 4.4(test) |
+| `tests/gui/builder/test_preview_compute_scope.py` | 2.4(test), 4.4(test) |
+| `tests/gui/builder/test_preview_tile_blueprint.py` | 2.4(test), 4.4(test) |
+| `tests/unit/cli/test_cli_sidecar.py` | 3.2(test), 3.5(delete) |
 
-**Consequence: Phase 1 is strictly sequential** — all six tasks append to one
-file. So is Phase 5's 5.1 → 5.2/5.3/5.6 chain.
+**Read-only sharing does not conflict** and is excluded above — only writers collide.
 
-## Cross-phase edges beyond the phase order
+> **This table replaces an earlier one that was wrong in a way that mattered.** The first
+> generator resolved its repo root to `docs/` rather than the worktree, so its filename index
+> was empty and every bare filename fell back to itself. The plan mixes
+> `` `src/phenotypic/_cli/_cli_process_single.py` `` with a bare
+> `` `_cli_execution_strategies.py` `` **on the same line**, and writes line references as
+> `` `phenotypicCLI.py:400` `` — so one file appeared under two keys and its conflict
+> vanished, while `:400`-suffixed paths were not matched at all. `_cli_process_single.py`
+> showed 2 writers; it has **4**. `phenotypicCLI.py` showed 4; it has **5**. Blockquote lines
+> are also excluded now, because correction notes name files precisely to say a task must
+> *not* touch them — Task 3.7's note names `_cli_staged_strategy.py` for exactly that reason.
 
-| Edge | Why |
+## Cross-phase write overlap
+
+| Phase pair | Shared writes |
 |---|---|
-| Task 5.1 → Phase 3 Task 3.4 | `staged_store_matches_work_id` |
-| Tasks 5.2, 5.6, 5.7 → Phase 3 Task 3.8 | `kind`-tagged marker descriptors |
-| Phase 2 Task 2.5 → Phase 1 Task 1.4 | extends `tests/_ngff_conformance.py` |
-| Phase 6 → Phase 5 (all) | migration reads the legacy HDF path Phase 6 removes |
+| 0 ↔ 2 | `pyproject.toml` |
+| 0 ↔ 7 | `.github/workflows/run-pytest-full.yml`<br>`.github/workflows/run-pytest.yml` |
+| 1 ↔ 2 | `tests/_ngff_conformance.py` |
+| 2 ↔ 4 | `src/phenotypic/gui/builder/_preview_cache.py`<br>`tests/gui/builder/test_preview_cache.py`<br>`tests/gui/builder/test_preview_compute_scope.py`<br>`tests/gui/builder/test_preview_tile_blueprint.py` |
+| 2 ↔ 5 | `src/phenotypic/sdk_/_io_constants.py` |
+| 2 ↔ 6 | `src/phenotypic/_core/_image_parts/_grid_image_handler.py`<br>`src/phenotypic/_core/_image_parts/_image_io_handler.py`<br>`src/phenotypic/sdk_/_io_constants.py` |
+| 3 ↔ 5 | `src/phenotypic/_cli/_cli_completion.py`<br>`src/phenotypic/phenotypicCLI.py` |
+| 3 ↔ 6 | `src/phenotypic/_cli/_cli_output_manager.py`<br>`src/phenotypic/_cli/_cli_process_single.py`<br>`src/phenotypic/_cli/_cli_staged_workers.py` |
+| 5 ↔ 6 | `src/phenotypic/sdk_/_io_constants.py`<br>`src/phenotypic/sdk_/_metadata_migration.py` |
+
+**Phase pairs with NO shared writes:** 0/1, 0/3, 0/4, 0/5, 0/6, 1/3, 1/4, 1/5, 1/6, 1/7, 2/3, 2/7, 3/4, 3/7, 4/5, 4/6, 4/7, 5/7, 6/7
+
+The one that matters: **Phase 4 ↔ Phase 5 share nothing**, so the GUI and migration clusters
+may run in parallel worktrees once Phase 3 completes. Verified rather than assumed — Task 5.7
+does write a GUI file (`gui/results_viewer/_output_consistency.py`), but not one Phase 4 opens.
+
+Phase 3 ↔ Phase 5 share `phenotypicCLI.py` and `_cli_completion.py`, and Phase 3 ↔ Phase 6
+share three `_cli` modules — both already forbidden by the declared phase order, but worth
+seeing rather than trusting.
 
 ---
 
