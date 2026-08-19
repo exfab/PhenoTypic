@@ -178,3 +178,60 @@ that exist**; §9's skills and installer; §9.3/§9.4 domain content.
 **No true conflicts requiring the precedence table.** GEN-2 flags `CONFLICT with`
 data-flow's stale-contract finding, but inspection shows the same site with
 disjoint content — recorded as an alias, not a conflict.
+
+---
+
+## Round 1 rulings — permanent, no reviewer may re-raise absent new evidence
+
+### USER-8 [settled-by-user (round 1)] — scope cut, 32 → 26 tools
+Resolves SIMP-1, 2, 3, 13, 14 (partial), and dissolves FLOW-5 + GEN-2 by deletion.
+
+**Cut (6):** `promotion_request`, `promotion_approve` (fold the decision content —
+winner provenance, subset score, gap, coverage warnings, §10.6.1's header sweep —
+into `deploy_plan {scope:"full"}`, which already carries `pending_human_ack`/
+`ack_prompt`); `experiment_profile_put` (the triage skill writes the file);
+`pipeline_diff`; `campaign_get` (→ `campaign_status {detail:"artifact"}`);
+`catalog_measurements` (`produces_columns` answers the workflow question).
+**Also cut:** `mode`, `layer`, `sample` from the deploy tools — v1 deploy is
+always the full pipeline.
+
+**Explicitly KEPT against the reviewer's proposal:** `experiment_profile_get` and
+`workspace_lineage`. Rationale the reviewer did not weigh — dropping them assumes
+the agent reads workspace files directly, which holds in Claude Code but breaks on
+any host giving the agent MCP and nothing else, turning §1.7's addable HTTP
+transport into a breaking change. **`workspace_lineage` is additionally the only
+read path to the anti-repetition evidence** (USER-9).
+
+### USER-9 [settled-by-user (round 1)] — anti-repetition, a gap none of the 63 concerns found
+Nothing in the spec requires an agent to consult §8.7's `pipeline.step` trail
+before proposing an edit, so a compacted agent re-tries what it already rejected
+and sibling subagents each burn probe budget on the same dead end.
+**Ruling:** when an edit matches one already recorded for that pipeline,
+`pipeline_patch` returns the prior attempt's evidence and `decision` as an
+**advisory issue** — never a refusal, so a deliberate retry stays possible. Uses
+the journal scan the tool already performs for its step counter.
+
+### USER-10 [settled-by-user (round 1)] — local slot policy (resolves CONC-12)
+Keep one slot. §1.5 states plainly that a locally-routed `W2`/`W3` **suspends
+interactive probing** for its duration. Nearly unreachable on the cluster, where
+`W2`/`W3` route to SLURM; made explicit rather than left as a surprise off-cluster.
+
+### USER-11 [settled-by-user (round 1)] — dataset location (resolves FLOW-3)
+**The workspace root must contain the image data.** §2.2/§2.3 reconcile to it:
+drop the CWD default, keep the `.git` warning. Rejected the `data_roots`
+allowlist as a second containment concept.
+
+### USER-12 [settled-by-user (round 1)] — rulings into the spec (resolves GEN-1)
+Write D1a (`fastmcp` 3.x), D5 (tool annotations), D6 (elicitation) and the
+cluster-boundary reviewer cadence into the spec **now**, so the panel and Phase 2C
+stop reviewing a superseded contract.
+
+### USER-13 [settled-by-user (round 1)] — the §9.3 artifact is renamed
+`assay` → **`experiment_profile`**. `profiles/<dataset>.experiment.json`;
+`experiment_profile_get`. "Assay" names a measurement *procedure* in biology; this
+artifact describes what is imaged and how it was captured.
+
+### USER-14 [settled-by-user (round 1)] — local concurrency cap
+**Locally, run 1–2 arms at a time to avoid OOM.** `budget.max_concurrent_arms`
+takes a lower effective cap when routed local. Bears on CONC-6, which found
+`campaign_start`'s fan-out has no execution model under local routing.
