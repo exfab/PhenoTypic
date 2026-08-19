@@ -57,7 +57,36 @@ The clustering below is built from the corrected DAG. **Fix the header claim in
 | **C5** | T13, T14, T17 | Keystone | One subject — the subset boundary: digest → selectors → staging. T17 consumes both predecessors. **Must follow C4** (T14 edits T10's constant). | — |
 | **C6** | T15, T16, T18 | Keystone/Seam | Forced: all three edit `_run.py`. Grouping them is not a preference, it is the only correct answer. | C4 |
 
-**Sequence:** `C1 → C2 → C3 → [1a gates] → C4 → C6 → C5 → [1b gates]`
+**Sequence:** `C1 → C2 → C3 → [1a gates] → C4 → C6 → C7 → C5 → [1b gates]`
+
+### C7 — P1 (JournalStorage), moved into Phase 1b (user ruling, 2026-08-19)
+
+§7 sequenced P1 after v1 ("MCP v1 ships without P1"). **That is wrong for this
+workload.** Filamentous-fungi pipelines cost ~30 min per evaluation, so a
+200-trial arm is ~100 h serial and a 3-arm campaign ~300 h. Worse than slow:
+§1.5 has a `W2` routed **local** hold the single `LocalComputeSlot` for its
+entire subprocess lifetime, so one local study would block every
+`pipeline_probe` from every subagent for days. Without distributed tune, v1 is
+not a reduced capability — it is a deadlock generator.
+
+P1 is empirically unblocked: **C9 (job 27555152) persisted 400 trials across 8
+distinct nodes**, with ~4,500× append-rate headroom at 30-min evaluations
+(see `MAIN-MERGE.md`).
+
+**C7 = P1**: the five storage construction sites (`_run.py:475`, `_run.py:785`,
+`_worker.py:50`, `_optuna_store.py:106-109` + `gui/tune/_callbacks.py:871`,
+`strategy/_optuna.py:239`) plus **B1–B4** — the transient-retry predicate must
+become backend-aware, the "read-only" Monitor open must stop creating the file,
+the Monitor's timeout bounding must not assume file storage cannot network-hang,
+and `journal.log` never compacts (state expected sizes).
+
+**Must follow C6, cannot parallel it:** two of the five sites are in
+`tune/_tune_cli/_run.py`, which C6's T15/T16/T18 already own. Same file, same
+collision rule that forced C6 to exist.
+
+**Scope note:** §7 calls P1 "an engine change needing its own spec". It is the
+largest single item in Phase 1b — consider whether it splits (storage dispatch |
+B1 retry predicate | B2/B3 Monitor safety) at the C7 gate rather than up front.
 
 ### Post-review amendments
 
