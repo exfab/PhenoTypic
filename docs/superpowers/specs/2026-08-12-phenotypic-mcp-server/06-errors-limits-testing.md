@@ -61,6 +61,13 @@ human prose and may change.
 | `resume_incompatible` | error | Pre-validated `validate_resume_compatibility` mismatch; names the field |
 | `scheduler_jobs_active` | error | Resume/restart while ledgered jobs are live |
 | `local_slot_timeout` | error | `W1` waited past `probe_timeout_s` for the slot. Carries `held_by` (work class + id), `held_for_s`, and `queue_position`, so an agent can distinguish "retry in 30 s" from "a 2-hour deploy holds it" instead of retrying blind |
+| `slot_lease_expired` | error | The slot's wall-clock lease elapsed while a holder still had it — `probe_timeout_s` for `W1`, the run's `--time` or the configured maximum for a local `W2`/`W3` (§1.5). The slot auto-releases and the holder's record carries this as its terminal reason, so the state is visible rather than stuck |
+| `local_slot_orphaned` | error | A local `W2`/`W3` was refused because restart reconciliation found a **live orphan** from a previous server on the local path (§1.5). Carries the orphan's `pid`, `create_time`, and `run_id`, and names `workspace_cancel` as the remedy — the server refuses rather than watching a process it does not own |
+| `artifact_lock_timeout` | error | `exclusive_path_lock` exhausted its 30 s spin (`FileLockTimeout`, `_cli/_cli_file_locking.py:50`) — a wedged mount, or a peer server holding the path. Carries the path and the elapsed wait. Retryable; it is not a validation failure and must not be reported as one |
+| `artifact_changed` | error | A read-modify-write found the artifact's content digest changed since it was read (§2.6). Carries both digests and the fields that moved. **The write is refused** — never silently merged, and never `ok:true` |
+| `campaign_changed_during_approval` | error | The campaign artifact changed between the elicitation prompt being built and the human answering (§8.3). Carries what moved; the gate re-prompts against the new content rather than attaching consent to a plan nobody read |
+| `human_gate_busy` | error | A second human-gate elicitation was requested while one is outstanding — single-flight per server (§8.2). Names the artifact currently on screen; the caller retries |
+| `output_generation_active` | error | `RunRegistry.allocate` refused an output directory that already has a nonterminal launch generation (`_services/runs.py:317-337`, today a bare `RuntimeError`). Names the holding `run_id` and its status — the agent's choices are a different `run_name` or `workspace_cancel`, and neither is discoverable from an unclassified 500 |
 | `probe_cap_exceeded` | error | `n_images` above `limits.probe_max_images` |
 | `environment_mismatch` | error | SLURM work requested in a `local` environment with no profiles |
 | `submission_failed` | error | A subprocess exited non-zero or `sbatch` rejected a script for a reason no pre-check models; carries exit code, stderr tail, and **`retryable: bool`** classified from known transient-vs-config `sbatch` patterns, so an agent does not retry a bad account name verbatim |
@@ -117,6 +124,18 @@ where the candidates live in an external CSV no tool reads back. It is otherwise
 absent; never a generic string. The rule is: **if the valid values exist and the
 agent has no way to obtain them, the error carries them.**
 
+**Registry and lock failures are classified, not caught by the fallback.** Two
+exceptions the reused `_services` layer raises today have no natural code and
+would otherwise surface as an unclassified 500 — which is the one outcome §6.1
+exists to prevent, since an agent can neither branch on it nor fix it.
+`FileLockTimeout` (`_cli/_cli_file_locking.py:50`) maps to
+`artifact_lock_timeout`, and `allocate`'s bare `RuntimeError` on a nonterminal
+generation (`_services/runs.py:317-337`) maps to `output_generation_active`,
+carrying the holding `run_id` parsed from the record rather than from the
+message string. Both are **retryable in different senses** — one after a wait,
+one only after a different `run_name` or a cancel — and the distinction is
+exactly what the agent needs and cannot infer from a traceback.
+
 **Subprocess and scheduler failures.** Not every failure is pre-checkable; §5.4
 pre-validates resume compatibility precisely because the CLI's own failure mode
 is `sys.exit(1)` inside a subprocess. Anything that escapes those checks maps to
@@ -132,6 +151,10 @@ did not model), and any CLI traceback the pre-checks did not anticipate.
 | `probe_max_images` | 4 | Hard cap on `pipeline_probe.n_images` |
 | `probe_timeout_s` | 300 | Wall clock on `W1`, including slot wait |
 | Local compute concurrency | 1 | `LocalComputeSlot` (§1.5) |
+| `executors.blocking` workers | 4 | §1.5 — filesystem, journal, subprocess, scheduler |
+| `executors.compute` workers | 1 | §1.5 — `W1`; the pool restates the one-probe invariant |
+| `limits.max_inflight_arms` | 8 | **Server-wide**, all campaigns; checked by the background launcher (§8.3) |
+| Slot lease | `probe_timeout_s` (`W1`) / run `--time` (local `W2`/`W3`) | §1.5 — auto-release; `slot_lease_expired` |
 | Catalog list size | unbounded rows, compact fields | `catalog_operations` returns no schemas |
 | Measurement payloads | summary only | `describe()` + column names; parquet path for the rest |
 | Log tail | 200 lines | `LocalRunner.snapshot_log` |
@@ -231,8 +254,40 @@ ones most likely to rot into tautologies.
 - **Event loop stays responsive:** `W0` calls complete while a `W1` probe is in
   flight, proving the `run_in_executor` offload.
 - **Restart reconciliation:** with a live orphan subprocess recorded in
-  `RunRegistry`, a fresh server must claim the slot rather than admit a second
-  local job; with a dead one, it must CAS to `failed`.
+  `RunRegistry`, a fresh server must refuse a local `W2`/`W3` with
+  `local_slot_orphaned` — not claim the slot on the orphan's behalf, and not
+  admit a second local job; with a dead one, it must CAS to `failed`.
+- **PID reuse is not liveness:** a record whose `pid` resolves to a live process
+  with a *different* `create_time` must reconcile as **dead**. The test needs a
+  fabricated record rather than a real collision, and it must fail if the check
+  is reduced to the pid alone (§2.4).
+- **Slot release on every exit path:** normal return, raised exception,
+  cancellation, and subprocess reap must each leave the slot free. The
+  release-first ordering is pinned by injecting an `artifact_lock_timeout` into
+  the exit observer's *record* step and asserting the slot is still released
+  (§1.5) — this is the test that guards the strand-forever failure.
+- **Lease expiry:** a holder that outlives its lease releases the slot and its
+  record reads `slot_lease_expired`. This must pass whether or not cancellation
+  is delivered, since the lease is specified independently of it.
+- **Executor isolation:** saturating `blocking` with concurrent store-opens must
+  not delay a `W1` probe the slot has already admitted — the assertion that the
+  two pools are actually separate.
+- **Artifact CAS:** two concurrent `pipeline_patch` calls on one artifact must
+  produce one success and one `artifact_changed`; **neither may return `ok:true`
+  having lost an edit**. Same shape for a `campaign.json` amendment landing
+  during an approval — `campaign_changed_during_approval`, not a silent revert.
+- **Terminal records are never resurrected:** a subprocess that dies before the
+  post-start CAS must leave the record `failed`, and the output directory must
+  remain claimable afterwards (§2.6).
+- **Staging completion:** a reader must treat a staging directory without its
+  `.complete` marker as absent. Killing the builder between `os.replace` and the
+  marker must not let a run launch against the partial tree (§10.3.1).
+- **Fan-out is idempotent:** kill the background launcher mid-fan-out; re-calling
+  `campaign_start` must launch only the arms with no `study_id` and must not
+  re-launch the ones already running (§8.3).
+- **Cursor states:** an arm with no store yet must report as changed, never
+  `unchanged`; and a local SQLite study advancing only in `study.db-wal` must be
+  reported as moving (§8.3).
 
 ### Integration
 
