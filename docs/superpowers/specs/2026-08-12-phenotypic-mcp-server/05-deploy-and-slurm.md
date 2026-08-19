@@ -292,6 +292,19 @@ The response carries **`ack_source: "elicited" | "agent_asserted"`** (§8.2), wh
 is what makes the distinction auditable on the artifact rather than implicit in
 host configuration.
 
+**The prompt is rendered by the server from the token, never passed in by the
+agent.** This is why the token carries `ack_prompt` and `decision_content` rather
+than only the digests. §10.5 mints the prompt at `deploy_plan` and calls it "text
+to show" — but `deploy_start` is where it is now shown, one call later, and if
+the server cannot reproduce it there are only two options and both are wrong:
+the agent supplies the text, which makes the numbers a human reads
+agent-chosen — the single thing §8.2 adopted elicitation to prevent — or the
+server re-renders from digests alone and silently drops the subset score,
+held-out gap and coverage warnings that §10.5 calls the decision content.
+Persisting both on the token closes it, and it is also what lets §8.2's rule
+"every elicitation leads with the artifact id it approves" be satisfied by a
+handler rather than by an agent's good manners.
+
 **The elicitation is raised before the slot is acquired and before `allocate`.**
 This ordering is the whole point of moving the gate here, and stating it in three
 words elsewhere is not enough: ask first, then allocate, then acquire. Reversed,
@@ -318,6 +331,8 @@ its own contents.
  "run_name":"runs/2026-08-12-plateA",
  "array":{"requested":480,"chunks":1,"effective_limit":2500},
  "estimate":{"node_hours":18.4},
+ "ack_prompt":"Deploy edge-v3-tuned across 480 images (~18.4 node-hours)? …",
+ "decision_content":{"subset_score":0.081,"gap":0.06,"warnings":["subset_coverage_unverified"]},
  "argv_digest":"sha256:4b0a…","consumed_by":null}
 ```
 
