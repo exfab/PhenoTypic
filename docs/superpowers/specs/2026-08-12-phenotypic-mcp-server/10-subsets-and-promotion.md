@@ -520,7 +520,7 @@ no human is in that path, so it stays honestly non-blocking. `ack_prompt` ships 
 and §2.6 needs no row for one. `deploy_start` **spends**, and asks first.
 
 As in §8.2 the ask is confirmation where the host supports it and provenance
-where it does not, with **`human_response` required unconditionally** and
+where it does not, with **`human_response` required for a `plan` token** (§5.4) and
 `ack_source` carrying the elicited-vs-asserted distinction in the *response*
 (§8.2) — a required-field rule that varied with host capability was retired
 there, and this section follows it rather than restating the old form. The same
@@ -676,8 +676,16 @@ So `deploy_plan {scope:"full"}` runs a two-tier check:
 
 | Tier | Cost | What it does |
 |---|---|---|
-| **Always** — header sweep | `W0`, no decode, no slot | Read dimensions, bit depth, and channel count from every parent image header. Compare the distribution against the subset's. |
-| **Only on mismatch** — re-probe | `W1`, 2 images | Probe 2 images drawn from `parent \ subset`, chosen from the *mismatching* stratum, and re-derive the estimate from that timing |
+| **Always** — header sweep | `W0`, no decode, no slot | Read dimensions, bit depth, and channel count from every image **in the resolved run set** — `image_manifest` where one exists (§10.5), the bare parent otherwise. Compare the distribution against the subset's. |
+| **Only on mismatch** — re-probe | `W1`, 2 images | Probe 2 images drawn from **run set `\` subset**, chosen from the *mismatching* stratum, and re-derive the estimate from that timing |
+
+**Both tiers run over the `image_manifest`, not the parent, whenever the subset
+carries a `group_filter`.** Otherwise the token binds two fields computed over
+two different sets — `image_manifest_digest` naming the images that will run, and
+`estimate.node_hours` derived from every image in the parent — and §5.4 calls the
+second "the figure the human actually approves". Quoting a whole-parent estimate
+for a filtered run overstates it by however much the filter excludes, which is
+the entire dataset minus one group in the case USER-21 exists to serve.
 
 Header reads are cheap enough to run over a 480-image parent (TIFF/PNG headers,
 not pixel data), and they catch the dominant failure directly: cost scales with

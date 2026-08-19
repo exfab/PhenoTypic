@@ -3,7 +3,7 @@
 **Status:** draft, **refinery rounds 1–2 applied, round 3 propagation applied**.
 Ten sections, plus an MCPB/deployment evaluation, an interface audit against
 official MCP guidance, and a rotating four-reviewer refinery panel (general,
-data-flow, simplicity, concurrency). **Twenty-four user rulings are recorded in
+data-flow, simplicity, concurrency). **Twenty-seven user rulings are recorded in
 `refinery/ledger.md` with their rationale, and they are permanent** — a reviewer
 may not re-raise one absent new evidence.
 
@@ -16,7 +16,8 @@ agent repeating an edit it already rejected — a gap none of the 63 concerns
 found.
 
 **What round 2 changed:** the **human gate moved to `deploy_start`**, the point
-of spend (USER-18), with `human_response` unconditionally required and
+of spend (USER-18), with `human_response` required for a `plan` token — the
+unattended campaign arm carries consent forward instead (USER-22, §5.4) — and
 `ack_source` carrying the elicited-vs-asserted distinction in the response
 (USER-22). Handlers became `async` with two named executors (USER-20); the local
 slot became a configurable capacity that is the *sole* owner of the local-OOM
@@ -115,7 +116,7 @@ measure that would otherwise have shipped looking principled.
   routing + the compute slot, the `_space.py` pure/view split, a pure sbatch-spec
   extraction, subset staging, the token store, the probe worker, and the killable
   store-open subprocess. All but the first three surfaced only under review; the
-  count went 3 → 4 → 5 → 7 → 9.
+  count rose repeatedly; read it off §1.6's table rather than from any sentence.
 - **Two hard refusals:** no `--overwrite` (it is `shutil.rmtree`), and no raw
   sbatch passthrough (`parse_slurm_args` constrains neither keys nor values).
 - **Development happens on a subset.** The full dataset is touched once, behind

@@ -383,6 +383,7 @@ restatement read as a summary of the others rather than as a competing claim.
 | `run_name` | both | Otherwise an ack given for `runs/2026-08-12-plateA` is spendable against a different output directory with every digest still matching |
 | `array` | both | §5.3 resolves the width live from `scontrol`/`sacctmgr` (§5.2), so the cluster can re-chunk between plan and start. `compute` binds the *profile*, not the resolved width |
 | `estimate.node_hours` | both | The number quoted verbatim in `ack_prompt`. This is the figure the human actually approves, and it was outside the token entirely |
+| `image_manifest_digest` | `full` + filter | **Content** digest of `.phenotypic-mcp/plans/<token>.images`. `argv_digest` cannot stand in — it covers the string that *names* the file |
 | `argv_digest` | both | The rendered invocation, defined below |
 | **`parent_digest`** | **`full` only** | A parent that gained images between the plan and the submission invalidates the token (`plan_stale`, §10.5) rather than quietly deploying over a dataset nobody reviewed. `null` at `subset` |
 | **`group_filter`** | **`full` only** | USER-21: full scope on a group-filtered subset is `parent ∩ group_filter`, so an ack given for one group's images cannot be spent on another's. The filter is copied from the subset artifact's `group_filter` (§10.2) at plan time and re-compared at start. `null` at `subset`, and `null` at `full` for a subset with no filter |
@@ -396,6 +397,14 @@ integrity comes from the bound fields they were computed from.
 produced by `to_argv` plus the profile's `--slurm` pairs — including `--output`.
 It and the explicit `run_name` field are both kept: `argv_digest` also moves when
 a compute key changes, and the two failures deserve different messages.
+
+**An absent `group_filter` normalizes to `null` everywhere.** The subset artifact
+records `{}` for "no filter", the token record carries `null`, and §5.4 copies the
+artifact's value onto the token and **re-compares it** at `deploy_start`. Left
+unstated, `{} != null` fails that comparison and **every unfiltered full-scope
+deploy returns `plan_stale`** — the common path, broken by a representation
+detail. Normalize on the way in: an empty map and `null` are the same value, and
+the token stores `null`.
 
 **`image_manifest_digest` binds the resolved image set (USER-26), and
 `argv_digest` cannot stand in for it.** At `full` scope with a non-null

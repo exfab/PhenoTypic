@@ -154,9 +154,9 @@ did not model), and any CLI traceback the pre-checks did not anticipate.
 | `probe_timeout_s` | 300 | Wall clock on `W1`, including slot wait |
 | `local_slot_capacity` | 1 | `LocalComputeSlot` (§1.5) — configuration, not a fixed 1; `executors.compute` workers **is** this number |
 | `executors.blocking` workers | 4 | §1.5 — filesystem, journal, subprocess, scheduler |
-| `executors.compute` workers | = `local_slot_capacity` | §1.5 — `W1`; not an independent knob, or the pool and the slot disagree above the default |
+| `executors.compute` workers | **1**, always | §1.5 — `W1`; not an independent knob, or the pool and the slot disagree above the default |
 | `limits.max_inflight_arms` | 8 | **Server-wide**, all campaigns; checked by the background launcher (§8.3) |
-| Slot lease | `probe_timeout_s` (`W1`) / run `--time` (local `W2`/`W3`) | §1.5 — auto-release; `slot_lease_expired` |
+| Slot lease | `probe_timeout_s` (`W1`) / **`local_lease_max_s`** (local `W2`/`W3`) — *not* the run's `--time`, which is a SLURM flag a local run does not have | §1.5 — auto-release; `slot_lease_expired` |
 | Catalog list size | unbounded rows, compact fields | `catalog_operations` returns no schemas |
 | Measurement payloads | summary only | `describe()` + column names; parquet path for the rest |
 | Log tail | 200 lines | `LocalRunner.snapshot_log` |

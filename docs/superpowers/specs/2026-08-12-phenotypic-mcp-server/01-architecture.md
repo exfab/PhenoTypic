@@ -318,8 +318,26 @@ to spare may set `2`; nothing else changes, because every other rule here is
 written against "the slot", not against a number. `budget.max_concurrent_arms`
 is a *campaign* budget and never a memory guard.
 
-**`executors.compute.max_workers` is not an independent number — it *is*
-`local_slot_capacity`.** Fixing the pool at 1 while the slot is configurable
+**`executors.compute.max_workers` is `1`, always, and it is *not*
+`local_slot_capacity`.** An intermediate draft equated them, to stop a
+configurable slot drifting from a fixed pool. That fix traded one contradiction
+for a worse one: `local_slot_capacity` may be `2` (USER-17), and a compute pool
+of 2 falsifies the one-probe invariant this section states outright, along with
+§3.2's peak-memory claim.
+
+They are two different quantities and collapsing them was the error:
+
+| | Governs | Value |
+|---|---|---|
+| `local_slot_capacity` | admission of CPU-heavy **local batch** work to the slot | configuration, default `1`, may be `2` |
+| `executors.compute` workers | **probe dispatch** | `1`, always |
+
+Probe dispatch is 1 for a reason that has nothing to do with the slot: there is
+**one persistent warm probe worker subprocess** (§3.2), and a second concurrent
+probe would need a second resident model. So the one-probe invariant does not
+depend on `local_slot_capacity` at all, and raising the slot to 2 admits a second
+*batch* run without admitting a second probe. That is the behaviour USER-17
+asked for, and it is only expressible with two numbers. Fixing the pool at 1 while the slot is configurable
 makes the two disagree at any capacity above the default, which is precisely the
 disagreement the split was introduced to make impossible: the invariant below
 would be false by configuration, and a probe holding a slot but starved on a
@@ -497,7 +515,10 @@ nothing and removes the whole class.
 **And the slot is acquired with a wall-clock lease, unconditionally.** The lease
 is `probe_timeout_s` for `W1` and, for a local `W2`/`W3`, the run's `--time` or
 a configured maximum. On expiry the slot auto-releases and the holder's record
-is marked `slot_lease_expired` (§6.2), which is a visible terminal state rather
+is marked `slot_lease_expired` (§6.2) **and its child process is killed** —
+releasing the slot while leaving the child running would hand the next holder a
+machine that is still saturated, which is the opposite of what the lease is for.
+That is a visible terminal state rather
 than a stuck one. The lease is unconditional because a design whose only release
 is a callback the runtime may never invoke has no recovery at all, and the
 failure it produces — every later probe blocked, no error anywhere — is the least
@@ -609,7 +630,7 @@ prerequisite") was followed for the table and not for the sentence describing it
 The `_services` promotion is the one mechanical row; nothing else on the table
 is.
 
-The count went **3 → 4 → 5 → 7 → 9** as successive reviews traced what the design
+The count rose repeatedly as successive reviews traced what the design
 actually requires. The estimate was optimistic every time, and twice this table
 went stale because a later section grew a prerequisite that was never carried
 back here — which is the same drift the reviews kept finding in the worked
@@ -641,7 +662,7 @@ lives only inside a paragraph:
 | Bound | Value | Owner |
 |---|---|---|
 | `executors.blocking` workers | 4 | §1.5 — filesystem, journal, subprocess waits, scheduler polling |
-| `executors.compute` workers | **= `local_slot_capacity`** (default 1) | §1.5 — the **probe-dispatch slot**, not a compute pool. Defined as the slot's capacity so the two cannot disagree (§1.5) |
+| `executors.compute` workers | **1**, always | §1.5 — the **probe-dispatch slot**, not a compute pool. Defined as the slot's capacity so the two cannot disagree (§1.5) |
 | `local_slot_capacity` | 1 | §1.5 — the local-OOM invariant; configuration, not a promise |
 | `limits.max_inflight_arms` | 8 | **server-wide**, across *all* campaigns — and the only bound on in-flight work, since an over-cap `sbatch` does not error but queues indefinitely on `Reason=AssocGrpCpuLimit`, so submission success is not backpressure |
 | `limits.max_inflight_local_runs` | = `local_slot_capacity` | **server-wide** — not a second knob; the slot already is this bound |

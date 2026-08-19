@@ -518,3 +518,25 @@ introduced or left by *this* diff, all with fixes of one to five lines: a
 prerequisite with no owner, a defining table contradicting a defining table, and an
 approval figure computed over the wrong set. None needs a round 5 — they need the
 edits above before execution, not another panel.
+
+---
+
+## Addendum — re-verified at HEAD `30a670527`
+
+The report body was written against `c35936606` + `74f98fa96`. Two commits landed
+after it (`a985d91ce`, `8caf62a8e`, `30a670527`). Re-checking every finding:
+
+| ID | State at `30a670527` |
+|---|---|
+| **SIMP-39** | **Mostly fixed by `8caf62a8e`.** `phase-1b-engine-prerequisites.md` is retitled "(P3–P8)", **Task 19 — P8** exists at :1211, plan README's phase map lists P8 → Task 19 (:216, :293), and `review-findings.md:239` now claims "Every **P2–P8** item has an owning task." **Two residuals survive:** (a) `phase-1b:10` still reads "**Implements:** §7 P3, P4, P5, P6, P7" — the coverage line an executing agent reads, still enumerating the pre-P8 range; (b) **§7's rollout diagram still omits P8** (07:479-490 lists P2, P3, P4, P6, P7, P5, L1, P1), which is the artifact whose earlier omission of P6 the same file memorializes forty lines below. Two one-token edits. |
+| **SIMP-40** | **Unfixed.** `01:431` — `\| compute \| 1 \| W1 pipeline execution \|`; `01:644` and `06:157` — `= local_slot_capacity`. `01:439` still asserts "the pool and the slot cannot disagree". `01:262`'s "Second invariant" paragraph stands. |
+| **SIMP-41** | **Unfixed.** `10:679` still reads "Read … from every parent image header". |
+| **SIMP-42** | **Unfixed.** `01:499` and `06:66` still carry "the configured maximum"; `06:159` unchanged. |
+| **SIMP-43** | **Unfixed at all three sites** — `README:19`, `09:633`, `10:523`. |
+| **SIMP-44** | **Unfixed.** §1.6's table gained no row for P8 and none for the concurrency substrate; both count restatements survive (`01:612`, `README:118`). Note this is now sharper than when filed: §7 P8 *and* a plan Task 19 both exist, so §1.6's own rule ("this table is part of the edit whenever §7 gains a prerequisite") has been unmet across three commits. |
+| **SIMP-45, 46** | Unchanged. |
+| **SIMP-47** | **Unfixed.** `README:6` still reads "**Twenty-four** user rulings" against 27. |
+
+Net effect on the verdict: **SIMP-39 drops from Critical to Major** (the prerequisite
+now has an owning task; what remains is two stale enumerations). **SIMP-40 and
+SIMP-41 remain Critical.** VERDICT unchanged: **REVISE**.

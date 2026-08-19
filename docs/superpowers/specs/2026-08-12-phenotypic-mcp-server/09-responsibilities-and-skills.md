@@ -630,7 +630,9 @@ overfitting the split is not a winner.
 3. `deploy_start {scope:"full", plan_token, human_response}` — **this call is the
    gate.** The server raises the elicitation from inside it, rendering the prompt
    from the token (§5.4), so the numbers the human sees are the server's, not
-   ours. `human_response` is **required unconditionally** (USER-22): it carries
+   ours. `human_response` is **required whenever you hold a `plan` token**
+   (USER-22, §5.4 — a `campaign_arm` token carries consent forward from
+   `campaign_approve`, so an unattended deploy arm does not fabricate one): it carries
    what the human actually said. On a host with elicitation the server's own
    prompt is authoritative and the response records
    `ack_source: "elicited"`; on a host without it, the field is the whole record
