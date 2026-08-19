@@ -365,11 +365,11 @@ edit validates**, so a failing third edit leaves the artifact untouched.
 
 **A repeated edit returns the prior attempt.** §8.7 records every accepted step
 in the lineage journal — the canonical edit on acceptance, its evidence when the
-probe returns — and nothing in an earlier draft ever *read* that back. So an
-agent whose context was compacted re-tried edits it had already rejected, and
-sibling subagents each burned probe budget on the same dead end. **The journal
-records the edit and the evidence; it does not record a decision** — that is
-derived below, and no tool writes it.
+probe returns — and `pipeline_patch` **reads it back**. Without that read an
+agent whose context was compacted re-tries edits it already rejected, and sibling
+subagents each burn probe budget on the same dead end. **The journal records
+the edit and the evidence; it does not record a decision** — that is derived
+below, and no tool writes it.
 
 When an edit matches one already recorded for this pipeline, the response carries
 an **advisory** issue with that attempt's evidence and decision:
@@ -392,14 +392,13 @@ performs for its step counter, and per §1.5 that scan is offloaded to a worker
 thread, so it does not put §2.5's 30 s lock wait on the event loop.
 
 **The step is recorded when the edit is accepted, not when its probe returns.**
-§8.7 originally journalled a step together with its keep/revert decision — which
-is only knowable *after* the probe — and that ordering breaks this feature in
-precisely the case it was added for. Two siblings patching the same edit
-concurrently are both mid-probe, neither has written anything, so neither sees
-the other and both spend the budget. So an accepted edit is journalled
-immediately as `in_flight`; a match against an `in_flight` step advises *"a
-sibling is probing this now"* rather than quoting evidence that does not exist
-yet.
+Journalling a step together with its keep/revert decision — knowable only *after*
+the probe — breaks this feature in precisely the case it exists for: two siblings
+patching the same edit concurrently are both mid-probe, neither has written
+anything, so neither sees the other and both spend the budget. So an accepted
+edit is journalled immediately as `in_flight`; a match against an `in_flight`
+step advises *"a sibling is probing this now"* rather than quoting evidence that
+does not exist yet.
 
 **`decision` is derived, not reported.** No tool in the catalog takes a
 keep/revert argument, and none should: the choice is the *agent's*, made after
@@ -409,8 +408,7 @@ against the pipeline as it now stands**, and reports a state it can verify rathe
 than a claim it received.
 
 **But "is the op still there" is the rule for exactly one of the six edit kinds,
-and stating it as the rule gets two of the others backwards or silent.** An
-earlier draft wrote the derivation and the match key against `insert_op` alone.
+and stating it as the rule gets two of the others backwards or silent.**
 On `remove_op` the plain reading **inverts**: a kept removal leaves the op
 absent, which reads as *reverted*, and a reverted removal restores it, which
 reads as *kept* — the advisory would tell a compacted agent the exact opposite of
@@ -437,11 +435,11 @@ suppressed itself whenever the decision was ambiguous would go silent on
 `set_params`, the kind the loop runs most. It says *"tried at step 7; outcome not
 attributable (two `BlurGauss` in `ops`)"* and quotes the numbers.
 
-**Parameters are part of the key wherever the kind carries them.** An earlier
-draft omitted `params`, which collapses every `set_params` at one slot into a
-single attempt even though varying parameters is exactly what the loop is *for*,
-and merges `insert_op FocusEdgePhase sigma:2` with `sigma:9` into one. Matching
-on the whole edit means a repeat is a genuine repeat, and the key is deliberately
+**Parameters are part of the key wherever the kind carries them.** Omitting
+`params` collapses every `set_params` at one slot into a single attempt — even
+though varying parameters is exactly what the loop is *for* — and merges
+`insert_op FocusEdgePhase sigma:2` with `sigma:9` into one. Matching on the
+whole edit means a repeat is a genuine repeat, and the key is deliberately
 conservative: the case the advisory is worth firing on — a compacted agent
 re-trying what it already rejected — is an exact repeat, and an advisory that
 fires on near-misses gets ignored, taking the true hit with it.

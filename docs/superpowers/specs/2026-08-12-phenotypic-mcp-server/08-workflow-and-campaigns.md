@@ -130,10 +130,8 @@ incremented on every successful write, and `campaign_status
 stale read from a current one without diffing content. **It is not what a
 mutation compares against** — §2.6's rule is `(status, artifact_digest)`, and the
 digest is the one that survives an artifact edited by a peer server whose counter
-this reader never saw. An earlier draft of §8.3 called the counter "the value a
-subsequent mutation CASes against", which put two incompatible CAS keys one
-section apart, each stated as the rule; the digest wins because it is the one
-that cannot be defeated by a writer the reader never observed.
+this reader never saw. A counter cannot be the CAS key because it can be defeated
+by a writer the reader never observed.
 
 **Arms reference the experiment profile, and custom arms cite the prefab they beat.**
 `prefab_baseline` is the §9.4 convention: an arm whose pipeline is not a prefab
@@ -219,9 +217,7 @@ any future code comparing a campaign's declared scorer against an already-parsed
 `deliverables/tuning_spec.json.pht-tune` object would hit case 1 directly.
 
 **`status` is confirmation where the host supports it, provenance where it does
-not.** An earlier draft conceded that "the server cannot verify that a human
-approved anything… an agent could fabricate the field", and mitigated by making
-fabrication explicit rather than silent. **That constraint is no longer real.**
+not.**
 
 `campaign_approve` raises an **elicitation** — a form the *host* renders and the
 human answers. The response comes from the user's keyboard, not the agent's token
@@ -235,12 +231,12 @@ Three things this does not change, stated so the guarantee is not overread:
   the server never depends on a capability it cannot confirm.
 
   **`human_response` is therefore required *unconditionally*, on every tool that
-  takes a human decision.** An earlier draft made it "required-unless-elicited",
-  and that is a required-field rule that varies with host capability: the agent
-  cannot predict the signature from `tools/list`, and every such tool grows a
-  fallback branch in its contract rather than in its implementation. The
-  elicited-vs-asserted distinction is real and worth keeping — it just belongs in
-  the **response**, not the signature:
+  takes a human decision** — never "required-unless-elicited", which is a
+  required-field rule that varies with host capability: the agent cannot predict
+  the signature from `tools/list`, and every such tool grows a fallback branch in
+  its contract rather than in its implementation. The elicited-vs-asserted
+  distinction is real and worth keeping — it just belongs in the **response**,
+  not the signature:
 
   ```json
   {"ack_source":"elicited"}   // the host prompted a human and this is their answer
@@ -358,12 +354,12 @@ waiting on a person. Refuses if any
 blocking issue from `campaign_put` is unresolved, so approval cannot outrun
 validation.
 
-**Tokens are minted here, never by `campaign_put`.** An earlier draft showed
-populated `plan_tokens` in `campaign_put`'s `draft` response — which would have
-let an agent take a draft campaign's tokens straight to `deploy_start`, skipping
-approval and the human checkpoint entirely. §8.2 is explicit that `status` is
-provenance rather than security, so the gate has to be that the artifact an
-unapproved campaign hands back contains nothing spendable.
+**Tokens are minted here, never by `campaign_put`.** Populated `plan_tokens` in
+`campaign_put`'s `draft` response would let an agent take a draft campaign's
+tokens straight to `deploy_start`, skipping approval and the human checkpoint
+entirely. §8.2 is explicit that `status` is provenance rather than security, so
+the gate has to be that the artifact an unapproved campaign hands back contains
+nothing spendable.
 
 **The approval CAS runs twice, and it CASes on `(status, artifact_digest)`.**
 Elicitation is what makes this necessary. The digest of the campaign artifact is
@@ -454,8 +450,7 @@ from one that no longer exists. So **the launcher writes a lease onto the
 campaign artifact — `launcher: {pid, create_time, expires}` — with exactly the
 `(pid, create_time)` treatment §2.4 gives `RunRecord`.** A lease that is absent,
 expired, or whose pid/create_time pair does not resolve to a live process means
-no launcher is alive. This is the same problem `RunRecord` was given that pair
-for this round; the campaign artifact simply did not get the equivalent. Nothing else in the design recovers a half-launched
+no launcher is alive. Nothing else in the design recovers a half-launched
 campaign: `allocate` refuses the already-claimed output directories and the agent
 has no way to tell which arms got out.
 
@@ -760,7 +755,9 @@ exactly the sibling case USER-9 added it for. Past `lease_expires`, a reader
 treats the step as abandoned rather than active: the signal degrades instead of
 inverting.
 
-**The row is appended in two parts, and the order matters.** The step is
+**The row is appended in two parts, and the order matters** — §3.2 gives the
+reason: two siblings mid-probe on the same edit must be able to see each other,
+which end-writing makes impossible. The step is
 journalled the moment the edit is *accepted* — before its probe runs — carrying
 the **canonical edit** (§3.2: the full edit with parameters, and with the target
 op's `class` resolved from its index at this moment, since three of the six edit
@@ -770,13 +767,11 @@ append when the probe returns.
 
 **There is no `decision` field on either row.** `state` is the row's own
 lifecycle — `in_flight` until its evidence append lands — and it is the only
-status the journal stores. The keep/revert decision is the agent's choice, taken
-after reading the evidence, and no tool in the catalog accepts it; the server
-**derives** it at read time from the pipeline as it then stands, per §3.2's
-per-kind table. Deriving beats reporting — a self-reported decision is a field an
-agent can omit, while the pipeline itself cannot lie about what it contains — and
-keeping it off the row is also what makes the append-only journal sufficient: a
-stored decision would have to be updated, and there is no update path.
+status the journal stores. The keep/revert decision is **derived** at read time
+from the pipeline as it then stands, per §3.2's per-kind table, which is where
+that rule is specified. Keeping it off the row is also what makes the
+append-only journal sufficient: a stored decision would have to be updated, and
+there is no update path.
 
 **The derivation has two limits, and the advisory states both rather than
 rounding them off.**
@@ -794,13 +789,6 @@ concurrent siblings they do not, and §3.2's wording says the former.
 all. §3.2's table is the normative statement — this section records the edit it
 needs, which is why the canonical edit and not the raw arguments go on the row —
 and `undetermined` is a reported outcome, not a suppressed advisory.
-
-Writing the whole row at the end instead would be simpler and would break §3.2's
-`edit_previously_tried` in exactly the case it exists for: two sibling subagents
-patching the same edit are both mid-probe, so under end-writing neither has
-journalled anything, neither sees the other, and both spend the budget the
-advisory was added to save. An `in_flight` row is what makes a concurrent
-attempt visible while it is still concurrent.
 
 This is what makes an incrementally-built pipeline defensible months later:
 not "the agent produced this", but *which* step produced which improvement, on

@@ -308,11 +308,9 @@ result rather than buying nothing. The alternative —
 admitting `W1` alongside a reduced-worker local job — was considered and rejected
 as machinery serving a deployment this design does not target.
 
-**Locally, the slot *is* the cap — there is not a second mechanism.** An
-earlier draft also wrote "run at most 1–2 arms concurrently" beside a
-capacity-1 slot, which is two owners for one invariant and the exact defect this
-section opens by criticising: with capacity 1 the effective cap was always 1, and
-the prose described a parallelism the same page forbade.
+**Locally, the slot *is* the cap — there is not a second mechanism.** Any
+separately-stated arm count beside it would be a second owner for one invariant,
+describing a parallelism the slot forbids.
 
 So `LocalComputeSlot` owns the local-OOM invariant alone, and **its capacity is
 configuration** (`local_slot_capacity`, default `1`). A workstation with memory
@@ -369,9 +367,8 @@ fan-out as incomplete rather than merely idle. Without those two, the ceiling in
 a starvation mode the per-campaign budget never had, and hides it behind a
 healthy-looking poll.
 
-**A second local arm does not make its *caller* wait.** The distinction matters
-and an earlier phrasing blurred it. The handler returns immediately with a
-`run_id`, a `queued` status and a `queue_position`; the *run* then waits for the
+**A second local arm does not make its *caller* wait.** The handler returns
+immediately with a `run_id`, a `queued` status and a `queue_position`; the *run* then waits for the
 slot in the background launcher (below). What is forbidden is the handler parking
 on the semaphore — a blocking acquire would stall the call for the hours an arm
 actually takes, against a host timeout the server does not control, and an
@@ -418,13 +415,12 @@ about how many probes are running. Both numbers are stated bounds (§1.6.1).
 would block the entire event loop — stalling `W0` calls from *other* subagents
 and silently falsifying "agent-side fan-out is free".
 
-**`W1` does not run in the server process at all.** An earlier draft said it ran
-via `run_in_executor` on a worker thread, and §3.2 refuted that with the reason:
-a runaway op in a thread cannot be killed, so the caller returns while the thread
-keeps running and every later probe from every subagent deadlocks behind
-something Python cannot interrupt. The probe therefore executes in **a persistent,
-killable worker subprocess** (§3.2), and the server-side cost is a bounded pipe
-wait — not a computation.
+**`W1` does not run in the server process at all** — not even on a worker thread
+via `run_in_executor`. A runaway op in a thread cannot be killed, so the caller
+returns while the thread keeps running and every later probe from every subagent
+deadlocks behind something Python cannot interrupt. The probe therefore executes
+in **a persistent, killable worker subprocess** (§3.2), and the server-side cost
+is a bounded pipe wait — not a computation.
 
 So `executors.compute` is **the probe-dispatch slot, not a compute pool**: one
 in-flight probe *request*, whichever process runs it. That is what makes the
@@ -473,15 +469,10 @@ nothing and removes the whole class.
 is `probe_timeout_s` for `W1` and, for a local `W2`/`W3`, the run's `--time` or
 a configured maximum. On expiry the slot auto-releases and the holder's record
 is marked `slot_lease_expired` (§6.2), which is a visible terminal state rather
-than a stuck one.
-
-This is specified **regardless of how cancellation delivery tests out** on the
-real host. Whether `fastmcp` delivers `CancelledError` on client disconnect
-decides only whether the lease is a backstop behind a working cancel path or the
-primary release path — it does not decide whether the lease exists. A design in
-which the only release is a callback the runtime may never invoke has no
-recovery at all, and the failure it produces (every later probe blocked, no
-error anywhere) is the least diagnosable one this section can create.
+than a stuck one. The lease is unconditional because a design whose only release
+is a callback the runtime may never invoke has no recovery at all, and the
+failure it produces — every later probe blocked, no error anywhere — is the least
+diagnosable one this section can create.
 
 ### Restart reconciliation
 
@@ -504,10 +495,9 @@ wrong in both directions, and both are bad — a reused pid makes a finished run
 look live and wedges the local path forever, and there is no version of the
 mistake in which the server is merely conservative.
 
-**A live orphan is refused, not watched.** An earlier draft had it *claim the
-slot*, which is a reservation with no releaser: the `Popen` belonged to the dead
-server, so no exit observer exists and the slot is held until this server dies
-too. The alternative — a watcher for a process the server does not own — is not
+**A live orphan is refused, not watched.** Letting it *claim the slot* is a
+reservation with no releaser: the `Popen` belonged to the dead server, so no exit
+observer exists and the slot is held until this server dies too. Watching is not
 available either, because Linux offers a non-parent no exit notification short
 of polling, and polling reintroduces exactly the daemon-thread callback the
 release-symmetry rule above just constrained.
@@ -613,7 +603,7 @@ lives only inside a paragraph:
 | `executors.blocking` workers | 4 | §1.5 — filesystem, journal, subprocess waits, scheduler polling |
 | `executors.compute` workers | **1** | §1.5 — `W1` execution; a second expression of the one-probe invariant |
 | `local_slot_capacity` | 1 | §1.5 — the local-OOM invariant; configuration, not a promise |
-| `limits.max_inflight_arms` | 8 | **server-wide**, across *all* campaigns |
+| `limits.max_inflight_arms` | 8 | **server-wide**, across *all* campaigns — and the only bound on in-flight work, since an over-cap `sbatch` does not error but queues indefinitely on `Reason=AssocGrpCpuLimit`, so submission success is not backpressure |
 | `limits.max_inflight_local_runs` | = `local_slot_capacity` | **server-wide** — not a second knob; the slot already is this bound |
 
 **The arm ceiling is server-wide, and that is the whole point.**
@@ -630,13 +620,6 @@ is the cost that grows with in-flight arms, and because a ceiling an operator
 raises deliberately is safer than one discovered by exhausting an account cap.
 It is configuration; the invariant is that a ceiling exists and the launcher
 checks it.
-
-**On SLURM the scheduler is not admission control.** An over-cap submission does
-not error — it is accepted and **queues** with `Reason=AssocGrpCpuLimit` against
-the account's CPU/memory cap, indefinitely and invisibly. So "`sbatch` accepted
-it" proves nothing about whether the work will run, and a design that treats
-submission success as backpressure has no backpressure. The server's own ceiling
-is the only bound on how much work it puts in flight.
 
 ## 1.7 Non-goals
 

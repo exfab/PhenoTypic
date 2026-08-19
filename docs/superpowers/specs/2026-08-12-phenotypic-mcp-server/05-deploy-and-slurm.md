@@ -181,14 +181,13 @@ Deploying to a cluster is the one place an agent can consume a large amount of
 somebody else's compute. `deploy_plan` makes the ask inspectable first, and it
 performs **no** submission and **no** writes under the run's output directory.
 
-**Its work class depends on `scope`, and a flat `W0` label was wrong.** At
-`scope:"subset"` it reads registered state and renders a spec — genuinely `W0`.
-At `scope:"full"` it additionally runs §10.6.1's parent header sweep, and on a
-mismatch escalates to a 2-image re-probe.
+**Its work class depends on `scope`.** At `scope:"subset"` it reads registered
+state and renders a spec — genuinely `W0`. At `scope:"full"` it additionally runs
+§10.6.1's parent header sweep, and on a mismatch escalates to a 2-image
+re-probe.
 
-**The sweep is not the reason.** It was assumed to be too slow for `W0`; it was
-then measured, and it is not
-(`logic_validation_scripts/2026-08-12-phenotypic-mcp-server/header_sweep_cost.py`).
+**The sweep is not the reason.** Measured, it is comfortably inside `W0`
+(`logic_validation_scripts/2026-08-12-phenotypic-mcp-server/header_sweep_cost.py`):
 **460 real images on GPFS: 0.081 s, 0.18 ms/image** — twelve times under the
 one-second ceiling, and flat from 480 images out to roughly 5,700. Tier 1 is
 comfortably `W0` at the scale §10.6.1's worked example describes.
@@ -394,11 +393,8 @@ integrity comes from the bound fields they were computed from.
 
 **`argv_digest` is the SHA-256 of the rendered argv list**, joined with `\0`, as
 produced by `to_argv` plus the profile's `--slurm` pairs — including `--output`.
-It was previously named in the example record and defined nowhere, which left
-undecidable the very question `run_name` above turns on. Naming it settles that
-independently of the explicit `run_name` field; both are kept because
-`argv_digest` also moves when a compute key changes, and the two failures deserve
-different messages.
+It and the explicit `run_name` field are both kept: `argv_digest` also moves when
+a compute key changes, and the two failures deserve different messages.
 
 The alternative — a **self-describing hash** of `(pipeline_digest,
 images_digest, compute)` — is tempting because it needs no storage and the

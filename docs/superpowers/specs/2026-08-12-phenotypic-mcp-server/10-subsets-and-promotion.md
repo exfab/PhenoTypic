@@ -476,13 +476,11 @@ deploy_plan  {scope:"full"}   → the decision, drawn and bound. No human, no wa
 deploy_start {scope:"full"}   → the elicitation → [human says yes] → spend
 ```
 
-**One gate, one token.** An earlier draft had a separate `promotion_request` →
-`promotion_approve` pair minting a second `promotion_token`, and this section's
-own text retired it: *"a campaign arm can mint a `plan_token` only for
+**One gate, one token.** A campaign arm can mint a `plan_token` only for
 `scope:"subset"`, so a full-dataset run has no other way to obtain one — the plan
-must be drawn explicitly against the parent."* That already closes the loop. The
-plan token binds the pipeline digest and the parent digest, expires, and is
-single-use — every property a second token would add.
+must be drawn explicitly against the parent, and that already closes the loop.
+The plan token binds the pipeline digest and the parent digest, expires, and is
+single-use — every property a second `promotion_token` would add.
 
 What promotion genuinely contributed was **content**, not a second lock, so the
 content moves onto `deploy_plan {scope:"full"}`'s response — the winner
@@ -512,18 +510,12 @@ which are things to *read* before deciding:
 ```
 
 **The elicitation fires in `deploy_start`, not here** — at the point of spend,
-which is what this section has said all along. An earlier draft put it on
-`deploy_plan` and the result would not typecheck as a design: one handler
-declared `W0` ("under a second, never blocking", §1.6.1) while sweeping every
-parent header, possibly re-acquiring the compute slot, minting a token, *and*
-waiting on a human; and its example response carried `plan_token` and
-`pending_human_ack: true` together while the scope table below demanded a token
-already minted "with the ack recorded". Both could not hold, and the ack became a
-second mutable field racing `deploy_start`.
+and because an approval must not be able to go stale between the two calls
+(USER-18).
 
-So the two are separated by what they cost. `deploy_plan` **draws and binds**: it
-reads, it computes the estimate, it mints the token, and it returns — no human is
-in that path, so it stays honestly non-blocking. `ack_prompt` ships with it as
+The two are therefore separated by what they cost. `deploy_plan` **draws and
+binds**: it reads, it computes the estimate, it mints the token, and it returns —
+no human is in that path, so it stays honestly non-blocking. `ack_prompt` ships with it as
 **text to show**, not a state to satisfy; there is no `pending_human_ack` field
 and §2.6 needs no row for one. `deploy_start` **spends**, and asks first.
 
@@ -552,9 +544,7 @@ is already stale.
 this gate is the consequence: if the full dataset gained images between the plan
 and the submission, `parent_digest` no longer re-derives equal, the token is
 stale, and the decision is made again with `code: "plan_stale"` — the property
-`promotion_stale` used to provide. Three earlier drafts of this section each
-named a different subset of the bound fields; the fix is that none of them names
-any.
+`promotion_stale` used to provide.
 
 **Two properties this must keep**, unchanged from the two-tool design:
 
@@ -593,12 +583,10 @@ scale fails on the empty image set rather than silently widening, with
 `group_filter_matches_nothing` (§6.2).
 
 **The intersection is resolved in place to a manifest — it does not stage, and
-"needs no staging" was not a free claim** (USER-26). An earlier draft asserted
-the run simply needed no staging, which does not follow from anything: §1.6's
-new-pieces table justifies subset staging with "neither engine accepts a file
-list", and §10.3.1 exists entirely to materialize an arbitrary image list as a
-directory tree for that reason. `parent ∩ group_filter` **is** an arbitrary image
-list over the parent.
+"needs no staging" was not a free claim** (USER-26). `parent ∩ group_filter`
+**is** an arbitrary image list over the parent, and §1.6's new-pieces table
+justifies subset staging with "neither engine accepts a file list" — §10.3.1
+exists entirely to materialize such a list as a directory tree for that reason.
 
 So the server resolves the intersection to a **concrete image list at plan time**
 and writes it as a **manifest**; the run consumes the manifest. Nothing is
