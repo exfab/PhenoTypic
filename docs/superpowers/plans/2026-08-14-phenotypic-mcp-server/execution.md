@@ -278,3 +278,30 @@ image twice).
 Two incidents, both from sharing one working tree: `git add -A` swallowed an
 agent's staged rename, and an agent kept working in the pre-move directory,
 duplicating three tasks onto a detached head. Both recorded; practices adopted.
+
+---
+
+## Pre-dispatch gate outcome (2026-08-19) — what changed before anything ran
+
+`plan-reviewer` returned **not safe to dispatch as written**: nine blockers, four
+Majors. Applied:
+
+| Item | Change |
+|---|---|
+| **B-2/B-3/B-4 → USER-31** | **C9 (Task 20) is WITHDRAWN from Phase 1b.** Four methods nest the locks, not one; inverting only `allocate` produces an **ABBA deadlock** against `compare_and_set` (the status-poll hot path) that resolves via the 30 s timeout and then raises out of a method documented never to raise. Its acceptance test passed against the broken fix. The complete fix changes `publish_if_current_generation`'s **documented** contract, which holds an external callback inside the critical section. That is a design pass, not a task |
+| **B-1a** | Task 16's `Files` block now names `_services/argv.py`. **This is why the overlap check missed the C6/C8 collision** — it parses `Files` blocks, and the file was only mentioned in prose. The symptom was fixed earlier; this fixes the input |
+| **B-5/B-7/B-8/B-9 → USER-30** | Task 19 rewritten: **five files, not two.** Manifest passed *alongside* `--input <parent>` (pre-decided — pointing `--input` at the manifest makes work IDs basename-only and collide across datasets); `load_staged_manifest` reuse claim dropped; `gui/` emitters **promoted** rather than inlined; resume participation added; plus an argv **coverage test** |
+| **C7 split** | **C7a** = the five storage construction sites + backend dispatch (mechanical, one idiom). **C7b** = B1–B4 (retry predicate, Monitor safety, compaction — behavioural judgment, each needing its own test). Interleaving a mechanical rename with concurrency semantics is where reviewer attention degrades |
+| **M-1** | Task 10a = lift the literal, **one** reader, assert the constant equals the old literal *in order* (resolution is first-match). "Both consumers" moves to 10b |
+| **M-3** | `README.md:253` uses **C7** for the cross-node JournalStorage validation *job*; execution.md uses C7 for the P1 *cluster*. Third namespace collision in this document — cluster labels are `C4–C9`, SLURM job labels live in `MAIN-MERGE.md` and `README.md` |
+| **M-2** | Citation drift in five tasks. The dangerous one was Task 20's: `FileLockTimeout` at `_cli/_cli_file_locking.py:50` — but `runs.py:72` imports `sdk_._file_locking`, where it is **`ArtifactLockTimeout`**. A class of the cited name exists at the cited path, so the citation looks right, is wrong, and a test written against it never fires |
+
+**Corrected scope claim.** An earlier line here read *"T19's two-file scope
+stands"*. It does not — see B-9. The manifest reaches `ExecutionConfig` and
+`ProcessingState` because `validate_resume_compatibility` compares `input_path`
+and nothing about the image set, so two different manifests under one parent are
+resume-compatible. Since the server now calls that function directly (spec §5.4),
+the guard and the gap are the same code path.
+
+**Revised sequence:** `C4 → C6 → C7a → C7b → C5`, with `C8 ∥ C4`, and **C8 gated
+and merged before C6** (shared `_services/argv.py`). C9 no longer participates.

@@ -831,6 +831,9 @@ git add -A && git commit -m "fix(tune): refuse --screen with --slurm instead of 
 ### Task 16: One profile, both engines
 
 **Files:**
+- Modify: `src/phenotypic/_services/argv.py` — `tune_run_tail` (`:417`) and
+  `tune_run_argv` (`:513`); see MANDATORY CORRECTIONS. **This is the file C8 also
+  touches**, which is why C8 must merge before this cluster is dispatched
 - Modify: `src/phenotypic/tune/__main__.py:104-125`
 - Modify: `src/phenotypic/tune/_tune_cli/_run.py:724-736,798-804` (DR3 — offsets shifted from the spec's `797-805`)
 - Test: `tests/unit/tune/test_tune_slurm_kv.py`
@@ -1208,89 +1211,156 @@ Phase 2A is written against the signatures this phase produced — `describe_ope
 
 ---
 
-## Task 19 — P8: a top-level manifest input for the full CLI
+## Task 19 — P8: the manifest input, and one composition point for argv
 
-**Why this exists.** USER-26 resolves `scope:"full"` on a group-filtered subset
-to `parent ∩ group_filter`, in place, as a concrete image list written at plan
-time and bound by the plan token's content digest — so the human approves an
-image set that cannot drift. Nothing today can carry that list to a run.
+**Why this exists.** USER-26 resolves `scope:"full"` on a group-filtered subset to
+`parent ∩ group_filter`, written at plan time as a concrete image list and bound
+by the plan token's **content** digest, so the human approves an image set that
+cannot drift. Nothing today can carry that list to a run.
 
-**This task was missing when the plan was audited, and the audit did not catch
-it** because the coverage claim enumerated P2–P7 and the prerequisite is P8. An
-implementer building Phase 1b from the old plan would build P3–P7, stop, and
-nothing would fail — and then `deploy_plan {scope:"full"}` on a group-filtered
-subset has no argv it can render. The natural repair at that point is to emit
-`--input <parent>` and drop the filter, which deploys one group's tuned pipeline
-across every group with every digest check passing. That is the exact failure
-§10.5 says the filter exists to prevent, on the irreversible path.
+**Five files, not two.** An earlier version of this task said two; the
+pre-dispatch gate traced the flow and found resume is the gap (below).
 
-**Two files. Building only the first leaves this non-functional.**
+### 1. `phenotypicCLI.py` — the public flag
 
-1. **`src/phenotypic/phenotypicCLI.py`** — a public top-level option taking a
-   file of image paths. `-i/--input` is a single `click.Path` at `:922-931`
-   (`dir_okay=True, file_okay=True`, no `multiple=True`), so there is no existing
-   argv that expresses "these 312 of the parent's 480". Reuse the reading and
-   validation from `_cli_staged_slurm_worker.py:422`, which already takes
-   `--manifest` as an internal `argparse` entry point — the parsing is not new,
-   the public surface is.
-2. **`src/phenotypic/_services/argv.py`** — a manifest field on
-   `RunConsoleState` (`:53-97`) and the matching branch in `to_argv` (`:326-380`).
-   Today `to_argv` raises when `input_dir` is unset and emits `--input`
-   **unconditionally**; `advanced_args` is a closed recognised set that drops
-   unknown keys, so it cannot be used as a side channel. Decide and state whether
-   `--input` becomes conditional or is passed alongside the manifest, and what it
-   means when both are present.
+A top-level option taking a file of image paths. `-i/--input` is a single
+`click.Path` at `:922-931` with no `multiple=True`.
 
-**Acceptance.**
+**`--input` stays required, stays the parent directory, and the manifest is passed
+*alongside* it.** This was written as a free choice; it is not.
+`work_id_for_image` (`_cli/_cli_failure_tracker.py:179-186`) does
+`image_path.relative_to(config.input_path)` when `input_path` is a directory and
+`Path(image_path.name)` when it is a file. Point `--input` at the manifest and
+every work ID becomes basename-only — colliding across datasets for identically
+named images (`plate1/img001.tiff` and `plate2/img001.tiff` both reduce to
+`img001.tiff`) and diverging from the same images' IDs in a parent run. Nothing
+catches it: `EXPECTED_WORK_IDS` and `EXPECTED_INPUT_SHA256S` have **zero test
+coverage** (see PHASE 1a in `execution.md`).
 
-- `to_argv` on a `RunConsoleState` carrying a manifest emits the flag, and
-  `argv_digest` over that rendered list contains it. A test asserting the flag
-  reaches argv is the one that would have caught this task's absence.
-- A `deploy_plan {scope:"full"}` against a group-filtered subset renders an argv
-  that names the manifest — and **never** one that names the bare parent.
-- State whether the manifest participates in `validate_resume_compatibility`;
-  `input_path` is compared by literal string equality with no normalization, so
-  a resume can otherwise run a different image set under a matching path.
+**Test:** work IDs are identical between a manifest run and a parent-directory run
+over the same images.
 
-**Note for Task 17 (P6):** its "there is no manifest flag and no repeated `-i`
-on either" describes the pre-P8 state and should be amended when this lands.
+### 2. The `.images` format — state it, and write a small reader
 
----
+**Do not reuse `load_staged_manifest`.** The claim that "the parsing is not new"
+was false. `_cli_staged_slurm_worker.py:422` feeds
+`load_staged_manifest` (`_cli/_cli_staged_orchestration.py:238`), which requires
+`{"version": 2|3, "images": [...]}` with each entry constructing
+`StagedManifestEntry(dataset, image_name, stem, input_path, work_id,
+relative_image_path, attempt_id)` (`:56-64`) — it raises on a bare path list.
 
-## Task 20 — P2: fix the two-lock ordering in `RunRegistry`
+The P8 artifact is a different thing: a plain image list at
+`.phenotypic-mcp/plans/<token>.images`, bound by content digest (spec
+`05-deploy-and-slurm.md`). Define its format in this task and write a dedicated
+reader. If the staged schema is adopted instead, the spec's `.images` artifact and
+`image_manifest_digest` stop describing what the CLI reads.
 
-**This is a bug in shipped code, not new design.** It reached `main` through the
-Phase 1a `_services` promotion and is independent of whether the MCP server ever
-ships — but the server makes it materially worse, so it is a prerequisite here.
+### 3. `_services/argv.py` — the manifest field, `--restart`, and one composition point
 
-**The defect.** `RunRegistry.allocate` (`src/phenotypic/_services/runs.py:317`)
-opens `with self._lock:` — a `threading.Lock` the class docstring says **every
-public method takes** (`:16`, `:275`) — and then, still holding it, enters
-`with exclusive_path_lock(_owner_lock_path(output_dir))` at `:330`. That file
-lock spins up to 30 s before raising `FileLockTimeout`
-(`_cli/_cli_file_locking.py:50`).
+`RunConsoleState` gains a manifest field and `restart`; `to_argv` gains the
+matching branches.
 
-So one thread waiting on a contended owner-lock file blocks **every other thread
-in the process** from calling any `RunRegistry` method, for up to 30 seconds.
-The in-memory critical section is a dict update measured in microseconds; the
-file lock is measured in seconds. Nesting them this way makes the cheap one wait
-on the expensive one.
+**Promote, do not inline (USER-30).** `to_argv` deliberately excludes SLURM argv
+— its docstring (`:330-332`) says *"SLURM-specific argv extension is the SLURM
+runner's responsibility"*, and spec §5.4 defines `argv_digest` as `to_argv`
+**plus** the profile's `--slurm` pairs: two sources by design. Three of the four
+flags GEN-18 called unemittable already have emitters, in `gui/`:
+`_slurm_argv_extension` (`gui/run_console/_slurm.py:177-194`) for `--slurm k=v`,
+and `_build_subprocess_argv` (`:197-210`) for `--gpu-slurm`/`--gpu-shards`.
+Inlining them into `to_argv` would contradict both contracts **and double-emit
+every one of them on the shipped GUI SLURM path** — a duplicate invisible in the
+`argv.py` diff, since both halves look correct alone, and one that moves
+`argv_digest`.
 
-**Why the server makes it worse.** Under USER-20 the `blocking` executor has 4
-workers, so a single wedged mount can consume the pool and starve exactly the
-sub-second `W0` calls §1.6.1 promises. Today it presents as a GUI stall.
+So **move `_slurm_argv_extension` and the two GPU blocks into `_services/argv.py`
+as a separate composition function**, leaving `gui/run_console/_slurm.py` calling
+the promoted one — the same shim idiom Phase 1a used for T8. Only `--restart` is
+genuinely new behaviour.
 
-**The fix.** Take the file lock **first**, then `self._lock` only around the
-in-memory mutation, releasing it before the file lock. `_persist_record_locked`
-and `_assert_output_claimable_locked` already assume the file lock is held, so
-the inversion is local to `allocate`.
+### 4. The coverage test — the part that makes this durable (USER-30)
 
-**Acceptance** (§6.5 carries the matching row): hold `exclusive_path_lock` on an
-owner-lock path from one thread, then assert from another that ordinary
-`RunRegistry` methods remain callable rather than blocking for the full spin.
-Without that test the fix is described and not verified, and the failure it
-guards is a **stall** — which reads as slowness, not as a bug, and so survives
-code review indefinitely.
+Enumerate the CLI's top-level options and assert each is **either** emittable from
+`_services/argv.py` **or** on an explicit deny-list with a one-line reason.
 
-**Also report it upstream against `main`.** It is pre-existing and unrelated to
-this work; anyone using the GUI on a shared filesystem is exposed today.
+The hand-written list is already leaking: GEN-18 named three flags, P8 is a
+fourth, `--gpu-workers-per-gpu` (`phenotypicCLI.py:1005`) is a fifth nobody
+listed, and OME-Zarr's `--durable-writes` will be a sixth. The real gap is **31
+top-level options against 17 emitted**. Without this test, C8 fixes a snapshot of
+a list that keeps growing; with it, `--durable-writes` fails on the day it lands.
+Same shape as the tune annotation-coverage gate and the `FEATURES.md` ledger gate,
+both existing precedents here.
+
+### 5. Resume — the gap that made this five files
+
+`validate_resume_compatibility` (`_cli/_cli_state_management.py:299-302`) compares
+`state.input_path != config.input_path` **and nothing else about the image set**.
+Under the decision above, two *different* manifests under the same parent are
+resume-compatible — and PhenoTypic auto-resumes by design (root `CLAUDE.md`: *"Run
+the same command again after an interruption… there is no `--resume` flag"*). So
+the drift USER-26 exists to prevent returns on the resume path.
+
+This got sharper at spec HEAD: §5.4's pre-submit block now says the server
+*imports and calls `validate_resume_compatibility` directly*. If the manifest does
+not participate in that function, **the server's own pre-submit drift check is
+blind to manifest drift — the guard and the gap become the same code path.**
+
+Make it participate: `ExecutionConfig` (`_cli/_cli_types.py:95-100`) and
+`ProcessingState` save/load (`_cli/_cli_state_management.py:57,156,194`).
+
+**Files:**
+- Modify: `src/phenotypic/phenotypicCLI.py` (option block, ~`:905-1145`)
+- Modify: `src/phenotypic/_services/argv.py` (`to_argv` `:326-414`; `RunConsoleState` `:53-97`)
+- Modify: `src/phenotypic/gui/run_console/_slurm.py` (promotion source, `:177-210`)
+- Modify: `src/phenotypic/_cli/_cli_types.py` (`:95-100`)
+- Modify: `src/phenotypic/_cli/_cli_state_management.py` (`:57,156,194,299-302`)
+- Test: work-ID equivalence; argv coverage/deny-list; resume rejects a changed manifest
+
+## Task 20 — WITHDRAWN from Phase 1b (USER-31)
+
+**This task was wrong and is deferred to its own design pass.** It is kept here
+only as a pointer, because the reasoning is worth not repeating.
+
+As written it said the lock inversion was "local to `allocate`". The pre-dispatch
+gate verified that **four** methods nest `self._lock` around
+`exclusive_path_lock`: `allocate` (`runs.py:316`/`:330`), `compare_and_set`
+(`:444`/`:510`), `publish_if_current_generation` (`:540`/`:544`), and
+`observe_local_exit` (`:569`/`:599`).
+
+Three things follow, and each one on its own is disqualifying:
+
+1. **`compare_and_set` is the hot path** — every status poll — so fixing only
+   `allocate` leaves the stall the task existed to remove.
+2. **The partial fix is worse than the bug.** All four currently take
+   `self._lock → file lock`: one consistent order, so contention serializes and
+   never deadlocks. Invert one and you get ABBA — thread A holds `file_lock(X)`
+   waiting on `self._lock` while thread B in `compare_and_set` holds `self._lock`
+   waiting on `file_lock(X)`. It resolves only via the 30 s timeout, and then
+   `ArtifactLockTimeout` propagates out of a method documented (`:441-443`) as
+   returning `False` and never raising. The trigger is launch-then-poll on one
+   output directory: the normal sequence.
+3. **The stated acceptance test passed against the incomplete fix**, because it
+   contended `allocate` only — a false green by construction.
+
+And the complete fix is not a task either: `publish_if_current_generation`
+**documents** its nesting as a contract (`:526-528` — *"The registry lock and
+output owner lock remain held through `publisher`"*), with an external callback
+inside the critical section. Inverting it changes a public invariant.
+
+**Also corrected:** I wrote that `_persist_record_locked` assumes the file lock.
+It does not — `_locked` means `self._lock` throughout this class, and that helper
+is called from `register()` (`:360`) with no file lock held. Only
+`_assert_output_claimable_locked` (`:1076`) means the ownership lock. An
+implementer trusting my version would have moved it outside `self._lock` and
+broken four callers.
+
+**And the citation was wrong in the most dangerous way:** I cited
+`FileLockTimeout` at `_cli/_cli_file_locking.py:50`. `runs.py:72` imports from
+`phenotypic.sdk_._file_locking`, where the exception is **`ArtifactLockTimeout`**
+(`sdk_/_file_locking.py:17`). A class named `FileLockTimeout` *does* exist at the
+cited path — so the citation looks right, is wrong, and an acceptance test written
+against it would never fire.
+
+**Status:** the bug is real and still open (a stall, not corruption; it has been
+shipping for months). It wants a spec of its own covering all four sites, the
+ordering choice, and `publish_if_current_generation`'s contract. Tracked in
+`refinery/ledger.md` as CONC-8. **Do not implement it from this document.**
