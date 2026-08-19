@@ -214,6 +214,7 @@ Phase 1  PREREQUISITES — engine and refactor work, no MCP code
       P6  subset staging (flat/ + nested/)                         Task 17
       P7  distributed finalize entry point                         Task 18
       P8  top-level manifest input (CLI flag + to_argv)             Task 19
+      P2  RunRegistry two-lock ordering (shipped-code bug)         Task 20
         │
         ▼   GATE: import-purity test green, GUI suite unchanged, ledgers green
 Phase 2  v1 TOOL SURFACE

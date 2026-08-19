@@ -1,4 +1,4 @@
-# Phase 1b — Engine prerequisites (P3–P8)
+# Phase 1b — Engine prerequisites (P3–P8, plus the P2 lock-ordering fix)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
 > or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
@@ -7,7 +7,7 @@
 > *Review protocol* and `execution.md`. A cluster with an unaddressed correctness
 > finding does not hand off to the next one.
 
-**Implements:** §7 P3, P4, P5, P6, P7, **P8**. **Spec:**
+**Implements:** §7 P3, P4, P5, P6, P7, **P8**, and the **P2** lock-ordering fix. **Spec:**
 [`../../specs/2026-08-12-phenotypic-mcp-server/07-prerequisites.md`](../../specs/2026-08-12-phenotypic-mcp-server/07-prerequisites.md)
 
 **Goal:** Close the five engine-side gaps that make the v1 tool surface
@@ -1254,3 +1254,43 @@ across every group with every digest check passing. That is the exact failure
 
 **Note for Task 17 (P6):** its "there is no manifest flag and no repeated `-i`
 on either" describes the pre-P8 state and should be amended when this lands.
+
+---
+
+## Task 20 — P2: fix the two-lock ordering in `RunRegistry`
+
+**This is a bug in shipped code, not new design.** It reached `main` through the
+Phase 1a `_services` promotion and is independent of whether the MCP server ever
+ships — but the server makes it materially worse, so it is a prerequisite here.
+
+**The defect.** `RunRegistry.allocate` (`src/phenotypic/_services/runs.py:317`)
+opens `with self._lock:` — a `threading.Lock` the class docstring says **every
+public method takes** (`:16`, `:275`) — and then, still holding it, enters
+`with exclusive_path_lock(_owner_lock_path(output_dir))` at `:330`. That file
+lock spins up to 30 s before raising `FileLockTimeout`
+(`_cli/_cli_file_locking.py:50`).
+
+So one thread waiting on a contended owner-lock file blocks **every other thread
+in the process** from calling any `RunRegistry` method, for up to 30 seconds.
+The in-memory critical section is a dict update measured in microseconds; the
+file lock is measured in seconds. Nesting them this way makes the cheap one wait
+on the expensive one.
+
+**Why the server makes it worse.** Under USER-20 the `blocking` executor has 4
+workers, so a single wedged mount can consume the pool and starve exactly the
+sub-second `W0` calls §1.6.1 promises. Today it presents as a GUI stall.
+
+**The fix.** Take the file lock **first**, then `self._lock` only around the
+in-memory mutation, releasing it before the file lock. `_persist_record_locked`
+and `_assert_output_claimable_locked` already assume the file lock is held, so
+the inversion is local to `allocate`.
+
+**Acceptance** (§6.5 carries the matching row): hold `exclusive_path_lock` on an
+owner-lock path from one thread, then assert from another that ordinary
+`RunRegistry` methods remain callable rather than blocking for the full spin.
+Without that test the fix is described and not verified, and the failure it
+guards is a **stall** — which reads as slowness, not as a bug, and so survives
+code review indefinitely.
+
+**Also report it upstream against `main`.** It is pre-existing and unrelated to
+this work; anyone using the GUI on a shared filesystem is exposed today.
