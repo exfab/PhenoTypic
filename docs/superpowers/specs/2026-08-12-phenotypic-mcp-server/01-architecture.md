@@ -337,6 +337,12 @@ calls "measured, not guessed" in the estimate a human approves, and what §8.7's
 keep/revert decisions are read from. A contended measurement that presents itself
 as a clean one corrupts both.
 
+`contended` is **declared on §3.2's `pipeline_probe` response**, and §5.3's
+`estimate.basis` records it alongside the timing, so "not eligible as an estimate
+basis" is a checkable condition rather than an instruction nobody can enforce —
+a free-text `basis` string cannot express it. §6.5 tests that a contended probe
+cannot become an estimate basis.
+
 **The server-wide arm ceiling is a queue, not a check.** USER-24 made per-group
 work N independent campaigns, so there are now N background launchers contending
 for one `limits.max_inflight_arms`. "Each launcher checks before launching" is
@@ -373,6 +379,29 @@ slot in the background launcher (below). What is forbidden is the handler parkin
 on the semaphore — a blocking acquire would stall the call for the hours an arm
 actually takes, against a host timeout the server does not control, and an
 abandoned coroutine would hold a reservation nothing will ever release.
+
+**Correcting the record: this reverses USER-17's stated corollary, deliberately.**
+USER-17 said a second local arm is "refused, never parked". Round 2 was already
+self-contradictory on the point — §1.5 said refuse while a passage 226 lines away
+described `queue_position: 2` — and the resolution here goes the other way,
+toward queueing, because refusing makes the server useless on the workstation
+this section exists to serve. That is an outcome change, not a clarification, and
+recording it as one would have hidden it.
+
+**The queue therefore needs an owner outside a campaign**, which is what the
+earlier phrasing quietly assumed and did not provide. Every "launcher" elsewhere
+in this spec is the *per-campaign* fan-out task, so a standalone `deploy_start`
+or `tune_start` routed local had a dangling reference for exactly the case being
+served. The slot's semaphore **is** that owner: acquisition is FIFO, and it
+admits campaign arms and standalone runs alike.
+
+**`RunRecord` gains a `queued` status** (§2.4), distinct from `launching`. A run
+waiting on the slot has no pid, and without its own state it would sit at
+`launching` with none — which is exactly how §1.5's restart reconciliation
+identifies an orphan, and since `allocate` refuses a nonterminal generation on
+that output directory, a restart would leave the directory permanently
+unclaimable. Reconciliation treats `queued` with no pid as **re-queueable**, not
+orphaned. `queued_reason` applies to standalone runs as well as campaign arms.
 
 So local batch work is **queued, not refused** — refusing would make the server
 useless on a workstation, which is the case §1.5 exists to serve. `W1` probes are

@@ -566,6 +566,20 @@ work. The parent's *structure* is not re-scanned at promotion and does not need 
 be: a structural regression also changes the parent's file-set digest, so
 `digest_matches_parent: false` catches it first and forces a fresh plan.
 
+**A `user_named` subset can carry a `group_filter` too**, supplied directly to
+`subset_put` and recorded on the artifact exactly as the selector path records
+it. Without that argument the field means two different things depending on
+provenance, and the gap lands on the path USER-24 actively recommends — one
+subset per group, hand-picked, is the *first* thing an agent reaches for. An
+empty filter resolves to the bare parent, so a human who hand-picks one group's
+plates and promotes to full scope would deploy that group's pipeline over
+**every** group: MG-3 verbatim, with every digest check passing.
+
+The gate still shows the truth there — `ack_prompt` quotes the parent's count and
+node-hours, so being asked to approve 480 images after hand-picking 24 is a
+visible signal. But a mechanism that fails silently behind a gate that happens to
+be honest is not a mechanism.
+
 **Full scope on a group-filtered subset means the parent *intersected with the
 same filter*, not the whole parent.** A subset selected under a `group_filter`
 (§9.3.0.2) has the entire dataset as its `parent`, so resolving `scope:"full"` to
