@@ -325,7 +325,7 @@ argument for asking rather than inferring.
 | Wrong field | What happens | Caught by? |
 |---|---|---|
 | **`plate.nrows`/`ncols`** | `QCScorer` scores against wrong expected counts, so **the objective itself is wrong**. Tuning optimizes toward a false target and every arm's cost is meaningless — while looking perfectly healthy. | **Nothing.** The worst failure in the system. |
-| **`morphology: round`** when filamentous | A peak detector finds one "colony" per dense region. Counts come out *plausible*, so QC may not flag it; the experiment profile is silently under-counted. | Weakly — a size distribution with implausibly large objects |
+| **`morphology: round`** when filamentous | A peak detector finds one "colony" per dense region. Counts come out *plausible*, so QC may not flag it; the assay is silently under-counted. | Weakly — a size distribution with implausibly large objects |
 | `morphology: filamentous` when round | Over-segmentation and hyphal metrics that measure noise | Probe object count far above expectation |
 | `separation: well_separated` when touching | Merged colonies counted as one; size distribution skews high with a long tail | Probe: count below expected, size tail |
 | `contrast: high` when low | Agent picks an Otsu prefab and tunes detector params, when the real fix was enhancement. Budget burned in the wrong subspace. | Probe: low object count, poor best-cost plateau |
@@ -423,7 +423,7 @@ never enumerates traits.**
 **And the server never *acts* on a trait.** No trait value gates any tool's
 behaviour anywhere in the catalog — not scorer choice, not subset requirements,
 not GPU routing, not operation filtering. `experiment_profile_get` is the
-only tools that touch the artifact; `campaign_put` stores the `experiment_profile` reference
+only tool that touches the artifact; `campaign_put` stores the `experiment_profile` reference
 as a string without even checking the file resolves. **The experiment profile is provenance
 for humans and input for skills; it is not an interlock.**
 
@@ -450,7 +450,7 @@ Suppose plate-lid glare turns out to drive enhancement choice.
 | Add a `rules:` row preferring a glare-tolerant enhancer | skill | **no** |
 | Skill starts asking about it in triage | skill | **no** |
 | Existing profiles without the trait keep validating | — | **no** — traits are individually optional |
-| A newer skill's assay read by an older server | — | **no** — unknown keys round-trip |
+| A newer skill's profile read by an older server | — | **no** — unknown keys round-trip |
 
 The only thing that would force a server change is a new **provenance** kind —
 say `source: "instrument"` — and that is a genuinely structural addition worth a

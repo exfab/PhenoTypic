@@ -602,7 +602,7 @@ every promotion. Never probing would let a silently-wrong estimate through. Both
 are avoidable, because **the thing that breaks the extrapolation is readable
 without decoding a single pixel.**
 
-So promotion runs a two-tier check:
+So `deploy_plan {scope:"full"}` runs a two-tier check:
 
 | Tier | Cost | What it does |
 |---|---|---|
@@ -615,7 +615,7 @@ pixel count, so a parent whose images match the subset's dimensions and depth
 extrapolates soundly, and one whose images do not is exactly the case worth
 spending two probes on.
 
-The promotion response reports which tier ran:
+The `deploy_plan` response reports which tier ran:
 
 ```json
 "estimate":{"node_hours":18.4,"basis":"subset run: 3.4 s/image measured",

@@ -137,7 +137,7 @@ directory and a poor place to accumulate run outputs.
 │   └── <name>/campaign.json          # §8.2 the agreed plan
 ├── .phenotypic-mcp/
 │   ├── lineage.jsonl                 # §2.5
-│   ├── plans/<token>.json            # §5.4 plan + promotion token records
+│   ├── plans/<token>.json            # §5.4 plan token records
 │   ├── probes/<pipeline>/            # §3.2 probe outputs
 │   └── subset-staging/<digest>/      # §10.3.1 materialized subset dirs
 ├── studies/
@@ -426,6 +426,7 @@ so a loser thread waits and then sees the finished object.
   there would hand the agent content-addressed filenames (`<stem>-<sha256[:20]>`),
   losing the readable-id property §2.2 is built on.
 
-- ~~OQ-2.2 workspace root~~ → `--workspace`, defaulting to CWD (unambiguous
-  because subagents share one server), with the root always echoed by
-  `workspace_info` and a warning when it is a git checkout (§2.3).
+- ~~OQ-2.2 workspace root~~ → `--workspace`, **mandatory, no default**, and it
+  must contain the image data — a silent CWD default risked producing a
+  workspace without the data (§2.3). The root is always echoed by
+  `workspace_info` and a warning is logged when it is a git checkout (§2.3).

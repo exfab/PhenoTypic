@@ -24,7 +24,7 @@ configurations, tune them with `phenotypic.tune`, and deploy them over datasets
 — locally or on SLURM.
 
 The intended UX is **collaborative planning, then delegated execution, on a
-subset**: you and the agent characterize the experiment profile and pick a development
+subset**: you and the agent characterize the assay and pick a development
 subset, decide what is worth trying, write that agreement down as a *campaign*,
 and the agent executes it across parallel subagents without you in the loop —
 **bounded to the subset**. The full dataset is touched once, after a separate

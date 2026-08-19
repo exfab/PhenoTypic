@@ -89,7 +89,7 @@ This shapes three design choices that would otherwise look arbitrary:
     {"id": "prefab-fil", "pipeline": "pipelines/filamentous-prefab.json.pht-pipe",
      "tune_spec": "tune/filamentous-prefab.setup.json.pht-tune",
      "pipeline_digest": "sha256:3e91…", "spec_digest": "sha256:c07b…",
-     "rationale": "baseline — FilamentousFungiPipeline, the experiment profile-matched prefab"},
+     "rationale": "baseline — FilamentousFungiPipeline, the assay-matched prefab"},
     {"id": "phase", "pipeline": "pipelines/phase-edge.json.pht-pipe",
      "tune_spec": "tune/phase-edge.setup.json.pht-tune",
      "rationale": "the hypothesis",
@@ -698,7 +698,7 @@ when a custom pipeline finally does beat the prefab.
 
 ### Where it sits relative to prefab-first
 
-The two compose rather than compete: **start from the experiment profile-matched prefab, then
+The two compose rather than compete: **start from the assay-matched prefab, then
 iterate from there.** The prefab is the starting point of the loop, not an
 alternative to it — most explorations are "the prefab gets 61 of 96; what one
 change closes the gap?", which is a far better-posed question than building from
