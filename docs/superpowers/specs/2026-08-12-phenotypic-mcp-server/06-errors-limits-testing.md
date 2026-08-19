@@ -170,7 +170,7 @@ There is no authentication — its boundary is the workspace sandbox plus these
 explicit refusals:
 
 1. **No `--overwrite`.** `shutil.rmtree(output_dir)` is not reachable from any
-   tool. Destroying measurements, HDFs, and human QC curation stays a shell
+   tool. Destroying measurements, per-image stores, and human QC curation stays a shell
    decision (§5.4).
 2. **No raw sbatch.** Partition, account, and QoS come only from config;
    overrides are allow-listed and capped (§5.2).

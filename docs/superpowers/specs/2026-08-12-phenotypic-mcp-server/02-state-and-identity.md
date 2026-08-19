@@ -157,7 +157,9 @@ directory and a poor place to accumulate run outputs.
 └── runs/
     └── <name>/                       # a `python -m phenotypic` output_dir
         ├── deliverables/…            # measurements, dashboard, qc, README
-        ├── results/<dataset>/{hdf,measurements}/
+        ├── results/<dataset>/{zarr,measurements}/   # zarr/ holds <stem>.ome.zarr/
+        │                                            #   DIRECTORIES, not files —
+        │                                            #   resolve via zarr_store_path()
         └── .phenotypic/
             ├── processing_state.json
             ├── processing_events.log

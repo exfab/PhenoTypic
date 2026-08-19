@@ -597,7 +597,8 @@ So:
 
 **`stages: true`** runs `apply_with_intermediates` (`_image_pipeline_core.py:969`)
 **with `output_dir=None`** — intermediates stay in memory as `Image` copies.
-Passing an `output_dir` writes each snapshot to HDF5 and sets the dict value to
+Passing an `output_dir` writes each snapshot to an OME-Zarr store
+(`save_intermediate_zarr`) and sets the dict value to
 `None`, which would force a second pass re-reading from disk to compute any layer
 statistic. With `n_images` capped at 4 the in-memory form is both simpler and
 cheaper. It returns per-operation numeric evidence — the affordance

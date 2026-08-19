@@ -603,7 +603,7 @@ the full-dataset spend is reachable only through a `"plan"` token, which binds
 everything.
 
 **`overwrite` is deliberately not exposed.** The CLI's `--overwrite` does
-`shutil.rmtree(output_dir)` — it destroys `deliverables/`, every per-image HDF,
+`shutil.rmtree(output_dir)` — it destroys `deliverables/`, every per-image store,
 and any QC curation a human did. That is not an action an agent should be able
 to take from a tool call. A non-empty output directory returns
 `code: "output_not_empty"` with three named options: pick a new `run_name`,
@@ -622,6 +622,29 @@ status is polled (§5.5). This matches the CLI's own default.
 `resume` preconditions are checked by the server *before* submitting, because
 the CLI's failure mode is `sys.exit(1)` inside a subprocess, which reaches the
 agent as an opaque non-zero exit.
+
+**The same pre-submit block also checks for a half-migrated output tree.** The
+OME-Zarr store makes *every mode that consumes results* refuse against a tree
+that is partly `.h5` and partly `.ome.zarr` — and because migration is itself
+resumable, a half-migrated tree is the **expected** state after any interruption,
+not a corner. That refusal is another `sys.exit(1)` inside the subprocess, which
+is exactly the opaque failure this block exists to convert into something an
+agent can act on. So `deploy_start` calls `datasets_needing_migration(output_dir)`
+alongside `validate_resume_compatibility` and returns a structured
+`migration_required` naming the datasets.
+
+**And it must say what to do about it, because the server cannot do it.** USER-8
+cut `mode` from the deploy tools, so there is no `deploy_start {mode:"migrate"}`
+to offer — a refusal with no in-server escape is a dead end on the irreversible
+path. The error therefore **carries the remedy as a shell command**:
+`python -m phenotypic --mode migrate --output <run>`.
+
+Surfacing the command is preferred over re-admitting `migrate` as a tool
+argument: it keeps USER-8's cut intact, and migration is a one-time
+storage-format operation a human should run knowingly rather than something an
+agent triggers mid-campaign. If that proves too indirect in practice, re-admitting
+a narrow `migrate` remains available — but it is a reversal of a user ruling and
+would need one.
 
 **The server imports and calls `validate_resume_compatibility` directly** rather
 than re-enumerating its field list. `ExecutionConfig` (`_cli/_cli_types.py:95`)
