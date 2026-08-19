@@ -1245,14 +1245,27 @@ A top-level option taking a file of image paths. `-i/--input` is a single
 
 **`--input` stays required, stays the parent directory, and the manifest is passed
 *alongside* it.** This was written as a free choice; it is not.
-`work_id_for_image` (`_cli/_cli_failure_tracker.py:179-186`) does
+`work_id_for_image` (`_cli/_cli_failure_tracker.py:177-186`) does
 `image_path.relative_to(config.input_path)` when `input_path` is a directory and
 `Path(image_path.name)` when it is a file. Point `--input` at the manifest and
-every work ID becomes basename-only — colliding across datasets for identically
-named images (`plate1/img001.tiff` and `plate2/img001.tiff` both reduce to
-`img001.tiff`) and diverging from the same images' IDs in a parent run. Nothing
-catches it: `EXPECTED_WORK_IDS` and `EXPECTED_INPUT_SHA256S` have **zero test
-coverage** (see PHASE 1a in `execution.md`).
+every work ID becomes basename-only.
+
+**Correction — the reason is divergence, not collision.** An earlier version of
+this task (and the pre-dispatch gate) said basename-rooting makes
+`plate1/img001.tiff` and `plate2/img001.tiff` **collide**. *That is false*, and
+the implementer proved it by mutation: `compute_work_id`
+(`_cli_failure_tracker.py:154-162`) takes `dataset` as its own hashed field, so
+two identically-named images in different datasets get different IDs regardless
+of rooting — measured with byte-identical files, the strongest form of the claim.
+A test written against the collision **could not fail**: a mutant that always took
+the basename passed it.
+
+The real harm is **divergence**. File-rooting gives every image a different ID
+than the *parent* run over the same images, so a subset run can no longer
+continue, retry, or reconcile against the dataset it is a subset of. That is
+disqualifying on its own, so the decision stands — for a better reason. Nothing
+catches it either way: `EXPECTED_WORK_IDS` and `EXPECTED_INPUT_SHA256S` have
+**zero test coverage** (see PHASE 1a in `execution.md`).
 
 **Test:** work IDs are identical between a manifest run and a parent-directory run
 over the same images.
