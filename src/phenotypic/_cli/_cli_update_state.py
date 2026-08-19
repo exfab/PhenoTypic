@@ -36,6 +36,7 @@ from phenotypic.sdk_.typing_ import ProcessingStatus
 logger = logging.getLogger(__name__)
 
 PROCESSING_GENERATION_ENV_VAR = "PHENOTYPIC_PROCESSING_GENERATION"
+SLURM_GENERATION_ENV_VAR = "PHENOTYPIC_SLURM_GENERATION"
 _DIAGNOSTIC_SAMPLE_LIMIT = 20
 
 
@@ -81,6 +82,8 @@ def append_event(
     slurm_array_task_id: str = "",
     stage: str | None = None,
     generation: str | None = None,
+    attempt_id: str = "",
+    work_id: str = "",
 ) -> None:
     """
     Atomically append a processing event to the event log.
@@ -138,6 +141,10 @@ def append_event(
         parts.append(validated_stage or "")
     if event_generation:
         parts.append(event_generation)
+    if attempt_id or work_id:
+        while len(parts) < 9:
+            parts.append("")
+        parts.extend([attempt_id, work_id])
     event_line = "|".join(parts) + "\n"
 
     try:

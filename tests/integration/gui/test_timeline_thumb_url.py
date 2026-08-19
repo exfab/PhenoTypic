@@ -22,15 +22,15 @@ from phenotypic.gui.results_viewer.timeline_view._layout import (
     build_timeline_grid_component,
 )
 from tests._output_layout import write_master, write_measurements_mirror
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 def _output_root(tmp_path: Path) -> OutputRoot:
     cli_out = tmp_path / "out"
     df = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["ds", "ds"],
-            str(METADATA.IMAGE_NAME): ["a", "b"],
+            "Metadata_Dataset": ["ds", "ds"],
+            str(IMAGE.IMAGE_NAME): ["a", "b"],
             "Metadata_ImageNumber": pl.Series([1, 2], dtype=pl.Int64),
             "Metadata_PlateNum": ["1", "2"],
             "Object_Label": [1, 2],

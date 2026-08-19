@@ -40,17 +40,19 @@ if TYPE_CHECKING:
 
 import polars as pl
 
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA, OBJECT
+from phenotypic.schema import EXPERIMENT, IMAGE, OBJECT
 from phenotypic.sdk_ import measurements_csv_path, measurements_parquet_path
+
+from ._metadata import normalize_viewer_frame
 
 logger = logging.getLogger(__name__)
 
 #: Column name that identifies the dataset (plate / condition group) a colony
 #: belongs to. Maps to the ``Metadata_Dataset`` column written by the CLI.
-KEY_DATASET: str = str(EXPERIMENT_METADATA.DATASET)
+KEY_DATASET: str = str(EXPERIMENT.DATASET)
 
 #: Column name that identifies the source image of a colony.
-KEY_IMAGE_FILE: str = str(METADATA.IMAGE_NAME)
+KEY_IMAGE_FILE: str = str(IMAGE.IMAGE_NAME)
 
 #: Column name that identifies a colony within its source image.
 KEY_OBJECT_LABEL: str = str(OBJECT.LABEL)
@@ -150,6 +152,7 @@ def _extract_keys(df: pl.DataFrame) -> set[tuple[str, int]]:
     Raises:
         ValueError: If either key column is missing from ``df``.
     """
+    df = normalize_viewer_frame(df)
     missing = [col for col in _KEY_COLUMNS if col not in df.columns]
     if missing:
         raise ValueError(
@@ -251,9 +254,14 @@ class FilteredMeasurements:
         parquet_path = measurements_parquet_path(root)
         csv_path = measurements_csv_path(root)
 
+        # Ordinary reads normalize only in memory. The caller's frame and the
+        # durable mirror retain their original spelling until an explicit
+        # writer publishes a new curation state.
+        normalized_master = normalize_viewer_frame(master_df)
+
         # Validate up front so a bad master surfaces at boot, not on the
         # first user click.
-        master_keys = _extract_keys(master_df)
+        master_keys = _extract_keys(normalized_master)
 
         if not parquet_path.exists():
             return cls(
@@ -261,11 +269,11 @@ class FilteredMeasurements:
                 parquet_path=parquet_path,
                 csv_path=csv_path,
                 removed_keys=set(),
-                _master_df=master_df,
+                _master_df=normalized_master,
                 _seed_mtime_ns=None,
             )
 
-        filtered_df = pl.read_parquet(parquet_path)
+        filtered_df = normalize_viewer_frame(pl.read_parquet(parquet_path))
         filtered_keys = _extract_keys(filtered_df)
 
         unknown = filtered_keys - master_keys
@@ -284,7 +292,7 @@ class FilteredMeasurements:
             parquet_path=parquet_path,
             csv_path=csv_path,
             removed_keys=removed_keys,
-            _master_df=master_df,
+            _master_df=normalized_master,
             _seed_mtime_ns=parquet_path.stat().st_mtime_ns,
         )
 
@@ -337,6 +345,7 @@ class FilteredMeasurements:
             :attr:`removed_keys`. If :attr:`removed_keys` is empty, the
             input frame is returned unchanged.
         """
+        master_df = normalize_viewer_frame(master_df)
         if not self.removed_keys:
             return master_df
 

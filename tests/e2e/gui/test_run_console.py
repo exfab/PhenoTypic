@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Page, expect
 
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import gui_launch_owner_path
 
 
@@ -182,7 +182,7 @@ def test_metadata_preflight_shows_ambient_descriptor_but_defaults_to_omit(
     """One-image metadata is visible and compatible without implicit authority."""
     metadata = fake_sandbox / "one-image-metadata.csv"
     metadata.write_text(
-        f"{METADATA.IMAGE_NAME},Treatment\nimage,control\n",
+        f"{IMAGE.IMAGE_NAME},Treatment\nimage,control\n",
         encoding="utf-8",
     )
     page.goto(hub_url + "/run/")

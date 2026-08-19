@@ -11,9 +11,14 @@ from __future__ import annotations
 import shlex
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from uuid import uuid4
 
+from ._cli_failure_tracker import file_sha256, work_id_for_image
 from ._cli_types import Dataset, ExecutionConfig
-from ._cli_update_state import PROCESSING_GENERATION_ENV_VAR
+from ._cli_update_state import (
+    PROCESSING_GENERATION_ENV_VAR,
+    SLURM_GENERATION_ENV_VAR,
+)
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 from phenotypic.sdk_ import event_log_path, logs_dir, slurm_scripts_dir
 from phenotypic.sdk_.slurm import (
@@ -113,34 +118,7 @@ def _resolve_checkpoint_interval(config: ExecutionConfig) -> int:
     return max(50, min(3 * concurrent_capacity, 500))
 
 
-def _array_script_names(
-    dataset: Dataset,
-    array_indices: Tuple[int, int],
-    chunk_id: int,
-) -> Tuple[str, str]:
-    """Return the ``(job_name, script_name)`` pair for one array chunk.
-
-    A single chunk that spans the whole dataset gets the simpler unnumbered
-    name; anything else carries its chunk id.
-
-    Args:
-        dataset: Dataset the chunk belongs to.
-        array_indices: (start, end) tuple for this chunk (0-based, end exclusive).
-        chunk_id: Chunk number for multi-chunk datasets.
-
-    Returns:
-        Tuple of (SLURM job name, script file name).
-    """
-    _, end_idx = array_indices
-    if chunk_id == 0 and end_idx == len(dataset.images):
-        return f"pht-{dataset.name}", "array_job.sh"
-    return (
-        f"pht-{dataset.name}-chunk{chunk_id}",
-        f"array_job_chunk{chunk_id}.sh",
-    )
-
-
-def build_array_script_spec(
+def generate_array_job_script(
     dataset: Dataset,
     array_indices: Tuple[int, int],
     config: ExecutionConfig,
@@ -148,26 +126,19 @@ def build_array_script_spec(
     chunk_id: int = 0,
     checkpoint_interval: Optional[int] = None,
     is_last_chunk: bool = False,
-) -> SlurmArrayScriptSpec:
+) -> Path:
     """
-    Build the SLURM array script specification for one dataset chunk.
+    Generate a SLURM array job script for processing a dataset chunk.
 
-    Pure: this function reads no files and creates nothing. It computes the
-    SBATCH directives, the per-task entry list, and the bash dispatch block,
-    and returns a :class:`SlurmArrayScriptSpec` whose ``render()`` produces the
-    script text. Callers that want a preview -- rendering the sbatch a run
-    *would* submit without provisioning its output directory -- use this
-    directly; :func:`generate_array_job_script` layers the directory creation
-    and the write on top.
-
-    ``output_dir`` is read as a path value only: it is embedded in the worker
-    command line and in the ``#SBATCH --output`` log path, never created.
+    Creates a bash script with SBATCH directives for array job submission.
+    The script builds an array of image paths and uses $SLURM_ARRAY_TASK_ID
+    to index into the array for parallel processing.
 
     Args:
         dataset: Dataset containing images to process
         array_indices: (start, end) tuple for this chunk (0-based, end exclusive)
         config: Execution configuration with SLURM parameters
-        output_dir: Base output directory (used as a value, not created)
+        output_dir: Base output directory
         chunk_id: Chunk number for multi-chunk datasets (default: 0)
         checkpoint_interval: If set, insert checkpoint sentinel entries
             every N images so SLURM tasks can trigger chunk aggregation
@@ -175,10 +146,7 @@ def build_array_script_spec(
             submitted as a separate dependent lifecycle job.
 
     Returns:
-        Specification whose ``render()`` yields the array job script text.
-
-    Raises:
-        ValueError: If ``array_indices`` selects no images.
+        Path to generated array job script
 
     Examples:
         >>> from pathlib import Path
@@ -189,10 +157,15 @@ def build_array_script_spec(
         ...     output_dir=Path("./output")
         ... )
         >>> config = ExecutionConfig(...)  # doctest: +SKIP
-        >>> spec = build_array_script_spec(
+        >>> script = generate_array_job_script(
         ...     dataset, (0, 100), config, Path("./output")
         ... )  # doctest: +SKIP
-        >>> print(spec.render())  # doctest: +SKIP
+
+    Notes:
+        - Array indices are 0-based (Python/bash convention)
+        - End index is exclusive (slice notation)
+        - Generated script is executable (chmod 0o755)
+        - Logs use SLURM %A (job ID) and %a (task ID) placeholders
     """
     # Extract image subset for this chunk
     start_idx, end_idx = array_indices
@@ -214,11 +187,23 @@ def build_array_script_spec(
             chunk_images, checkpoint_interval, is_last_chunk
         )
 
+    # Create script directory
+    script_dir = slurm_scripts_dir(output_dir) / dataset.name
+    script_dir.mkdir(parents=True, exist_ok=True)
+
     # Generate job name
-    job_name, _ = _array_script_names(dataset, array_indices, chunk_id)
+    if chunk_id == 0 and end_idx == len(dataset.images):
+        # Single chunk, simpler name
+        job_name = f"pht-{dataset.name}"
+        script_name = "array_job.sh"
+    else:
+        # Multiple chunks, include chunk ID
+        job_name = f"pht-{dataset.name}-chunk{chunk_id}"
+        script_name = f"array_job_chunk{chunk_id}.sh"
 
     # Generate log paths (using SLURM placeholders)
     log_dir = logs_dir(output_dir) / "slurm" / dataset.name
+    log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{dataset.name}_%A_%a.log"
 
     # Build command arguments for single-image processor
@@ -243,6 +228,16 @@ def build_array_script_spec(
         config.image_type,
         "--mode",
         "full",
+        "--input-root",
+        shlex.quote(str(config.input_path.absolute())),
+        "--expected-work-id",
+        '"${CURRENT_WORK_ID}"',
+        "--expected-input-sha256",
+        '"${CURRENT_INPUT_SHA256}"',
+        "--expected-pipeline-sha256",
+        '"${EXPECTED_PIPELINE_SHA256}"',
+        "--attempt-id",
+        '"${CURRENT_ATTEMPT_ID}"',
     ]
 
     # Omit when unset so the worker falls back to the pipeline's preset.
@@ -281,8 +276,6 @@ def build_array_script_spec(
             [
                 "--layer",
                 config.process_only_layer,
-                "--input-root",
-                shlex.quote(str(config.input_path.absolute())),
             ]
         )
     elif config.measure_only:
@@ -345,118 +338,81 @@ else
     {cmd}
 fi"""
 
+    identity_assignment = (
+        'CURRENT_WORK_ID="${EXPECTED_WORK_IDS[$SLURM_ARRAY_TASK_ID]}"\n'
+        'CURRENT_INPUT_SHA256="${EXPECTED_INPUT_SHA256S[$SLURM_ARRAY_TASK_ID]}"\n'
+        'CURRENT_ATTEMPT_ID="${ATTEMPT_IDS[$SLURM_ARRAY_TASK_ID]}"'
+    )
+    dispatch_block = f"{identity_assignment}\n\n{dispatch_block}"
+
+    script_path = script_dir / script_name
     prelude = SLURM_THREAD_PIN_BASH
+    identity_rows: list[tuple[str, str, str]] = []
+    for entry in entries:
+        if entry in {_CHECKPOINT_SENTINEL, _MANIFEST_SENTINEL}:
+            identity_rows.append(("", "", ""))
+            continue
+        image_path = Path(entry)
+        work_id, _ = work_id_for_image(config, dataset.name, image_path)
+        identity_rows.append((work_id, file_sha256(image_path), uuid4().hex))
+    prelude += "\nEXPECTED_WORK_IDS=(\n" + "\n".join(
+        f"    {shlex.quote(row[0])}" for row in identity_rows
+    ) + "\n)"
+    prelude += "\nEXPECTED_INPUT_SHA256S=(\n" + "\n".join(
+        f"    {shlex.quote(row[1])}" for row in identity_rows
+    ) + "\n)"
+    prelude += "\nATTEMPT_IDS=(\n" + "\n".join(
+        f"    {shlex.quote(row[2])}" for row in identity_rows
+    ) + "\n)"
+    prelude += (
+        "\nEXPECTED_PIPELINE_SHA256="
+        f"{shlex.quote(file_sha256(config.pipeline_json))}"
+    )
     if config.processing_generation:
         prelude += (
             "\nexport "
             f"{PROCESSING_GENERATION_ENV_VAR}="
             f"{shlex.quote(config.processing_generation)}"
         )
-
-    return SlurmArrayScriptSpec(
-        job_name=job_name,
-        slurm_args=config.slurm_args,
-        log_path=log_path,
-        task_indices=entries,
-        body=dispatch_block,
-        prelude=prelude,
-        comments=[
-            "# Auto-generated by PhenoTypic CLI v2.0 (SLURM array job mode)",
-            f"# Dataset: {dataset.name}",
-            f"# Chunk: {chunk_id} (images {start_idx}-{end_idx - 1})",
-            f"# Pipeline: {config.pipeline_json}",
-            "# Build image list (0-based indexing)",
-            (
-                "# Entries may include sentinel markers for checkpoint, "
-                "and manifest tasks"
+    if config.slurm_generation:
+        prelude += (
+            "\nexport "
+            f"{SLURM_GENERATION_ENV_VAR}="
+            f"{shlex.quote(config.slurm_generation)}"
+        )
+    write_slurm_array_script(
+        script_path,
+        SlurmArrayScriptSpec(
+            job_name=job_name,
+            slurm_args=config.slurm_args,
+            log_path=log_path,
+            task_indices=entries,
+            body=dispatch_block,
+            prelude=prelude,
+            comments=[
+                "# Auto-generated by PhenoTypic CLI v2.0 (SLURM array job mode)",
+                f"# Dataset: {dataset.name}",
+                f"# Chunk: {chunk_id} (images {start_idx}-{end_idx - 1})",
+                f"# Pipeline: {config.pipeline_json}",
+                "# Build image list (0-based indexing)",
+                (
+                    "# Entries may include sentinel markers for checkpoint, "
+                    "and manifest tasks"
+                ),
+            ],
+            array_name="IMAGE_LIST",
+            current_var="CURRENT_IMAGE",
+            missing_task_id_message=(
+                "ERROR: SLURM_ARRAY_TASK_ID not set (not running in array job?)"
             ),
-        ],
-        array_name="IMAGE_LIST",
-        current_var="CURRENT_IMAGE",
-        missing_task_id_message=(
-            "ERROR: SLURM_ARRAY_TASK_ID not set (not running in array job?)"
-        ),
-        bounds_error_message=(
-            "ERROR: Array task ID $SLURM_ARRAY_TASK_ID exceeds image list "
-            "size ${#IMAGE_LIST[@]}"
+            bounds_error_message=(
+                "ERROR: Array task ID $SLURM_ARRAY_TASK_ID exceeds image list "
+                "size ${#IMAGE_LIST[@]}"
+            ),
         ),
     )
 
-
-def generate_array_job_script(
-    dataset: Dataset,
-    array_indices: Tuple[int, int],
-    config: ExecutionConfig,
-    output_dir: Path,
-    chunk_id: int = 0,
-    checkpoint_interval: Optional[int] = None,
-    is_last_chunk: bool = False,
-) -> Path:
-    """
-    Generate a SLURM array job script for processing a dataset chunk.
-
-    Creates a bash script with SBATCH directives for array job submission.
-    The script builds an array of image paths and uses $SLURM_ARRAY_TASK_ID
-    to index into the array for parallel processing.
-
-    The script text itself comes from :func:`build_array_script_spec`; this
-    wrapper adds the only side effects -- creating the script and log
-    directories under ``output_dir`` and writing the executable script.
-
-    Args:
-        dataset: Dataset containing images to process
-        array_indices: (start, end) tuple for this chunk (0-based, end exclusive)
-        config: Execution configuration with SLURM parameters
-        output_dir: Base output directory
-        chunk_id: Chunk number for multi-chunk datasets (default: 0)
-        checkpoint_interval: If set, insert checkpoint sentinel entries
-            every N images so SLURM tasks can trigger chunk aggregation
-        is_last_chunk: Retained for caller compatibility. Terminal work is
-            submitted as a separate dependent lifecycle job.
-
-    Returns:
-        Path to generated array job script
-
-    Examples:
-        >>> from pathlib import Path
-        >>> dataset = Dataset(
-        ...     name="plate1",
-        ...     images=[Path(f"image_{i}.tif") for i in range(100)],
-        ...     input_dir=Path("."),
-        ...     output_dir=Path("./output")
-        ... )
-        >>> config = ExecutionConfig(...)  # doctest: +SKIP
-        >>> script = generate_array_job_script(
-        ...     dataset, (0, 100), config, Path("./output")
-        ... )  # doctest: +SKIP
-
-    Notes:
-        - Array indices are 0-based (Python/bash convention)
-        - End index is exclusive (slice notation)
-        - Generated script is executable (chmod 0o755)
-        - Logs use SLURM %A (job ID) and %a (task ID) placeholders
-    """
-    spec = build_array_script_spec(
-        dataset,
-        array_indices,
-        config,
-        output_dir,
-        chunk_id=chunk_id,
-        checkpoint_interval=checkpoint_interval,
-        is_last_chunk=is_last_chunk,
-    )
-
-    # Every side effect lives here; ``build_array_script_spec`` stays pure so a
-    # deploy preview can render the same script without provisioning the run's
-    # output directory.
-    script_dir = slurm_scripts_dir(output_dir) / dataset.name
-    script_dir.mkdir(parents=True, exist_ok=True)
-
-    log_dir = logs_dir(output_dir) / "slurm" / dataset.name
-    log_dir.mkdir(parents=True, exist_ok=True)
-
-    _, script_name = _array_script_names(dataset, array_indices, chunk_id)
-    return write_slurm_array_script(script_dir / script_name, spec)
+    return script_path
 
 
 def generate_terminal_finalizer_script(
@@ -492,6 +448,12 @@ def generate_terminal_finalizer_script(
             "\nexport "
             f"{PROCESSING_GENERATION_ENV_VAR}="
             f"{shlex.quote(config.processing_generation)}"
+        )
+    if config.slurm_generation:
+        prelude += (
+            "\nexport "
+            f"{SLURM_GENERATION_ENV_VAR}="
+            f"{shlex.quote(config.slurm_generation)}"
         )
     return write_slurm_array_script(
         script_path,

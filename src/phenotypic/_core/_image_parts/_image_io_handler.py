@@ -5,6 +5,7 @@ import json
 import shutil
 import subprocess
 import warnings
+from collections.abc import Iterable
 from datetime import datetime
 from fractions import Fraction
 from typing import TYPE_CHECKING, Any
@@ -36,7 +37,12 @@ import skimage as ski
 
 import phenotypic
 from phenotypic.sdk_.exceptions_ import UnsupportedFileTypeError
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
+from phenotypic.sdk_ import (
+    ensure_metadata_prefix,
+    is_metadata_header,
+    metadata_member_for_label,
+)
 from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS, IO
 from phenotypic.sdk_.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
@@ -46,6 +52,14 @@ from ._image_color_handler import ImageColorSpace
 # -----------------------------------------------------------------------------
 
 _SCHEMA_VERSION = 2
+
+# HDF layout and metadata-key namespace evolve independently. Missing metadata
+# markers remain valid for historical files; readers infer compatibility from
+# the keys themselves. Writers emit the canonical flat namespace.
+_METADATA_SCHEMA_VERSION_ATTR = "metadata_schema_version"
+_METADATA_SCHEMA_VERSION_PER_TOPIC = 1
+_METADATA_SCHEMA_VERSION_FLAT = 2
+_METADATA_SCHEMA_VERSION = _METADATA_SCHEMA_VERSION_FLAT
 
 
 def _encode_meta(val: Any) -> str:
@@ -75,32 +89,104 @@ def _decode_meta(s: Any) -> Any:
         return s
 
 
-# Legacy metadata-key shim.
-# Files written before the ``METADATA`` enum gained its ``MetadataImage_``
-# category prefix stored framework metadata keys in two now-obsolete forms:
-#   * *bare* labels (oldest):            ``ImageName``, ``BitDepth``, ``UUID``
-#   * *generic-prefixed* (intermediate): ``Metadata_ImageName``, ``Metadata_BitDepth``
-# Map both legacy forms to the current per-topic prefixed value
-# (``MetadataImage_ImageName``, ...) on load so old HDF5 outputs stay readable and
-# the dedup in ``_load_from_hdf`` collapses them onto the constructor-populated
-# canonical key instead of re-adding a stale duplicate. Built from the enum so it
-# tracks any future member additions. Strictly scoped to framework ``METADATA``
-# labels: arbitrary user-supplied ``Metadata_<Unknown>`` keys have no per-topic
-# home and must pass through unchanged.
-_LEGACY_METADATA_KEY_MAP: dict[str, str] = {
-    **{member.label: member.value for member in METADATA},
-    **{f"Metadata_{member.label}": member.value for member in METADATA},
-}
-
-
 def _remap_legacy_metadata_key(key: str) -> str:
-    """Return the current ``Metadata_*`` key for a legacy bare metadata key.
+    """Normalize a stored metadata key to the live enum spelling.
 
-    Idempotent and targeted: already-prefixed keys (new files) and arbitrary
-    user-supplied keys pass through unchanged — only the known framework labels
-    are remapped.
+    The SDK registry handles bare known labels, current per-topic headers, and
+    future flat ``Metadata_<Label>`` headers through one compatibility path.
+    Unknown bare keys are deliberately preserved because public and imported
+    image metadata historically round-trip arbitrary names verbatim.
     """
-    return _LEGACY_METADATA_KEY_MAP.get(key, key)
+    stored_key = str(key)
+    normalized = ensure_metadata_prefix(stored_key)
+    if (
+        metadata_member_for_label(stored_key) is None
+        and not is_metadata_header(stored_key)
+    ):
+        return stored_key
+    return normalized
+
+
+def _metadata_values_equal(left: Any, right: Any) -> bool:
+    """Return whether two normalized metadata values can coalesce losslessly."""
+    if isinstance(left, np.generic):
+        left = left.item()
+    if isinstance(right, np.generic):
+        right = right.item()
+    if isinstance(left, np.ndarray) or isinstance(right, np.ndarray):
+        if not isinstance(left, np.ndarray) or not isinstance(right, np.ndarray):
+            return False
+        if left.dtype != right.dtype or left.shape != right.shape:
+            return False
+        if left.dtype == object:
+            return all(
+                _metadata_values_equal(left_value, right_value)
+                for left_value, right_value in zip(
+                    left.flat, right.flat, strict=True
+                )
+            )
+        try:
+            return bool(np.array_equal(left, right, equal_nan=True))
+        except TypeError:
+            return bool(np.array_equal(left, right))
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, float) and np.isnan(left) and np.isnan(right):
+        return True
+    if isinstance(left, dict):
+        if left.keys() != right.keys():
+            return False
+        return all(
+            _metadata_values_equal(left[key], right[key]) for key in left
+        )
+    if isinstance(left, (list, tuple)):
+        return len(left) == len(right) and all(
+            _metadata_values_equal(left_value, right_value)
+            for left_value, right_value in zip(left, right, strict=True)
+        )
+    try:
+        equal = left == right
+        return bool(equal)
+    except (TypeError, ValueError):
+        return False
+
+
+def _normalize_stored_metadata_items(
+    items: Iterable[tuple[object, Any]],
+    *,
+    section: str,
+) -> dict[str, Any]:
+    """Normalize one stored metadata section with collision validation.
+
+    Args:
+        items: Iterable of ``(key, value)`` pairs from an HDF attribute group or
+            another image metadata payload.
+        section: Human-readable metadata section used in collision errors.
+
+    Returns:
+        A new dictionary keyed by the live schema spelling.
+
+    Raises:
+        ValueError: If distinct stored keys normalize to one key but carry
+            conflicting values.
+    """
+    normalized: dict[str, Any] = {}
+    source_key_by_target: dict[str, str] = {}
+    for key, value in items:
+        source_key = str(key)
+        target_key = _remap_legacy_metadata_key(source_key)
+        if target_key in normalized:
+            if not _metadata_values_equal(normalized[target_key], value):
+                first_key = source_key_by_target[target_key]
+                raise ValueError(
+                    f"Conflicting stored metadata keys {first_key!r} and "
+                    f"{source_key!r} in section {section!r} both normalize to "
+                    f"{target_key!r}"
+                )
+            continue
+        normalized[target_key] = value
+        source_key_by_target[target_key] = source_key
+    return normalized
 
 
 class _BackCompatUnpickler(pickle.Unpickler):
@@ -111,8 +197,8 @@ class _BackCompatUnpickler(pickle.Unpickler):
     ``METADATA`` enum *members*, which unpickle by their class's import path — so
     pre-move pickles would otherwise fail with ``AttributeError`` at load time.
     Remapping the old path here lets them load; because enum members resolve by
-    name, an old bare-valued ``METADATA.IMAGE_NAME`` resolves to the current
-    ``Metadata_``-prefixed member, auto-upgrading both keys and values.
+    name, an old bare-valued ``METADATA.IMAGE_NAME`` resolves through the
+    canonical ``IMAGE`` class, auto-upgrading both keys and values.
 
     Scoped to the moved symbol only and used solely for unpickling — it does not
     reintroduce ``METADATA`` into ``constants_``'s import namespace.
@@ -121,8 +207,44 @@ class _BackCompatUnpickler(pickle.Unpickler):
     _MOVED_CLASSES: dict[tuple[str, str], tuple[str, str]] = {
         ("phenotypic.tools_.constants_", "METADATA"): (
             "phenotypic.schema",
-            "METADATA",
+            "IMAGE",
         ),
+        ("phenotypic.schema._metadata", "METADATA"): (
+            "phenotypic.schema",
+            "IMAGE",
+        ),
+        (
+            "phenotypic.schema._experimental_tags._genetic",
+            "GENETIC_METADATA",
+        ): ("phenotypic.schema", "GENETIC"),
+        (
+            "phenotypic.schema._experimental_tags._sample",
+            "SAMPLE_METADATA",
+        ): ("phenotypic.schema", "SAMPLE"),
+        (
+            "phenotypic.schema._experimental_tags._plate",
+            "PLATE_METADATA",
+        ): ("phenotypic.schema", "PLATE"),
+        (
+            "phenotypic.schema._experimental_tags._condition",
+            "CONDITION_METADATA",
+        ): ("phenotypic.schema", "CONDITION"),
+        (
+            "phenotypic.schema._experimental_tags._culture",
+            "CULTURE_METADATA",
+        ): ("phenotypic.schema", "CULTURE"),
+        (
+            "phenotypic.schema._experimental_tags._experiment",
+            "EXPERIMENT_METADATA",
+        ): ("phenotypic.schema", "EXPERIMENT"),
+        (
+            "phenotypic.schema._experimental_tags._study",
+            "STUDY_METADATA",
+        ): ("phenotypic.schema", "STUDY"),
+        (
+            "phenotypic.schema._experimental_tags._acquisition",
+            "ACQUISITION_METADATA",
+        ): ("phenotypic.schema", "ACQUISITION"),
     }
 
     def find_class(self, module: str, name: str):
@@ -529,7 +651,7 @@ class ImageIOHandler(ImageColorSpace):
 
         image = cls(arr=arr, name=filepath.stem, bit_depth=bit_depth, **kwargs)
         image.name = filepath.stem
-        image.metadata[METADATA.SUFFIX] = suffix
+        image.metadata[IMAGE.SUFFIX] = suffix
 
         # Extract and store metadata based on file type
         if suffix in IO.JPEG_FILE_EXTENSIONS or suffix in IO.PNG_FILE_EXTENSIONS:
@@ -548,21 +670,19 @@ class ImageIOHandler(ImageColorSpace):
             # (not from color space accessors or detect_mat which are derived views)
             source_property = phenotypic_data.get("phenotypic_image_property", "")
             if source_property in ("Image.rgb", "Image.gray"):
-                if "protected" in phenotypic_data:
-                    for key, value in phenotypic_data["protected"].items():
-                        # Remap legacy bare keys (pre-Metadata_ prefix) first, so
-                        # the critical-field skip below matches old files too.
-                        key = _remap_legacy_metadata_key(key)
-                        # Don't overwrite critical protected fields
-                        if key not in (METADATA.UUID, METADATA.IMAGE_NAME):
-                            image._metadata.protected[key] = value
-                if "public" in phenotypic_data:
-                    image._metadata.public.update(
-                            {
-                                _remap_legacy_metadata_key(k): v
-                                for k, v in phenotypic_data["public"].items()
-                            }
-                    )
+                protected = _normalize_stored_metadata_items(
+                    phenotypic_data.get("protected", {}).items(),
+                    section="protected",
+                )
+                public = _normalize_stored_metadata_items(
+                    phenotypic_data.get("public", {}).items(),
+                    section="public",
+                )
+                for key, value in protected.items():
+                    # Don't overwrite critical protected fields
+                    if key not in (IMAGE.UUID, IMAGE.IMAGE_NAME):
+                        image._metadata.protected[key] = value
+                image._metadata.public.update(public)
 
         # Store remaining imported metadata
         image._metadata.imported.update(imported_metadata)
@@ -647,6 +767,7 @@ class ImageIOHandler(ImageColorSpace):
         # ------------------------------------------------------------------
         grp.attrs["version"] = phenotypic.__version__
         grp.attrs["schema_version"] = _SCHEMA_VERSION
+        grp.attrs[_METADATA_SCHEMA_VERSION_ATTR] = _METADATA_SCHEMA_VERSION
         grp.attrs["phenotypic_class"] = type(self).__name__
 
         if self.bit_depth is not None:
@@ -716,8 +837,11 @@ class ImageIOHandler(ImageColorSpace):
         }
         for name, section in sections.items():
             sub = meta.require_group(name)
-            for key, val in section.items():
-                sub.attrs[str(key)] = _encode_meta(val)
+            normalized = _normalize_stored_metadata_items(
+                section.items(), section=name
+            )
+            for key, val in normalized.items():
+                sub.attrs[key] = _encode_meta(val)
 
     def _save_hdf5_metadata(self, grp) -> None:
         """Write version info and metadata subgroups into an HDF5 group.
@@ -728,13 +852,20 @@ class ImageIOHandler(ImageColorSpace):
         :meth:`_save_image2hdfgroup`.
         """
         grp.attrs["version"] = phenotypic.__version__
+        grp.attrs[_METADATA_SCHEMA_VERSION_ATTR] = _METADATA_SCHEMA_VERSION
 
         prot = grp.require_group("protected_metadata")
-        for key, val in self._metadata.protected.items():
+        normalized_protected = _normalize_stored_metadata_items(
+            self._metadata.protected.items(), section="protected"
+        )
+        for key, val in normalized_protected.items():
             prot.attrs.modify(key, str(val))
 
         pub = grp.require_group("public_metadata")
-        for key, val in self._metadata.public.items():
+        normalized_public = _normalize_stored_metadata_items(
+            self._metadata.public.items(), section="public"
+        )
+        for key, val in normalized_public.items():
             pub.attrs.modify(key, str(val))
 
     def save2hdf5(
@@ -933,15 +1064,14 @@ class ImageIOHandler(ImageColorSpace):
                 # public/imported are effectively fresh dicts at construction,
                 # so the same logic is a no-op for them but keeps behaviour
                 # uniform across sections.
-                for key in attrs:
-                    # Remap legacy bare keys (pre-MetadataImage_ prefix) before the
-                    # membership check, so an old file's "ImageName" matches the
-                    # constructor-populated "MetadataImage_ImageName" and is skipped
-                    # rather than added as a stale duplicate.
-                    mapped = _remap_legacy_metadata_key(key)
+                decoded = _normalize_stored_metadata_items(
+                    ((key, _decode_meta(attrs[key])) for key in attrs),
+                    section=name,
+                )
+                for mapped, value in decoded.items():
                     if mapped in target and target[mapped] is not None:
                         continue
-                    target[mapped] = _decode_meta(attrs[key])
+                    target[mapped] = value
 
         return img
 
@@ -986,27 +1116,37 @@ class ImageIOHandler(ImageColorSpace):
         # Restore metadata — legacy coercion: digit-looking values become ints.
         if "protected_metadata" in group:
             prot = group["protected_metadata"].attrs
-            img._metadata.protected.clear()
-            img._metadata.protected.update(
-                    {
-                        _remap_legacy_metadata_key(k): int(prot[k])
-                        if isinstance(prot[k], str) and prot[k].isdigit()
-                        else prot[k]
-                        for k in prot
-                    }
+            normalized_protected = _normalize_stored_metadata_items(
+                (
+                    (
+                        key,
+                        int(prot[key])
+                        if isinstance(prot[key], str) and prot[key].isdigit()
+                        else prot[key],
+                    )
+                    for key in prot
+                ),
+                section="protected",
             )
+            img._metadata.protected.clear()
+            img._metadata.protected.update(normalized_protected)
 
         if "public_metadata" in group:
             pub = group["public_metadata"].attrs
-            img._metadata.public.clear()
-            img._metadata.public.update(
-                    {
-                        _remap_legacy_metadata_key(k): int(pub[k])
-                        if isinstance(pub[k], str) and pub[k].isdigit()
-                        else pub[k]
-                        for k in pub
-                    }
+            normalized_public = _normalize_stored_metadata_items(
+                (
+                    (
+                        key,
+                        int(pub[key])
+                        if isinstance(pub[key], str) and pub[key].isdigit()
+                        else pub[key],
+                    )
+                    for key in pub
+                ),
+                section="public",
             )
+            img._metadata.public.clear()
+            img._metadata.public.update(normalized_public)
 
         # Legacy files never stored imported metadata — leave dict empty.
         return img
@@ -1179,6 +1319,13 @@ class ImageIOHandler(ImageColorSpace):
         with open(filename, "rb") as f:
             loaded = _BackCompatUnpickler(f).load()  # noqa: S301 - user's own pickle
 
+        normalized_protected = _normalize_stored_metadata_items(
+            loaded["protected_metadata"].items(), section="protected"
+        )
+        normalized_public = _normalize_stored_metadata_items(
+            loaded["public_metadata"].items(), section="public"
+        )
+
         # Check if pickle contains grid_finder -> use GridImage
         has_grid_finder = "grid_finder" in loaded
 
@@ -1220,14 +1367,8 @@ class ImageIOHandler(ImageColorSpace):
         # Remap legacy bare metadata keys (pre-Metadata_ prefix) to their current
         # prefixed form. No-op for new pickles (keys are already prefixed) and for
         # arbitrary user keys.
-        instance._metadata.protected = {
-                _remap_legacy_metadata_key(k): v
-                for k, v in loaded["protected_metadata"].items()
-        }
-        instance._metadata.public = {
-                _remap_legacy_metadata_key(k): v
-                for k, v in loaded["public_metadata"].items()
-        }
+        instance._metadata.protected = normalized_protected
+        instance._metadata.public = normalized_public
 
         # If mode is not 'gray', reinitialize to ensure correct source channel
         if instance._data.detect_mode != "gray":

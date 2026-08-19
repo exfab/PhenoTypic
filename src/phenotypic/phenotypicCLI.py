@@ -10,7 +10,7 @@ Features:
     - Recursive directory support (1 level deep)
     - Dry-run mode for previewing processing plans
     - Sample processing mode for testing pipelines
-    - Resume capability with state tracking
+    - Automatic continuation with state tracking
     - Local parallel execution (joblib)
     - Autonomous SLURM execution with bash scripts
     - HTML failure reports with tracebacks
@@ -29,8 +29,8 @@ Examples:
     # Sample 5 images per dataset for testing
     uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results --sample 5
 
-    # Resume interrupted processing
-    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results --resume
+    # Continue interrupted processing by running the same command again
+    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results
 
     # Restart processing from beginning (clears previous state)
     uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results --restart
@@ -150,6 +150,11 @@ from phenotypic._cli._cli_execution_strategies import (
     create_execution_strategy,
     uses_staged_gpu_strategy,
 )
+from phenotypic._cli._cli_failure_tracker import (
+    file_sha256,
+    migrate_legacy_terminal_failures,
+    work_id_for_image,
+)
 from phenotypic._cli._cli_interactive import (
     execute_dry_run,
     get_sample_datasets,
@@ -158,6 +163,7 @@ from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_report_generator import HTMLReportGenerator
 from phenotypic._cli._cli_state_management import (
     create_initial_state,
+    exclude_terminal_failures_for_datasets,
     get_remaining_images_for_datasets,
     load_processing_state,
     save_processing_state,
@@ -170,7 +176,7 @@ from phenotypic._cli._cli_staged_resume import (
     pipeline_content_digest,
     reconcile_stage3_publications,
 )
-from phenotypic._cli._cli_types import Dataset, ExecutionConfig
+from phenotypic._cli._cli_types import Dataset, DatasetState, ExecutionConfig
 from phenotypic._cli._cli_update_state import (
     PROCESSING_GENERATION_ENV_VAR,
 )
@@ -181,8 +187,15 @@ from phenotypic._cli._cli_utils import (
 )
 from phenotypic._cli._cli_recompile_slurm_scripts import (
     TASK_FINALIZE,
+    TASK_MEASUREMENTS,
     build_recompile_tasks,
     generate_recompile_slurm_scripts,
+    recompile_attempt_dir,
+    recompile_task_status_path,
+)
+from phenotypic._cli._cli_recompile_metadata_migration_slurm import (
+    generate_metadata_migration_slurm_scripts,
+    plan_metadata_schema_for_slurm_recompile,
 )
 from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
 from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
@@ -191,7 +204,7 @@ from phenotypic._cli._cli_validation import (
     validate_pipeline,
 )
 from phenotypic._cli._cli_constants import MAX_SLURM_TIME_MINUTES
-from phenotypic.schema import EXPERIMENT_METADATA
+from phenotypic.schema import EXPERIMENT
 from phenotypic.sdk_ import (
     DIR_PHENOTYPIC,
     DIR_RESULTS,
@@ -205,11 +218,14 @@ from phenotypic.sdk_ import (
     dataset_measurements_dir,
     load_image_from_hdf,
     clear_machine_state,
+    atomic_write_bytes,
+    atomic_write_json,
+    metadata_csv_deliverable_path,
     processing_report_html_path,
     progress_dir,
     RUN_LOG_DIRNAME,
-    recompile_dir,
     resolve_processing_state_path,
+    file_fingerprint,
 )
 from phenotypic.sdk_.slurm import parse_slurm_time
 from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
@@ -219,7 +235,200 @@ logger = logging.getLogger(__name__)
 
 # Resolved at import time so Click `help=` strings and echo messages track the
 # schema enum rather than hard-coding the column name literal.
-_DATASET_COL: str = str(EXPERIMENT_METADATA.DATASET)
+_DATASET_COL: str = str(EXPERIMENT.DATASET)
+
+
+def _snapshot_metadata_csv(
+    output_dir: Path, source: Optional[Path]
+) -> Optional[Path]:
+    """Publish and return the byte-exact startup metadata snapshot.
+
+    An existing snapshot is reused when no new source is supplied. New bytes
+    are validated as CSV and atomically replaced before any processing or
+    scheduler submission. Legacy headers are normalized only when the snapshot
+    is read; finalization and metadata migration never rewrite these source
+    bytes.
+    """
+    destination = metadata_csv_deliverable_path(output_dir)
+    if source is None:
+        return destination if destination.is_file() else None
+
+    import hashlib
+    import io
+    import json
+
+    import pandas as pd
+    from phenotypic.sdk_._file_locking import exclusive_path_lock
+
+    payload = source.read_bytes()
+    pd.read_csv(io.BytesIO(payload))
+    expected_digest = hashlib.sha256(payload).hexdigest()
+    state_path = resolve_processing_state_path(output_dir)
+    lock_path = state_path.with_name(f".{state_path.name}.lock")
+    with exclusive_path_lock(lock_path, timeout=60.0):
+        if destination.is_file() and destination.read_bytes() == payload:
+            return destination
+        if state_path.is_file():
+            raw_state = json.loads(state_path.read_text(encoding="utf-8"))
+            raw_config = raw_state.get("config")
+            if not isinstance(raw_config, dict):
+                raise ValueError("Processing state config is invalid")
+            raw_config["metadata_sha256"] = expected_digest
+            atomic_write_json(state_path, raw_state)
+        atomic_write_bytes(destination, payload)
+        if destination.read_bytes() != payload:
+            raise OSError(
+                f"Metadata snapshot verification failed: {destination}"
+            )
+    return destination
+
+
+def _prepare_incremental_startup(
+    config: ExecutionConfig,
+    datasets: Sequence[Dataset],
+    output_dir: Path,
+) -> tuple[bool, int]:
+    """Publish startup inputs and conservatively migrate exact failures."""
+    metadata_snapshot_changed = False
+    if not config.measure_only and not config.process_only_layer:
+        metadata_destination = metadata_csv_deliverable_path(output_dir)
+        if config.metadata_csv is not None:
+            source_bytes = config.metadata_csv.read_bytes()
+            metadata_snapshot_changed = (
+                not metadata_destination.is_file()
+                or metadata_destination.read_bytes() != source_bytes
+            )
+        config.metadata_csv = _snapshot_metadata_csv(
+            output_dir, config.metadata_csv
+        )
+
+    migrated_failures = 0
+    if not config.measure_only:
+        valid_work_ids = {
+            work_id_for_image(config, dataset.name, image)[0]
+            for dataset in datasets
+            for image in dataset.images
+        }
+        migrated_failures = migrate_legacy_terminal_failures(
+            output_dir, valid_work_ids=valid_work_ids
+        )
+    return metadata_snapshot_changed, migrated_failures
+
+
+def _repair_incremental_manifest(
+    config: ExecutionConfig,
+    state: Any,
+    output_dir: Path,
+) -> None:
+    """Best-effort reconstruction of the display-only progress manifest."""
+    try:
+        from phenotypic._cli._dashboard._manifest_builder import build_manifest
+
+        inventory = config.full_dataset_inventory
+        build_manifest(
+            output_dir=output_dir,
+            progress_dir=progress_dir(output_dir),
+            datasets={name: len(images) for name, images in inventory.items()},
+            execution_mode=("slurm" if config.is_slurm_mode() else "local"),
+            start_time=state.timestamp.isoformat(timespec="milliseconds"),
+            input_path=config.input_path.stem,
+            dataset_inventory=inventory,
+            processing_generation=state.config.get("processing_generation"),
+            gui_record_generation=os.environ.get(
+                "PHENOTYPIC_GUI_RECORD_GENERATION"
+            ),
+        )
+    except Exception:
+        logger.warning(
+            "Could not repair incremental display manifest", exc_info=True
+        )
+
+
+def _migrate_legacy_success_evidence(
+    state: Any,
+    config: ExecutionConfig,
+    datasets: Sequence[Dataset],
+    output_dir: Path,
+) -> int:
+    """Promote only validated legacy per-image outputs to general markers."""
+    if state.config.get("success_markers_required", False):
+        return 0
+    from phenotypic._cli._cli_completion import publish_image_success
+    from phenotypic._cli._cli_process_only import process_only_output_path
+    from phenotypic._cli._cli_staged_resume import stage3_completion_exists
+
+    output_manager = OutputManager.from_config(
+        base_dir=output_dir,
+        ext=config.ext,
+        include_dataset_column=config.include_dataset_column,
+        overlay_alpha=config.overlay_alpha,
+        save_overlays=config.save_overlays,
+    )
+    staged = uses_staged_gpu_strategy(config)
+    promoted = 0
+    work_ids: dict[str, dict[str, str]] = {}
+    for dataset in datasets:
+        dataset_work_ids: dict[str, str] = {}
+        ds_state = state.datasets.get(dataset.name, DatasetState())
+        for image in dataset.images:
+            work_id, relative_path = work_id_for_image(
+                config, dataset.name, image
+            )
+            dataset_work_ids[image.name] = work_id
+            legacy_complete = image.name in ds_state.completed
+            if staged:
+                legacy_complete = legacy_complete or stage3_completion_exists(
+                    output_dir, dataset.name, image.stem
+                )
+            if not legacy_complete:
+                continue
+            if config.process_only_layer is not None:
+                artifacts = {
+                    "process_output": process_only_output_path(
+                        output_dir,
+                        image,
+                        config.input_path,
+                        config.process_only_layer,
+                    )
+                }
+                mode = "process"
+            else:
+                artifacts = {
+                    "measurements": output_manager.get_output_path(
+                        dataset.name, "measurements", image.stem
+                    ),
+                    "hdf": output_manager.get_output_path(
+                        dataset.name, "hdf", image.stem
+                    ),
+                }
+                if config.save_overlays:
+                    artifacts["overlay"] = output_manager.get_output_path(
+                        dataset.name, "overlays", image.stem
+                    )
+                mode = "full"
+            try:
+                publish_image_success(
+                    output_dir,
+                    work_id=work_id,
+                    dataset=dataset.name,
+                    relative_image_path=relative_path,
+                    image_stem=image.stem,
+                    mode=mode,
+                    attempt_id="legacy-migration",
+                    lifecycle_epoch=str(
+                        state.config.get("processing_generation", "legacy")
+                    ),
+                    artifacts=artifacts,
+                )
+            except (OSError, RuntimeError, ValueError):
+                continue
+            promoted += 1
+        work_ids[dataset.name] = dataset_work_ids
+    state.config["work_ids"] = work_ids
+    state.config["success_markers_required"] = True
+    state.version = "3.0.0"
+    save_processing_state(state, output_dir)
+    return promoted
 
 
 def setup_logging(debug: bool = False):
@@ -265,11 +474,14 @@ def _validate_resume_input_images(
     state, current_datasets
 ) -> tuple[bool, Optional[str]]:
     """
-    Validate that input image set matches between resume runs.
+    Validate that accepted inputs remain present during continuation.
 
     Checks:
     1. All datasets from previous run are present
-    2. Image filenames match exactly (not just counts)
+    2. Every previously accepted image filename remains present
+
+    New images and datasets are allowed and are committed to the state before
+    work selection.
 
     Args:
         state: Saved processing state
@@ -304,19 +516,14 @@ def _validate_resume_input_images(
         current_dataset = current_datasets_map[ds_name]
         curr_images = {img.name for img in current_dataset.images}
 
-        # Check if sets match exactly (only if we have a valid previous set)
-        if prev_images and prev_images != curr_images:
+        # Accepted images are append-only. Additions are valid; removals are not.
+        if prev_images and not prev_images.issubset(curr_images):
             missing = prev_images - curr_images
-            added = curr_images - prev_images
 
             error_parts = [f"Image set mismatch in dataset '{ds_name}':"]
             if missing:
                 error_parts.append(
                     f"  - Missing {len(missing)} images (e.g., {list(missing)[:3]})"
-                )
-            if added:
-                error_parts.append(
-                    f"  - Added {len(added)} new images (e.g., {list(added)[:3]})"
                 )
 
             return False, "\n".join(error_parts)
@@ -392,11 +599,7 @@ def is_safe_gui_launch_state_entry(entry: Path) -> bool:
         if not children.keys() <= {"progress", "logs"}:
             return False
         progress = children.get("progress")
-        if (
-            progress is None
-            or progress.is_symlink()
-            or not progress.is_dir()
-        ):
+        if progress is None or progress.is_symlink() or not progress.is_dir():
             return False
         owner = progress / GUI_LAUNCH_OWNER_JSON
         lock = owner.with_suffix(".lock")
@@ -462,9 +665,7 @@ def _is_safe_gui_submitter_log_tree(
         f"submitter.{generation.hex}.stderr.log",
     }
     return all(
-        child.name in allowed
-        and not child.is_symlink()
-        and child.is_file()
+        child.name in allowed and not child.is_symlink() and child.is_file()
         for child in gui_logs.iterdir()
     )
 
@@ -603,10 +804,10 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
         if config.sample:
             table.add_row("Sample Mode", f"{config.sample} images per dataset")
         if config.resume:
-            resume_str = "Yes"
+            continuation_str = "Yes"
             if config.retry_failures:
-                resume_str += " (with failures)"
-            table.add_row("Resume Mode", resume_str)
+                continuation_str += " (retrying failures)"
+            table.add_row("Continuing Existing Run", continuation_str)
 
     # Display the table in a panel
     console.print()
@@ -876,15 +1077,10 @@ def _print_process_only_dry_run_plan(
     help="Random seed for --sample reproducibility",
 )
 @click.option(
-    "--resume",
-    is_flag=True,
-    help="Resume interrupted processing from checkpoint",
-)
-@click.option(
     "--retry-failures",
     is_flag=True,
-    help="Include recorded CPU/legacy failures when resuming. Staged GPU "
-    "pipelines always resume incomplete artifacts (requires --resume).",
+    help="Retry exact computations in the terminal-failure journal for this "
+    "invocation without clearing their history.",
 )
 @click.option(
     "--restart",
@@ -971,7 +1167,6 @@ def phenotypic_cli(
     dry_run: bool,
     sample: Optional[int],
     random_seed: Optional[int],
-    resume: bool,
     retry_failures: bool,
     restart: bool,
     overwrite: bool,
@@ -1005,7 +1200,7 @@ def phenotypic_cli(
     preserving full precision; objmap 16-bit raw-label PNG (PhenoTypic
     metadata embedded). Machine-state (progress manifest, event log, pipeline
     copy) lives under <output>/.phenotypic/. All modes support local + SLURM
-    execution and content-defined resume. Example:
+    execution and content-defined continuation. Example:
 
     \b
         uv run python -m phenotypic --mode process --pipeline pipe.json \\
@@ -1120,11 +1315,36 @@ def phenotypic_cli(
                             err=True,
                         )
 
+        if restart and overwrite:
+            raise click.UsageError(
+                "--restart and --overwrite are mutually exclusive"
+            )
+
         if recompile_only:
             if not output_dir.exists():
                 raise click.UsageError(
                     f"--mode recompile output directory does not exist: {output_dir}."
                 )
+            try:
+                metadata_csv = _snapshot_metadata_csv(output_dir, metadata_csv)
+            except Exception as exc:
+                raise click.ClickException(
+                    f"Cannot publish startup metadata snapshot: {exc}"
+                ) from exc
+            recompile_state = load_processing_state(output_dir)
+            if recompile_state is not None and recompile_state.config.get(
+                "success_markers_required", False
+            ):
+                recompile_state.config["metadata_sha256"] = (
+                    file_sha256(metadata_csv)
+                    if metadata_csv is not None
+                    else None
+                )
+                recompile_state.config["include_dataset_column"] = (
+                    include_dataset_column
+                )
+                recompile_state.config["no_qc"] = no_qc
+                save_processing_state(recompile_state, output_dir)
             if slurm_args_dict and not force_local:
                 _handle_recompile_slurm(
                     output_dir=output_dir,
@@ -1156,12 +1376,6 @@ def phenotypic_cli(
             # Reject incompatible flags first so the user gets a pointed
             # rejection ("--mode measure cannot be combined with --X")
             # regardless of whether --output / --pipeline are also wrong.
-            if resume:
-                raise click.UsageError(
-                    "--mode measure cannot be combined with --resume; "
-                    "--mode measure is a one-shot re-measurement run that does "
-                    "not touch processing state."
-                )
             if restart:
                 raise click.UsageError(
                     "--mode measure cannot be combined with --restart; "
@@ -1170,7 +1384,8 @@ def phenotypic_cli(
             if retry_failures:
                 raise click.UsageError(
                     "--mode measure cannot be combined with --retry-failures; "
-                    "--retry-failures only applies to resume runs, and "
+                    "--retry-failures only applies to incremental full or "
+                    "process runs, and "
                     "--mode measure does not touch state."
                 )
             if overwrite:
@@ -1197,6 +1412,15 @@ def phenotypic_cli(
                     "point it at a directory produced by a previous "
                     "`python -m phenotypic ...` invocation."
                 )
+            measure_state = load_processing_state(output_dir)
+            if measure_state is not None and measure_state.config.get(
+                "success_markers_required", False
+            ):
+                raise click.UsageError(
+                    "--mode measure cannot mutate a marker-authorized "
+                    "incremental run. Continue the original full run or use "
+                    "--mode recompile for aggregate-only changes."
+                )
 
         if not measure_only and (pipeline_json is None or input_path is None):
             missing = []
@@ -1218,25 +1442,6 @@ def phenotypic_cli(
             click.echo(str(e), err=True)
             sys.exit(1)
 
-        # Validate flags
-        if retry_failures and not resume:
-            click.echo("Error: --retry-failures requires --resume", err=True)
-            sys.exit(1)
-
-        if restart and resume:
-            click.echo(
-                "Error: --restart and --resume are mutually exclusive",
-                err=True,
-            )
-            sys.exit(1)
-
-        if overwrite and resume:
-            click.echo(
-                "Error: --overwrite and --resume are mutually exclusive",
-                err=True,
-            )
-            sys.exit(1)
-
         # Validate metadata CSV early
         if metadata_csv is not None:
             import pandas as pd
@@ -1250,6 +1455,13 @@ def phenotypic_cli(
                     )
             except Exception as e:
                 error_exit(f"Cannot read metadata CSV: {e}")
+
+        continuing = (
+            not restart
+            and not overwrite
+            and output_dir.exists()
+            and resolve_processing_state_path(output_dir).is_file()
+        )
 
         # Create ExecutionConfig.  By this point either measure_only's early
         # validation or the non-measure check above has guaranteed pipeline_json
@@ -1286,7 +1498,7 @@ def phenotypic_cli(
             include_dataset_column=include_dataset_column,
             dry_run=dry_run,
             sample=sample,
-            resume=resume,
+            resume=continuing,
             retry_failures=retry_failures,
             skip_validation=skip_validation,
             restart=restart,
@@ -1300,7 +1512,7 @@ def phenotypic_cli(
             gpu_slurm_args=_parse_slurm_args(gpu_slurm_args),
         )
 
-        if (restart or overwrite or resume) and output_dir.exists():
+        if output_dir.exists():
             from phenotypic._cli._cli_staged_orchestration import (
                 active_ledger_job_ids,
             )
@@ -1308,27 +1520,14 @@ def phenotypic_cli(
             active_jobs = active_ledger_job_ids(output_dir)
             if active_jobs:
                 click.echo(
-                    "Error: Cannot resume, restart, or overwrite while staged SLURM "
+                    "Error: Cannot continue, restart, or overwrite while SLURM "
                     f"jobs are active: {', '.join(active_jobs)}",
                     err=True,
                 )
                 sys.exit(1)
 
-        # Handle resume mode BEFORE creating output directory
+        # Load compatible continuation state before creating output directories.
         if config.resume:
-            # Check if output directory exists
-            if not output_dir.exists():
-                click.echo(
-                    f"Error: Output directory does not exist: {output_dir}",
-                    err=True,
-                )
-                click.echo(
-                    "\nCannot resume from a directory that doesn't exist. "
-                    "Check the path and try again.",
-                    err=True,
-                )
-                sys.exit(1)
-
             # Check for processing state file (tolerate a legacy-root run)
             state_file = resolve_processing_state_path(output_dir)
             if not state_file.exists():
@@ -1339,7 +1538,7 @@ def phenotypic_cli(
                 click.echo(f"\nLooking for: {state_file}", err=True)
                 click.echo(
                     "\nThis directory may not contain PhenoTypic processing results, "
-                    "or it was created with an older version that doesn't support resume.",
+                    "or it was created with an unsupported older version.",
                     err=True,
                 )
                 # List what's actually in the directory
@@ -1355,7 +1554,25 @@ def phenotypic_cli(
                             click.echo(f"  ... and {len(contents) - 10} more")
                 sys.exit(1)
 
-            click.echo(f"✓ Resuming from {output_dir}")
+            resume_state = load_processing_state(output_dir)
+            if resume_state is None:
+                click.echo(
+                    f"Error: Could not read processing state in {output_dir}",
+                    err=True,
+                )
+                sys.exit(1)
+            if resume_state.config.get("success_markers_required", False):
+                is_compatible, compatibility_error = (
+                    validate_resume_compatibility(resume_state, config)
+                )
+                if not is_compatible:
+                    click.echo(
+                        f"Error: Cannot continue - {compatibility_error}",
+                        err=True,
+                    )
+                    sys.exit(1)
+
+            click.echo(f"✓ Continuing from {output_dir}")
 
         # Handle restart mode - clear ALL previous machine-state so the
         # orchestration re-runs cleanly (fresh state + event log + progress),
@@ -1390,7 +1607,7 @@ def phenotypic_cli(
 
         config.output_dir = output_dir
 
-        # Check for existing output directory contents (skip for resume/restart/measure)
+        # Check existing contents only for a genuinely fresh run.
         if not config.resume and not restart and not measure_only:
             if output_dir.exists() and any(
                 not (
@@ -1526,11 +1743,34 @@ def phenotypic_cli(
             for dataset in datasets
         }
 
-        # Handle resume mode - get remaining images
+        # Publish metadata before work selection so even an image no-op can
+        # safely perform metadata-only finalization. SLURM never receives the
+        # caller's external path.
+        output_dir.mkdir(parents=True, exist_ok=True)
+        metadata_snapshot_changed = False
+        publication_refresh_required = False
+        promoted_successes = 0
+        if not config.resume:
+            try:
+                metadata_snapshot_changed, migrated_failures = (
+                    _prepare_incremental_startup(
+                        config, full_datasets, output_dir
+                    )
+                )
+            except Exception as exc:
+                raise click.ClickException(
+                    f"Cannot prepare incremental startup state: {exc}"
+                ) from exc
+            if migrated_failures:
+                click.echo(
+                    f"Migrated {migrated_failures} fully identified legacy "
+                    "terminal failure record(s)."
+                )
+
+        # Reconcile an existing compatible run and select remaining images.
         staged_gpu_resume = False
         if config.resume:
-            # State was already validated earlier, just load it
-            resume_state = load_processing_state(output_dir)
+            # State was already loaded and validated before input scanning.
             if resume_state is None:
                 click.echo(
                     f"Error: No processing state found in {output_dir}",
@@ -1543,10 +1783,10 @@ def phenotypic_cli(
                 resume_state, config
             )
             if not is_compatible:
-                click.echo(f"Error: Cannot resume - {error}", err=True)
+                click.echo(f"Error: Cannot continue - {error}", err=True)
                 click.echo(
                     "\nThe pipeline or configuration has changed since the "
-                    "previous run. Resume is only possible with the same "
+                    "previous run. Continuation requires the same "
                     "pipeline and compatible settings.",
                     err=True,
                 )
@@ -1557,16 +1797,114 @@ def phenotypic_cli(
                 resume_state, datasets
             )
             if not images_valid:
-                click.echo(f"Error: Cannot resume - {image_error}", err=True)
+                click.echo(f"Error: Cannot continue - {image_error}", err=True)
                 click.echo(
                     "\nThe input image set has changed since the previous run. "
-                    "Resume is only possible with the same input images.",
+                    "Continuation requires the same admitted input images.",
                     err=True,
                 )
                 sys.exit(1)
 
+            try:
+                metadata_snapshot_changed, migrated_failures = (
+                    _prepare_incremental_startup(
+                        config, full_datasets, output_dir
+                    )
+                )
+            except Exception as exc:
+                raise click.ClickException(
+                    f"Cannot prepare incremental startup state: {exc}"
+                ) from exc
+            if migrated_failures:
+                click.echo(
+                    f"Migrated {migrated_failures} fully identified legacy "
+                    "terminal failure record(s)."
+                )
+
+            promoted_successes = _migrate_legacy_success_evidence(
+                resume_state, config, full_datasets, output_dir
+            )
+            if promoted_successes:
+                click.echo(
+                    f"Promoted {promoted_successes} validated legacy image "
+                    "completion marker(s)."
+                )
+                publication_refresh_required = (
+                    config.process_only_layer is None
+                )
+                if config.process_only_layer is not None:
+                    from phenotypic._cli._cli_completion import (
+                        current_run_is_complete,
+                        publish_run_completion_evidence,
+                    )
+
+                    if current_run_is_complete(output_dir) is True:
+                        publish_run_completion_evidence(
+                            output_dir,
+                            execution_epoch=(
+                                "slurm-noop"
+                                if config.is_slurm_mode()
+                                else "local"
+                            ),
+                            gui_record_generation=os.environ.get(
+                                "PHENOTYPIC_GUI_RECORD_GENERATION"
+                            ),
+                        )
+
+            # Every compatible invocation owns a fresh machine-state epoch,
+            # including a no-work reconciliation. This fences workers left by
+            # a killed local attempt and prevents historical started events
+            # from remaining active forever. Scientific publication identity
+            # is work-ID based and is intentionally unchanged.
+            resume_state.config["processing_generation"] = uuid4().hex
+            save_processing_state(resume_state, output_dir)
+            config.processing_generation = str(
+                resume_state.config["processing_generation"]
+            )
+
+            # A marker-only image no-op may still require recovery of a
+            # crashed or stale aggregate/finalizer publication. Compare the
+            # aggregate source set with current success markers rather than
+            # trusting the presence of old core files.
+            from phenotypic._cli._cli_completion import (
+                current_aggregate_is_current,
+                current_success_counts,
+                valid_run_completion,
+            )
+
+            startup_counts = current_success_counts(output_dir)
+            if startup_counts is not None:
+                startup_successful, startup_total = startup_counts
+                if config.process_only_layer:
+                    publication_refresh_required = bool(
+                        startup_successful == startup_total
+                        and valid_run_completion(output_dir) is None
+                    )
+                elif startup_successful > 0:
+                    publication_refresh_required = bool(
+                        publication_refresh_required
+                        or current_aggregate_is_current(output_dir) is not True
+                        or (
+                            startup_successful == startup_total
+                            and valid_run_completion(output_dir) is None
+                        )
+                    )
+
             staged_gpu_resume = uses_staged_gpu_strategy(config)
             if staged_gpu_resume:
+                if config.retry_failures:
+                    terminal_skipped = 0
+                else:
+                    datasets, terminal_skipped = (
+                        exclude_terminal_failures_for_datasets(
+                            datasets, config, output_dir
+                        )
+                    )
+                if terminal_skipped:
+                    click.echo(
+                        f"Skipping {terminal_skipped} exact terminal failure(s); "
+                        "use --retry-failures to retry them."
+                    )
                 marker_contract = bool(
                     resume_state.config.get("staged_stage3_markers", False)
                 )
@@ -1576,13 +1914,19 @@ def phenotypic_cli(
                     input_root=config.input_path,
                     process_only_layer=config.process_only_layer,
                     markers_required=marker_contract,
+                    work_ids={
+                        dataset.name: {
+                            image.name: work_id_for_image(
+                                config, dataset.name, image
+                            )[0]
+                            for image in dataset.images
+                        }
+                        for dataset in datasets
+                    },
                 )
                 if not marker_contract:
                     migrate_legacy_stage3_markers(output_dir, resume_plan)
-                if (
-                    config.process_only_layer is None
-                    and config.save_overlays
-                ):
+                if config.process_only_layer is None and config.save_overlays:
                     from phenotypic._cli._cli_staged_workers import (
                         ensure_staged_overlay,
                     )
@@ -1606,19 +1950,32 @@ def phenotypic_cli(
                 reconcile_stage3_publications(
                     output_dir,
                     config.full_dataset_inventory,
-                    namespace="resume-preflight",
+                    namespace="continuation-preflight",
                 )
                 config.staged_stage3_markers = True
                 config.staged_resume_phase = resume_plan.initial_stage
                 datasets = resume_plan.datasets
                 counts = resume_plan.counts
-                remaining_images = sum(len(dataset.images) for dataset in datasets)
+                remaining_images = sum(
+                    len(dataset.images) for dataset in datasets
+                )
                 if remaining_images == 0:
                     from phenotypic._cli._cli_staged_orchestration import (
                         staged_completion_path,
                     )
 
                     if (
+                        metadata_snapshot_changed
+                        or publication_refresh_required
+                    ):
+                        config.staged_finalizer_only = True
+                        config.staged_resume_phase = "stage3"
+                        if not config.is_slurm_mode():
+                            datasets = full_datasets
+                        click.echo(
+                            "Continuing staged GPU finalization for changed metadata"
+                        )
+                    elif (
                         config.process_only_layer is None
                         and not staged_completion_path(output_dir).is_file()
                     ):
@@ -1627,9 +1984,12 @@ def phenotypic_cli(
                         if not config.is_slurm_mode():
                             datasets = full_datasets
                         click.echo(
-                            "Resuming staged GPU finalization (image stages complete)"
+                            "Continuing staged GPU finalization (image stages complete)"
                         )
                     else:
+                        _repair_incremental_manifest(
+                            config, resume_state, output_dir
+                        )
                         click.echo("✓ All images already processed!")
                         sys.exit(0)
                 else:
@@ -1642,7 +2002,7 @@ def phenotypic_cli(
                             missing_ok=True
                         )
                     click.echo(
-                        "Resuming staged GPU processing "
+                        "Continuing staged GPU processing "
                         f"({remaining_images} incomplete): "
                         f"Stage 1 {counts['stage1']}, "
                         f"Stage 2 {counts['stage2']}, "
@@ -1650,14 +2010,43 @@ def phenotypic_cli(
                     )
             else:
                 datasets = get_remaining_images_for_datasets(
-                    resume_state, datasets, config.retry_failures
+                    resume_state,
+                    datasets,
+                    config.retry_failures,
+                    config=config,
+                    output_dir=output_dir,
                 )
                 remaining_images = sum(len(d.images) for d in datasets)
-                if remaining_images == 0:
-                    skipped_failures = sum(
-                        len(dataset.failed)
-                        for dataset in resume_state.datasets.values()
+                if (
+                    remaining_images == 0
+                    and config.is_slurm_mode()
+                    and (
+                        metadata_snapshot_changed
+                        or publication_refresh_required
                     )
+                ):
+                    _handle_recompile_slurm(
+                        output_dir=output_dir,
+                        metadata_csv=config.metadata_csv,
+                        include_dataset_column=config.include_dataset_column,
+                        overlay_alpha=config.overlay_alpha,
+                        checkpoint_interval=config.checkpoint_interval,
+                        slurm_args=config.slurm_args,
+                        wait=config.wait,
+                        no_qc=config.no_qc,
+                    )
+                    sys.exit(0)
+                if remaining_images == 0 and not (
+                    metadata_snapshot_changed or publication_refresh_required
+                ):
+                    _repair_incremental_manifest(
+                        config, resume_state, output_dir
+                    )
+                    from phenotypic._cli._cli_failure_tracker import (
+                        terminal_failure_index,
+                    )
+
+                    skipped_failures = len(terminal_failure_index(output_dir))
                     if skipped_failures and not config.retry_failures:
                         click.echo(
                             "No resumable images; "
@@ -1668,13 +2057,25 @@ def phenotypic_cli(
                         click.echo("✓ All images already processed!")
                     sys.exit(0)
                 click.echo(
-                    f"Resuming processing ({remaining_images} images remaining)"
+                    f"Continuing processing ({remaining_images} images remaining)"
                 )
                 if config.retry_failures:
                     click.echo("  - Including previously failed images")
 
-        # Ensure output directory exists for processing
-        output_dir.mkdir(parents=True, exist_ok=True)
+        elif restart:
+            if config.retry_failures:
+                terminal_skipped = 0
+            else:
+                datasets, terminal_skipped = (
+                    exclude_terminal_failures_for_datasets(
+                        datasets, config, output_dir
+                    )
+                )
+            if terminal_skipped:
+                click.echo(
+                    f"Skipping {terminal_skipped} exact terminal failure(s); "
+                    "use --retry-failures to retry them."
+                )
 
         # Create initial state (or update if resuming) — skipped in
         # measure mode, which never mutates processing state.
@@ -1682,13 +2083,9 @@ def phenotypic_cli(
             if config.resume:
                 assert resume_state is not None
                 state = update_state_from_events(resume_state, output_dir)
-                processing_generation = state.config.get(
-                    "processing_generation"
+                processing_generation = str(
+                    state.config.get("processing_generation") or uuid4().hex
                 )
-                if not isinstance(processing_generation, str) or not (
-                    processing_generation
-                ):
-                    processing_generation = uuid4().hex
                 state.execution_mode = (
                     "slurm" if config.is_slurm_mode() else "local"
                 )
@@ -1710,13 +2107,45 @@ def phenotypic_cli(
                         config.pipeline_json
                     ),
                     "staged_stage3_markers": config.staged_stage3_markers,
+                    "success_markers_required": bool(
+                        resume_state.config.get(
+                            "success_markers_required", False
+                        )
+                    ),
                     "include_dataset_column": config.include_dataset_column,
                     "overlay_alpha": config.overlay_alpha,
+                    "no_qc": config.no_qc,
                     "processing_generation": processing_generation,
+                    "metadata_sha256": (
+                        file_sha256(config.metadata_csv)
+                        if config.metadata_csv is not None
+                        else None
+                    ),
                 }
+                for current_dataset in full_datasets:
+                    dataset_state = state.datasets.setdefault(
+                        current_dataset.name, DatasetState()
+                    )
+                    dataset_state.initial_images.update(
+                        image.name for image in current_dataset.images
+                    )
             else:
-                state = create_initial_state(config, datasets, output_dir)
+                state = create_initial_state(config, full_datasets, output_dir)
                 state.config["save_overlays"] = config.save_overlays
+            state.config["metadata_sha256"] = (
+                file_sha256(config.metadata_csv)
+                if config.metadata_csv is not None
+                else None
+            )
+            state.config["work_ids"] = {
+                dataset.name: {
+                    image.name: work_id_for_image(config, dataset.name, image)[
+                        0
+                    ]
+                    for image in dataset.images
+                }
+                for dataset in full_datasets
+            }
             save_processing_state(state, output_dir)
             config.processing_generation = str(
                 state.config["processing_generation"]
@@ -1781,9 +2210,9 @@ def phenotypic_cli(
 
         results = strategy.execute(datasets, output_dir)
 
-        finalization_datasets = (
-            full_datasets if config.resume and staged_gpu_resume else datasets
-        )
+        # Incremental finalization always uses the full accepted inventory,
+        # never only the filtered worklist.
+        finalization_datasets = full_datasets if config.resume else datasets
         local_staged_publication = (
             uses_staged_gpu_strategy(config)
             and not config.is_slurm_mode()
@@ -1872,8 +2301,23 @@ def phenotypic_cli(
             except Exception as e:
                 logger.warning(f"Failed to read --study file {study}: {e}")
 
-        # Aggregate master CSV (if we have completed results)
-        if results.total_completed > 0:
+        # Aggregate every current marker-authorized success. This republishes
+        # a valid partial snapshot even when this invocation ended with only
+        # terminal failures, while a true no-op preserves existing outputs.
+        from phenotypic._cli._cli_completion import current_success_counts
+
+        current_counts = current_success_counts(output_dir)
+        should_finalize_measurements = (
+            results.total_completed > 0
+            if current_counts is None
+            else current_counts[0] > 0
+            and (
+                results.total_images > 0
+                or metadata_snapshot_changed
+                or publication_refresh_required
+            )
+        )
+        if should_finalize_measurements:
             if local_staged_publication and config.staged_stage3_markers:
                 reconcile_stage3_publications(
                     output_dir,
@@ -1890,6 +2334,32 @@ def phenotypic_cli(
             )
             if master_path:
                 click.echo(f"✓ Master measurements: {master_path}")
+                try:
+                    from phenotypic._cli._dashboard._manifest_builder import (
+                        build_manifest,
+                    )
+
+                    inventory = config.full_dataset_inventory
+                    build_manifest(
+                        output_dir=output_dir,
+                        progress_dir=progress_dir(output_dir),
+                        datasets={
+                            name: len(images)
+                            for name, images in inventory.items()
+                        },
+                        execution_mode="local",
+                        start_time=results.start_time.isoformat(
+                            timespec="milliseconds"
+                        ),
+                        input_path=config.input_path.stem,
+                        dataset_inventory=inventory,
+                        processing_generation=config.processing_generation,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Could not refresh display manifest after publication",
+                        exc_info=True,
+                    )
             else:
                 finalization_succeeded = False
                 click.echo(
@@ -1956,7 +2426,7 @@ def phenotypic_cli(
         ):
             click.echo(
                 "\nSTAGED FINALIZATION FAILED: required outputs were not "
-                "fully published. Run again with --resume.",
+                "fully published. Run the same command again to continue.",
                 err=True,
             )
             sys.exit(1)
@@ -2165,10 +2635,22 @@ def _handle_recompile_slurm(
     from phenotypic._cli._dashboard import generate_dashboard
 
     output_dir = Path(output_dir)
-    prog_dir = progress_dir(output_dir)
-    prog_dir.mkdir(parents=True, exist_ok=True)
     console = Console()
+    from phenotypic._cli._cli_slurm_lifecycle import new_slurm_generation
 
+    attempt_id = new_slurm_generation()
+
+    # The migration preflight is deliberately the first recompile operation
+    # that inspects bundle content. It is read-only, so a conflict produces no
+    # plan, script, status, dashboard, or scheduler submission artifact.
+    try:
+        migration_plan = plan_metadata_schema_for_slurm_recompile(
+            output_dir, attempt_id=attempt_id
+        )
+    except Exception as exc:
+        error_exit("Metadata migration blocked SLURM recompile", str(exc))
+
+    prog_dir = progress_dir(output_dir)
     job_meta = load_job_metadata(prog_dir)
     dataset_names = _discover_recompile_dataset_names(output_dir, job_meta)
     if not dataset_names:
@@ -2190,6 +2672,7 @@ def _handle_recompile_slurm(
         include_dataset_column=include_dataset_column,
         overlay_alpha=overlay_alpha,
         shard_size=shard_size,
+        attempt_id=attempt_id,
     )
     finalizer_task_index: Optional[int] = None
     if tasks and tasks[-1].get("task_type") == TASK_FINALIZE:
@@ -2198,6 +2681,25 @@ def _handle_recompile_slurm(
             str(metadata_csv) if metadata_csv else None
         )
         tasks[-1][JobMetadataKey.NO_QC] = no_qc
+        tasks[-1]["slurm_generation"] = attempt_id
+
+    has_measurement_tasks = any(
+        task.get("task_type") == TASK_MEASUREMENTS for task in tasks
+    )
+    if not has_measurement_tasks and not migration_plan.targets:
+        console.print(
+            "[yellow]No measurement sources require SLURM recompile; "
+            "running the safe local path.[/yellow]"
+        )
+        _handle_recompile(
+            output_dir,
+            metadata_csv,
+            include_dataset_column,
+            overlay_alpha,
+            -1,
+            no_qc=no_qc,
+        )
+        return
 
     console.print("[cyan]Querying SLURM array limits...[/cyan]")
     array_limit = get_slurm_array_limit()
@@ -2208,8 +2710,19 @@ def _handle_recompile_slurm(
         output_dir=output_dir,
         slurm_args=slurm_args,
         array_limit=array_limit,
+        attempt_id=attempt_id,
     )
-    if not tasks or not scripts or finalizer_task_index is None:
+    migration_scripts = generate_metadata_migration_slurm_scripts(
+        migration_plan,
+        slurm_args=slurm_args,
+        array_limit=array_limit,
+        attempt_id=attempt_id,
+        slurm_generation=attempt_id,
+        has_recompile_downstream=bool(scripts),
+    )
+    if migration_scripts is None and (
+        not tasks or not scripts or finalizer_task_index is None
+    ):
         console.print(
             "[yellow]No recompile SLURM tasks/scripts were generated; "
             "running local recompile instead.[/yellow]"
@@ -2224,17 +2737,43 @@ def _handle_recompile_slurm(
         )
         return
 
-    submission = submit_slurm_script_chain(
-        flat_chunk_scripts=scripts,
-        output_dir=output_dir,
-        slurm_args=slurm_args,
-        console=console,
-    )
+    flat_scripts: list[Path] = []
+    dependency_kinds: list[str] | None = None
+    if migration_scripts is not None:
+        flat_scripts.extend(migration_scripts.shard_scripts)
+        flat_scripts.append(migration_scripts.finalizer_script)
+    flat_scripts.extend(scripts)
+    if migration_scripts is not None and scripts:
+        dependency_kinds = ["afterany"] * (len(flat_scripts) - 1)
+        barrier_edge = len(migration_scripts.shard_scripts)
+        dependency_kinds[barrier_edge] = "afterok"
+
+    submission_args: dict[str, Any] = {
+        "flat_chunk_scripts": flat_scripts,
+        "output_dir": output_dir,
+        "slurm_args": slurm_args,
+        "console": console,
+        "generation": attempt_id,
+    }
+    if dependency_kinds is not None:
+        submission_args["continuation_dependency_kinds"] = dependency_kinds
+    try:
+        _initialize_recompile_slurm_attempt(output_dir, attempt_id)
+    except Exception as exc:
+        error_exit("Could not initialize SLURM recompile attempt", str(exc))
+    try:
+        submission = submit_slurm_script_chain(**submission_args)
+    except Exception:
+        from phenotypic._cli._cli_slurm_lifecycle import deactivate_generation
+
+        deactivate_generation(output_dir, attempt_id)
+        raise
     flat_scripts = submission.flat_scripts
     job_ids = submission.job_ids
 
     recompile_manifest_path = (
-        recompile_dir(progress_dir(output_dir)) / RECOMPILE_TASK_MANIFEST_JSON
+        recompile_attempt_dir(output_dir, attempt_id)
+        / RECOMPILE_TASK_MANIFEST_JSON
     )
     job_metadata = {
         JobMetadataKey.START_TIME: datetime.now().isoformat(
@@ -2253,9 +2792,36 @@ def _handle_recompile_slurm(
         if metadata_csv
         else None,
         JobMetadataKey.INPUT_PATH: str(output_dir),
+        "slurm_generation": attempt_id,
         "recompile": {
+            "attempt_id": attempt_id,
             "task_manifest": str(recompile_manifest_path),
             "finalizer_task_index": finalizer_task_index,
+            "metadata_migration": {
+                "plan_fingerprint": migration_plan.report.plan_fingerprint,
+                "source_fingerprint": migration_plan.report.source_fingerprint,
+                "target_count": len(migration_plan.targets),
+                "task_manifest": (
+                    str(migration_plan.manifest_path)
+                    if migration_scripts is not None
+                    else None
+                ),
+                "finalizer_status": (
+                    str(migration_plan.finalizer_status_path)
+                    if migration_scripts is not None
+                    else None
+                ),
+                "barrier_dependency": (
+                    "afterok"
+                    if migration_scripts is not None and scripts
+                    else None
+                ),
+                "external_metadata_fingerprint": (
+                    file_fingerprint(metadata_csv)
+                    if metadata_csv is not None and metadata_csv.is_file()
+                    else None
+                ),
+            },
         },
     }
     metadata_path = prog_dir / JOB_METADATA_JSON
@@ -2265,19 +2831,58 @@ def _handle_recompile_slurm(
     )
     console.print(f"[green]Job metadata: {metadata_path}[/green]")
 
-    generate_dashboard(output_dir, execution_mode="slurm")
-    console.print(f"[green]Dashboard: {dashboard_html_path(output_dir)}[/green]")
+    if scripts:
+        generate_dashboard(output_dir, execution_mode="slurm")
+        console.print(
+            f"[green]Dashboard: {dashboard_html_path(output_dir)}[/green]"
+        )
 
     if wait:
-        console.print(
-            "\n[cyan]Waiting for recompile finalizer "
-            f"task {finalizer_task_index}...[/cyan]"
-        )
-        _wait_for_recompile_finalizer_status(output_dir, finalizer_task_index)
+        if finalizer_task_index is None:
+            console.print(
+                "\n[cyan]Waiting for metadata migration finalizer...[/cyan]"
+            )
+            _wait_for_metadata_migration_finalizer_status(
+                migration_plan.finalizer_status_path,
+                output_dir=output_dir,
+                slurm_generation=attempt_id,
+            )
+        elif migration_scripts is None:
+            console.print(
+                "\n[cyan]Waiting for recompile finalizer "
+                f"task {finalizer_task_index}...[/cyan]"
+            )
+            _wait_for_recompile_finalizer_status(
+                output_dir,
+                finalizer_task_index,
+                recompile_finalizer_status_path=recompile_task_status_path(
+                    recompile_manifest_path, finalizer_task_index
+                ),
+                slurm_generation=attempt_id,
+            )
+        else:
+            console.print(
+                "\n[cyan]Waiting for recompile finalizer "
+                f"task {finalizer_task_index}...[/cyan]"
+            )
+            _wait_for_recompile_finalizer_status(
+                output_dir,
+                finalizer_task_index,
+                migration_finalizer_status_path=(
+                    migration_plan.finalizer_status_path
+                ),
+                recompile_finalizer_status_path=recompile_task_status_path(
+                    recompile_manifest_path, finalizer_task_index
+                ),
+                slurm_generation=attempt_id,
+            )
         console.print("[bold green]SLURM recompilation complete[/bold green]")
     else:
-        click.echo("\nRecompile jobs submitted. Monitor progress with:")
-        click.echo(f"  Open: {dashboard_html_path(output_dir)}")
+        if scripts:
+            click.echo("\nRecompile jobs submitted. Monitor progress with:")
+            click.echo(f"  Open: {dashboard_html_path(output_dir)}")
+        else:
+            click.echo("\nMetadata migration jobs submitted. Monitor with:")
         click.echo("  squeue -u $USER --array")
         from phenotypic.sdk_ import logs_dir
 
@@ -2291,7 +2896,7 @@ def _discover_recompile_dataset_names(
     job_meta: Optional[dict[str, Any]],
 ) -> list[str]:
     """Discover datasets using the local recompile precedence."""
-    from phenotypic.sdk_ import DIR_MEASUREMENTS
+    from phenotypic.sdk_ import DIR_HDF, DIR_MEASUREMENTS
 
     results_dir = output_dir / DIR_RESULTS
     dataset_names: list[str] = []
@@ -2299,7 +2904,8 @@ def _discover_recompile_dataset_names(
         dataset_names = sorted(
             d.name
             for d in results_dir.iterdir()
-            if d.is_dir() and (d / DIR_MEASUREMENTS).is_dir()
+            if d.is_dir()
+            and ((d / DIR_MEASUREMENTS).is_dir() or (d / DIR_HDF).is_dir())
         )
 
     if not dataset_names and job_meta:
@@ -2308,6 +2914,28 @@ def _discover_recompile_dataset_names(
         )
 
     return dataset_names
+
+
+def _initialize_recompile_slurm_attempt(
+    output_dir: Path, attempt_id: str
+) -> None:
+    """Refuse a live prior launch and publish a fresh lifecycle fence."""
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        initialize_slurm_lifecycle,
+        load_slurm_lifecycle,
+    )
+
+    existing = load_slurm_lifecycle(output_dir)
+    if existing is not None and existing.get("active") is True:
+        previous = str(existing["generation"])
+        raise RuntimeError(
+            "Output has an active SLURM generation that may still own live "
+            f"jobs: {previous}. Wait for it to finish or explicitly cancel "
+            "that run before starting recompile."
+        )
+    initialize_slurm_lifecycle(
+        output_dir, generation=attempt_id, mode="recompile"
+    )
 
 
 def _build_recompile_job_metadata_datasets(
@@ -2359,26 +2987,40 @@ def _recompile_dataset_image_names(
 def _wait_for_recompile_finalizer_status(
     output_dir: Path,
     finalizer_task_index: int,
+    migration_finalizer_status_path: Path | None = None,
+    recompile_finalizer_status_path: Path | None = None,
+    slurm_generation: str | None = None,
     poll_interval: float = 10.0,
     timeout: Optional[float] = None,
 ) -> None:
-    """Wait until the recompile finalizer status is completed or failed."""
-    import json
+    """Wait until migration and recompile finalizers complete or fail."""
     import time
 
     from phenotypic.sdk_ import task_status_path
 
-    status_path = task_status_path(output_dir, finalizer_task_index)
+    status_path = recompile_finalizer_status_path or task_status_path(
+        output_dir, finalizer_task_index
+    )
     deadline = time.monotonic() + timeout if timeout is not None else None
     while True:
+        if migration_finalizer_status_path is not None:
+            migration_status = _read_recompile_wait_status(
+                migration_finalizer_status_path,
+                description="metadata migration finalizer",
+            )
+            if migration_status is not None:
+                migration_state = migration_status.get("status")
+                if migration_state == "failed":
+                    error = migration_status.get("error") or (
+                        "metadata migration finalizer failed"
+                    )
+                    raise RuntimeError(str(error))
+
         if status_path.exists():
-            try:
-                status = json.loads(status_path.read_text(encoding="utf-8"))
-            except Exception:
-                logger.warning(
-                    "Failed to read recompile status %s", status_path
-                )
-            else:
+            status = _read_recompile_wait_status(
+                status_path, description="recompile finalizer"
+            )
+            if status is not None:
                 state = status.get("status")
                 if state == "completed":
                     return
@@ -2386,11 +3028,95 @@ def _wait_for_recompile_finalizer_status(
                     error = status.get("error") or "recompile finalizer failed"
                     raise RuntimeError(str(error))
 
+        if slurm_generation is not None:
+            _raise_if_recompile_attempt_cannot_finish(
+                output_dir, slurm_generation
+            )
+
         if deadline is not None and time.monotonic() >= deadline:
             raise TimeoutError(
                 f"Timed out waiting for recompile finalizer status: {status_path}"
             )
         time.sleep(poll_interval)
+
+
+def _read_recompile_wait_status(
+    status_path: Path, *, description: str
+) -> dict[str, Any] | None:
+    """Read a finalizer status, tolerating an in-progress atomic replace."""
+    import json
+
+    if not status_path.exists():
+        return None
+    try:
+        payload = json.loads(status_path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.warning("Failed to read %s status %s", description, status_path)
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _wait_for_metadata_migration_finalizer_status(
+    status_path: Path,
+    *,
+    output_dir: Path | None = None,
+    slurm_generation: str | None = None,
+    poll_interval: float = 10.0,
+    timeout: Optional[float] = None,
+) -> None:
+    """Wait for a migration-only SLURM chain to complete or fail."""
+    import time
+
+    deadline = time.monotonic() + timeout if timeout is not None else None
+    while True:
+        status = _read_recompile_wait_status(
+            status_path, description="metadata migration finalizer"
+        )
+        if status is not None:
+            state = status.get("status")
+            if state == "completed":
+                return
+            if state == "failed":
+                error = status.get("error") or (
+                    "metadata migration finalizer failed"
+                )
+                raise RuntimeError(str(error))
+        if output_dir is not None and slurm_generation is not None:
+            _raise_if_recompile_attempt_cannot_finish(
+                output_dir, slurm_generation
+            )
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError(
+                "Timed out waiting for metadata migration finalizer status: "
+                f"{status_path}"
+            )
+        time.sleep(poll_interval)
+
+
+def _raise_if_recompile_attempt_cannot_finish(
+    output_dir: Path, slurm_generation: str
+) -> None:
+    """Fail a waiter when its scheduler attempt is terminal or superseded."""
+    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
+
+    state = load_slurm_lifecycle(output_dir)
+    if state is None:
+        return
+    found_generation = state.get("generation")
+    if found_generation != slurm_generation:
+        raise RuntimeError(
+            "SLURM recompile attempt was superseded before its finalizer "
+            f"published status: {slurm_generation}"
+        )
+    if state.get("active") is True:
+        return
+    error = state.get("terminal_error")
+    if error:
+        raise RuntimeError(str(error))
+    raise RuntimeError(
+        "SLURM recompile attempt became inactive before its finalizer "
+        f"published status: {slurm_generation}"
+    )
 
 
 def _handle_recompile(
@@ -2427,6 +3153,10 @@ def _handle_recompile(
     from rich.console import Console
 
     from phenotypic._cli._cli_output_manager import aggregate_measurements
+    from phenotypic._cli._cli_recompile_metadata_migration import (
+        RecompileMetadataMigrationError,
+        migrate_metadata_schema_for_recompile,
+    )
     from phenotypic._cli._cli_utils import load_job_metadata
     from phenotypic._cli._dashboard import (
         regenerate_dashboard_artifacts,
@@ -2446,6 +3176,23 @@ def _handle_recompile(
         f"({len(dataset_names)} dataset(s))"
     )
 
+    console.print("[cyan]Checking metadata schema...")
+    try:
+        migration = migrate_metadata_schema_for_recompile(output_dir)
+    except RecompileMetadataMigrationError as exc:
+        error_exit("Metadata schema migration blocked recompile", str(exc))
+        return
+    migrated_count = len(migration.migrated_targets)
+    skipped_count = len(migration.skipped_targets)
+    blocked_count = len(migration.blocked_targets)
+    console.print(
+        "[green]Metadata schema: "
+        f"migrated={migrated_count}, skipped={skipped_count}, "
+        f"blocked={blocked_count}"
+    )
+    if migration.receipt_path is not None:
+        console.print(f"[green]Migration receipt: {migration.receipt_path}")
+
     console.print("[cyan]Aggregating measurements...")
     master_path = aggregate_measurements(
         output_dir=output_dir,
@@ -2456,6 +3203,15 @@ def _handle_recompile(
     )
     if master_path:
         console.print(f"[green]Master measurements: {master_path}")
+        from phenotypic._cli._cli_completion import (
+            current_run_is_complete,
+            publish_run_completion_evidence,
+        )
+
+        if current_run_is_complete(output_dir) is True:
+            publish_run_completion_evidence(
+                output_dir, execution_epoch="local"
+            )
     else:
         console.print("[yellow]No measurements found for aggregation")
 

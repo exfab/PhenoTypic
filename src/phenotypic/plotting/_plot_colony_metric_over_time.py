@@ -4,18 +4,22 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from phenotypic.abc_.plotting import PlotMeas, PlotOutput
 from phenotypic.schema import (
-    CONDITION_METADATA,
-    CULTURE_METADATA,
-    GENETIC_METADATA,
-    SAMPLE_METADATA,
+    CONDITION,
+    CULTURE,
+    GENETIC,
+    SAMPLE,
 )
 from phenotypic.sdk_ import ColumnRef, ColumnRefList
 
 from ._plot_meas_time_series import PlotMeasTimeSeries
+from ._metadata import (
+    normalize_metadata_column_reference,
+    normalize_metadata_column_references,
+)
 
 
 class PlotColonyMetricOverTime(BaseModel, PlotMeas):
@@ -40,13 +44,27 @@ class PlotColonyMetricOverTime(BaseModel, PlotMeas):
     model_config = ConfigDict(extra="forbid")
 
     on: ColumnRef
-    strain_label: ColumnRef = str(GENETIC_METADATA.STRAIN)
+    strain_label: ColumnRef = str(GENETIC.STRAIN)
     groupby: ColumnRefList = Field(
-            default_factory=lambda: [str(CONDITION_METADATA.MEDIA)]
+            default_factory=lambda: [str(CONDITION.MEDIA)]
     )
-    replicate_label: ColumnRef = str(SAMPLE_METADATA.BIO_REPLICATE)
-    time: ColumnRef = str(CULTURE_METADATA.TIME)
+    replicate_label: ColumnRef = str(SAMPLE.BIO_REPLICATE)
+    time: ColumnRef = str(CULTURE.TIME)
     connect: bool = True
+
+    @field_validator("on", "strain_label", "replicate_label", "time", mode="before")
+    @classmethod
+    def _normalize_column_reference(cls, value: str) -> str:
+        """Accept current and flat metadata references in plot settings."""
+        if not isinstance(value, str):
+            raise ValueError("column reference must be a string")
+        return normalize_metadata_column_reference(value)
+
+    @field_validator("groupby", mode="before")
+    @classmethod
+    def _normalize_groupby_references(cls, value: Any) -> list[str]:
+        """Accept current and flat metadata grouping references."""
+        return normalize_metadata_column_references(value)
 
     def inspect(
             self,

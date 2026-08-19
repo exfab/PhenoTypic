@@ -15,7 +15,6 @@ from ._cli_sidecar import sidecar_exists
 from ._cli_staged_resume import stage3_completion_exists, valid_staged_hdf
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
-    append_stage2_terminal_failure,
     assert_active_epoch,
     current_slurm_job_id,
     load_orchestration_state,
@@ -28,9 +27,9 @@ from ._cli_staged_orchestration import (
     scheduler_job_is_active,
     staged_completion_matches,
     submit_with_intent,
-    terminal_stage2_identities,
     update_job_dependency,
 )
+from ._cli_failure_tracker import read_terminal_failures
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +61,16 @@ def _classify_stage2(
     round_index: int,
 ) -> tuple[list[StagedManifestEntry], list[StagedManifestEntry]]:
     """Return retryable and terminal entries from current artifact truth."""
+    del round_index  # retained in the private signature for test compatibility
     output_dir = Path(config["output_dir"])
     epoch = str(config["epoch"])
     resume = bool(config.get("resume", False))
     markers_required = bool(config.get("stage3_markers_required", True))
-    failed = terminal_stage2_identities(output_dir, epoch)
+    failed = {
+        record.work_id
+        for record in read_terminal_failures(output_dir)
+        if record.lifecycle_epoch == epoch
+    }
     retryable: list[StagedManifestEntry] = []
     terminal: list[StagedManifestEntry] = []
     for entry in entries:
@@ -80,19 +84,11 @@ def _classify_stage2(
             output_dir, entry.dataset, entry.stem
         ) or (resume and not markers_required and parquet.is_file()):
             continue
-        if entry.identity in failed:
+        if entry.work_id in failed:
             terminal.append(entry)
             continue
         hdf = dataset_hdf_dir(output_dir, entry.dataset) / f"{entry.stem}.h5"
         if not valid_staged_hdf(hdf):
-            append_stage2_terminal_failure(
-                output_dir,
-                epoch=epoch,
-                round_index=round_index,
-                entry=entry,
-                error_type="MissingPrerequisite",
-                error_message="Stage 1 HDF is absent after Stage 1 completed",
-            )
             terminal.append(entry)
             continue
         retryable.append(entry)
@@ -148,15 +144,6 @@ def _submit_stage2_round(
         zero_progress = 0
 
     if zero_progress >= 2:
-        for entry in retryable:
-            append_stage2_terminal_failure(
-                output_dir,
-                epoch=epoch,
-                round_index=next_round,
-                entry=entry,
-                error_type="Stage2NoProgress",
-                error_message="No new Stage 2 sidecars in two consecutive rounds",
-            )
         state["last_retryable_digest"] = digest
         state["last_retryable_count"] = count
         state["zero_progress_rounds"] = zero_progress

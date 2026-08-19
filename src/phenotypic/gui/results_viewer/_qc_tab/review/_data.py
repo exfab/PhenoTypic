@@ -19,7 +19,8 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
-from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import CULTURE, EXPERIMENT, IMAGE
+from phenotypic.gui.results_viewer._metadata import normalize_viewer_frame
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import pandas as pd
@@ -30,10 +31,10 @@ logger = logging.getLogger(__name__)
 
 #: Curation-key columns (mirrors ``_filtered_state.KEY_COLUMNS``; kept
 #: local so this pure module never imports the Dash-coupled state module).
-_KEY_IMAGE_FILE: str = str(METADATA.IMAGE_NAME)
+_KEY_IMAGE_FILE: str = str(IMAGE.IMAGE_NAME)
 _KEY_OBJECT_LABEL: str = "Object_Label"
-_KEY_DATASET: str = str(EXPERIMENT_METADATA.DATASET)
-_KEY_TIME: str = str(CULTURE_METADATA.TIME)
+_KEY_DATASET: str = str(EXPERIMENT.DATASET)
+_KEY_TIME: str = str(CULTURE.TIME)
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +72,7 @@ def build_recompute_frame(
     layout = output_root.layout
     mirror = layout.mirror_parquet
     if mirror.is_file():
-        frame = pl.read_parquet(mirror)
+        frame = normalize_viewer_frame(pl.read_parquet(mirror))
     else:
         # Mid-run / legacy: the mirror has not been seeded. The master is
         # the only frame available; it lacks post/metadata columns, so a
@@ -80,7 +81,7 @@ def build_recompute_frame(
         logger.info(
             "measurements.parquet absent; recompute falling back to master"
         )
-        frame = pl.read_parquet(layout.master_parquet)
+        frame = normalize_viewer_frame(pl.read_parquet(layout.master_parquet))
 
     curated = _anti_join_removed(frame, removed_keys)
     return curated.to_pandas()

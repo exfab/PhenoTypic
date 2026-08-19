@@ -362,14 +362,14 @@ class TestGridAccessorSlicing:
     def test_grid_accessor_slice_metadata_marked_as_grid_section(self,
                                                                  plate_grid_images_with_detection):
         """Test that sliced images have GRID_SECTION metadata."""
-        from phenotypic.schema import METADATA
+        from phenotypic.schema import IMAGE
         from phenotypic.sdk_.constants_ import IMAGE_TYPES
 
         grid_image = plate_grid_images_with_detection
         sliced = grid_image.grid[0:12]
 
         # Check metadata marks it as GRID_SECTION
-        image_type = sliced.metadata.get(METADATA.IMAGE_TYPE)
+        image_type = sliced.metadata.get(IMAGE.IMAGE_TYPE)
         assert image_type == IMAGE_TYPES.GRID_SECTION.value
 
     @timeit

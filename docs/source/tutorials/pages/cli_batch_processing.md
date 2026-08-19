@@ -37,14 +37,15 @@ python -m phenotypic --mode full --pipeline pipeline.json --input /plates/ --out
 
 Omit `--njobs` to use all available CPU cores.
 
-## Resume After Interruption
+## Continue After Interruption
 
 ```bash
-python -m phenotypic --mode full --pipeline pipeline.json --input /plates/ --output /output/ --resume
+python -m phenotypic --mode full --pipeline pipeline.json --input /plates/ --output /output/
 ```
 
-Add `--retry-failures` (which requires `--resume`) to also re-process images
-that previously failed, instead of skipping them.
+Run the same command again to continue compatible unfinished work. Add
+`--retry-failures` to also re-process images that previously failed, instead of
+skipping them.
 
 ## Testing
 

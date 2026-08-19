@@ -72,7 +72,7 @@ severity.
 
 ## Common gotchas
 
-- **Metadata schema:** use the canonical `MetadataImage_ImageName` image key.
+- **Metadata schema:** use the canonical `Metadata_ImageName` image key.
   `ExpectedVsDetectedCount` uses the caller-selected `groupby` columns, which
   must exist in both the measurements and supplied metadata layout. A missing
   grouping column records a load warning instead of breaking viewer startup;

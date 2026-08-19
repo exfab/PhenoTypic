@@ -96,6 +96,20 @@ def valid_staged_hdf(path: Path) -> bool:
         return False
 
 
+def staged_hdf_matches_work_id(path: Path, work_id: str) -> bool:
+    """Return whether a valid staged HDF is bound to ``work_id``."""
+    if not valid_staged_hdf(path):
+        return False
+    try:
+        with h5py.File(path, "r") as handle:
+            value = handle.attrs.get("phenotypic_work_id")
+            if isinstance(value, bytes):
+                value = value.decode("utf-8")
+            return value == work_id
+    except (OSError, UnicodeDecodeError):
+        return False
+
+
 def stage3_completion_marker_path(
     output_dir: Path, dataset: str, image_stem: str
 ) -> Path:
@@ -158,25 +172,51 @@ def classify_staged_image(
     input_root: Path,
     process_only_layer: str | None,
     markers_required: bool,
+    expected_work_id: str | None = None,
 ) -> ResumeStage:
     """Return the earliest stage required by one image's durable artifacts."""
     stem = image.stem
+    if expected_work_id is not None:
+        from ._cli_completion import valid_image_success
+
+        if valid_image_success(
+            output_dir,
+            dataset=dataset,
+            image_stem=stem,
+            work_id=expected_work_id,
+        ):
+            return "complete"
+
     if process_only_layer == "objmap":
         terminal = process_only_output_path(
             output_dir, image, input_root, "objmap"
         )
-        if terminal.is_file():
+        if terminal.is_file() and expected_work_id is None:
             return "complete"
 
     hdf = dataset_hdf_dir(output_dir, dataset) / f"{stem}.h5"
-    if not valid_staged_hdf(hdf):
+    if expected_work_id is not None:
+        hdf_valid = staged_hdf_matches_work_id(hdf, expected_work_id)
+    else:
+        hdf_valid = valid_staged_hdf(hdf)
+    if not hdf_valid:
         return "stage1"
 
     if (
         process_only_layer is None
+        and expected_work_id is None
         and stage3_completion_exists(output_dir, dataset, stem)
     ):
         return "complete"
+    if (
+        process_only_layer is None
+        and expected_work_id is not None
+        and stage3_completion_exists(output_dir, dataset, stem)
+        and (
+            dataset_measurements_dir(output_dir, dataset) / f"{stem}.parquet"
+        ).is_file()
+    ):
+        return "stage3"
 
     sidecar = sidecar_exists(output_dir, dataset, stem)
     parquet = (
@@ -200,6 +240,7 @@ def build_staged_resume_plan(
     input_root: Path,
     process_only_layer: str | None,
     markers_required: bool,
+    work_ids: Mapping[str, Mapping[str, str]] | None = None,
 ) -> StagedResumePlan:
     """Build a filtered worklist and earliest global resume stage."""
     items: list[StagedResumeItem] = []
@@ -207,6 +248,11 @@ def build_staged_resume_plan(
     source_by_dataset = {dataset.name: dataset for dataset in datasets}
     for dataset in datasets:
         for image in dataset.images:
+            expected_work_id = (
+                work_ids.get(dataset.name, {}).get(image.name)
+                if work_ids is not None
+                else None
+            )
             stage = classify_staged_image(
                 output_dir=output_dir,
                 dataset=dataset.name,
@@ -214,6 +260,7 @@ def build_staged_resume_plan(
                 input_root=input_root,
                 process_only_layer=process_only_layer,
                 markers_required=markers_required,
+                expected_work_id=expected_work_id,
             )
             items.append(StagedResumeItem(dataset.name, image, stage))
             if stage != "complete":
@@ -286,10 +333,34 @@ def reconcile_stage3_publications(
     """
     moved = 0
     quarantine = progress_dir(output_dir) / "unpublished_stage3" / namespace
+    from ._cli_completion import valid_image_success
+    from ._cli_state_management import load_processing_state
+
+    state = load_processing_state(output_dir)
+    work_ids = state.config.get("work_ids", {}) if state is not None else {}
     for dataset, image_names in inventory.items():
         for image_name in image_names:
             stem = Path(image_name).stem
-            if stage3_completion_exists(output_dir, dataset, stem):
+            dataset_work_ids = (
+                work_ids.get(dataset, {}) if isinstance(work_ids, dict) else {}
+            )
+            work_id = (
+                dataset_work_ids.get(image_name)
+                if isinstance(dataset_work_ids, dict)
+                else None
+            )
+            generally_complete = bool(
+                isinstance(work_id, str)
+                and valid_image_success(
+                    output_dir,
+                    dataset=dataset,
+                    image_stem=stem,
+                    work_id=work_id,
+                )
+            )
+            if generally_complete or stage3_completion_exists(
+                output_dir, dataset, stem
+            ):
                 delete_sidecar(output_dir, dataset, stem)
                 continue
             parquet = (
@@ -318,6 +389,7 @@ __all__ = [
     "remove_stage3_completion_marker",
     "stage3_completion_exists",
     "stage3_completion_marker_path",
+    "staged_hdf_matches_work_id",
     "valid_staged_hdf",
     "write_stage3_completion_marker",
 ]

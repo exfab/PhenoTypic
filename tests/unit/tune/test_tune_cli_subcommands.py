@@ -29,7 +29,7 @@ from phenotypic.tune._spec import Budget, TuningSpec
 def _spec(tmp_path) -> TuningSpec:
     csv = tmp_path / "layout.csv"
     pd.DataFrame(
-        {"MetadataImage_ImageName": ["Synthetic96PlateWithObjects"] * 96,
+        {"Metadata_ImageName": ["Synthetic96PlateWithObjects"] * 96,
          "Object_Label": list(range(96))}
     ).to_csv(csv, index=False)
     return TuningSpec(
@@ -38,7 +38,7 @@ def _spec(tmp_path) -> TuningSpec:
             Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
         )),
         scorer=QCScorer(check=ExpectedVsDetectedCount(
-            metadata=str(csv), groupby=["MetadataImage_ImageName"])),
+            metadata=str(csv), groupby=["Metadata_ImageName"])),
         evaluator=Evaluator(),
         strategy=GridConfig(),
         budget=Budget(),
@@ -125,18 +125,18 @@ def test_held_out_flags_override_spec(tmp_path, monkeypatch):
 
     cli.main([
         "run", str(spec_path), "-i", str(tmp_path), "-o", str(out),
-        "--held-out-fraction", "0.25", "--cv-group", "MetadataPlate_Batch",
+        "--held-out-fraction", "0.25", "--cv-group", "Metadata_Batch",
     ])
 
     # The flags threaded through _run_command → run_tuning.
     assert captured["held_out_fraction"] == 0.25
-    assert captured["cv_group"] == "MetadataPlate_Batch"
+    assert captured["cv_group"] == "Metadata_Batch"
     # The resolved + persisted spec carries the overridden HeldOutConfig.
     from phenotypic.tune._spec import TuningSpec as _Spec
 
     resolved = _Spec.model_validate_json(io.tuning_spec_path(out).read_text())
     assert resolved.held_out.held_out_fraction == 0.25
-    assert resolved.held_out.group_key == "MetadataPlate_Batch"
+    assert resolved.held_out.group_key == "Metadata_Batch"
 
 
 def test_run_tuning_held_out_overrides_directly(tmp_path, monkeypatch):

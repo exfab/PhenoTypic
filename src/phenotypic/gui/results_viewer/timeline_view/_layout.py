@@ -58,7 +58,7 @@ _BG = COLOR_BG
 #: Empty-state guidance shown when no eligible time column exists (D9 / §16.6).
 _EMPTY_STATE_TEXT = (
     "The Timeline needs a time field. Re-run with `--metadata <csv>` (or add a "
-    "post step like ExpandMetadata) so a column such as MetadataCulture_Time "
+    "post step like ExpandMetadata) so a column such as Metadata_Time "
     "or a monotonic image-number column is available. Pick a monotonic column "
     "(e.g. image number) — a time-of-day column mis-orders across days."
 )

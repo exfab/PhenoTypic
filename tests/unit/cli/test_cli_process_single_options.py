@@ -13,6 +13,10 @@ def test_process_only_option_parses(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "phenotypic._cli._cli_process_single.process_single_apply_only_core", fake_core
     )
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_process_single.publish_image_success",
+        lambda *args, **kwargs: None,
+    )
     pipe = tmp_path / "p.json"
     pipe.write_text("{}", encoding="utf-8")
     img = tmp_path / "in" / "a.tif"

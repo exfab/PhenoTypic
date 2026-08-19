@@ -37,6 +37,7 @@ from phenotypic._cli._cli_update_state import (
 )
 from phenotypic._cli._cli_failure_tracker import (
     append_failure,
+    append_terminal_failure,
     read_failures,
     categorize_failures,
 )
@@ -47,7 +48,12 @@ from phenotypic._cli._dashboard._manifest_builder import (
 )
 from phenotypic._cli._dashboard import generate_dashboard
 from phenotypic._cli._cli_sentinel_scripts import generate_sentinel_script
-from phenotypic.sdk_ import dashboard_html_path, logs_dir
+from phenotypic.sdk_ import (
+    atomic_write_json,
+    dashboard_html_path,
+    logs_dir,
+    processing_state_path,
+)
 from phenotypic.sdk_ import progress_dir as _progress_dir
 
 
@@ -410,14 +416,15 @@ class TestManifestBuilder:
         assert manifest_path.exists()
 
         manifest = json.loads(manifest_path.read_text())
-        assert manifest["version"] == 1
+        assert manifest["version"] == 3
         assert manifest["execution_mode"] == "local"
         assert manifest["total_images"] == 3
         assert manifest["completed"] == 1
-        assert manifest["failed"] == 1
-        assert manifest["pending"] == 1  # 3 - 1 completed - 1 failed - 0 in_progress
+        assert manifest["failed"] == 0
+        assert manifest["terminal_failed"] == 0
+        assert manifest["pending"] == 2
         assert manifest["is_complete"] is False
-        assert "ValueError" in manifest["failure_categories"]
+        assert manifest["failure_categories"] == {}
         assert "gui_record_generation" not in manifest
         assert "analysis_data_version" not in manifest
 
@@ -541,8 +548,45 @@ class TestManifestBuilder:
 
         manifest = json.loads((progress_dir / "manifest.json").read_text())
         assert manifest["completed"] == 1
-        assert manifest["failed"] == 1
-        assert manifest["failure_categories"] == {"CurrentError": 1}
+        assert manifest["failed"] == 0
+        assert manifest["terminal_failed"] == 0
+        assert manifest["pending"] == 1
+        assert manifest["failure_categories"] == {}
+
+    def test_manifest_uses_exact_terminal_failure_journal(self, tmp_dir):
+        progress_dir = tmp_dir / "progress"
+        progress_dir.mkdir()
+        work_id = "current-work"
+        atomic_write_json(
+            processing_state_path(tmp_dir),
+            {"config": {"work_ids": {"plate1": {"failed.tif": work_id}}}},
+        )
+        assert append_terminal_failure(
+            tmp_dir,
+            work_id=work_id,
+            dataset="plate1",
+            relative_image_path="failed.tif",
+            failed_stage="full",
+            exception=ValueError("bad input"),
+            attempt_id="attempt",
+            lifecycle_epoch="epoch",
+        )
+
+        build_manifest(
+            output_dir=tmp_dir,
+            progress_dir=progress_dir,
+            datasets={"plate1": 1},
+            dataset_inventory={"plate1": {"failed.tif"}},
+            execution_mode="local",
+            start_time=datetime.now().isoformat(timespec="milliseconds"),
+        )
+
+        manifest = json.loads((progress_dir / "manifest.json").read_text())
+        assert manifest["successful"] == 0
+        assert manifest["terminal_failed"] == 1
+        assert manifest["pending"] == 0
+        assert manifest["is_complete"] is False
+        assert manifest["failure_categories"] == {"ValueError": 1}
 
     def test_manifest_multiple_datasets(self, tmp_dir):
         event_log = tmp_dir / "processing_events.log"

@@ -59,7 +59,7 @@ def test_measurer_reference_round_trip_preserves_shared_identity() -> None:
 
 def test_model_reference_round_trip_preserves_shared_identity() -> None:
     model = LinearLagModel(
-            on="Size_Area", groupby=["MetadataGenetic_Strain"]
+            on="Size_Area", groupby=["Metadata_Strain"]
     )
     loaded = ImagePipeline.from_json(
             ImagePipeline(model=model, plots=[model]).to_json()
@@ -92,8 +92,8 @@ def test_inline_builtin_round_trip_uses_module_and_qualname() -> None:
 def test_colony_metric_plot_round_trip_preserves_on_and_overrides() -> None:
     plot = PlotColonyMetricOverTime(
             on="Shape_MedianRadius",
-            groupby=["MetadataCondition_Treatment"],
-            replicate_label="MetadataSample_TechnicalReplicate",
+            groupby=["Metadata_Treatment"],
+            replicate_label="Metadata_TechnicalReplicate",
     )
 
     serialized = ImagePipeline(plots=[plot]).to_json()

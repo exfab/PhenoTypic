@@ -66,7 +66,7 @@ def _synthetic_gt_mask_dir(tmp_path: Path) -> Path:
 def _count_csv(tmp_path: Path) -> str:
     csv = tmp_path / "counts.csv"
     pd.DataFrame(
-        {"MetadataImage_ImageName": ["Synthetic96PlateWithObjects"] * 96,
+        {"Metadata_ImageName": ["Synthetic96PlateWithObjects"] * 96,
          "Object_Label": list(range(96))}
     ).to_csv(csv, index=False)
     return str(csv)
@@ -88,7 +88,7 @@ def _supervised_region_scorer(tmp_path: Path) -> SupervisedScorer:
 
 def _qc_count_scorer(tmp_path: Path) -> QCScorer:
     return QCScorer(check=ExpectedVsDetectedCount(
-        metadata=_count_csv(tmp_path), groupby=["MetadataImage_ImageName"]))
+        metadata=_count_csv(tmp_path), groupby=["Metadata_ImageName"]))
 
 
 @pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")

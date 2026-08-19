@@ -45,7 +45,7 @@ strain, media, timepoint, plate, replicate. Example:
 column whose name it shares with them**. So a column only participates in the
 join if its header *exactly* matches a measurement column:
 
-- Join per **image**: give the CSV a `MetadataImage_ImageName` column (the
+- Join per **image**: give the CSV a `Metadata_ImageName` column (the
   image filename, matching the framework's image-name column). Each row then
   broadcasts to every colony of that image — the pattern shown above.
 - Join per **colony**: additionally include `Grid_RowNum` and `Grid_ColNum`.
@@ -68,31 +68,32 @@ missing = mirror.filter(pl.col("QC_MetadataOnly"))
 The run also logs a `WARNING` naming how many CSV rows matched nothing.
 
 ```{warning}
-The join key must match the measurement column name **exactly**. After the
-REMBI namespace migration the image-name column is `MetadataImage_ImageName`
-(not the old `Metadata_ImageName`). A CSV that still uses the old header shares
-no column with the measurements and the join is skipped with a warning.
+The join key must match after metadata normalization. The canonical image-name
+column is `Metadata_ImageName`; a bare `ImageName` or exact historical
+`MetadataImage_ImageName` header is accepted and normalized in memory. Unknown
+headers are treated as metadata and receive the `Metadata_` prefix.
 Duplicate keys in the CSV multiply rows (also warned). Note the join is
 directional: *measurement* rows with no matching CSV row **are** dropped, so a
 CSV that omits an imaged plate silently removes it from the mirror.
 ```
 
-**Column names decide the REMBI module.** Use the recommended
-`Metadata<Topic>_<Label>` vocabulary and each column routes itself to the right
-manifest section:
+**Schema ownership decides the REMBI module.** Use the recommended flat
+`Metadata_<Label>` vocabulary. PhenoTypic resolves each known label to its enum
+owner and routes that member to the right manifest section:
 
-| CSV prefix | REMBI module → manifest section |
+| Enum owner | Example fields | REMBI module → manifest section |
 |---|---|
-| `MetadataGenetic_*`, `MetadataSample_*` | Biosample → `biosample` |
-| `MetadataCondition_*`, `MetadataPlate_*` | SpecimenPreparation → `specimen_preparation` |
-| `MetadataCulture_Temperature`/`_Day`/`_Humidity`/… | SpecimenPreparation → `specimen_preparation` |
-| `MetadataCulture_Time`/`_TimeUnit`/`_Timepoint`/`_FrameIndex` | **Biosample** → `biosample` (time-course modeled as a Biosample variable, per REMBI) |
-| `MetadataAcquisition_*` | ImageAcquisition → `image_acquisition` |
-| `MetadataStudy_*`, `MetadataExperiment_*` | Study → `study` |
+| `GENETIC`, `SAMPLE` | `Metadata_Strain`, `Metadata_BioReplicate` | Biosample → `biosample` |
+| `CONDITION`, `PLATE` | `Metadata_Media`, `Metadata_PlateID` | SpecimenPreparation → `specimen_preparation` |
+| `CULTURE` preparation members | `Metadata_Temperature`, `Metadata_Humidity` | SpecimenPreparation → `specimen_preparation` |
+| `CULTURE` time members | `Metadata_Time`, `Metadata_TimeUnit`, `Metadata_Timepoint`, `Metadata_FrameIndex` | **Biosample** → `biosample` |
+| `ACQUISITION` | `Metadata_Instrument` | ImageAcquisition → `image_acquisition` |
+| `STUDY`, `EXPERIMENT` | `Metadata_Title`, `Metadata_Dataset` | Study → `study` |
 
-Note the `MetadataCulture_` prefix **straddles two modules**: temperature and
-atmosphere describe how the specimen was prepared, but elapsed *time* is a
-biosample variable in REMBI, so `MetadataCulture_Time` lands in `biosample`.
+The `CULTURE` owner **straddles two modules**: temperature and atmosphere
+describe specimen preparation, while elapsed *time* is a biosample variable.
+The owner member carries that distinction even though both fields share the
+same `Metadata_` prefix.
 
 This is a **recommended vocabulary, not a validator** — any column is accepted.
 A label outside the vocabulary keeps a generic `Metadata_<Label>` header and
@@ -113,12 +114,11 @@ module as a small file you keep beside the dataset:
 ```
 
 **Keys are the bare labels** — `Title`, `Author`, `License`, … — *without* the
-`MetadataStudy_` / `MetadataExperiment_` prefix. A key given here **overrides**
+`Metadata_` prefix. A key given here **overrides**
 a same-named constant `Metadata*` column that came in via `--metadata`, so the
 study file is the single source of truth for run-level fields even if the CSV
 also carries them. Every field is optional. The available keys mirror the
-{ref}`STUDY_METADATA <measurement-info-study-metadata>` and
-`EXPERIMENT_METADATA` schema pages.
+{ref}`STUDY <measurement-info-study>` and `EXPERIMENT` schema pages.
 
 ## The output: `deliverables/rembi.yaml`
 
@@ -136,13 +136,13 @@ biosample:
   Strain: [BY4741, BY4742]        # distinct values collapse to a list
   MatingType: [a, alpha]
   BioReplicate: 1
-  Time: [24, 48]                  # time-course variable (from MetadataCulture_Time)
+  Time: [24, 48]                  # time-course variable (from Metadata_Time)
   TimeUnit: h
 specimen_preparation:
   Media: YPD
   Temperature: 30
   PlateID: [P1, P2]
-image_acquisition: {}             # empty here — no MetadataAcquisition_* columns
+image_acquisition: {}             # empty here — no ACQUISITION-owned columns
 image_data:                       # ALWAYS present, from the run itself
   n_images: 4
   bit_depth: [8]
@@ -163,8 +163,11 @@ inputs.
 
 ## Refreshing a pre-migration run
 
-Old output folders still open, but their metadata columns predate the
-per-module namespace and read as `uncategorized`. To remap an existing run's
-measurement parquets to the current REMBI namespace, re-run with
-`--mode recompile`. Background on the rename is in the
+Old output folders remain readable. Exact historical per-topic headers are
+normalized in memory and retain their schema ownership. To rewrite
+bundle-owned authoritative sources to flat headers and rebuild derived output,
+run `--mode recompile`. Local and SLURM recompiles migrate before aggregation;
+a conflict stops publication. External `--metadata` files are never modified,
+while the regenerated bundle-owned metadata copy uses canonical headers.
+Background, standalone migration, receipts, and rollback are described in the
 {doc}`metadata namespace explanation </explanation/metadata_namespace>`.

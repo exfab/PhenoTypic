@@ -37,9 +37,9 @@ from phenotypic.sdk_ import (
 )
 
 from tests._output_layout import write_master, write_measurements_mirror
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
-KEY_IMAGE_FILE = str(METADATA.IMAGE_NAME)
+KEY_IMAGE_FILE = str(IMAGE.IMAGE_NAME)
 KEY_OBJECT_LABEL = "Object_Label"
 
 

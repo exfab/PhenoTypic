@@ -110,7 +110,7 @@ from phenotypic.analysis import ExpectedVsDetectedCount
 # ``tests/unit/services/test_import_purity.py`` and TEMPORARY: the entry is
 # tracked for removal when a later phase promotes or inverts the resolver.
 from phenotypic.gui.shell._metadata_context import resolve_metadata_csv
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     CONFIG_SUFFIX_TUNING,
     PIPELINE_CONFIG_SUFFIXES,
@@ -302,10 +302,10 @@ def _default_qc_scorer() -> Any:
     import pandas as pd
 
     from phenotypic.analysis import ExpectedVsDetectedCount
-    from phenotypic.schema import METADATA
+    from phenotypic.schema import IMAGE
     from phenotypic.tune.score import QCScorer
 
-    image_name = str(METADATA.IMAGE_NAME)
+    image_name = str(IMAGE.IMAGE_NAME)
     empty = pd.DataFrame({image_name: [], "Object_Label": []})
     return QCScorer(
         check=ExpectedVsDetectedCount(
@@ -1441,6 +1441,22 @@ def _validation_messages(exc: ValidationError) -> list[str]:
     return messages
 
 
+
+def _normalize_setup_metadata_groupby(column: str) -> str:
+    """Normalize a metadata-only Setup group-by without relabeling locators.
+
+    Setup authors a QC scorer from a layout table, so an unqualified unknown
+    label is generic metadata. Qualified values may instead be object
+    locators or measurement keys, and the mixed-reference helper leaves them
+    unchanged.
+    """
+    from phenotypic.gui.shell._metadata_context import (
+        normalize_metadata_column_reference,
+    )
+
+    return normalize_metadata_column_reference(str(column))
+
+
 def build_authored_setup_spec(
     *,
     pipeline_or_spec_path: Path,
@@ -1490,7 +1506,10 @@ def build_authored_setup_spec(
             spec = space_to_spec(source, edits=edits or {})
 
         if needs_metadata and metadata_path is not None and metadata_path.is_file():
-            groupby = metadata_groupby or [str(METADATA.IMAGE_NAME)]
+            groupby = [
+                _normalize_setup_metadata_groupby(column)
+                for column in (metadata_groupby or [str(IMAGE.IMAGE_NAME)])
+            ]
             scorer = QCScorer(
                 check=ExpectedVsDetectedCount(
                     metadata=str(metadata_path),

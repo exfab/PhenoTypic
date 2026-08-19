@@ -67,8 +67,8 @@ class RunConsoleState:
             ...`` and let SLURM take over).
         dry_run: When ``True``, append ``--dry-run`` to the CLI argv so the
             CLI just validates inputs without processing images.
-        resume: When ``True``, append ``--resume`` so the CLI picks up where
-            a previous run left off.
+        retry_failures: When ``True``, append ``--retry-failures`` for this
+            invocation without clearing terminal history.
         advanced_args: Optional advanced flag bucket. Recognised keys:
             ``sample`` (int), ``nrows`` (int), ``ncols`` (int),
             ``image_type`` (str), ``workers`` (int), ``log_level`` (str).
@@ -89,7 +89,7 @@ class RunConsoleState:
     metadata_csv: str | None = None
     mode: ExecutionMode = "local"
     dry_run: bool = False
-    resume: bool = False
+    retry_failures: bool = False
     advanced_args: dict[str, Any] = field(default_factory=dict)
     slurm_args: dict[str, Any] = field(default_factory=dict)
     gpu_slurm_args: tuple[str, ...] = ()
@@ -122,7 +122,7 @@ def run_state_to_json(state: RunConsoleState) -> dict[str, Any]:
         "metadata_csv": state.metadata_csv,
         "mode": state.mode,
         "dry_run": bool(state.dry_run),
-        "resume": bool(state.resume),
+        "retry_failures": bool(state.retry_failures),
         "advanced_args": dict(state.advanced_args or {}),
         "slurm_args": _slurm_args_to_json(state.slurm_args or {}),
         "gpu_slurm_args": list(state.gpu_slurm_args),
@@ -169,7 +169,7 @@ def run_state_from_json(payload: dict[str, Any]) -> RunConsoleState:
         metadata_csv=_coerce_optional_str(payload.get("metadata_csv")),
         mode=mode,
         dry_run=bool(payload.get("dry_run", False)),
-        resume=bool(payload.get("resume", False)),
+        retry_failures=bool(payload.get("retry_failures", False)),
         advanced_args=advanced_args,
         slurm_args=slurm_args,
         gpu_slurm_args=gpu_slurm_args,
@@ -381,8 +381,8 @@ def to_argv(state: RunConsoleState) -> list[str]:
 
     if state.dry_run:
         argv.append("--dry-run")
-    if state.resume:
-        argv.append("--resume")
+    if state.retry_failures:
+        argv.append("--retry-failures")
 
     advanced = state.advanced_args or {}
     sample = advanced.get("sample")

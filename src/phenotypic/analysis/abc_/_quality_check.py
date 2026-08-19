@@ -9,10 +9,10 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic import Field, model_validator
 
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA, OBJECT, QUALITY_CHECK
+from phenotypic.schema import EXPERIMENT, IMAGE, OBJECT, QUALITY_CHECK
 
 from ._qc_table_spec import QcTableSpec
-from ._set_analyzer import SetAnalyzer
+from ._set_analyzer import SetAnalyzer, normalize_measurement_metadata_columns
 
 
 class QualityCheck(SetAnalyzer, ABC):
@@ -98,7 +98,7 @@ class QualityCheck(SetAnalyzer, ABC):
     #: Per-object curation-key columns. Empty tuple when the check has no
     #: per-object key. Subclasses may narrow this.
     member_key_cols: ClassVar[tuple[str, ...]] = (
-        str(METADATA.IMAGE_NAME),
+        str(IMAGE.IMAGE_NAME),
         str(OBJECT.LABEL),
     )
 
@@ -208,6 +208,7 @@ class QualityCheck(SetAnalyzer, ABC):
             KeyError: If ``self.on`` or any column in ``self.groupby`` is
                 missing from ``data``.
         """
+        data = normalize_measurement_metadata_columns(data)
         missing = [
             col for col in [self.on, *self.groupby] if col not in data.columns
         ]
@@ -310,7 +311,7 @@ class QualityCheck(SetAnalyzer, ABC):
         label_col = str(OBJECT.LABEL)
         if flag_col not in df.columns:
             return []
-        image_name_col = str(METADATA.IMAGE_NAME)
+        image_name_col = str(IMAGE.IMAGE_NAME)
         if image_name_col not in df.columns or label_col not in df.columns:
             return []
         flagged = df.loc[df[flag_col].fillna(False).astype(bool),
@@ -345,7 +346,7 @@ class QualityCheck(SetAnalyzer, ABC):
         """
         df = self._latest_measurements
         label_col = str(OBJECT.LABEL)
-        image_name_col = str(METADATA.IMAGE_NAME)
+        image_name_col = str(IMAGE.IMAGE_NAME)
         if image_name_col not in df.columns or label_col not in df.columns:
             return {}
 
@@ -401,7 +402,7 @@ class QualityCheck(SetAnalyzer, ABC):
         qc_cols = [c for c in df.columns if c.startswith(f"QC_{self.name}_")]
         context = [
             c
-            for c in (str(EXPERIMENT_METADATA.DATASET), getattr(self, "time_label", None))
+            for c in (str(EXPERIMENT.DATASET), getattr(self, "time_label", None))
             if c and c in df.columns
         ]
         keep: list[str] = []

@@ -22,10 +22,10 @@ import pandas as pd
 
 from phenotypic.analysis._helper._qc_math import tukey_fences, tukey_outlier_mask
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.schema import CULTURE_METADATA, QUALITY_TUKEY
+from phenotypic.schema import CULTURE, QUALITY_TUKEY
 from phenotypic.sdk_ import ColumnRef
 
-_TIME = str(CULTURE_METADATA.TIME)
+_TIME = str(CULTURE.TIME)
 
 
 class TukeyOutlierFraction(QualityCheck):
@@ -66,7 +66,7 @@ class TukeyOutlierFraction(QualityCheck):
 
     Attributes:
         time_label: Column name carrying the timepoint within each
-            group. Defaults to ``"MetadataCulture_Time"``.
+            group. Defaults to ``Metadata_Time``.
         k: IQR multiplier for the fences. ``1.5`` flags standard outliers;
             ``3.0`` flags only extreme outliers. Defaults to ``1.5``.
         min_replicates: Minimum member count required before the outlier
@@ -85,9 +85,11 @@ class TukeyOutlierFraction(QualityCheck):
         >>> from phenotypic.analysis.qc import (
         ...     TukeyOutlierFraction,
         ... )
+        >>> from phenotypic.schema import CULTURE
+        >>> time = str(CULTURE.TIME)
         >>> data = pd.DataFrame({
         ...     "Plate": ["P1"] * 10,
-        ...     "MetadataCulture_Time": [0] * 10,
+        ...     time: [0] * 10,
         ...     "Size_Area": [
         ...         10.0, 11.0, 12.0, 13.0, 14.0,
         ...         10.5, 11.5, 12.5, 13.5, 200.0,
@@ -96,7 +98,7 @@ class TukeyOutlierFraction(QualityCheck):
         >>> chk = TukeyOutlierFraction(
         ...     on="Size_Area",
         ...     groupby=["Plate"],
-        ...     time_label="MetadataCulture_Time",
+        ...     time_label=time,
         ... )
         >>> result = chk.analyze(data)
         >>> "QC_Tukey_Metric" in result.columns
@@ -107,7 +109,7 @@ class TukeyOutlierFraction(QualityCheck):
 
         >>> sparse = pd.DataFrame({
         ...     "Plate": ["P1", "P1", "P1"],
-        ...     "MetadataCulture_Time": [0, 0, 0],
+        ...     time: [0, 0, 0],
         ...     "Size_Area": [10.0, 11.0, 12.0],
         ... })
         >>> chk = TukeyOutlierFraction(on="Size_Area", groupby=["Plate"])

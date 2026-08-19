@@ -28,7 +28,7 @@ for i, seed in enumerate((1, 2, 3), start=1):
     iio.imwrite(plates / f"plate_{i:03d}.tif", arr)
 
 (root / "metadata.csv").write_text(
-    "MetadataImage_ImageName,Metadata_StrainID,Metadata_MatingType,"
+    "Metadata_ImageName,Metadata_StrainID,Metadata_MatingType,"
     "Metadata_Media,Metadata_RunDate,Metadata_PlateNum,"
     "Metadata_Replicate,Grid_RowNum,Grid_ColNum\n"
     "plate_001.tif,SYN_001,a,YPD,2026-05-01,1,1,8,12\n"

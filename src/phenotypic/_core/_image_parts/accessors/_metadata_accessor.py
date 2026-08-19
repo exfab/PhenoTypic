@@ -5,7 +5,8 @@ import pandas as pd
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
+from phenotypic.sdk_ import metadata_member_for_header, metadata_member_for_label
 from collections import ChainMap
 
 
@@ -48,6 +49,21 @@ class MetadataAccessor:
             image (Image): The parent Image instance containing the metadata storage.
         """
         self._parent_image = image
+
+    @staticmethod
+    def _resolve_key(key):
+        """Resolve known metadata aliases to their owning schema member.
+
+        Storage predates the flat namespace, so public metadata may arrive as a
+        bare label, the current per-topic header, or a future flat header. The
+        enum member is the common identity across those spellings and prevents a
+        public alias from shadowing protected or private image bookkeeping.
+        Unknown user keys remain literal keys.
+        """
+        member = metadata_member_for_header(str(key))
+        if member is None:
+            member = metadata_member_for_label(str(key))
+        return member if member is not None else key
 
     @property
     def _combined_metadata(self):
@@ -143,7 +159,7 @@ class MetadataAccessor:
         Returns:
             bool: True if the key exists in private, protected, or public metadata.
         """
-        return key in self.keys()
+        return self._resolve_key(key) in self.keys()
 
     def __getitem__(self, key):
         """Retrieve a metadata value by key with hierarchical search.
@@ -159,6 +175,7 @@ class MetadataAccessor:
         Raises:
             KeyError: If the key does not exist in any metadata level.
         """
+        key = self._resolve_key(key)
         if key in self._private_metadata:
             return self._private_metadata[key]
         elif key in self._protected_metadata:
@@ -190,6 +207,7 @@ class MetadataAccessor:
             >>> img.metadata['resolution'] = 300  # Creates public metadata
             >>> img.metadata['ImageName'] = 'updated_name'  # Updates protected metadata
         """
+        key = self._resolve_key(key)
         if not isinstance(value, (str, int, float, bool, type(None))):
             raise ValueError("Metadata values must be of scalar types or None.")
         if key in self._private_metadata:
@@ -217,6 +235,7 @@ class MetadataAccessor:
 
             >>> del img.metadata['user_notes']  # Deletes public metadata
         """
+        key = self._resolve_key(key)
         if key in self._private_metadata or key in self._protected_metadata:
             raise PermissionError("Private and protected metadata cannot be removed.")
         elif key in self._public_metadata:
@@ -245,6 +264,7 @@ class MetadataAccessor:
 
             >>> old_value = img.metadata.pop('user_notes')
         """
+        key = self._resolve_key(key)
         if key in self._private_metadata or key in self._protected_metadata:
             raise PermissionError("Private and protected metadata cannot be removed.")
         elif key in self._public_metadata:
@@ -271,6 +291,7 @@ class MetadataAccessor:
             >>> resolution = img.metadata.get('resolution', 100)
             >>> name = img.metadata.get('ImageName')  # Returns None if not found
         """
+        key = self._resolve_key(key)
         if key in self._combined_metadata:
             return self._combined_metadata[key]
         else:
@@ -305,7 +326,7 @@ class MetadataAccessor:
               (Identity -> Strain -> Condition -> Design, via ``canonical_metadata_order``),
               not REMBI module order
             - Metadata columns without a ``Metadata<Topic>_`` prefix are automatically prefixed
-              via the schema (e.g. ``Strain`` -> ``MetadataGenetic_Strain``; unknown labels
+              via the schema (e.g. ``Strain`` -> ``Metadata_Strain``; unknown labels
               fall back to a generic ``Metadata_`` prefix)
 
         Examples:
@@ -316,7 +337,7 @@ class MetadataAccessor:
             >>> img = Image(arr, name='sample')
             >>> img.metadata['resolution'] = 300
             >>> result_df = img.metadata.insert_metadata(df)
-            >>> # result_df now has MetadataImage_ImageName and Metadata_resolution columns at position 0
+            >>> # result_df now has Metadata_ImageName and Metadata_resolution columns at position 0
         """
         working_df = df if inplace else df.copy()
         # Insert metadata columns in canonical bio-semantic cluster order (then
@@ -326,7 +347,6 @@ class MetadataAccessor:
         from phenotypic.sdk_ import (
             canonical_metadata_order,
             ensure_metadata_prefix,
-            is_metadata_header,
         )
 
         rank = canonical_metadata_order()
@@ -341,23 +361,39 @@ class MetadataAccessor:
             header = ensure_metadata_prefix(item[0])
             return (rank.get(header, unknown_rank), str(item[0]))
 
-        items = sorted(
-            self._public_protected_metadata.items(), key=_rank, reverse=True
+        # Resolve aliases before combining permission tiers. Protected framework
+        # fields win over a stale public spelling of the same schema member.
+        resolved_items = {
+            self._resolve_key(key): value
+            for key, value in self._public_metadata.items()
+        }
+        resolved_items.update(
+            {
+                self._resolve_key(key): value
+                for key, value in self._protected_metadata.items()
+            }
         )
+        items = sorted(resolved_items.items(), key=_rank, reverse=True)
+        existing_members = {
+            metadata_member_for_header(str(column))
+            or metadata_member_for_label(str(column))
+            for column in working_df.columns
+        }
         for key, value in items:
-            if key == METADATA.IMAGE_NAME:
+            if key == IMAGE.IMAGE_NAME:
                 value = (
                     self._parent_image.name
                 )  # offload handling to image handler class
-            if is_metadata_header(key):
-                header = key
-            else:
-                header = ensure_metadata_prefix(key)
-            if header not in working_df.columns:
+            header = ensure_metadata_prefix(key)
+            member = metadata_member_for_header(str(key))
+            if header not in working_df.columns and (
+                member is None or member not in existing_members
+            ):
                 working_df.insert(
                         loc=0, column=header, value=value,
                         allow_duplicates=allow_duplicates
                 )
+                existing_members.add(member)
         return working_df
 
     def by_module(self, module) -> dict:
@@ -384,7 +420,7 @@ class MetadataAccessor:
         out: dict = {}
         for key, value in self._combined_metadata.items():
             # Resolve to the full schema header (bare "Strain" ->
-            # "MetadataGenetic_Strain") so the reverse index, keyed on the
+            # ``str(GENETIC.STRAIN)``) so the reverse index, keyed on the
             # per-topic Scheme-B headers, resolves the REMBI module.
             header = ensure_metadata_prefix(key)
             mod = idx.get(header)

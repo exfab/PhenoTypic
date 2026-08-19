@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import re
-from typing import List
+from typing import List, cast
 
 import pandas as pd
 from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
-from ._utils import ensure_metadata_prefix
+from ._utils import (
+    coalesce_metadata_aliases,
+    ensure_metadata_prefix,
+    resolve_metadata_column,
+)
 
 
 class ExpandMetadata(PostMeasurement):
@@ -21,11 +25,11 @@ class ExpandMetadata(PostMeasurement):
     Args:
         column: Name of the metadata column to split. The schema category
             prefix is added automatically if missing (e.g. ``ImageName`` ->
-            ``MetadataImage_ImageName``; unknown labels get a generic
+            ``Metadata_ImageName``; unknown labels get a generic
             ``Metadata_`` prefix).
         labels: Names for the resulting columns, one per split part. The
             schema category prefix is added automatically if missing (e.g.
-            ``Strain`` -> ``MetadataGenetic_Strain``).
+            ``Strain`` -> ``Metadata_Strain``).
         delimiter: String or regex pattern to split on. Defaults to ``"_"``.
         regex: If True, treat delimiter as a regex pattern. Defaults to
             False.
@@ -51,8 +55,11 @@ class ExpandMetadata(PostMeasurement):
 
         >>> import pandas as pd
         >>> from phenotypic.post import ExpandMetadata
+        >>> from phenotypic.schema import GENETIC, IMAGE
+        >>> image_name = str(IMAGE.IMAGE_NAME)
+        >>> strain = str(GENETIC.STRAIN)
         >>> df = pd.DataFrame({
-        ...     "MetadataImage_ImageName": ["WT_30C_24h", "mut_37C_48h"],
+        ...     image_name: ["WT_30C_24h", "mut_37C_48h"],
         ...     "Object_Label": [1, 2],
         ... })
         >>> expand = ExpandMetadata(
@@ -61,13 +68,13 @@ class ExpandMetadata(PostMeasurement):
         ...     delimiter="_",
         ... )
         >>> result = expand.apply(df)
-        >>> list(result["MetadataGenetic_Strain"])
+        >>> list(result[strain])
         ['WT', 'mut']
 
         A row with no source value expands to NaN instead of raising:
 
-        >>> df.loc[1, "MetadataImage_ImageName"] = None
-        >>> list(expand.apply(df)["MetadataGenetic_Strain"])
+        >>> df.loc[1, image_name] = None
+        >>> list(expand.apply(df)[strain])
         ['WT', nan]
     """
 
@@ -155,18 +162,25 @@ class ExpandMetadata(PostMeasurement):
             DataFrame with new columns inserted after the source column.
             Rows whose source value is NA get NaN in every new column.
         """
-        if self.column not in df.columns:
+        try:
+            result = coalesce_metadata_aliases(df, [self.column, *self.labels])
+            source_column = resolve_metadata_column(result.columns, self.column)
+        except KeyError:
             raise KeyError(
                 f"Column '{self.column}' not found in DataFrame. "
                 f"Available columns: {list(df.columns)}"
-            )
+            ) from None
 
-        split_df = self._split_to_labels(df[self.column])
+        split_df = self._split_to_labels(result[source_column])
 
         # Insert new columns after the source column
-        src_pos = df.columns.get_loc(self.column)
-        result = df.copy()
+        src_pos = cast(int, result.columns.get_loc(source_column))
         for i, label in enumerate(self.labels):
-            result.insert(src_pos + 1 + i, label, split_df[label])
+            try:
+                target_column = resolve_metadata_column(result.columns, label)
+            except KeyError:
+                result.insert(src_pos + 1 + i, label, split_df[label])
+            else:
+                result[target_column] = split_df[label]
 
         return result

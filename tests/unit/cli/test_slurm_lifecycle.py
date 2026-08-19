@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
+from typing import cast
 
 import pytest
 
 import phenotypic._cli._cli_slurm_lifecycle as lifecycle
 from phenotypic._cli._cli_slurm_lifecycle import (
+    SlurmDependencyKind,
     append_lifecycle_entry,
     cancel_generation,
     initialize_slurm_lifecycle,
@@ -18,7 +20,11 @@ from phenotypic._cli._cli_slurm_lifecycle import (
     read_lifecycle_ledger,
     submit_with_lifecycle,
 )
-from phenotypic.sdk_ import JobMetadataKey, atomic_write_json, job_metadata_path
+from phenotypic.sdk_ import (
+    JobMetadataKey,
+    atomic_write_json,
+    job_metadata_path,
+)
 
 
 class FakeScheduler:
@@ -82,10 +88,7 @@ def test_intent_precedes_sbatch_and_job_record(monkeypatch, tmp_path) -> None:
     def fake_run(command, **kwargs):
         observed_commands.append(list(command))
         observed_statuses.append(
-            [
-                str(row["status"])
-                for row in read_lifecycle_ledger(tmp_path)
-            ]
+            [str(row["status"]) for row in read_lifecycle_ledger(tmp_path)]
         )
         return subprocess.CompletedProcess(command, 0, "701\n", "")
 
@@ -128,7 +131,9 @@ def test_submission_snapshots_pythonpath_for_export_all(
     initialize_slurm_lifecycle(
         tmp_path, generation=generation, mode="ordinary"
     )
-    monkeypatch.setenv("PYTHONPATH", "/exact/reviewed/src:/exact/reviewed/tests")
+    monkeypatch.setenv(
+        "PYTHONPATH", "/exact/reviewed/src:/exact/reviewed/tests"
+    )
     observed: dict[str, object] = {}
 
     def fake_run(command, **kwargs):
@@ -214,6 +219,7 @@ def test_timeout_after_accept_recovers_by_generation_comment(tmp_path) -> None:
     rows = read_lifecycle_ledger(tmp_path)
     assert [row["status"] for row in rows] == ["intent", "submitted"]
     assert rows[-1]["dependencies"] == ["601", "602"]
+    assert rows[-1]["dependency_kind"] == "afterany"
     metadata = json.loads(
         job_metadata_path(tmp_path).read_text(encoding="utf-8")
     )
@@ -223,6 +229,169 @@ def test_timeout_after_accept_recovers_by_generation_comment(tmp_path) -> None:
         "generation": generation,
     }
     assert metadata[JobMetadataKey.CHUNK_JOB_IDS] == {"0": "701"}
+
+
+def test_afterok_dependency_is_emitted_and_persisted(tmp_path: Path) -> None:
+    """A success-only continuation uses the exact requested SLURM condition."""
+    generation = "generation-afterok"
+    initialize_slurm_lifecycle(
+        tmp_path, generation=generation, mode="ordinary"
+    )
+    scheduler = FakeScheduler()
+
+    submit_with_lifecycle(
+        tmp_path,
+        generation=generation,
+        token="dispatcher-1",
+        role="dispatcher",
+        script_path=tmp_path / "dispatcher.sh",
+        dependencies=("601",),
+        dependency_kind="afterok",
+        run_command=scheduler,
+    )
+
+    assert scheduler.sbatch_commands[0][-3:] == [
+        "--dependency",
+        "afterok:601",
+        str(tmp_path / "dispatcher.sh"),
+    ]
+    rows = read_lifecycle_ledger(tmp_path)
+    assert [row["dependency_kind"] for row in rows] == [
+        "afterok",
+        "afterok",
+    ]
+
+
+def test_invalid_dependency_kind_fails_before_submission_or_files(
+    tmp_path: Path,
+) -> None:
+    """Submission validation precedes locks, intents, and scheduler calls."""
+    output_dir = tmp_path / "output"
+    scheduler = FakeScheduler()
+
+    with pytest.raises(ValueError, match="dependency_kind"):
+        submit_with_lifecycle(
+            output_dir,
+            generation="generation-invalid",
+            token="dispatcher-1",
+            role="dispatcher",
+            script_path=tmp_path / "dispatcher.sh",
+            dependency_kind=cast(
+                SlurmDependencyKind, "afterinvalid"
+            ),
+            active_check=lambda: True,
+            run_command=scheduler,
+        )
+
+    assert scheduler.sbatch_commands == []
+    assert not output_dir.exists()
+
+
+def test_invalid_continuation_kind_submits_no_chunk(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """A bad continuation edge is rejected before its chunk submission."""
+    calls: list[dict[str, object]] = []
+
+    def fake_submit(_output_dir: Path, **kwargs: object) -> str:
+        calls.append(kwargs)
+        return "701"
+
+    monkeypatch.setattr(lifecycle, "submit_with_lifecycle", fake_submit)
+
+    with pytest.raises(ValueError, match="dependency_kind"):
+        lifecycle.dispatch_continuation(
+            tmp_path,
+            generation="generation-invalid",
+            chunk_index=1,
+            chunk_script=tmp_path / "chunk.sh",
+            dispatcher_script=tmp_path / "dispatcher.sh",
+            dependency_kind=cast(
+                SlurmDependencyKind, "afterinvalid"
+            ),
+        )
+
+    assert calls == []
+
+
+def test_retry_replays_journaled_afterok_dependency(tmp_path: Path) -> None:
+    """A retry cannot weaken an existing success-only submission intent."""
+    generation = "generation-afterok-replay"
+    initialize_slurm_lifecycle(
+        tmp_path, generation=generation, mode="ordinary"
+    )
+    append_lifecycle_entry(
+        tmp_path,
+        generation=generation,
+        token="dispatcher-1",
+        role="dispatcher",
+        status="intent",
+        dependencies=("601",),
+        dependency_kind="afterok",
+    )
+    scheduler = FakeScheduler()
+
+    submit_with_lifecycle(
+        tmp_path,
+        generation=generation,
+        token="dispatcher-1",
+        role="dispatcher",
+        script_path=tmp_path / "dispatcher.sh",
+        dependencies=("601",),
+        run_command=scheduler,
+    )
+
+    assert scheduler.sbatch_commands == [
+        [
+            "sbatch",
+            "--parsable",
+            "--export=ALL",
+            "--comment",
+            "phenotypic:generation-afterok-replay:dispatcher-1",
+            "--dependency",
+            "afterok:601",
+            str(tmp_path / "dispatcher.sh"),
+        ]
+    ]
+    assert read_lifecycle_ledger(tmp_path)[-1]["dependency_kind"] == (
+        "afterok"
+    )
+
+
+def test_dispatch_cli_threads_afterok_to_continuation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Generated dispatcher CLI arguments retain the selected edge kind."""
+    observed: dict[str, object] = {}
+
+    def fake_dispatch(output_dir: Path, **kwargs: object) -> tuple[str, None]:
+        observed["output_dir"] = output_dir
+        observed.update(kwargs)
+        return "701", None
+
+    monkeypatch.setattr(lifecycle, "dispatch_continuation", fake_dispatch)
+
+    exit_code = lifecycle._dispatch_from_argv(
+        [
+            "--output",
+            str(tmp_path),
+            "--generation",
+            "generation-cli",
+            "--chunk-index",
+            "2",
+            "--chunk-script",
+            str(tmp_path / "chunk.sh"),
+            "--dispatcher-script",
+            str(tmp_path / "dispatcher.sh"),
+            "--dependency-kind",
+            "afterok",
+        ]
+    )
+
+    assert exit_code == 0
+    assert observed["dependency_kind"] == "afterok"
 
 
 def test_next_invocation_recovers_accept_before_ledger_crash(
@@ -424,3 +593,120 @@ def test_preversioned_metadata_is_upgraded_without_losing_unknown_id(
     assert metadata[JobMetadataKey.SLURM_JOB_IDS]["finalizer"]["role"] == (
         "finalizer"
     )
+
+
+def test_later_continuation_failure_fences_submitted_chunk(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A dynamic dispatcher cannot orphan its newly submitted chunk."""
+    generation = "later-dispatch-failure"
+    initialize_slurm_lifecycle(
+        tmp_path, generation=generation, mode="recompile"
+    )
+    submissions: list[str] = []
+
+    def fake_submit(*_args: object, **kwargs: object) -> str:
+        token = str(kwargs["token"])
+        submissions.append(token)
+        if token.startswith("dispatcher-"):
+            raise ValueError("scheduler adapter failed unexpectedly")
+        return "701"
+
+    cancellations: list[tuple[Path, str]] = []
+
+    def fake_cancel(output_dir: Path, found_generation: str) -> object:
+        cancellations.append((output_dir, found_generation))
+        lifecycle.deactivate_generation(output_dir, found_generation)
+        return lifecycle.CancellationResult(("701",), (), True)
+
+    monkeypatch.setattr(lifecycle, "submit_with_lifecycle", fake_submit)
+    monkeypatch.setattr(lifecycle, "cancel_generation", fake_cancel)
+
+    with pytest.raises(RuntimeError, match="fenced and reconciled"):
+        lifecycle.dispatch_continuation(
+            tmp_path,
+            generation=generation,
+            chunk_index=2,
+            chunk_script=tmp_path / "chunk-2.sh",
+            dispatcher_script=tmp_path / "dispatch-3.sh",
+        )
+
+    assert submissions == ["chunk-2", "dispatcher-3"]
+    assert cancellations == [(tmp_path, generation)]
+    state = load_slurm_lifecycle(tmp_path)
+    assert state["active"] is False
+    assert state["terminal_status"] == "failed"
+    assert "Continuation submission failed" in state["terminal_error"]
+
+
+def test_next_chunk_submission_failure_fences_generation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A dynamic chunk submission error enters the same cancellation path."""
+    generation = "next-chunk-failure"
+    initialize_slurm_lifecycle(
+        tmp_path, generation=generation, mode="recompile"
+    )
+
+    def fake_submit(*_args: object, **_kwargs: object) -> str:
+        raise OSError("chunk scheduler transport failed")
+
+    cancellations: list[tuple[Path, str]] = []
+
+    def fake_cancel(output_dir: Path, found_generation: str) -> object:
+        cancellations.append((output_dir, found_generation))
+        lifecycle.deactivate_generation(output_dir, found_generation)
+        return lifecycle.CancellationResult((), (), True)
+
+    monkeypatch.setattr(lifecycle, "submit_with_lifecycle", fake_submit)
+    monkeypatch.setattr(lifecycle, "cancel_generation", fake_cancel)
+
+    with pytest.raises(RuntimeError, match="Next chunk submission failed"):
+        lifecycle.dispatch_continuation(
+            tmp_path,
+            generation=generation,
+            chunk_index=2,
+            chunk_script=tmp_path / "chunk-2.sh",
+            dispatcher_script=tmp_path / "dispatch-3.sh",
+        )
+
+    assert cancellations == [(tmp_path, generation)]
+    state = load_slurm_lifecycle(tmp_path)
+    assert state["active"] is False
+    assert state["terminal_status"] == "failed"
+    assert "Next chunk submission failed" in state["terminal_error"]
+
+
+def test_continuation_cancel_failure_still_deactivates_generation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The local fence survives an unexpected reconciliation failure."""
+    generation = "later-cancel-failure"
+    initialize_slurm_lifecycle(
+        tmp_path, generation=generation, mode="recompile"
+    )
+
+    def fake_submit(*_args: object, **kwargs: object) -> str:
+        if str(kwargs["token"]).startswith("dispatcher-"):
+            raise OSError("scheduler transport failed")
+        return "701"
+
+    def fake_cancel(*_args: object, **_kwargs: object) -> object:
+        raise TimeoutError("reconciliation lock timed out")
+
+    monkeypatch.setattr(lifecycle, "submit_with_lifecycle", fake_submit)
+    monkeypatch.setattr(lifecycle, "cancel_generation", fake_cancel)
+
+    with pytest.raises(RuntimeError, match="reconciliation failed"):
+        lifecycle.dispatch_continuation(
+            tmp_path,
+            generation=generation,
+            chunk_index=2,
+            chunk_script=tmp_path / "chunk-2.sh",
+            dispatcher_script=tmp_path / "dispatch-3.sh",
+        )
+
+    state = load_slurm_lifecycle(tmp_path)
+    assert state["active"] is False
+    assert state["terminal_status"] == "failed"
+    assert "reconciliation failed" in state["terminal_error"]

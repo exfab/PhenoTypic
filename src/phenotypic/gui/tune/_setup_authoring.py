@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from phenotypic._services.tune_spec import (  # noqa: F401
     SETUP_DRAFT_VERSION,
+    _normalize_setup_metadata_groupby,
     SetupAuthoringResult,
     SetupDraft,
     SetupDraftCache,

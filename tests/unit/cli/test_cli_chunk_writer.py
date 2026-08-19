@@ -5,7 +5,7 @@ from __future__ import annotations
 import polars as pl
 
 from phenotypic._cli._cli_chunk_writer import _aggregate_chunks_locked
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     analysis_full_parquet_path,
     master_measurements_csv_path,
@@ -32,7 +32,7 @@ def test_chunk_aggregation_preserves_rolling_and_master_outputs(tmp_path) -> Non
     )
     _aggregate_chunks_locked(output_dir, prog_dir)
 
-    image_name = str(METADATA.IMAGE_NAME)
+    image_name = str(IMAGE.IMAGE_NAME)
     rolling = pl.read_parquet(analysis_full_parquet_path(prog_dir)).sort(image_name)
     master_parquet = pl.read_parquet(
         master_measurements_parquet_path(output_dir)

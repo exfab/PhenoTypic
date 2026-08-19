@@ -13,7 +13,12 @@ from typing import Any, ClassVar
 
 import pandas as pd
 import plotly.graph_objects as go
+from pydantic import field_validator
 
+from phenotypic.analysis.abc_._set_analyzer import (
+    normalize_measurement_metadata_columns,
+    normalize_metadata_column_reference,
+)
 from phenotypic.analysis.qc._expected_vs_detected import ExpectedVsDetectedCount
 from phenotypic.schema import GRID, QUALITY_OCCUPANCY
 from phenotypic.sdk_ import ColumnRef
@@ -63,7 +68,7 @@ class GridOccupancy(ExpectedVsDetectedCount):
             :class:`ExpectedVsDetectedCount` (the path form round-trips
             through JSON).
         groupby: Columns that define one plate. Usually
-            ``["MetadataImage_ImageName"]``. Must be present in both the
+            ``[str(IMAGE.IMAGE_NAME)]``. Must be present in both the
             metadata frame and the measurement frame.
         on: Base-class required column and curation member value. Defaults
             to ``"Object_Label"``; occupancy does not count over it.
@@ -92,17 +97,19 @@ class GridOccupancy(ExpectedVsDetectedCount):
 
         >>> import pandas as pd
         >>> from phenotypic.analysis.qc import GridOccupancy
+        >>> from phenotypic.schema import IMAGE
+        >>> image_name = str(IMAGE.IMAGE_NAME)
         >>> metadata = pd.DataFrame({
-        ...     "MetadataImage_ImageName": ["p1.png"] * 96,
+        ...     image_name: ["p1.png"] * 96,
         ...     "Object_Label": list(range(96)),
         ... })
         >>> measurements = pd.DataFrame({
-        ...     "MetadataImage_ImageName": ["p1.png"] * 92,
+        ...     image_name: ["p1.png"] * 92,
         ...     "Object_Label": list(range(92)),
         ...     "Grid_RowMajorIdx": list(range(90)) + [5, 17],
         ... })
         >>> chk = GridOccupancy(
-        ...     metadata=metadata, groupby=["MetadataImage_ImageName"]
+        ...     metadata=metadata, groupby=[image_name]
         ... )
         >>> out = chk.analyze(measurements)
         >>> int(out["QC_Occupancy_Filled"].iloc[0])
@@ -120,6 +127,14 @@ class GridOccupancy(ExpectedVsDetectedCount):
     warn_threshold: float = 0.95
     fail_threshold: float = 0.90
     cell_label: ColumnRef = str(GRID.ROW_MAJOR_IDX)
+
+    @field_validator("cell_label", mode="before")
+    @classmethod
+    def _normalize_cell_label(cls, value: Any) -> str:
+        """Accept current, flat, and bare metadata cell identifiers."""
+        if not isinstance(value, str):
+            raise ValueError("cell_label must be a string column reference")
+        return normalize_metadata_column_reference(value)
 
     def analyze(self, data: pd.DataFrame) -> pd.DataFrame:
         """Guard the cell-id column, then run the inherited ``analyze``.
@@ -139,6 +154,7 @@ class GridOccupancy(ExpectedVsDetectedCount):
         Raises:
             KeyError: If ``cell_label`` is missing from ``data``.
         """
+        data = normalize_measurement_metadata_columns(data)
         if self.cell_label not in data.columns:
             raise KeyError(
                 "GridOccupancy requires the cell-id column "

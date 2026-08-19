@@ -13,7 +13,18 @@ import logging
 
 import polars as pl
 
-from phenotypic.gui.results_viewer._filter_state import FilterRow, FilterSpec
+from phenotypic.gui.results_viewer._filter_state import (
+    COMPARE_OPS,
+    METHOD_COMPARE,
+    METHOD_CONTAINS,
+    METHOD_IS_ANY_OF,
+    METHOD_IS_NONE_OF,
+    METHOD_RANGE,
+    FilterRow,
+    FilterSpec,
+    _coerce_float,
+)
+from phenotypic.schema import CULTURE, IMAGE
 
 
 def _make_frame() -> pl.DataFrame:
@@ -37,6 +48,26 @@ def test_empty_spec_is_passthrough() -> None:
     df = _make_frame()
     out = FilterSpec(rows=[]).apply_to(df)
     assert out.height == df.height
+
+
+def test_legacy_filter_column_applies_to_flat_metadata_frame() -> None:
+    source = pl.DataFrame(
+        {
+            "Metadata_Time": [1, 2, 3],
+            "Size_Area": [10.0, 20.0, 30.0],
+        }
+    )
+    original = source.clone()
+    spec = FilterSpec.from_store(
+        [{"column": "Metadata_Time", "values": ["2"]}]
+    )
+
+    result = spec.apply_to(source)
+
+    assert spec.rows[0].column == str(CULTURE.TIME)
+    assert result.get_column(str(CULTURE.TIME)).to_list() == [2]
+    assert result.get_column("Size_Area").to_list() == [20.0]
+    assert source.equals(original)
 
 
 def test_from_store_handles_none_and_empty_list() -> None:
@@ -179,18 +210,6 @@ def test_string_coercion_uses_polars_default_cast() -> None:
     assert sorted(matches.get_column("Size_Area").to_list()) == [100.0, 200.0]
 
 
-from phenotypic.gui.results_viewer._filter_state import (
-    COMPARE_OPS,
-    METHOD_COMPARE,
-    METHOD_CONTAINS,
-    METHOD_IS_ANY_OF,
-    METHOD_IS_NONE_OF,
-    METHOD_RANGE,
-    _coerce_float,
-)
-from phenotypic.schema import METADATA
-
-
 def test_legacy_row_defaults_to_is_any_of() -> None:
     """A pre-method store row keeps working as an is_any_of list filter."""
     spec = FilterSpec.from_store([{"column": "a", "values": ["x"]}])
@@ -212,7 +231,7 @@ def test_from_store_reads_range_and_compare_and_contains() -> None:
          "range_min": "100", "range_max": "5000"},
         {"column": "Shape_Circularity", "method": METHOD_COMPARE,
          "compare_op": ">=", "compare_value": "0.85"},
-        {"column": str(METADATA.IMAGE_NAME), "method": METHOD_CONTAINS,
+        {"column": str(IMAGE.IMAGE_NAME), "method": METHOD_CONTAINS,
          "text_pattern": "plate_02", "text_regex": False,
          "text_case_sensitive": True},
     ]

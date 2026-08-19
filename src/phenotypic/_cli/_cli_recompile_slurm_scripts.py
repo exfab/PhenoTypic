@@ -8,7 +8,8 @@ import shlex
 from pathlib import Path
 from typing import Any, Final
 
-from ._measurement_sources import discover_measurement_sources
+from ._cli_completion import authorized_measurement_sources
+from ._measurement_sources import discover_recompile_measurement_sources
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 from phenotypic.sdk_ import (
     DIR_HDF,
@@ -37,6 +38,7 @@ def build_recompile_tasks(
     include_dataset_column: bool,
     overlay_alpha: float,
     shard_size: int,
+    attempt_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Discover recompile work under an existing CLI output directory.
 
@@ -48,6 +50,8 @@ def build_recompile_tasks(
         overlay_alpha: Overlay alpha to pass to overlay regeneration tasks.
         shard_size: Number of measurement source files per shard. Values
             below one are treated as one.
+        attempt_id: Optional scheduler-attempt namespace and lifecycle
+            generation for task metadata.
 
     Returns:
         JSON-serializable task dictionaries. When any non-finalizer work is
@@ -56,55 +60,56 @@ def build_recompile_tasks(
     output_dir = Path(output_dir)
     shard_size = max(1, int(shard_size))
 
-    # Flush trailing per-image parquets before resolving shards. This path
-    # never reaches `aggregate_measurements` — the recompile worker
-    # concatenates the shards itself — so without the flush,
-    # `discover_measurement_sources` returns `_dataset_aggregated.parquet`
-    # alone and any image left unchunked by the last checkpoint sentinel is
-    # dropped from the rebuilt master. That would silently defeat the very
-    # command a user runs to recover from a short master, and would make
-    # `--mode recompile` disagree with `--mode recompile --slurm` on the same
-    # directory. No-op for unchunked runs and evenly-divided ones.
-    from ._cli_chunk_writer import flush_trailing_measurements_if_chunked
-
-    flush_trailing_measurements_if_chunked(output_dir)
-
+    authorized_sources = authorized_measurement_sources(output_dir)
     tasks: list[dict[str, Any]] = []
     shard_id = 0
 
     for dataset_name in dataset_names:
-        source_files = [
-            source.path
-            for source in discover_measurement_sources(
-                output_dir, [dataset_name]
+        if authorized_sources is None:
+            source_files = [
+                source.path
+                for source in discover_recompile_measurement_sources(
+                    output_dir, [dataset_name]
+                )
+            ]
+        else:
+            source_files = sorted(
+                path
+                for path, dataset in authorized_sources.items()
+                if dataset == dataset_name
             )
-        ]
         for source_shard in _chunk_paths(source_files, shard_size):
-            tasks.append(
-                {
-                    "task_type": TASK_MEASUREMENTS,
-                    "shard_id": shard_id,
-                    "files": [str(path.absolute()) for path in source_shard],
-                    "include_dataset_column": include_dataset_column,
-                }
-            )
+            task = {
+                "task_type": TASK_MEASUREMENTS,
+                "shard_id": shard_id,
+                "files": [str(path.absolute()) for path in source_shard],
+                "include_dataset_column": include_dataset_column,
+            }
+            if attempt_id is not None:
+                task["slurm_generation"] = attempt_id
+            tasks.append(task)
             shard_id += 1
 
     for dataset_name in dataset_names:
-        tasks.extend(
-            _overlay_tasks_for_dataset(output_dir, dataset_name, overlay_alpha)
+        overlay_tasks = _overlay_tasks_for_dataset(
+            output_dir, dataset_name, overlay_alpha
         )
+        if attempt_id is not None:
+            for task in overlay_tasks:
+                task["slurm_generation"] = attempt_id
+        tasks.extend(overlay_tasks)
 
     if tasks:
-        tasks.append(
-            {
-                "task_type": TASK_FINALIZE,
-                "dataset_names": list(dataset_names),
-                "include_dataset_column": include_dataset_column,
-                JobMetadataKey.METADATA_CSV: None,
-                "expected_non_finalizer_tasks": len(tasks),
-            }
-        )
+        finalizer_task = {
+            "task_type": TASK_FINALIZE,
+            "dataset_names": list(dataset_names),
+            "include_dataset_column": include_dataset_column,
+            JobMetadataKey.METADATA_CSV: None,
+            "expected_non_finalizer_tasks": len(tasks),
+        }
+        if attempt_id is not None:
+            finalizer_task["slurm_generation"] = attempt_id
+        tasks.append(finalizer_task)
 
     return tasks
 
@@ -114,6 +119,7 @@ def generate_recompile_slurm_scripts(
     output_dir: Path,
     slurm_args: dict[str, Any],
     array_limit: int,
+    attempt_id: str | None = None,
 ) -> list[Path]:
     """Write a recompile task manifest and SLURM array scripts.
 
@@ -122,6 +128,7 @@ def generate_recompile_slurm_scripts(
         output_dir: Existing output directory.
         slurm_args: SLURM directive arguments.
         array_limit: Maximum number of tasks per generated array script.
+        attempt_id: Optional scheduler-attempt namespace for generated state.
 
     Returns:
         Ordered list of generated array script paths.
@@ -131,20 +138,37 @@ def generate_recompile_slurm_scripts(
     """
     if array_limit <= 0:
         raise ValueError("array_limit must be positive")
+    if attempt_id is None or not attempt_id:
+        raise ValueError("attempt_id is required for SLURM recompile scripts")
 
     output_dir = Path(output_dir)
-    rc_dir = recompile_dir(progress_dir(output_dir))
+    rc_dir = recompile_attempt_dir(output_dir, attempt_id)
     rc_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = rc_dir / RECOMPILE_TASK_MANIFEST_JSON
+    manifest_tasks = [dict(task) for task in tasks]
+    if attempt_id is not None:
+        for task in manifest_tasks:
+            task_generation = task.get("slurm_generation")
+            if task_generation not in {None, attempt_id}:
+                raise ValueError(
+                    "Recompile task generation conflicts with attempt id"
+                )
+            task["slurm_generation"] = attempt_id
     manifest_path.write_text(
-        json.dumps({"tasks": tasks}, indent=2) + "\n",
+        json.dumps({"tasks": manifest_tasks}, indent=2) + "\n",
         encoding="utf-8",
     )
 
     if not tasks:
         return []
 
+    terminal_status_path = recompile_task_status_path(
+        manifest_path, len(tasks) - 1
+    )
+
     script_dir = slurm_scripts_dir(output_dir) / "recompile"
+    if attempt_id is not None:
+        script_dir = script_dir / attempt_id
     script_dir.mkdir(parents=True, exist_ok=True)
     log_dir = logs_dir(output_dir) / "slurm" / "recompile"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -165,11 +189,25 @@ def generate_recompile_slurm_scripts(
                 chunk_id=chunk_id,
                 slurm_args=slurm_args,
                 log_dir=log_dir,
+                slurm_generation=attempt_id,
+                attempt_id=attempt_id,
+                terminal_status_path=terminal_status_path,
             ),
         )
         scripts.append(script_path)
 
     return scripts
+
+
+def recompile_attempt_dir(output_dir: Path, attempt_id: str | None) -> Path:
+    """Return isolated recompile state for one scheduler attempt."""
+    base = recompile_dir(progress_dir(Path(output_dir)))
+    return base if attempt_id is None else base / "attempts" / attempt_id
+
+
+def recompile_task_status_path(manifest_path: Path, task_index: int) -> Path:
+    """Return an attempt-scoped ordinary recompile task status path."""
+    return Path(manifest_path).parent / "status" / f"task_{task_index}.json"
 
 
 def _overlay_tasks_for_dataset(
@@ -212,6 +250,9 @@ def _recompile_array_script_spec(
     chunk_id: int,
     slurm_args: dict[str, Any],
     log_dir: Path,
+    slurm_generation: str | None = None,
+    attempt_id: str | None = None,
+    terminal_status_path: Path | None = None,
 ) -> SlurmArrayScriptSpec:
     """Build a shared script spec for recompile task indices."""
     log_path = log_dir / f"recompile_chunk{chunk_id}_%A_%a.log"
@@ -219,6 +260,22 @@ def _recompile_array_script_spec(
     python_str = " ".join(shlex.quote(part) for part in python_cmd)
     q_output_dir = shlex.quote(str(output_dir.absolute()))
     q_manifest = shlex.quote(str(manifest_path.absolute()))
+    generation_option = (
+        " \\\n    --slurm-generation " + shlex.quote(slurm_generation)
+        if slurm_generation is not None
+        else ""
+    )
+    attempt_option = (
+        " \\\n    --attempt-id " + shlex.quote(attempt_id)
+        if attempt_id is not None
+        else ""
+    )
+    terminal_status_option = (
+        " \\\n    --terminal-status-path "
+        + shlex.quote(str(terminal_status_path.absolute()))
+        if terminal_status_path is not None
+        else ""
+    )
 
     body = f"""\
 echo "Recompile task index: $CURRENT_TASK_INDEX"
@@ -226,7 +283,7 @@ echo "Recompile task index: $CURRENT_TASK_INDEX"
 {python_str} -m phenotypic._cli._cli_recompile_worker \\
     --output-dir {q_output_dir} \\
     --task-manifest {q_manifest} \\
-    --task-index "$CURRENT_TASK_INDEX"
+    --task-index "$CURRENT_TASK_INDEX"{generation_option}{attempt_option}{terminal_status_option}
 """
     return SlurmArrayScriptSpec(
         job_name=f"pht-recompile-{chunk_id}",

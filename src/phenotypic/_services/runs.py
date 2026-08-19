@@ -610,6 +610,35 @@ class RunRegistry:
         record: RunRecord,
     ) -> str | None:
         """Return why a zero-exit local generation cannot publish complete."""
+        from phenotypic._cli._cli_completion import current_run_is_complete
+
+        marker_complete = current_run_is_complete(record.output_dir)
+        if marker_complete is False:
+            return (
+                "local process exited successfully but current marker evidence "
+                "is incomplete"
+            )
+        if marker_complete is True:
+            marker_path = run_completion_marker_path(record.output_dir)
+            try:
+                marker = json.loads(marker_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError, TypeError) as exc:
+                return (
+                    "local process exited successfully but its completion "
+                    f"marker is unreadable at {marker_path}: {exc}"
+                )
+            if not isinstance(marker, dict) or (
+                marker.get("status") != "complete"
+                or marker.get("finalizer_succeeded") is not True
+            ):
+                return "local completion marker is missing successful publication status"
+            # The exact observe_local_exit(run_id, generation) CAS already
+            # fences stale child processes. A scientific no-op intentionally
+            # retains its prior marker instead of rewriting it for GUI chrome.
+            return None
+
+        # Schema-2 compatibility: old runs have no general image markers and
+        # continue through the manifest/generation contract below.
         path = manifest_json_path(record.output_dir)
         if not path.is_file():
             return (

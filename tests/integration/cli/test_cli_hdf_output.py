@@ -9,13 +9,14 @@ the behaviour promised by Phase 7 of the HDF-centric CLI plan:
   ``results/<dataset>/measurements/<stem>.parquet`` — and nothing else
   (no per-layer ``rgb/`` / ``gray/`` / ``detect_mat/`` / ``objmap/`` folders).
 * Forward runs always write a PNG overlay per image alongside the HDF.
-* ``--mode measure`` reruns :meth:`ImagePipeline.measure` on existing HDFs
-  without touching the HDF files on disk and without regenerating overlays.
+* Schema-3 outputs reject ``--mode measure`` before it can invalidate their
+  marker-authorized per-image evidence.
 * ``--mode measure`` rejects incompatible flags with a clear error message.
 
 All tests pass ``--force-local`` so SLURM is never dispatched.
 """
 
+import json
 import tempfile
 import time
 from pathlib import Path
@@ -26,8 +27,18 @@ from click.testing import CliRunner
 from PIL import Image as PILImage
 
 from phenotypic.data import load_synth_yeast_plate
+from phenotypic._cli._cli_completion import (
+    valid_aggregate_snapshot,
+    valid_run_completion,
+)
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.prefab import RoundPeaksPipeline
+from phenotypic.sdk_ import (
+    aggregate_publication_marker_path,
+    image_completion_marker_path,
+    manifest_json_path,
+    run_completion_marker_path,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +150,8 @@ class TestForwardRunHdfLayout:
             f"Expected overlay PNG at {overlay_file} (overlays are always "
             f"written for forward runs)"
         )
+        assert valid_aggregate_snapshot(output_dir) is not None
+        assert valid_run_completion(output_dir) is not None
 
         # None of the legacy per-layer directories must be created.
         for legacy_folder in ("rgb", "gray", "detect_mat", "objmap"):
@@ -158,6 +171,69 @@ class TestForwardRunHdfLayout:
             f"Got {sorted(actual_children)}; expected {{'hdf', 'measurements'}} "
             f"(overlays now live under deliverables/overlays/<ds>/)."
         )
+
+    def test_default_run_continues_and_processes_only_new_input(
+        self, runner, temp_pipeline, plates_input_dir, tmp_path
+    ):
+        """A second invocation needs no lifecycle flag and admits appended images."""
+        output_dir = tmp_path / "out"
+        args = [
+            "--pipeline",
+            str(temp_pipeline),
+            "--input",
+            str(plates_input_dir),
+            "-o",
+            str(output_dir),
+            "--njobs",
+            "1",
+            "--skip-validation",
+            "--force-local",
+        ]
+        first = runner.invoke(phenotypic_cli, args)
+        assert first.exit_code == 0, first.output
+        old_marker = image_completion_marker_path(
+            output_dir, "plates", "plate_001"
+        )
+        old_marker_bytes = old_marker.read_bytes()
+
+        _write_synth_image(plates_input_dir / "plate_002.png")
+        second = runner.invoke(phenotypic_cli, args)
+        assert second.exit_code == 0, second.output
+        assert "Continuing processing (1 images remaining)" in second.output
+        assert old_marker.read_bytes() == old_marker_bytes
+        assert (
+            output_dir / "results" / "plates" / "hdf" / "plate_002.h5"
+        ).is_file()
+        manifest = json.loads(
+            manifest_json_path(output_dir).read_text(encoding="utf-8")
+        )
+        assert manifest["successful"] == 2
+        assert manifest["terminal_failed"] == 0
+        assert manifest["pending"] == 0
+
+        aggregate_bytes = aggregate_publication_marker_path(
+            output_dir
+        ).read_bytes()
+        run_bytes = run_completion_marker_path(output_dir).read_bytes()
+        third = runner.invoke(phenotypic_cli, args)
+        assert third.exit_code == 0, third.output
+        assert "All images already processed" in third.output
+        assert aggregate_publication_marker_path(output_dir).read_bytes() == (
+            aggregate_bytes
+        )
+        assert run_completion_marker_path(output_dir).read_bytes() == run_bytes
+
+        # Marker-only image no-op still repairs a crashed finalizer. No image
+        # success evidence is rewritten while aggregate and run publication
+        # evidence are rebuilt from current marker-authorized sources.
+        aggregate_publication_marker_path(output_dir).unlink()
+        run_completion_marker_path(output_dir).unlink()
+        repaired = runner.invoke(phenotypic_cli, args)
+        assert repaired.exit_code == 0, repaired.output
+        assert "Aggregating measurements" in repaired.output
+        assert old_marker.read_bytes() == old_marker_bytes
+        assert valid_aggregate_snapshot(output_dir) is not None
+        assert valid_run_completion(output_dir) is not None
 
 
 # ---------------------------------------------------------------------------
@@ -206,12 +282,12 @@ class TestOverlayAlwaysOn:
 
 
 class TestMeasureRerun:
-    """Measure mode reruns measurements without touching HDFs or overlays."""
+    """Schema-3 marker-authorized outputs reject direct measure mutation."""
 
     def test_measure_rerun_rewrites_measurements(
         self, runner, temp_pipeline, plates_input_dir, tmp_path
     ):
-        """Forward run, then measure mode: parquet changes, HDF does not."""
+        """Measure mode cannot invalidate a marker-authorized image outcome."""
         output_dir = tmp_path / "out"
 
         # Forward run.
@@ -268,33 +344,11 @@ class TestMeasureRerun:
                 "--force-local",
             ],
         )
-        assert measure.exit_code == 0, (
-            f"Measure-mode rerun failed:\n{measure.output}"
-        )
-
-        # Parquet must be rewritten (mtime advanced).
-        parquet_mtime_after = parquet_path.stat().st_mtime_ns
-        assert parquet_mtime_after > parquet_mtime_before, (
-            f"Parquet mtime did not advance after measure-mode rerun "
-            f"(before={parquet_mtime_before}, after={parquet_mtime_after}). "
-            f"Measure mode should rewrite measurements."
-        )
-
-        # HDF must be untouched.
-        hdf_mtime_after = hdf_path.stat().st_mtime_ns
-        assert hdf_mtime_after == hdf_mtime_before, (
-            f"HDF mtime changed after measure-mode rerun "
-            f"(before={hdf_mtime_before}, after={hdf_mtime_after}). "
-            f"Measure mode must not rewrite HDF files."
-        )
-
-        # Existing overlay must NOT be rewritten by a measure rerun.
-        overlay_mtime_after = overlay_path.stat().st_mtime_ns
-        assert overlay_mtime_after == overlay_mtime_before, (
-            f"Overlay mtime changed after measure-mode rerun "
-            f"(before={overlay_mtime_before}, after={overlay_mtime_after}). "
-            f"Measure mode must not regenerate overlays."
-        )
+        assert measure.exit_code != 0
+        assert "cannot mutate a marker-authorized incremental run" in measure.output
+        assert parquet_path.stat().st_mtime_ns == parquet_mtime_before
+        assert hdf_path.stat().st_mtime_ns == hdf_mtime_before
+        assert overlay_path.stat().st_mtime_ns == overlay_mtime_before
 
     def test_measure_rerun_grid_image_hdf(
         self, runner, temp_pipeline, plates_input_dir, tmp_path
@@ -387,9 +441,8 @@ class TestMeasureRerun:
                 "12",
             ],
         )
-        assert measure.exit_code == 0, (
-            f"GridImage measure-mode rerun failed:\n{measure.output}"
-        )
+        assert measure.exit_code != 0
+        assert "cannot mutate a marker-authorized incremental run" in measure.output
 
         parquet_path = (
             output_dir / "results" / "plates" / "measurements" / "plate_001.parquet"
@@ -399,9 +452,7 @@ class TestMeasureRerun:
         )
 
         df = pd.read_parquet(parquet_path)
-        assert not df.empty, (
-            "GridImage measure-mode rerun produced an empty measurements frame."
-        )
+        assert not df.empty
 
         # Sanity: the canonical category-prefixed columns from the
         # RoundPeaksPipeline measurement set (Shape + Intensity) must be
@@ -410,11 +461,11 @@ class TestMeasureRerun:
         shape_cols = {c for c in df.columns if c.startswith("Shape_")}
         intensity_cols = {c for c in df.columns if c.startswith("Intensity_")}
         assert shape_cols, (
-            f"Measurements parquet is missing Shape_* columns after measure mode; "
+            f"Measurements parquet is missing Shape_* columns after forward mode; "
             f"columns={list(df.columns)}"
         )
         assert intensity_cols, (
-            f"Measurements parquet is missing Intensity_* columns after measure mode; "
+            f"Measurements parquet is missing Intensity_* columns after forward mode; "
             f"columns={list(df.columns)}"
         )
 
@@ -552,10 +603,10 @@ class TestMeasureFlagValidation:
             f"Error message missing expected substring:\n{result.output}"
         )
 
-    def test_measure_rejects_resume(
+    def test_removed_resume_option_is_rejected(
         self, runner, temp_pipeline, prepared_output_dir
     ):
-        """Measure mode with --resume must exit non-zero with a clear message."""
+        """The removed public continuation option is rejected by Click."""
         result = runner.invoke(
             phenotypic_cli,
             [
@@ -571,10 +622,10 @@ class TestMeasureFlagValidation:
             ],
         )
         assert result.exit_code != 0, (
-            f"Measure mode with --resume should fail but got exit_code=0:\n"
+            f"Removed option should fail but got exit_code=0:\n"
             f"{result.output}"
         )
-        assert "--mode measure cannot be combined with --resume" in result.output, (
+        assert "No such option: --resume" in result.output, (
             f"Error message missing expected substring:\n{result.output}"
         )
 

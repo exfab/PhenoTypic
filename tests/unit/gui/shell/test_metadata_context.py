@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.schema import METADATA
+from phenotypic.schema import CONDITION, IMAGE
 
 
 def _write_csv(path: Path, text: str) -> Path:
@@ -17,7 +17,7 @@ def test_metadata_payload_accepts_in_sandbox_csv(tmp_path: Path) -> None:
 
     csv_path = _write_csv(
         tmp_path / "layout.csv",
-        f"{METADATA.IMAGE_NAME},Treatment\nplate_a,control\nplate_b,stress\n",
+        f"{IMAGE.IMAGE_NAME},Treatment\nplate_a,control\nplate_b,stress\n",
     )
     sandbox = SandboxRoot.from_path(tmp_path)
 
@@ -83,7 +83,7 @@ def test_metadata_payload_reports_duplicate_image_names(tmp_path: Path) -> None:
 
     csv_path = _write_csv(
         tmp_path / "layout.csv",
-        f"{METADATA.IMAGE_NAME},Treatment\nplate_a,control\nplate_a,stress\n",
+        f"{IMAGE.IMAGE_NAME},Treatment\nplate_a,control\nplate_a,stress\n",
     )
     sandbox = SandboxRoot.from_path(tmp_path)
 
@@ -100,15 +100,15 @@ def test_metadata_image_identity_supports_current_and_legacy_headers() -> None:
     )
 
     columns = [
-        str(METADATA.IMAGE_NAME),
-        "Metadata_ImageName",
+        str(IMAGE.IMAGE_NAME),
+        "MetadataImage_ImageName",
         "Metadata_ImageFileName",
         "ImageName",
     ]
     rows = [
         {
-            str(METADATA.IMAGE_NAME): "plate_a",
-            "Metadata_ImageName": "plate_a",
+            str(IMAGE.IMAGE_NAME): "plate_a",
+            "MetadataImage_ImageName": "plate_a",
             "Metadata_ImageFileName": r"C:\images\plate_a.tiff",
             "ImageName": "plate_a",
         }
@@ -117,7 +117,7 @@ def test_metadata_image_identity_supports_current_and_legacy_headers() -> None:
     identity = resolve_metadata_image_identity(columns, rows)
 
     assert identity.state == "resolved"
-    assert identity.column == str(METADATA.IMAGE_NAME)
+    assert identity.column == str(IMAGE.IMAGE_NAME)
     assert identity.recognized_columns == tuple(columns)
     assert identity.normalized_values == ("plate_a",)
 
@@ -127,7 +127,7 @@ def test_metadata_image_identity_preserves_canonical_dotted_stem() -> None:
         resolve_metadata_image_identity,
     )
 
-    canonical = str(METADATA.IMAGE_NAME)
+    canonical = str(IMAGE.IMAGE_NAME)
     columns = [canonical, "Metadata_ImageFileName"]
     rows = [
         {
@@ -148,14 +148,14 @@ def test_metadata_image_identity_prefers_populated_legacy_column() -> None:
         resolve_metadata_image_identity,
     )
 
-    columns = [str(METADATA.IMAGE_NAME), "Metadata_ImageFileName"]
+    columns = [str(IMAGE.IMAGE_NAME), "Metadata_ImageFileName"]
     rows = [
         {
-            str(METADATA.IMAGE_NAME): "",
+            str(IMAGE.IMAGE_NAME): "",
             "Metadata_ImageFileName": "plate_a.tif",
         },
         {
-            str(METADATA.IMAGE_NAME): "",
+            str(IMAGE.IMAGE_NAME): "",
             "Metadata_ImageFileName": "plate_b.tif",
         },
     ]
@@ -172,14 +172,14 @@ def test_metadata_image_identity_rejects_complementary_sparse_aliases() -> None:
         resolve_metadata_image_identity,
     )
 
-    columns = [str(METADATA.IMAGE_NAME), "Metadata_ImageFileName"]
+    columns = [str(IMAGE.IMAGE_NAME), "Metadata_ImageFileName"]
     rows = [
         {
-            str(METADATA.IMAGE_NAME): "plate_a",
+            str(IMAGE.IMAGE_NAME): "plate_a",
             "Metadata_ImageFileName": "",
         },
         {
-            str(METADATA.IMAGE_NAME): "",
+            str(IMAGE.IMAGE_NAME): "",
             "Metadata_ImageFileName": "plate_b.tif",
         },
     ]
@@ -196,14 +196,14 @@ def test_metadata_image_identity_accepts_one_complete_agreeing_alias() -> None:
         resolve_metadata_image_identity,
     )
 
-    columns = [str(METADATA.IMAGE_NAME), "Metadata_ImageFileName"]
+    columns = [str(IMAGE.IMAGE_NAME), "Metadata_ImageFileName"]
     rows = [
         {
-            str(METADATA.IMAGE_NAME): "plate_a",
+            str(IMAGE.IMAGE_NAME): "plate_a",
             "Metadata_ImageFileName": "plate_a.tif",
         },
         {
-            str(METADATA.IMAGE_NAME): "",
+            str(IMAGE.IMAGE_NAME): "",
             "Metadata_ImageFileName": "plate_b.tif",
         },
     ]
@@ -435,7 +435,7 @@ def test_read_metadata_row_matches_image_stem(tmp_path: Path) -> None:
 
     csv_path = _write_csv(
         tmp_path / "layout.csv",
-        f"{METADATA.IMAGE_NAME},Treatment,Replicate\nplate_a,control,1\n",
+        f"{IMAGE.IMAGE_NAME},Treatment,Replicate\nplate_a,control,1\n",
     )
     sandbox = SandboxRoot.from_path(tmp_path)
     payload = metadata_payload_from_path(sandbox, csv_path)
@@ -445,7 +445,7 @@ def test_read_metadata_row_matches_image_stem(tmp_path: Path) -> None:
     assert result.state == "matched"
     assert result.image_stem == "plate_a"
     assert result.row_count == 1
-    assert result.rows == [{"Treatment": "control", "Replicate": "1"}]
+    assert result.rows == [{str(CONDITION.TREATMENT): "control", "Metadata_Replicate": "1"}]
 
 
 def test_read_metadata_row_reports_expected_states(tmp_path: Path) -> None:
@@ -457,7 +457,7 @@ def test_read_metadata_row_reports_expected_states(tmp_path: Path) -> None:
     no_key = _write_csv(tmp_path / "no-key.csv", "Treatment\ncontrol\n")
     unique = _write_csv(
         tmp_path / "unique.csv",
-        f"{METADATA.IMAGE_NAME},Treatment\nplate_b,control\n",
+            f"{IMAGE.IMAGE_NAME},Treatment\nplate_b,control\n",
     )
     sandbox = SandboxRoot.from_path(tmp_path)
 
@@ -487,7 +487,7 @@ def test_read_metadata_row_returns_all_matching_colony_rows(
     csv_path = _write_csv(
         tmp_path / "layout.csv",
         (
-            f"{METADATA.IMAGE_NAME},Colony,Treatment\n"
+            f"{IMAGE.IMAGE_NAME},Colony,Treatment\n"
             "plate_a,A01,control\n"
             "plate_a,A02,stress\n"
             "plate_b,B01,control\n"
@@ -501,8 +501,8 @@ def test_read_metadata_row_returns_all_matching_colony_rows(
     assert result.state == "matched"
     assert result.row_count == 2
     assert result.rows == [
-        {"Colony": "A01", "Treatment": "control"},
-        {"Colony": "A02", "Treatment": "stress"},
+        {"Metadata_Colony": "A01", str(CONDITION.TREATMENT): "control"},
+        {"Metadata_Colony": "A02", str(CONDITION.TREATMENT): "stress"},
     ]
 
 
@@ -528,7 +528,7 @@ def test_read_metadata_row_matches_legacy_filename_and_strips_extension(
     )
 
     assert result.state == "matched"
-    assert result.rows == [{"Treatment": "control"}]
+    assert result.rows == [{str(CONDITION.TREATMENT): "control"}]
 
 
 def test_read_metadata_row_preserves_dotted_stem(tmp_path: Path) -> None:
@@ -552,7 +552,7 @@ def test_read_metadata_row_preserves_dotted_stem(tmp_path: Path) -> None:
 
     assert result.state == "matched"
     assert result.image_stem == "plate.01"
-    assert result.rows == [{"Treatment": "control"}]
+    assert result.rows == [{str(CONDITION.TREATMENT): "control"}]
 
 
 def test_read_metadata_row_matches_canonical_dotted_stem(
@@ -565,7 +565,7 @@ def test_read_metadata_row_matches_canonical_dotted_stem(
 
     csv_path = _write_csv(
         tmp_path / "layout.csv",
-        f"{METADATA.IMAGE_NAME},Treatment\nplate.01,control\n",
+        f"{IMAGE.IMAGE_NAME},Treatment\nplate.01,control\n",
     )
     sandbox = SandboxRoot.from_path(tmp_path)
     payload = metadata_payload_from_path(sandbox, csv_path)
@@ -578,7 +578,7 @@ def test_read_metadata_row_matches_canonical_dotted_stem(
 
     assert result.state == "matched"
     assert result.image_stem == "plate.01"
-    assert result.rows == [{"Treatment": "control"}]
+    assert result.rows == [{str(CONDITION.TREATMENT): "control"}]
 
 
 def test_read_metadata_row_rejects_conflicting_recognized_columns(
@@ -615,10 +615,10 @@ def test_read_metadata_csv_table_returns_columns_and_rows(tmp_path: Path) -> Non
 
     columns, rows = read_metadata_csv_table(csv_path)
 
-    assert columns == ["image", "media", "tp"]
+    assert columns == ["Metadata_image", "Metadata_media", "Metadata_tp"]
     assert rows == [
-        {"image": "plateA", "media": "YPD", "tp": "0h"},
-        {"image": "plateB", "media": "SD", "tp": "6h"},
+        {"Metadata_image": "plateA", "Metadata_media": "YPD", "Metadata_tp": "0h"},
+        {"Metadata_image": "plateB", "Metadata_media": "SD", "Metadata_tp": "6h"},
     ]
 
 
@@ -635,6 +635,89 @@ def test_read_metadata_csv_table_strips_excel_utf8_bom(tmp_path: Path) -> None:
 
     columns, rows = read_metadata_csv_table(csv_path)
 
-    assert columns[0] == "image"
+    assert columns[0] == "Metadata_image"
     assert "﻿" not in columns[0]
-    assert rows == [{"image": "plateA", "media": "YPD"}]
+    assert rows == [{"Metadata_image": "plateA", "Metadata_media": "YPD"}]
+
+
+def test_read_metadata_csv_table_normalizes_legacy_headers_without_mutating_file(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.shell._metadata_context import read_metadata_csv_table
+    from phenotypic.schema import GENETIC
+
+    legacy = "MetadataGenetic_Strain"
+    csv_path = _write_csv(
+        tmp_path / "legacy.csv",
+        f"{legacy},Shape_Area,CustomTag\nBY4741,12.5,control\n",
+    )
+
+    columns, rows = read_metadata_csv_table(csv_path)
+
+    assert columns == [str(GENETIC.STRAIN), "Shape_Area", "Metadata_CustomTag"]
+    assert rows == [
+        {
+            str(GENETIC.STRAIN): "BY4741",
+            "Shape_Area": "12.5",
+            "Metadata_CustomTag": "control",
+        }
+    ]
+    assert legacy in csv_path.read_text(encoding="utf-8")
+
+
+def test_read_metadata_csv_table_rejects_conflicting_legacy_and_current_columns(
+    tmp_path: Path,
+) -> None:
+    import pytest
+
+    from phenotypic.gui.shell._metadata_context import read_metadata_csv_table
+    from phenotypic.schema import GENETIC
+
+    legacy = "MetadataGenetic_Strain"
+    csv_path = _write_csv(
+        tmp_path / "conflict.csv",
+        f"{legacy},{GENETIC.STRAIN}\nBY4741,W303\n",
+    )
+
+    with pytest.raises(ValueError, match="conflicting"):
+        read_metadata_csv_table(csv_path)
+    assert csv_path.read_text(encoding="utf-8").startswith(f"{legacy},")
+
+
+def test_measurement_frame_normalization_preserves_feature_columns() -> None:
+    import pandas as pd
+
+    from phenotypic.gui.shell._metadata_context import (
+        normalize_measurement_metadata_columns,
+    )
+    from phenotypic.schema import GENETIC
+
+    source = pd.DataFrame(
+        {
+            "MetadataGenetic_Strain": ["BY4741"],
+            "Shape_Area": [12.5],
+            "Object_Label": [1],
+            "batch_id": ["batch-a"],
+            "ExternalMeasure_BatchKey": ["external-a"],
+            "Metadata_CustomBatch": ["A"],
+        }
+    )
+
+    normalized = normalize_measurement_metadata_columns(source)
+
+    assert list(normalized.columns) == [
+        str(GENETIC.STRAIN),
+        "Shape_Area",
+        "Object_Label",
+        "Metadata_batch_id",
+        "ExternalMeasure_BatchKey",
+        "Metadata_CustomBatch",
+    ]
+    assert list(source.columns) == [
+        "MetadataGenetic_Strain",
+        "Shape_Area",
+        "Object_Label",
+        "batch_id",
+        "ExternalMeasure_BatchKey",
+        "Metadata_CustomBatch",
+    ]

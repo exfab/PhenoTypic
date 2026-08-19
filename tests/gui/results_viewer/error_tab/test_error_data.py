@@ -32,9 +32,9 @@ from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
 )
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
-KEY_IMAGE_FILE = str(METADATA.IMAGE_NAME)
+KEY_IMAGE_FILE = str(IMAGE.IMAGE_NAME)
 KEY_OBJECT_LABEL = "Object_Label"
 
 

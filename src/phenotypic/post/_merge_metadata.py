@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, cast
 
 import pandas as pd
 from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
-from ._utils import ensure_metadata_prefix
+from ._utils import (
+    coalesce_metadata_aliases,
+    ensure_metadata_prefix,
+    resolve_metadata_column,
+)
 
 
 class MergeMetadata(PostMeasurement):
@@ -19,7 +23,7 @@ class MergeMetadata(PostMeasurement):
     Args:
         columns: Names of the metadata columns to merge. The schema
             category prefix is added automatically if missing (e.g.
-            ``Strain`` -> ``MetadataGenetic_Strain``; unknown labels get a
+            ``Strain`` -> ``Metadata_Strain``; unknown labels get a
             generic ``Metadata_`` prefix). Must contain at least 2 names.
         label: Name for the new merged column. The schema category prefix
             is added automatically if missing.
@@ -47,8 +51,11 @@ class MergeMetadata(PostMeasurement):
 
         >>> import pandas as pd
         >>> from phenotypic.post import MergeMetadata
+        >>> from phenotypic.schema import GENETIC, SAMPLE
+        >>> strain = str(GENETIC.STRAIN)
+        >>> sample_id = str(SAMPLE.SAMPLE_ID)
         >>> df = pd.DataFrame({
-        ...     "MetadataGenetic_Strain": ["WT", "mut"],
+        ...     strain: ["WT", "mut"],
         ...     "Metadata_Condition": ["30C", "37C"],
         ...     "Object_Label": [1, 2],
         ... })
@@ -58,14 +65,14 @@ class MergeMetadata(PostMeasurement):
         ...     delimiter="_",
         ... )
         >>> result = merge.apply(df)
-        >>> list(result["MetadataSample_SampleID"])
+        >>> list(result[sample_id])
         ['WT_30C', 'mut_37C']
 
         A missing source value yields a missing merged key, never
         ``'nan_37C'``:
 
-        >>> df.loc[1, "MetadataGenetic_Strain"] = None
-        >>> list(merge.apply(df)["MetadataSample_SampleID"])
+        >>> df.loc[1, strain] = None
+        >>> list(merge.apply(df)[sample_id])
         ['WT_30C', nan]
     """
 
@@ -103,27 +110,36 @@ class MergeMetadata(PostMeasurement):
             DataFrame with the new merged column inserted after the last
             source column. Rows with an NA in any source column get NaN.
         """
-        # Validate all source columns exist
-        for col in self.columns:
-            if col not in df.columns:
-                raise KeyError(
-                    f"Column '{col}' not found in DataFrame. "
-                    f"Available columns: {list(df.columns)}"
-                )
+        try:
+            result = coalesce_metadata_aliases(df, [*self.columns, self.label])
+            source_columns = [
+                resolve_metadata_column(result.columns, column) for column in self.columns
+            ]
+        except KeyError as exc:
+            raise KeyError(
+                f"Column '{exc.args[0]}' not found in DataFrame. "
+                f"Available columns: {list(df.columns)}"
+            ) from None
 
         # Join column values with delimiter
-        merged = df[self.columns[0]].astype(str)
-        for col in self.columns[1:]:
-            merged = merged + self.delimiter + df[col].astype(str)
+        merged = result[source_columns[0]].astype(str)
+        for col in source_columns[1:]:
+            merged = merged + self.delimiter + result[col].astype(str)
 
         # `.astype(str)` turns NA into the literal "nan", which would produce a
         # valid-looking key (e.g. "nan_A1"). Blank the merged value instead so a
         # missing source stays missing. No-op when nothing is NA.
-        merged = merged.mask(df[self.columns].isna().any(axis=1))
+        merged = merged.mask(result[source_columns].isna().any(axis=1))
 
         # Insert after the last source column
-        result = df.copy()
-        last_pos = max(result.columns.get_loc(c) for c in self.columns)
-        result.insert(last_pos + 1, self.label, merged)
+        last_pos = max(
+            cast(int, result.columns.get_loc(column)) for column in source_columns
+        )
+        try:
+            target_column = resolve_metadata_column(result.columns, self.label)
+        except KeyError:
+            result.insert(last_pos + 1, self.label, merged)
+        else:
+            result[target_column] = merged
 
         return result

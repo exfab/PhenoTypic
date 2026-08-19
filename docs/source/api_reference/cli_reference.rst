@@ -68,7 +68,7 @@ Execution Options
    ``measure``
       Re-run measurements from HDF files in an existing output root. Requires
       ``--pipeline`` and ``--output``. Rejects ``--input``, ``--dry-run``,
-      ``--resume``, ``--restart``, ``--retry-failures``, ``--overwrite``, and
+      ``--restart``, ``--retry-failures``, ``--overwrite``, and
       ``--sample``.
 
    ``recompile``
@@ -102,24 +102,22 @@ Execution Options
 ``--random-seed SEED``
    Random seed for ``--sample`` reproducibility.
 
-Resume and Recovery
--------------------
+Continuation and Recovery
+-------------------------
 
-``--resume``
-   Continue from a previous run. Staged GPU runs select Stage 1, 2, or 3 from
-   valid HDF, sidecar, and terminal-marker artifacts and automatically include
-   intermediate-stage failures.
+Compatible full and process invocations continue automatically when run again.
+Staged GPU runs select Stage 1, 2, or 3 from valid HDF, sidecar, and completion
+artifacts.
 
 ``--retry-failures``
-   Include recorded CPU or legacy single-pass failures in addition to unfinished
-   images. Staged GPU failures are already included by ``--resume``. Requires
-   ``--resume``.
+   Include exact terminal scientific failures for the current computation in
+   addition to unfinished images. It does not clear failure history.
 
 ``--restart``
-   Clear all state and start fresh. Mutually exclusive with ``--resume``.
+   Clear current machine state and start a new lifecycle.
 
 ``--overwrite``
-   Reprocess all images. Mutually exclusive with ``--resume``.
+   Reprocess all images after deleting the output directory contents.
 
 ``--checkpoint-interval N``
    Insert checkpoint tasks every N images in SLURM arrays. Default:
@@ -172,7 +170,7 @@ Output Options
    Alpha transparency of the label overlay (0.0-1.0). Default: 0.3.
 
 ``--no-dataset-column``
-   Exclude the ``MetadataExperiment_Dataset`` column from
+   Exclude the ``Metadata_Dataset`` column from
    ``master_measurements.csv``. The column is included by default.
 
 ``--metadata PATH``
@@ -183,6 +181,9 @@ Output Options
    rows with no matching CSV row *are* dropped. The join lands on
    ``deliverables/measurements.csv`` and its derivatives —
    ``master_measurements.csv`` stays a clean, metadata-free archive.
+   Metadata headers are normalized in memory to ``Metadata_<Label>``. Recompile
+   never mutates this external file; its regenerated bundle-owned metadata copy
+   is canonical.
 
 ``--study PATH``
    Optional ``study.yaml`` of REMBI Study-level fields (Title, License, Author,

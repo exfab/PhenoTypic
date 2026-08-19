@@ -2,25 +2,20 @@
 
 from ._measurement_info import Entry
 from ._rembi import REMBI_MODULE
-from ._tiers import IdentityInfo
+from ._tiers import MetadataInfo
 
 
-class METADATA(IdentityInfo):
+class IMAGE(MetadataInfo):
     """Framework-populated image metadata keys.
 
     These labels are set automatically by the image pipeline (not by the user) and
     name the bookkeeping entries on the ``image.metadata`` accessor. Members render
-    as ``MetadataImage_<Label>`` (e.g. ``MetadataImage_ImageName``) in the
-    ``Metadata`` column family shared with the user-facing experimental tags in
-    :mod:`phenotypic.schema` (see :class:`SAMPLE_METADATA` and siblings).
+    in the shared ``Metadata_<Label>`` namespace alongside the user-facing tags in
+    :mod:`phenotypic.schema` (see :class:`SAMPLE` and siblings).
 
     For the standardized *biological/experimental* vocabulary users supply via the
     ``--metadata`` CSV, use the experimental-tag enums instead.
     """
-
-    @classmethod
-    def category(cls) -> str:
-        return "MetadataImage"
 
     @classmethod
     def rembi_module(cls) -> REMBI_MODULE:

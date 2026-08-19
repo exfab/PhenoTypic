@@ -8,12 +8,15 @@ public import surface stays stable:
 
     from phenotypic.schema import MeasurementInfo, BBOX, GRID, SHAPE
 
-It also hosts the metadata vocabulary: ``METADATA`` (framework-populated image
-bookkeeping) and the seven experimental-tag enums (``GENETIC_METADATA``,
-``SAMPLE_METADATA``, ``PLATE_METADATA``, ``CONDITION_METADATA``,
-``CULTURE_METADATA``, ``ACQUISITION_METADATA``, ``EXPERIMENT_METADATA``) that
-standardize ``Metadata_*`` columns for the ``--metadata`` join and ``post/`` ops.
+It also hosts the metadata vocabulary: ``IMAGE`` (framework-populated image
+bookkeeping) and eight semantic owners (``GENETIC``, ``SAMPLE``, ``PLATE``,
+``CONDITION``, ``CULTURE``, ``ACQUISITION``, ``EXPERIMENT``, and ``STUDY``)
+that standardize ``Metadata_*`` columns for the ``--metadata`` join and
+``post/`` operations.
 """
+
+import sys
+import warnings
 
 from ._measurement_info import (
     Entry,
@@ -31,20 +34,22 @@ from ._tiers import (
     DirectPhenotype as DirectPhenotype,
     DiscriminativeFeature as DiscriminativeFeature,
     IdentityInfo as IdentityInfo,
+    MetadataInfo as MetadataInfo,
     PrimaryMeasure as PrimaryMeasure,
     QualityInfo as QualityInfo,
 )
-from ._metadata import METADATA
+from ._metadata import IMAGE
 from ._experimental_tags import (
-    ACQUISITION_METADATA,
-    CONDITION_METADATA,
-    CULTURE_METADATA,
-    EXPERIMENT_METADATA,
-    GENETIC_METADATA,
-    PLATE_METADATA,
-    SAMPLE_METADATA,
-    STUDY_METADATA,
+    ACQUISITION,
+    CONDITION,
+    CULTURE,
+    EXPERIMENT,
+    GENETIC,
+    PLATE,
+    SAMPLE,
+    STUDY,
 )
+
 from ._bbox import BBOX
 from ._color_composition import ColorComposition
 from ._color_hsv import ColorHSV
@@ -87,20 +92,21 @@ from ._texture import TEXTURE
 __all__ = [
     "Entry",
     "MeasurementInfo",
+    "MetadataInfo",
     "parse_qualified_header",
     "qualified_header",
     "REMBI_MODULE",
     "header_to_module",
-    "METADATA",
     "METADATA_MATCH",
-    "ACQUISITION_METADATA",
-    "CONDITION_METADATA",
-    "CULTURE_METADATA",
-    "EXPERIMENT_METADATA",
-    "GENETIC_METADATA",
-    "PLATE_METADATA",
-    "SAMPLE_METADATA",
-    "STUDY_METADATA",
+    "IMAGE",
+    "GENETIC",
+    "SAMPLE",
+    "PLATE",
+    "CONDITION",
+    "CULTURE",
+    "EXPERIMENT",
+    "STUDY",
+    "ACQUISITION",
     "BBOX",
     "ColorComposition",
     "ColorHSV",
@@ -137,3 +143,34 @@ __all__ = [
     "SYMMETRIC_ZONES",
     "TEXTURE",
 ]
+
+_LEGACY_METADATA_NAMES = {
+    "METADATA": IMAGE,
+    "GENETIC_METADATA": GENETIC,
+    "SAMPLE_METADATA": SAMPLE,
+    "PLATE_METADATA": PLATE,
+    "CONDITION_METADATA": CONDITION,
+    "CULTURE_METADATA": CULTURE,
+    "ACQUISITION_METADATA": ACQUISITION,
+    "EXPERIMENT_METADATA": EXPERIMENT,
+    "STUDY_METADATA": STUDY,
+}
+
+
+def __getattr__(name: str):
+    """Resolve one-release compatibility names for metadata enum owners."""
+    value = _LEGACY_METADATA_NAMES.get(name)
+    if value is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    caller = sys._getframe(1)
+    is_fromlist_probe = (
+        caller.f_code.co_name == "_handle_fromlist"
+        and caller.f_globals.get("__name__") == "importlib._bootstrap"
+    )
+    if not is_fromlist_probe:
+        warnings.warn(
+            f"phenotypic.schema.{name} is deprecated; use {value.__name__} instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+    return value

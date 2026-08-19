@@ -13,7 +13,7 @@ from phenotypic.gui.results_viewer._curation_labels import (
     sanitize_category,
 )
 from phenotypic.schema import ErrorCategory
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 def _layout(tmp_path: Path) -> BundleLayout:
@@ -29,8 +29,8 @@ def _master(n: int = 4) -> pl.DataFrame:
     """A minimal master frame: n objects in one image, distinct centroids."""
     return pl.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): ["plateA"] * n,
-            "MetadataExperiment_Dataset": ["ds1"] * n,
+            str(IMAGE.IMAGE_NAME): ["plateA"] * n,
+            "Metadata_Dataset": ["ds1"] * n,
             "Object_Label": list(range(1, n + 1)),
             "Bbox_CenterRR": [10.0 * i for i in range(1, n + 1)],
             "Bbox_CenterCC": [20.0 * i for i in range(1, n + 1)],
@@ -50,6 +50,54 @@ def test_load_empty_when_nothing_on_disk(tmp_path: Path):
     assert store.labels == {}
     assert store.categories()[: len(ErrorCategory.labels())] == ErrorCategory.labels()
     assert store.rekey_report.total == 0
+
+
+def test_load_normalizes_legacy_durable_key_without_rewriting_disk(tmp_path: Path):
+    legacy_image_name = "MetadataImage_ImageName"
+    master = _master().rename({str(IMAGE.IMAGE_NAME): legacy_image_name})
+    labels = pl.DataFrame(
+        {
+            legacy_image_name: ["plateA"],
+            "Object_Label": [2],
+            "Curation_Category": ["debris"],
+            "Bbox_CenterRR": [20.0],
+            "Bbox_CenterCC": [40.0],
+        }
+    )
+    path = tools_.curation_labels_parquet_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    labels.write_parquet(path)
+    before = path.read_bytes()
+
+    store = CurationLabels.load(_layout(tmp_path), master)
+
+    assert store.labels == {("plateA", 2): "debris"}
+    assert path.read_bytes() == before
+    assert master.columns[0] == legacy_image_name
+
+
+def test_load_blocks_conflicting_durable_key_spellings_without_rewrite(
+    tmp_path: Path,
+) -> None:
+    labels = pl.DataFrame(
+        {
+            "MetadataImage_ImageName": ["plateA"],
+            str(IMAGE.IMAGE_NAME): ["different.png"],
+            "Object_Label": [2],
+            "Curation_Category": ["debris"],
+            "Bbox_CenterRR": [20.0],
+            "Bbox_CenterCC": [40.0],
+        }
+    )
+    path = tools_.curation_labels_parquet_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    labels.write_parquet(path)
+    before = path.read_bytes()
+
+    with pytest.raises(ValueError, match="conflicting non-null values"):
+        CurationLabels.load(_layout(tmp_path), _master())
+
+    assert path.read_bytes() == before
 
 
 def test_register_custom_category_persists_and_dedupes(tmp_path: Path):
@@ -151,7 +199,7 @@ def _write_store_with_label(tmp_path, image_file, label, category, rr, cc):
     """Helper: seed a labels parquet directly (simulating a prior session)."""
     df = pl.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): [image_file],
+            str(IMAGE.IMAGE_NAME): [image_file],
             "Object_Label": [label],
             "Curation_Category": [category],
             "Bbox_CenterRR": [rr],
@@ -167,7 +215,7 @@ def _write_store_with_labels(tmp_path, rows):
     """Helper: seed a labels parquet with multiple rows."""
     df = pl.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): [r[0] for r in rows],
+            str(IMAGE.IMAGE_NAME): [r[0] for r in rows],
             "Object_Label": [r[1] for r in rows],
             "Curation_Category": [r[2] for r in rows],
             "Bbox_CenterRR": [r[3] for r in rows],
@@ -309,8 +357,8 @@ def test_rekey_drops_when_two_labels_claim_one_object(tmp_path: Path):
     # sits at the same centroid (20, 40).
     master = pl.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): ["plateA", "plateA", "plateA", "plateA"],
-            "MetadataExperiment_Dataset": ["ds1", "ds1", "ds1", "ds1"],
+            str(IMAGE.IMAGE_NAME): ["plateA", "plateA", "plateA", "plateA"],
+            "Metadata_Dataset": ["ds1", "ds1", "ds1", "ds1"],
             "Object_Label": [1, 99, 3, 4],
             "Bbox_CenterRR": [10.0, 20.0, 30.0, 40.0],
             "Bbox_CenterCC": [20.0, 40.0, 60.0, 80.0],
@@ -361,8 +409,8 @@ def test_mark_across_multiple_images(tmp_path: Path):
     """Two images, one marked object each in different categories."""
     master = pl.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): ["pA", "pA", "pB", "pB"],
-            "MetadataExperiment_Dataset": ["ds1"] * 4,
+            str(IMAGE.IMAGE_NAME): ["pA", "pA", "pB", "pB"],
+            "Metadata_Dataset": ["ds1"] * 4,
             "Object_Label": [1, 2, 1, 2],
             "Bbox_CenterRR": [10.0, 20.0, 10.0, 20.0],
             "Bbox_CenterCC": [10.0, 20.0, 10.0, 20.0],
@@ -382,7 +430,7 @@ def test_mark_across_multiple_images(tmp_path: Path):
     assert curated.height == 2
     remaining_keys = list(
         zip(
-            curated.get_column(str(METADATA.IMAGE_NAME)).to_list(),
+            curated.get_column(str(IMAGE.IMAGE_NAME)).to_list(),
             curated.get_column("Object_Label").to_list(),
         )
     )
@@ -392,11 +440,11 @@ def test_mark_across_multiple_images(tmp_path: Path):
     # Per-category parquets have the right objects
     debris_df = pl.read_parquet(tools_.error_category_parquet_path(tmp_path, "debris"))
     assert debris_df.get_column("Object_Label").to_list() == [1]
-    assert debris_df.get_column(str(METADATA.IMAGE_NAME)).to_list() == ["pA"]
+    assert debris_df.get_column(str(IMAGE.IMAGE_NAME)).to_list() == ["pA"]
 
     merged_df = pl.read_parquet(tools_.error_category_parquet_path(tmp_path, "merged"))
     assert merged_df.get_column("Object_Label").to_list() == [2]
-    assert merged_df.get_column(str(METADATA.IMAGE_NAME)).to_list() == ["pB"]
+    assert merged_df.get_column(str(IMAGE.IMAGE_NAME)).to_list() == ["pB"]
 
 
 # ---------------------------------------------------------------------------
@@ -628,7 +676,7 @@ def test_curation_writes_into_deliverables_qc_for_standalone(tmp_path: Path):
     base = tmp_path / "bundle" / "deliverables"
     base.mkdir(parents=True)
     df = pl.DataFrame(
-        {"MetadataExperiment_Dataset": ["p1"], str(METADATA.IMAGE_NAME): ["img001"], "Object_Label": [1]}
+        {"Metadata_Dataset": ["p1"], str(IMAGE.IMAGE_NAME): ["img001"], "Object_Label": [1]}
     )
     df.write_parquet(base / "master_measurements.parquet")
     df.write_parquet(base / "measurements.parquet")

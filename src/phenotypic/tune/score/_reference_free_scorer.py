@@ -36,12 +36,13 @@ from typing import Any, ClassVar, Optional
 
 import numpy as np
 import pandas as pd
-from pydantic import ConfigDict, PrivateAttr
+from pydantic import ConfigDict, PrivateAttr, field_validator
 
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.schema import SHAPE, SIZE
 
 from ._orient import Sense
+from ._metadata import normalize_metadata_column_references
 from ._qc_scorer import fold_expected_vs_detected_count
 from ._scorer import Scorer
 
@@ -160,6 +161,16 @@ class ReferenceFreeScorer(Scorer):
     replicate_groupby: Optional[list[str]] = None
     gt_masks_source: Optional[Path] = None
     min_area: int = 0
+
+    @field_validator("replicate_groupby", mode="before")
+    @classmethod
+    def _normalize_replicate_groupby(
+        cls, value: list[str] | None
+    ) -> list[str] | None:
+        """Accept legacy and flat metadata columns for replicate grouping."""
+        if value is None:
+            return None
+        return normalize_metadata_column_references(value)
 
     #: Run-local cached gate verdict (default not-yet-run → ``False``,
     #: fail-safe). A ``PrivateAttr`` so it never serializes — a reloaded scorer

@@ -171,19 +171,17 @@ def test_quality_enums_resolve_quality():
 
 def test_identity_enums_resolve_identity():
     from phenotypic.schema import (
-        METADATA, BBOX, OBJECT, GRID,
-        GENETIC_METADATA, SAMPLE_METADATA, PLATE_METADATA, CONDITION_METADATA,
-        CULTURE_METADATA, ACQUISITION_METADATA, EXPERIMENT_METADATA,
+        ACQUISITION, BBOX, CONDITION, CULTURE, EXPERIMENT, GENETIC, GRID,
+        IMAGE, OBJECT, PLATE, SAMPLE,
     )
 
-    for enum in (METADATA, BBOX, OBJECT, GRID, GENETIC_METADATA, SAMPLE_METADATA,
-                 PLATE_METADATA, CONDITION_METADATA, CULTURE_METADATA,
-                 ACQUISITION_METADATA, EXPERIMENT_METADATA):
+    for enum in (IMAGE, BBOX, OBJECT, GRID, GENETIC, SAMPLE, PLATE, CONDITION,
+                 CULTURE, ACQUISITION, EXPERIMENT):
         assert all(m.resolved_kind == "identity" for m in enum), enum.__name__
 
 
 def test_rst_table_includes_type_column_with_tier_badge():
-    from phenotypic.schema import TEXTURE, METADATA
+    from phenotypic.schema import IMAGE, TEXTURE
 
     txt = TEXTURE.rst_table()
     assert "- Type" in txt
@@ -191,7 +189,7 @@ def test_rst_table_includes_type_column_with_tier_badge():
     assert ":bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`" in txt
     # Identity enums now classify too: the Type column is present with grey
     # Identity badges (previously the column was suppressed entirely).
-    meta = METADATA.rst_table()
+    meta = IMAGE.rst_table()
     assert "- Type" in meta
     assert ":bdg-ref-muted:`Identity / design <measurement-classification>`" in meta
 

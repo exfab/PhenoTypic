@@ -45,19 +45,20 @@
 ### CLI
 
 - `uv run python -m phenotypic` — single pipeline on images/directories (parallel,
-  SLURM, resume)
+  SLURM, automatic continuation)
 - `uv run python -m phenotypic --mode process --layer {rgb|gray|detect_mat|objmap}` —
   apply-only export: runs `pipeline.apply()` and writes ONE image layer per input
   (via the accessor `imsave` — `rgb` integer TIFF, `gray`/`detect_mat` float TIFF,
   `objmap` 16-bit raw-label PNG), mirroring the input tree. Skips
   measurement/deliverables/QC/dashboard; machine-state lives under `.phenotypic/`.
-  Full local + SLURM + resume reuse.
+  Full local + SLURM continuation reuse. Run the same command again after an
+  interruption or when new compatible inputs appear; there is no `--resume` flag.
 - **GPU detectors stage automatically:** when a pipeline contains a `GpuDetector`,
   `python -m phenotypic` runs detection as three internal stages — CPU preprocess →
   resident-model GPU detect → CPU measure — reusing the per-image HDF. Stage 2 writes a
   per-image `.npy` objmap **sidecar** (HDF opened read-only); Stage 3 merges it into the
   final HDF, measures, and deletes the sidecar. The output folder is identical to a
-  single-pass run; resume is content-defined (valid HDF → sidecar → atomic Stage-3
+  single-pass run; continuation is content-defined (valid HDF → sidecar → atomic Stage-3
   completion marker) and progress is
   stage-tagged. `--mode process --layer objmap` exports objmaps after Stages 1–2.
   On SLURM, the stages submit through an **epoch-fenced recoverable controller**:
@@ -80,6 +81,20 @@
 - `uv run python -m phenotypic.tune run spec.json -i <images> -o <out>` —
   hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/
   `--storage-url`
+
+#### SLURM array auxiliary work
+
+- Do not submit scheduler **sidecar jobs** in parallel beside an active ordinary
+  array. Allocation/submission bounds are already consumed by the array cohort.
+- Route ancillary work through reserved trigger entries inside the array task
+  list, following the existing `__PHENOTYPIC_CHECKPOINT__` and
+  `__PHENOTYPIC_MANIFEST__` dispatch pattern. Count every trigger entry when
+  sizing chunks against `MaxArraySize`, and test that no standalone parallel job
+  is submitted.
+- This rule concerns scheduler jobs, not the staged GPU `.npy` objmap sidecar
+  file. A terminal `afterany` finalizer is also not a parallel sidecar.
+- See `src/phenotypic/_cli/CLAUDE.md` for the full routing contract. Root
+  `AGENTS.md` is a symlink to this file and therefore carries the same rule.
 
 ### GUI hub
 
@@ -269,6 +284,14 @@ enforces this for ruff, but the rule binds regardless of the tool.
   the old `phenotypic.sdk_.measurement_info` path was removed.
   `MeasurementInfo.get_labels()` returns unprefixed names; `get_headers()` returns the
   prefixed column names used in DataFrames.
+- **Metadata queries use schema ownership, never string prefixes:** determine whether a
+  header or label is metadata, and which metadata type owns it, with
+  `metadata_member_for_header()`, `metadata_owner_for_header()`,
+  `metadata_member_for_label()`, or `metadata_owner_for_label()`. When working with
+  schema classes directly, check `MetadataInfo` inheritance. Do not use
+  `startswith("Metadata_")`, prefix splitting, category-name comparisons, or other
+  serialized-string parsing as a semantic metadata check. String handling belongs only
+  in the centralized compatibility and canonicalization helpers.
 - **Authoring `MeasurementInfo` members:** members are declared with
   `Entry(label, desc, *, bio_desc="", image=None)` (the `Entry` value type in
   `phenotypic.schema`). When adding a new member or editing one, only author/edit
@@ -292,3 +315,9 @@ enforces this for ruff, but the rule binds regardless of the tool.
   write through `finalize_post_master_outputs`. Full file inventory,
   master-vs-mirror rules, and the finalize/chunk-writer carve-out are in
   [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md).
+- **Metadata startup snapshot:** full runs and recompile copy a configured
+  `--metadata` CSV byte-for-byte to `deliverables/metadata.csv` before local
+  work or SLURM submission. Treat that file as immutable input provenance:
+  normalize legacy headers only in memory, and never rewrite it from
+  finalization or metadata-schema migration. Generated scientific tables still
+  emit only the canonical flat `Metadata_<Label>` namespace.

@@ -14,9 +14,11 @@ import os
 import subprocess
 import time
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, TYPE_CHECKING
+from uuid import uuid4
 
 import click
 import h5py  # type: ignore[import-untyped]
@@ -48,7 +50,14 @@ from ._cli_slurm_lifecycle import (
     new_slurm_generation,
 )
 from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
-from ._cli_failure_tracker import append_failure, read_failures
+from ._cli_failure_tracker import (
+    PerImageScientificError,
+    append_failure,
+    append_terminal_failure,
+    read_failures,
+    work_id_for_image,
+)
+from ._cli_completion import publish_image_success
 from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
 from ._cli_constants import MAX_TRACEBACK_LINES
@@ -57,6 +66,7 @@ from phenotypic.sdk_ import (
     HdfAttr,
     dashboard_html_path,
     event_log_path,
+    atomic_write_bytes,
     atomic_write_json,
     job_metadata_path,
     progress_dir,
@@ -65,6 +75,118 @@ from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _local_epoch_ownership(config: ExecutionConfig, output_dir: Path):
+    """Fence a local authoritative write against later invocations."""
+    from ._cli_state_management import load_processing_state
+    from phenotypic.sdk_ import resolve_processing_state_path
+
+    state_path = resolve_processing_state_path(output_dir)
+    lock_path = state_path.with_name(f".{state_path.name}.lock")
+    with exclusive_path_lock(lock_path, timeout=60.0):
+        state = load_processing_state(output_dir)
+        expected = config.processing_generation
+        if state is None and not expected:
+            yield
+            return
+        if (
+            state is None
+            or not expected
+            or state.config.get("processing_generation") != expected
+        ):
+            raise RuntimeError("Local lifecycle epoch is stale")
+        yield
+
+
+def _record_local_terminal_failure(
+    config: ExecutionConfig,
+    output_dir: Path,
+    dataset: str,
+    image_path: Path,
+    exception: Exception,
+    traceback_text: str,
+    attempt_id: str,
+) -> bool:
+    """Commit a caught scientific failure for an exact local computation."""
+    if not isinstance(exception, PerImageScientificError):
+        return False
+    try:
+        work_id, relative_path = work_id_for_image(config, dataset, image_path)
+    except OSError:
+        logger.error("Could not calculate terminal work identity", exc_info=True)
+        return False
+    try:
+        lifecycle_epoch = config.processing_generation
+        lifecycle_epoch = lifecycle_epoch or "local-unfenced"
+        with _local_epoch_ownership(config, output_dir):
+            return append_terminal_failure(
+                output_dir,
+                work_id=work_id,
+                dataset=dataset,
+                relative_image_path=relative_path,
+                failed_stage=exception.stage,
+                exception=exception.cause,
+                attempt_id=attempt_id,
+                lifecycle_epoch=lifecycle_epoch,
+                traceback=traceback_text,
+            )
+    except RuntimeError:
+        logger.warning("Stale local worker cannot commit terminal failure")
+        return False
+
+
+def _publish_local_image_success(
+    config: ExecutionConfig,
+    output_manager: OutputManager,
+    output_dir: Path,
+    dataset: str,
+    image_path: Path,
+    attempt_id: str,
+) -> None:
+    """Write the general marker after all required local artifacts exist."""
+    work_id, relative_path = work_id_for_image(config, dataset, image_path)
+    if config.process_only_layer is not None:
+        from ._cli_process_only import process_only_output_path
+
+        artifacts = {
+            "process_output": process_only_output_path(
+                output_dir,
+                image_path,
+                config.input_path,
+                config.process_only_layer,
+            )
+        }
+        mode = "process"
+    else:
+        artifacts = {
+            "measurements": output_manager.get_output_path(
+                dataset, "measurements", image_path.stem
+            ),
+            "hdf": output_manager.get_output_path(
+                dataset, "hdf", image_path.stem
+            ),
+        }
+        if output_manager.save_overlays:
+            artifacts["overlay"] = output_manager.get_output_path(
+                dataset, "overlays", image_path.stem
+            )
+        mode = "full"
+    lifecycle_epoch = config.processing_generation
+    lifecycle_epoch = lifecycle_epoch or "local-unfenced"
+    with _local_epoch_ownership(config, output_dir):
+        publish_image_success(
+            output_dir,
+            work_id=work_id,
+            dataset=dataset,
+            relative_image_path=relative_path,
+            image_stem=image_path.stem,
+            mode=mode,
+            attempt_id=attempt_id,
+            lifecycle_epoch=lifecycle_epoch,
+            artifacts=artifacts,
+        )
 
 
 def _write_slurm_image_task_mapping(
@@ -317,6 +439,7 @@ class LocalParallelStrategy(ExecutionStrategy):
         Returns:
             Tuple of (dataset_name, image_name, success, error_message)
         """
+        attempt_id = uuid4().hex
         # Log "started" event
         append_event(event_log, dataset.name, image_path.name, "started")
 
@@ -341,6 +464,15 @@ class LocalParallelStrategy(ExecutionStrategy):
                 cli_ncols=self.config.ncols,
             )
 
+            _publish_local_image_success(
+                self.config,
+                self.output_manager,
+                output_dir,
+                dataset.name,
+                image_path,
+                attempt_id,
+            )
+
             # Log success
             append_completion_event(
                 event_log, dataset.name, image_path.name, "completed"
@@ -353,6 +485,16 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             error_msg = str(e)
             tb = traceback.format_exc()
+
+            terminal_committed = _record_local_terminal_failure(
+                self.config,
+                output_dir,
+                dataset.name,
+                image_path,
+                e,
+                tb,
+                attempt_id,
+            )
 
             logger.error(
                 "Processing failed for %s/%s:\n%s",
@@ -380,6 +522,13 @@ class LocalParallelStrategy(ExecutionStrategy):
             except Exception:
                 logger.warning("Failed to write failure record", exc_info=True)
 
+            if isinstance(e, PerImageScientificError) and not terminal_committed:
+                logger.warning(
+                    "Scientific failure for %s/%s remains pending because its "
+                    "terminal record was not committed",
+                    dataset.name,
+                    image_path.name,
+                )
             return (dataset.name, image_path.name, False, tb)
 
     def _process_single_local_apply_only(
@@ -400,6 +549,7 @@ class LocalParallelStrategy(ExecutionStrategy):
         """
         from ._cli_process_only import process_single_apply_only_core
 
+        attempt_id = uuid4().hex
         append_event(event_log, dataset.name, image_path.name, "started")
         try:
             read_kwargs: Dict[str, Any] = {}
@@ -419,6 +569,14 @@ class LocalParallelStrategy(ExecutionStrategy):
                 cli_nrows=self.config.nrows,
                 cli_ncols=self.config.ncols,
             )
+            _publish_local_image_success(
+                self.config,
+                self.output_manager,
+                output_dir,
+                dataset.name,
+                image_path,
+                attempt_id,
+            )
             append_completion_event(
                 event_log, dataset.name, image_path.name, "completed"
             )
@@ -428,6 +586,15 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             error_msg = str(e)
             tb = traceback.format_exc()
+            terminal_committed = _record_local_terminal_failure(
+                self.config,
+                output_dir,
+                dataset.name,
+                image_path,
+                e,
+                tb,
+                attempt_id,
+            )
             logger.error(
                 "Apply-only failed for %s/%s:\n%s",
                 dataset.name, image_path.name, tb,
@@ -451,6 +618,13 @@ class LocalParallelStrategy(ExecutionStrategy):
                 )
             except Exception:
                 logger.warning("Failed to write failure record", exc_info=True)
+            if isinstance(e, PerImageScientificError) and not terminal_committed:
+                logger.warning(
+                    "Scientific failure for %s/%s remains pending because its "
+                    "terminal record was not committed",
+                    dataset.name,
+                    image_path.name,
+                )
             return (dataset.name, image_path.name, False, error_msg)
 
     def _process_single_local_measure(
@@ -736,6 +910,23 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
 
             self.config.slurm_args = slurm_args
 
+        # Create the scheduler fence before rendering immutable workers so the
+        # scripts carry the exact lifecycle generation they must own when
+        # publishing authoritative outcomes. Event-log processing generation
+        # remains a separate identity.
+        generation = new_slurm_generation()
+        self.config.slurm_generation = generation
+        pipeline_snapshot = (
+            progress_dir(output_dir)
+            / "worklists"
+            / generation
+            / "pipeline.json"
+        )
+        atomic_write_bytes(
+            pipeline_snapshot, Path(self.config.pipeline_json).read_bytes()
+        )
+        self.config.pipeline_json = pipeline_snapshot
+
         # Generate array job scripts for all datasets
         console.print("[bold cyan]Generating array job scripts...[/bold cyan]")
         all_scripts = generate_all_array_job_scripts(
@@ -781,7 +972,6 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         # Publish the generation fence and metadata skeleton before the first
         # scheduler call. The lifecycle recorder fills both job registries
         # while the submit/cancel lock is still held.
-        generation = new_slurm_generation()
         initialize_slurm_lifecycle(
             output_dir, generation=generation, mode="ordinary"
         )

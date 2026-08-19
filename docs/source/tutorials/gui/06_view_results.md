@@ -88,8 +88,8 @@ a promise about RSS.
 
 - [GUI hub guide](../../how_to/pages/gui_hub.md) — the full reference for every panel,
   store, and admonition in the hub.
-- [SLURM Pipelines](../../how_to/pages/slurm_pipelines.md) — chunk sizing, resume
-  semantics, recompile flags.
+- [SLURM Pipelines](../../how_to/pages/slurm_pipelines.md) — chunk sizing,
+  automatic continuation semantics, and recompile flags.
 - [CLI Batch Processing](../pages/cli_batch_processing.md) — every CLI flag the
   Run console form exposes (and a few more).
 - [CLI Execution Modes](../pages/cli_modes.md) — what `full`, `measure`,

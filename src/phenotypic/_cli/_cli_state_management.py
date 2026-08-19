@@ -72,10 +72,12 @@ def save_processing_state(
             ProcessingStateKey.INITIAL_IMAGES: list(ds_state.initial_images)
         }
     
-    # Write atomically (temp file + rename)
-    temp_file = state_file.with_suffix('.tmp')
-    temp_file.write_text(json.dumps(state_dict, indent=2), encoding="utf-8")
-    temp_file.replace(state_file)
+    from phenotypic.sdk_ import atomic_write_json
+    from phenotypic.sdk_._file_locking import exclusive_path_lock
+
+    lock_path = state_file.with_name(f".{state_file.name}.lock")
+    with exclusive_path_lock(lock_path, timeout=60.0):
+        atomic_write_json(state_file, state_dict)
     
     return state_file
 
@@ -187,7 +189,7 @@ def create_initial_state(
     
     # Create state object
     state = ProcessingState(
-        version="2.0.0",
+        version="3.0.0",
         pipeline_path=config.pipeline_json,
         input_path=config.input_path,
         output_dir=output_dir,
@@ -208,12 +210,14 @@ def create_initial_state(
             "include_dataset_column": config.include_dataset_column,
             "overlay_alpha": config.overlay_alpha,
             "save_overlays": config.save_overlays,
+            "no_qc": config.no_qc,
             "pipeline_sha256": (
                 pipeline_content_digest(config.pipeline_json)
                 if config.pipeline_json.is_file()
                 else None
             ),
             "staged_stage3_markers": config.staged_stage3_markers,
+            "success_markers_required": True,
             "processing_generation": uuid4().hex,
         }
     )
@@ -341,7 +345,10 @@ def validate_resume_compatibility(
 def get_remaining_images_for_datasets(
     state: ProcessingState,
     datasets: List[Dataset],
-    retry_failures: bool = False
+    retry_failures: bool = False,
+    *,
+    config: ExecutionConfig | None = None,
+    output_dir: Path | None = None,
 ) -> List[Dataset]:
     """
     Get datasets with only remaining (unprocessed) images for resume.
@@ -349,41 +356,85 @@ def get_remaining_images_for_datasets(
     Args:
         state: Current processing state
         datasets: Full list of datasets
-        retry_failures: If True, include failed images in remaining
+        retry_failures: If True, include terminally failed images in remaining.
+        config: Current execution configuration. When provided with
+            ``output_dir``, exact terminal outcomes come only from the durable
+            terminal-failure journal.
+        output_dir: Output root containing the terminal-failure journal.
         
     Returns:
         List of Dataset objects with only unprocessed images
     """
+    from ._cli_failure_tracker import terminal_failure_index, work_id_for_image
+
     remaining_datasets = []
+    authoritative_failures = (
+        terminal_failure_index(output_dir)
+        if config is not None and output_dir is not None
+        else {}
+    )
     
     for dataset in datasets:
-        if dataset.name not in state.datasets:
-            # New dataset not in state - include all images
-            remaining_datasets.append(dataset)
-            continue
+        ds_state = state.datasets.get(dataset.name, DatasetState())
         
-        ds_state = state.datasets[dataset.name]
-        
-        # Determine which images to process
-        all_image_names = {img.name for img in dataset.images}
-        processed = ds_state.completed
-        
-        if not retry_failures:
-            # Skip failed images
-            processed = processed | ds_state.failed
-        
-        remaining_names = all_image_names - processed
-        
-        if not remaining_names:
-            # No images remaining in this dataset
-            continue
-        
-        # Create new Dataset with only remaining images
+        newly_admitted: list[Path] = []
+        pending_images: list[Path] = []
+        retry_images: list[Path] = []
+        for image in dataset.images:
+            work_id: str | None = None
+            if config is not None and output_dir is not None:
+                try:
+                    work_id, _ = work_id_for_image(config, dataset.name, image)
+                except OSError:
+                    # Identity could not be established. It cannot match an
+                    # authoritative terminal record and therefore stays pending.
+                    logger.warning(
+                        "Could not calculate work identity for %s/%s",
+                        dataset.name,
+                        image.name,
+                        exc_info=True,
+                    )
+                if work_id is not None and state.config.get(
+                    "success_markers_required", False
+                ):
+                    from ._cli_completion import valid_image_success
+
+                    if valid_image_success(
+                        output_dir,
+                        dataset=dataset.name,
+                        image_stem=image.stem,
+                        work_id=work_id,
+                    ):
+                        continue
+                elif image.name in ds_state.completed:
+                    continue
+            elif image.name in ds_state.completed:
+                continue
+
+            if work_id is not None and work_id in authoritative_failures:
+                if retry_failures:
+                    retry_images.append(image)
+                continue
+            elif not retry_failures and config is None:
+                # Compatibility behavior for direct legacy callers. Schema-3
+                # CLI selection always supplies config/output and never trusts
+                # DatasetState.failed as terminal authority.
+                if image.name in ds_state.failed:
+                    continue
+            if image.name not in ds_state.initial_images:
+                newly_admitted.append(image)
+            else:
+                pending_images.append(image)
+
         remaining_images = [
-            img for img in dataset.images
-            if img.name in remaining_names
+            *sorted(newly_admitted, key=lambda item: item.as_posix()),
+            *sorted(pending_images, key=lambda item: item.as_posix()),
+            *sorted(retry_images, key=lambda item: item.as_posix()),
         ]
-        
+
+        if not remaining_images:
+            continue
+
         remaining_dataset = Dataset(
             name=dataset.name,
             images=remaining_images,
@@ -393,3 +444,41 @@ def get_remaining_images_for_datasets(
         remaining_datasets.append(remaining_dataset)
     
     return remaining_datasets
+
+
+def exclude_terminal_failures_for_datasets(
+    datasets: List[Dataset],
+    config: ExecutionConfig,
+    output_dir: Path,
+) -> tuple[List[Dataset], int]:
+    """Remove exact matching terminal computations from a worklist."""
+    from ._cli_failure_tracker import terminal_failure_index, work_id_for_image
+
+    terminal = terminal_failure_index(output_dir)
+    if not terminal or config.retry_failures:
+        return datasets, 0
+
+    filtered: List[Dataset] = []
+    skipped = 0
+    for dataset in datasets:
+        images: List[Path] = []
+        for image in dataset.images:
+            try:
+                work_id, _ = work_id_for_image(config, dataset.name, image)
+            except OSError:
+                images.append(image)
+                continue
+            if work_id in terminal:
+                skipped += 1
+            else:
+                images.append(image)
+        if images:
+            filtered.append(
+                Dataset(
+                    name=dataset.name,
+                    images=images,
+                    input_dir=dataset.input_dir,
+                    output_dir=dataset.output_dir,
+                )
+            )
+    return filtered, skipped

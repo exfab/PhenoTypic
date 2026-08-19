@@ -458,8 +458,8 @@ def _controls_from_run_state(
     flags: list[str] = []
     if state.dry_run:
         flags.append("dry_run")
-    if state.resume:
-        flags.append("resume")
+    if state.retry_failures:
+        flags.append("retry_failures")
 
     advanced = state.advanced_args or {}
     slurm = state.slurm_args or {}
@@ -670,7 +670,7 @@ def _form_inputs_to_state(
         "metadata_csv": metadata_csv,
         "mode": mode or "local",
         "dry_run": "dry_run" in flag_set,
-        "resume": "resume" in flag_set,
+        "retry_failures": "retry_failures" in flag_set,
         "advanced_args": {
             k: v for k, v in advanced.items() if v not in (None, "")
         },

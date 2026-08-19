@@ -18,7 +18,7 @@ from phenotypic._cli._cli_chunk_writer import flush_unchunked_measurements
 from phenotypic._cli._cli_output_manager import aggregate_measurements
 from phenotypic._cli._cli_recompile_slurm_scripts import build_recompile_tasks
 from phenotypic._cli._measurement_sources import discover_measurement_sources
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA, OBJECT
+from phenotypic.schema import EXPERIMENT, IMAGE, OBJECT
 from phenotypic.sdk_ import (
     DATASET_AGGREGATED_PARQUET,
     chunk_state_path,
@@ -36,8 +36,8 @@ def _write_per_image(output_dir: Path, stems: list[str]) -> None:
     for i, stem in enumerate(stems):
         pl.DataFrame(
             {
-                str(EXPERIMENT_METADATA.DATASET): [DATASET],
-                str(METADATA.IMAGE_NAME): [stem],
+                str(EXPERIMENT.DATASET): [DATASET],
+                str(IMAGE.IMAGE_NAME): [stem],
                 str(OBJECT.LABEL): [1],
                 "Shape_Area": [float(i + 1)],
             }
@@ -46,7 +46,7 @@ def _write_per_image(output_dir: Path, stems: list[str]) -> None:
 
 def _master_image_names(output_dir: Path) -> set[str]:
     master = pl.read_parquet(master_measurements_parquet_path(output_dir))
-    return set(master[str(METADATA.IMAGE_NAME)].to_list())
+    return set(master[str(IMAGE.IMAGE_NAME)].to_list())
 
 
 def test_trailing_images_reach_the_master(tmp_path: Path) -> None:
@@ -134,7 +134,7 @@ def test_slurm_recompile_shards_include_trailing_images(tmp_path: Path) -> None:
         ],
         how="diagonal_relaxed",
     )
-    assert set(rows[str(METADATA.IMAGE_NAME)].to_list()) == {
+    assert set(rows[str(IMAGE.IMAGE_NAME)].to_list()) == {
         "img_001",
         "img_002",
         "img_003",

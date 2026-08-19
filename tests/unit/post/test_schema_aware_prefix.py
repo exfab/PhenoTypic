@@ -9,13 +9,13 @@ assertions hold both while categories return ``"Metadata"`` and after the flip t
 
 from __future__ import annotations
 
-from phenotypic.schema import EXPERIMENT_METADATA, GENETIC_METADATA
+from phenotypic.schema import EXPERIMENT, GENETIC
 from phenotypic.sdk_ import ensure_metadata_prefix
 
 
 def test_known_label_gets_category_prefix():
-    assert ensure_metadata_prefix("Strain") == str(GENETIC_METADATA.STRAIN)
-    assert ensure_metadata_prefix("Dataset") == str(EXPERIMENT_METADATA.DATASET)
+    assert ensure_metadata_prefix("Strain") == str(GENETIC.STRAIN)
+    assert ensure_metadata_prefix("Dataset") == str(EXPERIMENT.DATASET)
 
 
 def test_unknown_label_gets_generic_prefix():
@@ -23,8 +23,8 @@ def test_unknown_label_gets_generic_prefix():
 
 
 def test_already_category_prefixed_passthrough():
-    # str(GENETIC_METADATA.STRAIN) is the live, self-describing header.
-    live = str(GENETIC_METADATA.STRAIN)
+    # str(GENETIC.STRAIN) is the live, self-describing header.
+    live = str(GENETIC.STRAIN)
     assert ensure_metadata_prefix(live) == live
 
 

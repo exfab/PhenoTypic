@@ -13,19 +13,19 @@ from phenotypic.gui.results_viewer._curation_labels import (
     _LEGACY_IMAGE_FILE,
     _migrate_legacy_imagefile,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 def test_legacy_imagefile_column_renamed() -> None:
     legacy = pl.DataFrame({_LEGACY_IMAGE_FILE: ["p1"], "Object_Label": [3]})
     out = _migrate_legacy_imagefile(legacy)
-    assert str(METADATA.IMAGE_NAME) in out.columns
+    assert str(IMAGE.IMAGE_NAME) in out.columns
     assert _LEGACY_IMAGE_FILE not in out.columns
-    assert out[str(METADATA.IMAGE_NAME)][0] == "p1"
+    assert out[str(IMAGE.IMAGE_NAME)][0] == "p1"
 
 
 def test_new_frame_unchanged() -> None:
-    new = pl.DataFrame({str(METADATA.IMAGE_NAME): ["p1"], "Object_Label": [3]})
+    new = pl.DataFrame({str(IMAGE.IMAGE_NAME): ["p1"], "Object_Label": [3]})
     out = _migrate_legacy_imagefile(new)
     assert out.columns == new.columns
 

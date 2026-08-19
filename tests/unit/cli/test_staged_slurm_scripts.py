@@ -146,6 +146,26 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
     )
 
 
+def test_internal_reuse_option_preserves_restart_distinction(tmp_path):
+    common = {
+        "pipeline_path": tmp_path / "p.json",
+        "datasets_manifest": _manifest(1),
+        "output_dir": tmp_path,
+        "image_type": "Image",
+        "cpu_slurm_args": {"slurm_partition": "batch"},
+        "gpu_slurm_args": {"slurm_partition": "gpu"},
+        "n_shards": 1,
+        "epoch": "epoch-1",
+    }
+
+    restarted = generate_staged_scripts(**common, resume=False)
+    assert "--reuse-existing" not in restarted["stage1"][0].read_text()
+
+    continued = generate_staged_scripts(**common, resume=True)
+    assert "--reuse-existing" in continued["stage1"][0].read_text()
+    assert "--resume" not in continued["stage1"][0].read_text()
+
+
 def test_stage2_script_uses_controller_not_signal_requeue(tmp_path):
     scripts = generate_staged_scripts(
         pipeline_path=tmp_path / "p.json",

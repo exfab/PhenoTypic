@@ -30,7 +30,7 @@ import pytest
 from playwright.sync_api import Page
 
 from phenotypic.gui._design import OI_VERMILION
-from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import CULTURE, EXPERIMENT, IMAGE
 from phenotypic.sdk_ import pipeline_json_path
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import (
@@ -60,8 +60,8 @@ pytestmark = pytest.mark.ci_flaky
 _OUTPUT_NAME = "CliOutputExample"
 
 _IMAGES = ("plate_001.tif", "plate_002.tif")
-_DATASET_COLUMN = str(EXPERIMENT_METADATA.DATASET)
-_TIME_COLUMN = str(CULTURE_METADATA.TIME)
+_DATASET_COLUMN = str(EXPERIMENT.DATASET)
+_TIME_COLUMN = str(CULTURE.TIME)
 _TINY_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
 )
@@ -83,7 +83,7 @@ def _default_master_df() -> pl.DataFrame:
                 rows.append(
                     {
                         _DATASET_COLUMN: "ds1",
-                        str(METADATA.IMAGE_NAME): image,
+                        str(IMAGE.IMAGE_NAME): image,
                         _TIME_COLUMN: 0.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,
@@ -184,7 +184,7 @@ def _se_entry(
     *,
     instance_id: str,
     on: str = "Size_Area",
-    groupby: tuple[str, ...] = (str(METADATA.IMAGE_NAME),),
+    groupby: tuple[str, ...] = (str(IMAGE.IMAGE_NAME),),
     warn_threshold: float = 0.10,
     fail_threshold: float = 0.20,
     enabled: bool = True,
@@ -504,7 +504,7 @@ def test_aggregator_semantics(
                 rows.append(
                     {
                         _DATASET_COLUMN: "ds1",
-                        str(METADATA.IMAGE_NAME): image,
+                        str(IMAGE.IMAGE_NAME): image,
                         _TIME_COLUMN: 4.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,
@@ -518,7 +518,7 @@ def test_aggregator_semantics(
     rows.append(
         {
             _DATASET_COLUMN: "ds1",
-            str(METADATA.IMAGE_NAME): _IMAGES[0],
+            str(IMAGE.IMAGE_NAME): _IMAGES[0],
             _TIME_COLUMN: 4.0,
             "Object_Label": label,
             "Grid_RowNum": 2,
@@ -718,7 +718,7 @@ def test_colony_tile_size_icon_stepper(
                 [
                     {
                             _DATASET_COLUMN: "ds1",
-                            str(METADATA.IMAGE_NAME): _IMAGES[0],
+                            str(IMAGE.IMAGE_NAME): _IMAGES[0],
                             _TIME_COLUMN: t,
                         "Object_Label": idx,
                         "Grid_RowNum": 1,
@@ -803,7 +803,7 @@ def test_removed_cells_visually_distinct(
     for image in _IMAGES:
         for _ in range(100):
             label += 1
-            rows.append({str(METADATA.IMAGE_NAME): image, "Object_Label": label})
+            rows.append({str(IMAGE.IMAGE_NAME): image, "Object_Label": label})
     csv_path = output_dir / "count_metadata.csv"
     pl.DataFrame(rows).write_csv(csv_path)
     instance_id = "qc-Count-overly"
@@ -818,7 +818,7 @@ def test_removed_cells_visually_distinct(
                     "enabled": True,
                     "params": {
                         "metadata": str(csv_path),
-                        "groupby": [str(METADATA.IMAGE_NAME)],
+                        "groupby": [str(IMAGE.IMAGE_NAME)],
                         "on": "Object_Label",
                     },
                 },
@@ -901,7 +901,7 @@ def _no_grid_df_factory() -> pl.DataFrame:
         [
             {
                 _DATASET_COLUMN: "ds1",
-                str(METADATA.IMAGE_NAME): _IMAGES[0],
+                str(IMAGE.IMAGE_NAME): _IMAGES[0],
                 _TIME_COLUMN: 0.0,
                 "Object_Label": idx,
                 "Size_Area": 100.0 + idx,
@@ -984,7 +984,7 @@ def test_heatmap_renders_qc_augmented_frame_not_stale(
     for image in _IMAGES:
         for _ in range(100):
             label += 1
-            rows.append({str(METADATA.IMAGE_NAME): image, "Object_Label": label})
+            rows.append({str(IMAGE.IMAGE_NAME): image, "Object_Label": label})
     csv_path = output_dir / "count_metadata.csv"
     pl.DataFrame(rows).write_csv(csv_path)
 
@@ -1001,7 +1001,7 @@ def test_heatmap_renders_qc_augmented_frame_not_stale(
                     "enabled": True,
                     "params": {
                         "metadata": str(csv_path),
-                        "groupby": [str(METADATA.IMAGE_NAME)],
+                        "groupby": [str(IMAGE.IMAGE_NAME)],
                         "on": "Object_Label",
                     },
                 },

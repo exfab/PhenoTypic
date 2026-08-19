@@ -38,7 +38,7 @@ def test_full_state_round_trips_cleanly() -> None:
         metadata_csv="/p/layout.csv",
         mode="slurm",
         dry_run=True,
-        resume=True,
+        retry_failures=True,
         advanced_args={"sample": 4, "nrows": 8, "ncols": 12, "image_type": "tif"},
         slurm_args={
             "partition": "compute",
@@ -115,7 +115,7 @@ def _raw_controls(sandbox: SandboxRoot) -> dict[str, object]:
         "input_dir": "images",
         "output_dir": "output",
         "mode": "slurm",
-        "flags": ["dry_run", "resume"],
+        "flags": ["dry_run", "retry_failures"],
         "sample": 2,
         "nrows": 8,
         "ncols": 12,
@@ -148,7 +148,7 @@ def test_state_from_controls_uses_raw_visible_values(tmp_path) -> None:
     assert state.output_dir == str(tmp_path / "output")
     assert state.mode == "slurm"
     assert state.dry_run is True
-    assert state.resume is True
+    assert state.retry_failures is True
     assert state.advanced_args == {
         "sample": 2,
         "nrows": 8,
@@ -264,12 +264,27 @@ def test_to_argv_includes_dry_run_flag() -> None:
     assert "--dry-run" in argv
 
 
-def test_to_argv_includes_resume_flag() -> None:
+def test_to_argv_includes_retry_failures_flag() -> None:
     state = RunConsoleState(
-        pipeline_path="/p.json", input_dir="/in", output_dir="/out", resume=True,
+        pipeline_path="/p.json",
+        input_dir="/in",
+        output_dir="/out",
+        retry_failures=True,
     )
     argv = to_argv(state)
-    assert "--resume" in argv
+    assert "--retry-failures" in argv
+
+
+def test_legacy_resume_preset_is_ignored() -> None:
+    state = run_state_from_json(
+        {
+            "resume": True,
+            "pipeline_path": "/p.json",
+            "input_dir": "/in",
+            "output_dir": "/out",
+        }
+    )
+    assert "--resume" not in to_argv(state)
 
 
 def test_legacy_save_inspect_preset_is_ignored() -> None:

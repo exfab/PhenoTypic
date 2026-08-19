@@ -49,7 +49,7 @@ from phenotypic.plotting._pipeline import (
     PlotPublicationBlocked,
     publish_plot_output,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     gui_launch_owner_path,
     master_measurements_parquet_path,
@@ -75,8 +75,8 @@ def _seed_output(
     """Write a small scientific payload with configurable completion evidence."""
     frame = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["plate", "plate"],
-            str(METADATA.IMAGE_NAME): ["a", "b"],
+            "Metadata_Dataset": ["plate", "plate"],
+            str(IMAGE.IMAGE_NAME): ["a", "b"],
             "Object_Label": [1, 2],
             "Centroid": [[5.0, 5.0], [6.0, 6.0]],
             "Metadata_Row": ["A", "A"],
@@ -304,7 +304,7 @@ def test_real_qc_writer_rechecks_after_build_and_preserves_all_artifacts(
                 cls=ReplicateAgreement,
                 params={
                     "on": "Size_Area",
-                    "groupby": ["MetadataExperiment_Dataset"],
+                    "groupby": ["Metadata_Dataset"],
                     "min_replicates": 2,
                 },
                 instance_id="qc-SE-race0001",
@@ -372,7 +372,7 @@ def test_real_qc_rebuild_rechecks_with_synced_temp_before_replace(
                 cls=ReplicateAgreement,
                 params={
                     "on": "Size_Area",
-                    "groupby": ["MetadataExperiment_Dataset"],
+                    "groupby": ["Metadata_Dataset"],
                     "min_replicates": 2,
                 },
                 instance_id="qc-SE-rebuild-race",
@@ -454,7 +454,7 @@ def test_real_qc_rebuild_rechecks_synced_receipt_before_replace(
                 cls=ReplicateAgreement,
                 params={
                     "on": "Size_Area",
-                    "groupby": ["MetadataExperiment_Dataset"],
+                    "groupby": ["Metadata_Dataset"],
                     "min_replicates": 2,
                 },
                 instance_id="qc-SE-receipt-race",

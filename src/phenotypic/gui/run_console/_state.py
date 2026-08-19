@@ -115,7 +115,7 @@ def state_from_controls(  # noqa: PLR0913
         input_dir: Input-directory picker value.
         output_dir: Output-directory picker value.
         mode: Visible execution mode, ``"local"`` or ``"slurm"``.
-        flags: Visible checklist values (``dry_run`` and ``resume``).
+        flags: Visible checklist values (``dry_run`` and ``retry_failures``).
         sample: Optional positive sample size.
         nrows: Optional positive grid row count.
         ncols: Optional positive grid column count.
@@ -215,7 +215,7 @@ def state_from_controls(  # noqa: PLR0913
         metadata_csv=str(metadata_csv) if metadata_csv is not None else None,
         mode=execution_mode,
         dry_run="dry_run" in flag_values,
-        resume="resume" in flag_values,
+        retry_failures="retry_failures" in flag_values,
         advanced_args=advanced_args,
         slurm_args=slurm_args,
         gpu_slurm_args=_parse_key_value_lines(

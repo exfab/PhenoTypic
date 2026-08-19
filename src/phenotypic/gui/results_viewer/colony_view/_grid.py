@@ -59,6 +59,11 @@ from phenotypic.gui.results_viewer._filtered_state import (
     KEY_OBJECT_LABEL,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._metadata import (
+    normalize_column_value_sets,
+    normalize_metadata_reference,
+    normalize_viewer_frame,
+)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -154,6 +159,8 @@ def selectable_axis_columns(
     Returns:
         Column names in the bucketed sort order described above.
     """
+    df = normalize_viewer_frame(df)
+    column_value_sets = normalize_column_value_sets(column_value_sets)
     suitable: list[str] = []
     for col in df.columns:
         if col == _OBJECT_LABEL_COL:
@@ -668,6 +675,9 @@ def build_grid(
     if category_of is None:
         category_of = {}
 
+    df = normalize_viewer_frame(df)
+    x_axis_col = normalize_metadata_reference(x_axis_col)
+    y_axis_col = normalize_metadata_reference(y_axis_col)
     if (
         df.is_empty()
         or x_axis_col not in df.columns

@@ -24,7 +24,7 @@ from phenotypic._core._image_parts.accessors import (
     MetadataAccessor,
 )
 
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_.constants_ import IMAGE_TYPES
 from phenotypic.sdk_.exceptions_ import EmptyImageError, IllegalAssignmentError
 
@@ -109,9 +109,9 @@ class ImageHandler(ImageDataManager):
 
         subimage.detect_mat[:] = self.detect_mat[key].copy()
         subimage.objmap[:] = self.objmap[key].copy()
-        subimage.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.CROP.value
-        subimage.metadata[METADATA.IMAGE_NAME] \
-            = f"{self.metadata[METADATA.IMAGE_NAME]}_crop"
+        subimage.metadata[IMAGE.IMAGE_TYPE] = IMAGE_TYPES.CROP.value
+        subimage.metadata[IMAGE.IMAGE_NAME] \
+            = f"{self.metadata[IMAGE.IMAGE_NAME]}_crop"
         return subimage
 
     def __setitem__(self, key, other_image):
@@ -193,21 +193,21 @@ class ImageHandler(ImageDataManager):
     @property
     def name(self) -> str:
         """Returns the name of the image. If no name is set, the name will be the uuid of the image."""
-        name = self._metadata.protected.get(METADATA.IMAGE_NAME, None)
+        name = self._metadata.protected.get(IMAGE.IMAGE_NAME, None)
         return name if name else str(self.uuid)
 
     @name.setter
     def name(self, value):
-        self.metadata[METADATA.IMAGE_NAME] = str(value)
+        self.metadata[IMAGE.IMAGE_NAME] = str(value)
 
     @property
     def uuid(self):
         """Returns the UUID of the image"""
-        return self.metadata[METADATA.UUID]
+        return self.metadata[IMAGE.UUID]
 
     @property
     def _image_type(self):
-        return self.metadata[METADATA.IMAGE_TYPE]
+        return self.metadata[IMAGE.IMAGE_TYPE]
 
     def isempty(self) -> bool:
         """Check if image data is empty.

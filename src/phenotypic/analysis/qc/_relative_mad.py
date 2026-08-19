@@ -25,10 +25,10 @@ import pandas as pd
 
 from phenotypic.analysis._helper._qc_math import median_abs_deviation
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.schema import CULTURE_METADATA, QUALITY_MAD
+from phenotypic.schema import CULTURE, QUALITY_MAD
 from phenotypic.sdk_ import ColumnRef
 
-_TIME = str(CULTURE_METADATA.TIME)
+_TIME = str(CULTURE.TIME)
 
 
 class RelativeMAD(QualityCheck):
@@ -83,7 +83,7 @@ class RelativeMAD(QualityCheck):
 
     Attributes:
         time_label: Column name carrying the timepoint within each
-            group. Defaults to ``"MetadataCulture_Time"``.
+            group. Defaults to ``Metadata_Time``.
         min_replicates: Minimum replicate count required before the MAD
             is considered meaningful. Bins below this threshold receive
             ``metric = NaN``.
@@ -101,10 +101,12 @@ class RelativeMAD(QualityCheck):
 
         >>> import pandas as pd
         >>> from phenotypic.analysis.qc import RelativeMAD
+        >>> from phenotypic.schema import CULTURE
+        >>> time = str(CULTURE.TIME)
         >>> times = [0, 1, 2, 3]
         >>> data = pd.DataFrame({
         ...     "Plate": ["P1"] * 12,
-        ...     "MetadataCulture_Time": [t for t in times for _ in range(3)],
+        ...     time: [t for t in times for _ in range(3)],
         ...     "Replicate": [1, 2, 3] * 4,
         ...     "Size_Area": [
         ...         10.0, 10.1, 9.9,
@@ -116,7 +118,7 @@ class RelativeMAD(QualityCheck):
         >>> chk = RelativeMAD(
         ...     on="Size_Area",
         ...     groupby=["Plate"],
-        ...     time_label="MetadataCulture_Time",
+        ...     time_label=time,
         ... )
         >>> result = chk.analyze(data)  # doctest: +SKIP
         >>> "QC_MAD_Metric" in result.columns  # doctest: +SKIP
@@ -127,7 +129,7 @@ class RelativeMAD(QualityCheck):
 
         >>> singleton = pd.DataFrame({
         ...     "Plate": ["P1", "P1"],
-        ...     "MetadataCulture_Time": [0, 1],
+        ...     time: [0, 1],
         ...     "Size_Area": [10.0, 20.0],
         ... })
         >>> chk = RelativeMAD(

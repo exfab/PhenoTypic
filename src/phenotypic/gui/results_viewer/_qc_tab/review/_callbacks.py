@@ -104,7 +104,7 @@ from phenotypic.gui.results_viewer._mutation_guard import (
     output_mutations_disabled,
     require_output_mutation,
 )
-from phenotypic.schema import ErrorCategory, METADATA
+from phenotypic.schema import ErrorCategory
 from phenotypic.gui.results_viewer._qc_tab import _ids as qc_tab_ids
 from phenotypic.gui.results_viewer._qc_tab.review import (
     _data,
@@ -1553,10 +1553,10 @@ def _crop_size_for(keys: list[tuple[str, str, int]], output_root) -> int:
         return default
     member_keys = {(im, lbl) for _ds, im, lbl in keys}
     subset = master.filter(
-        pl.struct([str(METADATA.IMAGE_NAME), "Object_Label"]).map_elements(
+        pl.struct([KEY_IMAGE_FILE, KEY_OBJECT_LABEL]).map_elements(
             lambda s: (
-                str(s[str(METADATA.IMAGE_NAME)]),
-                int(s["Object_Label"]),
+                str(s[KEY_IMAGE_FILE]),
+                int(s[KEY_OBJECT_LABEL]),
             )
             in member_keys,
             return_dtype=pl.Boolean,

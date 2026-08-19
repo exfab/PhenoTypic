@@ -7,10 +7,11 @@ import json
 import subprocess
 import time
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator, Literal, cast
 from uuid import uuid4
 
 from phenotypic.sdk_ import (
@@ -31,9 +32,15 @@ _LEGACY_STAGED_LEDGER_FILENAME = "staged_jobs.jsonl"
 _LOCK_FILENAME = ".slurm_submit_cancel.lock"
 _SUBMIT_BACKOFF_SECONDS = (1.0, 2.0)
 
+SlurmDependencyKind = Literal["afterany", "afterok"]
+
 
 class SchedulerQueryUnavailable(RuntimeError):
     """Raised when neither scheduler accounting source can be queried."""
+
+
+class SlurmGenerationInactiveError(RuntimeError):
+    """Raised when a worker no longer owns the output lifecycle fence."""
 
 
 @dataclass(frozen=True)
@@ -110,11 +117,15 @@ def load_slurm_lifecycle(output_dir: Path) -> dict[str, Any] | None:
         return None
     raw["generation"] = generation
     raw.setdefault("schema_version", 1)
-    raw.setdefault("active", raw.get("phase") not in {
-        "cancelled",
-        "failed",
-        "complete",
-    })
+    raw.setdefault(
+        "active",
+        raw.get("phase")
+        not in {
+            "cancelled",
+            "failed",
+            "complete",
+        },
+    )
     return raw
 
 
@@ -131,9 +142,24 @@ def generation_is_active(output_dir: Path, generation: str) -> bool:
 def assert_generation_active(output_dir: Path, generation: str) -> None:
     """Reject stale or cancelled continuations before they can submit."""
     if not generation_is_active(output_dir, generation):
-        raise RuntimeError(
+        raise SlurmGenerationInactiveError(
             f"SLURM generation {generation!r} is inactive or superseded"
         )
+
+
+@contextmanager
+def generation_publication_guard(
+    output_dir: Path, generation: str
+) -> Iterator[None]:
+    """Serialize generation validation with canonical publication.
+
+    Cancellation and initialization use the same lifecycle lock, so neither
+    can deactivate or supersede the generation between this validation and
+    the guarded mutation.
+    """
+    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
+        assert_generation_active(output_dir, generation)
+        yield
 
 
 def append_lifecycle_entry(
@@ -145,10 +171,12 @@ def append_lifecycle_entry(
     status: str,
     job_id: str | None = None,
     dependencies: Sequence[str] = (),
+    dependency_kind: SlurmDependencyKind = "afterany",
     round_index: int = 0,
     comment: str | None = None,
 ) -> None:
     """Append one versioned scheduler transition to the durable ledger."""
+    validated_dependency_kind = _validate_dependency_kind(dependency_kind)
     row: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "generation": generation,
@@ -158,6 +186,7 @@ def append_lifecycle_entry(
         "round": round_index,
         "status": status,
         "dependencies": list(dependencies),
+        "dependency_kind": validated_dependency_kind,
         "comment": comment or scheduler_comment(generation, token),
         "timestamp": _timestamp(),
     }
@@ -193,6 +222,7 @@ def read_lifecycle_ledger(
             normalized.setdefault("epoch", str(found_generation))
             normalized.setdefault("schema_version", 1)
             normalized.setdefault("role", "unknown")
+            normalized.setdefault("dependency_kind", "afterany")
             if generation is None or str(found_generation) == generation:
                 rows.append(normalized)
     return rows
@@ -230,13 +260,15 @@ def query_scheduler_comments(
     runner = run_command or subprocess.run
     commands = [["squeue", "--noheader", "--format=%i|%k"]]
     if include_accounting:
-        commands.append([
-            "sacct",
-            "--noheader",
-            "--parsable2",
-            "--starttime=now-2days",
-            "--format=JobIDRaw,Comment%200",
-        ])
+        commands.append(
+            [
+                "sacct",
+                "--noheader",
+                "--parsable2",
+                "--starttime=now-2days",
+                "--format=JobIDRaw,Comment%200",
+            ]
+        )
     matches: dict[str, set[str]] = {}
     successful_queries = 0
     for command in commands:
@@ -323,12 +355,14 @@ def submit_with_lifecycle(
     role: str,
     script_path: Path,
     dependencies: Sequence[str] = (),
+    dependency_kind: SlurmDependencyKind = "afterany",
     round_index: int = 0,
     active_check: Callable[[], bool] | None = None,
     run_command: Callable[..., subprocess.CompletedProcess[str]] | None = None,
     discover: Callable[[str], str | None] | None = None,
 ) -> str:
     """Submit exactly once with intent, fence, and job record under one lock."""
+    validated_dependency_kind = _validate_dependency_kind(dependency_kind)
     comment = scheduler_comment(generation, token)
     runner = run_command or subprocess.run
     is_active = active_check or (
@@ -344,10 +378,20 @@ def submit_with_lifecycle(
             return existing
 
         rows = read_lifecycle_ledger(output_dir, generation=generation)
-        has_intent = any(
-            row.get("token") == token
-            and row.get("status") in {"intent", "blocked"}
-            for row in rows
+        intent_row = next(
+            (
+                row
+                for row in reversed(rows)
+                if row.get("token") == token
+                and row.get("status") in {"intent", "blocked"}
+            ),
+            None,
+        )
+        has_intent = intent_row is not None
+        effective_dependency_kind = (
+            _dependency_kind_from_row(intent_row)
+            if intent_row is not None
+            else validated_dependency_kind
         )
         if has_intent:
             recovered = _metadata_job_for_token(
@@ -357,9 +401,7 @@ def submit_with_lifecycle(
                 recovered = (
                     discover(comment)
                     if discover is not None
-                    else _single_job_for_comment(
-                        comment, run_command=runner
-                    )
+                    else _single_job_for_comment(comment, run_command=runner)
                 )
             if recovered:
                 return _record_submission(
@@ -369,6 +411,7 @@ def submit_with_lifecycle(
                     role=role,
                     job_id=recovered,
                     dependencies=dependencies,
+                    dependency_kind=effective_dependency_kind,
                     round_index=round_index,
                     status="submitted",
                 )
@@ -380,6 +423,7 @@ def submit_with_lifecycle(
                 role=role,
                 status="intent",
                 dependencies=dependencies,
+                dependency_kind=effective_dependency_kind,
                 round_index=round_index,
                 comment=comment,
             )
@@ -393,7 +437,10 @@ def submit_with_lifecycle(
         ]
         if dependencies:
             command.extend(
-                ["--dependency", f"afterany:{':'.join(dependencies)}"]
+                [
+                    "--dependency",
+                    f"{effective_dependency_kind}:{':'.join(dependencies)}",
+                ]
             )
         command.append(str(script_path))
         last_error = "unknown submission failure"
@@ -423,6 +470,7 @@ def submit_with_lifecycle(
                     role=role,
                     job_id=job_id,
                     dependencies=dependencies,
+                    dependency_kind=effective_dependency_kind,
                     round_index=round_index,
                     status="submitted",
                 )
@@ -436,9 +484,7 @@ def submit_with_lifecycle(
                 recovered = (
                     discover(comment)
                     if discover is not None
-                    else _single_job_for_comment(
-                        comment, run_command=runner
-                    )
+                    else _single_job_for_comment(comment, run_command=runner)
                 )
                 if recovered:
                     return _record_submission(
@@ -448,6 +494,7 @@ def submit_with_lifecycle(
                         role=role,
                         job_id=recovered,
                         dependencies=dependencies,
+                        dependency_kind=effective_dependency_kind,
                         round_index=round_index,
                         status="submitted",
                     )
@@ -466,6 +513,7 @@ def submit_with_lifecycle(
                         role=role,
                         status="blocked",
                         dependencies=dependencies,
+                        dependency_kind=effective_dependency_kind,
                         round_index=round_index,
                         comment=comment,
                     )
@@ -482,6 +530,7 @@ def submit_with_lifecycle(
             role=role,
             status="blocked",
             dependencies=dependencies,
+            dependency_kind=effective_dependency_kind,
             round_index=round_index,
             comment=comment,
         )
@@ -491,7 +540,13 @@ def submit_with_lifecycle(
 
 
 def deactivate_generation(output_dir: Path, generation: str) -> bool:
-    """Write the inactive fence. Caller must hold the lifecycle lock."""
+    """Write the inactive fence under the lifecycle lock."""
+    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
+        return _deactivate_generation_locked(output_dir, generation)
+
+
+def _deactivate_generation_locked(output_dir: Path, generation: str) -> bool:
+    """Write the inactive fence while the caller holds the lifecycle lock."""
     state = load_slurm_lifecycle(output_dir)
     if state is None or state.get("generation") != generation:
         return False
@@ -500,6 +555,26 @@ def deactivate_generation(output_dir: Path, generation: str) -> bool:
     state["active"] = False
     state["updated_at"] = _timestamp()
     atomic_write_json(lifecycle_state_path(output_dir), state)
+    return True
+
+
+def mark_generation_failed(
+    output_dir: Path, generation: str, error: str
+) -> bool:
+    """Durably mark one owned generation failed and inactive.
+
+    The generation comparison prevents a late dispatcher from changing the
+    lifecycle state of a newer launch that now owns the output directory.
+    """
+    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
+        state = load_slurm_lifecycle(output_dir)
+        if state is None or state.get("generation") != generation:
+            return False
+        state["active"] = False
+        state["terminal_status"] = "failed"
+        state["terminal_error"] = str(error)
+        state["updated_at"] = _timestamp()
+        atomic_write_json(lifecycle_state_path(output_dir), state)
     return True
 
 
@@ -515,7 +590,7 @@ def cancel_generation(
     known_ids: set[str] = set()
     unresolved: set[str] = set()
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
-        deactivate_generation(output_dir, generation)
+        _deactivate_generation_locked(output_dir, generation)
         rows = read_lifecycle_ledger(output_dir, generation=generation)
         submitted_tokens: set[str] = set()
         latest_active: dict[str, str] = {}
@@ -548,6 +623,7 @@ def cancel_generation(
                 role=str(row.get("role", "unknown")),
                 job_id=metadata_id,
                 dependencies=tuple(row.get("dependencies", [])),
+                dependency_kind=_dependency_kind_from_row(row),
                 round_index=int(row.get("round", 0)),
                 status="submitted",
             )
@@ -576,6 +652,7 @@ def cancel_generation(
                     role=str(row.get("role", "unknown")),
                     job_id=job_id,
                     dependencies=tuple(row.get("dependencies", [])),
+                    dependency_kind=_dependency_kind_from_row(row),
                     round_index=int(row.get("round", 0)),
                     status="submitted",
                 )
@@ -590,6 +667,7 @@ def cancel_generation(
                     role=str(row.get("role", "unknown")),
                     status="reconciled-no-job",
                     dependencies=tuple(row.get("dependencies", [])),
+                    dependency_kind=_dependency_kind_from_row(row),
                     round_index=int(row.get("round", 0)),
                 )
                 unresolved.discard(token)
@@ -617,7 +695,9 @@ def cancel_generation(
         rescanned = {job_id for ids in found.values() for job_id in ids}
         if not rescanned:
             return CancellationResult(
-                tuple(sorted(known_ids)), tuple(sorted(unresolved)), not unresolved
+                tuple(sorted(known_ids)),
+                tuple(sorted(unresolved)),
+                not unresolved,
             )
         known_ids.update(rescanned)
     return CancellationResult(
@@ -633,34 +713,71 @@ def dispatch_continuation(
     chunk_script: Path,
     dispatcher_script: Path | None = None,
     finalizer_script: Path | None = None,
+    dependency_kind: SlurmDependencyKind = "afterany",
 ) -> tuple[str, str | None]:
     """Submit a later chunk and its optional dependent continuation safely."""
-    chunk_id = submit_with_lifecycle(
-        output_dir,
-        generation=generation,
-        token=f"chunk-{chunk_index}",
-        role="chunk",
-        script_path=chunk_script,
-    )
+    validated_dependency_kind = _validate_dependency_kind(dependency_kind)
+    chunk_id: str | None = None
     continuation_id = None
-    if dispatcher_script is not None:
-        continuation_id = submit_with_lifecycle(
+    try:
+        chunk_id = submit_with_lifecycle(
             output_dir,
             generation=generation,
-            token=f"dispatcher-{chunk_index + 1}",
-            role="dispatcher",
-            script_path=dispatcher_script,
-            dependencies=(chunk_id,),
+            token=f"chunk-{chunk_index}",
+            role="chunk",
+            script_path=chunk_script,
         )
-    elif finalizer_script is not None:
-        continuation_id = submit_with_lifecycle(
-            output_dir,
-            generation=generation,
-            token="finalizer",
-            role="finalizer",
-            script_path=finalizer_script,
-            dependencies=(chunk_id,),
+        if dispatcher_script is not None:
+            continuation_id = submit_with_lifecycle(
+                output_dir,
+                generation=generation,
+                token=f"dispatcher-{chunk_index + 1}",
+                role="dispatcher",
+                script_path=dispatcher_script,
+                dependencies=(chunk_id,),
+                dependency_kind=validated_dependency_kind,
+            )
+        elif finalizer_script is not None:
+            continuation_id = submit_with_lifecycle(
+                output_dir,
+                generation=generation,
+                token="finalizer",
+                role="finalizer",
+                script_path=finalizer_script,
+                dependencies=(chunk_id,),
+                dependency_kind=validated_dependency_kind,
+            )
+    except Exception as exc:
+        try:
+            cancellation = cancel_generation(output_dir, generation)
+        except Exception:
+            # Cancellation performs scheduler reconciliation, but the local
+            # fence is the load-bearing safety boundary. Preserve it even if
+            # the scheduler query/cancel path itself fails unexpectedly.
+            deactivate_generation(output_dir, generation)
+            detail = (
+                "the generation was fenced but scheduler reconciliation "
+                "failed"
+            )
+        else:
+            detail = (
+                "the generation was fenced and reconciled"
+                if cancellation.quiescent
+                else (
+                    "the generation was fenced but reconciliation is "
+                    "incomplete"
+                )
+            )
+        failure_stage = (
+            "Next chunk submission failed"
+            if chunk_id is None
+            else "Continuation submission failed after the next chunk was submitted"
         )
+        terminal_error = f"{failure_stage}; {detail}: {exc}"
+        mark_generation_failed(output_dir, generation, terminal_error)
+        raise RuntimeError(terminal_error) from exc
+    if chunk_id is None:  # pragma: no cover - guarded by the exception path
+        raise RuntimeError("Dynamic chunk submission returned no job id")
     return chunk_id, continuation_id
 
 
@@ -672,6 +789,7 @@ def _record_submission(
     role: str,
     job_id: str,
     dependencies: Sequence[str],
+    dependency_kind: SlurmDependencyKind,
     round_index: int,
     status: str,
 ) -> str:
@@ -683,6 +801,7 @@ def _record_submission(
         status=status,
         job_id=job_id,
         dependencies=dependencies,
+        dependency_kind=dependency_kind,
         round_index=round_index,
     )
     mirror_job_to_metadata(
@@ -700,9 +819,7 @@ def _single_job_for_comment(
     *,
     run_command: Callable[..., subprocess.CompletedProcess[str]],
 ) -> str | None:
-    matches = query_scheduler_comments(
-        exact=comment, run_command=run_command
-    )
+    matches = query_scheduler_comments(exact=comment, run_command=run_command)
     ids = sorted(matches.get(comment, ()))
     if len(ids) > 1:
         raise RuntimeError(
@@ -751,6 +868,20 @@ def _parse_json_lines(content: str) -> list[dict[str, Any]]:
     return rows
 
 
+def _validate_dependency_kind(value: str) -> SlurmDependencyKind:
+    """Validate one SLURM dependency condition at a public API boundary."""
+    if value not in {"afterany", "afterok"}:
+        raise ValueError("dependency_kind must be 'afterany' or 'afterok'")
+    return cast(SlurmDependencyKind, value)
+
+
+def _dependency_kind_from_row(row: Mapping[str, Any]) -> SlurmDependencyKind:
+    """Read a journaled dependency kind with legacy ``afterany`` fallback."""
+    return _validate_dependency_kind(
+        str(row.get("dependency_kind", "afterany"))
+    )
+
+
 def _timestamp() -> str:
     return datetime.now().isoformat(timespec="milliseconds")
 
@@ -763,6 +894,11 @@ def _dispatch_from_argv(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--chunk-script", type=Path, required=True)
     parser.add_argument("--dispatcher-script", type=Path)
     parser.add_argument("--finalizer-script", type=Path)
+    parser.add_argument(
+        "--dependency-kind",
+        choices=("afterany", "afterok"),
+        default="afterany",
+    )
     args = parser.parse_args(argv)
     dispatch_continuation(
         args.output,
@@ -771,6 +907,7 @@ def _dispatch_from_argv(argv: Sequence[str] | None = None) -> int:
         chunk_script=args.chunk_script,
         dispatcher_script=args.dispatcher_script,
         finalizer_script=args.finalizer_script,
+        dependency_kind=args.dependency_kind,
     )
     return 0
 

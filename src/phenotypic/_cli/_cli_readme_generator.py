@@ -113,7 +113,7 @@ output_folder/
 |       +-- hdf/                      # Processed images as single .h5 per input (layers + metadata + grid state)
 |       +-- measurements/             # Per-image Parquet measurement files
 +-- .phenotypic/                      # Hidden machine-state cache
-|   +-- processing_state.json         # Resume/state tracking
+|   +-- processing_state.json         # Continuation/state tracking
 |   +-- processing_events.log         # Append-only event log
 |   +-- logs/                         # Execution logs
 |   |   +-- slurm/                    # SLURM job logs (if applicable)

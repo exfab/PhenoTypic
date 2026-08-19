@@ -22,7 +22,7 @@ from phenotypic._cli._cli_chunk_writer import (
     _update_dataset_parquet,
     flush_unchunked_measurements,
 )
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA, OBJECT
+from phenotypic.schema import EXPERIMENT, IMAGE, OBJECT
 from phenotypic.sdk_ import (
     CHUNK_MANIFEST_JSON,
     DATASET_AGGREGATED_PARQUET,
@@ -64,11 +64,11 @@ def _write_per_image(
     for i, stem in enumerate(stems):
         columns: dict[str, list[object]] = {}
         if dataset_column:
-            columns[str(EXPERIMENT_METADATA.DATASET)] = [dataset] * colonies
+            columns[str(EXPERIMENT.DATASET)] = [dataset] * colonies
         if name_column == "stem":
-            columns[str(METADATA.IMAGE_NAME)] = [stem] * colonies
+            columns[str(IMAGE.IMAGE_NAME)] = [stem] * colonies
         elif name_column == "uuid":
-            columns[str(METADATA.IMAGE_NAME)] = [
+            columns[str(IMAGE.IMAGE_NAME)] = [
                 f"3f2b7c1a-0000-4000-8000-{i:012d}"
             ] * colonies
         columns[str(OBJECT.LABEL)] = list(range(1, colonies + 1))
@@ -85,7 +85,7 @@ def _aggregate_image_names(output_dir: Path, dataset: str = DATASET) -> list[str
     agg = _aggregate(output_dir, dataset)
     if agg is None:
         return []
-    return agg[str(METADATA.IMAGE_NAME)].to_list()
+    return agg[str(IMAGE.IMAGE_NAME)].to_list()
 
 
 def test_kill_before_aggregate_write_does_not_lose_images(
@@ -174,8 +174,8 @@ def test_dedup_is_skipped_when_the_colony_key_is_incomplete(
     meas_dir.mkdir(parents=True, exist_ok=True)
     frame = pl.DataFrame(
         {
-            str(EXPERIMENT_METADATA.DATASET): [DATASET, DATASET, DATASET],
-            str(METADATA.IMAGE_NAME): ["img_001", "img_001", "img_001"],
+            str(EXPERIMENT.DATASET): [DATASET, DATASET, DATASET],
+            str(IMAGE.IMAGE_NAME): ["img_001", "img_001", "img_001"],
             "Shape_Area": [1.0, 2.0, 3.0],
         }
     )
@@ -255,7 +255,7 @@ def test_corrupt_aggregate_is_rebuilt_not_discarded(
         f"rebuild dropped or duplicated colonies"
     )
     assert (
-        rebuilt[str(EXPERIMENT_METADATA.DATASET)].null_count() == 0
+        rebuilt[str(EXPERIMENT.DATASET)].null_count() == 0
     ), "rebuild left Metadata_Dataset null, breaking dedup across the boundary"
 
 

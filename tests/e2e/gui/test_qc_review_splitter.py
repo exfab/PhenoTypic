@@ -36,7 +36,7 @@ from tests.e2e.gui.conftest import (
     bind_results_output,
     publish_coherent_terminal_evidence,
 )
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import EXPERIMENT, IMAGE
 
 # Single-threaded dev server + Dash callback chain stochastically exceeds
 # the wait budgets on GHA shared runners; correct locally. See test_qc_tab.py.
@@ -60,8 +60,8 @@ def _build_master() -> pl.DataFrame:
                 label += 1
                 rows.append(
                     {
-                        str(EXPERIMENT_METADATA.DATASET): "ds1",
-                        str(METADATA.IMAGE_NAME): image,
+                        str(EXPERIMENT.DATASET): "ds1",
+                        str(IMAGE.IMAGE_NAME): image,
                         "Metadata_Time": 0.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,

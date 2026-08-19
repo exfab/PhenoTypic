@@ -9,13 +9,14 @@ for the real :class:`OutputRoot`.
 from __future__ import annotations
 
 import pandas as pd
+import duckdb
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis.qc import MaxModifiedZScore
 from phenotypic.sdk_ import BundleLayout
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 class _Root:
@@ -44,7 +45,7 @@ def _seed_db(tmp_path):
     )
     df = pd.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): ["a.png"] * 4,
+            str(IMAGE.IMAGE_NAME): ["a.png"] * 4,
             "Object_Label": [1, 2, 3, 4],
             "Plate": ["P1"] * 4,
             "Size_Area": [10.0, 11.0, 12.0, 99.0],
@@ -83,6 +84,37 @@ def test_module_members_empty_group_returns_all(tmp_path):
     root = _seed_db(tmp_path)
     members = _db.module_members(root, "qc-ZMax-00000001", ())
     assert members.height == 4
+
+
+def test_qc_catalog_and_members_normalize_metadata_keys_read_only(tmp_path):
+    from phenotypic.gui.results_viewer._qc_tab.review import _db
+
+    root = _seed_db(tmp_path)
+    path = root.layout.qc_duckdb
+    canonical = str(IMAGE.IMAGE_NAME)
+    alternate = "MetadataImage_ImageName"
+    con = duckdb.connect(str(path))
+    table_name = con.execute(
+        "SELECT table_name FROM qc_modules WHERE instance_id = ?",
+        ["qc-ZMax-00000001"],
+    ).fetchone()[0]
+    con.execute(
+        f'ALTER TABLE "{table_name}" RENAME COLUMN "{canonical}" TO "{alternate}"'
+    )
+    con.execute(
+        "UPDATE qc_modules SET member_key_cols = ? WHERE instance_id = ?",
+        [f'["{alternate}","Object_Label"]', "qc-ZMax-00000001"],
+    )
+    con.close()
+    before = path.read_bytes()
+
+    module = _db.list_modules(root)[0]
+    members = _db.module_members(root, module.instance_id, ("P1",))
+
+    assert module.member_key_cols == [canonical, "Object_Label"]
+    assert canonical in members.columns
+    assert alternate not in members.columns
+    assert path.read_bytes() == before
 
 
 def test_summary_stats_from_module_summary(tmp_path):

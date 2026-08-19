@@ -12,7 +12,7 @@ from uuid import uuid4
 from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureSize
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_process_only import process_only_output_path
@@ -135,7 +135,7 @@ def test_three_stage_cores_end_to_end(tmp_path):
     measurements_path = out / "results" / "ds" / "measurements" / "img.parquet"
     assert measurements_path.is_file()
     measurements = pl.read_parquet(measurements_path)
-    assert measurements[str(METADATA.IMAGE_NAME)].unique().to_list() == ["img"]
+    assert measurements[str(IMAGE.IMAGE_NAME)].unique().to_list() == ["img"]
     assert phenotypic.Image.load_hdf5(staged_hdf).name == "img"
     assert not sidecar_exists(out, "ds", "img")  # mandatory cleanup
 
@@ -413,7 +413,7 @@ def test_plain_resume_reuses_stage1_hdf_after_stage2_failure(
     assert stage3_completion_exists(out, "ds", "img")
 
 
-def test_cli_plain_resume_includes_recorded_stage2_failure(
+def test_cli_retry_failures_includes_recorded_stage2_failure(
     tmp_path, monkeypatch
 ):
     images = tmp_path / "images"
@@ -478,16 +478,18 @@ def test_cli_plain_resume_includes_recorded_stage2_failure(
     monkeypatch.setattr(
         OutputManager, "aggregate_master_csv", capture_full_inventory
     )
-    resumed = CliRunner().invoke(phenotypic_cli, [*args, "--resume"])
+    resumed = CliRunner().invoke(
+        phenotypic_cli, [*args, "--retry-failures"]
+    )
 
     assert resumed.exit_code == 0, resumed.output
-    assert "Resuming staged GPU processing" in resumed.output
+    assert "Continuing staged GPU processing" in resumed.output
     assert "Stage 2 1" in resumed.output
     assert sorted(aggregated_images) == ["img.tiff", "img2.tiff"]
 
 
 @pytest.mark.parametrize("legacy_markerless", [False, True])
-def test_cli_resume_backfills_completed_overlay_before_early_exit(
+def test_cli_continuation_backfills_completed_overlay_before_early_exit(
     tmp_path, monkeypatch, legacy_markerless
 ):
     images = tmp_path / "images"
@@ -541,16 +543,17 @@ def test_cli_resume_backfills_completed_overlay_before_early_exit(
 
     monkeypatch.setattr(OutputManager, "save_overlay", _save_overlay_with_alpha)
 
-    resumed = CliRunner().invoke(phenotypic_cli, [*args, "--resume"])
+    resumed = CliRunner().invoke(phenotypic_cli, args)
 
     assert resumed.exit_code == 0, resumed.output
-    assert "All images already processed" in resumed.output
+    if not legacy_markerless:
+        assert "Continuing staged GPU processing" in resumed.output
     assert overlay.is_file()
     assert observed_alpha == [0.65]
     assert stage3_completion_exists(out, images.name, image_path.stem)
 
 
-def test_cli_resumes_finalizer_only_when_image_stages_are_complete(
+def test_cli_continues_finalizer_only_when_image_stages_are_complete(
     tmp_path, monkeypatch
 ):
     images = tmp_path / "images"
@@ -610,14 +613,13 @@ def test_cli_resumes_finalizer_only_when_image_stages_are_complete(
         phenotypic_cli,
         [
             *base_args,
-            "--resume",
             "--slurm",
             "slurm_partition=test",
         ],
     )
 
     assert resumed.exit_code == 0, resumed.output
-    assert "Resuming staged GPU finalization" in resumed.output
+    assert "Continuing staged GPU finalization" in resumed.output
     assert observed == {
         "finalizer_only": True,
         "phase": "stage3",
@@ -625,7 +627,7 @@ def test_cli_resumes_finalizer_only_when_image_stages_are_complete(
     }
 
 
-def test_cli_local_resume_republishes_missing_final_outputs(
+def test_cli_local_continuation_republishes_missing_final_outputs(
     tmp_path, monkeypatch
 ):
     from phenotypic._cli._cli_readme_generator import READMEGenerator
@@ -677,10 +679,10 @@ def test_cli_local_resume_republishes_missing_final_outputs(
         lambda self: (_ for _ in ()).throw(AssertionError("model loaded")),
     )
 
-    resumed = CliRunner().invoke(phenotypic_cli, [*args, "--resume"])
+    resumed = CliRunner().invoke(phenotypic_cli, args)
 
     assert resumed.exit_code == 0, resumed.output
-    assert "Resuming staged GPU finalization" in resumed.output
+    assert "Continuing staged GPU finalization" in resumed.output
     assert marker.is_file()
 
 
@@ -703,10 +705,18 @@ def test_stage3_resume_does_not_load_gpu_model(tmp_path, monkeypatch):
     )
     image_path = tmp_path / "img.tiff"
     om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    cfg = _config(out, pipe_path, resume=True)
+    import h5py
 
-    result = StagedGpuStrategy(
-        _config(out, pipe_path, resume=True), om
-    ).execute([Dataset("ds", [image_path], tmp_path, out)], out)
+    from phenotypic._cli._cli_failure_tracker import work_id_for_image
+
+    expected_work_id, _ = work_id_for_image(cfg, "ds", image_path)
+    with h5py.File(dataset_hdf_dir(out, "ds") / "img.h5", "r+") as handle:
+        handle.attrs["phenotypic_work_id"] = expected_work_id
+
+    result = StagedGpuStrategy(cfg, om).execute(
+        [Dataset("ds", [image_path], tmp_path, out)], out
+    )
 
     assert result.total_completed == 1
 
@@ -902,7 +912,7 @@ def test_completed_shard_exits_before_loading_model(tmp_path, monkeypatch):
     )
 
 
-def test_terminal_failure_shard_exits_before_loading_model(tmp_path, monkeypatch):
+def test_legacy_staged_failure_does_not_suppress_current_work(tmp_path):
     import phenotypic._cli._cli_staged_slurm_worker as W
 
     out, pipe_path = _stage1_only(tmp_path)
@@ -927,12 +937,6 @@ def test_terminal_failure_shard_exits_before_loading_model(tmp_path, monkeypatch
         error_type="DetectorError",
         error_message="deterministic failure",
     )
-    monkeypatch.setattr(
-        FakeGpuDetector,
-        "_ensure_model_loaded",
-        lambda self: (_ for _ in ()).throw(AssertionError("model loaded")),
-    )
-
     W.run_stage2_shard(
         pipeline_path=pipe_path,
         output_dir=out,
@@ -942,7 +946,7 @@ def test_terminal_failure_shard_exits_before_loading_model(tmp_path, monkeypatch
         n_shards=1,
         epoch=epoch,
     )
-    assert not sidecar_exists(out, "ds", "img")
+    assert sidecar_exists(out, "ds", "img")
 
 
 def test_shard_worker_records_missing_hdf_without_requeue(tmp_path):
