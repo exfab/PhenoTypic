@@ -80,3 +80,62 @@ shared-by-two-surfaces contract §1.4 defines.
 **Coverage:** all of §1–§10, plan README, execution.md, phase-1b. Per charter it
 did not traverse the codebase and worked from the brief's summaries of the four
 prior finding registers rather than re-deriving them.
+
+### concurrency-specialist — round 1, VERDICT REVISE (18 concerns, 2 Critical)
+
+| ID | Sev | Concern | Status |
+|---|---|---|---|
+| CONC-1 | **Critical** | `LocalComputeSlot` has no stated primitive and no defined release path across the thread/loop boundary. Reap is signalled by a **daemon thread that swallows the callback's exceptions** (`_services/runs.py:1852-1875`); an `ArtifactLockTimeout` from the 30 s spin strands the slot permanently, silently. Four release paths; the cancel path (F4) is only one | open · spec-change |
+| CONC-2 | **Critical** | Restart reconciliation lets a live orphan **claim** the slot and never says who releases it. `rehydrate_from_sandbox` cannot rebuild `LocalRunHandle`s — the `Popen` belonged to the dead server — so no exit observer exists and the slot is held until the new server dies. Also `RunRecord` stores `pid` with no create-time, so PID reuse gives a false orphan or kills a live run | open · spec-change |
+| CONC-3 | Major | `LocalRunner`'s process-wide `atexit` hook SIGTERMs every child, so **normal session end kills every local W2/W3 the agent launched**. §1.5 designs recovery for the SIGKILL case and is silent on the common one | open · spec-change |
+| CONC-4 | Major | Artifact mutation is unguarded read-modify-write; two concurrent `pipeline_patch` calls lose one edit and **both return `ok:true`** | open · spec-change |
+| CONC-5 | Major | §8.3's snapshot covers the read side only — two partial `campaign_start` calls both pass the status CAS and the second clobbers the first's `study_id`, orphaning a running arm | open · spec-change |
+| CONC-6 | Major | `campaign_start` fan-out has no execution model and **cannot complete as specified under local routing**; nothing launches arm 4 when arm 1 finishes; partial failure undefined | open · spec-change |
+| CONC-7 | Major | Store-open subprocess fan-out is unbounded — one per arm per poll, N subagents, no cap anywhere | open · spec-change |
+| CONC-8 | Major | `RunRegistry` holds a `threading.Lock` **across** a 30 s interprocess spin; no §6.2 code for `ArtifactLockTimeout` or `allocate`'s bare `RuntimeError` | open · spec-change |
+| CONC-9 | Major | `get_registry()` publishes `_REGISTRY` **before** `discover()` runs, unlocked — a loser thread can get a partially populated registry, silently short | open · spec-change |
+| CONC-10 | Major | Subset staging is idempotent by key but not by completion — a reader can launch a fleet against a half-built symlink tree; `_load_images` takes whatever it finds | open · spec-change |
+| CONC-11 | Major | The post-start CAS races the exit observer; an immediately-failing run can be **overwritten back to `running`**, permanently blocking `allocate` on that output dir | open · spec-change |
+| CONC-12 | Major | One slot makes `W1` unavailable for the whole of any local W2/W3, and `probe_timeout_s` turns the wait into a guaranteed error — off-cluster, the entire §8.7 loop dies whenever deploy runs | open · spec-change · needs-user-input |
+| CONC-13 | Minor | Probe-worker exclusivity is derived from the slot, never stated as an invariant; no liveness check before use | open |
+| CONC-14 | Minor | Probe output path collides across probes (keyed by pipeline alone) | open |
+| CONC-15 | Minor | Three blocking `W0` calls missing from F3's table: `workspace_lineage` reads, `workspace_cancel`, `workspace_info{refresh}` | open |
+| CONC-16 | Advisory | `campaign_status{since}` cursor: absent-artifact is not a defined cursor state, and `study.db` never exists under journal storage | open |
+| CONC-17 | Advisory | The handler concurrency model is never chosen, and CONC-1/7/8 all depend on it | open · spec-change |
+| CONC-18 | Advisory | OME-Zarr's real coupling is **concurrency**: the sidecar works around a read-only-while-open constraint, so removing it changes the resume contract's shape | open |
+
+**F4 answered:** partly settled and worse than stated — the cancel path is one of
+four release paths and the *exit-thread* path has no design at all. The shared
+probe worker is **refuted** as a hazard, but only because the slot admits one
+probe at a time — a safety derived, never stated.
+
+**Charter areas NOT reached:** `subset_generate` with a `W2` selector;
+**elicitation under a shared connection** (whether A's `campaign_approve` prompt
+can be answered by B — nobody has drawn the request-vs-connection scope line for
+elicitation that F8/F10 draw for progress vs logging); P1/C7's B1 retry predicate
+as code; `SandboxRoot` thread-safety; staged-GPU controller internals.
+
+### data-flow-reviewer — round 1, VERDICT REVISE (16 concerns, 5 Critical)
+
+| ID | Sev | Concern | Status |
+|---|---|---|---|
+| FLOW-1 | **Critical** | `pipeline_probe`'s measurement frame matches **neither engine**: `measure` defaults `apply_post=True`, every per-image engine passes `False`. A probe can condemn a working pipeline, and §8.7's post-slot loop optimizes a transform nothing scores | open · spec-change |
+| FLOW-2 | **Critical** | `produces_columns` describes a **third frame no consumer sees** — not the scorer's input, not the mirror | open · spec-change |
+| FLOW-3 | **Critical** | **The dataset has no home in the workspace.** §2.3's tree has no place for input images, every worked example uses `data/plates` as if inside, and `SandboxRoot.resolve()` rejects escapes. Either the root contains the data — colliding with §2.2's immutability rule, the `.git` warning and the CWD default — or the flagship flow cannot start | open · spec-change · **needs-user-input** |
+| FLOW-4 | **Critical** | `flat/` staging keys symlinks by **bare filename** — the exact collision §10.2 introduced parent-relative paths to prevent. An image is lost silently while `n_images` still stands | open · spec-change |
+| FLOW-5 | **Critical** | The deploy argument contract is stale against merged main and **the guard is inverted**: `--resume` no longer exists (continuation is derived), `mode` has four values not three, and `output_not_empty` refuses the case the CLI now handles while the real hazard — silently continuing a run — has no code | open · spec-change |
+| FLOW-6 | Major | **Token binding answered:** `argv_digest` is undefined in the spec. If it covers §5.3's `argv` it is sound but narrow — it binds *what* runs, not the SBATCH directives or array width, which §5.2 derives live from `scontrol`/`sacctmgr`. So the cluster can silently re-chunk between plan and start with every check passing | open · spec-change |
+| FLOW-7 | Major | Probe timing reaches the estimate with **no digest binding** — `pipeline_patch` mutates in place up to 12×, so a "measured" estimate may come from a different pipeline | open · spec-change |
+| FLOW-8 | Major | `campaign_start` is not idempotent; a kill mid-fan-out is unrecoverable — re-calling hits `allocate`'s nonterminal rejection, and no code covers it | open · spec-change |
+| FLOW-9 | Major | Assay and subset are **joined by nothing** — a campaign can be planned from an assay characterized on a different dataset with nothing failing | open · spec-change |
+| FLOW-10 | Major | `deploy.start` lineage carries no subset or scope, so promotion's "measured" node-hours has no identifiable source | open · spec-change |
+| FLOW-11 | Major | **`comparable` answered:** it is typed a bare boolean, so "unknown" is **unrepresentable** — a truncated journal forces asserting a comparison the artifacts cannot support, or suppressing a valid one. Needs tri-state + `basis` | open · spec-change |
+| FLOW-12 | Minor | Subset digest recorded once, never re-verified before staging; no GC for staging, tokens or probes | open · spec-change |
+| **FLOW-13** | Minor | **REFUTES the brief's OME-Zarr exposure.** Checked by grep: the MCP spec **never names the `.npy` sidecar** (one hit, unrelated); `deploy_status` reads `manifest.json`, which contains no HDF reference; P6 staging symlinks *inputs*, untouched by an output-store change. Real hits are four cosmetic prose lines | open |
+| FLOW-14 | Major | The **real** OME-Zarr coupling is the mode list plus a migration guard: any dataset with `.h5` results and no store becomes a hard failure on every result-consuming mode, and the server has no equivalent of the GUI's report. Also flags `--durable-writes` reaching the already-promoted `argv.py`, and `requires-python <3.13` unchecked against `fastmcp` 3.x | open · spec-change |
+| FLOW-15 | Minor | `deploy_plan`'s W0 cost confirmed; its preferred remedy (precomputed identity rows) is **exactly what OME-Zarr redesigns**, so defer with §5 | open · spec-change |
+| FLOW-16 | Advisory | Not an MCP defect: the OME-Zarr design contradicts itself on whether migrate rewrites `deliverables/metadata.csv` — relay upstream | open |
+
+**Flow coverage:** 4 of 5 traced to completion. **Not reached:** the probe-worker
+subprocess lifecycle across a restart, and slot reconciliation against a live
+orphan — which CONC-2 independently found to be Critical.
