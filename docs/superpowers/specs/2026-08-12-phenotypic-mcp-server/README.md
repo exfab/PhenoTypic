@@ -108,8 +108,10 @@ measure that would otherwise have shipped looking principled.
   connection; they do not get their own process. Hence one `LocalComputeSlot`.
 - **Disk is the authority.** The server holds no state whose loss matters.
 - **Roughly 80% of the substrate exists**, mostly as a Dash-free tier under
-  `gui/`. The server is a thin adapter plus **nine** genuinely new pieces
-  (§1.6) — descriptor projection + column derivation, profile governance,
+  `gui/`. The server is a thin adapter plus the genuinely new pieces enumerated
+  in **§1.6's table** — deliberately not re-counted here, because the number
+  drifted every time it was restated (§1.6). They include
+  descriptor projection + column derivation, profile governance,
   routing + the compute slot, the `_space.py` pure/view split, a pure sbatch-spec
   extraction, subset staging, the token store, the probe worker, and the killable
   store-open subprocess. All but the first three surfaced only under review; the

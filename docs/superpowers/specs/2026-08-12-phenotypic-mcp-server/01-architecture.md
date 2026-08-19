@@ -563,11 +563,22 @@ What exists today versus what this design adds:
 | Subset staging (materialize a file list as a directory) | **new** | §7 P6 — neither engine accepts a file list |
 | Plan token records | **new** | §5.4 — opaque ids over persisted records, not forgeable digests. Since the promotion fold it also carries the material the `deploy_start` gate is rendered from (`ack_prompt`, `decision_content`) — but **not** the ack itself, which is taken at `deploy_start` (USER-18) |
 
-Roughly: the server is a **thin adapter plus nine genuinely new pieces** —
-descriptor projection + column derivation, profile governance, routing + slot,
-the `_space.py` split, the pure sbatch-spec extraction, subset staging, the token
-store, the persistent probe worker, and the killable store-open subprocess. The
-`_services` promotion itself is mechanical; nothing else on that list is.
+Roughly: the server is a **thin adapter plus the non-mechanical rows of the
+table above** — count them there, and do not restate the number here.
+
+That instruction replaces a hardcoded "nine", and the reason is that the number
+drifted every time it was written down. §1.1 announces the `_space.py` split as
+"a **fourth** genuinely new piece"; §5.3 announces `build_array_script_spec` as
+"a **fifth**… previously invisible in that accounting"; §7 announces subset
+staging as "small but genuinely new… §1.6's reuse inventory missed it" — three
+sections each declaring themselves the newly-discovered *N*th piece against three
+different values of *N*, while the table had grown past all of them. The table is
+the count; prose that repeats it is a second source of truth that decays, and
+this section's own rule ("this table is part of the edit whenever §7 gains a
+prerequisite") was followed for the table and not for the sentence describing it.
+
+The `_services` promotion is the one mechanical row; nothing else on the table
+is.
 
 The count went **3 → 4 → 5 → 7 → 9** as successive reviews traced what the design
 actually requires. The estimate was optimistic every time, and twice this table
