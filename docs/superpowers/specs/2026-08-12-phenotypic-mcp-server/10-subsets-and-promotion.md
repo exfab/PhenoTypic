@@ -522,6 +522,25 @@ work. The parent's *structure* is not re-scanned at promotion and does not need 
 be: a structural regression also changes the parent's file-set digest, so
 `digest_matches_parent: false` catches it first and forces a fresh plan.
 
+**Full scope on a group-filtered subset means the parent *intersected with the
+same filter*, not the whole parent.** A subset selected under a `group_filter`
+(§9.3.0.2) has the entire dataset as its `parent`, so resolving `scope:"full"` to
+the bare parent would deploy one group's tuned pipeline across **every** group —
+precisely the heterogeneity failure the filter exists to prevent, executed at
+full scale with every digest check passing.
+
+So `deploy_plan` carries the subset's `group_filter` through to full scope and
+the run is `parent ∩ group_filter`. This costs nothing structurally: the filter is
+a metadata predicate over the parent's images, which is the same join the subset
+already performed, and it needs no staging. The token binds **`(parent_digest,
+group_filter)`** rather than `parent_digest` alone — so an ack given for one
+group's images cannot be spent on another's, and a filter that matches nothing at
+full scale fails on the empty image set rather than silently widening.
+
+This is what makes §9.3.0.2's descent reachable at the only scale that matters.
+Without it, a per-group winner could be deployed only at subset scale, and
+descending per-group would buy a result there is no way to ship.
+
 ## 10.6 Risks worth stating
 
 - **An unrepresentative subset is the dominant failure mode**, and it is silent:

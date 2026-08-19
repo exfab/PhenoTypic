@@ -552,3 +552,50 @@ tifffile/PIL over a directory. Per the repo's own convention it wants a script
 under `logic_validation_scripts/`, measuring cold- and warm-cache header-read
 wall time. **If it lands above ~1 s the sweep is not `W0` regardless of how the
 gate is arranged.** Cheap, and worth having before 2A rather than after.
+
+---
+
+## User rulings, round 2 continued (permanent)
+
+### USER-21 — full scope on a group-filtered subset is `parent ∩ group_filter` (settles MG-3)
+Not the bare parent, which would deploy one group's pipeline over every group.
+The filter is a metadata predicate over the parent's images — the same join the
+subset already performed — so this needs no staging. **The token binds
+`(parent_digest, group_filter)`**, so an ack given for one group cannot be spent
+on another's images.
+
+### USER-22 — `human_response` is unconditionally required; `ack_source` carries the distinction (settles PROP-1, PF-3)
+"Required-unless-elicited" is deleted. A required-field rule that varies with
+host capability is a signature the agent cannot predict from `tools/list`. The
+elicited-vs-asserted distinction moves to the **response** as
+`ack_source: "elicited" | "agent_asserted"` — same guarantee, one signature, and
+auditable on the artifact rather than implicit in host config.
+
+### USER-23 — local `W2`/`W3` children are detached (settles CONC-3, CONC-20)
+`start_new_session=True`, not registered with `LocalRunner`'s `atexit` hook;
+restart reconciliation adopts them. Without this the probing suspension USER-11
+accepted buys hours of blocked probing for a run that dies with the session.
+
+### USER-24 — the agent owns grouping; the server owns one filter (settles MG-1, MG-2, MG-4, MG-6)
+**Strategy offloads to the agent.** `group_by` on the profile, per-group trait
+overrides, and the per-group cost breakdown are all **removed**. The capability
+falls out of primitives that already exist: a campaign carries exactly one
+`subset_id` and `user_named` is first-class, so one subset per group gives one
+campaign per group whose **ordinary aggregate cost already is the group's cost**.
+The breakdown had no producer because it needed none — **this supersedes USER-19,
+whose scorer-persistence work is no longer required at all.**
+
+**One primitive stays:** `group_filter`, a `{column: value}` map on the
+`SubsetSelector` **ABC**, applied to the candidate set before any selector runs.
+On the ABC so that restricting a candidate set is one idea stated once, composing
+with every selector, instead of giving `MetadataGroupSubsetSelector` a second
+mode in which half its parameters are inert.
+
+**Plus one breadcrumb:** an optional `derived_from: {campaign_id, reason}` on the
+campaign artifact, so N sibling per-group campaigns retain a recorded
+relationship instead of one that exists only in the agent's context.
+
+This keeps §9.3.5's never-acts-on-a-trait invariant whole rather than carving the
+first exception into it, and collapses the three unreconciled notions of "group"
+(profile `group_by`, selector `group_key`, scorer CSV) into one: **the subset is
+the group.**

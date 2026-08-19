@@ -108,74 +108,6 @@ That last entry is the point: `medium.opacity` is a trait added *after* v1. It
 required a registry row in the skill and **nothing else** — no server change, no
 `schema_version` bump, no migration.
 
-### 9.3.0.2 Multi-group experiments — `group_by` and per-group overrides
-
-One experiment routinely holds several **species × media groups**, and they can
-need different pipelines, different parameters, and **different expected counts** —
-which is the scorer, not merely the pipeline. An earlier draft assumed
-homogeneity in three places at once: one profile per dataset, one `pipeline_id`
-per deploy (§5.4), one scorer per campaign (§8.2).
-
-**Grouping is by one or more metadata columns, named on the profile.** Not by
-directory layout: `scan_directory_structure`'s one-subdirectory-level rule cannot
-express `species × medium`, and the agent must be able to state the grouping it
-cares about rather than inherit whatever the tree happens to encode.
-
-```json
-{
-  "group_by": ["Metadata_Species", "Metadata_Medium"],
-  "traits": { "plate.format": {"value":"arrayed","source":"human"},
-              "imaging.modality": {"value":"flatbed_scanner","source":"metadata"} },
-  "groups": {
-    "neurospora|minimal": {
-      "traits": {"organism.morphology": {"value":"filamentous","source":"human"},
-                 "medium.opacity": {"value":"clear","source":"human"}}},
-    "aspergillus|rich": {
-      "traits": {"organism.morphology": {"value":"filamentous","source":"human"},
-                 "colony.contrast_vs_background": {"value":"low","source":"human"}}}
-  }
-}
-```
-
-Experiment-wide traits live in `traits`; a group's entry **overrides** them by
-key. `plate.format` and `imaging.modality` are usually shared;
-`organism.morphology`, `colony.contrast_vs_background` and `medium.opacity` are
-exactly what differs. The envelope needs no change — unknown keys already
-round-trip and every trait is already individually optional (§9.3.0.1).
-
-**The strategy is general-first.** Try one pipeline across the whole experiment,
-and descend to per-group only where evidence requires it — the same discipline as
-§9.4's prefab-first rule, and for the same reason: specializing before you have
-evidence buys complexity you cannot justify later. This is judgment, so per §9.1
-it lives in the skill; what the server must supply is the **mechanism** and the
-**signal**.
-
-- **Mechanism.** A subset selector may filter to a group, not merely stratify
-  across groups (§10.3) — `MetadataGroupSubsetSelector` already joins the CSV to
-  images, and selecting one group is that join with a predicate. A per-group
-  campaign then falls out of a per-group subset with no campaign change, and
-  §8.2's one-scorer invariant holds *within* a group, which is the only place it
-  was ever meaningful: comparing an *Aspergillus* arm against a *Neurospora* arm
-  never was. Per-group deploy follows from staging (§10.3.1), which already
-  materializes a subset as a directory tree.
-- **Signal.** `campaign_status` reports a **per-group cost breakdown** whenever
-  the subset is group-aware. Without it the strategy is unactionable: a winner
-  scoring 0.08 overall while failing one group entirely is invisible on a single
-  aggregate cost — the same shape as §9.3.3's worst failure, where a wrong
-  `plate.nrows` makes every arm's cost meaningless while looking healthy.
-
-  **The scorer produces it; the status tool only reads it.** A `QCScorer` returns
-  one scalar per trial, so nothing in the tune layer emits per-group numbers
-  today — the breakdown has to be *written* by the scorer, as Optuna trial user
-  attributes, at scoring time. `campaign_status` then reports what is already
-  recorded and never recomputes.
-
-  That direction is load-bearing, not stylistic. `campaign_status {since}` exists
-  to answer a poll from a cheap stat without opening the trial store (§8.4); a
-  breakdown derived on demand would open the store on *every* poll and defeat the
-  one economy the parameter was added to buy. Recording at scoring time costs one
-  write per trial and makes the read free.
-
 ### 9.3.0.1 The trait envelope
 
 Every entry in `traits` has the same shape, and this is the only structure the
@@ -199,6 +131,66 @@ property here, not a convenience.
 
 **Trait keys are dotted and namespaced** (`<group>.<trait>`), so a new group
 (`medium.*`, `growth.*`, `stress.*`) needs no structural change either.
+
+### 9.3.0.2 Multi-group experiments — the agent groups, the server filters
+
+One experiment routinely holds several **species × media groups** needing
+different pipelines and parameters. An earlier draft assumed homogeneity in three
+places at once: one profile per dataset, one `pipeline_id` per deploy (§5.4), one
+scorer per campaign (§8.2).
+
+**The grouping strategy belongs to the agent, not the server.** This section once
+specified `group_by` on the profile, per-group trait overrides, and a per-group
+cost breakdown on `campaign_status`. All three were removed, because the
+capability turns out to fall out of primitives that already exist:
+
+- **A campaign carries exactly one `subset_id`** (§8.3), and `user_named` is a
+  first-class selection method (§10.3). So one subset per group gives one
+  campaign per group, and **that campaign's ordinary aggregate cost already *is*
+  the group's cost.** The breakdown had no producer because it needed none.
+- **§8.2's one-scorer invariant then holds trivially**, since each campaign spans
+  one group. Comparing an *Aspergillus* arm against a *Neurospora* arm never was
+  meaningful, so nothing is lost by not enabling it.
+- **Per-group trait overrides were already inert.** §9.3.5 says the server never
+  acts on a trait, so an override map was skill data the server carried without
+  reading. The skill can hold it directly.
+
+Keeping the strategy out of the server also keeps §9.3.5's invariant whole rather
+than carving the first exception into it — and avoids three joins that had no
+owner, since the profile's grouping, the selector's `group_key`, and the scorer's
+expected-count CSV were three independent notions of "group" with nothing
+reconciling them. Under one-subset-per-group there is one: **the subset is the
+group.**
+
+**One primitive stays on the server**, because without it the agent must
+enumerate image paths per group — workable at 480 images, brittle at 50,000, and
+silently stale the moment the dataset changes:
+
+> **`group_filter`** — a `{column: value}` map on the `SubsetSelector` **ABC**,
+> applied to the candidate image set *before* any selector runs.
+
+On the ABC rather than on `MetadataGroupSubsetSelector` deliberately. Restricting
+a candidate set is one idea, stated once, and it composes with every selector —
+random-within-one-group works, and `MetadataGroupSubsetSelector`'s `allocation`
+and `min_per_group` keep their stratification meaning *inside* the filtered set
+instead of becoming inert in a second mode. This is mechanism, not strategy,
+which is the line §9.1 already draws.
+
+**The strategy — general-first — lives in the skill.** Try one pipeline across
+the whole experiment; descend to per-group only where evidence requires it. Same
+discipline as §9.4's prefab-first rule and for the same reason: specializing
+before you have evidence buys complexity you cannot justify later. Note the
+premise for descending is weaker than it looks — heterogeneous expected counts
+are **already** expressible under one scorer, because `QCScorer` reads expected
+counts as per-image rows of a metadata CSV rather than as scorer configuration.
+The general-first pass is genuinely runnable across heterogeneous groups.
+
+**The descent stays in lineage.** A campaign artifact carries an optional
+`derived_from: {campaign_id, reason}`. Without it, N sibling per-group campaigns
+have no recorded relationship — the fact that they came from one experiment and
+one general-first failure would live only in the agent's context, and vanish at
+the next compaction. One field keeps the descent reconstructible months later,
+which is the same standard §8.7 holds the construction trail to.
 
 ### 9.3.1 Provenance vocabulary — the only enum the server enforces
 
