@@ -10,6 +10,7 @@ through the :mod:`phenotypic.gui._operation_registry` back-compat shim.
 
 from __future__ import annotations
 
+import importlib
 import inspect
 import types
 from dataclasses import dataclass, field
@@ -23,6 +24,12 @@ from phenotypic.sdk_._column_ref import _ColumnRefMarker
 from phenotypic.sdk_._docstring_params import parse_param_descriptions
 from phenotypic.sdk_.mixin import PointPickerMixin
 from phenotypic.sdk_.typing_ import _OperationFieldMarker
+
+
+#: Sentinel category routing a module to :meth:`OperationRegistry._discover_analyzers`
+#: instead of the ``ImageOperation``-rooted walk. Analyzers split into four
+#: categories by their own hierarchy, so no single category name fits.
+_ANALYZER_CATEGORIES = object()
 
 
 def _is_union_origin(origin: Any) -> bool:
@@ -186,55 +193,108 @@ class OperationRegistry:
         """Initialize empty operation registry."""
         self._operations: Dict[str, OperationInfo] = {}
         self._categories: Dict[str, List[OperationInfo]] = {}
+        self._skipped_imports: Dict[str, str] = {}
 
     def discover(self) -> None:
         """Discover all available operations from phenotypic modules.
 
-        Scans phenotypic.enhance, phenotypic.detect, phenotypic.refine, etc.
-        for ImageOperation subclasses and extracts their metadata. Also
-        scans :mod:`phenotypic.analysis` for ``SetAnalyzer`` / ``ModelFitter``
-        subclasses so the analysis sub-app's section forms can read param
-        metadata from the same registry the builder uses.
-        """
-        # Import operation modules
-        import phenotypic.enhance as enhance_module
-        import phenotypic.detect as detect_module
-        import phenotypic.refine as refine_module
-        import phenotypic.correction as correction_module
-        import phenotypic.measure as measure_module
-        import phenotypic.grid as grid_module
-        import phenotypic.post as post_module
-        import phenotypic.analysis as analysis_module
+        Walks :data:`~phenotypic._core._pipeline_parts._serializable_pipeline.PHENOTYPIC_CLASS_MODULES`
+        — the same ordered module list the pipeline loader resolves class
+        names against — so a class the loader can deserialize is also a
+        class the catalog can list. Each module is paired with the category
+        and base class its members register under by
+        :meth:`_discovery_targets`.
 
-        from phenotypic.abc_ import (
-            ImageEnhancer,
-            ObjectDetector,
-            ObjectRefiner,
-            ImageCorrector,
-            MeasureFeatures,
-            GridOperation,
-            PostMeasurement,
+        :mod:`phenotypic.analysis` is walked separately: analyzers use the
+        ``SetAnalyzer`` / ``ModelFitter`` hierarchy, are not
+        ``ImageOperation`` subclasses, and split into four categories by
+        their own rules. :mod:`phenotypic.tune` carries the ``TuningSpec``
+        config rather than operations and has no target, so it is skipped.
+
+        Modules whose import fails are skipped and recorded in
+        :attr:`skipped_imports`: ``detect.nn`` pulls optional heavy
+        dependencies, and the catalog must degrade to "that family is
+        unavailable here" rather than failing to build at all.
+        """
+        from phenotypic._core._pipeline_parts._serializable_pipeline import (
+            PHENOTYPIC_CLASS_MODULES,
         )
 
-        # Map modules to categories
-        module_category_map = [
-            (enhance_module, "Enhancer", ImageEnhancer),
-            (detect_module, "Detector", ObjectDetector),
-            (refine_module, "Refiner", ObjectRefiner),
-            (correction_module, "Corrector", ImageCorrector),
-            (measure_module, "Measure", MeasureFeatures),
-            (grid_module, "Grid", GridOperation),
-            (post_module, "Post", PostMeasurement),
-        ]
+        targets = self._discovery_targets()
 
-        for module, category, base_class in module_category_map:
-            self._discover_from_module(module, category, base_class)
+        for module_name in PHENOTYPIC_CLASS_MODULES:
+            target = targets.get(module_name)
+            if target is None:
+                continue
+            try:
+                module = importlib.import_module(module_name)
+            except ImportError as exc:  # optional dependency family absent
+                self._skipped_imports[module_name] = str(exc)
+                continue
+            category, base_class = target
+            if category is _ANALYZER_CATEGORIES:
+                self._discover_analyzers(module)
+            else:
+                self._discover_from_module(module, category, base_class)
 
-        # Analysis classes use the SetAnalyzer / ModelFitter hierarchy and
-        # are not ``ImageOperation`` subclasses; walk them separately so the
-        # analysis sub-app's section dropdowns can populate from the same
-        # registry the builder uses.
-        self._discover_analyzers(analysis_module)
+    @staticmethod
+    def _discovery_targets() -> Dict[str, tuple[Any, Any]]:
+        """Map each discoverable module to its ``(category, base_class)``.
+
+        Keyed by the dotted module names in
+        :data:`~phenotypic._core._pipeline_parts._serializable_pipeline.PHENOTYPIC_CLASS_MODULES`;
+        a module absent from this map is not walked. The base classes are
+        imported here rather than at module scope so importing the registry
+        stays cheap.
+
+        Three families are not ``ImageOperation`` subclasses and so cannot
+        be found by the ``ImageOperation``-rooted walks: prefab pipelines
+        extend :class:`~phenotypic.abc_.PrefabPipeline`, tuning objectives
+        extend ``Scorer``, and search strategies extend ``StrategyConfig``.
+        Each gets its own base class so the catalog can reach it.
+
+        Returns:
+            Dict mapping module name to ``(category, base_class)``. The
+            sentinel category :data:`_ANALYZER_CATEGORIES` routes a module
+            to :meth:`_discover_analyzers` instead.
+        """
+        from phenotypic.abc_ import (
+            GridOperation,
+            ImageCorrector,
+            ImageEnhancer,
+            MeasureFeatures,
+            ObjectDetector,
+            ObjectRefiner,
+            PostMeasurement,
+            PrefabPipeline,
+        )
+        from phenotypic.tune.score import Scorer
+        from phenotypic.tune.strategy import StrategyConfig
+
+        return {
+            "phenotypic.detect": ("Detector", ObjectDetector),
+            "phenotypic.detect.nn": ("Detector", ObjectDetector),
+            "phenotypic.measure": ("Measure", MeasureFeatures),
+            "phenotypic.enhance": ("Enhancer", ImageEnhancer),
+            "phenotypic.refine": ("Refiner", ObjectRefiner),
+            "phenotypic.grid": ("Grid", GridOperation),
+            "phenotypic.correction": ("Corrector", ImageCorrector),
+            "phenotypic.analysis": (_ANALYZER_CATEGORIES, None),
+            "phenotypic.prefab": ("Prefab", PrefabPipeline),
+            "phenotypic.post": ("Post", PostMeasurement),
+            "phenotypic.tune.score": ("Scorer", Scorer),
+            "phenotypic.tune.strategy": ("Strategy", StrategyConfig),
+        }
+
+    @property
+    def skipped_imports(self) -> Dict[str, str]:
+        """Modules that failed to import during :meth:`discover`.
+
+        Maps module name to the ``ImportError`` message, so a caller can
+        tell an agent "this operation family is unavailable in this
+        environment" instead of silently listing nothing.
+        """
+        return dict(self._skipped_imports)
 
     def _discover_analyzers(self, module: Any) -> None:
         """Walk an analysis module and register filters + models.
@@ -285,14 +345,17 @@ class OperationRegistry:
         self,
         module: Any,
         category: str,
-        base_class: Type[ImageOperation],
+        base_class: Type[Any],
     ) -> None:
         """Discover operations from a specific module.
 
         Args:
             module: Python module to scan
             category: Category name for these operations
-            base_class: Base class to filter for
+            base_class: Base class to filter for. Usually an
+                ``ImageOperation`` subclass, but prefab pipelines, tuning
+                scorers, and search-strategy configs sit on their own
+                hierarchies and are registered through the same walk.
         """
         for name, obj in inspect.getmembers(module, inspect.isclass):
             # Check if it's a subclass of base_class (but not the base itself)
