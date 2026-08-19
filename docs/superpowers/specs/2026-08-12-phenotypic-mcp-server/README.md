@@ -1,21 +1,39 @@
 # PhenoTypic MCP Server — Design Spec
 
-**Status:** draft, **refinery round 1 applied**. Ten sections, nine review
-passes: five original, then an MCPB/deployment evaluation, an interface audit
-against official MCP guidance, and a four-reviewer refinery panel (general,
-data-flow, simplicity, concurrency) that returned **63 concerns and four REVISE
-verdicts**. Fifteen user rulings are recorded in `refinery/ledger.md` with their
-rationale.
+**Status:** draft, **refinery rounds 1–2 applied, round 3 propagation applied**.
+Ten sections, plus an MCPB/deployment evaluation, an interface audit against
+official MCP guidance, and a rotating four-reviewer refinery panel (general,
+data-flow, simplicity, concurrency). **Twenty-four user rulings are recorded in
+`refinery/ledger.md` with their rationale, and they are permanent** — a reviewer
+may not re-raise one absent new evidence.
 
 **What round 1 changed:** the catalog went **32 tools → 26** — promotion folded
 into `deploy_plan {scope:"full"}`, the `assay` artifact became
 `experiment_profile`, and `mode`/`layer`/`sample` left the deploy tools. §8.2's
 concession that the server "cannot verify that a human approved anything" was
-retired in favour of **elicitation**. §9.3 gained **multi-group experiments**
-(`group_by` + per-group trait overrides). And §3.2 gained the advisory that stops
-an agent repeating an edit it already rejected — a gap none of the 63 concerns
+retired in favour of **elicitation**. And §3.2 gained the advisory that stops an
+agent repeating an edit it already rejected — a gap none of the 63 concerns
 found.
-**Date:** 2026-08-12
+
+**What round 2 changed:** the **human gate moved to `deploy_start`**, the point
+of spend (USER-18), with `human_response` unconditionally required and
+`ack_source` carrying the elicited-vs-asserted distinction in the response
+(USER-22). Handlers became `async` with two named executors (USER-20); the local
+slot became a configurable capacity that is the *sole* owner of the local-OOM
+invariant (USER-17); campaign fan-out became a background task with a launcher
+lease. And **multi-group experiments were offloaded to the agent** (USER-24):
+`group_by` on the profile, per-group trait overrides, and the per-group cost
+breakdown were all **deleted**, because one subset per group already gives one
+campaign per group whose aggregate cost *is* the group's cost. The server keeps
+exactly two things from that design — `group_filter` on the `SubsetSelector` ABC
+(§10.3), and `derived_from` on the campaign artifact (§8.2).
+
+**What round 3 changed:** no new decisions — a propagation sweep that carried
+eleven rulings from the sections that argue them into the argument tables,
+artifact schemas, error rows and plan decision records they had never reached.
+`refinery/defining-sections-map.md` is the standing check that stops that
+recurring.
+**Date:** 2026-08-12 (last propagated 2026-08-19)
 
 ## What this is
 
@@ -105,7 +123,16 @@ measure that would otherwise have shipped looking principled.
 
 ## Open questions
 
-**None.** Every question raised during design or by the five independent review
+**None.** The last one closed on 2026-08-19 by **USER-26**. For the record, it
+asked how `parent ∩ group_filter` — USER-21's resolution of `scope:"full"` on a
+group-filtered subset — reaches an engine that accepts no file list: through
+§10.3.1's staging, or restricted to filters expressible as whole `--input`
+subtrees? Neither. The intersection is resolved to a **manifest** at plan time
+and bound by the token's digest, so nothing is copied and the approved image set
+cannot drift. It carries a new §7 prerequisite: the public `--input` is a single
+`click.Path`, so a top-level manifest flag is new work.
+
+Every other question raised during design or by the independent review
 passes has been resolved and recorded in the relevant section's "Resolved since
 first draft" block.
 

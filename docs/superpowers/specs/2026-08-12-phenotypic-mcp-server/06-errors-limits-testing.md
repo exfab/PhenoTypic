@@ -30,7 +30,7 @@ human prose and may change.
 | `arm_artifact_drift` | error | An arm's `.pht-tune` or pipeline digest changed between `campaign_put` and `campaign_start` (§8.2) |
 | `finalize_incomplete` | error | A `finalize_in_progress` marker is present; the study directory cannot be trusted (§4.5) |
 | `study_not_finished` | error | `tune_export_best` on a distributed study whose budget is not drained and whose jobs are still live (§4.5) |
-| `edit_previously_tried` | **advisory** | A `pipeline_patch` edit matches one already recorded in the exploration trail; carries that attempt's evidence and keep/revert decision. Advisory, never a refusal — the surrounding pipeline may have changed (§3.2) |
+| `edit_previously_tried` | **advisory** | A `pipeline_patch` edit matches one already recorded in the exploration trail, under §3.2's **per-kind** canonical match key. Carries that attempt's evidence, its `step_id`, and a **derived** `decision` — `keep` \| `revert` \| `undetermined` \| `in_flight` — never one read off the journal, which stores no decision. `undetermined` still fires with the evidence. Advisory, never a refusal: the surrounding pipeline may have changed (§3.2) |
 | `stage_order_hint` | **advisory** | GUI DAG validator hint; never blocks |
 | `pipeline_empty` | error | Neither ops nor measurements — the CLI's own check |
 | `stale_target_ref` | error | A `select` ref built against a superseded pipeline digest |
@@ -55,6 +55,8 @@ human prose and may change.
 | `subset_too_small_for_heldout` | **warning** | Subset under ~15: a single held-out plate makes the gap a one-sample estimate |
 | `selector_unavailable` | error | `SubsetSelector.availability()` is `False` — e.g. `EmbeddingSubsetSelector`, which raises rather than falling back to random (§10.3) |
 | `group_key_not_in_metadata` | error | `MetadataGroupSubsetSelector.group_key` names no column in `grouping_metadata`. **Carries the CSV's actual column list and a did-you-mean** — the agent cannot open the file itself, so an error without the columns leaves it guessing |
+| `group_filter_column_not_found` | error | A `SubsetSelector.group_filter` key names no column in `grouping_metadata` (§10.3). Carries the CSV's column list and a did-you-mean, for the same reason `group_key_not_in_metadata` does. Distinct from it because the filter is on the **ABC** and fires for selectors that have no `group_key` at all |
+| `group_filter_matches_nothing` | error | A `group_filter` matched no rows — at selection time, or at `deploy_plan {scope:"full"}` where the filter is re-applied to the parent (§10.5). An empty result is refused rather than returned: an empty subset passes every downstream shape check and produces a study of nothing, and an empty full-scope image set would otherwise deploy nothing while reporting success |
 | `arm_scorer_mismatch` | error | A campaign arm's scorer differs from the campaign scorer (§8.2) |
 | `screening_unsupported_on_slurm` | error | `--screen` + SLURM, which silently drops screening today. Ships: OQ-4.1 resolved to expose screening (default off), so the guard is needed (§7 P4). |
 | `output_not_empty` | error | Deploy target non-empty; names `run_name`/`resume`/`restart` |
@@ -150,9 +152,9 @@ did not model), and any CLI traceback the pre-checks did not anticipate.
 |---|---|---|
 | `probe_max_images` | 4 | Hard cap on `pipeline_probe.n_images` |
 | `probe_timeout_s` | 300 | Wall clock on `W1`, including slot wait |
-| Local compute concurrency | 1 | `LocalComputeSlot` (§1.5) |
+| `local_slot_capacity` | 1 | `LocalComputeSlot` (§1.5) — configuration, not a fixed 1; `executors.compute` workers **is** this number |
 | `executors.blocking` workers | 4 | §1.5 — filesystem, journal, subprocess, scheduler |
-| `executors.compute` workers | 1 | §1.5 — `W1`; the pool restates the one-probe invariant |
+| `executors.compute` workers | = `local_slot_capacity` | §1.5 — `W1`; not an independent knob, or the pool and the slot disagree above the default |
 | `limits.max_inflight_arms` | 8 | **Server-wide**, all campaigns; checked by the background launcher (§8.3) |
 | Slot lease | `probe_timeout_s` (`W1`) / run `--time` (local `W2`/`W3`) | §1.5 — auto-release; `slot_lease_expired` |
 | Catalog list size | unbounded rows, compact fields | `catalog_operations` returns no schemas |
@@ -285,9 +287,52 @@ ones most likely to rot into tautologies.
 - **Fan-out is idempotent:** kill the background launcher mid-fan-out; re-calling
   `campaign_start` must launch only the arms with no `study_id` and must not
   re-launch the ones already running (§8.3).
+- **Recovery is distinguished from a double launch:** with the launcher lease
+  live, a second `campaign_start` on a `running` campaign must be **refused**;
+  with the lease expired or naming a dead `(pid, create_time)`, the same call on
+  the same status must **proceed**. One test, two lease states, one status — this
+  is what pins `launch_state` to the lease rather than to timing (§8.2, §8.3).
+- **`write_generation` is not the CAS key:** a mutation whose `write_generation`
+  matches but whose `artifact_digest` does not must fail `artifact_changed`. This
+  fails if an implementer builds the counter as the guard (§2.6 owns the key;
+  §8.2 stores the counter as a read hint).
 - **Cursor states:** an arm with no store yet must report as changed, never
   `unchanged`; and a local SQLite study advancing only in `study.db-wal` must be
   reported as moving (§8.3).
+
+### The group filter and the token's binding set
+
+- **`group_filter` is on the ABC, not on one selector:** a `RandomSubsetSelector`
+  with a `group_filter` must select only from the filtered candidates. The test
+  fails if the filter is implemented on `MetadataGroupSubsetSelector` (§10.3).
+- **A filtered subset records its filter:** `subset_generate` with a filter must
+  write `group_filter` at the artifact's top level *and* in `selection.params`;
+  an unfiltered one writes `{}` in both (§10.2).
+- **The token binds the filter:** a `scope:"full"` `plan_token` minted from a
+  filtered subset must be refused with `plan_stale` when replayed against the
+  same parent with a *different* filter, and accepted with the same one. This is
+  USER-21's guarantee, and without the artifact field it cannot be written at all
+  (§5.4).
+- **Every bound field is checked:** parametrize over §5.4's binding table and
+  mutate each field in turn; each must produce `plan_stale` **naming that field**.
+  The test fails if a field is in the table and not in the validator — which is
+  what "§5.4's table is the binding set" has to mean operationally.
+- **A campaign-arm token is a different kind:** a `"campaign_arm"` token must
+  validate without `run_name`/`array`/`estimate.node_hours`/`argv_digest`, and
+  must be refused at `scope:"full"` with `campaign_arm_scope_full` (§5.4, §6.2).
+
+### `edit_previously_tried` across all six edit kinds
+
+- **One case per kind** against §3.2's table, and specifically: a kept
+  `remove_op` must report `keep` (the op is **absent**), and a reverted one must
+  report `revert`. A test written only against `insert_op` passes while
+  `remove_op` reports the inverse of the truth, which is how the defect shipped.
+- **Two removals from one slot do not collide:** removing `BlurGauss` and
+  removing `OtsuDetector` from `ops` must be two distinct recorded edits. This
+  fails if the match key drops `index` without resolving `class` at record time.
+- **`undetermined` still carries evidence:** a `set_params` against a slot
+  holding two ops of one class must return the advisory with the numbers and
+  `decision: "undetermined"`, not silence.
 
 ### Integration
 

@@ -198,8 +198,8 @@ from OOMing a shared login node without making the server useless off-cluster.
 
 | Class | Meaning | Examples |
 |---|---|---|
-| `W0` introspect | Pure computation over metadata; no image I/O | list operations, describe schema, validate a spec, infer a search space, diff two pipelines |
-| `W1` probe | Bounded image compute, interactive latency | apply a pipeline to 1–N images and return measurements + benchmark |
+| `W0` introspect | Pure computation over metadata; no image I/O | list operations, describe schema, validate a spec, infer a search space, summarize a pipeline |
+| `W1` probe | Bounded image compute, interactive latency — **or metadata-only image I/O that may escalate into it** | apply a pipeline to 1–N images and return measurements + benchmark; `deploy_plan {scope:"full"}`, which sweeps the parent's image **headers** and re-probes 2 images on a mismatch (§5.3) |
 | `W2` study | Unbounded optimization | a tune study |
 | `W3` deploy | Full-dataset processing | `python -m phenotypic` over a dataset tree |
 
@@ -233,7 +233,8 @@ subprocess is `LocalParallelStrategy` with joblib `n_jobs=-1`, i.e. every core
 (`phenotypicCLI.py:788-792`, resolved via `os.cpu_count()`). That is precisely
 the thrash this section exists to prevent.
 
-There is **one** `LocalComputeSlot`: a process-wide semaphore of capacity 1.
+There is **one** `LocalComputeSlot`: a process-wide semaphore whose capacity is
+`local_slot_capacity`, configuration defaulting to 1 (below, and §1.6.1).
 
 | Work | Acquires the slot? | Held for |
 |---|---|---|
@@ -241,6 +242,18 @@ There is **one** `LocalComputeSlot`: a process-wide semaphore of capacity 1.
 | `W1` probe | **yes** | the duration of the in-process compute |
 | `W2`/`W3` routed `local` | **yes** | the entire subprocess lifetime, released on reap |
 | `W2`/`W3` routed `slurm` | no | — (the scheduler is the arbiter) |
+
+**"While it computes" is not a hedge, and `deploy_plan {scope:"full"}` is why it
+is written that way.** A `pipeline_probe` acquires the slot for its whole
+handler, because its whole handler is image compute. `deploy_plan {full}` is
+`W1` for the escalation it *may* perform, not for the work it always does: its
+tier-1 path reads image headers — measured at 0.18 ms/image, 0.081 s for 460
+images (§5.3) — and takes no slot, and it acquires the slot only when the headers
+disagree and it re-probes 2 images. Read as unconditional, the row would make
+every full-scope preview block every subagent's probing behind a running local
+arm, and fail `local_slot_timeout` on the common path where the headers match.
+The class is `W1` because the escalation exists; the acquisition is where the
+compute is.
 
 `LocalRunner` offers nothing to reuse here — it is a multi-handle subprocess
 tracker with no exclusivity guard, because the GUI never needed one (a human
@@ -255,12 +268,20 @@ invariant in its own right, and it is what the worker's liveness check answers
 to: before dispatching, the server verifies the warm worker is alive and
 respawns if not, rather than assuming the previous holder left it usable.
 
+**The invariant binds probe *execution*, not the `W1` label.** What may not
+overlap is a pipeline being applied to images through §3.2's warm probe worker.
+`deploy_plan {full}`'s tier-1 header sweep is `W1`-classed but is not a probe
+and does not go through the worker — it is header I/O on the `blocking`
+executor. Its escalation re-probe *is* a probe, dispatches through the same warm
+worker, and is bound by the same invariant. Stating this stops the reasonable
+reading in which every `W1` handler must queue behind the worker.
+
 **Routing table**
 
 | Class | `local` env | `slurm` env |
 |---|---|---|
 | `W0` | in-process, no slot | in-process, no slot |
-| `W1` | in-process, **holds slot** | in-process, **holds slot** |
+| `W1` | in-process, **holds slot while it computes** | in-process, **holds slot while it computes** |
 | `W2` | subprocess, **holds slot** | `sbatch` fleet, no slot |
 | `W3` | subprocess, **holds slot** | `sbatch` array, no slot |
 
@@ -427,8 +448,8 @@ mysteriously slow.
 
 ### The slot primitive, and release symmetry
 
-`LocalComputeSlot` is an **`asyncio.Semaphore(1)`** (capacity
-`local_slot_capacity`, §1.5 above) owned by the event loop. Thread-side and
+`LocalComputeSlot` is an **`asyncio.Semaphore(local_slot_capacity)`** (§1.5
+above; default 1) owned by the event loop. Thread-side and
 process-side code — the `compute` executor's worker, the probe worker's exit
 observer, `LocalRunner`'s reap thread — **never touch it**. They signal through
 `loop.call_soon_threadsafe`, so every acquire and release happens on the loop
@@ -550,7 +571,7 @@ What exists today versus what this design adds:
 | Persistent probe worker subprocess | **new** | §3.2 — nothing bounds an in-process `apply()` by wall clock; `LocalRunner` is fire-and-forget `Popen`, not a request/response worker |
 | Killable store-open subprocess | **new** | §4.4, §7 P7 — the nearest analogue (the GUI Monitor's live-open pool) is documented as deliberately *non*-killable |
 | Subset staging (materialize a file list as a directory) | **new** | §7 P6 — neither engine accepts a file list |
-| Plan token records | **new** | §5.4 — opaque ids over persisted records, not forgeable digests. Carries the human ack's binding set since the promotion fold (§10.5) |
+| Plan token records | **new** | §5.4 — opaque ids over persisted records, not forgeable digests. Since the promotion fold it also carries the material the `deploy_start` gate is rendered from (`ack_prompt`, `decision_content`) — but **not** the ack itself, which is taken at `deploy_start` (USER-18) |
 
 Roughly: the server is a **thin adapter plus nine genuinely new pieces** —
 descriptor projection + column derivation, profile governance, routing + slot,
@@ -573,7 +594,7 @@ Stated because the design has one shared process serving N subagents (§1.3), so
 | Class | Requirement |
 |---|---|
 | **`W0`** | Returns in **under one second**, and **must never block the event loop**. A `W0` tool that performs real I/O — a filesystem walk, a subprocess, a store open, a directory digest — runs in the executor. `W0` means *takes no compute slot*; it does **not** mean *is instant*, and the two must not be conflated. **One exemption: while a human-gate elicitation is outstanding.** That wait is an `await` on the loop, not a block of it — other subagents' calls are served throughout — and it is bounded by §8.2's single-flight rule. Both human gates (`campaign_approve`, `deploy_start`) rely on this; without it the `W0` row conflates latency with blocking and forbids a wait that costs the server nothing. |
-| **`W1`** | Bounded by `limits.probe_max_images` (default 4) and `limits.probe_timeout_s` (default 300), inclusive of slot wait. The timeout must be reconciled with the host's own tool-call timeout — a server that outlives the host's patience holds the slot after the caller has given up. |
+| **`W1`** | **Probe execution** is bounded by `limits.probe_max_images` (default 4) and `limits.probe_timeout_s` (default 300), inclusive of slot wait. The timeout must be reconciled with the host's own tool-call timeout — a server that outlives the host's patience holds the slot after the caller has given up. **`deploy_plan {scope:"full"}` is the one `W1` whose bound is not the image cap**: its tier-1 header sweep is bounded by the parent's size, measured at 0.18 ms/image and flat to ~5,700 images (§5.3), and only its escalation — 2 images — is subject to the cap. Applying the 4-image cap to it would refuse the tool at any real dataset size. |
 | **`W2` / `W3`** | **No latency requirement.** Submit-and-poll: the tool returns on submission and progress is polled. |
 | **Connection** | The `tools/list` payload is spent every turn by every subagent; it is a budgeted resource, not free. |
 

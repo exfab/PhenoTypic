@@ -620,12 +620,22 @@ overfitting the split is not a winner.
 **Procedure:**
 
 1. `deploy_plan {scope:"full"}` — assembles the decision: winner provenance,
-   subset score and held-out gap, measured full-dataset estimate, coverage
-   warnings, and the header sweep (§10.6.1).
-2. **Show the human that response and wait.** This is the gate; it is not
-   optional and it is not something the agent can conclude on its own.
-3. `deploy_start {scope:"full"}` only after they say so, using the plan token
-   that approval minted.
+   subset score and held-out gap, measured full-dataset estimate in
+   `node_hours`, coverage warnings, and the header sweep (§10.6.1). It mints the
+   `plan_token`. **No human is in this step** — it draws and binds, it does not
+   ask.
+2. **Read the response yourself and bring the human the parts that decide it** —
+   the node-hour figure, the held-out gap, and any coverage warning. This is
+   preparation for the gate, not the gate.
+3. `deploy_start {scope:"full", plan_token, human_response}` — **this call is the
+   gate.** The server raises the elicitation from inside it, rendering the prompt
+   from the token (§5.4), so the numbers the human sees are the server's, not
+   ours. `human_response` is **required unconditionally** (USER-22): it carries
+   what the human actually said. On a host with elicitation the server's own
+   prompt is authoritative and the response records
+   `ack_source: "elicited"`; on a host without it, the field is the whole record
+   of the decision and comes back `agent_asserted`. **Never invent it, and never
+   treat a timeout or a decline as a yes** — neither is a person agreeing.
 4. Poll `manifest.json`, not exit codes — without `--wait` the CLI exits 0 on
    submission.
 5. Verify against the mirror (`measurements.*`), never the master, and report
@@ -633,8 +643,8 @@ overfitting the split is not a winner.
 
 **Hard rules it teaches:** deletion and overwrite are the human's job at a
 shell — if the output directory is occupied, ask rather than routing around it.
-And a coverage warning on the promotion review is a reason to *say something*,
-not a formality to pass through.
+And a coverage warning on the `deploy_plan {scope:"full"}` response is a reason
+to *say something*, not a formality to pass through.
 
 ## 9.6 Skill/server boundary — worked cases
 
