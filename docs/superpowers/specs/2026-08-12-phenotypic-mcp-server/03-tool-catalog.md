@@ -43,9 +43,20 @@ deciding: whether this may be called without asking. Two consequences the old
 list got wrong. **`pipeline_probe` mutates nothing and is still not
 `readOnly`** — it holds the exclusive local slot, so auto-approving it lets a
 host stall every other subagent's probing. And **`deploy_plan` is not `readOnly`
-either**: at `scope:"full"` it sweeps every parent header and may re-probe
-(§5.3), so a tool named like a read would otherwise be auto-approvable while
-doing bounded `W1` work.
+either**, on both clauses at once: it **writes a plan-token record** at either
+scope (§5.4), which the mutation clause catches on its own, and at
+`scope:"full"` it sweeps every parent header and may re-probe (§5.3), which the
+cost clause catches. A tool named like a read would otherwise be auto-approvable
+while minting the object a full-dataset spend is authorized by.
+
+**MCP annotations are static per tool in `tools/list`, while this derivation is
+keyed on what a call does** — and `deploy_plan` is the tool where the two could
+diverge, since its class depends on `scope`. They do not diverge here: both
+scopes mint a token, so both land non-`readOnly`, and the published annotation is
+the union over the tool's possible calls. Where a future tool's scopes would
+disagree, the union is what is published — an annotation that is `readOnly` for
+some arguments and not others is not expressible in `tools/list`, and the safe
+side is the one that asks.
 
 Two further calls are non-obvious and are fixed here rather than left to an
 implementer: the `*_put` tools are **not** idempotent (they fail with
@@ -353,19 +364,26 @@ edit validates**, so a failing third edit leaves the artifact untouched.
 ```
 
 **A repeated edit returns the prior attempt.** §8.7 records every accepted step
-in the lineage journal with its evidence and its keep/revert decision — and
-nothing in an earlier draft ever *read* that back. So an agent whose context was
-compacted re-tried edits it had already rejected, and sibling subagents each
-burned probe budget on the same dead end.
+in the lineage journal — the canonical edit on acceptance, its evidence when the
+probe returns — and nothing in an earlier draft ever *read* that back. So an
+agent whose context was compacted re-tried edits it had already rejected, and
+sibling subagents each burned probe budget on the same dead end. **The journal
+records the edit and the evidence; it does not record a decision** — that is
+derived below, and no tool writes it.
 
 When an edit matches one already recorded for this pipeline, the response carries
 an **advisory** issue with that attempt's evidence and decision:
 
 ```json
 {"severity":"advisory","code":"edit_previously_tried","path":"edits[0]",
- "message":"insert_op FocusEdgePhase at ops[1] was tried at step 3 and reverted.",
- "hint":"num_objects 61→88, detect_mat.std 0.04→0.11; decision was 'revert'."}
+ "message":"insert_op FocusEdgePhase {k:3.0} in ops was tried at step 3.",
+ "hint":"num_objects 61→88, detect_mat.std 0.04→0.11; the op is not in the pipeline now, so the step reads as reverted.",
+ "decision":"revert","step_id":"st_4c1f…","basis":"complete"}
 ```
+
+`decision` is one of `keep`, `revert`, `undetermined`, or `in_flight` (a sibling
+is probing this edit right now, §8.7). It is a **derived field of the advisory**,
+never a field of the journal row.
 
 **Advisory, never a refusal.** A deliberate retry is legitimate — the pipeline
 around the edit may have changed since — so the server surfaces the evidence and
@@ -387,24 +405,55 @@ yet.
 keep/revert argument, and none should: the choice is the *agent's*, made after
 reading evidence, and a self-reported field would be one more thing an agent can
 simply omit. The server does not need to be told. **It compares the recorded edit
-against the pipeline as it now stands** — if the op is still there, the step was
-kept; if it is gone, it was reverted. Both facts are already in the server's
-possession, so the advisory reports a state it can verify rather than a claim it
-received.
+against the pipeline as it now stands**, and reports a state it can verify rather
+than a claim it received.
 
-**What counts as "the same edit" is the full canonical edit, parameters
-included.** The recorded block is `{kind, slot, class, params}` — an earlier
+**But "is the op still there" is the rule for exactly one of the six edit kinds,
+and stating it as the rule gets two of the others backwards or silent.** An
+earlier draft wrote the derivation and the match key against `insert_op` alone.
+On `remove_op` the plain reading **inverts**: a kept removal leaves the op
+absent, which reads as *reverted*, and a reverted removal restores it, which
+reads as *kept* — the advisory would tell a compacted agent the exact opposite of
+what it did. On `move_op` and `set_params` the op is present under both outcomes,
+and `set_params` is the dominant edit kind in a tuning loop. On `set_grid` and
+`set_model` there is no list member to be present or absent at all.
+
+So both the match key and the derivation are **per kind**. The identity of an
+edit is *what it does to the pipeline*, not one schema applied to six shapes:
+
+| Kind | Canonical match key | `decision` derived by |
+|---|---|---|
+| `insert_op {slot, index, class, params}` | `{kind, slot, class, params}` | an op of `class` with those params **present** in `slot` ⇒ `keep`; absent ⇒ `revert` |
+| `remove_op {slot, index}` | `{kind, slot, class}` — `class` **resolved from `index` at record time**, since the edit itself carries neither `class` nor `params` | **inverted**: the op **absent** from `slot` ⇒ `keep`; present ⇒ `revert` |
+| `move_op {slot, from, to}` | `{kind, slot, class, order_after}` — `class` resolved from `from` at record time; `order_after` is the slot's ordered class sequence the move produced | `order_after` still equals the slot's current class sequence ⇒ `keep`; otherwise **`undetermined`** — a later unrelated edit also changes the sequence, and the server cannot attribute the difference |
+| `set_params {slot, index, params, merge}` | `{kind, slot, class, resolved_params}` — `class` resolved from `index`, and `resolved_params` is the **effective** parameter set after `merge` is applied, not the partial map the agent sent | the op of that class in `slot` currently carries `resolved_params` ⇒ `keep`; carries something else ⇒ `revert`. **`undetermined` when `slot` holds more than one op of that class**, because dropping `index` makes the two indistinguishable |
+| `set_grid {nrows, ncols}` | `{kind, nrows, ncols}` — no `slot`, no `class` | the pipeline's current grid equals the recorded pair ⇒ `keep`; otherwise ⇒ `revert` |
+| `set_model {class, params\|null}` | `{kind, class, params}` — no `slot` | the current model equals the recorded `(class, params)` ⇒ `keep`; otherwise ⇒ `revert`. A recorded `params: null` (model cleared) matches a currently-absent model |
+
+**`undetermined` is a real value and the advisory still fires.** The evidence —
+the before/after numbers from §8.7 — is what the agent most needs, and it is
+recorded regardless of whether the outcome is attributable. An advisory that
+suppressed itself whenever the decision was ambiguous would go silent on
+`set_params`, the kind the loop runs most. It says *"tried at step 7; outcome not
+attributable (two `BlurGauss` in `ops`)"* and quotes the numbers.
+
+**Parameters are part of the key wherever the kind carries them.** An earlier
 draft omitted `params`, which collapses every `set_params` at one slot into a
 single attempt even though varying parameters is exactly what the loop is *for*,
 and merges `insert_op FocusEdgePhase sigma:2` with `sigma:9` into one. Matching
-on the whole edit means a repeat is a genuine repeat. It is deliberately
+on the whole edit means a repeat is a genuine repeat, and the key is deliberately
 conservative: the case the advisory is worth firing on — a compacted agent
 re-trying what it already rejected — is an exact repeat, and an advisory that
 fires on near-misses gets ignored, taking the true hit with it.
 
-`index` is **not** part of the match. It is a position in a list the loop
-mutates, so `ops[1]` at step 3 and `ops[1]` at step 9 need not name the same
-place; the op class and slot identify the edit stably where the index does not.
+`index` is **not** part of any key. It is a position in a list the loop mutates,
+so `ops[1]` at step 3 and `ops[1]` at step 9 need not name the same place. But
+dropping it is only safe once `class` is resolved *at record time* for the three
+kinds that carry no `class` of their own — without that resolution `remove_op`
+and `move_op` have no discriminator left at all, and every removal from `ops`
+would canonicalize to the same edit as every other. Resolving the class at record
+time is what §8.7's journal row records, and it is why the row carries the full
+edit rather than the arguments as sent.
 
 This narrows the window to the patch call itself rather than closing it: two
 patches racing inside the same journal append still both proceed. That is
