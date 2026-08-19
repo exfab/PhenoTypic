@@ -164,6 +164,18 @@ it lives in the skill; what the server must supply is the **mechanism** and the
   aggregate cost — the same shape as §9.3.3's worst failure, where a wrong
   `plate.nrows` makes every arm's cost meaningless while looking healthy.
 
+  **The scorer produces it; the status tool only reads it.** A `QCScorer` returns
+  one scalar per trial, so nothing in the tune layer emits per-group numbers
+  today — the breakdown has to be *written* by the scorer, as Optuna trial user
+  attributes, at scoring time. `campaign_status` then reports what is already
+  recorded and never recomputes.
+
+  That direction is load-bearing, not stylistic. `campaign_status {since}` exists
+  to answer a poll from a cheap stat without opening the trial store (§8.4); a
+  breakdown derived on demand would open the store on *every* poll and defeat the
+  one economy the parameter was added to buy. Recording at scoring time costs one
+  write per trial and makes the read free.
+
 ### 9.3.0.1 The trait envelope
 
 Every entry in `traits` has the same shape, and this is the only structure the

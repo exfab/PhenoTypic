@@ -425,9 +425,9 @@ The envelope is what you actually agreed to, and it is checkable.
 ## 10.5 The promotion gate
 
 ```
-deploy_plan  {scope:"full"}   → the decision, + an elicitation → [human says yes]
-                                     ↓
-deploy_start {scope:"full"}   ← the plan_token minted by that approval
+deploy_plan  {scope:"full"}   → the decision, drawn and bound. No human, no wait.
+                                     ↓  plan_token
+deploy_start {scope:"full"}   → the elicitation → [human says yes] → spend
 ```
 
 **One gate, one token.** An earlier draft had a separate `promotion_request` →
@@ -439,8 +439,9 @@ plan token binds the pipeline digest and the parent digest, expires, and is
 single-use — every property a second token would add.
 
 What promotion genuinely contributed was **content**, not a second lock, so the
-content moves onto `deploy_plan {scope:"full"}`'s response, which already carries
-`pending_human_ack` and `ack_prompt`:
+content moves onto `deploy_plan {scope:"full"}`'s response — the winner
+provenance, the subset score, the held-out gap, and the coverage warnings, all of
+which are things to *read* before deciding:
 
 ```json
 {"ok":true,"data":{
@@ -455,7 +456,6 @@ content moves onto `deploy_plan {scope:"full"}`'s response, which already carrie
               "extrapolation_check":"headers match (1024x1536, 16-bit, 3ch across
                                      all 480); no re-probe needed"},
   "plan_token":"pl_7f3a…","plan_expires":"2026-08-20T09:12:00Z",
-  "pending_human_ack":true,
   "ack_prompt":"Deploy edge-v3-tuned across 480 images (~18.4 node-hours)? Subset
                 score 0.081, held-out gap 0.06 (ok). Coverage unverified.",
   "warnings":[
@@ -465,17 +465,37 @@ content moves onto `deploy_plan {scope:"full"}`'s response, which already carrie
                 represents them is unknown, not confirmed. Selection was 'user_named'."}]}}
 ```
 
-**The elicitation fires here**, not two calls earlier — at the point of spend
-rather than at the start of a sequence the agent could still abandon. As in §8.2
-it is confirmation where the host supports it and provenance where it does not,
-with `human_response` required-unless-elicited and the same three caveats: the
-fallback is mandatory, it is not authentication, and behaviour under §1.3's
-shared connection is unverified.
+**The elicitation fires in `deploy_start`, not here** — at the point of spend,
+which is what this section has said all along. An earlier draft put it on
+`deploy_plan` and the result would not typecheck as a design: one handler
+declared `W0` ("under a second, never blocking", §1.6.1) while sweeping every
+parent header, possibly re-acquiring the compute slot, minting a token, *and*
+waiting on a human; and its example response carried `plan_token` and
+`pending_human_ack: true` together while the scope table below demanded a token
+already minted "with the ack recorded". Both could not hold, and the ack became a
+second mutable field racing `deploy_start`.
+
+So the two are separated by what they cost. `deploy_plan` **draws and binds**: it
+reads, it computes the estimate, it mints the token, and it returns — no human is
+in that path, so it stays honestly non-blocking. `ack_prompt` ships with it as
+**text to show**, not a state to satisfy; there is no `pending_human_ack` field
+and §2.6 needs no row for one. `deploy_start` **spends**, and asks first.
+
+As in §8.2 the ask is confirmation where the host supports it and provenance
+where it does not, with `human_response` required-unless-elicited and the same
+three caveats: the fallback is mandatory, it is not authentication, and behaviour
+under §1.3's shared connection is unverified.
 
 | `scope` | Requires | Runs against |
 |---|---|---|
 | `"subset"` (default) | `plan_token` | the subset's image list; reachable from a campaign arm |
-| `"full"` | `plan_token` minted at `scope:"full"` **with the human ack recorded** | `subset.parent` |
+| `"full"` | `plan_token` minted at `scope:"full"`, **plus the ack at `deploy_start`** | `subset.parent` |
+
+The token still carries the one thing only the plan step knows: the parent digest
+*as it was when the estimate was computed*. If the dataset changed underneath,
+`deploy_start` refuses on the digest before it ever reaches a human — which is
+the right order, since there is no point asking someone to approve a number that
+is already stale.
 
 The token binds `(pipeline digest, parent digest, scope)`. If the full dataset
 gained images between the plan and the submission, the token is stale and the

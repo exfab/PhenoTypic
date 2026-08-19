@@ -175,11 +175,21 @@ startup, so a mis-specified profile fails when you load config rather than at
 profile serves both paths and the expressibility check becomes vestigial. Until
 then the check is what keeps the drop from being silent.
 
-## 5.3 `deploy_plan` (`W0`) — preview, never submit
+## 5.3 `deploy_plan` (`W0` at `subset`, `W1` at `full`) — preview, never submit
 
 Deploying to a cluster is the one place an agent can consume a large amount of
 somebody else's compute. `deploy_plan` makes the ask inspectable first, and it
 performs **no** submission and **no** writes under the run's output directory.
+
+**Its work class depends on `scope`, and a flat `W0` label was wrong.** At
+`scope:"subset"` it reads registered state and renders a spec — genuinely `W0`.
+At `scope:"full"` it additionally runs §10.6.1's parent header sweep, and on a
+mismatch escalates to a 2-image re-probe. Neither fits §1.6.1's `W0` row: a
+header sweep over a few hundred files is bounded and decode-free, but it is not
+"under a second", and the re-probe takes the compute slot outright. So
+`scope:"full"` is declared `W1` — bounded by the §1.6.1 probe caps, offloaded to
+a worker thread per §1.5, and honest about the slot. The response reports which
+path ran, and `estimate.basis` already says whether a re-probe happened.
 
 **This requires a refactor, not a call-through.** The only existing generator
 that produces a full sbatch script, `generate_array_job_script`

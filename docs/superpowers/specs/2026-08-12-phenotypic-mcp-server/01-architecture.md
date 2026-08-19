@@ -270,12 +270,37 @@ that local batch work and interactive probing do not overlap. The alternative �
 admitting `W1` alongside a reduced-worker local job — was considered and rejected
 as machinery serving a deployment this design does not target.
 
-**Locally, run at most 1–2 campaign arms concurrently.** Each arm is a
-slot-holding subprocess; the slot already serializes them, but
-`budget.max_concurrent_arms` takes a lower effective cap under `local` routing,
-so a future change to the slot cannot turn a campaign into an OOM.
+**Locally, the slot *is* the cap — there is not a second mechanism.** An
+earlier draft also wrote "run at most 1–2 arms concurrently" beside a
+capacity-1 slot, which is two owners for one invariant and the exact defect this
+section opens by criticising: with capacity 1 the effective cap was always 1, and
+the prose described a parallelism the same page forbade.
+
+So `LocalComputeSlot` owns the local-OOM invariant alone, and **its capacity is
+configuration** (`local_slot_capacity`, default `1`). A workstation with memory
+to spare may set `2`; nothing else changes, because every other rule here is
+written against "the slot", not against a number. `budget.max_concurrent_arms`
+is a *campaign* budget and never a memory guard.
+
+**A second local arm does not wait.** Arriving at a full slot it is told the slot
+is busy and returns — it does not park on the semaphore. This is what keeps the
+local path inside USER-1's submit-and-poll contract: a blocking acquire would
+stall the call for the hours an arm actually takes, against a host timeout the
+server does not control, and an abandoned coroutine would still be holding a
+reservation nothing will ever release.
 
 ### Blocking work never blocks the event loop
+
+**Every tool handler is `async def`, and everything that blocks is offloaded to a
+worker thread.** Not only CPU-bound compute — the rule covers subprocess waits,
+SLURM polling, and the lineage reads whose lock can spin for 30 s (§2.5). This is
+the model `fastmcp` expects, and it is the only one under which §1.6.1's table is
+satisfiable at all: a `W0` call promised to return in under a second cannot share
+a thread with a synchronous `sbatch` poll.
+
+The rule is stated once, here, and the rest of the spec relies on it rather than
+re-deriving it per tool. Anywhere a handler touches the filesystem under a lock,
+a subprocess, or the scheduler, assume the offload.
 
 `ImagePipeline.apply()` is synchronous, CPU-bound, and copies the image
 (`_image_pipeline_core.py:943-966`). Running it directly in an async handler

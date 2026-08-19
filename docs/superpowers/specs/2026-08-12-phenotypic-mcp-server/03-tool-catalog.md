@@ -15,7 +15,7 @@ the argument against it:
 
 | Cut | Why, and where the capability went |
 |---|---|
-| `promotion_request`, `promotion_approve` | §10.5's own text: a full-dataset run "has no other way to obtain" a `plan_token`, so promotion was a second lock over a decision `deploy_plan {scope:"full"}` already gates. Its *content* — winner provenance, subset score, held-out gap, coverage warnings, §10.6.1's header sweep — moves onto that response, which already carries `pending_human_ack`/`ack_prompt` |
+| `promotion_request`, `promotion_approve` | §10.5's own text: a full-dataset run "has no other way to obtain" a `plan_token`, so promotion was a second lock over a decision `deploy_plan {scope:"full"}` already gates. Its *content* — winner provenance, subset score, held-out gap, coverage warnings, §10.6.1's header sweep — moves onto that response, which already carries the `ack_prompt` text. The human ack itself is taken at `deploy_start`, the point of spend (§10.5) |
 | `experiment_profile_put` | §9.3.5: "the server never acts on a trait… it is not an interlock." The triage skill writes the file; `experiment_profile_get` remains so the server stays self-sufficient on a host that gives the agent MCP and nothing else |
 | `pipeline_diff` | Two `pipeline_get {format:"summary"}` calls, and an LLM diffs two JSON objects natively |
 | `campaign_get` | → `campaign_status {detail:"artifact"}`, mirroring `tune_status`/`deploy_status`'s two-detail shape |
