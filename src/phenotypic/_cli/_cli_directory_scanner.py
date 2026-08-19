@@ -220,11 +220,18 @@ def read_image_manifest(manifest_path: Path) -> List[str]:
     MCP server at plan time, bound by a content digest, and read by a human
     deciding whether to spend cluster hours. It is:
 
-    * UTF-8 text, one image path per line;
+    * UTF-8 text, one image path per line; a leading byte-order mark is
+      tolerated (``utf-8-sig``) so an editor-written manifest does not fail as
+      a phantom unknown path — the digest is over the raw bytes either way, so
+      accepting it moves nothing the server bound;
     * blank lines are ignored;
     * a line whose first non-whitespace character is ``#`` is a comment;
     * surrounding whitespace on a path line is stripped;
-    * each path is either absolute or relative to ``--input``.
+    * each path is either absolute or relative to ``--input``;
+    * no Unicode normalization is applied, on either side. An NFD entry
+      against an NFC filename is refused as an unknown path rather than
+      guessed at — the fail-closed direction, and the only one that keeps the
+      approved count honest.
 
     Nothing is deduplicated and nothing is sorted: order and multiplicity are
     reported as written, and :func:`apply_image_manifest` is what rejects a
@@ -243,7 +250,7 @@ def read_image_manifest(manifest_path: Path) -> List[str]:
     """
     manifest_path = Path(manifest_path)
     try:
-        text = manifest_path.read_text(encoding="utf-8")
+        text = manifest_path.read_text(encoding="utf-8-sig")
     except OSError as exc:
         raise ImageManifestError(
             f"Cannot read image manifest {manifest_path}: {exc}"
@@ -283,6 +290,16 @@ def apply_image_manifest(
     An entry that does not is an error naming it, rather than a silent
     omission — the caller approved a specific count.
 
+    Selection carries each entry's *scan identity* — the ``(dataset, path)``
+    pair the entry matched — rather than re-testing membership by resolved
+    path afterwards. Resolved-path membership follows symlinks, so in a tree
+    where two scan entries alias one real file (a symlinked image, or a
+    symlinked dataset directory) a manifest naming one of them would select
+    both, turning an approved line into two units of compute. On top of that,
+    the selected total is checked against the entry count: one line in, one
+    image out, or the run is refused. That is what makes "the count approved
+    is the count that runs" a checked property rather than an emergent one.
+
     Args:
         image_paths_by_dataset: Output of :func:`scan_directory_structure`.
         manifest_path: Path to the ``.images`` manifest.
@@ -297,23 +314,37 @@ def apply_image_manifest(
 
     Raises:
         ImageManifestError: If the manifest is unreadable or empty, names a
-            path the scan did not find, or names the same image twice.
+            path the scan did not find, names the same image twice, or
+            selects a number of images other than the number it names.
     """
     entries = read_image_manifest(manifest_path)
     input_path = Path(input_path)
 
+    # Two lookups, because a scan can contain aliases of one real file (a
+    # symlinked image, or a symlinked dataset directory — ordinary staging
+    # practice on this cluster). ``by_spelling`` answers "which scan entry did
+    # this manifest line name", so an aliased entry selects the image it was
+    # written as; ``scanned`` is the resolved-path fallback that still finds a
+    # differently-spelled but equivalent path (``..`` segments, or an absolute
+    # entry against a relatively-spelled scan).
     scanned: Dict[Path, tuple[str, Path]] = {}
+    by_spelling: Dict[Path, tuple[str, Path]] = {}
     for dataset_name, image_paths in image_paths_by_dataset.items():
         for image_path in image_paths:
-            scanned[_resolved(image_path)] = (dataset_name, image_path)
+            scanned.setdefault(
+                _resolved(image_path), (dataset_name, image_path)
+            )
+            by_spelling.setdefault(Path(image_path), (dataset_name, image_path))
 
     selected: set[Path] = set()
+    chosen: Dict[str, set[Path]] = {}
     for entry in entries:
         candidate = Path(entry)
         if not candidate.is_absolute():
             candidate = input_path / candidate
         resolved = _resolved(candidate)
-        if resolved not in scanned:
+        match = by_spelling.get(candidate) or scanned.get(resolved)
+        if match is None:
             raise ImageManifestError(
                 f"Image manifest {manifest_path} names {entry!r}, which is "
                 f"not one of the images found under --input {input_path}. "
@@ -327,12 +358,29 @@ def apply_image_manifest(
                 "the image count stays the one that was approved."
             )
         selected.add(resolved)
+        dataset_name, image_path = match
+        chosen.setdefault(dataset_name, set()).add(image_path)
 
+    # Rebuild from the identities the entry loop chose, never from a second
+    # membership test over resolved paths: resolved-path membership selects
+    # *every* alias of a named image, so one approved line becomes two units
+    # of compute.
     filtered: Dict[str, List[Path]] = {}
     for dataset_name, image_paths in image_paths_by_dataset.items():
-        kept = [p for p in image_paths if _resolved(p) in selected]
-        if kept:
-            filtered[dataset_name] = kept
+        wanted = chosen.get(dataset_name)
+        if not wanted:
+            continue
+        filtered[dataset_name] = [p for p in image_paths if p in wanted]
+
+    kept_total = sum(len(paths) for paths in filtered.values())
+    if kept_total != len(entries):
+        raise ImageManifestError(
+            f"Image manifest {manifest_path} names {len(entries)} image(s) "
+            f"but selecting them under --input {input_path} yielded "
+            f"{kept_total}. The count that runs must be the count that was "
+            "approved, so an aliased or ambiguous scan is refused rather "
+            "than run."
+        )
     return filtered
 
 

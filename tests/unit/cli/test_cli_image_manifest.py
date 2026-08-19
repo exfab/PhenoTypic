@@ -269,6 +269,146 @@ def test_a_repeated_entry_is_an_error(
 
 
 # ---------------------------------------------------------------------------
+# Aliasing — one approved line must never become two units of compute
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def aliased_tree(collision_tree: Path) -> Path:
+    """``plate1/copy.tiff`` is a symlink to ``plate1/img001.tiff``.
+
+    Symlinked image trees are ordinary staging practice on this cluster — a
+    "run" directory of links into an archive — so a scan holding two
+    spellings of one real file is not an exotic shape.
+    """
+    (collision_tree / "plate1" / "copy.tiff").symlink_to(
+        collision_tree / "plate1" / "img001.tiff"
+    )
+    return collision_tree
+
+
+def test_a_symlink_alias_does_not_multiply_the_selection(
+    aliased_tree: Path, tmp_path: Path
+) -> None:
+    """One entry, one image — even when the scan holds an alias of it.
+
+    Selecting by *resolved-path membership* keeps both ``copy.tiff`` and
+    ``img001.tiff``, since they resolve to the same real file. Their relative
+    paths differ, so that is two work IDs, two HDFs, two measure passes —
+    twice the compute a human approved, with nothing in the run to notice.
+    """
+    scanned = scan_directory_structure(aliased_tree)
+    assert sorted(p.name for p in scanned["plate1"]) == [
+        "copy.tiff",
+        "img001.tiff",
+        "img002.tiff",
+    ]
+    manifest = _write_manifest(tmp_path / "plan.images", ["plate1/img001.tiff"])
+
+    selected = apply_image_manifest(scanned, manifest, aliased_tree)
+
+    assert {
+        name: [p.name for p in paths] for name, paths in selected.items()
+    } == {"plate1": ["img001.tiff"]}
+
+
+def test_an_entry_naming_the_alias_selects_the_alias(
+    aliased_tree: Path, tmp_path: Path
+) -> None:
+    """The spelling the manifest was written as is the image that runs.
+
+    The approved artifact names ``copy.tiff``, and that path is what the run's
+    work ID is derived from, so resolving the entry to its target's spelling
+    would process something other than what was listed.
+    """
+    scanned = scan_directory_structure(aliased_tree)
+    manifest = _write_manifest(tmp_path / "plan.images", ["plate1/copy.tiff"])
+
+    selected = apply_image_manifest(scanned, manifest, aliased_tree)
+
+    assert {
+        name: [p.name for p in paths] for name, paths in selected.items()
+    } == {"plate1": ["copy.tiff"]}
+
+
+def test_naming_both_spellings_of_one_file_is_still_a_duplicate(
+    aliased_tree: Path, tmp_path: Path
+) -> None:
+    """Two lines naming one real file stay an error, not a silent collapse."""
+    scanned = scan_directory_structure(aliased_tree)
+    manifest = _write_manifest(
+        tmp_path / "plan.images", ["plate1/img001.tiff", "plate1/copy.tiff"]
+    )
+
+    with pytest.raises(ImageManifestError, match="more than"):
+        apply_image_manifest(scanned, manifest, aliased_tree)
+
+
+def test_a_symlinked_dataset_directory_does_not_multiply_the_selection(
+    collision_tree: Path, tmp_path: Path
+) -> None:
+    """The alias can be a whole dataset, which puts the copy under another key."""
+    (collision_tree / "plate1_run2").symlink_to(
+        collision_tree / "plate1", target_is_directory=True
+    )
+    scanned = scan_directory_structure(collision_tree)
+    assert "plate1_run2" in scanned
+    manifest = _write_manifest(tmp_path / "plan.images", ["plate1/img001.tiff"])
+
+    selected = apply_image_manifest(scanned, manifest, collision_tree)
+
+    assert {
+        name: [p.name for p in paths] for name, paths in selected.items()
+    } == {"plate1": ["img001.tiff"]}
+
+
+def test_the_selected_count_must_equal_the_manifest_count(
+    collision_tree: Path, tmp_path: Path
+) -> None:
+    """The backstop invariant, independent of the aliasing it anticipates.
+
+    Fed a scan that lists one image twice — the shape any future aliasing
+    would produce — selection is refused rather than run. "The count approved
+    is the count that runs" is a checked property here, not one emergent from
+    how the lookup happens to be written today.
+    """
+    duplicated = {
+        "plate1": [
+            collision_tree / "plate1" / "img001.tiff",
+            collision_tree / "plate1" / "img001.tiff",
+        ]
+    }
+    manifest = _write_manifest(tmp_path / "plan.images", ["plate1/img001.tiff"])
+
+    with pytest.raises(ImageManifestError, match="names 1 image"):
+        apply_image_manifest(duplicated, manifest, collision_tree)
+
+
+def test_a_byte_order_mark_does_not_hide_the_first_entry(
+    collision_tree: Path, tmp_path: Path
+) -> None:
+    """A BOM'd manifest reads as its paths, not as one phantom unknown path.
+
+    Read as plain UTF-8 the mark lands inside the first entry and the run
+    fails claiming ``'\\ufeffplate1/img001.tiff'`` is not under ``--input`` —
+    fail-closed, but it sends a human debugging a server-written file after an
+    unknown-path problem instead of an encoding one. The digest is over the
+    raw bytes, so tolerating the mark moves nothing the server bound.
+    """
+    manifest = tmp_path / "plan.images"
+    manifest.write_bytes(b"\xef\xbb\xbfplate1/img001.tiff\n")
+
+    assert read_image_manifest(manifest) == ["plate1/img001.tiff"]
+
+    selected = apply_image_manifest(
+        scan_directory_structure(collision_tree), manifest, collision_tree
+    )
+    assert {
+        name: [p.name for p in paths] for name, paths in selected.items()
+    } == {"plate1": ["img001.tiff"]}
+
+
+# ---------------------------------------------------------------------------
 # Work-ID equivalence — the reason --input stays the parent directory
 # ---------------------------------------------------------------------------
 
@@ -543,7 +683,16 @@ def test_a_state_predating_the_flag_resumes_without_one_and_refuses_with_one(
 def test_the_recorded_digest_is_the_manifest_content_digest(
     collision_tree: Path, pipeline_stub: Path, tmp_path: Path
 ) -> None:
-    """The server binds this same number into the plan token (§5.4)."""
+    """The server binds this same number into the plan token (§5.4).
+
+    Asserted against an independently computed SHA-256 of the file's bytes,
+    not against ``image_manifest_digest``: calling the same function on both
+    sides would agree under *any* definition of the digest, including one over
+    the resolved image set, which is exactly the definition the cross-side
+    contract rules out.
+    """
+    import hashlib
+
     output_dir = tmp_path / "out"
     manifest = _write_manifest(tmp_path / "a.images", ["plate1/img001.tiff"])
     state = _state_for(
@@ -556,6 +705,10 @@ def test_the_recorded_digest_is_the_manifest_content_digest(
         output_dir,
     )
 
+    assert (
+        state.config["image_manifest_digest"]
+        == hashlib.sha256(manifest.read_bytes()).hexdigest()
+    )
     assert state.config["image_manifest_digest"] == image_manifest_digest(
         manifest
     )
@@ -615,3 +768,116 @@ def test_the_flag_requires_input(tmp_path: Path) -> None:
 
     assert result.exit_code != 0
     assert "--image-manifest requires --input" in result.output
+
+
+def _dry_run_plan(output: str) -> dict[str, list[str]]:
+    """Parse the dry-run's "Datasets Discovered" block into {dataset: images}.
+
+    The plan is read back as a *set of (dataset, image) pairs* rather than as
+    the ``selected N of M`` echo, because the echo is computed beside the call
+    it is meant to police: a CLI that accepted the manifest and then scanned
+    the whole parent would still print a plausible count. The plan is what the
+    run would actually process.
+    """
+    plan: dict[str, list[str]] = {}
+    dataset: str | None = None
+    for line in output.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("Dataset: "):
+            dataset = stripped[len("Dataset: ") :]
+            plan[dataset] = []
+        elif stripped.startswith("Total images across all datasets"):
+            break
+        elif stripped.startswith("- ") and dataset is not None:
+            plan[dataset].append(stripped[2:])
+    return plan
+
+
+def test_the_cli_runs_exactly_the_images_the_manifest_names(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    """The wiring, end to end: ``--input`` + ``--image-manifest`` narrows the plan.
+
+    ``apply_image_manifest`` is tested to death in isolation above, but this
+    call site is the only place a manifest ever narrows real work. Without a
+    test through the command, replacing that call with the identity function —
+    manifest accepted, echoed about, and then ignored while the run processes
+    the entire parent directory — is a green suite and an approval gate that
+    only decorates.
+
+    ``--dry-run`` prints the plan after the manifest applies and before any
+    image is opened, so the fixture's byte-content files are enough.
+    """
+    from click.testing import CliRunner
+
+    from phenotypic.phenotypicCLI import phenotypic_cli
+
+    manifest = _write_manifest(
+        tmp_path / "plan.images",
+        ["plate2/img002.tiff", "plate1/img001.tiff"],
+    )
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "full",
+            "--pipeline",
+            str(pipeline_stub),
+            "--input",
+            str(collision_tree),
+            "--output",
+            str(tmp_path / "out"),
+            "--image-manifest",
+            str(manifest),
+            "--dry-run",
+            "--skip-validation",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert _dry_run_plan(result.output) == {
+        "plate1": ["img001.tiff"],
+        "plate2": ["img002.tiff"],
+    }
+
+
+def test_the_cli_refuses_a_manifest_naming_an_image_outside_input(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    """A manifest the scan cannot account for stops the run, not just the flag.
+
+    The reader's refusals only matter if the command surfaces them: an
+    ``ImageManifestError`` swallowed at the call site would fall through to a
+    whole-parent run, which is the same failure as ignoring the manifest.
+    """
+    from click.testing import CliRunner
+
+    from phenotypic.phenotypicCLI import phenotypic_cli
+
+    outsider = tmp_path / "elsewhere" / "img009.tiff"
+    outsider.parent.mkdir()
+    outsider.write_bytes(b"outsider")
+    manifest = _write_manifest(tmp_path / "plan.images", [str(outsider)])
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "full",
+            "--pipeline",
+            str(pipeline_stub),
+            "--input",
+            str(collision_tree),
+            "--output",
+            str(tmp_path / "out"),
+            "--image-manifest",
+            str(manifest),
+            "--dry-run",
+            "--skip-validation",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "not one of the images" in result.output
+    assert _dry_run_plan(result.output) == {}
