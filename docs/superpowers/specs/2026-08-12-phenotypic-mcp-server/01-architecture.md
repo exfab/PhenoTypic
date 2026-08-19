@@ -345,6 +345,23 @@ back here — which is the same drift the reviews kept finding in the worked
 examples, one level up. **This table and `README.md`'s summary are part of the
 edit whenever §7 gains a prerequisite.**
 
+## 1.6.1 Performance requirements
+
+Stated because the design has one shared process serving N subagents (§1.3), so
+"slow" and "blocks everyone" are the same failure here.
+
+| Class | Requirement |
+|---|---|
+| **`W0`** | Returns in **under one second**, and **must never block the event loop**. A `W0` tool that performs real I/O — a filesystem walk, a subprocess, a store open, a directory digest — runs in the executor. `W0` means *takes no compute slot*; it does **not** mean *is instant*, and the two must not be conflated. |
+| **`W1`** | Bounded by `limits.probe_max_images` (default 4) and `limits.probe_timeout_s` (default 300), inclusive of slot wait. The timeout must be reconciled with the host's own tool-call timeout — a server that outlives the host's patience holds the slot after the caller has given up. |
+| **`W2` / `W3`** | **No latency requirement.** Submit-and-poll: the tool returns on submission and progress is polled. |
+| **Connection** | The `tools/list` payload is spent every turn by every subagent; it is a budgeted resource, not free. |
+
+The binding consequence: under §1.3's single shared connection, any handler that
+blocks stalls **every** subagent, not just its caller. §5.5 already carves
+`deploy_status {detail:"results"}` into the executor for exactly this reason;
+that carve-out is the rule, not an exception.
+
 ## 1.7 Non-goals
 
 - **No new science.** No new scorer, detector, or metric.
