@@ -3,10 +3,16 @@ Directory scanning and dataset organization for the PhenoTypic CLI.
 
 This module handles recursive directory scanning (1 level deep), image
 file collection, and organization into datasets.
+
+It also owns the **image manifest** (``--image-manifest``): a plain list of
+image paths naming an approved subset of ``--input``. See
+:func:`read_image_manifest` for the file format and
+:func:`apply_image_manifest` for how it narrows a scan.
 """
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -168,6 +174,171 @@ def organize_by_dataset(
         datasets.append(dataset)
 
     return datasets
+
+
+# ---------------------------------------------------------------------------
+# Image manifest (``--image-manifest``)
+# ---------------------------------------------------------------------------
+
+
+class ImageManifestError(ValueError):
+    """Raised when an image manifest is unreadable or does not match --input."""
+
+
+def image_manifest_digest(manifest_path: Path) -> str:
+    """Return the SHA-256 content digest of an image manifest.
+
+    This is the **file's bytes**, not a digest of the resolved image set, so
+    it is the same number the MCP server binds into a plan token
+    (``image_manifest_digest``, spec ``05-deploy-and-slurm.md`` §5.4). One
+    definition on both sides means the server can compare its bound value
+    against what a run recorded, and any edit to the artifact a human approved
+    — including one that happens to resolve to the same images — invalidates
+    the approval rather than being quietly tolerated.
+
+    Args:
+        manifest_path: Path to the ``.images`` manifest.
+
+    Returns:
+        Lowercase hex SHA-256 digest.
+
+    Raises:
+        OSError: If the manifest cannot be read.
+    """
+    digest = hashlib.sha256()
+    with Path(manifest_path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def read_image_manifest(manifest_path: Path) -> List[str]:
+    """Parse an image manifest into its ordered raw entries.
+
+    Format — deliberately a plain list rather than the JSON envelope
+    ``load_staged_manifest`` reads, because this artifact is written by the
+    MCP server at plan time, bound by a content digest, and read by a human
+    deciding whether to spend cluster hours. It is:
+
+    * UTF-8 text, one image path per line;
+    * blank lines are ignored;
+    * a line whose first non-whitespace character is ``#`` is a comment;
+    * surrounding whitespace on a path line is stripped;
+    * each path is either absolute or relative to ``--input``.
+
+    Nothing is deduplicated and nothing is sorted: order and multiplicity are
+    reported as written, and :func:`apply_image_manifest` is what rejects a
+    repeat. A manifest that silently collapsed duplicates would process fewer
+    images than the count a human approved.
+
+    Args:
+        manifest_path: Path to the ``.images`` manifest.
+
+    Returns:
+        The manifest's path entries, in file order.
+
+    Raises:
+        ImageManifestError: If the file cannot be read, is not valid UTF-8, or
+            contains no entries.
+    """
+    manifest_path = Path(manifest_path)
+    try:
+        text = manifest_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ImageManifestError(
+            f"Cannot read image manifest {manifest_path}: {exc}"
+        ) from exc
+    except UnicodeDecodeError as exc:
+        raise ImageManifestError(
+            f"Image manifest {manifest_path} is not valid UTF-8 text: {exc}"
+        ) from exc
+
+    entries = [
+        stripped
+        for line in text.splitlines()
+        if (stripped := line.strip()) and not stripped.startswith("#")
+    ]
+    if not entries:
+        raise ImageManifestError(
+            f"Image manifest {manifest_path} lists no images. An empty "
+            "manifest is refused rather than treated as 'process everything'."
+        )
+    return entries
+
+
+def apply_image_manifest(
+    image_paths_by_dataset: Dict[str, List[Path]],
+    manifest_path: Path,
+    input_path: Path,
+) -> Dict[str, List[Path]]:
+    """Narrow a scan of ``input_path`` to the images an approved manifest names.
+
+    The manifest selects *within* the scan; it never adds to it. That is what
+    keeps every image's identity unchanged: ``work_id_for_image`` derives the
+    relative path from ``config.input_path``, so a manifest run and a
+    parent-directory run over the same image produce the same work ID, and
+    resume, retry, and SLURM continuation all still line up.
+
+    Every entry must therefore resolve to an image the scan already found.
+    An entry that does not is an error naming it, rather than a silent
+    omission — the caller approved a specific count.
+
+    Args:
+        image_paths_by_dataset: Output of :func:`scan_directory_structure`.
+        manifest_path: Path to the ``.images`` manifest.
+        input_path: The ``--input`` root the manifest's relative paths and the
+            scan are both expressed against.
+
+    Returns:
+        The same mapping shape, keeping only manifest-named images and
+        dropping datasets left empty. Within a dataset, scan order is
+        preserved rather than manifest order, so the work list does not depend
+        on how the manifest happened to be written.
+
+    Raises:
+        ImageManifestError: If the manifest is unreadable or empty, names a
+            path the scan did not find, or names the same image twice.
+    """
+    entries = read_image_manifest(manifest_path)
+    input_path = Path(input_path)
+
+    scanned: Dict[Path, tuple[str, Path]] = {}
+    for dataset_name, image_paths in image_paths_by_dataset.items():
+        for image_path in image_paths:
+            scanned[_resolved(image_path)] = (dataset_name, image_path)
+
+    selected: set[Path] = set()
+    for entry in entries:
+        candidate = Path(entry)
+        if not candidate.is_absolute():
+            candidate = input_path / candidate
+        resolved = _resolved(candidate)
+        if resolved not in scanned:
+            raise ImageManifestError(
+                f"Image manifest {manifest_path} names {entry!r}, which is "
+                f"not one of the images found under --input {input_path}. "
+                "Manifest entries must be images of the input tree; the "
+                "manifest selects a subset, it cannot introduce new inputs."
+            )
+        if resolved in selected:
+            raise ImageManifestError(
+                f"Image manifest {manifest_path} names {entry!r} more than "
+                "once. Duplicates are refused rather than deduplicated so "
+                "the image count stays the one that was approved."
+            )
+        selected.add(resolved)
+
+    filtered: Dict[str, List[Path]] = {}
+    for dataset_name, image_paths in image_paths_by_dataset.items():
+        kept = [p for p in image_paths if _resolved(p) in selected]
+        if kept:
+            filtered[dataset_name] = kept
+    return filtered
+
+
+def _resolved(path: Path) -> Path:
+    """Normalize a path for manifest/scan comparison without requiring it exist."""
+    return Path(path).resolve(strict=False)
 
 
 def scan_hdf_outputs(output_dir: Path) -> List[Dataset]:

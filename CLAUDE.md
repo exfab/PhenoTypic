@@ -53,6 +53,15 @@
   measurement/deliverables/QC/dashboard; machine-state lives under `.phenotypic/`.
   Full local + SLURM continuation reuse. Run the same command again after an
   interruption or when new compatible inputs appear; there is no `--resume` flag.
+- `--image-manifest <file>` — process only the images a file lists (one path per
+  line, absolute or relative to `--input`; `#` comments and blank lines ignored).
+  **Passed alongside `--input`, never instead of it**: work IDs are derived
+  relative to `--input`, so pointing it at the manifest would collapse every ID
+  to a bare basename and collide identically named images across datasets. Every
+  entry must be an image the scan of `--input` found — unknown, missing, or
+  repeated entries are errors, and an empty manifest is refused rather than read
+  as "everything". The run records the manifest's SHA-256 **content** digest, so
+  continuing with a different or edited manifest is refused as incompatible.
 - **GPU detectors stage automatically:** when a pipeline contains a `GpuDetector`,
   `python -m phenotypic` runs detection as three internal stages — CPU preprocess →
   resident-model GPU detect → CPU measure — reusing the per-image HDF. Stage 2 writes a

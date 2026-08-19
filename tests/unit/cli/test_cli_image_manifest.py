@@ -1,0 +1,592 @@
+"""``--image-manifest``: the approved-subset input for the full CLI.
+
+The manifest sits on the irreversible full-dataset deploy path: the MCP server
+resolves ``parent ∩ group_filter`` at plan time, writes the list, and binds its
+content digest into a token carrying a human's approval of a specific compute
+spend (spec ``05-deploy-and-slurm.md`` §5.4). Two properties therefore matter
+more than the parsing:
+
+* a manifest run and a whole-directory run give the *same* image the *same*
+  work ID, so continuation, retry, and SLURM reconciliation still line up; and
+* a resume cannot quietly substitute a different manifest under the same
+  ``--input``.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from phenotypic._cli._cli_directory_scanner import (
+    ImageManifestError,
+    apply_image_manifest,
+    image_manifest_digest,
+    read_image_manifest,
+    scan_directory_structure,
+)
+from phenotypic._cli._cli_failure_tracker import work_id_for_image
+from phenotypic._cli._cli_state_management import (
+    create_initial_state,
+    validate_resume_compatibility,
+)
+from phenotypic._cli._cli_types import ExecutionConfig, ProcessingState
+
+
+# ---------------------------------------------------------------------------
+# Fixtures: a two-dataset tree whose image *names* collide across datasets.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def collision_tree(tmp_path: Path) -> Path:
+    """``in/plate1/img001.tiff`` and ``in/plate2/img001.tiff``, distinct bytes.
+
+    Identical basenames in different datasets are the case that separates a
+    correct work ID from a basename-only one, and they are ordinary in plate
+    phenotyping: a scanner names every capture ``img001``.
+    """
+    root = tmp_path / "in"
+    for index, dataset in enumerate(("plate1", "plate2")):
+        folder = root / dataset
+        folder.mkdir(parents=True)
+        for image in ("img001.tiff", "img002.tiff"):
+            # Content, not pixels: nothing here decodes the file.
+            (folder / image).write_bytes(f"{dataset}/{image}/{index}".encode())
+    return root
+
+
+@pytest.fixture
+def pipeline_stub(tmp_path: Path) -> Path:
+    """A file for ``file_sha256(config.pipeline_json)`` to digest."""
+    path = tmp_path / "pipeline.json"
+    path.write_text('{"operations": []}', encoding="utf-8")
+    return path
+
+
+def _config(
+    *,
+    pipeline: Path,
+    input_path: Path,
+    output_dir: Path,
+    image_manifest: Path | None = None,
+) -> ExecutionConfig:
+    return ExecutionConfig(
+        pipeline_json=pipeline,
+        input_path=input_path,
+        output_dir=output_dir,
+        image_type="GridImage",
+        nrows=None,
+        ncols=None,
+        bit_depth=None,
+        n_jobs=1,
+        slurm_args={},
+        force_local=True,
+        wait=False,
+        ext=".tiff",
+        overlay_alpha=0.3,
+        include_dataset_column=True,
+        dry_run=False,
+        sample=None,
+        resume=False,
+        retry_failures=False,
+        skip_validation=True,
+        image_manifest=image_manifest,
+    )
+
+
+def _write_manifest(path: Path, lines: list[str]) -> Path:
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
+# ---------------------------------------------------------------------------
+# Format
+# ---------------------------------------------------------------------------
+
+
+def test_reader_keeps_order_and_ignores_blanks_and_comments(
+    tmp_path: Path,
+) -> None:
+    manifest = _write_manifest(
+        tmp_path / "plan.images",
+        [
+            "# minted by deploy_plan for pl_7f3a",
+            "",
+            "  plate2/img001.tiff  ",
+            "   # indented comment",
+            "plate1/img001.tiff",
+        ],
+    )
+
+    assert read_image_manifest(manifest) == [
+        "plate2/img001.tiff",
+        "plate1/img001.tiff",
+    ]
+
+
+def test_reader_refuses_an_empty_manifest(tmp_path: Path) -> None:
+    """Empty must not read as "process everything" — that is the whole risk."""
+    manifest = _write_manifest(tmp_path / "plan.images", ["# nothing here", ""])
+
+    with pytest.raises(ImageManifestError, match="lists no images"):
+        read_image_manifest(manifest)
+
+
+def test_reader_refuses_a_missing_file(tmp_path: Path) -> None:
+    with pytest.raises(ImageManifestError, match="Cannot read image manifest"):
+        read_image_manifest(tmp_path / "absent.images")
+
+
+def test_digest_is_the_file_bytes(tmp_path: Path) -> None:
+    """The digest binds the artifact, so a comment-only edit invalidates it.
+
+    Conservative on purpose: the server binds this same number into a plan
+    token, and the human approved the file, not a normalization of it.
+    """
+    import hashlib
+
+    first = _write_manifest(tmp_path / "a.images", ["plate1/img001.tiff"])
+    second = _write_manifest(
+        tmp_path / "b.images", ["# same set", "plate1/img001.tiff"]
+    )
+
+    assert image_manifest_digest(first) == hashlib.sha256(
+        first.read_bytes()
+    ).hexdigest()
+    assert image_manifest_digest(first) != image_manifest_digest(second)
+
+
+# ---------------------------------------------------------------------------
+# Applying the manifest to a scan
+# ---------------------------------------------------------------------------
+
+
+def test_manifest_selects_a_subset_across_datasets(
+    collision_tree: Path, tmp_path: Path
+) -> None:
+    manifest = _write_manifest(
+        tmp_path / "plan.images",
+        ["plate2/img002.tiff", "plate1/img001.tiff"],
+    )
+    scanned = scan_directory_structure(collision_tree)
+
+    selected = apply_image_manifest(scanned, manifest, collision_tree)
+
+    assert {name: [p.name for p in paths] for name, paths in selected.items()} == {
+        "plate1": ["img001.tiff"],
+        "plate2": ["img002.tiff"],
+    }
+
+
+def test_a_dataset_no_entry_names_disappears(
+    collision_tree: Path, tmp_path: Path
+) -> None:
+    manifest = _write_manifest(tmp_path / "plan.images", ["plate1/img001.tiff"])
+    scanned = scan_directory_structure(collision_tree)
+
+    selected = apply_image_manifest(scanned, manifest, collision_tree)
+
+    assert list(selected) == ["plate1"]
+
+
+def test_absolute_and_relative_entries_name_the_same_image(
+    collision_tree: Path, tmp_path: Path
+) -> None:
+    scanned = scan_directory_structure(collision_tree)
+    relative = _write_manifest(
+        tmp_path / "rel.images", ["plate1/img001.tiff"]
+    )
+    absolute = _write_manifest(
+        tmp_path / "abs.images",
+        [str(collision_tree / "plate1" / "img001.tiff")],
+    )
+
+    assert apply_image_manifest(
+        scanned, relative, collision_tree
+    ) == apply_image_manifest(scanned, absolute, collision_tree)
+
+
+def test_within_a_dataset_scan_order_wins_over_manifest_order(
+    collision_tree: Path, tmp_path: Path
+) -> None:
+    """The work list must not depend on how the manifest was written."""
+    manifest = _write_manifest(
+        tmp_path / "plan.images",
+        ["plate1/img002.tiff", "plate1/img001.tiff"],
+    )
+    scanned = scan_directory_structure(collision_tree)
+
+    selected = apply_image_manifest(scanned, manifest, collision_tree)
+
+    assert [p.name for p in selected["plate1"]] == [
+        "img001.tiff",
+        "img002.tiff",
+    ]
+
+
+def test_an_entry_outside_the_scan_is_an_error(
+    collision_tree: Path, tmp_path: Path
+) -> None:
+    """Silent omission would shrink the set the human approved."""
+    outsider = tmp_path / "elsewhere" / "img009.tiff"
+    outsider.parent.mkdir()
+    outsider.write_bytes(b"outsider")
+    manifest = _write_manifest(tmp_path / "plan.images", [str(outsider)])
+    scanned = scan_directory_structure(collision_tree)
+
+    with pytest.raises(ImageManifestError, match="not one of the images"):
+        apply_image_manifest(scanned, manifest, collision_tree)
+
+
+def test_a_nonexistent_entry_is_an_error(
+    collision_tree: Path, tmp_path: Path
+) -> None:
+    manifest = _write_manifest(
+        tmp_path / "plan.images", ["plate1/img404.tiff"]
+    )
+    scanned = scan_directory_structure(collision_tree)
+
+    with pytest.raises(ImageManifestError, match="img404.tiff"):
+        apply_image_manifest(scanned, manifest, collision_tree)
+
+
+def test_a_repeated_entry_is_an_error(
+    collision_tree: Path, tmp_path: Path
+) -> None:
+    """Deduplicating would process fewer images than the approved count."""
+    manifest = _write_manifest(
+        tmp_path / "plan.images",
+        ["plate1/img001.tiff", "plate1/img001.tiff"],
+    )
+    scanned = scan_directory_structure(collision_tree)
+
+    with pytest.raises(ImageManifestError, match="more than"):
+        apply_image_manifest(scanned, manifest, collision_tree)
+
+
+# ---------------------------------------------------------------------------
+# Work-ID equivalence — the reason --input stays the parent directory
+# ---------------------------------------------------------------------------
+
+
+def _work_ids(
+    config: ExecutionConfig, image_paths_by_dataset: dict[str, list[Path]]
+) -> dict[str, str]:
+    """Map ``"<dataset>/<name>" -> work_id`` for a scan."""
+    return {
+        f"{dataset}/{image.name}": work_id_for_image(config, dataset, image)[0]
+        for dataset, images in image_paths_by_dataset.items()
+        for image in images
+    }
+
+
+def test_work_ids_are_identical_between_a_manifest_and_a_parent_run(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    """The manifest narrows the work list; it must not touch image identity.
+
+    If it did, a subset run could not continue, retry, or reconcile against a
+    whole-parent run of the same images — and ``EXPECTED_WORK_IDS`` in the
+    SLURM array would stop matching.
+    """
+    output_dir = tmp_path / "out"
+    manifest = _write_manifest(
+        tmp_path / "plan.images",
+        ["plate1/img001.tiff", "plate2/img001.tiff"],
+    )
+    scanned = scan_directory_structure(collision_tree)
+
+    parent_config = _config(
+        pipeline=pipeline_stub,
+        input_path=collision_tree,
+        output_dir=output_dir,
+    )
+    manifest_config = _config(
+        pipeline=pipeline_stub,
+        input_path=collision_tree,
+        output_dir=output_dir,
+        image_manifest=manifest,
+    )
+    selected = apply_image_manifest(scanned, manifest, collision_tree)
+
+    parent_ids = _work_ids(parent_config, scanned)
+    manifest_ids = _work_ids(manifest_config, selected)
+
+    assert set(manifest_ids) == {"plate1/img001.tiff", "plate2/img001.tiff"}
+    assert manifest_ids == {
+        key: parent_ids[key] for key in manifest_ids
+    }
+
+
+def test_same_named_images_in_two_datasets_keep_distinct_work_ids(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    """This is what pointing ``--input`` at the manifest would have broken.
+
+    With ``--input`` on the parent, ``work_id_for_image`` uses
+    ``relative_to(input_path)`` and the two ``img001.tiff`` files differ. Were
+    ``--input`` the manifest file, ``input_path.is_file()`` would be true and
+    both would reduce to the basename ``img001.tiff`` — the ``is_file()``
+    branch asserted below, which is why the flag is passed alongside.
+    """
+    manifest = _write_manifest(
+        tmp_path / "plan.images",
+        ["plate1/img001.tiff", "plate2/img001.tiff"],
+    )
+    scanned = scan_directory_structure(collision_tree)
+    selected = apply_image_manifest(scanned, manifest, collision_tree)
+
+    ids = _work_ids(
+        _config(
+            pipeline=pipeline_stub,
+            input_path=collision_tree,
+            output_dir=tmp_path / "out",
+            image_manifest=manifest,
+        ),
+        selected,
+    )
+    assert ids["plate1/img001.tiff"] != ids["plate2/img001.tiff"]
+
+    # And the rejected design, demonstrated rather than described.
+    file_rooted = _config(
+        pipeline=pipeline_stub,
+        input_path=manifest,
+        output_dir=tmp_path / "out",
+    )
+    collapsed = {
+        dataset: work_id_for_image(
+            file_rooted, dataset, collision_tree / dataset / "img001.tiff"
+        )[1]
+        for dataset in ("plate1", "plate2")
+    }
+    assert collapsed == {"plate1": "img001.tiff", "plate2": "img001.tiff"}
+
+
+# ---------------------------------------------------------------------------
+# Resume — the server's own pre-submit drift guard
+# ---------------------------------------------------------------------------
+
+
+def _state_for(config: ExecutionConfig, output_dir: Path) -> ProcessingState:
+    return create_initial_state(config, [], output_dir)
+
+
+def test_resume_rejects_a_different_manifest_under_the_same_input(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    """``input_path`` equality does not identify the image set."""
+    output_dir = tmp_path / "out"
+    first = _write_manifest(tmp_path / "a.images", ["plate1/img001.tiff"])
+    second = _write_manifest(tmp_path / "b.images", ["plate2/img001.tiff"])
+
+    saved = _state_for(
+        _config(
+            pipeline=pipeline_stub,
+            input_path=collision_tree,
+            output_dir=output_dir,
+            image_manifest=first,
+        ),
+        output_dir,
+    )
+    resumed = _config(
+        pipeline=pipeline_stub,
+        input_path=collision_tree,
+        output_dir=output_dir,
+        image_manifest=second,
+    )
+
+    compatible, message = validate_resume_compatibility(saved, resumed)
+
+    assert compatible is False
+    assert message is not None and "Image manifest mismatch" in message
+
+
+def test_resume_accepts_the_same_manifest(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    output_dir = tmp_path / "out"
+    manifest = _write_manifest(tmp_path / "a.images", ["plate1/img001.tiff"])
+    config = _config(
+        pipeline=pipeline_stub,
+        input_path=collision_tree,
+        output_dir=output_dir,
+        image_manifest=manifest,
+    )
+
+    assert validate_resume_compatibility(_state_for(config, output_dir), config) == (
+        True,
+        None,
+    )
+
+
+def test_resume_rejects_a_manifest_whose_contents_changed(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    """Same path, different bytes — the drift a path comparison cannot see."""
+    output_dir = tmp_path / "out"
+    manifest = _write_manifest(tmp_path / "a.images", ["plate1/img001.tiff"])
+    config = _config(
+        pipeline=pipeline_stub,
+        input_path=collision_tree,
+        output_dir=output_dir,
+        image_manifest=manifest,
+    )
+    saved = _state_for(config, output_dir)
+
+    _write_manifest(manifest, ["plate2/img001.tiff"])
+
+    compatible, message = validate_resume_compatibility(saved, config)
+
+    assert compatible is False
+    assert message is not None and "Image manifest mismatch" in message
+
+
+def test_resume_refuses_when_the_manifest_has_gone_missing(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    """Reachable, not exotic: the server collects a token's .images file.
+
+    A refusal with a reason, never a traceback out of a function whose
+    contract is ``(bool, message)``.
+    """
+    output_dir = tmp_path / "out"
+    manifest = _write_manifest(tmp_path / "a.images", ["plate1/img001.tiff"])
+    config = _config(
+        pipeline=pipeline_stub,
+        input_path=collision_tree,
+        output_dir=output_dir,
+        image_manifest=manifest,
+    )
+    saved = _state_for(config, output_dir)
+    manifest.unlink()
+
+    compatible, message = validate_resume_compatibility(saved, config)
+
+    assert compatible is False
+    assert message is not None and "cannot be read" in message
+
+
+def test_resume_of_a_whole_parent_run_is_unaffected(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    output_dir = tmp_path / "out"
+    config = _config(
+        pipeline=pipeline_stub,
+        input_path=collision_tree,
+        output_dir=output_dir,
+    )
+
+    assert validate_resume_compatibility(_state_for(config, output_dir), config) == (
+        True,
+        None,
+    )
+
+
+def test_a_state_predating_the_flag_resumes_without_one_and_refuses_with_one(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    """Legacy states carry no key, and absent must mean "no manifest".
+
+    Reading absent as "unknown, skip the check" would let a manifest be
+    introduced on resume against a run that processed the whole parent.
+    """
+    output_dir = tmp_path / "out"
+    no_manifest = _config(
+        pipeline=pipeline_stub,
+        input_path=collision_tree,
+        output_dir=output_dir,
+    )
+    legacy = _state_for(no_manifest, output_dir)
+    del legacy.config["image_manifest_digest"]
+
+    assert validate_resume_compatibility(legacy, no_manifest) == (True, None)
+
+    with_manifest = _config(
+        pipeline=pipeline_stub,
+        input_path=collision_tree,
+        output_dir=output_dir,
+        image_manifest=_write_manifest(
+            tmp_path / "a.images", ["plate1/img001.tiff"]
+        ),
+    )
+    compatible, message = validate_resume_compatibility(legacy, with_manifest)
+    assert compatible is False
+    assert message is not None and "Image manifest mismatch" in message
+
+
+def test_the_recorded_digest_is_the_manifest_content_digest(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    """The server binds this same number into the plan token (§5.4)."""
+    output_dir = tmp_path / "out"
+    manifest = _write_manifest(tmp_path / "a.images", ["plate1/img001.tiff"])
+    state = _state_for(
+        _config(
+            pipeline=pipeline_stub,
+            input_path=collision_tree,
+            output_dir=output_dir,
+            image_manifest=manifest,
+        ),
+        output_dir,
+    )
+
+    assert state.config["image_manifest_digest"] == image_manifest_digest(
+        manifest
+    )
+
+
+def test_the_manifest_stays_out_of_the_processing_configuration_digest(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    """Work IDs hash the processing config; adding the manifest would move them."""
+    from phenotypic._cli._cli_failure_tracker import (
+        processing_configuration_digest,
+    )
+
+    output_dir = tmp_path / "out"
+    without = _config(
+        pipeline=pipeline_stub,
+        input_path=collision_tree,
+        output_dir=output_dir,
+    )
+    with_manifest = _config(
+        pipeline=pipeline_stub,
+        input_path=collision_tree,
+        output_dir=output_dir,
+        image_manifest=_write_manifest(
+            tmp_path / "a.images", ["plate1/img001.tiff"]
+        ),
+    )
+
+    assert processing_configuration_digest(
+        without
+    ) == processing_configuration_digest(with_manifest)
+
+
+# ---------------------------------------------------------------------------
+# CLI surface
+# ---------------------------------------------------------------------------
+
+
+def test_the_flag_requires_input(tmp_path: Path) -> None:
+    """A manifest without a parent has no coordinate system to resolve in."""
+    from click.testing import CliRunner
+
+    from phenotypic.phenotypicCLI import phenotypic_cli
+
+    manifest = _write_manifest(tmp_path / "a.images", ["plate1/img001.tiff"])
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "recompile",
+            "--output",
+            str(tmp_path / "out"),
+            "--image-manifest",
+            str(manifest),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--image-manifest requires --input" in result.output

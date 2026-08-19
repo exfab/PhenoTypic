@@ -24,9 +24,23 @@ from phenotypic.sdk_ import (
     resolve_processing_state_path,
 )
 
+from ._cli_directory_scanner import image_manifest_digest
 from ._cli_staged_resume import pipeline_content_digest
 
 logger = logging.getLogger(__name__)
+
+
+def _image_manifest_digest_for(config: ExecutionConfig) -> Optional[str]:
+    """Return the content digest of ``config``'s image manifest, or ``None``.
+
+    ``None`` means "no manifest", which is the value a whole-parent run
+    records and the value a state saved before ``--image-manifest`` existed
+    reads back as. That equivalence is deliberate: a legacy resume with no
+    manifest still matches, while a legacy run resumed *with* one does not.
+    """
+    if config.image_manifest is None:
+        return None
+    return image_manifest_digest(config.image_manifest)
 
 
 def save_processing_state(
@@ -216,6 +230,7 @@ def create_initial_state(
                 if config.pipeline_json.is_file()
                 else None
             ),
+            "image_manifest_digest": _image_manifest_digest_for(config),
             "staged_stage3_markers": config.staged_stage3_markers,
             "success_markers_required": True,
             "processing_generation": uuid4().hex,
@@ -300,7 +315,36 @@ def validate_resume_compatibility(
     # Check input path
     if state.input_path != config.input_path:
         return False, f"Input path mismatch: saved={state.input_path}, current={config.input_path}"
-    
+
+    # Check the approved image subset. ``input_path`` alone does not identify
+    # it: two different manifests under one parent share an input path, and
+    # PhenoTypic auto-resumes on a repeated command, so without this a resume
+    # silently runs an image set nobody approved. The MCP server calls this
+    # very function as its pre-submit drift guard, which is why the guard and
+    # the gap would otherwise be the same code path.
+    #
+    # ``.get`` (not the tolerant ``key not in`` skip used below) is
+    # deliberate: a state written before this key existed reads back as
+    # ``None``, which equals a current run that passes no manifest and differs
+    # from one that does.
+    saved_manifest_digest = state.config.get("image_manifest_digest")
+    try:
+        current_manifest_digest = _image_manifest_digest_for(config)
+    except OSError as exc:
+        # The MCP server collects a plan token's ``.images`` file once the run
+        # is terminal, so an unreadable manifest is reachable rather than
+        # exotic. It is a refusal with a reason, never a traceback out of a
+        # function documented to return a message.
+        return False, (
+            f"Image manifest {config.image_manifest} cannot be read, so the "
+            f"approved image set cannot be re-derived: {exc}"
+        )
+    if saved_manifest_digest != current_manifest_digest:
+        return False, (
+            "Image manifest mismatch: "
+            f"saved={saved_manifest_digest}, current={current_manifest_digest}"
+        )
+
     # Check image type
     if state.config.get("image_type") != config.image_type:
         return False, f"Image type mismatch: saved={state.config.get('image_type')}, current={config.image_type}"
