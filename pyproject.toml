@@ -275,7 +275,16 @@ line-length = 79
 # `ruff check --fix` (the documented lint command) is repo-wide, so without this
 # it silently rewrites them — stripping "unused" imports and reformatting calls —
 # and the diff against upstream stops meaning anything. Never lint or fix them.
-extend-exclude = ["docs/superpowers/**/refs"]
+# ``tests/fixtures/ngff`` and ``tests/fixtures/ome`` are vendored upstream
+# schemas under the same read-only rule. NOTE: this entry is a statement of
+# intent, not the guard — ruff only visits .py/.pyi/.ipynb, so it would never
+# touch a .schema or .xsd anyway. What actually protects those bytes is the
+# sha256 digest test in tests/unit/test_ngff_schema_fixtures.py.
+extend-exclude = [
+    "docs/superpowers/**/refs",
+    "tests/fixtures/ngff",
+    "tests/fixtures/ome",
+]
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
