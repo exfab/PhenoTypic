@@ -219,3 +219,44 @@ def test_list_operations_query_matches_name_and_summary():
         "otsu" in r["name"].lower() or "otsu" in (r["summary"] or "").lower()
         for r in by_summary["operations"]
     )
+
+
+def test_an_aliased_param_is_not_projected_empty():
+    """The schema publishes an aliased field under its alias, not its name.
+
+    ``RemoveGridOutliers.cutoff_multiplier`` carries
+    ``AliasChoices("stddev_multiplier", "cutoff_multiplier")`` and appears in
+    ``model_json_schema()`` as ``stddev_multiplier``. A plain name lookup
+    finds nothing and reports the parameter with no type, no default and no
+    constraints — an agent would then read its default as ``None``.
+    """
+    from phenotypic.refine import RemoveGridOutliers
+
+    assert "cutoff_multiplier" not in RemoveGridOutliers.model_json_schema()["properties"]
+
+    param = next(
+        p
+        for p in describe_operation("RemoveGridOutliers")["params"]
+        if p["name"] == "cutoff_multiplier"
+    )
+    assert param["default"] == 1.5
+    assert param["type"] == "number"
+    assert param["required"] is False
+
+
+def test_every_param_with_a_default_reports_it():
+    """Sweep: no registered parameter may report a default it does not have."""
+    from phenotypic._services.registry import get_registry
+
+    offenders = []
+    for name, info in get_registry().get_all().items():
+        if not hasattr(info.cls, "model_fields"):
+            continue
+        described = {p["name"]: p for p in describe_operation(name)["params"]}
+        for pname, param in info.parameters.items():
+            if pname not in info.cls.model_fields:
+                continue  # not a pydantic field; nothing for the schema to say
+            if param.has_default and param.default is not None:
+                if described[pname]["default"] is None:
+                    offenders.append(f"{name}.{pname}")
+    assert not offenders, f"defaults lost in projection: {offenders}"

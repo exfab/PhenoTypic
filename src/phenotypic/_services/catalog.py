@@ -166,6 +166,53 @@ def _param_constraints(prop: Dict[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in prop.items() if k not in _NON_CONSTRAINT_KEYS}
 
 
+def _alias_keys(field: Any) -> List[str]:
+    """Schema property names a pydantic field may be published under."""
+    keys: List[str] = []
+    for candidate in (
+        getattr(field, "validation_alias", None),
+        getattr(field, "serialization_alias", None),
+        getattr(field, "alias", None),
+    ):
+        if isinstance(candidate, str):
+            keys.append(candidate)
+        else:  # ``AliasChoices`` and friends
+            for choice in getattr(candidate, "choices", ()):
+                if isinstance(choice, str):
+                    keys.append(choice)
+    return keys
+
+
+def _property_for(
+    cls: Any, param_name: str, properties: Dict[str, Any]
+) -> Dict[str, Any]:
+    """The schema property for *param_name*, resolved through any alias.
+
+    An aliased field is published in ``model_json_schema()`` under its
+    alias, not its Python name: ``RemoveGridOutliers.cutoff_multiplier``
+    carries ``AliasChoices("stddev_multiplier", "cutoff_multiplier")`` and
+    appears as ``stddev_multiplier``. A plain name lookup misses it, and the
+    parameter would then be projected with no type, no default and no
+    constraints — silently, since the key simply is not there.
+
+    Args:
+        cls: The operation class being described.
+        param_name: The parameter's Python name, as the registry reports it.
+        properties: The schema's ``properties`` block.
+
+    Returns:
+        The matching property dict, or ``{}`` when the schema publishes no
+        entry for the parameter at all.
+    """
+    if param_name in properties:
+        return properties[param_name]
+    field = getattr(cls, "model_fields", {}).get(param_name)
+    for key in _alias_keys(field):
+        if key in properties:
+            return properties[key]
+    return {}
+
+
 def _layers_modified_for_class(cls: type) -> List[str]:
     """Layers an operation of this class writes to.
 
@@ -300,7 +347,11 @@ def describe_operation(name: str, *, verbose: bool = False) -> Dict[str, Any]:
         "doc": _describe(info.docstring, verbose=verbose),
         "json_schema": schema,
         "params": [
-            _project_param(param, properties.get(param.name, {}), verbose=verbose)
+            _project_param(
+                param,
+                _property_for(info.cls, param.name, properties),
+                verbose=verbose,
+            )
             for param in info.parameters.values()
         ],
         "layers_modified": _layers_modified_for_class(info.cls),
