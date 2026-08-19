@@ -34,7 +34,7 @@ from phenotypic._cli._cli_types import ExecutionConfig, ProcessingState
 
 
 # ---------------------------------------------------------------------------
-# Fixtures: a two-dataset tree whose image *names* collide across datasets.
+# Fixtures: a two-dataset tree whose image *names* repeat across datasets.
 # ---------------------------------------------------------------------------
 
 
@@ -42,9 +42,12 @@ from phenotypic._cli._cli_types import ExecutionConfig, ProcessingState
 def collision_tree(tmp_path: Path) -> Path:
     """``in/plate1/img001.tiff`` and ``in/plate2/img001.tiff``, distinct bytes.
 
-    Identical basenames in different datasets are the case that separates a
-    correct work ID from a basename-only one, and they are ordinary in plate
-    phenotyping: a scanner names every capture ``img001``.
+    Repeated basenames across datasets are ordinary in plate phenotyping — a
+    scanner names every capture ``img001`` — and they are what makes the
+    dataset-qualified relative path visible in a work ID. (They do not
+    *collide* under a basename-only path: ``compute_work_id`` hashes
+    ``dataset`` separately. See
+    ``test_pointing_input_at_the_manifest_would_re_identify_every_image``.)
     """
     root = tmp_path / "in"
     for index, dataset in enumerate(("plate1", "plate2")):
@@ -270,12 +273,12 @@ def test_a_repeated_entry_is_an_error(
 # ---------------------------------------------------------------------------
 
 
-def _work_ids(
+def _work_entries(
     config: ExecutionConfig, image_paths_by_dataset: dict[str, list[Path]]
-) -> dict[str, str]:
-    """Map ``"<dataset>/<name>" -> work_id`` for a scan."""
+) -> dict[str, tuple[str, str]]:
+    """Map ``"<dataset>/<name>" -> (work_id, normalized_relative_path)``."""
     return {
-        f"{dataset}/{image.name}": work_id_for_image(config, dataset, image)[0]
+        f"{dataset}/{image.name}": work_id_for_image(config, dataset, image)
         for dataset, images in image_paths_by_dataset.items()
         for image in images
     }
@@ -289,6 +292,13 @@ def test_work_ids_are_identical_between_a_manifest_and_a_parent_run(
     If it did, a subset run could not continue, retry, or reconcile against a
     whole-parent run of the same images — and ``EXPECTED_WORK_IDS`` in the
     SLURM array would stop matching.
+
+    The relative paths are asserted alongside the ids because the ids alone
+    are a false green: both sides call the same ``work_id_for_image``, so they
+    agree even when that function is broken. The dataset-qualified relative
+    path is the property that actually distinguishes a parent-rooted identity
+    from a basename-only one — measured, not assumed (a mutant that always
+    took the basename passed the id-only version of this test).
     """
     output_dir = tmp_path / "out"
     manifest = _write_manifest(
@@ -310,25 +320,40 @@ def test_work_ids_are_identical_between_a_manifest_and_a_parent_run(
     )
     selected = apply_image_manifest(scanned, manifest, collision_tree)
 
-    parent_ids = _work_ids(parent_config, scanned)
-    manifest_ids = _work_ids(manifest_config, selected)
+    parent_entries = _work_entries(parent_config, scanned)
+    manifest_entries = _work_entries(manifest_config, selected)
 
-    assert set(manifest_ids) == {"plate1/img001.tiff", "plate2/img001.tiff"}
-    assert manifest_ids == {
-        key: parent_ids[key] for key in manifest_ids
+    assert set(manifest_entries) == {
+        "plate1/img001.tiff",
+        "plate2/img001.tiff",
+    }
+    assert {
+        key: relative for key, (_, relative) in manifest_entries.items()
+    } == {
+        "plate1/img001.tiff": "plate1/img001.tiff",
+        "plate2/img001.tiff": "plate2/img001.tiff",
+    }
+    assert manifest_entries == {
+        key: parent_entries[key] for key in manifest_entries
     }
 
 
-def test_same_named_images_in_two_datasets_keep_distinct_work_ids(
+def test_pointing_input_at_the_manifest_would_re_identify_every_image(
     collision_tree: Path, pipeline_stub: Path, tmp_path: Path
 ) -> None:
-    """This is what pointing ``--input`` at the manifest would have broken.
+    """The rejected design, demonstrated rather than described.
 
-    With ``--input`` on the parent, ``work_id_for_image`` uses
-    ``relative_to(input_path)`` and the two ``img001.tiff`` files differ. Were
-    ``--input`` the manifest file, ``input_path.is_file()`` would be true and
-    both would reduce to the basename ``img001.tiff`` — the ``is_file()``
-    branch asserted below, which is why the flag is passed alongside.
+    ``work_id_for_image`` takes ``Path(image_path.name)`` when ``input_path``
+    is a file and ``relative_to(input_path)`` when it is a directory. Point
+    ``--input`` at the manifest and every image's identity changes, so a
+    subset run can no longer continue or reconcile against a parent run of the
+    same images.
+
+    Note what this is *not*: the two ``img001.tiff`` files do not collide,
+    even byte-identical ones, because ``compute_work_id`` hashes ``dataset``
+    as its own field. The harm is divergence from the parent run, which is
+    disqualifying on its own — a run that cannot resume against the dataset it
+    is a subset of.
     """
     manifest = _write_manifest(
         tmp_path / "plan.images",
@@ -336,31 +361,31 @@ def test_same_named_images_in_two_datasets_keep_distinct_work_ids(
     )
     scanned = scan_directory_structure(collision_tree)
     selected = apply_image_manifest(scanned, manifest, collision_tree)
+    output_dir = tmp_path / "out"
 
-    ids = _work_ids(
+    parent_rooted = _work_entries(
         _config(
             pipeline=pipeline_stub,
             input_path=collision_tree,
-            output_dir=tmp_path / "out",
+            output_dir=output_dir,
             image_manifest=manifest,
         ),
         selected,
     )
-    assert ids["plate1/img001.tiff"] != ids["plate2/img001.tiff"]
-
-    # And the rejected design, demonstrated rather than described.
-    file_rooted = _config(
-        pipeline=pipeline_stub,
-        input_path=manifest,
-        output_dir=tmp_path / "out",
+    file_rooted = _work_entries(
+        _config(
+            pipeline=pipeline_stub,
+            input_path=manifest,
+            output_dir=output_dir,
+        ),
+        selected,
     )
-    collapsed = {
-        dataset: work_id_for_image(
-            file_rooted, dataset, collision_tree / dataset / "img001.tiff"
-        )[1]
-        for dataset in ("plate1", "plate2")
+
+    assert {relative for _, relative in file_rooted.values()} == {
+        "img001.tiff"
     }
-    assert collapsed == {"plate1": "img001.tiff", "plate2": "img001.tiff"}
+    for key, (work_id, _) in file_rooted.items():
+        assert work_id != parent_rooted[key][0], key
 
 
 # ---------------------------------------------------------------------------

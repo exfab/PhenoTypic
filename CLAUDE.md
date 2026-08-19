@@ -56,8 +56,9 @@
 - `--image-manifest <file>` — process only the images a file lists (one path per
   line, absolute or relative to `--input`; `#` comments and blank lines ignored).
   **Passed alongside `--input`, never instead of it**: work IDs are derived
-  relative to `--input`, so pointing it at the manifest would collapse every ID
-  to a bare basename and collide identically named images across datasets. Every
+  relative to `--input`, so pointing it at the manifest would collapse every
+  relative path to a bare basename and give every image a *different* work ID
+  than a whole-directory run of the same images, breaking continuation. Every
   entry must be an image the scan of `--input` found — unknown, missing, or
   repeated entries are errors, and an empty manifest is refused rather than read
   as "everything". The run records the manifest's SHA-256 **content** digest, so
