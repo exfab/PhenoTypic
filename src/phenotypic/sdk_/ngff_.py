@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import math
+import re as _re
 from pathlib import Path
 from typing import Final, Literal, Sequence
 
@@ -524,3 +525,367 @@ def read_phenotypic_attributes(store_path: Path) -> dict:
     """
     attributes = read_root_attributes(store_path)
     return attributes[PhenotypicAttr.ROOT]
+
+
+# ---------------------------------------------------------------------------
+# Write-only OME projection (never read back)
+# ---------------------------------------------------------------------------
+
+
+def build_multiscales(
+    *,
+    series: str,
+    level_shapes: Sequence[tuple[int, ...]],
+    name: str | None = None,
+) -> dict:
+    """Build the ``ome.multiscales`` block for one series.
+
+    ``coordinateTransformations`` is derived from the actual level shapes, not
+    from ``2 ** n``: odd extents make the two diverge and NGFF requires the
+    scale vector to describe the real relationship between levels.
+
+    **Physical resolution is deliberately not projected.** Scale vectors are
+    pure level ratios and ``unit`` is omitted, which §2.1 permits.
+
+    Args:
+        series: Series name, selecting the axes.
+        level_shapes: Shape per level, level 0 first.
+        name: ``multiscales[].name``, typically ``Metadata_ImageName``.
+
+    Returns:
+        ``{"multiscales": [ … ]}``.
+    """
+    names = axes_for(series)
+    axes = [{"name": axis, "type": AXIS_TYPES[axis]} for axis in names]
+
+    base = tuple(level_shapes[0])
+    datasets = [
+        {
+            "path": str(index),
+            "coordinateTransformations": [
+                {"type": "scale", "scale": level_scale_vector(base, tuple(shape))}
+            ],
+        }
+        for index, shape in enumerate(level_shapes)
+    ]
+
+    kind = "label" if series == OBJMAP_LABEL else "image"
+    multiscale: dict = {
+        "axes": axes,
+        "datasets": datasets,
+        # §2.4 SHOULD: name the downscaling method and describe it. We compute
+        # exactly these values, so emitting them costs nothing -- and driving
+        # both from one constant is what actually stops the public record from
+        # diverging from the private
+        # `attributes.phenotypic.pyramid.downsample` one, which reads
+        # DOWNSAMPLE_KINDS off the same dict.
+        "type": DOWNSAMPLE_METHODS[kind][0],
+        "metadata": {"description": DOWNSAMPLE_METHODS[kind][1]},
+    }
+    if name is not None:
+        multiscale["name"] = name
+    return {"multiscales": [multiscale]}
+
+# NOTE (ledger ALGO-R2B-16): 2.4 -- "Each 'multiscales' dictionary SHOULD
+# contain the field 'name'." Pass `name` at the LABEL call site too
+# (phase-2 Task 2.2), not just the three image series, or the label block
+# silently skips a SHOULD that every sibling honours.
+
+
+#: Per-channel display colours for the ``rgb`` series.
+_RGB_CHANNEL_COLORS: Final[tuple[tuple[str, str], ...]] = (
+    ("R", "FF0000"),
+    ("G", "00FF00"),
+    ("B", "0000FF"),
+)
+
+
+def build_omero(
+    *,
+    series: str,
+    dtype: "np.dtype",
+    bit_depth: int,
+    name: str | None = None,
+) -> dict:
+    """Build the ``ome.omero`` rendering block for one image series.
+
+    NGFF is conditionally strict here: if ``omero`` is present at all, every
+    channel MUST carry a 6-hex-digit ``color`` and a ``window`` containing all
+    four of ``min``, ``max``, ``start``, ``end``. A partial projection fails the
+    conformance gate on the first store written, so this emits the block
+    completely or the caller omits it entirely.
+
+    ``omero`` is never emitted on a label group, and never on a **float**
+    series. Both ``gray`` and ``detect_mat`` are float, typically in
+    ``[0, 1]``, so a ``2**bit_depth - 1`` window over them puts ``[0, 255]``
+    across ``[0, 1]`` data and any viewer honouring ``omero`` renders them
+    near-black. ``gray`` is the primary series in every rgb-less store, which
+    makes it the worst place for that defect. In practice ``rgb`` is the only
+    series that carries a block, and an rgb-less store carries none -- which is
+    fine: §2.5 makes ``omero`` optional, and the whole-or-nothing rule is per
+    group. This supersedes the spec's §2.2, which applies the window to every
+    series.
+
+    The test is the **dtype**, not the series name. Keying on dtype means that
+    if the deferred integer conversion ever lands, the affected series get their
+    block back automatically.
+
+    Args:
+        series: ``"rgb"``, ``"gray"``, or ``"detect_mat"``.
+        dtype: Level-0 dtype. Float dtypes get no block.
+        bit_depth: Source bit depth; ``max``/``end`` are ``2**bit_depth - 1``.
+        name: ``omero.name``, typically ``Metadata_ImageName``.
+
+    Returns:
+        ``{"omero": {"channels": [ … ]}}``, or ``{}`` for a float series.
+    """
+    if np.issubdtype(dtype, np.floating):
+        return {}
+    ceiling = (2 ** int(bit_depth)) - 1
+    palette = (
+        _RGB_CHANNEL_COLORS if series == "rgb" else ((series, "FFFFFF"),)
+    )
+    channels = [
+        {
+            "label": label,
+            "color": color,
+            "active": True,
+            "family": "linear",
+            "coefficient": 1,
+            "inverted": False,
+            "window": {"min": 0, "max": ceiling, "start": 0, "end": ceiling},
+        }
+        for label, color in palette
+    ]
+    block: dict = {"channels": channels}
+    if name is not None:
+        block["name"] = name
+    return {"omero": block}
+
+
+def build_image_label() -> dict:
+    """Build the ``ome.image-label`` block for the objmap label image.
+
+    Always emitted: ``label.schema``'s **``properties.ome.required``** is
+    ``["image-label", "version"]`` -- note the path. What is required is
+    ``ome.version``, *not* a ``version`` inside the ``image-label`` object.
+    The inner ``image-label.version`` emitted below is **also** specified --
+    NGFF 0.5 2.6: *"That image-label object SHOULD contain the following keys:
+    first, a colors key... Second, a version key, whose value MUST be a string
+    specifying the version of the OME-Zarr image-label schema."* Both are
+    emitted; neither is redundant (ledger **ALGO-6**, corrected by **ALGO-12**
+    -- an earlier draft called the inner one "a 0.4-ism", which invites a
+    future reader to delete a documented SHOULD).
+
+    **Takes no arguments, deliberately.** ``colors`` carries only the
+    transparent background entry rather than one entry per unique label value.
+    ``$defs/image-label`` sets no ``required`` list, so ``colors`` is optional
+    and a background-only entry conforms. A per-value palette would be a
+    function of the array contents, which is what makes it able to go stale;
+    this one cannot. Nothing in PhenoTypic reads ``colors`` (the GUI colourises
+    through ``skimage.color.label2rgb``); only the conformance gate and external
+    viewers do, and external viewers fall back to their own palette. This
+    supersedes the spec's §2.3.
+
+    ``properties`` is deliberately not emitted -- parquet remains the only
+    measurement surface (locked decision #10).
+
+    Returns:
+        ``{"image-label": {…}}``, constant size regardless of colony count.
+    """
+    return {
+        "image-label": {
+            "version": NGFF_VERSION,
+            "source": {"image": "../../"},
+            "colors": [{"label-value": 0, "rgba": [0, 0, 0, 0]}],
+        }
+    }
+
+
+def _ome_xml_modules(metadata_sections: dict[str, dict]) -> dict[str, dict]:
+    """Group metadata headers by REMBI module for the OME-XML annotation block.
+
+    Note the API: ``header_to_module()`` takes **no arguments** and returns the
+    whole ``{header: REMBI_MODULE}`` mapping (``schema/_rembi.py:29``, lru-cached).
+    """
+    # An earlier draft called it as `header_to_module(key)`, which raises
+    # TypeError on the first key -- and because `build_ome_xml` caught
+    # everything and returned None, that one-line mistake would have made every
+    # store ship with no OME/ group at all, silently. That is why the failure
+    # path is now fatal.
+    from phenotypic.schema import header_to_module
+
+    mapping = header_to_module()
+    grouped: dict[str, dict] = {}
+    for section, payload in metadata_sections.items():
+        for key, value in payload.items():
+            module = mapping.get(key) or section
+            # `.value`, NOT str(). REMBI_MODULE is a str-mixin Enum with no
+            # __str__ override, so str(REMBI_MODULE.BIOSAMPLE) is the Python
+            # repr 'REMBI_MODULE.BIOSAMPLE', not 'Biosample' -- which would
+            # ship a Python-internal name as the MapAnnotation Namespace, mixed
+            # with plain section fallbacks like "imported". A legal anyURI, so
+            # ome.xsd cannot catch it. Ledger ALGO-10.
+            grouped.setdefault(getattr(module, "value", module), {})[key] = value
+    return grouped
+
+
+#: Characters XML 1.0 permits at all, per the ``Char`` production. Note **1.0,
+#: not 1.1**: `#x7F` (DEL) and the C1 block `#x80-#x9F` are *discouraged* by
+#: 1.0 2.2 but NOT forbidden, and they sit inside `[#x20-#xD7FF]` -- only XML
+#: 1.1 restricts them, via `RestrictedChar`. Do not "tighten" this to strip
+#: them; that would silently drop legitimate MakerNote bytes. `#xFFFD` is
+#: deliberately RETAINED -- it is the top of `[#xE000-#xFFFD]` and it is what
+#: `decode(errors="replace")` emits, so stripping it would delete the very
+#: marks that record a repair.
+#: ``#x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]``.
+#: Everything else is forbidden OUTRIGHT -- not even as a character reference --
+#: so no amount of escaping rescues it.
+_XML_FORBIDDEN = _re.compile(
+    "[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]"
+)
+
+
+def _xml_text(value: object) -> str:
+    """Coerce to a string containing only characters XML 1.0 permits.
+
+    Sanitizes rather than raises, deliberately. A NUL-padded EXIF string is
+    *legitimate* camera input, and OME-XML failure is fatal by user ruling
+    (ALGO-1) -- so raising here would abort a real run over a ``MakerNote``.
+    Dropping the offending code points loses nothing a reader could have used.
+
+    Args:
+        value: Any metadata key or value.
+
+    Returns:
+        The string form with forbidden code points removed.
+    """
+    return _XML_FORBIDDEN.sub("", str(value))
+
+
+#: numpy dtype kind+itemsize -> OME-XML PixelType. A closed enumeration in
+#: ``ome.xsd``; an unmapped dtype is a hard error, not a fallback.
+#:
+#: Deliberately a SUBSET: ``bit`` (numpy ``b1``), ``complex`` (``c8``), and
+#: ``double-complex`` (``c16``) are legal PixelType values but unreachable --
+#: this function only ever sees rgb/gray/detect_mat. ``objmap`` never reaches
+#: it because **labels get no ``<Image>`` element at all** -- not because its
+#: dtype is unmappable (``uint16`` maps fine); stating the real reason keeps
+#: someone from "fixing" a non-problem. ``int64``/``uint64``/``float16`` have NO OME equivalent at all,
+#: so raising on them is correct, not a gap. Do not "complete" this map.
+_OME_PIXEL_TYPES: Final[dict[str, str]] = {
+    "u1": "uint8", "u2": "uint16", "u4": "uint32",
+    "i1": "int8", "i2": "int16", "i4": "int32",
+    "f4": "float", "f8": "double",
+}
+
+
+def _ome_pixel_type(dtype: "np.dtype") -> str:
+    """Map a numpy dtype to an OME-XML ``PixelType``.
+
+    Raises:
+        ValueError: If the dtype has no OME equivalent. Loud by design -- a
+            silent fallback here is what let an invalid document ship.
+    """
+    key = np.dtype(dtype).str[1:]
+    if key not in _OME_PIXEL_TYPES:
+        raise ValueError(
+            f"no OME PixelType for dtype {np.dtype(dtype)!r}; "
+            f"supported: {sorted(_OME_PIXEL_TYPES.values())}"
+        )
+    return _OME_PIXEL_TYPES[key]
+
+
+def build_ome_xml(
+    *,
+    series_names: Sequence[str],
+    series_shapes: dict[str, tuple[int, ...]],
+    series_dtypes: dict[str, "np.dtype"],
+    metadata_sections: dict[str, dict],
+) -> str:
+    """Build the ``MetadataOnly`` OME-XML document. **Raises on failure.**
+
+    §2.2.3 makes this a conditional MUST: the document *"MUST adhere to the
+    OME-XML specification but MUST use ``<MetadataOnly/>`` elements"*. An
+    earlier draft emitted ``<Pixels />`` with no attributes and no
+    ``<MetadataOnly/>`` child, and put ``<M>`` entries directly under
+    ``<MapAnnotation>`` instead of inside a ``<Value>`` -- all three invalid
+    against ``ome.xsd`` 2016-06, so every store's ``METADATA.ome.xml`` would
+    have been rejected by exactly the Bio-Formats/OME tooling that
+    ``bioformats2raw.layout: 3`` exists to serve.
+
+    **Failure is fatal, deliberately** (user ruling; OPEN-QUESTIONS
+    **PRE-G2** / **ALGO-3**). This is string formatting over already-validated
+    data, so the realistic failure modes are an unmapped dtype and a genuine
+    bug -- and a bug is exactly what the old ``except Exception: return None``
+    hid: it would have swallowed a one-line API mistake and shipped **every**
+    store with no ``OME/`` group, silently and forever. The spec's
+    "consecutive-integer fallback" is withdrawn with it: keeping named groups
+    while dropping ``series`` satisfies neither arm of §2.2.3 and is strictly
+    less conformant than either.
+
+    Args:
+        series_names: Series in canonical order; one ``<Image>`` each.
+        series_shapes: Level-0 shape per series, for the ``Size*`` attributes.
+        series_dtypes: Level-0 dtype per series, for ``Type``.
+        metadata_sections: Metadata to project as structured annotations.
+
+    Returns:
+        A conformant OME-XML document.
+
+    Raises:
+        ValueError: On an unmapped dtype.
+        KeyError: If a named series has no shape or dtype entry.
+    """
+    from xml.sax.saxutils import escape, quoteattr
+
+    def _image(index: int, series: str) -> str:
+        shape = series_shapes[series]
+        size_c = shape[0] if len(shape) == 3 else 1
+        size_y, size_x = shape[-2], shape[-1]
+        return (
+            f'    <Image ID="Image:{index}" Name={quoteattr(series)}>\n'
+            f'      <Pixels ID="Pixels:{index}" DimensionOrder="XYZCT" '
+            f'Type="{_ome_pixel_type(series_dtypes[series])}" '
+            f'SizeX="{size_x}" SizeY="{size_y}" SizeZ="1" '
+            f'SizeC="{size_c}" SizeT="1">\n'
+            f"        <MetadataOnly/>\n"
+            f"      </Pixels>\n"
+            f"    </Image>"
+        )
+
+    def _annotation(index: int, module: str, payload: dict) -> str:
+        entries = "\n".join(
+            f"          <M K={quoteattr(_xml_text(key))}>"
+            f"{escape(_xml_text(value))}</M>"
+            for key, value in sorted(payload.items())
+        )
+        return (
+            f'    <MapAnnotation ID="Annotation:{index}" '
+            # `module` is a REMBI_MODULE.value or one of the three literal
+            # section names, so it cannot carry a control character -- but that
+            # provenance is 200 lines away in `_ome_xml_modules`, and the
+            # asymmetry with the sanitized K/text above reads as an oversight.
+            # Wrapped for symmetry, at zero cost (ledger algo-r3).
+            f"Namespace={quoteattr(_xml_text(module))}>\n"
+            f"      <Value>\n{entries}\n      </Value>\n"
+            f"    </MapAnnotation>"
+        )
+
+    modules = _ome_xml_modules(metadata_sections)
+    images = "\n".join(
+        _image(index, series) for index, series in enumerate(series_names)
+    )
+    annotations = "\n".join(
+        _annotation(index, module, payload)
+        for index, (module, payload) in enumerate(sorted(modules.items()))
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2016-06">\n'
+        f"{images}\n"
+        "  <StructuredAnnotations>\n"
+        f"{annotations}\n"
+        "  </StructuredAnnotations>\n"
+        "</OME>\n"
+    )
