@@ -47,6 +47,8 @@ human prose and may change.
 | `profile_not_expressible` | error | A profile key the target CLI surface cannot carry — e.g. `account`/`qos`/`cpus_per_task` on the tune path, which accepts only four discrete SLURM flags (§5.2.1) |
 | `plan_required` | error | `deploy_start` without a `plan_token` (§5.4) |
 | `plan_stale` | error | Plan token's pipeline/images/compute digest no longer matches |
+| `restart_would_mix_approvals` | error | `deploy_start {restart:true}` against an output root already holding deliverables from a **different** `image_manifest_digest` (USER-32). `--restart` bypasses the drift check while keeping deliverables, so this is the only thing standing between a re-deploy and two approved sets blended beyond separation. Carries both digests and the run that produced the existing ones; the remedy is a new `run_name` |
+| `sample_excludes_manifest` | error | `sample` was supplied alongside `image_manifest` (USER-33). Sampling an approved set silently shrinks what a human agreed to while leaving the manifest digest valid |
 | `campaign_not_approved` | error | `campaign_start` on a `draft` campaign |
 | `campaign_arm_scope_full` | error | A campaign deploy arm targeting the full dataset — campaigns are subset-scoped (§10.4) |
 | `amendment_exceeds_envelope` | error | A mid-campaign amendment outside the approved budget, profile, or scorer |

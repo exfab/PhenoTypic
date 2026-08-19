@@ -387,7 +387,7 @@ Same arguments as `deploy_plan`, plus:
 | `note` | `str?` | `null` | Free-text context recorded alongside the approval |
 | `resume` | `bool` | `false` | Continue an interrupted run |
 | `retry_failures` | `bool` | `false` | Requires `resume` |
-| `restart` | `bool` | `false` | Clear machine state and start over |
+| `restart` | `bool` | `false` | Clear machine state and start over. **Refused against an output root already holding deliverables from a different approved manifest** (`restart_would_mix_approvals`, USER-32) — see below |
 
 The response carries
 **`ack_source: "elicited" | "agent_asserted" | "campaign_approved"`** (§8.2), which
@@ -622,6 +622,31 @@ status is polled (§5.5). This matches the CLI's own default.
 `resume` preconditions are checked by the server *before* submitting, because
 the CLI's failure mode is `sys.exit(1)` inside a subprocess, which reaches the
 agent as an opaque non-zero exit.
+
+**`restart` requires a fresh output root when an approved manifest is involved.**
+`--restart` sets `continuing = False` (`phenotypicCLI.py:1486-1491`), which
+bypasses the manifest drift check **while keeping `results/`, `deliverables/` and
+`qc/`**. So a re-deploy carrying a *different* manifest would be accepted with no
+comparison at all, and deliverables would silently blend two separately-approved
+image sets — a state nobody can untangle afterwards, because no row records which
+approval it came from.
+
+So `deploy_start {restart: true}` is refused when the output root already holds
+deliverables produced under a **different** `image_manifest_digest`. One output
+root, one approved set. The agent's remedy is a new `run_name`, which costs
+nothing.
+
+The alternative — making `--restart` participate in the drift guard — was
+rejected because it would require auditing every other flag that sets
+`continuing = False` for the same bypass, and a guard whose coverage depends on
+an audit is not a guard.
+
+**`sample` and `image_manifest` are mutually exclusive** (USER-33). `--sample N`
+applies *after* the manifest, so a human could approve 312 images and have 20
+run with the manifest and its digest both unchanged. The two express
+contradictory intents — a set someone specifically approved is not a set to
+sample — so the combination is a hard error at the CLI rather than an ordering
+subtlety for an agent to reason about.
 
 **The same pre-submit block also checks for a half-migrated output tree.** The
 OME-Zarr store makes *every mode that consumes results* refuse against a tree
