@@ -305,3 +305,53 @@ the guard and the gap are the same code path.
 
 **Revised sequence:** `C4 → C6 → C7a → C7b → C5`, with `C8 ∥ C4`, and **C8 gated
 and merged before C6** (shared `_services/argv.py`). C9 no longer participates.
+
+---
+
+## PENDING: relocate the authoritative checkout back to `exfab`
+
+**User's decision (2026-08-19): `/bigdata/exfab/anguy344/PhenoTypic` is the tree
+they want to work in.** Work moved to `iwheeldonlab` earlier only because `exfab`
+was at 100% of its 36T quota. **That is resolved — `exfab` is now at 50% (18T
+used, 19T free)** — so the reason for the split no longer exists.
+
+**Do this only when C4, C8, C6, C7a, C7b and C5 have all settled.** Relocating
+mid-cluster means an agent's worktree and the authoritative branch disagree about
+where HEAD is, which is the whole class of failure that cost four agent-cycles
+today.
+
+### Procedure
+
+1. **Gates clear**, and `c8-manifest` is merged into `feat/mcp-server` in
+   `iwheeldonlab`. Do not relocate an unmerged cluster.
+2. **Fetch, do not copy** — a local fetch, no network, no remote:
+
+       git -C /bigdata/exfab/anguy344/PhenoTypic \
+           fetch /bigdata/iwheeldonlab/anguy344/PhenoTypic \
+           'refs/heads/feat/mcp-server:refs/heads/feat/mcp-server'
+
+   `rsync`/`mv` of the directory would break the ten worktrees registered under
+   `exfab`, including the live `worktree-ome-zarr-image-store`.
+3. **Check it out** in `exfab` and verify HEAD matches `iwheeldonlab`'s tip.
+4. **Retire the `iwheeldonlab` copy immediately** — rename its branch or remove
+   the clone. Leaving two checkouts both holding a live `feat/mcp-server` simply
+   re-creates the collision in the opposite direction, and the next agent to land
+   in the *wrong* one would be landing in what is now the stale copy.
+5. **Remove the `c8-manifest` worktree** at
+   `/bigdata/iwheeldonlab/anguy344/PhenoTypic-worktrees/c8-manifest` once merged.
+6. **Delete `STALE-DO-NOT-USE-see-iwheeldonlab`** in `exfab` — it is `b4401dee`,
+   a strict ancestor, holding nothing unique.
+
+### Do not lose in the move
+
+- `rescued/ome-zarr-image-store` and `rescued/streamlit-run-monitor` in
+  `iwheeldonlab` are **local mirrors** of branches whose originals live in
+  `exfab`. They can be dropped after the move *only* because the originals are
+  there — verify that before deleting anything.
+- **origin was missing 9 commits** of `worktree-ome-zarr-image-store` as of
+  2026-08-19. That branch is still single-copy-ish and worth pushing, which is
+  the `ome-zarr-cli` session's call, not ours.
+
+**Net effect:** one authoritative checkout, at the path the user actually works
+in, and the `bigdata_exfab` symlink — the session's default cwd — finally points
+at the right tree instead of a stale one.
