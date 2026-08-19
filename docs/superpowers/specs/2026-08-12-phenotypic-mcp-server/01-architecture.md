@@ -335,12 +335,19 @@ and, for the latter, a queue position. Without those two, the ceiling introduces
 a starvation mode the per-campaign budget never had, and hides it behind a
 healthy-looking poll.
 
-**A second local arm does not wait.** Arriving at a full slot it is told the slot
-is busy and returns — it does not park on the semaphore. This is what keeps the
-local path inside USER-1's submit-and-poll contract: a blocking acquire would
-stall the call for the hours an arm actually takes, against a host timeout the
-server does not control, and an abandoned coroutine would still be holding a
-reservation nothing will ever release.
+**A second local arm does not make its *caller* wait.** The distinction matters
+and an earlier phrasing blurred it. The handler returns immediately with a
+`run_id`, a `queued` status and a `queue_position`; the *run* then waits for the
+slot in the background launcher (below). What is forbidden is the handler parking
+on the semaphore — a blocking acquire would stall the call for the hours an arm
+actually takes, against a host timeout the server does not control, and an
+abandoned coroutine would hold a reservation nothing will ever release.
+
+So local batch work is **queued, not refused** — refusing would make the server
+useless on a workstation, which is the case §1.5 exists to serve. `W1` probes are
+the exception and genuinely fail rather than queue: `probe_timeout_s` includes
+slot wait by design, so a probe that cannot start promptly is not worth starting
+at all (`local_slot_timeout`, §6.2).
 
 ### Blocking work never blocks the event loop
 
