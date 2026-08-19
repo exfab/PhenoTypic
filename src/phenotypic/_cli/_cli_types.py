@@ -146,6 +146,16 @@ class ExecutionConfig:
     # Metadata join
     metadata_csv: Optional[Path] = None
 
+    # Approved image subset (``--image-manifest``). ``None`` means "every
+    # image under ``input_path``". It is a filter *within* ``input_path``,
+    # never a replacement for it: ``work_id_for_image`` derives each image's
+    # identity relative to ``input_path``, so repointing that at a manifest
+    # file would collapse every relative path to a bare basename and give
+    # every image a different work ID than the parent run of the same
+    # images -- which is what continuation, retry, and SLURM reconciliation
+    # match on.
+    image_manifest: Optional[Path] = None
+
     # Skip QC during final aggregation, including staged SLURM finalization.
     no_qc: bool = False
 

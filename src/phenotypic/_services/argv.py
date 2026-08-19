@@ -6,6 +6,13 @@ They live together because ``to_argv``'s signature *is* the dataclass: splitting
 them would make this module import back up into :mod:`phenotypic.gui`, inverting
 the layering the architecture asserts.
 
+``to_argv`` renders the mode-independent tail; ``slurm_argv_extension`` renders
+the profile's ``--slurm`` pairs; ``to_subprocess_argv`` is the **single**
+composition point that joins them with the launcher and the GPU-staging flags.
+The three stay separate because a local run must not carry SLURM argv, and they
+are all here because spec ``05-deploy-and-slurm.md`` §5.4 digests the composed
+list — two renderings of it would be two digests.
+
 Also hosts the ``phenotypic.tune run`` semantic-tail and argv builders, promoted
 from ``gui/tune/_run_argv.py`` so the tune surface and the MCP server share one
 spelling of the command line.
@@ -18,7 +25,7 @@ Nothing here imports Dash, Flask, or :mod:`phenotypic.gui` — enforced by
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -29,7 +36,9 @@ __all__ = [
     "RunConsoleState",
     "run_state_to_json",
     "run_state_from_json",
+    "slurm_argv_extension",
     "to_argv",
+    "to_subprocess_argv",
     "tune_run_argv",
     "tune_run_argv_from_tail",
     "tune_run_tail",
@@ -47,6 +56,18 @@ _ADVANCED_KEYS: frozenset[str] = frozenset(
 # free-form ``--slurm k=v`` pass-through bucket.
 _SLURM_KEYS: frozenset[str] = frozenset(
     {"partition", "time", "mem", "cpus_per_task", "gpus", "extra"}
+)
+
+# ``slurm_args`` keys emitted as ``--slurm key=value`` in this fixed order.
+# Order is load-bearing: spec 05 §5.4 digests the rendered argv, so a
+# reordering here moves ``argv_digest`` for every already-minted plan token.
+# Promoted from ``gui/run_console/_slurm.py`` with the emitter that reads it.
+_SLURM_DIRECT_KEYS: tuple[str, ...] = (
+    "partition",
+    "time",
+    "mem",
+    "cpus_per_task",
+    "gpus",
 )
 
 @dataclass
@@ -69,6 +90,18 @@ class RunConsoleState:
             CLI just validates inputs without processing images.
         retry_failures: When ``True``, append ``--retry-failures`` for this
             invocation without clearing terminal history.
+        restart: When ``True``, append ``--restart`` so the CLI clears the
+            previous machine-state and starts the run over. Mutually
+            exclusive with the CLI's ``--overwrite``, which this state
+            deliberately cannot express: ``--overwrite`` deletes the output
+            tree, and a caller that only holds a serialized state should not
+            be able to ask for that.
+        image_manifest: Absolute path (string) to a ``.images`` manifest
+            listing the exact subset of ``input_dir`` to process. ``None``
+            means "every image under ``input_dir``". The manifest is passed
+            *alongside* ``--input``, never instead of it: work IDs are
+            derived relative to ``--input``, so pointing it at the manifest
+            file would collapse every work ID to a bare basename.
         advanced_args: Optional advanced flag bucket. Recognised keys:
             ``sample`` (int), ``nrows`` (int), ``ncols`` (int),
             ``image_type`` (str), ``workers`` (int), ``log_level`` (str).
@@ -90,6 +123,8 @@ class RunConsoleState:
     mode: ExecutionMode = "local"
     dry_run: bool = False
     retry_failures: bool = False
+    restart: bool = False
+    image_manifest: str | None = None
     advanced_args: dict[str, Any] = field(default_factory=dict)
     slurm_args: dict[str, Any] = field(default_factory=dict)
     gpu_slurm_args: tuple[str, ...] = ()
@@ -123,6 +158,8 @@ def run_state_to_json(state: RunConsoleState) -> dict[str, Any]:
         "mode": state.mode,
         "dry_run": bool(state.dry_run),
         "retry_failures": bool(state.retry_failures),
+        "restart": bool(state.restart),
+        "image_manifest": state.image_manifest,
         "advanced_args": dict(state.advanced_args or {}),
         "slurm_args": _slurm_args_to_json(state.slurm_args or {}),
         "gpu_slurm_args": list(state.gpu_slurm_args),
@@ -170,6 +207,8 @@ def run_state_from_json(payload: dict[str, Any]) -> RunConsoleState:
         mode=mode,
         dry_run=bool(payload.get("dry_run", False)),
         retry_failures=bool(payload.get("retry_failures", False)),
+        restart=bool(payload.get("restart", False)),
+        image_manifest=_coerce_optional_str(payload.get("image_manifest")),
         advanced_args=advanced_args,
         slurm_args=slurm_args,
         gpu_slurm_args=gpu_slurm_args,
@@ -329,7 +368,15 @@ def to_argv(state: RunConsoleState) -> list[str]:
     The returned list does **not** include the leading executable / module
     spec — callers prepend ``[sys.executable, "-m", "phenotypic"]`` (or the
     equivalent shell incantation). ``--slurm k=v`` pairs are not added here;
-    SLURM-specific argv extension is the SLURM runner's responsibility.
+    SLURM-specific argv extension is :func:`slurm_argv_extension`'s job, and
+    :func:`to_subprocess_argv` is the one composition point that joins the
+    two. Keeping them apart is deliberate: a local run must not carry SLURM
+    argv, and duplicating either half would silently double-emit.
+
+    ``--input`` is always emitted, including when ``image_manifest`` is set.
+    The manifest names a subset *of* ``--input``; it never replaces it,
+    because ``work_id_for_image`` derives each image's identity from its path
+    relative to ``--input``.
 
     Args:
         state: The form state to translate. Must have non-``None``
@@ -376,6 +423,9 @@ def to_argv(state: RunConsoleState) -> list[str]:
         output_dir,
     ]
 
+    if state.image_manifest:
+        argv.extend(["--image-manifest", str(state.image_manifest)])
+
     if state.metadata_csv:
         argv.extend(["--metadata", str(state.metadata_csv)])
 
@@ -383,6 +433,8 @@ def to_argv(state: RunConsoleState) -> list[str]:
         argv.append("--dry-run")
     if state.retry_failures:
         argv.append("--retry-failures")
+    if state.restart:
+        argv.append("--restart")
 
     advanced = state.advanced_args or {}
     sample = advanced.get("sample")
@@ -411,6 +463,93 @@ def to_argv(state: RunConsoleState) -> list[str]:
     _ = _ADVANCED_KEYS  # silence unused-warning while documenting the set
     _ = _SLURM_KEYS
 
+    return argv
+
+
+def slurm_argv_extension(slurm_args: Mapping[str, Any]) -> list[str]:
+    """Build the repeated ``--slurm key=value`` arguments for one profile.
+
+    Promoted from ``gui/run_console/_slurm.py`` so the GUI submitter and the
+    MCP server render the same pairs. The GUI also uses an empty
+    return as its "no SLURM profile configured" predicate, so an empty
+    ``slurm_args`` must keep yielding ``[]`` rather than raising.
+
+    Args:
+        slurm_args: The ``RunConsoleState.slurm_args`` bucket. Recognised
+            direct keys are emitted first in :data:`_SLURM_DIRECT_KEYS` order;
+            an ``extra`` sub-mapping is appended as free-form pairs.
+
+    Returns:
+        Flat token list, e.g. ``["--slurm", "partition=short", "--slurm",
+        "mem=4G"]``. Empty when nothing is configured.
+
+    Examples:
+        >>> slurm_argv_extension({"partition": "short", "mem": "4G"})
+        ['--slurm', 'partition=short', '--slurm', 'mem=4G']
+        >>> slurm_argv_extension({})
+        []
+    """
+    if not slurm_args:
+        return []
+    pairs: list[tuple[str, str]] = []
+    for key in _SLURM_DIRECT_KEYS:
+        value = slurm_args.get(key)
+        if value is not None and value != "":
+            pairs.append((key, str(value)))
+    extra = slurm_args.get("extra") or {}
+    if isinstance(extra, Mapping):
+        for extra_key, extra_value in extra.items():
+            if (
+                extra_key is not None
+                and extra_value is not None
+                and str(extra_key)
+                and str(extra_value)
+            ):
+                pairs.append((str(extra_key), str(extra_value)))
+    argv: list[str] = []
+    for key, value in pairs:
+        argv.extend(["--slurm", f"{key}={value}"])
+    return argv
+
+
+def to_subprocess_argv(
+    state: RunConsoleState,
+    *,
+    python: str | None = None,
+) -> list[str]:
+    """Assemble the complete ``python -m phenotypic`` argument vector.
+
+    **This is the one composition point.** ``to_argv`` renders the
+    mode-independent tail and deliberately excludes SLURM argv; this function
+    is where that tail meets the profile's ``--slurm`` pairs and the
+    GPU-staging flags. Spec ``05-deploy-and-slurm.md`` §5.4 digests exactly
+    this list, so any caller that assembles the halves itself would produce a
+    digest nobody else can reproduce — and a caller that added the SLURM
+    pairs *and* called this would emit every one of them twice.
+
+    Args:
+        state: The form state to translate.
+        python: Python executable, defaulting to :data:`sys.executable`.
+
+    Returns:
+        Full argv including the launcher, ready for ``subprocess`` or for
+        hashing into ``argv_digest``.
+
+    Raises:
+        ValueError: Propagated from :func:`to_argv` when a required path slot
+            is unset.
+    """
+    argv = [
+        python or sys.executable,
+        "-m",
+        "phenotypic",
+        *to_argv(state),
+        *slurm_argv_extension(state.slurm_args or {}),
+    ]
+    for token in state.gpu_slurm_args:
+        argv.extend(["--gpu-slurm", token])
+    if state.gpu_shards != 1:
+        argv.extend(["--gpu-shards", str(state.gpu_shards)])
     return argv
 
 

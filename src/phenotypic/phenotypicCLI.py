@@ -142,6 +142,7 @@ import yaml  # type: ignore[import-untyped]
 from phenotypic import ImagePipeline
 from phenotypic._core._image_parts.detection_modes import available_modes
 from phenotypic._cli._cli_directory_scanner import (
+    apply_image_manifest,
     organize_by_dataset,
     scan_directory_structure,
     scan_hdf_outputs,
@@ -930,6 +931,21 @@ def _print_process_only_dry_run_plan(
     help="Input image file or directory to process.",
 )
 @click.option(
+    "--image-manifest",
+    "image_manifest",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help=(
+        "File listing the exact subset of --input to process: one image path "
+        "per line, absolute or relative to --input; blank lines and #comments "
+        "ignored. Passed ALONGSIDE --input, which still names the parent "
+        "directory — image identity is derived relative to --input, so the "
+        "same image keeps the same work ID in a manifest run and a "
+        "whole-directory run. Every entry must be an image found under "
+        "--input; unknown or repeated entries are errors."
+    ),
+)
+@click.option(
     "-o",
     "--output",
     "output_dir",
@@ -1147,6 +1163,7 @@ def phenotypic_cli(
     ctx: click.Context,
     pipeline_json: Optional[Path],
     input_path: Optional[Path],
+    image_manifest: Optional[Path],
     output_dir: Path,
     mode: str,
     image_type: str,
@@ -1223,6 +1240,16 @@ def phenotypic_cli(
         elif layer is not None:
             raise click.UsageError(
                 "--layer can only be used with --mode process."
+            )
+
+        # An image manifest names a subset *of* --input, so it is meaningless
+        # without one. Refusing here keeps the pairing an invariant every
+        # later stage can rely on rather than a convention.
+        if image_manifest is not None and input_path is None:
+            raise click.UsageError(
+                "--image-manifest requires --input: the manifest names a "
+                "subset of the input tree, and each image's identity is "
+                "derived relative to --input."
             )
 
         if measure_only or recompile_only:
@@ -1503,6 +1530,7 @@ def phenotypic_cli(
             skip_validation=skip_validation,
             restart=restart,
             metadata_csv=metadata_csv,
+            image_manifest=image_manifest,
             no_qc=no_qc,
             checkpoint_interval=checkpoint_interval,
             measure_only=measure_only,
@@ -1651,6 +1679,23 @@ def phenotypic_cli(
             click.echo(f"Scanning {input_path}...")
             try:
                 image_paths_by_dataset = scan_directory_structure(input_path)
+                # The manifest narrows the scan; --input still names the
+                # parent, so every surviving image keeps the work ID it would
+                # have had in a whole-directory run.
+                if image_manifest is not None:
+                    scanned_total = sum(
+                        len(paths) for paths in image_paths_by_dataset.values()
+                    )
+                    image_paths_by_dataset = apply_image_manifest(
+                        image_paths_by_dataset, image_manifest, input_path
+                    )
+                    selected_total = sum(
+                        len(paths) for paths in image_paths_by_dataset.values()
+                    )
+                    click.echo(
+                        f"✓ Image manifest {image_manifest} selected "
+                        f"{selected_total} of {scanned_total} image(s)"
+                    )
                 datasets = organize_by_dataset(
                     image_paths_by_dataset, output_dir
                 )

@@ -12,7 +12,6 @@ import logging
 import os
 import signal
 import subprocess
-import sys
 import threading
 import time
 from collections import defaultdict, deque
@@ -32,7 +31,11 @@ from phenotypic._cli._cli_slurm_lifecycle import (
     query_scheduler_comments,
     read_lifecycle_ledger,
 )
-from phenotypic.gui.run_console._state import RunConsoleState, to_argv
+from phenotypic._services.argv import (
+    slurm_argv_extension,
+    to_subprocess_argv,
+)
+from phenotypic.gui.run_console._state import RunConsoleState
 from phenotypic.sdk_ import JobMetadataKey, job_metadata_path
 
 __all__ = [
@@ -47,13 +50,6 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-_SLURM_DIRECT_KEYS: tuple[str, ...] = (
-    "partition",
-    "time",
-    "mem",
-    "cpus_per_task",
-    "gpus",
-)
 _PRIMARY_ROLE_ORDER = (
     "controller-initial",
     "chunk",
@@ -174,40 +170,13 @@ class _SubmissionReconciliation:
     cancelled: bool = False
 
 
-def _slurm_argv_extension(slurm_args: dict[str, object]) -> list[str]:
-    """Build repeated ``--slurm key=value`` arguments."""
-    if not slurm_args:
-        return []
-    pairs: list[tuple[str, str]] = []
-    for key in _SLURM_DIRECT_KEYS:
-        value = slurm_args.get(key)
-        if value is not None and value != "":
-            pairs.append((key, str(value)))
-    extra = slurm_args.get("extra") or {}
-    if isinstance(extra, dict):
-        for key, value in extra.items():
-            if key is not None and value is not None and str(key) and str(value):
-                pairs.append((str(key), str(value)))
-    argv: list[str] = []
-    for key, value in pairs:
-        argv.extend(["--slurm", f"{key}={value}"])
-    return argv
-
-
-def _build_subprocess_argv(state: RunConsoleState) -> list[str]:
-    """Assemble the CLI subprocess argument vector."""
-    argv = [
-        sys.executable,
-        "-m",
-        "phenotypic",
-        *to_argv(state),
-        *_slurm_argv_extension(state.slurm_args or {}),
-    ]
-    for token in state.gpu_slurm_args:
-        argv.extend(["--gpu-slurm", token])
-    if state.gpu_shards != 1:
-        argv.extend(["--gpu-shards", str(state.gpu_shards)])
-    return argv
+# Both emitters were promoted to ``phenotypic._services.argv`` so the MCP
+# server renders the identical command line (spec 05 §5.4 digests it). These
+# names are bindings, not wrappers: a wrapper that re-added the ``--slurm``
+# pairs on top of the promoted composition would double-emit every one of
+# them, and both halves would still read as correct in isolation.
+_slurm_argv_extension = slurm_argv_extension
+_build_subprocess_argv = to_subprocess_argv
 
 
 def _read_metadata(output_dir: Path) -> dict[str, object]:

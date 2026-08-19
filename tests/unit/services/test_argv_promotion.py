@@ -58,3 +58,55 @@ def test_argv_module_does_not_import_gui():
 
     offenders = sorted(gui_modules_reached(argv))
     assert not offenders, f"_services.argv imports from the GUI: {offenders}"
+
+
+def test_slurm_emitters_are_one_object_each():
+    """The GUI submitter must not keep a parallel copy of either emitter.
+
+    Identity, not equality: two functions that agree today drift silently, and
+    the drift that matters here is invisible — spec 05 §5.4 digests the
+    composed argv, so a second renderer produces a digest the server cannot
+    reproduce.
+    """
+    from phenotypic._services.argv import (
+        slurm_argv_extension,
+        to_subprocess_argv,
+    )
+    from phenotypic.gui.run_console import _slurm
+
+    assert _slurm._slurm_argv_extension is slurm_argv_extension
+    assert _slurm._build_subprocess_argv is to_subprocess_argv
+
+
+def test_the_gui_module_no_longer_defines_the_emitters_or_their_key_order():
+    """AST, not identity: a rebinding to an equal object still satisfies ``is``.
+
+    ``_SLURM_DIRECT_KEYS`` travels with the emitter that reads it. A copy left
+    behind in ``gui/`` is free to gain or reorder a key, and the ordering is
+    load-bearing — it fixes the order of the ``--slurm`` pairs inside
+    ``argv_digest``.
+    """
+    import ast
+    import inspect
+
+    from phenotypic.gui.run_console import _slurm
+
+    tree = ast.parse(inspect.getsource(_slurm))
+    defined: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            defined.add(node.name)
+        elif isinstance(node, ast.AnnAssign) and isinstance(
+            node.target, ast.Name
+        ):
+            defined.add(node.target.id)
+
+    for name in (
+        "_slurm_argv_extension",
+        "_build_subprocess_argv",
+        "_SLURM_DIRECT_KEYS",
+    ):
+        assert name not in defined, (
+            f"gui/run_console/_slurm.py defines {name} in parallel with "
+            "_services/argv.py"
+        )

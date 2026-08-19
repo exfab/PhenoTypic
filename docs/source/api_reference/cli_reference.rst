@@ -26,6 +26,19 @@ Path Options
    ``process`` modes. Rejected in ``measure`` and ``recompile`` modes, which
    discover prior outputs from the output root.
 
+``--image-manifest MANIFEST``
+   File listing the exact subset of ``--input`` to process: one image path per
+   line, absolute or relative to ``--input``; blank lines and ``#`` comment
+   lines are ignored. Passed **alongside** ``--input``, which still names the
+   parent directory — image identity is derived relative to ``--input``, so an
+   image keeps the same work ID whether it arrives through a manifest or a
+   whole-directory run, and continuation still matches. Every entry must be an
+   image the scan of ``--input`` found; unknown, missing, or repeated entries
+   are errors rather than silent omissions, and an empty manifest is refused
+   rather than read as "process everything". A run records the manifest's
+   SHA-256 content digest, so continuing with a different or edited manifest is
+   refused as incompatible.
+
 ``-o, --output OUTPUT_DIR``
    Directory where results (measurements, overlays under ``deliverables/overlays/<dataset>/``, checkpoints) are saved.
    Required for every mode.
