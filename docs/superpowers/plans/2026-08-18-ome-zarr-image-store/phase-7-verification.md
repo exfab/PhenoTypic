@@ -582,7 +582,22 @@ git commit -m "docs: mark the OME-Zarr store design implemented"
 ## Phase 7 exit criteria
 
 - [ ] `uv run pytest tests -q` green.
-- [ ] `uv run mypy src/phenotypic` and `uv run ruff check src/phenotypic tests` clean.
+- [ ] `uv run mypy src/phenotypic` and `uv run ruff check src/phenotypic tests` show **no
+      new** errors against the baseline recorded in Phase 0 (417 mypy, 25 ruff), and none in
+      any file this change touched.
+
+> **This is a NO-NEW-ERRORS gate, not a clean gate — and that is deliberate.**
+> `uv run mypy src/phenotypic` reports **417 errors in 124 files at the baseline**,
+> verified against the pre-change `pyproject.toml` with `git show HEAD:pyproject.toml`
+> and found identical — so none of them belong to this change, and raising the Python
+> floor cannot move them (mypy sets no `python_version`, so it follows the running
+> interpreter rather than `requires-python`). `uv run ruff check src/phenotypic` is
+> likewise **25 pre-existing errors**, all `F405`/`E402`/`E721`/`F401`/`F403`/`F841`.
+>
+> Stating these as "passes" would hand every later phase a gate that was already red,
+> which trains an executor to ignore the one signal that would catch a real regression.
+> Record the counts, compare against them, and treat any *increase* as this phase's.
+
 - [ ] `uv run sphinx-build -W` succeeds.
 - [ ] `ngff_store_geometry.py` exits 0 — **after** Phase 1's edit removing its
       `--pyramid-levels` documentation and its C6 claim block, which PRE-P3 descoped

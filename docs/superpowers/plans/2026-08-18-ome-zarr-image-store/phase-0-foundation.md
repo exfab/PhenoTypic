@@ -35,9 +35,15 @@ resolution universe contains them.
   missing dependency, so it must become a **declared** dependency of the test group, not
   left to chance.
 - Do **not** add `ome-zarr` or `ome-zarr-models` to any group (Global Constraints).
-- Ruff sets no `target-version` and mypy no `python_version`; both follow
-  `requires-python`, so raising the floor may surface new `UP` lints. Fix them in this
-  task, with `uv run ruff check --fix` on **explicit paths only**.
+- **The floor raise surfaces no new lints, and cannot.** An earlier draft warned that it
+  might surface `UP` rules and told you to fix them here. Verified false, and structurally
+  so: the repo sets no `[tool.ruff] select`, so the active rule set is ruff's default
+  `E4,E7,E9,F` — which contains **no `UP` rules at all**. `ruff check --statistics` is
+  byte-identical at `--target-version py310` and at the new default (25 errors, all
+  pre-existing in `src/phenotypic`). **Do not run `--fix` here**: it reports "No fixes
+  available", and touching 25 unrelated pre-existing lints would be scope creep in a
+  packaging commit. If you ever do run it, explicit paths only — bare `ruff check --fix`
+  walks the whole repo.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -268,8 +274,12 @@ uv sync --group dev --group test-qt --group docs --extra gui --extra napari
 uv run python -c "import zarr, jsonschema, xmlschema; print(zarr.__version__)"
 ```
 
-Expected: a `3.x` version string. Markers resolve zarr to 3.1.6 on 3.11 and 3.3.x on
-3.12 with no pinning; do **not** pin it.
+Expected: a `3.x` version string — **any** `3.x`. Do **not** pin it.
+
+> Observed on this machine: a single unforked `zarr 3.1.5` for both interpreters. An
+> earlier draft predicted "3.1.6 on 3.11 and 3.3.x on 3.12"; that was wrong and, more to
+> the point, is not something to assert. The criterion is `3.x` and unpinned — treat any
+> specific version in this plan as illustrative, never load-bearing.
 
 - [ ] **Step 6: Run the packaging test and the lint/type gates**
 
@@ -562,4 +572,18 @@ directory is added to ruff's extend-exclude in the same commit."
 - [ ] `uv run pytest tests/unit/test_packaging_floor.py tests/unit/test_ngff_schema_fixtures.py -v` is all green.
 - [ ] `grep -rn "3\.10" .github/workflows/` returns no `python-version` matches.
 - [ ] `uv run pytest tests/unit -q` passes at the raised floor.
-- [ ] `uv run mypy src/phenotypic` passes.
+- [ ] `uv run mypy src/phenotypic` reports **no more than the 417 baseline errors**, and
+      none in a file this phase touched.
+
+> **This is a NO-NEW-ERRORS gate, not a clean gate — and that is deliberate.**
+> `uv run mypy src/phenotypic` reports **417 errors in 124 files at the baseline**,
+> verified against the pre-change `pyproject.toml` with `git show HEAD:pyproject.toml`
+> and found identical — so none of them belong to this change, and raising the Python
+> floor cannot move them (mypy sets no `python_version`, so it follows the running
+> interpreter rather than `requires-python`). `uv run ruff check src/phenotypic` is
+> likewise **25 pre-existing errors**, all `F405`/`E402`/`E721`/`F401`/`F403`/`F841`.
+>
+> Stating these as "passes" would hand every later phase a gate that was already red,
+> which trains an executor to ignore the one signal that would catch a real regression.
+> Record the counts, compare against them, and treat any *increase* as this phase's.
+
