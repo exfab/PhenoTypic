@@ -431,6 +431,66 @@ def test_live_cancellation_hold_profile_reaches_cli_argv(
     assert "--gpu-shards" not in argv
 
 
+def test_the_shipped_slurm_path_emits_each_flag_exactly_once(
+    tmp_path: Path,
+) -> None:
+    """The regression the argv promotion exists to avoid.
+
+    ``to_argv`` deliberately excludes SLURM argv and ``to_subprocess_argv``
+    adds it. Had the SLURM pairs been *inlined* into ``to_argv`` instead of
+    promoted, this shipped path would render every ``--slurm``, ``--gpu-slurm``
+    and ``--gpu-shards`` twice — and both halves would read as correct on their
+    own, so the duplication is invisible in either diff. Counting occurrences
+    is what catches it; asserting the *values* (as the tests above do) does
+    not, because a duplicated flag still carries the right value.
+    """
+    from collections import Counter
+
+    state = RunConsoleState(
+        pipeline_path="/p/pipeline.json",
+        input_dir="/p/in",
+        output_dir=str(tmp_path / "out"),
+        metadata_csv="/p/meta.csv",
+        mode="slurm",
+        dry_run=True,
+        retry_failures=True,
+        restart=True,
+        image_manifest="/p/plan.images",
+        advanced_args={
+            "sample": 3,
+            "nrows": 8,
+            "ncols": 12,
+            "image_type": "GridImage",
+            "workers": 4,
+        },
+        slurm_args={
+            "partition": "short",
+            "time": "00:10:00",
+            "mem": "4G",
+            "cpus_per_task": 1,
+            "gpus": 1,
+            "extra": {"slurm_account": "exfab"},
+        },
+        gpu_slurm_args=("slurm_partition=gpu", "slurm_account=exfab"),
+        gpu_shards=4,
+    )
+
+    counts = Counter(
+        token for token in _build_subprocess_argv(state) if token.startswith("--")
+    )
+
+    # Five direct keys plus one ``extra`` pair: six, not twelve.
+    assert counts["--slurm"] == 6, counts
+    assert counts["--gpu-slurm"] == 2, counts
+    assert counts["--gpu-shards"] == 1, counts
+    repeated = {
+        flag: n
+        for flag, n in counts.items()
+        if n > 1 and flag not in {"--slurm", "--gpu-slurm"}
+    }
+    assert not repeated, f"flags emitted more than once: {repeated}"
+
+
 # ---------------------------------------------------------------------------
 # Error paths
 # ---------------------------------------------------------------------------

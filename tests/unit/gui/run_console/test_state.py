@@ -275,6 +275,75 @@ def test_to_argv_includes_retry_failures_flag() -> None:
     assert "--retry-failures" in argv
 
 
+def test_to_argv_includes_restart_flag() -> None:
+    state = RunConsoleState(
+        pipeline_path="/p.json",
+        input_dir="/in",
+        output_dir="/out",
+        restart=True,
+    )
+    argv = to_argv(state)
+    assert "--restart" in argv
+    # --overwrite is the destructive sibling and stays unreachable from state.
+    assert "--overwrite" not in argv
+
+
+def test_to_argv_omits_restart_by_default() -> None:
+    state = RunConsoleState(
+        pipeline_path="/p.json", input_dir="/in", output_dir="/out"
+    )
+    assert "--restart" not in to_argv(state)
+
+
+def test_to_argv_passes_the_image_manifest_alongside_input() -> None:
+    """The manifest names a subset *of* --input; it never replaces it.
+
+    Work IDs are derived relative to --input, so an argv that emitted the
+    manifest in --input's place would silently re-identify every image.
+    """
+    state = RunConsoleState(
+        pipeline_path="/p.json",
+        input_dir="/in",
+        output_dir="/out",
+        image_manifest="/plans/pl_7f3a.images",
+    )
+
+    argv = to_argv(state)
+
+    assert argv[argv.index("--input") + 1] == "/in"
+    assert argv[argv.index("--image-manifest") + 1] == "/plans/pl_7f3a.images"
+
+
+def test_to_argv_omits_the_image_manifest_when_unset() -> None:
+    state = RunConsoleState(
+        pipeline_path="/p.json", input_dir="/in", output_dir="/out"
+    )
+    assert "--image-manifest" not in to_argv(state)
+
+
+def test_restart_and_manifest_round_trip_through_json() -> None:
+    state = RunConsoleState(
+        pipeline_path="/p.json",
+        input_dir="/in",
+        output_dir="/out",
+        restart=True,
+        image_manifest="/plans/pl_7f3a.images",
+    )
+
+    restored = run_state_from_json(run_state_to_json(state))
+
+    assert restored.restart is True
+    assert restored.image_manifest == "/plans/pl_7f3a.images"
+
+
+def test_a_preset_predating_the_new_fields_still_loads() -> None:
+    restored = run_state_from_json(
+        {"pipeline_path": "/p.json", "input_dir": "/in", "output_dir": "/out"}
+    )
+    assert restored.restart is False
+    assert restored.image_manifest is None
+
+
 def test_legacy_resume_preset_is_ignored() -> None:
     state = run_state_from_json(
         {
