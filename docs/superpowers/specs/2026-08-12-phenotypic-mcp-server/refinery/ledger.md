@@ -235,3 +235,53 @@ artifact describes what is imaged and how it was captured.
 **Locally, run 1–2 arms at a time to avoid OOM.** `budget.max_concurrent_arms`
 takes a lower effective cap when routed local. Bears on CONC-6, which found
 `campaign_start`'s fan-out has no execution model under local routing.
+
+### USER-15 [settled-by-user (round 1)] — multi-group experiments
+
+The spec assumed homogeneity in three places: one profile per dataset (§9.3.7),
+one `pipeline_id` per deploy (§5.4), one scorer per campaign (§8.2). A real
+experiment may hold several **species × media groups** needing different
+pipelines, different parameters, and **different expected counts** — which is the
+scorer, not merely the pipeline.
+
+**Rulings:**
+
+1. **Grouping is by one or more metadata columns, supplied by the agent as a
+   parameter** — not by directory layout. So `scan_directory_structure`'s
+   one-subdirectory-level dataset rule does **not** cover this case, and the
+   grouping key must be explicit rather than implicit in the tree.
+2. **Strategy: try a single pipeline across the whole experiment first, and
+   descend to per-group only where evidence requires it.** This mirrors §9.4's
+   prefab-first discipline — start general, specialize on evidence — and it is
+   *judgment*, so per §9.1 it belongs in a skill. The *mechanism* it needs must
+   exist in the server.
+3. **`experiment_profile` keeps its name.** The experiment is the container; the
+   profile therefore describes the experiment **and must carry per-group trait
+   overrides**, since morphology, contrast and medium opacity can differ by group
+   while `plate.format` and `imaging.modality` usually do not.
+
+**Design implications — to be worked in round 2, not settled here:**
+
+- **§9.3 profile gains `group_by: list[str]` and a `groups` map** of per-group
+  trait overrides over the experiment-wide `traits`. The existing envelope
+  already round-trips unknown keys and treats every trait as individually
+  optional, so this extends rather than breaks it.
+- **Subset selectors gain a group filter.** `MetadataGroupSubsetSelector` already
+  *stratifies* across metadata groups; selecting *only* a group is the same join
+  with a predicate. A per-group campaign then falls out of a per-group subset
+  with no campaign change — §8.2's one-scorer invariant holds *within* a group.
+- **Per-group deploy comes free from subset staging.** §10.3.1 already
+  materializes a subset as a directory tree, so a group-scoped subset stages only
+  that group's images and the existing single-`--pipeline` CLI needs no change.
+  What needs deciding is what `scope:"full"` means for a group-scoped subset —
+  the group's images, or the whole parent.
+- **The escalation signal is missing.** "Descend to per-group if needed" requires
+  the agent to *detect* need. A winner that scores well overall while failing one
+  group is invisible on a single aggregate cost. **`campaign_status` should report
+  a per-group cost breakdown when the subset is group-aware** — that is the
+  evidence the escalation decision rests on, and without it the strategy is
+  unactionable.
+
+**Open for round 2:** whether `group_by` lives on the profile, the subset, or
+both; the `scope:"full"` semantics above; and whether the per-group breakdown is
+a `campaign_status` field or a scorer responsibility.
