@@ -110,6 +110,19 @@ be written against a storage layout and a mode list that are about to change.
 
 ## `deploy_plan` is no longer a `W0` call — a spec defect the merge created
 
+> **STATUS 2026-08-19 — half applied, half still open.** The **classification**
+> half is settled: spec §5.3 now reads `W0` at `scope:"subset"` / **`W1` at
+> `scope:"full"`**, and USER-20 puts every blocking `W0` on the `blocking`
+> executor rather than inline on the loop, so the "blocks every other subagent"
+> consequence is closed by two independent changes. **The cost half below is
+> not.** §5.3's `W1` is justified by the *re-probe*, on a measured 0.081 s header
+> sweep — headers, not `file_sha256` over whole files. The 2N-full-image-reads
+> cost of building the array spec is a different number and no measurement in the
+> spec covers it; §5.3's `build_array_script_spec` extraction makes the call pure
+> but not cheap. **Option 3 below — have the builder accept precomputed identity
+> rows — is still the only one that makes a preview genuinely cheap, and it is
+> still unchosen.** Read the options section as live.
+
 Found by C3 while re-applying Task 9 on the merged file; both halves verified
 independently at `_cli_slurm_array_scripts.py:388-401`.
 

@@ -325,11 +325,21 @@ Three honest caveats:
    `{approve: bool, note: str}`, and the campaign review document stays in `campaign_put`'s
    response where it already is.
 
-**Recommendation: shape now, implement in Phase 2C.** Record an OQ in §8 and §10.5, and make
-`campaign_approve`'s `human_response` *required-unless-elicited* rather than unconditionally
-required, so adopting elicitation later is not a breaking signature change. **Cost now: LOW
-(one argument's contract). Cost later: MEDIUM** — the token-minting flow and two tool
-signatures move after the tools exist and skills reference them.
+**Recommendation: shape now, implement in Phase 2C.** Record an OQ in §8 and §10.5.
+
+> **AMENDED 2026-08-19 by USER-22.** This paragraph originally recommended making
+> `campaign_approve`'s `human_response` *required-unless-elicited* rather than
+> unconditionally required. **That form is retired.** A required-field rule that
+> varies with host capability is a signature the agent cannot predict from
+> `tools/list`, so `human_response` is **required unconditionally** — on
+> `campaign_approve` and on `deploy_start` alike — and the elicited-vs-asserted
+> distinction moved to the *response* as `ack_source: "elicited" |
+> "agent_asserted"`. Same guarantee, one signature, auditable on the artifact
+> rather than implicit in host config. **USER-18** additionally moved the second
+> gate from the promotion pair to `deploy_start`, the point of spend.
+
+**Cost now: LOW (one argument's contract). Cost later: MEDIUM** — the token-minting flow and
+two tool signatures move after the tools exist and skills reference them.
 
 ### (d) No server `instructions` string — *free, and partly mitigates §9.2's known hole*
 
@@ -387,7 +397,7 @@ addition.**
 | # | Action | Where | Cost now | Cost after Phase 2 | Recommendation |
 |---|---|---|---|---|---|
 | 1 | Declare `title` + `readOnlyHint` + `destructiveHint` + `idempotentHint` on every tool; one test asserting all four are present | §3.0, §6.5 | LOW | MEDIUM (32 sites + test) | **Do now** |
-| 2 | Make `campaign_approve.human_response` required-*unless-elicited*; record elicitation as the intended Phase-2C gate | §8.3, §10.5 | LOW | MEDIUM (signature + token flow + skills) | **Do now, implement later** |
+| 2 | ~~Make `campaign_approve.human_response` required-*unless-elicited*~~ → **AMENDED (USER-22): `human_response` is required unconditionally on `campaign_approve` and `deploy_start`; `ack_source` in the response carries the elicited-vs-asserted distinction.** Record elicitation as the intended Phase-2C gate | §8.3, §5.4, §10.5 | LOW | MEDIUM (signature + token flow + skills) | **Do now, implement later** |
 | 3 | Extend §3.0 token discipline to the `tools/list` payload + a Phase-2A budget check (~6k tokens) | §3.0, plan Phase 2A | LOW | MEDIUM (re-carve) | **Do now** |
 | 4 | Add MCPB + remote-HTTP rebuttals to non-goals so the deployment model is argued, not asserted | §1.7 | LOW | LOW | Do now (cheap insurance) |
 | 5 | Extend D1's rationale (TS excluded by in-process import; skill prefers PyPI `fastmcp` 3.x; we diverge on supply chain) + Phase-2A check that the pinned `mcp` version exposes `Context.elicit` / `report_progress` | plan D1 | LOW | LOW | Do now |

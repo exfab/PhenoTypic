@@ -580,9 +580,9 @@ bare class name. Adding a fourth is then a subclass plus one `__init__.py`
 export — no tool signature changes, no schema bump.
 
 **Interfaces:**
-- Produces: `SubsetSelector` (`.select`, `.availability`, `.cost_class`),
-  `SubsetSelection`, `RandomSubsetSelector`, `MetadataGroupSubsetSelector`,
-  `EmbeddingSubsetSelector`
+- Produces: `SubsetSelector` (`.select`, `.availability`, `.cost_class`,
+  **`group_filter`**), `SubsetSelection` (carrying `group_filter`),
+  `RandomSubsetSelector`, `MetadataGroupSubsetSelector`, `EmbeddingSubsetSelector`
 
 ```python
 class SubsetSelector(BaseModel, ABC):
@@ -590,6 +590,7 @@ class SubsetSelector(BaseModel, ABC):
 
     n: int = Field(..., ge=1)
     seed: int = 0
+    group_filter: dict[str, str] = Field(default_factory=dict)
 
     @abstractmethod
     def _select(self, candidates: list[ImageRef]) -> list[str]: ...
@@ -598,9 +599,45 @@ class SubsetSelector(BaseModel, ABC):
     def cost_class(self) -> Literal["W0", "W1", "W2"]: ...
 
     def select(self, candidates: list[ImageRef]) -> SubsetSelection:
-        """Template: check availability, delegate, then dedup, order, and
-        record the rationale so the artifact explains itself."""
+        """Template: apply group_filter to the candidates, check
+        availability, delegate to _select, then dedup, order, and record the
+        rationale so the artifact explains itself."""
 ```
+
+**`group_filter` ships on the ABC in this task, not later** (spec §10.3,
+USER-24). It is a `{metadata column: value}` map applied to the candidate set
+**before** `_select` runs, so it is implemented once in `select()`'s template and
+no subclass can skip it or reimplement it.
+
+Three reasons it cannot be deferred to Phase 2:
+
+1. `model_config = ConfigDict(extra="forbid")` means it is **not addable as an
+   extra key**. Adding it later is a model change to the ABC and to every
+   selector's serialized `params`, i.e. a schema bump on an artifact that will by
+   then exist on disk.
+2. Spec §10.2 records it on the subset artifact and §5.4's plan token **binds**
+   it at `scope:"full"` — USER-21's guarantee that an ack given for one group's
+   images cannot be spent on another's. Without the field there is nothing to
+   record and nothing to bind.
+3. It is the *only* multi-group primitive that survived USER-24's offload of
+   grouping strategy to the agent. If it does not land here it does not land.
+
+Contract:
+
+| Aspect | Rule |
+|---|---|
+| Application point | `select()`'s template, before `_select`; conjunctive over all `{column: value}` pairs |
+| Column source | The same `grouping_metadata` CSV, joined by parent-relative path. A non-empty `group_filter` with no CSV configured is a construction error |
+| Comparison | String comparison against the CSV cell, after the `Metadata_` canonicalization — **never** `startswith("Metadata_")` or prefix splitting (project rule) |
+| Column absent | Raise so the tool layer maps it to `group_filter_column_not_found`, carrying the CSV's column list |
+| Matches nothing | Raise so the tool layer maps it to `group_filter_matches_nothing`. **Not** an empty selection: an empty subset passes every downstream shape check and produces a study of nothing |
+| Recorded | Copied onto `SubsetSelection` and thence to the artifact's top-level `group_filter` *and* `selection.params` (§10.2) |
+
+Two tests belong in `test_selectors.py` alongside the existing three: a filtered
+`RandomSubsetSelector` selects only from the filtered candidates (proving the
+filter is on the ABC and composes with a selector that knows nothing about
+metadata), and a filter naming an absent column raises rather than silently
+selecting from everything.
 
 **`MetadataGroupSubsetSelector` performs its own CSV→filename join. It does NOT
 reuse `_resolve_groups`.** Verified by reproduction: `_resolve_groups`
