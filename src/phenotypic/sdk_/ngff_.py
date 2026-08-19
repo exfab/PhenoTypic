@@ -226,3 +226,99 @@ def build_pyramid(
     for _ in range(levels - 1):
         out.append(reduce(out[-1]))
     return out
+
+
+# ---------------------------------------------------------------------------
+# Chunk / shard / codec policy
+# ---------------------------------------------------------------------------
+
+#: Inner chunk extent on the two spatial axes.
+CHUNK_YX: Final[tuple[int, int]] = (1024, 1024)
+
+#: Shard extent on the two spatial axes. A shard is the write-buffer unit.
+SHARD_YX: Final[tuple[int, int]] = (4096, 4096)
+
+#: Compression codec, replacing the HDF path's gzip-4.
+CODEC_NAME: Final[str] = "zstd"
+
+#: Chunk-key separator. ``"."`` makes a chunk key one path segment (``c.0.0.0``)
+#: rather than four nested directories -- a Windows MAX_PATH measure that MUST
+#: be uniform store-wide.
+CHUNK_KEY_SEPARATOR: Final[str] = "."
+
+
+def chunk_shape_for(shape: tuple[int, ...]) -> tuple[int, ...]:
+    """Inner chunk shape for one array level.
+
+    Clamped to the level's own extent so a small pyramid level is never given a
+    chunk larger than itself.
+
+    Args:
+        shape: Level shape, ``(y, x)`` or ``(c, y, x)``.
+
+    Returns:
+        ``(1, cy, cx)`` for a 3-D array, ``(cy, cx)`` for 2-D.
+    """
+    h, w = shape[-2:]
+    spatial = (min(CHUNK_YX[0], h), min(CHUNK_YX[1], w))
+    return (*(1 for _ in shape[:-2]), *spatial)
+
+
+def shard_shape_for(shape: tuple[int, ...]) -> tuple[int, ...]:
+    """Shard shape for one array level.
+
+    Spans the **full** channel extent, so per-channel chunks collapse into one
+    file. On the spatial axes it is the fixed ``SHARD_YX``, **not** clamped to
+    the level extent: the Zarr v3 sharding codec constrains shard-vs-chunk
+    divisibility only, never shard-vs-array, and partial edge shards are normal.
+    Clamping to the extent and rounding down to a chunk multiple would turn a
+    4000x4096-shard level into four shard files instead of one, contradicting
+    the committed logic-validation script's file counts.
+
+    A level below one chunk collapses to ``chunk == shard == extent``, which
+    keeps divisibility trivially true and is one chunk and one shard either way.
+
+    Args:
+        shape: Level shape, ``(y, x)`` or ``(c, y, x)``.
+
+    Returns:
+        A shard shape that is an exact multiple of :func:`chunk_shape_for`.
+    """
+    chunk = chunk_shape_for(shape)
+    lead = tuple(int(extent) for extent in shape[:-2])  # full channel extent
+    spatial = tuple(
+        chunk[len(shape) - 2 + axis] if extent < CHUNK_YX[axis] else SHARD_YX[axis]
+        for axis, extent in enumerate(shape[-2:])
+    )
+    return (*lead, *spatial)
+
+
+def array_create_kwargs(
+    shape: tuple[int, ...], dtype: np.dtype, series: str
+) -> dict:
+    """Keyword arguments for ``zarr.create_array`` for one level of one series.
+
+    Args:
+        shape: Level shape.
+        dtype: Array dtype.
+        series: ``"rgb"``, ``"gray"``, ``"detect_mat"``, or ``"objmap"`` --
+            selects the axis names.
+
+    Returns:
+        A kwargs mapping carrying ``shape``, ``dtype``, ``chunks``, ``shards``,
+        ``compressors``, ``dimension_names``, and ``chunk_key_encoding``.
+    """
+    from zarr.codecs import ZstdCodec
+
+    return {
+        "shape": tuple(shape),
+        "dtype": dtype,
+        "chunks": chunk_shape_for(shape),
+        "shards": shard_shape_for(shape),
+        "compressors": (ZstdCodec(),),
+        "dimension_names": list(axes_for(series)),
+        "chunk_key_encoding": {
+            "name": "default",
+            "configuration": {"separator": CHUNK_KEY_SEPARATOR},
+        },
+    }
