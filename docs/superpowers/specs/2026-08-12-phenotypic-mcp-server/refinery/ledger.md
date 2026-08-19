@@ -414,3 +414,27 @@ interactive probe during a long run, and **it is the only model under which
 This was the decision the concurrency specialist identified as the one four of
 its findings hang from; it is now made, and those findings resolve against it
 rather than around it.
+
+---
+
+## Round 2 dispositions (after USER-17..20)
+
+| ID | Status | What changed |
+|---|---|---|
+| CONC-17 | **settled-by-user** (USER-20) | §1.5 now states the handler model once — async handlers, all blocking work offloaded — and the spec relies on it rather than re-deriving per tool |
+| CONC-19 | **settled-by-user** (USER-17) | §1.5's "1–2 arms" prose deleted. The slot is the sole owner; capacity is `local_slot_capacity` (default 1). A second arm is refused, not parked — no unbounded wait, no orphan reservation |
+| CONC-20 | **open** | USER-20 removes the event-loop half. The `atexit`-kills-the-local-run half is CONC-3's and is still open |
+| CONC-21 | **open · needs-user-input** | Attribution / single-flight / non-answer are design decisions, not observations — they do **not** qualify for `deferred-to-2A` under USER-16. To be put to the user with the round-2 panel |
+| CONC-22 | **settled-by-user** (USER-18) — *was Critical* | Elicitation moved to `deploy_start`; `ack_prompt` is text to show, `pending_human_ack` deleted from that response, §2.6 needs no row. Fold stands. Additionally §5.3's flat `W0` corrected to `W0` at subset / `W1` at full |
+| CONC-23 | **open** | Aggregate ceiling across per-group campaigns still unspecified. Candidate fix drafted; not yet applied pending the panel |
+| CONC-24 | **settled-by-user** (USER-19) | §9.3 now states the scorer writes per-group figures to trial user attrs at scoring time; `campaign_status` reads and never recomputes. Closes USER-15's deferral |
+| CONC-25 | **resolved** (round 2) | Read offloaded by USER-20. The race fixed at its source: §8.7 journals a step as `in_flight` on acceptance rather than writing the whole row after the probe. Residual window stated, not hidden |
+| CONC-26 | **open** | Artifact-read-vs-clobber and "died" vs "never started" still unaddressed |
+| CONC-27 | **resolved** (round 2) | §3.0's enumeration replaced with a derivation keyed on cost as well as mutation; `pipeline_probe` and `deploy_plan` correctly fall outside `readOnlyHint` |
+| CONC-28 | **open** · depends GEN-6 | Elicitation widens `campaign_approve`'s CAS window. Held until the general reviewer confirms or closes GEN-6 this round |
+
+**Deferred-to-2A under USER-16** (resolution genuinely depends on unobservable
+behaviour; each carries its pass condition): does `fastmcp` deliver
+`CancelledError` on client disconnect; host timeout vs `probe_timeout_s`; whether
+subagent elicitation surfaces and how it is attributed; whether `Context` exposes
+`elicit`/`report_progress`; `tools/list` cost at 26 tools.
