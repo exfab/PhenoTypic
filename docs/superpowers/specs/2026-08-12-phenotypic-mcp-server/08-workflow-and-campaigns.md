@@ -223,6 +223,41 @@ Three things this does not change, stated so the guarantee is not overread:
   the human — and to whom it is attributed when two are in flight — must be tested
   against the real host before this path is relied on.
 
+### Three elicitation rules no test can supply
+
+"Unverified" is the right word for *whether the prompt is delivered*. It is the
+wrong word for what the prompt says, how many may be outstanding, and what a
+non-answer means — those are the server's own decisions, and no observation of a
+host settles any of them. They are decided here, and they hold whatever the
+delivery test returns.
+
+1. **Every elicitation message leads with the artifact id it approves.** The
+   first thing in the text is `campaigns/fungal-edge-sweep` or
+   `pipelines/edge-v3-tuned.json.pht-pipe`, before the numbers and before the
+   question. Under §1.3 the human is being prompted by a server several subagents
+   share, so "3 arms, 600 trials, ~5.7 node-hours. Approve?" is a question with no
+   subject — a prompt that names no artifact cannot be answered correctly except
+   by luck, and the person answering has no other channel through which to
+   discover what they just agreed to.
+2. **Single-flight per server: one human-gate elicitation outstanding at a
+   time.** A second concurrent gate returns `human_gate_busy` (§6.2) naming the
+   artifact currently on screen, and the caller retries. Two prompts in flight
+   make attribution the *host's* problem, and neither the MCP protocol nor this
+   design gives the server any way to tell which answer belongs to which request;
+   refusing the second is the only version of this the server can reason about.
+   It costs nothing real, because the gates are minutes apart in every workflow
+   §8 describes.
+3. **Timeout, decline, and unsupported all map to the mandatory `human_response`
+   fallback — and none of them maps to approval.** These are three different
+   things ("nobody answered", "somebody said no", "this host has no elicitation")
+   and they share one property that matters more than their differences: not one
+   of them is a human agreeing. A design in which a timeout advances the workflow
+   turns the gate into a delay. Decline is a refusal that ends the call; timeout
+   and unsupported fall back to the required `human_response` parameter, where
+   the agent must state what it was told and `ack_source` records
+   `agent_asserted` (§8.2 above) — which is auditable on the artifact afterwards,
+   exactly as it would be on a host that never had elicitation.
+
 ## 8.3 Campaign tools
 
 Four tools.
@@ -295,11 +330,28 @@ approval and the human checkpoint entirely. §8.2 is explicit that `status` is
 provenance rather than security, so the gate has to be that the artifact an
 unapproved campaign hands back contains nothing spendable.
 
+**The approval CAS runs twice, and it CASes on `(status, artifact_digest)`.**
+Elicitation is what makes this necessary. The digest of the campaign artifact is
+captured **when the elicitation prompt is built** — that is, over the exact bytes
+the numbers in the prompt were computed from — and re-checked after the human
+answers, before `approved` is written. Between those two moments a human is
+reading, so the window is minutes rather than milliseconds, and a §10.4
+amendment landing inside it leaves `status` untouched at `draft`: a status-only
+CAS passes and the approval attaches to an arm set nobody looked at.
+
+On mismatch the call fails with `campaign_changed_during_approval` (§6.2), naming
+the fields that moved, and re-prompts against the new content. Asking again is
+the correct outcome — the human approved a specific 600 trials on a specific
+three arms, and that consent does not transfer to a different plan by default.
+See §2.6 for the general rule; this tool is the case that forced it.
+
 ### `campaign_start` (`W2`)
 
-`{campaign_id, arms?}` → launches arms, honouring `max_concurrent_arms` and the
-routing rules of §1.5. Refuses a `draft` campaign with
-`code: "campaign_not_approved"`.
+`{campaign_id, arms?}` → transitions `approved → launching → running` and
+**returns**; a background task launches the arms, honouring
+`max_concurrent_arms`, the server-wide ceiling (§1.6.1), and the routing rules of
+§1.5. Refuses a `draft` campaign with `code: "campaign_not_approved"`, and a
+concurrent second call is refused by the transition itself.
 
 Each arm launches through the ordinary `tune_start` path — `RunRegistry.allocate`
 → `LocalRunner.start` → CAS — so campaign arms are ordinary studies, visible in
@@ -316,7 +368,42 @@ per-arm `study_id` would have no defined source.
 **`campaign_start` snapshots the campaign it launched** rather than re-reading it
 during fan-out, so a concurrent `campaign_approve` or an in-envelope amendment (§10.4) cannot
 change the arm set mid-launch. Writes to `campaign.json` are atomic and CAS on
-`status` (§2.6).
+**`(status, artifact_digest)`** (§2.6) — status alone cannot see an amendment,
+because an amendment leaves the status where it found it.
+
+**The handler does not await the fan-out.** `campaign_start` performs the status
+transition, hands back the arm list, and returns; a single **per-campaign
+background task** owns launching arms up to `budget.max_concurrent_arms`,
+recording each resolved `study_id` onto the artifact under CAS as it goes, and
+respecting the server-wide ceiling of §1.6.1.
+
+Awaiting the fan-out inside the handler is what USER-1's submit-and-poll contract
+forbids, and the reason is not latency for its own sake: arms launch as
+`max_concurrent_arms` frees up, so the await is bounded by *the campaign*, not by
+submission. The caller's host times out somewhere in the middle, the coroutine is
+abandoned, and the arms it had already launched keep running with nothing left
+holding a reference to them — an orphan produced by a timeout, with no crash
+involved.
+
+**Arms therefore gain a first-class `queued` state**, between `pending` and
+`running`, meaning *the launcher has accepted this arm and has not started it
+yet*. Without it `campaign_status` has no honest word for an arm that exists, is
+going to run, and has no `study_id` — and the agent reads it as failed.
+
+**Re-calling `campaign_start` is idempotent, and that is what makes a kill
+mid-fan-out recoverable.** It launches only arms with no `study_id` recorded;
+arms that already have one are reported unchanged. The transition itself refuses
+a concurrent second caller — `launching` is not `approved` — so this is a
+*recovery* path, not a race. Nothing else in the design recovers a half-launched
+campaign: `allocate` refuses the already-claimed output directories and the agent
+has no way to tell which arms got out.
+
+| Arm state | Meaning |
+|---|---|
+| `pending` | on the artifact, not yet accepted by the launcher |
+| `queued` | accepted by the launcher, waiting on `max_concurrent_arms` or the server-wide ceiling; no `study_id` yet |
+| `running` | launched; `study_id` recorded under CAS |
+| terminal | `complete` / `failed`, from the study's own record |
 
 ### `campaign_status {detail:"artifact"}` — read the stored campaign back
 
@@ -340,6 +427,25 @@ campaign_status {campaign_id, detail:"artifact"} -> arms, pipeline/tune_spec/stu
 campaign_status {campaign_id}     -> where each arm actually got to
 workspace_lineage {id: <study>}   -> only if you need the provenance chain
 ```
+
+**Because it is the recovery entry point, it also reports how the record itself
+stands.** Two fields beyond the artifact:
+
+- **`write_generation`** — the artifact's own write counter, incremented on every
+  CAS. It is what lets a recovering agent (or a second server) tell a stale read
+  from a current one without diffing content, and it is the value a subsequent
+  mutation CASes against.
+- **`launch_state`** — `clean` or `fan_out_incomplete`. `fan_out_incomplete` means
+  the campaign is `launching` or `running` and at least one arm is `queued` with
+  no `study_id`, with no background task alive to finish it.
+
+`launch_state` exists because **"never started" and "started by a server that
+died" look identical on disk** — both are a campaign with arms and no studies —
+and the correct response differs completely: the first wants `campaign_start`,
+the second wants `campaign_start`'s idempotent re-call plus the knowledge that
+some arms are already burning compute. An agent resuming after a compaction holds
+one campaign id and cannot distinguish them by looking, so the field says which
+it is rather than leaving it to be inferred from a timestamp.
 
 ### `campaign_status` (`W0`) — one call, all arms
 
@@ -368,9 +474,25 @@ previous response). With it, arms whose state is unchanged collapse to
 This is the load-bearing detail: §4.4 establishes that a per-arm leaderboard is a
 `results`-class call requiring a killable subprocess per arm, and that this cost
 is why polling must be infrequent. So the cursor embeds each arm's
-`(path, mtime_ns, size)` for `trials.parquet` / `study.db` / `journal.log`, and an
+`(path, mtime_ns, size)` for `trials.parquet` / `study.db` / `study.db-wal` /
+`journal.log`, and an
 arm whose stat is unchanged is reported `unchanged` **without opening its store at
 all**.
+
+**Three cursor states, because two is the bug.** `absent` — no artifact at that
+path — is a state in its own right and **never compares equal to a stat**, so an
+arm that has not yet produced a store is reported as changed (and opened) rather
+than folded into `unchanged` and left invisible until something else moves it. A
+cursor that treats a missing file as "nothing new" reports a queued arm frozen
+forever.
+
+**What the cursor stats depends on the storage backend, and the default backend
+was the one the first draft got wrong.** `_optuna_store.py:88-89` enables WAL, so
+a local SQLite study lands its trials in **`study.db-wal`** while `study.db`
+itself sits stat-unchanged for long stretches — the default local path would be
+reported frozen while progressing. So the cursor stats `study.db-wal` alongside
+`study.db`, and under journal storage it stats `journal.log`, which is where the
+trials actually are and where `study.db` never exists at all.
 
 Trimming only the response payload would have saved context tokens while leaving
 the N-subprocess-opens-per-poll cost — and the wedged-mount exposure of §7 B3 —

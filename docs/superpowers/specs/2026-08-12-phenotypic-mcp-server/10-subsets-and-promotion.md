@@ -482,9 +482,14 @@ in that path, so it stays honestly non-blocking. `ack_prompt` ships with it as
 and §2.6 needs no row for one. `deploy_start` **spends**, and asks first.
 
 As in §8.2 the ask is confirmation where the host supports it and provenance
-where it does not, with `human_response` required-unless-elicited and the same
-three caveats: the fallback is mandatory, it is not authentication, and behaviour
-under §1.3's shared connection is unverified.
+where it does not, with **`human_response` required unconditionally** and
+`ack_source` carrying the elicited-vs-asserted distinction in the *response*
+(§8.2) — a required-field rule that varied with host capability was retired
+there, and this section follows it rather than restating the old form. The same
+three caveats hold: the fallback is mandatory, it is not authentication, and
+behaviour under §1.3's shared connection is unverified. §8.2's three elicitation
+rules — artifact id first, single-flight, no non-answer approves — bind this
+gate too; it is the second of the two elicitations the server raises.
 
 | `scope` | Requires | Runs against |
 |---|---|---|
