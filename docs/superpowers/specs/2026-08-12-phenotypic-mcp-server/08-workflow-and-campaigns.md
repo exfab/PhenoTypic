@@ -534,6 +534,18 @@ itself:
  "decision":"keep"}
 ```
 
+**The row is appended in two parts, and the order matters.** The step is
+journalled the moment the edit is *accepted* — before its probe runs — carrying
+the edit and `"decision":"in_flight"`. Evidence and the final `keep`/`revert`
+are filled in when the probe returns.
+
+Writing the whole row at the end instead would be simpler and would break §3.2's
+`edit_previously_tried` in exactly the case it exists for: two sibling subagents
+patching the same edit are both mid-probe, so under end-writing neither has
+journalled anything, neither sees the other, and both spend the budget the
+advisory was added to save. An `in_flight` row is what makes a concurrent
+attempt visible while it is still concurrent.
+
 This is what makes an incrementally-built pipeline defensible months later:
 not "the agent produced this", but *which* step produced which improvement, on
 what evidence. It is also what a `prefab_baseline` justification (§9.4) cites

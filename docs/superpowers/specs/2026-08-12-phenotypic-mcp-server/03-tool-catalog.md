@@ -27,12 +27,29 @@ it already rejected (§3.2).
 
 **Every tool carries MCP annotations.** `title`, plus `readOnlyHint` and
 `destructiveHint`. This is not decoration: a host may auto-approve a `readOnly`
-tool and will raise a confirmation for a `destructive` one, so annotating the
-read tools and leaving `deploy_start`, `campaign_start`, `tune_start` and
-`workspace_cancel` unannotated enforces §9.1's server-vs-skill line **at the host
-level** rather than in prose. Two calls are non-obvious and are fixed here rather
-than left to an implementer: the `*_put` tools are **not** idempotent (they fail
-with `already_exists`), and `pipeline_patch` emphatically is not — its edits are
+tool and will raise a confirmation for a `destructive` one, so the annotations
+enforce §9.1's server-vs-skill line **at the host level** rather than in prose.
+
+**The annotation is derived, not listed.** An earlier draft enumerated four tools
+to leave unannotated, and an enumeration silently rots the moment a tool changes
+what it does — which two of them promptly did. The rule instead:
+
+> `readOnlyHint: true` **iff** the call mutates no workspace state, **takes no
+> compute slot, and spends no scheduler time.** `destructiveHint: true` iff it
+> can overwrite or destroy state that already exists.
+
+Cost is part of the test, not only mutation, because that is what the host is
+deciding: whether this may be called without asking. Two consequences the old
+list got wrong. **`pipeline_probe` mutates nothing and is still not
+`readOnly`** — it holds the exclusive local slot, so auto-approving it lets a
+host stall every other subagent's probing. And **`deploy_plan` is not `readOnly`
+either**: at `scope:"full"` it sweeps every parent header and may re-probe
+(§5.3), so a tool named like a read would otherwise be auto-approvable while
+doing bounded `W1` work.
+
+Two further calls are non-obvious and are fixed here rather than left to an
+implementer: the `*_put` tools are **not** idempotent (they fail with
+`already_exists`), and `pipeline_patch` emphatically is not — its edits are
 cumulative, so the annotation is what stops a host retrying into a corrupted
 pipeline.
 
@@ -328,8 +345,24 @@ an **advisory** issue with that attempt's evidence and decision:
 
 **Advisory, never a refusal.** A deliberate retry is legitimate — the pipeline
 around the edit may have changed since — so the server surfaces the evidence and
-lets the agent decide. It costs nothing extra: the journal scan is the one
-`exploration` already performs for its step counter.
+lets the agent decide. The lookup rides the journal scan `exploration` already
+performs for its step counter, and per §1.5 that scan is offloaded to a worker
+thread, so it does not put §2.5's 30 s lock wait on the event loop.
+
+**The step is recorded when the edit is accepted, not when its probe returns.**
+§8.7 originally journalled a step together with its keep/revert decision — which
+is only knowable *after* the probe — and that ordering breaks this feature in
+precisely the case it was added for. Two siblings patching the same edit
+concurrently are both mid-probe, neither has written anything, so neither sees
+the other and both spend the budget. So an accepted edit is journalled
+immediately as `in_flight`, and the decision is filled in when the probe
+completes. A match against an `in_flight` step advises *"a sibling is probing
+this now"* rather than quoting evidence that does not exist yet.
+
+This narrows the window to the patch call itself rather than closing it: two
+patches racing inside the same journal append still both proceed. That is
+acceptable for an advisory — the cost of a rare duplicate probe is one probe,
+and the alternative is a lock on the exploration hot path.
 
 **`exploration` is what makes §8.7's loop runnable.** That section states step
 and no-improvement caps "reported in the response", and the lineage journal
