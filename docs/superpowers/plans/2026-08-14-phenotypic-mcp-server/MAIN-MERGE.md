@@ -70,3 +70,38 @@ Known suspects, to confirm rather than assume:
 
 The audit is a task, not a note: it produces drift-register rows with `file:line`
 evidence, exactly as the original spec verification did.
+
+---
+
+## INCOMING: the OME-Zarr image store (not yet on main)
+
+Flagged by the user 2026-08-18. Branch `worktree-ome-zarr-image-store` @ `21a97d3f`
+— three **docs-only** commits on top of `9e4159a3`; spec at
+`docs/superpowers/specs/2026-08-18-ome-zarr-image-store/design.md`. No code yet,
+so nothing to merge — but it invalidates more of the MCP spec than the resume
+rework does, and the audit must cover it.
+
+What it changes:
+
+- **The per-image HDF5 file is replaced by OME-Zarr (NGFF 0.5).** Legacy `.h5`
+  becomes reachable only through an explicit new mode.
+- **A new `--mode migrate`**, joining `full`/`measure`/`process`/`recompile`.
+  `--mode recompile` *stops* rewriting `deliverables/metadata.csv`; that moves
+  into `--mode migrate`.
+- **The "dead HDF DataFrame layer" is retired.**
+
+### Consequences for the MCP spec — to confirm in the audit, not assume
+
+| Spec site | Why it is at risk |
+|---|---|
+| **§5.4 `deploy_plan` / `deploy_start`** | `mode` is enumerated `"full" \| "measure" \| "process"`. A fourth and fifth mode exist (`migrate`, `recompile`), and `migrate` is the only path to legacy data |
+| **§2.3 workspace layout** | Documents `results/<dataset>/{hdf,measurements}/`. The `hdf` half becomes zarr |
+| **§5.5 `deploy_status`** | Reads per-image HDF as the unit of progress |
+| **§5.4 staged-GPU description** | **Most exposed.** The MCP spec describes Stage 2 writing a per-image `.npy` **sidecar**, and the OME-Zarr spec says that sidecar exists *only* as "a workaround for HDF's read-only-while-open constraint". Remove the constraint and the sidecar — and the three-stage resume contract built on it — may simply not exist. The MCP spec states it as settled fact |
+| **§7 P6 subset staging** | Materializes symlink trees of image *files*. A per-image zarr store is a directory, not a file; symlinking still works but the "flat vs nested" reasoning needs re-checking |
+
+**Sequencing implication.** The MCP spec's deploy surface (§5) and Phase 2C are
+now downstream of a storage change that is still being designed. Phase 1 and
+Phase 2A/2B do not touch it — they are catalog, pipeline, tune, and campaign
+work. **2C should not be written until the OME-Zarr design settles**, or it will
+be written against a storage layout and a mode list that are about to change.
