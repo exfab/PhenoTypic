@@ -57,7 +57,36 @@ The clustering below is built from the corrected DAG. **Fix the header claim in
 | **C5** | T13, T14, T17 | Keystone | One subject — the subset boundary: digest → selectors → staging. T17 consumes both predecessors. **Must follow C4** (T14 edits T10's constant). | — |
 | **C6** | T15, T16, T18 | Keystone/Seam | Forced: all three edit `_run.py`. Grouping them is not a preference, it is the only correct answer. | C4 |
 
+### C8 and C9 — the two tasks added after the refinery closed
+
+*(Naming note: `C8`/`C9` in `MAIN-MERGE.md` are **L1 SLURM validation job**
+labels, a different namespace. These are clusters.)*
+
+| # | Tasks | Shape | Why | Files |
+|---|---|---|---|---|
+| **C8** | T19 (P8 manifest) **+ GEN-18's four flags** | **Seam** | One risky wiring point: what the server can express as argv. Isolated despite being small — it sits on the irreversible full-deploy path, and `argv_digest` is now a *bound row of a consent-carrying token* | `phenotypicCLI.py`, `_services/argv.py` |
+| **C9** | T20 (`RunRegistry` lock order) | **Seam** | Concurrency correctness in shipped code. Tiny, and isolated precisely because risk ≠ size | `_services/runs.py` |
+
+**Fold GEN-18 into C8 rather than tracking it separately.** T19 must already add
+a manifest field to `RunConsoleState` and a branch to `to_argv`; `--restart`,
+`--slurm k=v`, `--gpu-slurm` and `--gpu-shards` are the same file, the same
+function, the same shape of change. Opening `to_argv` twice for one class of
+defect is the waste the cluster rule exists to prevent.
+
+**C8 and C9 are the phase's only parallel-worktree candidates.** Verified
+zero-file-overlap: C8 owns `phenotypicCLI.py` + `_services/argv.py`, C9 owns
+`_services/runs.py`, and neither is touched by C4 (`catalog.py`), C5
+(`subset/`), C6 or C7 (both `tune/_tune_cli/_run.py`). Everything else in this
+phase overlaps and stays sequential.
+
 **Sequence:** `C1 → C2 → C3 → [1a gates] → C4 → C6 → C7 → C5 → [1b gates]`
+with **C8 ∥ C9 ∥ C4** — the two seams run in their own worktrees alongside the
+first keystone, and each takes its own gate before merge.
+
+**C8 is blocked pending the OME-Zarr impact review.** If an "image" becomes a
+zarr *directory* rather than a file, a line in the manifest changes meaning — and
+that manifest is bound to a human's approval. Do not dispatch C8 until that
+question is answered.
 
 ### C7 — P1 (JournalStorage), moved into Phase 1b (user ruling, 2026-08-19)
 
