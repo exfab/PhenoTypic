@@ -963,8 +963,8 @@ could have blocked it does not.**
 |---|---|---|---|
 | 6 | **§7 P8 / USER-26 `image_manifest`** | **NOT AT RISK** — the blocking question, answered | The store is "one per **input** image" (`:11`) but lives under `results/` (`:14`), and §8 Non-goals states *"Ingesting third-party OME-Zarr as pipeline input (the projection is **write-only**)"* (`:1075-1076`). **Input images stay ordinary files**, so a line in the manifest is unchanged and **C8 is unblocked** |
 | 5 | §7 P6 subset staging (symlink trees) | **NOT AT RISK** — same reason | Staging symlinks *input* images, which remain files. The directory-vs-file hazard applies to `results/`, not to what P6 links |
-| 4 | §5.4 staged-GPU `.npy` sidecar | **CHANGED, not invalidated** | The sidecar *survives* and becomes a **consumable marker** (`:560`, §3.4), deleted by Stage 3 via `delete_sidecar` (`:135-136`, `:594`), and it "does not fully disappear — Stage 2 retains its **raw** detector output" (`:634`). An earlier reviewer called this "the most exposed" site; it is the least |
-| 7 | **CONC-18 completion marker** | **ANSWERABLE NOW — closes a 4-round-open item** | *"Resume state is carried by **consumable markers**, never by NGFF metadata"* (`:43`), and the resume planner's `"complete"` branch depends on the marker's **absence** (`:138`, `:595-596`). CONC-18 asked for the contract phrased as *the engine's completion marker* rather than a named file — that is exactly the shape the store adopted |
+| 4 | §5.4 staged-GPU `.npy` sidecar | **NOT AT RISK** *(corrected)* | Two independent grounds, and my first read of this row was wrong on both. **(a)** The MCP spec never describes the sidecar at all — `grep -rn sidecar` over all 11 docs returns one hit (`04-tune-integration.md:365`), unrelated; the staged description at `05:651-665` survives verbatim. **(b)** The `.npy` does not "become a consumable marker" — the in-store label write was **withdrawn entirely** (locked decision #4, `:41-44`) and Stage 2 now writes raw detector output to `.phenotypic/progress/stage2_raw/` without opening the promoted store (`:562-563`). Called "most exposed" in round 1; it is the least |
+| 7 | **CONC-18 completion marker** | **NOT AT RISK — and the ruling is what saves it** *(corrected)* | I first wrote that the store "adopted" CONC-18's not-a-named-file shape. It did not: the markers **are** named files, and the per-image one **changes schema** (`phase-3-cli-staged.md:1780` Task 3.8 — `_sha256` raises `IsADirectoryError` on a store, `valid_image_success`'s `not artifact.is_file()` is False for every store; `SUCCESS_MARKER_VERSION` 1→2). MCP is insulated because it **names none of them** — zero hits for `success_marker\|valid_image_success` across all 11 docs, and `05:690` names only the two *run-level* markers, which are unchanged. **So CONC-18's ruling stands and earned its keep**: phrasing the contract abstractly is exactly what made a marker-schema change a no-op |
 | 2 | §2.3 workspace layout | **AT RISK, cosmetic** | `results/<dataset>/hdf/<stem>.h5` → `results/<dataset>/zarr/<stem>.ome.zarr/` (`:14`, `:164`, `:1093` OQ4 **Confirmed**) |
 | 3 | §5.5 `deploy_status` progress unit | **AT RISK, cosmetic** | Scanners move from an `*.h5` glob to a **non-recursive** `*.ome.zarr` directory scan (`:800`). The plan flags the trap: a naive recursive port "recurses **into** every store: 400k stat calls at 10k images" |
 | 1 | §5.4 `mode` enumeration | **ALREADY MOOT** | USER-8 cut `mode`/`layer`/`sample` from the deploy tools and hardcodes `--mode full`. `migrate` takes "no `--pipeline`, no `--input`" (`:823`) and is not an MCP-reachable mode |
@@ -977,3 +977,27 @@ being *Confirmed* means the path layout is now settled enough to write against.
 `.npy` sidecar was "most exposed". Two reviewers refuted it then, and the final
 design confirms them — the sidecar is retained and *promoted* to a first-class
 consumable marker.
+
+### Additions from the full impact review (beyond my own read)
+
+- **Site 3 refuted on a false premise**: `deploy_status` reads `manifest.json`, not
+  HDF (`05:686`), and `_dashboard/_manifest_builder.py` has **zero** `.h5`
+  references. Matches FLOW-13.
+- **`scan_directory_structure` is untouched** — OME-Zarr renames only
+  `scan_hdf_outputs`; the function MCP uses for dataset discovery appears in no
+  phase document. Third independent ground that Site 6 is safe.
+- **OME-Zarr touches no file under `_services/`.** `RunConsoleState` and
+  `to_argv` appear in no phase doc, so **C8 has no collision** — only a textual
+  rebase, since Task 3.7 edits the same `phenotypicCLI.py` option block P8 adds to.
+- **NEW WORK on the irreversible path — see change 5 below.** Task 5.7 makes
+  *every mode that consumes results* refuse on a half-migrated tree, which is a
+  fresh `sys.exit(1)` inside the subprocess `deploy_start` launches — the exact
+  opaque-exit failure `05:622` pre-checks to prevent. Reconciles FLOW-14 + GEN-4.
+- **Dependencies to record, not act on:** `--durable-writes` is a new top-level
+  flag `to_argv` cannot emit (SLURM default `on` is what MCP wants, so an
+  enhancement not a break); the Python floor moves to `>=3.11,<3.13` and
+  **`fastmcp` 3.x is unverified there** — a live tail of FLOW-14.
+- **Upstream, not ours:** OME-Zarr's D9 status contradicts itself
+  (`OPEN-QUESTIONS.md:422` says OPEN; `design.md:83-107` and plan `README.md:315`
+  say settled). MCP is safe either way — it depends on neither `metadata_sha256`
+  nor `finalization_input_digest`. Worth relaying to that team.
