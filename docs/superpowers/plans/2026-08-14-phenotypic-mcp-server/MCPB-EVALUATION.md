@@ -398,3 +398,24 @@ addition.**
 
 **Nothing in either skill invalidates the process model, the layering, or the installer.**
 Items 1–3 are the ones whose cost is genuinely asymmetric in time.
+
+---
+
+## Orchestrator disposition (2026-08-19)
+
+| # | Finding | Decision |
+|---|---|---|
+| Q1 | MCPB — do not bundle | **Accepted.** No change to §1.3/§1.7's model. Add the four concrete breakages as rebuttals in §1.7 so the question stops being re-openable |
+| Q2 | `build-mcp-server` agrees; its two anti-stdio arguments invert on a cluster | **Accepted.** Write the inversion into §1.7 — the spec currently asserts stdio without arguing it |
+| Q3 | D1 vs PyPI `fastmcp` 3.x | **OVERRIDDEN by the user: switch to `fastmcp` 3.x.** Recorded as D1a. The evaluation recommended keeping the official SDK; the user chose otherwise, and D6 makes that coherent — elicitation is exactly the capability a frozen FastMCP 1.0 is likely to lack |
+| Q4 | §9.7 not obsoleted; Claude Code plugins overlap | **Accepted.** Plugin-as-`setup`-backend is an *investigation* task before Phase 2C, not an adoption |
+| Q5b | No tool annotations anywhere | **Accepted as D5.** Do now |
+| Q5c | Elicitation for the human gates | **Accepted as D6**, shaped now, implemented 2C, gated on a live subagent test |
+| Q5a | 32 tools vs the 30+ search+execute threshold | **Accepted as-is** — nine heterogeneous groups with a workflow order, and collapsing behind `execute_action` would erase the typed per-tool schemas §1.2 fixes as the contract. Add the `tools/list` token-budget check to Phase 2A |
+
+**Also flagged and unresolved:** the `/bigdata/exfab/anguy344/PhenoTypic` checkout is in a
+detached HEAD at `e5adc876` with staged changes and an unresolved conflict in
+`gui/shell/_runs_registry.py`. That commit is Task 2.5 under a different SHA than the
+live `be2afc66d`, so something re-did that work there. **It is no longer a clean mirror
+of the branch.** Left untouched pending the user — its origin is unknown and it may be
+another session's work in progress.
