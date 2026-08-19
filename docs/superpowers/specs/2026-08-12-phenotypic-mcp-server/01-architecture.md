@@ -479,7 +479,7 @@ What exists today versus what this design adds:
 | Persistent probe worker subprocess | **new** | §3.2 — nothing bounds an in-process `apply()` by wall clock; `LocalRunner` is fire-and-forget `Popen`, not a request/response worker |
 | Killable store-open subprocess | **new** | §4.4, §7 P7 — the nearest analogue (the GUI Monitor's live-open pool) is documented as deliberately *non*-killable |
 | Subset staging (materialize a file list as a directory) | **new** | §7 P6 — neither engine accepts a file list |
-| Plan / promotion token records | **new** | §5.4 — opaque ids over persisted records, not forgeable digests |
+| Plan token records | **new** | §5.4 — opaque ids over persisted records, not forgeable digests. Carries the human ack's binding set since the promotion fold (§10.5) |
 
 Roughly: the server is a **thin adapter plus nine genuinely new pieces** —
 descriptor projection + column derivation, profile governance, routing + slot,

@@ -125,7 +125,8 @@ The last two were closed by measurement rather than by decision:
 fan-out) · state (on-disk workspace, `RunRegistry` reused rather than a new
 index) · SLURM authority (named profiles + capped overrides) · coupling
 (`_services` promotion) · catalog breadth (reconcile both enumeration lists) ·
-workspace root (`--workspace`, defaulting to CWD) · defaulting (explicit always)
+workspace root (`--workspace`, **mandatory, and must contain the image data**) ·
+defaulting (explicit always)
 · deploy gate (plan-then-submit mandatory) · distributed storage (JournalStorage
 backend, gated on L1) · skill packaging (in-repo + `phenotypic-mcp setup`) ·
 profile scope (per-dataset) · profile validation (structure and provenance only —
