@@ -522,7 +522,8 @@ workspace-immutability rule (§2.2) and rehydration cost visible.
 The workflow (§8.1) is otherwise taught only by the skills, so an agent that
 never loads `phenotypic-experiment-triage` has no contract-level signal that an experiment profile
 and a subset come before tuning. `workspace_info` is the natural first call, so
-it answers *what should I do next* — `experiment_profile_put` when `counts.assays == 0`,
+it answers *what should I do next* — write an experiment profile when
+`counts.profiles == 0`,
 `subset_generate` when there is no subset, and so on, with `blocked` naming any
 tool that would refuse right now and why. Skills teach judgment; this makes the
 bare ordering legible without them.

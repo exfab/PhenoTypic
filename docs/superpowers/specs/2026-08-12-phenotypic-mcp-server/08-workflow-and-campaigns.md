@@ -311,7 +311,7 @@ compute, subset, and experiment-profile references.
 
 **This is the session-recovery entry point**, and it is a `detail` mode of `campaign_status` rather than a separate tool — mirroring `tune_status` and `deploy_status`, and retiring a sibling pair whose names invited confusion. An agent resuming after a context
 compaction typically holds one thing: a campaign id. `campaign_status` reports
-*progress* per arm but not the artifact ids, so without `campaign_get` the only
+*progress* per arm but not the artifact ids, so without `detail:"artifact"` the only
 route back to a winning arm's pipeline was to know, unprompted, to call
 `workspace_lineage {id: study_id}` and trace `tune.start`'s `parent` — a path
 this spec named nowhere.

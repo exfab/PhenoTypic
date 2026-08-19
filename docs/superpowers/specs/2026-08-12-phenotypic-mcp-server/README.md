@@ -1,7 +1,20 @@
 # PhenoTypic MCP Server — Design Spec
 
-**Status:** draft. All ten sections reviewed by independent reviewers and
-revised — six blockers found and fixed across five review passes.
+**Status:** draft, **refinery round 1 applied**. Ten sections, nine review
+passes: five original, then an MCPB/deployment evaluation, an interface audit
+against official MCP guidance, and a four-reviewer refinery panel (general,
+data-flow, simplicity, concurrency) that returned **63 concerns and four REVISE
+verdicts**. Fifteen user rulings are recorded in `refinery/ledger.md` with their
+rationale.
+
+**What round 1 changed:** the catalog went **32 tools → 26** — promotion folded
+into `deploy_plan {scope:"full"}`, the `assay` artifact became
+`experiment_profile`, and `mode`/`layer`/`sample` left the deploy tools. §8.2's
+concession that the server "cannot verify that a human approved anything" was
+retired in favour of **elicitation**. §9.3 gained **multi-group experiments**
+(`group_by` + per-group trait overrides). And §3.2 gained the advisory that stops
+an agent repeating an edit it already rejected — a gap none of the 63 concerns
+found.
 **Date:** 2026-08-12
 
 ## What this is

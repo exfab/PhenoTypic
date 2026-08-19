@@ -418,7 +418,7 @@ never enumerates traits.**
 
 **And the server never *acts* on a trait.** No trait value gates any tool's
 behaviour anywhere in the catalog — not scorer choice, not subset requirements,
-not GPU routing, not operation filtering. `experiment_profile_put` and `experiment_profile_get` are the
+not GPU routing, not operation filtering. `experiment_profile_get` is the
 only tools that touch the artifact; `campaign_put` stores the `experiment_profile` reference
 as a string without even checking the file resolves. **The experiment profile is provenance
 for humans and input for skills; it is not an interlock.**
@@ -561,7 +561,7 @@ tools do it*.
 
 **When:** at the start of any new dataset, before any pipeline exists.
 **Produces:** `profiles/<dataset>.experiment.json` **and** `subsets/<name>.subset.json`.
-**Tools:** `experiment_profile_put`, `experiment_profile_get`, `subset_put`, `subset_get`,
+**Tools:** `experiment_profile_get`, `subset_put`, `subset_get`,
 `pipeline_probe`, `catalog_operations`.
 **Procedure:**
 
@@ -573,7 +573,8 @@ tools do it*.
 4. Probe 2–4 subset images to measure contrast (`michelson_percell_median`,
    §9.3.2 — **not** Otsu's η, which §9.3.2 refutes as scale-invariant) and
    separation.
-5. `experiment_profile_put` with every trait carrying its `source`; `subset_put` with the
+5. Write the profile with every trait carrying its `source` (the skill writes the
+   file directly — there is no `_put` tool); `subset_put` with the
    measured `coverage` range.
 
 **Hard rule it teaches:** never write `source: "human"` for something the human
@@ -586,7 +587,7 @@ drives a decision.
 **Procedure:** §9.4 — prefab-first, probe-compare, tune-before-authoring, and the
 justification convention for custom pipelines.
 **Tools:** `catalog_operations`, `catalog_operation_detail`, `pipeline_put`,
-`pipeline_probe`, `pipeline_patch`, `pipeline_diff`.
+`pipeline_probe`, `pipeline_patch`.
 **Hard rule it teaches:** a probe result is evidence about *those two images*.
 Two probes are not a validation.
 
@@ -598,9 +599,9 @@ workspace actually has (`tune_space` reports availability); include a baseline
 arm and a control arm, not only the hypothesis; size the budget from the probe
 timing; narrow `needs_review` domains rather than accepting inferred bounds.
 **Tools:** `tune_space`, `tune_put_spec`, `campaign_put`, `campaign_approve`,
-`campaign_start`, `campaign_status`, `campaign_get`.
+`campaign_start`, `campaign_status`.
 
-**Recovery:** resuming with only a campaign id, call `campaign_get` first — it
+**Recovery:** resuming with only a campaign id, call `campaign_status {detail:"artifact"}` first — it
 returns the arms' `pipeline`/`tune_spec`/`study_id`, which `campaign_status` does
 not carry. Then `campaign_status` for progress, and `workspace_lineage {id}` only
 if you need the provenance chain (§8.3).
@@ -649,7 +650,7 @@ not a formality to pass through.
 
 **Skills are authored in-repo** at `.claude/skills/phenotypic-*/SKILL.md`, so
 they version in lockstep with the tool contract. This matters concretely: a skill
-that instructs the agent to call `pipeline_diff` is *wrong* until that tool
+that instructs the agent to call a tool is *wrong* until that tool
 exists, and only co-versioning makes that a reviewable diff rather than a
 runtime surprise.
 

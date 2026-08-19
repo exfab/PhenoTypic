@@ -331,7 +331,7 @@ Two pieces:
    the agent can reach NN/GPU detectors and prefabs (§3.1).
 2. **A JSON descriptor projection** over `OperationInfo`/`ParamInfo` — plus the
    `header_scheme()`-dispatching column derivation for `produces_columns` and
-   `catalog_measurements`, which is *not* the ~40-line job first estimated
+   `produces_columns`, which is *not* the ~40-line job first estimated
    (`TEXTURE.get_headers()` raises `TypeError` without a `scale`; see §3.1).
 3. **The `phenotypic/subset/` subpackage** — `SubsetSelector` ABC plus
    `RandomSubsetSelector`, `MetadataGroupSubsetSelector`, and the
