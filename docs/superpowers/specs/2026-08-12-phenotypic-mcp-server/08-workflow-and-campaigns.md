@@ -392,9 +392,35 @@ going to run, and has no `study_id` — and the agent reads it as failed.
 
 **Re-calling `campaign_start` is idempotent, and that is what makes a kill
 mid-fan-out recoverable.** It launches only arms with no `study_id` recorded;
-arms that already have one are reported unchanged. The transition itself refuses
-a concurrent second caller — `launching` is not `approved` — so this is a
-*recovery* path, not a race. Nothing else in the design recovers a half-launched
+arms that already have one are reported unchanged.
+
+**The recovery call needs its own transition, because otherwise it is refused by
+the same guard that stops a double launch.** After a kill the artifact reads
+`running`, and a recovery call and a concurrent second caller are *the same call
+arriving at the same status*. Only one of these can be true at once: either the
+guard refuses everything non-`approved`, and recovery does not exist; or it
+admits `running`, and the double-launch protection is gone. So the transition is
+stated explicitly and takes two arms:
+
+| From | To | Admitted when |
+|---|---|---|
+| `approved` | `launching` | the initial launch |
+| `launching` \| `running` | `running` | **only if `launch_state == fan_out_incomplete`** — i.e. a recovery |
+
+A second live caller finds `launch_state == clean` and is refused; a caller after
+a kill finds `fan_out_incomplete` and proceeds. The discriminator is the state,
+not the timing, which is what makes it implementable.
+
+**Which makes `launch_state` load-bearing, so it must be derivable.** Defining
+`fan_out_incomplete` as "…with no background task alive" is not: nothing on disk
+records launcher liveness, §2.3 anticipates overlapping servers over one
+workspace, and a launcher legitimately parked on the ceiling is indistinguishable
+from one that no longer exists. So **the launcher writes a lease onto the
+campaign artifact — `launcher: {pid, create_time, expires}` — with exactly the
+`(pid, create_time)` treatment §2.4 gives `RunRecord`.** A lease that is absent,
+expired, or whose pid/create_time pair does not resolve to a live process means
+no launcher is alive. This is the same problem `RunRecord` was given that pair
+for this round; the campaign artifact simply did not get the equivalent. Nothing else in the design recovers a half-launched
 campaign: `allocate` refuses the already-claimed output directories and the agent
 has no way to tell which arms got out.
 
@@ -436,8 +462,10 @@ stands.** Two fields beyond the artifact:
   from a current one without diffing content, and it is the value a subsequent
   mutation CASes against.
 - **`launch_state`** — `clean` or `fan_out_incomplete`. `fan_out_incomplete` means
-  the campaign is `launching` or `running` and at least one arm is `queued` with
-  no `study_id`, with no background task alive to finish it.
+  the campaign is `launching` or `running`, at least one arm is `queued` with no
+  `study_id`, and **the `launcher` lease is absent, expired, or names a pid whose
+  `create_time` does not match a live process**. Liveness is read from the lease,
+  never inferred from the arms.
 
 `launch_state` exists because **"never started" and "started by a server that
 died" look identical on disk** — both are a campaign with arms and no studies —

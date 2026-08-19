@@ -330,8 +330,21 @@ So the ceiling is **one `asyncio.Semaphore(max_inflight_arms)` acquired by every
 launcher**, which gives arrival-order admission for free. And because a starved
 arm otherwise looks identical to a healthy one — it sits in `queued` while
 `launch_state` reports `clean`, since a background task genuinely is alive —
-`campaign_status` reports **`queued_reason: "campaign_budget" | "server_ceiling"`**
-and, for the latter, a queue position. Without those two, the ceiling introduces
+`campaign_status` reports **`queued_reason: "campaign_budget" | "server_ceiling"
+| "local_slot"`** and, for the ceiling, a queue position. The third value matters:
+under local routing a `W2` arm holds the slot for its whole subprocess lifetime,
+so at `local_slot_capacity=1` a three-arm campaign starts one arm and the other
+two are waiting on the *slot* — which is neither of the first two reasons, and
+without a name for it those arms sit in a state the design does not describe.
+
+**The launcher's wake condition is the semaphore itself.** Acquiring
+`asyncio.Semaphore(max_inflight_arms)` parks the launcher until a release wakes
+it in arrival order — so "what wakes a blocked launcher" needs no poll interval
+and no separate signal; the same primitive that bounds admission provides it.
+On `workspace_cancel` the launcher is cancelled and stops launching further arms,
+leaving already-launched arms to their own lifecycle; on server shutdown it exits
+without launching more, and its lease expiry is what lets the next server see the
+fan-out as incomplete rather than merely idle. Without those two, the ceiling introduces
 a starvation mode the per-campaign budget never had, and hides it behind a
 healthy-looking poll.
 
