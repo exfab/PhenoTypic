@@ -153,3 +153,47 @@ nothing at all. Consequences adopted:
 - **Never run two implementation agents in one working tree.** They share a git
   index; incident X1 was exactly this, and a second occurrence would not
   necessarily be cosmetic.
+
+---
+
+## PHASE 1a — CLOSED 2026-08-19
+
+Ten tasks (1, 2, 2.5, 3, 4, 5, 6, 7, 8, 9), three clusters, three gates, one
+merge of `origin/main`, one simplify pass. Exit gate green on every item:
+
+| Check | Result |
+|---|---|
+| `tests/unit/services` | 61 passed |
+| `tests/unit/cli` | 552 passed |
+| `tests/unit/gui` + `tests/integration/gui` | 1746 passed, 3 skipped |
+| `tests/gui` | 662 passed, 1 deselected |
+| `check_features_md.py` | OK — 444 rows, 370 shipping |
+| `check_workflows_md.py` | OK — 20 workflows, 20 capture fns, 20 dispatched |
+| mypy (cold cache) | 417 errors / 124 files — **empty diff** vs the pre-phase tree |
+| ruff | clean on every changed path |
+
+**What the gates actually bought.** Ten blocker-class findings that a green suite
+would not have surfaced:
+
+- **C1 gate** — the purity gate missed nested subpackages; two lint sinks named
+  `_` collided into new mypy errors when two modules merged; the tier claimed to
+  be GUI-free in two docstrings while `runs.py` imported `gui.shell._classifier`.
+- **C2 gate** — the allowlist exactness pin covered one key of two, so a one-line
+  edit dissolved the boundary with 59 tests still passing; seven identity
+  assertions could not fail because `typing.Literal` is `_tp_cache`d; the optuna
+  guards were inert locally and tautological in CI.
+- **C3+merge gate** — main's identity arrays (`EXPECTED_WORK_IDS`,
+  `EXPECTED_INPUT_SHA256S`) have **no test coverage at all**: empty or corrupt
+  them and all 552 CLI tests stay green. Pre-existing on main, reported upstream.
+- **Plan review** — the phase's central architectural claim was wrong: the eager
+  `gui/shell/__init__.py` was the Dash leak, not the modules, and Task 5 would
+  have failed a gate it was forbidden to weaken. Fixed by adding Task 2.5.
+
+**Three claims the orchestrator wrote and agents disproved:** that the eager
+`__init__` files were out of scope; that mypy's error count was unstable (it was
+cache warmth); that `deploy_plan` is a `W0` call (post-merge it reads every input
+image twice).
+
+Two incidents, both from sharing one working tree: `git add -A` swallowed an
+agent's staged rename, and an agent kept working in the pre-move directory,
+duplicating three tasks onto a detached head. Both recorded; practices adopted.

@@ -67,6 +67,16 @@ Every task's requirements implicitly include this section.
     that may be interned, assert the *structure*: the name arrives by an
     `ImportFrom` of the canonical module and is bound by no module-level
     `Assign`/`AnnAssign`/`def`/`class`.
+- **Any change touching a re-export shim runs an AST surface check first.** Parse
+  every `.py` under `src`, `tests`, `scripts` for the names actually imported from
+  the shimmed module — including multi-line parenthesised imports, aliased
+  attribute access, and monkeypatch string targets — and assert the shim still
+  exports all of them. **Five shim-surface defects occurred in Phase 1a alone**
+  (`ColumnRefSpec`; the two `_sandbox` privates; `_normalize_setup_metadata_groupby`
+  twice — once when main added it, once when a simplify edit dropped it). Four were
+  caught by a failing test elsewhere; the fifth only by running this check. It is
+  cheap and it is the difference between finding the problem now and finding it
+  in a suite that passes.
 - **Check mypy with a COLD cache, on scratch, and diff.** A warm `.mypy_cache`
   produced `416 errors in 123 files` where a cold run gives `417 / 124` — which
   is exactly main's number. Every count discrepancy chased in this phase traced
