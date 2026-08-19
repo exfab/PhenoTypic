@@ -235,7 +235,7 @@ genuinely new piece of work (§1.6), previously invisible in that accounting.
 |---|---|---|---|
 | `pipeline_id` | `str` | — | Pipeline to run |
 | `subset_id` | `str` | — | Registered subset (§10.3.1) |
-| `scope` | `"subset" \| "full"` | `"subset"` | `full` plans against `subset.parent`; the only way to obtain a full-scope `plan_token` |
+| `scope` | `"subset" \| "full"` | `"subset"` | `full` plans against `subset.parent`, **intersected with the subset's `group_filter` where it has one** (§10.2, §10.5); the only way to obtain a full-scope `plan_token` |
 | `run_name` | `str` | — | Output directory under `runs/` |
 | `compute` | `object?` | `{}` | `{profile, …overridable keys}` |
 | `metadata_csv` | `str?` | `null` | Joined onto the measurements mirror |
@@ -260,7 +260,8 @@ whatever the enum is by then.
   "sbatch_preview":"#!/bin/bash\n#SBATCH --partition=batch\n#SBATCH --account=exfab\n#SBATCH --array=0-99\n…",
   "array":{"requested":100,"chunks":1,"effective_limit":512,"limit_source":"profile cap"},
   "estimate":{"basis":"probe of 2 images at 3.4 s/image",
-              "node_seconds":340,"wall_clock_hint":"~6 min at 100 concurrent"},
+              "node_seconds":340,"node_hours":0.094,
+              "wall_clock_hint":"~6 min at 100 concurrent"},
   "requires_gpu":false,"staged_gpu":false,
   "outputs":{"root":"runs/2026-08-12-plateA",
              "deliverables":"runs/2026-08-12-plateA/deliverables"},
@@ -273,6 +274,20 @@ The estimate is honest about its basis. If the agent has run `pipeline_probe`
 on this pipeline, per-image timing comes from that lineage row; otherwise the
 response says the number is a default. An estimate presented without provenance
 is worse than none.
+
+**`estimate` reports both `node_seconds` and `node_hours`, and `node_hours` is
+the bound one.** The two are the same number and the response carried only the
+first while §5.4's token bound the second and §10.5's promotion response
+reported the second — so the field the human approves was not in the schema of
+the tool that produces it. `node_hours` is the human-facing unit (it is what
+`ack_prompt` quotes); `node_seconds` stays because the per-arm campaign
+estimates (§8.3) are seconds-scale and mixing units across §5 and §8 is worse
+than carrying both.
+
+**At `scope:"full"` the response also echoes `group_filter`** — the map copied
+from the subset artifact, or `null` — so the agent can see at plan time which
+images a full-scope run will touch, rather than discovering the intersection at
+submission. It is the same value §5.4's token binds.
 
 ## 5.4 `deploy_start` (`W3`) — submit
 
@@ -314,9 +329,12 @@ long as the person takes to answer, reproducing the hazard the relocation was
 made to remove, one call later.
 
 **Plan-then-submit is mandatory.** `deploy_start` refuses without a
-`plan_token` whose recorded `(pipeline digest, images digest, compute)` matches
-the request, returning `code: "plan_required"` or `"plan_stale"`. Every cluster
-submission is therefore preceded by an inspectable preview.
+`plan_token` **whose every bound field re-derives equal from the current
+request** — the binding set below is the single statement of what those fields
+are, and nothing outside this section restates it. A missing token returns
+`code: "plan_required"`; a token that no longer matches returns `"plan_stale"`
+naming the field that moved. Every cluster submission is therefore preceded by
+an inspectable preview.
 
 ### What a token *is*
 
@@ -328,6 +346,7 @@ its own contents.
 {"token":"pl_7f3a…","kind":"plan","created":"…","expires":"…",
  "scope":"subset","pipeline_digest":"sha256:9c1e…","subset_id":"subsets/…",
  "subset_digest":"sha256:77b2…","compute":{"profile":"cpu-bulk","time":"02:00:00"},
+ "parent_digest":null,"group_filter":null,
  "run_name":"runs/2026-08-12-plateA",
  "array":{"requested":480,"chunks":1,"effective_limit":2500},
  "estimate":{"node_hours":18.4},
@@ -336,16 +355,41 @@ its own contents.
  "argv_digest":"sha256:4b0a…","consumed_by":null}
 ```
 
+`parent_digest` and `group_filter` are `null` at `scope:"subset"` and populated
+at `scope:"full"`; the table below is what says which. They are **fields of the
+record at both scopes**, not fields that appear only at one — an optional key an
+implementer has to infer from an example is how `group_filter` came to have no
+storage location at all.
+
 **The binding set is exhaustive, and it grew when the token absorbed the
 promotion gate.** While the token only meant "a plan was drawn", a stale one cost
 a re-plan. Now it carries a human's consent to a specific quantity of somebody
 else's compute, so anything quoted to that human has to be inside it:
 
-| Field | Why it binds |
-|---|---|
-| `run_name` | Otherwise an ack given for `runs/2026-08-12-plateA` is spendable against a different output directory with every digest still matching |
-| `array` | §5.3 resolves the width live from `scontrol`/`sacctmgr` (§5.2), so the cluster can re-chunk between plan and start. `compute` binds the *profile*, not the resolved width |
-| `estimate.node_hours` | The number quoted verbatim in `ack_prompt`. This is the figure the human actually approves, and it was outside the token entirely |
+**This table is the binding set.** Every field the token binds is here, with the
+scope it binds under; no other section states a binding set, and any that needs
+to talk about one cites this table. Four earlier restatements of it — three in
+this section, two in §10.5 — disagreed with each other and with the record, and
+the disagreement was invisible because each read as a summary of the others.
+
+| Field | Scope | Why it binds |
+|---|---|---|
+| `scope` | both | `subset` and `full` are different spends; a token minted for one is not the other |
+| `pipeline_digest` | both | The pipeline the human was quoted a cost for |
+| `subset_id` | both | Which registered subset the plan was drawn against |
+| `subset_digest` | both | The subset's own image list can be re-cut under the same name |
+| `compute` | both | The profile and its overrides — what the work costs per node |
+| `run_name` | both | Otherwise an ack given for `runs/2026-08-12-plateA` is spendable against a different output directory with every digest still matching |
+| `array` | both | §5.3 resolves the width live from `scontrol`/`sacctmgr` (§5.2), so the cluster can re-chunk between plan and start. `compute` binds the *profile*, not the resolved width |
+| `estimate.node_hours` | both | The number quoted verbatim in `ack_prompt`. This is the figure the human actually approves, and it was outside the token entirely |
+| `argv_digest` | both | The rendered invocation, defined below |
+| **`parent_digest`** | **`full` only** | A parent that gained images between the plan and the submission invalidates the token (`plan_stale`, §10.5) rather than quietly deploying over a dataset nobody reviewed. `null` at `subset` |
+| **`group_filter`** | **`full` only** | USER-21: full scope on a group-filtered subset is `parent ∩ group_filter`, so an ack given for one group's images cannot be spent on another's. The filter is copied from the subset artifact's `group_filter` (§10.2) at plan time and re-compared at start. `null` at `subset`, and `null` at `full` for a subset with no filter |
+
+`ack_prompt` and `decision_content` are **carried on the record but are not
+bound**: they are what the server re-renders the elicitation from, not inputs
+re-derived from the request, so there is nothing to compare them against. Their
+integrity comes from the bound fields they were computed from.
 
 **`argv_digest` is the SHA-256 of the rendered argv list**, joined with `\0`, as
 produced by `to_argv` plus the profile's `--slurm` pairs — including `--output`.
@@ -374,16 +418,45 @@ would make every restart silently invalidate approvals you had already given.
 | Single use | `consumed_by` is CAS'd to the `run_id` on a successful `deploy_start`; a second use → `plan_stale`. Re-running a deploy means re-planning, which is cheap and keeps the preview honest |
 | Collection | Expired tokens are deleted on the next `deploy_plan` or server start. Without this, every plan the agent draws and abandons accumulates under `.phenotypic-mcp/plans/` indefinitely — and once a token can carry a human's consent, an abandoned one is not merely litter but a standing approval waiting for a matching request. Expiry already bounds the exposure to 24 h; collection is what stops it accruing |
 
-A `scope:"full"` token additionally binds `parent_digest`, so a parent that
-gained images between the plan and the submission invalidates it (`plan_stale`,
-§10.5) rather than quietly deploying over a dataset you did not review. It also
-records the human ack, which is what makes it the promotion gate rather than
-merely a plan.
+The token **does not record the human ack** — USER-18 moved the ack to
+`deploy_start`, one call later, so the token carries the *material* the gate is
+rendered from and the ack lands on the `deploy.approve` lineage row (§2.5) and
+the response's `ack_source`. A token that recorded an ack would be a second
+mutable state racing the gate, which is the contradiction the relocation
+dissolved.
+
+### The token's two producers, and what each can bind
 
 The token is satisfied two ways: a direct `deploy_plan` call, or membership in
 an **approved campaign** (§8), which stamps a token per arm at approval time.
 That keeps the human checkpoint in the planning phase where you actually are,
 rather than inserting one into autonomous Phase-2 execution.
+
+**But a campaign arm cannot bind everything a `deploy_plan` token binds, and
+saying "the binding set is exhaustive" without saying so leaves an implementer
+with four mandatory fields and no value for them.** At `campaign_approve` time
+the arm has no `run_name` (the study is named `studies/<campaign>-<arm>` later,
+at fan-out), no resolved `array` (nothing has consulted `scontrol`), no
+`estimate.node_hours` from a `deploy_plan` (the campaign's own per-arm estimate
+is a *tune* estimate, §8.3), and no `argv_digest` (no argv has been rendered).
+Running a full `deploy_plan` per arm at approval time is not what §8.3 does and
+would put a cluster query inside a `W0` handler.
+
+So a campaign-stamped token is a **distinct kind**, and the record says which:
+
+| `kind` | Minted by | Binds | `scope` |
+|---|---|---|---|
+| `"plan"` | `deploy_plan` | the full table above | `subset` or `full` |
+| `"campaign_arm"` | `campaign_approve` (§8.3) | `scope`, `pipeline_digest`, `subset_id`, `subset_digest`, `compute`, plus `campaign_id` and `arm_id` | **`subset` only** |
+
+`run_name`, `array`, `estimate.node_hours` and `argv_digest` are **absent, not
+null**, on a `campaign_arm` token, and validation does not look for them: the
+arm's spend is bounded by the campaign the human approved, whose own budget
+(`trials_per_arm`, `max_concurrent_arms`, `compute`) is the quantity that was
+quoted. `campaign_arm_scope_full` (§6.2) already refuses a campaign arm at full
+scope, which is what keeps the weaker binding set off the irreversible path —
+the full-dataset spend is reachable only through a `"plan"` token, which binds
+everything.
 
 **`overwrite` is deliberately not exposed.** The CLI's `--overwrite` does
 `shutil.rmtree(output_dir)` — it destroys `deliverables/`, every per-image HDF,

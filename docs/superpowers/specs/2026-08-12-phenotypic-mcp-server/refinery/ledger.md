@@ -630,3 +630,49 @@ inversion is local to `allocate`.
 **Also confirmed pre-existing and unrelated to the MCP work**, so it is worth
 reporting upstream on `main` regardless of what this spec decides — the same way
 the `EXPECTED_WORK_IDS` coverage gap was.
+
+---
+
+## User rulings, round 3 (permanent)
+
+### USER-25 — the `W0` row gains a human-gate exemption (settles SIMP-31, Critical)
+USER-18 was applied to one of the **two** human gates. `campaign_approve` is the
+other, is also `W0`, and round 2 *added* the paragraph that makes its
+minutes-long human wait explicit.
+
+Rather than move a second tool, §1.6.1's `W0` row states the exemption once:
+**while a human-gate elicitation is outstanding**. Under USER-20 that wait is an
+`await` on the loop, not a block of it — other subagents are served throughout —
+and single-flight (§8.2) bounds it. The row was conflating *latency* with
+*blocking*; this separates them.
+
+**USER-18's outcome is unchanged.** Only the `W0`-violation half of its stated
+basis retires; the other half — the gate belongs at the point of spend, and an
+approval must not be able to go stale — still carries the ruling. ~9 lines of
+§10.5's relocation narrative go with it.
+
+### USER-26 — `parent ∩ group_filter` is resolved in place to a manifest (settles FLOW-36, SIMP-35)
+The server resolves the intersection to a **concrete image list at plan time**,
+writes it as a manifest, and the run consumes that. No copying; consistent with
+§10.5's bypasses-staging rule; and the manifest is what the token's digest binds,
+so the human approves an image set that cannot subsequently drift.
+
+**Verified prerequisite the ruling did not know it was buying:** the public CLI's
+`--input` is a single `click.Path` (`phenotypicCLI.py:924-929`) — not a list and
+not a manifest file — so **this needs a new top-level CLI flag**. Precedent and
+probably reusable machinery exist: `_cli_staged_slurm_worker.py:422` already
+takes `--manifest` as an internal entry point. **This is a new §7 prerequisite
+and a new plan task**; it was not in either before.
+
+### USER-27 — trim the narration to the ledger, keep the load-bearing rationale (settles SIMP-38, SIMP-37)
+The "an earlier draft…" passages measure **~309 lines**, not the ~35 estimated in
+round 2. Cut the ~160 the reviewer itemized — including two §2.6 subsections that
+specify fixes to **shipped code** rather than to the server (CONC-8's lock
+ordering and the `_REGISTRY` publication, both already dispositioned as Phase 1b
+code fixes and belonging in §7, not §2.6). Keep the ~120 lines of rationale that
+stop a later reader undoing a rule whose cost is invisible.
+
+**The justification is not tidiness.** This habit concealed a live contradiction
+for two rounds: §1.5 kept a retired `W1` execution model as normal-looking prose
+beside a new pool description that inherited it, and it read as context rather
+than as a defect. Normative text says what **is**; the ledger says what changed.

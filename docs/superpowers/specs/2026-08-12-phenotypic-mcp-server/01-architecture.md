@@ -572,7 +572,7 @@ Stated because the design has one shared process serving N subagents (§1.3), so
 
 | Class | Requirement |
 |---|---|
-| **`W0`** | Returns in **under one second**, and **must never block the event loop**. A `W0` tool that performs real I/O — a filesystem walk, a subprocess, a store open, a directory digest — runs in the executor. `W0` means *takes no compute slot*; it does **not** mean *is instant*, and the two must not be conflated. |
+| **`W0`** | Returns in **under one second**, and **must never block the event loop**. A `W0` tool that performs real I/O — a filesystem walk, a subprocess, a store open, a directory digest — runs in the executor. `W0` means *takes no compute slot*; it does **not** mean *is instant*, and the two must not be conflated. **One exemption: while a human-gate elicitation is outstanding.** That wait is an `await` on the loop, not a block of it — other subagents' calls are served throughout — and it is bounded by §8.2's single-flight rule. Both human gates (`campaign_approve`, `deploy_start`) rely on this; without it the `W0` row conflates latency with blocking and forbids a wait that costs the server nothing. |
 | **`W1`** | Bounded by `limits.probe_max_images` (default 4) and `limits.probe_timeout_s` (default 300), inclusive of slot wait. The timeout must be reconciled with the host's own tool-call timeout — a server that outlives the host's patience holds the slot after the caller has given up. |
 | **`W2` / `W3`** | **No latency requirement.** Submit-and-poll: the tool returns on submission and progress is polled. |
 | **Connection** | The `tools/list` payload is spent every turn by every subagent; it is a budgeted resource, not free. |

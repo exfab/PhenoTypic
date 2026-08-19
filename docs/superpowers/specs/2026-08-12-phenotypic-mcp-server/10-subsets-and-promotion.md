@@ -43,11 +43,13 @@ the other:
   "schema_version": 1,
   "name": "plates-dev-24",
   "parent": {"path": "data/plates", "digest": "sha256:1a4c…", "n_images": 480},
+  "group_filter": {"Metadata_Species": "A_nidulans"},
   "selection": {
     "method": "MetadataGroupSubsetSelector",
     "params": {"n": 24, "seed": 0,
                "grouping_metadata": "data/plate_batches.csv",
-               "group_key": "Metadata_Batch", "allocation": "equal"},
+               "group_key": "Metadata_Batch", "allocation": "equal",
+               "group_filter": {"Metadata_Species": "A_nidulans"}},
     "rationale": "8 batches x 3 plates each; equal allocation so the two rare
                   low-contrast batches are not swamped by the six common ones"
   },
@@ -63,7 +65,7 @@ the other:
 }
 ```
 
-Three things it must record, because each one changes how much the results mean:
+Four things it must record, because each one changes how much the results mean:
 
 - **`parent` with a digest** — so a promotion can verify the full dataset has not
   changed since development, and so `campaign_status.comparable` (§8.3) has its
@@ -79,6 +81,16 @@ Three things it must record, because each one changes how much the results mean:
   during triage. A subset that contains only easy plates will tune to a pipeline
   that fails on the hard ones, and nothing downstream can detect that from the
   cost alone.
+- **`group_filter`** — the `{column: value}` map the candidate set was restricted
+  to before selection (§10.3), or `{}` for an unfiltered subset. It is recorded
+  at top level as well as inside `selection.params` because two different readers
+  need it and only one of them is reading the selector: `deploy_plan
+  {scope:"full"}` resolves the run to `parent ∩ group_filter` and the plan token
+  binds it (USER-21, §5.4), so **a filtered subset that records no filter makes
+  that safety property uncarried** — a full-scope ack given for one group would be
+  spendable across every group with every digest still matching. A subset whose
+  `parent` is the whole dataset and whose filter is empty and one whose filter is
+  a single species are otherwise byte-indistinguishable in everything downstream.
 
 ## 10.3 Where subsets come from — the selector hierarchy
 
@@ -99,11 +111,14 @@ class SubsetSelector(BaseModel, ABC):
     Args:
         n: Target subset size.
         seed: RNG seed; recorded on the artifact so a selection is reproducible.
+        group_filter: `{metadata column: value}` restricting the candidate set
+            *before* any selector runs. Empty means the whole parent.
     """
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
     n: int = Field(..., ge=1)
     seed: int = 0
+    group_filter: dict[str, str] = Field(default_factory=dict)
 
     @abstractmethod
     def _select(self, candidates: list[ImageRef]) -> list[str]: ...
@@ -117,8 +132,30 @@ class SubsetSelector(BaseModel, ABC):
 ```
 
 `SubsetSelection` is frozen and carries `images`, `method`, `params`, `seed`,
-and a human-readable `rationale` — which becomes `selection` on the subset
-artifact (§10.2).
+`group_filter`, and a human-readable `rationale` — which becomes `selection` on
+the subset artifact (§10.2).
+
+**`group_filter` is declared here, on the ABC, and it has to be.** USER-24
+offloaded grouping strategy to the agent and kept exactly this one primitive
+(§9.3.0.2 argues why); `model_config = ConfigDict(extra="forbid")` means a
+selector cannot accept it as an extra key, so a filter that exists only in prose
+is a filter no selector can be given. On the ABC rather than on
+`MetadataGroupSubsetSelector` because restricting a candidate set is one idea
+stated once: it composes with every selector — random-within-one-group works —
+and it leaves `allocation` and `min_per_group` meaning stratification *inside*
+the filtered set rather than becoming inert in a second mode.
+
+Its semantics, stated where they can be implemented from:
+
+| Aspect | Rule |
+|---|---|
+| When | Applied by `select()`'s template **before** `_select` is called, so no subclass implements it and none can skip it |
+| Source of the columns | The same `grouping_metadata` CSV the selector already reads, joined to images by parent-relative path. A selector with no CSV configured and a non-empty `group_filter` is a construction error, not an empty result |
+| Semantics | Conjunctive: every `{column: value}` pair must match. Values compare as strings against the CSV cell, after the `Metadata_` canonicalization §9.3 uses — never by raw prefix parsing |
+| Column absent from the CSV | `group_filter_column_not_found` (§6.2), carrying the CSV's actual column list and a did-you-mean, exactly as `group_key_not_in_metadata` does |
+| Matches no rows | `group_filter_matches_nothing` (§6.2). It is an error, not an empty subset: an empty subset would pass every downstream shape check and produce a study of nothing |
+| Recorded | On the artifact at top level **and** inside `selection.params` (§10.2), so a filtered subset is distinguishable from an unfiltered one by reading either |
+| Carried to full scope | `deploy_plan {scope:"full"}` reads it off the artifact and the plan token binds it (§5.4, USER-21) |
 
 Two methods worth calling out:
 
@@ -511,10 +548,13 @@ The token still carries the one thing only the plan step knows: the parent diges
 the right order, since there is no point asking someone to approve a number that
 is already stale.
 
-The token binds `(pipeline digest, parent digest, scope)`. If the full dataset
-gained images between the plan and the submission, the token is stale and the
-decision is made again with `code: "plan_stale"` — the property `promotion_stale`
-used to provide.
+**The binding set is §5.4's table, not a triple restated here.** What matters at
+this gate is the consequence: if the full dataset gained images between the plan
+and the submission, `parent_digest` no longer re-derives equal, the token is
+stale, and the decision is made again with `code: "plan_stale"` — the property
+`promotion_stale` used to provide. Three earlier drafts of this section each
+named a different subset of the bound fields; the fix is that none of them names
+any.
 
 **Two properties this must keep**, unchanged from the two-tool design:
 
@@ -543,13 +583,30 @@ the bare parent would deploy one group's tuned pipeline across **every** group �
 precisely the heterogeneity failure the filter exists to prevent, executed at
 full scale with every digest check passing.
 
-So `deploy_plan` carries the subset's `group_filter` through to full scope and
-the run is `parent ∩ group_filter`. This costs nothing structurally: the filter is
-a metadata predicate over the parent's images, which is the same join the subset
-already performed, and it needs no staging. The token binds **`(parent_digest,
-group_filter)`** rather than `parent_digest` alone — so an ack given for one
-group's images cannot be spent on another's, and a filter that matches nothing at
-full scale fails on the empty image set rather than silently widening.
+So `deploy_plan` carries the subset's `group_filter` (§10.2) through to full
+scope and the run is `parent ∩ group_filter`. The filter is a metadata predicate
+over the parent's images — the same join the subset already performed — so
+resolving *which* images is cheap. **`group_filter` is bound on the token at
+full scope**, per §5.4's binding table, which is what stops an ack given for one
+group's images being spent on another's; a filter that matches nothing at full
+scale fails on the empty image set rather than silently widening, with
+`group_filter_matches_nothing` (§6.2).
+
+**How the intersected image set reaches the engine is an open question, not a
+settled "needs no staging".** An earlier draft of this paragraph asserted the
+run needed no staging. That does not follow from anything: §1.6's new-pieces
+table justifies subset staging with "neither engine accepts a file list", and
+§10.3.1 exists entirely to materialize an arbitrary image list as a directory
+tree for that reason. `parent ∩ group_filter` **is** an arbitrary image list
+over the parent, so it either stages — at a scale §10.3.1 §4 says must never
+reach the parent images — or it is not expressible as a single
+`python -m phenotypic --input` invocation, and `argv_digest` (§5.4), defined as
+the digest of that rendered argv, has nothing to digest. The claim is withdrawn
+rather than replaced: **this is recorded as an open question in
+`refinery/ledger.md` and needs a user ruling**, because the two candidate
+resolutions (stage the intersection, or restrict full scope on a filtered subset
+to a filter that is expressible as whole `--input` subtrees) change what USER-21
+buys. Everything else in this section stands regardless of which is chosen.
 
 This is what makes §9.3.0.2's descent reachable at the only scale that matters.
 Without it, a per-group winner could be deployed only at subset scale, and
