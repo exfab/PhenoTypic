@@ -749,6 +749,7 @@ keeping Windows paths under MAX_PATH."
 **Files:**
 - Modify: `src/phenotypic/sdk_/ngff_.py`
 - Test: `tests/unit/sdk_/test_ngff_attributes.py`
+- Modify: `tests/unit/schema/test_no_metadata_literals.py` (allowlist entry, see constraints)
 
 **Interfaces:**
 - Consumes: `STORE_SCHEMA_VERSION`, `SERIES_ORDER`, `LABELS_GROUP`, `OBJMAP_LABEL`.
@@ -786,6 +787,15 @@ keeping Windows paths under MAX_PATH."
 **Constraints specific to this task:**
 - `series` and `labels` are **separate keys**: `series` maps a logical layer name to a
   group name, `labels` maps a label name to a nested path.
+- **`PhenotypicAttr.METADATA` collides with a banned token and needs an allowlist entry.**
+  `tests/unit/schema/test_no_metadata_literals.py` bans the bare token `METADATA` as a
+  deprecated metadata-enum name. Two things here spell it that way and are unrelated to that
+  enum: `OME_XML_NAME = "METADATA.ome.xml"`, the filename NGFF 0.5 §2.2.3 mandates and which
+  is not ours to rename, and this new attribute key. Add `src/phenotypic/sdk_/ngff_.py` and
+  `tests/unit/sdk_/test_ngff_attributes.py` to that gate's `_LEGACY_ALLOWED` with the single
+  token `{"METADATA"}` — the gate pins exact tokens per file, so a genuine legacy alias in
+  the same file still fails. **The gate file is in this task's `Files:` for that reason.**
+  Found by the full-suite run, not by the task's own tests, which do not scan the tree.
 - **`has_labels=False` omits the `labels` key entirely — ABSENCE, never an empty mapping.**
   Every reader must use `.get(PhenotypicAttr.LABELS, {})`; indexing raises `KeyError`. This
   is for a store written without an
