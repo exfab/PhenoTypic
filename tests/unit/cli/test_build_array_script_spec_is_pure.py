@@ -159,7 +159,7 @@ def test_attempt_ids_are_the_only_drift(
     assert _mask_attempt_ids(first) == _mask_attempt_ids(second)
 
 
-def test_building_a_spec_reads_every_input_image(
+def test_building_a_spec_reads_the_inputs_it_hashes(
     tmp_path: Path, array_script_kwargs: Dict[str, Any]
 ) -> None:
     """Pin the read cost a preview caller inherits from the identity mechanism.

@@ -67,7 +67,11 @@ Every task's requirements implicitly include this section.
     that may be interned, assert the *structure*: the name arrives by an
     `ImportFrom` of the canonical module and is bound by no module-level
     `Assign`/`AnnAssign`/`def`/`class`.
-- **Check mypy by diffing, not by counting.** Compare stashed-vs-current output,
+- **Check mypy with a COLD cache, on scratch, and diff.** A warm `.mypy_cache`
+  produced `416 errors in 123 files` where a cold run gives `417 / 124` — which
+  is exactly main's number. Every count discrepancy chased in this phase traced
+  back to cache state, not to code. Pass `--cache-dir` under `/scratch` for any
+  number quoted in a gate. Then compare stashed-vs-current output,
   ignoring line order and internal typevar ids. (Instability was suspected —
   `421 errors in 125 files` and `420 errors in 124 files` were both observed —
   but C2's gate then got 421/125 on three runs including a cold cache, and
