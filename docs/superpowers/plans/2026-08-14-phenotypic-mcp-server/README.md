@@ -213,6 +213,7 @@ Phase 1  PREREQUISITES — engine and refactor work, no MCP code
       P5  tune CLI gains --slurm key=value                         Task 16
       P6  subset staging (flat/ + nested/)                         Task 17
       P7  distributed finalize entry point                         Task 18
+      P8  top-level manifest input (CLI flag + to_argv)             Task 19
         │
         ▼   GATE: import-purity test green, GUI suite unchanged, ledgers green
 Phase 2  v1 TOOL SURFACE
@@ -289,7 +290,7 @@ non-contiguous masks — fixed with `--cpu-bind=none`, and the script reported
 | Doc | Covers |
 |---|---|
 | [phase-1a-services-promotion.md](phase-1a-services-promotion.md) | P2 — Tasks 1–9 |
-| [phase-1b-engine-prerequisites.md](phase-1b-engine-prerequisites.md) | P3–P7 — Tasks 10–18 |
+| [phase-1b-engine-prerequisites.md](phase-1b-engine-prerequisites.md) | P3–P8 — Tasks 10–19 |
 | [execution.md](execution.md) | The dependency DAG, the six Opus clusters, and where the review and simplify gates sit |
 | Phase 2A/2B/2C | Written at the Phase 1 gate, against the code Phase 1 produces |
 

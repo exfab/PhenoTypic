@@ -463,6 +463,33 @@ engine, so the reading and validation of a manifest is not new — what is new i
 promoting it to a public top-level flag on `python -m phenotypic`, with the
 sandbox and identity rules the rest of §2 imposes.
 
+**P8 is two files, not one, and stopping at the Click option leaves it
+non-functional.** §5.4's Mechanism says the server builds argv via
+`to_argv(RunConsoleState)` plus the profile's `--slurm` pairs, and `argv_digest`
+is the SHA-256 of exactly that rendered list. Verified against the merged tier:
+
+- `_services/argv.py:53-97` — `RunConsoleState` has **no manifest field**, and
+  `advanced_args` is a *closed* recognised set (`sample`, `nrows`, `ncols`,
+  `image_type`, `workers`, `log_level`) whose unknown keys are dropped at argv
+  time, so it is not an escape hatch either.
+- `_services/argv.py:326-380` — `to_argv` raises if `input_dir` is unset and
+  emits `["--input", input_dir]` **unconditionally**. There is no manifest branch
+  and no way to suppress `--input`.
+
+So P8 must deliver **both**: the Click option on `phenotypicCLI.py`, *and* a
+manifest field on `RunConsoleState` with the matching branch in `to_argv` —
+which must also decide whether `--input` becomes conditional or is passed
+alongside, and say what `--input` means when a manifest is present. Built as the
+option alone, the server still cannot emit the flag and `argv_digest` provably
+cannot contain it, which would leave the most natural implementer behaviour —
+render `--input <parent>` and drop the filter — deploying one group's pipeline
+across every group with every digest check passing.
+
+**While here:** §5.4's `resume` caveat compares `input_path` by literal string
+equality with no normalization. State whether the manifest participates in
+`validate_resume_compatibility`, or a resume can silently run a different image
+set under a matching `input_path`.
+
 Distinguish it from **P6** rather than folding the two together: P6 materializes
 a *directory* for **subset**-scoped work because neither engine accepts a file
 list; P8 passes a *list* for **full**-scoped work, where materializing is exactly

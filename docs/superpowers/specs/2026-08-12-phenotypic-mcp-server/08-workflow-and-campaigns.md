@@ -504,10 +504,26 @@ stands.** Two fields beyond the artifact:
   counter move, while the digest of the bytes actually read cannot be defeated
   that way.
 - **`launch_state`** — `clean` or `fan_out_incomplete`. `fan_out_incomplete` means
-  the campaign is `launching` or `running`, at least one arm is `queued` with no
-  `study_id`, and **the `launcher` lease is absent, expired, or names a pid whose
+  the campaign is `launching` or `running`, **at least one arm has no `study_id`**,
+  and **the `launcher` lease is absent, expired, or names a pid whose
   `create_time` does not match a live process**. Liveness is read from the lease,
   never inferred from the arms.
+
+  **The arm predicate deliberately says "no `study_id`", not "`queued` with no
+  `study_id`".** It has to match the relaunch predicate exactly — "launches only
+  arms with no `study_id` recorded" — because the two are the same question asked
+  from two sides. Qualifying admission with `queued` and relaunch without it
+  strands every arm still in `pending`: a five-arm campaign at
+  `max_concurrent_arms=3` holds arms 4 and 5 `pending` ("on the artifact, not yet
+  accepted by the launcher"), and a kill there leaves status `running`, no arm
+  `queued`, a dead lease, and therefore `launch_state == clean` — so the recovery
+  arm is refused and those arms have no path at all. Nothing else recovers them;
+  §1.5's restart reconciliation reconciles `RunRecord`s, not campaign artifacts.
+
+  Double-launch protection is unaffected, because it rests on the **lease**, which
+  is live in every non-recovery case. **The launcher writes its lease in the same
+  CAS that adopts the campaign**, so there is no window between the handler's
+  status transition and the lease appearing.
 
 `launch_state` exists because **"never started" and "started by a server that
 died" look identical on disk** — both are a campaign with arms and no studies —
@@ -761,11 +777,25 @@ inverting.
 reason: two siblings mid-probe on the same edit must be able to see each other,
 which end-writing makes impossible. The step is
 journalled the moment the edit is *accepted* — before its probe runs — carrying
-the **canonical edit** (§3.2: the full edit with parameters, and with the target
-op's `class` resolved from its index at this moment, since three of the six edit
-kinds carry no class of their own and would otherwise be indistinguishable
-later). It carries `"state":"in_flight"`. Evidence is filled in by the second
-append when the probe returns.
+the **canonical edit**. It carries `"state":"in_flight"`. Evidence is filled in
+by the second append when the probe returns.
+
+**Canonical means exactly the fields §3.2's per-kind keys consume**, resolved
+now, because none of them can be recovered later:
+
+| Kind | Fields resolved and stored at record time |
+|---|---|
+| `insert_op` | `slot`, `class`, `params` |
+| `remove_op` | `slot`, `class` — resolved from `index` |
+| `move_op` | `slot`, `class` from `from`, **`order_after`** — the ordered class sequence the move produced |
+| `set_params` | `slot`, `class` from `index`, **`resolved_params`** — the *effective* set after `merge`, **not the partial map the agent sent** |
+| `set_grid` | `nrows`, `ncols` |
+| `set_model` | `class`, `params` |
+
+`resolved_params` and `order_after` are the two that an implementer working from
+an `insert_op` example will not think to store, and they are the two §3.2 matches
+on for the kinds the loop runs most. Recording the sent `params` instead of the
+merged set makes every `set_params` comparison wrong, silently.
 
 **There is no `decision` field on either row.** `state` is the row's own
 lifecycle — `in_flight` until its evidence append lands — and it is the only

@@ -236,7 +236,12 @@ Stated briefly, because it is evidence the plan's analysis was mostly right:
 - **Task 8's "to_argv cannot travel alone" is right**, though its own purity test
   fails until B1 is resolved.
 - **Task 11's factual claims all check out.**
-- **Spec coverage: no gap.** Every P2–P7 item has an owning task.
+- **Spec coverage: no gap.** Every **P2–P8** item has an owning task.
+  *(Amended 2026-08-19: this line read "P2–P7" and was true when written. §7 later
+  gained P8 from USER-26, and because the claim enumerated a fixed range rather than
+  deriving it, the sentence asserting no-gap became the thing concealing one — P8 had
+  no owning task for three rounds. Now Task 19. A coverage claim must name the range
+  it checked, or it silently stops checking.)*
 
 ---
 

@@ -1,4 +1,4 @@
-# Phase 1b — Engine prerequisites (P3–P7)
+# Phase 1b — Engine prerequisites (P3–P8)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
 > or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
@@ -1205,3 +1205,52 @@ git add -A && git commit -m "feat(tune): add a re-runnable finalize for distribu
 Phase 2A is written against the signatures this phase produced — `describe_operation`,
 `derive_columns`, `directory_digest`, `stage_subset`, `build_array_script_spec`,
 `finalize_distributed_study`, and the `_services` modules — not invented ahead of them.
+
+---
+
+## Task 19 — P8: a top-level manifest input for the full CLI
+
+**Why this exists.** USER-26 resolves `scope:"full"` on a group-filtered subset
+to `parent ∩ group_filter`, in place, as a concrete image list written at plan
+time and bound by the plan token's content digest — so the human approves an
+image set that cannot drift. Nothing today can carry that list to a run.
+
+**This task was missing when the plan was audited, and the audit did not catch
+it** because the coverage claim enumerated P2–P7 and the prerequisite is P8. An
+implementer building Phase 1b from the old plan would build P3–P7, stop, and
+nothing would fail — and then `deploy_plan {scope:"full"}` on a group-filtered
+subset has no argv it can render. The natural repair at that point is to emit
+`--input <parent>` and drop the filter, which deploys one group's tuned pipeline
+across every group with every digest check passing. That is the exact failure
+§10.5 says the filter exists to prevent, on the irreversible path.
+
+**Two files. Building only the first leaves this non-functional.**
+
+1. **`src/phenotypic/phenotypicCLI.py`** — a public top-level option taking a
+   file of image paths. `-i/--input` is a single `click.Path` at `:922-931`
+   (`dir_okay=True, file_okay=True`, no `multiple=True`), so there is no existing
+   argv that expresses "these 312 of the parent's 480". Reuse the reading and
+   validation from `_cli_staged_slurm_worker.py:422`, which already takes
+   `--manifest` as an internal `argparse` entry point — the parsing is not new,
+   the public surface is.
+2. **`src/phenotypic/_services/argv.py`** — a manifest field on
+   `RunConsoleState` (`:53-97`) and the matching branch in `to_argv` (`:326-380`).
+   Today `to_argv` raises when `input_dir` is unset and emits `--input`
+   **unconditionally**; `advanced_args` is a closed recognised set that drops
+   unknown keys, so it cannot be used as a side channel. Decide and state whether
+   `--input` becomes conditional or is passed alongside the manifest, and what it
+   means when both are present.
+
+**Acceptance.**
+
+- `to_argv` on a `RunConsoleState` carrying a manifest emits the flag, and
+  `argv_digest` over that rendered list contains it. A test asserting the flag
+  reaches argv is the one that would have caught this task's absence.
+- A `deploy_plan {scope:"full"}` against a group-filtered subset renders an argv
+  that names the manifest — and **never** one that names the bare parent.
+- State whether the manifest participates in `validate_resume_compatibility`;
+  `input_path` is compared by literal string equality with no normalization, so
+  a resume can otherwise run a different image set under a matching path.
+
+**Note for Task 17 (P6):** its "there is no manifest flag and no repeated `-i`
+on either" describes the pre-P8 state and should be amended when this lands.
