@@ -17,11 +17,16 @@ See also:
 
 from __future__ import annotations
 
+import errno
 import json
 import math
+import os
 import re as _re
+import shutil
+import time
 from pathlib import Path
 from typing import Final, Literal, Sequence
+from uuid import uuid4
 
 import numpy as np
 
@@ -29,10 +34,10 @@ import numpy as np
 # module is re-exported through ``sdk_/__init__.py``, so deferring it keeps
 # ``import phenotypic.sdk_`` cheap. Everything else is stdlib -- hoisted so
 # public signatures can annotate ``Path`` directly instead of quoting it.
-# Each task adds the stdlib names it actually uses: the promote primitive's
-# ``errno``/``os``/``shutil``/``time``/``uuid4``/``logging``/``hashlib`` land
-# with that primitive, because importing them ahead of their first use is a
-# ruff F401 in this repo's default rule set (E4, E7, E9, F).
+# Each task adds the stdlib names it actually uses: ``errno``/``os``/``shutil``/
+# ``time``/``uuid4`` arrived with the promote primitive, because importing them
+# ahead of their first use is a ruff F401 in this repo's default rule set
+# (E4, E7, E9, F).
 
 # ---------------------------------------------------------------------------
 # Layout constants
@@ -889,3 +894,353 @@ def build_ome_xml(
         "  </StructuredAnnotations>\n"
         "</OME>\n"
     )
+
+
+# ---------------------------------------------------------------------------
+# Commit protocol: uuid part, move-aside promote, orphan sweep
+# ---------------------------------------------------------------------------
+
+PART_SUFFIX: Final[str] = ".part"
+TRASH_SUFFIX: Final[str] = ".trash"
+
+#: Retry budget for the two move-aside renames. On Windows a rename fails with
+#: ERROR_SHARING_VIOLATION while any of the store's ~40 files is held open by a
+#: running GUI, an antivirus scan, or the search indexer. Same shape as
+#: ``_open_hdf_with_recovery`` in :mod:`phenotypic.sdk_.hdf_`.
+PROMOTE_RETRY_ATTEMPTS: Final[int] = 5
+PROMOTE_RETRY_BASE_SECONDS: Final[float] = 0.1
+
+
+def _resolve_durability(override: bool | None) -> tuple[bool, str]:
+    """Return ``(enabled, reason)`` for the durability decision.
+
+    One function so the flag and the sentence describing it cannot drift.
+
+    Args:
+        override: ``--durable-writes`` / ``--no-durable-writes``, or ``None``.
+
+    Returns:
+        ``(True, "SLURM")`` / ``(False, "local")`` / ``(True, "--durable-writes")``
+        / ``(False, "--no-durable-writes")``.
+    """
+    if override is True:
+        return True, "--durable-writes"
+    if override is False:
+        return False, "--no-durable-writes"
+    on_slurm = bool(
+        os.environ.get("SLURM_JOB_ID") or os.environ.get("SLURM_CPUS_PER_TASK")
+    )
+    return (True, "SLURM") if on_slurm else (False, "local")
+
+
+def durable_writes_enabled(override: bool | None = None) -> bool:
+    """Resolve whether the promote fsyncs before renaming.
+
+    ``write()`` returns once data is in the page cache. Without ``fsync`` the
+    kernel may flush the root ``zarr.json`` *before* the chunk data it
+    describes, so a node crash can leave a store that passes
+    :func:`valid_staged_store` -- metadata parses, shapes agree -- while
+    reading ``fill_value``. That is silent wrong data, not a visible failure,
+    and no amount of metadata validation catches it.
+
+    The dominant failure mode does not need it: a SLURM timeout kills the
+    process, and the kernel survives and flushes normally. ``fsync`` buys
+    protection only against node loss, power failure, and filesystem crash --
+    which is exactly what a cluster job is exposed to and a laptop run is not.
+
+    Args:
+        override: ``--durable-writes`` / ``--no-durable-writes``, or ``None``
+            to auto-detect.
+
+    Returns:
+        ``True`` when the promote should fsync.
+
+    Note:
+        This checks ``SLURM_JOB_ID`` **as well as** ``SLURM_CPUS_PER_TASK``.
+        ``resolve_worker_count`` (``_cli_utils.py:65-72``) reads only the
+        latter, so this is deliberately broader -- not "exactly as" that helper
+        does, which is what the spec's §3.7 claims. A job that sets
+        ``SLURM_JOB_ID`` without a per-task CPU count still gets durable writes.
+    """
+    return _resolve_durability(override)[0]
+
+
+def describe_durability(override: bool | None = None) -> str:
+    """One-line description of the resolved durability mode, for the start log.
+
+    The same command carries different guarantees in different places, which is
+    a genuinely surprising thing to debug. Logging the resolved mode at run
+    start is a required mitigation, not a nicety.
+
+    Shares :func:`_resolve_durability` with :func:`durable_writes_enabled`, so
+    the flag and the sentence describing it cannot drift apart.
+    """
+    enabled, reason = _resolve_durability(override)
+    return f"durable writes: {'on' if enabled else 'off'} ({reason})"
+
+
+def long_path(path: Path) -> str:
+    """Return an OS-appropriate path string, ``\\\\?\\``-prefixed on Windows.
+
+    An output root, dataset name, and image stem plus a store-internal path can
+    exceed Windows' 260-character ``MAX_PATH``. The ``"."`` chunk-key separator
+    keeps a chunk key to one segment; this prefix covers the rest.
+
+    **Apply it at every filesystem entry point, not only array I/O.** Route
+    every path through this helper so a new site cannot forget.
+
+    On POSIX this is a true passthrough. ``resolve()`` is confined to the
+    Windows branch, which is the only one that needs it: ``\\\\?\\`` disables
+    path normalization, so the prefix is only legal on an already fully
+    qualified path. Resolving on POSIX too would rewrite any symlinked root --
+    macOS' ``/var`` -> ``/private/var``, a symlinked scratch or project mount --
+    and hand the caller back a path it never passed in.
+    """
+    if os.name != "nt":
+        return str(path)
+    text = str(Path(path).resolve())
+    return text if text.startswith("\\\\?\\") else "\\\\?\\" + text
+
+
+def new_part_path(final: Path) -> Path:
+    """Return a fresh, uuid-suffixed ``.part`` sibling of *final*.
+
+    The uuid -- matching the ``attempt_id = uuid4().hex`` convention already
+    used in ``_cli_staged_strategy.py`` (lines 148, 192, 225, 359) -- is what
+    keeps two concurrent writers from interleaving chunks into one directory.
+    It is NOT what makes the promote itself benign; that is the retry loop in
+    :func:`promote_store`. An un-suffixed ``.part`` would let two concurrent
+    SLURM tasks interleave chunks into one directory and produce a store that
+    *validates*. A PID is not enough: PIDs are reused.
+    """
+    final = Path(final)
+    return final.parent / f".{final.name}.{uuid4().hex}{PART_SUFFIX}"
+
+
+def _fsync_path(path: Path) -> None:
+    """``fsync`` one already-existing file or directory."""
+    handle = os.open(long_path(path), os.O_RDONLY)
+    try:
+        os.fsync(handle)
+    finally:
+        os.close(handle)
+
+
+def fsync_tree(root: Path) -> None:
+    """``fsync`` every regular file under *root*, then **every** directory.
+
+    Both halves matter. On POSIX a durable file does **not** imply a durable
+    directory entry, so flushing files plus the root alone would leave the
+    nested ``gray/0/`` and ``rgb/labels/objmap/0/`` dirents unflushed -- exactly
+    the silent wrong-data mode §3.7 exists to close. Directories are flushed
+    deepest-first so a parent's entry is never made durable before the child it
+    points at.
+
+    All directory flushes are POSIX-guarded: Windows cannot open a directory
+    handle for flushing and relies on NTFS journaling instead.
+    """
+    root = Path(root)
+    directories: list[Path] = [root]
+    for path in sorted(root.rglob("*")):
+        if path.is_file():
+            _fsync_path(path)
+        elif path.is_dir():
+            directories.append(path)
+    if os.name == "posix":
+        for directory in sorted(directories, key=lambda p: len(p.parts), reverse=True):
+            _fsync_path(directory)
+
+
+#: errno / winerror values worth retrying. Everything else fails fast: retrying
+#: a genuine ENOSPC five times with exponential backoff burns 3.1 s per image
+#: before surfacing, which at 10k images is an hour of sleeping.
+_RETRYABLE_WINERROR: Final[frozenset[int]] = frozenset(
+    {32, 33}
+)  # SHARING_VIOLATION, LOCK_VIOLATION
+
+
+def _is_retryable(exc: OSError) -> bool:
+    """Whether *exc* is a transient contention error rather than a hard failure.
+
+    Windows refuses to rename a directory while any file inside it is held open
+    (``ERROR_SHARING_VIOLATION``); with ~40 files per store instead of one
+    ``.h5``, that exposure is 40x larger. On POSIX, ``ENOTEMPTY``/``ENOENT`` on
+    the target mean a concurrent promoter moved under us, which the retry loop
+    resolves by re-evaluating.
+    """
+    if getattr(exc, "winerror", None) in _RETRYABLE_WINERROR:
+        return True
+    return exc.errno in {errno.ENOTEMPTY, errno.ENOENT, errno.EEXIST}
+
+
+def promote_store(part: Path, final: Path, *, fsync: bool) -> Path:
+    """Atomically promote a fully written ``.part`` directory to *final*.
+
+    The caller is responsible for the write **order** inside *part*: all arrays
+    and chunks first, then ``OME/zarr.json``, then the root ``zarr.json`` last.
+    An interrupted store therefore has no valid root and reads as absent. This
+    function does **not** write the root ``zarr.json`` itself.
+
+    The move-aside is mandatory, not an optimization: ``os.replace`` onto a
+    non-empty directory raises ``OSError`` (``ENOTEMPTY``) on POSIX, and on
+    Windows ``MoveFileEx``'s ``MOVEFILE_REPLACE_EXISTING`` cannot name a
+    directory at all.
+
+    The whole ``exists -> move-aside -> replace`` sequence sits inside one
+    retry loop and re-evaluates existence on every attempt. That is what makes
+    duplicate execution benign: a uuid ``.part`` prevents two writers
+    *interleaving chunks*, but it does nothing for the promote itself, where a
+    check-then-act done once lets writer B skip the move-aside because A had not
+    yet renamed, then hit ``ENOTEMPTY`` on a now-non-empty target.
+
+    On failure after a successful move-aside, the previous store is **rolled
+    back** into place before retrying or raising. Deleting it in a ``finally``
+    would leave no copy at any path -- a data-loss mode the single-file HDF
+    rename never had, since a failed ``os.replace(tmp, final)`` left ``final``
+    untouched.
+
+    Known weakening versus the single-file rename: the two renames are still not
+    one atomic step, so a crash *between* them (as opposed to a raised error)
+    leaves the image absent plus an orphaned ``.trash``. Both are recoverable --
+    absence reclassifies to the rebuilding stage, and :func:`sweep_orphan_parts`
+    clears the leftovers.
+
+    Args:
+        part: Fully written ``.part`` directory.
+        final: Target store path.
+        fsync: Whether to flush *part* before renaming
+            (see :func:`durable_writes_enabled`).
+
+    Returns:
+        *final*.
+    """
+    part, final = Path(part), Path(final)
+    if fsync:
+        fsync_tree(part)
+
+    trash = final.parent / f"{part.name[: -len(PART_SUFFIX)]}{TRASH_SUFFIX}"
+    last: OSError | None = None
+    for attempt in range(PROMOTE_RETRY_ATTEMPTS):
+        moved_aside = False
+        try:
+            # Re-evaluate existence EVERY attempt. A concurrent promoter can
+            # create or remove `final` between the check and either rename, so
+            # a check-then-act done once outside the loop turns a benign
+            # duplicate execution into a hard failure.
+            if final.exists():
+                os.replace(long_path(final), long_path(trash))
+                moved_aside = True
+            os.replace(long_path(part), long_path(final))
+        except OSError as exc:
+            last = exc
+            if not _is_retryable(exc):
+                if moved_aside and trash.exists() and not final.exists():
+                    os.replace(long_path(trash), long_path(final))
+                raise
+            if moved_aside and trash.exists() and not final.exists():
+                # Roll back. Without this the previous store is already in
+                # `trash` and is about to be deleted, leaving NO copy at any
+                # path -- a data-loss mode the single-file HDF rename never had
+                # (a failed os.replace(tmp, final) left `final` untouched).
+                os.replace(long_path(trash), long_path(final))
+            time.sleep(PROMOTE_RETRY_BASE_SECONDS * (2**attempt))
+            continue
+        # Success: only now is the previous store safe to discard.
+        if trash.exists():
+            shutil.rmtree(long_path(trash), ignore_errors=True)
+        if fsync and os.name == "posix":
+            # The rename itself is a directory-entry change in final.parent; a
+            # durable store whose dirent is not durable is still a lost store.
+            _fsync_path(final.parent)
+        return final
+    assert last is not None
+    raise last
+
+
+#: A `.part` younger than this may still be being written. The sweep never
+#: touches one. Generous by design: the cost of skipping a genuine orphan is one
+#: stale directory until the next run; the cost of deleting a live one is a
+#: destroyed in-flight image.
+SWEEP_MIN_AGE_SECONDS: Final[float] = 6 * 60 * 60
+
+
+def discard_parts_for(final: Path) -> int:
+    """Remove every ``.part`` sibling belonging to one target store.
+
+    Shares the naming convention with :func:`new_part_path` and
+    :func:`sweep_orphan_parts` so no caller re-encodes it. The CLI's
+    save-failure path would otherwise hand-roll the dot-prefix + uuid + suffix
+    glob outside this module (ledger **SIMP-6**).
+
+    Scoped to *one* store by anchoring the glob on ``final.name``: a sibling
+    store's in-flight ``.part`` belongs to another writer and is not ours to
+    remove.
+
+    Args:
+        final: The target store path whose parts should be discarded.
+
+    Returns:
+        Number of directories removed.
+    """
+    final = Path(final)
+    removed = 0
+    for path in final.parent.glob(f".{final.name}.*{PART_SUFFIX}"):
+        if path.is_dir():
+            shutil.rmtree(long_path(path), ignore_errors=True)
+            removed += 1
+    return removed
+
+
+def sweep_orphan_parts(
+    results_root: Path, *, min_age_seconds: float = SWEEP_MIN_AGE_SECONDS
+) -> int:
+    """Remove *stale* orphaned ``.part`` / ``.trash`` directories.
+
+    **A uuid identifies the attempt, not whether its process is alive.** The
+    staged SLURM engine explicitly assumes stale workers can still be running --
+    that is what ``assert_active_epoch`` exists for -- and under an array the
+    tasks share one output root and start at different times. A sweep with no
+    liveness signal would ``rmtree`` the ``.part`` directories its siblings are
+    actively filling, which is the same defect a PID-based sweep has.
+
+    Two guards, both required:
+
+    * **age**: only directories whose mtime is older than *min_age_seconds* are
+      removed;
+    * **placement**: the caller must run this from the controller before any
+      worker is submitted, not from each worker's start-up (see Phase 3).
+
+    The scan is bounded to ``results/<dataset>/zarr/`` rather than recursive:
+    ``rglob`` would descend into every store, which is the same ~400k-stat
+    pathology the spec flags for the GUI's discovery path.
+
+    Args:
+        results_root: The run's ``results/`` directory.
+        min_age_seconds: Minimum age before a leftover is considered orphaned.
+
+    Returns:
+        Number of directories removed.
+    """
+    removed = 0
+    root = Path(results_root)
+    if not root.is_dir():
+        return 0
+    cutoff = time.time() - min_age_seconds
+    for dataset_dir in root.iterdir():
+        zarr_dir = dataset_dir / "zarr"
+        if not zarr_dir.is_dir():
+            continue
+        for path in zarr_dir.iterdir():
+            if not path.is_dir():
+                continue
+            if not (
+                path.name.endswith(PART_SUFFIX) or path.name.endswith(TRASH_SUFFIX)
+            ):
+                continue
+            if STORE_SUFFIX not in path.name:
+                continue
+            if os.stat(long_path(path)).st_mtime > cutoff:
+                continue  # may still be in flight
+            shutil.rmtree(long_path(path), ignore_errors=True)
+            removed += 1
+    return removed
