@@ -61,10 +61,18 @@ not. `N` = no defining section carries it.
 | **USER-18** | The human gate lives in `deploy_start`, not `deploy_plan` | §10.5; §8.2 | §5.4 arg table + token record; §2.5 lineage `deploy.approve`; §10.5 scope table; §9.5 deploy skill | **partial → Y** — §5.4's signature was fixed just before this sweep (GEN-26/FLOW-33); two stale restatements survived inside §5.4 and §9.5's skill still taught the retired gate. Fixed this sweep. |
 | **USER-19** | Per-group breakdown is the scorer's output — **superseded by USER-24** | — | — | superseded |
 | **USER-20** | Handlers are `async def`; everything blocking is offloaded | §1.5 "Blocking work never blocks the event loop" | §1.6.1 bounds table (`executors.blocking`=4, `executors.compute`=1); §6.3 limits; §2.5 lineage-write rule; §2.6 guard table | Y |
-| **USER-21** | Full scope on a group-filtered subset is `parent ∩ group_filter`; **the token binds `(parent_digest, group_filter)`** | §10.5 | §5.4 binding table + token record; §5.3 `deploy_plan` arg table + response; §10.2 subset artifact; §2.5 `deploy.approve` / `deploy.start` rows | **N → Y** — `group_filter` appeared in no binding table, no token record, no artifact and no lineage row, so the safety property had no carrier at all. Fixed this sweep. **One half is deliberately left open** — whether `parent ∩ group_filter` stages; see the ledger's OPEN QUESTION. |
+| **USER-21** | Full scope on a group-filtered subset is `parent ∩ group_filter`; **the token binds `(parent_digest, group_filter)`** | §10.5 | §5.4 binding table + token record; §5.3 `deploy_plan` arg table + response; §10.2 subset artifact; §2.5 `deploy.approve` / `deploy.start` rows | **N → Y** — `group_filter` appeared in no binding table, no token record, no artifact and no lineage row, so the safety property had no carrier at all. Fixed this sweep. The staging half was open when this map was written and was settled the same day by **USER-26** — see its row below. |
 | **USER-22** | `human_response` unconditionally required; `ack_source` in the **response** | §8.2 rule 3; §10.5 | §5.4 arg table; §8.3 `campaign_approve`; plan README **D6**; `MCPB-EVALUATION.md` | **partial → Y** — spec Y; both plan docs still carried `required-unless-elicited`. Fixed this sweep. |
 | **USER-23** | Local `W2`/`W3` children are detached (`start_new_session=True`), adopted by restart reconciliation | §1.5 | §1.5 restart-reconciliation block; §2.4 run records; §6.2 `local_slot_orphaned` | Y |
 | **USER-24** | The agent owns grouping; the server keeps exactly two things — `group_filter` on the `SubsetSelector` **ABC**, and `derived_from` on the campaign artifact | §9.3.0.2 | §10.3's `SubsetSelector` ABC; §10.2 subset artifact; §8.2 campaign schema; §7 P3 item 3; §5.3 arg table/response; §6.2 error table; spec README | **N → Y** — *neither* surviving primitive reached the artifact that carries it: the ABC is `extra="forbid"` so `group_filter` could not even arrive as an extra key, and the spec README still advertised the deleted `group_by` + trait-override design. Fixed this sweep. |
+
+### Rulings that landed while this sweep was running
+
+| # | Ruling (one line) | Explained in | **Defines** it | (d) |
+|---|---|---|---|---|
+| **USER-25** | §1.6.1's `W0` row gains one exemption: while a human-gate elicitation is outstanding. USER-18's outcome is unchanged; only the `W0`-violation half of its basis retires | §10.5's relocation narrative (trimmed) | §1.6.1's `W0` row | **Y** — verified in place, naming both gates (`campaign_approve`, `deploy_start`) |
+| **USER-26** | `parent ∩ group_filter` is resolved in place to a **manifest** at plan time, bound by the token's digest — it does not stage | §10.5 | §7's prerequisite list; §5.4's `argv_digest` definition; spec README's open questions | **partial → Y** — §10.5 carried it and **§7 had no prerequisite for it**, though the ruling names one explicitly. **New §7 P8** added this sweep, distinguished from P6 (P6 materializes a directory for subset scope; P8 passes a list for full scope, where materializing is the thing that must not happen) |
+| **USER-27** | Trim the ~309 lines of "an earlier draft…" narration to the ledger; keep the ~120 lines of load-bearing rationale | ledger | every section carrying such a passage; §2.6's two shipped-code subsections move to §7 | **open — not this sweep's work.** Measure the cut against the tree as it now stands: this sweep added contract text and a small amount of rationale where a reader could otherwise undo the fix |
 
 ### Round-2 concurrency block — the same check, for concepts that are not numbered rulings
 
@@ -81,12 +89,14 @@ not. `N` = no defining section carries it.
 
 ## Summary
 
-**24 rulings. 4 are superseded or process-only (USER-2, 14, 15, 19), leaving 20
-live rulings with at least one defining section.**
+**27 rulings** (24 at the time of the sweep, plus USER-25..27 which landed while
+it ran). **4 are superseded or process-only** (USER-2, 14, 15, 19), leaving **23
+live rulings** with at least one defining section.
 
-- **11 of 20 had a defining-section gap** at the start of this sweep:
-  USER-1, 5, 8, 9, 12, 17, 18, 21, 22, 24, plus the six concurrency-block
-  concepts tracked separately.
+- **12 of 23 had a defining-section gap** when this sweep reached them:
+  USER-1, 5, 8, 9, 12, 17, 18, 21, 22, 24, 26, plus the six concurrency-block
+  concepts tracked separately. (USER-27 is open by design — it is a trim, not a
+  propagation.)
 - **2 were total (`N`)** — USER-21 and USER-24, i.e. *both* of the rulings whose
   entire content was a new primitive. That is the pattern: **a ruling that
   deletes a design and keeps one primitive is the one most likely to leave the
