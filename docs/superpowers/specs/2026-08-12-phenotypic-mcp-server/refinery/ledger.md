@@ -676,3 +676,81 @@ stop a later reader undoing a rule whose cost is invisible.
 for two rounds: §1.5 kept a retired `W1` execution model as normal-looking prose
 beside a new pool description that inherited it, and it read as context rather
 than as a defect. Normative text says what **is**; the ledger says what changed.
+
+---
+
+## Round 3 — the propagation sweep (2026-08-19)
+
+**Not a decision round.** No ruling was made, amended, or re-litigated here; this
+records where the existing rulings were *carried* and what was deliberately left
+alone.
+
+**The defect, named once.** Three round-3 reviewers independently identified the
+same root cause behind 13 of their 15 concerns: a decision is written into the
+section that **explains** it and never reaches the section that **defines** the
+artifact, the argument table, the signature, or the error code. An implementer
+reading the defining section builds the superseded design, and nothing fails.
+This is PROP-1..5 recurring, on the round's own decisions.
+
+**The standing check is now a file:** `refinery/defining-sections-map.md` — one
+row per USER ruling, listing every section that explains it, every section that
+defines something it touches, and whether the latter reflects it. It found
+**11 of the 20 live rulings had a defining-section gap**, and that the two
+rulings whose entire content was a *surviving primitive after a deletion*
+(USER-21, USER-24) had **no** defining section at all. That is the pattern worth
+remembering: **the primitive a deletion keeps gets written into the section doing
+the deleting.**
+
+### Applied this sweep
+
+| Ruling | Carried into |
+|---|---|
+| USER-1 | §1.6.1's `W1` row — the 4-image cap does not bind `deploy_plan {full}`'s header sweep |
+| USER-5, USER-22 | plan README **D6**, `MCPB-EVALUATION.md` §(c) and action row 2 — "required-unless-elicited" retired in the plan as it already was in the spec |
+| USER-8 | §1.5's `W0` examples (cut `pipeline_diff` removed); `MCP-INTERFACE-AUDIT.md` given a retired-surface banner, struck matrix rows, a corrected footnote 12, a corrected `instructions` string, and corrected sibling/elicitation/`outputSchema` lists |
+| USER-9 | §3.2 gains a **per-kind** match key and `decision` derivation for all six edit kinds; §6.2's `edit_previously_tried` row; §8.7's row schema (`state`, not `decision`); §6.5 tests |
+| USER-12 | plan README **D5 → D5a** — the enumeration replaced by §3.0's derivation, with the `pipeline_probe` consequence named |
+| USER-17 | §1.5 ×2, §2.6, §6.3 — every hard-coded capacity 1 now reads `local_slot_capacity` |
+| USER-18 | §5.4's two surviving stale restatements; §9.5's deploy skill rewritten around the relocated gate |
+| USER-21 | §5.4's binding table + token record (`group_filter`, `parent_digest`); §5.3's arg table + response; §2.5's two deploy rows; §10.2's artifact; §6.5 tests |
+| USER-24 | §10.3's `SubsetSelector` ABC (the field, its semantics table, its errors); §10.2's artifact; §8.2's campaign schema (`derived_from`); §7 P3; **plan `phase-1b`'s ABC Interfaces block**, which is what the class is actually built from; spec README |
+| USER-25 | verified already applied at §1.6.1's `W0` row |
+| USER-26 | §10.5 (the open question it answers, closed); **new §7 P8** — the top-level manifest flag it buys; spec README |
+| concurrency block | §8.2 gains arm `state`, `queued_reason`, `study_id`, the `launcher` lease; `write_generation` demoted from CAS key to read hint, resolving toward §2.6's `(status, artifact_digest)` |
+
+### Deliberately not decided
+
+- **`W1` on `deploy_plan {scope:"full"}` was propagated, not re-opened.** GEN-30
+  proposed narrowing the class to the re-probe escalation only. That would
+  re-litigate the CONC-22 disposition ("§5.3's flat `W0` corrected to `W0` at
+  subset / `W1` at full"), which is user-settled. The class stands as written;
+  what changed is that §1.5's tables, §1.6.1's bound and §3.0's derivation now
+  agree with it, and the routing table says the slot is held *while it computes*
+  — which is what §5.3's own argument already implied.
+- **`MAIN-MERGE.md`'s `deploy_plan` cost finding is annotated, not closed.** Its
+  *classification* half is settled by §5.3 and USER-20. Its *cost* half — that
+  building an array spec costs 2N full image reads — is **not** covered by the
+  0.081 s header-sweep measurement, which measures headers. Option 3 (a builder
+  that accepts precomputed identity rows) is still unchosen and still the only
+  one that makes a preview genuinely cheap.
+
+### Two report claims that did not match the files
+
+- **FLOW-39 on §8.7's canonical row** — already resolved before this sweep. The
+  example row carries `step_id` and `"state":"in_flight"`, not a persisted
+  `"decision":"keep"`. What *was* stale was §8.7's surrounding prose (it still
+  said `"decision":"in_flight"`) and §3.2's introductory sentence; both fixed.
+- **The concurrency advisory "§3.1's cross-reference points at §3.2 for text that
+  lives under `pipeline_put`"** — no such cross-reference exists. §3.1 contains no
+  §3.2 pointer, and the two citations that do exist (§7 P3 items 1 and 2) resolve
+  correctly: `produces_columns`' `header_scheme()` derivation is at
+  `03-tool-catalog.md:270`, inside §3.2, under `pipeline_put`. No edit made.
+
+### Note for whoever applies USER-27
+
+This sweep **added** normative contract text — argument tables, artifact fields,
+per-kind derivation tables — and a small amount of rationale where a reader could
+otherwise undo the fix (chiefly: why `group_filter` cannot be added to the ABC
+later, and why `write_generation` is not the CAS key). It did not add "an earlier
+draft…" narration beyond those. USER-27's ~160-line cut should be measured
+against the tree as it now stands, not against the round-2 snapshot.
