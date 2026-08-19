@@ -348,3 +348,26 @@ wearing a schedule.
 
 **The test:** if the concern would still need a decision *after* the experiment
 returned either result, it is design work and does not qualify.
+
+---
+
+## Round 2 — concurrency specialist, VERDICT REVISE (10 concerns, 1 Critical)
+
+**Three are defects in the orchestrator's own round-1 edits.** Marked ✱.
+
+| ID | Sev | Concern | Status |
+|---|---|---|---|
+| ✱ **CONC-19** | Major | **The "1–2 local arms" cap is unachievable.** Two arms cannot be concurrent under a semaphore of capacity 1 — the routing table two rows above gives a local `W2` the slot for its entire subprocess lifetime. So the effective cap is 1, always, and the OOM rationale describes a parallelism the same section forbids: *two uncoordinated mechanisms for one invariant*, the exact defect §1.5 opens by criticising. Worse, arm 2's wait is unbounded — if `campaign_start` awaits the slot the call blocks for hours against a host timeout, and an abandoned coroutine still holds a reservation, creating an orphan with no crash involved. Contradicts USER-1's "submit-and-poll" | open · spec-change · **needs-user-input** |
+| ✱ **CONC-22** | **Critical** | **`deploy_plan {scope:"full"}` is declared `W0` while doing four things in one handler:** the whole-parent header sweep, a possible slot-acquiring `W1` re-probe, the token mint, and an unbounded human wait. §1.6.1 defines `W0` as under one second and never blocking. **And the ack/token state is self-contradictory** — the example returns `plan_token` *and* `pending_human_ack:true` together, while the scope table requires a token "minted with the human ack recorded". The agent holds the token before the human answers, so the ack is a second mutable field racing `deploy_start`, and §2.6 has no row for it (its token row still says "promotion tokens", a concept this round deleted) | open · spec-change · **needs-user-input** |
+| ✱ **CONC-25** | Major | **`edit_previously_tried` is not free, and is racy in the case it was added for.** §2.5 offloads lineage *writes* because the lock spins to 30 s; reads are not offloaded (CONC-15). USER-9 makes that read unconditional on the most frequently called mutating tool. And §8.7 records a step with its keep/revert decision **only after the probe completes** — so a sibling mid-probe on the identical edit has written nothing, and both burn the budget. The compacted-single-agent case works; **the sibling case, which USER-9 cited as its rationale, does not** | open · spec-change |
+| CONC-20 | Major | The suspension bargain is voided by CONC-3: probing is suspended for hours by design, then the local run is SIGTERMed at session end by `LocalRunner`'s `atexit` hook | open · spec-change |
+| CONC-21 | Major | "Unverified" is right for *whether elicitation delivers* and wrong for **attribution, single-flight, and non-answer states** — no live test fixes a prompt that names no artifact, or a timeout that is not an approval. Three rules the spec owns regardless of the test | open · spec-change · needs-user-input |
+| CONC-23 | Major | Multi-group multiplies two uncapped fan-outs: `max_concurrent_arms` is **per-campaign**, so N groups × M arms has no aggregate ceiling. `species × medium` is a cross-product — the spec's own example implies six campaigns | open · spec-change |
+| CONC-24 | Major | The per-group breakdown **defeats the polling economy built for the same tool** — `since`'s value is skipping the store open, and a breakdown cannot come from a stat. Also has no stated data source: `QCScorer` returns one scalar per trial. **Answers USER-15's deferred question: the breakdown belongs to the scorer**, written into trial user attrs at scoring time | open · spec-change · needs-user-input |
+| CONC-26 | Minor | `campaign_status {detail:"artifact"}` is the session-recovery entry point and reads an artifact `campaign_start` may be mid-clobber of; nothing distinguishes "not started" from "started by a server that died" | open · spec-change |
+| CONC-27 | Major | The new annotation rule is a **list, not a rule**, and `deploy_plan` breaks it: named like a read, it now mints a token, sweeps every parent image, can acquire the slot, and prompts a human — yet a host told `readOnlyHint` may auto-approve it, putting the sole full-dataset human gate behind a tool declared safe to call unasked. Same for `pipeline_probe`, which mutates nothing but holds the exclusive slot | open · spec-change |
+| CONC-28 | Major | Elicitation widens `campaign_approve`'s CAS window from milliseconds to **minutes**, and GEN-6 already showed the `status` CAS cannot detect an arm-set change — so the human approves a summary that can go stale while they read it | open · spec-change · depends GEN-6 |
+
+**Its sequencing advice:** CONC-19, 20, 22 and 25 all resolve differently
+depending on how **CONC-1**'s primitive and release path are settled, so CONC-1
+and CONC-2 should be taken first. Both remain open from round 1.
