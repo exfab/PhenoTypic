@@ -79,6 +79,11 @@ This shapes three design choices that would otherwise look arbitrary:
   "experiment_profile": "profiles/plates.experiment.json",
   "subset_id": "subsets/plates-dev-24.subset.json",
   "metadata_csv": "data/tune_layout.csv",
+  "derived_from": {"campaign_id": "campaigns/fungal-general-first",
+                   "reason": "general-first winner failed the A_nidulans group"},
+  "write_generation": 7,
+  "launcher": {"pid": 48211, "create_time": 1786012345.7,
+               "expires": "2026-08-12T14:10:00Z"},
   "objective": {"scorer": {"class": "QCScorer",
                            // `metadata` is CORRECT — the shipped field name (§10.3)
                            "params": {"check": {"metadata": "data/tune_layout.csv"}}},
@@ -89,16 +94,46 @@ This shapes three design choices that would otherwise look arbitrary:
     {"id": "prefab-fil", "pipeline": "pipelines/filamentous-prefab.json.pht-pipe",
      "tune_spec": "tune/filamentous-prefab.setup.json.pht-tune",
      "pipeline_digest": "sha256:3e91…", "spec_digest": "sha256:c07b…",
+     "state": "running", "study_id": "studies/fungal-edge-sweep-prefab-fil",
+     "queued_reason": null,
      "rationale": "baseline — FilamentousFungiPipeline, the assay-matched prefab"},
     {"id": "phase", "pipeline": "pipelines/phase-edge.json.pht-pipe",
      "tune_spec": "tune/phase-edge.setup.json.pht-tune",
+     "state": "queued", "study_id": null, "queued_reason": "campaign_budget",
      "rationale": "the hypothesis",
      "prefab_baseline": {"pipeline": "FilamentousFungiPipeline", "best_cost": 0.31}},
     {"id": "watershed", "pipeline": "pipelines/watershed.json.pht-pipe",
-     "tune_spec": "tune/watershed.setup.json.pht-tune",   "rationale": "control"}
+     "tune_spec": "tune/watershed.setup.json.pht-tune",
+     "state": "pending", "study_id": null, "queued_reason": null,
+     "rationale": "control"}
   ]
 }
 ```
+
+**Five fields above are the fan-out's state, and they live here because this is
+where the pydantic model is built from.** §8.3 argues each of them; none of them
+was in this schema, so an implementer building `campaign.json` from this section
+produced arms with no state field at all and a `campaign_status` with nothing to
+read.
+
+| Field | Where | Contract |
+|---|---|---|
+| `state` | per arm | `pending` → `queued` → `running` → terminal (`complete`/`failed`), per §8.3's arm-state table. `pending` is the value `campaign_put` writes |
+| `queued_reason` | per arm | `"campaign_budget"` \| `"server_ceiling"` \| `"local_slot"` \| `null` (§1.5). Non-null only while `state == "queued"`; a starved arm and a healthy one are otherwise identical on disk |
+| `study_id` | per arm | Written back by the launcher under CAS when the arm starts (§8.3). `null` until then, and its absence is precisely what makes the idempotent re-launch decidable |
+| `launcher` | campaign | The fan-out lease — `{pid, create_time, expires}`, the same treatment §2.4 gives `RunRecord`. Absent, expired, or a pid whose `create_time` does not match a live process means no launcher is alive, which is what makes `launch_state` derivable (§8.3) |
+| `derived_from` | campaign | Optional `{campaign_id, reason}`. USER-24's one breadcrumb: with grouping offloaded to the agent, N sibling per-group campaigns have no recorded relationship, and the fact that they descend from one experiment and one general-first failure would live only in the agent's context and vanish at the next compaction. The server records it and never acts on it |
+
+**`write_generation` is a read hint, not the CAS key.** It is a monotonic counter
+incremented on every successful write, and `campaign_status
+{detail:"artifact"}` reports it so a recovering agent or a peer server can tell a
+stale read from a current one without diffing content. **It is not what a
+mutation compares against** — §2.6's rule is `(status, artifact_digest)`, and the
+digest is the one that survives an artifact edited by a peer server whose counter
+this reader never saw. An earlier draft of §8.3 called the counter "the value a
+subsequent mutation CASes against", which put two incompatible CAS keys one
+section apart, each stated as the rule; the digest wins because it is the one
+that cannot be defeated by a writer the reader never observed.
 
 **Arms reference the experiment profile, and custom arms cite the prefab they beat.**
 `prefab_baseline` is the §9.4 convention: an arm whose pipeline is not a prefab
@@ -424,12 +459,18 @@ for this round; the campaign artifact simply did not get the equivalent. Nothing
 campaign: `allocate` refuses the already-claimed output directories and the agent
 has no way to tell which arms got out.
 
-| Arm state | Meaning |
-|---|---|
-| `pending` | on the artifact, not yet accepted by the launcher |
-| `queued` | accepted by the launcher, waiting on `max_concurrent_arms` or the server-wide ceiling; no `study_id` yet |
-| `running` | launched; `study_id` recorded under CAS |
-| terminal | `complete` / `failed`, from the study's own record |
+| Arm state | `queued_reason` | Meaning |
+|---|---|---|
+| `pending` | `null` | on the artifact, not yet accepted by the launcher |
+| `queued` | `"campaign_budget"` | accepted by the launcher, waiting on `budget.max_concurrent_arms`; no `study_id` yet |
+| `queued` | `"server_ceiling"` | waiting on `limits.max_inflight_arms`, the server-wide semaphore (§1.5); carries a queue position |
+| `queued` | `"local_slot"` | routed local and waiting on `LocalComputeSlot`. Under `local_slot_capacity=1` a three-arm campaign starts one arm and parks two here — which is neither of the other two reasons, and USER-17's "a second local arm is told the slot is busy and returns" applies to a *tool call*, not to the launcher, which holds the arm and retries |
+| `running` | `null` | launched; `study_id` recorded under CAS |
+| terminal | `null` | `complete` / `failed`, from the study's own record |
+
+All four fields — `state`, `queued_reason`, `study_id` and the campaign-level
+`launcher` lease — are declared on the artifact schema in §8.2. This table is
+their meaning; that schema is where they are stored.
 
 ### `campaign_status {detail:"artifact"}` — read the stored campaign back
 
@@ -458,9 +499,13 @@ workspace_lineage {id: <study>}   -> only if you need the provenance chain
 stands.** Two fields beyond the artifact:
 
 - **`write_generation`** — the artifact's own write counter, incremented on every
-  CAS. It is what lets a recovering agent (or a second server) tell a stale read
-  from a current one without diffing content, and it is the value a subsequent
-  mutation CASes against.
+  successful write. It is what lets a recovering agent (or a second server) tell
+  a stale read from a current one without diffing content. **It is a hint, not
+  the CAS key**: mutations CAS on `(status, artifact_digest)` per §2.6, and the
+  schema that stores the counter is §8.2's. A counter cannot be the key here
+  because a peer server's write is invisible to a reader that never saw the
+  counter move, while the digest of the bytes actually read cannot be defeated
+  that way.
 - **`launch_state`** — `clean` or `fan_out_incomplete`. `fan_out_incomplete` means
   the campaign is `launching` or `running`, at least one arm is `queued` with no
   `study_id`, and **the `launcher` lease is absent, expired, or names a pid whose
@@ -717,23 +762,38 @@ inverting.
 
 **The row is appended in two parts, and the order matters.** The step is
 journalled the moment the edit is *accepted* — before its probe runs — carrying
-the full edit (parameters included) and `"decision":"in_flight"`. Evidence is
-filled in when the probe returns.
+the **canonical edit** (§3.2: the full edit with parameters, and with the target
+op's `class` resolved from its index at this moment, since three of the six edit
+kinds carry no class of their own and would otherwise be indistinguishable
+later). It carries `"state":"in_flight"`. Evidence is filled in by the second
+append when the probe returns.
 
-**The keep/revert decision is never written by a tool.** It is the agent's
-choice, taken after reading the evidence, and no tool in the catalog accepts it.
-The server derives it instead: an edit still present in the current pipeline was
-kept, one no longer present was reverted (§3.2). Deriving beats reporting here —
-a self-reported decision is a field an agent can omit, while the pipeline itself
-cannot lie about what it contains.
+**There is no `decision` field on either row.** `state` is the row's own
+lifecycle — `in_flight` until its evidence append lands — and it is the only
+status the journal stores. The keep/revert decision is the agent's choice, taken
+after reading the evidence, and no tool in the catalog accepts it; the server
+**derives** it at read time from the pipeline as it then stands, per §3.2's
+per-kind table. Deriving beats reporting — a self-reported decision is a field an
+agent can omit, while the pipeline itself cannot lie about what it contains — and
+keeping it off the row is also what makes the append-only journal sufficient: a
+stored decision would have to be updated, and there is no update path.
 
-**But the derivation has a limit, and the advisory must state it rather than
-round it off.** Up to 12 patches from N siblings mutate one pipeline in place, so
+**The derivation has two limits, and the advisory states both rather than
+rounding them off.**
+
+*Attribution.* Up to 12 patches from N siblings mutate one pipeline in place, so
 "present" can mean *a different agent re-added it* and "absent" can mean *a later
 step removed it*. What the server can honestly report is **"still present in the
 current pipeline"** — not "kept by the agent that tried it". Under a single
 compacted agent, the case USER-9 actually cited, the two coincide; under
 concurrent siblings they do not, and §3.2's wording says the former.
+
+*Decidability per kind.* "Present" is the right test for `insert_op` and the
+**inverse** of the right test for `remove_op`; for `move_op` and for a
+`set_params` against a slot holding two ops of one class it decides nothing at
+all. §3.2's table is the normative statement — this section records the edit it
+needs, which is why the canonical edit and not the raw arguments go on the row —
+and `undetermined` is a reported outcome, not a suppressed advisory.
 
 Writing the whole row at the end instead would be simpler and would break §3.2's
 `edit_previously_tried` in exactly the case it exists for: two sibling subagents
