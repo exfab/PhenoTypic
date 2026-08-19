@@ -302,7 +302,8 @@ Same arguments as `deploy_plan`, plus:
 | `retry_failures` | `bool` | `false` | Requires `resume` |
 | `restart` | `bool` | `false` | Clear machine state and start over |
 
-The response carries **`ack_source: "elicited" | "agent_asserted"`** (§8.2), which
+The response carries
+**`ack_source: "elicited" | "agent_asserted" | "campaign_approved"`** (§8.2), which
 is what makes the distinction auditable on the artifact rather than implicit in
 host configuration.
 
