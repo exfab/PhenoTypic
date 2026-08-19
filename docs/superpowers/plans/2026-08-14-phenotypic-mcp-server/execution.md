@@ -355,3 +355,22 @@ today.
 **Net effect:** one authoritative checkout, at the path the user actually works
 in, and the `bigdata_exfab` symlink — the session's default cwd — finally points
 at the right tree instead of a stale one.
+
+---
+
+## Pre-existing defects found by the Phase 1b gates — report against `main`
+
+Both are live on `main` today, independent of the MCP work, and both were found
+only because a gate mutated code rather than reading it.
+
+| Defect | Site on `main` | Effect |
+|---|---|---|
+| **Zero-field pydantic models fall through to `inspect.signature`** | `gui/_operation_registry.py:353` — `if model_fields:` is falsy for a model with no fields | The GUI renders a **phantom required parameter `data`** for 14 of 143 operations, including 6 of 11 measurers. Passing it raises `ValidationError: Extra inputs are not permitted`, so the field the GUI shows cannot be filled. Fix is one character class: `if model_fields is not None:` |
+| **`_schema_description` looks up the Python name, not the alias** | `tune/_search_space/_infer.py:174` | `_schema_description(RemoveGridOutliers(), "cutoff_multiplier")` returns `""`. Cosmetic — descriptions silently missing for aliased params |
+| **`RunRegistry` nests an in-process lock inside a 30 s file lock** | `_services/runs.py:316/330`, and three sibling methods | One thread on a contended mount blocks every other thread from any registry method. Tracked as CONC-8; **withdrawn from Phase 1b (USER-31)** because the complete fix touches four sites and a documented public contract |
+
+**Worth stating plainly:** the first two were found by a reviewer *mutating* the
+implementation and watching which tests survived, not by reading the diff. The
+third was found by a reviewer checking a citation. None would have surfaced from
+a passing suite — which is the argument for keeping the mutation requirement in
+every cluster brief for the rest of this phase.
