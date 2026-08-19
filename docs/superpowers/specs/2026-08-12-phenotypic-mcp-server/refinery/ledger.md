@@ -754,3 +754,86 @@ otherwise undo the fix (chiefly: why `group_filter` cannot be added to the ABC
 later, and why `write_generation` is not the CAS key). It did not add "an earlier
 draft…" narration beyond those. USER-27's ~160-line cut should be measured
 against the tree as it now stands, not against the round-2 snapshot.
+
+---
+
+## Round 3 — the USER-27 trim (2026-08-19)
+
+**Not a decision round.** No ruling was made or amended. This records the
+retired-alternative narration removed from the spec, so the positions it
+reconstructed survive here rather than in normative text.
+
+### Moved, not deleted — §2.6 → §7 P2
+
+Both subsections specified fixes to **shipped code**, not properties of the MCP
+server, and the ledger already dispositioned both as Phase 1b code fixes. They
+are now a two-row table under **§7 P2** ("Plus two concurrency fixes to the
+promoted code"), and §2.6's guard table cites `§7 P2` where it previously said
+"amended below". Every clause of both rules survives.
+
+| Was | Now |
+|---|---|
+| §2.6 "Two locks, one order" (CONC-8) — `RunRegistry.allocate` (`_services/runs.py:317-337`) takes `exclusive_path_lock` *inside* `self._lock` | §7 P2 row 1; §2.6's "Output directory claim" row gained the ordering clause |
+| §2.6 "The registry is published after it is populated" (CONC-9) — `get_registry()` publishes `_REGISTRY` before `discover()` | §7 P2 row 2; §2.6's "Operation registry" row already stated the rule and now cites §7 P2 |
+
+### Positions retired from the spec text, recorded here
+
+Each was written as an argument against a superseded draft. The **rule** each one
+defended is unchanged in the spec; only the reconstruction of the old position
+was removed.
+
+| Site | The position the prose reconstructed | Where the surviving rule is |
+|---|---|---|
+| §1.5 | "run at most 1–2 arms concurrently" stated beside a capacity-1 slot — two owners for one invariant (USER-14, superseded by USER-17) | §1.5 "Locally, the slot *is* the cap"; §1.6.1 bounds table |
+| §1.5 | `W1` running via `run_in_executor` on a worker thread | §1.5 "`W1` does not run in the server process at all"; §3.2's killable worker subprocess |
+| §1.5 | The lease is specified "regardless of how cancellation delivery tests out" — an argument addressed to USER-16's deferral criterion, not to an implementer. The `deferred-to-2A` observation and its pass condition live in plan README **F4** | §1.5's "acquired with a wall-clock lease, unconditionally" + `slot_lease_expired` (§6.2) |
+| §1.5 | A live orphan *claiming* the slot | §1.5 "A live orphan is refused, not watched" — with the Linux no-exit-notification reason kept, because without it a reader reinstates the watcher |
+| §1.6.1 | "On SLURM the scheduler is not admission control" — an environment fact also carried by the repo's root `CLAUDE.md` | One clause on the `limits.max_inflight_arms` bounds row |
+| §3.2 | The derivation and match key written against `insert_op` alone; `params` omitted from the key; §8.7 journalling the decision with the step | §3.2's per-kind table, `params` in the key, and the acceptance-time `in_flight` rule — all kept |
+| §5.3 | The header sweep "assumed to be too slow" for `W0` before it was measured; "a flat `W0` label was wrong" | §5.3's measurement (0.081 s / 460 images) and the `W0`-at-subset / `W1`-at-full split |
+| §5.4 | `argv_digest` "previously named in the example record and defined nowhere" | §5.4's definition, and the reason both it and `run_name` are bound |
+| §8.2 | `write_generation` described in §8.3 as the CAS key; `status` conceded as unverifiable before elicitation; `human_response` "required-unless-elicited" (USER-22) | §8.2's read-hint statement, §2.6's `(status, artifact_digest)`, and the unconditional-`human_response` rule with its host-capability reason kept |
+| §8.3 | `plan_tokens` populated on `campaign_put`'s `draft` response; "`RunRecord` got the `(pid, create_time)` pair and the campaign artifact did not" | §8.3's mint-at-approve rule; the `launcher` lease on §8.2's schema |
+| §8.7 | The `decision`-is-derived argument and the end-writing counterfactual, both duplicating §3.2 verbatim | §3.2 (the site where the advisory is specified); §8.7 now cross-references it and keeps the "no `decision` field on either row" rule |
+| §10.5 | A separate `promotion_request` → `promotion_approve` pair minting a `promotion_token`; the nine-line reconstruction of `deploy_plan`'s `W0`-plus-human contradiction (retired as a *basis* by USER-25, outcome unchanged); "three earlier drafts each named a different subset of the bound fields"; "an earlier draft asserted the run simply needed no staging" | §10.5's one-gate-one-token rule, the point-of-spend reason (USER-18), §5.4's binding table, and the manifest rule with its "arbitrary image list" reason kept |
+
+### What was **not** cut, and why
+
+- **§3.2's `edit_previously_tried` block.** The reviewer estimated ~35 of its ~50
+  lines as narration. Measured against the text, it is ~6: the per-kind table,
+  the `params`-in-key rule, the `index`-excluded rule with its record-time class
+  resolution, `undetermined`-still-fires, the `basis` field, the advisory-not-
+  refusal rule, and the offload note are all normative. The "is the op still
+  there' is the rule for exactly one of six kinds" paragraph is the justification
+  for the table itself and is what stops a later reader collapsing it back to one
+  rule. Only the memorial framing was removed.
+- **`estimate.node_hours`' "and it was outside the token entirely"** in §5.4's
+  binding table. It is a memorial clause, but the binding table is a defining
+  section and this trim does not edit those.
+- **Pre-round-2 memorials outside the seven itemized sites** (§2.1, §2.4, §3.0,
+  §3.1, §3.3, §4.x, §6.x, §7 P1/P6, §9.x, §10.3, README) and every section's
+  "Resolved since first draft:" block, which is a resolved-OQ record rather than
+  narration. USER-27's cut was scoped to the reviewer's itemization; the
+  remainder of SIMP-38's ~309 lines is untouched and still available.
+
+### Measured
+
+**74 lines of narration removed, 10 lines added to §7** for the two moved fixes:
+net **−64** across the spec directory (6,301 → 6,237). Per file: §1 −17, §2 −27,
+§3 −2, §5 −4, §7 **+10**, §8 −12, §10 −12; §4, §6, §9 and README byte-identical.
+
+No rule was lost, checked three ways:
+
+1. **Identifiers.** A set-difference over every backticked token in the directory
+   returns exactly two removals — `CancelledError`, which appeared only in the
+   deleted deferral-criterion argument (the observation and its pass condition
+   live in plan README **F4**), and a line-wrap fragment reconstituted intact in
+   §7's new table.
+2. **Table rows.** The count of table lines is identical in all ten files except
+   §7, which gained 4 (a header, a separator and the two moved rows). No argument
+   table, artifact schema, error table or bounds table lost a row.
+3. **Normative statements.** The set of bolded lead statements is unchanged
+   except for the four the trim deliberately retired (§1.6.1's "On SLURM the
+   scheduler is not admission control", §1.5's "regardless of how cancellation
+   delivery tests out", §8.2's "That constraint is no longer real") and three
+   punctuation/wrap differences on statements that survive verbatim.
