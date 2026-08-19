@@ -1056,7 +1056,32 @@ A corrupt grid_finder warns and falls back, as the HDF path already does."
 - Modify: `src/phenotypic/gui/builder/_preview_cache.py` (lines 208, 212, 217, 284–286 —
   the DAG manifest's `"hdf"` key and the `base_00.h5` / `{i:02d}_{key}.h5` filenames)
 - Test: `tests/unit/core/test_save_intermediate_zarr.py` (create),
-  `tests/unit/gui/builder/test_preview_cache_manifest.py` (extend)
+  `tests/unit/gui/builder/test_preview_cache_manifest.py` (**create** — it does not exist;
+  see the correction below)
+- **Test: three existing builder files this task breaks.** All three live under
+  `tests/gui/builder/`, which is in `testpaths` (`pyproject.toml:200`) and therefore runs in
+  the default lane:
+  - `tests/gui/builder/test_preview_cache.py:25` hard-codes a manifest node
+    `{"blk": {"hdf": "base_00.h5", "layers": [...], ...}}` and `:37` writes `base_00.h5`.
+    Rename the key to `"store"` and the artifact to `base_00.ome.zarr`.
+  - `tests/gui/builder/test_preview_tile_blueprint.py:16-19` builds a node with
+    `img.save2hdf5(hdf)` under a `"hdf"` key; `:29-38` calls `save_intermediate_layers` and
+    its docstring documents the `Image.load_layer_hdf5(hdf, "objmap")` `KeyError` that the
+    missing-objmap case depends on — port both to `save_intermediate_zarr` /
+    `load_layer_zarr`.
+  - `tests/gui/builder/test_preview_compute_scope.py:100` asserts on
+    `pc.scope_dir("s", scope_path) / "base_00.h5"`, the artifact
+    `apply_with_intermediates` writes at `_image_pipeline_core.py:1021`.
+
+  > **Corrected (missing-owner review, 2026-08-19).** An earlier draft named a single test
+  > file, `tests/unit/gui/builder/test_preview_cache_manifest.py`, and said "extend". That
+  > path **does not exist** (`ls tests/unit/gui/builder/` — 14 files, none of them a manifest
+  > test), and the real manifest coverage is the three files above, under `tests/gui/builder/`
+  > rather than `tests/unit/gui/builder/`. Step 4's command has the same slip: it runs
+  > `tests/unit/gui/builder`, which contains none of the tests this task breaks. Both are
+  > fixed below. These three are also on the README inventory's **Phase 4** row; Phase 4
+  > Task 4.4 now records that this task owns the manifest half and 4.4 owns only the
+  > rendering half.
 
 **Interfaces:**
 - Consumes: `save2zarr` internals.
@@ -1143,7 +1168,7 @@ def test_uses_the_promote_primitive(plate: Image, tmp_path: Path, monkeypatch) -
     assert calls == ["n.ome.zarr"]
 ```
 
-Extend `tests/unit/gui/builder/test_preview_cache_manifest.py`:
+Create `tests/unit/gui/builder/test_preview_cache_manifest.py`:
 
 ```python
 def test_manifest_node_key_is_store_not_hdf(tmp_path) -> None:
@@ -1156,11 +1181,29 @@ def test_manifest_node_key_is_store_not_hdf(tmp_path) -> None:
         assert node["store"].endswith(".ome.zarr")
 
 
-def test_manifest_version_bumped_so_stale_caches_rebuild() -> None:
+def test_manifest_carries_a_schema_version() -> None:
     from phenotypic.gui.builder import _preview_cache
 
     assert _preview_cache.MANIFEST_VERSION >= 2
+
+
+def test_a_manifest_without_a_version_is_treated_as_stale(tmp_path, monkeypatch) -> None:
+    """Every cache written before this change lacks the field entirely.
+
+    Without this, a pre-existing manifest passes the fingerprint check and is
+    returned as a cache hit, and the very next read hits ``node["store"]`` on a
+    dict that only has ``"hdf"``.
+    """
+    from phenotypic.gui.builder import _preview_cache
+
+    _preview_cache.write_manifest("s", [], {"fingerprint": "f", "nodes": {}})
+    assert _preview_cache.read_manifest("s", []).get("version") is None
+    # compute_scope must rebuild rather than return it.
 ```
+
+> `build_manifest_for_test` is named as an "existing helper" above but is not one — no such
+> symbol exists in `_preview_cache.py`. Either add it beside `_build_manifest` or drive the
+> manifest through `compute_scope` as the three `tests/gui/builder/` files already do.
 
 - [ ] **Step 2: Run them to verify they fail**
 
@@ -1215,23 +1258,63 @@ lines 1021 and 1042 become `save2zarr(output_dir / "base_00.ome.zarr")` and
 calls become `save_intermediate_zarr` with the same `layers=` argument and the
 `.ome.zarr` name.
 
-In `_preview_cache.py`, rename the manifest key and bump the version:
+In `_preview_cache.py`, rename the manifest key and **introduce** a schema version.
+
+> **Corrected (missing-owner review, 2026-08-19).** An earlier draft of this task, and
+> Phase 4 Task 4.4's back-reference to it, both said "bump `MANIFEST_VERSION`".
+> `grep -rn "MANIFEST_VERSION" src/phenotypic/gui/` returns **nothing** — the builder manifest
+> carries no version field at all today, and the only `_MANIFEST_VERSION` in the tree is the
+> unrelated staged-orchestration one at `_cli/_cli_staged_orchestration.py:47`. Introducing a
+> constant is not the same edit as bumping one: a bump is a one-line change, whereas an
+> introduction has to add the field **and** a reader that rejects a manifest lacking it —
+> without which every cache written before this change is read back through a `"hdf"` key that
+> no longer exists. Exactly one task performs the introduction, and it is this one; Task 4.4
+> only consumes the renamed key.
+
+Three edits, not one:
 
 ```python
-#: Manifest schema version. Bumped when the per-node artifact moved from a
-#: single ``.h5`` to an ``.ome.zarr`` store, so a manifest written by an older
-#: session is rebuilt rather than misread.
+#: Builder DAG manifest schema version. Introduced here: the per-node artifact
+#: moved from a single ``.h5`` to an ``.ome.zarr`` store, so a manifest written
+#: by an older session must be rebuilt rather than misread through a key that no
+#: longer exists. Manifests predating this constant carry no ``"version"`` at
+#: all, which is why the reader below treats a missing value as stale.
 MANIFEST_VERSION: Final[int] = 2
 ```
 
-`_describe` writes `"store": filename` instead of `"hdf": filename`, and the predecessor
-lookup at lines 284–286 reads `parent_manifest["nodes"][pred_id]["store"]`.
+1. `_build_manifest` (line 173) writes `"version": MANIFEST_VERSION` into the manifest dict,
+   and so does the error-path manifest built in `compute_scope`'s `except` branch (lines
+   297–302) — otherwise a failed scope is permanently re-read as stale.
+2. `compute_scope`'s cache-hit guard (lines 263–265) currently reads
+
+   ```python
+   if cached is not None and cached.get("fingerprint") == fingerprint \
+           and cached.get("error") is None:
+       return cached
+   ```
+
+   Add `and cached.get("version") == MANIFEST_VERSION`. `.get` returning `None` for a
+   pre-version manifest is the whole point: it must miss and rebuild.
+3. `_describe` writes `"store"`; the predecessor lookup at lines 284–286 reads
+   `["store"]`, and its `pred_file` fallback at `:284` becomes `"base_00.ome.zarr"`.
+
+Concretely, `_describe` writes `"store": filename` instead of `"hdf": filename`, and
+`compute_scope` reads `parent_manifest["nodes"][pred_id]["store"]`.
+
+Then port the three existing builder test files named in this task's `Files:` list.
 
 - [ ] **Step 4: Run the tests plus the builder GUI suite**
 
 ```bash
-uv run pytest tests/unit/core/test_save_intermediate_zarr.py tests/unit/gui/builder -v
+uv run pytest tests/unit/core/test_save_intermediate_zarr.py \
+  tests/unit/gui/builder tests/gui/builder -v
 ```
+
+**`tests/gui/builder` is the half that matters here** — it holds `test_preview_cache.py`,
+`test_preview_tile_blueprint.py`, and `test_preview_compute_scope.py`, the three files this
+task breaks. `tests/unit/gui/builder` contains none of them; an earlier draft ran only that
+path and would have reported green while the default lane was red (missing-owner review,
+2026-08-19).
 
 Expected: all PASS. `_preview_tiles.py:124`'s `node["hdf"]` will fail here if missed — fix
 it in this task, not in Phase 4.
@@ -1905,4 +1988,16 @@ places the published schemas are stricter than the prose."
 - [ ] `uv run pytest tests/unit/gui/builder -q` is green (manifest key rename).
 - [ ] `uv run pytest --doctest-modules src/phenotypic/_core/_image_parts/_image_io_handler.py -q` is green.
 - [ ] `grep -rn '\.ome\.zarr"' src/phenotypic --include='*.py' | grep -v 'ngff_.py\|_io_constants.py'` returns nothing.
-- [ ] The HDF write path still works: `uv run pytest tests/unit/core/test_image_hdf_roundtrip.py -q` is green.
+- [ ] The HDF write path still works: `uv run pytest tests/unit/core/test_image_hdf_roundtrip.py
+      tests/unit/core/test_load_layer_hdf5.py tests/unit/core/test_image_dtype_conversion.py -q`
+      is green **and unmodified** — `git diff --stat` must show no change to those three files.
+
+      > **Ownership note (missing-owner review, 2026-08-19).** The README test inventory
+      > previously listed all three on its **Phase 2** row, to be "ported to
+      > `save2zarr`/`load_zarr`". That was wrong and is now corrected there: this phase adds
+      > `save2zarr` **beside** `save2hdf5` and removes nothing, so there is nothing here for
+      > them to be ported to. `phase-6-retirement.md` Task 6.2 owns all three — it rewrites
+      > `test_image_hdf_roundtrip.py` as a removal guard and deletes
+      > `test_load_layer_hdf5.py`. A port done in this phase would be thrown away there.
+- [ ] `uv run pytest tests/gui/builder -q` is green — the three builder files Task 2.4 breaks
+      live there, not under `tests/unit/gui/builder`.

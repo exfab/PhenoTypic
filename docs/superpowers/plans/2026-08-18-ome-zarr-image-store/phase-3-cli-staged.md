@@ -21,6 +21,8 @@ touched.
   (add beside `save_image_hdf`, line 1633; `save_image_layers` at line 1688 is already
   deprecated and is **not** ported)
 - Test: `tests/unit/cli/test_cli_output_manager.py` (extend)
+- Test (regression only, run — do not edit): `tests/integration/cli/test_staged_gpu_local.py`
+  (where `save_image_hdf` is actually covered; the rename at `:742` is listed below)
 
 **Interfaces:**
 - Consumes: `Image.save2zarr`, `zarr_store_path`, `ngff_.durable_writes_enabled`.
@@ -60,15 +62,34 @@ touched.
 
 - [ ] **Step 1: Write the failing test**
 
+> **Corrected (wrong-symbol sweep).** An earlier draft wrote
+> `manager = _make_manager(tmp_path)  # existing helper in this module`. There is no such
+> helper: `tests/unit/cli/test_cli_output_manager.py` tests **module-level** functions
+> (`aggregate_measurements`, `split_master_by_feature`, …) and never names `OutputManager`
+> at all — `grep -n OutputManager` on it returns nothing. The tests would have failed with
+> `NameError`, not the `AttributeError` Step 2 predicts. The construction that the real
+> `save_image_hdf` tests use is `OutputManager.from_config(out, ".tiff", save_overlays=False)`
+> (`tests/integration/cli/test_staged_gpu_local.py:114`); define the helper below, and add
+> `from phenotypic._cli._cli_output_manager import OutputManager` to the file's existing
+> import block (the file already imports six other names from that module).
+
 Append to `tests/unit/cli/test_cli_output_manager.py`:
 
 ```python
+def _make_manager(tmp_path: Path) -> OutputManager:
+    """Same construction the real save_image_hdf tests use.
+
+    See tests/integration/cli/test_staged_gpu_local.py:114.
+    """
+    return OutputManager.from_config(tmp_path, ".tiff", save_overlays=False)
+
+
 def test_save_image_store_writes_under_results_dataset_zarr(tmp_path) -> None:
     from phenotypic import Image
     from phenotypic.sdk_ import zarr_store_path
     from phenotypic.data import load_synth_yeast_plate
 
-    manager = _make_manager(tmp_path)  # existing helper in this module
+    manager = _make_manager(tmp_path)
     saved = manager.save_image_store(
         Image(load_synth_yeast_plate()), "ds", "img"
     )
@@ -172,7 +193,9 @@ Expected: `AttributeError: 'OutputManager' object has no attribute 'save_image_s
         from phenotypic.sdk_ import zarr_store_path
         from phenotypic.sdk_.ngff_ import discard_parts_for
 
-        final_path = zarr_store_path(self.output_dir, dataset_name, image_stem)
+        # OutputManager's root attribute is ``base_dir``; there is no
+        # ``self.output_dir`` (verified: _cli_output_manager.py:1416).
+        final_path = zarr_store_path(self.base_dir, dataset_name, image_stem)
         final_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             saved = image.save2zarr(
@@ -203,8 +226,14 @@ Expected: `AttributeError: 'OutputManager' object has no attribute 'save_image_s
 uv run pytest tests/unit/cli/test_cli_output_manager.py -v
 ```
 
-Expected: all PASS, including the pre-existing `save_image_hdf` tests — that path is
-untouched here.
+Expected: all PASS. Then run `uv run pytest tests/integration/cli/test_staged_gpu_local.py -q`
+— that is where `save_image_hdf` is actually exercised, and it must stay green because this
+task does not touch it.
+
+> **Corrected (wrong-symbol sweep).** An earlier draft said "including the pre-existing
+> `save_image_hdf` tests" in `test_cli_output_manager.py`. There are none there;
+> `save_image_hdf` is covered by `tests/integration/cli/test_staged_gpu_local.py`, hence the
+> second command.
 
 - [ ] **Step 5: Commit**
 
@@ -601,6 +630,20 @@ under .phenotypic/progress/ beside the Stage-3 marker it pairs with."
   (`stage1_preprocess_core` line 99, `stage2_detect_core` line 139,
   `ensure_staged_overlay` line 168, `stage3_merge_measure_core` line 193)
 - Test: `tests/integration/cli/test_staged_store_stages.py` (create)
+- **Test: `tests/integration/cli/test_staged_gpu_local.py` — two edits this task causes**
+  (Task 3.5 owns the file's port; these two are named here because this task is what breaks
+  them, and an executor running only Task 3.3's step-4 command hits them first):
+  1. `:740-744` monkeypatches the **instance attribute by name**:
+     `monkeypatch.setattr(om, "save_image_hdf", lambda *a, **k: None)`. `save_image_hdf` is
+     deliberately **kept** until Phase 6 (Task 3.1), so the patch still *succeeds* — it just
+     patches a method Stage 3 no longer calls, the injected failure never occurs, and the
+     test fails on a `DID NOT RAISE` instead of an `AttributeError`. Rename it to
+     `save_image_store`.
+  2. `:746` is `pytest.raises(RuntimeError, match="Stage 3 HDF publication failed")`. Step 3
+     below changes both worker messages from `HDF` to `store`
+     (`_cli_staged_workers.py:135` and `:235`), so the match string becomes
+     `"Stage 3 store publication failed"`. Prefer matching on `"Stage 3"` alone, as this
+     task's own `test_stage3_raises_when_publication_fails` already does.
 
 **Interfaces:**
 - Consumes: `save_image_store` (3.1), the Stage-2 token (3.2), `valid_staged_store` (1.6).
@@ -1300,6 +1343,41 @@ exercised and the test passes while production breaks (see Task 3.8)."
 - Delete: `src/phenotypic/_cli/_cli_sidecar.py`, `tests/unit/cli/test_cli_sidecar.py`
 - Test: `tests/unit/cli/test_staged_routing.py` (extend),
   `tests/unit/cli/test_staged_controller.py` (extend)
+- **Test: `tests/integration/cli/test_staged_gpu_local.py` (969 lines) — port it here**, in
+  the same commit that deletes `_cli_sidecar.py`. It is the only file this phase touches that
+  becomes an **`ImportError` at collection**, not a failing assertion: line 19 is
+  `from phenotypic._cli._cli_sidecar import sidecar_exists, write_sidecar`, and three of this
+  phase's exit criteria run it (`tests/integration/cli`, and Task 3.3's and 3.4's re-runs).
+  The port is mechanical and has exactly four shapes:
+  - line 19 → `from phenotypic._cli._cli_stage2_token import stage2_token_exists, write_stage2_raw`
+    (Task 3.2's names);
+  - the fourteen `sidecar_exists(out, "ds", <stem>)` assertions (`:131, :140, :164, :224,
+    :249, :344, :371, :758, :793, :898, :949, :965, :966`) → `stage2_token_exists(...)`. Where
+    the assertion is proving Stage 3 *can still replay*, pair it with
+    `stage2_raw_path(...).is_file()`; where it is proving cleanup happened
+    (`:140` "mandatory cleanup", `:371`, `:793`), assert **both** are gone — the token-and-raw
+    pairing this task introduces is otherwise untested end to end.
+  - `write_sidecar(out, "ds", "done", np.zeros((2, 2)))` at `:779` → `write_stage2_raw(...)`
+    plus `publish_stage2_token(...)`, or the test's premise (a Stage-2 result awaiting
+    Stage 3) no longer holds.
+  - the six `dataset_hdf_dir(out, ...) / "<stem>.h5"` builds (`:47` import, `:121`, `:399`,
+    `:460`, `:714`) → `zarr_store_path(out, ds, stem)`, with `.is_file()` becoming
+    `.is_dir()`. `:714`'s `h5py.File(..., "r+")` corruption injection becomes a write into the
+    store's `zarr.json`.
+- **Docs: `src/phenotypic/_cli/CLAUDE.md` (the staged-GPU sidecar prose, 15 mentions),
+  root `CLAUDE.md` (8), and `docs/source/how_to/pages/gpu_detection_setup.md` (10)** — the
+  sidecar concept dies in this task, and these three are the agent- and user-facing
+  descriptions of it. Rewrite them against the Task 3.2 vocabulary: the Stage-2 **signal** is
+  now a retained raw `.npy` under `.phenotypic/progress/stage2_raw/` plus a **consumable
+  token**, and Stage 2 does not write into the store. This is not deferrable to Phase 6 —
+  Phases 4 and 5 run in parallel with this one and their executors read `_cli/CLAUDE.md`, and
+  this phase's own exit grep covers it.
+- **Test: `tests/unit/test_docs_staged_cli.py`** — it pins the prose above:
+  `test_claude_md_documents_local_staged_gpu` asserts `"sidecar" in txt.lower()` (line 11) and
+  `test_how_to_documents_local_staged_gpu` asserts the same of `gpu_detection_setup.md`
+  (line 18). Both go red the moment the word is removed. Re-point both at the new vocabulary
+  (`"stage2_raw"` / `"token"`), keeping the `"stage"` and `GpuDetector` assertions and the
+  `--gpu-*` flag assertions untouched.
 
 **Constraints specific to this task:**
 - `_cli_staged_strategy.py:328` is `--mode process --layer objmap`: it merges the Stage-2
@@ -1410,6 +1488,13 @@ exercised and the test passes while production breaks (see Task 3.8)."
 
 - [ ] **Step 1: Write the failing tests**
 
+> **Corrected (wrong-symbol sweep).** An earlier draft imported `main` from
+> `phenotypic.phenotypicCLI` and took a `cli_runner` fixture. Neither exists. The click
+> command is **`phenotypic_cli`** (`phenotypicCLI.py:1146`; both `__main__.py` and
+> `tests/unit/cli/test_cli_mode_contract.py:9` import that name), and there is no
+> `cli_runner` fixture anywhere in `tests/` — every existing CLI test constructs
+> `CliRunner()` inline at the call site. Both corrections are applied throughout this plan.
+
 Append to `tests/unit/cli/test_staged_routing.py`:
 
 ```python
@@ -1454,11 +1539,13 @@ def test_workers_never_sweep(staged_run, tmp_path) -> None:
     assert live.is_dir()
 
 
-def test_a_plain_full_run_also_logs_durability_and_sweeps(cli_runner, tiny_run, caplog) -> None:
+def test_a_plain_full_run_also_logs_durability_and_sweeps(tiny_run, caplog) -> None:
     """Spec §3.7 and §3.2 are unqualified; the CPU path uses the same promote."""
-    from phenotypic.phenotypicCLI import main
+    from click.testing import CliRunner
 
-    cli_runner.invoke(main, tiny_run.args())  # --mode full, no GpuDetector
+    from phenotypic.phenotypicCLI import phenotypic_cli
+
+    CliRunner().invoke(phenotypic_cli, tiny_run.args())  # --mode full, no GpuDetector
     assert any("durable writes:" in record.message for record in caplog.records)
 
 
@@ -1616,9 +1703,40 @@ napari, QuPath, and Vizarr without a PhenoTypic install."
 **Files:**
 - Modify: `src/phenotypic/phenotypicCLI.py` (option block beside `--mode` at line 942; the
   module docstring's option documentation)
-- Modify: `src/phenotypic/_cli/_cli_staged_strategy.py`,
-  `src/phenotypic/_cli/_cli_process_single.py` (thread the value to `save_image_store`)
+- Modify: `src/phenotypic/_cli/_cli_output_manager.py` — carry the resolved tri-state on the
+  `OutputManager` (a `durable: bool | None` field set by `from_config`, defaulting to
+  `None` = auto-detect) and pass it into `save_image_store`'s `durable=` argument (Task 3.1)
+- Modify: `src/phenotypic/_cli/_cli_process_single.py` (`:183`, the bare
+  `save_image_store(image, dataset_name, image_stem)`)
+- Modify: `src/phenotypic/_cli/_cli_staged_workers.py` (`:125` Stage 1 and `:225` Stage 3 —
+  the only other two `save_image_store` call sites)
+- Modify: `src/phenotypic/_cli/_cli_staged_slurm_worker.py` — a `--durable-writes` /
+  `--no-durable-writes` argparse pair beside `:427-429`, threaded into the two
+  `OutputManager.from_config` calls at `:145` and `:282`, and emitted by whatever submits the
+  worker (`_cli_staged_slurm.py`)
+- Modify: `src/phenotypic/phenotypicCLI.py` — the four `OutputManager.from_config` sites
+  (`:360`, `:1934`, `:2160`, `:2525`)
 - Test: `tests/unit/cli/test_cli_store_options.py` (create)
+
+> **Corrected (missing-owner review, 2026-08-19).** An earlier draft named
+> `src/phenotypic/_cli/_cli_staged_strategy.py` as the module to thread the value through.
+> `grep -n 'save_image' src/phenotypic/_cli/_cli_staged_strategy.py` returns **nothing** — the
+> strategy only *calls the stage cores*; the writes live in `_cli_staged_workers.py:125,225`.
+> As written, the flag would have reached the single-pass CPU path and **never** the staged or
+> SLURM path, which is precisely where durability matters (Task 3.5's own constraint says both
+> the durability log and the sweep "belong on every execution path"). The three
+> `save_image_store` call sites are the same three Task 3.1 enumerates; keep the two lists in
+> step.
+
+**The SLURM worker is a fresh process, so an explicit flag must be transported, not
+re-derived.** `ngff_.durable_writes_enabled` auto-detects SLURM, so an *unset* flag resolves
+correctly in a worker on its own. But `--no-durable-writes` — the case a user reaches for
+precisely because they are on a fast local scratch inside a job — is a value that exists only
+in the submitting process. If it is not passed down the argparse surface at
+`_cli_staged_slurm_worker.py:418-429`, every staged SLURM worker silently re-enables fsync
+and the flag appears to do nothing on the one execution path where it costs the most. Assert
+this in the test: a worker invoked with `--no-durable-writes` builds an `OutputManager` whose
+resolved mode is non-durable **while `SLURM_JOB_ID` is set**.
 
 **Interfaces:**
 - Consumes: `ngff_.durable_writes_enabled`, `ngff_.describe_durability`,
@@ -1656,57 +1774,58 @@ can be added later as its own change; the spec's §1.3 should record it as defer
 from __future__ import annotations
 
 import pytest
+from click.testing import CliRunner
 
-from phenotypic.phenotypicCLI import main
+from phenotypic.phenotypicCLI import phenotypic_cli
 
 
-def test_durable_writes_is_tri_state(cli_runner, tiny_run, monkeypatch, caplog) -> None:
+def test_durable_writes_is_tri_state(tiny_run, monkeypatch, caplog) -> None:
     """Unset must mean auto-detect, not 'off'. A plain is_flag loses that."""
     monkeypatch.delenv("SLURM_JOB_ID", raising=False)
     monkeypatch.delenv("SLURM_CPUS_PER_TASK", raising=False)
-    cli_runner.invoke(main, tiny_run.args())
+    CliRunner().invoke(phenotypic_cli, tiny_run.args())
     assert any("durable writes: off (local)" in r.message for r in caplog.records)
 
     caplog.clear()
     monkeypatch.setenv("SLURM_JOB_ID", "12345")
-    cli_runner.invoke(main, tiny_run.args())
+    CliRunner().invoke(phenotypic_cli, tiny_run.args())
     assert any("durable writes: on (SLURM)" in r.message for r in caplog.records)
 
     caplog.clear()
-    cli_runner.invoke(main, [*tiny_run.args(), "--no-durable-writes"])
+    CliRunner().invoke(phenotypic_cli, [*tiny_run.args(), "--no-durable-writes"])
     assert any(
         "durable writes: off (--no-durable-writes)" in r.message for r in caplog.records
     )
 
     caplog.clear()
     monkeypatch.delenv("SLURM_JOB_ID", raising=False)
-    cli_runner.invoke(main, [*tiny_run.args(), "--durable-writes"])
+    CliRunner().invoke(phenotypic_cli, [*tiny_run.args(), "--durable-writes"])
     assert any(
         "durable writes: on (--durable-writes)" in r.message for r in caplog.records
     )
 
 
-def test_durable_writes_is_rejected_on_recompile_and_migrate(cli_runner, tiny_run) -> None:
+def test_durable_writes_is_rejected_on_recompile_and_migrate(tiny_run) -> None:
     for mode in ("recompile", "migrate"):
-        result = cli_runner.invoke(
-            main,
+        result = CliRunner().invoke(
+            phenotypic_cli,
             ["--mode", mode, "--output", str(tiny_run.output_dir), "--durable-writes"],
         )
         assert result.exit_code != 0
         assert "--durable-writes" in result.output
 
 
-def test_no_pyramid_levels_option_exists(cli_runner) -> None:
+def test_no_pyramid_levels_option_exists() -> None:
     """Descoped: the pyramid depth is a pure function of shape (P3)."""
-    result = cli_runner.invoke(main, ["--help"])
+    result = CliRunner().invoke(phenotypic_cli, ["--help"])
     assert "--pyramid-levels" not in result.output
 
 
-def test_pyramid_depth_is_derived_not_configured(cli_runner, tiny_run) -> None:
+def test_pyramid_depth_is_derived_not_configured(tiny_run) -> None:
     from phenotypic.sdk_ import ngff_
     from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
 
-    cli_runner.invoke(main, tiny_run.args())
+    CliRunner().invoke(phenotypic_cli, tiny_run.args())
     store = tiny_run.store("ds", "img")
     shape = tiny_run.image_shape
     assert read_phenotypic_attributes(store)[PhenotypicAttr.PYRAMID]["levels"] == (
@@ -1974,8 +2093,33 @@ def test_a_file_descriptor_without_kind_still_validates(legacy_file_marker) -> N
     assert valid_image_success(**legacy_file_marker) is True
 
 
+#: Modules where a ``"hdf":`` key is correct and must survive this phase.
+#: Everything outside this set is a per-image artifact declaration that Step 3
+#: ports to ``"store":``.
+_KEEPS_AN_HDF_KEY = {
+    # `TargetKind == "hdf"` -- legacy-tree metadata migration. Retained by
+    # decision D10 (reachable for legacy trees, not dead); Task 6.4 records the
+    # reasoning in this module's docstring. 7 lines.
+    "sdk_/_metadata_migration.py",
+    # OutputManager's legacy `save_layers` / `extensions` dict keys, their
+    # docstring, and the `layer == "hdf"` extension dispatch -- the HDF writer
+    # itself is kept until Phase 6 (Task 3.1). 4 lines; Phase 6 Task 6.3 removes
+    # them and this allowlist entry with them.
+    "_cli/_cli_output_manager.py",
+}
+
+
 def test_every_hdf_artifact_declaration_is_ported() -> None:
-    """The five sites that declare the per-image image-state artifact."""
+    """The five sites that declare the per-image image-state artifact.
+
+    Scoped, not a bare zero-hit sweep: ``"hdf":`` appears **17** times under
+    ``src/phenotypic`` and 11 of them are correct. The five this task ports are
+    phenotypicCLI.py:400, _cli_staged_slurm_worker.py:332 and :382,
+    _cli_process_single.py:640, and _cli_execution_strategies.py:167. The
+    twelfth, ``gui/builder/_preview_cache.py:208``, is **not** allowlisted --
+    Phase 2 Task 2.4 already renamed it to ``"store"``, and this phase depends on
+    Phase 2, so a hit there means Task 2.4 regressed.
+    """
     import re
     from pathlib import Path as _Path
 
@@ -1983,11 +2127,32 @@ def test_every_hdf_artifact_declaration_is_ported() -> None:
     hits = [
         f"{p.relative_to(src)}:{n}"
         for p in src.rglob("*.py")
+        if str(p.relative_to(src)) not in _KEEPS_AN_HDF_KEY
         for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
         if re.search(r'"hdf"\s*:', line)
     ]
     assert hits == [], hits
+
+
+def test_the_allowlist_itself_is_not_stale() -> None:
+    """An allowlist that stops matching anything is a silent no-op."""
+    from pathlib import Path as _Path
+
+    src = _Path(__file__).resolve().parents[3] / "src" / "phenotypic"
+    for rel in _KEEPS_AN_HDF_KEY:
+        assert (src / rel).is_file(), rel
 ```
+
+> **Corrected (missing-owner review, 2026-08-19).** An earlier draft asserted
+> `hits == []` over **all** of `src/phenotypic`. Verified against the worktree:
+> `grep -rnE '"hdf"\s*:' src/phenotypic` returns **17** lines, not 5. Eleven of the other
+> twelve are load-bearing and survive this phase — seven `TargetKind` comparisons in
+> `sdk_/_metadata_migration.py` (`:1796, :1821, :1885, :1987, :2064, :2428, :2436`) and four
+> in `_cli/_cli_output_manager.py` (`:1406` docstring, `:1457`/`:1458` `from_config`,
+> `:1524` extension dispatch). The twelfth, `gui/builder/_preview_cache.py:208`, is ported by
+> **Phase 2 Task 2.4**, not here. As written the test could not pass without deleting
+> migration logic the plan explicitly retains, so the implementer's only move would have been
+> to weaken the gate.
 
 - [ ] **Step 2: Run to verify it fails**
 
@@ -2046,7 +2211,23 @@ fifth artifact axis in Task 3.4."
       demonstrated to fail under both injected resume defects.
 - [ ] `test_stage3_publishes_the_post_refined_objmap` has been demonstrated to fail when
       Stage 3's re-promote is removed.
-- [ ] `grep -rn "sidecar" src/phenotypic/_cli/` returns nothing.
+- [ ] `grep -rn "sidecar" src/phenotypic/_cli/ --include='*.py' | grep -vi appledouble`
+      returns nothing.
+
+      > **Corrected (missing-owner review, 2026-08-19).** The bare form of this grep cannot
+      > pass. Verified: it hits four unrelated **AppleDouble** comments
+      > (`_measurement_sources.py:156`, `_cli_chunk_writer.py:297`,
+      > `_cli_directory_scanner.py:22`, `_dashboard/_generator.py:911`) that describe macOS
+      > `._<name>` files and have nothing to do with the Stage-2 sidecar, plus the fifteen
+      > prose mentions in `src/phenotypic/_cli/CLAUDE.md` — a file Task 3.5 now owns for
+      > exactly this reason. Same failure shape as Phase 6's exit grep: the implementer's only
+      > move against the bare form is to delete a keeper or silently soften the gate.
+- [ ] `grep -rn "sidecar" src/phenotypic/_cli/CLAUDE.md` returns only the AppleDouble
+      dotfile rule, if that file mentions it — the staged-GPU sidecar prose is retired in
+      Task 3.5, not deferred to Phase 6.
+- [ ] `uv run pytest tests/unit/test_docs_staged_cli.py -q` is green — it asserts
+      `"sidecar" in CLAUDE.md.lower()` and in `gpu_detection_setup.md`, both of which Task 3.5
+      rewrites.
 - [ ] `grep -rn "dataset_hdf_dir\|\.h5" src/phenotypic/_cli/` returns only migration-path
       references (Phase 5) — nothing in the forward run path.
 - [ ] A run start log line contains `durable writes:`.

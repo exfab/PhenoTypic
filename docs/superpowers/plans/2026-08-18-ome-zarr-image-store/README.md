@@ -272,14 +272,45 @@ criteria below now name the files it owns.
 
 | Phase | Files it must update | Disposition |
 |---|---|---|
-| 2 | `tests/unit/core/test_image_hdf_roundtrip.py`, `test_load_layer_hdf5.py`, `test_image_pipeline.py`, `test_delta_intermediates.py`, `test_full_layers_intermediates.py`, `test_image_dtype_conversion.py`, `tests/unit/test_fixtures.py` | Port to `save2zarr`/`load_zarr`; the two `*_intermediates` files follow `save_intermediate_zarr` |
+| 2 | `tests/unit/core/test_image_pipeline.py`, `test_delta_intermediates.py`, `test_full_layers_intermediates.py` | **Task 2.4** — they assert on the `base_00.h5` / `NN_<Op>.h5` artifacts the five `_image_pipeline_core.py` call sites write; they follow `save_intermediate_zarr` |
+| 2 | `tests/gui/builder/{test_preview_cache,test_preview_compute_scope,test_preview_tile_blueprint}.py` | **Task 2.4** owns the manifest-key half (also on the Phase 4 row — Task 4.4 owns only the rendering half) |
 | 2 | `tests/unit/sdk_/test_io_constants.py`, `test_bundle_layout.py` | Extend (already named in Task 2.1) |
-| 3 | `tests/unit/cli/test_staged_resume.py`, `test_staged_controller.py`, `test_cli_v2.py`, `tests/integration/cli/test_cli_hdf_output.py`, `test_staged_gpu_local.py` | Port; `test_cli_hdf_output.py` becomes `test_cli_store_output.py` wholesale; `test_staged_gpu_local.py:742` monkeypatches `save_image_hdf` **by name** |
-| 4 | `tests/gui/_shared/test_tiles.py`, `tests/gui/results_viewer/test_tile_routes.py`, `test_output_root.py`, `test_mutation_guard.py`, `test_output_discovery_contracts.py`, `colony_view/{test_cropper,test_crop_routes,test_grid}.py`, `tests/gui/builder/{test_preview_cache,test_preview_compute_scope,test_preview_tile_blueprint}.py`, `tests/unit/gui/results_viewer/test_output_root.py` | Port. **Twelve files** — the bulk of Phase 4's real cost, and none were previously counted |
-| 5 | `tests/migration/test_metadata_schema_migration.py`, `tests/unit/cli/{test_cli_recompile,test_cli_recompile_slurm,test_cli_recompile_metadata_migration_slurm}.py`, `tests/unit/sdk_/test_metadata_io.py` | Port to `--mode migrate`; the `_slurm` file loses its subject entirely (Task 5.4 deletes it) |
+| 3 | `tests/unit/cli/test_staged_resume.py`, `test_staged_controller.py`, `test_cli_v2.py`, `tests/integration/cli/test_cli_hdf_output.py` | Port; `test_cli_hdf_output.py` becomes `test_cli_store_output.py` wholesale |
+| 3 | `tests/integration/cli/test_staged_gpu_local.py` (969 lines) | **Task 3.5** — the only file in this change that becomes an **`ImportError` at collection** (`:19` imports `_cli_sidecar`, which Task 3.5 deletes). Task 3.3 additionally defeats its `save_image_hdf` name-monkeypatch at `:742` and changes the message its `pytest.raises` matches at `:746` |
+| 3 | `tests/unit/test_docs_staged_cli.py` | **Task 3.5** — asserts `"sidecar"` appears in root `CLAUDE.md` and `docs/source/how_to/pages/gpu_detection_setup.md`, both of which Task 3.5 rewrites |
+| 4 | `tests/gui/results_viewer/{test_output_root,test_output_discovery_contracts,test_mutation_guard}.py`, `tests/unit/gui/results_viewer/test_output_root.py` | **Task 4.1** |
+| 4 | `tests/gui/_shared/test_tiles.py`, `colony_view/{test_cropper,test_grid}.py` | **Task 4.2** |
+| 4 | `tests/gui/results_viewer/test_tile_routes.py`, `colony_view/test_crop_routes.py` | **Task 4.3** — both carry the content-changes-under-one-path assertions |
+| 4 | `tests/gui/builder/{test_preview_cache,test_preview_compute_scope,test_preview_tile_blueprint}.py` | **Task 4.4**, rendering half only; the manifest half is Phase 2 Task 2.4 (see above) |
+| 5 | `tests/migration/test_metadata_schema_migration.py`, `tests/unit/cli/{test_cli_recompile,test_cli_recompile_slurm}.py`, `tests/unit/sdk_/test_metadata_io.py` | Port to `--mode migrate` |
+| 5 | `tests/unit/cli/test_cli_recompile_metadata_migration_slurm.py` (2121 lines), `tests/unit/schema/test_no_metadata_literals.py` | **Task 5.4** — the first loses its subject entirely (26 import sites into two deleted modules) and is deleted with them; the second holds an allowlist entry keyed on the first file's path |
+| 6 | `tests/unit/core/test_image_hdf_roundtrip.py`, `test_load_layer_hdf5.py`, `test_image_dtype_conversion.py`, `tests/unit/test_fixtures.py` | **Task 6.2**, not Phase 2 — see the ownership note below |
 | 6 | `tests/unit/sdk_/test_hdf_open_recovery.py` | Must keep passing **unchanged** — it is what pins the keeper list |
 
 Every phase's exit criteria must run the files it owns, not only `tests/unit/<area>`.
+
+> **Ownership corrected (missing-owner review, 2026-08-19).** Four rows above changed hands.
+>
+> - **`test_image_hdf_roundtrip.py` and `test_load_layer_hdf5.py` move from Phase 2 to
+>   Phase 6.** They were double-claimed: this table assigned them to Phase 2 while
+>   [`phase-6-retirement.md`](phase-6-retirement.md) Task 6.2 rewrites the first as a removal
+>   guard and **deletes** the second. Phase 6 wins, and the plan documents already agree with
+>   Phase 6 rather than with this table — `phase-2-image-io.md` never mentions
+>   `test_load_layer_hdf5.py` at all, and mentions `test_image_hdf_roundtrip.py` exactly once,
+>   in an **exit criterion requiring it to stay green**. That is the correct shape: Phase 2
+>   adds `save2zarr` beside `save2hdf5` and removes nothing, so there is nothing in Phase 2
+>   for these two to be ported *to*, and any port done there would be deleted four phases
+>   later.
+> - **`test_image_dtype_conversion.py` moves from Phase 2 to Phase 6** for the same reason:
+>   its only hit is `:590-592`, a direct `save2hdf5` → `load_hdf5` round-trip, and both names
+>   survive Phase 2 by design.
+> - **`tests/unit/test_fixtures.py` moves to Phase 6 and is nearly a no-op.** Its only hit is
+>   the `temp_hdf5_file` fixture at `:135-146`, and `grep -rn "temp_hdf5_file" tests/` returns
+>   **only its own definition** — nothing consumes it. Delete the dead fixture with the API it
+>   was written for; do not port it.
+> - **Phase 4's twelve files are now split across Tasks 4.1–4.4**, and Phase 3's and Phase 5's
+>   rows name their owning task. Before this review, not one of the twelve appeared in any
+>   Task 4.x `Files:` list, so no agent was authorized to touch them.
 
 ## Open questions
 

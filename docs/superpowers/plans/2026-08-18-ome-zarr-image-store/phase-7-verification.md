@@ -21,10 +21,23 @@ test written here fails, the fix belongs in the phase that owns the code, not he
 > here is only what genuinely needs a **real `save2zarr`** rather than Task 1.5's
 > `_fake_store`. Recorded as ledger SIMP-2, SIMP-3, GEN-4.
 >
-> **Moved to Phase 2, beside Task 2.2** (they exercise the real writer, so they belong in
-> the phase that builds it, not four phases later):
+> **Kept here** — the two tests Step 1 defines below:
 > `test_two_concurrent_writers_produce_one_coherent_winner`,
 > `test_a_new_write_does_not_reuse_a_stale_part`.
+>
+> > **Corrected (missing-owner review, 2026-08-19).** This paragraph previously read *"Moved
+> > to Phase 2, beside Task 2.2 (they exercise the real writer, so they belong in the phase
+> > that builds it, not four phases later)"* — naming these same two tests. It contradicted
+> > the rest of its own task: Step 1 below defines exactly these two and nothing else, the
+> > Constraints section says *"the remaining case here is (b) concurrency"*, and Step 3's
+> > mutation proof operates on `test_two_concurrent_writers_produce_one_coherent_winner`
+> > directly. It also contradicted the plan: `grep -rn "concurrent_writers\|stale_part"
+> > phase-2-image-io.md` returns **nothing**, so the move was never carried out. An executor
+> > trusting the header deletes Step 1, and with it the only coverage of commit-protocol
+> > case (b) and case (c) — and Task 7.1 becomes an empty task. **The header was wrong; the
+> > tests stay here.** They are placed in Phase 7 for the reason the task's own opening gives:
+> > they are the cases that need a real `save2zarr` and real concurrent processes, which is a
+> > verification concern, not a writer-construction one.
 >
 > **Left in Phase 3** (it imports `classify_staged_image`):
 > `test_interrupted_store_classifies_stage1`.
@@ -58,8 +71,9 @@ test written here fails, the fix belongs in the phase that owns the code, not he
 
 - [ ] **Step 1: Write the tests**
 
-Only the cases that need a **real `save2zarr`** live here; see the header for what moved
-where and why.
+Only the cases that need a **real `save2zarr`** live here — cases (b) and (c). Case (a) is
+Phase 3's `test_interrupted_store_classifies_stage1`; see the header for what was deleted and
+why.
 
 ```python
 """Commit-protocol case (b): concurrency, through the real writer."""
@@ -145,13 +159,16 @@ the commit body.
 
 ```bash
 git add tests/integration/cli/test_commit_protocol.py
-git commit -m "test: pin the three commit-protocol cases
+git commit -m "test: pin the two commit-protocol cases that need a real writer
 
-(a) interrupted before the root reads as absent and classifies stage1;
 (b) two concurrent writers get distinct uuid .part directories and produce
 one coherent winner with no leftovers; (c) a stale .part from a killed
-process is removed rather than merged into. Case (a) was proven to have
-teeth by reversing the write order and watching it go red."
+process is removed rather than merged into. Case (b) was proven to have
+teeth by reducing promote_store to a single exists/move-aside/replace pass
+and watching it go red on ENOTEMPTY. Case (a) is covered in Phase 3 by
+test_interrupted_store_classifies_stage1; it cannot be proven here,
+because a .part never sits at the published path and so no interruption
+test can distinguish the two write orders."
 ```
 
 ---

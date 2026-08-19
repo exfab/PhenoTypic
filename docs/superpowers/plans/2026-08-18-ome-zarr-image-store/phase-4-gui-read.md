@@ -25,9 +25,29 @@ every mtime-based staleness check becomes a stale-tile bug rather than an error.
   (line 53 import, `hdf_path` line 494, `has_*` line 630, `rglob("*.h5")` line 888,
   the consistency-report path build at lines 1146–1152)
 - Test: `tests/unit/gui/results_viewer/test_output_root_stores.py` (create)
+- **Test: four existing files this task breaks** (README test inventory, Phase 4 row). None
+  of the twelve files that row assigns to this phase appeared in any Task 4.x `Files:` list
+  before the missing-owner review of 2026-08-19; these four are the ones whose subject is
+  `OutputRoot` discovery:
+  - `tests/gui/results_viewer/test_output_root.py` — `:213` asserts
+    `out.hdf_path("d1", "a") is None`; `:202`'s docstring names `hdf_path` as a
+    `results/`-backed capability. Both become `store_path`.
+  - `tests/unit/gui/results_viewer/test_output_root.py` — `:49` and `:62` call `hdf_path`;
+    `:56` seeds `results/plate1/hdf/img001.h5`. Seed a store directory and assert
+    `store_path` instead.
+  - `tests/gui/results_viewer/test_output_discovery_contracts.py` — `:64` and `:404` write
+    `results/<ds>/hdf/a.h5` as the per-image artifact the discovery and fingerprint contracts
+    read. These feed `_processing_snapshot_paths`, so they are what proves the D5 fix: after
+    the port they must seed a store and the fingerprint must still change when a chunk is
+    rewritten.
+  - `tests/gui/results_viewer/test_mutation_guard.py` — `:106` and `:254` seed and then mutate
+    the same `hdf/a.h5`. `:254`'s "source changed" mutation must become a store republish, or
+    the guard tests a file the viewer no longer reads.
+- Read (do not edit): `tests/_output_layout.py` — supplies `write_master` /
+  `write_complete_manifest`, the repo's seeding helpers for a discoverable output root
 
 **Interfaces:**
-- Consumes: `BundleLayout.store_path` (Task 2.1).
+- Consumes: `BundleLayout.store_path` (Task 2.1), `BundleLayout.detect`.
 - Produces: `OutputRoot.store_path(dataset, stem) -> Path | None`, replacing `hdf_path`.
 
 **Constraints specific to this task:**
@@ -77,6 +97,19 @@ every mtime-based staleness check becomes a stale-tile bug rather than an error.
 
 - [ ] **Step 1: Write the failing test**
 
+> **Corrected (wrong-symbol sweep).** Two defects in an earlier draft of this block:
+>
+> 1. **`_seed` wrote `deliverables/master_measurements.parquet` as `b""`.**
+>    `OutputRoot.discover` reads it with `pl.read_parquet` (`_output_root.py:340`), which
+>    raises `ComputeError: parquet: File out of specification` on empty bytes — so **every**
+>    test here errored before reaching `store_path`. The repo's own helper for this is
+>    `tests._output_layout.write_master` (used, with `write_complete_manifest`, by
+>    `tests/gui/results_viewer/test_output_root.py`).
+> 2. **`OutputRoot.discover` takes a required keyword-only `cache_root`** (`:334`) whose
+>    directory must not sit inside the selected output. A bare `discover(tmp_path)` raises
+>    `TypeError`. Route every call through the `_discover` helper below, mirroring
+>    `tests/gui/results_viewer/test_output_root.py:34-39`.
+
 ```python
 """OutputRoot discovers store directories without walking into them."""
 
@@ -84,15 +117,38 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import polars as pl
 import pytest
 
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import zarr_store_path
+
+from tests._output_layout import write_complete_manifest, write_master
+
+
+def _discover(root: Path) -> OutputRoot:
+    """Discover with a test-owned cache OUTSIDE the selected output."""
+    source = Path(root).resolve()
+    return OutputRoot.discover(
+        source, cache_root=source.parent / ".test-phenotypic-viewer-cache"
+    )
 
 
 def _seed(root: Path, stems: list[str]) -> None:
-    (root / "deliverables").mkdir(parents=True, exist_ok=True)
-    (root / "deliverables" / "master_measurements.parquet").write_bytes(b"")
+    """Seed a minimal store-backed output: real master, then one store per stem."""
+    write_master(
+        root,
+        pl.DataFrame(
+            {
+                "Metadata_Dataset": ["ds"] * len(stems),
+                str(IMAGE.IMAGE_NAME): list(stems),
+                "Size_Area": [100.0] * len(stems),
+            }
+        ),
+    )
+    write_complete_manifest(root, total_images=len(stems))
+    (root / "results" / "ds" / "measurements").mkdir(parents=True, exist_ok=True)
     for stem in stems:
         store = zarr_store_path(root, "ds", stem)
         (store / "gray" / "0").mkdir(parents=True)
@@ -101,13 +157,13 @@ def _seed(root: Path, stems: list[str]) -> None:
 
 def test_store_path_resolves_a_directory(tmp_path: Path) -> None:
     _seed(tmp_path, ["a"])
-    root = OutputRoot.discover(tmp_path)
+    root = _discover(tmp_path)
     assert root.store_path("ds", "a") == zarr_store_path(tmp_path, "ds", "a")
 
 
 def test_store_path_is_none_when_absent(tmp_path: Path) -> None:
     _seed(tmp_path, ["a"])
-    assert OutputRoot.discover(tmp_path).store_path("ds", "missing") is None
+    assert _discover(tmp_path).store_path("ds", "missing") is None
 
 
 def test_discovery_does_not_walk_into_stores(tmp_path: Path, monkeypatch) -> None:
@@ -121,13 +177,13 @@ def test_discovery_does_not_walk_into_stores(tmp_path: Path, monkeypatch) -> Non
         return real_iterdir(self)
 
     monkeypatch.setattr(Path, "iterdir", _counting)
-    OutputRoot.discover(tmp_path)
+    _discover(tmp_path)
     assert not any("/gray/" in seen for seen in visited), visited
 
 
 def test_discovery_finds_every_store(tmp_path: Path) -> None:
     _seed(tmp_path, ["a", "b", "c"])
-    root = OutputRoot.discover(tmp_path)
+    root = _discover(tmp_path)
     assert all(root.store_path("ds", stem) is not None for stem in "abc")
 ```
 
@@ -135,27 +191,47 @@ def test_discovery_finds_every_store(tmp_path: Path) -> None:
 
 Add two tests for the fingerprint sites:
 
+> **Corrected (wrong-symbol sweep).** An earlier draft called
+> `_image_source_token([store / "zarr.json"])`. The real signature takes no path list:
+> `_image_source_token(layout, dataset, stem, *, has_overlay) -> str`
+> (`_output_root.py:1138-1142`) — it *derives* the source paths internally, which is exactly
+> why the port has to change them there. Drive it with a real
+> `BundleLayout.detect(...)` (the only public constructor, `_io_constants.py:1999`), before
+> and after the port.
+
 ```python
 def test_processing_fingerprint_changes_when_a_store_changes(tmp_path: Path) -> None:
     """Enumerating directories would freeze this permanently (D5)."""
     _seed(tmp_path, ["a"])
-    root = OutputRoot.discover(tmp_path)
-    before = root.source_fingerprint
+    before = _discover(tmp_path).source_fingerprint
     (zarr_store_path(tmp_path, "ds", "a") / "zarr.json").write_text(
         '{"changed": true}', encoding="utf-8"
     )
-    assert OutputRoot.discover(tmp_path).source_fingerprint != before
+    assert _discover(tmp_path).source_fingerprint != before
 
 
 def test_image_source_token_changes_when_a_store_changes(tmp_path: Path) -> None:
     """It is a staleness fingerprint, not a report label (D4)."""
     from phenotypic.gui.results_viewer._output_root import _image_source_token
+    from phenotypic.sdk_ import BundleLayout
 
     _seed(tmp_path, ["a"])
-    store = zarr_store_path(tmp_path, "ds", "a")
-    before = _image_source_token([store / "zarr.json"])
-    (store / "zarr.json").write_text('{"changed": true}', encoding="utf-8")
-    assert _image_source_token([store / "zarr.json"]) != before
+    layout = BundleLayout.detect(tmp_path)
+    before = _image_source_token(layout, "ds", "a", has_overlay=False)
+    (zarr_store_path(tmp_path, "ds", "a") / "zarr.json").write_text(
+        '{"changed": true}', encoding="utf-8"
+    )
+    assert _image_source_token(layout, "ds", "a", has_overlay=False) != before
+
+
+def test_the_bound_token_tracks_the_store_too(tmp_path: Path) -> None:
+    """The public surface the token actually reaches the viewer through."""
+    _seed(tmp_path, ["a"])
+    before = _discover(tmp_path).bound_image_source_token("ds", "a")
+    (zarr_store_path(tmp_path, "ds", "a") / "zarr.json").write_text(
+        '{"changed": true}', encoding="utf-8"
+    )
+    assert _discover(tmp_path).bound_image_source_token("ds", "a") != before
 ```
 
 - [ ] **Step 3: Port the four sites.** Replace `hdf_path` with `store_path` (delegating to
@@ -189,6 +265,18 @@ site the spec's affected-module table did not list."
   line 349, `_crop_hdf_layer_window` line 396, the caller at lines 509–518, `__all__` at
   line 1155)
 - Test: `tests/unit/gui/shared/test_tiles_zarr.py` (create)
+- **Test: three existing files this task breaks** (README test inventory, Phase 4 row):
+  - `tests/gui/_shared/test_tiles.py` — the direct suite for the functions being renamed.
+    `:135`, `:165`, `:201` build inputs with `Image.save2hdf5(str(h5))` → `save2zarr`; the two
+    stub `OutputRoot`s at `:236` and `:285` define `hdf_path(self, ds, stem)` and must define
+    `store_path`, returning a directory (`:246` / `:294` currently
+    `write_bytes(b"")` an empty `x.h5`, which must become a store built by `save2zarr` —
+    an empty file is not a substitutable stand-in for a store).
+  - `tests/gui/results_viewer/colony_view/test_cropper.py` — `:107` writes `plate.h5` as the
+    cropper's input; port to a store and the `crop_store_rgb` signature.
+  - `tests/gui/results_viewer/colony_view/test_grid.py` — `:261` writes a zero-byte
+    `hdf_dir/<stem>.h5` purely as an existence marker for axis selection. Port to
+    `zarr_store_path(...).mkdir()` plus a real store, for the same reason as above.
 
 **Interfaces:**
 - Produces:
@@ -333,6 +421,22 @@ read plus one full 1024x1024 inner chunk -- cheap, but not free."
 - Modify: `src/phenotypic/gui/builder/_preview_tiles.py` (line 76 mtime compare)
 - Modify: `src/phenotypic/gui/_shared/tiles.py` (line 518 mtime-keyed crop path)
 - Test: `tests/unit/gui/results_viewer/test_tile_cache_invalidation.py` (create)
+- **Test: two existing files this task breaks** (README test inventory, Phase 4 row) — both
+  are staleness suites, which is why they land here rather than on Task 4.2 even though
+  Task 4.2 renames the functions they call:
+  - `tests/gui/results_viewer/test_tile_routes.py` — the module docstring (`:14`) and layout
+    comment (`:137`) describe a `results/d1/hdf/img001.h5` fixture; `:171`
+    `img.save2hdf5(...)` builds it; `:329` reads `output_root.hdf_path(dataset, stem)`;
+    `:362` and `:476` build further `.h5` inputs, `:476` through `h5py.File(..., "w")`. Port
+    the fixture to `save2zarr` and the lookup to `store_path`, and re-key the route's
+    freshness assertion on `zarr.json` rather than the artifact's own `st_mtime_ns` — that
+    assertion is the one that currently passes for the wrong reason and would keep passing
+    against a store while serving a stale tile.
+  - `tests/gui/results_viewer/colony_view/test_crop_routes.py` — `:60-62` build the input
+    with `h5py.File`; `:79` passes it into the app fixture; `:124`, `:145`, `:173` unpack it;
+    and `:147-154` is a **content-change-under-the-same-path** test
+    (`replacement.replace(hdf_path)`), which is exactly the shape that goes silently stale on
+    a store directory. That test must be ported, not deleted.
 
 **Constraints specific to this task:**
 
@@ -552,19 +656,51 @@ only. It needs the zarr port, not a staleness fix."
   (`_channel_to_rgb_uint8` lines 50–63, `stage_channel_png` line 73, the manifest read at
   lines 124–128)
 - Modify: `src/phenotypic/gui/builder/_preview_cache.py`
-  (the h5py class probe at lines 160–170, `_describe` at lines 181–208)
+  (`_load_image_auto`, the h5py class probe, lines 158–170; the `_describe` closure inside
+  `_build_manifest`, lines 192–210)
 - Test: `tests/unit/gui/builder/test_preview_tiles_zarr.py` (create)
+- **Test: three existing files** (README test inventory, Phase 4 row) — **shared with Phase 2
+  Task 2.4**, which is what actually breaks them. Task 2.4 renames the manifest node key and
+  replaces `save_intermediate_layers`, so it owns the manifest half and must leave these three
+  green; this task owns only the rendering half. Keep the split explicit or the two tasks will
+  each assume the other did it:
+  - `tests/gui/builder/test_preview_cache.py` — `:25` hard-codes
+    `{"blk": {"hdf": "base_00.h5", ...}}` and `:37` writes `base_00.h5`. **Task 2.4's half.**
+  - `tests/gui/builder/test_preview_tile_blueprint.py` — `:16-19` `save2hdf5` + `"hdf"` key;
+    `:29-38` calls `save_intermediate_layers` and documents the
+    `Image.load_layer_hdf5(hdf, "objmap")` `KeyError` it depends on; `:85-103` passes a bogus
+    `node.h5` into `stage_channel_png`. The first two blocks are **Task 2.4's half**;
+    `:85-103` is **this task's** — `stage_channel_png` takes a store here, so the "not a
+    readable artifact" case must become a malformed store directory.
+  - `tests/gui/builder/test_preview_compute_scope.py` — `:100` asserts on
+    `pc.scope_dir(...) / "base_00.h5"`, the file `apply_with_intermediates` writes.
+    **Task 2.4's half** (it changes all five pipeline call sites).
 
 **Constraints specific to this task:**
-- `_preview_cache.py:160-170` opens the node artifact with `h5py` to read
-  `phenotypic_class` and dispatch `GridImage.load_hdf5` vs `Image.load_hdf5`. Replace the
-  whole probe with `load_image_from_store` (Task 2.1), which does exactly this against
+- `_preview_cache.py:158-170` (`_load_image_auto`) opens the node artifact with `h5py` to
+  read `phenotypic_class` and dispatch `GridImage.load_hdf5` vs `Image.load_hdf5`. Replace
+  the whole probe with `load_image_from_store` (Task 2.1), which does exactly this against
   `attributes.phenotypic.image_class`.
-- `_preview_cache.py:197-208` reads layer names and shape from the HDF to build the
+- `_preview_cache.py:192-210` reads layer names and shape from the HDF to build the
   manifest node description. Read them from `phenotypic.series` and the level-0 array
   shapes instead — do **not** open a full `Image` for a manifest entry.
-- Task 2.4 already renamed the manifest key to `"store"` and bumped `MANIFEST_VERSION`;
-  this task consumes that rename at `_preview_tiles.py:124`.
+- **Lift `_describe` out of `_build_manifest` while porting it** (ledger: wrong-symbol
+  sweep). Today it is a **closure** defined at `:192` inside `_build_manifest` (`:173`),
+  closing over `sdir` and `nodes`, so nothing outside `compute_scope` can reach it —
+  `_preview_cache._describe` is not a module attribute and never was. Port it as a
+  module-level `_describe_store_node(store_path: Path) -> dict | None` returning the node
+  dict (or `None` when the store is absent), and keep a two-line closure inside
+  `_build_manifest` that resolves `sdir / filename` and assigns into `nodes`. The "must not
+  open a full `Image`" invariant is the point of this task's port; left inside a closure,
+  nothing can assert it.
+- Task 2.4 already renamed the manifest key to `"store"` and **introduced**
+  `MANIFEST_VERSION` — it did not "bump" it, as an earlier draft of both tasks said.
+  `grep -rn "MANIFEST_VERSION" src/phenotypic/gui/` returns nothing today; the builder
+  manifest carries no version field at all, and the only `_MANIFEST_VERSION` in the tree is
+  the unrelated staged-orchestration constant at `_cli_staged_orchestration.py:47`
+  (missing-owner review, 2026-08-19). **Task 2.4 performs the introduction; this task only
+  consumes the renamed key** — do not add the constant here, and do not assume it already
+  existed. This task consumes the rename at `_preview_tiles.py:124`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -582,6 +718,7 @@ def test_channel_png_renders_from_a_node_store(tmp_path) -> None:
 
 
 def test_manifest_describe_does_not_load_a_full_image(tmp_path, monkeypatch) -> None:
+    """Reads store metadata only; a manifest entry must not cost a full decode."""
     from phenotypic import Image
     from phenotypic.gui.builder import _preview_cache
     from phenotypic.data import load_synth_yeast_plate
@@ -592,8 +729,39 @@ def test_manifest_describe_does_not_load_a_full_image(tmp_path, monkeypatch) -> 
     monkeypatch.setattr(
         Image, "load_zarr", lambda *a, **k: pytest.fail("manifest must not load an Image")
     )
-    node = _preview_cache._describe("block-1", store.name, base_dir=tmp_path)
+    node = _preview_cache._describe_store_node(store)
     assert node["layers"] == ["gray"]
+
+
+def test_describe_is_reached_through_compute_scope(tmp_path, monkeypatch) -> None:
+    """The lifted helper must still be what the manifest is built from.
+
+    Harness copied from tests/gui/builder/test_preview_compute_scope.py:28-42,
+    the only real entry point into _build_manifest.
+    """
+    from phenotypic.gui.builder import _preview_cache as pc
+    from phenotypic.gui.builder._state import (
+        BlockNode, Edge, _DagBuilderScope, _DagBuilderState, _new_block_id,
+    )
+
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
+    blur = BlockNode(block_id=_new_block_id(), class_name="BlurGauss",
+                     params={"sigma": 1})
+    scope = _DagBuilderScope()  # __post_init__ seeds InputImage at index 0
+    scope.blocks.append(blur)
+    scope.edges.append(Edge(
+        edge_id=_new_block_id(), source_block_id=scope.blocks[0].block_id,
+        source_port="out", target_block_id=blur.block_id, target_port="in",
+        kind="image",
+    ))
+    state = _DagBuilderState(root=scope)
+
+    manifest = pc.compute_scope("sess1", state, [], None, None, None)
+
+    assert manifest["error"] is None
+    node = manifest["nodes"][blur.block_id]
+    assert node["store"].endswith(".ome.zarr")  # renamed from "hdf" in Task 2.4
+    assert "gray" in node["layers"]
 
 
 def test_class_dispatch_uses_image_class_not_h5py(tmp_path) -> None:

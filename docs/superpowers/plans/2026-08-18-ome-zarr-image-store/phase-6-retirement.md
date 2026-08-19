@@ -166,11 +166,57 @@ reaching it would mean deleting the keepers."
   Task 2.4)
 - Modify: `src/phenotypic/_core/_image_parts/_grid_image_handler.py`
   (`_save_image2hdfgroup` 464)
-- Modify: `docs/source/api_reference/core/image_methods.rst`,
-  `docs/source/api_reference/core/grid_image_methods.rst`
-- Create: `docs/source/release_notes/<next-version>.md` entry
+- Modify: `src/phenotypic/_cli/_cli_output_manager.py` — delete `save_image_hdf` (1633) and
+  the already-deprecated `save_image_layers` (1697). `save_image_hdf` **calls
+  `image.save2hdf5`** (`:1662`, documented at `:1643`), so leaving it behind makes this
+  task's own deletion a `AttributeError` waiting in the CLI, and it is what trips this
+  phase's exit grep. Task 3.1 promised exactly this — *"`save_image_hdf` is **kept** in this
+  phase and removed in Phase 6"* — but no Phase 6 task named the file until the missing-owner
+  review of 2026-08-19. Its three callers were all repointed at `save_image_store` in Phase 3
+  (`_cli_staged_workers.py:125` and `:225` in Task 3.3, `_cli_process_single.py:183` in
+  Task 3.6), so this is a pure deletion. Re-verify with
+  `grep -rn "save_image_hdf\|save_image_layers" src/ tests/` before removing.
+- Modify: `docs/source/api_reference/core/image_methods.rst` (`:182` the `save2hdf5`
+  `automethod`, `:189` the "Load an Image from HDF5 file created with ``save2hdf5``" prose),
+  `docs/source/api_reference/core/grid_image_methods.rst` (`:250`, `:264`)
+- **Rewrite: `docs/source/how_to/pages/hdf5_storage.md` (38 lines) → the migration page.**
+  The whole page is about `save2hdf5` (`:13`) and `apply_with_intermediates`' HDF output
+  (`:18-30`); it is reachable from `how_to/index.rst:47`, so it renders in the built docs and
+  would otherwise document a removed API. Retitle it "Store Results in OME-Zarr", rewrite the
+  two code blocks against `save2zarr` / `save_intermediate_zarr`, replace the "Why HDF5"
+  section with the store's equivalents (pyramid levels, partial reads, napari/Vizarr
+  interoperability), and **carry the release note here**: one section naming every removed
+  public symbol (`save2hdf5`, `load_hdf5`, `load_layer_hdf5`, `save_intermediate_layers`,
+  `GridImage.save2hdf5`) and the `uv run python -m phenotypic --mode migrate --output <run>`
+  command that converts an existing tree. Rename the file to `zarr_storage.md` and update
+  `docs/source/how_to/index.rst:47` in the same commit.
+
+  > **Corrected (missing-owner review, 2026-08-19).** An earlier draft required
+  > `Create: docs/source/release_notes/<next-version>.md`. Verified against the worktree:
+  > **there is no release-notes infrastructure of any kind** — no `docs/source/release_notes/`
+  > directory, no `CHANGELOG.md`/`HISTORY`/`NEWS` at the repo root, and no release-notes entry
+  > in `docs/source/index.rst`'s toctree. A new file under an un-toctree'd directory is an
+  > orphan, and this phase's own exit criterion runs `sphinx-build -W`, which promotes the
+  > orphan warning to an error. Inventing a release-notes tree (directory + `index.rst` +
+  > toctree entry + a versioning convention the project has never had) is a larger change than
+  > this task, and it is not what the removal needs: what the removal needs is for the page a
+  > user lands on to tell them the API is gone and how to convert their data. The `how_to`
+  > page above is that page, it is already in the toctree, and it is otherwise unowned.
+  > **Assumption stated:** if the project later adopts release notes, this section moves there
+  > verbatim.
 - Test: `tests/unit/core/test_image_hdf_roundtrip.py` (rewrite as a removal guard),
   `tests/unit/core/test_load_layer_hdf5.py` (delete)
+- **Test: `tests/unit/core/test_image_dtype_conversion.py`** — `:590-592` round-trips through
+  `save2hdf5` → `Image.load_hdf5`. Port it to `save2zarr` / `load_zarr`; the assertion it makes
+  (float32 layers survive a round trip) is about dtype, not about HDF, so it must survive.
+- **Test: `tests/unit/test_fixtures.py`** — delete the `temp_hdf5_file` fixture
+  (`:134-146`). `grep -rn "temp_hdf5_file" tests/` returns only its own definition; it is dead
+  with the API it was written for.
+
+  > These four test files were on the README inventory's **Phase 2** row until the
+  > missing-owner review of 2026-08-19, which moved them here — Phase 2 adds `save2zarr`
+  > beside `save2hdf5` and removes nothing, so a port done there would be deleted by this
+  > task. See the ownership note under the README's test inventory.
 
 **Constraints specific to this task:**
 - **`_load_from_hdf5_group` (971), `_load_v2_grouped` (984), and `_load_legacy_flat_group`
@@ -188,7 +234,10 @@ reaching it would mean deleting the keepers."
   the private name.
 - The doctests at lines 274 and 895 are **runnable** and will fail collection if left
   pointing at removed methods. Rewrite them against `save2zarr` / `load_zarr`.
-- A release note is required — this removes names from a published autosummary.
+- A migration/release note is required — this removes names from a published autosummary.
+  It lives in `docs/source/how_to/pages/zarr_storage.md` (this task's rewrite of
+  `hdf5_storage.md`), **not** in a new `docs/source/release_notes/` tree; see the `Files:`
+  correction above for why.
 
 - [ ] **Step 1: Rewrite the round-trip test as a removal guard**
 
@@ -415,8 +464,14 @@ Record in the module docstring:
 **Files:**
 - Modify: `CLAUDE.md` (the `--mode` list, the output-layout section, the Gotchas entries
   naming `.h5` and `Image.load_hdf5`)
-- Modify: `src/phenotypic/_cli/CLAUDE.md` (file inventory, staged-GPU sidecar description,
-  master-vs-mirror section)
+- Modify: `src/phenotypic/_cli/CLAUDE.md` (file inventory, master-vs-mirror section). The
+  **staged-GPU sidecar description moved to Phase 3 Task 3.5** (missing-owner review,
+  2026-08-19): the sidecar concept dies there, Phases 4 and 5 run in parallel with Phase 3 and
+  their executors read this file, and Phase 3's own exit grep
+  (`grep -rn "sidecar" src/phenotypic/_cli/`) covers it. Root `CLAUDE.md`'s staged-GPU
+  paragraph and `docs/source/how_to/pages/gpu_detection_setup.md` moved with it, along with
+  `tests/unit/test_docs_staged_cli.py`, which pins all three. What remains here is only the
+  HDF-retirement half of those files.
 - Modify: `src/phenotypic/_core/CLAUDE.md`, `src/phenotypic/gui/CLAUDE.md`
 - Modify: `docs/superpowers/specs/2026-08-17-flat-metadata-namespace/design.md`
   (record decisions #1 and #7 as superseded)
@@ -504,7 +559,29 @@ surrounding rule still stands."
 
 - [ ] `uv run pytest tests -q` is green (whole suite, not just unit).
 - [ ] `uv run sphinx-build -W -b html docs/source docs/_build/html` succeeds.
-- [ ] `grep -rn "save2hdf5\|load_layer_hdf5\|save_intermediate_layers" src/ docs/source` returns nothing.
+- [ ] No live reference to the removed public names survives:
+
+      ```bash
+      grep -rn "save2hdf5\|load_layer_hdf5\|save_intermediate_layers" src/ docs/source \
+        | grep -v 'docs/source/how_to/pages/zarr_storage.md'
+      ```
+
+      returns nothing.
+
+      > **Corrected (missing-owner review, 2026-08-19).** The bare grep is self-defeating in
+      > two ways. First, Task 6.2's own required deliverable — the section naming every removed
+      > symbol, so a user who lands on the migration page learns what went away — **must**
+      > contain the strings `save2hdf5`, `load_layer_hdf5`, and `save_intermediate_layers`, and
+      > it lives under `docs/source`. A gate that a task's own required output trips is a gate
+      > the implementer deletes the output to satisfy. Second, the earlier draft placed that
+      > deliverable at `docs/source/release_notes/<next-version>.md`, a directory that does not
+      > exist and is in no toctree, so `sphinx-build -W` — the criterion two lines above —
+      > would have failed it as an orphan. The single exclusion above resolves both: the one
+      > page allowed to name the removed API is the page whose job is to name it.
+- [ ] The exclusion above is not hiding anything else:
+      `grep -c "save2hdf5\|load_layer_hdf5\|save_intermediate_layers" docs/source/how_to/pages/zarr_storage.md`
+      is non-zero (the migration section is actually present) and that file is the **only**
+      path the unfiltered grep reports.
 - [ ] The forward write path holds no `.h5` reference:
       `grep -rn "\.h5" src/phenotypic --include='*.py' | grep -vE '_hdf_to_zarr|hdf_\.py|_metadata_migration\.py|_image_io_handler\.py'`
       returns nothing. **The allow-list is required, not a weakening** — verified that
@@ -513,7 +590,10 @@ surrounding rule still stands."
       `_image_io_handler.py` all survive this phase **by design**. A bare grep would force
       the implementer to delete a keeper or silently soften the gate (ledger GEN-10).
 - [ ] `wc -l src/phenotypic/sdk_/hdf_.py` is roughly 520.
-- [ ] A release note entry exists naming every removed public symbol and the migration command.
+- [ ] `docs/source/how_to/pages/zarr_storage.md` exists, is reachable from
+      `docs/source/how_to/index.rst`, and names every removed public symbol plus the
+      `--mode migrate` command. `docs/source/how_to/pages/hdf5_storage.md` no longer exists
+      and no toctree references it.
 - [ ] `_metadata_migration.py`'s module docstring records the `"hdf"`-arm retention decision,
       the no-`"store"`-`TargetKind` reasoning, and the FLOW-32 correction (ledger **SIMP-13**
       — this is Task 6.3a's deliverable, folded into Task 6.4 rather than shipped as its own

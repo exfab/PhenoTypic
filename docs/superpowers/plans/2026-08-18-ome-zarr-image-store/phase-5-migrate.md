@@ -525,6 +525,14 @@ is withdrawn from the spec."
 
 **Files:**
 - Create: `src/phenotypic/_cli/_cli_migrate.py`
+- **Modify: `src/phenotypic/sdk_/typing_.py` — add `"migrate"` to `CliMode` (line 121).**
+  It is `Literal["full", "measure", "recompile", "process"]`, and `phenotypicCLI.py:1214`
+  does `cli_mode = cast(CliMode, mode)`. Without the new member, step 1 below —
+  `migrate_only = cli_mode == "migrate"` — is a **`comparison-overlap` error under
+  `uv run mypy src/phenotypic`**: mypy narrows `cli_mode` to the four-member Literal and
+  proves the comparison is always `False`. Update the `#:` doc comment above it in the same
+  edit; that comment enumerates the modes and is the file's only description of them.
+  (Missing-owner review, 2026-08-19: the file was in no task's `Files:` list.)
 - Modify: `src/phenotypic/phenotypicCLI.py` (`--mode` choices line 943; the mode-validation
   block at lines 1217–1244; the module docstring's mode list at lines 71–80 and 1183)
 - Modify: `src/phenotypic/sdk_/_metadata_migration.py` — add the `kinds` filter parameter
@@ -772,100 +780,141 @@ is withdrawn from the spec."
 
 - [ ] **Step 1: Write the failing test**
 
+> **Corrected (wrong-symbol sweep).** Three defects in an earlier draft of this block:
+>
+> 1. **`main` is not a symbol in `phenotypic.phenotypicCLI`.** The click command is
+>    **`phenotypic_cli`** (`phenotypicCLI.py:1146`), the name `__main__.py` and
+>    `tests/unit/cli/test_cli_mode_contract.py:9` both import.
+> 2. **There is no `cli_runner` fixture** — `grep -rn "def cli_runner" tests/` is empty.
+>    Every existing CLI test constructs `CliRunner()` inline
+>    (`tests/unit/cli/test_cli_mode_contract.py:13` and 15 other files). This plan follows
+>    that, rather than introducing a fixture the repo has managed without.
+> 3. **`--pipeline p.json` / `--input imgs` never reached the mode guard under test.**
+>    Both options are declared `click.Path(exists=True)` (`phenotypicCLI.py:914` and
+>    `:926`), so click exits **2 during parsing** and the asserted `"migrate"` string never
+>    appears in the output. The test passed for the wrong reason — or rather, asserted
+>    something the run never produced. It must hand click paths that exist.
+
 ```python
-def test_migrate_is_an_accepted_mode(cli_runner) -> None:
-    result = cli_runner.invoke(main, ["--mode", "migrate", "--help"])
+"""``--mode migrate`` CLI contract."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+from click.testing import CliRunner
+
+from phenotypic.phenotypicCLI import phenotypic_cli
+
+
+def test_migrate_is_an_accepted_mode() -> None:
+    result = CliRunner().invoke(phenotypic_cli, ["--mode", "migrate", "--help"])
     assert result.exit_code == 0
 
 
-def test_migrate_rejects_pipeline_and_input(cli_runner, legacy_run) -> None:
-    """Same validation as recompile: the tree is named by --output alone."""
-    for flag, value in (("--pipeline", "p.json"), ("--input", "imgs")):
-        result = cli_runner.invoke(
-            main, ["--mode", "migrate", "--output", str(legacy_run), flag, value]
+def test_migrate_rejects_pipeline_and_input(tmp_path: Path, legacy_run) -> None:
+    """Same validation as recompile: the tree is named by --output alone.
+
+    Both flags are ``click.Path(exists=True)``, so the arguments must exist on
+    disk or click exits 2 while parsing and the mode guard never runs.
+    """
+    pipeline = tmp_path / "p.json"
+    pipeline.write_text("{}", encoding="utf-8")
+    images = tmp_path / "imgs"
+    images.mkdir()
+
+    for flag, value in (("--pipeline", pipeline), ("--input", images)):
+        result = CliRunner().invoke(
+            phenotypic_cli,
+            ["--mode", "migrate", "--output", str(legacy_run), flag, str(value)],
         )
         assert result.exit_code != 0
+        assert result.exit_code != 2, "must fail in the mode guard, not click parsing"
         assert "migrate" in result.output
 
 
-def test_migration_is_in_place(cli_runner, legacy_run) -> None:
+def test_migration_is_in_place(legacy_run) -> None:
     from phenotypic.sdk_ import zarr_store_path
     from phenotypic.sdk_.ngff_ import valid_staged_store
 
-    assert cli_runner.invoke(
-        main, ["--mode", "migrate", "--output", str(legacy_run)]
+    assert CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(legacy_run)]
     ).exit_code == 0
     assert valid_staged_store(zarr_store_path(legacy_run, "ds", "img"))
 
 
-def test_sources_are_retained_unless_delete_sources_is_passed(
-    cli_runner, legacy_run
-) -> None:
+def test_sources_are_retained_unless_delete_sources_is_passed(legacy_run) -> None:
     """MIG-9: --delete-sources is the only path to keep_source=False."""
     hdf = legacy_run / "results" / "ds" / "hdf"
 
-    assert cli_runner.invoke(
-        main, ["--mode", "migrate", "--output", str(legacy_run)]
+    assert CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(legacy_run)]
     ).exit_code == 0
     assert list(hdf.glob("*.h5")), "retained by default"
 
-    assert cli_runner.invoke(
-        main, ["--mode", "migrate", "--output", str(legacy_run), "--delete-sources"]
+    assert CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run), "--delete-sources"],
     ).exit_code == 0
     assert not list(hdf.glob("*.h5"))
 
 
 def test_delete_sources_refuses_when_the_re_read_diverges(
-    cli_runner, legacy_run, monkeypatch
+    legacy_run, monkeypatch
 ) -> None:
     """MIG-20: a lossy conversion can still be structurally valid, so the
     precondition for the one irreversible step must re-read and compare."""
     from phenotypic.sdk_ import _hdf_to_zarr
 
     monkeypatch.setattr(_hdf_to_zarr, "_conversion_is_faithful", lambda *a, **k: False)
-    result = cli_runner.invoke(
-        main, ["--mode", "migrate", "--output", str(legacy_run), "--delete-sources"]
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run), "--delete-sources"],
     )
     assert result.exit_code != 0
     assert list((legacy_run / "results" / "ds" / "hdf").glob("*.h5")), "nothing unlinked"
 
 
-def test_migrate_converts_a_legacy_tree(cli_runner, legacy_run) -> None:
+def test_migrate_converts_a_legacy_tree(legacy_run) -> None:
     from phenotypic.sdk_ import zarr_store_path
     from phenotypic.sdk_.ngff_ import valid_staged_store
 
-    result = cli_runner.invoke(main, ["--mode", "migrate", "--output", str(legacy_run)])
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(legacy_run)]
+    )
     assert result.exit_code == 0
     assert valid_staged_store(zarr_store_path(legacy_run, "ds", "img"))
 
 
-def test_migrate_never_submits_a_slurm_job(cli_runner, legacy_run, monkeypatch) -> None:
+def test_migrate_never_submits_a_slurm_job(legacy_run, monkeypatch) -> None:
     """One-time, resumable work does not justify another scheduler surface."""
     import subprocess
 
     monkeypatch.setattr(
         subprocess, "run", lambda *a, **k: pytest.fail("migrate must not shell out")
     )
-    assert cli_runner.invoke(
-        main, ["--mode", "migrate", "--output", str(legacy_run)]
+    assert CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(legacy_run)]
     ).exit_code == 0
 
 
-def test_a_legacy_only_output_fails_with_a_pointer(cli_runner, legacy_format_run) -> None:
+def test_a_legacy_only_output_fails_with_a_pointer(legacy_format_run) -> None:
     """Conversion rewrites the whole results tree; it must be typed deliberately."""
-    result = cli_runner.invoke(
-        main,
+    result = CliRunner().invoke(
+        phenotypic_cli,
         ["--mode", "recompile", "--output", str(legacy_format_run)],
     )
     assert result.exit_code != 0
     assert "--mode migrate" in result.output
 
 
-def test_dry_run_reports_without_writing(cli_runner, legacy_run) -> None:
+def test_dry_run_reports_without_writing(legacy_run) -> None:
     from phenotypic.sdk_ import dataset_zarr_dir
 
-    result = cli_runner.invoke(
-        main, ["--mode", "migrate", "--output", str(legacy_run), "--dry-run"]
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run), "--dry-run"],
     )
     assert result.exit_code == 0
     assert not dataset_zarr_dir(legacy_run, "ds").exists()
@@ -901,7 +950,32 @@ format conversion rewrites the whole results tree."
   `import _cli_recompile_metadata_migration_slurm`)** plus recompile's migration hook.
   Missing `:196` makes the entire CLI unimportable, since the module is deleted here
   (ledger **FLOW-9**). Loud and immediate, but it costs a cycle.
+- **Delete: `tests/unit/cli/test_cli_recompile_metadata_migration_slurm.py` (2,121 lines).**
+  It is the deleted modules' own suite and the only remaining importer: **26 import sites** —
+  14 `from phenotypic._cli._cli_recompile_metadata_migration_slurm import …` and 12
+  `from phenotypic._cli._cli_recompile_metadata_migration_worker import …` (the first at
+  `:189`, the last at `:1412`). Every one becomes a `ModuleNotFoundError` at collection the
+  moment Step 3 deletes the modules, so this cannot be deferred to a later phase. It is a
+  **delete, not a port**: its entire subject is the SLURM fan-out, and this task's own premise
+  is that the fan-out has no remaining justification. Before deleting, read it once for
+  assertions about *migration semantics* rather than about scheduling — those move into
+  `tests/unit/cli/test_recompile_no_longer_migrates.py` or Task 5.1's suite.
+- **Modify: `tests/unit/schema/test_no_metadata_literals.py`** — remove the allowlist entry
+  keyed on the deleted file's path at `:173`
+  (`"tests/unit/cli/test_cli_recompile_metadata_migration_slurm.py": {"MetadataSample_Strain",
+  "MetadataGenetic_Strain"}`). Leave the neighbouring `test_cli_recompile.py` entry alone —
+  that file survives. **The gate does check** — `test_legacy_metadata_allowlist_entries_are_not_stale`
+  (`:293-308`) walks `_LEGACY_ALLOWED` and appends `"<rel>: file no longer exists"` for any
+  key whose path is missing, then asserts the list is empty. So deleting the test file without
+  pruning this entry turns one deletion into a **second** red test in a different package,
+  and `uv run pytest tests/unit/cli -q` (this task's Step 2–4 command) will not show it —
+  it lives under `tests/unit/schema/`.
 - Test: `tests/unit/cli/test_recompile_no_longer_migrates.py` (create)
+
+> **Corrected (missing-owner review, 2026-08-19).** An earlier draft deleted two modules
+> (879 lines) without naming a single importer of either. Both entries above were in no task's
+> `Files:` list, so no agent was authorized to touch them — and `test_the_slurm_fanout_modules_are_gone`,
+> this task's own test, would have passed while the file next to it failed to collect.
 
 **Constraints specific to this task:**
 - This **supersedes flat-metadata decision #1** ("Every recompile migrates automatically…
@@ -931,17 +1005,24 @@ format conversion rewrites the whole results tree."
 >   headers, and **not** rewrite them.
 
 ```python
-def test_recompile_still_reads_legacy_headers(legacy_headers_run, cli_runner) -> None:
+from click.testing import CliRunner
+
+from phenotypic.phenotypicCLI import phenotypic_cli
+
+
+def test_recompile_still_reads_legacy_headers(legacy_headers_run) -> None:
     """Decision #3 is untouched: no existing output directory breaks."""
-    result = cli_runner.invoke(
-        main, ["--mode", "recompile", "--output", str(legacy_headers_run)]
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "recompile", "--output", str(legacy_headers_run)]
     )
     assert result.exit_code == 0
 
 
-def test_recompile_does_not_rewrite_headers(legacy_headers_run, cli_runner) -> None:
+def test_recompile_does_not_rewrite_headers(legacy_headers_run) -> None:
     before = _read_headers(legacy_headers_run)
-    cli_runner.invoke(main, ["--mode", "recompile", "--output", str(legacy_headers_run)])
+    CliRunner().invoke(
+        phenotypic_cli, ["--mode", "recompile", "--output", str(legacy_headers_run)]
+    )
     assert _read_headers(legacy_headers_run) == before
 
 
@@ -956,15 +1037,20 @@ def test_the_slurm_fanout_modules_are_gone() -> None:
             importlib.import_module(name)
 
 
-def test_migrate_performs_the_header_migration(legacy_headers_run, cli_runner) -> None:
+def test_migrate_performs_the_header_migration(legacy_headers_run) -> None:
     before = _read_headers(legacy_headers_run)
-    cli_runner.invoke(main, ["--mode", "migrate", "--output", str(legacy_headers_run)])
+    CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(legacy_headers_run)]
+    )
     after = _read_headers(legacy_headers_run)
     assert after != before
     assert all(h.startswith("Metadata_") for h in after)
 ```
 
-- [ ] **Step 2–4: Run to verify failure, implement, re-run** `uv run pytest tests/unit/cli -q`.
+- [ ] **Step 2–4: Run to verify failure, implement, re-run**
+      `uv run pytest tests/unit/cli tests/unit/schema/test_no_metadata_literals.py -q`.
+      The schema path is not optional: the allowlist entry pruned above lives there, and
+      `tests/unit/cli` alone reports green while it is red.
 
 - [ ] **Step 5: Commit**
 
@@ -1113,7 +1199,7 @@ run re-processes and re-finalizes the entire tree.
 
   ```python
   def test_a_full_migrate_leaves_the_run_valid_and_idle(
-      cli_runner, finished_legacy_run: LegacyRun
+      finished_legacy_run: LegacyRun
   ) -> None:
       """Both passes, in order, through the real entry point.
 
@@ -1121,13 +1207,18 @@ run re-processes and re-finalizes the entire tree.
       image pass first: the marker republication would fingerprint parquets that
       the non-image pass then rewrites.
       """
+      from click.testing import CliRunner
+
       from phenotypic._cli._cli_completion import (
           aggregate_publication_is_valid,
           valid_image_success,
       )
+      from phenotypic.phenotypicCLI import phenotypic_cli
 
       tree = finished_legacy_run.path
-      result = cli_runner.invoke(main, ["--mode", "migrate", "--output", str(tree)])
+      result = CliRunner().invoke(
+          phenotypic_cli, ["--mode", "migrate", "--output", str(tree)]
+      )
       assert result.exit_code == 0
 
       for stem in finished_legacy_run.stems:
@@ -1138,7 +1229,7 @@ run re-processes and re-finalizes the entire tree.
       assert aggregate_publication_is_valid(tree) is True
 
       # And the migrated tree does no work on the next full run.
-      second = cli_runner.invoke(main, finished_legacy_run.full_run_args())
+      second = CliRunner().invoke(phenotypic_cli, finished_legacy_run.full_run_args())
       assert second.exit_code == 0
       assert "0 images" in second.output or "complete" in second.output
   ```
@@ -1213,14 +1304,16 @@ def test_work_id_and_epoch_are_preserved(finished_legacy_run: LegacyRun) -> None
 
 
 def test_a_migrated_run_does_no_work_on_the_next_full_run(
-    finished_legacy_run: LegacyRun, cli_runner
+    finished_legacy_run: LegacyRun,
 ) -> None:
     """The end-to-end consequence: migration must not cause reprocessing."""
-    from phenotypic.phenotypicCLI import main
+    from click.testing import CliRunner
+
+    from phenotypic.phenotypicCLI import phenotypic_cli
     from phenotypic.sdk_._hdf_to_zarr import migrate_run_hdf_to_zarr
 
     migrate_run_hdf_to_zarr(finished_legacy_run.path)
-    result = cli_runner.invoke(main, finished_legacy_run.full_run_args())
+    result = CliRunner().invoke(phenotypic_cli, finished_legacy_run.full_run_args())
     assert result.exit_code == 0
     assert "0 images" in result.output or "complete" in result.output.lower()
 ```
@@ -1329,13 +1422,29 @@ def test_a_fully_migrated_tree_is_clean(migrated_run: Path) -> None:
     assert datasets_needing_migration(migrated_run) == []
 
 
-def test_full_mode_refuses_a_half_migrated_tree(half_migrated_run, cli_runner) -> None:
-    """Without this, --mode full silently reprocesses from source."""
-    from phenotypic.phenotypicCLI import main
+def test_full_mode_refuses_a_half_migrated_tree(half_migrated_run, tmp_path) -> None:
+    """Without this, --mode full silently reprocesses from source.
 
-    result = cli_runner.invoke(main, ["--mode", "full", "--output", str(half_migrated_run),
-                                      "--pipeline", "p.json", "--input", "imgs"])
+    ``--pipeline`` and ``--input`` are ``click.Path(exists=True)``
+    (``phenotypicCLI.py:914``, ``:926``), so both must exist on disk or click
+    exits 2 while parsing and the migration guard never runs.
+    """
+    from click.testing import CliRunner
+
+    from phenotypic.phenotypicCLI import phenotypic_cli
+
+    pipeline = tmp_path / "p.json"
+    pipeline.write_text("{}", encoding="utf-8")
+    images = tmp_path / "imgs"
+    images.mkdir()
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "full", "--output", str(half_migrated_run),
+         "--pipeline", str(pipeline), "--input", str(images)],
+    )
     assert result.exit_code != 0
+    assert result.exit_code != 2, "must fail in the migration guard, not click parsing"
     assert "--mode migrate" in result.output
 
 
