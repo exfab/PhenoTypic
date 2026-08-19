@@ -376,9 +376,9 @@ addition.**
 - **Path containment**: `local-security.md`'s `safe_join` / `is_relative_to` pattern is
   §6.4 rule 4 (`SandboxRoot`) already.
 - **Roots (`roots/list`)**: the skill prefers asking the host over hardcoding a root; we use
-  `--workspace`, defaulting to CWD. On a cluster, explicit absolute paths are the right
-  default and roots would add a host dependency for little gain. **No change**, noted for
-  completeness.
+  `--workspace`, now mandatory with no default (§2.3 — it must contain the image data). On a
+  cluster, an explicit absolute path is the right requirement and roots would add a host
+  dependency for little gain. **No change**, noted for completeness.
 
 ---
 

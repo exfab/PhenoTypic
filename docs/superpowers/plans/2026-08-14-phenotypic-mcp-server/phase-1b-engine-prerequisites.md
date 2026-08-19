@@ -419,7 +419,7 @@ Reusing it inherits the bug. (Worth fixing there separately; out of scope.)
 
 **Interfaces:**
 - Produces: `derive_columns(pipeline) -> list[str]` — what Phase 2A's
-  `produces_columns` and `catalog_measurements` both call.
+  `produces_columns` calls.
 
 - [ ] **Step 1: Write the failing test**
 

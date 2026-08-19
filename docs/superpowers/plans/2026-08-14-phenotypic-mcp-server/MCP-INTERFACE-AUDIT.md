@@ -453,7 +453,7 @@ The spec declares nothing on connect because it never discusses the connect step
 | Resources | "Expose browsable context (files, docs, schemas)" | absent | **no change** — see below |
 | Prompts | "canned workflows… Near-zero code, high UX leverage" | absent (four skills instead) | **F11 — note only** |
 | Sampling | "if your tool logic needs LLM inference" | absent | **no change** — the caller *is* the LLM; nothing in §1–§10 needs inference |
-| Roots | prefer over hardcoding a root | `--workspace`, default CWD | **no change** — settled by the prior pass |
+| Roots | prefer over hardcoding a root | `--workspace`, mandatory, no default | **no change** — settled by the prior pass |
 
 ## F10 — no logging story, and stdio makes it non-obvious
 

@@ -15,9 +15,8 @@ out of `gui/` so two user-facing surfaces can share one tested API. A thin
 dispatch, resource routing, and the structured error envelope — and importing
 `phenotypic.gui` never.
 
-**Tech Stack:** Python 3.11+, pydantic v2, the official `mcp` Python SDK
-(FastMCP style, stdio transport), optuna 4.9.0, Click, pytest, `uv` as the sole
-package manager and runner.
+**Tech Stack:** Python 3.11+, pydantic v2, PyPI `fastmcp` 3.x (stdio transport),
+optuna 4.9.0, Click, pytest, `uv` as the sole package manager and runner.
 
 **Spec:** [`docs/superpowers/specs/2026-08-12-phenotypic-mcp-server/`](../../specs/2026-08-12-phenotypic-mcp-server/)
 — eleven documents. The plan argues from the spec; executors read both. Section
@@ -143,26 +142,26 @@ here because a reader of the spec alone would still find them open.
 | # | Decision | Rationale |
 |---|---|---|
 | ~~D1~~ → **D1a** | **SUPERSEDED 2026-08-19. PyPI `fastmcp` 3.x, not the official SDK's bundled FastMCP.** | D1 originally chose `mcp.server.fastmcp`. The `build-mcp-server` skill explicitly recommends PyPI `fastmcp` 3.x and warns against "the frozen FastMCP 1.0 bundled in the official `mcp` SDK" — which is what D1 had picked. Decisive factor: **D6 adopts elicitation**, and a frozen 1.0 is exactly where that capability is likely absent. Still an optional extra; the core package gains no dependency. **Phase 2A must verify** the pinned version's `Context` exposes `elicit` and `report_progress` before the tool layer is written against them. |
-| **D5** | **Tool annotations on every tool** (`readOnlyHint`, `destructiveHint`, `title`) | Absent from all ten spec files. Annotating the ~17 `W0` read tools `readOnly` lets a host auto-approve them, and leaving `deploy_start` / `campaign_start` / `tune_start` / `workspace_cancel` unannotated makes the host raise a confirmation. This enforces §9.1's server-vs-skill line **at the host level** rather than in prose. Cheap now (32 registrations + one test), materially more expensive after the tools exist. |
+| **D5** | **Tool annotations on every tool** (`readOnlyHint`, `destructiveHint`, `title`) | Absent from all ten spec files. Annotating the ~17 `W0` read tools `readOnly` lets a host auto-approve them, and leaving `deploy_start` / `campaign_start` / `tune_start` / `workspace_cancel` unannotated makes the host raise a confirmation. This enforces §9.1's server-vs-skill line **at the host level** rather than in prose. Cheap now (26 registrations + one test), materially more expensive after the tools exist. |
 | **D6** | **Elicitation for the two human gates — shape now, implement in Phase 2C** | §8.2 concedes the server "cannot verify that a human approved anything… an agent could fabricate the field". That constraint is no longer real: elicitation ships in Claude Code ≥2.1.76, and a host-rendered form comes from the user's keyboard rather than the agent's token stream — turning `campaign_approve` and the §10.5 promotion gate from provenance into **actual confirmation** for the two irreversible spends. **Shape now:** `human_response` becomes required-*unless-elicited*, so adopting it later is not a breaking signature change. **Unverified and must be tested live before implementation:** whether elicitation raised from a *subagent's* tool call surfaces to the human, given §1.3's single shared connection. The current fabricate-explicitly design remains the mandated fallback when the host lacks the capability. |
 | D2 | **P5 moves into Phase 1** | §7 calls it independent cleanup. On UCR HPCC `--account` is mandatory for the `exfab` and `preempt` partitions, and the tune CLI drops `account` entirely — so **no tune fleet can reach the GPU node until P5 lands**. Doing it first also retires §5.2.1's expressibility check instead of building it. |
-| D3 | **No server-side `plate.nrows`/`ncols` backstop** — ship §9.3.5 as specified | A cross-check of `nrows × ncols` against the scorer's expected counts was considered and **rejected on domain grounds: grid sections are not always filled**, so the product is a poor proxy for expected colony count and the check would fire on legitimate partial layouts. The defence stays the `phenotypic-assay-triage` skill. |
-| D4 | **v1 ships in three gated sub-phases** (2A / 2B / 2C) | Each leaves working, reviewable software. 32 tools behind one review gate is not reviewable. |
+| D3 | **No server-side `plate.nrows`/`ncols` backstop** — ship §9.3.5 as specified | A cross-check of `nrows × ncols` against the scorer's expected counts was considered and **rejected on domain grounds: grid sections are not always filled**, so the product is a poor proxy for expected colony count and the check would fire on legitimate partial layouts. The defence stays the `phenotypic-experiment-triage` skill. |
+| D4 | **v1 ships in three gated sub-phases** (2A / 2B / 2C) | Each leaves working, reviewable software. 26 tools behind one review gate is not reviewable. |
 
 ---
 
 ## Interface audit — five findings to fix before the first handler exists
 
 From `MCP-INTERFACE-AUDIT.md` (13 findings). These five have asymmetric cost:
-cheap now, expensive once 32 handlers exist. **F2 is verified in-tree.**
+cheap now, expensive once 26 handlers exist. **F2 is verified in-tree.**
 
 | # | Finding | Status |
 |---|---|---|
 | **F2** | **Nothing guards the server's own stdio protocol channel.** §3.2 makes exactly this argument one level down — the probe worker uses a dedicated pipe, "never the worker's stdout", because `tqdm` and a bare `print()` would corrupt the stream. The **server** speaks JSON-RPC on its own stdout and imports `phenotypic`, including `detect.nn`, which §3.1 *requires* be reachable. **Verified: 19 bare `print()` calls across `detect/`, `_core/`, `tune/`**, one of them at `detect/nn/_helper/_checkpoint_manager.py:830`. A single print corrupts the session for every subagent and surfaces as a host parse error nowhere near its cause. **Fix:** rebind `sys.stdout` → `stderr` before importing `phenotypic`; add as a seventh refusal in §6.4; test it. | **VERIFIED — highest priority** |
-| **F1** | **No tool descriptions anywhere, for any of the 32.** `tool-design.md` is emphatic: "the description is the contract… the only thing Claude reads before deciding whether to call the tool", and requires a "does NOT do" clause. §1.2 fixes `model_json_schema()` as the contract — but that is the *payload* `catalog_operation_detail` returns, not the MCP tool description. Two different contracts; the spec writes one. Under D1a, fastmcp takes descriptions from docstrings, so all 32 get improvised during implementation. Sibling-confusion pressure is unusually high here: `deploy_plan`/`deploy_start`, three `*_status` tools, `tune_status{progress}` vs `{results}`, `campaign_approve` vs `promotion_approve`. | open |
-| **F3** | **`W0` conflates "takes no compute slot" with "is instant".** §5.5 already corrects this for `deploy_status` but never carries the rule back to §1.5, and 6+ other `W0` tools do real blocking work on the shared event loop — `workspace_info` (rehydrate + `squeue`), first-call `catalog_operations` (discovery over 13 packages), `campaign_status` (N store-opens), `deploy_plan` (directory digest over a 480-image parent). Under §1.3's single connection each stalls every subagent, falsifying §3.4's "interleave freely". **Fix:** split §1.5's `W0` row into pure/inline vs I/O-bound/executor, and tag all 32. | open — compounds the `deploy_plan` defect already recorded in MAIN-MERGE.md |
+| **F1** | **No tool descriptions anywhere, for any of the 26.** `tool-design.md` is emphatic: "the description is the contract… the only thing Claude reads before deciding whether to call the tool", and requires a "does NOT do" clause. §1.2 fixes `model_json_schema()` as the contract — but that is the *payload* `catalog_operation_detail` returns, not the MCP tool description. Two different contracts; the spec writes one. Under D1a, fastmcp takes descriptions from docstrings, so all 26 get improvised during implementation. Sibling-confusion pressure is unusually high here: `deploy_plan`/`deploy_start`, three `*_status` tools, `tune_status{progress}` vs `{results}`. | open |
+| **F3** | **`W0` conflates "takes no compute slot" with "is instant".** §5.5 already corrects this for `deploy_status` but never carries the rule back to §1.5, and 6+ other `W0` tools do real blocking work on the shared event loop — `workspace_info` (rehydrate + `squeue`), first-call `catalog_operations` (discovery over 13 packages), `campaign_status` (N store-opens), `deploy_plan` (directory digest over a 480-image parent). Under §1.3's single connection each stalls every subagent, falsifying §3.4's "interleave freely". **Fix:** split §1.5's `W0` row into pure/inline vs I/O-bound/executor, and tag all 26. | open — compounds the `deploy_plan` defect already recorded in MAIN-MERGE.md |
 | **F4** | **MCP request cancellation vs the `LocalComputeSlot` is unspecified.** The spec covers timeout, OOM and server restart, never the host cancelling a request — the likeliest case with N subagents on one connection. If `CancelledError` does not release the slot, **every subsequent probe from every subagent blocks for the session**: the exact deadlock §3.2 rejected the in-process design to avoid. Also `probe_timeout_s=300` is set with no reference to the host's tool-call timeout. | open |
-| **F5** | **`outputSchema` is undecided, and under D1a may be decided for us.** fastmcp derives it from return annotations, so 32 handlers annotated `-> ToolEnvelope` publish 32 serialized copies in `tools/list` (~6.4k tokens/turn — JSON Schema has no cross-tool `$ref` sharing). **Fix:** decline explicitly in §3.0 and assert in Phase 2A that no tool publishes one. | open |
+| **F5** | **`outputSchema` is undecided, and under D1a may be decided for us.** fastmcp derives it from return annotations, so 26 handlers annotated `-> ToolEnvelope` publish 26 serialized copies in `tools/list` (~6.4k tokens/turn — JSON Schema has no cross-tool `$ref` sharing). **Fix:** decline explicitly in §3.0 and assert in Phase 2A that no tool publishes one. | open |
 
 Eight further findings (F6–F13) are in the audit document, including schema-level
 caps for `n_images`/`limit`, a `Literal` discriminator for `edits[].kind`, an
@@ -218,11 +217,11 @@ Phase 1  PREREQUISITES — engine and refactor work, no MCP code
         ▼   GATE: import-purity test green, GUI suite unchanged, ledgers green
 Phase 2  v1 TOOL SURFACE
   2A  server skeleton, envelope, error mapping, probe worker,
-      catalog(3) + pipeline(5) + workspace(4)                      — usable for construction
+      catalog(2) + pipeline(4) + workspace(4)                      — usable for construction
         │  GATE
-  2B  assay(2) + subset(3) + tune(5) + campaign(5)
+  2B  experiment_profile(1) + subset(3) + tune(5) + campaign(4)
         │  GATE
-  2C  deploy(3) + promotion(2) + 4 bundled skills + `phenotypic-mcp setup`
+  2C  deploy(3) + 4 bundled skills + `phenotypic-mcp setup`
         │
         ▼
 Phase 3  DISTRIBUTED TUNE (P1)  — gated on L1, see below
@@ -294,7 +293,7 @@ non-contiguous masks — fixed with `--cpu-bind=none`, and the script reported
 | [execution.md](execution.md) | The dependency DAG, the six Opus clusters, and where the review and simplify gates sit |
 | Phase 2A/2B/2C | Written at the Phase 1 gate, against the code Phase 1 produces |
 
-Phase 2's task documents are deliberately not written yet. They specify 32 tools
+Phase 2's task documents are deliberately not written yet. They specify 26 tools
 against `_services` signatures that Phase 1 creates, and writing them now would
 mean inventing those signatures twice — the spec already records what the tools
 must *do*; the plan's job is to say how, against real code.
