@@ -599,3 +599,34 @@ This keeps §9.3.5's never-acts-on-a-trait invariant whole rather than carving t
 first exception into it, and collapses the three unreconciled notions of "group"
 (profile `group_by`, selector `group_key`, scorer CSV) into one: **the subset is
 the group.**
+
+---
+
+## CONC-8 is a confirmed defect in shipped code, not only a spec concern
+
+The concurrency reviewer's CONC-8 said "never nest the in-process lock inside the
+30 s interprocess spin". Verified against the merged `_services` tier, and it is
+**already doing exactly that**:
+
+`RunRegistry.allocate` (`src/phenotypic/_services/runs.py:317`) opens
+`with self._lock:` — a `threading.Lock` that the class docstring says **every
+public method takes** (`:16`, `:275`) — and then, still holding it, enters
+`with exclusive_path_lock(_owner_lock_path(output_dir))` at `:330`. That lock
+spins to 30 s before raising `FileLockTimeout`
+(`_cli/_cli_file_locking.py:50`).
+
+**So one thread waiting on a contended owner-lock file blocks every other thread
+in the process from calling any `RunRegistry` method at all, for up to 30 s.**
+Today that is a GUI stall on a wedged mount. Under USER-20 it is worse: the
+`blocking` executor has 4 workers, so a single wedged path can consume the pool
+and starve the `W0` calls §1.6.1 promises in under a second.
+
+**Status:** open · **code fix, not a spec fix** · belongs in Phase 1b, not 2A.
+The fix is CONC-8's own: take the file lock first, then `self._lock` only around
+the in-memory mutation. `_persist_record_locked` and
+`_assert_output_claimable_locked` already assume the file lock is held, so the
+inversion is local to `allocate`.
+
+**Also confirmed pre-existing and unrelated to the MCP work**, so it is worth
+reporting upstream on `main` regardless of what this spec decides — the same way
+the `EXPECTED_WORK_IDS` coverage gap was.
