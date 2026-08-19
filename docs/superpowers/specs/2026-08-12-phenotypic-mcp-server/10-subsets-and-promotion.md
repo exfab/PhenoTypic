@@ -592,21 +592,28 @@ group's images being spent on another's; a filter that matches nothing at full
 scale fails on the empty image set rather than silently widening, with
 `group_filter_matches_nothing` (§6.2).
 
-**How the intersected image set reaches the engine is an open question, not a
-settled "needs no staging".** An earlier draft of this paragraph asserted the
-run needed no staging. That does not follow from anything: §1.6's new-pieces
-table justifies subset staging with "neither engine accepts a file list", and
-§10.3.1 exists entirely to materialize an arbitrary image list as a directory
-tree for that reason. `parent ∩ group_filter` **is** an arbitrary image list
-over the parent, so it either stages — at a scale §10.3.1 §4 says must never
-reach the parent images — or it is not expressible as a single
-`python -m phenotypic --input` invocation, and `argv_digest` (§5.4), defined as
-the digest of that rendered argv, has nothing to digest. The claim is withdrawn
-rather than replaced: **this is recorded as an open question in
-`refinery/ledger.md` and needs a user ruling**, because the two candidate
-resolutions (stage the intersection, or restrict full scope on a filtered subset
-to a filter that is expressible as whole `--input` subtrees) change what USER-21
-buys. Everything else in this section stands regardless of which is chosen.
+**The intersection is resolved in place to a manifest — it does not stage, and
+"needs no staging" was not a free claim** (USER-26). An earlier draft asserted
+the run simply needed no staging, which does not follow from anything: §1.6's
+new-pieces table justifies subset staging with "neither engine accepts a file
+list", and §10.3.1 exists entirely to materialize an arbitrary image list as a
+directory tree for that reason. `parent ∩ group_filter` **is** an arbitrary image
+list over the parent.
+
+So the server resolves the intersection to a **concrete image list at plan time**
+and writes it as a **manifest**; the run consumes the manifest. Nothing is
+copied, which is what keeps this section's bypasses-staging rule true and keeps
+the parent's images untouched (§10.3.1 §4). And the manifest is what the token's
+digest binds, so **the human approves an image set that cannot subsequently
+drift** — the property USER-21 was after, now with a carrier.
+
+**This buys a prerequisite the ruling did not know it was buying.** The public
+CLI's `--input` is a single `click.Path` (`phenotypicCLI.py:924-929`) — not a
+list and not a manifest file — so full scope on a filtered subset **needs a new
+top-level CLI flag**. Reusable machinery exists:
+`_cli_staged_slurm_worker.py:422` already takes `--manifest` as an internal entry
+point. It is a **new §7 prerequisite and a new plan task**, and `argv_digest`
+(§5.4) digests the argv that names that manifest.
 
 This is what makes §9.3.0.2's descent reachable at the only scale that matters.
 Without it, a per-group winner could be deployed only at subset scale, and

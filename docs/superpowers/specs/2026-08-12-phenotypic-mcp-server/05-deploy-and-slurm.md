@@ -361,16 +361,17 @@ record at both scopes**, not fields that appear only at one — an optional key 
 implementer has to infer from an example is how `group_filter` came to have no
 storage location at all.
 
-**The binding set is exhaustive, and it grew when the token absorbed the
-promotion gate.** While the token only meant "a plan was drawn", a stale one cost
-a re-plan. Now it carries a human's consent to a specific quantity of somebody
-else's compute, so anything quoted to that human has to be inside it:
+**The binding set grew when the token absorbed the promotion gate.** While the
+token only meant "a plan was drawn", a stale one cost a re-plan. Now it carries a
+human's consent to a specific quantity of somebody else's compute, so anything
+quoted to that human has to be inside it.
 
-**This table is the binding set.** Every field the token binds is here, with the
-scope it binds under; no other section states a binding set, and any that needs
-to talk about one cites this table. Four earlier restatements of it — three in
-this section, two in §10.5 — disagreed with each other and with the record, and
-the disagreement was invisible because each read as a summary of the others.
+**The table below is that set, and it is the only statement of it.** Every bound
+field is here with the scope it binds under; no other section states a binding
+set, and any section that needs to talk about one cites this table. It is written
+that way because the set had been stated four times in four incompatible ways —
+three here and two in §10.5 — and the disagreement was invisible because each
+restatement read as a summary of the others rather than as a competing claim.
 
 | Field | Scope | Why it binds |
 |---|---|---|
@@ -432,9 +433,9 @@ an **approved campaign** (§8), which stamps a token per arm at approval time.
 That keeps the human checkpoint in the planning phase where you actually are,
 rather than inserting one into autonomous Phase-2 execution.
 
-**But a campaign arm cannot bind everything a `deploy_plan` token binds, and
-saying "the binding set is exhaustive" without saying so leaves an implementer
-with four mandatory fields and no value for them.** At `campaign_approve` time
+**But a campaign arm cannot bind everything a `deploy_plan` token binds, and a
+binding table that does not say so leaves an implementer with four mandatory
+fields and no value for them.** At `campaign_approve` time
 the arm has no `run_name` (the study is named `studies/<campaign>-<arm>` later,
 at fan-out), no resolved `array` (nothing has consulted `scontrol`), no
 `estimate.node_hours` from a `deploy_plan` (the campaign's own per-arm estimate

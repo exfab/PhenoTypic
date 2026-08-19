@@ -339,6 +339,12 @@ Two pieces:
    `_find_class_in_phenotypic`'s submodule list in the same change that
    reconciles it with `OperationRegistry.discover()`, so selectors resolve and
    serialize by bare class name like every other extensible class.
+   **The ABC ships with `group_filter` from the first commit** (§10.3), not as a
+   later addition: the base model is `extra="forbid"`, so adding it afterwards is
+   a model change to every selector rather than an extra key, and §10.5's
+   full-scope resolution and §5.4's token binding both read it. It carries the
+   candidate-set restriction, the CSV join, and the two error codes
+   (`group_filter_column_not_found`, `group_filter_matches_nothing`) with it.
 4. **A directory-level digest helper.** `campaign_status.comparable` (§8.3) must
    detect two arms tuned against different image sets, and nothing today can:
    `bytes_fingerprint`, `file_fingerprint` (`sdk_/_io_constants.py:154,166`) and
@@ -424,6 +430,39 @@ live-open pool, is explicitly documented as *non*-killable — a timed-out threa
 is abandoned and its single-worker pool stays poisoned for the process lifetime
 (`gui/tune/_callbacks.py:915-930`). That is exactly why the spec calls for a
 subprocess, and exactly why there is nothing to copy.
+
+---
+
+## P8 — A top-level manifest input for the full CLI
+
+USER-26 resolves `scope:"full"` on a group-filtered subset to
+`parent ∩ group_filter`, **resolved in place to a concrete image list at plan
+time and written as a manifest** — no copying, and the manifest is what the plan
+token's digest binds, so the human approves an image set that cannot drift
+(§10.5, §5.4).
+
+**The public CLI cannot consume one.** `--input` is a single `click.Path`
+(`phenotypicCLI.py:924-929`) — not `multiple=True`, and not a file-of-paths — so
+there is today no argv that expresses "these 312 images out of the parent's 480".
+Without this flag, USER-21's full-scope semantics are unimplementable and
+`argv_digest` (§5.4) has nothing to digest.
+
+**Precedent exists and is probably reusable.** `_cli_staged_slurm_worker.py:422`
+already takes `--manifest` as an *internal* entry point for the staged GPU
+engine, so the reading and validation of a manifest is not new — what is new is
+promoting it to a public top-level flag on `python -m phenotypic`, with the
+sandbox and identity rules the rest of §2 imposes.
+
+Distinguish it from **P6** rather than folding the two together: P6 materializes
+a *directory* for **subset**-scoped work because neither engine accepts a file
+list; P8 passes a *list* for **full**-scoped work, where materializing is exactly
+what must not happen (§10.3.1 §4 — a full-scale staging would touch the parent's
+images, which is the boundary the whole section exists to hold). Two mechanisms
+because the two scopes have opposite constraints, not because one was
+insufficient.
+
+Small, and genuinely new. Neither §1.6's reuse inventory nor the plan's task list
+contained it before USER-26.
 
 ---
 

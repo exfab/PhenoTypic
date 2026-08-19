@@ -287,9 +287,17 @@ cheap; it is listed as new work in §7 P3 rather than assumed.
 {"ts":"2026-08-12T14:02:11Z","event":"pipeline.put","id":"pipelines/edge-v3.json.pht-pipe","digest":"sha256:9c1e…","parent":null,"agent":"subagent-B"}
 {"ts":"2026-08-12T14:07:40Z","event":"tune.start","id":"studies/edge-v3-tpe","parent":"pipelines/edge-v3.json.pht-pipe"}
 {"ts":"2026-08-12T15:31:02Z","event":"tune.export_best","id":"pipelines/edge-v3-tuned.json.pht-pipe","parent":"studies/edge-v3-tpe","trial":47,"score":0.081}
-{"ts":"2026-08-12T15:43:55Z","event":"deploy.approve","id":"runs/2026-08-12-plateA","parent":"pipelines/edge-v3-tuned.json.pht-pipe","scope":"full","token":"pl_7f3a…","node_hours":18.4,"ack_source":"elicited","human_response":"yes, go ahead"}
-{"ts":"2026-08-12T15:44:19Z","event":"deploy.start","id":"runs/2026-08-12-plateA","parent":"pipelines/edge-v3-tuned.json.pht-pipe","scope":"full","subset_id":"subsets/plates-dev-24.subset.json"}
+{"ts":"2026-08-12T15:43:55Z","event":"deploy.approve","id":"runs/2026-08-12-plateA","parent":"pipelines/edge-v3-tuned.json.pht-pipe","scope":"full","token":"pl_7f3a…","group_filter":{"Metadata_Species":"A_nidulans"},"node_hours":18.4,"ack_source":"elicited","human_response":"yes, go ahead"}
+{"ts":"2026-08-12T15:44:19Z","event":"deploy.start","id":"runs/2026-08-12-plateA","parent":"pipelines/edge-v3-tuned.json.pht-pipe","scope":"full","subset_id":"subsets/plates-dev-24.subset.json","group_filter":{"Metadata_Species":"A_nidulans"}}
 ```
+
+**Both deploy rows carry `group_filter`** (`null` at `scope:"subset"`, and
+`null` at full for an unfiltered subset). Without it a group-scoped full deploy
+is not reconstructible from the journal: `scope:"full"` plus a `subset_id` reads
+as "the whole parent", which is precisely what USER-21 ruled it is not. The
+approve row is where the human's consent is recorded, so it is where the image
+set that consent covers has to be legible — the token that bound it (§5.4) is
+single-use and its record is collectable.
 
 **Digest format.** `digest` is `f"sha256:{...}"`, matching `bytes_fingerprint` /
 `file_fingerprint` (`sdk_/_io_constants.py:154-179`). Note that
@@ -319,7 +327,7 @@ three of the four hops reconstructible.
 |---|---|---|
 | Output directory claim | interprocess file lock + nonterminal-generation check | `RunRegistry.allocate` |
 | Run record mutation | generation-fenced CAS, **never onto a terminal status** | `RunRegistry.compare_and_set` |
-| Local image compute | one process-wide `LocalComputeSlot`: `asyncio.Semaphore(1)`, released in a `finally` at the innermost acquiring layer, under a wall-clock lease | new, §1.5 |
+| Local image compute | one process-wide `LocalComputeSlot`: `asyncio.Semaphore(local_slot_capacity)` (default 1, configuration — USER-17), released in a `finally` at the innermost acquiring layer, under a wall-clock lease | new, §1.5 |
 | Artifact writes | `atomic_write_text` + explicit-overwrite policy | `sdk_` helpers, §2.2 |
 | Artifact **read-modify-write** | `exclusive_path_lock` on the artifact path + content-digest CAS; mismatch is `artifact_changed`, never `ok:true` | new, below |
 | Plan tokens | `atomic_write_text`; single-use CAS on `consumed_by` **under `exclusive_path_lock`** — `allocate`'s interprocess idiom, **not** `compare_and_set`'s in-process `threading.Lock`, since §2.3 treats overlapping server instances over one workspace as anticipated | new, §5.4 |
