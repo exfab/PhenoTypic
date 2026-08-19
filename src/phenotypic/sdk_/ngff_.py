@@ -17,8 +17,10 @@ See also:
 
 from __future__ import annotations
 
+import json
 import math
-from typing import Final, Literal
+from pathlib import Path
+from typing import Final, Literal, Sequence
 
 import numpy as np
 
@@ -322,3 +324,203 @@ def array_create_kwargs(
             "configuration": {"separator": CHUNK_KEY_SEPARATOR},
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# attributes.phenotypic -- the source of truth on read
+# ---------------------------------------------------------------------------
+
+#: Version of the flat ``Metadata_<Label>`` header namespace. Distinct from
+#: :data:`STORE_SCHEMA_VERSION`, which versions groups and arrays.
+METADATA_SCHEMA_VERSION: Final[int] = 2
+
+
+class PhenotypicAttr:
+    """Keys inside the namespaced ``attributes.phenotypic`` block.
+
+    Spelled out here so a renamed key fails at type-check time rather than
+    silently at runtime, matching the ``HdfAttr`` / ``JobMetadataKey`` pattern
+    already used in :mod:`phenotypic.sdk_._io_constants`.
+    """
+
+    ROOT: Final[str] = "phenotypic"
+    STORE_SCHEMA_VERSION: Final[str] = "store_schema_version"
+    METADATA_SCHEMA_VERSION: Final[str] = "metadata_schema_version"
+    PHENOTYPIC_VERSION: Final[str] = "phenotypic_version"
+    IMAGE_CLASS: Final[str] = "image_class"
+    WORK_ID: Final[str] = "work_id"
+    SERIES: Final[str] = "series"
+    LABELS: Final[str] = "labels"
+    PYRAMID: Final[str] = "pyramid"
+    DETECT_MODE: Final[str] = "detect_mode"
+    ILLUMINANT: Final[str] = "illuminant"
+    GAMMA: Final[str] = "gamma"
+    GRID: Final[str] = "grid"
+    METADATA: Final[str] = "metadata"
+    PROTECTED: Final[str] = "protected"
+    PUBLIC: Final[str] = "public"
+    IMPORTED: Final[str] = "imported"
+
+
+def primary_series(series_names: Sequence[str]) -> str:
+    """Return the series a generic viewer should show, and labels attach to.
+
+    Args:
+        series_names: Series present in the store.
+
+    Returns:
+        ``"rgb"`` when present, otherwise ``"gray"``.
+
+    Raises:
+        ValueError: If neither ``rgb`` nor ``gray`` is present.
+    """
+    for candidate in ("rgb", "gray"):
+        if candidate in series_names:
+            return candidate
+    raise ValueError(f"no primary series among {list(series_names)!r}")
+
+
+def objmap_path(primary: str) -> str:
+    """Return the store-relative path of the objmap label image.
+
+    Readers MUST take this from ``phenotypic.labels.objmap`` rather than
+    hard-coding ``rgb/labels/objmap``: when ``rgb`` is empty the primary series
+    is ``gray`` and the label lives under it instead.
+    """
+    return f"{primary}/{LABELS_GROUP}/{OBJMAP_LABEL}"
+
+
+def build_phenotypic_attributes(
+    *,
+    image_class: str,
+    series_names: Sequence[str],
+    pyramid_levels: int,
+    metadata_sections: dict[str, dict],
+    detect_mode: str | None,
+    illuminant: str | None,
+    gamma: str | None,
+    has_labels: bool = True,
+    grid: dict | None = None,
+    work_id: str | None = None,
+    phenotypic_version: str | None = None,
+) -> dict:
+    """Build the ``attributes.phenotypic`` block for one store.
+
+    Args:
+        image_class: ``"Image"`` or ``"GridImage"`` -- drives loader dispatch.
+            Distinct from ``Metadata_ImageType``, which is user-visible schema
+            metadata and lives in *metadata_sections*.
+        series_names: Series actually written, in canonical order.
+        pyramid_levels: Resolved level count, uniform across the store.
+        metadata_sections: ``{"protected": …, "public": …, "imported": …}``
+            with canonical flat ``Metadata_<Label>`` keys.
+        detect_mode: Detection-matrix mode, or ``None``.
+        illuminant: Colour illuminant, or ``None``.
+        gamma: Gamma encoding name, or ``None``.
+        has_labels: Whether the store carries a label image. ``False`` omits
+            the ``labels`` key **entirely** rather than emitting an empty
+            mapping -- see the note below.
+        grid: ``{"nrows": …, "ncols": …, "grid_finder": …}`` for a GridImage.
+        work_id: CLI work id, written here at write time and never patched in
+            afterwards -- the root ``zarr.json`` is written last, so a post-hoc
+            patch would violate the ordering invariant.
+        phenotypic_version: Package version; resolved from the installed
+            package when omitted.
+
+    Note:
+        Metadata values are stored **verbatim and unvalidated**. Real images
+        legitimately carry both ``Metadata_PlateNum`` (which
+        ``metadata_member_for_header`` does not resolve) and bare public keys
+        that ``_remap_legacy_metadata_key`` deliberately preserves. A
+        write-time canonicality gate would abort most production runs; the HDF
+        writer has none either. See OPEN-QUESTIONS D3.
+
+    Returns:
+        A JSON-serialisable mapping.
+    """
+    import phenotypic
+
+    primary = primary_series(series_names)
+    block: dict = {
+        PhenotypicAttr.STORE_SCHEMA_VERSION: STORE_SCHEMA_VERSION,
+        PhenotypicAttr.METADATA_SCHEMA_VERSION: METADATA_SCHEMA_VERSION,
+        PhenotypicAttr.PHENOTYPIC_VERSION: (
+            phenotypic_version or phenotypic.__version__
+        ),
+        PhenotypicAttr.IMAGE_CLASS: image_class,
+        PhenotypicAttr.SERIES: {name: name for name in series_names},
+        PhenotypicAttr.PYRAMID: {
+            "levels": int(pyramid_levels),
+            "stop_px": PYRAMID_STOP_PX,
+            # NOT a literal (ledger GEN-27 / SIMP-16). An earlier draft
+            # hard-coded the dict here while DOWNSAMPLE_METHODS' docstring
+            # claimed to be the single source -- the constant had exactly one
+            # reader, so the two could drift precisely as before.
+            "downsample": dict(DOWNSAMPLE_KINDS),
+        },
+        PhenotypicAttr.DETECT_MODE: detect_mode,
+        PhenotypicAttr.ILLUMINANT: illuminant,
+        PhenotypicAttr.GAMMA: gamma,
+        PhenotypicAttr.METADATA: {
+            PhenotypicAttr.PROTECTED: dict(
+                metadata_sections.get(PhenotypicAttr.PROTECTED, {})
+            ),
+            PhenotypicAttr.PUBLIC: dict(
+                metadata_sections.get(PhenotypicAttr.PUBLIC, {})
+            ),
+            PhenotypicAttr.IMPORTED: dict(
+                metadata_sections.get(PhenotypicAttr.IMPORTED, {})
+            ),
+        },
+    }
+    # Omitted entirely when the store carries no label image. An earlier draft
+    # emitted this unconditionally, so a preview store written by
+    # `save_intermediate_zarr(layers=("gray",))` DECLARED
+    # `labels.objmap = "gray/labels/objmap"` for a group that does not exist
+    # -- and `assert_store_conforms` then FileNotFoundError'd walking it. A
+    # guard added downstream tested for an EMPTY mapping, which nothing
+    # produced; the key has to be absent at the source. Ledger C3.
+    if has_labels:
+        block[PhenotypicAttr.LABELS] = {OBJMAP_LABEL: objmap_path(primary)}
+    if work_id is not None:
+        block[PhenotypicAttr.WORK_ID] = work_id
+    if grid is not None:
+        block[PhenotypicAttr.GRID] = grid
+    return block
+
+
+def read_root_attributes(store_path: Path) -> dict:
+    """Read ``<store>/zarr.json``'s ``attributes`` mapping without opening zarr.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+
+    Returns:
+        The ``attributes`` mapping.
+
+    Raises:
+        FileNotFoundError: If the root ``zarr.json`` does not exist. An
+            interrupted write has no root, so this is the normal "absent" path.
+        json.JSONDecodeError: If the root is present but unparseable.
+    """
+    payload = json.loads(
+        (Path(store_path) / "zarr.json").read_text(encoding="utf-8")
+    )
+    return payload.get("attributes", {})
+
+
+def read_phenotypic_attributes(store_path: Path) -> dict:
+    """Read the ``attributes.phenotypic`` block from a store root.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+
+    Returns:
+        The ``phenotypic`` block.
+
+    Raises:
+        FileNotFoundError: If the root ``zarr.json`` does not exist.
+        KeyError: If the root exists but carries no ``phenotypic`` block.
+    """
+    attributes = read_root_attributes(store_path)
+    return attributes[PhenotypicAttr.ROOT]
