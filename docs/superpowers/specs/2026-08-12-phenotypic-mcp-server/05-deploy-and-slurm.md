@@ -207,10 +207,19 @@ genuinely new piece of work (§1.6), previously invisible in that accounting.
 | `scope` | `"subset" \| "full"` | `"subset"` | `full` plans against `subset.parent`; the only way to obtain a full-scope `plan_token` |
 | `run_name` | `str` | — | Output directory under `runs/` |
 | `compute` | `object?` | `{}` | `{profile, …overridable keys}` |
-| `mode` | `"full" \| "measure" \| "process"` | `"full"` | CLI mode |
-| `layer` | `str?` | `null` | Required when `mode="process"` |
 | `metadata_csv` | `str?` | `null` | Joined onto the measurements mirror |
-| `sample` | `int?` | `null` | Pilot subset |
+
+**`mode`, `layer` and `sample` are deliberately absent.** They existed because
+the CLI has them, not because any workflow section reaches for them: §8, §9.5 and
+§10 all describe tuning on a subset and deploying the winner. Keeping them forced
+§5.4's most intricate paragraph — `uses_staged_gpu_strategy` routes to the staged
+engine only when `process_only_layer` is `None` or `"objmap"`, so `staged_gpu`
+had to report a mode-dependent dispatch answer — and they are the spec's largest
+coupling to a storage redesign that is adding `--mode migrate` and changing what
+`--mode recompile` does. **v1 deploy is always the full pipeline.** `sample` goes
+with them: the subset *is* the thinning mechanism now, and two ways to shrink an
+input set is one too many. Add `mode` back when a workflow needs it, against
+whatever the enum is by then.
 
 ```json
 {"ok":true,"data":{
@@ -240,9 +249,8 @@ Same arguments as `deploy_plan`, plus:
 
 | Arg | Type | Default | Meaning |
 |---|---|---|---|
-| `scope` | `"subset" \| "full"` | `"subset"` | `full` targets `subset.parent` and additionally requires `promotion_token` (§10.5) |
+| `scope` | `"subset" \| "full"` | `"subset"` | `full` targets `subset.parent`; its `plan_token` must have been minted at `scope:"full"` with the human ack recorded (§10.5) |
 | `plan_token` | `str` | — | **Required.** From a matching `deploy_plan`, or from an approved campaign arm |
-| `promotion_token` | `str?` | `null` | **Required when `scope: "full"`.** From `promotion_approve` |
 | `resume` | `bool` | `false` | Continue an interrupted run |
 | `retry_failures` | `bool` | `false` | Requires `resume` |
 | `restart` | `bool` | `false` | Clear machine state and start over |
@@ -283,10 +291,11 @@ would make every restart silently invalidate approvals you had already given.
 | Expiry | `expires` (default 24 h); an expired token → `plan_stale`, not silent acceptance |
 | Single use | `consumed_by` is CAS'd to the `run_id` on a successful `deploy_start`; a second use → `plan_stale`. Re-running a deploy means re-planning, which is cheap and keeps the preview honest |
 
-`promotion_token` records are identical in shape with `kind: "promotion"`, and
-additionally bind `parent_digest` — so a parent that gained images between
-review and submit invalidates the token (`promotion_stale`, §10.5) rather than
-quietly deploying over a dataset you did not review.
+A `scope:"full"` token additionally binds `parent_digest`, so a parent that
+gained images between the plan and the submission invalidates it (`plan_stale`,
+§10.5) rather than quietly deploying over a dataset you did not review. It also
+records the human ack, which is what makes it the promotion gate rather than
+merely a plan.
 
 The token is satisfied two ways: a direct `deploy_plan` call, or membership in
 an **approved campaign** (§8), which stamps a token per arm at approval time.

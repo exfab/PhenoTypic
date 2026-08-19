@@ -183,14 +183,33 @@ DataFrame cannot reach the request path. But that is incidental, not designed:
 any future code comparing a campaign's declared scorer against an already-parsed
 `deliverables/tuning_spec.json.pht-tune` object would hit case 1 directly.
 
-**`status` is provenance, not security.** The server cannot verify that a human
-approved anything; `campaign_approve` is a call the agent makes *after* you say
-so in chat. It is recorded so the transcript and the artifact agree, and so
-Phase 2 has a checkable precondition — not because it authenticates you.
+**`status` is confirmation where the host supports it, provenance where it does
+not.** An earlier draft conceded that "the server cannot verify that a human
+approved anything… an agent could fabricate the field", and mitigated by making
+fabrication explicit rather than silent. **That constraint is no longer real.**
+
+`campaign_approve` raises an **elicitation** — a form the *host* renders and the
+human answers. The response comes from the user's keyboard, not the agent's token
+stream, so approval becomes actual confirmation for the more expensive of the two
+irreversible steps rather than a field the agent fills in.
+
+Three things this does not change, stated so the guarantee is not overread:
+
+- **The fallback is mandatory, not optional.** A host without elicitation gets the
+  previous design exactly — `human_response` required, fabrication explicit — so
+  the server never depends on a capability it cannot confirm. `human_response` is
+  therefore **required-unless-elicited**, a signature decision taken now precisely
+  so adopting elicitation later is not a breaking change.
+- **It is not authentication.** It confirms that *a* human at the host answered,
+  not *which* human, and the server still runs with that user's rights (§6.4).
+- **Behaviour under §1.3's shared connection is unverified.** All subagents share
+  one server, and whether an elicitation raised from a subagent's call surfaces to
+  the human — and to whom it is attributed when two are in flight — must be tested
+  against the real host before this path is relied on.
 
 ## 8.3 Campaign tools
 
-Five tools, bringing the total to 32.
+Four tools.
 
 ### `campaign_put` (`W0`) — draft the plan
 
@@ -283,14 +302,14 @@ during fan-out, so a concurrent `campaign_approve` or an in-envelope amendment (
 change the arm set mid-launch. Writes to `campaign.json` are atomic and CAS on
 `status` (§2.6).
 
-### `campaign_get` (`W0`) — read the stored campaign back
+### `campaign_status {detail:"artifact"}` — read the stored campaign back
 
-`{campaign_id}` → the `campaign.json` artifact verbatim: arms with their
+`{campaign_id, detail:"artifact"}` → the `campaign.json` artifact verbatim: arms with their
 `pipeline`, `tune_spec`, `study_id`, `rationale`, `prefab_baseline`, and the
 `pipeline_digest` / `spec_digest` binding (§8.2), plus the objective, budget,
 compute, subset, and experiment-profile references.
 
-**This is the session-recovery entry point.** An agent resuming after a context
+**This is the session-recovery entry point**, and it is a `detail` mode of `campaign_status` rather than a separate tool — mirroring `tune_status` and `deploy_status`, and retiring a sibling pair whose names invited confusion. An agent resuming after a context
 compaction typically holds one thing: a campaign id. `campaign_status` reports
 *progress* per arm but not the artifact ids, so without `campaign_get` the only
 route back to a winning arm's pipeline was to know, unprompted, to call
@@ -300,7 +319,7 @@ this spec named nowhere.
 **Recovery procedure**, stated once so it is not folklore:
 
 ```
-campaign_get {campaign_id}        -> arms, their pipeline/tune_spec/study_id,
+campaign_status {campaign_id, detail:"artifact"} -> arms, pipeline/tune_spec/study_id,
                                      subset_id, experiment_profile, objective
 campaign_status {campaign_id}     -> where each arm actually got to
 workspace_lineage {id: <study>}   -> only if you need the provenance chain

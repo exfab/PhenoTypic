@@ -108,6 +108,62 @@ That last entry is the point: `medium.opacity` is a trait added *after* v1. It
 required a registry row in the skill and **nothing else** — no server change, no
 `schema_version` bump, no migration.
 
+### 9.3.0.2 Multi-group experiments — `group_by` and per-group overrides
+
+One experiment routinely holds several **species × media groups**, and they can
+need different pipelines, different parameters, and **different expected counts** —
+which is the scorer, not merely the pipeline. An earlier draft assumed
+homogeneity in three places at once: one profile per dataset, one `pipeline_id`
+per deploy (§5.4), one scorer per campaign (§8.2).
+
+**Grouping is by one or more metadata columns, named on the profile.** Not by
+directory layout: `scan_directory_structure`'s one-subdirectory-level rule cannot
+express `species × medium`, and the agent must be able to state the grouping it
+cares about rather than inherit whatever the tree happens to encode.
+
+```json
+{
+  "group_by": ["Metadata_Species", "Metadata_Medium"],
+  "traits": { "plate.format": {"value":"arrayed","source":"human"},
+              "imaging.modality": {"value":"flatbed_scanner","source":"metadata"} },
+  "groups": {
+    "neurospora|minimal": {
+      "traits": {"organism.morphology": {"value":"filamentous","source":"human"},
+                 "medium.opacity": {"value":"clear","source":"human"}}},
+    "aspergillus|rich": {
+      "traits": {"organism.morphology": {"value":"filamentous","source":"human"},
+                 "colony.contrast_vs_background": {"value":"low","source":"human"}}}
+  }
+}
+```
+
+Experiment-wide traits live in `traits`; a group's entry **overrides** them by
+key. `plate.format` and `imaging.modality` are usually shared;
+`organism.morphology`, `colony.contrast_vs_background` and `medium.opacity` are
+exactly what differs. The envelope needs no change — unknown keys already
+round-trip and every trait is already individually optional (§9.3.0.1).
+
+**The strategy is general-first.** Try one pipeline across the whole experiment,
+and descend to per-group only where evidence requires it — the same discipline as
+§9.4's prefab-first rule, and for the same reason: specializing before you have
+evidence buys complexity you cannot justify later. This is judgment, so per §9.1
+it lives in the skill; what the server must supply is the **mechanism** and the
+**signal**.
+
+- **Mechanism.** A subset selector may filter to a group, not merely stratify
+  across groups (§10.3) — `MetadataGroupSubsetSelector` already joins the CSV to
+  images, and selecting one group is that join with a predicate. A per-group
+  campaign then falls out of a per-group subset with no campaign change, and
+  §8.2's one-scorer invariant holds *within* a group, which is the only place it
+  was ever meaningful: comparing an *Aspergillus* arm against a *Neurospora* arm
+  never was. Per-group deploy follows from staging (§10.3.1), which already
+  materializes a subset as a directory tree.
+- **Signal.** `campaign_status` reports a **per-group cost breakdown** whenever
+  the subset is group-aware. Without it the strategy is unactionable: a winner
+  scoring 0.08 overall while failing one group entirely is invisible on a single
+  aggregate cost — the same shape as §9.3.3's worst failure, where a wrong
+  `plate.nrows` makes every arm's cost meaningless while looking healthy.
+
 ### 9.3.0.1 The trait envelope
 
 Every entry in `traits` has the same shape, and this is the only structure the
@@ -555,16 +611,16 @@ overfitting the split is not a winner.
 ### `phenotypic-deploy-and-verify`
 
 **When:** a winner exists and a full dataset is to be processed.
-**Tools:** `deploy_plan`, `promotion_request`, `promotion_approve`,
-`deploy_start`, `deploy_status`, `workspace_cancel`.
+**Tools:** `deploy_plan`, `deploy_start`, `deploy_status`, `workspace_cancel`.
 **Procedure:**
 
-1. `promotion_request` — assemble the decision: winner provenance, subset score
-   and held-out gap, measured full-dataset estimate, coverage warnings.
+1. `deploy_plan {scope:"full"}` — assembles the decision: winner provenance,
+   subset score and held-out gap, measured full-dataset estimate, coverage
+   warnings, and the header sweep (§10.6.1).
 2. **Show the human that response and wait.** This is the gate; it is not
    optional and it is not something the agent can conclude on its own.
-3. `promotion_approve` only after they say so, then
-   `deploy_plan {scope:"full"}` → `deploy_start {scope:"full"}`.
+3. `deploy_start {scope:"full"}` only after they say so, using the plan token
+   that approval minted.
 4. Poll `manifest.json`, not exit codes — without `--wait` the CLI exits 0 on
    submission.
 5. Verify against the mirror (`measurements.*`), never the master, and report

@@ -400,7 +400,7 @@ fleet-scale, which is what makes §10.1's invariant structural rather than
 opt-in.
 
 The single exception is `scope: "full"`, which is the *point* of the promotion
-gate and is guarded by `promotion_token`.
+gate and is guarded by a `scope:"full"` `plan_token` carrying the human ack (§10.5).
 
 ## 10.4 What runs unattended (resolves OQ-8.1 and OQ-8.2)
 
@@ -425,89 +425,82 @@ The envelope is what you actually agreed to, and it is checkable.
 ## 10.5 The promotion gate
 
 ```
-promotion_request → [human says yes] → promotion_approve
-                                            ↓
-                          deploy_plan  {scope:"full"}   ← plan_token for the PARENT
-                                            ↓
-                          deploy_start {scope:"full"}   ← plan_token + promotion_token
+deploy_plan  {scope:"full"}   → the decision, + an elicitation → [human says yes]
+                                     ↓
+deploy_start {scope:"full"}   ← the plan_token minted by that approval
 ```
 
-**Both** `deploy_plan` and `deploy_start` take `scope`. This matters: a campaign
-arm can mint a `plan_token` only for `scope:"subset"` (§10.4), so a full-dataset
-run has no other way to obtain one — the plan must be drawn explicitly against
-the parent, which is also what produces the sbatch preview and array sizing for
-480 images rather than 24.
+**One gate, one token.** An earlier draft had a separate `promotion_request` →
+`promotion_approve` pair minting a second `promotion_token`, and this section's
+own text retired it: *"a campaign arm can mint a `plan_token` only for
+`scope:"subset"`, so a full-dataset run has no other way to obtain one — the plan
+must be drawn explicitly against the parent."* That already closes the loop. The
+plan token binds the pipeline digest and the parent digest, expires, and is
+single-use — every property a second token would add.
 
-| `scope` | Requires | Runs against |
-|---|---|---|
-| `"subset"` (default) | `plan_token` | the subset's image list; reachable from a campaign arm |
-| `"full"` | `plan_token` (scope=full) **and** `promotion_token` | `subset.parent` |
-
-`promotion_request` assembles the decision you are actually making, in one
-response:
+What promotion genuinely contributed was **content**, not a second lock, so the
+content moves onto `deploy_plan {scope:"full"}`'s response, which already carries
+`pending_human_ack` and `ack_prompt`:
 
 ```json
 {"ok":true,"data":{
+  "scope":"full",
   "pipeline":"pipelines/edge-v3-tuned.json.pht-pipe",
   "provenance":{"from_study":"studies/phase-edge","trial":47,
                 "prefab_baseline":{"pipeline":"FilamentousFungiPipeline","best_cost":0.31}},
   "subset":{"name":"plates-dev-24","n_images":24,
             "score":0.081,"gap":{"value":0.06,"verdict":"ok"}},
   "full":{"path":"data/plates","n_images":480,"digest_matches_parent":true},
-  "estimate":{"node_hours":18.4,"basis":"subset run: 3.4 s/image measured"},
+  "estimate":{"node_hours":18.4,"basis":"subset run: 3.4 s/image measured",
+              "extrapolation_check":"headers match (1024x1536, 16-bit, 3ch across
+                                     all 480); no re-probe needed"},
+  "plan_token":"pl_7f3a…","plan_expires":"2026-08-20T09:12:00Z",
+  "pending_human_ack":true,
+  "ack_prompt":"Deploy edge-v3-tuned across 480 images (~18.4 node-hours)? Subset
+                score 0.081, held-out gap 0.06 (ok). Coverage unverified.",
   "warnings":[
     {"code":"subset_coverage_unverified",
-     "message":"Subset spans contrast_michelson 0.031–0.094 across 4 measured images. The
-                parent's 480 images were NOT characterized, so whether the subset
-                represents them is unknown, not confirmed. Selection was
-                'user_named'."}]}}
+     "message":"Subset spans contrast_michelson 0.031–0.094 across 4 measured images.
+                The parent's 480 images were NOT characterized, so whether the subset
+                represents them is unknown, not confirmed. Selection was 'user_named'."}]}}
 ```
 
-Two properties this must have:
+**The elicitation fires here**, not two calls earlier — at the point of spend
+rather than at the start of a sequence the agent could still abandon. As in §8.2
+it is confirmation where the host supports it and provenance where it does not,
+with `human_response` required-unless-elicited and the same three caveats: the
+fallback is mandatory, it is not authentication, and behaviour under §1.3's
+shared connection is unverified.
+
+| `scope` | Requires | Runs against |
+|---|---|---|
+| `"subset"` (default) | `plan_token` | the subset's image list; reachable from a campaign arm |
+| `"full"` | `plan_token` minted at `scope:"full"` **with the human ack recorded** | `subset.parent` |
+
+The token binds `(pipeline digest, parent digest, scope)`. If the full dataset
+gained images between the plan and the submission, the token is stale and the
+decision is made again with `code: "plan_stale"` — the property `promotion_stale`
+used to provide.
+
+**Two properties this must keep**, unchanged from the two-tool design:
 
 - **The estimate is measured, not guessed.** The subset run already produced real
-  per-image timing, so the full-dataset node-hour figure has a basis. This is the
-  strongest argument for subset-first development independent of safety: it makes
-  the cost of the expensive step *knowable* before you commit.
+  per-image timing, so the node-hour figure has a basis. This is the strongest
+  argument for subset-first development independent of safety: it makes the cost
+  of the expensive step *knowable* before you commit.
 - **Coverage is reported honestly, including its limits.** A winner tuned on 24
-  easy plates may fail on the hard ones, and cost alone cannot reveal that. But
-  v1 measures traits only on the subset — §10.3 rules full-parent
-  characterization out of scope precisely because it is a substantial compute
-  job. So the warning says the subset's range is **unverified against the
-  parent**, not that a specific number of parent images fall outside it.
-  Claiming the latter would require exactly the dataset-wide probing v1 defers,
-  and asserting it anyway would be the more dangerous error: a false assurance
-  of representativeness is worse than an admitted unknown.
+  easy plates may fail on the hard ones, and cost alone cannot reveal that. v1
+  measures traits only on the subset, so the warning says the range is
+  **unverified against the parent** — not that a specific number of parent images
+  fall outside it. Claiming the latter would need exactly the dataset-wide probing
+  v1 defers, and asserting it anyway is the more dangerous error: a false
+  assurance of representativeness is worse than an admitted unknown.
 
 **Full scope bypasses staging deliberately**, running against `subset.parent`
 directly — the `flat/`+`nested/` split (§10.3.1) exists only for subset-scoped
-work. The parent's *structure* is not re-scanned at promotion, and does not need
-to be: a structural regression (say a stray image dropped beside the `plateA/`
-subdirectories, which would trip `scan_directory_structure`'s mixed-structure
-rejection at submit time) also changes the parent's file-set digest, so
-`digest_matches_parent: false` catches it first and forces a fresh
-`promotion_request`. Stated because §10.3.1 makes fidelity an explicit check for
-staging, and a reader is entitled to ask why the full path has no equivalent.
-
-`promotion_approve {promotion_id, human_response, note?}` records the decision,
-mints the token, and appends a lineage row:
-
-```json
-{"ok":true,"data":{"promotion_id":"prom_2c81","status":"approved",
-  "promotion_token":"pm_5d17…","expires":"2026-08-14T09:12:00Z"}}
-```
-
-`promotion_request`'s response carries `pending_human_ack: true` and an
-`ack_prompt` summarizing the ask (winner, subset score, gap, node-hours,
-coverage warnings), and `human_response` here is required — same reasoning as
-§8.3: it cannot authenticate, but it makes skipping the human an explicit
-fabrication rather than a silent default. The token is bound to `(pipeline digest, parent digest, scope)` — if the
-full dataset gained images since the request, the token is stale and the review
-happens again with `code: "promotion_stale"`.
-
-**The server cannot verify a human approved.** As with campaign approval (§8.2),
-`promotion_approve` is a call the agent makes after you say so in chat. It is
-provenance so the artifact and the transcript agree, not authentication.
+work. The parent's *structure* is not re-scanned at promotion and does not need to
+be: a structural regression also changes the parent's file-set digest, so
+`digest_matches_parent: false` catches it first and forces a fresh plan.
 
 ## 10.6 Risks worth stating
 
