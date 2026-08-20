@@ -81,6 +81,34 @@ def test_overlay_on_no_objmap_node_returns_404(tmp_path, monkeypatch):
     assert resp.status_code == 404
 
 
+def test_rootless_node_store_returns_404_not_500(tmp_path, monkeypatch):
+    """A directory that is not a readable store reads as ABSENT.
+
+    The pre-store version of this case was a bogus ``node.h5`` -- a file that
+    is not a readable artifact. Its store equivalent is a DIRECTORY with no
+    root ``zarr.json``, which is exactly what an interrupted promote leaves
+    behind, and which the route must answer 404 for rather than letting the
+    staging read raise into the blanket 500 handler.
+    """
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
+    app = create_app(image_root=tmp_path)
+    sid = "previewsess0003"
+    blk = "d" * 32
+    sdir = pc.scope_dir(sid, [])
+    # A store directory with arrays but no root: the promote writes the root
+    # LAST, so this is what an interrupted write looks like on disk.
+    (sdir / "base_00.ome.zarr" / "gray" / "0").mkdir(parents=True)
+    pc.write_manifest(sid, [], {
+        "version": pc.MANIFEST_VERSION, "fingerprint": "fp",
+        "scope_key": "", "error": None,
+        "nodes": {blk: {"store": "base_00.ome.zarr", "layers": ["gray"],
+                        "shape": [48, 64], "num_objects": 0}},
+    })
+    client = app.server.test_client()
+    resp = client.get(f"/preview-tiles/{sid}/{pc.scope_hash([])}/{blk}/gray.dzi")
+    assert resp.status_code == 404
+
+
 def test_stage_channel_png_does_not_publish_partial_final_file(
     tmp_path,
     monkeypatch,

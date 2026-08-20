@@ -170,15 +170,65 @@ def _predecessor_block_id(scope, container_id: str):
     return None
 
 
+def _describe_store_node(store_path) -> Optional[dict]:
+    """Describe one node store for the manifest, or ``None`` if it is absent.
+
+    Reads **metadata only** -- ``phenotypic.series`` / ``phenotypic.labels``
+    plus each level-0 array's own shape. A manifest entry must never cost a
+    full :class:`Image` decode; a scope can hold a dozen node stores and the
+    manifest is rebuilt on every fingerprint change.
+
+    Module-level rather than a closure inside :func:`_build_manifest`, which
+    is where it lived: closed over ``sdir`` and ``nodes``, it was reachable
+    from nothing outside ``compute_scope``, so the invariant this docstring
+    states could not be asserted at all.
+
+    Args:
+        store_path: Path to a node's ``*.ome.zarr`` store.
+
+    Returns:
+        ``{"store": ..., "layers": ..., "shape": ..., "num_objects": ...}``
+        with ``store`` set to the store's directory name, or ``None`` when
+        the store is absent. ``store`` is a NAME, not a path: the manifest is
+        read back relative to its scope dir.
+    """
+    from phenotypic import Image
+    from phenotypic.sdk_ import ngff_
+
+    store = Path(store_path)
+    # An interrupted write leaves no root ``zarr.json``, so the store reads
+    # as ABSENT rather than as partial -- the same disposition the missing
+    # ``.h5`` file used to get.
+    if not (store / ngff_.STORE_ROOT_JSON).is_file():
+        return None
+    block = ngff_.read_phenotypic_attributes(store)
+    series = block.get(ngff_.PhenotypicAttr.SERIES, {})
+    # ``.get``: a label-less store omits the key entirely (ledger C3).
+    labels = block.get(ngff_.PhenotypicAttr.LABELS, {})
+    layers = [
+        layer for layer in _LAYER_ORDER if layer in series or layer in labels
+    ]
+    shape, num_objects = [0, 0], 0
+    if "gray" in series:
+        level0 = ngff_.store_level0_shape(store, series["gray"])
+        if level0 is not None:
+            shape = list(level0[-2:])
+    if ngff_.OBJMAP_LABEL in labels:
+        objmap = Image.load_layer_zarr(store, ngff_.OBJMAP_LABEL)
+        num_objects = int(objmap.max()) if objmap.size else 0
+    return {
+        "store": store.name, "layers": layers, "shape": shape,
+        "num_objects": num_objects,
+    }
+
+
 def _build_manifest(fingerprint, fingerprint_inputs, scope, pipeline,
                     sdir) -> dict:
     """Map the scope's input + op blocks to their stores + layer metadata."""
-    from phenotypic import Image
     from phenotypic.gui.builder._conversion_dag import (
         _find_input_block, _topological_image_order,
     )
     from phenotypic.gui.builder._state import stage_of
-    from phenotypic.sdk_ import ngff_
 
     input_block = _find_input_block(scope)
     order = _topological_image_order(scope, input_block)
@@ -190,31 +240,12 @@ def _build_manifest(fingerprint, fingerprint_inputs, scope, pipeline,
     nodes: dict = {}
 
     def _describe(block_id, name):
-        store = sdir / name
-        # An interrupted write leaves no root ``zarr.json``, so the store reads
-        # as ABSENT rather than as partial -- the same disposition the missing
-        # ``.h5`` file used to get.
-        if not (store / ngff_.STORE_ROOT_JSON).is_file():
-            return
-        block = ngff_.read_phenotypic_attributes(store)
-        series = block.get(ngff_.PhenotypicAttr.SERIES, {})
-        # ``.get``: a label-less store omits the key entirely (ledger C3).
-        labels = block.get(ngff_.PhenotypicAttr.LABELS, {})
-        layers = [
-            layer for layer in _LAYER_ORDER if layer in series or layer in labels
-        ]
-        shape, num_objects = [0, 0], 0
-        if "gray" in series:
-            level0 = ngff_.store_level0_shape(store, series["gray"])
-            if level0 is not None:
-                shape = list(level0[-2:])
-        if ngff_.OBJMAP_LABEL in labels:
-            objmap = Image.load_layer_zarr(store, ngff_.OBJMAP_LABEL)
-            num_objects = int(objmap.max()) if objmap.size else 0
-        nodes[block_id] = {
-            "store": name, "layers": layers, "shape": shape,
-            "num_objects": num_objects,
-        }
+        # Resolve + assign only. Everything that decides WHAT a node entry
+        # says lives in the module-level helper, where it can be tested.
+        # Read through the module so a monkeypatch of the helper is seen.
+        node = _describe_store_node(sdir / name)
+        if node is not None:
+            nodes[block_id] = node
 
     _describe(input_block.block_id, BASE_STORE_NAME)
     # Invariant: pipeline.get_ops() insertion order == _topological_image_order
