@@ -282,6 +282,21 @@ Phase 6, because --mode migrate is built on their readers."
   ```
 
 **Constraints specific to this task:**
+- **`load_zarr` reads a STAGED store; a delta preview store is read layer-wise.** This is a
+  deliberate boundary, not a gap. `_load_from_store` indexes `series["gray"]` and
+  `series["detect_mat"]` directly, so `Image.load_zarr` on a store from
+  `save_intermediate_zarr(layers=("objmap",))` raises `KeyError: 'detect_mat'` — and that is
+  correct: `valid_staged_store` **requires** `detect_mat` (Task 1.6), so a delta store is by
+  definition not a staged store. Its readers are `load_layer_zarr` (`_preview_tiles.py`) and
+  `read_phenotypic_attributes` (`_preview_cache._describe`).
+
+  The only caller that reconstitutes a whole `Image` from a node store,
+  `_preview_cache._load_image_auto`, is passed stores written by
+  `apply_with_intermediates(..., full_layers=True)` — full stores. **Do not "fix" the
+  `KeyError` by making `_load_from_store` tolerant**: that would let a partial store load as
+  an `Image` with silently absent layers, which is worse than a loud failure. If Phase 4 ever
+  needs a whole image from a delta store, the answer is to write a full store, not to weaken
+  the loader.
 - ⚠️ **`load_zarr` must RAISE on a `store_schema_version` mismatch**, with an explicit
   "written by a newer PhenoTypic" message naming both the store's version and this build's
   (user ruling 2026-08-19, spec §2.3). This is the other half of the value gate:
