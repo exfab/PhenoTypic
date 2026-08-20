@@ -1,8 +1,8 @@
 """Disk-backed preview cache for the builder node-preview modal.
 
 One directory per (session, scope). Each scope dir holds full-resolution
-per-node HDF snapshots (written by ``apply_with_intermediates(...,
-full_layers=True)``), a ``manifest.json`` mapping block_id -> file/layers,
+per-node OME-Zarr snapshots (written by ``apply_with_intermediates(...,
+full_layers=True)``), a ``manifest.json`` mapping block_id -> store/layers,
 and (lazily) staged PNGs + DZI tile pyramids. The cache lives under the
 system temp dir and is wiped on launch + ``atexit``.
 """
@@ -15,9 +15,10 @@ import json
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Final, Optional
 
 __all__ = [
+    "MANIFEST_VERSION",
     "preview_cache_root",
     "init_cache",
     "wipe_cache",
@@ -31,6 +32,20 @@ __all__ = [
 
 _CACHE_SUBPATH = ("phenotypic", "pipeline-preview")
 _atexit_registered = False
+
+#: Builder DAG manifest schema version. Introduced when the per-node artifact
+#: moved from a single ``.h5`` file to an ``.ome.zarr`` store, so a manifest
+#: written by an older session must be rebuilt rather than misread through a
+#: key that no longer exists. Manifests predating this constant carry no
+#: ``"version"`` at all, which is why ``compute_scope``'s cache-hit guard
+#: treats a missing value as stale.
+MANIFEST_VERSION: Final[int] = 2
+
+#: Per-node artifact names, in the order the manifest reports them.
+_LAYER_ORDER: Final[tuple[str, ...]] = ("rgb", "gray", "detect_mat", "objmap")
+
+#: The pre-pipeline snapshot every scope writes first.
+BASE_STORE_NAME: Final[str] = "base_00.ome.zarr"
 
 
 def preview_cache_root() -> Path:
@@ -156,29 +171,25 @@ def _predecessor_block_id(scope, container_id: str):
 
 
 def _load_image_auto(path: Path):
-    """Load an HDF snapshot as the class it was saved as (Image/GridImage)."""
-    import h5py
-
+    """Load a node store as the class it was saved as (Image/GridImage)."""
     from phenotypic import GridImage, Image
+    from phenotypic.sdk_ import ngff_
 
-    with h5py.File(path, "r") as f:
-        saved = f.attrs.get("phenotypic_class")
-        if isinstance(saved, bytes):
-            saved = saved.decode("utf-8", errors="replace")
-    if saved == "GridImage":
-        return GridImage.load_hdf5(path)
-    return Image.load_hdf5(path)
+    block = ngff_.read_phenotypic_attributes(path)
+    if block.get(ngff_.PhenotypicAttr.IMAGE_CLASS) == "GridImage":
+        return GridImage.load_zarr(path)
+    return Image.load_zarr(path)
 
 
 def _build_manifest(fingerprint, fingerprint_inputs, scope, pipeline,
                     sdir) -> dict:
-    """Map the scope's input + op blocks to their HDF files + layer metadata."""
+    """Map the scope's input + op blocks to their stores + layer metadata."""
+    from phenotypic import Image
     from phenotypic.gui.builder._conversion_dag import (
         _find_input_block, _topological_image_order,
     )
     from phenotypic.gui.builder._state import stage_of
-
-    import h5py
+    from phenotypic.sdk_ import ngff_
 
     input_block = _find_input_block(scope)
     order = _topological_image_order(scope, input_block)
@@ -189,34 +200,42 @@ def _build_manifest(fingerprint, fingerprint_inputs, scope, pipeline,
 
     nodes: dict = {}
 
-    def _describe(block_id, filename):
-        path = sdir / filename
-        if not path.exists():
+    def _describe(block_id, name):
+        store = sdir / name
+        # An interrupted write leaves no root ``zarr.json``, so the store reads
+        # as ABSENT rather than as partial -- the same disposition the missing
+        # ``.h5`` file used to get.
+        if not (store / "zarr.json").is_file():
             return
-        layers, shape, num_objects = [], [0, 0], 0
-        with h5py.File(path, "r") as f:
-            grp = f["layers"] if "layers" in f else f
-            for layer in ("rgb", "gray", "detect_mat", "objmap"):
-                if layer in grp:
-                    layers.append(layer)
-            if "gray" in grp:
-                shape = list(grp["gray"].shape[:2])
-            if "objmap" in grp:
-                import numpy as np
-                num_objects = int(np.max(grp["objmap"][()])) if grp["objmap"].size else 0
+        block = ngff_.read_phenotypic_attributes(store)
+        series = block.get(ngff_.PhenotypicAttr.SERIES, {})
+        # ``.get``: a label-less store omits the key entirely (ledger C3).
+        labels = block.get(ngff_.PhenotypicAttr.LABELS, {})
+        layers = [
+            layer for layer in _LAYER_ORDER if layer in series or layer in labels
+        ]
+        shape, num_objects = [0, 0], 0
+        if "gray" in series:
+            level0 = ngff_.store_level0_shape(store, series["gray"])
+            if level0 is not None:
+                shape = list(level0[-2:])
+        if ngff_.OBJMAP_LABEL in labels:
+            objmap = Image.load_layer_zarr(store, ngff_.OBJMAP_LABEL)
+            num_objects = int(objmap.max()) if objmap.size else 0
         nodes[block_id] = {
-            "hdf": filename, "layers": layers, "shape": shape,
+            "store": name, "layers": layers, "shape": shape,
             "num_objects": num_objects,
         }
 
-    _describe(input_block.block_id, "base_00.h5")
+    _describe(input_block.block_id, BASE_STORE_NAME)
     # Invariant: pipeline.get_ops() insertion order == _topological_image_order
-    # over the same scope == _run_operations' {i:02d}_{key}.h5 naming. The three
-    # must stay in lockstep; do not reorder one without the others.
+    # over the same scope == _run_operations' {i:02d}_{key}.ome.zarr naming. The
+    # three must stay in lockstep; do not reorder one without the others.
     for i, (op_key, block) in enumerate(zip(pipeline.get_ops().keys(), ops_blocks)):
-        _describe(block.block_id, f"{i:02d}_{op_key}.h5")
+        _describe(block.block_id, f"{i:02d}_{op_key}.ome.zarr")
 
     return {
+        "version": MANIFEST_VERSION,
         "fingerprint": fingerprint,
         "fingerprint_inputs": fingerprint_inputs,
         "scope_key": "",  # overwritten by the caller with the real scope key
@@ -229,7 +248,7 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
     """Ensure a scope's full-res preview cache is fresh; return its manifest.
 
     Recursive: a nested scope's input is threaded from its parent's cache
-    (the container's main-flow predecessor HDF). Fingerprints chain so any
+    (the container's main-flow predecessor store). Fingerprints chain so any
     upstream edit invalidates this scope and its descendants.
     """
     from phenotypic.abc_ import GridOperation
@@ -261,7 +280,12 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
     ).hexdigest()
 
     cached = read_manifest(session_id, list(scope_path))
-    if cached is not None and cached.get("fingerprint") == fingerprint \
+    # ``.get("version")`` returning None for a pre-version manifest is the
+    # whole point: every cache written before the ``.h5`` -> ``.ome.zarr`` move
+    # lacks the field, and must MISS and rebuild rather than be read back
+    # through a ``"hdf"`` key that no longer exists.
+    if cached is not None and cached.get("version") == MANIFEST_VERSION \
+            and cached.get("fingerprint") == fingerprint \
             and cached.get("error") is None:
         return cached
 
@@ -281,13 +305,13 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
             pred_id = _predecessor_block_id(parent_scope, container_id)
             parent_dir = scope_dir(session_id, list(scope_path[:-1]))
             if pred_id is None or pred_id not in parent_manifest["nodes"]:
-                pred_file = "base_00.h5"
+                pred_store = BASE_STORE_NAME
             else:
-                pred_file = parent_manifest["nodes"][pred_id]["hdf"]
-            image = _load_image_auto(parent_dir / pred_file)
+                pred_store = parent_manifest["nodes"][pred_id]["store"]
+            image = _load_image_auto(parent_dir / pred_store)
 
-        # Side effect: writes one full-layer HDF snapshot per node into ``sdir``;
-        # ``_build_manifest`` rebuilds the manifest from those on-disk files.
+        # Side effect: writes one full-layer store per node into ``sdir``;
+        # ``_build_manifest`` rebuilds the manifest from those on-disk stores.
         pipeline.apply_with_intermediates(image, output_dir=sdir, full_layers=True)
         manifest = _build_manifest(
             fingerprint, fingerprint_inputs, scope, pipeline, sdir,
@@ -295,6 +319,9 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
         manifest["scope_key"] = "/".join(scope_path)
     except Exception as exc:  # noqa: BLE001
         manifest = {
+            # Versioned too -- without it a failed scope is permanently
+            # re-read as stale and recomputed on every callback.
+            "version": MANIFEST_VERSION,
             "fingerprint": fingerprint, "fingerprint_inputs": fingerprint_inputs,
             "scope_key": "/".join(scope_path), "nodes": {},
             "error": f"{type(exc).__name__}: {exc}",

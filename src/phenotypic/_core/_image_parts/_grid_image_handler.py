@@ -510,7 +510,9 @@ class ImageGridHandler(Image):
     # ------------------------------------------------------------------
     # OME-Zarr round-trip — attributes.phenotypic.grid
     # ------------------------------------------------------------------
-    def _build_store_attributes(self, *, series_names, levels, sections, work_id) -> dict:
+    def _build_store_attributes(
+            self, *, series_names, levels, sections, work_id, has_labels=True
+    ) -> dict:
         """Add ``phenotypic.grid`` to the base attributes block.
 
         ``nrows``/``ncols`` are deliberately **not** projected as NGFF ``plate``
@@ -523,6 +525,8 @@ class ImageGridHandler(Image):
             levels: Resolved pyramid level count.
             sections: The three persisted metadata sections.
             work_id: CLI work id, or ``None``.
+            has_labels: Whether the store carries the objmap label; forwarded
+                verbatim so a label-less preview omits the key here too.
 
         Returns:
             The base block plus ``grid``.
@@ -534,6 +538,7 @@ class ImageGridHandler(Image):
                 levels=levels,
                 sections=sections,
                 work_id=work_id,
+                has_labels=has_labels,
         )
         grid: dict = {"nrows": int(self.nrows), "ncols": int(self.ncols)}
         if self.grid_finder is not None:

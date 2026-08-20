@@ -5,7 +5,7 @@ import json
 import shutil
 import subprocess
 import warnings
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from datetime import datetime
 from fractions import Fraction
 from typing import TYPE_CHECKING, Any
@@ -843,31 +843,6 @@ class ImageIOHandler(ImageColorSpace):
             for key, val in normalized.items():
                 sub.attrs[key] = _encode_meta(val)
 
-    def _save_hdf5_metadata(self, grp) -> None:
-        """Write version info and metadata subgroups into an HDF5 group.
-
-        Deprecated legacy-flat layout helper retained so
-        :meth:`save_intermediate_layers` (which still writes the v1 flat
-        layout) continues to round-trip. The v2 writer is inlined in
-        :meth:`_save_image2hdfgroup`.
-        """
-        grp.attrs["version"] = phenotypic.__version__
-        grp.attrs[_METADATA_SCHEMA_VERSION_ATTR] = _METADATA_SCHEMA_VERSION
-
-        prot = grp.require_group("protected_metadata")
-        normalized_protected = _normalize_stored_metadata_items(
-            self._metadata.protected.items(), section="protected"
-        )
-        for key, val in normalized_protected.items():
-            prot.attrs.modify(key, str(val))
-
-        pub = grp.require_group("public_metadata")
-        normalized_public = _normalize_stored_metadata_items(
-            self._metadata.public.items(), section="public"
-        )
-        for key, val in normalized_public.items():
-            pub.attrs.modify(key, str(val))
-
     def save2hdf5(
             self, filename, compression="gzip", compression_opts=4,
     ):
@@ -972,7 +947,7 @@ class ImageIOHandler(ImageColorSpace):
         )
 
     def _build_store_attributes(
-            self, *, series_names, levels, sections, work_id
+            self, *, series_names, levels, sections, work_id, has_labels=True
     ) -> dict:
         """Assemble ``attributes.phenotypic``. Overridden by ``GridImage``.
 
@@ -981,6 +956,10 @@ class ImageIOHandler(ImageColorSpace):
             levels: Resolved pyramid level count.
             sections: ``{"protected": …, "public": …, "imported": …}``.
             work_id: CLI work id, or ``None``.
+            has_labels: Whether the store carries the objmap label. ``False``
+                omits the ``labels`` key **entirely** rather than emitting an
+                empty mapping, so a preview store never declares a group it
+                does not have.
 
         Returns:
             The ``phenotypic`` attributes block.
@@ -999,6 +978,7 @@ class ImageIOHandler(ImageColorSpace):
                 )
                 if self.gamma is not None
                 else None,
+                has_labels=has_labels,
                 work_id=work_id,
         )
 
@@ -1044,68 +1024,131 @@ class ImageIOHandler(ImageColorSpace):
         """
         from phenotypic.sdk_ import ngff_
 
+        gray = self.gray[:]
+        return self._save_store(
+                path,
+                series=tuple(self._series_names()),
+                write_objmap=True,
+                levels=ngff_.pyramid_level_count(gray.shape[0], gray.shape[1]),
+                work_id=work_id,
+                durable=durable,
+        )
+
+    def _save_store(
+            self,
+            path,
+            *,
+            series: Sequence[str],
+            write_objmap: bool,
+            levels: int,
+            work_id: str | None,
+            durable: bool | None,
+    ) -> Path:
+        """Write one OME-Zarr store into a ``.part`` sibling and promote it.
+
+        The single implementation behind both :meth:`save2zarr` (every series,
+        the label, a full pyramid) and :meth:`save_intermediate_zarr` (a subset
+        of the series, maybe no label, one level).
+
+        *series* and *write_objmap* are two different namespaces and stay two
+        arguments: *series* ranges over :data:`ngff_.SERIES_ORDER`, while
+        ``objmap`` is the label image and is never a member of it. Collapsing
+        them makes ``primary_series`` raise for every enhancer preview
+        (``("detect_mat",)``) and every detector preview (``("objmap",)``).
+
+        The objmap array, the ``labels`` group JSON, and the ``labels`` key in
+        ``attributes.phenotypic`` are one decision -- all three follow
+        *write_objmap*, so a label-less store never declares a group it does
+        not have.
+
+        Args:
+            path: Target ``*.ome.zarr`` directory. Created or replaced.
+            series: Series to write, in canonical order. Must contain a
+                primary series (``rgb`` or ``gray``).
+            write_objmap: Write the objmap label image.
+            levels: Pyramid level count, uniform across the store.
+            work_id: CLI work id, written into the block at build time.
+            durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
+
+        Returns:
+            The promoted store path.
+
+        Raises:
+            ValueError: If *series* carries no primary series.
+        """
+        from phenotypic.sdk_ import ngff_
+
         final = Path(path)
         final.parent.mkdir(parents=True, exist_ok=True)
         part = ngff_.new_part_path(final)
 
-        series_names = self._series_names()
+        series_names = list(series)
         primary = ngff_.primary_series(series_names)
-        gray = self.gray[:]
-        levels = ngff_.pyramid_level_count(gray.shape[0], gray.shape[1])
 
-        arrays: dict[str, np.ndarray] = {
-            "gray"      : gray,
-            "detect_mat": self.detect_mat[:],
+        # Only the requested layers are materialised: a preview store must not
+        # pay for a `detect_mat` the node never touched.
+        loaders = {
+            "rgb"       : lambda: np.moveaxis(self.rgb[:], -1, 0),  # (H,W,C)->(c,y,x)
+            "gray"      : lambda: self.gray[:],
+            "detect_mat": lambda: self.detect_mat[:],
         }
-        if "rgb" in series_names:
-            arrays["rgb"] = np.moveaxis(self.rgb[:], -1, 0)  # (H,W,C) -> (c,y,x)
+        arrays: dict[str, np.ndarray] = {
+            name: loaders[name]() for name in series_names
+        }
 
         # 1. arrays and chunks
         for name in series_names:
             self._write_series(part, name, arrays[name], levels)
-        objmap = self.objmap[:]
-        self._write_series(part, ngff_.objmap_path(primary), objmap, levels)
+        objmap = self.objmap[:] if write_objmap else None
+        if objmap is not None:
+            self._write_series(part, ngff_.objmap_path(primary), objmap, levels)
 
         # 2. per-group ome metadata
         bit_depth = int(self.bit_depth or 8)
         name = self._metadata.protected.get(IMAGE.IMAGE_NAME)
-        for series in series_names:
-            shapes = ngff_.pyramid_level_shapes(arrays[series].shape, levels)
+        for series_name in series_names:
+            shapes = ngff_.pyramid_level_shapes(arrays[series_name].shape, levels)
             block = {
                 "version": ngff_.NGFF_VERSION,
                 **ngff_.build_multiscales(
-                        series=series, level_shapes=shapes, name=name
+                        series=series_name, level_shapes=shapes, name=name
                 ),
                 **ngff_.build_omero(
-                        series=series,
-                        dtype=arrays[series].dtype,
+                        series=series_name,
+                        dtype=arrays[series_name].dtype,
                         bit_depth=bit_depth,
                         name=name,
                 ),
             }
-            self._write_group_json(part / series, {"ome": block})
-        label_shapes = ngff_.pyramid_level_shapes(objmap.shape, levels)
-        self._write_group_json(
-                part / primary / ngff_.LABELS_GROUP,
-                {"ome": {"version": ngff_.NGFF_VERSION, "labels": [ngff_.OBJMAP_LABEL]}},
-        )
-        self._write_group_json(
-                part / ngff_.objmap_path(primary),
-                {
-                    "ome": {
-                        "version": ngff_.NGFF_VERSION,
-                        # `name` here too: §2.4's "SHOULD contain the field
-                        # 'name'" is not scoped to image series, and every
-                        # sibling group honours it (ledger ALGO-R2B-16).
-                        **ngff_.build_multiscales(
-                                series=ngff_.OBJMAP_LABEL,
-                                level_shapes=label_shapes,
-                                name=f"{name}/{ngff_.OBJMAP_LABEL}" if name else None,
-                        ),
-                        **ngff_.build_image_label(),
-                    }
-                },
-        )
+            self._write_group_json(part / series_name, {"ome": block})
+        if objmap is not None:
+            label_shapes = ngff_.pyramid_level_shapes(objmap.shape, levels)
+            self._write_group_json(
+                    part / primary / ngff_.LABELS_GROUP,
+                    {
+                        "ome": {
+                            "version": ngff_.NGFF_VERSION,
+                            "labels" : [ngff_.OBJMAP_LABEL],
+                        }
+                    },
+            )
+            self._write_group_json(
+                    part / ngff_.objmap_path(primary),
+                    {
+                        "ome": {
+                            "version": ngff_.NGFF_VERSION,
+                            # `name` here too: §2.4's "SHOULD contain the field
+                            # 'name'" is not scoped to image series, and every
+                            # sibling group honours it (ledger ALGO-R2B-16).
+                            **ngff_.build_multiscales(
+                                    series=ngff_.OBJMAP_LABEL,
+                                    level_shapes=label_shapes,
+                                    name=f"{name}/{ngff_.OBJMAP_LABEL}" if name else None,
+                            ),
+                            **ngff_.build_image_label(),
+                        }
+                    },
+            )
 
         # 3. OME/ group -- all or nothing. `build_ome_xml` RAISES rather than
         # returning None (user ruling, ALGO-3), so there is no fallback branch:
@@ -1142,6 +1185,7 @@ class ImageIOHandler(ImageColorSpace):
                             levels=levels,
                             sections=sections,
                             work_id=work_id,
+                            has_labels=write_objmap,
                     ),
                 },
         )
@@ -1149,70 +1193,70 @@ class ImageIOHandler(ImageColorSpace):
                 part, final, fsync=ngff_.durable_writes_enabled(durable)
         )
 
-    def save_intermediate_layers(
-            self,
-            filename,
-            layers: tuple[str, ...],
-            compression="gzip",
-            compression_opts=4,
-    ):
-        """Save only the specified image layers to an HDF5 file.
+    def save_intermediate_zarr(self, path, layers: tuple[str, ...]) -> Path:
+        """Save only *layers* as a single-level OME-Zarr store.
+
+        Used for GUI builder node previews. No pyramid: previews are transient
+        and small, and pyramiding them would multiply builder-cache inodes for
+        no reader benefit. The promote primitive is still used, because Dash
+        callbacks write these concurrently.
+
+        ``gray`` is always co-written whatever *layers* names (user ruling,
+        2026-08-19): *layers* says what the node **changed**, and without a
+        primary series there is no anchor for the objmap path, the ``labels``
+        group, or the OME projection.
 
         Args:
-            filename: Path to the HDF5 file to create.
-            layers: Tuple of layer names to save. Valid names are
-                ``"rgb"``, ``"gray"``, ``"detect_mat"``, ``"objmap"``.
-            compression: Compression filter. Defaults to ``"gzip"``.
-            compression_opts: Compression level (1-9). Defaults to 4.
+            path: Target ``*.ome.zarr`` directory.
+            layers: Subset of ``("rgb", "gray", "detect_mat", "objmap")``.
+
+        Returns:
+            The promoted store path.
 
         Raises:
-            ValueError: If *layers* contains unknown layer names.
+            ValueError: If *layers* contains unknown names.
+
+        Examples:
+            Preview an enhancer node -- ``detect_mat`` is what changed, and
+            ``gray`` rides along as the primary series:
+
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from phenotypic import Image
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> img = Image(load_synth_yeast_plate())
+            >>> with tempfile.TemporaryDirectory() as tmp:
+            ...     store = img.save_intermediate_zarr(
+            ...             Path(tmp) / 'node.ome.zarr', layers=('detect_mat',)
+            ...     )
+            ...     Image.load_layer_zarr(store, 'gray').shape
+            (600, 800)
         """
-        _valid = {"rgb", "gray", "detect_mat", "objmap"}
-        unknown = set(layers) - _valid
+        from phenotypic.sdk_ import ngff_
+
+        valid = {"rgb", "gray", "detect_mat", ngff_.OBJMAP_LABEL}
+        unknown = set(layers) - valid
         if unknown:
             raise ValueError(f"Unknown layer names: {unknown}")
-
-        with h5py.File(filename, mode="w") as f:
-            for layer in layers:
-                if layer == "rgb":
-                    if not self.rgb.isempty():
-                        array = self.rgb[:]
-                        HDF.save_array2hdf5(
-                                group=f, array=array, name="rgb",
-                                dtype=array.dtype,
-                                compression=compression,
-                                compression_opts=compression_opts,
-                        )
-                elif layer == "gray":
-                    array = self.gray[:]
-                    HDF.save_array2hdf5(
-                            group=f, array=array, name="gray",
-                            dtype=array.dtype,
-                            compression=compression,
-                            compression_opts=compression_opts,
-                    )
-                elif layer == "detect_mat":
-                    array = self.detect_mat[:]
-                    HDF.save_array2hdf5(
-                            group=f, array=array, name="detect_mat",
-                            dtype=array.dtype,
-                            compression=compression,
-                            compression_opts=compression_opts,
-                    )
-                    f["detect_mat"].attrs["detect_mode"] = (
-                        self._data.detect_mode
-                    )
-                elif layer == "objmap":
-                    array = self.objmap[:]
-                    HDF.save_array2hdf5(
-                            group=f, array=array, name="objmap",
-                            dtype=array.dtype,
-                            compression=compression,
-                            compression_opts=compression_opts,
-                    )
-
-            self._save_hdf5_metadata(f)
+        # `gray` is unioned in so the store always has a primary series; see
+        # the docstring. `objmap` is the LABEL and travels separately -- it is
+        # not a member of SERIES_ORDER.
+        #
+        # Filtered through `_series_names()`, not SERIES_ORDER: every
+        # ImageCorrector reports all four layers, and `self.rgb[:]` RAISES
+        # NoArrayError on an image built from a 2-D array, so a grayscale
+        # preview would abort mid-write.
+        wanted = set(layers) | {"gray"}
+        return self._save_store(
+                path,
+                series=tuple(
+                        name for name in self._series_names() if name in wanted
+                ),
+                write_objmap=ngff_.OBJMAP_LABEL in layers,
+                levels=1,
+                work_id=None,
+                durable=False,
+        )
 
     @classmethod
     def _load_from_hdf5_group(cls, group, **kwargs) -> Image:

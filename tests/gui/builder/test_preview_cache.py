@@ -20,9 +20,10 @@ def test_scope_dir_isolated_per_scope(tmp_path, monkeypatch):
 def test_manifest_roundtrip(tmp_path, monkeypatch):
     monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
     manifest = {
+        "version": pc.MANIFEST_VERSION,
         "fingerprint": "abc",
         "scope_key": "",
-        "nodes": {"blk": {"hdf": "base_00.h5", "layers": ["rgb"],
+        "nodes": {"blk": {"store": "base_00.ome.zarr", "layers": ["rgb"],
                           "shape": [10, 10], "num_objects": 0}},
         "error": None,
     }
@@ -34,7 +35,10 @@ def test_manifest_roundtrip(tmp_path, monkeypatch):
 def test_wipe_scope_removes_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
     d = pc.scope_dir("sess1", [])
-    (d / "base_00.h5").write_bytes(b"x")
+    # A node artifact is a DIRECTORY tree now, not a single file.
+    store = d / "base_00.ome.zarr" / "gray" / "0"
+    store.mkdir(parents=True)
+    (store / "zarr.json").write_text("{}")
     pc.wipe_scope("sess1", [])
     assert not d.exists()
 

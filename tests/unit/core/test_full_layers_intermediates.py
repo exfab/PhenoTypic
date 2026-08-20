@@ -1,11 +1,22 @@
-"""full_layers=True writes complete v2 HDF snapshots per node."""
-import h5py
+"""full_layers=True writes complete OME-Zarr snapshots per node."""
+import numpy as np
+
+from phenotypic import Image
 from phenotypic._core._image_pipeline import ImagePipeline
-from phenotypic.enhance import BlurGauss
 from phenotypic.detect import OtsuDetector
+from phenotypic.enhance import BlurGauss
+from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
 
 
-def test_full_layers_writes_v2_snapshots(tmp_path):
+def _store_layers(store) -> set[str]:
+    """Every layer a store carries: its series plus its label."""
+    block = read_phenotypic_attributes(store)
+    return set(block.get(PhenotypicAttr.SERIES, {})) | set(
+        block.get(PhenotypicAttr.LABELS, {})
+    )
+
+
+def test_full_layers_writes_complete_snapshots(tmp_path):
     from phenotypic.data import load_synth_yeast_plate
 
     image = load_synth_yeast_plate()
@@ -16,27 +27,28 @@ def test_full_layers_writes_v2_snapshots(tmp_path):
         image, output_dir=out_dir, full_layers=True
     )
 
-    base = out_dir / "base_00.h5"
-    assert base.exists()
-    with h5py.File(base, "r") as f:
-        assert int(f.attrs["schema_version"]) == 2
-        assert "layers" in f
-        for layer in ("gray", "detect_mat", "objmap"):
-            assert layer in f["layers"]
+    base = out_dir / "base_00.ome.zarr"
+    assert base.is_dir()
+    block = read_phenotypic_attributes(base)
+    assert block[PhenotypicAttr.STORE_SCHEMA_VERSION] == 3
+    # A full snapshot also carries the class, which is what lets the builder
+    # reconstruct a faithful GridImage from any node.
+    assert block[PhenotypicAttr.IMAGE_CLASS] == "GridImage"
+    assert _store_layers(base) == {"rgb", "gray", "detect_mat", "objmap"}
 
-    enhancer_file = out_dir / "00_BlurGauss.h5"
-    assert enhancer_file.exists()
-    with h5py.File(enhancer_file, "r") as f:
-        assert "layers" in f
-        # full snapshot keeps ALL layers, not just the modified detect_mat
-        assert "gray" in f["layers"]
-        assert "detect_mat" in f["layers"]
-        assert "objmap" in f["layers"]
+    enhancer_store = out_dir / "00_BlurGauss.ome.zarr"
+    assert enhancer_store.is_dir()
+    # full snapshot keeps ALL layers, not just the modified detect_mat
+    assert _store_layers(enhancer_store) == {"rgb", "gray", "detect_mat", "objmap"}
+    assert not np.array_equal(
+        Image.load_layer_zarr(enhancer_store, "detect_mat"),
+        Image.load_layer_zarr(base, "detect_mat"),
+    )
 
-    detector_file = out_dir / "01_OtsuDetector.h5"
-    assert detector_file.exists()
-    with h5py.File(detector_file, "r") as f:
-        assert "objmap" in f["layers"]
+    detector_store = out_dir / "01_OtsuDetector.ome.zarr"
+    assert detector_store.is_dir()
+    assert _store_layers(detector_store) == {"rgb", "gray", "detect_mat", "objmap"}
+    assert int(Image.load_layer_zarr(detector_store, "objmap").max()) > 0
     assert result.image is not None
 
 
@@ -49,8 +61,6 @@ def test_full_layers_false_keeps_delta_behavior(tmp_path):
 
     pipeline.apply_with_intermediates(image, output_dir=out_dir)  # default
 
-    with h5py.File(out_dir / "00_BlurGauss.h5", "r") as f:
-        # legacy flat layout, only the modified layer
-        assert "detect_mat" in f
-        assert "layers" not in f
-        assert "rgb" not in f
+    # The delta carries the modified layer plus the co-written `gray` primary
+    # series -- and nothing else.
+    assert _store_layers(out_dir / "00_BlurGauss.ome.zarr") == {"gray", "detect_mat"}
