@@ -76,6 +76,45 @@ def test_promote_replaces_a_non_empty_existing_store(tmp_path: Path) -> None:
     assert (final / "zarr.json").read_text(encoding="utf-8") == '{"marker": "new"}'
 
 
+def test_nothing_writes_into_a_promoted_store(tmp_path: Path) -> None:
+    """FLOW-5: a promoted store is **replaced wholesale**, never mutated in place.
+
+    This is the invariant three separate subsystems now rest on, none of which
+    can detect its violation on its own:
+
+    * per-image completion markers fingerprint a store by its root ``zarr.json``
+      alone (Task 3.8), because the promote writes the root **last**;
+    * the results viewer's staleness scan is bounded to that same root (user
+      ruling 2026-08-20), so an in-place chunk write would be invisible to it;
+    * ``valid_staged_store`` treats a parseable root as evidence the whole store
+      is complete.
+
+    Each of those is *correct only while this holds*. Add one code path that
+    opens an array inside a promoted store for writing and all three start
+    lying, with nothing failing to say so -- which is precisely why the guard
+    belongs here, at the primitive, rather than in any one of them.
+
+    Proven by identity, not by content: the promoted directory is a **different
+    inode** from the one it replaced, and so is every chunk beneath it. A
+    merge-in-place implementation would leave the old directory in position with
+    new bytes inside it, passing any content assertion while breaking all three
+    readers above.
+    """
+    final = _fake_store(tmp_path / "plate_01.ome.zarr", "old")
+    before_dir = final.stat().st_ino
+    before_chunk = (final / "0" / "c.0.0.0").stat().st_ino
+
+    part = _fake_store(ngff_.new_part_path(final), "new")
+    part_dir = part.stat().st_ino
+    ngff_.promote_store(part, final, fsync=False)
+
+    assert final.stat().st_ino != before_dir
+    assert (final / "0" / "c.0.0.0").stat().st_ino != before_chunk
+    # It is the *part* that is now in position -- a rename, not a copy.
+    assert final.stat().st_ino == part_dir
+    assert (final / "zarr.json").read_text(encoding="utf-8") == '{"marker": "new"}'
+
+
 def test_promote_leaves_no_trash_behind(tmp_path: Path) -> None:
     final = _fake_store(tmp_path / "plate_01.ome.zarr", "old")
     part = _fake_store(ngff_.new_part_path(final), "new")
