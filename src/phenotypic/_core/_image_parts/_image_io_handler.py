@@ -902,6 +902,253 @@ class ImageIOHandler(ImageColorSpace):
                     compression_opts=compression_opts,
             )
 
+    def _series_names(self) -> list[str]:
+        """Series this image will write, in canonical order.
+
+        ``rgb`` is omitted entirely when empty; ``gray`` then becomes the
+        primary series and the objmap label attaches under it.
+
+        Returns:
+            The series names to write, in :data:`ngff_.SERIES_ORDER` order.
+        """
+        from phenotypic.sdk_.ngff_ import SERIES_ORDER
+
+        return [
+            name
+            for name in SERIES_ORDER
+            if name != "rgb" or not self.rgb.isempty()
+        ]
+
+    def _write_series(
+            self, part: Path, series: str, array: np.ndarray, levels: int
+    ) -> None:
+        """Write every pyramid level of one series (or label) into *part*.
+
+        Args:
+            part: The ``.part`` directory being built.
+            series: Group path relative to *part*.
+            array: Level-0 array.
+            levels: Level count, uniform across the store.
+        """
+        import zarr
+
+        from phenotypic.sdk_ import ngff_
+
+        kind = "label" if series.endswith(ngff_.OBJMAP_LABEL) else "image"
+        name = ngff_.OBJMAP_LABEL if kind == "label" else series
+        for index, level in enumerate(ngff_.build_pyramid(array, levels, kind=kind)):
+            handle = zarr.create_array(
+                    store=ngff_.long_path(part / series / str(index)),
+                    **ngff_.array_create_kwargs(level.shape, level.dtype, name),
+            )
+            handle[...] = level
+
+    @staticmethod
+    def _write_group_json(group_dir: Path, attributes: dict) -> None:
+        """Write a Zarr v3 group ``zarr.json`` carrying *attributes*.
+
+        ``default=str`` mirrors :func:`_encode_meta`: metadata values are
+        stored verbatim and unvalidated, so a non-JSON-native value (an
+        ``np.datetime64`` read off a TIFF, say) must serialise rather than
+        abort the write, exactly as it does on the HDF path.
+
+        Args:
+            group_dir: Directory of the Zarr group; created if absent.
+            attributes: The group's ``attributes`` mapping.
+        """
+        group_dir = Path(group_dir)
+        group_dir.mkdir(parents=True, exist_ok=True)
+        (group_dir / "zarr.json").write_text(
+                json.dumps(
+                        {
+                            "zarr_format": 3,
+                            "node_type" : "group",
+                            "attributes": attributes,
+                        },
+                        indent=2,
+                        default=str,
+                ),
+                encoding="utf-8",
+        )
+
+    def _build_store_attributes(
+            self, *, series_names, levels, sections, work_id
+    ) -> dict:
+        """Assemble ``attributes.phenotypic``. Overridden by ``GridImage``.
+
+        Args:
+            series_names: Series actually written, in canonical order.
+            levels: Resolved pyramid level count.
+            sections: ``{"protected": …, "public": …, "imported": …}``.
+            work_id: CLI work id, or ``None``.
+
+        Returns:
+            The ``phenotypic`` attributes block.
+        """
+        from phenotypic.sdk_ import ngff_
+
+        return ngff_.build_phenotypic_attributes(
+                image_class=type(self).__name__,
+                series_names=series_names,
+                pyramid_levels=levels,
+                metadata_sections=sections,
+                detect_mode=self._data.detect_mode,
+                illuminant=str(self.illuminant) if self.illuminant is not None else None,
+                gamma=(
+                    self.gamma.name if hasattr(self.gamma, "name") else str(self.gamma)
+                )
+                if self.gamma is not None
+                else None,
+                work_id=work_id,
+        )
+
+    def save2zarr(
+            self,
+            path,
+            *,
+            work_id: str | None = None,
+            durable: bool | None = None,
+    ) -> Path:
+        """Save the image as an OME-Zarr (NGFF 0.5 / Zarr v3) store.
+
+        Builds a uuid-suffixed ``.part`` sibling, writes every array, then
+        ``OME/zarr.json``, then the root ``zarr.json`` **last**, then promotes
+        by directory rename. An interrupted write leaves no valid root, so the
+        store reads as absent rather than as partial.
+
+        ``rgb`` is omitted entirely when empty, which moves the primary series
+        and the objmap label to ``gray``; ``objmap`` is always written, zeros
+        included, because ``valid_staged_store`` requires it after Stage 1.
+
+        Args:
+            path: Target ``*.ome.zarr`` directory. Created or replaced.
+            work_id: CLI work id, written into ``attributes.phenotypic`` at
+                build time. Never patched in afterwards.
+            durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
+
+        Returns:
+            The promoted store path.
+
+        Examples:
+            Save a synthetic plate and read it back:
+
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from phenotypic import Image
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> img = Image(load_synth_yeast_plate())
+            >>> with tempfile.TemporaryDirectory() as tmp:
+            ...     store = img.save2zarr(Path(tmp) / 'plate.ome.zarr')
+            ...     Image.load_zarr(store).gray[:].shape == img.gray[:].shape
+            True
+        """
+        from phenotypic.sdk_ import ngff_
+
+        final = Path(path)
+        final.parent.mkdir(parents=True, exist_ok=True)
+        part = ngff_.new_part_path(final)
+
+        series_names = self._series_names()
+        primary = ngff_.primary_series(series_names)
+        gray = self.gray[:]
+        levels = ngff_.pyramid_level_count(gray.shape[0], gray.shape[1])
+
+        arrays: dict[str, np.ndarray] = {
+            "gray"      : gray,
+            "detect_mat": self.detect_mat[:],
+        }
+        if "rgb" in series_names:
+            arrays["rgb"] = np.moveaxis(self.rgb[:], -1, 0)  # (H,W,C) -> (c,y,x)
+
+        # 1. arrays and chunks
+        for name in series_names:
+            self._write_series(part, name, arrays[name], levels)
+        objmap = self.objmap[:]
+        self._write_series(part, ngff_.objmap_path(primary), objmap, levels)
+
+        # 2. per-group ome metadata
+        bit_depth = int(self.bit_depth or 8)
+        name = self._metadata.protected.get(IMAGE.IMAGE_NAME)
+        for series in series_names:
+            shapes = ngff_.pyramid_level_shapes(arrays[series].shape, levels)
+            block = {
+                "version": ngff_.NGFF_VERSION,
+                **ngff_.build_multiscales(
+                        series=series, level_shapes=shapes, name=name
+                ),
+                **ngff_.build_omero(
+                        series=series,
+                        dtype=arrays[series].dtype,
+                        bit_depth=bit_depth,
+                        name=name,
+                ),
+            }
+            self._write_group_json(part / series, {"ome": block})
+        label_shapes = ngff_.pyramid_level_shapes(objmap.shape, levels)
+        self._write_group_json(
+                part / primary / ngff_.LABELS_GROUP,
+                {"ome": {"version": ngff_.NGFF_VERSION, "labels": [ngff_.OBJMAP_LABEL]}},
+        )
+        self._write_group_json(
+                part / ngff_.objmap_path(primary),
+                {
+                    "ome": {
+                        "version": ngff_.NGFF_VERSION,
+                        # `name` here too: §2.4's "SHOULD contain the field
+                        # 'name'" is not scoped to image series, and every
+                        # sibling group honours it (ledger ALGO-R2B-16).
+                        **ngff_.build_multiscales(
+                                series=ngff_.OBJMAP_LABEL,
+                                level_shapes=label_shapes,
+                                name=f"{name}/{ngff_.OBJMAP_LABEL}" if name else None,
+                        ),
+                        **ngff_.build_image_label(),
+                    }
+                },
+        )
+
+        # 3. OME/ group -- all or nothing. `build_ome_xml` RAISES rather than
+        # returning None (user ruling, ALGO-3), so there is no fallback branch:
+        # keeping the named groups while dropping `series` is not the
+        # consecutive-integer form NGFF 2.2.3 requires when `series` is absent.
+        sections = {
+            "protected": dict(self._metadata.protected),
+            "public"   : dict(self._metadata.public),
+            "imported" : dict(self._metadata.imported),
+        }
+        xml = ngff_.build_ome_xml(
+                series_names=series_names,
+                series_shapes={name_: arrays[name_].shape for name_ in series_names},
+                series_dtypes={name_: arrays[name_].dtype for name_ in series_names},
+                metadata_sections=sections,
+        )
+        (part / ngff_.OME_GROUP).mkdir(parents=True, exist_ok=True)
+        (part / ngff_.OME_GROUP / ngff_.OME_XML_NAME).write_text(xml, encoding="utf-8")
+        self._write_group_json(
+                part / ngff_.OME_GROUP,
+                {"ome": {"version": ngff_.NGFF_VERSION, "series": series_names}},
+        )
+
+        # 4. root zarr.json LAST
+        self._write_group_json(
+                part,
+                {
+                    "ome"                  : {
+                        "version"              : ngff_.NGFF_VERSION,
+                        "bioformats2raw.layout": ngff_.BIOFORMATS2RAW_LAYOUT,
+                    },
+                    ngff_.PhenotypicAttr.ROOT: self._build_store_attributes(
+                            series_names=series_names,
+                            levels=levels,
+                            sections=sections,
+                            work_id=work_id,
+                    ),
+                },
+        )
+        return ngff_.promote_store(
+                part, final, fsync=ngff_.durable_writes_enabled(durable)
+        )
+
     def save_intermediate_layers(
             self,
             filename,
@@ -1076,6 +1323,119 @@ class ImageIOHandler(ImageColorSpace):
         return img
 
     @classmethod
+    def _load_from_store(cls, path, block, **kwargs) -> Image:
+        """Build an Image from a store root and its ``phenotypic`` block.
+
+        Follows the shape of :meth:`_load_v2_grouped` -- read each series'
+        level-0 array, restore the metadata sections, apply ``detect_mode``,
+        ``illuminant`` and ``gamma`` -- but **assigns the three stored sections
+        verbatim** instead of merging them. ``_load_v2_grouped`` skips any key
+        the constructor already populated, which silently drops the stored
+        ``Metadata_ImageType`` (verified by execution: ``GridSection`` in,
+        ``Image`` out). Spec §2.1 requires ``image_class`` and
+        ``Metadata_ImageType`` to stay independent, so the store read path is
+        deliberately more correct than the HDF one (OPEN-QUESTIONS D7); the HDF
+        loader is not fixed here, it is retired in Phase 6.
+
+        The fourth metadata section, ``private``, is deliberately not persisted
+        -- the HDF writer does not persist it either, and a fresh ``uuid`` per
+        load is the intended behaviour. Do not "complete" the set.
+
+        Args:
+            path: Store root.
+            block: The ``attributes.phenotypic`` mapping.
+            **kwargs: Constructor overrides; these win over stored state.
+
+        Returns:
+            An instance of *cls*.
+        """
+        from phenotypic.sdk_ import ngff_
+
+        series = block.get(ngff_.PhenotypicAttr.SERIES, {})
+        sections = block.get(ngff_.PhenotypicAttr.METADATA, {})
+        stored_protected = sections.get(ngff_.PhenotypicAttr.PROTECTED, {})
+
+        bit_depth = stored_protected.get(IMAGE.BIT_DEPTH)
+        if bit_depth is not None:
+            try:
+                kwargs.setdefault("bit_depth", int(bit_depth))
+            except (TypeError, ValueError):
+                pass
+        illuminant = block.get(ngff_.PhenotypicAttr.ILLUMINANT)
+        if illuminant is not None:
+            kwargs.setdefault("illuminant", str(illuminant))
+        gamma_name = block.get(ngff_.PhenotypicAttr.GAMMA)
+        if gamma_name is not None:
+            # Map the name back through GAMMA_ENCODINGS; on an unknown name
+            # fall back to the constructor-validated default rather than
+            # handing __init__ a string it will reject.
+            try:
+                gamma_val: GAMMA_ENCODINGS = GAMMA_ENCODINGS[str(gamma_name)]
+            except KeyError:
+                warnings.warn(
+                        f"Unknown gamma encoding {gamma_name!r}; falling back to "
+                        f"GAMMA_ENCODINGS.SRGB",
+                        UserWarning,
+                        stacklevel=2,
+                )
+                kwargs.setdefault("gamma", GAMMA_ENCODINGS.SRGB)
+            else:
+                kwargs.setdefault("gamma", gamma_val)
+
+        matrix_data = cls._read_store_array(path, series["gray"])
+        if "rgb" in series:
+            img = cls(arr=cls._read_store_array(path, series["rgb"], layer="rgb"),
+                      **kwargs)
+            img.gray[:] = matrix_data
+        else:
+            img = cls(arr=matrix_data, **kwargs)
+
+        img.detect_mat[:] = cls._read_store_array(path, series["detect_mat"])
+        img._data.detect_mode = (
+                block.get(ngff_.PhenotypicAttr.DETECT_MODE) or "gray"
+        )
+
+        # `.get`: a label-less store OMITS the key entirely (ledger C3).
+        labels = block.get(ngff_.PhenotypicAttr.LABELS, {})
+        if ngff_.OBJMAP_LABEL in labels:
+            img.objmap[:] = cls._read_store_array(path, labels[ngff_.OBJMAP_LABEL])
+
+        targets = {
+            ngff_.PhenotypicAttr.PROTECTED: img._metadata.protected,
+            ngff_.PhenotypicAttr.PUBLIC   : img._metadata.public,
+            ngff_.PhenotypicAttr.IMPORTED : img._metadata.imported,
+        }
+        for section_name, target in targets.items():
+            normalized = _normalize_stored_metadata_items(
+                    sections.get(section_name, {}).items(), section=section_name
+            )
+            target.clear()
+            target.update(normalized)
+
+        return img
+
+    @staticmethod
+    def _read_store_array(path, member: str, *, layer: str = "") -> np.ndarray:
+        """Read one member array's level 0 out of a store.
+
+        Args:
+            path: Store root.
+            member: Store-relative group path, e.g. ``"gray"``.
+            layer: Set to ``"rgb"`` to move the channel axis back to last.
+
+        Returns:
+            The level-0 array.
+        """
+        import zarr
+
+        from phenotypic.sdk_ import ngff_
+
+        array = zarr.open_array(
+                store=ngff_.long_path(Path(path) / member / "0"), mode="r"
+        )[...]
+        return np.moveaxis(array, 0, -1) if layer == "rgb" else array
+
+    @classmethod
     def _load_legacy_flat_group(cls, group, **kwargs) -> Image:
         """Load from the legacy (schema_version=1 / unversioned) flat layout.
 
@@ -1219,6 +1579,99 @@ class ImageIOHandler(ImageColorSpace):
                     f"Layer {layer!r} not found in {filename}"
                 )
             return group[layer][()]
+
+    @classmethod
+    def load_zarr(cls, path, **kwargs) -> Image:
+        """Load an image from an OME-Zarr store.
+
+        Reads only level 0. ``attributes.phenotypic`` is the sole source of
+        truth; the write-only OME projection is never read back.
+
+        Args:
+            path: Path to a ``*.ome.zarr`` directory.
+            **kwargs: Forwarded to the constructor, taking priority over
+                anything recovered from the store.
+
+        Returns:
+            An :class:`Image` (or :class:`GridImage`, via the subclass).
+
+        Raises:
+            FileNotFoundError: If the store has no root ``zarr.json`` -- an
+                interrupted write reads as absent, not as partial.
+            ValueError: If ``store_schema_version`` is not this build's. The
+                gate is by VALUE, not presence: opening a future store under
+                today's semantics is exactly what it exists to prevent.
+
+        Examples:
+            Round-trip a synthetic plate:
+
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from phenotypic import Image
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> img = Image(load_synth_yeast_plate())
+            >>> with tempfile.TemporaryDirectory() as tmp:
+            ...     store = img.save2zarr(Path(tmp) / 'plate.ome.zarr')
+            ...     Image.load_zarr(store).num_objects == img.num_objects
+            True
+        """
+        from phenotypic.sdk_ import ngff_
+
+        block = ngff_.read_phenotypic_attributes(path)
+        found = block.get(ngff_.PhenotypicAttr.STORE_SCHEMA_VERSION)
+        if found != ngff_.STORE_SCHEMA_VERSION:
+            raise ValueError(
+                    f"Cannot read {path}: store_schema_version is {found!r}, but "
+                    f"this build of PhenoTypic reads "
+                    f"{ngff_.STORE_SCHEMA_VERSION}. The store was written by a "
+                    f"newer PhenoTypic -- upgrade the package to read it."
+            )
+        saved_class = block.get(ngff_.PhenotypicAttr.IMAGE_CLASS)
+        if saved_class == "GridImage" and cls.__name__ != "GridImage":
+            warnings.warn(
+                    "Store was saved as GridImage; use GridImage.load_zarr to "
+                    "preserve grid state",
+                    UserWarning,
+                    stacklevel=2,
+            )
+        return cls._load_from_store(path, block, **kwargs)
+
+    @classmethod
+    def load_layer_zarr(cls, path, layer: str, level: int = 0) -> np.ndarray:
+        """Read one layer at one pyramid level without building an Image.
+
+        ``objmap`` is resolved through ``phenotypic.labels.objmap``, never by a
+        hard-coded ``rgb/labels/objmap`` -- an rgb-less store puts the label
+        under ``gray``.
+
+        Args:
+            path: Store path.
+            layer: ``"rgb"``, ``"gray"``, ``"detect_mat"``, or ``"objmap"``.
+            level: Pyramid level index; 0 is full resolution.
+
+        Returns:
+            The layer array. ``rgb`` is returned as ``(H, W, C)``.
+
+        Raises:
+            KeyError: If *layer* is not present in the store.
+        """
+        import zarr
+
+        from phenotypic.sdk_ import ngff_
+
+        block = ngff_.read_phenotypic_attributes(path)
+        # `.get` on LABELS: a label-less store omits the key entirely
+        # (ledger C3), so indexing it would raise KeyError before reaching
+        # the `member is None` branch below.
+        member = block[ngff_.PhenotypicAttr.SERIES].get(layer) or block.get(
+                ngff_.PhenotypicAttr.LABELS, {}
+        ).get(layer)
+        if member is None:
+            raise KeyError(f"Layer {layer!r} not found in {path}")
+        array = zarr.open_array(
+                store=ngff_.long_path(Path(path) / member / str(level)), mode="r"
+        )[...]
+        return np.moveaxis(array, 0, -1) if layer == "rgb" else array
 
     def save2pickle(self, filename: str) -> None:
         """Save the image to a pickle file for fast serialization and deserialization.
