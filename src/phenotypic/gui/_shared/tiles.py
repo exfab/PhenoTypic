@@ -199,7 +199,7 @@ def _crop_pil_source(
     """Crop an already-decoded RGB source to a centered ``size`` x ``size`` window.
 
     The shared geometry body behind both :func:`crop_overlay` (source = a baked
-    overlay PNG) and :func:`crop_hdf_rgb` (source = a raw HDF layer). Computes
+    overlay PNG) and :func:`crop_store_rgb` (source = one store layer). Computes
     ``(top, left) = (round(center_rr) - size // 2, round(center_cc) - size //
     2)``, clamps the requested window to the image bounds, and pastes the
     clamped region onto a freshly-allocated canvas filled with ``pad_value`` so
@@ -269,10 +269,10 @@ def _crop_pil_source(
 
 
 # ---------------------------------------------------------------------------
-# Full-resolution HDF-layer cropping
+# Full-resolution store-layer cropping and pyramid-level tile reads
 # ---------------------------------------------------------------------------
 
-#: One of the displayable HDF layer names a crop can source.
+#: One of the displayable store layer names a crop can source.
 LayerName = Literal["rgb", "detect_mat", "objmap"]
 
 #: Default layer every crop/tile surface sources when none is requested. The
@@ -281,57 +281,253 @@ LayerName = Literal["rgb", "detect_mat", "objmap"]
 #: route default can never drift apart.
 DEFAULT_LAYER: LayerName = "rgb"
 
-#: Number of decoded full-res HDF layers to keep in memory. Full-res layers
-#: are heavier than overlay PNGs (a single plate's rgb layer can be hundreds of
-#: MB), so this cache is deliberately smaller than ``_OVERLAY_CACHE_SIZE``.
-_HDF_LAYER_CACHE_SIZE = 4
+#: Number of decoded store layers to keep in memory. Sized by the DATA, not by
+#: request variety: the cache key carries the RESOLVED pyramid level rather
+#: than the caller's ``target_px``, so distinct targets selecting the same
+#: level share one entry (ledger FLOW-10). Bound is level-count x layer-count;
+#: a 4000x6000 plate has 5 levels and there are 4 layers.
+_STORE_LAYER_CACHE_SIZE = 24
 
 
-@functools.lru_cache(maxsize=_HDF_LAYER_CACHE_SIZE)
-def _load_hdf_layer_rgb(
-    path: str, mtime_ns: int, layer: LayerName
-) -> PILImage.Image:
-    """Decode one HDF layer to an RGB PIL image and cache it.
+class StoreUnreadable(RuntimeError):
+    """A store exists but this build of PhenoTypic cannot decode it.
 
-    ``rgb`` -> raw uint8; ``objmap`` -> ``label2rgb`` colourisation; any other
-    (``detect_mat`` / ``gray``) -> contrast-normalised greyscale promoted to RGB.
+    ``require_readable_store`` gates ``store_schema_version`` **by value** and
+    raises a bare :class:`ValueError`. Bare, that reaches the crop route's
+    blanket handler and the user is told "internal error: crop generation
+    failed" while the actionable message -- which names both versions and the
+    remedy -- reaches only the log. Re-raised as this type, both the crop and
+    the DZI route answer ``422`` and pass the message through.
+    """
 
-    Memory discipline (review W5 / spec Section 4): read ONLY the requested
-    ``/layers/<name>`` dataset via :mod:`h5py` — do NOT call
-    ``load_image_from_hdf`` / ``Image.load_hdf5``, which eagerly materialise
-    *every* layer (rgb + gray + detect_mat + objmap, hundreds of MB) only to
-    discard all but one.
+
+def _readable_block(store_path: Path | str) -> dict:
+    """Read ``attributes.phenotypic``, refusing a store this build can't decode.
 
     Args:
-        path: Absolute path to the per-image ``.h5``, as a string so the cache
-            key is hashable.
-        mtime_ns: ``st_mtime_ns`` at lookup time. Including it in the cache key
-            invalidates the cached frame when the HDF is regenerated under a
-            running viewer.
-        layer: The ``/layers/<name>`` dataset to decode.
+        store_path: Path to a ``*.ome.zarr`` directory.
 
     Returns:
-        The decoded layer as an RGB :class:`PIL.Image.Image`.
+        The ``phenotypic`` block.
 
     Raises:
-        KeyError: If ``layer`` is absent from the HDF.
+        StoreUnreadable: If ``store_schema_version`` is not this build's.
     """
-    del mtime_ns  # Cache-key only.
-    import h5py
+    from phenotypic.sdk_ import ngff_
 
-    with h5py.File(path, "r") as fh:
-        # Modern layout is /layers/<name>; legacy flat layout is /<name>.
-        grp = fh["layers"] if "layers" in fh else fh
-        if layer not in grp:
-            raise KeyError(f"HDF {path} has no layer {layer!r}")
-        arr = np.asarray(grp[layer][:])
-
-    rgb = _hdf_layer_array_to_rgb(arr, layer)
-    return PILImage.fromarray(rgb, mode="RGB")
+    try:
+        return ngff_.require_readable_store(Path(store_path))
+    except ValueError as exc:
+        raise StoreUnreadable(str(exc)) from exc
 
 
-def _hdf_layer_array_to_rgb(arr: np.ndarray, layer: LayerName) -> np.ndarray:
-    """Convert a decoded HDF layer array to an RGB uint8 array."""
+def _store_member_path(block: dict, store_path: Path | str, layer: str) -> str:
+    """Resolve one layer to its store-relative group path.
+
+    ``objmap`` is resolved through ``phenotypic.labels.objmap``, never by a
+    hard-coded ``rgb/labels/objmap``: an rgb-less store puts the label under
+    ``gray``.
+
+    Args:
+        block: The ``attributes.phenotypic`` block.
+        store_path: Store root, for the error message only.
+        layer: ``"rgb"``, ``"gray"``, ``"detect_mat"``, or ``"objmap"``.
+
+    Returns:
+        The store-relative group path of the layer.
+
+    Raises:
+        KeyError: If *layer* is not present in the store.
+    """
+    from phenotypic.sdk_ import ngff_
+
+    # ``.get`` on LABELS: a label-less store omits the key entirely, so
+    # indexing it would raise before the ``is None`` branch below.
+    member = block[ngff_.PhenotypicAttr.SERIES].get(layer) or block.get(
+        ngff_.PhenotypicAttr.LABELS, {}
+    ).get(layer)
+    if member is None:
+        raise KeyError(f"Store {store_path} has no layer {layer!r}")
+    return member
+
+
+def _level_shape(
+    store_path: Path | str, member: str, level: int
+) -> tuple[int, ...]:
+    """Return one pyramid level's array shape, from its own array metadata.
+
+    Args:
+        store_path: Store root.
+        member: Store-relative group path of the layer.
+        level: Pyramid level index.
+
+    Returns:
+        The level's shape.
+
+    Raises:
+        FileNotFoundError: If the level the store DECLARES is not on disk.
+    """
+    import json
+
+    from phenotypic.sdk_ import ngff_
+
+    meta = Path(store_path) / member / str(level) / ngff_.STORE_ROOT_JSON
+    return tuple(json.loads(meta.read_text(encoding="utf-8"))["shape"])
+
+
+def select_pyramid_level(
+    store_path: Path | str, layer: str, target_px: int
+) -> int:
+    """Return the coarsest pyramid level that still covers ``target_px``.
+
+    "Covers" means the level's longest spatial edge is at least *target_px*.
+    Reading a finer level than that is the pre-pyramid behaviour and wastes
+    the whole point of the change; reading a coarser one renders a visibly
+    soft tile. When even level 0 is smaller than the request, level 0 is
+    returned -- there is nothing better to offer.
+
+    The level count comes from ``phenotypic.pyramid.levels`` and each level's
+    shape from that level's own array metadata. **Never from a directory
+    listing:** a ``.part`` sweep or a partially written store would make a
+    listing report a truncated pyramid as the whole pyramid, and every request
+    would then silently resolve to level 0. A declared level that is missing
+    on disk raises instead.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+        layer: ``"rgb"``, ``"gray"``, ``"detect_mat"``, or ``"objmap"``.
+        target_px: Longest edge, in pixels, the caller intends to render.
+
+    Returns:
+        A pyramid level index; ``0`` is full resolution.
+
+    Raises:
+        KeyError: If *layer* is not present in the store.
+        FileNotFoundError: If the store declares a level it does not hold.
+        StoreUnreadable: If this build cannot decode the store.
+    """
+    from phenotypic.sdk_ import ngff_
+
+    block = _readable_block(store_path)
+    member = _store_member_path(block, store_path, layer)
+    levels = int(block[ngff_.PhenotypicAttr.PYRAMID]["levels"])
+    chosen = 0
+    for level in range(levels):
+        shape = _level_shape(store_path, member, level)
+        if max(shape[-2:]) >= target_px:
+            chosen = level
+    return chosen
+
+
+@functools.lru_cache(maxsize=_STORE_LAYER_CACHE_SIZE)
+def _load_zarr_level_rgb(
+    path: str, content_token: str, layer: LayerName, level: int
+) -> PILImage.Image:
+    """Decode ONE pyramid level of one store layer to an RGB PIL image.
+
+    Memory discipline: reads only the requested layer's level array -- never
+    ``load_image_from_store`` / ``Image.load_zarr``, which materialise every
+    layer (hundreds of MB for a plate) to discard all but one.
+
+    Args:
+        path: Absolute store path, as a string so the cache key is hashable.
+        content_token: Identity of the store's published content. Including
+            it in the key invalidates the cached frame when the store is
+            republished under a running viewer.
+        layer: Layer to decode.
+        level: Pyramid level index, already resolved by the caller. The key
+            carries the LEVEL rather than the requested pixel size so the
+            key space is bounded by the data, not by request variety.
+
+    Returns:
+        The decoded level as an RGB :class:`PIL.Image.Image`.
+
+    Raises:
+        KeyError: If *layer* is absent from the store.
+        StoreUnreadable: If this build cannot decode the store.
+    """
+    del content_token  # Cache-key only.
+    arr = _read_store_level(path, layer, level)
+    return PILImage.fromarray(_store_layer_array_to_rgb(arr, layer), mode="RGB")
+
+
+def _load_zarr_layer_rgb(
+    path: str, content_token: str, layer: LayerName, target_px: int
+) -> PILImage.Image:
+    """Decode the coarsest store level covering ``target_px``, cached by level.
+
+    Thin resolver over :func:`_load_zarr_level_rgb`. The split is what keeps
+    the LRU useful: several distinct ``target_px`` values routinely select the
+    same level, and keying the cache on the request size instead would thrash
+    a 4-entry cache on exactly the path the pyramid exists to accelerate.
+
+    Args:
+        path: Absolute store path, as a string.
+        content_token: Identity of the store's published content.
+        layer: Layer to decode.
+        target_px: Longest edge, in pixels, the caller intends to render.
+
+    Returns:
+        The decoded level as an RGB :class:`PIL.Image.Image`.
+    """
+    level = select_pyramid_level(path, layer, target_px)
+    return _load_zarr_level_rgb(path, content_token, layer, level)
+
+
+def _read_store_level(
+    store_path: Path | str,
+    layer: str,
+    level: int,
+    window: tuple[int, int, int, int] | None = None,
+) -> np.ndarray:
+    """Read one layer's level array, optionally only a ``(t, b, l, r)`` window.
+
+    ``rgb`` is stored ``(C, Y, X)`` and is returned channel-last, matching
+    ``Image.load_layer_zarr``.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+        layer: Layer to read.
+        level: Pyramid level index.
+        window: ``(top, bottom, left, right)`` in level pixels, or ``None``
+            for the whole level.
+
+    Returns:
+        The array, channel-last for ``rgb``.
+
+    Raises:
+        KeyError: If *layer* is absent from the store.
+        StoreUnreadable: If this build cannot decode the store.
+    """
+    import zarr
+
+    from phenotypic.sdk_ import ngff_
+
+    block = _readable_block(store_path)
+    member = _store_member_path(block, store_path, layer)
+    array = zarr.open_array(
+        store=ngff_.long_path(Path(store_path) / member / str(level)),
+        mode="r",
+    )
+    if window is None:
+        data = array[...]
+    else:
+        top, bottom, left, right = window
+        # Windowed: zarr pulls the covering shards/chunks only. A 64x64 crop
+        # from a sharded level 0 costs a shard-index read plus one full
+        # 1024x1024 inner chunk -- cheap, but not free, and not "the same as
+        # h5py", which an earlier draft implied.
+        data = (
+            array[:, top:bottom, left:right]
+            if len(array.shape) == 3
+            else array[top:bottom, left:right]
+        )
+    data = np.asarray(data)
+    return np.moveaxis(data, 0, -1) if layer == "rgb" else data
+
+
+def _store_layer_array_to_rgb(arr: np.ndarray, layer: str) -> np.ndarray:
+    """Convert a decoded store layer array to an RGB uint8 array."""
     from phenotypic.gui.builder._image_renderer import (
         _label_map_to_rgb,
         _normalize_to_uint8,
@@ -346,8 +542,8 @@ def _hdf_layer_array_to_rgb(arr: np.ndarray, layer: LayerName) -> np.ndarray:
     return np.stack([gray] * 3, axis=-1)
 
 
-def crop_hdf_rgb(
-    h5_path: Path,
+def crop_store_rgb(
+    store_path: Path,
     layer: LayerName,
     center_rr: float,
     center_cc: float,
@@ -357,33 +553,40 @@ def crop_hdf_rgb(
     dim_alpha: float = 0.0,
     bbox: tuple[float, float, float, float] | None = None,
 ) -> bytes:
-    """Full-resolution sibling of :func:`crop_overlay`, sourcing a chosen HDF layer.
+    """Full-resolution sibling of :func:`crop_overlay`, sourcing a store layer.
 
     Same centering / padding / dimming contract as :func:`crop_overlay`; the
-    only difference is the pixel source (a raw ``/layers/<name>`` HDF dataset
-    decoded to RGB instead of a baked overlay PNG). Geometry is byte-identical
-    because both croppers share :func:`_crop_pil_source`.
+    only difference is the pixel source (a windowed read of one layer's
+    level-0 array, decoded to RGB, instead of a baked overlay PNG). Geometry
+    is byte-identical because both croppers share :func:`_crop_pil_source`.
+
+    Level 0 always: a crop is a full-resolution inspection view, so there is
+    no pyramid level to select.
 
     Args:
-        h5_path: Path to the per-image ``.h5`` written under
-            ``results/<dataset>/hdf/<stem>.h5``.
-        layer: The HDF layer to render (``"rgb"``, ``"detect_mat"``,
-            ``"objmap"``, …).
+        store_path: Path to the per-image store written under
+            ``results/<dataset>/zarr/<stem>.ome.zarr``.
+        layer: The store layer to render (``"rgb"``, ``"detect_mat"``,
+            ``"objmap"``).
         center_rr: Row coordinate (Y) of the colony centroid, in image pixels.
         center_cc: Column coordinate (X) of the colony centroid, in image pixels.
         size: Side length of the square crop, in pixels.
-        mtime_ns: ``st_mtime_ns`` of the HDF. Accepted for caller/API
-            compatibility; crop reads are windowed and not full-layer cached.
+        mtime_ns: Accepted for caller/API compatibility; crop reads are
+            windowed and not full-layer cached, so nothing keys on it.
         dim_alpha: Tile-spotlight strength; see :func:`crop_overlay`.
         bbox: ``(min_rr, max_rr, min_cc, max_cc)`` keep-rectangle; see
             :func:`crop_overlay`.
 
     Returns:
         PNG-encoded bytes of the ``size`` x ``size`` crop in RGB mode.
+
+    Raises:
+        KeyError: If *layer* is absent from the store.
+        StoreUnreadable: If this build cannot decode the store.
     """
     del mtime_ns
-    return _crop_hdf_layer_window(
-        h5_path,
+    return _crop_store_layer_window(
+        store_path,
         layer,
         center_rr,
         center_cc,
@@ -393,8 +596,8 @@ def crop_hdf_rgb(
     )
 
 
-def _crop_hdf_layer_window(
-    h5_path: Path,
+def _crop_store_layer_window(
+    store_path: Path,
     layer: LayerName,
     center_rr: float,
     center_cc: float,
@@ -404,47 +607,38 @@ def _crop_hdf_layer_window(
     dim_alpha: float = 0.0,
     bbox: tuple[float, float, float, float] | None = None,
 ) -> bytes:
-    """Crop by reading only the requested HDF window."""
-    import h5py
-
+    """Crop by reading only the requested level-0 window out of the store."""
     half = size // 2
     left_unclamped = round(center_cc) - half
     top_unclamped = round(center_rr) - half
     right_unclamped = left_unclamped + size
     bottom_unclamped = top_unclamped + size
 
-    with h5py.File(h5_path, "r") as fh:
-        grp = fh["layers"] if "layers" in fh else fh
-        if layer not in grp:
-            raise KeyError(f"HDF {h5_path} has no layer {layer!r}")
-        dset = grp[layer]
-        src_height, src_width = dset.shape[:2]
-        left_clamped = max(0, left_unclamped)
-        top_clamped = max(0, top_unclamped)
-        right_clamped = min(src_width, right_unclamped)
-        bottom_clamped = min(src_height, bottom_unclamped)
+    block = _readable_block(store_path)
+    member = _store_member_path(block, store_path, layer)
+    # ``rgb`` is stored (C, Y, X), so the spatial extent is the LAST two axes
+    # on every layer -- ``shape[:2]`` would read (C, Y) and clamp the window
+    # to three columns.
+    level0 = _level_shape(store_path, member, 0)
+    src_height, src_width = level0[-2:]
+    left_clamped = max(0, left_unclamped)
+    top_clamped = max(0, top_unclamped)
+    right_clamped = min(src_width, right_unclamped)
+    bottom_clamped = min(src_height, bottom_unclamped)
 
-        arr: np.ndarray | None = None
-        if right_clamped > left_clamped and bottom_clamped > top_clamped:
-            if len(dset.shape) == 2:
-                arr = np.asarray(
-                    dset[
-                        top_clamped:bottom_clamped, left_clamped:right_clamped
-                    ]
-                )
-            else:
-                arr = np.asarray(
-                    dset[
-                        top_clamped:bottom_clamped,
-                        left_clamped:right_clamped,
-                        ...,
-                    ]
-                )
+    arr: np.ndarray | None = None
+    if right_clamped > left_clamped and bottom_clamped > top_clamped:
+        arr = _read_store_level(
+            store_path,
+            layer,
+            0,
+            window=(top_clamped, bottom_clamped, left_clamped, right_clamped),
+        )
 
     result = PILImage.new("RGB", (size, size), pad_value)
     if arr is not None:
         region = PILImage.fromarray(
-            _hdf_layer_array_to_rgb(arr, layer), mode="RGB"
+            _store_layer_array_to_rgb(arr, layer), mode="RGB"
         )
         paste_x = max(0, -left_unclamped)
         paste_y = max(0, -top_unclamped)
@@ -480,21 +674,27 @@ def crop_colony(
     dim_alpha: float = 0.0,
     bbox: tuple[float, float, float, float] | None = None,
 ) -> bytes | None:
-    """Tier the crop source per-image: full-res HDF layer when available, else overlay.
+    """Tier the crop source per-image: the store layer when available, else overlay.
 
     The single entry point both the colony-view ``/crops`` route and the QC
     review gallery use to fetch a centered colony crop. It prefers the
-    per-image full-resolution HDF (via :func:`crop_hdf_rgb`) and falls back to
+    per-image OME-Zarr store (via :func:`crop_store_rgb`) and falls back to
     the baked overlay PNG (via :func:`crop_overlay`) for a standalone
-    deliverables bundle that ships overlays but no ``results/`` HDFs.
+    deliverables bundle that ships overlays but no ``results/`` stores.
+
+    A :class:`StoreUnreadable` is deliberately **not** caught: falling back to
+    the overlay would show plausible pixels while hiding a run-wide,
+    actionable condition (a store this build cannot decode). The caller turns
+    it into a ``422`` carrying the store's own message.
 
     Args:
         output_root: Validated handle on the CLI output directory; supplies
-            :meth:`hdf_path`, :meth:`has_overlay`, and :meth:`overlay_path`.
+            :meth:`store_path`, :meth:`has_overlay`, and :meth:`overlay_path`.
         dataset: Dataset name (matches ``Metadata_Dataset``).
         stem: Image stem (matches ``Metadata_ImageName`` minus its extension).
-        layer: HDF layer to render when an HDF is the source (e.g. ``"rgb"``);
-            ignored for the overlay fallback (overlays are pre-baked RGB).
+        layer: Store layer to render when a store is the source (e.g.
+            ``"rgb"``); ignored for the overlay fallback (overlays are
+            pre-baked RGB).
         center_rr: Row coordinate (Y) of the colony centroid, in image pixels.
         center_cc: Column coordinate (X) of the colony centroid, in image pixels.
         size: Side length of the square crop, in pixels.
@@ -504,29 +704,32 @@ def crop_colony(
 
     Returns:
         PNG-encoded bytes of the ``size`` x ``size`` crop, or ``None`` when
-        neither an HDF nor an overlay exists (the caller serves a 404).
+        neither a store nor an overlay exists (the caller serves a 404).
+
+    Raises:
+        StoreUnreadable: If the store exists but this build cannot decode it.
     """
-    h5 = output_root.hdf_path(dataset, stem)
-    if h5 is not None:
+    store = output_root.store_path(dataset, stem)
+    if store is not None:
         try:
-            return crop_hdf_rgb(
-                h5,
+            return crop_store_rgb(
+                store,
                 layer,
                 center_rr,
                 center_cc,
                 size,
-                os.stat(h5).st_mtime_ns,
+                os.stat(store).st_mtime_ns,
                 dim_alpha=dim_alpha,
                 bbox=bbox,
             )
         except KeyError:
-            # The HDF exists but lacks the requested ``/layers/<name>``
-            # dataset (e.g. a grayscale-only pipeline writes no ``rgb``
-            # layer). Degrade to the baked overlay PNG rather than 500;
-            # fall through to the overlay branch below (else -> None -> 404).
+            # The store exists but carries no such layer (e.g. a grayscale
+            # pipeline writes no ``rgb`` series). Degrade to the baked
+            # overlay PNG rather than 500; fall through to the overlay
+            # branch below (else -> None -> 404).
             logger.debug(
-                "HDF %s missing layer %r; falling back to overlay for %s/%s",
-                h5,
+                "Store %s missing layer %r; falling back to overlay for %s/%s",
+                store,
                 layer,
                 dataset,
                 stem,
@@ -1152,7 +1355,9 @@ __all__ = [
     "LayerName",
     "DEFAULT_LAYER",
     "crop_overlay",
-    "crop_hdf_rgb",
+    "crop_store_rgb",
+    "select_pyramid_level",
+    "StoreUnreadable",
     "crop_colony",
     "is_safe_path_component",
     "register_crop_route",

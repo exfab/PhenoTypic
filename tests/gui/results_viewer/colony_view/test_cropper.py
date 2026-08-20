@@ -99,32 +99,30 @@ def test_rgba_source_is_normalised_to_rgb(tmp_path: Path) -> None:
     assert img.getpixel((4, 4)) == (200, 100, 50)
 
 
-def test_hdf_crop_reads_window_without_full_layer_loader(
+def test_store_crop_reads_window_without_full_layer_loader(
     tmp_path: Path, monkeypatch
 ) -> None:
-    import h5py
+    from phenotypic import Image
 
-    h5_path = tmp_path / "plate.h5"
     rgb = np.zeros((64, 64, 3), dtype=np.uint8)
     rgb[24:40, 24:40] = (10, 80, 160)
-    with h5py.File(h5_path, "w") as fh:
-        layers = fh.create_group("layers")
-        layers.create_dataset("rgb", data=rgb)
+    store = Image(arr=rgb).save2zarr(tmp_path / "plate.ome.zarr")
 
     def _raise_full_layer(*_args, **_kwargs):
         raise AssertionError(
-            "crop_hdf_rgb should not decode the full HDF layer"
+            "crop_store_rgb should not decode the full store layer"
         )
 
-    monkeypatch.setattr(tiles, "_load_hdf_layer_rgb", _raise_full_layer)
+    monkeypatch.setattr(tiles, "_load_zarr_layer_rgb", _raise_full_layer)
+    monkeypatch.setattr(tiles, "_load_zarr_level_rgb", _raise_full_layer)
 
-    png_bytes = tiles.crop_hdf_rgb(
-        h5_path,
+    png_bytes = tiles.crop_store_rgb(
+        store,
         "rgb",
         center_rr=32,
         center_cc=32,
         size=16,
-        mtime_ns=h5_path.stat().st_mtime_ns,
+        mtime_ns=store.stat().st_mtime_ns,
     )
     img = PILImage.open(io.BytesIO(png_bytes))
 

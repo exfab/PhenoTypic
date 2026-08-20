@@ -493,20 +493,13 @@ class OutputRoot:
         """Whether per-image ``results/`` are available (full run, not a bundle)."""
         return self.layout.has_results
 
-    def hdf_path(self, dataset: str, stem: str) -> Path | None:
-        """Full-res per-image HDF path, or ``None`` for a standalone bundle.
-
-        Superseded by :meth:`store_path`; retained only until the tile and
-        crop readers move off HDF in the next task, and removed there.
-        """
-        return self.layout.hdf_path(dataset, stem)
-
     def store_path(self, dataset: str, stem: str) -> Path | None:
         """Full-res per-image OME-Zarr store, or ``None`` when unavailable.
 
         A store is a **directory**, so this resolves with ``is_dir`` rather
-        than the ``is_file`` test :meth:`hdf_path` used. Nothing is scanned:
-        the path is composed by ``zarr_store_path`` and probed once.
+        than the ``is_file`` test the retired per-image HDF lookup used.
+        Nothing is scanned: the path is composed by ``zarr_store_path`` and
+        probed once.
 
         Args:
             dataset: Dataset name (matches ``Metadata_Dataset``).

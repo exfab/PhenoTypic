@@ -27,12 +27,14 @@ from werkzeug.utils import secure_filename
 from phenotypic.gui._config import VIEWER_TILES_PREFIX
 from phenotypic.gui._shared.tiles import (
     LayerName,
-    _load_hdf_layer_rgb,
+    StoreUnreadable,
+    _load_zarr_layer_rgb,
     is_safe_path_component,
 )
 from phenotypic.gui.results_viewer import _dzi_tiler
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.sdk_ import file_fingerprint
+from phenotypic.sdk_ import paths_fingerprint
+from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 logger = logging.getLogger(__name__)
@@ -61,7 +63,7 @@ class _SourceSnapshotChanged(RuntimeError):
 
 
 class _DziLayerUnavailable(KeyError):
-    """Raised when neither the requested HDF layer nor an overlay exists."""
+    """Raised when neither the requested store layer nor an overlay exists."""
 
 
 def _dzi_cache_dir_for(
@@ -89,25 +91,25 @@ def _dzi_cache_dir_for(
 
 
 def _resolve_dzi_layer(
-    layer_raw: str | None, *, has_results: bool, has_hdf: bool
+    layer_raw: str | None, *, has_results: bool, has_store: bool
 ) -> str | None:
     """Normalize a raw ``?layer=`` value to its cache-dir key, or ``None`` if invalid.
 
     Resolution rules:
 
     * Omitted (``None``) → ``"rgb"`` for a full run (``has_results``), else the
-      ``"overlay"`` sentinel (a standalone bundle has no HDF layers to source).
+      ``"overlay"`` sentinel (a standalone bundle has no store layers to source).
     * A value outside :data:`_VALID_DZI_LAYERS` → ``None`` (the caller 404s).
-    * When no per-image HDF is available, or the caller asked for the overlay
+    * When no per-image store is available, or the caller asked for the overlay
       explicitly, the layer collapses to ``"overlay"`` so the manifest and tile
       endpoints agree on the cache dir and the overlay PNG is tiled.
 
     Args:
         layer_raw: The raw ``?layer=`` query value (``None`` when omitted).
-        has_results: Whether per-image ``results/`` HDFs exist
+        has_results: Whether per-image ``results/`` stores exist
             (``OutputRoot.has_results``).
-        has_hdf: Whether *this* image has a full-res HDF
-            (``OutputRoot.hdf_path(...) is not None``).
+        has_store: Whether *this* image has a full-res store
+            (``OutputRoot.store_path(...) is not None``).
 
     Returns:
         The normalized layer key (one of :data:`_VALID_DZI_LAYERS`), or
@@ -119,7 +121,7 @@ def _resolve_dzi_layer(
         layer = layer_raw
     else:
         return None
-    if not has_hdf or layer == _OVERLAY_LAYER:
+    if not has_store or layer == _OVERLAY_LAYER:
         return _OVERLAY_LAYER
     return layer
 
@@ -174,20 +176,20 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
             )
             return _json_error("invalid dataset or stem", 404)
 
-        h5 = output_root.hdf_path(dataset, stem)
+        store = output_root.store_path(dataset, stem)
         layer = _resolve_dzi_layer(
             request.args.get("layer", type=str),
             has_results=output_root.has_results,
-            has_hdf=h5 is not None,
+            has_store=store is not None,
         )
         if layer is None:
             return _json_error("invalid layer", 404)
 
         # Capability gate that works for a standalone deliverables bundle
         # (which has no ``results/`` to anchor a dataset-dir existence check):
-        # accept when either a full-res per-image HDF or a baked overlay PNG
+        # accept when either a full-res per-image store or a baked overlay PNG
         # exists for this image.
-        if h5 is None and not output_root.has_overlay(dataset, stem):
+        if store is None and not output_root.has_overlay(dataset, stem):
             return _json_error(
                 f"no image source for {dataset!r}/{stem!r}", 404
             )
@@ -208,7 +210,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
                 dataset=dataset,
                 stem=stem,
                 layer=layer,
-                h5=h5,
+                store=store,
                 cache_dir=cache_dir,
                 source_token=source_token,
             )
@@ -219,9 +221,16 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
             )
         except _DziLayerUnavailable:
             return _json_error(
-                f"HDF layer {layer!r} not found for {dataset!r}/{stem!r}",
+                f"store layer {layer!r} not found for {dataset!r}/{stem!r}",
                 404,
             )
+        except StoreUnreadable as exc:
+            # A store this build cannot decode. Pass the store's own message
+            # through -- it names both schema versions and the remedy -- and
+            # never degrade to the overlay, which would hide a run-wide,
+            # actionable condition behind plausible-looking pixels.
+            logger.error("Unreadable store for %s/%s: %s", dataset, stem, exc)
+            return _json_error(str(exc), 422)
         except Exception:
             logger.exception(
                 "DZI tile generation failed: dataset=%s stem=%s layer=%s",
@@ -282,7 +291,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         layer = _resolve_dzi_layer(
             request.args.get("layer", type=str),
             has_results=output_root.has_results,
-            has_hdf=output_root.hdf_path(dataset, stem) is not None,
+            has_store=output_root.store_path(dataset, stem) is not None,
         )
         if layer is None:
             return _json_error("invalid layer", 404)
@@ -331,7 +340,7 @@ def _publish_dzi_cache(
     dataset: str,
     stem: str,
     layer: str,
-    h5: Path | None,
+    store: Path | None,
     cache_dir: Path,
     source_token: str,
 ) -> None:
@@ -373,7 +382,7 @@ def _publish_dzi_cache(
                 dataset=dataset,
                 stem=stem,
                 layer=layer,
-                h5=h5,
+                store=store,
                 staging_dir=staging_dir,
             )
             (staging_dir / _SOURCE_TOKEN_FILENAME).write_text(
@@ -428,7 +437,7 @@ def _generate_dzi_stage(
     dataset: str,
     stem: str,
     layer: str,
-    h5: Path | None,
+    store: Path | None,
     staging_dir: Path,
 ) -> None:
     """Generate one unpublished DZI directory from its selected source."""
@@ -438,11 +447,11 @@ def _generate_dzi_stage(
         _tile_overlay_source(output_root, dataset, stem, staging_dir)
         return
 
-    assert h5 is not None
+    assert store is not None
     source_png = staging_dir / f"{stem}.png"
     try:
-        _ensure_hdf_layer_source_png(
-            h5,
+        _ensure_store_layer_source_png(
+            store,
             cast(LayerName, layer),
             source_png,
         )
@@ -451,7 +460,7 @@ def _generate_dzi_stage(
         if not output_root.has_overlay(dataset, stem):
             raise _DziLayerUnavailable from None
         logger.warning(
-            "HDF layer %s missing for %s/%s; tiling overlay fallback",
+            "Store layer %s missing for %s/%s; tiling overlay fallback",
             layer,
             dataset,
             stem,
@@ -459,22 +468,54 @@ def _generate_dzi_stage(
         _tile_overlay_source(output_root, dataset, stem, staging_dir)
 
 
-def _ensure_hdf_layer_source_png(
-    h5: Path, layer: LayerName, source_png: Path
+def _ensure_store_layer_source_png(
+    store: Path, layer: LayerName, source_png: Path
 ) -> None:
-    """Refresh the rendered HDF-layer source PNG only when the HDF is newer."""
-    h5_stat = os.stat(h5)
+    """Materialise a source PNG for one store layer, invalidating on the root.
+
+    A store directory's ``st_mtime_ns`` does **not** change when a nested
+    chunk is rewritten, so staleness is keyed on the root ``zarr.json`` --
+    which the promote writes last on every publish, and which therefore
+    changes exactly when the store's contents do. ``file_fingerprint`` is not
+    usable here at all: it opens its argument as a file and raises
+    ``IsADirectoryError`` on a store.
+
+    ``target_px`` is the level-0 longest edge, so the source PNG is full
+    resolution. The DZI pyramid built from it is what the deep-zoom viewer
+    zooms into, and capping the source would cap the maximum zoom -- a
+    user-visible regression, not an optimisation.
+
+    Args:
+        store: Path to the per-image ``*.ome.zarr`` store.
+        layer: Store layer to render.
+        source_png: Destination PNG path inside the staging directory.
+    """
+    root_json = store / STORE_ROOT_JSON
+    root_stat = os.stat(root_json)
     if (
         source_png.exists()
-        and source_png.stat().st_mtime_ns >= h5_stat.st_mtime_ns
+        and source_png.stat().st_mtime_ns >= root_stat.st_mtime_ns
     ):
         return
-    content_token = int(
-        file_fingerprint(h5).removeprefix("sha256:")[:16],
-        16,
+    content_token = paths_fingerprint([root_json]).removeprefix("sha256:")[:16]
+    target_px = _store_level0_longest_edge(store, layer)
+    _load_zarr_layer_rgb(str(store), content_token, layer, target_px).save(
+        source_png
     )
-    _load_hdf_layer_rgb(str(h5), content_token, layer).save(source_png)
-    os.utime(source_png, ns=(h5_stat.st_mtime_ns, h5_stat.st_mtime_ns))
+    os.utime(source_png, ns=(root_stat.st_mtime_ns, root_stat.st_mtime_ns))
+
+
+def _store_level0_longest_edge(store: Path, layer: LayerName) -> int:
+    """Return the level-0 longest spatial edge of one store layer."""
+    from phenotypic.gui._shared.tiles import (
+        _level_shape,
+        _readable_block,
+        _store_member_path,
+    )
+
+    block = _readable_block(store)
+    member = _store_member_path(block, store, layer)
+    return max(_level_shape(store, member, 0)[-2:])
 
 
 def _tile_overlay_source(
