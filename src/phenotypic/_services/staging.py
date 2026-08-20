@@ -32,6 +32,7 @@ digest: the marginal cost is inodes, not bytes.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import os
 import shutil
@@ -39,6 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final, Literal
 
+from phenotypic.sdk_._io_constants import file_fingerprint
 from phenotypic.subset import ImageRef
 
 #: Server scratch namespace. Staging lives here and not under ``runs/`` or the
@@ -81,6 +83,31 @@ class SubsetToStage:
     parent: Path
     images: tuple[ImageRef, ...] = field(default_factory=tuple)
 
+    def __post_init__(self) -> None:
+        """Drop repeated refs, and refuse two refs claiming one relative path.
+
+        Neither layout can represent a duplicate: ``_flat_names`` counts the
+        repeat as a *cross-dataset* collision and mangles the flat filename,
+        and the second link surfaces as a bare ``shutil.SameFileError`` from
+        deep inside the builder. ``SubsetSelection.select`` deduplicates, but
+        this dataclass accepts any tuple and is constructed directly by the
+        hand-picked ``user_named`` path.
+
+        Two *different* refs sharing a relative path are not deduplicable --
+        the relative path is the identity, so the pair is a contradiction
+        about which file that identity names -- and are refused.
+        """
+        unique: dict[str, ImageRef] = {}
+        for ref in self.images:
+            existing = unique.setdefault(ref.relative_path, ref)
+            if existing.path != ref.path:
+                raise ValueError(
+                    f"subset names {ref.relative_path!r} twice, at "
+                    f"{existing.path} and {ref.path}; the relative path is "
+                    "the identity, so it cannot name two different files"
+                )
+        object.__setattr__(self, "images", tuple(unique.values()))
+
 
 @dataclass(frozen=True)
 class StagedSubset:
@@ -119,24 +146,54 @@ def _dataset_of(ref: ImageRef) -> str:
 def subset_digest(subset: SubsetToStage) -> str:
     """Content digest of a subset's image set.
 
-    Derived from the sorted parent-relative paths and nothing else: a subset is
-    a *set*, so a reshuffled list is the same subset and must not stage twice,
-    and the same images under a different mount are the same subset too.
-    Computing it here rather than accepting one from the caller is what makes
-    the staging key impossible to get out of step with the tree it names.
+    Each chosen image contributes its sorted parent-relative **path** and its
+    **content fingerprint**. Sorting is what makes a reshuffled list the same
+    subset; the pair of terms is what makes the key an identity rather than a
+    layout.
+
+    **Both halves are load-bearing, and the second is the one that keeps two
+    experiments apart.** Paths alone are parent-*blind*:
+    ``plateA/plateA_01.tif`` is a naming convention, not an identity, so two
+    unrelated experiments that share a layout produce one digest, and
+    :func:`stage_subset` hands the second caller a tree of links into the
+    **first** experiment's images -- silently, since a tree it adopts is never
+    built and so never fidelity-checked. One workspace ``cache_root`` shared
+    across a campaign is the normal configuration, so that is the expected
+    setup rather than a corner.
+
+    **Why contents and not ``(size, mtime_ns)``**, which is what
+    :func:`~phenotypic.sdk_.directory_digest` uses one layer up: the digest
+    must stay stable across the ``/rhome`` <-> ``/bigdata`` mount aliases and
+    across a preserving copy, and ``mtime_ns`` does not deliver that. Measured
+    on this cluster's ``gpfs``, ``shutil.copytree`` of a freshly written file
+    moves the destination's ``mtime_ns`` forward by 3-32 ms every time, so a
+    timestamp-keyed subset would restage a copy as a different subset.
+    Contents give the property by construction. The cost that forbids it for
+    ``directory_digest`` does not apply here: a subset is tens of images, not
+    the 480-image parent -- that bound is the whole reason the subset boundary
+    exists.
+
+    The parent's own location is deliberately **absent**: the same images
+    reached through a different mount are the same subset, and folding in
+    ``parent.resolve()`` would key the staging tree on which alias the caller
+    happened to use.
 
     Args:
-        subset: The subset to key.
+        subset: The subset to key. Every named image must exist.
 
     Returns:
         A ``"sha256:<hex>"`` digest, matching the spelling
         :func:`~phenotypic.sdk_.file_fingerprint` uses.
+
+    Raises:
+        FileNotFoundError: If a named image is not present.
     """
     digest = hashlib.sha256()
-    for relative in sorted(ref.relative_path for ref in subset.images):
-        encoded = relative.encode("utf-8")
-        digest.update(len(encoded).to_bytes(8, "big"))
-        digest.update(encoded)
+    for ref in sorted(subset.images, key=lambda ref: ref.relative_path):
+        for term in (ref.relative_path, file_fingerprint(Path(ref.path))):
+            encoded = term.encode("utf-8")
+            digest.update(len(encoded).to_bytes(8, "big"))
+            digest.update(encoded)
     return f"sha256:{digest.hexdigest()}"
 
 
@@ -297,19 +354,47 @@ def _flat_names(subset: SubsetToStage) -> dict[str, str]:
     return names
 
 
+#: ``errno`` values meaning "this platform or filesystem will not make a
+#: symlink here". Windows without Developer Mode reports ``EPERM``/``EINVAL``
+#: (``ERROR_PRIVILEGE_NOT_HELD``); a FAT/exFAT or restrictive network mount
+#: reports ``EPERM``, ``EACCES``, ``ENOSYS`` or ``EOPNOTSUPP``.
+_SYMLINK_UNSUPPORTED: Final[frozenset[int]] = frozenset({
+    errno.EACCES,
+    errno.EINVAL,
+    errno.ENOSYS,
+    errno.EOPNOTSUPP,
+    errno.EPERM,
+})
+
+
 def _link_or_copy(source: Path, destination: Path) -> LinkMode:
-    """Symlink ``source`` to ``destination``, copying if that is refused.
+    """Symlink ``source`` to ``destination``, copying if the platform refuses.
 
     Windows symlink creation needs elevated privileges or Developer Mode and
     this project supports Windows, so the failure is expected rather than
     exceptional — but it must be *reported*, not absorbed.
+
+    Only the errors that actually mean "no symlinks here" fall back. A blanket
+    ``except OSError`` also caught ``FileExistsError`` and answered it by
+    ``copy2``-ing **over** the destination — turning a builder bug into a
+    silent overwrite, and reporting the whole subset as ``"copy"`` on the
+    strength of it. Everything else propagates: a full disk or a read-only
+    cache root is not a reason to duplicate tens of gigabytes.
+
+    Raises:
+        OSError: For any failure that is not a refusal to create symlinks.
     """
     try:
         os.symlink(source, destination)
-    except (OSError, NotImplementedError):
-        shutil.copy2(source, destination)
-        return "copy"
-    return "symlink"
+    except NotImplementedError:
+        pass
+    except OSError as error:
+        if error.errno not in _SYMLINK_UNSUPPORTED:
+            raise
+    else:
+        return "symlink"
+    shutil.copy2(source, destination)
+    return "copy"
 
 
 def _observed_link_mode(flat: Path) -> LinkMode:

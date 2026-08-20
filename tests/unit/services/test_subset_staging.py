@@ -10,7 +10,9 @@ dataset to the staging folder name for deploy.
 
 from __future__ import annotations
 
+import errno
 import os
+from pathlib import Path
 
 import pytest
 
@@ -122,12 +124,44 @@ def test_staging_lives_under_the_server_scratch_namespace(staged, tmp_path):
 # --------------------------------------------------------------------------
 
 
-def test_restaging_the_same_digest_is_a_noop(subset, tmp_path):
-    from phenotypic._services.staging import stage_subset
+def test_restaging_the_same_digest_is_a_noop(subset, tmp_path, monkeypatch):
+    """Observably a no-op: no tree is built, and the published one is untouched.
 
-    first = stage_subset(subset, cache_root=tmp_path)
-    second = stage_subset(subset, cache_root=tmp_path)
-    assert first.flat == second.flat
+    ``first.flat == second.flat`` is a pure function of the digest and holds
+    whether or not the second call rebuilt the entire tree, so it proves
+    nothing. Two things are checked instead. The builder is **not invoked** --
+    the only observable difference the completion-marker early return makes,
+    since a rebuild that loses the race is adopted at the mid-build check and
+    so leaves the same tree behind. And the published tree is untouched: a
+    file a fleet worker left inside it survives, and the staged entries are
+    the *same inodes* rather than fresh links wearing the same names.
+    """
+    from phenotypic._services import staging
+
+    first = staging.stage_subset(subset, cache_root=tmp_path)
+    sentinel = first.root / "opened-by-a-worker"
+    sentinel.touch()
+    before = {
+        path.name: path.lstat().st_ino for path in sorted(first.flat.iterdir())
+    }
+
+    builds = []
+    real_build = staging._build_layouts
+    monkeypatch.setattr(
+        staging,
+        "_build_layouts",
+        lambda subset_, building: builds.append(building) or real_build(
+            subset_, building
+        ),
+    )
+    second = staging.stage_subset(subset, cache_root=tmp_path)
+
+    assert builds == []
+    assert second.root == first.root
+    assert sentinel.exists()
+    assert {
+        path.name: path.lstat().st_ino for path in sorted(second.flat.iterdir())
+    } == before
 
 
 def test_a_different_image_set_stages_somewhere_else(subset, tmp_path):
@@ -225,8 +259,19 @@ def test_a_builder_that_loses_the_race_adopts_the_winners_tree(
     assert sentinel.exists()
 
 
-def test_link_mode_is_reported(staged):
-    assert staged.link_mode in {"symlink", "copy"}
+def test_the_reported_link_mode_matches_the_tree(staged):
+    """Reported, not guessed — and checked against what is on disk.
+
+    ``link_mode in {"symlink", "copy"}`` is true of any hardcoded value. The
+    field is only worth reading if it describes the tree, so both branches are
+    asserted against the entries themselves.
+    """
+    entries = [path for path in staged.flat.iterdir() if path.is_file()]
+    assert entries
+    if staged.link_mode == "symlink":
+        assert all(path.is_symlink() for path in entries)
+    else:
+        assert not any(path.is_symlink() for path in entries)
 
 
 def test_symlinks_are_the_default_where_they_work(staged):
@@ -249,7 +294,9 @@ def test_copy_fallback_is_used_and_reported(subset, tmp_path, monkeypatch):
     from phenotypic._services import staging
 
     def _refuse(*args, **kwargs):
-        raise OSError("symlink creation is not permitted")
+        # Spelled with the errno Windows and a FAT/network mount actually
+        # report: the fallback is keyed on the reason, not on "any OSError".
+        raise OSError(errno.EPERM, "symlink creation is not permitted")
 
     monkeypatch.setattr(staging.os, "symlink", _refuse)
     staged = staging.stage_subset(subset, cache_root=tmp_path)
@@ -461,7 +508,214 @@ def test_the_digest_ignores_where_the_parent_lives(subset, tmp_path):
     assert subset_digest(moved) == subset_digest(subset)
 
 
-def test_the_umask_does_not_leave_the_staging_tree_unreadable(staged):
-    """A fleet worker reads this directory; it has to be traversable."""
-    assert os.access(staged.flat, os.R_OK | os.X_OK)
-    assert os.access(staged.nested, os.R_OK | os.X_OK)
+def test_the_staging_tree_is_created_with_the_process_umask(subset, tmp_path):
+    """Staging neither tightens nor loosens the caller's umask.
+
+    ``os.access(..., R_OK | X_OK)`` was asked as the **owner** of a directory
+    this process had just created, who always has access — so it could not
+    fail, and in particular could not see the case it named. The mode bits are
+    asserted directly against a umask fixed for the duration instead, which
+    does discriminate: a builder that created the tree ``0o700``, or that
+    chmod'd it, fails here.
+
+    Inheriting the umask is the right policy and not an oversight. Every
+    reader of a staging tree on this cluster is a SLURM job running as the
+    submitting user, so widening it would hand out access nobody asked for,
+    and narrowing it would be staging making a site policy decision it has no
+    standing to make.
+    """
+    import stat as stat_module
+
+    from phenotypic._services.staging import stage_subset
+
+    original = os.umask(0o022)
+    try:
+        staged = stage_subset(subset, cache_root=tmp_path / "workspace")
+    finally:
+        os.umask(original)
+
+    for directory in (staged.root, staged.flat, staged.nested):
+        assert stat_module.S_IMODE(directory.stat().st_mode) == 0o755
+
+
+def test_a_failure_that_is_not_a_symlink_refusal_is_not_absorbed(
+    subset, tmp_path, monkeypatch
+):
+    """A blanket ``except OSError`` answered every failure by copying.
+
+    A full disk or a read-only cache root is not a reason to duplicate tens of
+    gigabytes, and ``FileExistsError`` — a builder bug — became a ``copy2``
+    **over** the destination, with the whole subset then reported as
+    ``"copy"`` on the strength of it.
+    """
+    from phenotypic._services import staging
+
+    def _no_space(*args, **kwargs):
+        raise OSError(errno.ENOSPC, "no space left on device")
+
+    monkeypatch.setattr(staging.os, "symlink", _no_space)
+    with pytest.raises(OSError) as raised:
+        staging.stage_subset(subset, cache_root=tmp_path)
+    assert raised.value.errno == errno.ENOSPC
+
+
+def test_a_destination_that_already_exists_is_not_silently_overwritten(tmp_path):
+    """``FileExistsError`` is a builder bug, not a reason to copy over it."""
+    from phenotypic._services.staging import _link_or_copy
+
+    source = tmp_path / "a.tif"
+    source.write_bytes(b"source")
+    destination = tmp_path / "b.tif"
+    destination.write_bytes(b"occupied")
+
+    with pytest.raises(FileExistsError):
+        _link_or_copy(source, destination)
+    assert destination.read_bytes() == b"occupied"
+
+
+# --------------------------------------------------------------------------
+# Duplicate refs
+# --------------------------------------------------------------------------
+
+
+def test_a_repeated_image_is_deduplicated_on_construction(parent):
+    """Neither layout can represent a duplicate.
+
+    ``_flat_names`` counts the repeat as a *cross-dataset* collision and
+    mangles the flat filename, and the second link surfaces as a bare
+    ``shutil.SameFileError`` from deep inside the builder.
+    """
+    from phenotypic._services.staging import SubsetToStage
+    from phenotypic.subset import ImageRef
+
+    relative = "plateA/plateA_01.tif"
+    ref = ImageRef(path=parent / relative, relative_path=relative)
+    subset = SubsetToStage(parent=parent, images=(ref, ref))
+
+    assert subset.images == (ref,)
+
+
+def test_a_repeated_image_still_stages_under_its_own_name(parent, tmp_path):
+    """The dedupe has to happen before ``_flat_names`` counts basenames."""
+    from phenotypic._services.staging import SubsetToStage, stage_subset
+    from phenotypic.subset import ImageRef
+
+    relative = "plateA/plateA_01.tif"
+    ref = ImageRef(path=parent / relative, relative_path=relative)
+    staged = stage_subset(
+        SubsetToStage(parent=parent, images=(ref, ref)), cache_root=tmp_path
+    )
+
+    assert [path.name for path in staged.flat.iterdir() if path.is_file()] == [
+        "plateA_01.tif"
+    ]
+
+
+def test_two_different_files_claiming_one_relative_path_are_refused(parent, tmp_path):
+    """The relative path is the identity; it cannot name two files."""
+    from phenotypic._services.staging import SubsetToStage
+    from phenotypic.subset import ImageRef
+
+    relative = "plateA/plateA_01.tif"
+    with pytest.raises(ValueError, match="twice"):
+        SubsetToStage(
+            parent=parent,
+            images=(
+                ImageRef(path=parent / relative, relative_path=relative),
+                ImageRef(path=tmp_path / "elsewhere.tif", relative_path=relative),
+            ),
+        )
+
+
+# --------------------------------------------------------------------------
+# The digest keys a *subset*, not a layout
+# --------------------------------------------------------------------------
+
+
+def _one_plate_parent(root, marker):
+    """A parent with the layout every plate-imaging experiment here shares."""
+    from phenotypic._services.staging import SubsetToStage
+    from phenotypic.subset import ImageRef
+
+    (root / "plateA").mkdir(parents=True)
+    chosen = ("plateA/plateA_01.tif", "plateA/plateA_02.tif")
+    for relative in chosen:
+        (root / relative).write_bytes(marker + relative.encode())
+    return SubsetToStage(
+        parent=root,
+        images=tuple(
+            ImageRef(path=root / relative, relative_path=relative)
+            for relative in chosen
+        ),
+    )
+
+
+def test_two_parents_with_the_same_layout_do_not_share_a_staging_tree(tmp_path):
+    """``plateA/plateA_01.tif`` is a naming convention, not an identity.
+
+    Keyed on relative paths alone, two unrelated experiments produced one
+    digest, and the second caller took the completion-marker early return and
+    received a tree of symlinks into the **first** experiment's images. The
+    fidelity check never fired, because nothing was built. One workspace
+    ``cache_root`` shared across a campaign is the normal configuration, so
+    this was the expected setup rather than a corner.
+    """
+    from phenotypic._services.staging import stage_subset
+
+    cache_root = tmp_path / "workspace"
+    first = _one_plate_parent(tmp_path / "experiment1" / "plates", b"EXPERIMENT-ONE-")
+    second = _one_plate_parent(tmp_path / "experiment2" / "plates", b"EXPERIMENT-TWO-")
+
+    staged_first = stage_subset(first, cache_root=cache_root)
+    staged_second = stage_subset(second, cache_root=cache_root)
+
+    assert staged_first.root != staged_second.root
+    assert all(
+        path.read_bytes().startswith(b"EXPERIMENT-TWO-")
+        for path in staged_second.flat.iterdir()
+        if path.is_file()
+    )
+    assert all(
+        Path(second.parent) in path.resolve().parents
+        for path in staged_second.flat.iterdir()
+        if path.is_file()
+    )
+
+
+def test_the_digest_changes_when_an_image_changes_under_a_stable_name(
+    subset, tmp_path
+):
+    """Names are not identities: the bytes behind them are in the key too."""
+    from phenotypic._services.staging import subset_digest
+
+    before = subset_digest(subset)
+    (subset.parent / "plateA" / "plateA_01.tif").write_bytes(b"rescanned")
+    assert subset_digest(subset) != before
+
+
+def test_the_digest_survives_a_preserving_copy_at_another_mount(subset, tmp_path):
+    """Content identity, so the timestamp skew a real copy introduces is moot.
+
+    Measured on this cluster's ``gpfs``, ``shutil.copytree`` of a freshly
+    written file moves the destination's ``mtime_ns`` forward by 3-32 ms every
+    time, so the timestamp is deliberately *not* a term. The copy's mtimes are
+    left exactly as the filesystem wrote them here.
+    """
+    import dataclasses
+    import shutil
+
+    from phenotypic._services.staging import subset_digest
+    from phenotypic.subset import ImageRef
+
+    elsewhere = tmp_path / "mirror" / "plates"
+    shutil.copytree(subset.parent, elsewhere)
+    moved = dataclasses.replace(
+        subset,
+        parent=elsewhere,
+        images=tuple(
+            ImageRef(path=elsewhere / ref.relative_path,
+                     relative_path=ref.relative_path)
+            for ref in subset.images
+        ),
+    )
+    assert subset_digest(moved) == subset_digest(subset)
