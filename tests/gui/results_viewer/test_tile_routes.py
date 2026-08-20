@@ -11,7 +11,7 @@ PNG instead.
 The pure resolution helpers (:func:`_dzi_cache_dir_for`,
 :func:`_resolve_dzi_layer`) are unit-tested directly; the manifest/tile
 route wiring is smoke-tested through a Flask test client against a tmp output
-dir carrying a real per-image HDF (built via ``Image(...).save2hdf5``),
+dir carrying a real per-image store (built via ``Image(...).save2zarr``),
 mirroring the neighbouring ``colony_view/test_crop_routes.py`` pattern but
 registering only the tile blueprint on a bare Dash app (the
 ``browse/test_tile_routes.py`` pattern).
@@ -41,6 +41,9 @@ from phenotypic.gui.results_viewer._tile_routes import (
     _dzi_cache_dir_for,
     _resolve_dzi_layer,
 )
+
+from phenotypic.sdk_ import zarr_store_path
+from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
 
 from tests._output_layout import write_master
 from phenotypic.schema import IMAGE
@@ -79,21 +82,21 @@ def test_dzi_cache_dir_for_distinct_dirs_per_layer(tmp_path: Path) -> None:
 
 def test_resolve_layer_none_full_run_defaults_to_rgb() -> None:
     """Omitted ``?layer=`` on a full run (has_results) defaults to ``rgb``."""
-    assert _resolve_dzi_layer(None, has_results=True, has_hdf=True) == "rgb"
+    assert _resolve_dzi_layer(None, has_results=True, has_store=True) == "rgb"
 
 
 def test_resolve_layer_none_standalone_falls_back_to_overlay() -> None:
     """Omitted ``?layer=`` on a standalone bundle (no results) -> overlay sentinel."""
     assert (
-        _resolve_dzi_layer(None, has_results=False, has_hdf=False)
+        _resolve_dzi_layer(None, has_results=False, has_store=False)
         == _OVERLAY_LAYER
     )
 
 
-def test_resolve_layer_hdf_layer_without_hdf_collapses_to_overlay() -> None:
+def test_resolve_layer_store_layer_without_store_collapses_to_overlay() -> None:
     """A named HDF layer with no per-image HDF collapses to the overlay sentinel."""
     assert (
-        _resolve_dzi_layer("objmap", has_results=True, has_hdf=False)
+        _resolve_dzi_layer("objmap", has_results=True, has_store=False)
         == _OVERLAY_LAYER
     )
 
@@ -101,7 +104,7 @@ def test_resolve_layer_hdf_layer_without_hdf_collapses_to_overlay() -> None:
 def test_resolve_layer_invalid_value_returns_none() -> None:
     """An unrecognised ``?layer=`` value resolves to ``None`` (caller 404s)."""
     assert (
-        _resolve_dzi_layer("not-a-layer", has_results=True, has_hdf=True)
+        _resolve_dzi_layer("not-a-layer", has_results=True, has_store=True)
         is None
     )
 
@@ -109,32 +112,32 @@ def test_resolve_layer_invalid_value_returns_none() -> None:
 def test_resolve_layer_explicit_overlay_stays_overlay() -> None:
     """Explicit ``?layer=overlay`` resolves to the overlay sentinel even with an HDF."""
     assert (
-        _resolve_dzi_layer(_OVERLAY_LAYER, has_results=True, has_hdf=True)
+        _resolve_dzi_layer(_OVERLAY_LAYER, has_results=True, has_store=True)
         == _OVERLAY_LAYER
     )
 
 
-def test_resolve_layer_hdf_layer_with_hdf_passes_through() -> None:
+def test_resolve_layer_store_layer_with_store_passes_through() -> None:
     """A valid HDF layer with an HDF present passes through unchanged."""
     assert (
-        _resolve_dzi_layer("objmap", has_results=True, has_hdf=True)
+        _resolve_dzi_layer("objmap", has_results=True, has_store=True)
         == "objmap"
     )
 
 
 # ---------------------------------------------------------------------------
-# Manifest / tile route smoke — HDF-layer pyramid lands in the per-layer dir
+# Manifest / tile route smoke — store-layer pyramid lands in the per-layer dir
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture()
 def client_and_root(tmp_path: Path):
-    """Seed a full-run output dir with a real per-image HDF and register routes.
+    """Seed a full-run output dir with a real per-image store and register routes.
 
     Lays out::
 
         <tmp>/deliverables/master_measurements.parquet  (1 colony in dataset 'd1')
-        <tmp>/results/d1/hdf/img001.h5                   (real Image w/ objmap)
+        <tmp>/results/d1/zarr/img001.ome.zarr            (real Image w/ objmap)
         <tmp>/results/d1/measurements/                   (enables discovery)
         <tmp>/deliverables/overlays/d1/img001.png        (overlay fallback)
 
@@ -157,9 +160,7 @@ def client_and_root(tmp_path: Path):
     )
     write_master(tmp_path, master)
 
-    # Real per-image HDF with a non-trivial objmap (two labels).
-    hdf_dir = tmp_path / "results" / dataset / "hdf"
-    hdf_dir.mkdir(parents=True)
+    # Real per-image store with a non-trivial objmap (two labels).
     (tmp_path / "results" / dataset / "measurements").mkdir(parents=True)
     rgb = np.zeros((64, 64, 3), dtype=np.uint8)
     rgb[8:24, 8:24] = (200, 40, 40)
@@ -168,7 +169,9 @@ def client_and_root(tmp_path: Path):
     labeled[8:24, 8:24] = 1
     labeled[36:52, 36:52] = 2
     img.objmap[:] = labeled
-    img.save2hdf5(str(hdf_dir / f"{stem}.h5"))
+    store = zarr_store_path(tmp_path, dataset, stem)
+    store.parent.mkdir(parents=True, exist_ok=True)
+    img.save2zarr(store)
 
     # Overlay PNG (the standalone / explicit-overlay fallback source).
     overlay_dir = tmp_path / "deliverables" / "overlays" / dataset
@@ -189,10 +192,10 @@ def client_and_root(tmp_path: Path):
     return app.server.test_client(), output_root, dataset, stem
 
 
-def test_manifest_hdf_layer_tiles_into_per_layer_cache_dir(
+def test_manifest_store_layer_tiles_into_per_layer_cache_dir(
     client_and_root,
 ) -> None:
-    """An ``?layer=objmap`` manifest tiles the HDF layer into ``.../<stem>/objmap``."""
+    """An ``?layer=objmap`` manifest tiles the store layer into ``.../<stem>/objmap``."""
     client, output_root, dataset, stem = client_and_root
 
     resp = client.get(f"/tiles/{dataset}/{stem}.dzi?layer=objmap")
@@ -319,22 +322,23 @@ def test_manifest_existing_content_cache_never_retiles(
     assert (overlay_dir / f"{stem}.dzi").is_file()
 
 
-def test_manifest_hdf_source_png_not_regenerated_when_fresh(
+def test_manifest_store_source_png_not_regenerated_when_fresh(
     client_and_root, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Freshness is measured against the ROOT zarr.json, not the store dir."""
     client, output_root, dataset, stem = client_and_root
     assert client.get(f"/tiles/{dataset}/{stem}.dzi").status_code == 200
     rgb_dir = _dzi_cache_dir_for(output_root.cache_dir, dataset, stem, "rgb")
     source_png = rgb_dir / f"{stem}.png"
-    h5 = output_root.hdf_path(dataset, stem)
-    assert h5 is not None
-    h5_mtime_ns = os.stat(h5).st_mtime_ns
-    os.utime(source_png, ns=(h5_mtime_ns + 1, h5_mtime_ns + 1))
+    store = output_root.store_path(dataset, stem)
+    assert store is not None
+    root_mtime_ns = os.stat(store / STORE_ROOT_JSON).st_mtime_ns
+    os.utime(source_png, ns=(root_mtime_ns + 1, root_mtime_ns + 1))
 
     load_calls: list[tuple[str, str]] = []
     tile_calls: list[Path] = []
 
-    def _boom_load(path: str, mtime_ns: int, layer: str):
+    def _boom_load(path: str, content_token: str, layer: str, target_px: int):
         load_calls.append((path, layer))
         raise AssertionError("fresh source PNG should not be regenerated")
 
@@ -342,7 +346,7 @@ def test_manifest_hdf_source_png_not_regenerated_when_fresh(
         tile_calls.append(source)
         return cache_dir / f"{source.stem}.dzi"
 
-    monkeypatch.setattr(_tile_routes, "_load_hdf_layer_rgb", _boom_load)
+    monkeypatch.setattr(_tile_routes, "_load_zarr_layer_rgb", _boom_load)
     monkeypatch.setattr(_tile_routes._dzi_tiler, "tile", _record_tile)
 
     resp = client.get(f"/tiles/{dataset}/{stem}.dzi")
@@ -352,33 +356,36 @@ def test_manifest_hdf_source_png_not_regenerated_when_fresh(
     assert tile_calls == []
 
 
-def test_hdf_render_cache_keys_exact_content_when_mtime_is_preserved(
+def test_store_render_cache_keys_exact_content_when_mtime_is_preserved(
     tmp_path: Path,
 ) -> None:
-    """Same-mtime HDF replacement cannot reuse decoded pixels from old content."""
-    import h5py
+    """A same-mtime republish cannot reuse decoded pixels from old content.
+
+    The store's metadata differs between the two publishes here, so the root
+    ``zarr.json`` bytes differ and the content token moves on bytes alone.
+    The byte-IDENTICAL republish -- same metadata, different pixels -- is a
+    second and harder case, pinned separately in the staleness suite.
+    """
+    from phenotypic import Image
     from PIL import Image as PILImage
 
-    h5 = tmp_path / "plate.h5"
     first_png = tmp_path / "first" / "plate.png"
     second_png = tmp_path / "second" / "plate.png"
     first_png.parent.mkdir()
     second_png.parent.mkdir()
-    with h5py.File(h5, "w") as handle:
-        handle.create_group("layers").create_dataset(
-            "rgb",
-            data=np.zeros((8, 8, 3), dtype=np.uint8),
-        )
-    original_mtime = h5.stat().st_mtime_ns
-    _tile_routes._ensure_hdf_layer_source_png(h5, "rgb", first_png)
 
-    with h5py.File(h5, "w") as handle:
-        handle.create_group("layers").create_dataset(
-            "rgb",
-            data=np.full((8, 8, 3), 255, dtype=np.uint8),
-        )
-    os.utime(h5, ns=(original_mtime, original_mtime))
-    _tile_routes._ensure_hdf_layer_source_png(h5, "rgb", second_png)
+    dark = Image(arr=np.zeros((8, 8, 3), dtype=np.uint8))
+    dark._metadata.public["Metadata_Strain"] = "dark"
+    store = dark.save2zarr(tmp_path / "plate.ome.zarr")
+    root = store / STORE_ROOT_JSON
+    original_mtime = root.stat().st_mtime_ns
+    _tile_routes._ensure_store_layer_source_png(store, "rgb", first_png)
+
+    bright = Image(arr=np.full((8, 8, 3), 255, dtype=np.uint8))
+    bright._metadata.public["Metadata_Strain"] = "bright"
+    bright.save2zarr(tmp_path / "plate.ome.zarr")
+    os.utime(root, ns=(original_mtime, original_mtime))
+    _tile_routes._ensure_store_layer_source_png(store, "rgb", second_png)
 
     with PILImage.open(first_png) as first, PILImage.open(second_png) as second:
         assert first.getpixel((0, 0)) == (0, 0, 0)
@@ -455,10 +462,10 @@ def test_concurrent_manifest_requests_publish_one_generation(
     assert calls == 1
 
 
-def test_manifest_missing_hdf_layer_falls_back_to_overlay(
+def test_manifest_missing_store_layer_falls_back_to_overlay(
     tmp_path: Path,
 ) -> None:
-    import h5py
+    from phenotypic import Image
     from PIL import Image as PILImage
 
     dataset, stem = "d1", "missing-layer"
@@ -470,14 +477,15 @@ def test_manifest_missing_hdf_layer_falls_back_to_overlay(
         }
     )
     write_master(tmp_path, master)
-    hdf_dir = tmp_path / "results" / dataset / "hdf"
-    hdf_dir.mkdir(parents=True)
     (tmp_path / "results" / dataset / "measurements").mkdir(parents=True)
-    with h5py.File(hdf_dir / f"{stem}.h5", "w") as fh:
-        layers = fh.create_group("layers")
-        layers.create_dataset(
-            "rgb", data=np.zeros((32, 32, 3), dtype=np.uint8)
-        )
+    # A store carrying no label group at all: ``save_intermediate_zarr``
+    # writes the objmap only when ``layers`` names it, so ``?layer=objmap``
+    # has nothing to source and must degrade to the overlay.
+    store = zarr_store_path(tmp_path, dataset, stem)
+    store.parent.mkdir(parents=True, exist_ok=True)
+    Image(arr=np.zeros((32, 32, 3), dtype=np.uint8)).save_intermediate_zarr(
+        store, layers=("rgb",)
+    )
     overlay_dir = tmp_path / "deliverables" / "overlays" / dataset
     overlay_dir.mkdir(parents=True)
     PILImage.new("RGB", (32, 32), (20, 40, 60)).save(

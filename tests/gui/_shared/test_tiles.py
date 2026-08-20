@@ -38,7 +38,7 @@ from phenotypic.gui._shared.tiles import (
     _dim_outside_bbox,
     build_tile_cell,
     build_tile_grid,
-    crop_hdf_rgb,
+    crop_store_rgb,
     crop_overlay,
     expand_range,
     is_safe_path_component,
@@ -119,28 +119,27 @@ def test_crop_overlay_corner_is_padded(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# crop_hdf_rgb — full-res HDF-layer cropper (Batch B1)
+# crop_store_rgb — full-res store-layer cropper (Batch B1)
 # ---------------------------------------------------------------------------
 
 
-def test_crop_hdf_rgb_returns_full_res_png(tmp_path: Path) -> None:
-    """``crop_hdf_rgb`` slices the raw ``/layers/rgb`` HDF dataset at full res."""
+def test_crop_store_rgb_returns_full_res_png(tmp_path: Path) -> None:
+    """``crop_store_rgb`` slices the store's level-0 ``rgb`` array at full res."""
     from phenotypic import Image
 
-    # Build a tiny image with a distinctive RGB layer and save to HDF.
+    # Build a tiny image with a distinctive RGB layer and save to a store.
     rgb = np.zeros((40, 40, 3), dtype=np.uint8)
     rgb[10:30, 10:30] = (255, 0, 0)
     img = Image(arr=rgb)
-    h5 = tmp_path / "img001.h5"
-    img.save2hdf5(str(h5))
+    store = img.save2zarr(tmp_path / "img001.ome.zarr")
 
-    out = crop_hdf_rgb(
-        h5,
+    out = crop_store_rgb(
+        store,
         "rgb",
         center_rr=20,
         center_cc=20,
         size=16,
-        mtime_ns=h5.stat().st_mtime_ns,
+        mtime_ns=store.stat().st_mtime_ns,
     )
     crop = PILImage.open(io.BytesIO(out)).convert("RGB")
     assert crop.size == (16, 16)
@@ -148,11 +147,11 @@ def test_crop_hdf_rgb_returns_full_res_png(tmp_path: Path) -> None:
     assert crop.getpixel((8, 8)) == (255, 0, 0)
 
 
-def test_crop_hdf_rgb_matches_crop_overlay_geometry(tmp_path: Path) -> None:
-    """The HDF cropper and the overlay cropper share byte-identical geometry.
+def test_crop_store_rgb_matches_crop_overlay_geometry(tmp_path: Path) -> None:
+    """The store cropper and the overlay cropper share byte-identical geometry.
 
-    Same pixel source (a solid RGB plane stored once as a PNG, once as an HDF
-    ``/layers/rgb`` dataset) must yield the same edge-padded crop, proving the
+    Same pixel source (a solid RGB plane stored once as a PNG, once as a
+    store's ``rgb`` series) must yield the same edge-padded crop, proving the
     shared ``_crop_pil_source`` body is reused unchanged.
     """
     from phenotypic import Image
@@ -161,31 +160,31 @@ def test_crop_hdf_rgb_matches_crop_overlay_geometry(tmp_path: Path) -> None:
 
     png = tmp_path / "src.png"
     PILImage.fromarray(rgb, mode="RGB").save(png, format="PNG")
-    h5 = tmp_path / "src.h5"
-    Image(arr=rgb).save2hdf5(str(h5))
+    store = Image(arr=rgb).save2zarr(tmp_path / "src.ome.zarr")
 
     from_overlay = crop_overlay(png, center_rr=5, center_cc=5, size=24)
-    from_hdf = crop_hdf_rgb(
-        h5,
+    from_store = crop_store_rgb(
+        store,
         "rgb",
         center_rr=5,
         center_cc=5,
         size=24,
-        mtime_ns=h5.stat().st_mtime_ns,
+        mtime_ns=store.stat().st_mtime_ns,
     )
-    assert _decode_rgb(from_hdf).tolist() == _decode_rgb(from_overlay).tolist()
+    assert _decode_rgb(from_store).tolist() == _decode_rgb(from_overlay).tolist()
 
 
 @pytest.mark.parametrize("layer", ["objmap", "detect_mat"])
-def test_crop_hdf_rgb_round_trips_non_rgb_layers(
+def test_crop_store_rgb_round_trips_non_rgb_layers(
     tmp_path: Path, layer: str
 ) -> None:
-    """Non-rgb HDF layers crop to a correct-size RGB PNG (Batch B2 / B1-deferred).
+    """Non-rgb store layers crop to a correct-size RGB PNG (Batch B2 / B1-deferred).
 
     Builds one image carrying a 2-label ``objmap`` (and the derived float
-    ``detect_mat``), saves it to HDF, and crops each non-rgb layer — exercising
-    the ``label2rgb`` colourisation (objmap) and the contrast-normalised
-    greyscale-→RGB promotion (detect_mat) paths through ``crop_hdf_rgb``.
+    ``detect_mat``), saves it to a store, and crops each non-rgb layer —
+    exercising the ``label2rgb`` colourisation (objmap) and the
+    contrast-normalised greyscale-→RGB promotion (detect_mat) paths through
+    ``crop_store_rgb``.
     """
     from phenotypic import Image
 
@@ -197,16 +196,15 @@ def test_crop_hdf_rgb_round_trips_non_rgb_layers(
     labeled[5:15, 5:15] = 1
     labeled[20:30, 20:30] = 2
     img.objmap[:] = labeled
-    h5 = tmp_path / "img001.h5"
-    img.save2hdf5(str(h5))
+    store = img.save2zarr(tmp_path / "img001.ome.zarr")
 
-    out = crop_hdf_rgb(
-        h5,
+    out = crop_store_rgb(
+        store,
         layer,
         center_rr=20,
         center_cc=20,
         size=16,
-        mtime_ns=h5.stat().st_mtime_ns,
+        mtime_ns=store.stat().st_mtime_ns,
     )
     crop = PILImage.open(io.BytesIO(out))
     assert crop.size == (16, 16)
@@ -218,23 +216,39 @@ def test_crop_hdf_rgb_round_trips_non_rgb_layers(
 # ---------------------------------------------------------------------------
 
 
-def test_crop_colony_prefers_hdf_falls_back_to_overlay(
+def _tiny_store(tmp_path: Path) -> Path:
+    """A REAL promoted store, not a stand-in.
+
+    ``crop_colony`` reaches the store through ``os.stat`` and (unmocked)
+    through a zarr read, so an empty file named ``x.h5`` was never a
+    substitutable input -- it merely happened not to be opened.
+    """
+    from phenotypic import Image
+
+    return Image(arr=np.zeros((8, 8, 3), dtype=np.uint8)).save2zarr(
+        tmp_path / "x.ome.zarr"
+    )
+
+
+def test_crop_colony_prefers_store_falls_back_to_overlay(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Dispatch: HDF when present, overlay otherwise, ``None`` when neither."""
+    """Dispatch: store when present, overlay otherwise, ``None`` when neither."""
     from phenotypic.gui._shared import tiles
 
     # Sentinel bytes mark which source the dispatcher chose.
-    monkeypatch.setattr(tiles, "crop_hdf_rgb", lambda *a, **k: b"H")
+    monkeypatch.setattr(tiles, "crop_store_rgb", lambda *a, **k: b"S")
     monkeypatch.setattr(tiles, "crop_overlay", lambda *a, **k: b"O")
 
+    store = _tiny_store(tmp_path)
+
     class FakeRoot:
-        def __init__(self, hdf: bool, overlay_ok: bool) -> None:
-            self._hdf = hdf
+        def __init__(self, has_store: bool, overlay_ok: bool) -> None:
+            self._has_store = has_store
             self._overlay_ok = overlay_ok
 
-        def hdf_path(self, ds: str, stem: str) -> Path | None:
-            return tmp_path / "x.h5" if self._hdf else None
+        def store_path(self, ds: str, stem: str) -> Path | None:
+            return store if self._has_store else None
 
         def has_overlay(self, ds: str, stem: str) -> bool:
             return self._overlay_ok
@@ -242,13 +256,12 @@ def test_crop_colony_prefers_hdf_falls_back_to_overlay(
         def overlay_path(self, ds: str, stem: str) -> Path:
             return tmp_path / "x.png"
 
-    # HDF present -> HDF path (os.stat needs the file to exist).
-    (tmp_path / "x.h5").write_bytes(b"")
+    # Store present -> store path.
     assert (
         tiles.crop_colony(FakeRoot(True, True), "p", "s", "rgb", 1, 1, 8)
-        == b"H"
+        == b"S"
     )
-    # No HDF but overlay -> overlay path.
+    # No store but overlay -> overlay path.
     assert (
         tiles.crop_colony(FakeRoot(False, True), "p", "s", "rgb", 1, 1, 8)
         == b"O"
@@ -260,30 +273,32 @@ def test_crop_colony_prefers_hdf_falls_back_to_overlay(
     )
 
 
-def test_crop_colony_missing_hdf_layer_falls_back_to_overlay(
+def test_crop_colony_missing_store_layer_falls_back_to_overlay(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """An HDF present but lacking the requested layer degrades to the overlay.
+    """A store present but lacking the requested layer degrades to the overlay.
 
-    A grayscale-only pipeline writes an HDF with no ``/layers/rgb`` dataset, so
-    :func:`crop_hdf_rgb` raises ``KeyError``. ``crop_colony`` must catch it and
-    fall back to the baked overlay PNG (404 only when no overlay exists either),
-    never surfacing the ``KeyError`` as a 500.
+    A grayscale pipeline writes a store with no ``rgb`` series, so
+    :func:`crop_store_rgb` raises ``KeyError``. ``crop_colony`` must catch it
+    and fall back to the baked overlay PNG (404 only when no overlay exists
+    either), never surfacing the ``KeyError`` as a 500.
     """
     from phenotypic.gui._shared import tiles
 
     def _raise_missing_layer(*_a: object, **_k: object) -> bytes:
-        raise KeyError("HDF has no layer 'rgb'")
+        raise KeyError("store has no layer 'rgb'")
 
-    monkeypatch.setattr(tiles, "crop_hdf_rgb", _raise_missing_layer)
+    monkeypatch.setattr(tiles, "crop_store_rgb", _raise_missing_layer)
     monkeypatch.setattr(tiles, "crop_overlay", lambda *a, **k: b"O")
+
+    store = _tiny_store(tmp_path)
 
     class FakeRoot:
         def __init__(self, overlay_ok: bool) -> None:
             self._overlay_ok = overlay_ok
 
-        def hdf_path(self, ds: str, stem: str) -> Path | None:
-            return tmp_path / "x.h5"
+        def store_path(self, ds: str, stem: str) -> Path | None:
+            return store
 
         def has_overlay(self, ds: str, stem: str) -> bool:
             return self._overlay_ok
@@ -291,12 +306,43 @@ def test_crop_colony_missing_hdf_layer_falls_back_to_overlay(
         def overlay_path(self, ds: str, stem: str) -> Path:
             return tmp_path / "x.png"
 
-    (tmp_path / "x.h5").write_bytes(b"")
-
-    # HDF present but layer missing + overlay present -> overlay bytes.
+    # Store present but layer missing + overlay present -> overlay bytes.
     assert tiles.crop_colony(FakeRoot(True), "p", "s", "rgb", 1, 1, 8) == b"O"
-    # HDF present but layer missing + no overlay -> None (caller 404s).
+    # Store present but layer missing + no overlay -> None (caller 404s).
     assert tiles.crop_colony(FakeRoot(False), "p", "s", "rgb", 1, 1, 8) is None
+
+
+def test_crop_colony_does_not_hide_an_unreadable_store_behind_the_overlay(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A store this build cannot decode must SURFACE, not degrade.
+
+    Falling back would render plausible overlay pixels while concealing a
+    run-wide, actionable condition (``store_schema_version`` mismatch). The
+    caller turns the exception into a 422 carrying the store's own message.
+    """
+    from phenotypic.gui._shared import tiles
+
+    def _raise_unreadable(*_a: object, **_k: object) -> bytes:
+        raise tiles.StoreUnreadable("store_schema_version is 999")
+
+    monkeypatch.setattr(tiles, "crop_store_rgb", _raise_unreadable)
+    monkeypatch.setattr(tiles, "crop_overlay", lambda *a, **k: b"O")
+
+    store = _tiny_store(tmp_path)
+
+    class FakeRoot:
+        def store_path(self, ds: str, stem: str) -> Path | None:
+            return store
+
+        def has_overlay(self, ds: str, stem: str) -> bool:
+            return True
+
+        def overlay_path(self, ds: str, stem: str) -> Path:
+            return tmp_path / "x.png"
+
+    with pytest.raises(tiles.StoreUnreadable):
+        tiles.crop_colony(FakeRoot(), "p", "s", "rgb", 1, 1, 8)
 
 
 # ---------------------------------------------------------------------------

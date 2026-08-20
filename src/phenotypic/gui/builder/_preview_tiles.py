@@ -29,6 +29,7 @@ from phenotypic.gui.builder._image_renderer import (
 )
 from phenotypic.gui.results_viewer import _dzi_tiler
 from phenotypic.gui.results_viewer._tile_routes import _TILE_NAME_RE, _json_error
+from phenotypic.sdk_ import ngff_
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +73,18 @@ def _channel_to_rgb_uint8(store_path: Path, channel: str) -> np.ndarray:
 
 def stage_channel_png(scope_dir: Path, block_id: str, channel: str,
                       store_path: Path) -> Path:
-    """Render a channel from a node store to a cached PNG (idempotent)."""
+    """Render a channel from a node store to a cached PNG (idempotent).
+
+    Freshness is measured against the store's root ``zarr.json``, never
+    against the store DIRECTORY. A directory's ``st_mtime_ns`` does not move
+    when a nested chunk is rewritten (verified), so the directory is not a
+    sound staleness key even where it happens to work; the root is the file
+    the promote writes last on every publish, so it moves exactly when the
+    store's contents do.
+    """
     png_path = _src_png_path(scope_dir, block_id, channel)
-    if png_path.exists() and png_path.stat().st_mtime >= store_path.stat().st_mtime:
+    root_mtime_ns = (store_path / ngff_.STORE_ROOT_JSON).stat().st_mtime_ns
+    if png_path.exists() and png_path.stat().st_mtime_ns >= root_mtime_ns:
         return png_path
     rgb = _channel_to_rgb_uint8(store_path, channel)
     png_path.parent.mkdir(parents=True, exist_ok=True)
@@ -123,7 +133,11 @@ def register_node_preview_routes(app: dash.Dash) -> None:
         if node is None:
             return _json_error("node not cached", 404)
         store_path = sdir / node["store"]
-        if not store_path.exists():
+        # The ROOT, not the directory: the promote writes it last, so an
+        # interrupted write leaves a directory with no root and the store
+        # reads as ABSENT rather than as partial -- the same disposition
+        # ``_preview_cache`` gives it when building the manifest.
+        if not (store_path / ngff_.STORE_ROOT_JSON).is_file():
             return _json_error("node store missing", 404)
         try:
             png_path = stage_channel_png(sdir, block_id, channel, store_path)

@@ -54,6 +54,58 @@ every mtime-based staleness check becomes a stale-tile bug rather than an error.
 
 - `store_path` uses `is_dir()`, not `is_file()`.
 
+> **REFUTED IN EXECUTION (2026-08-20).** The two paragraphs below name the wrong
+> function. `_processing_snapshot_paths` has **no production caller** —
+> `grep -rn "_processing_snapshot_paths" src/ tests/` returns only its own definition,
+> and `_cancellable_paths_fingerprint` is reached only from
+> `_consumed_state_fingerprint`, which uses a *different* helper
+> (`_consumed_state_snapshot_paths`). `source_fingerprint` is
+> `ProcessingInventory.fingerprint`, built by `_scan_processing_inventory`
+> (`_processing_inventory.py:207-215`), which does an unbounded
+> `results_root.rglob("*")` and **already descends into every store** — confirmed by
+> observing `results/ds/zarr/a.ome.zarr/gray/0` as an inventory entry. The FLOW-11 claim
+> that `_processing_inventory.py` consumes `_processing_snapshot_paths` is wrong for the
+> same reason; that module builds its own candidate set.
+>
+> Consequences: the D5 *property* is real and worth guarding, but its live site is the
+> inventory scan, which no Phase 4 task owns. Measured cost: a `save2zarr` of the 600x800
+> synth plate produces **38 entries per store** (24 files, 14 dirs) against **1** for an
+> `.h5`, so the exhaustive scan goes from ~10k to ~400k stat calls at 10k images — the
+> plan's own figure, produced by the function it did not name. Bounding
+> `_scan_processing_inventory` to `results/<ds>/zarr/*.ome.zarr/zarr.json` is
+> semantically equivalent for any PhenoTypic-written store (nothing writes into a
+> promoted store; the promote rewrites the root last) and ~40x cheaper, but it changes
+> user-visible staleness detection and was escalated rather than taken.
+>
+> `_processing_snapshot_paths` was ported anyway — the exit criterion forbids `.h5`
+> anywhere under `src/phenotypic/gui/` — and its test docstring records that it is dead.
+> It is otherwise untouched; **deleting it belongs to Phase 6's removal list.**
+>
+> **RESOLVED (user ruling, 2026-08-20).** `_scan_processing_inventory`'s results walk is
+> now bounded: `_walk_results_without_descending_into_stores` records each store as
+> exactly two entries — the store directory and its root `zarr.json` — and never enters
+> it, while the rest of `results/` (dataset dirs, `measurements/*.parquet`) keeps its
+> exhaustive walk. The overlays walk is unchanged, and `ProcessingInventoryAssurance`
+> keeps its two values: `"exhaustive"` simply stops descending into stores, and no knob
+> was added.
+>
+> What it detects: **every** write PhenoTypic makes, because the commit protocol writes
+> the root last and promotes by rename, and nothing opens a promoted store for writing.
+> What it deliberately does not: out-of-contract external modification — a hand-edited
+> chunk, or a store rsynced mid-flight. This matches Task 3.8, where per-image completion
+> markers already fingerprint a store by its root alone.
+>
+> Measured on a 1200x1600 store (38 entries): the inventory for a 3-image run falls from
+> ~122 entries to **12**, a 10x reduction, and the factor grows with plate size — a
+> 4000x3000 store holds 58 entries against 1 for the `.h5` it replaced.
+>
+> The guard is `test_discovery_never_lists_a_directory_inside_a_store`, which counts
+> `os.scandir` rather than inspecting the entry list. That distinction is load-bearing:
+> a recursive walk that filters its results back down to the store roots produces an
+> **identical** inventory while doing all the work the bound exists to avoid, and passes
+> every result-set assertion. It was run as a mutation and only the scandir count caught
+> it.
+
 - **Line 886–889 is a correctness problem, not just a cost problem.**
   `_processing_snapshot_paths` does
   `paths.extend(path for path in layout.results_dir.rglob("*.h5") if path.is_file())`, and
@@ -794,13 +846,37 @@ opening a full Image for a cache entry."
 
 ## Phase 4 exit criteria
 
-- [ ] `uv run pytest tests/unit/gui tests/gui tests/e2e/gui -q` is green. **`tests/gui`
-      is not optional here** — it is in `testpaths` (`pyproject.toml:200`) and holds twelve
+- [ ] `uv run pytest tests/unit/gui tests/gui -q` is green. **`tests/gui` is not optional
+      here** — it is in `testpaths` (`pyproject.toml:218`, **not** `:200`) and holds twelve
       of this phase's files (see the README's test inventory). Omitting it defers the
-      breakage to Phase 7.
+      breakage to Phase 7. `tests/e2e/gui` is **not** in `testpaths` and is gated on
+      `PLAYWRIGHT=1`, so it has never run in CI; it collects cleanly (211 tests) and
+      contains no `.h5`/`hdf` reference, so this phase changes nothing in it.
 - [ ] `grep -rn "file_fingerprint" src/phenotypic/gui/` returns nothing pointed at a store.
-- [ ] `grep -rn "\.h5\|load_hdf5\|hdf_path\|_load_hdf_layer_rgb\|crop_hdf_rgb" src/phenotypic/gui/` returns nothing.
-- [ ] The three live staleness sites plus the two Task 4.1 fingerprints all key on `zarr.json`, verified by
-      `grep -rn 'zarr.json' src/phenotypic/gui/ | wc -l` being at least 5.
-- [ ] A whole-plate tile request measurably reads fewer bytes than level 0 — assert in
-      `test_small_request_selects_a_coarse_level`.
+      (It still appears in `_compatibility.py`, `_qc_tab/`, and `analysis/_recipe_state.py`,
+      all against real single files — pipeline JSON, the QC DuckDB, recipe files.)
+- [ ] `grep -rn "\.h5\|load_hdf5\|hdf_path\|_load_hdf_layer_rgb\|crop_hdf_rgb" src/phenotypic/gui/`
+      returns no CODE. Three prose mentions survive in `builder/_preview_cache.py`
+      (`:37`, `:201`, `:304`) and are a **documented exception** (lead ruling,
+      2026-08-20): they are the recorded reason
+      `MANIFEST_VERSION` exists at all — a manifest written before the `.h5` → `.ome.zarr`
+      move must MISS and rebuild rather than be read back through a `"hdf"` key. Deleting
+      the explanation to satisfy a grep would leave the constant unexplained.
+- [ ] The staleness sites plus the two Task 4.1 fingerprints all key on the root
+      `zarr.json`, verified by
+      `grep -rnE 'zarr\.json|STORE_ROOT_JSON' src/phenotypic/gui/ --include=*.py | wc -l`
+      being at least 5. **The literal was hoisted to `ngff_.STORE_ROOT_JSON` in `d1dbaeb6`,
+      so a grep for the bare string alone under-counts.** Prefer the constant in new code;
+      do not re-introduce the literal to satisfy a grep.
+- [ ] A coarse-level read is measurably fewer bytes than level 0 — asserted on
+      `ndarray.nbytes` in `test_a_coarse_level_really_is_fewer_bytes`, not on the level
+      index, which is only a proxy.
+
+> **Not achieved, by design (report to the phase gate).** "A **whole-plate tile request**
+> reads fewer bytes than level 0" is **not** met, and should not be. The only caller of
+> `_load_zarr_layer_rgb` is the DZI manifest route, whose source PNG is what
+> `_dzi_tiler.tile` builds the deep-zoom pyramid from — so capping it caps the viewer's
+> maximum zoom, a user-visible regression rather than an optimisation. That route therefore
+> asks for the level-0 longest edge and selects level 0. `select_pyramid_level` is correct,
+> tested, and ready for the first caller that genuinely wants a small render; today there
+> is none.
