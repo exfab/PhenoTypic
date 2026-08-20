@@ -309,18 +309,55 @@ def test_force_clears_an_interrupted_finalize(
     assert io.best_params_path(finished_distributed_study).is_file()
 
 
+def _published_bytes(out) -> dict[str, bytes]:
+    """Every artifact finalize publishes, by relative path → bytes.
+
+    Deliberately not just ``best_params.json``: idempotence is a claim about
+    the WHOLE output, and each of the four steps writes different files.
+    ``.pht-tune-cache/`` is excluded — the study DB and its SQLite WAL are
+    engine state, not published artifacts, and re-reading a study legitimately
+    touches them.
+    """
+    roots = [io.deliverables_dir(out), io.trials_parquet_path(out)]
+    snapshot: dict[str, bytes] = {}
+    for root in roots:
+        if root.is_file():
+            snapshot[root.name] = root.read_bytes()
+            continue
+        for path in sorted(root.rglob("*")):
+            if path.is_file():
+                snapshot[str(path.relative_to(out))] = path.read_bytes()
+    return snapshot
+
+
 def test_finalize_is_rerunnable(finished_distributed_study):
-    """Every step overwrites its own output, so a second pass reproduces it."""
+    """Idempotent, not merely non-crashing: run two must REPRODUCE run one.
+
+    "Does not raise" is the weak version of this claim and would pass against a
+    finalize that appended to ``trials.parquet``, stamped a fresh timestamp into
+    the completion marker, or re-derived a different winner on the second pass.
+    So every published byte is compared, and the artifact set is compared too —
+    a second run that quietly stopped writing one file would otherwise slip
+    through a value-only comparison.
+    """
     from phenotypic.tune._tune_cli._finalize import finalize_distributed_study
 
-    first = finalize_distributed_study(finished_distributed_study)
-    payload_first = io.best_params_path(finished_distributed_study).read_text()
+    out = finished_distributed_study
+    first = finalize_distributed_study(out)
+    before = _published_bytes(out)
+    # Anti-vacuity: an empty snapshot would make every assertion below trivially
+    # true, which is exactly the shape of a test that cannot fail.
+    assert "best_params.json" in " ".join(before)
+    assert len(before) >= 4, before.keys()
 
-    second = finalize_distributed_study(finished_distributed_study)  # must not raise
+    second = finalize_distributed_study(out)  # must not raise
+    after = _published_bytes(out)
 
-    assert second.winner_trial_number == first.winner_trial_number
-    assert io.best_params_path(finished_distributed_study).read_text() == payload_first
-    assert not io.tune_finalize_marker_path(finished_distributed_study).exists()
+    assert set(after) == set(before), "the second run published a different file set"
+    for name in sorted(before):
+        assert after[name] == before[name], f"{name} changed on the second finalize"
+    assert second == first, "the reported result changed on the second finalize"
+    assert not io.tune_finalize_marker_path(out).exists()
 
 
 # --- refusals that are not about interruption --------------------------------
