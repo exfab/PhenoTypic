@@ -543,3 +543,39 @@ tuning **locally**, and deploying to SLURM all work with today's engines. Only
 **distributed tuning** waits — and until then a SLURM tune request returns
 `distributed_storage_unavailable` naming Postgres as the supported path, rather
 than silently submitting into H1.
+
+---
+
+## P9 — `--nrows` / `--ncols` must be emittable from the service tier
+
+**Found by the C6 cluster gate, and it defeats a guard on exactly the path this
+server uses.**
+
+C6 bumped the tune run marker to **v2** so a distributed finalize can re-load the
+calibration images with the run's *fixed* grid. Without `nrows`/`ncols`, a
+re-scan assigns a different `nrows × ncols` than the search used, and a
+`Grid_RowNum`/`Grid_ColNum`-grouped scorer then scores the held-out pass against
+a grid that never existed — **a wrong verdict, with no error**.
+
+The marker's write side is pinned. The problem is upstream of it:
+
+- `to_argv` does **not** emit `--nrows` or `--ncols`; they live in
+  `advanced_args`, a closed recognised set whose unknown keys are dropped.
+- C8's argv coverage gate cannot see this, and is not at fault: it derives from
+  `phenotypic_cli.params` (Click) and deliberately excludes `tune_run_tail`, so
+  `phenotypic.tune`'s argparse flags are outside its universe by construction.
+
+**Consequence:** every tune run launched by the MCP server or the GUI records
+`nrows: null`, so marker v2 is inert precisely where it was needed. A run
+launched by hand from a shell is fine. That asymmetry is the worst kind — the
+guard works when a human is watching and fails when the agent is driving.
+
+**The work:** make `nrows`/`ncols` first-class on `RunConsoleState` and emitted by
+the tune argv path, and extend the coverage gate's universe to
+`phenotypic.tune`'s parser rather than leaving a second CLI surface ungated. The
+gate's *shape* is right — either emittable or explicitly deny-listed with a
+reason — it simply does not cover this parser yet.
+
+**Sequencing:** not a C7a/C7b concern. It belongs with whatever wires
+`finalize_distributed_study` to a caller, since that is when marker v2 starts
+being read.
