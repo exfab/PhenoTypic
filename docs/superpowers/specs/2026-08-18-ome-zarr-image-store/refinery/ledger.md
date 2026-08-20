@@ -1760,3 +1760,107 @@ Parallel worktrees held cleanly. Across nine commits the only file Phase 4 touch
 `src/phenotypic/gui/` and `tests/**/gui/` was its own plan document. Boundaries stated as
 paths, and reported rather than resolved when they chafed, are what made two phases
 concurrent without a single conflict.
+
+---
+
+# IMPLEMENTATION — Phase 5 complete
+
+Six live tasks (5.5 cut), seven commits, run in a parallel worktree beside Phase 4.
+**57 mutants, 4 surviving** — all four reported rather than papered over. Six more
+initially survived, and **every one of them exposed a real test defect** rather than a
+code defect.
+
+## The one that mattered most: a fidelity suite that could not see data loss
+
+Dropping an **entire series** from the converted store **survived**. Every fidelity test
+compared the converted store against a **freshly written** one — both through `save2zarr` —
+so the writer dropped the series on both sides and they compared equal.
+
+This is the single most consequential property in the phase (does migration lose data?) and
+it was guarded by a test that structurally could not fail. Closed with an **h5py oracle**
+that reads the legacy source file directly, so the comparison crosses the format boundary
+instead of staying inside the new writer.
+
+It is Phase 2's non-discriminating-fixture lesson again, and the generalization is now
+unavoidable: **a round-trip test proves only that the round trip is self-consistent.** To
+prove *fidelity* you need an oracle outside the code under test.
+
+Adjacent, same phase: dropping the stored `grid_finder` also survived, because
+`grid_finder is not None` can never fail — `GridImage.__init__` mints a default one. The
+fixture now carries a different class with a non-default parameter.
+
+## A fixture whose "legacy" state never existed, which certified the wrong conclusion
+
+`finished_legacy_run` minted success markers at the **current** version over `.h5`
+artifacts. No such tree has ever existed. Because `keep_source=True` leaves the `.h5` in
+place, such a marker keeps validating straight through a migration — so Task 5.2's
+aggregate test **XPASSed**, certifying that Task 5.6 (marker republication) was
+unnecessary. Real legacy markers are version 1 with no `kind` tag.
+
+A fixture that encodes an impossible state does not merely fail to catch bugs; it can
+actively argue for deleting the code that fixes them.
+
+## Four pass-1 mutations that survived for one shared reason
+
+Unfiltered scope, receipt `kinds`, `_validate_receipt` re-derivation, and the dry-run guard
+all survived. Root cause was singular: the `legacy_run` fixture's non-image targets were
+**already canonical**, so pass 1 short-circuited to `_compatible_result` before writing a
+receipt — **nothing about pass 1 was exercised at all.** Skipping pass 1 entirely also
+survived, since no test asserted `headers_migrated > 0` or pass 1's effect on bytes.
+
+Four "missing tests" that were really one dead fixture. When a cluster of mutants survives
+together, look for the shared upstream cause before writing four tests.
+
+## Two false greens, both the shape Phase 3 named
+
+- `CliRunner().invoke(cli, ["--mode", "migrate", "--help"])` exits **0 before `--mode` is
+  validated** — `--help` is eager. The test passed while `migrate` was still absent from the
+  `Choice`. Now inspects `mode.type.choices` directly.
+- `test_migration_never_rewrites_a_source_hdf` and `test_dry_run_writes_no_receipt` both
+  passed against a CLI that **exited 2 and never ran**. Both now assert `exit_code == 0`
+  first.
+
+Also unsatisfiable as written: the plan asserted `exit_code != 2` to prove a rejection came
+from the mode guard rather than click — but `click.UsageError` **is** exit 2, so the
+assertion can never distinguish them. Discriminated on the guard's message instead.
+
+## `.gitignore` silently excluded the golden fixtures
+
+`.gitignore:85 *.h5` excluded all six legacy fixtures from Task 5.1's commit. `git add <dir>`
+skips ignored files **with no error**, so the suite was green locally and would have failed
+to collect on a fresh clone. Negated explicitly.
+
+Worth generalizing: a test fixture that is also a build artifact by extension is invisible
+to the one check (`git status`) that would otherwise catch it.
+
+## Four surviving mutants, and why they are honest
+
+`republish_aggregate` removed entirely, and called before the markers instead of after, both
+survive — because **every input** to `current_aggregate_is_current` is unchanged by
+migration. Pass 1's targets are the pipeline config and per-dataset parquets, none of which
+the aggregate marker binds, and the snapshot is untouched. So the original aggregate is
+still current and republication is a no-op on every reachable tree. It is defence-in-depth
+and the plan mandates it, so it stays; a test could only pin `publication_id` changing,
+which is mechanism rather than an observable property.
+
+Likewise `publish_aggregate_snapshot`'s `try/except` removal survives because the
+`success_markers_required` guard above makes the raising path unreachable — removing **both**
+is caught. And ignoring the `.h5`'s `/grid/` `nrows`/`ncols` attrs survives because the
+legacy format stores that geometry **twice**, in the attrs and inside `grid_finder_json`,
+and `setdefault` lets the finder win. Format redundancy, not data loss.
+
+## Documentation that instructed the withdrawn design
+
+Root `CLAUDE.md` still told a future agent that `--mode migrate` rewrites
+`deliverables/metadata.csv` after copying the original to `metadata.original.csv` — the D9 /
+FLOW-4 carve-out that was **withdrawn and never implemented**, and the exact rewrite the
+rule above it forbids. Phase 5 found it, correctly left it alone as outside its Files list,
+and reported it. Now corrected: the rule has **no exception**, and migrate emits
+`metadata.canonical.csv` alongside a byte-identical snapshot.
+
+## Method note
+
+Parallel worktrees held. Phase 5's only GUI file across the whole phase was
+`results_viewer/_output_consistency.py`, exactly as scoped; Phase 4's only non-GUI file was
+its own plan document. Two agents, two phases, ~2,400 lines of plan, **zero conflicts** —
+boundaries stated as paths, and reported rather than resolved when they chafed.
