@@ -156,6 +156,43 @@ python -m phenotypic.tune run spec.json -i ./plates -o ./out \
     --storage-url "postgresql+psycopg://$USER@<pg-host>:54399/tune_study"
 ```
 
+### Any other `#SBATCH` directive: `--slurm key=value`
+
+The four flags above are sugar over a general passthrough. `--slurm` is
+repeatable and each occurrence may carry one free-form `KEY=VALUE`, exactly as
+on `python -m phenotypic`; every key becomes one `#SBATCH` directive, with a
+leading `slurm_` stripped and remaining underscores turned into dashes
+(`slurm_cpus_per_task=8` → `#SBATCH --cpus-per-task=8`).
+
+This is the only way to reach keys the four flags cannot express — most
+importantly **`account`**, which UCR HPCC *requires* for the `exfab` and
+`preempt` partitions. Without it a tune fleet cannot reach the GPU node or the
+preempt pool at all, and elsewhere the work is silently billed to your default
+account.
+
+```bash
+# A GPU fleet on exfab: --account is mandatory there.
+python -m phenotypic.tune run spec.json -i ./plates -o ./out \
+    --strategy tpe --n-trials 200 --n-workers 4 \
+    --slurm slurm_partition=exfab \
+    --slurm slurm_account=exfab \
+    --slurm slurm_cpus_per_task=8 \
+    --slurm slurm_mem=64G \
+    --slurm slurm_gpus_per_node=1 \
+    --storage-url "postgresql+psycopg://$USER@<pg-host>:54399/tune_study"
+```
+
+Notes:
+
+- The **presence** of `--slurm` is what requests submission, so a bare `--slurm`
+  still means "submit with cluster defaults", and a run carrying only
+  `--slurm key=value` pairs is submitted too. There is no separate on/off flag.
+- Because a bare `--slurm` accepts an optional value, it swallows the next token
+  when that token is not an option. Write it *after* the spec path.
+- When both spellings are given, the explicit pair wins:
+  `--slurm-partition batch --slurm partition=epyc` submits to `epyc`.
+  `partition=` and `slurm_partition=` are the same key.
+
 ## Resume
 
 A tune run resumes by re-pointing `-o` at the same output directory. The shared

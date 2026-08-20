@@ -72,6 +72,14 @@ _RUN_MARKER_VERSION: Final[int] = 1
 #: impossible by construction, not contingent on a runtime guard.
 _STUDY_NAME: Final[str] = "tune_cost_v1"
 
+#: The four legacy ``--slurm-<name>`` sugar flags. A free-form ``--slurm``
+#: pair spelled either way (``partition=`` or ``slurm_partition=``) folds onto
+#: the ``slurm_``-prefixed key so the sugar flag and the pair cannot both reach
+#: ``format_sbatch_directives`` and emit the same directive twice.
+_SLURM_SUGAR_KEYS: Final[frozenset[str]] = frozenset(
+    {"partition", "mem", "time", "constraint"}
+)
+
 
 def _default_study_db_url(output_dir: Path) -> str:
     """SQLite URL for the run's ``study.db``, resuming a legacy-root copy.
@@ -499,6 +507,7 @@ def run_tuning(
     slurm_mem: Optional[str] = None,
     slurm_time: Optional[str] = None,
     slurm_constraint: Optional[str] = None,
+    slurm_args: Optional[dict[str, Any]] = None,
     nrows: Optional[int] = None,
     ncols: Optional[int] = None,
 ) -> Optional[Trial]:
@@ -542,6 +551,17 @@ def run_tuning(
             ``"8G"``; ``None`` omits the directive.
         slurm_time: Optional ``--slurm-time`` wall-clock limit per worker
             (``--slurm`` only), e.g. ``"04:00:00"``; ``None`` omits the directive.
+        slurm_constraint: Optional ``--slurm-constraint`` feature expression per
+            worker (``--slurm`` only); ``None`` omits the directive.
+        slurm_args: Free-form ``#SBATCH`` passthrough parsed from the repeatable
+            ``--slurm key=value`` flag. This is the surface that reaches keys the
+            four sugar flags above cannot express — notably ``account``, which is
+            mandatory for UCR HPCC's ``exfab`` and ``preempt`` partitions, plus
+            ``qos``, ``cpus_per_task`` and ``gpus_per_node``. An explicit
+            ``key=value`` WINS over the matching sugar flag.
+        nrows: Optional fixed calibration grid row count recorded in the run
+            marker and forwarded to each fleet worker.
+        ncols: Optional fixed calibration grid column count (see ``nrows``).
 
     Returns:
         The best :class:`Trial`, or ``None`` (e.g. a fire-and-forget SLURM
@@ -604,10 +624,13 @@ def run_tuning(
             images_dir=images_dir,
             split_path=io.tune_cache_split_assignment_path(output_dir),
             n_workers=n_workers,
-            slurm_partition=slurm_partition,
-            slurm_mem=slurm_mem,
-            slurm_time=slurm_time,
-            slurm_constraint=slurm_constraint,
+            slurm_args=merge_slurm_args(
+                slurm_args,
+                partition=slurm_partition,
+                mem=slurm_mem,
+                time=slurm_time,
+                constraint=slurm_constraint,
+            ),
             nrows=nrows,
             ncols=ncols,
         )
@@ -709,6 +732,75 @@ def _validate_slurm_request(
         raise ValueError("--n-workers must be a positive integer")
 
 
+def _canonical_slurm_key(key: str) -> str:
+    """Canonicalize one ``--slurm`` key so the sugar flags cannot double up.
+
+    ``format_sbatch_directives`` strips a leading ``slurm_`` and turns the rest
+    into a directive name, so ``partition=`` and ``slurm_partition=`` render the
+    identical ``#SBATCH --partition``. Left un-normalized they are two dict keys
+    and the generated script would carry the directive **twice** with different
+    values. Only the four sugar-flag names are folded; every other key passes
+    through verbatim so the special cases ``format_sbatch_directives`` keys off
+    (``mem_gb``, ``time``) keep their meaning.
+    """
+    if key in _SLURM_SUGAR_KEYS:
+        return f"slurm_{key}"
+    return key
+
+
+def merge_slurm_args(
+    explicit: Optional[dict[str, Any]],
+    *,
+    partition: Optional[str],
+    mem: Optional[str],
+    time: Optional[str],
+    constraint: Optional[str],
+) -> dict[str, Any]:
+    """Merge the four sugar flags with the free-form ``--slurm key=value`` bucket.
+
+    The sugar flags land first, then the explicit pairs overwrite them, so a run
+    carrying both ``--slurm-partition batch`` and ``--slurm partition=epyc`` gets
+    ``epyc``: the more specific spelling wins, and it is the only spelling that
+    can express keys the sugar flags do not have (``account``, ``qos``, …).
+
+    Args:
+        explicit: The parsed ``--slurm key=value`` pairs, or ``None``.
+        partition: The ``--slurm-partition`` sugar flag, or ``None``.
+        mem: The ``--slurm-mem`` sugar flag, or ``None``.
+        time: The ``--slurm-time`` sugar flag, or ``None``.
+        constraint: The ``--slurm-constraint`` sugar flag, or ``None``.
+
+    Returns:
+        The ``#SBATCH`` passthrough dict. An unset flag is OMITTED (rather than
+        recorded as ``None``) so ``format_sbatch_directives`` emits no directive
+        and the cluster default applies.
+
+    Examples:
+        >>> merge_slurm_args(
+        ...     {"slurm_account": "exfab"},
+        ...     partition="batch", mem=None, time=None, constraint=None,
+        ... )
+        {'slurm_partition': 'batch', 'slurm_account': 'exfab'}
+        >>> merge_slurm_args(
+        ...     {"partition": "epyc"},
+        ...     partition="batch", mem=None, time=None, constraint=None,
+        ... )
+        {'slurm_partition': 'epyc'}
+    """
+    merged: dict[str, Any] = {}
+    for name, value in (
+        ("partition", partition),
+        ("mem", mem),
+        ("time", time),
+        ("constraint", constraint),
+    ):
+        if value is not None:
+            merged[f"slurm_{name}"] = value
+    for key, value in (explicit or {}).items():
+        merged[_canonical_slurm_key(str(key))] = value
+    return merged
+
+
 def _headline_winner(store: StudyStore) -> Optional[Trial]:
     """Return the run's single headline winner across scalar and Pareto runs."""
     front = store.pareto_front()
@@ -759,10 +851,7 @@ def _submit_slurm_fleet(
     images_dir: Optional[Path],
     split_path: Path,
     n_workers: Optional[int] = None,
-    slurm_partition: Optional[str] = None,
-    slurm_mem: Optional[str] = None,
-    slurm_time: Optional[str] = None,
-    slurm_constraint: Optional[str] = None,
+    slurm_args: Optional[dict[str, Any]] = None,
     nrows: Optional[int] = None,
     ncols: Optional[int] = None,
 ) -> Optional[Trial]:
@@ -781,11 +870,16 @@ def _submit_slurm_fleet(
             it).
         n_workers: The fleet size; ``None`` falls back to ``min(8, n_trials)``
             (or ``4`` when the strategy carries no positive ``n_trials``).
-        slurm_partition: The SLURM partition; ``None`` omits the
-            ``#SBATCH --partition`` directive (the cluster default).
-        slurm_mem: The per-worker ``--mem`` (e.g. ``"8G"``); ``None`` omits it.
-        slurm_time: The per-worker ``--time`` limit (e.g. ``"04:00:00"``);
-            ``None`` omits it.
+        slurm_args: The already-merged ``#SBATCH`` passthrough (see
+            :func:`merge_slurm_args`). Every key becomes one directive via
+            ``format_sbatch_directives``; an omitted key emits no directive, so
+            an empty dict means "cluster defaults throughout" — notably NOT the
+            old hardcoded ``partition=batch``, which a cluster without a
+            ``batch`` partition would reject for every job. Merging happens in
+            :func:`run_tuning` so this function has exactly one SLURM input and
+            no precedence rules of its own.
+        nrows: Optional fixed calibration grid row count for each worker's scan.
+        ncols: Optional fixed calibration grid column count (see ``nrows``).
     """
     if spec_path is None or images_dir is None:
         raise ValueError(
@@ -819,19 +913,6 @@ def _submit_slurm_fleet(
     from phenotypic._cli._cli_utils import get_python_command
 
     python_command, _ = get_python_command(for_slurm=True)
-    # Build the #SBATCH passthrough from the explicit flags only — an unset flag
-    # is OMITTED so format_sbatch_directives emits no directive for it (the
-    # cluster default applies). Notably ``slurm_partition`` is no longer hardcoded
-    # to "batch": a cluster without a "batch" partition would reject every job.
-    slurm_args: dict[str, Any] = {}
-    if slurm_partition is not None:
-        slurm_args["slurm_partition"] = slurm_partition
-    if slurm_mem is not None:
-        slurm_args["slurm_mem"] = slurm_mem
-    if slurm_time is not None:
-        slurm_args["slurm_time"] = slurm_time
-    if slurm_constraint is not None:
-        slurm_args["slurm_constraint"] = slurm_constraint
     # Workers reload the RESOLVED spec persisted to deliverables/tuning_spec.json
     # (written above), NOT the raw input ``spec_path``: the --strategy / --n-trials
     # / --held-out overrides live only in the resolved spec, so handing the workers
@@ -844,7 +925,7 @@ def _submit_slurm_fleet(
         split_path=Path(split_path),
         study_name=_STUDY_NAME,
         n_workers=resolved_workers,
-        slurm_args=slurm_args,
+        slurm_args=dict(slurm_args or {}),
         storage_url=url,
         python_command=python_command,
         nrows=nrows,

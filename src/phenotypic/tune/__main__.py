@@ -19,6 +19,8 @@ import os
 from pathlib import Path
 from typing import Optional, Sequence
 
+import click
+
 from phenotypic import ImagePipeline
 
 from ._spec import TuningSpec
@@ -86,9 +88,21 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     run_p.add_argument(
         "--slurm",
-        action="store_true",
-        default=False,
-        help="submit a distributed worker fleet over SLURM instead of running locally",
+        nargs="?",
+        action="append",
+        default=None,
+        metavar="KEY=VALUE",
+        help=(
+            "submit a distributed worker fleet over SLURM instead of running "
+            "locally. Repeatable, and each occurrence may carry one free-form "
+            "#SBATCH KEY=VALUE (e.g. --slurm slurm_account=exfab --slurm "
+            "slurm_qos=normal) — the surface the four --slurm-* flags below "
+            "cannot express. PRESENCE of the flag is what requests submission, "
+            "so a bare --slurm still means 'submit with cluster defaults'. "
+            "Mirrors `python -m phenotypic --slurm key=value`. NOTE: a bare "
+            "--slurm swallows the following token when that token is not an "
+            "option, so write it after the spec path, not before it"
+        ),
     )
     run_p.add_argument(
         "--n-workers",
@@ -195,7 +209,45 @@ def _normalize_argv(argv: Sequence[str]) -> list[str]:
     return args
 
 
-def _run_command(args: argparse.Namespace) -> None:
+def _resolve_slurm_request(
+    parser: argparse.ArgumentParser, raw: Optional[list[Optional[str]]]
+) -> tuple[bool, dict]:
+    """Split the repeatable ``--slurm`` occurrences into (submit?, kv pairs).
+
+    ``--slurm`` is ``nargs="?"`` + ``action="append"``: never given it is
+    ``None``; a bare occurrence appends ``None``; ``--slurm k=v`` appends the
+    string. Presence in any form requests submission, which is what keeps the
+    shipped boolean spelling — and every script that uses it — working.
+
+    Parsing is delegated to the forward CLI's :func:`parse_slurm_args` so both
+    engines read ``key=value`` identically (``ast.literal_eval`` on the value,
+    so ``slurm_cpus_per_task=8`` arrives as an ``int``). Its
+    :class:`click.BadParameter` is re-raised through ``parser.error`` — this
+    CLI is argparse, and a Click exception escaping it would print a traceback
+    instead of a usage message.
+
+    Args:
+        parser: The parser, used to report a malformed pair as a usage error.
+        raw: ``args.slurm`` as argparse built it.
+
+    Returns:
+        ``(submit, slurm_args)``.
+    """
+    if raw is None:
+        return False, {}
+    pairs = [token for token in raw if token]
+    if not pairs:
+        return True, {}
+    from phenotypic._cli._cli_utils import parse_slurm_args
+
+    try:
+        return True, parse_slurm_args(pairs)
+    except click.BadParameter as exc:
+        parser.error(f"--slurm: {exc.format_message()}")
+        raise  # unreachable: parser.error raises SystemExit
+
+
+def _run_command(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     """Load a spec, scan ``--input``, and run the engine (writes deliverables)."""
     spec = TuningSpec.model_validate_json(Path(args.spec).read_text())
     output_dir = Path(args.output) if args.output else _default_output(args.input)
@@ -205,6 +257,7 @@ def _run_command(args: argparse.Namespace) -> None:
     # --storage-url falls back to the env var so a SLURM array can export one
     # shared URL to every worker (psycopg3 / sqlite scheme).
     storage_url = args.storage_url or os.environ.get(PHENOTYPIC_TUNE_STORAGE_URL_ENV)
+    slurm, slurm_args = _resolve_slurm_request(parser, args.slurm)
     run_tuning(
         spec,
         images,
@@ -213,7 +266,7 @@ def _run_command(args: argparse.Namespace) -> None:
         n_trials=args.n_trials,
         screen=args.screen,
         storage_url=storage_url,
-        slurm=args.slurm,
+        slurm=slurm,
         spec_path=Path(args.spec),
         images_dir=Path(args.input),
         held_out_fraction=args.held_out_fraction,
@@ -223,6 +276,7 @@ def _run_command(args: argparse.Namespace) -> None:
         slurm_mem=args.slurm_mem,
         slurm_time=args.slurm_time,
         slurm_constraint=args.slurm_constraint,
+        slurm_args=slurm_args,
         nrows=args.nrows,
         ncols=args.ncols,
     )
@@ -247,11 +301,12 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     import sys
 
     raw = list(sys.argv[1:]) if argv is None else list(argv)
-    args = _build_parser().parse_args(_normalize_argv(raw))
+    parser = _build_parser()
+    args = parser.parse_args(_normalize_argv(raw))
     if args.command == "auto-space":
         _auto_space_command(args)
     else:
-        _run_command(args)
+        _run_command(parser, args)
 
 
 if __name__ == "__main__":

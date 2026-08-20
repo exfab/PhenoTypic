@@ -569,6 +569,7 @@ def tune_run_tail(
     cv_group: str | None,
     slurm: bool,
     screen: bool,
+    slurm_args: Mapping[str, Any] | None = None,
 ) -> list[str]:
     """Build the launcher-independent ``run`` argument tail.
 
@@ -588,6 +589,14 @@ def tune_run_tail(
         cv_group: Optional robust-eval grouping-column override.
         slurm: Whether to append ``--slurm``.
         screen: Whether to append ``--screen``.
+        slurm_args: Free-form ``#SBATCH`` keys the three sugar arguments above
+            cannot express — ``slurm_account`` (mandatory for UCR HPCC's
+            ``exfab`` and ``preempt`` partitions), ``slurm_qos``,
+            ``slurm_cpus_per_task``, ``slurm_gpus_per_node``. Rendered as
+            repeated ``--slurm key=value`` in iteration order, **only when**
+            ``slurm`` is true: on this CLI the presence of ``--slurm`` is what
+            requests submission, so emitting a pair for a local run would turn
+            it into a cluster job. Empty keys and values are skipped.
 
     Returns:
         Tokens beginning with the ``run`` subcommand.
@@ -636,10 +645,33 @@ def tune_run_tail(
     if cv_group:
         tail += ["--cv-group", cv_group]
     if slurm:
-        tail.append("--slurm")
+        pairs = _tune_slurm_pairs(slurm_args)
+        if pairs:
+            tail += pairs
+        else:
+            tail.append("--slurm")
     if screen:
         tail.append("--screen")
     return tail
+
+
+def _tune_slurm_pairs(slurm_args: Mapping[str, Any] | None) -> list[str]:
+    """Render ``slurm_args`` as repeated ``--slurm key=value`` tokens.
+
+    Each rendered pair carries the submission request on its own, so a
+    non-empty result replaces the bare ``--slurm`` rather than joining it.
+    """
+    if not slurm_args:
+        return []
+    argv: list[str] = []
+    for key, value in slurm_args.items():
+        if key is None or value is None:
+            continue
+        key_text, value_text = str(key), str(value)
+        if not key_text or not value_text:
+            continue
+        argv.extend(["--slurm", f"{key_text}={value_text}"])
+    return argv
 
 
 def tune_run_argv_from_tail(
@@ -667,6 +699,7 @@ def tune_run_argv(
     cv_group: str | None,
     slurm: bool,
     screen: bool,
+    slurm_args: Mapping[str, Any] | None = None,
     python: str | None = None,
 ) -> list[str]:
     """Build the full launch argv for a tune run.
@@ -686,6 +719,8 @@ def tune_run_argv(
         cv_group: Optional robust-eval grouping-column override.
         slurm: Whether to append ``--slurm``.
         screen: Whether to append ``--screen``.
+        slurm_args: Free-form ``--slurm key=value`` passthrough; see
+            :func:`tune_run_tail`.
         python: Python executable, defaulting to :data:`sys.executable`.
 
     Returns:
@@ -709,5 +744,6 @@ def tune_run_argv(
         cv_group=cv_group,
         slurm=slurm,
         screen=screen,
+        slurm_args=slurm_args,
     )
     return tune_run_argv_from_tail(tail, python=python)

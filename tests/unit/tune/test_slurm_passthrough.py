@@ -3,10 +3,12 @@
 Script generation is pure string-building (no live ``sbatch``), so these run in
 CI without the ``slurm`` marker:
 
-* ``_submit_slurm_fleet`` threads ``--n-workers`` / ``--slurm-partition`` /
-  ``--slurm-mem`` / ``--slurm-time`` into ``SlurmExecutor`` and OMITS the
-  ``#SBATCH --partition`` directive when the partition is ``None`` (no longer
-  hardcoded to ``"batch"``);
+* ``_submit_slurm_fleet`` threads ``--n-workers`` and one already-merged
+  ``slurm_args`` profile into ``SlurmExecutor`` and OMITS the
+  ``#SBATCH --partition`` directive when no partition is configured (no longer
+  hardcoded to ``"batch"``). The four ``--slurm-*`` sugar flags are merged with
+  the free-form ``--slurm key=value`` pairs one level up, in ``run_tuning``
+  (``merge_slurm_args``); this function has a single SLURM input;
 * the SLURM job name + ``# Study:`` comment sanitize a study name containing
   characters outside ``[A-Za-z0-9._-]``.
 """
@@ -145,9 +147,11 @@ def test_passthrough_threads_flags_into_executor(tmp_path, monkeypatch):
         tmp_path,
         monkeypatch,
         n_workers=3,
-        slurm_partition="gpu",
-        slurm_mem="16G",
-        slurm_time="08:00:00",
+        slurm_args={
+            "slurm_partition": "gpu",
+            "slurm_mem": "16G",
+            "slurm_time": "08:00:00",
+        },
     )
     assert captured["n_workers"] == 3
     assert captured["_run_items"] == [0, 1, 2]
