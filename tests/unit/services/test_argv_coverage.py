@@ -50,7 +50,7 @@ _DENIED: dict[str, str] = {
     "--checkpoint-interval": "Auto-estimated from the array size; a wrong manual value silently degrades SLURM continuation.",
     "--skip-validation": "Disables pipeline validation. Nothing that submits to a cluster unattended should be able to turn the checks off.",
     "--no-qc": "QC presence is a property of the pipeline's 'qc' section; suppressing it from the launcher would contradict the pipeline.",
-    "--layer": "Only valid with --mode process, and v1 deploy is always the full pipeline (spec 05 §5.3 cut mode, layer and sample).",
+    "--layer": "Only valid with --mode process, and v1 deploy is always the full pipeline (spec 05 §5.3 cut mode and layer). Note --sample is NOT cut: it is emitted, and the CLI refuses it only beside --image-manifest (USER-33).",
 }
 
 

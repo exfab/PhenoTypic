@@ -770,6 +770,60 @@ def test_the_flag_requires_input(tmp_path: Path) -> None:
     assert "--image-manifest requires --input" in result.output
 
 
+def test_sample_cannot_thin_a_manifest(
+    collision_tree: Path, pipeline_stub: Path, tmp_path: Path
+) -> None:
+    """USER-33: ``--sample`` beside ``--image-manifest`` is a hard refusal.
+
+    ``--sample`` thins the datasets *after* ``apply_image_manifest`` has
+    narrowed the scan, so the two silently compose into an approval that means
+    nothing: the manifest and the digest recorded from it stay valid while a
+    smaller, differently-chosen set actually runs. The combination is refused
+    at the CLI rather than reconciled later, because there is no ordering that
+    makes "run exactly these images" and "run N random ones" both true.
+
+    ``--dry-run`` is deliberately *not* passed: the dry-run path returns before
+    sampling applies, so a run that only refused under ``--dry-run`` would
+    still let the real path through.
+    """
+    from click.testing import CliRunner
+
+    from phenotypic.phenotypicCLI import phenotypic_cli
+
+    manifest = _write_manifest(
+        tmp_path / "plan.images",
+        ["plate1/img001.tiff", "plate1/img002.tiff", "plate2/img001.tiff"],
+    )
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "full",
+            "--pipeline",
+            str(pipeline_stub),
+            "--input",
+            str(collision_tree),
+            "--output",
+            str(tmp_path / "out"),
+            "--image-manifest",
+            str(manifest),
+            "--sample",
+            "1",
+            "--skip-validation",
+        ],
+    )
+
+    assert result.exit_code != 0, result.output
+    # The spec's error code travels in the message so the MCP tier can map
+    # this refusal without re-deriving it from prose.
+    assert "sample_excludes_manifest" in result.output
+    # Nothing was scanned, selected, or sampled: the refusal is a guard, not
+    # an abort partway through a run that already narrowed the tree.
+    assert "Image manifest" not in result.output
+    assert "Sample mode" not in result.output
+
+
 def _dry_run_plan(output: str) -> dict[str, list[str]]:
     """Parse the dry-run's "Datasets Discovered" block into {dataset: images}.
 

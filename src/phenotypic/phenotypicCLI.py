@@ -1252,6 +1252,23 @@ def phenotypic_cli(
                 "derived relative to --input."
             )
 
+        # USER-33: --sample applies *after* the manifest narrows the scan, so
+        # the two compose into an approval that means nothing — a human signs
+        # off on 312 images, 20 run, and the manifest and its digest are both
+        # still valid. The intents contradict each other outright (a set
+        # someone specifically approved is not a set to sample), so this is a
+        # hard refusal here rather than an ordering subtlety every later
+        # stage, and every agent driving the CLI, would have to reason about.
+        # The MCP error code for this refusal is ``sample_excludes_manifest``.
+        if image_manifest is not None and sample is not None:
+            raise click.UsageError(
+                "sample_excludes_manifest: --sample cannot be combined with "
+                "--image-manifest. --sample would thin the approved set "
+                "*after* the manifest selected it, leaving the manifest and "
+                "its digest unchanged while a different, smaller set ran. "
+                "Narrow the manifest instead."
+            )
+
         if measure_only or recompile_only:
             if input_path is not None:
                 raise click.UsageError(

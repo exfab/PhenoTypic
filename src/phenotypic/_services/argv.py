@@ -378,6 +378,14 @@ def to_argv(state: RunConsoleState) -> list[str]:
     because ``work_id_for_image`` derives each image's identity from its path
     relative to ``--input``.
 
+    ``advanced_args["sample"]`` and ``image_manifest`` are **mutually
+    exclusive at the CLI** (USER-33, error code ``sample_excludes_manifest``):
+    ``--sample`` thins the approved set after the manifest selects it, leaving
+    the manifest digest valid while a smaller set runs. This function stays a
+    pure translator and emits whatever the state holds, so a caller that
+    populates both gets a ``click.UsageError`` at launch rather than a silent
+    narrowing. Callers that build the state should not offer the combination.
+
     Args:
         state: The form state to translate. Must have non-``None``
             ``pipeline_path``, ``input_dir``, and ``output_dir``.
