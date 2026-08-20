@@ -336,6 +336,14 @@ exercised. The parity test passes while production breaks.
 
 **Plan now assumes:** a store gets its own descriptor kind
 (`{"path": ..., "kind": "store", "fingerprint": paths_fingerprint([store / "zarr.json"])}`)
+
+> **Superseded by Task 3.8 as implemented (C13).** Both the key and the function
+> changed: the descriptor uses **`"sha256"`**, not `"fingerprint"`, and
+> **`file_fingerprint`**, not `paths_fingerprint` (FLOW-3). The difference is not
+> cosmetic -- `paths_fingerprint` is **path-sensitive**, so a relocated output tree
+> would fail validation and reprocess every image. C13 pinned that with
+> `test_a_relocated_output_tree_still_validates`, and mutating back to
+> `paths_fingerprint` kills three tests. Read Task 3.8 for the live contract.
 with `valid_image_success` dispatching on `kind`, and `SUCCESS_MARKER_VERSION`
 (`_cli_completion.py:26`, currently `1`) bumped to `2`. Added as **Phase 3 Task 3.8**, and
 the Task 3.4 differential test gains a fifth artifact axis.

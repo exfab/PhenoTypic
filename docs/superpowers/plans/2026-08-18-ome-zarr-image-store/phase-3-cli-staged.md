@@ -2051,7 +2051,11 @@ own change."
 > markers for runs that have completion evidence but no marker — and its evidence test at
 > `:380` includes `stage3_completion_exists`, a **store-era** signal. So the path fires on a
 > staged run interrupted between its Stage-3 marker and its success marker, declares an
-> `.h5` that the store-era run never wrote, and `resolve(strict=True)` raises. Route it
+> `.h5` that the store-era run never wrote. `resolve(strict=True)` does raise, but the
+> loop's `except (OSError, RuntimeError, ValueError): continue` swallows it, so the
+> symptom is **not** a traceback -- it is a silent refusal to promote, and every image
+> of the tree is reprocessed. Corrected after C13 measured it: the red run shows
+> `assert 0 == 1`, not an exception. Route it
 > through `image_data_artifact` like the others; it needs `output_manager`, which is already
 > in scope there.
 >
