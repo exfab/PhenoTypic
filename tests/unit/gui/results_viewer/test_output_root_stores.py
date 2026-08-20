@@ -175,15 +175,118 @@ def test_snapshot_paths_hold_no_hdf(tmp_path: Path) -> None:
     assert not any(path.suffix == ".h5" for path in paths)
 
 
+def test_discovery_never_lists_a_directory_inside_a_store(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The COST of discovery, asserted on directory listings (user ruling).
+
+    ``_scan_processing_inventory`` used an unbounded ``results_root.rglob``,
+    which descends into every store: a 4000x3000 plate's store holds 58
+    entries where the ``.h5`` it replaced was 1, so 10k images cost ~580,000
+    stat calls instead of ~10,000, on every viewer open.
+
+    Asserted on ``os.scandir`` rather than on the entry list, because the
+    two are NOT equivalent: a recursive walk that filters its results back
+    down to the store roots produces the identical inventory while doing all
+    the work the bound exists to avoid. That mutation survived a result-set
+    assertion once already in this phase.
+    """
+    import os
+
+    _seed(tmp_path, ["a", "b"])
+    stores = [zarr_store_path(tmp_path, "ds", stem) for stem in ("a", "b")]
+    listed: list[str] = []
+    real_scandir = os.scandir
+
+    def _counting(path=".", *args, **kwargs):
+        listed.append(os.fspath(path))
+        return real_scandir(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "scandir", _counting)
+    _discover(tmp_path)
+
+    inside = [
+        seen
+        for seen in listed
+        for store in stores
+        if Path(seen) == store or store in Path(seen).parents
+    ]
+    assert inside == [], inside
+
+
+def test_discovery_still_walks_the_rest_of_the_results_tree(
+    tmp_path: Path,
+) -> None:
+    """Only stores are pruned. Everything else keeps its exhaustive walk.
+
+    ``measurements/*.parquet`` are per-image processing products too, and
+    nothing about them changed -- pruning them as well would trade a real
+    cost problem for a real correctness one.
+    """
+    from phenotypic.gui.results_viewer._processing_inventory import (
+        ProcessingInventoryEntry,
+    )
+
+    _seed(tmp_path, ["a"])
+    measurement = tmp_path / "results" / "ds" / "measurements" / "a.parquet"
+    measurement.write_bytes(b"parquet-ish")
+
+    entries = _discover(tmp_path).processing_inventory.entries
+    recorded = {entry.relative_path for entry in entries}
+    assert "results/ds/measurements/a.parquet" in recorded
+    assert "results/ds/zarr/a.ome.zarr/zarr.json" in recorded
+    assert not any(
+        path.startswith("results/ds/zarr/a.ome.zarr/gray") for path in recorded
+    ), sorted(recorded)
+    assert all(isinstance(entry, ProcessingInventoryEntry) for entry in entries)
+
+
+def test_processing_inventory_goes_stale_after_a_store_republish(
+    tmp_path: Path,
+) -> None:
+    """``_processing_snapshot_paths``' claimed second consumer, tested for real.
+
+    Ledger FLOW-11 named the wrong producer, but the property it wanted is
+    the right one: after a store republish the captured inventory must stop
+    verifying, or a viewer bound across a run never notices new pixels.
+    """
+    from phenotypic.gui.results_viewer._discovery_contracts import (
+        OutputDiscoveryCancellation,
+    )
+    from phenotypic.gui.results_viewer._processing_inventory import (
+        inventory_is_current,
+    )
+
+    _seed(tmp_path, ["a"])
+    source = tmp_path.resolve()
+    inventory = _discover(tmp_path).processing_inventory
+    assert inventory_is_current(
+        inventory,
+        source_root=source,
+        cancellation=OutputDiscoveryCancellation(),
+        progress=None,
+    )
+
+    (zarr_store_path(tmp_path, "ds", "a") / "zarr.json").write_text(
+        '{"republished": 1}', encoding="utf-8"
+    )
+    assert not inventory_is_current(
+        inventory,
+        source_root=source,
+        cancellation=OutputDiscoveryCancellation(),
+        progress=None,
+    )
+
+
 def test_processing_fingerprint_changes_when_a_store_changes(tmp_path: Path) -> None:
     """The end-to-end property D5 exists to protect.
 
     Note the mechanism is *not* ``_processing_snapshot_paths`` -- that helper
     has no production caller (verified). ``source_fingerprint`` is
     ``ProcessingInventory.fingerprint``, built by
-    ``_scan_processing_inventory``. This asserts the property regardless of
-    which enumeration supplies it, so it stays a guard if the enumeration is
-    ever bounded.
+    ``_scan_processing_inventory``, whose results walk is now bounded to each
+    store's root. This asserts the property from the outside, so it holds
+    across that change rather than describing one enumeration.
     """
     _seed(tmp_path, ["a"])
     before = _discover(tmp_path).source_fingerprint

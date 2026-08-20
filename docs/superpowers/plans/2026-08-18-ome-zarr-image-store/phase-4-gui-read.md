@@ -79,6 +79,32 @@ every mtime-based staleness check becomes a stale-tile bug rather than an error.
 >
 > `_processing_snapshot_paths` was ported anyway — the exit criterion forbids `.h5`
 > anywhere under `src/phenotypic/gui/` — and its test docstring records that it is dead.
+> It is otherwise untouched; **deleting it belongs to Phase 6's removal list.**
+>
+> **RESOLVED (user ruling, 2026-08-20).** `_scan_processing_inventory`'s results walk is
+> now bounded: `_walk_results_without_descending_into_stores` records each store as
+> exactly two entries — the store directory and its root `zarr.json` — and never enters
+> it, while the rest of `results/` (dataset dirs, `measurements/*.parquet`) keeps its
+> exhaustive walk. The overlays walk is unchanged, and `ProcessingInventoryAssurance`
+> keeps its two values: `"exhaustive"` simply stops descending into stores, and no knob
+> was added.
+>
+> What it detects: **every** write PhenoTypic makes, because the commit protocol writes
+> the root last and promotes by rename, and nothing opens a promoted store for writing.
+> What it deliberately does not: out-of-contract external modification — a hand-edited
+> chunk, or a store rsynced mid-flight. This matches Task 3.8, where per-image completion
+> markers already fingerprint a store by its root alone.
+>
+> Measured on a 1200x1600 store (38 entries): the inventory for a 3-image run falls from
+> ~122 entries to **12**, a 10x reduction, and the factor grows with plate size — a
+> 4000x3000 store holds 58 entries against 1 for the `.h5` it replaced.
+>
+> The guard is `test_discovery_never_lists_a_directory_inside_a_store`, which counts
+> `os.scandir` rather than inspecting the entry list. That distinction is load-bearing:
+> a recursive walk that filters its results back down to the store roots produces an
+> **identical** inventory while doing all the work the bound exists to avoid, and passes
+> every result-set assertion. It was run as a mutation and only the scandir count caught
+> it.
 
 - **Line 886–889 is a correctness problem, not just a cost problem.**
   `_processing_snapshot_paths` does
