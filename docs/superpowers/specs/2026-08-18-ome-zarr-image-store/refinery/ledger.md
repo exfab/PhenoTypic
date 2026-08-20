@@ -1667,3 +1667,96 @@ control flow should not lean on a broad except.
 `zarr.json`, so a re-promote with identical root and different chunks would still
 validate. C13 did not pin that, because a test asserting it would cement the weakness as
 *intended* and block a future strengthening. Flagged instead.
+
+---
+
+# IMPLEMENTATION — Phase 4 complete
+
+Four tasks, one agent, nine commits, run in a parallel worktree beside Phase 5. Gate:
+**4 failed, 9,328 passed** — the identical four known failures as Phase 3, zero new.
+24 mutants, 5 survivors, all closed, plus one reported rather than manufactured.
+
+## The lesson this phase supplied three times: an assertion about results cannot see cost
+
+This is now the project's most frequently re-learned failure, and Phase 4 hit it on three
+unrelated code paths:
+
+- **M5** — a bounded glob replaced by `rglob("*")`. The `(store/zarr.json).is_file()` filter
+  prunes the recursive walk **back to the identical result set**, so every result-set
+  assertion passes while the walk is pathological.
+- **N7/N8** — the pyramid loader ignoring `target_px`. Its only caller asks for the level-0
+  edge, so level 0 *is* the correct answer everywhere; the pyramid could have been doing
+  nothing at all and no test would have noticed.
+- **R2**, the sharpest — a recursive `rglob` that filters its results down to
+  `<store>` + `<store>/zarr.json`, producing a **byte-identical** inventory while doing
+  every bit of the work the bound exists to avoid. It passed every result-set assertion.
+  There is no result-level observation that could distinguish it. **Only counting
+  `os.scandir` caught it.**
+
+When a change's purpose is cost, the test must measure cost. The plan's own criterion said
+this for tiles ("assert on bytes read, not the level index"); it took three survivors to
+learn it applies to discovery and caching too.
+
+## And its converse, from the FLOW-5 guard: a behaviour-preserving refactor is a mutant too
+
+Writing `test_nothing_writes_into_a_promoted_store`, I checked whether it was redundant with
+the three existing promote tests by applying `os.replace` -> `os.rename` — a change that
+alters **nothing** observable here. All three existing tests went red as false alarms,
+because they mock `os.replace` and so pin the *mechanism*. The new test, which asserts inode
+identity, correctly stayed green.
+
+**Every mutant run in this project so far has changed behaviour**, so nothing in any suite
+would have caught a mechanism-pinning test. Any test that fails a behaviour-preserving
+refactor is testing the implementation, not the outcome.
+
+## The plan pointed at dead code, and the real cost site was unowned
+
+Task 4.1 named `_processing_snapshot_paths` as feeding `source_fingerprint`. It has **zero
+production callers**. The live producer is `_scan_processing_inventory`'s
+`results_root.rglob("*")`, which **no Phase 4 task owned** — so the task's headline goal
+("discover stores without walking into them") was not achievable within its own scope.
+
+Measured at realistic plate size: a 4000x3000 store is **58 entries** (36 files, 22 dirs —
+the file count stays low because the shard policy works). At 10k images that is **580,000
+stat calls versus 10,000**, every time the viewer opens.
+
+**User ruling (2026-08-20): bound the results walk to `<store>/zarr.json`.** It detects every
+PhenoTypic write, because the promote writes the root last and nothing writes into a
+promoted store; it deliberately stops detecting out-of-contract modification (a hand-edited
+chunk, a store rsynced mid-flight). Consistent with Task 3.8, which fingerprints a completion
+marker's store by its root alone for the same reason — two subsystems now answer "did this
+store change?" identically. The `ProcessingInventoryAssurance` enum was **not** extended;
+`"exhaustive"` keeps its name and simply stops descending.
+
+## A live bug the phase found, and a fixture that could not see it
+
+`_load_zarr_level_rgb`'s LRU key did not move on a byte-identical republish, so the DZI
+source PNG was regenerated **from the previous publish's decoded array** — new pixels on
+disk, old pixels served. The token now carries bytes **and** `st_mtime_ns`.
+
+Two of the tests written to catch it first failed for the wrong reason, both caught by
+reading the failure text rather than the exit code:
+
+1. It failed with **409**, not stale pixels — which is correct behaviour, since a republish
+   stales the viewer binding. Restructured into three tests separating promote, rebind, and
+   rebind-alone; without the third, the first would pass against an implementation that
+   regenerates on every Refresh.
+2. Then it failed on **byte-identical PNGs**, because `skimage.color.label2rgb` colours by
+   the **rank** of the labels present — so republishing with label value 7 instead of 1
+   renders identically. The republish was invisible to the *renderer*, not to the cache.
+   This is Phase 2's non-discriminating-fixture lesson in a new costume.
+
+## Built and deliberately uncalled
+
+`select_pyramid_level` is correct and tested but has no in-app caller. Its only candidate
+feeds the DZI source PNG, and capping that caps OpenSeadragon's maximum zoom — a
+user-visible regression, not an optimisation. The pyramid is not speculative work
+regardless: napari, QuPath, and Vizarr read those levels directly, which is a headline spec
+goal rather than a side effect.
+
+## Method note
+
+Parallel worktrees held cleanly. Across nine commits the only file Phase 4 touched outside
+`src/phenotypic/gui/` and `tests/**/gui/` was its own plan document. Boundaries stated as
+paths, and reported rather than resolved when they chafed, are what made two phases
+concurrent without a single conflict.
