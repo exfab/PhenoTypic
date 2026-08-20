@@ -170,17 +170,6 @@ def _predecessor_block_id(scope, container_id: str):
     return None
 
 
-def _load_image_auto(path: Path):
-    """Load a node store as the class it was saved as (Image/GridImage)."""
-    from phenotypic import GridImage, Image
-    from phenotypic.sdk_ import ngff_
-
-    block = ngff_.read_phenotypic_attributes(path)
-    if block.get(ngff_.PhenotypicAttr.IMAGE_CLASS) == "GridImage":
-        return GridImage.load_zarr(path)
-    return Image.load_zarr(path)
-
-
 def _build_manifest(fingerprint, fingerprint_inputs, scope, pipeline,
                     sdir) -> dict:
     """Map the scope's input + op blocks to their stores + layer metadata."""
@@ -308,7 +297,13 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
                 pred_store = BASE_STORE_NAME
             else:
                 pred_store = parent_manifest["nodes"][pred_id]["store"]
-            image = _load_image_auto(parent_dir / pred_store)
+            # Dispatches on the stored ``image_class``. Shared with the CLI
+            # rather than re-implemented here -- an earlier local copy compared
+            # against a hard-coded ``"GridImage"`` literal and had no fallback.
+            # Function-local, like every other phenotypic import in this module.
+            from phenotypic.sdk_ import load_image_from_store
+
+            image = load_image_from_store(parent_dir / pred_store)
 
         # Side effect: writes one full-layer store per node into ``sdir``;
         # ``_build_manifest`` rebuilds the manifest from those on-disk stores.

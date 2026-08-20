@@ -2018,13 +2018,17 @@ def load_image_from_hdf(
         GridImage,
         Image,
     )  # lazy: avoids circular import at module load
-    from phenotypic.sdk_.constants_ import IMAGE_TYPES
 
     with h5py.File(hdf_path, "r") as fh:
         cls_attr = fh.attrs.get(HdfAttr.PHENOTYPIC_CLASS, fallback)
     if isinstance(cls_attr, bytes):
         cls_attr = cls_attr.decode("utf-8", errors="replace")
-    image_cls = GridImage if cls_attr == IMAGE_TYPES.GRID.value else Image
+    # Compared against the CLASS NAME, never against ``IMAGE_TYPES.GRID``: the
+    # writer stores ``type(self).__name__``, while ``IMAGE_TYPES`` is the
+    # ``Metadata_ImageType`` vocabulary. The two agree only by the coincidence
+    # that ``IMAGE_TYPES.GRID.value`` is spelled ``"GridImage"`` -- rename that
+    # member and every GridImage silently degrades to ``Image`` with no error.
+    image_cls = GridImage if cls_attr == GridImage.__name__ else Image
     return image_cls.load_hdf5(hdf_path)
 
 
@@ -2051,12 +2055,15 @@ def load_image_from_store(
         GridImage,
         Image,
     )  # lazy: avoids circular import at module load
-    from phenotypic.sdk_.constants_ import IMAGE_TYPES
     from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
 
     block = read_phenotypic_attributes(store_path)
     class_name = block.get(PhenotypicAttr.IMAGE_CLASS, fallback)
-    image_cls = GridImage if class_name == IMAGE_TYPES.GRID.value else Image
+    # See ``load_image_from_hdf``: the comparison is against the class name the
+    # writer recorded, not against ``IMAGE_TYPES.GRID`` -- that enum is the
+    # ``Metadata_ImageType`` vocabulary, a different field that spec 2.1 keeps
+    # deliberately independent of ``image_class``.
+    image_cls = GridImage if class_name == GridImage.__name__ else Image
     return image_cls.load_zarr(store_path)
 
 

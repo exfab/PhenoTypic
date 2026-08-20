@@ -946,10 +946,23 @@ class ImageIOHandler(ImageColorSpace):
                 encoding="utf-8",
         )
 
+    def _store_grid_attributes(self) -> dict | None:
+        """Grid state for ``attributes.phenotypic.grid``; ``None`` here.
+
+        The single seam ``GridImage`` overrides. It exists so the grid reaches
+        the store through ``build_phenotypic_attributes(grid=...)`` -- the
+        declared interface for that key -- rather than being written into the
+        returned block afterwards by a second mechanism.
+
+        Returns:
+            ``None``; a plain Image has no grid.
+        """
+        return None
+
     def _build_store_attributes(
             self, *, series_names, levels, sections, work_id, has_labels=True
     ) -> dict:
-        """Assemble ``attributes.phenotypic``. Overridden by ``GridImage``.
+        """Assemble ``attributes.phenotypic``.
 
         Args:
             series_names: Series actually written, in canonical order.
@@ -979,6 +992,7 @@ class ImageIOHandler(ImageColorSpace):
                 if self.gamma is not None
                 else None,
                 has_labels=has_labels,
+                grid=self._store_grid_attributes(),
                 work_id=work_id,
         )
 

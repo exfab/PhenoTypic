@@ -44,9 +44,11 @@ def test_root_scope_caches_all_nodes(tmp_path, monkeypatch):
     assert manifest["nodes"][blur.block_id]["layers"] == [
         "rgb", "gray", "detect_mat", "objmap",
     ]
-    # The nested-scope input path loads a node store back through this helper,
-    # which dispatches on the stored ``image_class``.
-    restored = pc._load_image_auto(blur_store)
+    # The nested-scope input path loads a node store back through the shared
+    # SDK helper, which dispatches on the stored ``image_class``.
+    from phenotypic.sdk_ import load_image_from_store
+
+    restored = load_image_from_store(blur_store)
     assert isinstance(restored, GridImage)
     assert restored.gray[:].shape == (600, 800)
 
@@ -116,3 +118,13 @@ def test_nested_scope_threads_parent_output(tmp_path, monkeypatch):
     raw_dm = load_synth_yeast_plate().detect_mat[:]
     assert np.array_equal(_detect_mat(inner_base), _detect_mat(parent_blur_store))
     assert not np.array_equal(_detect_mat(inner_base), raw_dm)
+
+    # The threading also has to preserve the CLASS. Loading the parent store as
+    # a plain Image drops the grid and still reproduces every detect_mat above,
+    # so the pixel assertions cannot see it -- the inner base snapshot's own
+    # ``image_class`` is what records which class was threaded through.
+    from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
+
+    assert read_phenotypic_attributes(inner_base)[PhenotypicAttr.IMAGE_CLASS] == (
+        "GridImage"
+    )

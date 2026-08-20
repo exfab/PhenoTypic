@@ -585,3 +585,272 @@ def test_multiscales_datasets_describe_every_level_that_was_written(
             assert dataset["coordinateTransformations"][0]["scale"] == (
                 ngff_.level_scale_vector(level0, on_disk)
             ), (member, index)
+
+
+# ---------------------------------------------------------------------------
+# The layers on disk -- a lazily-derived layer makes a naive round-trip vacuous
+# ---------------------------------------------------------------------------
+
+
+def _open_store_array(store: Path, member: str, level: int = 0) -> np.ndarray:
+    """Read one member's level array straight off disk, bypassing the loader.
+
+    Every other assertion here goes through ``load_zarr``, which cannot tell a
+    correctly-written store from one whose loader re-derives what it failed to
+    read.
+    """
+    import zarr
+
+    from phenotypic.sdk_ import ngff_
+
+    return zarr.open_array(
+        store=ngff_.long_path(store / member / str(level)), mode="r"
+    )[...]
+
+
+@pytest.fixture
+def enhanced(plate: Image) -> Image:
+    """A plate whose ``detect_mat`` no longer equals its ``gray``.
+
+    On the raw fixture ``detect_mat`` IS ``gray`` -- verified by execution,
+    ``np.array_equal(img.gray[:], img.detect_mat[:])`` is True -- because
+    ``detect_mat`` is derived from ``gray`` on first access and nothing has
+    enhanced it. Any assertion about ``detect_mat`` on the raw fixture
+    therefore passes whether the loader reads the stored array or silently
+    re-derives it, and whether the writer stored ``detect_mat`` or ``gray``.
+    ``.apply`` returns a copy; it does not mutate *plate*.
+    """
+    from phenotypic.enhance import BlurGauss
+
+    return BlurGauss(sigma=6.0).apply(plate)
+
+
+def test_a_stored_detect_mat_is_read_back_not_re_derived(
+    enhanced: Image, tmp_path: Path
+) -> None:
+    """Dropping the ``detect_mat`` read in the loader must not pass."""
+    assert not np.array_equal(enhanced.detect_mat[:], enhanced.gray[:])
+    store = enhanced.save2zarr(tmp_path / "p.ome.zarr")
+    back = Image.load_zarr(store)
+    np.testing.assert_array_equal(back.detect_mat[:], enhanced.detect_mat[:])
+    assert not np.array_equal(back.detect_mat[:], back.gray[:])
+
+
+def test_a_stored_gray_is_read_back_not_re_derived_from_rgb(
+    plate: Image, tmp_path: Path
+) -> None:
+    """``gray`` is derived from ``rgb`` on first access, so a loader that never
+    assigns the stored array still returns the right pixels for an untouched
+    image. Store a ``gray`` that the derivation cannot reproduce."""
+    derived = np.array(plate.gray[:])
+    plate.gray[:] = (derived * 0.25).astype(derived.dtype)
+    assert not np.array_equal(plate.gray[:], derived)
+
+    store = plate.save2zarr(tmp_path / "p.ome.zarr")
+    back = Image.load_zarr(store)
+    np.testing.assert_array_equal(back.rgb[:], plate.rgb[:])
+    np.testing.assert_array_equal(back.gray[:], plate.gray[:])
+    assert not np.array_equal(back.gray[:], derived)
+
+
+def test_every_series_holds_its_own_pixels_on_disk(
+    enhanced: Image, tmp_path: Path
+) -> None:
+    """Read the arrays with zarr directly: a writer that fed ``detect_mat``
+    into the ``gray`` group produces a fully conformant store that PhenoTypic
+    round-trips, and only an external viewer would ever see it."""
+    store = enhanced.save2zarr(tmp_path / "p.ome.zarr")
+    block = read_phenotypic_attributes(store)
+
+    np.testing.assert_array_equal(
+        _open_store_array(store, "gray"), enhanced.gray[:]
+    )
+    np.testing.assert_array_equal(
+        _open_store_array(store, "detect_mat"), enhanced.detect_mat[:]
+    )
+    np.testing.assert_array_equal(
+        _open_store_array(store, "rgb"),
+        np.moveaxis(enhanced.rgb[:], -1, 0),
+    )
+    np.testing.assert_array_equal(
+        _open_store_array(store, block[PhenotypicAttr.LABELS]["objmap"]),
+        enhanced.objmap[:],
+    )
+
+
+# ---------------------------------------------------------------------------
+# durable= must reach promote_store
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("durable", [True, False])
+def test_the_durable_flag_reaches_promote_store(
+    plate: Image, tmp_path: Path, monkeypatch, durable: bool
+) -> None:
+    """The fsync-before-promote guarantee for SLURM Stage-1 writes.
+
+    Dropping the argument loses stores on node loss and is invisible to every
+    other assertion in this file -- an unsynced store reads back correctly on a
+    machine that did not crash.
+    """
+    from phenotypic.sdk_ import ngff_
+
+    recorded: list[bool] = []
+    real_promote = ngff_.promote_store
+
+    def _capture(part: Path, final: Path, *, fsync: bool):
+        recorded.append(fsync)
+        return real_promote(part, final, fsync=fsync)
+
+    monkeypatch.setattr(ngff_, "promote_store", _capture)
+    plate.save2zarr(tmp_path / "p.ome.zarr", durable=durable)
+    assert recorded == [durable]
+
+
+# ---------------------------------------------------------------------------
+# omero window, gamma, and the metadata sections
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def sixteen_bit(plate: Image) -> Image:
+    """A 16-bit plate. ``257 * uint8`` maps 255 -> 65535 exactly."""
+    return Image(np.asarray(plate.rgb[:]).astype(np.uint16) * 257, bit_depth=16)
+
+
+def test_the_omero_window_follows_the_source_bit_depth(
+    sixteen_bit: Image, tmp_path: Path
+) -> None:
+    """Hard-coding 8 puts a ``0..255`` window over 16-bit data and every viewer
+    honouring ``omero`` renders the plate blown out. The only other fixture in
+    this file is 8-bit, where the hard-coded value is indistinguishable."""
+    assert sixteen_bit.bit_depth == 16
+    store = sixteen_bit.save2zarr(tmp_path / "p.ome.zarr")
+    channels = json.loads(
+        (store / "rgb" / "zarr.json").read_text(encoding="utf-8")
+    )["attributes"]["ome"]["omero"]["channels"]
+    for channel in channels:
+        assert channel["window"] == {
+            "min": 0,
+            "max": 65535,
+            "start": 0,
+            "end": 65535,
+        }
+    assert Image.load_zarr(store).bit_depth == 16
+
+
+def test_a_non_default_gamma_survives(plate: Image, tmp_path: Path) -> None:
+    """The default is sRGB, so a dropped gamma looks correct on every other
+    fixture here."""
+    from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
+
+    linear = Image(np.asarray(plate.rgb[:]), gamma=GAMMA_ENCODINGS.LINEAR)
+    store = linear.save2zarr(tmp_path / "p.ome.zarr")
+    assert read_phenotypic_attributes(store)[PhenotypicAttr.GAMMA] == "LINEAR"
+    assert Image.load_zarr(store).gamma is GAMMA_ENCODINGS.LINEAR
+
+
+def test_the_imported_metadata_section_round_trips(
+    plate: Image, tmp_path: Path
+) -> None:
+    """``imported`` is empty on the fixture, so ``{} == {}`` passes for a
+    writer that drops the section entirely."""
+    plate._metadata.imported["Metadata_SourceFile"] = "plate_A01.tif"
+    plate._metadata.imported["Metadata_Exposure"] = 250
+    store = plate.save2zarr(tmp_path / "p.ome.zarr")
+    stored = read_phenotypic_attributes(store)[PhenotypicAttr.METADATA]
+    assert stored[PhenotypicAttr.IMPORTED] == {
+        "Metadata_SourceFile": "plate_A01.tif",
+        "Metadata_Exposure": 250,
+    }
+    back = Image.load_zarr(store)
+    assert dict(back._metadata.imported) == dict(plate._metadata.imported)
+
+
+def test_a_non_json_native_metadata_value_serialises_instead_of_aborting(
+    plate: Image, tmp_path: Path
+) -> None:
+    """Exactly the case ``_write_group_json``'s ``default=str`` exists for: an
+    ``np.datetime64`` read off a TIFF. Metadata values are stored verbatim and
+    unvalidated, so without the hook the whole write raises ``TypeError``."""
+    plate._metadata.public["Metadata_AcquiredAt"] = np.datetime64(
+        "2026-08-19T10:30"
+    )
+    store = plate.save2zarr(tmp_path / "p.ome.zarr")
+    stored = read_phenotypic_attributes(store)[PhenotypicAttr.METADATA]
+    assert stored[PhenotypicAttr.PUBLIC]["Metadata_AcquiredAt"] == (
+        "2026-08-19T10:30"
+    )
+    assert (
+        Image.load_zarr(store)._metadata.public["Metadata_AcquiredAt"]
+        == "2026-08-19T10:30"
+    )
+
+
+@pytest.mark.parametrize("section", ["protected", "public", "imported"])
+def test_a_metadata_key_collision_names_the_section_it_was_found_in(
+    plate: Image, tmp_path: Path, section: str
+) -> None:
+    """The loader normalizes each section under its own name. Passing a
+    constant section name instead leaves every collision blaming ``public``,
+    and a real one in ``protected`` or ``imported`` is unfindable."""
+    store = plate.save2zarr(tmp_path / "p.ome.zarr")
+    root = store / "zarr.json"
+    payload = json.loads(root.read_text(encoding="utf-8"))
+    block = payload["attributes"]["phenotypic"][PhenotypicAttr.METADATA]
+    # 'ImageName' is a known bare label and 'Metadata_ImageName' its header;
+    # both normalize to 'Metadata_ImageName'.
+    block[section]["ImageName"] = "from_the_bare_label"
+    block[section]["Metadata_ImageName"] = "from_the_header"
+    root.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Conflicting stored metadata keys") as exc:
+        Image.load_zarr(store)
+    assert f"section {section!r}" in str(exc.value)
+
+
+# ---------------------------------------------------------------------------
+# load_image_from_store -- dispatch is on image_class, never Metadata_ImageType
+# ---------------------------------------------------------------------------
+
+
+def test_load_image_from_store_ignores_a_grid_image_type_on_a_plain_image(
+    tmp_path: Path,
+) -> None:
+    """The discriminating direction: ``Metadata_ImageType`` says ``GridImage``
+    and ``image_class`` says ``Image``. Dispatching on the metadata field --
+    or on an enum that merely happens to spell the same string -- returns a
+    GridImage here."""
+    from phenotypic.sdk_ import load_image_from_store
+
+    plain = Image(load_synth_yeast_plate())
+    plain._metadata.protected["Metadata_ImageType"] = "GridImage"
+    store = plain.save2zarr(tmp_path / "s.ome.zarr")
+    block = read_phenotypic_attributes(store)
+    assert block[PhenotypicAttr.IMAGE_CLASS] == "Image"
+    assert block[PhenotypicAttr.METADATA]["protected"]["Metadata_ImageType"] == (
+        "GridImage"
+    )
+    back = load_image_from_store(store)
+    assert type(back) is Image
+
+
+def test_load_image_from_store_falls_back_when_image_class_is_absent(
+    tmp_path: Path,
+) -> None:
+    """The ``fallback`` parameter has to select the class, not decorate the
+    signature: a store with no ``image_class`` is what the parameter is for."""
+    from phenotypic.sdk_ import load_image_from_store
+
+    grid = GridImage(load_synth_yeast_plate(), nrows=8, ncols=12)
+    store = grid.save2zarr(tmp_path / "g.ome.zarr")
+    root = store / "zarr.json"
+    payload = json.loads(root.read_text(encoding="utf-8"))
+    del payload["attributes"]["phenotypic"][PhenotypicAttr.IMAGE_CLASS]
+    root.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert PhenotypicAttr.IMAGE_CLASS not in read_phenotypic_attributes(store)
+    assert type(load_image_from_store(store)) is Image
+    back = load_image_from_store(store, fallback="GridImage")
+    assert type(back) is GridImage
+    assert (back.nrows, back.ncols) == (8, 12)

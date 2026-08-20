@@ -196,3 +196,28 @@ def test_image_type_metadata_stays_grid(grid: GridImage, tmp_path: Path) -> None
         GridImage.load_zarr(store)._metadata.protected["Metadata_ImageType"]
         == "GridImage"
     )
+
+
+def test_load_image_from_store_dispatches_to_gridimage_on_a_non_grid_image_type(
+    grid: GridImage, tmp_path: Path
+) -> None:
+    """The discriminating direction for the sibling test above.
+
+    There, ``image_class`` and ``Metadata_ImageType`` both read ``GridImage``,
+    so dispatching on either field -- or on an enum member that merely happens
+    to spell the same string -- passes. Here they disagree: the store is a real
+    GridImage whose user-visible type is ``GridSection``.
+    """
+    from phenotypic.sdk_ import load_image_from_store
+
+    grid._metadata.protected["Metadata_ImageType"] = "GridSection"
+    store = grid.save2zarr(tmp_path / "g.ome.zarr")
+    block = read_phenotypic_attributes(store)
+    assert block[PhenotypicAttr.IMAGE_CLASS] == "GridImage"
+    assert block[PhenotypicAttr.METADATA]["protected"]["Metadata_ImageType"] == (
+        "GridSection"
+    )
+    back = load_image_from_store(store)
+    assert type(back) is GridImage
+    assert (back.nrows, back.ncols) == (16, 24)
+    assert back._metadata.protected["Metadata_ImageType"] == "GridSection"
