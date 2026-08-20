@@ -12,13 +12,35 @@ import tempfile
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
+import h5py
+import numpy as np
 import pytest
 from PIL import Image as PILImage
 
+from phenotypic import Image
+from phenotypic._cli._cli_completion import (
+    SUCCESS_MARKER_VERSION,
+    publish_image_success,
+)
 from phenotypic._cli._cli_output_manager import OutputManager
+from phenotypic._cli._cli_stage2_token import (
+    write_stage2_raw,
+    write_stage2_token,
+)
+from phenotypic._cli._cli_staged_resume import write_stage3_completion_marker
 from phenotypic._cli._cli_types import ExecutionConfig
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.prefab import RoundPeaksPipeline
+from phenotypic.sdk_ import (
+    atomic_write_json,
+    dataset_measurements_dir,
+    image_completion_marker_path,
+    zarr_store_path,
+)
+from tests._legacy_staged_resume import (
+    classify_staged_image as legacy_classify_staged_image,
+)
+from tests._legacy_staged_resume import legacy_hdf_path, legacy_sidecar_path
 
 
 @pytest.fixture
@@ -127,3 +149,168 @@ def make_output_manager() -> Callable[..., OutputManager]:
         )
 
     return _build
+
+
+# ---------------------------------------------------------------------------
+# Differential resume-parity worlds (Phase 3 Task 3.4)
+# ---------------------------------------------------------------------------
+
+
+class ArtifactWorld:
+    """Build one image's durable artifacts, in one of the two storage formats.
+
+    The five booleans are, in order,
+    ``(image_state, stage2_signal, parquet, stage3_marker, image_success)`` --
+    the axes ``classify_staged_image`` actually distinguishes. Everything
+    format-neutral (parquet, Stage-3 marker, success marker) is built
+    identically by both worlds, so any divergence the parity test reports is a
+    divergence in the ported artifact probes and nothing else.
+    """
+
+    DATASET = "ds"
+    STEM = "img"
+
+    def __init__(self, base: Path, kind: str) -> None:
+        self.base = base
+        self.kind = kind
+        self.root = base
+        self._calls = 0
+
+    def __call__(self, artifacts, *, work_id: str | None) -> Path:
+        # A FRESH root per call: artifacts are only ever created, never
+        # removed, so reusing one root would let an earlier combination's
+        # files leak into a later one and silently turn the enumeration into a
+        # monotonically growing superset.
+        self.root = self.base / str(self._calls)
+        self._calls += 1
+        self.root.mkdir(parents=True)
+        image_state, stage2_signal, parquet, stage3_marker, success = artifacts
+        if image_state:
+            self._write_image_state(work_id)
+        if stage2_signal:
+            self._write_stage2_signal()
+        parquet_path = self._parquet_path()
+        if parquet:
+            parquet_path.parent.mkdir(parents=True, exist_ok=True)
+            parquet_path.write_bytes(b"measurements")
+        if stage3_marker:
+            write_stage3_completion_marker(
+                self.root, self.DATASET, f"{self.STEM}.tif", self.STEM
+            )
+        if success:
+            self._write_success_marker(work_id, parquet_path)
+        return self.root
+
+    # -- format-specific halves --------------------------------------------
+
+    def _write_image_state(self, work_id: str | None) -> None:
+        if self.kind == "hdf":
+            path = legacy_hdf_path(self.root, self.DATASET, self.STEM)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with h5py.File(path, "w") as handle:
+                handle.attrs["schema_version"] = 2
+                if work_id is not None:
+                    handle.attrs["phenotypic_work_id"] = work_id
+                layers = handle.create_group("layers")
+                for name in ("gray", "detect_mat", "objmap"):
+                    layers.create_dataset(name, data=np.zeros((4, 4)))
+            return
+        store = zarr_store_path(self.root, self.DATASET, self.STEM)
+        store.parent.mkdir(parents=True, exist_ok=True)
+        Image(np.zeros((4, 4, 3), dtype=np.uint8)).save2zarr(
+            store, work_id=work_id
+        )
+
+    def _write_stage2_signal(self) -> None:
+        """The sidecar was BOTH the flag and Stage 3's input.
+
+        Its store-world equivalent is therefore the token **and** the retained
+        raw array, not the token alone: a token with no raw array is a state
+        the HDF world cannot express, so it has no parity counterpart and is
+        covered by a dedicated test in ``test_staged_resume.py`` instead.
+        """
+        if self.kind == "hdf":
+            path = legacy_sidecar_path(self.root, self.DATASET, self.STEM)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            np.save(path, np.zeros((4, 4), dtype=np.uint16))
+            return
+        write_stage2_raw(
+            self.root, self.DATASET, self.STEM, np.zeros((4, 4), dtype=np.uint16)
+        )
+        write_stage2_token(
+            self.root, self.DATASET, self.STEM, objmap_shape=(4, 4)
+        )
+
+    # -- format-neutral halves ---------------------------------------------
+
+    def _parquet_path(self) -> Path:
+        return (
+            dataset_measurements_dir(self.root, self.DATASET)
+            / f"{self.STEM}.parquet"
+        )
+
+    def _write_success_marker(
+        self, work_id: str | None, parquet_path: Path
+    ) -> None:
+        """Publish the per-image completion marker branch 1 consults.
+
+        It describes the **parquet**, which both worlds build identically, so
+        the marker is valid in both worlds or neither. Describing the image
+        artifact instead would compare an ``.h5`` file against a store
+        *directory*, and ``valid_image_success``'s ``is_file()`` check would
+        diverge for a reason Task 3.8 owns rather than this task.
+        """
+        if parquet_path.is_file():
+            publish_image_success(
+                self.root,
+                work_id=work_id or "unused",
+                dataset=self.DATASET,
+                relative_image_path=f"{self.STEM}.tif",
+                image_stem=self.STEM,
+                mode="full",
+                attempt_id="a-1",
+                lifecycle_epoch="e-1",
+                artifacts={"measurements": parquet_path},
+            )
+            return
+        # No artifact to describe: write the marker anyway, pointing at the
+        # parquet that is not there. valid_image_success then returns False --
+        # identically in both worlds -- which is the "stale marker" case.
+        atomic_write_json(
+            image_completion_marker_path(self.root, self.DATASET, self.STEM),
+            {
+                "version": SUCCESS_MARKER_VERSION,
+                "work_id": work_id or "unused",
+                "dataset": self.DATASET,
+                "relative_image_path": f"{self.STEM}.tif",
+                "image_stem": self.STEM,
+                "mode": "full",
+                "attempt_id": "a-1",
+                "lifecycle_epoch": "e-1",
+                "artifacts": {
+                    "measurements": {
+                        "path": parquet_path.relative_to(self.root).as_posix(),
+                        "size": 12,
+                        "sha256": "0" * 64,
+                    }
+                },
+                "completed_at": "2026-08-19T00:00:00.000+00:00",
+            },
+        )
+
+    @staticmethod
+    def classify(**kwargs) -> str:
+        """Classify with the FROZEN pre-port HDF classifier."""
+        return legacy_classify_staged_image(**kwargs)
+
+
+@pytest.fixture
+def hdf_world(tmp_path: Path) -> ArtifactWorld:
+    """Builds the pre-port artifact set: staged ``.h5`` + ``.npy`` sidecar."""
+    return ArtifactWorld(tmp_path / "hdf_out", "hdf")
+
+
+@pytest.fixture
+def zarr_world(tmp_path: Path) -> ArtifactWorld:
+    """Builds the ported artifact set: OME-Zarr store + token + raw array."""
+    return ArtifactWorld(tmp_path / "zarr_out", "zarr")

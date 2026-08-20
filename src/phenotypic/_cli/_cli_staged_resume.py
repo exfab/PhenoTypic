@@ -12,13 +12,23 @@ import h5py  # type: ignore[import-untyped]
 
 from phenotypic.sdk_ import (
     atomic_write_json,
-    dataset_hdf_dir,
     dataset_measurements_dir,
     progress_dir,
+    zarr_store_path,
+)
+from phenotypic.sdk_.ngff_ import (  # noqa: F401 -- public re-export
+    PhenotypicAttr,
+    read_phenotypic_attributes,
+    valid_staged_store,
 )
 
 from ._cli_process_only import process_only_output_path
-from ._cli_sidecar import delete_sidecar, sidecar_exists
+from ._cli_stage2_token import (
+    delete_stage2_raw,
+    delete_stage2_token,
+    stage2_raw_path,
+    stage2_token_exists,
+)
 from ._cli_types import Dataset
 
 ResumeStage = Literal["stage1", "stage2", "stage3", "complete"]
@@ -67,7 +77,15 @@ def pipeline_content_digest(pipeline_path: Path) -> str:
 
 
 def valid_staged_hdf(path: Path) -> bool:
-    """Return whether *path* contains the image layers Stage 2 requires."""
+    """Return whether *path* contains the image layers Stage 2 requires.
+
+    .. deprecated::
+        Superseded by :func:`phenotypic.sdk_.ngff_.valid_staged_store`, which
+        this module re-exports. Retained only because
+        ``_cli_staged_strategy``, ``_cli_staged_controller`` and
+        ``_cli_staged_slurm_worker`` still probe HDFs; Task 3.5 ports those
+        call sites and deletes this with the last of them.
+    """
     try:
         if not path.is_file() or not h5py.is_hdf5(path):
             return False
@@ -97,7 +115,12 @@ def valid_staged_hdf(path: Path) -> bool:
 
 
 def staged_hdf_matches_work_id(path: Path, work_id: str) -> bool:
-    """Return whether a valid staged HDF is bound to ``work_id``."""
+    """Return whether a valid staged HDF is bound to ``work_id``.
+
+    .. deprecated::
+        Superseded by :func:`staged_store_matches_work_id`; see
+        :func:`valid_staged_hdf` for why it outlives the port.
+    """
     if not valid_staged_hdf(path):
         return False
     try:
@@ -107,6 +130,29 @@ def staged_hdf_matches_work_id(path: Path, work_id: str) -> bool:
                 value = value.decode("utf-8")
             return value == work_id
     except (OSError, UnicodeDecodeError):
+        return False
+
+
+def staged_store_matches_work_id(path: Path, work_id: str) -> bool:
+    """Return whether a valid staged store is bound to ``work_id``.
+
+    Replaces ``staged_hdf_matches_work_id``. The work id lives in
+    ``attributes.phenotypic.work_id``, written at store-build time -- never
+    patched in afterwards, because the root ``zarr.json`` is written last.
+
+    Args:
+        path: Candidate ``*.ome.zarr`` directory.
+        work_id: The work id this run expects the store to carry.
+
+    Returns:
+        ``True`` only for a valid staged store bound to *work_id*.
+    """
+    if not valid_staged_store(path):
+        return False
+    try:
+        block = read_phenotypic_attributes(path)
+        return block.get(PhenotypicAttr.WORK_ID) == work_id
+    except (OSError, KeyError, ValueError, TypeError, AttributeError):
         return False
 
 
@@ -194,12 +240,12 @@ def classify_staged_image(
         if terminal.is_file() and expected_work_id is None:
             return "complete"
 
-    hdf = dataset_hdf_dir(output_dir, dataset) / f"{stem}.h5"
+    store = zarr_store_path(output_dir, dataset, stem)
     if expected_work_id is not None:
-        hdf_valid = staged_hdf_matches_work_id(hdf, expected_work_id)
+        store_valid = staged_store_matches_work_id(store, expected_work_id)
     else:
-        hdf_valid = valid_staged_hdf(hdf)
-    if not hdf_valid:
+        store_valid = valid_staged_store(store)
+    if not store_valid:
         return "stage1"
 
     if (
@@ -218,7 +264,7 @@ def classify_staged_image(
     ):
         return "stage3"
 
-    sidecar = sidecar_exists(output_dir, dataset, stem)
+    stage2_done = stage2_token_exists(output_dir, dataset, stem)
     parquet = (
         dataset_measurements_dir(output_dir, dataset) / f"{stem}.parquet"
     )
@@ -226,11 +272,25 @@ def classify_staged_image(
         process_only_layer is None
         and not markers_required
         and parquet.is_file()
-        and not sidecar
+        and not stage2_done
     ):
         return "complete"
 
-    return "stage3" if sidecar else "stage2"
+    # An explicit branch, NOT `stage2_done and raw.is_file()` (ledger FLOW-40).
+    # The token is only a flag; Stage 3's real INPUT is the raw .npy. Without
+    # this, a token-present/raw-missing image classifies "stage3" forever: the
+    # worker reports a missing prereq rather than a scientific failure -- an
+    # improvement -- but nothing ever routes it back to Stage 2, so it cannot
+    # recover.
+    #
+    # It must NOT be folded into `stage2_done`, because `not stage2_done` is a
+    # conjunct of the "complete" branch above: ANDing the raw in would flip a
+    # token-present/raw-missing image that has a parquet all the way to
+    # "complete".
+    if stage2_done and not stage2_raw_path(output_dir, dataset, stem).is_file():
+        return "stage2"
+
+    return "stage3" if stage2_done else "stage2"
 
 
 def build_staged_resume_plan(
@@ -314,8 +374,19 @@ def migrate_legacy_stage3_markers(
 def clear_downstream_artifacts_for_stage1(
     output_dir: Path, dataset: str, image_stem: str
 ) -> None:
-    """Discard artifacts that cannot survive regeneration of the staged HDF."""
-    delete_sidecar(output_dir, dataset, image_stem)
+    """Discard artifacts that cannot survive regeneration of the staged store.
+
+    Deletes nothing else. The store itself is left alone: Stage 1's promote
+    replaces it atomically, so removing it here would only open a window in
+    which the image is absent and destroy the fallback if Stage 1 then fails
+    (OPEN-QUESTIONS **D13**).
+
+    Token first, then the raw array -- deleting the raw and leaving the token
+    makes the next Stage 3 replay into a ``FileNotFoundError``, while the
+    reverse merely orphans a ``.npy`` that Stage 2 overwrites.
+    """
+    delete_stage2_token(output_dir, dataset, image_stem)
+    delete_stage2_raw(output_dir, dataset, image_stem)
     remove_stage3_completion_marker(output_dir, dataset, image_stem)
 
 
@@ -325,7 +396,7 @@ def reconcile_stage3_publications(
     *,
     namespace: str,
 ) -> int:
-    """Clean completed sidecars and quarantine unmarked parquets.
+    """Consume completed Stage-2 signals and quarantine unmarked parquets.
 
     A parquet is only eligible for aggregation after its terminal Stage 3
     marker exists. Unmarked parquets are preserved outside the aggregation
@@ -361,7 +432,10 @@ def reconcile_stage3_publications(
             if generally_complete or stage3_completion_exists(
                 output_dir, dataset, stem
             ):
-                delete_sidecar(output_dir, dataset, stem)
+                # Token first, then the raw array -- same ordering rule as
+                # every other consumption site.
+                delete_stage2_token(output_dir, dataset, stem)
+                delete_stage2_raw(output_dir, dataset, stem)
                 continue
             parquet = (
                 dataset_measurements_dir(output_dir, dataset)
@@ -390,6 +464,8 @@ __all__ = [
     "stage3_completion_exists",
     "stage3_completion_marker_path",
     "staged_hdf_matches_work_id",
+    "staged_store_matches_work_id",
     "valid_staged_hdf",
+    "valid_staged_store",
     "write_stage3_completion_marker",
 ]
