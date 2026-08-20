@@ -72,6 +72,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -316,9 +317,10 @@ def directory_digest(root: Path, *, relative_to: Path | None = None) -> str:
     Args:
         root: Directory to fingerprint. Walked recursively.
         relative_to: Anchor the recorded names against this directory instead
-            of ``root``. Use it when the digest must survive the tree being
-            addressed from a different root; the default (``root``) is what
-            makes a parent copied to another path keep its identity.
+            of ``root``. Must be an ancestor of ``root``. Use it when the
+            digest must survive the tree being addressed from a different
+            root; the default (``root``) is what makes a parent copied to
+            another path keep its identity.
 
     Returns:
         A deterministic ``"sha256:<hex>"`` digest, independent of the order
@@ -326,6 +328,14 @@ def directory_digest(root: Path, *, relative_to: Path | None = None) -> str:
 
     Raises:
         FileNotFoundError: If ``root`` does not exist or is not a directory.
+        ValueError: If ``relative_to`` is not an ancestor of ``root``. The
+            alternative — falling back to the absolute path — silently makes
+            the digest mount-dependent, which is the one thing a relative
+            digest exists to prevent.
+        PermissionError: If any subdirectory cannot be listed. A skipped
+            subtree would yield a *different* digest for the same tree with
+            nothing to say why, and an identity that varies by who reads it
+            is worse than no identity.
 
     Example:
         >>> import tempfile
@@ -339,25 +349,46 @@ def directory_digest(root: Path, *, relative_to: Path | None = None) -> str:
     if not root_path.is_dir():
         raise FileNotFoundError(f"Not a directory: {root_path}")
     anchor = Path(relative_to) if relative_to is not None else root_path
+    try:
+        root_path.relative_to(anchor)
+    except ValueError:
+        raise ValueError(
+            f"relative_to must be an ancestor of root: {anchor} is not an "
+            f"ancestor of {root_path}. Anchoring elsewhere would record "
+            "absolute names and make the digest mount-dependent."
+        ) from None
+
+    def _refuse(error: OSError) -> None:
+        """Surface an unlistable subdirectory instead of digesting around it."""
+        raise error
 
     entries: list[tuple[str, int, int]] = []
-    for path in root_path.rglob("*"):
-        if not path.is_file():
-            continue
-        try:
-            name = path.relative_to(anchor).as_posix()
-        except ValueError:
-            name = path.as_posix()
-        stat = path.stat()
-        entries.append((name, stat.st_size, stat.st_mtime_ns))
+    for directory, _subdirectories, filenames in os.walk(
+        root_path, onerror=_refuse
+    ):
+        for filename in filenames:
+            path = Path(directory) / filename
+            if not path.is_file():
+                continue
+            stat = path.stat()
+            entries.append((
+                path.relative_to(anchor).as_posix(),
+                stat.st_size,
+                stat.st_mtime_ns,
+            ))
 
     digest = hashlib.sha256()
     for name, size, mtime_ns in sorted(entries):
         encoded_name = name.encode("utf-8")
+        # Length-prefixed so the (name, size, mtime) stream is unambiguously
+        # parseable: without it a longer name and a shorter one followed by
+        # leading size bytes could serialize identically.
         digest.update(len(encoded_name).to_bytes(8, "big"))
         digest.update(encoded_name)
         digest.update(size.to_bytes(8, "big"))
-        digest.update(mtime_ns.to_bytes(16, "big"))
+        # ``signed`` so a pre-1970 mtime -- a mis-set camera clock, or a
+        # restored archive -- records rather than raising OverflowError.
+        digest.update(mtime_ns.to_bytes(16, "big", signed=True))
     return f"sha256:{digest.hexdigest()}"
 
 
