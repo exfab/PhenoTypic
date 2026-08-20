@@ -92,89 +92,6 @@ def test_has_image_source_follows_the_store(tmp_path: Path) -> None:
     assert root.has_image_source("ds", "missing") is False
 
 
-def test_snapshot_paths_enumerate_root_json_not_store_directories(
-    tmp_path: Path,
-) -> None:
-    """D5: a store *directory* fingerprints to one constant sentinel byte."""
-    from phenotypic.gui.results_viewer._output_root import (
-        _processing_snapshot_paths,
-    )
-    from phenotypic.sdk_ import BundleLayout
-
-    _seed(tmp_path, ["a", "b"])
-    paths = _processing_snapshot_paths(BundleLayout.detect(tmp_path))
-    for stem in ("a", "b"):
-        store = zarr_store_path(tmp_path, "ds", stem)
-        assert store / "zarr.json" in paths
-        assert store not in paths
-
-
-def test_snapshot_paths_do_not_recurse_into_a_store(tmp_path: Path) -> None:
-    """A naive ``rglob('*.ome.zarr/**')`` is ~400k stat calls at 10k images."""
-    from phenotypic.gui.results_viewer._output_root import (
-        _processing_snapshot_paths,
-    )
-    from phenotypic.sdk_ import BundleLayout
-
-    _seed(tmp_path, ["a"])
-    store = zarr_store_path(tmp_path, "ds", "a")
-    paths = _processing_snapshot_paths(BundleLayout.detect(tmp_path))
-    inside = [p for p in paths if store in p.parents and p.parent != store]
-    assert inside == [], inside
-
-
-def test_snapshot_paths_never_list_a_directory_inside_a_store(
-    tmp_path: Path, monkeypatch
-) -> None:
-    """The COST claim, asserted on directory listings rather than results.
-
-    Pruning a recursive walk back down to the right answer leaves the
-    answer correct and the cost pathological -- which is the entire failure
-    the bounded glob exists to prevent, and which an assertion on the
-    returned set cannot see. So this counts ``os.scandir`` instead: nothing
-    at or below a store may be listed at all.
-    """
-    import os
-
-    from phenotypic.gui.results_viewer._output_root import (
-        _processing_snapshot_paths,
-    )
-    from phenotypic.sdk_ import BundleLayout
-
-    _seed(tmp_path, ["a", "b"])
-    stores = [zarr_store_path(tmp_path, "ds", stem) for stem in ("a", "b")]
-    listed: list[str] = []
-    real_scandir = os.scandir
-
-    def _counting(path=".", *args, **kwargs):
-        listed.append(os.fspath(path))
-        return real_scandir(path, *args, **kwargs)
-
-    monkeypatch.setattr(os, "scandir", _counting)
-    _processing_snapshot_paths(BundleLayout.detect(tmp_path))
-
-    inside = [
-        seen
-        for seen in listed
-        for store in stores
-        if Path(seen) == store or store in Path(seen).parents
-    ]
-    assert inside == [], inside
-
-
-def test_snapshot_paths_hold_no_hdf(tmp_path: Path) -> None:
-    _seed(tmp_path, ["a"])
-    from phenotypic.gui.results_viewer._output_root import (
-        _processing_snapshot_paths,
-    )
-    from phenotypic.sdk_ import BundleLayout
-
-    (tmp_path / "results" / "ds" / "hdf").mkdir(parents=True)
-    (tmp_path / "results" / "ds" / "hdf" / "a.h5").write_bytes(b"legacy")
-    paths = _processing_snapshot_paths(BundleLayout.detect(tmp_path))
-    assert not any(path.suffix == ".h5" for path in paths)
-
-
 def test_discovery_never_lists_a_directory_inside_a_store(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -244,11 +161,13 @@ def test_discovery_still_walks_the_rest_of_the_results_tree(
 def test_processing_inventory_goes_stale_after_a_store_republish(
     tmp_path: Path,
 ) -> None:
-    """``_processing_snapshot_paths``' claimed second consumer, tested for real.
+    """The property FLOW-11 wanted, asserted against the real producer.
 
-    Ledger FLOW-11 named the wrong producer, but the property it wanted is
-    the right one: after a store republish the captured inventory must stop
-    verifying, or a viewer bound across a run never notices new pixels.
+    Ledger FLOW-11 named ``_processing_snapshot_paths`` as the mechanism; it
+    never had a production caller and Phase 6 deleted it. The property it
+    wanted is the right one either way: after a store republish the captured
+    inventory must stop verifying, or a viewer bound across a run never
+    notices new pixels.
     """
     from phenotypic.gui.results_viewer._discovery_contracts import (
         OutputDiscoveryCancellation,
@@ -281,9 +200,9 @@ def test_processing_inventory_goes_stale_after_a_store_republish(
 def test_processing_fingerprint_changes_when_a_store_changes(tmp_path: Path) -> None:
     """The end-to-end property D5 exists to protect.
 
-    Note the mechanism is *not* ``_processing_snapshot_paths`` -- that helper
-    has no production caller (verified). ``source_fingerprint`` is
-    ``ProcessingInventory.fingerprint``, built by
+    Note the mechanism was never ``_processing_snapshot_paths`` -- that
+    helper had no production caller and Phase 6 deleted it.
+    ``source_fingerprint`` is ``ProcessingInventory.fingerprint``, built by
     ``_scan_processing_inventory``, whose results walk is now bounded to each
     store's root. This asserts the property from the outside, so it holds
     across that change rather than describing one enumeration.

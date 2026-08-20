@@ -50,13 +50,12 @@ from phenotypic.gui.shell._runs_registry import run_status_is_nonterminal
 from phenotypic.sdk_ import (
     DIR_OVERLAYS,
     BundleLayout,
-    dataset_zarr_dir,
     gui_launch_owner_path,
     is_metadata_header,
     source_cache_key,
     zarr_store_path,
 )
-from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON, STORE_SUFFIX
+from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
 
 logger = logging.getLogger(__name__)
 
@@ -877,55 +876,6 @@ def _active_run_snapshot(layout: BundleLayout) -> bool:
     if not isinstance(payload, dict):
         return False
     return run_status_is_nonterminal(payload.get("status"))
-
-
-def _processing_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
-    """Return stable processing products that define image read binding."""
-    paths: list[Path] = [
-        layout.master_parquet,
-    ]
-    overlays_root = layout.deliverables_base / DIR_OVERLAYS
-    if overlays_root.is_dir():
-        paths.append(overlays_root)
-        paths.extend(
-            path
-            for path in overlays_root.rglob("*")
-            if path.is_file() or path.is_dir()
-        )
-    if layout.results_dir is not None and layout.output_root is not None:
-        output_root = layout.output_root
-        paths.append(layout.results_dir)
-        paths.extend(
-            path
-            for path in layout.results_dir.iterdir()
-            if path.is_dir()
-        )
-        # Each store's ROOT ``zarr.json``, never the store directory:
-        # ``_cancellable_paths_fingerprint`` emits one sentinel byte for a
-        # directory and does not recurse, so a directory entry is a constant
-        # function of its path and would never register a republish (D5).
-        # The glob is bounded to ``results/<ds>/zarr/`` for cost -- an
-        # ``rglob("*.ome.zarr")`` descends into every store, ~400k stat
-        # calls at 10k images on exactly the runs the viewer is for.
-        paths.extend(
-            store / STORE_ROOT_JSON
-            for dataset_dir in sorted(layout.results_dir.iterdir())
-            if dataset_dir.is_dir()
-            for store in sorted(
-                dataset_zarr_dir(output_root, dataset_dir.name).glob(
-                    f"*{STORE_SUFFIX}"
-                )
-            )
-            if (store / STORE_ROOT_JSON).is_file()
-        )
-        paths.extend(
-            path
-            for path in layout.results_dir.glob(
-                f"*/{DIR_MEASUREMENTS}/*.parquet"
-            )
-            if path.is_file()
-        )
-    return tuple(paths)
 
 
 def _consumed_state_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:

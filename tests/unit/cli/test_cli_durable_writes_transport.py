@@ -13,11 +13,17 @@ So each test here asserts against ``SLURM_JOB_ID`` **set**: the interesting
 failure is not "the value was dropped", it is "the value was dropped and the
 environment then supplied the opposite one".
 
-Three transports, one per submission path:
+Two transports, one per submission path:
 
-* ``_cli_slurm_array_scripts`` / ``_cli_slurm_scripts`` -> ``_cli_process_single``
-  (the ordinary per-image SLURM array),
+* ``_cli_slurm_array_scripts`` -> ``_cli_process_single`` (the ordinary
+  per-image SLURM array),
 * ``_cli_staged_slurm`` -> ``_cli_staged_slurm_worker`` (staged GPU Stages 1/3).
+
+A third case, ``_cli_slurm_scripts.generate_image_processing_script``, had a
+test here covering the flag its standalone per-image script emitted. That
+generator and its only caller ``generate_all_image_scripts`` were an
+unreachable subtree, deleted in Phase 6 of the OME-Zarr store change; the test
+went with them.
 """
 
 from __future__ import annotations
@@ -129,60 +135,6 @@ def test_slurm_array_script_emits_the_flag(
 
     script = generate_array_job_script(
         dataset, (0, 1), config, output_dir
-    ).read_text()
-
-    if expected:
-        assert expected in script
-    else:
-        assert "durable-writes" not in script
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [(None, ""), (True, "--durable-writes"), (False, "--no-durable-writes")],
-)
-def test_standalone_per_image_script_emits_the_flag(
-    tmp_path: Path,
-    simple_pipeline_json: Path,
-    synth_one_level_input: Path,
-    make_exec_config: Callable[..., Any],
-    value: bool | None,
-    expected: str,
-) -> None:
-    """``_cli_slurm_scripts.generate_image_processing_script`` is UNREACHABLE.
-
-    ``grep -rn 'generate_image_processing_script|generate_all_image_scripts'``
-    over ``src/`` and ``tests/`` finds no caller -- only
-    ``generate_slurm_directives`` from that module is still used, by
-    ``_cli_sentinel_scripts``. The generator emits the flag anyway, and this
-    test exists so that the emission is not an untested claim: revive the
-    generator and the flag comes with it rather than being silently dropped.
-    """
-    from phenotypic._cli._cli_slurm_scripts import (
-        generate_image_processing_script,
-    )
-    from phenotypic._cli._cli_types import Dataset
-
-    output_dir = tmp_path / "out"
-    output_dir.mkdir()
-    image = next(synth_one_level_input.rglob("*.tif"))
-    config = make_exec_config(
-        pipeline_json=simple_pipeline_json,
-        input_path=synth_one_level_input,
-        output_dir=output_dir,
-        force_local=False,
-        slurm_args={"slurm_partition": "short"},
-        durable_writes=value,
-    )
-    dataset = Dataset("ds", [image], synth_one_level_input, output_dir)
-
-    script = generate_image_processing_script(
-        image,
-        dataset,
-        config,
-        output_dir,
-        output_dir / "events.jsonl",
-        tmp_path / "scripts",
     ).read_text()
 
     if expected:
