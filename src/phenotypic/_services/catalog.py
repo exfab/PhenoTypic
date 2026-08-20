@@ -26,6 +26,12 @@ from typing import Any, Dict, List, Optional, get_args
 import numpy as np
 
 from phenotypic._services.registry import OperationInfo, ParamInfo, get_registry
+from phenotypic.sdk_.typing_ import ImageTypeName
+
+#: The two image classes a pipeline can be run against, taken from the
+#: ``ImageTypeName`` literal the CLI already threads through every run so
+#: the catalog cannot drift from it.
+_IMAGE_TYPE_NAMES = frozenset(get_args(ImageTypeName))
 
 #: JSON Schema keywords that describe the *shape* of a property rather than
 #: constrain its value. Everything else a property declares — ``minimum``,
@@ -520,35 +526,120 @@ def measurement_headers(info_cls: Any, owner: Any) -> List[str]:
     return list(info_cls.get_headers())
 
 
-def derive_columns(pipeline: Any) -> List[str]:
-    """Measurement columns a pipeline's ``measure()`` will produce.
+def _info_block_columns(image_type: ImageTypeName) -> List[str]:
+    """The per-object info block ``measure()`` appends to every table.
 
-    Walks the pipeline's measurement operations, asks each live instance
-    which measurement schemas it is emitting
-    (``MeasureFeatures.get_measurement_infoclasses()`` — genuinely
-    instance-dependent, since ``MeasureColor`` includes or excludes members
-    based on ``include_XYZ`` / ``include_xy``), and expands each through
-    :func:`measurement_headers`.
+    ``ImagePipeline.measure()`` closes with
+    ``image.grid.info()`` / ``image.objects.info()`` regardless of what the
+    ``meas`` slot holds, so these columns are in the output of *every* run,
+    including a run whose pipeline declares no measurers at all.
 
-    Only the ``meas`` slot is walked. Post transforms rewrite the table
-    rather than declaring a schema, and an analysis model's
+    The bounds half is read off :class:`~phenotypic.measure.MeasureBounds`
+    — the operation ``objects.info()`` actually runs — rather than
+    hard-coded, so a new ``BBOX`` member arrives here on its own.
+
+    Args:
+        image_type: ``"GridImage"`` or ``"Image"``. A ``GridFinder`` refuses
+            a plain :class:`~phenotypic.Image` (``GridOperation`` raises on
+            a non-gridded target), so this is the only thing the ``Grid_*``
+            half turns on.
+
+    Returns:
+        ``Object_Label``, the ``Bbox_*`` geometry columns, and — for a
+        ``GridImage`` — the four ``Grid_*`` assignment columns, in emission
+        order.
+    """
+    from phenotypic.measure import MeasureBounds
+    from phenotypic.schema import GRID, OBJECT
+
+    bounds = MeasureBounds()
+    columns: List[str] = [str(member) for member in OBJECT.get_headers()]
+    for info_cls in bounds.get_measurement_infoclasses():
+        columns.extend(measurement_headers(info_cls, bounds))
+
+    if image_type == "GridImage":
+        # The four assignment columns ``_assemble_grid_info`` writes. ``GRID``
+        # also declares four interval bounds (``Grid_RowIntervalStart``, …)
+        # which the info block does not carry, so a blanket
+        # ``GRID.get_headers()`` would over-report by four.
+        columns.extend(
+            str(member)
+            for member in (
+                GRID.ROW_NUM,
+                GRID.COL_NUM,
+                GRID.ROW_MAJOR_IDX,
+                GRID.COL_MAJOR_IDX,
+            )
+        )
+
+    return columns
+
+
+def derive_columns(pipeline: Any, *, image_type: ImageTypeName) -> List[str]:
+    """Columns a pipeline's ``measure()`` will produce, metadata aside.
+
+    Two sources, both of which the real table always carries:
+
+    1. **The measurers.** Each live instance in the ``meas`` slot is asked
+       which measurement schemas it is emitting
+       (``MeasureFeatures.get_measurement_infoclasses()`` — genuinely
+       instance-dependent, since ``MeasureColor`` includes or excludes
+       members based on ``include_XYZ`` / ``include_xy``), and each schema
+       is expanded through :func:`measurement_headers`.
+    2. **The info block.** ``measure()`` appends ``Object_Label``, the
+       ``Bbox_*`` geometry and (on a ``GridImage``) the ``Grid_*``
+       assignment columns unconditionally — see :func:`_info_block_columns`.
+       Walking the ``meas`` slot alone under-reports a plain
+       ``OtsuDetector`` + ``MeasureSize`` + ``MeasureShape`` run by 15
+       columns, which is most of what the results viewer keys off.
+
+    Only the ``meas`` slot is walked for (1). Post transforms rewrite the
+    table rather than declaring a schema, and an analysis model's
     metric-qualified output lands in its own deliverable, not in the
     measurement table.
 
+    **What is excluded, and why.** The ``Metadata_*`` block is not derivable
+    from a pipeline: the framework provenance columns come off the image
+    (``Metadata_ImageName``, ``Metadata_BitDepth``, …) and any experimental
+    metadata comes off the run's ``--metadata`` CSV. Neither is knowable
+    here, so the contract is *"every measurement column, plus the info
+    block, and no metadata"* rather than a silently partial list.
+
     Args:
         pipeline: An :class:`~phenotypic.ImagePipeline`.
+        image_type: The class the pipeline will be run against —
+            ``"GridImage"`` or ``"Image"``. Required, and keyword-only,
+            because it is not knowable from the pipeline: the same pipeline
+            yields four extra ``Grid_*`` columns on a ``GridImage`` and a
+            default would answer for the caller silently. Callers holding a
+            CLI/run config already carry this as ``image_type``.
 
     Returns:
-        Column names in emission order, de-duplicated — two measurers can
-        legitimately declare the same schema.
+        Column names, de-duplicated — two measurers can legitimately
+        declare the same schema. Measurement columns first in ``meas``
+        order, then the info block, mirroring ``measure()``'s own
+        ``[measurements] -> [Metadata_] -> [info block]`` ordering with the
+        undeducible ``Metadata_`` block dropped.
+
+    Raises:
+        ValueError: If *image_type* is not one of the two image classes.
 
     Example:
         >>> from phenotypic import ImagePipeline
         >>> from phenotypic.measure import MeasureSize
         >>> from phenotypic._services.catalog import derive_columns
-        >>> "Size_Area" in derive_columns(ImagePipeline(meas=[MeasureSize()]))
-        True
+        >>> cols = derive_columns(
+        ...     ImagePipeline(meas=[MeasureSize()]), image_type="GridImage"
+        ... )
+        >>> ("Size_Area" in cols, "Grid_RowNum" in cols)
+        (True, True)
     """
+    if image_type not in _IMAGE_TYPE_NAMES:
+        raise ValueError(
+            f"image_type must be one of {sorted(_IMAGE_TYPE_NAMES)}, "
+            f"got {image_type!r}"
+        )
+
     columns: List[str] = []
     seen: set[str] = set()
 
@@ -558,5 +649,10 @@ def derive_columns(pipeline: Any) -> List[str]:
                 if header not in seen:
                     seen.add(header)
                     columns.append(header)
+
+    for header in _info_block_columns(image_type):
+        if header not in seen:
+            seen.add(header)
+            columns.append(header)
 
     return columns
