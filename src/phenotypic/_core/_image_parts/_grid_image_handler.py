@@ -7,7 +7,6 @@ from typing import Union, Tuple, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     import napari
 
-import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -457,55 +456,6 @@ class ImageGridHandler(Image):
                     continue
 
         return arr
-
-    # ------------------------------------------------------------------
-    # HDF5 round-trip — schema_version=2 /grid/ subgroup
-    # ------------------------------------------------------------------
-    def _save_image2hdfgroup(
-            self,
-            grp,
-            compression="gzip",
-            compression_opts=4,
-    ):
-        """Save GridImage data + grid state into an HDF5 group.
-
-        Defers base layers/metadata/root-attr writing to
-        :meth:`Image._save_image2hdfgroup`, then persists grid-specific state
-        under ``/grid/``:
-          - attrs: ``nrows``, ``ncols``
-          - ``grid_finder_json`` dataset: JSON blob of the serialised
-            ``grid_finder`` (class + params).
-        """
-        super()._save_image2hdfgroup(
-                grp,
-                compression=compression,
-                compression_opts=compression_opts,
-        )
-
-        grid = grp.require_group("grid")
-        grid.attrs["nrows"] = int(self.nrows)
-        grid.attrs["ncols"] = int(self.ncols)
-
-        if self.grid_finder is not None:
-            # Lazy import to avoid import cycles.
-            from phenotypic._core._pipeline_parts._serializable_pipeline import (
-                SerializablePipeline,
-            )
-
-            payload = {
-                "class" : type(self.grid_finder).__name__,
-                "params": SerializablePipeline._serialize_single_operation(
-                        self.grid_finder
-                ),
-            }
-            # Overwrite any pre-existing payload for idempotent re-saves.
-            if "grid_finder_json" in grid:
-                del grid["grid_finder_json"]
-            grid.create_dataset(
-                    "grid_finder_json",
-                    data=json.dumps(payload),
-                    dtype=h5py.string_dtype(encoding="utf-8"),
-            )
 
     # ------------------------------------------------------------------
     # OME-Zarr round-trip — attributes.phenotypic.grid

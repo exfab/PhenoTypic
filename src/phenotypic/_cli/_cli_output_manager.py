@@ -13,7 +13,6 @@ import logging
 import os
 import shutil
 import uuid
-import warnings
 from pathlib import Path
 from typing import (
     Any,
@@ -22,7 +21,6 @@ from typing import (
     Final,
     List,
     Literal,
-    Mapping,
     Optional,
     TYPE_CHECKING,
 )
@@ -1441,13 +1439,20 @@ class OutputManager:
         save_overlays: bool = True,
         durable_writes: bool | None = None,
     ) -> "OutputManager":
-        """Create an OutputManager configured for HDF-centric forward runs.
+        """Create an OutputManager configured for store-centric forward runs.
 
-        Forward runs now write a single ``.h5`` per image under
-        ``results/<ds>/hdf/`` plus the parquet measurements and an
-        overlay PNG. The ``ext`` argument is retained for backward
-        compatibility with callers that still construct overlay
-        filenames via :meth:`get_output_path`.
+        Forward runs write a single OME-Zarr store per image under
+        ``results/<ds>/zarr/<stem>.ome.zarr/`` plus the parquet
+        measurements and an overlay PNG. The ``ext`` argument is retained
+        for backward compatibility with callers that still construct
+        overlay filenames via :meth:`get_output_path`.
+
+        The ``"hdf"`` entries in ``save_layers`` / ``extensions`` below are
+        **not** a write path -- nothing has written an ``.h5`` since Phase 3
+        Task 3.6. They exist so :meth:`get_output_path` can still *name*
+        ``results/<ds>/hdf/<stem>.h5`` for the two readers that legitimately
+        resolve a legacy tree: ``image_data_artifact``'s ``"hdf"`` completion
+        -marker fallback, and ``_migrate_legacy_success_evidence``.
 
         Args:
             base_dir: Base output directory.
@@ -1649,61 +1654,6 @@ class OutputManager:
             )
             return None
 
-    def save_image_hdf(
-        self,
-        image: "Image",
-        dataset_name: str,
-        image_stem: str,
-        *,
-        root_attributes: Mapping[str, str] | None = None,
-    ) -> Optional[Path]:
-        """Save processed image as HDF5 under ``results/<ds>/hdf/``.
-
-        Writes atomically: ``image.save2hdf5`` writes to a temp file in the
-        same directory, then :func:`os.replace` promotes it to the final
-        path. This mirrors :func:`atomic_write_with_writer`'s spirit, but h5py
-        needs to own the file handle so we cannot feed it a buffer.
-
-        Args:
-            image: Image object with processing results.
-            dataset_name: Dataset name.
-            image_stem: Image filename without extension.
-
-        Returns:
-            Path where HDF5 was saved, or ``None`` if saving failed.
-        """
-        final_path = self.get_output_path(dataset_name, "hdf", image_stem)
-        final_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = final_path.with_name(
-            f".{final_path.name}.{os.getpid()}.part"
-        )
-        try:
-            image.save2hdf5(tmp_path)
-            if root_attributes:
-                import h5py
-
-                with h5py.File(tmp_path, "r+") as handle:
-                    for key, value in root_attributes.items():
-                        handle.attrs[key] = value
-                    handle.flush()
-            os.replace(tmp_path, final_path)
-            logger.info("Saved HDF5 for %s/%s", dataset_name, image_stem)
-            return final_path
-        except Exception as e:
-            if tmp_path.exists():
-                try:
-                    tmp_path.unlink()
-                except OSError:
-                    pass
-            logger.warning(
-                "Failed to save HDF5 for %s/%s: %s: %s",
-                dataset_name,
-                image_stem,
-                type(e).__name__,
-                e,
-            )
-            return None
-
     def save_image_store(
         self,
         image: "Image",
@@ -1772,64 +1722,6 @@ class OutputManager:
                 e,
             )
             return None
-
-    def save_image_layers(
-        self,
-        image: Image,
-        dataset_name: str,
-        image_stem: str,
-    ) -> Dict[str, Path]:
-        """Save all requested image layers (rgb, gray, detect_mat, objmap).
-
-        .. deprecated::
-            Use :meth:`save_image_hdf` instead. Forward runs now persist a
-            single HDF5 per image under ``results/<ds>/hdf/``. This shim
-            remains for downstream scripts that still call the old per-layer
-            writer; it will be removed in a future release.
-
-        Args:
-            image: Image object with processing results.
-            dataset_name: Dataset name.
-            image_stem: Image filename without extension.
-
-        Returns:
-            Dictionary mapping layer names to saved paths (only successful saves).
-        """
-        warnings.warn(
-            "save_image_layers is deprecated; use save_image_hdf instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        saved_paths: Dict[str, Path] = {}
-
-        layer_accessors = {
-            "rgb": image.rgb,
-            "gray": image.gray,
-            "detect_mat": image.detect_mat,
-            "objmap": image.objmap,
-        }
-
-        for layer_name, accessor in layer_accessors.items():
-            if not self.save_layers.get(layer_name) or accessor.isempty():
-                continue
-
-            def _save_selected_layer(
-                path: Path,
-                *,
-                _accessor: Any = accessor,
-            ) -> None:
-                _accessor.imsave(filepath=path)
-
-            path = self._save_layer_safely(
-                layer_name,
-                dataset_name,
-                image_stem,
-                _save_selected_layer,
-            )
-            if path:
-                saved_paths[layer_name] = path
-
-        return saved_paths
 
     def aggregate_master_csv(
         self,

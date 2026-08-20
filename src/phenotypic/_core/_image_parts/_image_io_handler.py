@@ -35,7 +35,6 @@ else:
 
 import skimage as ski
 
-import phenotypic
 from phenotypic.sdk_.exceptions_ import UnsupportedFileTypeError
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
@@ -44,7 +43,6 @@ from phenotypic.sdk_ import (
     metadata_member_for_label,
 )
 from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS, IO
-from phenotypic.sdk_.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
 
 # -----------------------------------------------------------------------------
@@ -258,7 +256,7 @@ class ImageIOHandler(ImageColorSpace):
     This class extends ImageColorSpace to provide comprehensive file I/O capabilities,
     including:
     - Reading images from various file formats (JPEG, PNG, TIFF, RAW)
-    - Writing images to HDF5 and pickle formats
+    - Writing images to OME-Zarr stores and pickle formats
     - Extracting and parsing metadata from image files
     - Managing EXIF, TIFF tags, and custom PhenoTypic metadata
     - Support for raw sensor data processing via rawpy
@@ -271,8 +269,8 @@ class ImageIOHandler(ImageColorSpace):
         Basic usage:
 
         >>> img = ImageIOHandler.imread('photo.jpg')
-        >>> img.save2hdf5('output.h5')
-        >>> loaded = ImageIOHandler.load_hdf5('output.h5')
+        >>> img.save2zarr('output.ome.zarr')
+        >>> loaded = ImageIOHandler.load_zarr('output.ome.zarr')
     """
 
     def __init__(
@@ -688,194 +686,6 @@ class ImageIOHandler(ImageColorSpace):
         image._metadata.imported.update(imported_metadata)
 
         return image
-
-    @staticmethod
-    def _get_hdf5_group(handler: h5py.File | h5py.Group, name: str):
-        """
-        Retrieves an HDF5 group from the given handler by name. If the group does not
-        exist, it creates a new group with the specified name.
-
-        Args:
-            handler: HDF5 file or group handler used to manage HDF5 groups.
-            name: The name of the group to retrieve or create.
-
-        Returns:
-            h5py.Group: The requested or newly created HDF5 group.
-        """
-        file_handler = handler if isinstance(handler, h5py.File) else handler.file
-        name = str(name)
-        if name in handler:
-            return handler[name]
-        elif file_handler.swmr_mode is True:
-            raise ValueError("hdf5 handler in SWMR mode cannot create group")
-        else:
-            return handler.create_group(name)
-
-    @staticmethod
-    def _save_array2hdf5(group: h5py.Group, array: np.ndarray, name: str, **kwargs):
-        """
-        Saves a given numpy array to an HDF5 group. If a dataset with the specified
-        name already exists in the group, it checks if the shapes match. If the
-        shapes match, it updates the existing dataset; otherwise, it removes the
-        existing dataset and creates a new one with the specified name. If a dataset
-        with the given name doesn't exist, it creates a new dataset.
-
-        Args:
-            group: h5py.Group
-                The HDF5 group in which the dataset will be saved.
-            array: numpy.ndarray
-                The data array to be stored in the dataset.
-            name: str
-                The name of the dataset within the group.
-            **kwargs: dict
-                Additional keyword arguments to pass when creating a new dataset.
-        """
-        assert isinstance(array, np.ndarray), "array must be a numpy array."
-
-        file_handler = group.file if isinstance(group, h5py.Group) else group
-        if name in group:
-            dataset = group[name]
-            assert isinstance(dataset, h5py.Dataset), f"{name} is not a dataset."
-            if dataset.shape == array.shape:
-                dataset[:] = array
-            elif file_handler.swmr_mode is True:
-                raise ValueError(
-                        "Shape does not match existing dataset shape and cannot be changed because file handler is in SWMR mode"
-                )
-            else:
-                del group[name]
-                group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)
-        else:
-            group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)
-
-    def _save_image2hdfgroup(
-            self,
-            grp,
-            compression="gzip",
-            compression_opts=4,
-    ):
-        """Save image datasets and metadata into the given HDF5 group.
-
-        Uses schema_version=2 layout:
-          - root attrs: version, schema_version, phenotypic_class,
-            bit_depth, illuminant, gamma
-          - /layers/: rgb (optional), gray, detect_mat, objmap
-          - /metadata/{protected,public,imported}/: JSON-encoded attrs
-        """
-        # ------------------------------------------------------------------
-        # Root attributes
-        # ------------------------------------------------------------------
-        grp.attrs["version"] = phenotypic.__version__
-        grp.attrs["schema_version"] = _SCHEMA_VERSION
-        grp.attrs[_METADATA_SCHEMA_VERSION_ATTR] = _METADATA_SCHEMA_VERSION
-        grp.attrs["phenotypic_class"] = type(self).__name__
-
-        if self.bit_depth is not None:
-            grp.attrs["bit_depth"] = int(self.bit_depth)
-        if self.illuminant is not None:
-            grp.attrs["illuminant"] = str(self.illuminant)
-        if self.gamma is not None:
-            grp.attrs["gamma"] = (
-                self.gamma.name if hasattr(self.gamma, "name") else str(self.gamma)
-            )
-
-        # ------------------------------------------------------------------
-        # Layers subgroup
-        # ------------------------------------------------------------------
-        layers = grp.require_group("layers")
-
-        if not self.rgb.isempty():
-            array = self.rgb[:]
-            HDF.save_array2hdf5(
-                    group=layers,
-                    array=array,
-                    name="rgb",
-                    dtype=array.dtype,
-                    compression=compression,
-                    compression_opts=compression_opts,
-            )
-
-        matrix = self.gray[:]
-        HDF.save_array2hdf5(
-                group=layers,
-                array=matrix,
-                name="gray",
-                dtype=matrix.dtype,
-                compression=compression,
-                compression_opts=compression_opts,
-        )
-
-        detect_matrix = self.detect_mat[:]
-        HDF.save_array2hdf5(
-                group=layers,
-                array=detect_matrix,
-                name="detect_mat",
-                dtype=detect_matrix.dtype,
-                compression=compression,
-                compression_opts=compression_opts,
-        )
-        layers["detect_mat"].attrs["detect_mode"] = self._data.detect_mode
-
-        objmap = self.objmap[:]
-        HDF.save_array2hdf5(
-                group=layers,
-                array=objmap,
-                name="objmap",
-                dtype=objmap.dtype,
-                compression=compression,
-                compression_opts=compression_opts,
-        )
-
-        # ------------------------------------------------------------------
-        # Metadata subgroups (protected / public / imported)
-        # ------------------------------------------------------------------
-        meta = grp.require_group("metadata")
-        sections = {
-            "protected": self._metadata.protected,
-            "public"   : self._metadata.public,
-            "imported" : self._metadata.imported,
-        }
-        for name, section in sections.items():
-            sub = meta.require_group(name)
-            normalized = _normalize_stored_metadata_items(
-                section.items(), section=name
-            )
-            for key, val in normalized.items():
-                sub.attrs[key] = _encode_meta(val)
-
-    def save2hdf5(
-            self, filename, compression="gzip", compression_opts=4,
-    ):
-        """Save the image to an HDF5 file with all data and metadata.
-
-        Stores the complete image data (RGB, gray, detection matrix,
-        object map) and metadata (protected and public) directly at
-        the HDF5 file's root group. The file is always overwritten
-        if it already exists.
-
-        Args:
-            filename: Path to the HDF5 file (.h5 extension
-                recommended). Created or overwritten on each call.
-            compression: Compression filter to apply to datasets.
-                Options: 'gzip' (recommended), 'szip', or None.
-                Defaults to 'gzip'.
-            compression_opts: Compression level for 'gzip' (1-9,
-                where 1=fastest, 9=best). Ignored for 'szip' and
-                None. Defaults to 4 (balanced).
-
-        Examples:
-            Save to HDF5:
-
-            >>> img = Image.imread('photo.jpg')
-            >>> img.save2hdf5('output.h5')
-            >>> img.save2hdf5('output.h5', compression='szip')
-        """
-        with h5py.File(filename, mode="w") as filehandler:
-            self._save_image2hdfgroup(
-                    grp=filehandler,
-                    compression=compression,
-                    compression_opts=compression_opts,
-            )
 
     def _series_names(self) -> list[str]:
         """Series this image will write, in canonical order.
@@ -1580,9 +1390,15 @@ class ImageIOHandler(ImageColorSpace):
         return img
 
     @classmethod
-    def load_hdf5(cls, filename, **kwargs) -> Image:
+    def _load_hdf5_for_migration(cls, filename, **kwargs) -> Image:
         """
-        Loads an image object from an HDF5 file.
+        Loads an image object from a legacy HDF5 file.
+
+        Private since Phase 6 of the OME-Zarr store change: the public
+        ``load_hdf5`` is gone and this entry point exists only so
+        ``--mode migrate`` can read a legacy tree. Callers are
+        :mod:`phenotypic.sdk_._hdf_to_zarr` and the private loader in
+        :mod:`phenotypic.sdk_._io_constants`.
 
         Args:
             filename (str): The path to the HDF5 file containing the image data. Providing an incorrect or
@@ -1598,9 +1414,10 @@ class ImageIOHandler(ImageColorSpace):
             through kwargs, as they affect the image's suitability for detailed microbe colony studies.
         """
         with h5py.File(filename, "r") as filehandler:
-            # Auto-dispatch warning: if a user calls Image.load_hdf5 on a file
-            # that was saved as a GridImage, warn but do NOT upcast — still
-            # return a plain Image so behaviour stays explicit.
+            # Auto-dispatch warning: if migration reads a file through
+            # ``Image`` when it was saved as a GridImage, warn but do NOT
+            # upcast -- still return a plain Image so behaviour stays
+            # explicit.
             saved_class = filehandler.attrs.get("phenotypic_class")
             if isinstance(saved_class, bytes):
                 saved_class = saved_class.decode("utf-8", errors="replace")
@@ -1610,43 +1427,13 @@ class ImageIOHandler(ImageColorSpace):
             ):
                 warnings.warn(
                         "File was saved as GridImage; "
-                        "use GridImage.load_hdf5 to preserve grid state",
+                        "use GridImage to preserve grid state",
                         UserWarning,
                         stacklevel=2,
                 )
             img = cls._load_from_hdf5_group(filehandler, **kwargs)
 
         return img
-
-    @classmethod
-    def load_layer_hdf5(cls, filename, layer: str) -> np.ndarray:
-        """Read a single image layer from an intermediate HDF5 file.
-
-        Reads only the requested dataset without reconstructing a full
-        :class:`Image`. Handles both the schema-v2 grouped layout
-        (``/layers/<layer>``) and the legacy flat layout (``/<layer>``).
-
-        Args:
-            filename: Path to the HDF5 file.
-            layer: One of ``"rgb"``, ``"gray"``, ``"detect_mat"``, ``"objmap"``.
-
-        Returns:
-            The layer array.
-
-        Raises:
-            KeyError: If *layer* is not present in the file.
-        """
-        with h5py.File(filename, "r") as f:
-            schema_version = int(f.attrs.get("schema_version", 1))
-            if schema_version >= _SCHEMA_VERSION and "layers" in f:
-                group = f["layers"]
-            else:
-                group = f
-            if layer not in group:
-                raise KeyError(
-                    f"Layer {layer!r} not found in {filename}"
-                )
-            return group[layer][()]
 
     @classmethod
     def load_zarr(cls, path, **kwargs) -> Image:

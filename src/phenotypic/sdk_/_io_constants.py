@@ -2077,7 +2077,7 @@ def load_image_from_hdf(
     # that ``IMAGE_TYPES.GRID.value`` is spelled ``"GridImage"`` -- rename that
     # member and every GridImage silently degrades to ``Image`` with no error.
     image_cls = GridImage if cls_attr == GridImage.__name__ else Image
-    return image_cls.load_hdf5(hdf_path)
+    return image_cls._load_hdf5_for_migration(hdf_path)
 
 
 def load_image_from_store(

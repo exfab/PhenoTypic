@@ -44,6 +44,7 @@ from phenotypic.sdk_ import (
     zarr_store_path,
 )
 from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
+from tests.fixtures.legacy_hdf._generate import write_v2_grouped
 
 DATASET = "ds"
 
@@ -196,7 +197,7 @@ def demote_store_to_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
     hdf_dir = dataset_hdf_dir(output_dir, dataset)
     hdf_dir.mkdir(parents=True, exist_ok=True)
     hdf_path = hdf_dir / f"{stem}.h5"
-    image.save2hdf5(hdf_path)
+    write_v2_grouped(hdf_path, image)
     if work_id is not None:
         with h5py.File(hdf_path, mode="a") as handle:
             handle.attrs["phenotypic_work_id"] = work_id

@@ -56,7 +56,7 @@ def test_converted_store_matches_the_fixture_s_AUTHORED_metadata(
     """Assert against what the fixture was BUILT with, not against another load.
 
     A comparison of ``migrate_hdf_to_zarr(...)`` against
-    ``Image.load_hdf5(...).save2zarr(...)`` runs both sides through the SAME
+    ``Image._load_hdf5_for_migration(...).save2zarr(...)`` runs both sides through the SAME
     ``_load_v2_grouped``, so any loader-level fidelity loss compares equal and
     the test certifies the bug (ledger MIG-2).
     """
@@ -120,7 +120,7 @@ def test_converted_equals_a_freshly_written_store(tmp_path: Path) -> None:
     converted = migrate_hdf_to_zarr(
         FIXTURES / "v2_grouped" / "img.h5", tmp_path / "converted.ome.zarr"
     )
-    fresh = Image.load_hdf5(FIXTURES / "v2_grouped" / "img.h5").save2zarr(
+    fresh = Image._load_hdf5_for_migration(FIXTURES / "v2_grouped" / "img.h5").save2zarr(
         tmp_path / "fresh.ome.zarr"
     )
     for layer in ("gray", "detect_mat", "objmap"):
