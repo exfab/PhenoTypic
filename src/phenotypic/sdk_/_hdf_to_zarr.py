@@ -3,8 +3,13 @@
 This is the engine behind ``--mode migrate``. It reuses the **existing**
 v1-flat and v2-grouped HDF readers rather than adding a third one, so the only
 thing here that knows the legacy layout is the metadata restore below --
-everything else goes through :func:`load_image_from_hdf` and
+everything else goes through :func:`_load_image_from_hdf` and
 :meth:`Image.save2zarr`.
+
+The legacy tree layout (``results/<ds>/hdf/<stem>.h5``) and the legacy
+root attribute name are known **only here** since Phase 6: the shared
+layout module ``_io_constants`` no longer publishes ``DIR_HDF``,
+``dataset_hdf_dir``, ``HdfAttr``, or ``load_image_from_hdf``.
 
 Three properties the callers depend on:
 
@@ -29,13 +34,83 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
 
 from ._io_constants import (
+    dataset_results_dir,
     deliverables_dir,
-    load_image_from_hdf,
     metadata_csv_deliverable_path,
     results_dir,
     zarr_store_path,
 )
 from .ngff_ import STORE_SUFFIX, valid_staged_store
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from phenotypic._core._grid_image import GridImage
+
+    from ._io_constants import ImageTypeName
+
+#: HDF5 image-state subdirectory of a legacy run: ``<output>/results/<ds>/hdf/``.
+#: Private, and defined here rather than in ``_io_constants``, so the legacy
+#: layout is known only to the module allowed to know it.
+_DIR_HDF: str = "hdf"
+
+#: Top-level attribute key naming the writing class on a per-image HDF5.
+#: Was ``HdfAttr.PHENOTYPIC_CLASS``, deleted with the rest of the HDF path
+#: constants in Phase 6.
+_PHENOTYPIC_CLASS: str = "phenotypic_class"
+
+
+def _dataset_hdf_dir(output_dir: Path, dataset: str) -> Path:
+    """Return ``<output>/results/<dataset>/hdf/``.
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+
+    Returns:
+        The legacy per-image HDF directory for *dataset*. Not required to
+        exist.
+    """
+    return dataset_results_dir(Path(output_dir), dataset) / _DIR_HDF
+
+
+def _load_image_from_hdf(
+    hdf_path: Path,
+    *,
+    fallback: "ImageTypeName" = "Image",
+) -> "Image | GridImage":
+    """Open an HDF5, read its class attr, dispatch to the right Image class.
+
+    Moved out of ``_io_constants`` in Phase 6 together with the rest of the
+    legacy path constants; ``--mode migrate`` is its only caller.
+
+    Args:
+        hdf_path: Path to a per-image HDF5 file.
+        fallback: Image class name to use when the HDF lacks the
+            ``phenotypic_class`` attribute (legacy files). Type-checked
+            (statically) against :data:`ImageTypeName` -- there is no
+            runtime validation; the only effect of an unrecognized
+            string is that the dispatch falls through to :class:`Image`.
+
+    Returns:
+        An :class:`Image` or :class:`GridImage` instance loaded from the HDF.
+    """
+    import h5py  # type: ignore[import-untyped]
+
+    from phenotypic import (
+        GridImage,
+        Image,
+    )  # lazy: avoids circular import at module load
+
+    with h5py.File(hdf_path, "r") as fh:
+        cls_attr = fh.attrs.get(_PHENOTYPIC_CLASS, fallback)
+    if isinstance(cls_attr, bytes):
+        cls_attr = cls_attr.decode("utf-8", errors="replace")
+    # Compared against the CLASS NAME, never against ``IMAGE_TYPES.GRID``: the
+    # writer stores ``type(self).__name__``, while ``IMAGE_TYPES`` is the
+    # ``Metadata_ImageType`` vocabulary. The two agree only by the coincidence
+    # that ``IMAGE_TYPES.GRID.value`` is spelled ``"GridImage"`` -- rename that
+    # member and every GridImage silently degrades to ``Image`` with no error.
+    image_cls = GridImage if cls_attr == GridImage.__name__ else Image
+    return image_cls._load_hdf5_for_migration(hdf_path)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import numpy as np
@@ -166,7 +241,7 @@ def _load_for_migration(src: Path) -> "Image":
     Returns:
         The loaded ``Image`` or ``GridImage``.
     """
-    image = load_image_from_hdf(Path(src))
+    image = _load_image_from_hdf(Path(src))
     sections = _stored_v2_metadata_sections(Path(src))
     if sections is not None:
         for name, stored in sections.items():
@@ -412,7 +487,7 @@ def iter_legacy_hdfs(output_dir: Path) -> Iterator[tuple[str, Path]]:
     if not root.is_dir():
         return
     for dataset_dir in sorted(p for p in root.iterdir() if p.is_dir()):
-        hdf_dir = dataset_dir / "hdf"
+        hdf_dir = dataset_dir / _DIR_HDF
         if not hdf_dir.is_dir():
             continue
         for hdf_path in sorted(hdf_dir.glob("*.h5")):

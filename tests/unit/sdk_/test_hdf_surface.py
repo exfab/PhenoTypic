@@ -49,3 +49,30 @@ def test_dead_dataframe_layer_is_gone(name: str) -> None:
 def test_recovery_helpers_survive() -> None:
     assert callable(_open_hdf_with_recovery)
     assert callable(_clear_hdf_consistency_flags)
+
+
+# ---------------------------------------------------------------------------
+# Task 6.3 -- the HDF path constants leave the shared layout module
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "name", ["DIR_HDF", "dataset_hdf_dir", "HdfAttr", "load_image_from_hdf"]
+)
+def test_hdf_path_constants_are_gone(name: str) -> None:
+    import phenotypic.sdk_ as sdk
+
+    assert not hasattr(sdk, name)
+    assert name not in sdk.__all__
+
+
+def test_bundle_layout_has_no_hdf_path() -> None:
+    from phenotypic.sdk_ import BundleLayout
+
+    assert not hasattr(BundleLayout, "hdf_path")
+
+
+def test_migration_still_resolves_legacy_directories(tmp_path) -> None:
+    from phenotypic.sdk_._hdf_to_zarr import _dataset_hdf_dir
+
+    assert _dataset_hdf_dir(tmp_path, "ds").name == "hdf"

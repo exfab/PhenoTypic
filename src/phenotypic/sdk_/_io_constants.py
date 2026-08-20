@@ -47,7 +47,7 @@ Module layout
 * **Reader helpers** — `read_run_manifest`, `load_master_measurements`,
   `resolve_execution_mode` consolidate three high-frequency duplicates.
 * **JSON contract keys** (`JobMetadataKey`, `DashboardManifestKey`,
-  `ChunkStateKey`, `ChunkManifestKey`, `HdfAttr`) — namespace classes
+  `ChunkStateKey`, `ChunkManifestKey`) — namespace classes
   whose class-level ``Final[str]`` attributes are the keys writers and
   readers must reference instead of bare strings. Keeps the contract
   on-disk format mechanically discoverable.
@@ -652,8 +652,13 @@ DIR_MEASUREMENTS_BY_FEATURE: Final[str] = "measurements_by_feature"
 #: SLURM stdout/stderr subdirectory inside the hidden machine-state cache.
 DIR_LOGS: Final[str] = "logs"
 
-#: HDF5 image-state subdirectory: ``<output>/results/<ds>/hdf/``.
-DIR_HDF: Final[str] = "hdf"
+#: HDF5 image-state subdirectory of a LEGACY run: ``<output>/results/<ds>/hdf/``.
+#: Module-private since Phase 6. The only thing here that still needs it is
+#: :func:`datasets_needing_migration`, the predicate that refuses an
+#: unconverted tree; ``--mode migrate`` carries its own copy in
+#: :mod:`phenotypic.sdk_._hdf_to_zarr`, which is the module allowed to know
+#: the legacy layout.
+_DIR_HDF: Final[str] = "hdf"
 
 #: OME-Zarr image-state subdirectory: ``<output>/results/<ds>/zarr/``.
 DIR_ZARR: Final[str] = "zarr"
@@ -1447,11 +1452,6 @@ def dataset_measurements_dir(output_dir: Path, dataset: str) -> Path:
     return dataset_results_dir(output_dir, dataset) / DIR_MEASUREMENTS
 
 
-def dataset_hdf_dir(output_dir: Path, dataset: str) -> Path:
-    """Return ``<output>/results/<dataset>/hdf/``."""
-    return dataset_results_dir(output_dir, dataset) / DIR_HDF
-
-
 def dataset_zarr_dir(output_dir: Path, dataset: str) -> Path:
     """Return ``<output>/results/<dataset>/zarr/``."""
     return dataset_results_dir(output_dir, dataset) / DIR_ZARR
@@ -1494,7 +1494,7 @@ def datasets_needing_migration(output_dir: Path) -> list[str]:
         return []
     needing: list[str] = []
     for dataset_dir in sorted(path for path in root.iterdir() if path.is_dir()):
-        hdf_dir = dataset_dir / DIR_HDF
+        hdf_dir = dataset_dir / _DIR_HDF
         if not hdf_dir.is_dir():
             continue
         for hdf_path in sorted(hdf_dir.glob("*.h5")):
@@ -1987,12 +1987,6 @@ class ChunkManifestKey:
     NAME: Final[str] = "name"
 
 
-class HdfAttr:
-    """Top-level attribute keys on per-image HDF5 files."""
-
-    PHENOTYPIC_CLASS: Final[str] = "phenotypic_class"
-
-
 # ---------------------------------------------------------------------------
 # Module-path constants for importlib dispatch
 # ---------------------------------------------------------------------------
@@ -2033,51 +2027,8 @@ class EnvVar:
 
 
 # ---------------------------------------------------------------------------
-# HDF image-class reader (eliminates 3-site duplication)
+# Store image-class reader
 # ---------------------------------------------------------------------------
-
-
-def load_image_from_hdf(
-    hdf_path: Path,
-    *,
-    fallback: ImageTypeName = "Image",
-) -> "_Image | _GridImage":
-    """Open an HDF5, read its ``phenotypic_class`` attr, dispatch to the right Image class.
-
-    Replaces the 3 ad-hoc ``h5py.File(...) → fh.attrs.get('phenotypic_class', 'Image')
-    → GridImage if cls_attr == 'GridImage' else Image`` patterns in
-    :mod:`_cli_recompile_worker`, :mod:`_cli_execution_strategies`, and
-    :mod:`phenotypicCLI`.
-
-    Args:
-        hdf_path: Path to a per-image HDF5 file.
-        fallback: Image class name to use when the HDF lacks the
-            ``phenotypic_class`` attribute (legacy files). Type-checked
-            (statically) against :data:`ImageTypeName` — there is no
-            runtime validation; the only effect of an unrecognized
-            string is that the dispatch falls through to :class:`Image`.
-
-    Returns:
-        An :class:`Image` or :class:`GridImage` instance loaded from the HDF.
-    """
-    import h5py  # type: ignore[import-untyped]
-
-    from phenotypic import (
-        GridImage,
-        Image,
-    )  # lazy: avoids circular import at module load
-
-    with h5py.File(hdf_path, "r") as fh:
-        cls_attr = fh.attrs.get(HdfAttr.PHENOTYPIC_CLASS, fallback)
-    if isinstance(cls_attr, bytes):
-        cls_attr = cls_attr.decode("utf-8", errors="replace")
-    # Compared against the CLASS NAME, never against ``IMAGE_TYPES.GRID``: the
-    # writer stores ``type(self).__name__``, while ``IMAGE_TYPES`` is the
-    # ``Metadata_ImageType`` vocabulary. The two agree only by the coincidence
-    # that ``IMAGE_TYPES.GRID.value`` is spelled ``"GridImage"`` -- rename that
-    # member and every GridImage silently degrades to ``Image`` with no error.
-    image_cls = GridImage if cls_attr == GridImage.__name__ else Image
-    return image_cls._load_hdf5_for_migration(hdf_path)
 
 
 def load_image_from_store(
@@ -2107,8 +2058,8 @@ def load_image_from_store(
 
     block = read_phenotypic_attributes(store_path)
     class_name = block.get(PhenotypicAttr.IMAGE_CLASS, fallback)
-    # See ``load_image_from_hdf``: the comparison is against the class name the
-    # writer recorded, not against ``IMAGE_TYPES.GRID`` -- that enum is the
+    # See ``_hdf_to_zarr._load_image_from_hdf``: the comparison is against
+    # the class name the writer recorded, not against ``IMAGE_TYPES.GRID`` -- that enum is the
     # ``Metadata_ImageType`` vocabulary, a different field that spec 2.1 keeps
     # deliberately independent of ``image_class``.
     image_cls = GridImage if class_name == GridImage.__name__ else Image
@@ -2202,21 +2153,6 @@ class BundleLayout:
             return None
         results = self.output_root / DIR_RESULTS
         return results if results.is_dir() else None
-
-    def hdf_path(self, dataset: str, stem: str) -> Optional[Path]:
-        """Full-res per-image HDF for ``(dataset, stem)``, or ``None`` if unavailable.
-
-        Args:
-            dataset: Dataset name (subdirectory under ``results/``).
-            stem: Image stem (filename without extension).
-
-        Returns:
-            Resolved ``.h5`` path if the file exists, otherwise ``None``.
-        """
-        if self.output_root is None:
-            return None
-        candidate = dataset_hdf_dir(self.output_root, dataset) / f"{stem}.h5"
-        return candidate if candidate.is_file() else None
 
     def store_path(self, dataset: str, stem: str) -> Optional[Path]:
         """Full-res per-image OME-Zarr store for ``(dataset, stem)``, or ``None``.

@@ -94,13 +94,14 @@ def half_migrated_run(_completed_run_two: Path, tmp_path: Path) -> Path:
     The expected state after any interruption, since migration is resumable.
     """
     from phenotypic.sdk_._hdf_to_zarr import migrate_hdf_to_zarr
-    from phenotypic.sdk_ import dataset_hdf_dir, zarr_store_path
+    from phenotypic.sdk_ import zarr_store_path
+    from phenotypic.sdk_._hdf_to_zarr import _dataset_hdf_dir
 
     output_dir = _copy_run(_completed_run_two, tmp_path / "half")
     demote_run_to_hdf(output_dir, keep_markers=False)
     first = sorted(run_stems(output_dir))[0]
     migrate_hdf_to_zarr(
-        dataset_hdf_dir(output_dir, DATASET) / f"{first}.h5",
+        _dataset_hdf_dir(output_dir, DATASET) / f"{first}.h5",
         zarr_store_path(output_dir, DATASET, first),
     )
     return output_dir

@@ -363,7 +363,7 @@ class PhenotypicAttr:
     """Keys inside the namespaced ``attributes.phenotypic`` block.
 
     Spelled out here so a renamed key fails at type-check time rather than
-    silently at runtime, matching the ``HdfAttr`` / ``JobMetadataKey`` pattern
+    silently at runtime, matching the ``JobMetadataKey`` pattern
     already used in :mod:`phenotypic.sdk_._io_constants`.
     """
 

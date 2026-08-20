@@ -10,7 +10,6 @@ import pytest
 
 from phenotypic.sdk_ import (
     DELIVERABLES_METADATA_CSV,
-    DIR_HDF,
     DIR_MEASUREMENTS,
     DIR_OVERLAYS,
     DIR_PROGRESS,
@@ -39,13 +38,11 @@ from phenotypic.sdk_ import (
     ChunkStateKey,
     DashboardManifestKey,
     EnvVar,
-    HdfAttr,
     JobMetadataKey,
     ModulePath,
     checkpoint_lock_filename,
     chunk_parquet_filename,
     dashboard_html_path,
-    dataset_hdf_dir,
     dataset_measurements_dir,
     dataset_overlays_dir,
     dataset_results_dir,
@@ -282,7 +279,6 @@ class TestDirectoryConstants:
 
     def test_per_dataset_subdirs(self) -> None:
         assert DIR_MEASUREMENTS == "measurements"
-        assert DIR_HDF == "hdf"
         assert DIR_OVERLAYS == "overlays"
 
 
@@ -424,7 +420,6 @@ class TestPathHelpers:
     def test_dataset_subdirs(self, output: Path) -> None:
         assert dataset_results_dir(output, "ds1") == output / "results" / "ds1"
         assert dataset_measurements_dir(output, "ds1") == output / "results" / "ds1" / "measurements"
-        assert dataset_hdf_dir(output, "ds1") == output / "results" / "ds1" / "hdf"
         assert dataset_overlays_dir(output, "ds1") == output / "deliverables" / "overlays" / "ds1"
 
     def test_overlays_dir_roots_under_deliverables(self) -> None:
@@ -720,9 +715,6 @@ class TestJsonContractKeys:
         assert ChunkManifestKey.TOTAL_ROWS == "total_rows"
         assert ChunkManifestKey.NAME == "name"
 
-    def test_hdf_attr_keys(self) -> None:
-        assert HdfAttr.PHENOTYPIC_CLASS == "phenotypic_class"
-
     def test_processing_state_keys(self) -> None:
         from phenotypic.sdk_ import ProcessingStateKey
 
@@ -830,20 +822,24 @@ class TestLoadImageFromHdf:
     def test_byte_class_attr_is_decoded(self, tmp_path: Path) -> None:
         """HDF attrs from older h5py versions arrive as bytes, not str.
 
-        Regression test for the byte-decode fallback in load_image_from_hdf.
-        We assert the attribute extraction logic without exercising the full
-        Image construction (which requires real image data).
+        Regression test for the byte-decode fallback in
+        ``_hdf_to_zarr._load_image_from_hdf``. Phase 6 moved the reader and
+        its ``phenotypic_class`` constant out of ``_io_constants`` into the
+        one module allowed to know the legacy layout; the assertion is
+        unchanged. We assert the attribute extraction logic without
+        exercising the full Image construction (which requires real image
+        data).
         """
         import h5py  # type: ignore[import-untyped]
 
-        from phenotypic.sdk_._io_constants import HdfAttr
+        from phenotypic.sdk_._hdf_to_zarr import _PHENOTYPIC_CLASS
 
         hdf_path = tmp_path / "test.h5"
         with h5py.File(hdf_path, "w") as fh:
-            fh.attrs[HdfAttr.PHENOTYPIC_CLASS] = b"GridImage"
+            fh.attrs[_PHENOTYPIC_CLASS] = b"GridImage"
 
         with h5py.File(hdf_path, "r") as fh:
-            cls_attr = fh.attrs.get(HdfAttr.PHENOTYPIC_CLASS, "Image")
+            cls_attr = fh.attrs.get(_PHENOTYPIC_CLASS, "Image")
 
         # h5py returns bytes on some platforms — verify the decode pattern
         if isinstance(cls_attr, bytes):

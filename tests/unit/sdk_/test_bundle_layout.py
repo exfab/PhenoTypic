@@ -31,7 +31,6 @@ def test_detect_when_pointed_at_deliverables_dir_standalone(tmp_path):
     assert layout.output_root is None
     assert layout.has_results is False
     assert layout.results_dir is None
-    assert layout.hdf_path("plate1", "img001") is None
 
 
 def test_detect_deliverables_subdir_with_sibling_results_promotes_parent(tmp_path):
@@ -55,17 +54,6 @@ def test_promotion_guard_requires_deliverables_name(tmp_path):
 def test_detect_rejects_non_bundle(tmp_path):
     with pytest.raises(FileNotFoundError):
         BundleLayout.detect(tmp_path)
-
-
-def test_hdf_path_returns_path_when_h5_exists(tmp_path):
-    out = tmp_path / "run"
-    _seed_deliverables(out / "deliverables")
-    hdf_dir = out / "results" / "plate1" / "hdf"
-    hdf_dir.mkdir(parents=True)
-    (hdf_dir / "img001.h5").write_bytes(b"")
-    layout = BundleLayout.detect(out)
-    assert layout.hdf_path("plate1", "img001") == hdf_dir / "img001.h5"
-    assert layout.hdf_path("plate1", "missing") is None
 
 
 def test_resolved_pipeline_config_path_prefers_canonical(tmp_path):

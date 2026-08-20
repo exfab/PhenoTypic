@@ -2980,15 +2980,17 @@ def _discover_recompile_dataset_names(
     job_meta: Optional[dict[str, Any]],
 ) -> list[str]:
     """Discover datasets using the local recompile precedence."""
-    from phenotypic.sdk_ import DIR_HDF, DIR_MEASUREMENTS, DIR_ZARR
+    from phenotypic.sdk_ import DIR_MEASUREMENTS, DIR_ZARR
 
     results_dir = output_dir / DIR_RESULTS
     dataset_names: list[str] = []
     if results_dir.is_dir():
-        # ``DIR_HDF`` stays alongside ``DIR_ZARR`` until Phase 6: an
-        # unconverted legacy bundle has only `hdf/`, and dropping it here
-        # would make that bundle undiscoverable to the very recompile run
-        # that authorizes its metadata migration.
+        # The ``hdf/`` disjunct retired with the rest of the HDF surface in
+        # Phase 6, and it was unreachable before that: ``recompile`` is one of
+        # the modes ``_refuse_unmigrated_output`` guards, so a bundle carrying
+        # an unconverted ``.h5`` never reaches this function -- and one that
+        # migrated (``keep_source=True`` by default) has a ``zarr/`` beside
+        # its retained ``hdf/``, which the second disjunct already finds.
         dataset_names = sorted(
             d.name
             for d in results_dir.iterdir()
@@ -2996,7 +2998,6 @@ def _discover_recompile_dataset_names(
             and (
                 (d / DIR_MEASUREMENTS).is_dir()
                 or (d / DIR_ZARR).is_dir()
-                or (d / DIR_HDF).is_dir()
             )
         )
 
@@ -3055,7 +3056,6 @@ def _recompile_dataset_image_names(
 ) -> list[str]:
     """Infer image names from per-image measurement Parquets or stores."""
     from phenotypic.sdk_ import (
-        DIR_HDF,
         DIR_MEASUREMENTS,
         DIR_ZARR,
         STORE_SUFFIX,
@@ -3085,14 +3085,11 @@ def _recompile_dataset_image_names(
         if store_stems:
             return store_stems
 
-    # Legacy last resort, retired in Phase 6 with the rest of the HDF
-    # surface: an unconverted bundle carries neither parquets nor stores.
-    hdf_dir = dataset_dir / DIR_HDF
-    if hdf_dir.is_dir():
-        hdf_stems = sorted(path.stem for path in hdf_dir.glob("*.h5"))
-        if hdf_stems:
-            return hdf_stems
-
+    # The legacy ``hdf/`` last resort retired in Phase 6 with the rest of the
+    # HDF surface. It could not fire even before that: the two branches above
+    # are checked first, and a bundle with neither parquets nor stores is an
+    # unconverted one, which ``_refuse_unmigrated_output`` rejects before any
+    # recompile discovery runs.
     return []
 
 

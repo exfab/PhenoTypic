@@ -35,7 +35,6 @@ from phenotypic._cli._cli_state_management import (
 )
 from phenotypic.sdk_ import (
     atomic_write_json,
-    dataset_hdf_dir,
     dataset_zarr_dir,
     deliverables_dir,
     image_completion_marker_path,
@@ -43,6 +42,7 @@ from phenotypic.sdk_ import (
     metadata_csv_deliverable_path,
     zarr_store_path,
 )
+from phenotypic.sdk_._hdf_to_zarr import _dataset_hdf_dir
 from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
 from tests.fixtures.legacy_hdf._generate import write_v2_grouped
 
@@ -194,7 +194,7 @@ def demote_store_to_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
     work_id = read_phenotypic_attributes(store).get(PhenotypicAttr.WORK_ID)
     image = load_image_from_store(store)
 
-    hdf_dir = dataset_hdf_dir(output_dir, dataset)
+    hdf_dir = _dataset_hdf_dir(output_dir, dataset)
     hdf_dir.mkdir(parents=True, exist_ok=True)
     hdf_path = hdf_dir / f"{stem}.h5"
     write_v2_grouped(hdf_path, image)
@@ -332,7 +332,7 @@ def repoint_marker_at_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
         descriptor.pop("kind", None)
         artifacts[name] = descriptor
 
-    hdf_path = dataset_hdf_dir(output_dir, dataset) / f"{stem}.h5"
+    hdf_path = _dataset_hdf_dir(output_dir, dataset) / f"{stem}.h5"
     resolved = hdf_path.resolve(strict=True)
     descriptor = _artifact_descriptor(resolved, resolved.relative_to(output_root))
     descriptor.pop("kind", None)

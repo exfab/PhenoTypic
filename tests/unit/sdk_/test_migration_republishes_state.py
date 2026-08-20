@@ -162,7 +162,8 @@ def test_republication_is_keyed_on_MARKER_state_not_conversion_state(
     X's marker would stay v1 forever, and the next local run would reprocess
     it from source inputs a migrated archive may no longer have.
     """
-    from phenotypic.sdk_ import dataset_hdf_dir, zarr_store_path
+    from phenotypic.sdk_ import zarr_store_path
+    from phenotypic.sdk_._hdf_to_zarr import _dataset_hdf_dir
     from phenotypic.sdk_._hdf_to_zarr import migrate_hdf_to_zarr
 
     tree = finished_legacy_run.path
@@ -170,7 +171,7 @@ def test_republication_is_keyed_on_MARKER_state_not_conversion_state(
 
     # Convert one image WITHOUT touching its marker -- the interrupted state.
     migrate_hdf_to_zarr(
-        dataset_hdf_dir(tree, "ds") / f"{stem}.h5",
+        _dataset_hdf_dir(tree, "ds") / f"{stem}.h5",
         zarr_store_path(tree, "ds", stem),
     )
     assert (
