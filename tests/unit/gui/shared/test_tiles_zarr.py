@@ -205,3 +205,61 @@ def test_rgb_crop_returns_channel_last_pixels(store: Path) -> None:
     rgb = Image.load_layer_zarr(store, "rgb", level=0)
     png = crop_store_rgb(store, "rgb", 42, 42, 64, 0)
     np.testing.assert_array_equal(_decode_rgb(png), rgb[10:74, 10:74, :3])
+
+
+# ---------------------------------------------------------------------------
+# _load_zarr_layer_rgb — level resolution and the cache-key contract
+# ---------------------------------------------------------------------------
+
+
+def test_layer_loader_actually_resolves_the_level_from_target_px(
+    store: Path,
+) -> None:
+    """The resolver must USE ``target_px``, not merely accept it.
+
+    Every production caller today asks for the level-0 edge, so a loader that
+    ignored ``target_px`` and always read level 0 would give every existing
+    test the right answer -- while the pyramid did nothing at all. This is
+    the only assertion that separates the two.
+    """
+    from phenotypic.gui._shared.tiles import _load_zarr_layer_rgb
+
+    coarse = _load_zarr_layer_rgb(str(store), "tok", "detect_mat", 64)
+    finest = _load_zarr_layer_rgb(str(store), "tok", "detect_mat", 10**6)
+    assert max(coarse.size) < max(finest.size)
+
+
+def test_two_targets_selecting_one_level_share_a_cache_entry(
+    store: Path,
+) -> None:
+    """Ledger FLOW-10: the LRU key is the resolved LEVEL, not the request size.
+
+    Keyed on ``target_px``, a handful of distinct request sizes thrash the
+    cache on exactly the path the pyramid exists to accelerate. Keyed on the
+    level, the key space is bounded by the data.
+    """
+    from phenotypic.gui._shared.tiles import (
+        _load_zarr_layer_rgb,
+        _load_zarr_level_rgb,
+    )
+
+    _load_zarr_level_rgb.cache_clear()
+    assert select_pyramid_level(store, "detect_mat", 700) == select_pyramid_level(
+        store, "detect_mat", 799
+    )
+    _load_zarr_layer_rgb(str(store), "tok", "detect_mat", 700)
+    _load_zarr_layer_rgb(str(store), "tok", "detect_mat", 799)
+    assert _load_zarr_level_rgb.cache_info().hits == 1
+
+
+def test_a_changed_content_token_busts_the_cache(store: Path) -> None:
+    """The token is what invalidates a republished store under a live viewer."""
+    from phenotypic.gui._shared.tiles import (
+        _load_zarr_layer_rgb,
+        _load_zarr_level_rgb,
+    )
+
+    _load_zarr_level_rgb.cache_clear()
+    _load_zarr_layer_rgb(str(store), "tok-a", "detect_mat", 700)
+    _load_zarr_layer_rgb(str(store), "tok-b", "detect_mat", 700)
+    assert _load_zarr_level_rgb.cache_info().hits == 0
