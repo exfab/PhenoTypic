@@ -1473,3 +1473,90 @@ is banker's rounding. Both corrections came with the transcript that proved them
 **The full suite is 6,814 tests, not 946.** Both earlier "baseline" measurements used `-x`,
 which stops at the first failure inside `tests/unit/cli/` — early in collection order. Every
 comparison made against that number was measuring a seventh of the suite.
+
+---
+
+# IMPLEMENTATION — Phase 2 complete
+
+Five tasks, three clusters. The gate ran 52 mutants over the two tasks no cluster had
+surveyed and found **12 survivors plus 2 hard defects**; the harness's own author had
+already found **10 of 16** assertions in `_assert_reader_level_musts` unguarded by the
+plan's fourteen tests.
+
+## The failure mode worth remembering: a fixture that cannot discriminate
+
+`gray` and `detect_mat` are **lazily derived** from `rgb`, and the round-trip fixture was
+never enhanced — so `np.array_equal(img.gray[:], img.detect_mat[:])` was literally `True`.
+Consequences, all of which passed every test:
+
+- delete the loader's read of `detect_mat` — passes, because reload re-derives it
+- delete the loader's read of `gray` — same
+- write **`detect_mat` pixels into the `gray/0` array on disk** — passes, store fully
+  NGFF-conformant, any external viewer shows the wrong image
+
+Nothing in the suite read a non-`rgb` series off disk and compared its **values** to
+anything. The fix is an enhanced fixture (so the stored array and the lazy derivation
+genuinely differ) plus a test that opens each array with `zarr.open_array` and compares to
+the source, bypassing the loader entirely.
+
+The general lesson: **a round-trip test over a fixture whose layers are derivable from one
+another proves only that the derivation still works.**
+
+## A defect from two namespaces that share a spelling
+
+`load_image_from_store` dispatched on `class_name == IMAGE_TYPES.GRID.value`. `IMAGE_TYPES`
+is the **`Metadata_ImageType` vocabulary**; `image_class` is `type(self).__name__`. They
+match only because one enum member happens to spell it the same way — and **spec §2.1's own
+example block writes `"Metadata_ImageType": "Grid"`**. Renaming that member would have
+silently degraded every `GridImage` to a plain `Image`, with no error anywhere. Both
+dispatchers (store and HDF) now compare against `GridImage.__name__`.
+
+Both existing tests were non-discriminating: one used an `Image` where both fields said
+"not a grid", the other a `GridImage` where both agreed. **Two fields that always agree
+cannot pin which one is read.**
+
+## Gates that were red, wrong, or unsatisfiable
+
+- **`test_load_layer_hdf5.py` was red.** Task 2.4 removed `save_intermediate_layers`; this
+  file was its last caller, so the exit criterion "green **and unmodified**" became
+  unsatisfiable the moment the method went. Now writes the legacy-flat bytes directly —
+  better, because this file was also the only remaining *producer* of that layout, and
+  Phase 5 migration depends on the read path.
+- **The suffix grep could not pass**, and shouldn't: written as a bare literal it caught
+  seven builder-cache **node filenames**, a different namespace from the `results/<ds>/zarr/`
+  store paths it exists to police. Routing them through `STORE_SUFFIX` was not available —
+  every `phenotypic` import in `_preview_cache.py` is function-local (11, no exceptions),
+  so a module-level constant cannot reference one. Tried it; `NameError` at import; reverted
+  rather than restructuring a module's import strategy to satisfy a grep.
+- **The metadata gate recurred.** Allowlisting file-by-file worked for Phase 1 and broke
+  again on three Phase 2 files, and every remaining phase touches those attributes. Fixed
+  structurally instead: the two colliding spellings (`METADATA.ome.xml`, the NGFF-mandated
+  filename, and `PhenotypicAttr.METADATA`) are stripped by **context**. The allowlist
+  **shrank**, and the gate's own staleness test is what flagged the now-redundant entries.
+  Teeth re-proved by planting genuine legacy tokens in live source — all still caught.
+
+## A claim of mine the gate refuted
+
+I committed a note asserting `valid_staged_store` **requires** `detect_mat`, so a delta
+store "is by definition not a staged store". **False**, disproved by execution: a
+self-consistent delta store declaring only `gray` returns `True`.
+
+Spec §3.6 settles which side is wrong — the predicate checks "every entry in
+`phenotypic.series` **and** `phenotypic.labels`", i.e. whatever the store **declares**, and
+"(objmap included — §3.3 guarantees it exists after Stage 1)" is a **writer** guarantee, not
+a check. So the implementation is spec-correct and must **not** be tightened; only my
+justification was wrong. **Phase 3's resume classification rests on this predicate**: it
+catches a store that declares a member and lacks it, not one that never declared it.
+
+## Method notes
+
+**The first complete wide run happened here** — 8,646 passed, 6 failed, covering
+`smoke`/`gui`/`integration` for the first time. Three failures were a missing `topology`
+extra, invisible to every previous run because none included `tests/smoke`. **A gate that
+has never run is not a gate.**
+
+**Two duplications, both built in the same phase by different agents**:
+`build_phenotypic_attributes(grid=)` had zero production callers while `ImageGridHandler`
+injected the key post-hoc, and `_preview_cache._load_image_auto` was a hand-rolled copy of
+`load_image_from_store`. Consolidating the second **survived its own mutation** at first —
+the test compared `detect_mat` arrays, and losing the grid changes no pixels.
