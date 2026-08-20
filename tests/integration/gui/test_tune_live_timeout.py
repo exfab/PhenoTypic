@@ -6,6 +6,12 @@ hang ~30 s (libpq's default) — so the 3 s poll must (a) bound the connect at
 the source (a libpq ``connect_timeout`` merged into the storage URL) and
 (b) never re-join a still-connecting worker (so even a slow connect can't
 freeze the poll). These tests pin both halves.
+
+C7b/B3 extends the same requirement past the constructor. The ``journal://``
+backend a ``--slurm`` fleet defaults to has no URL to hang a driver timeout on,
+and its "local file" lives on GPFS, where a read blocks on the metadata server —
+so the worker-thread bound is its only bound, and it has to cover the reads the
+poll renders, not just the open. The last three tests pin that.
 """
 from __future__ import annotations
 
@@ -79,10 +85,10 @@ def test_slow_live_open_degrades_to_journal_without_joining_worker(
     """
     from phenotypic.gui.tune import _callbacks
 
-    # A small, deterministic connect-timeout ceiling (the SUT reads this module
-    # global in ``future.result(timeout=...)``). It is a ceiling, not a sleep —
-    # the poll returns as soon as the bounded wait elapses.
-    monkeypatch.setattr(_callbacks, "_LIVE_CONNECT_TIMEOUT_S", 0.2)
+    # A small, deterministic live-read ceiling (the SUT reads this module global
+    # in ``future.result(timeout=...)``). It is a ceiling, not a sleep — the
+    # poll returns as soon as the bounded wait elapses.
+    monkeypatch.setattr(_callbacks, "_LIVE_READ_TIMEOUT_S", 0.2)
 
     gate = threading.Event()
     entered = threading.Event()
@@ -159,3 +165,149 @@ def test_sqlite_url_passed_through_unchanged() -> None:
     url = "sqlite:////tmp/study.db"
     assert _ensure_connect_timeout(url) == url
     assert "connect_timeout" not in _ensure_connect_timeout(url)
+
+
+# ---------------------------------------------------------------------------
+# C7b / B3 — the bound must cover the READS, not just the open
+# ---------------------------------------------------------------------------
+
+
+class _CountingStore:
+    """A live store whose reads are observable (and optionally blocking).
+
+    Stands in for ``OptunaStudyStore``: the poll's whole live surface is
+    ``trials`` / ``best`` / ``pareto_front`` / ``param_importances``, and each of
+    those re-reads the backing storage on the real thing — a ``JournalStorage``
+    re-``stat``s and re-reads its append-only log every sync.
+    """
+
+    def __init__(
+        self,
+        trials: "list[object]",
+        *,
+        gate: "threading.Event | None" = None,
+        importances_raise: bool = False,
+    ) -> None:
+        self._trials = trials
+        self._gate = gate
+        self._importances_raise = importances_raise
+        self.reads = 0
+
+    @property
+    def trials(self) -> "list[object]":
+        self.reads += 1
+        if self._gate is not None:
+            self._gate.wait(timeout=30.0)  # a GPFS read that never comes back
+        return list(self._trials)
+
+    def best(self) -> "object | None":
+        return self._trials[0] if self._trials else None
+
+    def pareto_front(self) -> "list[object]":
+        return []
+
+    def param_importances(self) -> "dict[str, float] | None":
+        if self._importances_raise:
+            raise RuntimeError("fANOVA is degenerate")
+        return {"thresh": 1.0}
+
+
+def _live_trials() -> "list[object]":
+    from phenotypic.tune._study_store import Trial
+
+    return [Trial(number=7, params={"thresh": 0.5}, score=0.1, terms={}, n_images=3)]
+
+
+@pytest.mark.skipif(not _OPTUNA_PRESENT, reason="live path is gated on the tune extra")
+def test_a_hanging_store_read_degrades_instead_of_freezing_the_poll(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The open succeeds; the *read* hangs — and the poll still returns.
+
+    This is the journal backend's hazard specifically: its URL carries no
+    driver-level timeout, and its "local file" sits on GPFS, where a read blocks
+    on the metadata server. Bounding only the constructor left every subsequent
+    ``store.trials`` running unbounded on the Dash callback thread.
+
+    Same determinism contract as the connect-timeout test above: a gated event,
+    a monkeypatched ceiling, and the proof of non-joining is that the gate is
+    still held when the poll returns.
+    """
+    from phenotypic.gui.tune import _callbacks
+
+    monkeypatch.setattr(_callbacks, "_LIVE_READ_TIMEOUT_S", 0.2)
+
+    gate = threading.Event()
+    store = _CountingStore(_live_trials(), gate=gate)
+    monkeypatch.setattr(_callbacks, "_open_live_study", lambda _root: store)
+
+    root = _journal_with_live_url(tmp_path, f"journal:///{tmp_path}/journal.log")
+
+    result: dict[str, object] = {}
+    done = threading.Event()
+
+    def _drive() -> None:
+        try:
+            got, note = _callbacks.read_study_for_monitor(root)
+            result["store"], result["note"] = got, note
+        finally:
+            done.set()
+
+    worker = threading.Thread(target=_drive, name="poll-driver")
+    worker.start()
+    try:
+        assert done.wait(timeout=10.0), "poll did not return — the read was unbounded"
+        assert not gate.is_set(), "the gate was released — the test, not the SUT"
+        # The parquet fallback, not the half-read live store.
+        assert [t.score for t in result["store"].trials] == [0.3, 0.6]
+        assert "couldn't reach the live study" in result["note"]
+    finally:
+        gate.set()
+        worker.join(timeout=5.0)
+
+
+@pytest.mark.skipif(not _OPTUNA_PRESENT, reason="live path is gated on the tune extra")
+def test_the_returned_snapshot_never_touches_storage_again(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rendering the poll's outputs must not re-read the study.
+
+    The poll reads ``trials`` several times over (the objective figure, the gap
+    badge, the table). Each of those was a fresh storage read outside the bound;
+    the snapshot makes them all reads of plain data captured inside it.
+    """
+    from phenotypic.gui.tune import _callbacks
+
+    store = _CountingStore(_live_trials())
+    monkeypatch.setattr(_callbacks, "_open_live_study", lambda _root: store)
+
+    root = _journal_with_live_url(tmp_path, f"journal:///{tmp_path}/journal.log")
+    snapshot, note = _callbacks.read_study_for_monitor(root)
+
+    assert note == ""
+    assert [t.number for t in snapshot.trials] == [7]  # the live study, not parquet
+    for _ in range(3):
+        snapshot.trials
+        snapshot.best()
+        snapshot.pareto_front()
+        snapshot.param_importances()
+
+    assert store.reads == 1, "the poll re-read the live storage after the bound"
+
+
+@pytest.mark.skipif(not _OPTUNA_PRESENT, reason="live path is gated on the tune extra")
+def test_a_degenerate_importance_model_costs_only_the_importance_figure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """fANOVA failing is a figure problem, not a reason to abandon the live read."""
+    from phenotypic.gui.tune import _callbacks
+
+    store = _CountingStore(_live_trials(), importances_raise=True)
+    monkeypatch.setattr(_callbacks, "_open_live_study", lambda _root: store)
+
+    root = _journal_with_live_url(tmp_path, f"journal:///{tmp_path}/journal.log")
+    snapshot, note = _callbacks.read_study_for_monitor(root)
+
+    assert note == ""
+    assert [t.number for t in snapshot.trials] == [7]
+    assert snapshot.param_importances() is None

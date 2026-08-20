@@ -28,6 +28,7 @@ import importlib.util
 import hashlib
 import json
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeout
 from typing import TYPE_CHECKING, Any, Optional
@@ -97,6 +98,7 @@ if TYPE_CHECKING:
     from phenotypic.gui.shell._sandbox import SandboxRoot
     from phenotypic.gui.tune._study_read import _ReadableStore
     from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic.tune._study_store import Trial
 
 logger = logging.getLogger(__name__)
 
@@ -112,9 +114,20 @@ _DEFAULT_VIEW: ids.SubTabName = "monitor"
 #: worker-thread wait so even a slow connect can't freeze the poll.
 _LIVE_CONNECT_TIMEOUT_S: float = 3.0
 
+#: Hard cap on the WHOLE live read — open plus every store read the poll
+#: renders (:func:`_snapshot_live_study`). Equal to the poll interval by
+#: intent: a read that cannot finish inside one tick must degrade to the
+#: parquet fallback rather than queue behind itself. This is the **only** bound
+#: the ``journal://`` backend has — a file URL carries no driver-level timeout,
+#: and its "local file" lives on GPFS, where a read can block on an
+#: unresponsive metadata server for as long as the mount allows.
+_LIVE_READ_TIMEOUT_S: float = 3.0
+
 #: Schemes (SQLAlchemy backend names) whose driver honors a libpq-style
 #: ``connect_timeout`` query param. SQLite is local (no network hang), so it is
-#: deliberately absent — :func:`_ensure_connect_timeout` no-ops on it.
+#: deliberately absent — :func:`_ensure_connect_timeout` no-ops on it. So is
+#: ``journal``: it is *not* immune to a network hang (see
+#: :data:`_LIVE_READ_TIMEOUT_S`), it simply has no query param to carry one.
 _CONNECT_TIMEOUT_BACKENDS: frozenset[str] = frozenset({"postgresql"})
 
 #: A process-wide, single-worker pool for the live-study open. Shared (not a
@@ -851,29 +864,103 @@ def _open_live_study(root: "TuneRunRoot") -> "_ReadableStore":
     """Open the live ``OptunaStudyStore`` for ``root`` (called on a worker thread).
 
     Imports optuna lazily HERE (never at module import). The constructor opens
-    the RDB study eagerly, so the storage URL is first passed through
+    the study eagerly, so the storage URL is first passed through
     :func:`_ensure_connect_timeout` to bound the connect at the source.
-    """
-    from pathlib import Path
-    from urllib.parse import urlsplit
 
+    The read-only open refuses to materialize a missing file-backed study —
+    ``journal.log`` or ``study.db`` — but that guard lives in the store's
+    ``create=False`` branch (``require_existing_backing_store``), not here, so
+    the CLI's read-only opens get it too.
+    """
     from phenotypic.tune._study._optuna_store import OptunaStudyStore
 
     assert root.storage_url is not None  # guarded by the caller
-    url = urlsplit(root.storage_url)
-    database = url.path if url.scheme.split("+", 1)[0] == "sqlite" else ""
-    if (
-        database
-        and database != "/:memory:"
-        and not Path(database).exists()
-    ):
-        raise FileNotFoundError(database)
     return OptunaStudyStore(
         storage_url=_ensure_connect_timeout(root.storage_url),
         study_name=root.study_name,
         directions=root.directions,
         create=False,
     )
+
+
+@dataclass(frozen=True)
+class _StudySnapshot:
+    """One live-study read, fully materialized — the poll's `_ReadableStore`.
+
+    Every attribute is plain data captured on the worker thread, so rendering it
+    touches no storage. See :func:`_snapshot_live_study` for why that matters.
+    """
+
+    trials: list["Trial"]
+    _best: "Optional[Trial]"
+    _pareto_front: list["Trial"]
+    _importances: Optional[dict[str, float]]
+
+    def best(self) -> "Optional[Trial]":
+        """The lowest-cost finished trial as the live store ranked it."""
+        return self._best
+
+    def pareto_front(self) -> list["Trial"]:
+        """The live study's Pareto front (``[]`` for a single-objective study)."""
+        return list(self._pareto_front)
+
+    def param_importances(self) -> Optional[dict[str, float]]:
+        """The live study's fANOVA importances, or ``None`` when unavailable."""
+        return self._importances
+
+
+def _snapshot_live_study(root: "TuneRunRoot") -> _StudySnapshot:
+    """Open the live study and materialize everything the poll renders (B3).
+
+    **Why the reads happen here, on the bounded worker.** Opening the store was
+    already bounded; reading it was not. Every subsequent ``store.trials`` /
+    ``best()`` / ``param_importances()`` call re-reads the backing storage —
+    ``JournalStorage`` re-``stat``s and re-reads its append-only log on each
+    sync — and those calls used to run on the Dash callback thread with no
+    bound at all. The ``sqlite is local and never network-hangs`` reasoning that
+    justifies bounding only Postgres at the URL does not extend to the
+    ``journal://`` default: its "local file" sits on GPFS, where a read blocks
+    on the metadata server and an unresponsive one blocks it indefinitely. A
+    ``journal://`` URL also has nowhere to put a driver-level timeout, so the
+    worker-thread bound is the *only* one available to it.
+
+    Returning a detached snapshot puts open **and** read inside the one
+    ``future.result(timeout=...)`` the caller already abandons on expiry. The
+    cost is that an expensive fANOVA now spends the same budget: a study whose
+    importances take longer than a poll tick degrades that tick to the parquet
+    fallback. That is strictly better than what it replaced, which was freezing
+    the Dash worker for exactly as long.
+
+    Args:
+        root: The bound tune output handle.
+
+    Returns:
+        A snapshot with no live handle to the storage.
+    """
+    store = _open_live_study(root)
+    return _StudySnapshot(
+        trials=list(store.trials),
+        _best=store.best(),
+        _pareto_front=list(store.pareto_front()),
+        _importances=_read_importances(store),
+    )
+
+
+def _read_importances(store: "_ReadableStore") -> Optional[dict[str, float]]:
+    """``store``'s importances, or ``None`` — an fANOVA failure is not a read failure.
+
+    Kept separate from the rest of the snapshot so a degenerate importance model
+    costs the importance figure only, exactly as it did when the poll called
+    ``param_importances`` itself, rather than degrading the whole live read.
+    """
+    getter = getattr(store, "param_importances", None)
+    if getter is None:
+        return None
+    try:
+        return dict(getter() or {})
+    except Exception:  # noqa: BLE001 - the figure degrades; the read does not
+        logger.warning("param_importances read failed", exc_info=True)
+        return None
 
 
 def read_study_for_monitor(
@@ -887,11 +974,12 @@ def read_study_for_monitor(
        ``trials.parquet`` directly — no live attempt, no note.
     2. **Live run, ``tune`` extra missing**: skip the live read, fall back to
        the journal, and return the "install the tune extra" note.
-    3. **Live run, extra present**: open the live ``OptunaStudyStore`` on a
-       worker thread with a short connect timeout
-       (:data:`_LIVE_CONNECT_TIMEOUT_S`). On success → the live store, no note.
-       On timeout / connection error → the journal + the "couldn't reach the
-       live study" note.
+    3. **Live run, extra present**: open the live ``OptunaStudyStore`` **and
+       read it out** on a worker thread, the whole thing bounded by
+       :data:`_LIVE_READ_TIMEOUT_S` (see :func:`_snapshot_live_study` for why
+       the reads belong inside the bound). On success → a detached snapshot of
+       the live study, no note. On timeout / connection / read error → the
+       journal + the "couldn\'t reach the live study" note.
 
     The store is read-only and the poll must never raise, so every failure path
     degrades to the journal (or ``None`` when no journal exists yet).
@@ -912,30 +1000,33 @@ def read_study_for_monitor(
     if importlib.util.find_spec("optuna") is None:
         return _load_journal(root), _NOTE_MISSING_EXTRA
 
-    # 3. Live run, extra present — open with a bounded, non-re-blocking wait so
-    #    an unreachable storage can't stall the poll. The connect is bounded at
-    #    the source (``_ensure_connect_timeout`` merges a libpq
-    #    ``connect_timeout`` into the URL), and the wait here NEVER re-joins a
-    #    still-connecting worker: we submit to the shared single-worker pool and,
+    # 3. Live run, extra present — open AND read with a bounded, non-re-blocking
+    #    wait so an unreachable storage can't stall the poll. A postgres connect
+    #    is additionally bounded at the source (``_ensure_connect_timeout``
+    #    merges a libpq ``connect_timeout`` into the URL); the journal backend
+    #    has no such knob, so this wait is its only bound. The wait NEVER
+    #    re-joins a still-working worker: we submit to the shared single-worker pool and,
     #    on timeout, return the parquet fallback immediately, leaving the
     #    orphaned future to finish (and be discarded) on its own. Using a
     #    ``with``-managed pool here would re-introduce the bug — its ``__exit__``
     #    calls ``shutdown(wait=True)``, re-joining the stuck worker and blocking
     #    the full connect duration regardless of the ``result`` timeout.
-    future: "Future[_ReadableStore]" = _LIVE_OPEN_POOL.submit(_open_live_study, root)
+    future: "Future[_ReadableStore]" = _LIVE_OPEN_POOL.submit(
+        _snapshot_live_study, root
+    )
     try:
-        return future.result(timeout=_LIVE_CONNECT_TIMEOUT_S), ""
+        return future.result(timeout=_LIVE_READ_TIMEOUT_S), ""
     except FutureTimeout as exc:
         logger.warning(
-            "Live tune study open timed out after %.1fs (url=%s); "
+            "Live tune study read timed out after %.1fs (url=%s); "
             "degrading to journal.",
-            _LIVE_CONNECT_TIMEOUT_S,
+            _LIVE_READ_TIMEOUT_S,
             root.storage_url,
         )
         return _load_journal(root), _monitor_degrade_note(root, exc)
-    except Exception as exc:  # noqa: BLE001 - any open/connect error degrades
+    except Exception as exc:  # noqa: BLE001 - any open/read error degrades
         logger.warning(
-            "Live tune study open failed (url=%s); degrading to journal.",
+            "Live tune study read failed (url=%s); degrading to journal.",
             root.storage_url,
             exc_info=True,
         )
