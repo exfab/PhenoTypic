@@ -517,7 +517,10 @@ def run_tuning(
         output_dir: The run directory.
         strategy: Optional ``--strategy`` override (grid/random/tpe/cmaes/gp/nsga2).
         n_trials: Optional trial-budget override forwarded to the strategy.
-        screen: Whether to run the two-round screening freeze.
+        screen: Whether to run the two-round screening freeze. Mutually
+            exclusive with ``slurm`` — the fleet has no screening
+            implementation, so the combination raises rather than silently
+            running the full unscreened space.
         storage_url: Optional Optuna storage URL (falls back to the env var).
         slurm: Whether to submit a distributed worker fleet instead of running
             locally.
@@ -565,6 +568,7 @@ def run_tuning(
             spec_path=spec_path,
             images_dir=images_dir,
             n_workers=n_workers,
+            screen=screen,
         )
 
     split, images_by_name, cal_images = _resolve_calibration_images(
@@ -667,8 +671,33 @@ def _validate_slurm_request(
     spec_path: Optional[Path],
     images_dir: Optional[Path],
     n_workers: Optional[int],
+    screen: bool = False,
 ) -> None:
-    """Reject unsupported SLURM combinations before any run artifact is written."""
+    """Reject unsupported SLURM combinations before any run artifact is written.
+
+    Args:
+        resolved: The side-effect-free resolved run config.
+        spec_path: The on-disk spec path (each worker reloads it).
+        images_dir: The calibration image directory (each worker scans it).
+        n_workers: The requested fleet size, or ``None`` for the default.
+        screen: Whether ``--screen`` was requested. Screening has no fleet
+            implementation, so the combination is refused rather than dropped.
+
+    Raises:
+        ValueError: For any unsupported combination.
+    """
+    # --screen has no fleet implementation: run_tuning returns at the ``if slurm:``
+    # branch BEFORE the screening round, and ``_worker.run_worker`` builds a bare
+    # TuningEngine with no ScreeningController. Running the full unscreened space
+    # is different behaviour than the caller asked for, so refuse it — here,
+    # inside the pre-artifact validator, and NOT at the submission branch, where
+    # the spec echo and the run marker have already landed on disk.
+    if screen:
+        raise ValueError(
+            "--screen is not supported with --slurm: the fleet path returns "
+            "before the screening round runs, and the SLURM worker constructs "
+            "no ScreeningController. Run screening locally, or drop --screen."
+        )
     if not resolved.is_optuna:
         raise ValueError("--slurm requires an Optuna strategy")
     if spec_path is None or images_dir is None:
