@@ -2013,7 +2013,7 @@ own change."
 - Modify: `src/phenotypic/_cli/_cli_completion.py` (`SUCCESS_MARKER_VERSION` line 26,
   `_sha256` lines 29–34, `publish_image_success` line 36, `valid_image_success` lines 117–130,
   `refresh_success_markers_after_metadata_migration` lines 136–155)
-- Modify the ONE remaining `"hdf"` artifact declaration: `phenotypicCLI.py:400`
+- Modify the ONE remaining `"hdf"` artifact declaration: `phenotypicCLI.py:405`
 
 > **Four of the five are already done, and the helper to extend already exists (C10).**
 > Task 3.5 could not be green without them: Task 3.3 stopped Stage 1 writing `.h5` while
@@ -2028,7 +2028,14 @@ own change."
 >
 > in `_cli_completion.py`, returning `("store", <store>/zarr.json)` when a store exists and
 > `("hdf", ....h5)` otherwise. It is wired at `_cli_staged_slurm_worker.py:338` and `:392`,
-> `_cli_process_single.py:624`, and `_cli_execution_strategies.py:163`.
+> `_cli_process_single.py:623`, and `_cli_execution_strategies.py:160`.
+>
+> **C11 found a further site the plan did name but C10 had not reached** --
+> `_cli_process_single.py`'s *second* publisher, the standalone
+> `phenotypic-process-single` SLURM worker. It is routed now. Nothing in the repo
+> covered that publish path: it survived C11's mutation pass until a test spying
+> `publish_image_success` through the real CLI was added. Two publishers in one file
+> is why "five sites" kept coming up short -- count publishers, not files.
 >
 > **Extend that helper; do not add a parallel path and do not re-plumb the four callers.**
 > `zarr.json` is a regular file, so the existing `{"size", "sha256"}` descriptor and
@@ -2036,7 +2043,7 @@ own change."
 > the artifact change alone, and none of this task's *fingerprint* design is consumed.
 >
 > **The fifth site is a live break, and it is the reason this task still has teeth.**
-> `phenotypicCLI.py:400` sits in `_migrate_legacy_success_evidence`, which mints success
+> `phenotypicCLI.py:405` sits in `_migrate_legacy_success_evidence`, which mints success
 > markers for runs that have completion evidence but no marker — and its evidence test at
 > `:380` includes `stage3_completion_exists`, a **store-era** signal. So the path fires on a
 > staged run interrupted between its Stage-3 marker and its success marker, declares an
