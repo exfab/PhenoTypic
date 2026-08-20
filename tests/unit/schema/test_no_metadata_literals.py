@@ -14,6 +14,7 @@ to an already-allowed shim file is still caught.
 """
 import pathlib
 import re
+from typing import Final
 
 SRC = pathlib.Path(__file__).resolve().parents[3] / "src" / "phenotypic"
 REPO = SRC.parents[1]
@@ -108,22 +109,14 @@ _LEGACY_HEADER_PAT = re.compile(
 # same file still fails the gate. Frozen superpowers specs/plans remain outside
 # this live-code/live-doc/test gate.
 _LEGACY_ALLOWED = {
-    # OME-Zarr store: the bare token METADATA here is NOT the deprecated
-    # metadata enum. Two unrelated things collide with that spelling:
-    #
-    #   * `OME_XML_NAME = "METADATA.ome.xml"` -- the filename NGFF 0.5 §2.2.3
-    #     mandates for the OME-XML document. It is not ours to rename.
-    #   * `PhenotypicAttr.METADATA` -- a member of the NEW store-attribute enum,
-    #     naming the `attributes.phenotypic.metadata` block.
-    #
-    # Only "METADATA" is permitted in each file, so a genuine legacy alias
-    # (GENETIC_METADATA, MetadataImage_ImageName, ...) appearing here still
-    # fails the gate.
+    # OME-Zarr store: `ngff_.py` DEFINES the store-attribute enum member as a
+    # bare `METADATA: Final[str] = "metadata"`. That spelling is not covered by
+    # `_NOT_THE_BANNED_TOKEN` above, and should not be -- a bare METADATA is
+    # exactly what this gate bans, so the definition site is exempted here
+    # explicitly rather than by widening the strip. Every USE of it
+    # (`PhenotypicAttr.METADATA`) and the NGFF filename (`METADATA.ome.xml`) are
+    # handled by context, so no other OME-Zarr file needs an entry.
     "src/phenotypic/sdk_/ngff_.py": {"METADATA"},
-    "tests/unit/sdk_/test_ngff_attributes.py": {"METADATA"},
-    # Vendored upstream provenance: quotes §2.2.3, which names the file.
-    # Read-only and byte-identical to upstream by rule.
-    "tests/fixtures/ome/2016-06/SOURCE.md": {"METADATA"},
     # Permanent read compatibility and one-release import shims.
     "src/phenotypic/_core/_image_parts/_image_io_handler.py": {
         "METADATA",
@@ -251,8 +244,34 @@ _LEGACY_ALLOWED = {
 }
 
 
+#: Spellings that contain a banned token but are not the banned thing.
+#:
+#: The gate bans the bare token ``METADATA`` because it names a **deprecated
+#: metadata-topic enum**. Two unrelated identifiers introduced by the OME-Zarr
+#: store collide with that spelling and are not it:
+#:
+#: * ``METADATA.ome.xml`` -- the filename NGFF 0.5 §2.2.3 mandates for the
+#:   OME-XML document. Not ours to rename.
+#: * ``PhenotypicAttr.METADATA`` -- a member of the store-attribute enum,
+#:   naming the ``attributes.phenotypic.metadata`` block.
+#:
+#: These are stripped by CONTEXT rather than allowlisted by file. An allowlist
+#: entry would have to be added for every file in every remaining phase that
+#: touches the store attributes -- three were needed for Phase 1 and three more
+#: for Phase 2 -- and each entry blankets the whole file, so a genuine legacy
+#: alias appearing alongside would be waved through. Stripping the exact
+#: spelling keeps the gate's teeth: a bare ``METADATA``, or any other qualified
+#: use of it, still fails everywhere.
+_NOT_THE_BANNED_TOKEN: Final[tuple[str, ...]] = (
+    "METADATA.ome.xml",
+    "PhenotypicAttr.METADATA",
+)
+
+
 def _legacy_tokens(text: str) -> set[str]:
     """Return exact deprecated enum identifiers and serialized headers."""
+    for spelling in _NOT_THE_BANNED_TOKEN:
+        text = text.replace(spelling, "")
     return set(_LEGACY_NAME_PAT.findall(text)) | set(_LEGACY_HEADER_PAT.findall(text))
 
 
