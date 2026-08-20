@@ -132,3 +132,51 @@ def test_axes_for_series() -> None:
     assert ngff_.axes_for("gray") == ("y", "x")
     assert ngff_.axes_for("detect_mat") == ("y", "x")
     assert ngff_.axes_for("objmap") == ("y", "x")
+
+
+def test_image_downsample_returns_the_block_mean_not_a_stride() -> None:
+    """Kills the transposed-reshape mutant (S2).
+
+    ``blocks.reshape(*lead, 2, ph // 2, 2, pw // 2)`` turns the block mean into
+    a strided interleave -- `[[5, 6], [9, 10]]` here instead of `[[2, 4],
+    [10, 12]]` -- and every pre-existing test survived it: one used a constant
+    array, one asserted only the dtype, and one used a single 2x2 block, all
+    three of which are reducer-agnostic.
+    """
+    array = np.arange(16, dtype=np.uint8).reshape(4, 4)
+    assert ngff_.downsample_image(array).tolist() == [[2, 4], [10, 12]]
+
+
+def test_image_downsample_rounds_rather_than_truncating() -> None:
+    """Kills the dropped-``np.rint`` mutant (S3).
+
+    Truncation biases every level downward -- uniform uint8 drifts 127.52 ->
+    126.02 over four levels, so thumbnails darken. The existing fixtures cannot
+    see it: their block means are exact halves, and ``np.rint`` is
+    round-half-to-EVEN, so it agrees with truncation on precisely those values.
+    The mean here is 100.75, which is fractional but not a half.
+    """
+    array = np.array([[100, 101], [101, 101]], dtype=np.uint8)
+    assert ngff_.downsample_image(array).tolist() == [[101]]
+
+
+def test_build_pyramid_label_kind_downsamples_by_nearest_neighbour() -> None:
+    """Kills the ``kind`` dispatch mutants in ``build_pyramid`` (S1).
+
+    Both ``reduce = downsample_image`` and an inverted ternary passed the whole
+    suite, because the only ``kind="label"`` test asserted SHAPES and the two
+    reducers agree on those. Under the mutant a label map is mean-downsampled,
+    inventing label values present at no level-0 pixel -- claim C5 of the
+    committed logic-validation script, which names this "the mutation the
+    pyramid test must catch".
+    """
+    labels = np.array([[0, 40], [40, 40]], dtype=np.uint16)
+    level1 = ngff_.build_pyramid(labels, 2, kind="label")[1]
+    assert set(np.unique(level1)).issubset(set(np.unique(labels)))
+    assert level1.tolist() == [[0]]
+
+
+def test_build_pyramid_image_kind_downsamples_by_block_mean() -> None:
+    """The other arm of the S1 dispatch: an inverted ternary must fail here too."""
+    array = np.arange(16, dtype=np.uint8).reshape(4, 4)
+    assert ngff_.build_pyramid(array, 2, kind="image")[1].tolist() == [[2, 4], [10, 12]]

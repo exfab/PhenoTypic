@@ -178,6 +178,12 @@ def downsample_image(array: np.ndarray) -> np.ndarray:
     row or column at its own brightness instead of darkening it toward zero.
     The spatial axes are the last two; any leading channel axis is preserved.
 
+    An integer result is rounded with ``np.rint`` -- **banker's rounding**, so
+    an exact ``.5`` mean goes to the nearest EVEN value, not always upward.
+    Rounding rather than truncating is what keeps the pyramid unbiased: a plain
+    ``astype`` drops the fraction at every level, so a uniform uint8 plate
+    drifts 127.52 -> 126.02 over four levels and every thumbnail darkens.
+
     Args:
         array: 2-D ``(y, x)`` or 3-D ``(c, y, x)`` array.
 
@@ -1288,7 +1294,12 @@ def valid_staged_store(path: Path) -> bool:
 
     The exception set is the HDF version's ``(OSError, TypeError,
     ValueError)`` **plus ``KeyError``** -- which the attribute lookups need and
-    the HDF version did not.
+    the HDF version did not -- **plus ``AttributeError``**. The root
+    ``zarr.json`` is arbitrary JSON written by anyone, so ``phenotypic``,
+    ``phenotypic.series``, and ``phenotypic.labels`` can each come back as a
+    list rather than a mapping (another tool's store, or a future schema); the
+    ``.get``/``.values()`` calls below then raise ``AttributeError``, which is
+    a rejected store, not a crash in resume classification.
 
     It does **not** need ``zarr.errors.BaseZarrError``. The spec's §3.6 argues
     the opposite ("none of zarr's error types are ``ValueError`` subclasses");
@@ -1341,5 +1352,5 @@ def valid_staged_store(path: Path) -> bool:
         if any(len(yx) < 2 or yx[0] <= 0 or yx[1] <= 0 for yx in spatial):
             return False
         return all(yx == spatial[0] for yx in spatial[1:])
-    except (OSError, KeyError, TypeError, ValueError):
+    except (AttributeError, OSError, KeyError, TypeError, ValueError):
         return False

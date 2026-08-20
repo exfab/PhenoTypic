@@ -293,3 +293,57 @@ def test_every_named_member_is_checked_not_just_the_first(
         tmp_path / "a.ome.zarr", shapes=shapes, series=["gray", "detect_mat"]
     )
     assert ngff_.valid_staged_store(store) is False
+
+
+@pytest.mark.parametrize(
+    ("block", "why"),
+    [
+        (
+            {
+                ngff_.PhenotypicAttr.STORE_SCHEMA_VERSION: 3,
+                ngff_.PhenotypicAttr.SERIES: ["gray"],
+            },
+            "series as a list rather than a mapping",
+        ),
+        (
+            {
+                ngff_.PhenotypicAttr.STORE_SCHEMA_VERSION: 3,
+                ngff_.PhenotypicAttr.SERIES: {"gray": "gray"},
+                ngff_.PhenotypicAttr.LABELS: ["objmap"],
+            },
+            "labels as a list rather than a mapping",
+        ),
+        (["not", "a", "mapping"], "the whole phenotypic block as a list"),
+    ],
+)
+def test_a_non_mapping_phenotypic_block_is_invalid_not_a_crash(
+    tmp_path: Path, block: object, why: str
+) -> None:
+    """A REAL defect, not a test gap (D1).
+
+    The docstring insists this predicate "must RETURN FALSE on a store it does
+    not accept, never raise", but the except tuple was `(OSError, KeyError,
+    TypeError, ValueError)` -- and `["gray"].values()` / `["objmap"].values()` /
+    `[...].get(...)` all raise `AttributeError`, which escaped. Resume
+    classification and migration both call this to decide what to do next, so a
+    store written by another tool or a future schema crashed production rather
+    than being rejected. The realistic input is the first case.
+    """
+    store = tmp_path / "a.ome.zarr"
+    store.mkdir()
+    array = np.zeros((64, 48), dtype=np.uint16)
+    zarr.create_array(
+        store=str(store / "gray" / "0"),
+        **ngff_.array_create_kwargs(array.shape, array.dtype, "gray"),
+    )
+    (store / "zarr.json").write_text(
+        json.dumps(
+            {
+                "zarr_format": 3,
+                "node_type": "group",
+                "attributes": {"ome": {"version": "0.5"}, "phenotypic": block},
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert ngff_.valid_staged_store(store) is False, why

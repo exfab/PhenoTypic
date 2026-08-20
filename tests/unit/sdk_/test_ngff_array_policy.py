@@ -61,8 +61,48 @@ def test_create_kwargs_use_zstd() -> None:
 
 
 def test_shard_write_buffer_is_bounded_and_documented() -> None:
-    """96 MB for rgb uint16, 128 MB for a float64 detect_mat (spec 1.4)."""
-    rgb = np.prod(ngff_.shard_shape_for((3, 4000, 3000))) * 2
-    detect = np.prod(ngff_.shard_shape_for((4000, 3000))) * 8
-    assert rgb == 3 * 4096 * 4096 * 2
-    assert detect == 4096 * 4096 * 8
+    """96 MB for rgb uint16, 128 MB for a float64 detect_mat (spec 1.4).
+
+    Asserts the documented BYTE bounds. The earlier form recomputed the shard
+    shape and compared it against itself -- neither of the two figures in this
+    docstring appeared in an assertion, so the test could not fail for any
+    shard-policy change that kept divisibility.
+    """
+    rgb = int(np.prod(ngff_.shard_shape_for((3, 4000, 3000)))) * 2
+    detect = int(np.prod(ngff_.shard_shape_for((4000, 3000)))) * 8
+    assert rgb == 96 * 1024**2
+    assert detect == 128 * 1024**2
+
+
+def test_create_kwargs_carry_both_the_chunk_and_the_shard_policy() -> None:
+    """Kills the dropped-``shards`` mutant (S4).
+
+    ``shard_shape_for`` was tested only in isolation; nothing checked its value
+    reached the kwargs. Without ``shards`` a 4000x3000 rgb plate lands as 132
+    files instead of 40 (claim C4 of the committed logic-validation script) --
+    a 3.3x inode blowup on Lustre with no other symptom.
+    """
+    kwargs = ngff_.array_create_kwargs((3, 4000, 3000), np.dtype("uint8"), "rgb")
+    assert kwargs["shape"] == (3, 4000, 3000)
+    assert kwargs["dtype"] == np.dtype("uint8")
+    assert kwargs["chunks"] == (1, 1024, 1024)
+    assert kwargs["shards"] == (3, 4096, 4096)
+
+
+def test_a_plate_sized_array_is_really_created_with_that_chunk_and_shard(
+    tmp_path,
+) -> None:
+    """The policy, observed on a real store rather than in the kwargs mapping.
+
+    Every other real-zarr fixture in this suite is 64x48, where
+    ``chunk == shard == extent`` -- so the 1024/4096 policy this module exists
+    to configure was never actually created by any test.
+    """
+    import zarr
+
+    array = zarr.create_array(
+        store=str(tmp_path / "rgb" / "0"),
+        **ngff_.array_create_kwargs((3, 4000, 3000), np.dtype("uint8"), "rgb"),
+    )
+    assert array.chunks == (1, 1024, 1024)
+    assert array.shards == (3, 4096, 4096)

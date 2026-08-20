@@ -225,6 +225,116 @@ def test_an_unmapped_dtype_raises_rather_than_degrading() -> None:
         ngff_.build_ome_xml(**kwargs)
 
 
+def test_ome_xml_size_attributes_follow_each_series_shape() -> None:
+    """Kills the `size_c = 1` and swapped X/Y mutants (S6).
+
+    Both are XSD-VALID -- ome.xsd checks the attributes' types, never their
+    agreement with the array -- so `test_ome_xml_validates_against_the_
+    vendored_xsd` cannot see either. With `size_c = 1` an rgb store declares
+    itself single-channel to every Bio-Formats consumer while `multiscales`
+    says c=3, defeating the `bioformats2raw.layout: 3` the document exists to
+    serve. The fixture is 64 tall by 48 wide, so a swap is visible.
+    """
+    xml = ngff_.build_ome_xml(**_xml_kwargs())
+    rgb_pixels = re.search(r'Name="rgb">\s*<Pixels [^>]*>', xml)
+    gray_pixels = re.search(r'Name="gray">\s*<Pixels [^>]*>', xml)
+    assert rgb_pixels is not None and gray_pixels is not None, xml
+    assert (
+        'SizeX="48" SizeY="64" SizeZ="1" SizeC="3" SizeT="1"' in rgb_pixels.group(0)
+    )
+    assert (
+        'SizeX="48" SizeY="64" SizeZ="1" SizeC="1" SizeT="1"' in gray_pixels.group(0)
+    )
+
+
+def test_xml_special_characters_in_a_metadata_value_are_escaped() -> None:
+    """Kills the dropped-`escape()` mutant on the annotation value (S7).
+
+    `_xml_text` alone strips only characters XML forbids outright; `&` and `<`
+    are legal characters that MUST be escaped in content. No other fixture in
+    this suite carries one, so dropping `escape` passed everything -- and under
+    it a strain name like this makes the document non-well-formed, which by the
+    fatal-build ruling (ALGO-1) aborts the whole save.
+    """
+    from tests._ngff_conformance import assert_ome_xml_valid
+
+    kwargs = _xml_kwargs()
+    kwargs["metadata_sections"] = {
+        "public": {"Metadata_Strain": "Strain A & B <control>"}
+    }
+    xml = ngff_.build_ome_xml(**kwargs)
+    assert "Strain A &amp; B &lt;control&gt;" in xml
+    assert "B <control>" not in xml
+    assert_ome_xml_valid(xml)
+
+
+def test_multiscales_label_branch_advertises_nearest_not_mean() -> None:
+    """Kills the hard-coded `kind = "image"` mutant (S8).
+
+    The label branch is never exercised elsewhere, so under the mutant an
+    objmap pyramid advertises `type: "mean"` publicly while the private
+    `attributes.phenotypic.pyramid.downsample` record still says "nearest" --
+    exactly the divergence the comment above this code claims driving both from
+    one constant makes impossible.
+    """
+    shapes = ngff_.pyramid_level_shapes((1024, 1024), 2)
+    block = ngff_.build_multiscales(
+        series=ngff_.OBJMAP_LABEL, level_shapes=shapes, name="objmap"
+    )
+    multiscale = block["multiscales"][0]
+    assert multiscale["type"] == "nearest"
+    assert multiscale["type"] == ngff_.DOWNSAMPLE_KINDS["label"]
+    assert (
+        multiscale["metadata"]["description"] == ngff_.DOWNSAMPLE_METHODS["label"][1]
+    )
+
+
+def test_multiscales_emits_the_type_metadata_and_name_shoulds() -> None:
+    """Kills the three §2.4 SHOULD-deletion mutants (S9).
+
+    `type`, `metadata.description`, and `name` could each be dropped silently:
+    they are optional in the NGFF schema, so no conformance gate notices, and
+    no test asserted their presence on an image series.
+    """
+    shapes = ngff_.pyramid_level_shapes((2048, 2048), 3)
+    multiscale = ngff_.build_multiscales(
+        series="gray", level_shapes=shapes, name="plate_01"
+    )["multiscales"][0]
+    assert multiscale["type"] == "mean"
+    assert multiscale["type"] == ngff_.DOWNSAMPLE_KINDS["image"]
+    assert multiscale["metadata"] == {
+        "description": ngff_.DOWNSAMPLE_METHODS["image"][1]
+    }
+    assert multiscale["name"] == "plate_01"
+
+
+def test_multiscales_omits_name_when_none_is_given() -> None:
+    """The companion to the SHOULD test: `name` is emitted, not manufactured."""
+    shapes = ngff_.pyramid_level_shapes((2048, 2048), 2)
+    multiscale = ngff_.build_multiscales(series="gray", level_shapes=shapes)[
+        "multiscales"
+    ][0]
+    assert "name" not in multiscale
+
+
+def test_xml_text_retains_del_c1_and_the_replacement_character() -> None:
+    """Kills the "tighten `_XML_FORBIDDEN`" mutant (S10).
+
+    The eight-line comment above the pattern argues at length that these MUST
+    be retained -- `#x7F` and `#x80-#x9F` are XML 1.1 RestrictedChars, legal in
+    XML 1.0, and stripping them would drop legitimate MakerNote bytes; `#xFFFD`
+    is what `decode(errors="replace")` emits, so stripping it would delete the
+    very marks that record a repair. Nothing enforced any of it.
+    """
+    payload = "a\x7fb\x80c\x9fd\ufffde"
+    assert ngff_._xml_text(payload) == payload
+
+
+def test_xml_text_still_strips_what_xml_10_forbids_outright() -> None:
+    """The discriminating companion: retention must not become "keep everything"."""
+    assert ngff_._xml_text("a\x00b\x0bc\x1fd") == "abcd"
+
+
 # NOTE (ledger SIMP-18): the propagation test lives in Phase 2 Task 2.2 as
 # `test_a_failed_ome_xml_build_aborts_the_write`, which asserts the same
 # propagation PLUS the consequence that matters -- that no store is left behind.
