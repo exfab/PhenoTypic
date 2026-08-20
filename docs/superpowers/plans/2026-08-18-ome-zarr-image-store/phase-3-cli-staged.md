@@ -1994,6 +1994,29 @@ every already-finished image on the work-id path, forever. Recorded as OPEN-QUES
 - Produces: a `kind`-tagged artifact descriptor, and `SUCCESS_MARKER_VERSION = 2`.
 
 **Constraints specific to this task:**
+- ⚠️ **`image_data_artifact` already exists — extend it, do not add a parallel path** (C10).
+  Task 3.3 stopped Stage 1 writing `.h5`, but the completion marker still declared
+  `"hdf": results/<ds>/hdf/<stem>.h5`, and `publish_image_success` does
+  `artifact.resolve(strict=True)` — so **every staged full-mode image failed at Stage 3**
+  with `FileNotFoundError` on a file nothing writes any more. That is a live production
+  break three clusters wide, between Task 3.3 and this task, and Task 3.5 could not be green
+  while it stood.
+
+  C10 closed it minimally, in `_cli_completion.py`:
+  `image_data_artifact(output_dir, output_manager, dataset, stem) -> (key, path)` returns
+  `("store", <store>/zarr.json)` when a store exists and `("hdf", ….h5)` otherwise. Four call
+  sites go through it — `_cli_staged_slurm_worker.py:338,392` and
+  `_cli_execution_strategies.py:163`.
+
+  It deliberately consumes **none** of this task's design: `zarr.json` is a regular file, so
+  the existing `{"size","sha256"}` descriptor and `valid_image_success` work unchanged — no
+  `SUCCESS_MARKER_VERSION` bump, no `kind` dispatch. And it is **already the fingerprint this
+  task prescribes** for a store descriptor (root `zarr.json`, content-only, relocatable), so
+  your work is to change what it returns and add the `kind` tag, not to re-plumb the callers.
+
+  The `"hdf"` fallback must survive until **Task 3.6**: `_publish_local_image_success` is
+  shared with the non-staged `LocalParallelStrategy`, which still writes `.h5` via
+  `_cli_process_single.py:183`.
 - A store descriptor is
   `{"path": <relative>, "kind": "store", "sha256": file_fingerprint(store / "zarr.json")}`.
 
