@@ -1963,9 +1963,40 @@ own change."
 - Modify: `src/phenotypic/_cli/_cli_completion.py` (`SUCCESS_MARKER_VERSION` line 26,
   `_sha256` lines 29–34, `publish_image_success` line 36, `valid_image_success` lines 117–130,
   `refresh_success_markers_after_metadata_migration` lines 136–155)
-- Modify the five `"hdf"` artifact declarations: `phenotypicCLI.py:400`,
-  `_cli_staged_slurm_worker.py:332` and `:382`, `_cli_process_single.py:640`,
-  `_cli_execution_strategies.py:167`
+- Modify the ONE remaining `"hdf"` artifact declaration: `phenotypicCLI.py:400`
+
+> **Four of the five are already done, and the helper to extend already exists (C10).**
+> Task 3.5 could not be green without them: Task 3.3 stopped Stage 1 writing `.h5` while
+> the marker still declared one, and `publish_image_success` does
+> `artifact.resolve(strict=True)`, so every staged full-mode image died at Stage 3 with
+> `FileNotFoundError` on a file nothing writes any more. C10 closed it with
+>
+> ```python
+> def image_data_artifact(output_dir, output_manager, dataset, image_stem) -> tuple[str, Path]:
+>     """Return the ``(key, path)`` of the per-image data artifact to certify."""
+> ```
+>
+> in `_cli_completion.py`, returning `("store", <store>/zarr.json)` when a store exists and
+> `("hdf", ....h5)` otherwise. It is wired at `_cli_staged_slurm_worker.py:338` and `:392`,
+> `_cli_process_single.py:624`, and `_cli_execution_strategies.py:163`.
+>
+> **Extend that helper; do not add a parallel path and do not re-plumb the four callers.**
+> `zarr.json` is a regular file, so the existing `{"size", "sha256"}` descriptor and
+> `valid_image_success` work unchanged — no `SUCCESS_MARKER_VERSION` bump is required by
+> the artifact change alone, and none of this task's *fingerprint* design is consumed.
+>
+> **The fifth site is a live break, and it is the reason this task still has teeth.**
+> `phenotypicCLI.py:400` sits in `_migrate_legacy_success_evidence`, which mints success
+> markers for runs that have completion evidence but no marker — and its evidence test at
+> `:380` includes `stage3_completion_exists`, a **store-era** signal. So the path fires on a
+> staged run interrupted between its Stage-3 marker and its success marker, declares an
+> `.h5` that the store-era run never wrote, and `resolve(strict=True)` raises. Route it
+> through `image_data_artifact` like the others; it needs `output_manager`, which is already
+> in scope there.
+>
+> **Whether the `"hdf"` fallback branch survives at all is Task 3.6's answer, not this
+> task's assumption** — `_publish_local_image_success` is shared with the non-staged
+> `LocalParallelStrategy`. Read C11's report before deciding to delete it.
 - Test: `tests/unit/cli/test_cli_completion_store.py` (create)
 
 **Why this task exists — this is a silent production break, not a refactor.**
