@@ -318,3 +318,42 @@ def test_no_param_hides_a_bound_declared_on_a_branch():
         f"only {branch_sourced} branch-declared constraints seen — the sweep "
         "no longer exercises the fallback it exists to guard"
     )
+
+
+def test_a_zero_field_operation_advertises_no_parameters():
+    """``MeasureSize`` takes nothing; the descriptor must not invent ``data``.
+
+    A pydantic model with no fields has a falsy ``model_fields``, and a
+    truthiness test on it sends the class down the ``inspect.signature``
+    path — where pydantic's own ``(self, /, **data)`` turns up as a
+    *required* parameter named ``data`` that the class rejects.
+    """
+    import pydantic
+    import pytest as _pytest
+
+    from phenotypic.measure import MeasureSize
+
+    assert MeasureSize.model_fields == {}
+    with _pytest.raises(pydantic.ValidationError, match="Extra inputs"):
+        MeasureSize(data=None)  # type: ignore[call-arg]
+
+    assert describe_operation("MeasureSize")["params"] == []
+
+
+def test_no_descriptor_reports_a_param_that_is_not_a_field():
+    """Sweep: for a pydantic class, every projected param is a real field.
+
+    ``test_every_param_with_a_default_reports_it`` skips non-fields with a
+    ``continue``, so it steps around exactly this — a parameter that does
+    not exist cannot lose a default it never had.
+    """
+    from phenotypic._services.registry import get_registry
+
+    offenders = [
+        f"{name}.{param['name']}"
+        for name, info in get_registry().get_all().items()
+        if hasattr(info.cls, "model_fields")
+        for param in describe_operation(name)["params"]
+        if param["name"] not in info.cls.model_fields
+    ]
+    assert not offenders, f"parameters advertised but not declared: {offenders}"

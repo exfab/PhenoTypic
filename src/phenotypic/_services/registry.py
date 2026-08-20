@@ -470,14 +470,27 @@ class OperationRegistry:
         fallback so callers outside the migrated operation tree still
         work.
 
+        The pydantic test is ``is not None``, not truthiness: a pydantic
+        model that declares **no** fields has ``model_fields == {}``, which
+        is falsy. Falling through on it sends a *pydantic* class down the
+        signature path, where ``inspect.signature(cls.__init__)`` reports
+        pydantic's own ``(self, /, **data)`` and the ``**data`` catch-all
+        is registered as a required parameter named ``data``. Fourteen
+        registered classes take no parameters at all — six of the eleven
+        measurers among them — and every one of them advertised that
+        phantom. ``MeasureSize(data=...)`` raises ``ValidationError:
+        Extra inputs are not permitted``.
+
         Args:
             cls: Operation class to introspect
 
         Returns:
-            Dict mapping parameter names to ParamInfo
+            Dict mapping parameter names to ParamInfo. Empty for a
+            pydantic class that declares no fields — which is the true
+            contract, not a reason to look elsewhere.
         """
         model_fields = getattr(cls, "model_fields", None)
-        if model_fields:
+        if model_fields is not None:
             return self._extract_parameters_from_model_fields(cls, model_fields)
         return self._extract_parameters_from_signature(cls)
 
