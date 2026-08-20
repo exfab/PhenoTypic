@@ -347,6 +347,26 @@ doctests are rewritten against save2zarr/load_zarr."
 
 ---
 
+> **Also delete, found by C12 during Phase 3: a dead SLURM script-generation subtree.**
+> `_cli_slurm_scripts.py::generate_all_image_scripts` has **no callers anywhere** in
+> `src/` or `tests/`, and it is the **only** caller of
+> `generate_image_processing_script` (`_cli_slurm_scripts.py:207`, inside it). So the
+> pair is an unreachable subtree, not one dead function.
+>
+> Verify before deleting — the two must go together, and only together:
+>
+> ```bash
+> grep -rn 'generate_all_image_scripts\|generate_image_processing_script' src/ tests/ --include='*.py'
+> ```
+>
+> `generate_slurm_directives`, from the same module, is **live** — `_cli_sentinel_scripts.py:22,73`
+> and `_cli_slurm_scripts.py:84`. Do not take the module with the subtree.
+>
+> One test references the pair deliberately:
+> `tests/unit/cli/test_cli_durable_writes_transport.py:152` documents the unreachability in
+> its docstring and covers the `--durable-writes` emission so the claim is not untested.
+> It goes with the deletion.
+
 ### Task 6.3: Remove the HDF path constants
 
 **Files:**
