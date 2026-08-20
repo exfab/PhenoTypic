@@ -490,19 +490,42 @@ def _ensure_store_layer_source_png(
         layer: Store layer to render.
         source_png: Destination PNG path inside the staging directory.
     """
-    root_json = store / STORE_ROOT_JSON
-    root_stat = os.stat(root_json)
+    root_stat = os.stat(store / STORE_ROOT_JSON)
     if (
         source_png.exists()
         and source_png.stat().st_mtime_ns >= root_stat.st_mtime_ns
     ):
         return
-    content_token = paths_fingerprint([root_json]).removeprefix("sha256:")[:16]
     target_px = _store_level0_longest_edge(store, layer)
-    _load_zarr_layer_rgb(str(store), content_token, layer, target_px).save(
-        source_png
-    )
+    _load_zarr_layer_rgb(
+        str(store), _store_content_token(store), layer, target_px
+    ).save(source_png)
     os.utime(source_png, ns=(root_stat.st_mtime_ns, root_stat.st_mtime_ns))
+
+
+def _store_content_token(store: Path) -> str:
+    """Identify one published generation of a store's contents.
+
+    **Bytes AND mtime.** A re-promote whose metadata did not change writes a
+    byte-identical root ``zarr.json`` while the pixels underneath differ --
+    verified by test. ``_load_zarr_level_rgb`` is LRU-cached on
+    ``(path, token, layer, level)``, so a bytes-only token would let the
+    "regenerated" source PNG be written from the PREVIOUS publish's decoded
+    array. The mtime is what always moves, because the promote replaces the
+    root file; the bytes are what catch a metadata-only change that happened
+    to land in the same mtime tick. Neither alone is enough.
+
+    OPEN-QUESTIONS B7/P17.
+
+    Args:
+        store: Path to a ``*.ome.zarr`` directory.
+
+    Returns:
+        A short token identifying this published generation.
+    """
+    root_json = store / STORE_ROOT_JSON
+    digest = paths_fingerprint([root_json]).removeprefix("sha256:")[:16]
+    return f"{digest}-{os.stat(root_json).st_mtime_ns}"
 
 
 def _store_level0_longest_edge(store: Path, layer: LayerName) -> int:

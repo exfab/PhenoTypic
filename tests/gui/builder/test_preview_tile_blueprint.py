@@ -87,6 +87,9 @@ def test_stage_channel_png_does_not_publish_partial_final_file(
 ):
     store_path = tmp_path / "node.ome.zarr"
     store_path.mkdir()
+    # A root ``zarr.json`` is what makes a directory a store: staging reads
+    # it to decide freshness, so a bare directory is not a stand-in.
+    (store_path / "zarr.json").write_text("{}", encoding="utf-8")
     final_path = tmp_path / "tiles_src" / "blk__gray.png"
 
     monkeypatch.setattr(
