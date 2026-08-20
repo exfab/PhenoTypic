@@ -13,13 +13,22 @@ set -euo pipefail
 # suite -- 150 s uncontended -- could not finish inside 900 s there. A dedicated
 # allocation can also land on a different node entirely.
 #
-# Baseline to compare against, measured twice at commit f3564336:
-#     946 passed, 1 failed, 32 skipped
-# The one failure is test_concurrent_process_appends_do_not_lose_records, which
-# spawns 8 processes and joins each with a 20 s timeout; it fails by starvation
-# on a contended 4-core allocation, and was observed PASSING under lighter load.
-# This job requests 16 CPUs specifically so those 8 children get real cores --
-# so the expected result here is 947 passed, 0 failed.
+# Baseline to compare against, at the Phase 2 gate:
+#     8,646 passed, 6 failed
+#
+# NOT the "946 passed" figure this script used to quote. That number came from
+# `-x` runs, which truncate at the first failure in tests/unit/cli -- it was a
+# third of the suite mislabelled as the whole of it. The first genuinely
+# complete wide run happened at the Phase 2 gate.
+#
+# Of the 6: three are FilFinderDetector smoke tests failing on an absent
+# `topology` extra (invisible to every earlier run, because none of them
+# included tests/smoke -- a gate that has never run is not a gate); one is
+# test_inspect_remeasures_when_explicit_image_changes; and one is
+# test_concurrent_process_appends_do_not_lose_records, which spawns 8 processes
+# and joins each with a 20 s timeout, so it fails by starvation on a contended
+# allocation and passes alone. This job requests 16 CPUs so those children get
+# real cores.
 
 WORKTREE=/bigdata/exfab/anguy344/PhenoTypic/.worktrees/worktree-ome-zarr-image-store
 
@@ -70,7 +79,22 @@ status=0
 # Phase 2 reached the GUI builder's preview cache and tile renderer, so the
 # wide run must cover tests/gui and tests/integration as well as tests/unit --
 # a unit-only run would be green while the default lane is red.
-uv run pytest tests/unit tests/gui tests/integration tests/smoke \
+#
+# tests/migration is listed EXPLICITLY because it is not in `testpaths`
+# (pyproject.toml:218) and therefore never runs in the default lane at all.
+# Phase 3 makes that gap load-bearing: C11 changed recompile dataset discovery,
+# and an unconverted legacy bundle is discoverable only through the DIR_HDF
+# branch that the very recompile run authorizing its metadata migration depends
+# on. Adding it changes the total, so the count below is not comparable to the
+# 8,646 baseline -- compare failures, not totals.
+#
+# tests/e2e is the other orphan, and is deliberately NOT added: it drives
+# Playwright against a real browser, and it is GUI surface that Phase 4 owns.
+# It needs its own gate, not a line in this one.
+#
+# `.venv/bin/python -m pytest` rather than `uv run pytest`: roughly 4x faster to
+# start, and it skips the environment resolution that a batch job does not need.
+.venv/bin/python -m pytest tests/unit tests/gui tests/integration tests/smoke tests/migration \
     -q --no-header -p no:randomly -o addopts= -m "not slow" || status=$?
 
 echo
