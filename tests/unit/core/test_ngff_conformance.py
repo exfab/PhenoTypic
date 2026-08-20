@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -115,7 +116,13 @@ def test_a_dangling_dataset_path_is_rejected(tmp_path: Path) -> None:
     payload = json.loads(group.read_text(encoding="utf-8"))
     payload["attributes"]["ome"]["multiscales"][0]["datasets"][0]["path"] = "9"
     group.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(Exception):  # zarr raises before our assert
+    # `match`, not a bare `pytest.raises(Exception)`. Mutating the
+    # `zarr.open_array` call out of the harness left the bare form green:
+    # reading `gray/9/zarr.json` for `dimension_names` raises FileNotFoundError
+    # a few lines later, so the bare form proved only "something went wrong",
+    # not that the dangling path was what went wrong. Both routes name the
+    # path, so matching it pins the failure to this defect either way.
+    with pytest.raises(Exception, match=r"gray[/\\]9"):
         assert_store_conforms(store)
 
 
@@ -163,4 +170,151 @@ def test_missing_series_is_rejected(tmp_path: Path) -> None:
     del payload["attributes"]["ome"]["series"]
     ome_json.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(AssertionError):
+        assert_store_conforms(store)
+
+
+# ---------------------------------------------------------------------------
+# Reader-level MUSTs the plan's cases left unexercised.
+#
+# Every assertion below was mutated to `assert True` against the fourteen tests
+# above and NOTHING failed -- so each was satisfied vacuously by the positive
+# stores, which is the exact shape of the KeyError that shipped green once
+# (ledger GEN-47 / GEN-33). One negative case per surviving mutant.
+# ---------------------------------------------------------------------------
+
+
+def test_an_unnamed_extra_image_element_is_rejected(tmp_path: Path) -> None:
+    """2.2.3: every multiscales group MUST represent exactly one Image.
+
+    `Name` is use="optional" in ome.xsd, so the order scrape cannot see an
+    unnamed <Image> -- only the count assertion can, and nothing reached it.
+    """
+    store = Image(load_synth_yeast_plate()).save2zarr(tmp_path / "p.ome.zarr")
+    xml_path = store / "OME" / "METADATA.ome.xml"
+    extra = (
+        '    <Image ID="Image:99">\n'
+        '      <Pixels ID="Pixels:99" DimensionOrder="XYZCT" Type="uint8" '
+        'SizeX="1" SizeY="1" SizeZ="1" SizeC="1" SizeT="1">\n'
+        "        <MetadataOnly/>\n"
+        "      </Pixels>\n"
+        "    </Image>\n"
+    )
+    xml = xml_path.read_text(encoding="utf-8").replace(
+        "  <StructuredAnnotations>", extra + "  <StructuredAnnotations>"
+    )
+    xml_path.write_text(xml, encoding="utf-8")
+    with pytest.raises(AssertionError, match="exactly one Image"):
+        assert_store_conforms(store)
+
+
+def test_an_invalid_ome_xml_document_is_rejected(tmp_path: Path) -> None:
+    """2.2.3 makes OME/METADATA.ome.xml a conditional MUST against ome.xsd.
+
+    `assert_ome_xml_valid` is exercised on `build_ome_xml` output in
+    tests/unit/sdk_/test_ngff_projection.py, but nothing made the STORE's
+    document invalid -- removing the call from `assert_store_conforms`
+    left every test here green.
+    """
+    store = Image(load_synth_yeast_plate()).save2zarr(tmp_path / "p.ome.zarr")
+    xml_path = store / "OME" / "METADATA.ome.xml"
+    xml = xml_path.read_text(encoding="utf-8").replace(' SizeX="', ' Sixe="', 1)
+    xml_path.write_text(xml, encoding="utf-8")
+    with pytest.raises(AssertionError, match="ome.xsd"):
+        assert_store_conforms(store)
+
+
+def test_an_axis_count_that_does_not_match_the_array_is_rejected(
+    tmp_path: Path,
+) -> None:
+    """2.4: the number of dimensions MUST correspond to the number of axes.
+
+    Three axes over a 2-D array still satisfies `image.schema` (minContains 2 /
+    maxContains 3 space axes), so only a reader-level check sees it.
+
+    Which reader-level check is not what one would guess, and it is worth
+    recording: the store is rejected by the `dimension_names` assertion, not by
+    the `len(array.shape) == len(expected_axes)` one above it. That assertion is
+    UNREACHABLE for any store zarr can open. Patching every level's
+    `dimension_names` to the new axes -- the only way to get past it -- makes
+    `zarr.open_array` raise `ValueError: dimension_names and shape need to have
+    the same number of dimensions` from zarr's own v3 metadata validation
+    (zarr/core/metadata/v3.py:272); leaving `dimension_names` alone, or deleting
+    it, lands on the assertion below instead. Mutating the ndim assertion to
+    `assert True` leaves the whole file green.
+    """
+    store = Image(load_synth_yeast_plate()).save2zarr(tmp_path / "p.ome.zarr")
+    group = store / "gray" / "zarr.json"
+    payload = json.loads(group.read_text(encoding="utf-8"))
+    multiscale = payload["attributes"]["ome"]["multiscales"][0]
+    multiscale["axes"].insert(0, {"name": "c", "type": "channel"})
+    group.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(AssertionError, match=r"\['c', 'y', 'x'\]"):
+        assert_store_conforms(store)
+
+
+def test_a_missing_dimension_names_is_rejected(tmp_path: Path) -> None:
+    """2.1 makes it a MUST; Zarr v3 makes it OPTIONAL array metadata.
+
+    So a level missing it is a valid Zarr array and an NGFF violation, and it
+    must surface as AssertionError rather than KeyError -- which is the whole
+    reason the harness reads it with `.get`. The reordering case above cannot
+    show that: it never removes the key.
+    """
+    store = Image(load_synth_yeast_plate()).save2zarr(tmp_path / "p.ome.zarr")
+    level = store / "gray" / "0" / "zarr.json"
+    payload = json.loads(level.read_text(encoding="utf-8"))
+    del payload["dimension_names"]
+    level.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(AssertionError):
+        assert_store_conforms(store)
+
+
+def test_a_labels_group_that_does_not_list_objmap_is_rejected(
+    tmp_path: Path,
+) -> None:
+    """2.6: the label MUST be reachable through the `labels` group's list."""
+    store = Image(load_synth_yeast_plate()).save2zarr(tmp_path / "p.ome.zarr")
+    labels_json = store / "rgb" / "labels" / "zarr.json"
+    payload = json.loads(labels_json.read_text(encoding="utf-8"))
+    payload["attributes"]["ome"]["labels"] = ["not_objmap"]
+    labels_json.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(AssertionError, match="not_objmap"):
+        assert_store_conforms(store)
+
+
+def test_a_float_label_dtype_is_rejected(tmp_path: Path) -> None:
+    """2.6: label pixels MUST be an integer dtype."""
+    store = Image(load_synth_yeast_plate()).save2zarr(tmp_path / "p.ome.zarr")
+    level = store / "rgb" / "labels" / "objmap" / "0" / "zarr.json"
+    payload = json.loads(level.read_text(encoding="utf-8"))
+    payload["data_type"] = "float32"
+    payload["fill_value"] = 0.0
+    level.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(AssertionError, match="integer dtype"):
+        assert_store_conforms(store)
+
+
+def test_a_label_with_fewer_levels_than_its_image_is_rejected(
+    tmp_path: Path,
+) -> None:
+    """2.6: the label's level count MUST match the unlabeled image."""
+    store = Image(load_synth_yeast_plate()).save2zarr(tmp_path / "p.ome.zarr")
+    group = store / "rgb" / "labels" / "objmap" / "zarr.json"
+    payload = json.loads(group.read_text(encoding="utf-8"))
+    payload["attributes"]["ome"]["multiscales"][0]["datasets"].pop()
+    group.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(AssertionError, match="level count"):
+        assert_store_conforms(store)
+
+
+def test_a_missing_ome_group_is_rejected(tmp_path: Path) -> None:
+    """The OME/ group is mandatory for this named-series layout.
+
+    The assertion is deliberately an assert rather than an `if is_dir()` guard,
+    so that a regression which stopped writing the group cannot pass every
+    conformance test in the suite -- but until now nothing reached it.
+    """
+    store = Image(load_synth_yeast_plate()).save2zarr(tmp_path / "p.ome.zarr")
+    shutil.rmtree(store / "OME")
+    with pytest.raises(AssertionError, match="OME/ group is mandatory"):
         assert_store_conforms(store)
