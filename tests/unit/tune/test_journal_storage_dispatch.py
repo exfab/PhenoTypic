@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+from pathlib import Path
 
 import pytest
 
@@ -529,13 +530,25 @@ def test_slurm_default_is_the_journal_backend(tmp_path, monkeypatch):
     marker = json.loads(io.tune_cache_run_marker_path(out).read_text())
     assert marker["storage_url"] == expected
 
-    # The journal exists and already holds the pre-created study, so no worker
-    # races to materialize it.
-    assert io.tune_cache_journal_path(out).exists()
+    # The submitter pre-created the STUDY, so no worker races to materialize it
+    # (a cold backend is where concurrent CREATEs collide). File existence is
+    # not evidence of that: ``JournalFileBackend.__init__`` mkdirs the parent
+    # and touches the log even on the read-only open below, so the assertion
+    # has to be that the study can be LOADED — which raises when absent.
     study = optuna.load_study(
         study_name="tune_cost_v1", storage=build_optuna_storage(expected)
     )
     assert study.study_name == "tune_cost_v1"
+
+    # Control: the same load against an untouched journal fails, so the
+    # assertion above is discriminating rather than always-true.
+    with pytest.raises(KeyError):
+        optuna.load_study(
+            study_name="tune_cost_v1",
+            storage=build_optuna_storage(
+                journal_url_for_path(tmp_path / "never-created.log")
+            ),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -576,3 +589,216 @@ def test_monitor_reads_a_live_journal_backed_study(tmp_path):
 
     assert note == ""
     assert [t.score for t in store.trials] == [0.125]
+
+
+# ---------------------------------------------------------------------------
+# B1: a relative --output must not silently un-share the fleet's journal
+# ---------------------------------------------------------------------------
+
+
+def test_journal_url_for_path_refuses_a_relative_path():
+    """The helper roots nothing — the caller owns the cwd context.
+
+    It used to prepend ``/`` to anything that did not start with one, which is
+    what turned a relative ``-o`` into a wrong-but-plausible absolute path.
+    """
+    with pytest.raises(ValueError, match="must be absolute"):
+        journal_url_for_path(Path("tmp/run1/.pht-tune-cache/journal.log"))
+
+
+def test_journal_url_for_path_still_takes_a_windows_drive_path():
+    """The absolute check is drive-aware, not ``Path.is_absolute()``.
+
+    ``Path("C:/runs/journal.log").is_absolute()`` is ``False`` on a POSIX
+    interpreter, so a naive guard would reject the one relative-looking string
+    that is genuinely absolute — and would do it only on Linux, where this
+    suite runs.
+    """
+    url = journal_url_for_path(Path("C:/runs/journal.log"))
+    assert url == "journal:///C:/runs/journal.log"
+    assert journal_path_from_url(url).as_posix() == "C:/runs/journal.log"
+
+
+def test_journal_path_from_url_refuses_a_host_component():
+    """``journal://mydir/journal.log`` used to silently resolve to ``/journal.log``.
+
+    ``urlsplit`` reads ``mydir`` as the authority; taking ``.path`` alone
+    discarded it and addressed the filesystem root instead.
+    """
+    with pytest.raises(ValueError, match=r"must be journal:///<abs path>"):
+        journal_path_from_url("journal://mydir/journal.log")
+
+
+def test_default_journal_url_absolutizes_a_relative_output_dir(tmp_path, monkeypatch):
+    """``-o tmp/run1`` must address ``<cwd>/tmp/run1``, never ``/tmp/run1``.
+
+    This is the quiet half of B1 and the reason the fix lives at the call site.
+    ``/tmp/run1`` exists on every compute node, is writable, and is *node-local*
+    — so the pre-``.absolute()`` URL raised nothing, and every worker in the
+    fleet opened a private study under its own node's ``/tmp``. P1's whole
+    purpose is that they share one.
+    """
+    from phenotypic.tune._tune_cli._run import _default_journal_url
+
+    monkeypatch.chdir(tmp_path)
+    url = _default_journal_url(Path("tmp/run1"))
+
+    expected = io.tune_cache_journal_path(Path.cwd() / "tmp" / "run1")
+    assert url == journal_url_for_path(expected)
+    assert journal_path_from_url(url) == expected
+    # The node-local path the un-absolutized URL named. Spelled out so the
+    # failure message names the actual hazard.
+    assert journal_path_from_url(url) != Path("/tmp/run1/.pht-tune-cache/journal.log")
+
+
+def test_default_journal_url_keeps_a_symlinked_path_verbatim(tmp_path, monkeypatch):
+    """``.absolute()``, not ``.resolve()`` — the URL must echo what was typed.
+
+    This cluster reaches the same storage through ``/rhome/<user>/bigdata_*``
+    and ``/bigdata/...`` symlinks. ``resolve()`` would rewrite the operator's
+    path to the target, so the URL in the run marker would no longer be string-
+    equal to the one a resume/monitor path derives from the same ``-o``.
+    """
+    from phenotypic.tune._tune_cli._run import _default_journal_url
+
+    real = tmp_path / "real"
+    real.mkdir()
+    link = tmp_path / "link"
+    link.symlink_to(real, target_is_directory=True)
+    monkeypatch.chdir(tmp_path)
+
+    url = _default_journal_url(Path("link/out"))
+
+    assert journal_path_from_url(url) == io.tune_cache_journal_path(
+        Path.cwd() / "link" / "out"
+    )
+    assert "/link/out/" in url  # not rewritten to .../real/out
+
+
+def test_relative_output_dir_hands_the_fleet_a_cwd_rooted_journal(
+    tmp_path, monkeypatch
+):
+    """End to end: ``run_tuning(output_dir="tmp/run1", slurm=True)``.
+
+    Both B1 variants surfaced only here, *after* the run marker and the resolved
+    spec had already been written — the same half-written-output state the
+    SQLite refusal is asserted to land before.
+    """
+    from phenotypic.tune._tune_cli._run import run_tuning
+
+    monkeypatch.delenv(PHENOTYPIC_TUNE_STORAGE_URL_ENV, raising=False)
+    monkeypatch.setattr(
+        "phenotypic.tune._tune_cli._run.SlurmExecutor", _FakeExecutor
+    )
+    monkeypatch.chdir(tmp_path)
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(_optuna_spec().model_dump_json())
+
+    run_tuning(
+        _optuna_spec(),
+        images=[],
+        output_dir=Path("tmp/run1"),  # the poison: /tmp/run1 is real and writable
+        slurm=True,
+        spec_path=spec_path,
+        images_dir=tmp_path / "imgs",
+        storage_url=None,
+    )
+
+    out = Path("tmp/run1")
+    expected = journal_url_for_path(io.tune_cache_journal_path(Path.cwd() / out))
+    assert _FakeExecutor.captured["storage_url"] == expected
+    marker = json.loads(io.tune_cache_run_marker_path(out).read_text())
+    assert marker["storage_url"] == expected
+    # The log the submitter pre-created lives under the run directory. Existence
+    # is the claim here (a *location*), not evidence that a study was created —
+    # the URL equality above is what pins that.
+    assert io.tune_cache_journal_path(out).exists()
+
+
+def test_dot_slash_output_dir_no_longer_resolves_to_the_filesystem_root(
+    tmp_path, monkeypatch
+):
+    """The loud half of B1: ``-o ./out`` used to resolve to ``/out``.
+
+    The submitter's pre-create then died with ``PermissionError: '/out'`` on
+    any machine where nobody can write the filesystem root — i.e. every cluster
+    node — and only *after* the run marker and resolved spec had been written.
+    """
+    from phenotypic.tune._tune_cli._run import _default_journal_url
+
+    monkeypatch.chdir(tmp_path)
+    url = _default_journal_url(Path("./out"))
+
+    expected = io.tune_cache_journal_path(Path.cwd() / "out")
+    assert journal_path_from_url(url) == expected
+    build_optuna_storage(url)  # would be PermissionError('/out') before the fix
+    assert expected.exists()
+
+
+# ---------------------------------------------------------------------------
+# The fleet-sharing property, across real OS processes
+# ---------------------------------------------------------------------------
+
+
+_CONCURRENT_APPENDER = """
+import sys
+
+from phenotypic.tune._study_store import Trial
+from phenotypic.tune._tune_cli._worker import build_worker_store
+
+url, study_name, worker, per_worker = (
+    sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
+)
+store = build_worker_store(storage_url=url, study_name=study_name)
+for i in range(per_worker):
+    number = worker * per_worker + i
+    store.append(
+        Trial(
+            number=number,
+            params={"worker": worker, "i": i},
+            score=number / 1000.0,
+            terms={"Count": number / 1000.0},
+            n_images=1,
+        )
+    )
+"""
+
+
+def test_journal_study_is_shared_across_real_processes(tmp_path):
+    """Separate interpreters, appending at the same time, land in one study.
+
+    :func:`test_two_worker_stores_share_one_journal_study` drives two stores
+    *sequentially in one process*, which an in-process registry would satisfy —
+    it cannot distinguish a shared study from a shared object. A SLURM fleet is
+    N operating-system processes on N nodes contending for one file through the
+    symlink lock, so spawn real ones: every trial must survive, exactly once.
+    """
+    import subprocess
+    import sys
+
+    from phenotypic.tune._study._optuna_store import OptunaStudyStore
+    from phenotypic.tune._tune_cli._worker import build_worker_store
+
+    n_workers, per_worker = 4, 8
+    url = journal_url_for_path(tmp_path / ".pht-tune-cache" / "journal.log")
+    OptunaStudyStore(storage_url=url, study_name=_STUDY)  # submitter pre-create
+
+    procs = [
+        subprocess.Popen(
+            [sys.executable, "-c", _CONCURRENT_APPENDER, url, _STUDY,
+             str(worker), str(per_worker)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        for worker in range(n_workers)
+    ]
+    for proc in procs:
+        _, err = proc.communicate(timeout=300)
+        assert proc.returncode == 0, err
+
+    reader = build_worker_store(storage_url=url, study_name=_STUDY)
+    numbers = sorted(t.number for t in reader.trials)
+    # No loss (every append is readable by a process that never saw the writer)
+    # and no duplication (the lock serialized them into one log).
+    assert numbers == list(range(n_workers * per_worker))

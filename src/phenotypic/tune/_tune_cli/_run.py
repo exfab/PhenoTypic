@@ -111,8 +111,20 @@ def _default_journal_url(output_dir: Path) -> str:
     from ``output_dir`` (rather than a shared server URL) also means each run
     gets its own study file, so two concurrent studies cannot pool trials under
     the shared ``_STUDY_NAME``.
+
+    ``output_dir`` is absolutized **here**, because a URL has nowhere to carry
+    "relative to the submitter's cwd" and the workers that resolve this URL do
+    not share that cwd. ``-o tmp/run1`` would otherwise address
+    ``/tmp/run1/…``: writable, node-local, and therefore a *private* study per
+    worker — the fleet silently stops sharing one, with nothing raised until
+    finalize. ``.absolute()``, not ``.resolve()``: this cluster's ``/rhome`` ↔
+    ``/bigdata`` symlinks make ``resolve()`` rewrite the operator's path into a
+    different string, which would break identity comparisons against the URL
+    recorded in the run marker.
     """
-    return journal_url_for_path(io.tune_cache_journal_path(output_dir))
+    return journal_url_for_path(
+        io.tune_cache_journal_path(Path(output_dir).absolute())
+    )
 
 
 @dataclass(frozen=True)

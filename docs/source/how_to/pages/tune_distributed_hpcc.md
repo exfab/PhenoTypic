@@ -39,11 +39,26 @@ share a hardcoded study name).
 
 Two limits to know:
 
-- **No stale-trial reclamation.** The journal backend has no heartbeat, so a
-  worker killed by walltime or OOM leaves its trial marked `RUNNING` forever.
-  This does not stall the budget — only `COMPLETE` and `PRUNED` trials count
-  against `--n-trials`, so the fleet still drains — but it leaves zombie rows
-  and a slightly optimistic in-flight count. Postgres reclaims those.
+- **No stale-trial reclamation — permanently, not briefly.** The journal
+  backend has no heartbeat, so `optuna.storages.fail_stale_trials()` has
+  nothing to act on: against a journal study it returns cleanly and changes
+  nothing, with no error or log line to say so. A worker killed by walltime
+  or OOM therefore leaves its trial marked `RUNNING` for the life of the
+  study, and nothing ever reclaims it. Postgres transitions the same trial to
+  `FAIL` once its grace period lapses — the failure is self-healing there and
+  standing here, on exactly the path (SLURM walltime kills) that creates it.
+  At tens of minutes per evaluation, a killed worker is the *normal* end
+  state of a long fleet run, so expect these rows rather than treating them
+  as rare.
+
+  The damage is contained but real. Selection and the budget both read only
+  terminal (`COMPLETE`/`PRUNED`/`FAIL`) trials, so the fleet still drains its
+  `--n-trials` and a resultless trial can never be picked as the winner. What
+  the zombies do cost you is the *raw* trial count: they accumulate in the
+  study file, inflate the trial count the GUI Monitor shows, and inflate the
+  "still in flight" figure `finalize` warns with — a figure that, on this
+  backend, cannot be distinguished from live workers and so may never reach
+  zero. Where an accurate in-flight count matters, use Postgres.
 - **The log only grows.** Optuna ships no compaction for the file backend, so a
   long study's `journal.log` grows monotonically. There is no `VACUUM`.
 

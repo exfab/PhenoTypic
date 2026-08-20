@@ -86,11 +86,21 @@ def is_sqlite_url(storage_url: Optional[str]) -> bool:
 
 
 def journal_url_for_path(journal_path: Path) -> str:
-    """Return the ``journal://`` URL addressing ``journal_path``.
+    """Return the ``journal://`` URL addressing an **absolute** ``journal_path``.
 
     Mirrors the ``sqlite:///<path>`` spelling used for the local study DB, so a
     resolved storage URL is a single string that round-trips through
     :func:`journal_path_from_url`.
+
+    A relative path is **rejected**, not silently rooted. The URL grammar has
+    nowhere to put "relative to the caller's cwd", and a fleet resolves this URL
+    on nodes whose cwd is not the submitter's — so the only two readings of
+    ``out/journal.log`` are both wrong. Rooting it silently is the worse one:
+    ``tmp/run1/journal.log`` would become ``/tmp/run1/journal.log``, a path that
+    exists, is writable, and is **node-local**, so every worker would open a
+    private study and the fleet would never share one (see
+    ``_default_journal_url``, which absolutizes before calling this). Callers
+    hold the cwd context; this function does not.
 
     Args:
         journal_path: The absolute append-only log path.
@@ -98,9 +108,16 @@ def journal_url_for_path(journal_path: Path) -> str:
     Returns:
         ``journal:///<absolute path>``.
 
+    Raises:
+        ValueError: When ``journal_path`` is relative.
+
     Examples:
         >>> journal_url_for_path(Path("/runs/out/.pht-tune-cache/journal.log"))
         'journal:///runs/out/.pht-tune-cache/journal.log'
+        >>> journal_url_for_path(Path("out/journal.log"))
+        Traceback (most recent call last):
+        ...
+        ValueError: journal:// storage path must be absolute: 'out/journal.log'
     """
     # Built by hand rather than with ``urlunsplit``: that helper emits the
     # authority separator only for a non-empty netloc, so it would render the
@@ -108,7 +125,15 @@ def journal_url_for_path(journal_path: Path) -> str:
     # ``sqlite:///`` uses and what an operator will type.
     raw = Path(journal_path).as_posix()
     if not raw.startswith("/"):
-        raw = f"/{raw}"  # a Windows drive path: C:/x -> journal:///C:/x
+        # ``Path.is_absolute()`` is platform-dependent — a Windows drive path is
+        # relative to a POSIX interpreter — so classify on the drive letter,
+        # which is what :func:`journal_path_from_url` reverses.
+        if len(raw) > 1 and raw[1] == ":":
+            raw = f"/{raw}"  # a Windows drive path: C:/x -> journal:///C:/x
+        else:
+            raise ValueError(
+                f"{JOURNAL_SCHEME}:// storage path must be absolute: {raw!r}"
+            )
     return f"{JOURNAL_SCHEME}://{raw}"
 
 
@@ -120,6 +145,12 @@ def journal_path_from_url(storage_url: str) -> Path:
     path of ``/C:/runs/journal.log``, and the leading separator is dropped when
     the next segment is a drive letter.
 
+    A non-empty authority is **refused** rather than dropped. ``urlsplit`` reads
+    ``journal://mydir/journal.log`` as netloc ``mydir`` + path
+    ``/journal.log``, so silently taking the path would resolve a two-slash typo
+    (or a hand-written URL that meant a relative directory) to the filesystem
+    root — a different, probably unwritable, and definitely unshared journal.
+
     Args:
         storage_url: A ``journal://`` storage URL.
 
@@ -127,18 +158,28 @@ def journal_path_from_url(storage_url: str) -> Path:
         The append-only log path.
 
     Raises:
-        ValueError: When ``storage_url`` is not a ``journal://`` URL, or carries
-            no path.
+        ValueError: When ``storage_url`` is not a ``journal://`` URL, carries a
+            non-empty authority, or carries no path.
 
     Examples:
         >>> journal_path_from_url("journal:///runs/out/journal.log").as_posix()
         '/runs/out/journal.log'
+        >>> journal_path_from_url("journal://mydir/j.log")
+        Traceback (most recent call last):
+        ...
+        ValueError: journal:// URL must be journal:///<abs path>, got 'journal://mydir/j.log'
     """
     if not is_journal_url(storage_url):
         raise ValueError(
             f"not a {JOURNAL_SCHEME}:// storage URL: {storage_url!r}"
         )
-    raw = urlsplit(storage_url).path
+    split = urlsplit(storage_url)
+    if split.netloc:
+        raise ValueError(
+            f"{JOURNAL_SCHEME}:// URL must be {JOURNAL_SCHEME}:///<abs path>"
+            f", got {storage_url!r}"
+        )
+    raw = split.path
     if len(raw) > 2 and raw[0] == "/" and raw[2] == ":":
         raw = raw[1:]  # journal:///C:/... -> C:/...
     if not raw:
@@ -162,10 +203,32 @@ def build_optuna_storage(
 
     The heartbeat arguments are RDB-only and are **dropped** for the journal
     backend, which implements neither ``get_heartbeat_interval`` nor
-    ``record_heartbeat``. That is not a silent downgrade: the strategy layer's
-    heartbeat probes are ``getattr``-guarded and degrade to "no heartbeat
-    thread" (see ``strategy/_optuna.py``), so the loss is stale-trial
-    reclamation, documented in §7 L2 as bounded rather than fatal.
+    ``record_heartbeat``. The strategy layer's heartbeat probes are
+    ``getattr``-guarded and degrade to "no heartbeat thread" (see
+    ``strategy/_optuna.py``), so nothing crashes — but the loss of stale-trial
+    reclamation is **permanent, not transient**, and worth stating plainly.
+
+    With no heartbeat to read, :func:`optuna.storages.fail_stale_trials` has
+    nothing to act on: against a ``JournalStorage`` it returns cleanly and changes
+    no state, with nothing raised or logged to say it did nothing (verified,
+    optuna 4.9.0 — the lone ``ExperimentalWarning`` it emits is the generic
+    API-stability notice the RDB path emits too). So a trial left
+    ``RUNNING`` by a worker the scheduler killed stays ``RUNNING`` for the life
+    of the study — a zombie nothing ever reclaims. Under an RDB the same trial
+    is transitioned to ``FAIL`` once its grace period lapses, which is a
+    self-healing failure; the journal backend converts it into a standing one,
+    on exactly the path (SLURM walltime kills) that produces it.
+
+    What that costs, precisely: the zombie is **excluded** from winner
+    selection and from the budget gate, both of which read
+    ``terminal_trials()`` / ``completed_count()`` rather than the raw list, so
+    the fleet still drains its ``--n-trials`` and can never elect a resultless
+    trial. What remains is a row that accumulates in the study and inflates the
+    raw ``store.trials`` / ``len(store)`` view — the count the GUI Monitor
+    renders and the "still in flight" figure ``_finalize`` warns with, which on
+    this backend cannot be told apart from a live worker's trial and therefore
+    may never fall to zero. Where an accurate in-flight count matters, use
+    Postgres.
 
     Args:
         storage_url: The resolved tune storage URL.
