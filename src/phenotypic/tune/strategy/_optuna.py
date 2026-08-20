@@ -169,8 +169,10 @@ class OptunaStrategy:
         prune: Whether the pruning channel is Optuna-backed (opt-in). The explore
             round and multi-objective studies always get a no-op channel.
         seed: The sampler seed for reproducibility.
-        storage_url: The Optuna storage URL (SQLite/Postgres); ``None`` → an
-            in-memory study.
+        storage_url: The Optuna storage URL (SQLite / Postgres / ``journal://``,
+            dispatched by
+            :func:`~phenotypic.tune._study._storage.build_optuna_storage`);
+            ``None`` → an in-memory study.
         store: Accepted for the uniform factory signature; the Optuna study owns
             persistence so this is unused (the engine reads trials from the
             ``OptunaStudyStore`` wrapping the same study).
@@ -233,10 +235,20 @@ class OptunaStrategy:
             shared_study.pruner = pruner
             self._study = shared_study
         else:
+            # A raw URL string here would be resolved by Optuna's RDB-only
+            # resolver, so a ``journal://`` study would die on NoSuchModuleError
+            # instead of opening. Dispatch the scheme ourselves; ``None`` still
+            # means an in-memory study, which has no URL to dispatch.
+            from .._study._storage import build_optuna_storage
+
             create_kwargs: dict[str, Any] = {
                 "sampler": sampler_obj,
                 "pruner": pruner,
-                "storage": storage_url,
+                "storage": (
+                    build_optuna_storage(storage_url)
+                    if storage_url is not None
+                    else None
+                ),
                 "study_name": study_name,
                 "load_if_exists": study_name is not None,
                 **study_objective_kwargs(self._directions),

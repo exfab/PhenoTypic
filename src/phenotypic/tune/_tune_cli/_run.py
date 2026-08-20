@@ -52,6 +52,7 @@ from ..strategy._config import (
     StrategyConfig,
 )
 from .._study._protocol import StudyStore
+from .._study._storage import is_sqlite_url as _is_sqlite_url, journal_url_for_path
 from .._study_store import JournalStudyStore, Trial
 
 _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".h5"}
@@ -100,6 +101,20 @@ def _default_study_db_url(output_dir: Path) -> str:
     return f"sqlite:///{io.resolve_study_db_path(output_dir)}"
 
 
+def _default_journal_url(output_dir: Path) -> str:
+    """``journal://`` URL for the run's ``journal.log`` — the ``--slurm`` default.
+
+    A distributed fleet cannot share the local ``study.db``: SQLite-WAL is
+    documented-unsafe on the network filesystems HPC clusters use, so N array
+    workers writing one file corrupt it or lose trials. The journal backend is
+    an append-only log under a symlink lock, which is safe there. Deriving it
+    from ``output_dir`` (rather than a shared server URL) also means each run
+    gets its own study file, so two concurrent studies cannot pool trials under
+    the shared ``_STUDY_NAME``.
+    """
+    return journal_url_for_path(io.tune_cache_journal_path(output_dir))
+
+
 @dataclass(frozen=True)
 class _ResolvedRunConfig:
     """The side-effect-free runtime config resolved before any run writes."""
@@ -114,17 +129,26 @@ def _resolve_storage_url(
     output_dir: Path,
     *,
     spec_storage_url: Optional[str] = None,
+    slurm: bool = False,
 ) -> str:
     """Resolve the Optuna storage URL with the canonical 4-way fallback.
 
     ``storage_url`` (the explicit ``--storage-url`` / param) wins; otherwise the
     spec's ``OptunaConfig.storage_url`` wins; otherwise the
     ``$PHENOTYPIC_TUNE_STORAGE_URL`` env var (a shared distributed Postgres);
-    otherwise the run's local ``study.db`` (resolved via
-    :func:`_default_study_db_url`). Single-sourced so the SLURM fleet submission
-    and the ``run.json`` marker agree on the URL a worker will actually open —
-    a null URL in the marker would silently force the GUI Monitor into
-    parquet-only mode for the env-driven distributed case.
+    otherwise a run-local default. **The default is what ``slurm`` selects**:
+    a local run keeps ``sqlite:///…/study.db`` (:func:`_default_study_db_url`),
+    while a fleet gets ``journal:///…/journal.log``
+    (:func:`_default_journal_url`), because SQLite-WAL is documented-unsafe on
+    the network filesystems a fleet writes across. Only the *default* moves —
+    an explicitly named URL is still honoured verbatim at all three higher
+    precedence levels (and an explicit SQLite URL under ``--slurm`` is refused
+    outright by :func:`_validate_slurm_request`, rather than silently rerouted).
+
+    Single-sourced so the SLURM fleet submission and the ``run.json`` marker
+    agree on the URL a worker will actually open — a null URL in the marker
+    would silently force the GUI Monitor into parquet-only mode for the
+    env-driven distributed case.
 
     This is also the single chokepoint that **rejects a password-bearing URL**:
     an inline ``postgresql://user:secret@host/db`` password would be persisted
@@ -135,7 +159,11 @@ def _resolve_storage_url(
 
     Args:
         storage_url: The explicit storage URL, or ``None``.
-        output_dir: The run output directory (for the ``study.db`` fallback).
+        output_dir: The run output directory (for the run-local fallback).
+        spec_storage_url: The spec's ``OptunaConfig.storage_url``, or ``None``.
+        slurm: Whether this resolution is for a distributed fleet. Selects the
+            run-local fallback: ``journal.log`` when true, ``study.db`` when
+            false. Ignored when any higher-precedence URL is present.
 
     Returns:
         The resolved, non-null storage URL.
@@ -145,11 +173,14 @@ def _resolve_storage_url(
             secret out of the URL: use ``~/.pgpass``, ``$PGPASSWORD``, or a
             ``PGSERVICE`` entry instead).
     """
+    default_url = (
+        _default_journal_url(output_dir) if slurm else _default_study_db_url(output_dir)
+    )
     url = (
         storage_url
         or spec_storage_url
         or os.environ.get(PHENOTYPIC_TUNE_STORAGE_URL_ENV)
-        or _default_study_db_url(output_dir)
+        or default_url
     )
     _reject_password_in_url(url)
     return url
@@ -389,8 +420,16 @@ def _resolve_run_config(
     storage_url: Optional[str],
     held_out_fraction: Optional[float],
     cv_group: Optional[str],
+    slurm: bool = False,
 ) -> _ResolvedRunConfig:
-    """Resolve CLI overrides and storage policy before any run side effects."""
+    """Resolve CLI overrides and storage policy before any run side effects.
+
+    ``slurm`` is a *storage-policy* input, not a submission switch: it only
+    picks which run-local URL the fallback chain ends at (see
+    :func:`_resolve_storage_url`). Resolving it here, in the one side-effect-free
+    step, is what lets :func:`_validate_slurm_request` refuse a bad
+    fleet/backend pairing before a single artifact lands on disk.
+    """
     # Reject explicit secrets before an Optuna strategy override imports optuna.
     if storage_url is not None:
         _reject_password_in_url(storage_url)
@@ -423,7 +462,7 @@ def _resolve_run_config(
     if is_optuna:
         spec_storage_url = getattr(resolved_spec.strategy, "storage_url", None)
         effective_storage_url = _resolve_storage_url(
-            storage_url, output_dir, spec_storage_url=spec_storage_url
+            storage_url, output_dir, spec_storage_url=spec_storage_url, slurm=slurm
         )
         resolved_spec = resolved_spec.model_copy(
             update={
@@ -593,6 +632,7 @@ def run_tuning(
         storage_url=storage_url,
         held_out_fraction=held_out_fraction,
         cv_group=cv_group,
+        slurm=slurm,
     )
     resolved_spec = resolved.spec
     effective_storage_url = resolved.storage_url
@@ -725,7 +765,8 @@ def _validate_slurm_request(
             implementation, so the combination is refused rather than dropped.
 
     Raises:
-        ValueError: For any unsupported combination.
+        ValueError: For any unsupported combination — including a resolved
+            SQLite storage URL, which no fleet can safely share (H1).
     """
     # --screen has no fleet implementation: run_tuning returns at the ``if slurm:``
     # branch BEFORE the screening round, and ``_worker.run_worker`` builds a bare
@@ -741,6 +782,23 @@ def _validate_slurm_request(
         )
     if not resolved.is_optuna:
         raise ValueError("--slurm requires an Optuna strategy")
+    # H1: nothing used to cross-check the RESOLVED backend against --slurm, so a
+    # SQLite URL submitted straight into the documented corruption case —
+    # several array workers writing one study.db on NFS/Lustre lose trials or
+    # corrupt the file. The fleet default is now the journal backend, so the
+    # only way to reach SQLite here is to have named it (flag, spec, or
+    # $PHENOTYPIC_TUNE_STORAGE_URL). Refuse rather than silently reroute: the
+    # caller asked for a specific file, and quietly writing somewhere else is a
+    # worse failure than an error naming the two supported alternatives.
+    if _is_sqlite_url(resolved.storage_url):
+        raise ValueError(
+            "--slurm cannot use a SQLite storage URL "
+            f"({resolved.storage_url!r}): SQLite-WAL is unsafe on the network "
+            "filesystems a SLURM fleet shares, and concurrent array workers "
+            "would corrupt the study or lose trials. Drop --storage-url (and "
+            f"unset ${PHENOTYPIC_TUNE_STORAGE_URL_ENV}) to get the default "
+            "journal:// backend, or name a postgresql+psycopg:// server."
+        )
     if spec_path is None or images_dir is None:
         raise ValueError(
             "--slurm requires the on-disk spec path and image directory "

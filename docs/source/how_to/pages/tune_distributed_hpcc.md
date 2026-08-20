@@ -3,7 +3,7 @@
 Run a PhenoTypic tune study across many SLURM compute nodes that share one
 optimization study.
 
-## Why Postgres for distributed studies
+## Storage: what a fleet shares, and why it is not SQLite
 
 A local single-node run keeps its Optuna study in a SQLite database
 (`.pht-tune-cache/study.db`) using WAL mode. That is fine when one process owns
@@ -11,12 +11,54 @@ the file, but SQLite-WAL is unsafe on the network filesystems HPCC clusters use
 (NFS, Lustre): file locking across nodes is unreliable, so several SLURM array
 workers writing the same `study.db` will corrupt it or lose trials.
 
-A distributed study therefore needs a shared relational database that every
-worker can reach over the network. PhenoTypic is backend-agnostic — it does not
-ship or depend on any particular database server. It takes a generic,
-user-provided storage URL and hands it straight to Optuna's RDB storage, so any
-reachable PostgreSQL server works. The rest of this guide uses Postgres because
-it is the standard choice for an Optuna study shared by a SLURM array.
+So a fleet needs different storage. There are two supported answers, and
+`--slurm` picks the first for you:
+
+| Invocation | Storage |
+|---|---|
+| no `--slurm` | `sqlite:///<output>/.pht-tune-cache/study.db` |
+| `--slurm`, no explicit URL | `journal:///<output>/.pht-tune-cache/journal.log` — **the default** |
+| any explicit `postgresql+psycopg://…` | that server |
+| an explicit `sqlite://…` **with** `--slurm` | **refused**, with an error |
+
+That last row matters: nothing used to cross-check the backend against
+`--slurm`, so a SQLite URL — typed, or inherited from
+`$PHENOTYPIC_TUNE_STORAGE_URL` — submitted straight into the corruption case
+above. It is now a hard error naming the two alternatives.
+
+### The journal backend (default)
+
+`journal.log` is Optuna's `JournalStorage`: an append-only log guarded by a
+symlink lock, which is atomic on NFS where the `O_EXCL` semantics a lock file
+would need are not. **Nothing to stand up** — no server, no `pgdata`, no
+`createdb`, no `~/.pgpass`. Just add `--slurm`.
+
+Because the path derives from `-o`, every run gets its own journal, so two
+concurrent studies cannot silently pool trials into one another (they otherwise
+share a hardcoded study name).
+
+Two limits to know:
+
+- **No stale-trial reclamation.** The journal backend has no heartbeat, so a
+  worker killed by walltime or OOM leaves its trial marked `RUNNING` forever.
+  This does not stall the budget — only `COMPLETE` and `PRUNED` trials count
+  against `--n-trials`, so the fleet still drains — but it leaves zombie rows
+  and a slightly optimistic in-flight count. Postgres reclaims those.
+- **The log only grows.** Optuna ships no compaction for the file backend, so a
+  long study's `journal.log` grows monotonically. There is no `VACUUM`.
+
+Where either matters, use Postgres.
+
+### Postgres (still supported)
+
+PhenoTypic is backend-agnostic: it takes a generic, user-provided storage URL
+and hands it to Optuna's RDB storage, so any reachable PostgreSQL server works.
+It remains the right choice for the two limits above, and for an existing
+shared server you already run. It is real operational weight for a single study
+— hence no longer the default.
+
+The rest of this section covers that setup; skip it if you are using the
+default journal backend.
 
 ## Standing up a Postgres server
 
@@ -113,10 +155,19 @@ the same result.
 ## Launching the fleet
 
 Add `--slurm` to submit a worker fleet instead of running in-process. Every
-worker opens the same study at the shared `--storage-url` (or
-`$PHENOTYPIC_TUNE_STORAGE_URL`) and drains the one trial budget set by
+worker opens the same study and drains the one trial budget set by
 `--n-trials`, so the budget is shared across the fleet rather than multiplied by
-the number of workers:
+the number of workers.
+
+With no storage flags at all, the study is the run's own `journal.log`:
+
+```bash
+python -m phenotypic.tune run spec.json -i ./plates -o ./out \
+    --strategy tpe --n-trials 200 --slurm
+```
+
+To share a Postgres server instead, name it — on the command line, or once in
+the environment:
 
 ```bash
 export PHENOTYPIC_TUNE_STORAGE_URL="postgresql+psycopg://$USER@<pg-host>:54399/tune_study"
@@ -124,11 +175,15 @@ python -m phenotypic.tune run spec.json -i ./plates -o ./out \
     --strategy tpe --n-trials 200 --slurm
 ```
 
-The submitting process pre-creates the study (and its RDB schema) before any
-worker starts. A cold Postgres database has no Optuna tables, so without this
-step the workers would race to create the schema and all but one would crash on
-a duplicate-key error. Materializing the study once up front means every worker
-finds an existing study and only reads and appends trials.
+Note that this variable applies to *every* subsequent run in the shell, and two
+runs on one server attach to the same study and pool their trials. Prefer
+`--storage-url` per run when you are tuning more than one pipeline.
+
+The submitting process pre-creates the study before any worker starts. A cold
+Postgres database has no Optuna tables, so without this step the workers would
+race to create the schema and all but one would crash on a duplicate-key error;
+the journal backend is materialized up front for the same reason. Either way
+every worker finds an existing study and only reads and appends trials.
 
 The workers reload the resolved spec written to
 `deliverables/tuning_spec.json`, not the raw input spec, so any `--strategy`,

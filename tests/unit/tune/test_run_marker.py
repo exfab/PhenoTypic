@@ -32,6 +32,7 @@ from phenotypic.tune.score import QCScorer
 from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._spec import Budget, TuningSpec
 from phenotypic.tune.strategy._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
+from phenotypic.tune._study._storage import journal_url_for_path
 from phenotypic.tune._tune_cli._run import _STUDY_NAME, run_tuning
 
 _OPTUNA = importlib.util.find_spec("optuna") is not None
@@ -157,7 +158,7 @@ def test_run_marker_written_before_slurm_branch(tmp_path, monkeypatch):
         out,
         strategy="tpe",
         n_trials=4,
-        storage_url=f"sqlite:///{out / 'explicit.db'}",
+        storage_url=journal_url_for_path(out / "explicit.log"),
         slurm=True,
         spec_path=spec_path,
         images_dir=tmp_path,
@@ -167,7 +168,7 @@ def test_run_marker_written_before_slurm_branch(tmp_path, monkeypatch):
     assert marker["strategy"] == "tpe"
     assert marker["n_trials"] == 4
     # The explicit URL wins the 3-way fallback.
-    assert marker["storage_url"] == f"sqlite:///{out / 'explicit.db'}"
+    assert marker["storage_url"] == journal_url_for_path(out / "explicit.log")
 
 
 def test_run_proceeds_when_marker_write_fails(tmp_path, monkeypatch, caplog):

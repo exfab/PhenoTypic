@@ -1,10 +1,15 @@
 """``OptunaStudyStore`` — the StudyStore Protocol backed by a live Optuna study.
 
 The Phase-2 alternative to the Phase-1 ``JournalStudyStore``: it persists trials
-in an Optuna study (``RDBStorage``, SQLite-WAL by default) that **resumes in
-place** — re-opening the study by name + storage URL restores every trial *and*
-the sampler state, so the engine skips the deterministic fast-forward replay
-(``is_resumable_in_place() → True``).
+in an Optuna study that **resumes in place** — re-opening the study by name +
+storage URL restores every trial *and* the sampler state, so the engine skips
+the deterministic fast-forward replay (``is_resumable_in_place() → True``).
+
+The storage object behind that study is chosen by scheme, not hardcoded: see
+:func:`~phenotypic.tune._study._storage.build_optuna_storage`. A local run
+defaults to SQLite-WAL under ``RDBStorage``; a ``--slurm`` fleet defaults to the
+``journal://`` file backend, which is safe on the shared filesystems SQLite-WAL
+is not.
 
 ``import optuna`` stays lazy inside the bodies here, preserving the package-wide
 lazy-import boundary. Our :class:`~phenotypic.tune._study_store.Trial` carries
@@ -31,6 +36,7 @@ from ..strategy._optuna_support import (
     study_objective_kwargs,
 )
 from .._study_store import Trial
+from ._storage import build_optuna_storage, is_sqlite_url
 
 if TYPE_CHECKING:  # pragma: no cover - typing only; never imports optuna at runtime
     import optuna  # type: ignore[import-not-found]
@@ -53,9 +59,12 @@ class OptunaStudyStore:
     """A :class:`StudyStore` over a persistent, resumable Optuna study.
 
     Args:
-        storage_url: The Optuna storage URL (``sqlite:///path/study.db`` or a
-            ``postgresql+psycopg://...`` URL). SQLite URLs are switched to WAL
-            journal mode for concurrent readers/writers.
+        storage_url: The Optuna storage URL — ``sqlite:///path/study.db``, a
+            ``postgresql+psycopg://...`` URL, or ``journal:///path/journal.log``
+            for the NFS-safe file backend a distributed run defaults to. The
+            scheme is dispatched by :func:`build_optuna_storage`; SQLite URLs
+            are additionally switched to WAL journal mode for concurrent
+            readers/writers (a no-op concept for the other two backends).
         study_name: The study name; re-opening with the same name + URL restores
             the persisted trials and sampler state.
         directions: Per-objective directions for a multi-objective study; ``None``
@@ -80,12 +89,12 @@ class OptunaStudyStore:
         self._multi_objective = is_multi_objective_directions(directions)
 
         if create:
-            storage = optuna.storages.RDBStorage(
-                url=storage_url,
+            storage = build_optuna_storage(
+                storage_url,
                 heartbeat_interval=_HEARTBEAT_INTERVAL_S,
                 grace_period=_GRACE_PERIOD_S,
             )
-            if storage_url.startswith("sqlite"):
+            if is_sqlite_url(storage_url):
                 self._enable_sqlite_wal(storage)
 
             # UX-only (correctness is the _STUDY_NAME bump): if a pre-cutover
@@ -103,8 +112,11 @@ class OptunaStudyStore:
             self._study = optuna.create_study(**create_kwargs)
             self._study.set_user_attr(_CONVENTION_ATTR, _CONVENTION_VALUE)
         else:
+            # Dispatch here too: `load_study` resolves a storage STRING through
+            # the same RDB-only resolver, so a `journal://` URL would die on
+            # `NoSuchModuleError` instead of loading. Hand it the built object.
             self._study = optuna.load_study(
-                storage=storage_url,
+                storage=build_optuna_storage(storage_url),
                 study_name=study_name,
             )
 

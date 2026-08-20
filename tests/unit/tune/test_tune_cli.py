@@ -22,6 +22,7 @@ from phenotypic.tune.score import (
 )
 from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._spec import Budget, TuningSpec
+from phenotypic.tune._study._storage import journal_url_for_path
 from phenotypic.tune._tune_cli._run import run_tuning
 
 
@@ -438,7 +439,7 @@ def test_cli_slurm_flag_uses_slurm_executor(tmp_path, monkeypatch):
         out,
         strategy="tpe",
         n_trials=4,
-        storage_url=f"sqlite:///{out / 'study.db'}",
+        storage_url=journal_url_for_path(out / "study.log"),
         slurm=True,
         spec_path=spec_path,
         images_dir=tmp_path,

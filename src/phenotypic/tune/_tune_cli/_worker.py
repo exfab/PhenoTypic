@@ -1,7 +1,8 @@
 """``python -m phenotypic.tune._tune_cli._worker`` — one distributed tune worker.
 
 A single SLURM array task runs this module: it opens the **shared** Optuna study
-by ``--study-name`` + ``--storage-url`` (SQLite-WAL or Postgres), binds a
+by ``--study-name`` + ``--storage-url`` (the ``journal://`` file backend a
+``--slurm`` run defaults to, or an explicit Postgres / SQLite-WAL URL), binds a
 :class:`~phenotypic.tune.TuningEngine` to that resumable
 :class:`~phenotypic.tune._study._optuna_store.OptunaStudyStore`, and runs the
 ask→evaluate→tell loop until the shared budget exhausts (optuna-integration §7).
@@ -31,9 +32,11 @@ def build_worker_store(
     """Open the shared, resumable Optuna study this worker contributes trials to.
 
     Args:
-        storage_url: The Optuna storage URL (``sqlite:///…`` or
-            ``postgresql+psycopg://…``). Every worker in the fleet passes the same
-            URL so they share one study.
+        storage_url: The Optuna storage URL (``journal:///…`` for the fleet
+            default, or an explicit ``postgresql+psycopg://…`` /
+            ``sqlite:///…``). Every worker in the fleet passes the same URL so
+            they share one study; the scheme is dispatched inside
+            :class:`OptunaStudyStore`.
         study_name: The shared study name (same across the fleet).
         directions: Per-objective directions inferred from the scorer (multi-
             objective) or ``None`` (single-objective). Must match what the

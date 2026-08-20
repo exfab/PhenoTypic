@@ -29,6 +29,7 @@ from phenotypic.tune import Budget, Categorical, Evaluator, Knob, SearchSpace
 from phenotypic.tune.score import Scorer
 from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._spec import TuningSpec
+from phenotypic.tune._study._storage import journal_url_for_path
 from phenotypic.tune._tune_cli import _run as run_mod
 from phenotypic.tune._tune_cli._run import run_tuning
 
@@ -184,7 +185,7 @@ def test_slurm_alone_still_submits(tmp_path, monkeypatch):
         slurm=True,
         spec_path=spec_path,
         images_dir=tmp_path / "imgs",
-        storage_url=f"sqlite:///{tmp_path / 'study.db'}",
+        storage_url=journal_url_for_path(tmp_path / "study.log"),
     )
 
     assert captured["submitted"] == [0, 1, 2, 3]

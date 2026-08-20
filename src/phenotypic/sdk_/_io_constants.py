@@ -538,6 +538,14 @@ TRIALS_PARQUET: Final[str] = "trials.parquet"
 #: either location (no migration).
 STUDY_DB: Final[str] = "study.db"
 
+#: The Optuna ``JournalStorage`` append-only log ``journal.log``, written inside
+#: the hidden tune cache (:data:`DIR_PHT_TUNE_CACHE`). The default storage for a
+#: ``--slurm`` fleet: SQLite-WAL is documented-unsafe across the network
+#: filesystems HPC clusters use, and a Postgres server is real operational
+#: weight for a single study. Addressed as a ``journal:///<path>`` storage URL.
+#: See :func:`tune_cache_journal_path`.
+STUDY_JOURNAL_LOG: Final[str] = "journal.log"
+
 #: The robust-eval held-out split assignment ``split.json`` written inside
 #: :data:`DIR_SPLITS`. A machine-state sidecar — it must survive a
 #: fresh-master rewrite and gate resume — so it lives in the hidden tune cache
@@ -1345,6 +1353,28 @@ def tune_cache_study_db_path(output_dir: Path) -> Path:
         ``<output_dir>/.pht-tune-cache/study.db``.
     """
     return tune_cache_dir(output_dir) / STUDY_DB
+
+
+def tune_cache_journal_path(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/journal.log`` (the Optuna journal).
+
+    The distributed-run storage: an append-only log a whole SLURM fleet writes,
+    safe on the shared filesystems where SQLite-WAL is not. Unlike
+    :func:`resolve_study_db_path` there is no legacy output-root location to
+    fall back to — the journal backend was introduced after the tune cache, so
+    this is the only place it has ever lived.
+
+    Because the path derives from ``output_dir``, every run gets its own journal
+    by construction, which is what keeps two concurrent studies from silently
+    pooling trials under the shared ``_STUDY_NAME``.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/.pht-tune-cache/journal.log``.
+    """
+    return tune_cache_dir(output_dir) / STUDY_JOURNAL_LOG
 
 
 def tune_cache_splits_dir(output_dir: Path) -> Path:
