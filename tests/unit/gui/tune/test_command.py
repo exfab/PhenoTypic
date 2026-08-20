@@ -181,7 +181,11 @@ def test_render_parses_through_the_real_cli_parser() -> None:
     carries every value. A future flag rename breaks this test.
     """
     from phenotypic.gui.tune._command import render_launch_command
-    from phenotypic.tune.__main__ import _build_parser, _normalize_argv
+    from phenotypic.tune.__main__ import (
+        _build_parser,
+        _normalize_argv,
+        _resolve_slurm_request,
+    )
 
     command = render_launch_command(
         "spec.json",
@@ -207,7 +211,10 @@ def test_render_parses_through_the_real_cli_parser() -> None:
     assert namespace.n_trials == 50
     assert namespace.storage_url == "sqlite:///out/study.db"
     assert namespace.screen is True
-    assert namespace.slurm is True
+    # ``--slurm`` is repeatable and takes an optional KEY=VALUE, so the raw
+    # namespace value is a list, not a bool. Assert the MEANING through the
+    # function the CLI itself uses: presence in any form requests submission.
+    assert _resolve_slurm_request(_build_parser(), namespace.slurm) == (True, {})
 
 
 def test_render_grid_command_parses_without_n_trials() -> None:
