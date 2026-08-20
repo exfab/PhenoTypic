@@ -512,6 +512,7 @@ def _open_store(
     storage_url: Optional[str],
     resume_path: Path,
     directions: Optional[list[str]] = None,
+    create: bool = True,
 ) -> StudyStore:
     """Select + open the study backend matching ``strategy``.
 
@@ -526,11 +527,27 @@ def _open_store(
         strategy: The resolved strategy config.
         output_dir: The run directory (for ``study.db`` placement).
         storage_url: An explicit Optuna storage URL; ``None`` resolves via the
-            3-way fallback (env var > local ``study.db``) in
-            :func:`_resolve_storage_url`.
+            **4-way** fallback in :func:`_resolve_storage_url` (explicit > the
+            spec's ``OptunaConfig.storage_url`` > ``$PHENOTYPIC_TUNE_STORAGE_URL``
+            > a run-local default). That resolver's run-local default is
+            ``slurm``-dependent — ``journal.log`` for a fleet, ``study.db``
+            locally — and this function never passes ``slurm=``, so a ``None``
+            here always resolves to the **local** ``study.db``. Every caller
+            that could be looking at a fleet's study (notably
+            :func:`~phenotypic.tune._tune_cli._finalize._open_finished_store`)
+            must therefore pass the URL the fleet recorded rather than relying
+            on the fallback.
         resume_path: The ``trials.parquet`` path the journal resumes from.
         directions: Per-objective ``["minimize"] * n`` for a multi-objective run
             (Optuna store only); ``None`` → single-objective.
+        create: Whether the Optuna store may create a missing study. ``True``
+            (the engine path) opens through ``create_study(load_if_exists=True)``;
+            ``False`` loads an existing study only, after
+            :func:`~phenotypic.tune._study._optuna_store.require_existing_backing_store`
+            refuses to materialize a missing file-backed store. A read-only
+            caller must pass ``False``: both backends create their file on open,
+            so ``True`` turns "read the study" into "write an empty one".
+            Ignored by the non-Optuna branch, which reads ``trials.parquet``.
 
     Returns:
         The opened store.
@@ -538,17 +555,23 @@ def _open_store(
     if _is_optuna_strategy(strategy):
         from .._study._optuna_store import OptunaStudyStore
 
-        # Resolve via the SAME 3-way fallback the run.json marker + SLURM fleet
-        # use (explicit > $PHENOTYPIC_TUNE_STORAGE_URL > local study.db), so the
-        # engine opens exactly the URL the marker records — no marker-vs-engine
-        # divergence for an env-var-driven local run.
+        # Resolve via the SAME 4-way fallback the run.json marker + SLURM fleet
+        # use (explicit > spec > $PHENOTYPIC_TUNE_STORAGE_URL > a run-local
+        # default), so the engine opens exactly the URL the marker records — no
+        # marker-vs-engine divergence for an env-var-driven local run. Note the
+        # run-local default here is always the LOCAL one (``study.db``): this
+        # call passes no ``slurm=``, so a caller looking at a fleet's study must
+        # supply the URL rather than rely on the fallback.
         url = _resolve_storage_url(
             storage_url,
             output_dir,
             spec_storage_url=getattr(strategy, "storage_url", None),
         )
         return OptunaStudyStore(
-            storage_url=url, study_name=_STUDY_NAME, directions=directions
+            storage_url=url,
+            study_name=_STUDY_NAME,
+            directions=directions,
+            create=create,
         )
     if resume_path.exists():
         return JournalStudyStore.from_parquet(resume_path)

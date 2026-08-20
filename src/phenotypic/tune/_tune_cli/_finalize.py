@@ -268,12 +268,31 @@ def _read_resolved_spec(output_dir: Path) -> TuningSpec:
 def _open_finished_store(
     spec: TuningSpec, output_dir: Path, marker: dict[str, Any]
 ) -> StudyStore:
-    """Reopen the study the fleet wrote into.
+    """Reopen — never create — the study the fleet wrote into.
 
     The marker's ``storage_url`` is the URL the workers actually opened — the
     one place the env-var and spec fallbacks were already collapsed — so it is
     preferred over re-deriving one here, where ``$PHENOTYPIC_TUNE_STORAGE_URL``
     may hold something different from what the run used.
+
+    ``create=False`` because finalizing is a **read**: it ranks trials someone
+    else's fleet already wrote. Both file backends create their store on open
+    (``JournalFileBackend`` ``open(path, "ab")``-s its log; SQLAlchemy creates a
+    missing SQLite file on connect), so the default ``create=True`` turned a
+    run directory whose journal was never written — or was moved, or whose
+    marker names a URL that no longer resolves — into a *fresh empty study*,
+    finalized without complaint into "the study recorded no successful trial".
+    That reads as a fleet that failed rather than as a study that is not there,
+    and it leaves a manufactured journal behind as evidence of a run that never
+    happened. ``create=False`` reaches
+    :func:`~phenotypic.tune._study._optuna_store.require_existing_backing_store`
+    instead, which raises ``FileNotFoundError`` naming the missing file.
+
+    Raises:
+        FileNotFoundError: When the marker's URL is file-backed and the file is
+            absent.
+        KeyError: When the store exists but holds no study under the run's
+            study name (Optuna's ``load_study``).
     """
     return _open_store(
         spec.strategy,
@@ -281,6 +300,7 @@ def _open_finished_store(
         storage_url=marker.get("storage_url"),
         resume_path=io.trials_parquet_path(output_dir),
         directions=objective_directions(spec.scorer),
+        create=False,
     )
 
 

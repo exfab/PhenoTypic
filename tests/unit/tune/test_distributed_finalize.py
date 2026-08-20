@@ -137,12 +137,24 @@ def _build_study(
     n_recorded: int,
     orphans: int = _N_ORPHANS,
     orphan_score=_ORPHAN_SCORE,
+    backend: str = "journal",
 ):
     """A distributed study directory holding ``n_recorded`` trials.
 
     Mirrors exactly what ``run_tuning --slurm`` leaves behind: the resolved spec
     echo and the ``run.json`` marker (both written above the submission branch),
     a shared study the fleet appended to, and NOTHING else.
+
+    That means **journal** storage, not SQLite. A ``--slurm`` run cannot leave a
+    SQLite study behind: ``_validate_slurm_request`` refuses an explicitly named
+    SQLite URL outright (WAL is documented-unsafe on the network filesystems a
+    fleet shares), and the fleet default is
+    ``journal:///…/journal.log``. A SQLite fixture here therefore exercised a
+    configuration the CLI forbids, and the one backend every distributed
+    finalize actually runs against had no coverage at all — a journal-specific
+    regression would have gone unnoticed with all 17 tests green. The local
+    lane is not dropped; it is one explicit test
+    (:func:`test_finalize_also_works_on_a_local_sqlite_study`).
 
     Args:
         tmp_path: The test's temp directory.
@@ -153,14 +165,25 @@ def _build_study(
         orphan_score: The cost stamped on each orphan, or ``None`` to stamp
             none at all (a worker killed mid-evaluation). See
             :data:`_ORPHAN_SCORE`.
+        backend: ``"journal"`` (the ``--slurm`` default, and the default here)
+            or ``"sqlite"`` (a local run). The marker's ``slurm`` flag follows,
+            because the two are not independent.
     """
     from phenotypic.tune._study._optuna_store import OptunaStudyStore
+    from phenotypic.tune._study._storage import journal_url_for_path
 
     out = tmp_path / "out"
     images_dir = _write_plates(tmp_path / "plates")
     io.deliverables_dir(out).mkdir(parents=True, exist_ok=True)
-    storage_url = f"sqlite:///{io.tune_cache_study_db_path(out)}"
     io.tune_cache_dir(out).mkdir(parents=True, exist_ok=True)
+    if backend == "journal":
+        storage_url = journal_url_for_path(
+            io.tune_cache_journal_path(out.absolute())
+        )
+    elif backend == "sqlite":
+        storage_url = f"sqlite:///{io.tune_cache_study_db_path(out)}"
+    else:  # pragma: no cover - a typo in a test, not a runtime state
+        raise ValueError(f"unknown backend: {backend!r}")
 
     spec = _resolved_spec(tmp_path, storage_url)
     io.tuning_spec_path(out).write_text(spec.model_dump_json(indent=2))
@@ -192,7 +215,7 @@ def _build_study(
         "strategy": "tpe",
         "n_trials": _BUDGET,
         "is_multi_objective": False,
-        "slurm": True,
+        "slurm": backend == "journal",
         "start_time": "2026-08-19T00:00:00+00:00",
     }, indent=2))
     return out
@@ -228,6 +251,61 @@ def test_finalize_writes_what_the_slurm_branch_skipped(finished_distributed_stud
     assert io.best_pipeline_path(out).is_file()
     assert result.best_params_written is True
     assert result.n_trials == _BUDGET + _N_ORPHANS
+
+
+def test_finalize_also_works_on_a_local_sqlite_study(tmp_path):
+    """The lane the shared fixture gave up when it moved to journal storage.
+
+    Everything above now runs on ``journal://`` because that is the only
+    backend a ``--slurm`` run can leave behind. SQLite is still reachable —
+    a local run defaults to it, and someone can finalize such a directory by
+    hand — and it is a different Optuna storage implementation, so keeping one
+    lane on it is what stops the move from silently trading one blind spot for
+    another.
+    """
+    from phenotypic.tune._tune_cli._finalize import finalize_distributed_study
+
+    out = _build_study(tmp_path, n_recorded=_BUDGET, backend="sqlite")
+    marker = json.loads(io.tune_cache_run_marker_path(out).read_text())
+    assert marker["storage_url"].startswith("sqlite:///"), "fixture precondition"
+
+    result = finalize_distributed_study(out)
+
+    assert result.best_params_written is True
+    assert io.best_params_path(out).is_file()
+
+
+def test_finalize_reads_the_study_and_never_creates_one(tmp_path):
+    """A missing study is a ``FileNotFoundError``, not a fresh empty one.
+
+    Finalizing is a read: it ranks trials a fleet already wrote. But both file
+    backends create their store *on open* — ``JournalFileBackend`` opens its
+    log ``"ab"``, SQLAlchemy creates a missing SQLite file on connect — so the
+    engine's ``create=True`` open turned a run directory whose journal was
+    never written (or was moved, or whose marker names a path that no longer
+    resolves) into a brand-new empty study, finalized without complaint into
+    "the study recorded no successful trial". That reads as a fleet that failed
+    rather than as a study that is not there, and it leaves a manufactured
+    journal behind as evidence of a run that never happened.
+
+    Deleting the journal from a study that was otherwise complete is the
+    cheapest way to reach that state, and it also pins the *absence* half: the
+    directory must be left exactly as it was found.
+    """
+    from phenotypic.tune._tune_cli._finalize import finalize_distributed_study
+
+    out = _build_study(tmp_path, n_recorded=_BUDGET)
+    journal = io.tune_cache_journal_path(out.absolute())
+    assert journal.is_file(), "fixture precondition"
+    journal.unlink()
+
+    with pytest.raises(FileNotFoundError, match=journal.name):
+        finalize_distributed_study(out)
+
+    assert not journal.exists(), (
+        "finalize re-created the study it claims only to read"
+    )
+    assert not io.best_params_path(out).is_file()
 
 
 def test_best_params_names_the_actual_winner(finished_distributed_study):

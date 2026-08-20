@@ -194,8 +194,11 @@ def test_open_store_uses_env_url_for_local_run(tmp_path, monkeypatch):
     opened = {}
 
     class _FakeOptunaStudyStore:
-        def __init__(self, *, storage_url, study_name, directions=None):
+        def __init__(
+            self, *, storage_url, study_name, directions=None, create=True
+        ):
             opened["url"] = storage_url
+            opened["create"] = create
 
     monkeypatch.setattr(store_mod, "OptunaStudyStore", _FakeOptunaStudyStore)
 
@@ -209,6 +212,10 @@ def test_open_store_uses_env_url_for_local_run(tmp_path, monkeypatch):
         directions=None,
     )
 
+    # The engine path is a CREATING open: it is the one caller allowed to
+    # bring a study into existence. (Finalize passes ``create=False``; see
+    # ``_open_finished_store``.)
+    assert opened["create"] is True
     # The engine opened the env URL (NOT sqlite:///…study.db).
     assert opened["url"] == env_url
     # …and the marker's resolver agrees — single source of truth.
@@ -227,8 +234,11 @@ def test_spec_storage_url_wins_over_env_without_cli_url(tmp_path, monkeypatch):
     opened = {}
 
     class _FakeOptunaStudyStore:
-        def __init__(self, *, storage_url, study_name, directions=None):
+        def __init__(
+            self, *, storage_url, study_name, directions=None, create=True
+        ):
             opened["url"] = storage_url
+            opened["create"] = create
             self.trials = []
 
         def terminal_trials(self):
@@ -284,8 +294,11 @@ def test_cli_storage_url_wins_over_spec_url(tmp_path, monkeypatch):
     opened = {}
 
     class _FakeOptunaStudyStore:
-        def __init__(self, *, storage_url, study_name, directions=None):
+        def __init__(
+            self, *, storage_url, study_name, directions=None, create=True
+        ):
             opened["url"] = storage_url
+            opened["create"] = create
             self.trials = []
 
         def terminal_trials(self):
