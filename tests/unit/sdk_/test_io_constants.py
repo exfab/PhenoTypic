@@ -1497,3 +1497,58 @@ def test_generation_owner_and_completion_paths_use_progress_dir(
     assert run_completion_marker_path(tmp_path) == (
         progress_dir(tmp_path) / RUN_COMPLETION_JSON
     )
+
+
+def test_zarr_store_path_is_the_only_suffix_joiner(tmp_path) -> None:
+    from phenotypic.sdk_ import dataset_zarr_dir, zarr_store_path
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
+    path = zarr_store_path(tmp_path, "plates", "plate_01")
+    assert path == dataset_zarr_dir(tmp_path, "plates") / f"plate_01{STORE_SUFFIX}"
+    assert path.parent.name == "zarr"
+
+
+def test_dataset_zarr_dir_sits_beside_the_other_result_dirs(tmp_path) -> None:
+    from phenotypic.sdk_ import dataset_results_dir, dataset_zarr_dir
+
+    assert dataset_zarr_dir(tmp_path, "ds") == dataset_results_dir(tmp_path, "ds") / "zarr"
+
+
+def test_store_stem_strips_the_whole_double_suffix(tmp_path) -> None:
+    """``Path.stem`` leaves ``img.ome``; a wrong stem propagates silently."""
+    from phenotypic.sdk_ import store_stem, zarr_store_path
+
+    store = zarr_store_path(tmp_path, "ds", "img")
+    assert store.stem == "img.ome"  # the trap this helper exists for
+    assert store_stem(store) == "img"
+
+
+def test_store_stem_round_trips_through_zarr_store_path(tmp_path) -> None:
+    """The composition must be the identity, or resume reprocesses forever."""
+    from phenotypic.sdk_ import store_stem, zarr_store_path
+
+    for stem in ("img", "plate.01", "a.ome", "img.h5", "img.ome.zarr"):
+        store = zarr_store_path(tmp_path, "ds", stem)
+        assert store_stem(store) == stem
+        assert zarr_store_path(tmp_path, "ds", store_stem(store)) == store
+
+
+def test_store_stem_raises_on_a_path_that_is_not_a_store(tmp_path) -> None:
+    """A silent ``.stem`` fallback is exactly the failure being prevented."""
+    from phenotypic.sdk_ import store_stem
+
+    with pytest.raises(ValueError, match="not an OME-Zarr store"):
+        store_stem(tmp_path / "img.h5")
+    with pytest.raises(ValueError, match="not an OME-Zarr store"):
+        store_stem(tmp_path / "img.zarr")
+    with pytest.raises(ValueError, match="not an OME-Zarr store"):
+        store_stem(tmp_path / "img.ome")
+
+
+def test_dir_zarr_is_the_directory_name_zarr_store_path_uses(tmp_path) -> None:
+    from phenotypic.sdk_ import DIR_ZARR, dataset_results_dir, dataset_zarr_dir
+
+    assert DIR_ZARR == "zarr"
+    assert dataset_zarr_dir(tmp_path, "ds") == (
+        dataset_results_dir(tmp_path, "ds") / DIR_ZARR
+    )

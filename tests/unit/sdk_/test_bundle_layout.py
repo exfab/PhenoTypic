@@ -128,3 +128,45 @@ def test_bundle_layout_qc_duckdb_accessor(tmp_path):
     _seed_deliverables(tmp_path / "deliverables")
     layout = BundleLayout.detect(tmp_path)
     assert layout.qc_duckdb == layout.qc_dir / "qc.duckdb"
+
+
+def test_store_path_resolves_a_directory_not_a_file(tmp_path):
+    """A store is a directory; an is_file() check would always return None."""
+    from phenotypic.sdk_ import BundleLayout, zarr_store_path
+
+    store = zarr_store_path(tmp_path, "ds", "img")
+    store.mkdir(parents=True)
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+    _seed_deliverables(tmp_path / "deliverables")
+    layout = BundleLayout.detect(tmp_path)
+    assert layout.store_path("ds", "img") == store
+
+
+def test_store_path_returns_none_when_absent(tmp_path):
+    from phenotypic.sdk_ import BundleLayout
+
+    _seed_deliverables(tmp_path / "deliverables")
+    layout = BundleLayout.detect(tmp_path)
+    assert layout.store_path("ds", "img") is None
+
+
+def test_store_path_returns_none_for_a_file_at_the_store_path(tmp_path):
+    """A stray file named like a store is not a store."""
+    from phenotypic.sdk_ import BundleLayout, zarr_store_path
+
+    store = zarr_store_path(tmp_path, "ds", "img")
+    store.parent.mkdir(parents=True)
+    store.write_bytes(b"")
+    _seed_deliverables(tmp_path / "deliverables")
+    layout = BundleLayout.detect(tmp_path)
+    assert layout.store_path("ds", "img") is None
+
+
+def test_store_path_is_none_for_a_standalone_bundle_with_no_output_root(tmp_path):
+    from phenotypic.sdk_ import BundleLayout
+
+    base = tmp_path / "bundle" / "deliverables"
+    _seed_deliverables(base)
+    layout = BundleLayout.detect(base)
+    assert layout.output_root is None
+    assert layout.store_path("ds", "img") is None

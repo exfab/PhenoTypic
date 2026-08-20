@@ -75,6 +75,7 @@ from ._io_constants import (
     DIR_RESULTS,
     DIR_SLURM_SCRIPTS,
     DIR_SPLITS,
+    DIR_ZARR,
     FAILURES_JSONL,
     TERMINAL_FAILURES_JSONL,
     GENERALIZATION_JSON,
@@ -142,6 +143,7 @@ from ._io_constants import (
     dataset_measurements_dir,
     dataset_overlays_dir,
     dataset_results_dir,
+    dataset_zarr_dir,
     overlays_dir,
     plots_dir,
     default_output_dir_name,
@@ -164,6 +166,7 @@ from ._io_constants import (
     has_config_suffix,
     job_metadata_path,
     load_image_from_hdf,
+    load_image_from_store,
     load_master_measurements,
     logs_dir,
     manifest_json_path,
@@ -223,6 +226,7 @@ from ._io_constants import (
     shard_parquet_filename,
     slurm_scripts_dir,
     source_cache_key,
+    store_stem,
     task_status_filename,
     task_status_path,
     trials_parquet_path,
@@ -234,6 +238,7 @@ from ._io_constants import (
     tuning_spec_path,
     verified_parquet_path,
     validate_analysis_id,
+    zarr_store_path,
 )
 from ._pipeline_publication import pipeline_publication_lock
 from .funcs_ import is_binary_mask, timed_execution
@@ -423,6 +428,7 @@ __all__ = [
     "DIR_RESULTS",
     "DIR_SLURM_SCRIPTS",
     "DIR_SPLITS",
+    "DIR_ZARR",
     # Namespace classes for JSON keys + dispatch
     "ChunkManifestKey",
     "ChunkStateKey",
@@ -454,6 +460,7 @@ __all__ = [
     "dataset_measurements_dir",
     "dataset_overlays_dir",
     "dataset_results_dir",
+    "dataset_zarr_dir",
     "overlays_dir",
     "plots_dir",
     "curation_labels_parquet_path",
@@ -476,6 +483,7 @@ __all__ = [
     "has_config_suffix",
     "job_metadata_path",
     "load_image_from_hdf",
+    "load_image_from_store",
     "load_master_measurements",
     "logs_dir",
     "manifest_json_path",
@@ -536,6 +544,7 @@ __all__ = [
     "shard_parquet_filename",
     "slurm_scripts_dir",
     "source_cache_key",
+    "store_stem",
     "task_status_filename",
     "task_status_path",
     "trials_parquet_path",
@@ -547,4 +556,5 @@ __all__ = [
     "tuning_spec_path",
     "verified_parquet_path",
     "validate_analysis_id",
+    "zarr_store_path",
 ]

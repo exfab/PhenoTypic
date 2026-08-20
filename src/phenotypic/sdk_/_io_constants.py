@@ -655,6 +655,9 @@ DIR_LOGS: Final[str] = "logs"
 #: HDF5 image-state subdirectory: ``<output>/results/<ds>/hdf/``.
 DIR_HDF: Final[str] = "hdf"
 
+#: OME-Zarr image-state subdirectory: ``<output>/results/<ds>/zarr/``.
+DIR_ZARR: Final[str] = "zarr"
+
 #: Overlay PNG subdirectory: ``<output>/deliverables/overlays/<ds>/``.
 DIR_OVERLAYS: Final[str] = "overlays"
 
@@ -1449,6 +1452,58 @@ def dataset_hdf_dir(output_dir: Path, dataset: str) -> Path:
     return dataset_results_dir(output_dir, dataset) / DIR_HDF
 
 
+def dataset_zarr_dir(output_dir: Path, dataset: str) -> Path:
+    """Return ``<output>/results/<dataset>/zarr/``."""
+    return dataset_results_dir(output_dir, dataset) / DIR_ZARR
+
+
+def zarr_store_path(output_dir: Path, dataset: str, stem: str) -> Path:
+    """Return ``<output>/results/<dataset>/zarr/<stem>.ome.zarr/``.
+
+    The single place ``.ome.zarr`` is joined to an image stem. Callers must
+    never hand-join the suffix; a grep gate in the test suite enforces this.
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        stem: Image filename without extension.
+
+    Returns:
+        The per-image store path. Existence is not checked.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
+    return dataset_zarr_dir(output_dir, dataset) / f"{stem}{STORE_SUFFIX}"
+
+
+def store_stem(store_path: Path) -> str:
+    """Return the image stem of an ``*.ome.zarr`` store directory.
+
+    ``Path.stem`` is WRONG here — it strips one suffix and leaves ``img.ome``,
+    which is a plausible-looking wrong name rather than an error: it propagates
+    into parquet filenames and completion markers, and
+    ``zarr_store_path(out, ds, "img.ome")`` then resolves to a store that does
+    not exist, so every image reprocesses forever.
+
+    Args:
+        store_path: A ``<stem>.ome.zarr`` directory.
+
+    Returns:
+        The bare stem, e.g. ``"img"`` for ``img.ome.zarr``.
+
+    Raises:
+        ValueError: If *store_path* does not end in ``.ome.zarr``. It raises
+            rather than falling back to ``.stem``, because a silent fallback is
+            exactly the failure being prevented.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
+    name = Path(store_path).name
+    if not name.endswith(STORE_SUFFIX):
+        raise ValueError(f"not an OME-Zarr store directory: {store_path}")
+    return name[: -len(STORE_SUFFIX)]
+
+
 def overlays_dir(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/overlays/`` — the overlay package root."""
     return deliverables_dir(output_dir) / DIR_OVERLAYS
@@ -1972,6 +2027,38 @@ def load_image_from_hdf(
     return image_cls.load_hdf5(hdf_path)
 
 
+def load_image_from_store(
+    store_path: Path,
+    *,
+    fallback: ImageTypeName = "Image",
+) -> "_Image | _GridImage":
+    """Read ``phenotypic.image_class`` from a store root and dispatch the loader.
+
+    Dispatches on ``image_class`` (``Image`` / ``GridImage``), which is the
+    loader-dispatch field. It is **not** ``Metadata_ImageType``, which is
+    user-visible schema metadata and may be ``GridSection`` on a plain
+    :class:`Image`.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+        fallback: Class name used when the block carries no ``image_class``.
+
+    Returns:
+        An :class:`Image` or :class:`GridImage` loaded from the store.
+    """
+    from phenotypic import (
+        GridImage,
+        Image,
+    )  # lazy: avoids circular import at module load
+    from phenotypic.sdk_.constants_ import IMAGE_TYPES
+    from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
+
+    block = read_phenotypic_attributes(store_path)
+    class_name = block.get(PhenotypicAttr.IMAGE_CLASS, fallback)
+    image_cls = GridImage if class_name == IMAGE_TYPES.GRID.value else Image
+    return image_cls.load_zarr(store_path)
+
+
 # ---------------------------------------------------------------------------
 # BundleLayout — resolved on-disk topology value object
 # ---------------------------------------------------------------------------
@@ -2074,6 +2161,24 @@ class BundleLayout:
             return None
         candidate = dataset_hdf_dir(self.output_root, dataset) / f"{stem}.h5"
         return candidate if candidate.is_file() else None
+
+    def store_path(self, dataset: str, stem: str) -> Optional[Path]:
+        """Full-res per-image OME-Zarr store for ``(dataset, stem)``, or ``None``.
+
+        Args:
+            dataset: Dataset name (subdirectory under ``results/``).
+            stem: Image stem (filename without extension).
+
+        Returns:
+            Resolved store path if the **directory** exists, otherwise ``None``.
+            Note the ``is_dir`` check: a store is a directory, so the
+            ``is_file`` test used by :meth:`hdf_path` would always return
+            ``None`` here.
+        """
+        if self.output_root is None:
+            return None
+        candidate = zarr_store_path(self.output_root, dataset, stem)
+        return candidate if candidate.is_dir() else None
 
     # -- deliverables-anchored artefacts ------------------------------------
 
