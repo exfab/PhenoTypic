@@ -154,10 +154,31 @@ def test_digest_is_the_file_bytes(tmp_path: Path) -> None:
         tmp_path / "b.images", ["# same set", "plate1/img001.tiff"]
     )
 
-    assert image_manifest_digest(first) == hashlib.sha256(
-        first.read_bytes()
-    ).hexdigest()
+    assert (
+        image_manifest_digest(first)
+        == f"sha256:{hashlib.sha256(first.read_bytes()).hexdigest()}"
+    )
     assert image_manifest_digest(first) != image_manifest_digest(second)
+
+
+def test_the_digest_is_spelled_the_way_the_plan_token_spells_one(
+    tmp_path: Path,
+) -> None:
+    """``sha256:``-prefixed, like every other digest sharing that record.
+
+    This value and ``subset_digest`` are fields of one plan-token record and
+    are string-compared across the tool boundary at ``deploy_start``. A record
+    that spells two of its own digests two ways is a mismatch waiting for the
+    first caller who copies the wrong one, and the failure would surface as
+    "the approved set changed" — the most alarming message the system has —
+    for a set that did not change. The prefix is asserted separately from the
+    hash so a future change to *either* half fails on its own terms.
+    """
+    manifest = _write_manifest(tmp_path / "a.images", ["plate1/img001.tiff"])
+    digest = image_manifest_digest(manifest)
+
+    assert digest.startswith("sha256:")
+    assert len(digest) == len("sha256:") + 64
 
 
 # ---------------------------------------------------------------------------
@@ -707,7 +728,7 @@ def test_the_recorded_digest_is_the_manifest_content_digest(
 
     assert (
         state.config["image_manifest_digest"]
-        == hashlib.sha256(manifest.read_bytes()).hexdigest()
+        == f"sha256:{hashlib.sha256(manifest.read_bytes()).hexdigest()}"
     )
     assert state.config["image_manifest_digest"] == image_manifest_digest(
         manifest

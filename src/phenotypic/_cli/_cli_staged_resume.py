@@ -62,7 +62,24 @@ class StagedResumePlan:
 
 
 def pipeline_content_digest(pipeline_path: Path) -> str:
-    """Return a SHA-256 digest of the serialized pipeline definition."""
+    """Return a SHA-256 digest of the serialized pipeline definition.
+
+    **Digest-format warning.** This is the one digest in the codebase that
+    returns a **bare** hexdigest; every other one — the ``*_fingerprint``
+    family, ``directory_digest``, ``subset_digest``, ``image_manifest_digest``
+    — carries a ``"sha256:"`` prefix. It keeps the bare spelling because it is
+    persisted as ``pipeline_sha256`` in resume state written by runs already on
+    disk, where a re-spelling would read as a changed pipeline and refuse an
+    otherwise valid continuation. It never appears in an MCP plan token. The
+    two forms are the same hash function over different inputs and **never
+    string-compare equal**; do not mix them in one field.
+
+    Args:
+        pipeline_path: Path to the serialized pipeline JSON.
+
+    Returns:
+        Lowercase hex SHA-256 digest, unprefixed.
+    """
     return hashlib.sha256(Path(pipeline_path).read_bytes()).hexdigest()
 
 

@@ -196,11 +196,24 @@ def image_manifest_digest(manifest_path: Path) -> str:
     — including one that happens to resolve to the same images — invalidates
     the approval rather than being quietly tolerated.
 
+    **Digest-format warning.** The returned value carries the ``"sha256:"``
+    prefix, matching :func:`~phenotypic.sdk_._io_constants.directory_digest`,
+    :func:`~phenotypic._services.staging.subset_digest`, and the
+    ``*_fingerprint`` family. That is not cosmetic here: this value and
+    ``subset_digest`` sit side by side as fields of one plan-token record and
+    are string-compared across the tool boundary at ``deploy_start``, so a
+    record spelling two of its digests two ways is a mismatch waiting for the
+    first caller who copies the wrong one. ``pipeline_content_digest``
+    (``_cli/_cli_staged_resume.py``) is the remaining **bare**-hex digest; it
+    keeps that spelling because it is persisted in resume state written by
+    runs already on disk, and it never appears in the token. The two forms are
+    the same hash over different inputs and **never string-compare equal**.
+
     Args:
         manifest_path: Path to the ``.images`` manifest.
 
     Returns:
-        Lowercase hex SHA-256 digest.
+        ``"sha256:<lowercase hex>"``.
 
     Raises:
         OSError: If the manifest cannot be read.
@@ -209,7 +222,7 @@ def image_manifest_digest(manifest_path: Path) -> str:
     with Path(manifest_path).open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
-    return digest.hexdigest()
+    return f"sha256:{digest.hexdigest()}"
 
 
 def read_image_manifest(manifest_path: Path) -> List[str]:

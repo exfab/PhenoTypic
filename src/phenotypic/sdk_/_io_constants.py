@@ -309,10 +309,17 @@ def directory_digest(root: Path, *, relative_to: Path | None = None) -> str:
     subdirectories that contain images.
 
     **Digest-format warning.** This returns the ``"sha256:<hex>"`` prefixed
-    form used by :func:`bytes_fingerprint` and :func:`file_fingerprint`.
-    ``pipeline_content_digest`` (``_cli/_cli_staged_resume.py``) returns a
-    **bare** hexdigest. The two are the same hash function over different
-    inputs and **never string-compare equal**; do not mix them in one field.
+    form used by :func:`bytes_fingerprint`, :func:`file_fingerprint`,
+    :func:`~phenotypic._services.staging.subset_digest`, and
+    :func:`~phenotypic._cli._cli_directory_scanner.image_manifest_digest` —
+    the last of which matters most, because it and ``subset_digest`` are
+    fields of the *same* plan-token record and get string-compared across the
+    tool boundary at ``deploy_start``. ``pipeline_content_digest``
+    (``_cli/_cli_staged_resume.py``) is the one remaining **bare** hexdigest;
+    it keeps that spelling because it is persisted in resume state written by
+    runs already on disk, and it never appears in the token. The two forms are
+    the same hash function over different inputs and **never string-compare
+    equal**; do not mix them in one field.
 
     Args:
         root: Directory to fingerprint. Walked recursively.
