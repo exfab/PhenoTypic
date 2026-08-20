@@ -507,6 +507,100 @@ class ImageGridHandler(Image):
                     dtype=h5py.string_dtype(encoding="utf-8"),
             )
 
+    # ------------------------------------------------------------------
+    # OME-Zarr round-trip — attributes.phenotypic.grid
+    # ------------------------------------------------------------------
+    def _build_store_attributes(self, *, series_names, levels, sections, work_id) -> dict:
+        """Add ``phenotypic.grid`` to the base attributes block.
+
+        ``nrows``/``ncols`` are deliberately **not** projected as NGFF ``plate``
+        metadata: HCS requires each well to be a separate image group, while
+        PhenoTypic's grid is a virtual partition of one array, so a 16x24 plate
+        would gain 384 groups for no reader benefit.
+
+        Args:
+            series_names: Series actually written, in canonical order.
+            levels: Resolved pyramid level count.
+            sections: The three persisted metadata sections.
+            work_id: CLI work id, or ``None``.
+
+        Returns:
+            The base block plus ``grid``.
+        """
+        from phenotypic.sdk_.ngff_ import PhenotypicAttr
+
+        block = super()._build_store_attributes(
+                series_names=series_names,
+                levels=levels,
+                sections=sections,
+                work_id=work_id,
+        )
+        grid: dict = {"nrows": int(self.nrows), "ncols": int(self.ncols)}
+        if self.grid_finder is not None:
+            # Lazy import to avoid import cycles.
+            from phenotypic._core._pipeline_parts._serializable_pipeline import (
+                SerializablePipeline,
+            )
+
+            grid["grid_finder"] = {
+                "class" : type(self.grid_finder).__name__,
+                "params": SerializablePipeline._serialize_single_operation(
+                        self.grid_finder
+                ),
+            }
+        block[PhenotypicAttr.GRID] = grid
+        return block
+
+    @classmethod
+    def _load_from_store(cls, path, block, **kwargs):
+        """Restore ``nrows``/``ncols``/``grid_finder`` before the base loader.
+
+        Uses ``setdefault`` so explicit caller kwargs take priority, mirroring
+        the HDF path. A deserialization failure warns and falls back to the
+        default finder rather than raising: grid state is recoverable, the
+        image is not worth losing over it.
+
+        Args:
+            path: Store root.
+            block: The ``attributes.phenotypic`` mapping.
+            **kwargs: Constructor overrides; these win over stored grid state.
+
+        Returns:
+            A GridImage.
+        """
+        from phenotypic.sdk_.ngff_ import PhenotypicAttr
+
+        grid = block.get(PhenotypicAttr.GRID) or {}
+        for key in ("nrows", "ncols"):
+            if key in grid:
+                try:
+                    kwargs.setdefault(key, int(grid[key]))
+                except (TypeError, ValueError):
+                    pass
+        payload = grid.get("grid_finder")
+        if payload:
+            from phenotypic._core._pipeline_parts._serializable_pipeline import (
+                SerializablePipeline,
+            )
+
+            try:
+                kwargs.setdefault(
+                        "grid_finder",
+                        SerializablePipeline._deserialize_operations(
+                                {"__gf__": payload}
+                        )["__gf__"],
+                )
+            except (KeyError, AttributeError, TypeError, ValueError) as exc:
+                warnings.warn(
+                        f"GridFinder deserialization failed "
+                        f"({type(exc).__name__}: {exc}); falling back to the "
+                        f"default AutoGridFinder. Grid configuration may be "
+                        f"incorrect.",
+                        UserWarning,
+                        stacklevel=2,
+                )
+        return super()._load_from_store(path, block, **kwargs)
+
     @classmethod
     def _load_from_hdf5_group(cls, group, **kwargs):
         """Load a GridImage from an HDF5 group.
