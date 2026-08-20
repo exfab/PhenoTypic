@@ -737,13 +737,16 @@ def test_stage3_partial_publication_keeps_sidecar_and_is_resumable(
     )
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipe_path))
     om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    # ``save_image_hdf`` survives until Phase 6, so patching it by name would
+    # still succeed -- it just patches a method Stage 3 no longer calls, the
+    # injected failure never happens, and this fails on DID NOT RAISE.
     monkeypatch.setattr(
         om,
-        "save_image_hdf",
+        "save_image_store",
         lambda *args, **kwargs: None,
     )
 
-    with pytest.raises(RuntimeError, match="Stage 3 HDF publication failed"):
+    with pytest.raises(RuntimeError, match="Stage 3"):
         stage3_merge_measure_core(
             plan,
             out,
