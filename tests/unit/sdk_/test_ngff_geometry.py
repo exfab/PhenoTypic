@@ -9,6 +9,8 @@ helpers agree with it, so the two can never drift.
 from __future__ import annotations
 
 import importlib.util
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -37,6 +39,29 @@ def _load_reference():
 REFERENCE = _load_reference()
 
 PLATES = [(2048, 2048), (4000, 3000), (6000, 4000), (512, 512), (300, 200), (513, 100)]
+
+
+def test_the_logic_validation_script_still_holds() -> None:
+    """Run the committed script's OWN claims, not just its formulas.
+
+    Everything else in this file imports `REFERENCE` and compares `ngff_.py`
+    against the same formula written twice -- useful, but it cannot catch a
+    claim that has drifted from reality, because both sides drift together.
+
+    The script's `check()` assertions are the independent part: the level-0
+    file counts (C4), the shard divisibility argument, and the C5 proof that
+    mean-downsampling a label map invents values nearest-neighbour does not.
+    Nothing ran them -- no pytest test, no CI job -- so they were documentation
+    that happened to be executable. CLAUDE.md requires the script to exit
+    non-zero on failure, which makes this a one-line gate.
+    """
+    result = subprocess.run(
+        [sys.executable, str(_SCRIPT)], capture_output=True, text=True, timeout=300
+    )
+    assert result.returncode == 0, (
+        f"{_SCRIPT.name} reports a broken claim:\n{result.stdout}\n{result.stderr}"
+    )
+    assert "All store-geometry claims hold." in result.stdout
 
 
 @pytest.mark.parametrize(("height", "width"), PLATES)
