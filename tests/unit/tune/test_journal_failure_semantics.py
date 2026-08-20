@@ -37,6 +37,10 @@ from types import SimpleNamespace
 
 import pytest
 
+from phenotypic.tune._study._storage import (
+    _repairing_journal_backend,
+    truncate_torn_journal_tail,
+)
 from phenotypic.tune.strategy._optuna_support import (
     _JOURNAL_TORN_LINE_MSG,
     _TRANSIENT_ERRNOS,
@@ -212,13 +216,16 @@ def test_a_transient_journal_append_failure_no_longer_kills_the_worker(
     became backend-aware this ``OSError`` propagated on its first occurrence and
     took the worker with it.
     """
-    from optuna.storages.journal import JournalFileBackend
-
     from phenotypic.tune._study._optuna_store import OptunaStudyStore
 
     store = OptunaStudyStore(storage_url=_journal_url(tmp_path), study_name=_STUDY)
 
-    real_append = JournalFileBackend.append_logs
+    # The class the storage actually instantiates — NOT the stock
+    # ``JournalFileBackend``. That base class no longer serves any append
+    # (`_repairing_journal_backend` overrides `append_logs`), so patching it
+    # would inject a failure nothing ever raises.
+    backend_cls = _repairing_journal_backend()
+    real_append = backend_cls.append_logs
     failures: list[int] = []
 
     def _flaky_append(self, logs):  # type: ignore[no-untyped-def]
@@ -227,13 +234,163 @@ def test_a_transient_journal_append_failure_no_longer_kills_the_worker(
             raise OSError(errno.EIO, "Input/output error")
         return real_append(self, logs)
 
-    monkeypatch.setattr(JournalFileBackend, "append_logs", _flaky_append)
+    monkeypatch.setattr(backend_cls, "append_logs", _flaky_append)
 
     trial = retry_on_transient_db_error(store.study.ask)
 
     assert failures == [1]  # the injected failure really fired
     assert trial.number == 0
     assert len(store.study.get_trials(deepcopy=False)) == 1
+
+
+# ---------------------------------------------------------------------------
+# BLOCK-1 — the retry must repair the tear it survives
+# ---------------------------------------------------------------------------
+
+
+def test_an_intact_log_is_left_alone(tmp_path: Path) -> None:
+    """The repair is a no-op on every log that is not torn."""
+    log = tmp_path / "journal.log"
+    log.write_bytes(b'{"a":1}\n{"b":2}\n')
+
+    assert truncate_torn_journal_tail(log) == 0
+    assert log.read_bytes() == b'{"a":1}\n{"b":2}\n'
+
+
+def test_a_missing_or_empty_log_is_a_no_op(tmp_path: Path) -> None:
+    """Nothing to repair, and never a reason for the append that follows to fail."""
+    assert truncate_torn_journal_tail(tmp_path / "absent.log") == 0
+
+    empty = tmp_path / "empty.log"
+    empty.write_bytes(b"")
+    assert truncate_torn_journal_tail(empty) == 0
+    assert empty.read_bytes() == b""
+
+
+def test_an_unterminated_tail_is_truncated_back_to_the_last_record(
+    tmp_path: Path,
+) -> None:
+    """Only the stump goes; every completed record before it survives byte-exact."""
+    log = tmp_path / "journal.log"
+    log.write_bytes(b'{"a":1}\n{"b":2}\n{"c":')
+
+    assert truncate_torn_journal_tail(log) == len(b'{"c":')
+    assert log.read_bytes() == b'{"a":1}\n{"b":2}\n'
+
+
+def test_a_log_that_is_one_unterminated_record_truncates_to_empty(
+    tmp_path: Path,
+) -> None:
+    """A first-ever append that tore leaves nothing worth keeping."""
+    log = tmp_path / "journal.log"
+    log.write_bytes(b'{"a":')
+
+    assert truncate_torn_journal_tail(log) == 5
+    assert log.read_bytes() == b""
+
+
+def test_a_stump_longer_than_the_scan_chunk_is_still_found(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The backwards scan loops; it does not give up after one chunk.
+
+    Pinned with a tiny chunk rather than a megabyte of fixture so the loop is
+    exercised cheaply — the parameter is the only thing that makes a long stump
+    different from a short one.
+    """
+    from phenotypic.tune._study import _storage
+
+    monkeypatch.setattr(_storage, "_TAIL_SCAN_CHUNK", 4)
+    log = tmp_path / "journal.log"
+    log.write_bytes(b'{"a":1}\n' + b"x" * 64)
+
+    assert truncate_torn_journal_tail(log) == 64
+    assert log.read_bytes() == b'{"a":1}\n'
+
+
+@requires_optuna
+def test_the_mirrored_append_still_matches_optunas() -> None:
+    """Pin our re-implementation of ``append_logs`` against the installed optuna.
+
+    ``_repairing_journal_backend`` cannot delegate to ``super().append_logs``:
+    the repair has to happen inside the *same* lock acquisition as the write,
+    and ``JournalFileSymlinkLock`` is not reentrant (re-acquiring would block
+    for the 30 s grace period and then steal the lock from itself). So the
+    write is mirrored, and a change to any step of the upstream original has to
+    fail here rather than leave our copy silently diverged.
+    """
+    from optuna.storages.journal import JournalFileBackend
+
+    source = inspect.getsource(JournalFileBackend.append_logs)
+    for fragment in (
+        "with get_lock_file(self._lock):",
+        'json.dumps(log, separators=(",", ":"))',
+        'open(self._file_path, "ab")',
+        ".flush()",
+        "os.fsync(",
+    ):
+        assert fragment in source, fragment
+
+
+@requires_optuna
+def test_a_short_write_retry_does_not_destroy_the_shared_study(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The BLOCK-1 regression: a *torn* append + the retry + one more record.
+
+    ``test_a_transient_journal_append_failure_no_longer_kills_the_worker`` raises
+    before the write, so it never produces the failure that actually matters: a
+    GPFS ``EIO`` on ``write``/``flush`` fails **after** some bytes have landed.
+    Optuna's reader skips a newline-less stump only while it is still the last
+    line, so the retry's re-append welds it to a healthy record — and from then
+    on every reader raises, including a fresh worker's ``create_study`` replay.
+    One dead Slurm task becomes a destroyed campaign.
+
+    RED without the repair: the reopen below raises ``JSONDecodeError``.
+    """
+    from optuna.storages.journal._file import get_lock_file
+
+    from phenotypic.tune._study._optuna_store import OptunaStudyStore
+
+    url = _journal_url(tmp_path)
+    store = OptunaStudyStore(storage_url=url, study_name=_STUDY)
+    for _ in range(3):
+        healthy = store.study.ask()
+        healthy.suggest_float("thresh", 0.0, 1.0)
+        store.study.tell(healthy, 0.5)
+
+    backend_cls = _repairing_journal_backend()
+    real_append = backend_cls.append_logs
+    failures: list[int] = []
+
+    def _short_write_then_eio(self, logs):  # type: ignore[no-untyped-def]
+        """Land half the record, then fail — what an ``EIO`` on write looks like."""
+        if failures:
+            return real_append(self, logs)
+        failures.append(1)
+        payload = (
+            "\n".join(json.dumps(log, separators=(",", ":")) for log in logs) + "\n"
+        ).encode("utf-8")
+        with get_lock_file(self._lock):
+            with open(self._file_path, "ab") as handle:
+                handle.write(payload[: max(1, len(payload) // 2)])
+                handle.flush()
+        raise OSError(errno.EIO, "Input/output error")
+
+    monkeypatch.setattr(backend_cls, "append_logs", _short_write_then_eio)
+
+    retry_on_transient_db_error(store.study.ask)
+    assert failures == [1], "the short write never fired"
+
+    # Anybody in the fleet writing one more record is what used to detonate it.
+    fresh = store.study.ask()
+    fresh.suggest_float("thresh", 0.0, 1.0)
+    store.study.tell(fresh, 0.25)
+
+    reopened = OptunaStudyStore(storage_url=url, study_name=_STUDY, create=False)
+    trials = reopened.study.get_trials(deepcopy=False)
+    assert len(trials) == 5, [t.state.name for t in trials]
+    assert [t.value for t in trials[:3]] == [0.5, 0.5, 0.5]
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +435,55 @@ def test_read_only_open_still_reaches_an_existing_journal_study(
     url = _journal_url(tmp_path)
     OptunaStudyStore(storage_url=url, study_name=_STUDY).study.ask()
 
+    reopened = OptunaStudyStore(storage_url=url, study_name=_STUDY, create=False)
+    assert len(reopened.study.get_trials(deepcopy=False)) == 1
+
+
+def test_a_relative_sqlite_url_resolves_the_way_sqlalchemy_reads_it() -> None:
+    """NB-1: ``sqlite:///out/study.db`` is ``out/study.db``, not ``/out/study.db``.
+
+    The third slash is the empty-authority separator; everything after it is the
+    database name. Taking ``urlsplit``'s ``path`` verbatim produced a
+    filesystem-root path, so ``require_existing_backing_store`` refused a study
+    that was right there — and ``_default_study_db_url`` does not absolutize, so
+    a plain ``-o out`` produces exactly this URL. The doctest codified the wrong
+    mapping and doctests are not collected, which is why this is a test.
+    """
+    from pathlib import Path
+
+    from phenotypic.tune._study._optuna_store import backing_file_for_url
+
+    assert backing_file_for_url("sqlite:///out/.pht-tune-cache/study.db") == Path(
+        "out/.pht-tune-cache/study.db"
+    )
+    # The four-slash absolute form and a Windows drive letter still round-trip.
+    assert backing_file_for_url("sqlite:////runs/out/study.db") == Path(
+        "/runs/out/study.db"
+    )
+    assert backing_file_for_url("sqlite:///C:/runs/study.db") == Path("C:/runs/study.db")
+
+
+@requires_optuna
+def test_the_read_only_guard_accepts_a_study_named_by_a_relative_url(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The end of NB-1: a real study at a relative URL must open read-only.
+
+    Before the fix this raised ``FileNotFoundError('/out/.../study.db')`` for a
+    study the run had just written — the Monitor then degraded permanently for
+    every local sqlite run started with a relative ``-o``.
+    """
+    from phenotypic.tune._study._optuna_store import (
+        OptunaStudyStore,
+        require_existing_backing_store,
+    )
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "out").mkdir()
+    url = "sqlite:///out/study.db"
+    OptunaStudyStore(storage_url=url, study_name=_STUDY).study.ask()
+
+    require_existing_backing_store(url)  # must not raise
     reopened = OptunaStudyStore(storage_url=url, study_name=_STUDY, create=False)
     assert len(reopened.study.get_trials(deepcopy=False)) == 1
 

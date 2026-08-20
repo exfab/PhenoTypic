@@ -355,6 +355,13 @@ def is_transient_storage_error(exc: BaseException) -> bool:
       unambiguously safe retry here — the log is append-only, so the second read
       sees the completed record.
 
+      That last arm is only honest because the writer repairs what it tore:
+      ``truncate_torn_journal_tail`` (``_study/_storage.py``) drops an
+      unterminated trailing record before the next append, so a torn line is
+      always the *last* line — the only position optuna's reader survives. A
+      torn line stranded mid-file is permanent, not transient, and no retry
+      count clears it.
+
     Lock *contention* never reaches this predicate at all:
     ``JournalFileSymlinkLock.acquire`` blocks with its own doubling backoff and,
     after a 30 s grace period, forcibly steals a lock nobody is refreshing. So
@@ -432,13 +439,36 @@ def retry_on_transient_db_error(
     reclaim what a dead worker left ``RUNNING`` (see ``build_optuna_storage``).
 
     **Retrying is not idempotent, and that is a deliberate trade.** A retried
-    ``ask`` can leave an extra ``RUNNING`` trial behind, and a retry after a
-    partial append can leave a torn record in the log. Both are survivable —
-    a non-terminal trial is excluded from winner selection and from the budget
-    gate, and optuna's reader tolerates a torn *trailing* line — whereas losing
-    the worker costs the rest of its Slurm walltime. The one case where the
-    duplicate would be worse than the crash (the ambiguous stolen-lock
-    ``RuntimeError``) is excluded by the predicate, not by this loop.
+    ``ask`` can leave an extra ``RUNNING`` trial behind, and a retried
+    ``tell``/user-attr stamp can duplicate a record whose bytes had already
+    landed. Both are survivable — a non-terminal trial is excluded from winner
+    selection and from the budget gate, and a duplicated *complete* record
+    replays cleanly — whereas losing the worker costs the rest of its Slurm
+    walltime. The one case where the duplicate would be worse than the crash
+    (the ambiguous stolen-lock ``RuntimeError``) is excluded by the predicate,
+    not by this loop.
+
+    **A partial append is not survivable on its own, and this loop is what
+    makes it dangerous.** The failure it exists to absorb — an ``EIO`` inside
+    ``JournalFileBackend.append_logs``' ``write``/``flush`` — is exactly the one
+    that can leave a newline-less stump on disk. Optuna's reader skips such a
+    stump only while it is still the file's *last* line; the re-append this loop
+    performs would weld it to a healthy record, and from then on every reader
+    (including ``create_study``'s own replay) raises for the whole fleet. So the
+    stump is repaired rather than tolerated: the journal backend
+    ``build_optuna_storage`` builds truncates an unterminated tail under its own
+    lock before every append
+    (:func:`~phenotypic.tune._study._storage.truncate_torn_journal_tail`).
+    Without that repair, this retry turns one dead Slurm task into a
+    destroyed campaign.
+
+    **What is wrapped, and what is not.** The call sites are ``ask``, the
+    user-attr stamp, and ``tell`` (``strategy/_optuna.py``) — the sites the RDB
+    era wrapped. ``is_exhausted()`` and ``OptunaPruningChannel.report`` /
+    ``.should_prune()`` are **not** wrapped, and on a pruned run they are the
+    majority of storage touches: a filesystem hiccup in any of them still kills
+    the worker on first occurrence. Journal-awareness widened *which exceptions*
+    are retried at the wrapped sites; it did not widen the set of sites.
 
     Args:
         func: The zero-argument storage operation to run (e.g.

@@ -70,12 +70,26 @@ Two limits to know:
   every Monitor poll re-reads the whole log — 0.07 s at 200 trials, 1.0 s at
   2,000 — and the per-trial write cost rises from ~30 ms to ~90 ms across that
   range, against a ~30-minute evaluation. Nothing needs doing at campaign scale.
+  (The Monitor's *tick* costs more than that replay figure, but not because of
+  the log: its fANOVA importance model is seconds of compute at campaign size.
+  It is computed off the poll's read budget, so the live view stays current and
+  only the importance chart lags a tick or two.)
 
   The size only becomes real if you **reuse one output directory across many
   campaigns**; past 64 MiB every open logs a warning saying so. The remedy is a
-  fresh `-o` directory (or Postgres), never editing the log: records are
-  addressed by byte offset, so rewriting the file shorter would leave every live
-  worker and Monitor reading from the middle of a record.
+  fresh `-o` directory (or Postgres) — **not** compaction or any other rewrite
+  of the log: records are addressed by byte offset, so making the file shorter
+  would leave every live worker and Monitor reading from the middle of a record.
+
+  The one exception, and it is automatic: if an append fails partway through
+  (a shared-filesystem `EIO`), it leaves a record with no terminating newline at
+  the end of the file. PhenoTypic truncates that stump — and only that stump —
+  under the journal's own lock before the next append. It was never acknowledged
+  to any writer and no reader holds an offset into it, so nothing is lost;
+  leaving it there is what is dangerous, because the next record written would
+  weld itself to it and every subsequent read of the study, by anyone, would
+  fail. You do not need to do anything about this, and you should still never
+  edit `journal.log` by hand.
 
 Where either matters, use Postgres.
 

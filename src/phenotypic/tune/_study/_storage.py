@@ -27,13 +27,24 @@ package-wide lazy-import boundary.
 """
 from __future__ import annotations
 
+import json
+import logging
+import os
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlsplit
 
+_logger = logging.getLogger(__name__)
+
 #: The pseudo-scheme naming a file-backed Optuna ``JournalStorage``. Not a
 #: SQLAlchemy dialect — :func:`build_optuna_storage` is what gives it meaning.
 JOURNAL_SCHEME: str = "journal"
+
+#: Bytes read per step when scanning the log's tail backwards for the last
+#: newline. A journal record is a few hundred bytes, so one chunk finds it in
+#: every real case; the loop exists only so a pathologically long record cannot
+#: make the repair miss.
+_TAIL_SCAN_CHUNK: int = 64 * 1024
 
 
 def is_journal_url(storage_url: Optional[str]) -> bool:
@@ -187,6 +198,132 @@ def journal_path_from_url(storage_url: str) -> Path:
     return Path(raw)
 
 
+def truncate_torn_journal_tail(journal_path: Path) -> int:
+    """Drop a newline-less trailing record from ``journal_path``; return its size.
+
+    The repair that makes the bounded append retry
+    (``retry_on_transient_db_error``) safe on a shared filesystem. A GPFS/NFS
+    ``EIO`` inside ``JournalFileBackend.append_logs`` can fail *after* some of
+    the record's bytes have landed, leaving the log ending mid-record with no
+    terminating newline. Optuna's reader tolerates that **only while the torn
+    record is still last** — ``read_logs`` stashes the decode error and raises it
+    on the *next* iteration — so the very next append joins the stump to a
+    healthy record, turning it into a newline-terminated line of invalid JSON in
+    the *middle* of the log. From then on every reader raises, including
+    ``create_study``/``load_study``'s own ``_sync_with_backend``, and the shared
+    study is unrecoverable for the whole fleet.
+
+    So the retry must repair before it re-appends, not reason that the stump is
+    harmless. Truncating back to the last newline is safe for the **trailing**
+    record and for no other:
+
+    * an unterminated trailing record was never acknowledged to anybody — the
+      ``append_logs`` that would have returned raised instead;
+    * ``read_logs`` deletes the offset entry for a bad line
+      (``del self._log_number_offset[log_number + 1]``), so no live reader holds
+      a byte offset into it — which is exactly why *general* compaction is still
+      impossible (see ``_JOURNAL_SIZE_WARN_BYTES``): every other record in the
+      file **is** addressed by offset;
+    * callers hold the journal lock across repair-then-append, so a tail without
+      a newline cannot be a write in progress. It is always a dead stump.
+
+    A log with no newline at all is one unterminated record, so it truncates to
+    empty.
+
+    Args:
+        journal_path: The append-only log to repair. A missing file is a no-op
+            (the append that follows will create it).
+
+    Returns:
+        The number of bytes discarded — ``0`` when the log was already intact.
+    """
+    try:
+        handle = open(journal_path, "r+b")
+    except FileNotFoundError:  # the append about to run re-creates it
+        return 0
+    with handle:
+        handle.seek(0, os.SEEK_END)
+        size = handle.tell()
+        if size == 0:
+            return 0
+        handle.seek(size - 1)
+        if handle.read(1) == b"\n":
+            return 0
+        position = size
+        while position > 0:
+            start = max(0, position - _TAIL_SCAN_CHUNK)
+            handle.seek(start)
+            chunk = handle.read(position - start)
+            index = chunk.rfind(b"\n")
+            if index != -1:
+                keep = start + index + 1
+                handle.truncate(keep)
+                return size - keep
+            position = start
+        handle.truncate(0)
+        return size
+
+
+#: Cache for :func:`_repairing_journal_backend`'s lazily-built subclass — the
+#: base class cannot be named until ``optuna`` is imported, and the import stays
+#: inside function bodies (the lazy-import boundary).
+_REPAIRING_BACKEND: Optional[type] = None
+
+
+def _repairing_journal_backend() -> type:
+    """The ``JournalFileBackend`` subclass that repairs a torn tail before it appends.
+
+    The repair belongs **inside** ``append_logs``' own lock acquisition, so it
+    must override the method rather than wrap it: the symlink lock is not
+    reentrant, and re-acquiring it would block for the 30 s grace period and then
+    forcibly steal the lock from itself. The append itself is therefore mirrored
+    from upstream rather than delegated to; the mirror is pinned against the
+    installed optuna by ``test_the_mirrored_append_still_matches_optunas``.
+
+    Placing it here, rather than in the retry wrapper, covers every writer of the
+    log with one edit — the retried ``ask``/``tell``, the pruning channel's
+    ``report``, and any worker that joins a fleet whose log a *dead* peer left
+    torn — and closes the window a repair outside the lock would leave open.
+
+    Returns:
+        The backend class :func:`build_optuna_storage` instantiates.
+    """
+    global _REPAIRING_BACKEND
+    if _REPAIRING_BACKEND is not None:
+        return _REPAIRING_BACKEND
+
+    from optuna.storages.journal import JournalFileBackend
+    from optuna.storages.journal._file import get_lock_file
+
+    class _RepairingJournalFileBackend(JournalFileBackend):  # type: ignore[misc, valid-type]
+        """``JournalFileBackend`` that heals a torn tail before every append."""
+
+        def append_logs(self, logs: list[dict[str, Any]]) -> None:
+            with get_lock_file(self._lock):
+                discarded = truncate_torn_journal_tail(Path(self._file_path))
+                if discarded:
+                    _logger.warning(
+                        "discarded a %d-byte unterminated record at the end of "
+                        "%s before appending; a previous append failed partway "
+                        "through and the trial it carried was never recorded.",
+                        discarded,
+                        self._file_path,
+                    )
+                payload = (
+                    "\n".join(
+                        json.dumps(log, separators=(",", ":")) for log in logs
+                    )
+                    + "\n"
+                )
+                with open(self._file_path, "ab") as handle:
+                    handle.write(payload.encode("utf-8"))
+                    handle.flush()
+                    os.fsync(handle.fileno())
+
+    _REPAIRING_BACKEND = _RepairingJournalFileBackend
+    return _REPAIRING_BACKEND
+
+
 def build_optuna_storage(
     storage_url: str,
     *,
@@ -251,20 +388,20 @@ def build_optuna_storage(
     import optuna
 
     if is_journal_url(storage_url):
-        from optuna.storages.journal import (
-            JournalFileBackend,
-            JournalFileSymlinkLock,
-        )
+        from optuna.storages.journal import JournalFileSymlinkLock
 
         journal_path = journal_path_from_url(storage_url)
         # The backend does not create parent directories; a `--slurm` submission
         # resolves this URL under `.pht-tune-cache/`, which may not exist yet.
         journal_path.parent.mkdir(parents=True, exist_ok=True)
         text_path = str(journal_path)
+        # `_repairing_journal_backend`, not the stock `JournalFileBackend`: a
+        # partially-landed append must be truncated back to the last newline
+        # before the next one, or the retry that survives it destroys the study
+        # for the whole fleet (see `truncate_torn_journal_tail`).
+        backend_cls = _repairing_journal_backend()
         return optuna.storages.JournalStorage(
-            JournalFileBackend(
-                text_path, lock_obj=JournalFileSymlinkLock(text_path)
-            )
+            backend_cls(text_path, lock_obj=JournalFileSymlinkLock(text_path))
         )
 
     return optuna.storages.RDBStorage(

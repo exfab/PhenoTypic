@@ -28,10 +28,11 @@ import importlib.util
 import hashlib
 import json
 import logging
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeout
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from dash import ctx, no_update
 
@@ -105,23 +106,37 @@ logger = logging.getLogger(__name__)
 #: The default view shown when no (or an unknown) sub-tab is active.
 _DEFAULT_VIEW: ids.SubTabName = "monitor"
 
-#: Hard cap on how long a live-study open may block the 3-second poll. An
-#: unreachable Postgres would otherwise stall the constructor for ~30 s
-#: (libpq's default connect timeout), starving every other poll. The bound is
-#: enforced at TWO levels (see :func:`read_study_for_monitor` and
-#: :func:`_ensure_connect_timeout`): a libpq ``connect_timeout`` merged into the
-#: storage URL so the constructor itself returns fast, AND a non-re-blocking
-#: worker-thread wait so even a slow connect can't freeze the poll.
-_LIVE_CONNECT_TIMEOUT_S: float = 3.0
-
-#: Hard cap on the WHOLE live read — open plus every store read the poll
+#: Hard cap on the WHOLE live read — the open plus every store read the poll
 #: renders (:func:`_snapshot_live_study`). Equal to the poll interval by
 #: intent: a read that cannot finish inside one tick must degrade to the
 #: parquet fallback rather than queue behind itself. This is the **only** bound
 #: the ``journal://`` backend has — a file URL carries no driver-level timeout,
 #: and its "local file" lives on GPFS, where a read can block on an
 #: unresponsive metadata server for as long as the mount allows.
+#:
+#: **Measured, so the bound is bigger than the work it bounds** (optuna 4.9.0,
+#: a real ``journal://`` study built through ask/tell, 12 knobs, 6 terms): the
+#: open costs 0.06 s at 200 trials and 0.13 s at 400, and ``trials`` / ``best``
+#: / ``pareto_front`` together cost under 0.01 s at either size. fANOVA is the
+#: one read that does not fit — 2 s at 200 trials, 5 s at 400, growing — which
+#: is why it is **not** inside this bound (see :data:`_IMPORTANCES`).
 _LIVE_READ_TIMEOUT_S: float = 3.0
+
+#: Hard cap on how long a live-study *connect* may take, nested inside
+#: :data:`_LIVE_READ_TIMEOUT_S`. An unreachable Postgres would otherwise stall
+#: the constructor for ~30 s (libpq's default), starving every other poll. The
+#: bound is enforced at TWO levels (see :func:`read_study_for_monitor` and
+#: :func:`_ensure_connect_timeout`): a libpq ``connect_timeout`` merged into the
+#: storage URL so the constructor itself returns fast, AND a non-re-blocking
+#: worker-thread wait so even a slow connect can't freeze the poll.
+#:
+#: It must be **strictly smaller** than the read bound it nests inside, or a
+#: slow connect can consume the entire read budget and leave nothing for the
+#: reads it was supposed to precede. 2 s is the smallest honest fraction: libpq
+#: clamps any ``connect_timeout`` below 2 s up to 2 s, so a smaller number here
+#: would document a bound the driver does not honor. The reads that follow cost
+#: ~0.01 s, so the remaining second is ample.
+_LIVE_CONNECT_TIMEOUT_S: float = 2.0
 
 #: Schemes (SQLAlchemy backend names) whose driver honors a libpq-style
 #: ``connect_timeout`` query param. SQLite is local (no network hang), so it is
@@ -142,10 +157,41 @@ _LIVE_OPEN_POOL: ThreadPoolExecutor = ThreadPoolExecutor(
     max_workers=1, thread_name_prefix=f"{THREAD_NAME_PREFIX}-tune-live-open"
 )
 
-#: The degrade note shown when a live read was attempted but the storage could
-#: not be reached in time — points the user at the usual culprits.
+#: A second single-worker pool, for the fANOVA importance model ONLY. It is
+#: separate from :data:`_LIVE_OPEN_POOL` because the two have opposite duty
+#: cycles: the poll's open+reads finish in ~0.1 s and must finish *this* tick,
+#: while fANOVA takes seconds and grows with the study. Sharing one worker made
+#: the queue grow without bound — jobs arrived every 3 s and drained every ~5 s
+#: at 400 trials, each abandoned job still running a full fANOVA — which is the
+#: failure mode :data:`_LIVE_OPEN_POOL`'s "a queued poll simply times out too"
+#: reasoning assumed away when the queued work was 70 ms.
+_LIVE_IMPORTANCE_POOL: ThreadPoolExecutor = ThreadPoolExecutor(
+    max_workers=1, thread_name_prefix=f"{THREAD_NAME_PREFIX}-tune-importances"
+)
+
+#: The degrade note shown when a *server-backed* live study could not be
+#: reached — points the user at the usual culprits.
 _NOTE_LIVE_UNREACHABLE: str = (
     "couldn't reach the live study -- check network / ~/.pgpass. "
+    "Showing the last finished trials."
+)
+
+#: The degrade note for a **file-backed** study (``journal://`` / ``sqlite:``).
+#: There is no network and no ``~/.pgpass`` in that configuration, so pointing
+#: at either would be a false lead: the study is a file in the run's own output
+#: directory, and the reasons a read of it fails are that the run has not
+#: written it yet, or that the shared filesystem holding it is not answering.
+_NOTE_LIVE_UNREADABLE: str = (
+    "couldn't read the live study file -- is the run still writing to this "
+    "output directory? Showing the last finished trials."
+)
+
+#: The degrade note for a **file-backed** live read that was reached but did not
+#: finish inside :data:`_LIVE_READ_TIMEOUT_S`. Distinct from both notes above:
+#: nothing is unreachable and nothing is missing, so blaming the network (or
+#: the output directory) would send the user after a problem that is not there.
+_NOTE_LIVE_TIMEOUT: str = (
+    "the live study read didn't finish in time. "
     "Showing the last finished trials."
 )
 
@@ -909,27 +955,168 @@ class _StudySnapshot:
         return self._importances
 
 
+class _ImportanceCache:
+    """The last-known fANOVA importances, refreshed off the poll's read budget.
+
+    fANOVA is the only expensive read the Monitor makes and the only optional
+    one. Measured on a real ``journal://`` study (optuna 4.9.0, 12 knobs,
+    6 terms): **2.0 s at 200 trials and 4.9 s at 400**, against a 3.0 s tick —
+    while every other read in the snapshot costs under 0.01 s. Left inside the
+    shared bound it did not merely make an occasional tick expensive, it made
+    the live view unreachable past ~250 trials: every tick timed out, and the
+    fallback it degraded to reads ``trials.parquet``, which is written only at
+    finalize — so mid-run the Monitor showed "No trials yet." for the whole
+    campaign.
+
+    So the model is computed **out of band** and read from here. Each snapshot
+    returns whatever was last computed and, when that value is stale (the trial
+    count moved) and nothing is already running, schedules one refresh on
+    :data:`_LIVE_IMPORTANCE_POOL`. At most one fANOVA is ever in flight, so the
+    backlog that a single shared worker accumulated cannot form. The figure
+    lags the trials table by a tick or two; the trials table, the objective
+    figure and the gap badge are never late again.
+
+    A refresh that returns ``None`` (a degenerate model — too few trials, no
+    native dimensions) is cached as ``None`` for that trial count, so a study
+    that cannot support fANOVA is asked once per new trial rather than once per
+    tick.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._key: Optional[tuple[str, str]] = None
+        self._value: Optional[dict[str, float]] = None
+        self._fresh_for: Optional[int] = None
+        self._pending: "Optional[Future[Optional[dict[str, float]]]]" = None
+        self._pending_for: Optional[int] = None
+
+    def read(
+        self,
+        key: tuple[str, str],
+        n_trials: int,
+        refresh: "Callable[[], Optional[dict[str, float]]]",
+    ) -> Optional[dict[str, float]]:
+        """Return the cached importances, scheduling a refresh when stale.
+
+        Args:
+            key: ``(storage_url, study_name)`` — the run this value belongs to.
+                A different key discards the cache rather than showing one run's
+                importances under another's name.
+            n_trials: The trial count the caller just read. The staleness key:
+                the model only changes when the study does.
+            refresh: A zero-argument callable returning the importances, run on
+                :data:`_LIVE_IMPORTANCE_POOL` when a refresh is scheduled.
+
+        Returns:
+            The most recent successfully computed importances for ``key``, or
+            ``None`` when none has been computed yet (or the model is
+            degenerate).
+        """
+        with self._lock:
+            if key != self._key:
+                # A different run: the old value describes a different study,
+                # and the in-flight job (if any) is computing for that one.
+                self._key = key
+                self._value = None
+                self._fresh_for = None
+                self._pending = None
+                self._pending_for = None
+            pending = self._pending
+            if pending is not None and pending.done():
+                self._value = _collect_importance_refresh(pending)
+                self._fresh_for = self._pending_for
+                self._pending = None
+                self._pending_for = None
+            if self._pending is None and self._fresh_for != n_trials:
+                self._pending = _LIVE_IMPORTANCE_POOL.submit(refresh)
+                self._pending_for = n_trials
+            return None if self._value is None else dict(self._value)
+
+    def wait_for_refresh(self, timeout: float) -> bool:
+        """Block until the in-flight refresh (if any) finishes; for tests.
+
+        The refresh is deliberately invisible to the poll — it lands on a later
+        tick — so a test that wants to assert on a *computed* value needs a
+        deterministic join rather than a sleep.
+
+        Args:
+            timeout: Seconds to wait.
+
+        Returns:
+            ``True`` when a refresh was in flight and has now finished (whether
+            it produced a model or raised), ``False`` when there was nothing to
+            wait for or ``timeout`` elapsed first.
+        """
+        with self._lock:
+            pending = self._pending
+        if pending is None:
+            return False
+        try:
+            pending.result(timeout=timeout)
+        except FutureTimeout:
+            return False  # still running: the caller's assertion is premature
+        except Exception:  # noqa: BLE001 - a failed refresh still *finished*
+            return True
+        return True
+
+    def clear(self) -> None:
+        """Forget everything cached (test isolation; never called by the poll)."""
+        with self._lock:
+            self._key = None
+            self._value = None
+            self._fresh_for = None
+            self._pending = None
+            self._pending_for = None
+
+
+def _collect_importance_refresh(
+    pending: "Future[Optional[dict[str, float]]]",
+) -> Optional[dict[str, float]]:
+    """Read a finished refresh future, degrading a failure to ``None``."""
+    try:
+        return pending.result()
+    except Exception:  # noqa: BLE001 - the figure degrades; the read does not
+        logger.warning("param_importances refresh failed", exc_info=True)
+        return None
+
+
+#: The process-wide importance cache. Module-level for the same reason
+#: :data:`_LIVE_OPEN_POOL` is: the value has to outlive one poll tick to be
+#: worth anything, and the Monitor is a singleton page in a single Dash app.
+_IMPORTANCES: _ImportanceCache = _ImportanceCache()
+
+
 def _snapshot_live_study(root: "TuneRunRoot") -> _StudySnapshot:
     """Open the live study and materialize everything the poll renders (B3).
 
     **Why the reads happen here, on the bounded worker.** Opening the store was
     already bounded; reading it was not. Every subsequent ``store.trials`` /
-    ``best()`` / ``param_importances()`` call re-reads the backing storage —
-    ``JournalStorage`` re-``stat``s and re-reads its append-only log on each
-    sync — and those calls used to run on the Dash callback thread with no
-    bound at all. The ``sqlite is local and never network-hangs`` reasoning that
-    justifies bounding only Postgres at the URL does not extend to the
-    ``journal://`` default: its "local file" sits on GPFS, where a read blocks
-    on the metadata server and an unresponsive one blocks it indefinitely. A
-    ``journal://`` URL also has nowhere to put a driver-level timeout, so the
-    worker-thread bound is the *only* one available to it.
+    ``best()`` call re-reads the backing storage — ``JournalStorage``
+    re-``stat``s and re-reads its append-only log on each sync — and those calls
+    used to run on the Dash callback thread with no bound at all. The ``sqlite
+    is local and never network-hangs`` reasoning that justifies bounding only
+    Postgres at the URL does not extend to the ``journal://`` default: its
+    "local file" sits on GPFS, where a read blocks on the metadata server and an
+    unresponsive one blocks it indefinitely. A ``journal://`` URL also has
+    nowhere to put a driver-level timeout, so the worker-thread bound is the
+    *only* one available to it.
 
-    Returning a detached snapshot puts open **and** read inside the one
-    ``future.result(timeout=...)`` the caller already abandons on expiry. The
-    cost is that an expensive fANOVA now spends the same budget: a study whose
-    importances take longer than a poll tick degrades that tick to the parquet
-    fallback. That is strictly better than what it replaced, which was freezing
-    the Dash worker for exactly as long.
+    Returning a detached snapshot puts the open **and** those reads inside the
+    one ``future.result(timeout=...)`` the caller already abandons on expiry.
+    Measured, they fit it with room to spare: 0.06 s + 0.007 s at 200 trials,
+    0.13 s + 0.008 s at 400, against a 3.0 s bound.
+
+    **fANOVA is deliberately not among them.** It costs 2 s at 200 trials and
+    5 s at 400 — more than the whole budget at ordinary campaign size — so
+    including it did not degrade one tick, it degraded every tick, permanently,
+    to a fallback that is empty until the run finishes. It is read from
+    :data:`_IMPORTANCES` instead, which serves the last computed model and
+    refreshes out of band. See :class:`_ImportanceCache`.
+
+    The refresh closure keeps *this* tick's ``store`` alive until it finishes.
+    That is not a shared handle: each tick opens its own, and the render thread
+    only ever sees the returned snapshot, so the importance worker is the sole
+    toucher of the store it captured.
 
     Args:
         root: The bound tune output handle.
@@ -938,20 +1125,28 @@ def _snapshot_live_study(root: "TuneRunRoot") -> _StudySnapshot:
         A snapshot with no live handle to the storage.
     """
     store = _open_live_study(root)
+    trials = list(store.trials)
     return _StudySnapshot(
-        trials=list(store.trials),
+        trials=trials,
         _best=store.best(),
         _pareto_front=list(store.pareto_front()),
-        _importances=_read_importances(store),
+        _importances=_IMPORTANCES.read(
+            (root.storage_url or "", root.study_name),
+            len(trials),
+            lambda: _read_importances(store),
+        ),
     )
 
 
 def _read_importances(store: "_ReadableStore") -> Optional[dict[str, float]]:
     """``store``'s importances, or ``None`` — an fANOVA failure is not a read failure.
 
-    Kept separate from the rest of the snapshot so a degenerate importance model
-    costs the importance figure only, exactly as it did when the poll called
-    ``param_importances`` itself, rather than degrading the whole live read.
+    The body :class:`_ImportanceCache` schedules on
+    :data:`_LIVE_IMPORTANCE_POOL`. Kept separate from the rest of the snapshot
+    so a degenerate importance model costs the importance figure only, exactly
+    as it did when the poll called ``param_importances`` itself, rather than
+    degrading the whole live read — and so a *slow* one costs it nothing at all,
+    which is the part that was only true of a failing model before.
     """
     getter = getattr(store, "param_importances", None)
     if getter is None:
@@ -1034,31 +1229,51 @@ def read_study_for_monitor(
 
 
 def _monitor_degrade_note(root: "TuneRunRoot", error: BaseException) -> str:
-    """Pick the Monitor degrade note for a failed live-study open.
+    """Pick the Monitor degrade note for a failed live-study read.
 
-    A pre-cutover run (its marker/spec still names the legacy ``"tune"`` study)
-    gets a friendly re-run message; everything else keeps the generic
-    "couldn't reach the live study" note. Reuses the Phase-2 legacy-study
-    detector (the same predicate the CLI startup guard uses) so the GUI and CLI
-    can't disagree about what "legacy" means.
+    The note has to name a cause the user can act on, and the causes are not
+    interchangeable. A pre-cutover run (its marker/spec still names the legacy
+    ``"tune"`` study) gets a friendly re-run message regardless of how the read
+    failed. A **file-backed** study (``journal://`` / ``sqlite:``) never
+    mentions the network or ``~/.pgpass`` — neither exists in that
+    configuration, and the ``--slurm`` default *is* that configuration — so it
+    gets either "didn't finish in time" (the read overran its bound) or
+    "couldn't read the file" (it failed outright). A server-backed URL keeps
+    the original note in both cases: there, an overrun is almost always libpq
+    still trying to connect, which is exactly what the credential hint is for.
+
+    Reuses the Phase-2 legacy-study detector (the same predicate the CLI startup
+    guard uses) and the shared URL classifiers, so the GUI and CLI can't
+    disagree about what "legacy" or "file-backed" means.
 
     Args:
         root: The bound tune output handle being read.
-        error: The open/connect exception that triggered the degrade. Retained
-            for intent + future detector hooks; the dispositive signal is the
-            recorded ``study_name``, so a legacy run gets the legacy note even
-            when the failure mode is a timeout.
+        error: The exception that triggered the degrade. A
+            :class:`concurrent.futures.TimeoutError` means the read overran its
+            bound; anything else means the open or the read itself failed.
 
     Returns:
-        The friendly legacy note for a pre-cutover run, else the generic
-        unreachable note.
+        The note to render beneath the fallback view.
     """
-    # Lazy import: the helper lives behind the tune extra; importing it
-    # function-local keeps _callbacks importable without optuna.
+    # Lazy imports: these live behind the tune extra; function-local keeps
+    # _callbacks importable without optuna (and this is only reached on the
+    # live path, which already checked the extra is present).
+    from phenotypic.tune._study._storage import is_journal_url, is_sqlite_url
     from phenotypic.tune.strategy._optuna_support import is_legacy_study_name
 
     if is_legacy_study_name(root.study_name):
+        # Dispositive regardless of the failure mode: the study cannot be
+        # opened under this name at all, so the timing is beside the point.
         return _NOTE_LEGACY_STUDY
+    url = root.storage_url or ""
+    if is_journal_url(url) or is_sqlite_url(url):
+        # A local file: an overrun is a slow read, an error is a missing or
+        # unreadable file. Neither is a network problem.
+        return _NOTE_LIVE_TIMEOUT if isinstance(error, FutureTimeout) else (
+            _NOTE_LIVE_UNREADABLE
+        )
+    # Server-backed. A timeout here is (almost always) libpq still trying to
+    # connect, so it stays the unreachable note the credential hint belongs to.
     return _NOTE_LIVE_UNREACHABLE
 
 

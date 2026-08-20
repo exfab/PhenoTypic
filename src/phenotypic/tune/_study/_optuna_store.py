@@ -74,6 +74,13 @@ _GRACE_PERIOD_S = 180
 #: a per-process ``_log_number_offset`` map, so rewriting the file shorter would
 #: leave every live worker and Monitor seeking into the middle of a record. The
 #: supported remedy is a fresh output directory (or Postgres).
+#:
+#: The single carve-out is the *trailing* record: an unterminated stump left by
+#: a failed append is truncated before the next one
+#: (:func:`~phenotypic.tune._study._storage.truncate_torn_journal_tail`). That is
+#: not compaction and does not weaken the argument above — ``read_logs`` deletes
+#: the offset entry for a bad line, so the stump is the one record in the file
+#: nobody addresses by offset.
 _JOURNAL_SIZE_WARN_BYTES: int = 64 * 1024 * 1024
 
 _logger = logging.getLogger(__name__)
@@ -95,6 +102,22 @@ def backing_file_for_url(storage_url: str) -> Optional["Path"]:
     that serves them, and neither Postgres nor SQLite's ``:memory:`` has a file
     to speak of.
 
+    **The SQLite path is SQLAlchemy's, not ``urlsplit``'s.** ``urlsplit`` reads
+    ``sqlite:///out/study.db`` as the absolute path ``/out/study.db``;
+    SQLAlchemy reads the same URL as the **relative** path ``out/study.db``,
+    because the third slash is the (empty) authority separator and everything
+    after it is the database name. Taking ``urlsplit``'s answer therefore
+    resolved a perfectly ordinary ``-o out`` run — ``_default_study_db_url``
+    does not absolutize — to a filesystem-root path that does not exist, so the
+    read-only guard refused a study that was right there. Dropping the leading
+    separator is SQLAlchemy's actual rule and also round-trips the four-slash
+    absolute form and a Windows drive letter.
+
+    A relative result stays relative: it resolves against the *reader's* cwd,
+    which for the GUI is not necessarily the cwd the run was launched from.
+    That ambiguity is the URL's, not this function's — ``journal://`` refuses
+    relative paths outright for the same reason (:func:`journal_url_for_path`).
+
     Args:
         storage_url: A resolved tune storage URL.
 
@@ -105,6 +128,8 @@ def backing_file_for_url(storage_url: str) -> Optional["Path"]:
         >>> backing_file_for_url("journal:///runs/out/journal.log").as_posix()
         '/runs/out/journal.log'
         >>> backing_file_for_url("sqlite:///runs/out/study.db").as_posix()
+        'runs/out/study.db'
+        >>> backing_file_for_url("sqlite:////runs/out/study.db").as_posix()
         '/runs/out/study.db'
         >>> backing_file_for_url("postgresql+psycopg://host/db") is None
         True
@@ -117,7 +142,9 @@ def backing_file_for_url(storage_url: str) -> Optional["Path"]:
     if is_journal_url(storage_url):
         return journal_path_from_url(storage_url)
     if is_sqlite_url(storage_url):
-        database = urlsplit(storage_url).path
+        # ``[1:]`` drops the authority separator, not a path component: see the
+        # docstring — this is SQLAlchemy's own reading of the database name.
+        database = urlsplit(storage_url).path[1:]
         if not database or database.endswith(":memory:"):
             return None
         return Path(database)
