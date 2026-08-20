@@ -126,6 +126,17 @@ class ExecutionConfig:
     retry_failures: bool
     skip_validation: bool
 
+    # ``--durable-writes`` / ``--no-durable-writes``. Deliberately TRI-state:
+    # ``None`` means "auto-detect from the SLURM environment" and must be
+    # carried as ``None`` all the way down to
+    # :func:`phenotypic.sdk_.ngff_.durable_writes_enabled`. Resolving it early
+    # would freeze the *submitting* process's environment into a value a
+    # worker on another node then re-uses (spec §3.7). It is deliberately NOT
+    # part of ``processing_configuration_digest``: durability is a storage
+    # guarantee, not a scientific parameter, so toggling it must not
+    # invalidate a run's work ids and restart finished images.
+    durable_writes: Optional[bool] = None
+
     # Lifecycle mode for staged SLURM orchestration. ``restart`` is distinct
     # from a fresh run because existing terminal artifacts must be regenerated.
     restart: bool = False

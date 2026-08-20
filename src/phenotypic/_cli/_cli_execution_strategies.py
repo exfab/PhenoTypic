@@ -1291,7 +1291,10 @@ def create_execution_strategy(
     Returns:
         ExecutionStrategy instance (Local or SLURM)
     """
-    prepare_store_run_environment(config.output_dir or output_manager.base_dir)
+    prepare_store_run_environment(
+        config.output_dir or output_manager.base_dir,
+        durable_writes=config.durable_writes,
+    )
 
     if config.is_slurm_mode():
         # SLURM: a forward GPU run becomes the staged 3-link afterany chain

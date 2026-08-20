@@ -72,6 +72,16 @@ Examples:
     # required:
     uv run python -m phenotypic --mode recompile --output <previous-output-dir>
 
+    # Skip the fsync before each store promote. Durability is auto-detected
+    # (on under SLURM, off locally) and the resolved mode is logged at run
+    # start; --durable-writes / --no-durable-writes overrides the detection.
+    # Reach for --no-durable-writes when a cluster job writes to fast local
+    # scratch and you accept losing stores to node loss or power failure --
+    # a walltime kill does NOT need fsync, since the kernel survives it.
+    # Not accepted with --mode recompile:
+    uv run python -m phenotypic --mode full --pipeline pipeline.json \
+        --input ./images -o ./results --no-durable-writes
+
 Outputs:
     Forward runs write a single OME-Zarr store per input image under
     `<output>/results/<dataset>/zarr/<stem>.ome.zarr/` (layers + objmap
@@ -241,6 +251,17 @@ logger = logging.getLogger(__name__)
 # Resolved at import time so Click `help=` strings and echo messages track the
 # schema enum rather than hard-coding the column name literal.
 _DATASET_COL: str = str(EXPERIMENT.DATASET)
+
+#: Modes that never write an image store from a pipeline, so a durability
+#: promise about that write would be a lie. ``recompile`` refreshes aggregate
+#: outputs from an existing run; ``migrate`` (Phase 5) converts legacy ``.h5``
+#: runs. ``migrate`` is listed ahead of its own arrival deliberately -- click's
+#: ``Choice`` rejects the spelling until then, so this set is the only place
+#: the contract can be recorded, and it will not need editing when the mode
+#: lands. Spec §3.7 / Phase 3 Task 3.7.
+DURABLE_WRITES_REJECTED_MODES: frozenset[str] = frozenset(
+    {"recompile", "migrate"}
+)
 
 
 def _snapshot_metadata_csv(
@@ -956,6 +977,16 @@ def _print_process_only_dry_run_plan(
     ),
 )
 @click.option(
+    "--durable-writes/--no-durable-writes",
+    "durable_writes",
+    default=None,
+    help=(
+        "fsync each image store before promoting it. Unset auto-detects: on "
+        "under SLURM, off locally. The resolved mode is logged at run start. "
+        "Not accepted with --mode recompile."
+    ),
+)
+@click.option(
     "--image-type",
     type=click.Choice(["Image", "GridImage"], case_sensitive=False),
     default="GridImage",
@@ -1154,6 +1185,7 @@ def phenotypic_cli(
     input_path: Optional[Path],
     output_dir: Path,
     mode: str,
+    durable_writes: Optional[bool],
     image_type: str,
     nrows: Optional[int],
     ncols: Optional[int],
@@ -1240,6 +1272,17 @@ def phenotypic_cli(
                 raise click.UsageError(
                     f"--dry-run cannot be combined with --mode {cli_mode}."
                 )
+        if durable_writes is not None and cli_mode in (
+            DURABLE_WRITES_REJECTED_MODES
+        ):
+            flag = (
+                "--durable-writes" if durable_writes else "--no-durable-writes"
+            )
+            raise click.UsageError(
+                f"{flag} is not accepted with --mode {cli_mode}; that mode "
+                "does not write image stores from a pipeline."
+            )
+
         if recompile_only and pipeline_json is not None:
             raise click.UsageError(
                 "--mode recompile does not accept --pipeline; it reloads the "
@@ -1503,6 +1546,7 @@ def phenotypic_cli(
             wait=wait,
             ext=ext,
             overlay_alpha=overlay_alpha,
+            durable_writes=durable_writes,
             include_dataset_column=include_dataset_column,
             dry_run=dry_run,
             sample=sample,
@@ -2160,13 +2204,16 @@ def phenotypic_cli(
             config.processing_generation
         )
 
-        # Create output manager
+        # Create output manager. This is the manager every local worker and
+        # the SLURM submission path writes stores through, so the run's
+        # durability mode is attached here rather than at each call site.
         output_manager = OutputManager.from_config(
             base_dir=output_dir,
             ext=config.ext,
             include_dataset_column=config.include_dataset_column,
             overlay_alpha=config.overlay_alpha,
             save_overlays=config.save_overlays,
+            durable_writes=config.durable_writes,
         )
         # Process-only runs export image layers mirroring the input tree and
         # write no results/ or deliverables/ structure; the worker creates its

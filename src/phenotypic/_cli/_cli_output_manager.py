@@ -1393,6 +1393,7 @@ class OutputManager:
         include_dataset_column: bool = True,
         overlay_alpha: float = 0.3,
         save_overlays: bool = True,
+        durable_writes: bool | None = None,
     ):
         """
         Initialize OutputManager.
@@ -1410,6 +1411,11 @@ class OutputManager:
                 ``overlays/`` directory per dataset and workers will save
                 a PNG overlay per image. Defaults to True; set False only
                 for measure-mode reruns that should not regenerate overlays.
+            durable_writes: ``--durable-writes`` / ``--no-durable-writes``, or
+                ``None`` (the default) to auto-detect SLURM. Carried here
+                rather than passed per call so that no ``save_image_store``
+                site can be silently inert: every write this manager performs
+                inherits the run's resolved durability (spec §3.7).
         """
         self.base_dir = Path(base_dir)
         self.save_layers = save_layers
@@ -1417,6 +1423,7 @@ class OutputManager:
         self.include_dataset_column = include_dataset_column
         self.overlay_alpha = overlay_alpha
         self.save_overlays = save_overlays
+        self.durable_writes = durable_writes
 
         # Results directory for dataset outputs (images, measurements, overlays)
         self.results_dir = self.base_dir / DIR_RESULTS
@@ -1432,6 +1439,7 @@ class OutputManager:
         include_dataset_column: bool = True,
         overlay_alpha: float = 0.3,
         save_overlays: bool = True,
+        durable_writes: bool | None = None,
     ) -> "OutputManager":
         """Create an OutputManager configured for HDF-centric forward runs.
 
@@ -1451,6 +1459,12 @@ class OutputManager:
                 dataset and save an overlay per image. Pass False only
                 for measure-mode reruns that should not regenerate
                 overlays.
+            durable_writes: ``--durable-writes`` / ``--no-durable-writes``, or
+                ``None`` to auto-detect SLURM. Every worker process that
+                builds its own manager must pass the value down from its own
+                command line -- an unset flag re-detects correctly on its own,
+                but ``--no-durable-writes`` exists only in the submitting
+                process (spec §3.7).
         """
         return cls(
             base_dir=base_dir,
@@ -1459,6 +1473,7 @@ class OutputManager:
             include_dataset_column=include_dataset_column,
             overlay_alpha=overlay_alpha,
             save_overlays=save_overlays,
+            durable_writes=durable_writes,
         )
 
     def create_structure(self, datasets: List[Dataset]) -> None:
@@ -1714,7 +1729,13 @@ class OutputManager:
             dataset_name: Dataset name.
             image_stem: Image filename without extension.
             work_id: CLI work id, written into ``attributes.phenotypic``.
-            durable: ``fsync`` before promoting; ``None`` auto-detects SLURM.
+            durable: Per-call override. ``None`` (the default) defers to
+                :attr:`durable_writes`, which is the run's
+                ``--durable-writes`` / ``--no-durable-writes`` value and is
+                itself ``None`` when the SLURM auto-detection should decide.
+                Deferring rather than re-defaulting to ``None`` here is what
+                makes the flag reach *every* write site: a caller that passes
+                nothing still gets the run's mode, so no site can be inert.
 
         Returns:
             Path where the store was promoted, or ``None`` if saving failed.
@@ -1732,7 +1753,9 @@ class OutputManager:
             saved = image.save2zarr(
                 final_path,
                 work_id=work_id,
-                durable=durable,
+                durable=(
+                    self.durable_writes if durable is None else durable
+                ),
             )
             logger.info("Saved OME-Zarr store for %s/%s", dataset_name, image_stem)
             return saved

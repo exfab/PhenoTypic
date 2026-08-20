@@ -364,6 +364,16 @@ def process_single_store_measure_core(
     help="Root of the input tree, used to compute the mirrored output path "
     "in process mode.",
 )
+@click.option(
+    "--durable-writes/--no-durable-writes",
+    "durable_writes",
+    default=None,
+    help=(
+        "fsync each image store before promoting it. Unset auto-detects SLURM "
+        "in THIS process, which is why the submitter only needs to emit the "
+        "flag when it was given explicitly."
+    ),
+)
 @click.option("--expected-work-id", default=None, hidden=True)
 @click.option("--expected-input-sha256", default=None, hidden=True)
 @click.option("--expected-pipeline-sha256", default=None, hidden=True)
@@ -386,6 +396,7 @@ def main(
     save_overlays: bool,
     layer: Optional[str],
     input_root: Optional[Path],
+    durable_writes: Optional[bool],
     expected_work_id: Optional[str],
     expected_input_sha256: Optional[str],
     expected_pipeline_sha256: Optional[str],
@@ -559,6 +570,7 @@ def main(
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=False,
+                durable_writes=durable_writes,
             )
 
             click.echo(f"Measuring {image.name} (store rerun)...")
@@ -584,6 +596,7 @@ def main(
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
+                durable_writes=durable_writes,
             )
 
             click.echo(f"Processing {image.name}...")

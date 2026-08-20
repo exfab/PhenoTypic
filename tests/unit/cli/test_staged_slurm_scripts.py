@@ -360,6 +360,10 @@ def test_strategy_reserves_two_max_submit_slots_for_controllers(
             "full_dataset_inventory": {},
             "nrows": None,
             "ncols": None,
+            # Read directly (not via getattr), as ExecutionConfig always
+            # carries it: the staged submitter must transport the tri-state
+            # down to the workers. See test_cli_durable_writes_transport.py.
+            "durable_writes": None,
         },
     )()
     strategy = object.__new__(StagedSlurmStrategy)

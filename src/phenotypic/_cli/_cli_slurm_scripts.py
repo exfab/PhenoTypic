@@ -131,6 +131,15 @@ def generate_image_processing_script(
     if config.include_dataset_column:
         cmd_parts.append("--include-dataset-column")
 
+    # Tri-state: emit only an explicit choice so an unset flag still lets the
+    # worker auto-detect SLURM on its own node (spec §3.7).
+    if config.durable_writes is not None:
+        cmd_parts.append(
+            "--durable-writes"
+            if config.durable_writes
+            else "--no-durable-writes"
+        )
+
     # Add event log
     cmd_parts.extend(["--event-log", shlex.quote(str(event_log.absolute()))])
 

@@ -130,8 +130,15 @@ def run_stage1_step(
     *,
     epoch: str | None = None,
     resume: bool = False,
+    durable_writes: bool | None = None,
 ) -> None:
-    """Preprocess one manifest image into its staged OME-Zarr store."""
+    """Preprocess one manifest image into its staged OME-Zarr store.
+
+    ``durable_writes`` is the transported ``--durable-writes`` /
+    ``--no-durable-writes`` tri-state. ``None`` lets this process auto-detect
+    SLURM; an explicit value only exists here because the submitter emitted it
+    (spec §3.7).
+    """
     item = _entry(manifest[index])
     store = zarr_store_path(output_dir, item.dataset, item.stem)
     if resume and (
@@ -151,7 +158,7 @@ def run_stage1_step(
         )
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     output_manager = OutputManager.from_config(
-        output_dir, ext, save_overlays=False
+        output_dir, ext, save_overlays=False, durable_writes=durable_writes
     )
     log = event_log_path(output_dir)
     try:
@@ -280,8 +287,14 @@ def run_stage3_step(
     resume: bool = False,
     markers_required: bool = True,
     overlay_alpha: float = 0.3,
+    durable_writes: bool | None = None,
 ) -> None:
-    """Replay one Stage-2 result, measure it, and publish per-image outputs."""
+    """Replay one Stage-2 result, measure it, and publish per-image outputs.
+
+    ``durable_writes`` is the transported tri-state; see
+    :func:`run_stage1_step`. Stage 3 re-promotes the store, so a lost value
+    here costs exactly what a lost value in Stage 1 costs.
+    """
     item = _entry(manifest[index])
     parquet = (
         dataset_measurements_dir(output_dir, item.dataset)
@@ -292,6 +305,7 @@ def run_stage3_step(
         ext,
         overlay_alpha=overlay_alpha,
         save_overlays=True,
+        durable_writes=durable_writes,
     )
     terminal = bool(
         item.work_id
@@ -445,6 +459,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--reuse-existing", action="store_true")
     parser.add_argument("--stage3-markers-required", action="store_true")
     parser.add_argument("--overlay-alpha", type=float, default=0.3)
+    # BooleanOptionalAction, not store_true: the flag is TRI-state and its
+    # default must stay ``None``. ``store_true`` would make an unset flag
+    # ``False`` and permanently disable fsync in every staged SLURM worker --
+    # the opposite of the spec's default on a cluster (spec §3.7).
+    parser.add_argument(
+        "--durable-writes",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
     args = parser.parse_args(argv)
 
     preload_custom_operation_modules()
@@ -452,7 +475,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     image_type: ImageTypeName = (
         "GridImage" if args.image_type == "GridImage" else "Image"
     )
-    common = {"epoch": args.epoch, "resume": args.reuse_existing}
+    common = {
+        "epoch": args.epoch,
+        "resume": args.reuse_existing,
+        "durable_writes": args.durable_writes,
+    }
     if args.stage == 1:
         run_stage1_step(
             args.pipeline,
@@ -464,6 +491,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             **common,
         )
     elif args.stage == 2:
+        # Stage 2 writes no store (it drops a token plus a retained raw array
+        # under .phenotypic/progress/), so durability does not apply to it.
+        stage2_common = {
+            k: v for k, v in common.items() if k != "durable_writes"
+        }
         run_stage2_shard(
             args.pipeline,
             args.output_dir,
@@ -472,7 +504,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.index,
             args.n_shards,
             markers_required=args.stage3_markers_required,
-            **common,
+            **stage2_common,
         )
     else:
         run_stage3_step(
