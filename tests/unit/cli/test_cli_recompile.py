@@ -21,6 +21,8 @@ from phenotypic._cli._cli_utils import resolve_local_worker_count
 from phenotypic.sdk_ import (
     MetadataMigrationResult,
     master_measurements_csv_path,
+    store_stem,
+    zarr_store_path,
 )
 from phenotypic.phenotypicCLI import (
     _handle_recompile,
@@ -330,13 +332,16 @@ class TestHandleRecompile:
         assert aggregate.call_args.kwargs["metadata_csv"] == metadata_csv
         assert metadata_csv.read_bytes() == original
 
-    def test_hdf_only_dataset_migrates_before_safe_empty_aggregation(
+    def test_store_only_dataset_migrates_before_safe_empty_aggregation(
         self, tmp_path: Path
     ) -> None:
         output_dir = tmp_path / "out"
-        hdf_dir = output_dir / "results" / "hdf-only" / "hdf"
-        hdf_dir.mkdir(parents=True)
-        (hdf_dir / "plateA.h5").write_bytes(b"migration authority")
+        # A dataset with image stores but no measurements: dataset
+        # discovery must still find it, or the migration it authorizes
+        # never runs.
+        store = zarr_store_path(output_dir, "store-only", "plateA")
+        store.mkdir(parents=True)
+        (store / "zarr.json").write_bytes(b"migration authority")
         compatible = _migration_result(status="compatible")
 
         with (
@@ -564,11 +569,13 @@ class TestRegenerateMissingOverlays:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         output_dir = tmp_path / "out"
-        hdf_paths = [
-            output_dir / "results" / "ds1" / "hdf" / f"img{i}.h5"
-            for i in range(10)
+        # ``_regenerate_missing_overlays`` now derives the stem with
+        # ``store_stem``, which RAISES on anything that is not a
+        # ``*.ome.zarr`` path -- so a `.h5` fixture no longer stands in.
+        store_paths = [
+            zarr_store_path(output_dir, "ds1", f"img{i}") for i in range(10)
         ]
-        datasets = [SimpleNamespace(name="ds1", images=hdf_paths)]
+        datasets = [SimpleNamespace(name="ds1", images=store_paths)]
         submitted = []
         max_workers_seen = []
 
@@ -587,9 +594,9 @@ class TestRegenerateMissingOverlays:
                 return None
 
             def submit(
-                self, _fn: object, dataset_name: str, hdf_path: Path
+                self, _fn: object, dataset_name: str, store_path: Path
             ) -> FakeFuture:
-                submitted.append((dataset_name, hdf_path))
+                submitted.append((dataset_name, store_path))
                 return FakeFuture()
 
         class FakeOutputManager:
@@ -607,7 +614,7 @@ class TestRegenerateMissingOverlays:
         monkeypatch.setenv("SLURM_CPUS_PER_TASK", "8")
         with (
             patch(
-                "phenotypic.phenotypicCLI.scan_hdf_outputs",
+                "phenotypic.phenotypicCLI.scan_store_outputs",
                 return_value=datasets,
             ),
             patch(
@@ -628,4 +635,9 @@ class TestRegenerateMissingOverlays:
             )
 
         assert max_workers_seen == [8]
-        assert len(submitted) == len(hdf_paths)
+        assert len(submitted) == len(store_paths)
+        # The bare stem, not `imgN.ome`: the overlay probe is what a
+        # `.stem` regression would silently corrupt.
+        assert sorted(store_stem(p) for _, p in submitted) == sorted(
+            f"img{i}" for i in range(10)
+        )

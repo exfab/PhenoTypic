@@ -1,17 +1,21 @@
 """
-Integration tests for the HDF-centric CLI output layout and measure-mode rerun.
+Integration tests for the store-centric CLI output layout and measure-mode rerun.
 
-These tests exercise the full CLI via :mod:`click.testing.CliRunner` to verify
-the behaviour promised by Phase 7 of the HDF-centric CLI plan:
+These tests exercise the full CLI via :mod:`click.testing.CliRunner`:
 
-* Forward runs write exactly one HDF per image under
-  ``results/<dataset>/hdf/<stem>.h5`` and a parquet measurements file under
-  ``results/<dataset>/measurements/<stem>.parquet`` — and nothing else
-  (no per-layer ``rgb/`` / ``gray/`` / ``detect_mat/`` / ``objmap/`` folders).
-* Forward runs always write a PNG overlay per image alongside the HDF.
+* Forward runs write exactly one OME-Zarr **store directory** per image under
+  ``results/<dataset>/zarr/<stem>.ome.zarr/`` and a parquet measurements file
+  under ``results/<dataset>/measurements/<stem>.parquet`` — and nothing else
+  (no per-layer ``rgb/`` / ``gray/`` / ``detect_mat/`` / ``objmap/`` folders,
+  and no ``hdf/``).
+* Forward runs always write a PNG overlay per image alongside the store.
 * Schema-3 outputs reject ``--mode measure`` before it can invalidate their
   marker-authorized per-image evidence.
 * ``--mode measure`` rejects incompatible flags with a clear error message.
+
+The store is a directory, so every existence check here is ``is_dir()`` and
+every path is resolved through ``zarr_store_path`` — the ``.ome.zarr`` double
+suffix is never hand-joined.
 
 All tests pass ``--force-local`` so SLURM is never dispatched.
 """
@@ -38,7 +42,9 @@ from phenotypic.sdk_ import (
     image_completion_marker_path,
     manifest_json_path,
     run_completion_marker_path,
+    zarr_store_path,
 )
+from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
 
 
 # ---------------------------------------------------------------------------
@@ -101,17 +107,17 @@ def plates_input_dir(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Forward run — HDF-only output layout
+# Forward run — store-only output layout
 # ---------------------------------------------------------------------------
 
 
-class TestForwardRunHdfLayout:
-    """A forward run must write HDF + parquet and nothing else."""
+class TestForwardRunStoreLayout:
+    """A forward run must write a store + parquet and nothing else."""
 
-    def test_forward_run_produces_hdf_only(
+    def test_forward_run_produces_store_only(
         self, runner, temp_pipeline, plates_input_dir, tmp_path
     ):
-        """Forward run writes hdf/ + measurements/; no per-layer folders."""
+        """Forward run writes zarr/ + measurements/; no per-layer folders."""
         output_dir = tmp_path / "out"
 
         result = runner.invoke(
@@ -135,13 +141,19 @@ class TestForwardRunHdfLayout:
         )
 
         dataset_dir = output_dir / "results" / "plates"
-        hdf_file = dataset_dir / "hdf" / "plate_001.h5"
+        store = zarr_store_path(output_dir, "plates", "plate_001")
         parquet_file = dataset_dir / "measurements" / "plate_001.parquet"
         overlay_file = output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
 
-        assert hdf_file.exists(), (
-            f"Expected HDF output at {hdf_file} (got contents: "
+        # A store is a DIRECTORY with a root `zarr.json`. `.exists()` alone
+        # would also pass for a stray file of the same name.
+        assert store.is_dir(), (
+            f"Expected an OME-Zarr store at {store} (got contents: "
             f"{list(dataset_dir.rglob('*')) if dataset_dir.exists() else 'no dataset dir'})"
+        )
+        assert (store / "zarr.json").is_file()
+        assert not list(output_dir.rglob("*.h5")), (
+            "A forward run must not write an HDF any more."
         )
         assert parquet_file.exists(), (
             f"Expected parquet measurements at {parquet_file}"
@@ -162,13 +174,13 @@ class TestForwardRunHdfLayout:
             )
 
         # Whitelist check: after a default forward run the dataset directory
-        # must contain exactly `hdf/`, `measurements/`, and `overlays/`. Any
-        # other subdir (e.g. a renamed or new per-layer folder) would regress
-        # the layout.
+        # must contain exactly `zarr/` and `measurements/`. Any other subdir
+        # — including a leftover empty `hdf/` — regresses the layout the
+        # generated README documents.
         actual_children = {p.name for p in dataset_dir.iterdir() if p.is_dir()}
-        assert actual_children == {"hdf", "measurements"}, (
+        assert actual_children == {"zarr", "measurements"}, (
             f"Unexpected dataset-level folders after forward run. "
-            f"Got {sorted(actual_children)}; expected {{'hdf', 'measurements'}} "
+            f"Got {sorted(actual_children)}; expected {{'zarr', 'measurements'}} "
             f"(overlays now live under deliverables/overlays/<ds>/)."
         )
 
@@ -201,9 +213,7 @@ class TestForwardRunHdfLayout:
         assert second.exit_code == 0, second.output
         assert "Continuing processing (1 images remaining)" in second.output
         assert old_marker.read_bytes() == old_marker_bytes
-        assert (
-            output_dir / "results" / "plates" / "hdf" / "plate_002.h5"
-        ).is_file()
+        assert zarr_store_path(output_dir, "plates", "plate_002").is_dir()
         manifest = json.loads(
             manifest_json_path(output_dir).read_text(encoding="utf-8")
         )
@@ -311,24 +321,26 @@ class TestMeasureRerun:
         )
 
         dataset_dir = output_dir / "results" / "plates"
-        hdf_path = dataset_dir / "hdf" / "plate_001.h5"
+        store_root = zarr_store_path(output_dir, "plates", "plate_001") / "zarr.json"
         parquet_path = dataset_dir / "measurements" / "plate_001.parquet"
         overlay_path = output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
 
-        assert hdf_path.exists()
+        assert store_root.is_file()
         assert parquet_path.exists()
         assert overlay_path.exists(), (
             "Forward run should always write overlay PNG."
         )
 
-        hdf_mtime_before = hdf_path.stat().st_mtime_ns
+        # The root `zarr.json` is written LAST by promote_store, so its
+        # mtime is the whole store's publication time.
+        store_mtime_before = store_root.stat().st_mtime_ns
         parquet_mtime_before = parquet_path.stat().st_mtime_ns
         overlay_mtime_before = overlay_path.stat().st_mtime_ns
 
         # Sleep so mtimes actually differ on filesystems that round to seconds.
         time.sleep(0.1)
 
-        # Measure rerun discovers HDFs under the existing output root.
+        # Measure rerun discovers image stores under the existing output root.
         measure = runner.invoke(
             phenotypic_cli,
             [
@@ -347,13 +359,13 @@ class TestMeasureRerun:
         assert measure.exit_code != 0
         assert "cannot mutate a marker-authorized incremental run" in measure.output
         assert parquet_path.stat().st_mtime_ns == parquet_mtime_before
-        assert hdf_path.stat().st_mtime_ns == hdf_mtime_before
+        assert store_root.stat().st_mtime_ns == store_mtime_before
         assert overlay_path.stat().st_mtime_ns == overlay_mtime_before
 
-    def test_measure_rerun_grid_image_hdf(
+    def test_measure_rerun_grid_image_store(
         self, runner, temp_pipeline, plates_input_dir, tmp_path
     ):
-        """GridImage HDFs round-trip through measure mode successfully."""
+        """A GridImage store carries the state measure mode dispatches on."""
         output_dir = tmp_path / "out_grid"
 
         forward = runner.invoke(
@@ -381,42 +393,33 @@ class TestMeasureRerun:
             f"GridImage forward run failed:\n{forward.output}"
         )
 
-        hdf_path = output_dir / "results" / "plates" / "hdf" / "plate_001.h5"
-        assert hdf_path.exists(), f"Expected HDF at {hdf_path}"
+        store = zarr_store_path(output_dir, "plates", "plate_001")
+        assert store.is_dir(), f"Expected an OME-Zarr store at {store}"
 
-        # Confirm the HDF is tagged as a GridImage so the worker's
-        # auto-dispatch routes to GridImage.load_hdf5.
-        import h5py
+        # ``image_class`` is what ``load_image_from_store`` dispatches on, so
+        # the measure worker rehydrates a GridImage rather than degrading to a
+        # plain Image. It is deliberately NOT ``Metadata_ImageType``.
+        block = read_phenotypic_attributes(store)
+        assert block[PhenotypicAttr.IMAGE_CLASS] == "GridImage", (
+            f"Expected image_class='GridImage' so the SLURM/local worker "
+            f"auto-selects GridImage.load_zarr, got "
+            f"{block.get(PhenotypicAttr.IMAGE_CLASS)!r}."
+        )
 
-        with h5py.File(hdf_path, "r") as f:
-            phenotypic_class = f.attrs.get("phenotypic_class")
-            # h5py returns bytes for string attrs on some platforms.
-            if isinstance(phenotypic_class, bytes):
-                phenotypic_class = phenotypic_class.decode("utf-8")
-            assert phenotypic_class == "GridImage", (
-                f"Expected phenotypic_class='GridImage' so the SLURM/local "
-                f"worker auto-selects GridImage.load_hdf5, got "
-                f"{phenotypic_class!r}."
-            )
+        # The grid state itself must round-trip, or grid info is silently lost
+        # on reload even though image_class is right.
+        from phenotypic import GridImage
 
-            # The /grid/ subgroup + grid_finder_json dataset are what
-            # actually restore grid state on load. Their absence would
-            # silently drop grid info even though phenotypic_class is set.
-            assert "grid" in f, (
-                "GridImage HDF is missing /grid/ subgroup; grid state "
-                "would be lost on reload."
-            )
-            grid_group = f["grid"]
-            assert "grid_finder_json" in grid_group, (
-                "/grid/grid_finder_json dataset missing; the grid finder "
-                "cannot be rehydrated on load."
-            )
-            assert "nrows" in grid_group.attrs, (
-                "/grid/ missing `nrows` attr."
-            )
-            assert "ncols" in grid_group.attrs, (
-                "/grid/ missing `ncols` attr."
-            )
+        reloaded = GridImage.load_zarr(store)
+        assert isinstance(reloaded, GridImage)
+        assert (reloaded.nrows, reloaded.ncols) == (8, 12)
+        assert reloaded.grid_finder is not None, (
+            "The grid finder was not rehydrated from the store."
+        )
+        assert (
+            reloaded.grid_finder.nrows,
+            reloaded.grid_finder.ncols,
+        ) == (8, 12)
 
         time.sleep(0.1)
 
@@ -548,9 +551,9 @@ class TestMeasureFlagValidation:
     def prepared_output_dir(
         self, runner, temp_pipeline, plates_input_dir, tmp_path
     ):
-        """Forward-run once so measure mode has HDFs to rediscover.
+        """Forward-run once so measure mode has stores to rediscover.
 
-        The incompatible-flag checks fire *before* HDF discovery, so most of
+        The incompatible-flag checks fire *before* store discovery, so most of
         these tests would work against an empty output dir — but the
         non-existent-output-dir case needs an actual directory to contrast
         against, and we'd rather share setup than duplicate it.

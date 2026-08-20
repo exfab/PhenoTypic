@@ -1672,6 +1672,56 @@ _cli_sidecar.py is deleted only after every caller moved."
 > run writes `img.ome.parquet`, publishes a marker keyed `"img.ome"`, and then looks for
 > `img.ome.ome.zarr`, finds nothing, and reprocesses every image on every run.
 
+> **Corrected by execution (C11, 2026-08-20).** Five of this task's claims were wrong; the
+> site list was both over- and under-counted. Each below was checked with `grep` plus a
+> read of the enclosing function, and the correction is what shipped.
+>
+> 1. **Three of the seven named `store_stem` sites are NOT store paths and must keep
+>    `Path.stem`.** `_cli_execution_strategies.py:164,168,174,185` are inside
+>    `_publish_local_image_success`, whose `image_path` comes from `dataset.images` on the
+>    **forward** local path — an input `.tif`. `_cli_staged_resume.py:165` is
+>    `classify_staged_image`, whose `image` is likewise an input image from
+>    `build_staged_resume_plan`. Measure mode never reaches either: it dispatches to
+>    `_process_single_local_measure`, which publishes no marker. `store_stem` **raises** on a
+>    non-store path, so following the plan here would have turned every local forward run
+>    into a hard `ValueError`.
+> 2. **Six store-path sites the plan does not name.** `phenotypicCLI.py`
+>    `_regenerate_missing_overlays` (the overlay-present probe, the overlay write, and the
+>    failure log line), `_recompile_dataset_image_names`, `_discover_recompile_dataset_names`,
+>    and `_cli_recompile_worker.py:_run_overlay_task`. All six consume `scan_store_outputs`
+>    or `results/<ds>/zarr/` directly. Net: **8 real sites, not 5** — 2 of the plan's 5 kept.
+> 3. **Both loaders needed porting, which the plan does not mention.**
+>    `process_single_hdf_measure_core` called `image_cls.load_hdf5`, and its two callers each
+>    hand-rolled an `h5py.File(...)` probe of `phenotypic_class`. All three are replaced by
+>    `load_image_from_store` (Phase 2), which owns that dispatch. The function is renamed
+>    `process_single_store_measure_core`; it has no test or plan references.
+> 4. **`_cli_process_single.py:640` had to move to `image_data_artifact` in this task, not
+>    Task 3.8.** Once `process_single_image_core` writes a store, that hard-coded
+>    `"hdf"` artifact names a file nothing writes, and `publish_image_success` resolves
+>    `strict=True` — so every standalone worker (i.e. every SLURM array task) would die with
+>    `FileNotFoundError` *after* completing its work. Same minimal closure C10 applied to its
+>    own four call sites; it consumes none of Task 3.8's `kind`-dispatch design.
+> 5. **`_discover_recompile_dataset_names` / `_recompile_dataset_image_names` keep their
+>    `DIR_HDF` branch** as a legacy last resort until Phase 6. Replacing it outright made an
+>    unconverted bundle undiscoverable to the recompile run that authorizes its metadata
+>    migration (`test_hdf_only_migration_uses_slurm_without_recompile_publication`).
+>
+> Two further corrections outside the `.stem` list:
+>
+> - **`tests/unit/cli/test_directory_scanner.py` does not exist.** The only scanner test file
+>   is `test_cli_directory_scanner_dotfiles.py`, which covers `scan_directory_structure`, not
+>   the output scan. The file was created, not extended.
+> - **`tests/integration/cli/test_cli_hdf_output.py` belongs to this task.** The plan's
+>   Task 3.6 file list omits it; [`README.md`](README.md)'s existing-test inventory assigns it
+>   to Phase 3 ("becomes `test_cli_store_output.py` wholesale"), and Task 3.6 is what breaks
+>   it. Ported here. Likewise `test_cli_v2.py`, and `test_cli_recompile{,_slurm}.py` /
+>   `test_cli_recompile_metadata_migration_slurm.py` — which that inventory assigns to
+>   **Phase 5**, but which this task breaks first.
+> - **`OutputManager.create_structure` provisioned `hdf/`.** Left alone it puts an empty
+>   `hdf/` in every output tree, contradicting the `zarr/` layout this task's README
+>   generator documents — and the forward-layout whitelist test asserts on exactly that set.
+>   Changed to `DIR_ZARR`.
+
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_directory_scanner.py` (`scan_hdf_outputs` line 173,
   glob at line 217)
@@ -1693,7 +1743,7 @@ _cli_sidecar.py is deleted only after every caller moved."
   readable by napari, QuPath, and Vizarr without a PhenoTypic install — that is a headline
   user-facing benefit of this change.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 def test_scan_finds_store_directories_not_files(tmp_path) -> None:
@@ -1731,19 +1781,19 @@ def test_scan_skips_part_and_trash_directories(tmp_path) -> None:
     assert len(scan_store_outputs(tmp_path)[0].images) == 1
 ```
 
-- [ ] **Step 2: Run to verify failure, then port each file**
+- [x] **Step 2: Run to verify failure, then port each file**
 
 ```bash
 uv run pytest tests/unit/cli/test_directory_scanner.py -v
 ```
 
-- [ ] **Step 3: Run the full CLI + tune suites**
+- [x] **Step 3: Run the full CLI + tune suites**
 
 ```bash
 uv run pytest tests/unit/cli tests/unit/tune tests/integration/cli -q
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/phenotypic/_cli src/phenotypic/tune tests/unit/cli

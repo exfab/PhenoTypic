@@ -55,6 +55,7 @@ from phenotypic._cli._cli_update_state import (
     append_completion_event,
 )
 from phenotypic.data import load_synth_yeast_plate
+from phenotypic.sdk_ import zarr_store_path
 from phenotypic.phenotypicCLI import _copy_pipeline_to_output, phenotypic_cli
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
@@ -406,8 +407,11 @@ class TestOutputManager:
         assert (temp_output_dir / "results" / "dataset1" / "measurements").exists()
         # overlays dir created only because save_overlays=True
         assert (temp_output_dir / "deliverables" / "overlays" / "dataset1").exists()
-        # hdf dir always created when requested in save_layers
-        assert (temp_output_dir / "results" / "dataset1" / "hdf").exists()
+        # The per-image image directory is `zarr/`: forward runs write one
+        # OME-Zarr store per image, and nothing writes an `.h5` any more,
+        # so provisioning `hdf/` would leave an empty directory behind.
+        assert (temp_output_dir / "results" / "dataset1" / "zarr").exists()
+        assert not (temp_output_dir / "results" / "dataset1" / "hdf").exists()
 
         # Old structure should NOT exist (datasets at root level)
         assert not (temp_output_dir / "dataset1").exists()
@@ -436,7 +440,7 @@ class TestOutputManager:
 
         manager.create_structure(datasets)
 
-        assert (temp_output_dir / "results" / "dataset1" / "hdf").exists()
+        assert (temp_output_dir / "results" / "dataset1" / "zarr").exists()
         assert not (
             temp_output_dir / "deliverables" / "overlays" / "dataset1"
         ).exists()
@@ -1338,10 +1342,15 @@ class TestEdgeCases:
             output_dir / "results" / "input" / "measurements" / "single.parquet"
         )
         overlay_file = output_dir / "deliverables" / "overlays" / "input" / "single.png"
-        hdf_file = output_dir / "results" / "input" / "hdf" / "single.h5"
+        # A forward run persists one OME-Zarr STORE per image -- a
+        # directory, not a file. Resolve it through zarr_store_path so the
+        # `.ome.zarr` double suffix is never hand-joined here.
+        store = zarr_store_path(output_dir, "input", "single")
 
         assert measurements_file.exists(), f"Expected {measurements_file} to exist"
-        assert hdf_file.exists(), f"Expected {hdf_file} to exist"
+        assert store.is_dir(), f"Expected {store} to exist"
+        assert (store / "zarr.json").is_file()
+        assert not list(output_dir.rglob("*.h5"))
         # Overlays are always written for forward runs.
         assert overlay_file.exists(), f"Expected {overlay_file} to exist"
 

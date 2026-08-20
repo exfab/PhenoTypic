@@ -21,7 +21,6 @@ from typing import Any, Dict, List, TYPE_CHECKING
 from uuid import uuid4
 
 import click
-import h5py  # type: ignore[import-untyped]
 from joblib import Parallel, delayed
 
 if TYPE_CHECKING:
@@ -63,7 +62,6 @@ from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 from ._cli_constants import MAX_TRACEBACK_LINES
 from phenotypic.sdk_ import (
     JobMetadataKey,
-    HdfAttr,
     dashboard_html_path,
     event_log_path,
     atomic_write_bytes,
@@ -72,7 +70,6 @@ from phenotypic.sdk_ import (
     progress_dir,
 )
 from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
-from phenotypic.sdk_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
 
@@ -289,7 +286,7 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         if measure_only:
             logger.info(
-                "Measure-only rerun: %d HDFs across %d datasets",
+                "Measure-only rerun: %d image stores across %d datasets",
                 len(all_tasks),
                 len(datasets),
             )
@@ -299,7 +296,9 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         console = Console()
         header = (
-            "Measuring HDFs (Rerun)" if measure_only else "Processing Images"
+            "Measuring Stores (Rerun)"
+            if measure_only
+            else "Processing Images"
         )
         console.print(f"\n[bold cyan]{header}[/bold cyan]")
         console.rule(style="cyan")
@@ -636,66 +635,45 @@ class LocalParallelStrategy(ExecutionStrategy):
         event_log: Path,
     ) -> tuple[str, str, bool, str]:
         """
-        Rerun ``pipeline.measure()`` on a single already-processed HDF file.
+        Rerun ``pipeline.measure()`` on one already-processed image store.
 
         Mirrors :meth:`_process_single_local` — same event-log helpers and
         same (name, success, error) return shape so the dashboard aggregator
         treats measure-mode results identically to forward-run results —
         but dispatches to
-        :func:`phenotypic._cli._cli_process_single.process_single_hdf_measure_core`
+        :func:`phenotypic._cli._cli_process_single.process_single_store_measure_core`
         instead of the detection path.  No state file is touched; the
         top-level CLI is responsible for state in forward mode only.
 
         Args:
             dataset: Dataset metadata (used for event logging).
-            image_path: Path to the ``.h5`` file to reload.
+            image_path: Path to the ``*.ome.zarr`` store to reload.
             output_dir: Base output directory (passed through; measure path
                 does not use it directly).
             event_log: Path to the processing event log.
 
         Returns:
-            Tuple of ``(dataset_name, hdf_filename, success, error_or_tb)``
+            Tuple of ``(dataset_name, store_name, success, error_or_tb)``
             matching the forward-path contract.
         """
         # Lazy-import the measure worker to match the forward-run pattern and
         # avoid any new top-level import cycle.
-        from ._cli_process_single import process_single_hdf_measure_core
+        from ._cli_process_single import process_single_store_measure_core
 
         append_event(event_log, dataset.name, image_path.name, "started")
 
         try:
-            # Detect the saved image class from the HDF root attr so
-            # GridImage files rehydrate with their grid state intact.
-            resolved_image_type: ImageTypeName = (
-                self.config.image_type  # type: ignore[assignment]
-            )
-            try:
-                with h5py.File(image_path, "r") as hf:
-                    saved_class = hf.attrs.get(HdfAttr.PHENOTYPIC_CLASS)
-                    if isinstance(saved_class, bytes):
-                        saved_class = saved_class.decode(
-                            "utf-8", errors="replace"
-                        )
-                    if saved_class == "GridImage":
-                        resolved_image_type = "GridImage"
-                    elif saved_class == "Image":
-                        resolved_image_type = "Image"
-            except (OSError, KeyError) as hdf_err:
-                logger.warning(
-                    "Could not read phenotypic_class from %s (%s: %s); "
-                    "falling back to configured image_type=%s",
-                    image_path,
-                    type(hdf_err).__name__,
-                    hdf_err,
-                    resolved_image_type,
-                )
-
-            process_single_hdf_measure_core(
+            # The class dispatch lives in ``load_image_from_store``, which the
+            # measure core calls: it reads ``phenotypic.image_class`` off the
+            # store root so a GridImage rehydrates with its grid state intact,
+            # and falls back to the configured ``--image-type`` only when the
+            # block carries none.
+            process_single_store_measure_core(
                 pipeline_path=self.config.pipeline_json,
-                hdf_path=image_path,
+                store_path=image_path,
                 output_dir=output_dir,
                 dataset_name=dataset.name,
-                image_type=resolved_image_type,
+                image_type=self.config.image_type,  # type: ignore[arg-type]
                 output_manager=self.output_manager,
             )
 
@@ -840,7 +818,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         total_images = sum(len(d.images) for d in datasets)
         if measure_only:
             logger.info(
-                "Measure-only rerun: %d HDFs across %d datasets",
+                "Measure-only rerun: %d image stores across %d datasets",
                 total_images,
                 len(datasets),
             )

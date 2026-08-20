@@ -19,6 +19,7 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
     progress_dir,
     slurm_scripts_dir,
+    zarr_store_path,
 )
 from phenotypic.schema import EXPERIMENT, IMAGE
 
@@ -316,9 +317,12 @@ def test_generate_recompile_scripts_write_manifest_and_worker_arrays(
         output_dir / "results" / "plate_b" / "measurements" / "img_b2.parquet",
         [3],
     )
-    hdf_path = output_dir / "results" / "plate_b" / "hdf" / "img_b1.h5"
-    hdf_path.parent.mkdir(parents=True)
-    hdf_path.write_text("stub", encoding="utf-8")
+    # Overlay discovery walks the per-image OME-Zarr stores. A store is a
+    # DIRECTORY, so this fixture has to be one -- a stub file would be
+    # skipped and the assertion below would pass for the wrong reason.
+    store_path = zarr_store_path(output_dir, "plate_b", "img_b1")
+    store_path.mkdir(parents=True)
+    (store_path / "zarr.json").write_text("{}", encoding="utf-8")
 
     tasks = build_recompile_tasks(
         output_dir=output_dir,
@@ -350,7 +354,7 @@ def test_generate_recompile_scripts_write_manifest_and_worker_arrays(
         {
             "task_type": TASK_OVERLAY,
             "dataset_name": "plate_b",
-            "hdf_path": str(hdf_path),
+            "store_path": str(store_path),
             "overlay_alpha": 0.42,
         }
     ]
@@ -502,9 +506,9 @@ def test_overlay_worker_records_save_failure_as_completed_nonfatal(
     initialize_slurm_lifecycle(
         output_dir, generation=generation, mode="recompile"
     )
-    hdf_path = output_dir / "results" / "plate_a" / "hdf" / "img1.h5"
-    hdf_path.parent.mkdir(parents=True)
-    hdf_path.write_text("stub", encoding="utf-8")
+    store_path = zarr_store_path(output_dir, "plate_a", "img1")
+    store_path.mkdir(parents=True)
+    (store_path / "zarr.json").write_text("{}", encoding="utf-8")
     manifest_path = (
         progress_dir(output_dir)
         / "recompile"
@@ -520,7 +524,7 @@ def test_overlay_worker_records_save_failure_as_completed_nonfatal(
                     {
                         "task_type": "overlay",
                         "dataset_name": "plate_a",
-                        "hdf_path": str(hdf_path),
+                        "store_path": str(store_path),
                         "overlay_alpha": 0.7,
                         "slurm_generation": generation,
                     }
@@ -530,23 +534,13 @@ def test_overlay_worker_records_save_failure_as_completed_nonfatal(
         encoding="utf-8",
     )
 
-    class FakeH5:
-        attrs = {"phenotypic_class": "Image"}
-
-        def __enter__(self) -> "FakeH5":
-            return self
-
-        def __exit__(self, *_exc: object) -> None:
-            return None
-
-    class FakeImage:
-        @classmethod
-        def load_hdf5(cls, _path: Path) -> "FakeImage":
-            return cls()
-
+    # The subject is the worker's failure handling, not store IO, so the
+    # loader is stubbed out entirely rather than a real store written.
     with (
-        patch("h5py.File", return_value=FakeH5()),
-        patch("phenotypic.Image", FakeImage),
+        patch(
+            "phenotypic._cli._cli_recompile_worker.load_image_from_store",
+            return_value=object(),
+        ),
         patch(
             "phenotypic._cli._cli_output_manager.OutputManager.save_overlay",
             side_effect=RuntimeError("png failed"),

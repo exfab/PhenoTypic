@@ -52,7 +52,7 @@ from phenotypic.sdk_ import (
     analysis_manifest_path,
     DIR_RESULTS,
     DIR_MEASUREMENTS,
-    DIR_HDF,
+    DIR_ZARR,
     PARQUET_WRITE_OPTIONS,
     EnvVar,
     atomic_write_with_writer,
@@ -1466,7 +1466,7 @@ class OutputManager:
         Create complete output directory structure.
 
         Always creates dataset-first structure with each dataset in its own
-        folder.  Forward runs provision ``measurements/``, ``hdf/``, and
+        folder.  Forward runs provision ``measurements/``, ``zarr/``, and
         ``overlays/`` for every dataset; ``overlays/`` is skipped only
         when :attr:`save_overlays` is False (e.g. measure-mode reruns).
 
@@ -1489,7 +1489,11 @@ class OutputManager:
             dataset_dir.mkdir(exist_ok=True)
 
             (dataset_dir / DIR_MEASUREMENTS).mkdir(exist_ok=True)
-            (dataset_dir / DIR_HDF).mkdir(exist_ok=True)
+            # ``zarr/``, not ``hdf/``: nothing writes an `.h5` on a
+            # forward run any more (Phase 3 Task 3.6), so provisioning
+            # ``hdf/`` would leave an empty directory in every output
+            # tree that the generated README does not document.
+            (dataset_dir / DIR_ZARR).mkdir(exist_ok=True)
             if self.save_overlays:
                 dataset_overlays_dir(self.base_dir, dataset.name).mkdir(
                     parents=True, exist_ok=True

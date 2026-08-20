@@ -55,7 +55,8 @@ Examples:
         --image-type GridImage --nrows 16 --ncols 24
 
     # Rerun measurements on a previous forward run without re-detecting
-    # (reads HDFs from <previous-output-dir>/results/*/hdf/, rewrites
+    # (reads image stores from <previous-output-dir>/results/*/zarr/,
+    # rewrites
     # parquet measurements + master CSV, skips detection, does NOT
     # regenerate overlays, does NOT touch processing state):
     uv run python -m phenotypic --mode measure --pipeline pipeline.json \
@@ -63,7 +64,8 @@ Examples:
 
     # Recompile a previous output directory: re-aggregate the master
     # measurements CSV, fill in any overlay PNGs missing under
-    # deliverables/overlays/<ds>/ by reloading their HDFs (threaded across
+    # deliverables/overlays/<ds>/ by reloading their image stores (threaded
+    # across
     # --njobs workers, alpha from --overlay-alpha), rebuild the manifest,
     # and regenerate the progress dashboard.
     # Existing overlays are left untouched.  Pipeline JSON is NOT
@@ -71,13 +73,15 @@ Examples:
     uv run python -m phenotypic --mode recompile --output <previous-output-dir>
 
 Outputs:
-    Forward runs write a single HDF5 per input image under
-    `<output>/results/<dataset>/hdf/<stem>.h5` (layers + metadata + grid
-    state, reloadable via `Image.load_hdf5` / `GridImage.load_hdf5`).
+    Forward runs write a single OME-Zarr store per input image under
+    `<output>/results/<dataset>/zarr/<stem>.ome.zarr/` (layers + objmap
+    label image + metadata + grid state, reloadable via `Image.load_zarr` /
+    `GridImage.load_zarr`, and openable directly in napari, QuPath, or
+    Vizarr without a PhenoTypic install).
     Overlay PNGs are always written under
     `<output>/deliverables/overlays/<dataset>/<stem>.png` for forward runs;
     `--mode measure` reruns reuse existing overlays and do not regenerate them.
-    `--mode recompile` fills in only-missing overlay PNGs from HDFs but
+    `--mode recompile` fills in only-missing overlay PNGs from the stores but
     leaves existing ones untouched.
 
 SLURM Execution (Autonomous HPC Cluster Processing):
@@ -144,7 +148,7 @@ from phenotypic._core._image_parts.detection_modes import available_modes
 from phenotypic._cli._cli_directory_scanner import (
     organize_by_dataset,
     scan_directory_structure,
-    scan_hdf_outputs,
+    scan_store_outputs,
 )
 from phenotypic._cli._cli_execution_strategies import (
     create_execution_strategy,
@@ -216,7 +220,8 @@ from phenotypic.sdk_ import (
     JobMetadataKey,
     dashboard_html_path,
     dataset_measurements_dir,
-    load_image_from_hdf,
+    load_image_from_store,
+    store_stem,
     clear_machine_state,
     atomic_write_bytes,
     atomic_write_json,
@@ -1041,10 +1046,10 @@ def _print_process_only_dry_run_plan(
     "--ext",
     default="tiff",
     show_default=True,
-    help="(deprecated for HDF output; still used for overlay PNG) "
+    help="(deprecated for store output; still used for overlay PNG) "
     "File extension for legacy per-layer outputs. Forward runs now "
-    "write a single .h5 per image; only overlay PNG rendering still "
-    "consults this value.",
+    "write a single OME-Zarr store per image; only overlay PNG rendering "
+    "still consults this value.",
 )
 @click.option(
     "--overlay-alpha",
@@ -1368,10 +1373,11 @@ def phenotypic_cli(
             sys.exit(0)
 
         # ---- Early validation for --mode measure (measure_only) --------
-        # Measure mode is a one-shot re-measurement run over HDFs already
-        # written by a previous forward run.  It is incompatible with any
-        # flag that implies a fresh detection pass or state mutation, and
-        # it uses <output>/results/*/hdf/ as its image source.
+        # Measure mode is a one-shot re-measurement run over the image
+        # stores already written by a previous forward run.  It is
+        # incompatible with any flag that implies a fresh detection pass or
+        # state mutation, and it uses <output>/results/*/zarr/ as its image
+        # source.
         if measure_only:
             # Reject incompatible flags first so the user gets a pointed
             # rejection ("--mode measure cannot be combined with --X")
@@ -1379,7 +1385,8 @@ def phenotypic_cli(
             if restart:
                 raise click.UsageError(
                     "--mode measure cannot be combined with --restart; "
-                    "--mode measure reuses existing HDFs and does not clear state."
+                    "--mode measure reuses existing image stores and does "
+                    "not clear state."
                 )
             if retry_failures:
                 raise click.UsageError(
@@ -1391,14 +1398,15 @@ def phenotypic_cli(
             if overwrite:
                 raise click.UsageError(
                     "--mode measure cannot be combined with --overwrite; "
-                    "--mode measure reruns measurements on existing HDFs and "
+                    "--mode measure reruns measurements on existing image "
+                    "stores and "
                     "must not delete output directory contents."
                 )
             if sample is not None:
                 raise click.UsageError(
                     "--mode measure cannot be combined with --sample; "
-                    "--mode measure operates on every HDF discovered under "
-                    "<output>/results/*/hdf/."
+                    "--mode measure operates on every image store "
+                    "discovered under <output>/results/*/zarr/."
                 )
 
             if pipeline_json is None:
@@ -1631,13 +1639,13 @@ def phenotypic_cli(
                     )
                     sys.exit(1)
 
-        # Scan directory structure (or discover HDFs in measure mode)
+        # Scan directory structure (or discover image stores in measure mode)
         if measure_only:
             click.echo(
-                f"Discovering HDF outputs under {output_dir}/results/..."
+                f"Discovering image stores under {output_dir}/results/..."
             )
             try:
-                datasets = scan_hdf_outputs(output_dir)
+                datasets = scan_store_outputs(output_dir)
             except ValueError as e:
                 click.echo(f"Error: {e}", err=True)
                 sys.exit(1)
@@ -2476,10 +2484,10 @@ def _regenerate_missing_overlays(
 ) -> None:
     """Re-render overlay PNGs that are missing under ``deliverables/overlays/<ds>/``.
 
-    HDF-driven: walks ``results/<ds>/hdf/*.h5`` (the same discovery
-    used by measure mode) and, for each HDF whose corresponding
-    overlay PNG is absent, loads the HDF as the right ``Image`` /
-    ``GridImage`` subclass and writes the overlay using the same
+    Store-driven: walks ``results/<ds>/zarr/*.ome.zarr`` (the same
+    discovery used by measure mode) and, for each store whose
+    corresponding overlay PNG is absent, loads the store as the right
+    ``Image`` / ``GridImage`` subclass and writes the overlay using the same
     :class:`OutputManager` writer the forward run uses.  Existing
     overlays are left untouched.  Per-image failures are logged and
     swallowed so one corrupt HDF doesn't abort the rest.
@@ -2511,10 +2519,11 @@ def _regenerate_missing_overlays(
 
     console = Console()
     try:
-        datasets = scan_hdf_outputs(output_dir)
+        datasets = scan_store_outputs(output_dir)
     except ValueError:
         console.print(
-            "[yellow]No HDFs found under results/; skipping overlay regeneration"
+            "[yellow]No image stores found under results/; skipping "
+            "overlay regeneration"
         )
         return
 
@@ -2528,12 +2537,15 @@ def _regenerate_missing_overlays(
 
     work: list[tuple[str, Path]] = []
     for dataset in datasets:
-        for hdf_path in dataset.images:
+        for store_path in dataset.images:
+            # ``store_stem``, never ``Path.stem``: `.ome.zarr` is a double
+            # suffix, so `.stem` would probe for `<stem>.ome.png`, never
+            # find it, and regenerate every overlay on every run.
             overlay_path = output_manager.get_output_path(
-                dataset.name, "overlays", hdf_path.stem
+                dataset.name, "overlays", store_stem(store_path)
             )
             if not overlay_path.exists():
-                work.append((dataset.name, hdf_path))
+                work.append((dataset.name, store_path))
 
     if not work:
         console.print("[green]All overlays present; nothing to regenerate")
@@ -2546,9 +2558,11 @@ def _regenerate_missing_overlays(
 
     workers = resolve_local_worker_count(n_jobs, len(work))
 
-    def _render_one(dataset_name: str, hdf_path: Path) -> None:
-        image = load_image_from_hdf(hdf_path)
-        output_manager.save_overlay(image, dataset_name, hdf_path.stem)
+    def _render_one(dataset_name: str, store_path: Path) -> None:
+        image = load_image_from_store(store_path)
+        output_manager.save_overlay(
+            image, dataset_name, store_stem(store_path)
+        )
 
     console.print(
         f"[cyan]Regenerating {len(work)} missing overlay(s) "
@@ -2565,14 +2579,14 @@ def _regenerate_missing_overlays(
         task_id = progress.add_task("overlays", total=len(work))
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
-                pool.submit(_render_one, ds_name, hdf_path): (
+                pool.submit(_render_one, ds_name, store_path): (
                     ds_name,
-                    hdf_path,
+                    store_path,
                 )
-                for ds_name, hdf_path in work
+                for ds_name, store_path in work
             }
             for future in as_completed(futures):
-                ds_name, hdf_path = futures[future]
+                ds_name, store_path = futures[future]
                 try:
                     future.result()
                 except Exception:
@@ -2580,7 +2594,7 @@ def _regenerate_missing_overlays(
                     logger.warning(
                         "Failed to regenerate overlay for %s/%s",
                         ds_name,
-                        hdf_path.stem,
+                        store_stem(store_path),
                         exc_info=True,
                     )
                 finally:
@@ -2892,16 +2906,24 @@ def _discover_recompile_dataset_names(
     job_meta: Optional[dict[str, Any]],
 ) -> list[str]:
     """Discover datasets using the local recompile precedence."""
-    from phenotypic.sdk_ import DIR_HDF, DIR_MEASUREMENTS
+    from phenotypic.sdk_ import DIR_HDF, DIR_MEASUREMENTS, DIR_ZARR
 
     results_dir = output_dir / DIR_RESULTS
     dataset_names: list[str] = []
     if results_dir.is_dir():
+        # ``DIR_HDF`` stays alongside ``DIR_ZARR`` until Phase 6: an
+        # unconverted legacy bundle has only `hdf/`, and dropping it here
+        # would make that bundle undiscoverable to the very recompile run
+        # that authorizes its metadata migration.
         dataset_names = sorted(
             d.name
             for d in results_dir.iterdir()
             if d.is_dir()
-            and ((d / DIR_MEASUREMENTS).is_dir() or (d / DIR_HDF).is_dir())
+            and (
+                (d / DIR_MEASUREMENTS).is_dir()
+                or (d / DIR_ZARR).is_dir()
+                or (d / DIR_HDF).is_dir()
+            )
         )
 
     if not dataset_names and job_meta:
@@ -2957,8 +2979,13 @@ def _build_recompile_job_metadata_datasets(
 def _recompile_dataset_image_names(
     output_dir: Path, dataset_name: str
 ) -> list[str]:
-    """Infer image names from per-image measurement Parquets or HDFs."""
-    from phenotypic.sdk_ import DIR_MEASUREMENTS, DIR_HDF
+    """Infer image names from per-image measurement Parquets or stores."""
+    from phenotypic.sdk_ import (
+        DIR_HDF,
+        DIR_MEASUREMENTS,
+        DIR_ZARR,
+        STORE_SUFFIX,
+    )
 
     dataset_dir = output_dir / DIR_RESULTS / dataset_name
     meas_dir = dataset_dir / DIR_MEASUREMENTS
@@ -2971,6 +2998,21 @@ def _recompile_dataset_image_names(
         if parquet_stems:
             return parquet_stems
 
+    zarr_dir = dataset_dir / DIR_ZARR
+    if zarr_dir.is_dir():
+        # ``store_stem``, never ``Path.stem``: these names key the SLURM
+        # recompile job metadata, and `<stem>.ome` would silently mismatch
+        # every parquet and overlay the workers then look for.
+        store_stems = sorted(
+            store_stem(path)
+            for path in zarr_dir.glob(f"*{STORE_SUFFIX}")
+            if path.is_dir() and not path.name.startswith(".")
+        )
+        if store_stems:
+            return store_stems
+
+    # Legacy last resort, retired in Phase 6 with the rest of the HDF
+    # surface: an unconverted bundle carries neither parquets nor stores.
     hdf_dir = dataset_dir / DIR_HDF
     if hdf_dir.is_dir():
         hdf_stems = sorted(path.stem for path in hdf_dir.glob("*.h5"))
@@ -3127,7 +3169,7 @@ def _handle_recompile(
 
     Auto-discovers datasets under ``output_dir/results``, re-aggregates
     measurement Parquet files into ``master_measurements.csv``,
-    regenerates any missing overlay PNGs from their HDFs, rebuilds
+    regenerates any missing overlay PNGs from their image stores, rebuilds
     the progress manifest, and regenerates
     the HTML dashboard.
 
@@ -3138,7 +3180,7 @@ def _handle_recompile(
         include_dataset_column: Whether to insert ``Metadata_Dataset``
             into measurements that lack it.
         overlay_alpha: Alpha used when re-rendering missing overlay
-            PNGs from HDFs.  Forwarded from the ``--overlay-alpha``
+            PNGs from image stores.  Forwarded from the ``--overlay-alpha``
             CLI flag.
         n_jobs: Worker thread count for overlay regeneration.
             Forwarded from the ``--njobs`` CLI flag (``-1`` = all

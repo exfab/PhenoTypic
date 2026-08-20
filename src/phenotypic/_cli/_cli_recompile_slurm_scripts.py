@@ -12,8 +12,10 @@ from ._cli_completion import authorized_measurement_sources
 from ._measurement_sources import discover_recompile_measurement_sources
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 from phenotypic.sdk_ import (
-    DIR_HDF,
     DIR_RESULTS,
+    DIR_ZARR,
+    STORE_SUFFIX,
+    store_stem,
     dataset_overlays_dir,
     JobMetadataKey,
     RECOMPILE_TASK_MANIFEST_JSON,
@@ -213,22 +215,33 @@ def recompile_task_status_path(manifest_path: Path, task_index: int) -> Path:
 def _overlay_tasks_for_dataset(
     output_dir: Path, dataset_name: str, overlay_alpha: float
 ) -> list[dict[str, Any]]:
-    """Return one task for each missing overlay discoverable from HDF."""
-    hdf_dir = output_dir / DIR_RESULTS / dataset_name / DIR_HDF
-    if not hdf_dir.is_dir():
+    """Return one task for each overlay missing from a dataset's stores.
+
+    The glob is non-recursive and matches directories: a store is itself a
+    directory of files, so an ``is_file()`` filter would find nothing and a
+    recursive walk would descend into every chunk.
+    """
+    zarr_dir = output_dir / DIR_RESULTS / dataset_name / DIR_ZARR
+    if not zarr_dir.is_dir():
         return []
 
     overlay_dir = dataset_overlays_dir(output_dir, dataset_name)
     tasks: list[dict[str, Any]] = []
-    for hdf_path in sorted(hdf_dir.glob("*.h5")):
-        overlay_path = overlay_dir / f"{hdf_path.stem}.png"
+    for store_path in sorted(zarr_dir.glob(f"*{STORE_SUFFIX}")):
+        if not store_path.is_dir() or store_path.name.startswith("."):
+            continue
+        # ``store_stem``, never ``Path.stem``: `.ome.zarr` is a double
+        # suffix, so `.stem` would test for `<stem>.ome.png`, never find
+        # it, and queue a redundant overlay task for every image forever.
+        stem = store_stem(store_path)
+        overlay_path = overlay_dir / f"{stem}.png"
         if overlay_path.exists():
             continue
         tasks.append(
             {
                 "task_type": TASK_OVERLAY,
                 "dataset_name": dataset_name,
-                "hdf_path": str(hdf_path.absolute()),
+                "store_path": str(store_path.absolute()),
                 "overlay_alpha": overlay_alpha,
             }
         )

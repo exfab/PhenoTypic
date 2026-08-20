@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Optional, Dict, Any, cast
 from uuid import uuid4
 
-import h5py  # type: ignore[import-untyped]
 import matplotlib
 
 matplotlib.use("Agg")  # Non-interactive backend
@@ -27,7 +26,7 @@ from ._cli_process_only import (
     process_only_output_path,
     process_single_apply_only_core,
 )
-from ._cli_completion import publish_image_success
+from ._cli_completion import image_data_artifact, publish_image_success
 from ._cli_update_state import (
     PROCESSING_GENERATION_ENV_VAR,
     SLURM_GENERATION_ENV_VAR,
@@ -43,7 +42,12 @@ from ._cli_failure_tracker import (
     processing_configuration_digest_from_values,
 )
 from ._cli_utils import normalize_extension
-from phenotypic.sdk_ import EnvVar, HdfAttr, progress_dir
+from phenotypic.sdk_ import (
+    EnvVar,
+    load_image_from_store,
+    progress_dir,
+    store_stem,
+)
 from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
 
 logger = logging.getLogger(__name__)
@@ -180,7 +184,7 @@ def process_single_image_core(
     # configured PlotImage bindings while measurer caches still refer to this
     # exact image instance.
     output_manager.save_measurements(measurements, dataset_name, image_stem)
-    output_manager.save_image_hdf(image, dataset_name, image_stem)
+    output_manager.save_image_store(image, dataset_name, image_stem)
     if output_manager.save_overlays:
         output_manager.save_overlay(image, dataset_name, image_stem)
     from phenotypic.plotting._pipeline import PlotCoordinator
@@ -194,30 +198,31 @@ def process_single_image_core(
     return True
 
 
-def process_single_hdf_measure_core(
+def process_single_store_measure_core(
     pipeline_path: Path,
-    hdf_path: Path,
+    store_path: Path,
     output_dir: Path,
     dataset_name: str,
     image_type: ImageTypeName,
     output_manager: OutputManager,
 ) -> bool:
-    """Rerun pipeline.measure() on an already-processed HDF file.
+    """Rerun pipeline.measure() on an already-processed OME-Zarr store.
 
-    Loads ``hdf_path`` as :class:`Image` or :class:`GridImage` (per
-    ``image_type``), runs :meth:`ImagePipeline.measure` only (no apply / no
-    detection), and rewrites the measurements parquet.  Does NOT regenerate
-    overlays or touch the HDF file itself.
+    Loads ``store_path`` as :class:`Image` or :class:`GridImage` — dispatched
+    from the store's own ``phenotypic.image_class``, with ``image_type`` as the
+    fallback for a block that carries none — runs
+    :meth:`ImagePipeline.measure` only (no apply / no detection), and rewrites
+    the measurements parquet.  Does NOT regenerate overlays or touch the store.
 
     Args:
         pipeline_path: Path to pipeline JSON file.
-        hdf_path: Path to an existing ``.h5`` file produced by a prior
-            forward run.
+        store_path: Path to an existing ``*.ome.zarr`` store produced by a
+            prior forward run.
         output_dir: Base output directory (unused here, but kept symmetric
             with :func:`process_single_image_core`).
         dataset_name: Dataset name for measurement output.
-        image_type: ``"Image"`` or ``"GridImage"`` — dictates which loader
-            to call.
+        image_type: ``"Image"`` or ``"GridImage"`` — the fallback used when the
+            store's ``phenotypic`` block carries no ``image_class``.
         output_manager: :class:`OutputManager` for writing the parquet.
 
     Returns:
@@ -226,28 +231,34 @@ def process_single_hdf_measure_core(
         :func:`process_single_image_core`.
 
     Raises:
-        Exception: Any exception from pipeline loading, HDF loading, or
+        Exception: Any exception from pipeline loading, store loading, or
             measurement will propagate.
     """
     # Load pipeline
     pipeline = ImagePipeline.from_json(pipeline_path)
 
-    # Determine image class and load from HDF5
-    image_cls = GridImage if image_type == "GridImage" else Image
-    image = image_cls.load_hdf5(hdf_path)
+    # Dispatch on the store's recorded image_class so a GridImage rehydrates
+    # with its grid state intact; ``image_type`` is only the fallback.
+    image = load_image_from_store(store_path, fallback=image_type)
 
     # Measurement only — no apply / detection. apply_post=False matches
-    # the forward path so HDF re-measure parquets are also post-free.
+    # the forward path so store re-measure parquets are also post-free.
     measurements = pipeline.measure(image, apply_post=False)
 
-    # Save measurements parquet (overlay + HDF intentionally skipped)
-    output_manager.save_measurements(measurements, dataset_name, hdf_path.stem)
+    # ``store_stem``, never ``Path.stem``: ``.ome.zarr`` is a double suffix,
+    # so ``.stem`` would name the parquet ``<stem>.ome.parquet`` and key the
+    # plot binding on ``<stem>.ome`` — plausible-looking wrong names that
+    # nothing raises on.
+    stem = store_stem(store_path)
+
+    # Save measurements parquet (overlay + store intentionally skipped)
+    output_manager.save_measurements(measurements, dataset_name, stem)
     from phenotypic.plotting._pipeline import PlotCoordinator
 
     PlotCoordinator(pipeline, output_dir).emit_image(
         image,
         dataset=dataset_name,
-        image_stem=hdf_path.stem,
+        image_stem=stem,
     )
 
     return True
@@ -535,41 +546,12 @@ def main(
             )
 
         if measure_only:
-            # Measure-only mode: --image points to an existing HDF5 file.
-            # Determine the image class from the saved file's root attr.
-            # Legacy v1 files lack the attr — fall back to the configured
-            # --image-type so behaviour matches the local executor.
-            resolved_image_type: ImageTypeName = (
-                image_type  # type: ignore[assignment]
-            )
-            try:
-                with h5py.File(image, "r") as hf:
-                    saved_class = hf.attrs.get(HdfAttr.PHENOTYPIC_CLASS)
-                    if isinstance(saved_class, bytes):
-                        saved_class = saved_class.decode("utf-8", errors="replace")
-                    if saved_class == "GridImage":
-                        resolved_image_type = "GridImage"
-                    elif saved_class == "Image":
-                        resolved_image_type = "Image"
-                    elif saved_class is None:
-                        logger.warning(
-                            "phenotypic_class attr absent in %s; falling back to "
-                            "configured image_type=%s. If this file was saved as a "
-                            "different class (e.g. legacy v1 format), measurements "
-                            "may be incorrect.",
-                            image,
-                            resolved_image_type,
-                        )
-            except (OSError, KeyError) as hdf_err:
-                logger.warning(
-                    "Could not read phenotypic_class from %s (%s: %s); "
-                    "falling back to configured image_type=%s",
-                    image,
-                    type(hdf_err).__name__,
-                    hdf_err,
-                    resolved_image_type,
-                )
-
+            # Measure-only mode: --image points to an existing OME-Zarr store.
+            # The store's own ``phenotypic.image_class`` decides the class;
+            # ``--image-type`` is only the fallback for a block that carries
+            # none. The dispatch lives in ``load_image_from_store``, which the
+            # measure core calls, so there is nothing to pre-resolve here --
+            # the previous hand-rolled h5py probe is gone with the HDF.
             # Measure mode never writes overlays regardless of the flag.
             output_manager = OutputManager.from_config(
                 base_dir=output_dir,
@@ -579,13 +561,13 @@ def main(
                 save_overlays=False,
             )
 
-            click.echo(f"Measuring {image.name} (HDF rerun)...")
-            process_single_hdf_measure_core(
+            click.echo(f"Measuring {image.name} (store rerun)...")
+            process_single_store_measure_core(
                 pipeline_path=pipeline,
-                hdf_path=image,
+                store_path=image,
                 output_dir=output_dir,
                 dataset_name=dataset_name,
-                image_type=resolved_image_type,
+                image_type=cast(ImageTypeName, image_type),
                 output_manager=output_manager,
             )
         else:
@@ -633,13 +615,19 @@ def main(
                 save_overlays=save_overlays,
                 mode=mode,
             )
+            # The same resolver the local strategy and the staged SLURM
+            # worker use. It is what keeps this site from certifying a `.h5`
+            # that `process_single_image_core` no longer writes -- and
+            # `publish_image_success` resolves every artifact strict=True, so
+            # naming a dead file is a FileNotFoundError, not a stale marker.
+            data_key, data_path = image_data_artifact(
+                output_dir, output_manager, dataset_name, image.stem
+            )
             artifacts = {
                 "measurements": output_manager.get_output_path(
                     dataset_name, "measurements", image.stem
                 ),
-                "hdf": output_manager.get_output_path(
-                    dataset_name, "hdf", image.stem
-                ),
+                data_key: data_path,
             }
             if save_overlays:
                 artifacts["overlay"] = output_manager.get_output_path(

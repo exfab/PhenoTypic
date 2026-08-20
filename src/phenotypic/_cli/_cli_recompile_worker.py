@@ -32,7 +32,8 @@ from phenotypic.sdk_ import (
     RECOMPILE_TASK_MANIFEST_JSON,
     atomic_write_json,
     atomic_write_with_writer,
-    load_image_from_hdf,
+    load_image_from_store,
+    store_stem,
     master_measurements_csv_path,
     master_measurements_parquet_path,
     task_status_filename,
@@ -348,8 +349,8 @@ def _run_overlay_task(
         from ._cli_output_manager import OutputManager
 
         dataset_name = str(task["dataset_name"])
-        hdf_path = Path(str(task["hdf_path"]))
-        image = load_image_from_hdf(hdf_path)
+        store_path = Path(str(task["store_path"]))
+        image = load_image_from_store(store_path)
 
         output_manager = OutputManager.from_config(
             base_dir=output_dir,
@@ -359,7 +360,13 @@ def _run_overlay_task(
             save_overlays=True,
         )
         with generation_publication_guard(output_dir, slurm_generation):
-            output_manager.save_overlay(image, dataset_name, hdf_path.stem)
+            # ``store_stem``, never ``Path.stem``: `.ome.zarr` is a double
+            # suffix, so `.stem` would write `<stem>.ome.png` -- an overlay
+            # under a name nothing ever looks for, leaving the real one
+            # missing and requeued on every recompile.
+            output_manager.save_overlay(
+                image, dataset_name, store_stem(store_path)
+            )
     except SlurmGenerationInactiveError:
         raise
     except Exception as exc:
