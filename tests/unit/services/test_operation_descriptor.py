@@ -260,3 +260,61 @@ def test_every_param_with_a_default_reports_it():
                 if described[pname]["default"] is None:
                     offenders.append(f"{name}.{pname}")
     assert not offenders, f"defaults lost in projection: {offenders}"
+
+
+def test_an_optional_bounded_param_keeps_its_bound():
+    """``float | None = Field(None, gt=0)`` puts the bound on an ``anyOf`` branch.
+
+    The top level of such a property carries only ``anyOf``/``default``/
+    ``title``, so a projection that reads the top level alone reports
+    ``constraints: {}`` and tells an agent the value is unconstrained.
+    """
+    from phenotypic.enhance import BayesShrinkEnhancer
+
+    prop = BayesShrinkEnhancer.model_json_schema()["properties"]["gat_scale_factor"]
+    assert "exclusiveMinimum" not in prop, "fixture drifted: bound is now top-level"
+
+    param = next(
+        p
+        for p in describe_operation("BayesShrinkEnhancer")["params"]
+        if p["name"] == "gat_scale_factor"
+    )
+    assert param["constraints"] == {"exclusiveMinimum": 0}
+
+
+def test_no_param_hides_a_bound_declared_on_a_branch():
+    """Sweep: an empty ``constraints`` must mean the schema declares none.
+
+    The single-parameter test above proves the spelling for one field; this
+    proves *where the projection looks*, for every registered class. Without
+    it the hole reopens one optional-with-bound field at a time — 13 of them
+    were reporting ``{}`` when this sweep was written.
+    """
+    from phenotypic._services.catalog import _NON_CONSTRAINT_KEYS, _property_for
+    from phenotypic._services.registry import get_registry
+
+    offenders: list[str] = []
+    branch_sourced = 0
+    for name, info in get_registry().get_all().items():
+        if not hasattr(info.cls, "model_fields"):
+            continue
+        properties = info.cls.model_json_schema().get("properties", {})
+        for param in describe_operation(name)["params"]:
+            prop = _property_for(info.cls, param["name"], properties)
+            top_level = set(prop) - _NON_CONSTRAINT_KEYS
+            on_branches: set[str] = set()
+            for key in ("anyOf", "oneOf"):
+                for branch in prop.get(key, []) or []:
+                    if not isinstance(branch, dict) or branch.get("type") == "null":
+                        continue
+                    on_branches |= set(branch) - _NON_CONSTRAINT_KEYS
+            if not param["constraints"] and on_branches:
+                offenders.append(f"{name}.{param['name']} lost {sorted(on_branches)}")
+            if param["constraints"] and not top_level and on_branches:
+                branch_sourced += 1
+
+    assert not offenders, f"constraints dropped in projection: {offenders}"
+    assert branch_sourced >= 13, (
+        f"only {branch_sourced} branch-declared constraints seen — the sweep "
+        "no longer exercises the fallback it exists to guard"
+    )

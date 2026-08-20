@@ -162,8 +162,40 @@ def _param_choices(prop: Dict[str, Any]) -> Optional[List[Any]]:
 
 
 def _param_constraints(prop: Dict[str, Any]) -> Dict[str, Any]:
-    """Value constraints declared by one property, JSON Schema spelling."""
-    return {k: v for k, v in prop.items() if k not in _NON_CONSTRAINT_KEYS}
+    """Value constraints declared by one property, JSON Schema spelling.
+
+    Reads the top level first, and falls back to the ``anyOf`` / ``oneOf``
+    branches when the top level declares none — the same walk
+    :func:`_param_type` and :func:`_param_choices` already do. An optional
+    bounded field publishes its bound on a *branch*, not at the top level::
+
+        float | None = Field(None, gt=0)
+        -> {"anyOf": [{"type": "number", "exclusiveMinimum": 0},
+                      {"type": "null"}], "default": None}
+
+    Reading only the top level reports ``{}`` for every such parameter —
+    telling an agent ``gat_scale_factor`` is an unconstrained number when
+    it must be ``> 0``.
+
+    The ``null`` branch is skipped: it carries no constraint keyword
+    anyway, and nullability is already reported through ``is_optional``.
+
+    Args:
+        prop: One entry from the schema's ``properties`` block.
+
+    Returns:
+        The constraint keywords, merged across the non-``null`` branches.
+    """
+    merged = {k: v for k, v in prop.items() if k not in _NON_CONSTRAINT_KEYS}
+    if merged:
+        return merged
+    for branch in _property_branches(prop):
+        if branch.get("type") == "null":
+            continue
+        merged.update(
+            {k: v for k, v in branch.items() if k not in _NON_CONSTRAINT_KEYS}
+        )
+    return merged
 
 
 def _alias_keys(field: Any) -> List[str]:
