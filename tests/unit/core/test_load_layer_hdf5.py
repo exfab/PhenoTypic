@@ -26,9 +26,25 @@ def test_load_layer_from_legacy_flat(tmp_path):
         _METADATA_SCHEMA_VERSION_FLAT,
     )
 
+    # The legacy-flat layout is written HERE, not produced by a writer.
+    #
+    # This used to call `img.save_intermediate_layers(path, layers=("rgb","gray"))`,
+    # which Phase 2 Task 2.4 removed in favour of `save_intermediate_zarr`. That
+    # left this test as the only consumer of a deleted method -- and it was the
+    # only remaining producer of the legacy-flat layout anywhere in the tree, so
+    # `load_layer_hdf5`'s legacy-flat READ path would have lost its coverage
+    # entirely until Phase 6 deletes this file.
+    #
+    # Writing the bytes directly is the better pin regardless: it states the
+    # on-disk format this reader must keep understanding, instead of inheriting
+    # it from a writer that no longer exists. Phase 5 migration depends on that
+    # read path.
     img = Image(arr=_make_rgb())
     path = tmp_path / "flat.h5"
-    img.save_intermediate_layers(path, layers=("rgb", "gray"))
+    with h5py.File(path, mode="w") as f:
+        f.create_dataset("rgb", data=img.rgb[:])
+        f.create_dataset("gray", data=img.gray[:])
+        f.attrs[_METADATA_SCHEMA_VERSION_ATTR] = _METADATA_SCHEMA_VERSION_FLAT
 
     rgb = Image.load_layer_hdf5(path, "rgb")
     assert rgb.shape == (32, 48, 3)

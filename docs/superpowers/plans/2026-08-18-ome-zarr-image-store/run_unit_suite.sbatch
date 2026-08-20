@@ -67,8 +67,11 @@ echo
 # pytest returned non-zero, so the summary lines below would never print on the
 # one outcome they matter most for -- a failure.
 status=0
-uv run pytest tests/unit -q --no-header -p no:randomly \
-    -o addopts= -m "not slow" || status=$?
+# Phase 2 reached the GUI builder's preview cache and tile renderer, so the
+# wide run must cover tests/gui and tests/integration as well as tests/unit --
+# a unit-only run would be green while the default lane is red.
+uv run pytest tests/unit tests/gui tests/integration tests/smoke \
+    -q --no-header -p no:randomly -o addopts= -m "not slow" || status=$?
 
 echo
 echo "pytest exit status: ${status}"

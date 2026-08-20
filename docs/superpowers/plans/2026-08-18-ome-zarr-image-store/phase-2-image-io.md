@@ -161,7 +161,8 @@ def zarr_store_path(output_dir: Path, dataset: str, stem: str) -> Path:
     """Return ``<output>/results/<dataset>/zarr/<stem>.ome.zarr/``.
 
     The single place ``.ome.zarr`` is joined to an image stem. Callers must
-    never hand-join the suffix; a grep gate in the test suite enforces this.
+    never hand-join the suffix. A grep gate enforces this from Phase 7
+    onward; it does not exist yet, so this is a convention until then.
 
     Args:
         output_dir: Run output root.
@@ -286,9 +287,28 @@ Phase 6, because --mode migrate is built on their readers."
   deliberate boundary, not a gap. `_load_from_store` indexes `series["gray"]` and
   `series["detect_mat"]` directly, so `Image.load_zarr` on a store from
   `save_intermediate_zarr(layers=("objmap",))` raises `KeyError: 'detect_mat'` — and that is
-  correct: `valid_staged_store` **requires** `detect_mat` (Task 1.6), so a delta store is by
-  definition not a staged store. Its readers are `load_layer_zarr` (`_preview_tiles.py`) and
-  `read_phenotypic_attributes` (`_preview_cache._describe`).
+  correct, because **reconstituting an `Image` needs those layers**. Its readers are
+  `load_layer_zarr` (`_preview_tiles.py`) and `read_phenotypic_attributes`
+  (`_preview_cache._describe`).
+
+  > **Corrected (Phase 2 gate).** An earlier version of this note justified the boundary by
+  > claiming `valid_staged_store` *requires* `detect_mat`, so a delta store "is by definition
+  > not a staged store". **That is false**, and was disproved by execution: the predicate
+  > iterates whatever `phenotypic.series` and `phenotypic.labels` **declare**, so a
+  > self-consistent delta store — declaring only `gray`, and containing only `gray` — returns
+  > `True`.
+  >
+  > The implementation is nonetheless **spec-correct** and must not be tightened. Spec §3.6
+  > defines the check as "every entry in `phenotypic.series` **and** `phenotypic.labels` opens
+  > as a Zarr array group"; the parenthetical "(objmap included — §3.3 guarantees it exists
+  > after Stage 1)" is a **writer** guarantee, not a predicate check.
+  >
+  > **Phase 3 must not read more into it than that.** `valid_staged_store` catches a store
+  > that *declares* a member and lacks it — `test_missing_detect_mat_is_invalid` covers
+  > exactly that — and it catches disagreeing or zero extents. It does **not** catch a store
+  > that never declared the member. Nothing under `results/<ds>/zarr/` can be in that state,
+  > because `save2zarr` always writes the full series set and the promote is atomic; the
+  > guarantee comes from the writer, as the spec says.
 
   The only caller that reconstitutes a whole `Image` from a node store,
   `_preview_cache._load_image_auto`, is passed stores written by
@@ -2118,10 +2138,44 @@ places the published schemas are stricter than the prose."
 - [ ] `uv run pytest tests/unit/core/test_image_zarr_roundtrip.py tests/unit/core/test_grid_image_zarr_roundtrip.py tests/unit/core/test_ngff_conformance.py tests/unit/core/test_save_intermediate_zarr.py -q` is green.
 - [ ] `uv run pytest tests/unit/gui/builder -q` is green (manifest key rename).
 - [ ] `uv run pytest --doctest-modules src/phenotypic/_core/_image_parts/_image_io_handler.py -q` is green.
-- [ ] `grep -rn '\.ome\.zarr"' src/phenotypic --include='*.py' | grep -v 'ngff_.py\|_io_constants.py'` returns nothing.
+- [ ] No module hand-builds a **store path**:
+      ```bash
+      grep -rn '\.ome\.zarr"' src/phenotypic --include='*.py' \
+        | grep -v 'ngff_.py\|_io_constants.py\|gui/builder/_preview_cache.py\|_image_pipeline_core.py'
+      ```
+      returns nothing.
+
+      > **Scoped (Phase 2 gate).** An unfiltered literal grep cannot pass, and should not.
+      > It catches seven sites in `_preview_cache.py` and `_image_pipeline_core.py` that
+      > name **builder-cache node files** (`base_00.ome.zarr`, `03_BlurGauss.ome.zarr`) —
+      > a different namespace in a different tree, for which `zarr_store_path()` is the
+      > wrong helper. What the gate exists to prevent is a module reconstructing a
+      > `results/<ds>/zarr/<stem>.ome.zarr` path by hand instead of calling
+      > `zarr_store_path()`; those two files do not do that.
+      >
+      > Routing them through `ngff_.STORE_SUFFIX` is not available: every `phenotypic`
+      > import in `_preview_cache.py` is **function-local** (11, without exception — the
+      > module is imported by GUI callbacks and the pattern avoids a circular import), so a
+      > module-level `BASE_STORE_NAME` cannot reference it. Verified by trying it:
+      > `NameError: name 'ngff_' is not defined` at import.
 - [ ] The HDF write path still works: `uv run pytest tests/unit/core/test_image_hdf_roundtrip.py
       tests/unit/core/test_load_layer_hdf5.py tests/unit/core/test_image_dtype_conversion.py -q`
-      is green **and unmodified** — `git diff --stat` must show no change to those three files.
+      is green. **`test_image_hdf_roundtrip.py` and `test_image_dtype_conversion.py` must
+      also be unmodified** — `git diff --stat` shows no change to those two.
+
+      > **`test_load_layer_hdf5.py` is necessarily modified, and the criterion was
+      > self-contradictory (Phase 2 gate).** Task 2.4 removes `save_intermediate_layers`,
+      > and this file's `test_load_layer_from_legacy_flat` was its **last caller anywhere in
+      > the tree** — so "green and unmodified" stopped being satisfiable the moment that
+      > method was deleted, and the file sat red.
+      >
+      > It now builds the legacy-flat HDF **directly with h5py** — root-level datasets plus
+      > the metadata-schema attr. That is strictly better than the original: this file was
+      > also the only remaining *producer* of that layout, so `load_layer_hdf5`'s legacy-flat
+      > read path would otherwise have lost its coverage entirely until Phase 6 deletes the
+      > file — and **Phase 5 migration depends on that read path**. Writing the bytes
+      > directly states the on-disk format the reader must keep understanding, rather than
+      > inheriting it from a writer that no longer exists.
 
       > **Ownership note (missing-owner review, 2026-08-19).** The README test inventory
       > previously listed all three on its **Phase 2** row, to be "ported to

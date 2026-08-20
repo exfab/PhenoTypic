@@ -1461,7 +1461,8 @@ def zarr_store_path(output_dir: Path, dataset: str, stem: str) -> Path:
     """Return ``<output>/results/<dataset>/zarr/<stem>.ome.zarr/``.
 
     The single place ``.ome.zarr`` is joined to an image stem. Callers must
-    never hand-join the suffix; a grep gate in the test suite enforces this.
+    never hand-join the suffix. A grep gate enforces this from Phase 7
+    onward; it does not exist yet, so this is a convention until then.
 
     Args:
         output_dir: Run output root.
