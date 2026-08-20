@@ -340,13 +340,17 @@ enforces this for ruff, but the rule binds regardless of the tool.
   work or SLURM submission. Treat that file as input provenance: **never rewrite
   it as a side effect** of any other operation. Finalization, chunk writers, and
   `--mode recompile` normalize legacy headers **only in memory**.
-  The sole exception is `--mode migrate`, which the user invokes explicitly to
-  convert a run: it rewrites `deliverables/metadata.csv` with canonical headers
-  and MUST first copy the untouched bytes to `deliverables/metadata.original.csv`
-  so the supplied input stays recoverable. No other code path may write either
-  file. Generated scientific tables still emit only the canonical flat
-  `Metadata_<Label>` namespace.
-  (`--mode migrate` is specified in
-  `docs/superpowers/specs/2026-08-18-ome-zarr-image-store/design.md`; until that
-  lands, the exception has no implementation and the rule is simply "never
-  rewrite".)
+  **There is no exception, including `--mode migrate`.** An earlier draft of
+  this rule carved one out — migrate would rewrite `deliverables/metadata.csv`
+  with canonical headers after copying the original to
+  `deliverables/metadata.original.csv`. That was **withdrawn** (spec D9 /
+  FLOW-4) and never implemented. A snapshot that is sometimes rewritten is not
+  provenance, and "the original is recoverable over there" is a weaker
+  guarantee than "the bytes you supplied are still the bytes on disk".
+  `--mode migrate` instead **emits a canonical view alongside** the snapshot,
+  at `deliverables/metadata.canonical.csv`, and leaves `metadata.csv`
+  byte-identical (pinned by
+  `test_the_metadata_snapshot_is_byte_unchanged_by_a_full_migrate`).
+  `metadata.original.csv` does not exist and must not be created. Generated
+  scientific tables still emit only the canonical flat `Metadata_<Label>`
+  namespace.
