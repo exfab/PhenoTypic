@@ -278,6 +278,26 @@ before `validate(state)` (`gui/builder/_validation.py:98`), and surfaces
          "requires_gpu":false}}
 ```
 
+**`produces_columns` needs the image type, and excludes the metadata block.**
+Two facts learned in implementation, stated here because this is the section an
+implementer builds from:
+
+- **It takes `image_type` (`"GridImage" | "Image"`), and there is no default.**
+  `measure()` appends `Object_Label` and the `Bbox_*` geometry unconditionally,
+  plus the four `Grid_*` assignment columns **only on a `GridImage`**. Walking
+  the `meas` slot alone under-reports a plain `OtsuDetector` + `MeasureSize` +
+  `MeasureShape` run by **15 of its 38 columns** — most of what the results
+  viewer keys off — so the info block is part of the answer, and its shape
+  depends on the image.
+- **It answers "measurement columns, metadata aside".** The framework's
+  per-image `Metadata_*` provenance block (`Metadata_ImageName`,
+  `Metadata_BitDepth`, `Metadata_FileSuffix`, `Metadata_ImageType`) is emitted by
+  `measure()` and **deliberately not derived** — it is provenance, not
+  measurement, and it is identical for every pipeline. On the run above that is
+  34 derived against 38 measured. Say so in the tool's own description rather
+  than letting an agent discover the gap: a promise of "the columns this emits"
+  that silently omits four is worse than a narrower promise kept exactly.
+
 `produces_columns` derivation must dispatch on `header_scheme()` over the
 **built pipeline's live measurer instances** — a blanket `get_headers()` call is
 wrong, and for at least one measurer it raises:
