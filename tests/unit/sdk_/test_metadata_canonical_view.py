@@ -14,8 +14,6 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-import pytest
-
 from tests.unit.sdk_._migration_fixtures import LegacyRun
 
 
@@ -89,18 +87,14 @@ def test_no_view_is_emitted_without_a_snapshot(legacy_run: Path) -> None:
     assert not (legacy_run / "deliverables" / "metadata.canonical.csv").exists()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Needs Task 5.6: migration must re-publish the per-image markers and "
-        "the aggregate. Until it does, source_set_digest describes a marker "
-        "set that no longer validates."
-    ),
-)
 def test_the_aggregate_publication_survives_migration(
     finished_legacy_run: LegacyRun,
 ) -> None:
     """The test that could not pass under the rewrite -- now it can.
+
+    It needs Task 5.6 for the marker half: ``source_set_digest`` is computed
+    from ``valid_image_success``, so without the republication it describes a
+    marker set that no longer validates.
 
     ``aggregate_publication_is_valid`` does not exist in this codebase;
     ``current_aggregate_is_current`` is the predicate that compares the

@@ -71,7 +71,7 @@ def finished_legacy_run(_completed_run_two: Path, tmp_path: Path) -> LegacyRun:
     stems = run_stems(output_dir)
     return LegacyRun(
         path=output_dir,
-        work_id=run_work_id(output_dir, stems[0]),
+        work_ids={stem: run_work_id(output_dir, stem) for stem in stems},
         stems=stems,
         pipeline_json=workspace / "pipeline.json",
         input_dir=workspace / DATASET,

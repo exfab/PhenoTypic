@@ -23,6 +23,7 @@ construction and needs no second header migration.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
@@ -427,6 +428,169 @@ def _convert_one(
     return hdf_path, None
 
 
+# ---------------------------------------------------------------------------
+# Run state: markers and the aggregate
+# ---------------------------------------------------------------------------
+
+
+def _republish_image_marker(
+    output_dir: Path, dataset: str, stem: str, store: Path
+) -> bool:
+    """Rewrite one per-image marker so it describes the store. Never create one.
+
+    **Rewrites; never creates** (ledger FLOW-37). A *missing* marker also
+    "does not describe the store", and the looser wording fired on every
+    image of a pre-markers archive -- where ``publish_image_success`` has no
+    ``work_id``, ``attempt_id`` or ``lifecycle_epoch`` to be given, and,
+    unlike its three siblings, does not short-circuit on
+    ``success_markers_required``.
+
+    **Replaces the artifact set; does not add to it** (ledger MIG-22). The
+    stale ``"hdf"`` descriptor still validates under the default
+    ``keep_source=True``, so merely adding a store descriptor beside it hides
+    the defect entirely. Every surviving key keeps its **literal name** --
+    ``_current_success_work_ids`` indexes ``artifacts["measurements"]`` by
+    name -- but its descriptor is re-fingerprinted, because those are the
+    bytes the migration's metadata pass just rewrote.
+
+    ``work_id``, ``attempt_id`` and ``lifecycle_epoch`` are preserved: they
+    identify the run that produced the result, and rewriting them would
+    falsely re-attribute it to the migration.
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        stem: Image stem.
+        store: The promoted store.
+
+    Returns:
+        Whether a marker was rewritten.
+    """
+    from phenotypic._cli._cli_completion import (
+        ARTIFACT_KIND_STORE,
+        SUCCESS_MARKER_VERSION,
+        _artifact_descriptor,
+    )
+
+    from ._atomic_io import atomic_write_json
+    from ._io_constants import image_completion_marker_path
+
+    marker_path = image_completion_marker_path(output_dir, dataset, stem)
+    if not marker_path.is_file():
+        return False
+    try:
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    if not isinstance(marker, dict) or not isinstance(
+        marker.get("artifacts"), dict
+    ):
+        return False
+
+    output_root = Path(output_dir).resolve()
+    artifacts: dict[str, dict] = {}
+    for name, descriptor in marker["artifacts"].items():
+        if name == "hdf" or not isinstance(descriptor, dict):
+            continue
+        relative = descriptor.get("path")
+        if not isinstance(relative, str):
+            continue
+        resolved = (output_root / relative).resolve()
+        if not resolved.exists():
+            continue
+        artifacts[name] = _artifact_descriptor(
+            resolved, resolved.relative_to(output_root)
+        )
+    resolved_store = store.resolve()
+    artifacts[ARTIFACT_KIND_STORE] = _artifact_descriptor(
+        resolved_store, resolved_store.relative_to(output_root)
+    )
+
+    marker["version"] = SUCCESS_MARKER_VERSION
+    marker["artifacts"] = artifacts
+    atomic_write_json(marker_path, marker)
+    return True
+
+
+def republish_image_markers(output_dir: Path) -> int:
+    """Rewrite every existing marker whose image now has a valid store.
+
+    **Keyed on marker state, not on conversion state** (ledger FLOW-22).
+    Trace an interruption: migration promotes image X's store, then dies
+    before rewriting X's marker. On resume X is *skipped*, because its store
+    already passes ``valid_staged_store`` -- so republication riding on "was
+    converted this run" would leave X at v1 forever, and the next local run
+    would reprocess it from source inputs a migrated archive may no longer
+    have.
+
+    The operation is idempotent, so running it over skipped images costs a
+    marker read.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        How many markers were rewritten.
+    """
+    from ._io_constants import dataset_results_dir, results_dir
+
+    republished = 0
+    root = results_dir(Path(output_dir))
+    if not root.is_dir():
+        return 0
+    for dataset_dir in sorted(path for path in root.iterdir() if path.is_dir()):
+        zarr_dir = dataset_results_dir(output_dir, dataset_dir.name) / "zarr"
+        if not zarr_dir.is_dir():
+            continue
+        for store in sorted(zarr_dir.glob(f"*{STORE_SUFFIX}")):
+            if store.name.startswith(".") or not valid_staged_store(store):
+                continue
+            stem = store.name[: -len(STORE_SUFFIX)]
+            if _republish_image_marker(
+                Path(output_dir), dataset_dir.name, stem, store
+            ):
+                republished += 1
+    return republished
+
+
+def republish_aggregate(output_dir: Path) -> bool:
+    """Re-publish the aggregate marker over the migrated tree.
+
+    Guarded, because a legacy tree with no markers is a **documented no-op,
+    not an exception** (ledger MIG-23). ``publish_aggregate_snapshot`` raises
+    when state is missing or no marker is authorized, and resolves the four
+    deliverables paths with ``strict=True``. A pre-markers archive is a likely
+    migration subject; aborting there would leave the stores written and the
+    run reported as failed.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        Whether an aggregate marker was published.
+    """
+    from phenotypic._cli._cli_completion import (
+        current_success_counts,
+        publish_aggregate_snapshot,
+    )
+    from phenotypic._cli._cli_state_management import load_processing_state
+
+    try:
+        state = load_processing_state(output_dir)
+    except (KeyError, TypeError, ValueError):
+        return False
+    if state is None or not state.config.get("success_markers_required", False):
+        return False
+    counts = current_success_counts(output_dir)
+    if counts is None or counts[0] == 0:
+        return False
+    try:
+        publish_aggregate_snapshot(output_dir)
+    except (OSError, RuntimeError, ValueError):
+        return False
+    return True
+
+
 def _marker_authority_permits_unlink(
     output_dir: Path, dataset: str, stem: str
 ) -> bool:
@@ -591,6 +755,12 @@ def migrate_run_hdf_to_zarr(
         else:
             failed.append((hdf_path, error))
 
+    # Markers first, then the aggregate: `source_set_digest` is computed from
+    # `valid_image_success`, so publishing the aggregate before the markers
+    # describe the stores would record a source set that does not validate.
+    republish_image_markers(output_dir)
+    republish_aggregate(output_dir)
+
     emit_canonical_metadata_view(output_dir)
 
     if not keep_source:
@@ -605,6 +775,8 @@ def migrate_run_hdf_to_zarr(
 
 __all__ = [
     "CANONICAL_METADATA_CSV_NAME",
+    "republish_aggregate",
+    "republish_image_markers",
     "_conversion_is_faithful",
     "MigrationReport",
     "canonical_metadata_view_path",

@@ -60,13 +60,28 @@ LEGACY_METADATA_CSV = (
 
 @dataclass(frozen=True)
 class LegacyRun:
-    """A completed legacy run and the handles its tests need."""
+    """A completed legacy run and the handles its tests need.
+
+    ``work_ids`` is per **image**, because the run assigns one work id per
+    image; ``work_id`` is a convenience for the single-image case and is the
+    first stem's. A test that checks two images against one work id is
+    asserting something the run never claimed.
+    """
 
     path: Path
-    work_id: str
+    work_ids: dict[str, str]
     stems: tuple[str, ...]
     pipeline_json: Path
     input_dir: Path
+
+    @property
+    def work_id(self) -> str:
+        """The first stem's work id."""
+        return self.work_ids[self.stems[0]]
+
+    def work_id_for(self, stem: str) -> str:
+        """Return the work id the run assigned to *stem*."""
+        return self.work_ids[stem]
 
     def full_run_args(self) -> list[str]:
         """Return the CLI argv that re-runs this run against its own tree."""
