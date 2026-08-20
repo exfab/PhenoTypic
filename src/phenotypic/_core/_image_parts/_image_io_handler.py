@@ -1675,15 +1675,7 @@ class ImageIOHandler(ImageColorSpace):
         """
         from phenotypic.sdk_ import ngff_
 
-        block = ngff_.read_phenotypic_attributes(path)
-        found = block.get(ngff_.PhenotypicAttr.STORE_SCHEMA_VERSION)
-        if found != ngff_.STORE_SCHEMA_VERSION:
-            raise ValueError(
-                    f"Cannot read {path}: store_schema_version is {found!r}, but "
-                    f"this build of PhenoTypic reads "
-                    f"{ngff_.STORE_SCHEMA_VERSION}. The store was written by a "
-                    f"newer PhenoTypic -- upgrade the package to read it."
-            )
+        block = ngff_.require_readable_store(path)
         saved_class = block.get(ngff_.PhenotypicAttr.IMAGE_CLASS)
         if saved_class == "GridImage" and cls.__name__ != "GridImage":
             warnings.warn(
@@ -1712,12 +1704,17 @@ class ImageIOHandler(ImageColorSpace):
 
         Raises:
             KeyError: If *layer* is not present in the store.
+            ValueError: If ``store_schema_version`` is not this build's. This
+                reads pixels, so it carries the same value gate as
+                :meth:`load_zarr` -- decoding a future store's bytes under
+                today's semantics is wrong on either entry point, and this one
+                is the GUI tile server's.
         """
         import zarr
 
         from phenotypic.sdk_ import ngff_
 
-        block = ngff_.read_phenotypic_attributes(path)
+        block = ngff_.require_readable_store(path)
         # `.get` on LABELS: a label-less store omits the key entirely
         # (ledger C3), so indexing it would raise KeyError before reaching
         # the `member is None` branch below.

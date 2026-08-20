@@ -542,6 +542,43 @@ def read_phenotypic_attributes(store_path: Path) -> dict:
     return attributes[PhenotypicAttr.ROOT]
 
 
+def require_readable_store(store_path: Path) -> dict:
+    """Read ``attributes.phenotypic``, refusing a store this build cannot decode.
+
+    The gate is by **value**, not presence: a future store opened under
+    today's semantics is exactly what the 2026-08-19 ruling exists to
+    prevent, and presence alone would let it through.
+
+    Every path that decodes store **content** goes through here, so the two
+    halves of that guarantee -- the check and its wording -- cannot drift
+    apart. :func:`read_phenotypic_attributes` stays ungated for the callers
+    that must *classify* a store rather than read it: ``valid_staged_store``
+    answers False on a mismatch instead of raising, and that is what routes a
+    stale store back to Stage 1 rather than aborting a run.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+
+    Returns:
+        The ``phenotypic`` block.
+
+    Raises:
+        FileNotFoundError: If the root ``zarr.json`` does not exist.
+        KeyError: If the root exists but carries no ``phenotypic`` block.
+        ValueError: If ``store_schema_version`` is not this build's.
+    """
+    block = read_phenotypic_attributes(store_path)
+    found = block.get(PhenotypicAttr.STORE_SCHEMA_VERSION)
+    if found != STORE_SCHEMA_VERSION:
+        raise ValueError(
+                f"Cannot read {store_path}: store_schema_version is {found!r}, "
+                f"but this build of PhenoTypic reads {STORE_SCHEMA_VERSION}. "
+                f"The store was written by a newer PhenoTypic -- upgrade the "
+                f"package to read it."
+        )
+    return block
+
+
 # ---------------------------------------------------------------------------
 # Write-only OME projection (never read back)
 # ---------------------------------------------------------------------------

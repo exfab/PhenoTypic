@@ -270,6 +270,35 @@ def test_load_zarr_raises_on_a_newer_store_schema_version(
     assert str(STORE_SCHEMA_VERSION + 1) in message
 
 
+def test_load_layer_zarr_raises_on_a_newer_store_schema_version(
+    plate: Image, tmp_path: Path
+) -> None:
+    """The layer reader decodes pixels, so it carries the same gate.
+
+    Not covered by any plan task: the 2026-08-19 ruling landed after Phase 2's
+    text was written and says "the loader", and ``load_layer_zarr`` is a second
+    entry point into the same bytes -- the GUI tile server's, called per tile.
+    Ungated, a v4 store renders as v3-decoded pixels with nothing raised.
+
+    The gate costs no I/O: ``require_readable_store`` is the same read of the
+    root ``zarr.json`` this method already performed to resolve the layer.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_SCHEMA_VERSION
+
+    store = plate.save2zarr(tmp_path / "p.ome.zarr")
+    root = store / "zarr.json"
+    payload = json.loads(root.read_text(encoding="utf-8"))
+    payload["attributes"]["phenotypic"][PhenotypicAttr.STORE_SCHEMA_VERSION] = (
+        STORE_SCHEMA_VERSION + 1
+    )
+    root.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="newer PhenoTypic") as excinfo:
+        Image.load_layer_zarr(store, "gray")
+    message = str(excinfo.value)
+    assert str(STORE_SCHEMA_VERSION) in message
+    assert str(STORE_SCHEMA_VERSION + 1) in message
+
+
 def test_load_zarr_raises_when_the_version_marker_is_missing(
     plate: Image, tmp_path: Path
 ) -> None:
