@@ -123,6 +123,45 @@ def test_snapshot_paths_do_not_recurse_into_a_store(tmp_path: Path) -> None:
     assert inside == [], inside
 
 
+def test_snapshot_paths_never_list_a_directory_inside_a_store(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The COST claim, asserted on directory listings rather than results.
+
+    Pruning a recursive walk back down to the right answer leaves the
+    answer correct and the cost pathological -- which is the entire failure
+    the bounded glob exists to prevent, and which an assertion on the
+    returned set cannot see. So this counts ``os.scandir`` instead: nothing
+    at or below a store may be listed at all.
+    """
+    import os
+
+    from phenotypic.gui.results_viewer._output_root import (
+        _processing_snapshot_paths,
+    )
+    from phenotypic.sdk_ import BundleLayout
+
+    _seed(tmp_path, ["a", "b"])
+    stores = [zarr_store_path(tmp_path, "ds", stem) for stem in ("a", "b")]
+    listed: list[str] = []
+    real_scandir = os.scandir
+
+    def _counting(path=".", *args, **kwargs):
+        listed.append(os.fspath(path))
+        return real_scandir(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "scandir", _counting)
+    _processing_snapshot_paths(BundleLayout.detect(tmp_path))
+
+    inside = [
+        seen
+        for seen in listed
+        for store in stores
+        if Path(seen) == store or store in Path(seen).parents
+    ]
+    assert inside == [], inside
+
+
 def test_snapshot_paths_hold_no_hdf(tmp_path: Path) -> None:
     _seed(tmp_path, ["a"])
     from phenotypic.gui.results_viewer._output_root import (
