@@ -1560,3 +1560,110 @@ has never run is not a gate.**
 injected the key post-hoc, and `_preview_cache._load_image_auto` was a hand-rolled copy of
 `load_image_from_store`. Consolidating the second **survived its own mutation** at first —
 the test compared `detect_mat` arrays, and losing the grid changes no pixels.
+
+---
+
+# IMPLEMENTATION — Phase 3 complete
+
+Eight tasks, six clusters (C8–C13). The phase's defining failure was not in any single
+task: it was **the tree being broken between them**, in a way every task's own tests
+called green.
+
+## The between-tasks break, hit three times by three clusters
+
+Task 3.3 stopped Stage 1 writing `.h5`. Task 3.8, which owns per-image completion
+markers, is **three clusters later**. In the window between them the marker still
+declared `"hdf": results/<ds>/hdf/<stem>.h5`, and `publish_image_success` resolves every
+artifact `strict=True` — so an image **failed after completing all of its work**:
+
+```
+…|img.tiff|started||||stage3
+…|img.tiff|failed|FileNotFoundError: … '/out/results/ds/hdf/img.h5'|||stage3
+```
+
+C10 closed it for the staged engine, C11 for the standalone `phenotypic-process-single`
+SLURM worker, C13 for the legacy promoter. **Three clusters, one defect class, each
+discovered by executing rather than by reading.** The plan's task ordering was sound as a
+dependency graph and wrong as an execution order; nothing in the review rounds caught it,
+because each task is internally consistent.
+
+The fix that generalizes is `image_data_artifact()` — one helper returning
+`(kind, path)` — so a publisher **cannot** name the wrong artifact. Choosing
+`<store>/zarr.json` initially was what kept it minimal: a regular file, so the existing
+`{"size","sha256"}` descriptor kept working with no version bump, deferring the design
+question to the task that owned it.
+
+## Count publishers, not files
+
+Every cluster found the site count wrong, always in the direction of **more**:
+
+- C11: **8** `store_stem` sites where the plan said 5 — **and 3 of the plan's 5 were
+  actively wrong.** `store_stem` *raises* on a non-store path by design, so following the
+  plan literally would have turned every local forward run into a hard `ValueError`.
+- C11 again: `_cli_process_single.py` has **two** publishers. C10 routed one. The plan
+  named the file, so the file looked done.
+- C12: **3** write sites, not the 4 my brief claimed — I had copied the plan's Files
+  list, which includes a *transport* site. The plan's own corrected blockquote said 3.
+- C13: **6** `publish_image_success` call sites, 5 declaring a data artifact, 1 left.
+
+## Two tests that passed for the wrong reason
+
+Both are the same shape — an assertion satisfied by something other than the behaviour
+under test — and both were found only by running the *red* step honestly.
+
+- **C12:** the plan's rejection test asserted `"--durable-writes" in result.output`. That
+  passed **before the option existed**, satisfied by click's own
+  `No such option: --durable-writes`. Five of nineteen "failures" in the red run were
+  vacuous passes.
+- **C13:** Task 3.4's parity fixture described only the parquet, so branch 1 never met a
+  store descriptor. Measured: with `valid_image_success` forced to require `is_file()` on
+  every descriptor, **385 passed** — the check was completely blind. C13 fixed the
+  *fixture*, not the check; the defect now produces 23 failures.
+
+A red run is evidence only if it fails for the stated reason. "It failed" is not the
+observation; "it failed **with** X" is.
+
+## Line numbers in a plan are stale by the time they are read
+
+Task 3.8's target moved **400 → 405 → 426** across two clusters, as neighbouring tasks
+edited the same file. Plans that address code by line number are self-invalidating
+wherever tasks share a file; the plan now addresses it by symbol.
+
+## Claims of mine the execution refuted
+
+- I wrote that the legacy promoter's `resolve(strict=True)` **raises**. It does — and the
+  loop's `except (OSError, RuntimeError, ValueError): continue` swallows it. The symptom
+  is a **silent refusal to promote** and a full reprocess of the tree, which is worse than
+  what I described and looks like nothing.
+- I told the user the missing `store_schema_version` gate on `load_layer_zarr` was a
+  performance question. It is not: that method **already** reads the root `zarr.json` to
+  resolve the layer, so the gate is a dict lookup on a block in hand. The premise was
+  wrong, not the concern — and it was the entry point that mattered most, being the GUI
+  tile server's, called per tile.
+- My brief's "four write sites", above.
+
+## A gate that had never run, and had rotted
+
+`tests/migration` is **not in `testpaths`**, so nothing runs it. 57 of its 341 tests fail
+— **stale goldens, not drift**: they expect `LogGrowthModel_r` while the code emits
+`LogGrowthModel_Area_r`, because analysis headers became metric-qualified in `67cfa259`
+and the goldens were never re-captured. The pydantic-v2 regression detector has been
+silently dead for some time.
+
+Adding the bare directory to the phase gate would have made the gate **permanently red
+for unrelated reasons**, which is worse than not running it — a gate that is always red
+teaches you to ignore it. The two files Phase 3 actually needs
+(`test_metadata_schema_migration.py`, `test_curation_imagefile_rename.py`) are named
+explicitly; 52 passed.
+
+## Method notes
+
+**An equivalent mutant is a real answer, not a gap.** C13's M10 (dropping a
+`root_json.is_file()` guard) survived because the broad `except OSError` converts the
+resulting error to the same `False`. No test can distinguish it. The guard stayed anyway —
+control flow should not lean on a broad except.
+
+**Declining to write a test can be correct.** A store descriptor covers only the root
+`zarr.json`, so a re-promote with identical root and different chunks would still
+validate. C13 did not pin that, because a test asserting it would cement the weakness as
+*intended* and block a future strengthening. Flagged instead.
