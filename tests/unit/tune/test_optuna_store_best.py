@@ -169,8 +169,18 @@ def test_an_in_flight_trial_with_a_stamped_cost_still_cannot_win(tmp_path):
     ``RUNNING`` trial carrying a perfectly readable cost — so the ``inf``
     substitution never fires and cannot hide it. Only excluding non-terminal
     trials keeps it out of the ranking, and it must be excluded: the ``tell``
-    never landed, the trial consumed none of the budget, and the next worker's
-    stale-trial reconciliation will flip it to ``FAIL``.
+    never landed and the trial consumed none of the budget, so the study and the
+    fleet would otherwise disagree about what happened.
+
+    Do **not** weaken this on the theory that something will clean the trial up.
+    Nothing will, on the backend that matters: measured against optuna 4.9.0,
+    the ``journal://`` storage a ``--slurm`` fleet now defaults to exposes
+    neither ``record_heartbeat`` nor ``get_heartbeat_interval``, and
+    ``optuna.storages.fail_stale_trials`` silently **no-ops** against it —
+    returns cleanly, changes nothing, warns about nothing. The zombie survives a
+    reopen and is permanent for the life of the study. (Under an RDB the
+    ``_fail_stale_trials`` call in ``OptunaStrategy.suggest`` does reclaim it
+    once the grace period expires, which is why this went unnoticed.)
     """
     from phenotypic.tune.strategy._optuna_support import set_trial_user_attrs
 

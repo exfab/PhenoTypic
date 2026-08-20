@@ -503,11 +503,22 @@ def test_an_orphan_does_not_count_as_progress_toward_the_budget(tmp_path):
 
     out = _build_study(tmp_path, n_recorded=_BUDGET - 1, orphans=1)
 
-    with pytest.raises(RuntimeError, match="not finished|still running"):
+    with pytest.raises(RuntimeError, match="not finished|still running") as exc:
         finalize_distributed_study(out)
 
     assert not io.best_params_path(out).is_file()
     assert not io.tune_finalize_marker_path(out).exists()
+
+    # The message must reconcile its own numbers. The study lists _BUDGET
+    # trials; the refusal counts _BUDGET - 1. An operator comparing that
+    # against an Optuna dashboard has to be able to see WHY, or the gate
+    # reads as if it were miscounting — which is the bug it just fixed.
+    message = str(exc.value)
+    assert f"{_BUDGET - 1} of {_BUDGET}" in message
+    assert "in flight" in message
+    # ...and that waiting will not help: on the journal backend the fleet now
+    # defaults to, nothing ever reclaims a stale trial.
+    assert "never clear" in message
 
 
 def test_the_in_flight_trial_is_reported_rather_than_hidden(

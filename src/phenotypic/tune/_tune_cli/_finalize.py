@@ -51,9 +51,16 @@ proceeds on the terminal trials and *reports* the in-flight ones in
 ``warnings`` instead of refusing: the gate only opens once the budget is drained
 in the unit the workers themselves stop on, and a fleet whose orphans never
 clear would otherwise be permanently un-finalizable without ``force`` — which
-would also disable the interrupted-finalize refusal above. This store cannot
-distinguish an orphan from a live worker on the default ``journal://`` backend,
-which implements no heartbeat; that limitation is stated in the warning.
+would also disable the interrupted-finalize refusal above.
+
+**Assume nothing will ever reclaim a stale trial.** Optuna can reclaim one, via
+the ``_fail_stale_trials`` call in ``OptunaStrategy.suggest``, but only on an
+RDB storage with a heartbeat. Measured against optuna 4.9.0, the ``journal://``
+backend a ``--slurm`` fleet now defaults to exposes neither ``record_heartbeat``
+nor ``get_heartbeat_interval``, and ``optuna.storages.fail_stale_trials``
+silently no-ops against it — so there an orphan is permanent for the life of the
+study, and nothing here can tell it from a worker still evaluating. Both facts
+are stated in the warning rather than guessed at.
 """
 
 from __future__ import annotations
@@ -170,7 +177,12 @@ def finalize_distributed_study(
     # the reader is told about. `len(trials)` is neither, and using it for the
     # gate opened it early by (#failed + #in-flight).
     n_in_flight = len(trials) - len(store.terminal_trials())
-    _require_terminal_study(marker, n_done=store.completed_count(), force=force)
+    _require_terminal_study(
+        marker,
+        n_done=store.completed_count(),
+        n_in_flight=n_in_flight,
+        force=force,
+    )
 
     warnings: list[str] = []
     if n_in_flight:
@@ -273,7 +285,7 @@ def _open_finished_store(
 
 
 def _require_terminal_study(
-    marker: dict[str, Any], *, n_done: int, force: bool
+    marker: dict[str, Any], *, n_done: int, n_in_flight: int = 0, force: bool
 ) -> None:
     """Refuse to finalize a study that may still be gaining trials.
 
@@ -294,6 +306,13 @@ def _require_terminal_study(
         marker: The parsed run marker.
         n_done: Budget-consuming trials in the store right now
             (``store.completed_count()``).
+        n_in_flight: Non-terminal trials in the store. Named in the refusal
+            only so the numbers reconcile: an operator reading the message
+            against an Optuna dashboard sees a larger trial count there, and
+            without this the gap looks like the gate miscounting. On the
+            ``journal://`` backend those trials never clear, so re-running will
+            not change the verdict — the message has to say that, or it reads
+            as "wait and retry" when waiting cannot help.
         force: Skip the check.
 
     Raises:
@@ -309,12 +328,24 @@ def _require_terminal_study(
             "running. Re-run with force=True once the fleet is done."
         )
     if n_done < budget:
+        in_flight_note = (
+            (
+                f" A further {n_in_flight} trial(s) are in flight (Optuna "
+                "RUNNING), which is why the study lists more trials than the "
+                "count above: an un-told trial consumes none of the budget. If "
+                "their workers are dead those trials will never clear on their "
+                "own — the journal storage backend has no heartbeat, so nothing "
+                "reclaims them — and re-running this will keep refusing."
+            )
+            if n_in_flight
+            else ""
+        )
         raise RuntimeError(
             f"study_not_finished: the study holds {n_done} of {budget} "
             "completed-or-pruned trials, so the fleet is still running. "
             "Finalizing now would race a live worker and publish a winner that "
-            "later trials supersede. Re-run with force=True to finalize a fleet "
-            "you know is dead."
+            f"later trials supersede.{in_flight_note} Re-run with force=True to "
+            "finalize a fleet you know is dead."
         )
 
 
