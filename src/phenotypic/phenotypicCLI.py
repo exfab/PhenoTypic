@@ -379,7 +379,10 @@ def _migrate_legacy_success_evidence(
     """Promote only validated legacy per-image outputs to general markers."""
     if state.config.get("success_markers_required", False):
         return 0
-    from phenotypic._cli._cli_completion import publish_image_success
+    from phenotypic._cli._cli_completion import (
+        image_data_artifact,
+        publish_image_success,
+    )
     from phenotypic._cli._cli_process_only import process_only_output_path
     from phenotypic._cli._cli_staged_resume import stage3_completion_exists
 
@@ -419,13 +422,21 @@ def _migrate_legacy_success_evidence(
                 }
                 mode = "process"
             else:
+                # The same resolver every publisher uses. This path fires
+                # on a STORE-era run too -- `stage3_completion_exists` is a
+                # store-era signal -- so a hard-coded `"hdf"` here named a
+                # file the run never wrote. `publish_image_success` resolves
+                # strict=True, and the `except OSError` below swallows the
+                # FileNotFoundError, so the symptom was not a crash but a
+                # silent refusal to promote and a full reprocess.
+                data_key, data_path = image_data_artifact(
+                    output_dir, output_manager, dataset.name, image.stem
+                )
                 artifacts = {
                     "measurements": output_manager.get_output_path(
                         dataset.name, "measurements", image.stem
                     ),
-                    "hdf": output_manager.get_output_path(
-                        dataset.name, "hdf", image.stem
-                    ),
+                    data_key: data_path,
                 }
                 if config.save_overlays:
                     artifacts["overlay"] = output_manager.get_output_path(

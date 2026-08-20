@@ -14,6 +14,7 @@ from uuid import uuid4
 from phenotypic.sdk_ import (
     aggregate_publication_marker_path,
     atomic_write_json,
+    file_fingerprint,
     image_completion_marker_path,
     master_measurements_csv_path,
     master_measurements_parquet_path,
@@ -23,7 +24,27 @@ from phenotypic.sdk_ import (
     validated_published_metadata_migration_targets,
 )
 
-SUCCESS_MARKER_VERSION = 1
+#: Bumped to 2 when artifact descriptors gained ``kind``. A v1 marker
+#: describes the per-image ``.h5``, and ``--mode migrate`` defaults to
+#: ``keep_source=True`` -- so that file is still present at its recorded size
+#: and sha256, and a v1 marker would *validate* against it while the store it
+#: should describe went entirely unverified. The bump protects against a false
+#: ``complete``, not against over-reprocessing (ledger FLOW-23).
+SUCCESS_MARKER_VERSION = 2
+
+#: The root metadata document an OME-Zarr store is fingerprinted by.
+#:
+#: ``promote_store`` writes it **last**, so its digest covers the whole
+#: promoted store: any later re-promote replaces it and invalidates the marker.
+#: Fingerprinting the store *directory* instead would be a constant function of
+#: the path -- ``paths_fingerprint`` emits one sentinel byte for a directory
+#: and does not recurse -- and would certify a store whose contents changed.
+STORE_ROOT_JSON = "zarr.json"
+
+#: Artifact descriptor kinds. ``"file"`` is the default for a descriptor
+#: written before the ``kind`` tag existed.
+ARTIFACT_KIND_FILE = "file"
+ARTIFACT_KIND_STORE = "store"
 
 
 def _sha256(path: Path) -> str:
@@ -34,6 +55,57 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _artifact_descriptor(resolved: Path, relative: Path) -> dict[str, object]:
+    """Describe one marker-bound artifact as a file or as a store.
+
+    A store is a *directory*, which the file descriptor cannot express:
+    ``_sha256`` opens its argument and ``stat().st_size`` on a directory is a
+    filesystem detail, not a content fingerprint. Store descriptors therefore
+    carry no ``size`` and key their ``sha256`` on the root ``zarr.json``'s
+    **contents** via :func:`file_fingerprint` -- content-only, so the
+    descriptor stays relocatable exactly like every file descriptor
+    (``paths_fingerprint`` would fold the absolute resolved path in, and this
+    tree is routinely reached through more than one mount; ledger FLOW-3).
+
+    Args:
+        resolved: The strictly-resolved artifact path.
+        relative: Its path relative to the run output root.
+
+    Returns:
+        A JSON-serializable descriptor tagged with its ``kind``.
+
+    Raises:
+        FileNotFoundError: A store directory with no root ``zarr.json``.
+    """
+    if resolved.is_dir():
+        return {
+            "path": relative.as_posix(),
+            "kind": ARTIFACT_KIND_STORE,
+            "sha256": file_fingerprint(resolved / STORE_ROOT_JSON),
+        }
+    return {
+        "path": relative.as_posix(),
+        "kind": ARTIFACT_KIND_FILE,
+        "size": resolved.stat().st_size,
+        "sha256": _sha256(resolved),
+    }
+
+
+def _store_artifact_matches(
+    artifact: Path, descriptor: Mapping[str, object]
+) -> bool:
+    """Return whether a store on disk still matches its descriptor.
+
+    A promoted store always has a root ``zarr.json``, so testing for that one
+    regular file covers "not a directory", "not a store", and "an interrupted
+    re-promote" in a single check.
+    """
+    root_json = artifact / STORE_ROOT_JSON
+    if not root_json.is_file():
+        return False
+    return file_fingerprint(root_json) == descriptor.get("sha256")
+
+
 def image_data_artifact(
     output_dir: Path,
     output_manager: object,
@@ -42,22 +114,26 @@ def image_data_artifact(
 ) -> tuple[str, Path]:
     """Return the ``(key, path)`` of the per-image data artifact to certify.
 
-    Staged runs publish an OME-Zarr store; the single-pass path still writes an
-    ``.h5`` until Phase 3 Task 3.6 ports it, so both have to be describable
-    from one place.
+    Every forward path now writes an OME-Zarr store; only a **legacy tree**
+    carried over from an older release still has a per-image ``.h5``. Both
+    have to be describable from one place.
 
-    A store is named by its **root ``zarr.json``**, not by the directory. That
-    is a regular file, so the existing content-only descriptor
-    (``{"size", "sha256"}``) applies unchanged and is exactly the fingerprint
-    Task 3.8's ``kind: "store"`` descriptor keys on. Fingerprinting the
-    directory instead would be a constant function of the path
-    (``_io_constants.py:215-217`` emits one sentinel byte and does not
-    recurse), which would certify a store whose contents had changed.
+    The artifact returned for a store is the **store directory**, and the
+    marker records it as ``kind: "store"``. The digest still keys on the root
+    ``zarr.json``'s contents (see :data:`STORE_ROOT_JSON`) -- naming the
+    directory is what lets the marker say *what class of thing* it certifies,
+    without any caller having to parse a path string to find out.
 
     Because the root ``zarr.json`` is written **last** by ``promote_store``,
     its digest covers the whole promoted store: any later re-promote replaces
     it and invalidates the marker. That is why no store write may follow
     ``publish_image_success`` on any path (ledger **FLOW-6**).
+
+    The ``"hdf"`` fallback is **not** dead code. Nothing on a forward path
+    writes a per-image ``.h5`` any more, but
+    ``phenotypicCLI._migrate_legacy_success_evidence`` mints markers for
+    **legacy trees**, which have an ``.h5`` and no store, and that is exactly
+    the caller this branch serves.
 
     Args:
         output_dir: Run output root.
@@ -66,14 +142,14 @@ def image_data_artifact(
         image_stem: Image stem.
 
     Returns:
-        ``("store", <store>/zarr.json)`` when a store exists, else
+        ``("store", <store>)`` when a store exists, else
         ``("hdf", results/<ds>/hdf/<stem>.h5)``.
     """
     from phenotypic.sdk_ import zarr_store_path
 
-    store_root = zarr_store_path(output_dir, dataset, image_stem) / "zarr.json"
-    if store_root.is_file():
-        return "store", store_root
+    store = zarr_store_path(output_dir, dataset, image_stem)
+    if (store / STORE_ROOT_JSON).is_file():
+        return ARTIFACT_KIND_STORE, store
     return "hdf", output_manager.get_output_path(  # type: ignore[attr-defined]
         dataset, "hdf", image_stem
     )
@@ -113,11 +189,7 @@ def publish_image_success(
             raise ValueError(
                 f"Artifact escapes output root: {artifact}"
             ) from exc
-        descriptors[name] = {
-            "path": relative.as_posix(),
-            "size": resolved.stat().st_size,
-            "sha256": _sha256(resolved),
-        }
+        descriptors[name] = _artifact_descriptor(resolved, relative)
     marker = {
         "version": SUCCESS_MARKER_VERSION,
         "work_id": work_id,
@@ -167,11 +239,20 @@ def valid_image_success(
                 return False
             artifact = (output_root / relative).resolve()
             artifact.relative_to(output_root)
-            if (
-                not artifact.is_file()
-                or artifact.stat().st_size != descriptor.get("size")
-                or _sha256(artifact) != descriptor.get("sha256")
-            ):
+            kind = descriptor.get("kind", ARTIFACT_KIND_FILE)
+            if kind == ARTIFACT_KIND_STORE:
+                if not _store_artifact_matches(artifact, descriptor):
+                    return False
+            elif kind == ARTIFACT_KIND_FILE:
+                if (
+                    not artifact.is_file()
+                    or artifact.stat().st_size != descriptor.get("size")
+                    or _sha256(artifact) != descriptor.get("sha256")
+                ):
+                    return False
+            else:
+                # Fail closed: an unrecognized kind is a marker this build
+                # cannot certify, never a file descriptor by default.
                 return False
     except (OSError, ValueError, json.JSONDecodeError, AttributeError):
         return False
@@ -303,6 +384,23 @@ def refresh_success_markers_after_metadata_migration(
                     raise RuntimeError(
                         f"Success marker artifact escapes output root: {artifact}"
                     ) from exc
+                if descriptor.get("kind") == ARTIFACT_KIND_STORE:
+                    # Metadata migration never rewrites a store, so a store
+                    # descriptor can only be verified, never refreshed. It
+                    # still has to be dispatched here: `_sha256` opens its
+                    # argument as a file and would raise IsADirectoryError,
+                    # and the size comparison below reads a key a store
+                    # descriptor does not carry (ledger FLOW-31).
+                    if not (artifact / STORE_ROOT_JSON).is_file():
+                        raise RuntimeError(
+                            f"Success marker artifact is missing: {artifact}"
+                        )
+                    if not _store_artifact_matches(artifact, descriptor):
+                        raise RuntimeError(
+                            "Uncertified artifact change prevents success "
+                            f"marker refresh: {artifact}"
+                        )
+                    continue
                 if not artifact.is_file():
                     raise RuntimeError(
                         f"Success marker artifact is missing: {artifact}"

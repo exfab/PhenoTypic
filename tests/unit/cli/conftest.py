@@ -243,6 +243,12 @@ class ArtifactWorld:
 
     # -- format-neutral halves ---------------------------------------------
 
+    def _image_artifact_path(self) -> Path:
+        """The per-image image-state artifact in this world's format."""
+        if self.kind == "hdf":
+            return legacy_hdf_path(self.root, self.DATASET, self.STEM)
+        return zarr_store_path(self.root, self.DATASET, self.STEM)
+
     def _parquet_path(self) -> Path:
         return (
             dataset_measurements_dir(self.root, self.DATASET)
@@ -254,13 +260,19 @@ class ArtifactWorld:
     ) -> None:
         """Publish the per-image completion marker branch 1 consults.
 
-        It describes the **parquet**, which both worlds build identically, so
-        the marker is valid in both worlds or neither. Describing the image
-        artifact instead would compare an ``.h5`` file against a store
-        *directory*, and ``valid_image_success``'s ``is_file()`` check would
-        diverge for a reason Task 3.8 owns rather than this task.
+        It describes the parquet **and**, when it exists, the per-image image
+        artifact -- the ``.h5`` in the HDF world and the store *directory* in
+        the zarr world. Task 3.8 gave descriptors a ``kind`` tag, so the two
+        are now certifiable in the same marker shape and the comparison stays
+        an honest one: if ``valid_image_success`` could not describe a store,
+        the two worlds would disagree here and the parity test would fail.
+        Before that tag existed this had to describe the parquet alone.
         """
         if parquet_path.is_file():
+            artifacts = {"measurements": parquet_path}
+            image_artifact = self._image_artifact_path()
+            if image_artifact.exists():
+                artifacts["image_state"] = image_artifact
             publish_image_success(
                 self.root,
                 work_id=work_id or "unused",
@@ -270,7 +282,7 @@ class ArtifactWorld:
                 mode="full",
                 attempt_id="a-1",
                 lifecycle_epoch="e-1",
-                artifacts={"measurements": parquet_path},
+                artifacts=artifacts,
             )
             return
         # No artifact to describe: write the marker anyway, pointing at the

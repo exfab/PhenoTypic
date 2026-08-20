@@ -465,7 +465,39 @@ def test_process_single_cli_marker_certifies_the_store(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     artifacts = published["artifacts"]
     assert "hdf" not in artifacts
-    assert artifacts["store"] == zarr_store_path(out, "in", "img") / "zarr.json"
+    assert artifacts["store"] == zarr_store_path(out, "in", "img")
+
+    # The forwarded argument is only half the claim: assert on what the real
+    # publisher actually wrote, and that the run validates against it. Task
+    # 3.8 made the certified artifact the store DIRECTORY, tagged
+    # ``kind: "store"`` and fingerprinted on its root ``zarr.json``.
+    import json
+
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic.sdk_ import (
+        file_fingerprint,
+        image_completion_marker_path,
+    )
+
+    marker = json.loads(
+        image_completion_marker_path(out, "in", "img").read_text(
+            encoding="utf-8"
+        )
+    )
+    descriptor = marker["artifacts"]["store"]
+    assert descriptor["kind"] == "store"
+    assert descriptor["path"] == zarr_store_path(out, "in", "img").relative_to(
+        out
+    ).as_posix()
+    assert descriptor["sha256"] == file_fingerprint(
+        zarr_store_path(out, "in", "img") / "zarr.json"
+    )
+    assert valid_image_success(
+        out,
+        dataset="in",
+        image_stem="img",
+        work_id=published["work_id"],
+    )
 
 
 def test_local_success_marker_certifies_the_store(tmp_path: Path) -> None:
@@ -478,8 +510,8 @@ def test_local_success_marker_certifies_the_store(tmp_path: Path) -> None:
 
     key, path = image_data_artifact(tmp_path, manager, "ds", "img")
     assert key == "store"
-    assert path == zarr_store_path(tmp_path, "ds", "img") / "zarr.json"
-    assert path.is_file()
+    assert path == zarr_store_path(tmp_path, "ds", "img")
+    assert path.is_dir()
 
 
 # ---------------------------------------------------------------------------
