@@ -2013,7 +2013,11 @@ own change."
 - Modify: `src/phenotypic/_cli/_cli_completion.py` (`SUCCESS_MARKER_VERSION` line 26,
   `_sha256` lines 29–34, `publish_image_success` line 36, `valid_image_success` lines 117–130,
   `refresh_success_markers_after_metadata_migration` lines 136–155)
-- Modify the ONE remaining `"hdf"` artifact declaration: `phenotypicCLI.py:405`
+- Modify the ONE remaining `"hdf"` artifact declaration: the `artifacts` dict inside
+  `phenotypicCLI.py::_migrate_legacy_success_evidence`.
+  **Locate it by symbol, not by line.** That line number has moved twice in two
+  clusters (400 -> 405 -> 426) as neighbouring tasks edited the same file; a line
+  reference here is stale by the time you read it.
 
 > **Four of the five are already done, and the helper to extend already exists (C10).**
 > Task 3.5 could not be green without them: Task 3.3 stopped Stage 1 writing `.h5` while
@@ -2043,7 +2047,7 @@ own change."
 > the artifact change alone, and none of this task's *fingerprint* design is consumed.
 >
 > **The fifth site is a live break, and it is the reason this task still has teeth.**
-> `phenotypicCLI.py:405` sits in `_migrate_legacy_success_evidence`, which mints success
+> It sits in `_migrate_legacy_success_evidence`, which mints success
 > markers for runs that have completion evidence but no marker — and its evidence test at
 > `:380` includes `stage3_completion_exists`, a **store-era** signal. So the path fires on a
 > staged run interrupted between its Stage-3 marker and its success marker, declares an
