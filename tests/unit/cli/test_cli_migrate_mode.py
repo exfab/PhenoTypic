@@ -474,3 +474,118 @@ def test_a_blocked_preflight_aborts_a_dry_run_too(
         ["--mode", "migrate", "--output", str(legacy_run), "--dry-run"],
     )
     assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# The predicate, applied to every consumer (Task 5.7)
+# ---------------------------------------------------------------------------
+
+
+def test_full_mode_refuses_a_half_migrated_tree(half_migrated_run, tmp_path) -> None:
+    """Without this, --mode full silently reprocesses from source.
+
+    ``--pipeline`` and ``--input`` are ``click.Path(exists=True)``, so both
+    must exist on disk or click exits 2 while parsing and the migration guard
+    never runs. The exit CODE cannot separate the two -- the guard raises
+    ``click.UsageError``, which also exits 2 -- so the guard's own text is the
+    discriminator.
+    """
+    pipeline = tmp_path / "p.json"
+    pipeline.write_text("{}", encoding="utf-8")
+    images = tmp_path / "imgs"
+    images.mkdir()
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "full",
+            "--output",
+            str(half_migrated_run),
+            "--pipeline",
+            str(pipeline),
+            "--input",
+            str(images),
+        ],
+    )
+    assert result.exit_code != 0
+    assert "--mode migrate" in result.output
+
+
+@pytest.mark.parametrize("mode", ["full", "measure", "recompile", "process"])
+def test_every_consuming_mode_refuses_a_half_migrated_tree(
+    mode: str, half_migrated_run, tmp_path
+) -> None:
+    """Applied to every mode that WRITES or REPROCESSES, not recompile alone.
+
+    After Phase 6 the forward path genuinely cannot read those images.
+    """
+    pipeline = tmp_path / "p.json"
+    pipeline.write_text("{}", encoding="utf-8")
+    images = tmp_path / "imgs"
+    images.mkdir()
+
+    args = ["--mode", mode, "--output", str(half_migrated_run)]
+    if mode in {"full", "process"}:
+        args += ["--pipeline", str(pipeline), "--input", str(images)]
+    if mode == "measure":
+        args += ["--pipeline", str(pipeline)]
+    if mode == "process":
+        args += ["--layer", "objmap"]
+
+    result = CliRunner().invoke(phenotypic_cli, args)
+    assert result.exit_code != 0
+    assert "--mode migrate" in result.output, result.output
+
+
+def test_migrate_itself_is_exempt(half_migrated_run) -> None:
+    """MIG-19: it is the remedy. Guarding it makes the tree unmigratable."""
+    from phenotypic.sdk_ import datasets_needing_migration
+
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(half_migrated_run)]
+    )
+    assert result.exit_code == 0, result.output
+    assert datasets_needing_migration(half_migrated_run) == []
+
+
+def test_the_viewer_surfaces_it(half_migrated_run) -> None:
+    """Reported through the EXISTING consistency surface, not a new one.
+
+    Same predicate, same reason text, **different severity**: a mode that
+    writes refuses, while the viewer is informational. A half-migrated
+    tree's deliverables, measurements and dashboards are all still readable,
+    and the images that are missing are precisely the ones it would
+    otherwise render empty.
+    """
+    from phenotypic.gui.results_viewer._output_consistency import (
+        inspect_output_consistency,
+    )
+    from phenotypic.sdk_ import BundleLayout, deliverables_dir
+
+    report = inspect_output_consistency(
+        BundleLayout(
+            deliverables_base=deliverables_dir(half_migrated_run),
+            output_root=half_migrated_run,
+        )
+    )
+    assert any("--mode migrate" in reason for reason in report.reasons), (
+        report.reasons
+    )
+
+
+def test_the_viewer_says_nothing_about_a_fully_migrated_tree(
+    migrated_run,
+) -> None:
+    from phenotypic.gui.results_viewer._output_consistency import (
+        inspect_output_consistency,
+    )
+    from phenotypic.sdk_ import BundleLayout, deliverables_dir
+
+    report = inspect_output_consistency(
+        BundleLayout(
+            deliverables_base=deliverables_dir(migrated_run),
+            output_root=migrated_run,
+        )
+    )
+    assert not any("--mode migrate" in reason for reason in report.reasons)

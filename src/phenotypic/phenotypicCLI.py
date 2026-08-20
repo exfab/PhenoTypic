@@ -261,7 +261,17 @@ DURABLE_WRITES_REJECTED_MODES: frozenset[str] = frozenset(
 
 
 def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
-    """Refuse a tree whose per-image results are still legacy ``.h5``.
+    """Refuse a tree whose per-image results are not all converted.
+
+    Applied to **every mode that writes or reprocesses** -- ``full``,
+    ``measure``, ``recompile``, ``process`` -- because after Phase 6 the
+    forward path genuinely cannot read an unconverted image. ``migrate``
+    itself is exempt: it is the remedy, and guarding it with its own
+    predicate makes the tree unmigratable (ledger MIG-19).
+
+    The predicate is shared with the viewer, so the two cannot disagree
+    about what "needs migrating" means. The severities differ, not the
+    definition: a writing mode refuses, while the viewer reports.
 
     Format conversion rewrites the entire results tree, so it is typed
     deliberately rather than triggered as a side effect of an unrelated run.
@@ -271,42 +281,19 @@ def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
         mode: The mode being refused, for the message.
 
     Raises:
-        click.UsageError: At least one dataset holds ``.h5`` results and no
-            store.
+        click.UsageError: At least one dataset holds an ``.h5`` result whose
+            store is absent or invalid.
     """
-    from phenotypic.sdk_ import (
-        DIR_HDF,
-        DIR_ZARR,
-        results_dir,
-    )
-    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+    from phenotypic.sdk_ import MIGRATION_REMEDY, datasets_needing_migration
 
-    root = results_dir(output_dir)
-    if not root.is_dir():
-        return
-    legacy: list[str] = []
-    for dataset_dir in sorted(path for path in root.iterdir() if path.is_dir()):
-        hdf_dir = dataset_dir / DIR_HDF
-        if not hdf_dir.is_dir() or not any(hdf_dir.glob("*.h5")):
-            continue
-        zarr_dir = dataset_dir / DIR_ZARR
-        stores = (
-            [
-                path
-                for path in zarr_dir.glob(f"*{STORE_SUFFIX}")
-                if path.is_dir() and not path.name.startswith(".")
-            ]
-            if zarr_dir.is_dir()
-            else []
-        )
-        if not stores:
-            legacy.append(dataset_dir.name)
+    legacy = datasets_needing_migration(output_dir)
     if legacy:
         raise click.UsageError(
             f"--mode {mode} cannot read this output: dataset(s) "
-            f"{', '.join(legacy)} still hold legacy .h5 results. "
+            f"{', '.join(legacy)} still hold unconverted .h5 results. "
             f"Convert them first with:\n"
-            f"  python -m phenotypic --mode migrate --output {output_dir}"
+            f"  python -m phenotypic {MIGRATION_REMEDY} "
+            f"--output {output_dir}"
         )
 
 
@@ -1361,6 +1348,13 @@ def phenotypic_cli(
             raise click.UsageError(
                 "--delete-sources is only accepted with --mode migrate."
             )
+
+        # Every mode that writes or reprocesses refuses an unconverted tree;
+        # `migrate` is exempt because it is the remedy (ledger MIG-19). Placed
+        # here so `full`, `measure`, `recompile` and `process` are all covered
+        # by one call rather than four, and before any of them writes.
+        if not migrate_only and output_dir.exists():
+            _refuse_unmigrated_output(output_dir, mode=cli_mode)
         if durable_writes is not None and cli_mode in (
             DURABLE_WRITES_REJECTED_MODES
         ):
@@ -1479,7 +1473,6 @@ def phenotypic_cli(
                 raise click.UsageError(
                     f"--mode recompile output directory does not exist: {output_dir}."
                 )
-            _refuse_unmigrated_output(output_dir, mode=cli_mode)
             try:
                 metadata_csv = _snapshot_metadata_csv(output_dir, metadata_csv)
             except Exception as exc:
