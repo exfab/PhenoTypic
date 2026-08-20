@@ -41,6 +41,19 @@ hidden**:
 
 ``force=True`` overrides both refusals, for the operator who knows the fleet is
 dead and wants the artifacts anyway.
+
+A third hazard is closed by construction rather than by a refusal. A worker
+killed at its Slurm walltime leaves its Optuna trial ``RUNNING`` forever, and
+such a trial is neither ``failed`` nor scored. Both the budget gate and the
+winner selection therefore read ``store.terminal_trials()`` /
+``store.completed_count()`` rather than the raw ``store.trials``. Finalizing
+proceeds on the terminal trials and *reports* the in-flight ones in
+``warnings`` instead of refusing: the gate only opens once the budget is drained
+in the unit the workers themselves stop on, and a fleet whose orphans never
+clear would otherwise be permanently un-finalizable without ``force`` — which
+would also disable the interrupted-finalize refusal above. This store cannot
+distinguish an orphan from a live worker on the default ``journal://`` backend,
+which implements no heartbeat; that limitation is stated in the warning.
 """
 
 from __future__ import annotations
@@ -77,7 +90,11 @@ class FinalizeResult:
 
     Attributes:
         output_dir: The finalized run directory.
-        n_trials: How many trials the study held when it was read.
+        n_trials: How many trials the study held when it was read — **every**
+            state, in-flight rows included, so the number matches what an
+            operator sees in the study itself. It is deliberately not the
+            number the budget gate or the winner selection ranked; a non-zero
+            in-flight count is named in ``warnings``.
         winner_trial_number: The headline winner's trial number, or ``None``
             when the study recorded no successful trial.
         selection: ``"pareto_knee"`` for a multi-objective run, else
@@ -147,9 +164,23 @@ def finalize_distributed_study(
 
     store = _open_finished_store(spec, output_dir, marker)
     trials = list(store.trials)
-    _require_terminal_study(marker, n_seen=len(trials), force=force)
+    # Two DIFFERENT counts, deliberately. The budget gate must see only the
+    # trials that consume the budget (COMPLETE + PRUNED — the unit
+    # `OptunaStrategy.is_exhausted` measures), while the in-flight count is what
+    # the reader is told about. `len(trials)` is neither, and using it for the
+    # gate opened it early by (#failed + #in-flight).
+    n_in_flight = len(trials) - len(store.terminal_trials())
+    _require_terminal_study(marker, n_done=store.completed_count(), force=force)
 
     warnings: list[str] = []
+    if n_in_flight:
+        warnings.append(
+            f"{n_in_flight} trial(s) are still in flight (Optuna RUNNING) and "
+            "were excluded from the winner selection; they are most likely "
+            "orphans left by workers their scheduler killed, but this store "
+            "cannot tell an orphan from a live worker. Re-run finalize if a "
+            "worker was genuinely still evaluating."
+        )
     headline = _headline_winner(store)
     selection = _selection_label(store)
 
@@ -242,7 +273,7 @@ def _open_finished_store(
 
 
 def _require_terminal_study(
-    marker: dict[str, Any], *, n_seen: int, force: bool
+    marker: dict[str, Any], *, n_done: int, force: bool
 ) -> None:
     """Refuse to finalize a study that may still be gaining trials.
 
@@ -252,9 +283,17 @@ def _require_terminal_study(
     was never the winner. The budget recorded in the marker is the available
     terminal signal: once the fleet has drained it, no worker asks for more.
 
+    ``n_done`` must therefore be measured in the **same unit as the budget**.
+    A worker stops asking when ``OptunaStrategy.is_exhausted`` says
+    ``COMPLETE + PRUNED >= n_trials``; failed and in-flight trials consume none
+    of it. Comparing the store's raw trial count against that budget instead
+    counted failures and orphans as progress and opened the gate early by
+    exactly ``#failed + #in-flight``.
+
     Args:
         marker: The parsed run marker.
-        n_seen: Trials present in the store right now.
+        n_done: Budget-consuming trials in the store right now
+            (``store.completed_count()``).
         force: Skip the check.
 
     Raises:
@@ -269,12 +308,13 @@ def _require_terminal_study(
             "this study cannot be shown to have finished and may still be "
             "running. Re-run with force=True once the fleet is done."
         )
-    if n_seen < budget:
+    if n_done < budget:
         raise RuntimeError(
-            f"study_not_finished: the study holds {n_seen} of {budget} trials, "
-            "so the fleet is still running. Finalizing now would race a live "
-            "worker and publish a winner that later trials supersede. Re-run "
-            "with force=True to finalize a fleet you know is dead."
+            f"study_not_finished: the study holds {n_done} of {budget} "
+            "completed-or-pruned trials, so the fleet is still running. "
+            "Finalizing now would race a live worker and publish a winner that "
+            "later trials supersede. Re-run with force=True to finalize a fleet "
+            "you know is dead."
         )
 
 

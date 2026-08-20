@@ -54,6 +54,13 @@ PHENO_OBJECTIVES: Final[str] = "pheno_objectives"
 #: when ``True``); an absent attr restores the neutral default.
 PHENO_GAP: Final[str] = "pheno_gap"
 PHENO_SUSPICIOUS: Final[str] = "pheno_suspicious"
+#: The evaluated scalar cost, stamped **in addition to** the native
+#: ``trial.value``. Optuna carries no value for a trial told as ``PRUNED`` or
+#: ``FAIL`` (``study.tell(trial, state=...)`` takes no ``values``), so without
+#: this sidecar the store reads such a trial's cost back as "missing" and has to
+#: substitute one — the phantom-winner hazard the ``0.0`` substitution created
+#: (a pruned trial's cost is real, partial-fidelity data, not an absence).
+PHENO_SCORE: Final[str] = "pheno_score"
 
 
 def set_trial_user_attrs(
@@ -66,20 +73,32 @@ def set_trial_user_attrs(
     sampler distributions — *also* carries the off-model fields
     ``OptunaStudyStore._to_trial`` reads back: the full materialized ``params``
     (including ``Fixed`` knobs the sampler never suggested), the per-image
-    ``terms``, the ``n_images`` count, the multi-objective ``objectives`` sidecar,
-    and the robust-eval ``gap`` / ``suspicious`` signals. This makes the strategy
-    the *sole* writer of one shared study (no ``add_trial`` mirror, no phantom).
+    ``terms``, the ``n_images`` count, the scalar ``score``, the multi-objective
+    ``objectives`` sidecar, and the robust-eval ``gap`` / ``suspicious`` signals.
+    This makes the strategy the *sole* writer of one shared study (no
+    ``add_trial`` mirror, no phantom).
+
+    The ``score`` sidecar exists because the next call is often
+    ``study.tell(trial, state=PRUNED|FAIL)``, which stores **no** ``value``: an
+    early-stopped trial's real partial-fidelity cost would otherwise be
+    unrecoverable on read-back (see :data:`PHENO_SCORE`).
 
     Args:
         trial: The in-flight Optuna trial (from ``study.ask``) about to be told.
         params: The full materialized combo for this trial (the strategy's
             ``suggest`` return, ``Fixed`` constants included).
-        result: The :class:`EvaluationResult` — its ``terms`` / ``n_images`` /
-            ``objectives`` / ``gap`` / ``suspicious`` are read defensively
-            (``getattr`` with neutral defaults) so a minimal fake still works.
+        result: The :class:`EvaluationResult` — its ``score`` / ``terms`` /
+            ``n_images`` / ``objectives`` / ``gap`` / ``suspicious`` are read
+            defensively (``getattr`` with neutral defaults) so a minimal fake
+            still works.
     """
     trial.set_user_attr(PHENO_PARAMS, dict(params))
     trial.set_user_attr(PHENO_TERMS, dict(getattr(result, "terms", {}) or {}))
+    score = getattr(result, "score", None)
+    if score is not None:
+        # Stamped for the PRUNED/FAIL trials Optuna stores with no ``value`` at
+        # all; a COMPLETE trial's native ``value`` still wins on read-back.
+        trial.set_user_attr(PHENO_SCORE, float(score))
     trial.set_user_attr(PHENO_N_IMAGES, int(getattr(result, "n_images", 0) or 0))
     objectives = getattr(result, "objectives", None)
     if objectives is not None:

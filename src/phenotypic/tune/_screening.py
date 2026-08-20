@@ -14,6 +14,7 @@ downstream freeze decision can be conservative when interactions are unverified
 """
 from __future__ import annotations
 
+import math
 from typing import Literal
 
 import numpy as np
@@ -150,7 +151,16 @@ def _rf_permutation_importance(
         ``{param_key: importance}`` sorted descending. Empty when fewer than two
         usable trials (nothing to fit).
     """
-    trials = [t for t in store.trials if not t.failed]
+    # `terminal_trials()`, not `trials`: an in-flight trial has no score to
+    # regress against and no params to attribute it to. The finiteness filter
+    # covers the other unscorable row — a trial whose cost the store could not
+    # recover, read back as `inf` — which the forest rejects outright
+    # ("Input y contains infinity") rather than merely skewing the fit.
+    trials = [
+        t
+        for t in store.terminal_trials()
+        if not t.failed and math.isfinite(t.score)
+    ]
     if objective is not None:
         # Per-objective: keep only trials that carry the named objective.
         trials = [

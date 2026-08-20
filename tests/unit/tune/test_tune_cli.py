@@ -231,6 +231,9 @@ def test_spec_storage_url_wins_over_env_without_cli_url(tmp_path, monkeypatch):
             opened["url"] = storage_url
             self.trials = []
 
+        def terminal_trials(self):
+            return []
+
         def is_resumable_in_place(self):
             return True
 
@@ -284,6 +287,9 @@ def test_cli_storage_url_wins_over_spec_url(tmp_path, monkeypatch):
         def __init__(self, *, storage_url, study_name, directions=None):
             opened["url"] = storage_url
             self.trials = []
+
+        def terminal_trials(self):
+            return []
 
         def is_resumable_in_place(self):
             return True

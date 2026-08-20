@@ -93,6 +93,16 @@ class JournalStudyStore:
         """A copy of the journaled trials in order."""
         return list(self._trials)
 
+    def terminal_trials(self) -> list[Trial]:
+        """Identical to :attr:`trials` — the journal holds no in-flight rows.
+
+        :meth:`append` is called only once a candidate has resolved (completed,
+        pruned, or failed), so every journaled record is already terminal. The
+        distinction exists for the Optuna backend, whose store also holds the
+        ``RUNNING`` trials of live — or dead — workers.
+        """
+        return list(self._trials)
+
     def __len__(self) -> int:
         return len(self._trials)
 

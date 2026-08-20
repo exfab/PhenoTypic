@@ -63,6 +63,10 @@ def test_journal_satisfies_protocol_by_calling_each_method():
     store.append(Trial(number=0, params={"a": 1}, score=0.5, terms={"X": 0.5}, n_images=2))
     assert len(store) == 1
     assert [t.number for t in store.trials] == [0]
+    # The journal appends only resolved candidates, so both views agree; the
+    # method still has to exist, because everything that ranks a winner or
+    # counts progress calls it rather than `trials`.
+    assert [t.number for t in store.terminal_trials()] == [0]
     best = store.best()
     assert best is not None and best.number == 0
     assert store.is_resumable_in_place() is False
@@ -94,6 +98,9 @@ class _FakeResumableStore:
 
     @property
     def trials(self) -> list[Trial]:
+        return list(self._trials)
+
+    def terminal_trials(self) -> list[Trial]:
         return list(self._trials)
 
     def __len__(self) -> int:

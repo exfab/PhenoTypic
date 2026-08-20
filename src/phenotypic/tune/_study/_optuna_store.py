@@ -22,6 +22,7 @@ early-stopped one, ``FAIL`` for a failed candidate.
 from __future__ import annotations
 
 import logging
+import math
 from typing import TYPE_CHECKING, Any, Optional
 
 from ..strategy._optuna_support import (
@@ -30,6 +31,7 @@ from ..strategy._optuna_support import (
     PHENO_NUMBER as _ATTR_NUMBER,
     PHENO_OBJECTIVES as _ATTR_OBJECTIVES,
     PHENO_PARAMS as _ATTR_PARAMS,
+    PHENO_SCORE as _ATTR_SCORE,
     PHENO_SUSPICIOUS as _ATTR_SUSPICIOUS,
     PHENO_TERMS as _ATTR_TERMS,
     is_multi_objective_directions,
@@ -252,6 +254,18 @@ class OptunaStudyStore:
         scalar ``score`` is the mean of its objectives (the same projection the
         Evaluator applies), since a multi-objective Optuna trial carries no
         scalar ``value``.
+
+        The cost is resolved in three steps, and the order matters:
+
+        1. the native ``value`` / ``values`` — authoritative for a ``COMPLETE``
+           trial, and the only thing the ``append`` mirror writes;
+        2. the ``PHENO_SCORE`` sidecar — a ``PRUNED``/``FAIL`` trial is told with
+           a state and **no** value, so its real cost lives only here;
+        3. :data:`math.inf` — a trial with no cost anywhere (a ``RUNNING``
+           orphan, or a pre-sidecar ``PRUNED`` row) is *unknown*, not perfect.
+           Under the minimize-cost convention ``0.0`` is the **best possible**
+           score, so substituting it made a never-evaluated trial outrank every
+           real one; ``inf`` is the only substitution that can never win.
         """
         import optuna
 
@@ -267,16 +281,15 @@ class OptunaStudyStore:
         # ``frozen.value`` raises on a multi-objective study (read ``values``);
         # the scalar ``score`` is then the mean of the objectives (the same
         # projection the Evaluator applies).
-        if self._multi_objective:
-            score = (
-                float(sum(objectives.values()) / len(objectives))
-                if objectives
-                else 0.0
-            )
-        elif frozen.value is not None:
+        raw_score = attrs.get(_ATTR_SCORE)
+        if self._multi_objective and objectives:
+            score = float(sum(objectives.values()) / len(objectives))
+        elif not self._multi_objective and frozen.value is not None:
             score = float(frozen.value)
+        elif raw_score is not None:
+            score = float(raw_score)
         else:
-            score = 0.0
+            score = math.inf
         raw_gap = attrs.get(_ATTR_GAP)
         gap = float(raw_gap) if raw_gap is not None else None
         return Trial(
@@ -294,16 +307,58 @@ class OptunaStudyStore:
 
     @property
     def trials(self) -> list[Trial]:
-        """The study's trials reconstructed as :class:`Trial` records (ordered)."""
+        """Every trial in the study, reconstructed as :class:`Trial` (ordered).
+
+        Includes the **non-terminal** ones — a ``RUNNING`` trial belonging to a
+        live worker, or the orphan a Slurm-killed worker left behind. That is
+        deliberate: this is the honest "what the study holds" view, used for
+        reporting how much work is in flight. Anything that ranks or counts
+        *finished* work must use :meth:`terminal_trials` instead.
+        """
         frozen = self._study.get_trials(deepcopy=False)
+        return [self._to_trial(f) for f in frozen]
+
+    def terminal_trials(self) -> list[Trial]:
+        """The trials that will never change again: ``COMPLETE|PRUNED|FAIL``.
+
+        Excludes ``RUNNING`` / ``WAITING``. A trial in either of those states has
+        no result yet, so it can be neither a winner nor evidence of progress —
+        and on the distributed path it may never acquire one, because a worker
+        killed at its Slurm walltime leaves its trial ``RUNNING`` forever.
+        """
+        import optuna
+
+        frozen = self._study.get_trials(
+            deepcopy=False,
+            states=(
+                optuna.trial.TrialState.COMPLETE,
+                optuna.trial.TrialState.PRUNED,
+                optuna.trial.TrialState.FAIL,
+            ),
+        )
         return [self._to_trial(f) for f in frozen]
 
     def __len__(self) -> int:
         return len(self._study.get_trials(deepcopy=False))
 
     def best(self) -> Optional[Trial]:
-        """The non-failed trial with the lowest cost score, or ``None``."""
-        valid = [t for t in self.trials if not t.failed]
+        """The finished, non-failed trial with the lowest cost, or ``None``.
+
+        Ranks :meth:`terminal_trials`, never the raw :attr:`trials`: an
+        un-told ``RUNNING`` trial is not ``failed``, so ranking the raw list let
+        an orphaned worker's trial win the study outright.
+
+        A trial whose cost is not finite is skipped for the same reason. That is
+        every trial ``_to_trial`` had to fall back to ``inf`` for — chiefly a
+        ``PRUNED`` row written before the ``PHENO_SCORE`` sidecar existed, whose
+        real partial-fidelity cost is simply not recoverable. It is unrankable,
+        not perfect.
+        """
+        valid = [
+            t
+            for t in self.terminal_trials()
+            if not t.failed and math.isfinite(t.score)
+        ]
         if not valid:
             return None
         return min(valid, key=lambda t: t.score)
@@ -313,8 +368,15 @@ class OptunaStudyStore:
         return True
 
     def completed_count(self) -> int:
-        """The number of completed (non-failed) trials; pruned counts as done."""
-        return sum(1 for t in self.trials if not t.failed)
+        """The number of budget-consuming trials: ``COMPLETE + PRUNED``.
+
+        Exactly the quantity :meth:`OptunaStrategy.is_exhausted` compares against
+        ``n_trials`` — failed trials do not consume the budget, and neither do
+        in-flight ones. Counting the raw :attr:`trials` instead over-reported
+        progress by ``#failed + #in-flight``, which is how a budget gate could
+        open on a fleet that still had a dozen trials to run.
+        """
+        return sum(1 for t in self.terminal_trials() if not t.failed)
 
     def param_importances(self) -> Optional[dict[str, float]]:
         """The study's fANOVA importances, or ``None`` when unavailable.

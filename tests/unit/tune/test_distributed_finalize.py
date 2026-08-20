@@ -35,9 +35,30 @@ from phenotypic.tune._tune_cli._run import _STUDY_NAME
 _OPTUNA = importlib.util.find_spec("optuna") is not None
 pytestmark = pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
 
-#: The recorded trial budget. The terminal gate compares the store's trial count
-#: against it, so "finished" and "running" differ only in how many are written.
+#: The recorded trial budget. The terminal gate compares the study's
+#: budget-consuming (COMPLETE + PRUNED) trial count against it, so "finished"
+#: and "running" differ only in how many real trials are written.
 _BUDGET = 4
+
+#: Every study built here also carries ONE orphaned ``RUNNING`` trial — the
+#: state a worker leaves behind when SLURM kills it at the walltime, and the
+#: state no fixture could previously produce. It is not optional scenery: an
+#: un-told trial is not ``failed``, so a finalize that ranks or counts the raw
+#: trial list treats it as a completed trial and can publish it as the winner.
+#: Keeping it in the SHARED builder means every test below runs against a study
+#: shaped like a real one, instead of a study the bug cannot reach.
+_N_ORPHANS = 1
+
+#: The orphan is given the best score in the study, stamped into its
+#: ``user_attrs``. That is a real state, not a contrivance: the strategy stamps
+#: the score sidecar and *then* calls ``study.tell``, so a worker killed between
+#: those two DB round-trips (a window the transient-DB retry widens) leaves
+#: exactly this — a ``RUNNING`` trial carrying a finished-looking cost. It is
+#: also the state that separates the two independent guards. Give the orphan no
+#: cost at all and the ``inf`` fallback alone hides it, so a test could not tell
+#: whether the terminal filter still worked; give it the winning cost and only
+#: the terminal filter keeps it out of ``best_params.json``.
+_ORPHAN_SCORE = 0.0
 
 _PLATE_NAMES = ("plate_a", "plate_b", "plate_c", "plate_d")
 
@@ -82,12 +103,56 @@ def _resolved_spec(tmp_path, storage_url: str) -> TuningSpec:
     )
 
 
-def _build_study(tmp_path, *, n_recorded: int):
+def _leave_orphaned_running_trial(store, *, score):
+    """Ask for a trial, optionally stamp its result, and never tell the study.
+
+    Reproduces a worker killed at its SLURM walltime. The stamp order mirrors
+    ``OptunaStrategy.register_result``, which sets the user attrs and only then
+    calls ``study.tell`` — so a kill in between is what leaves a ``RUNNING``
+    trial holding a real-looking cost.
+    """
+    trial = store._study.ask()
+    if score is None:
+        return trial.number
+    from phenotypic.tune.strategy._optuna_support import set_trial_user_attrs
+
+    class _Result:
+        pass
+
+    _Result.score = score
+    _Result.terms = {"Count": score}
+    _Result.n_images = len(_PLATE_NAMES)
+    _Result.objectives = None
+    _Result.gap = None
+    _Result.suspicious = False
+    set_trial_user_attrs(
+        trial, params={"0.ignore_zeros": True}, result=_Result()
+    )
+    return trial.number
+
+
+def _build_study(
+    tmp_path,
+    *,
+    n_recorded: int,
+    orphans: int = _N_ORPHANS,
+    orphan_score=_ORPHAN_SCORE,
+):
     """A distributed study directory holding ``n_recorded`` trials.
 
     Mirrors exactly what ``run_tuning --slurm`` leaves behind: the resolved spec
     echo and the ``run.json`` marker (both written above the submission branch),
     a shared study the fleet appended to, and NOTHING else.
+
+    Args:
+        tmp_path: The test's temp directory.
+        n_recorded: How many real, COMPLETE trials the fleet wrote.
+        orphans: How many ``RUNNING`` trials to leave un-told (see
+            :data:`_N_ORPHANS`). ``study.ask()`` without a matching ``tell`` is
+            exactly what a killed worker leaves in the study.
+        orphan_score: The cost stamped on each orphan, or ``None`` to stamp
+            none at all (a worker killed mid-evaluation). See
+            :data:`_ORPHAN_SCORE`.
     """
     from phenotypic.tune._study._optuna_store import OptunaStudyStore
 
@@ -111,6 +176,11 @@ def _build_study(tmp_path, *, n_recorded: int):
             terms={"Count": 1.0 - 0.1 * number},
             n_images=len(_PLATE_NAMES),
         ))
+
+    for _ in range(orphans):
+        # A worker asked for a trial, stamped its result, and never came back:
+        # RUNNING forever, carrying the best cost in the study (_ORPHAN_SCORE).
+        _leave_orphaned_running_trial(store, score=orphan_score)
 
     io.tune_cache_run_marker_path(out).write_text(json.dumps({
         "version": 2,
@@ -157,7 +227,7 @@ def test_finalize_writes_what_the_slurm_branch_skipped(finished_distributed_stud
     assert io.param_importance_path(out).is_file()
     assert io.best_pipeline_path(out).is_file()
     assert result.best_params_written is True
-    assert result.n_trials == _BUDGET
+    assert result.n_trials == _BUDGET + _N_ORPHANS
 
 
 def test_best_params_names_the_actual_winner(finished_distributed_study):
@@ -271,7 +341,7 @@ def test_force_finalizes_a_study_that_cannot_be_shown_terminal(
     result = finalize_distributed_study(running_distributed_study, force=True)
 
     assert result.best_params_written is True
-    assert result.n_trials == _BUDGET - 2
+    assert result.n_trials == _BUDGET - 2 + _N_ORPHANS
 
 
 def test_interrupted_finalize_leaves_a_marker(
@@ -391,3 +461,128 @@ def test_a_winnerless_study_reports_instead_of_leaving_a_silent_hole(tmp_path):
     assert result.best_params_written is False
     assert any("no successful trial" in w for w in result.warnings)
     assert not io.best_params_path(out).is_file()
+
+
+# --- the orphan a killed worker leaves behind --------------------------------
+
+
+def test_the_orphaned_running_trial_never_becomes_the_winner(
+    finished_distributed_study,
+):
+    """The published artifact, not just the store: ``best_params.json``.
+
+    An un-told ``RUNNING`` trial is not ``failed`` and carries no cost. Ranked
+    alongside real trials it won outright — ``0.0`` is the best possible cost
+    under the minimize convention — and it won with ``params={}``, which makes
+    ``prepare_best_from_run`` export the UNTUNED base pipeline while reporting a
+    perfect score. No error, no warning, ``best_params_written=True``.
+    """
+    from phenotypic.tune._tune_cli._finalize import finalize_distributed_study
+
+    out = finished_distributed_study
+    result = finalize_distributed_study(out)
+
+    payload = json.loads(io.best_params_path(out).read_text())
+    assert payload["trial_number"] == _BUDGET - 1
+    # The two signatures of the phantom, asserted separately: it wins by
+    # scoring the impossible best, and it wins carrying nothing to export.
+    assert payload["score"] == pytest.approx(1.0 - 0.1 * (_BUDGET - 1))
+    assert payload["params"] == {"0.ignore_zeros": bool((_BUDGET - 1) % 2)}
+    assert result.winner_trial_number == _BUDGET - 1
+
+
+def test_an_orphan_does_not_count_as_progress_toward_the_budget(tmp_path):
+    """The gate must measure the unit the WORKERS stop on.
+
+    A worker stops asking when ``COMPLETE + PRUNED >= n_trials``; failed and
+    in-flight trials consume none of the budget. A gate comparing the raw trial
+    count against that budget opens early by ``#failed + #in-flight`` — here the
+    study looks full (4 rows against a budget of 4) while only 3 trials ran.
+    """
+    from phenotypic.tune._tune_cli._finalize import finalize_distributed_study
+
+    out = _build_study(tmp_path, n_recorded=_BUDGET - 1, orphans=1)
+
+    with pytest.raises(RuntimeError, match="not finished|still running"):
+        finalize_distributed_study(out)
+
+    assert not io.best_params_path(out).is_file()
+    assert not io.tune_finalize_marker_path(out).exists()
+
+
+def test_the_in_flight_trial_is_reported_rather_than_hidden(
+    finished_distributed_study,
+):
+    """Excluded from the winner, but never silently dropped.
+
+    This store cannot tell an orphan from a worker still evaluating, so the
+    count is surfaced instead of being decided for the reader — and
+    ``n_trials`` stays the honest total so it matches the study itself.
+    """
+    from phenotypic.tune._tune_cli._finalize import finalize_distributed_study
+
+    result = finalize_distributed_study(finished_distributed_study)
+
+    assert result.n_trials == _BUDGET + _N_ORPHANS
+    assert any("in flight" in w for w in result.warnings), result.warnings
+
+
+def test_trials_parquet_publishes_only_evaluated_trials(
+    finished_distributed_study,
+):
+    """The parquet carries no state column, so an in-flight row is undetectable.
+
+    Exported, it reads downstream as a real result with no params and no cost.
+    """
+    from phenotypic.tune._tune_cli._finalize import finalize_distributed_study
+
+    out = finished_distributed_study
+    finalize_distributed_study(out)
+
+    exported = pd.read_parquet(io.trials_parquet_path(out))
+    assert len(exported) == _BUDGET
+    assert exported["score"].notna().all()
+    assert not exported["score"].isin([float("inf")]).any()
+
+
+def test_a_pruned_trial_with_no_recoverable_cost_does_not_break_finalize(
+    tmp_path,
+):
+    """A study written before the cost sidecar existed must still finalize.
+
+    ``study.tell(trial, state=PRUNED)`` stores no value, so such a row's cost is
+    genuinely unknown — the store reads it back as ``inf`` rather than as the
+    best possible ``0.0``. That ``inf`` must not reach the importance model,
+    which rejects a non-finite target outright ("Input y contains infinity") and
+    would take the whole finalize down with it. The row still consumed a slot of
+    the budget, so the gate must count it.
+    """
+    import optuna
+
+    from phenotypic.tune._study._optuna_store import OptunaStudyStore
+    from phenotypic.tune._tune_cli._finalize import finalize_distributed_study
+    from phenotypic.tune.strategy._optuna_support import set_trial_user_attrs
+
+    out = _build_study(tmp_path, n_recorded=_BUDGET - 1)
+    marker = json.loads(io.tune_cache_run_marker_path(out).read_text())
+    store = OptunaStudyStore(
+        storage_url=marker["storage_url"], study_name=_STUDY_NAME
+    )
+    trial = store._study.ask()
+
+    class _Result:  # a pre-sidecar result object: no `score` to stamp
+        terms = {"Count": 0.9}
+        n_images = len(_PLATE_NAMES)
+        objectives = None
+        gap = None
+        suspicious = False
+
+    set_trial_user_attrs(trial, params={"0.ignore_zeros": True}, result=_Result())
+    store._study.tell(trial, state=optuna.trial.TrialState.PRUNED)
+
+    result = finalize_distributed_study(out)  # gate opens: it consumed a slot
+
+    assert io.param_importance_path(out).is_file()
+    payload = json.loads(io.best_params_path(out).read_text())
+    assert payload["trial_number"] == _BUDGET - 2
+    assert result.winner_trial_number == _BUDGET - 2

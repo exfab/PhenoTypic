@@ -213,6 +213,28 @@ single-objective only). Grid/Random use a `NoOpChannel` that never prunes.
   **up** (toward worse cost), `_aggregate`, `_evaluator.py:385`).
 - **All** images raise → whole-candidate `failed=True`.
 
+### Which trials are eligible to win (`_study/_optuna_store.py`)
+Ranking and budget accounting read `store.terminal_trials()` — the
+`COMPLETE | PRUNED | FAIL` rows — never the raw `store.trials`, which also holds
+the `RUNNING` trial of a live worker *and* the orphan a SLURM-killed worker
+leaves behind forever. An un-told trial is not `failed`, so ranking the raw list
+let a trial that never ran win the study outright.
+
+- **`best()`** = `min(cost)` over terminal, non-failed, **finite-cost** trials.
+- **`completed_count()`** = `COMPLETE + PRUNED` — the same unit
+  `OptunaStrategy.is_exhausted` (`strategy/_optuna.py:453`) compares against
+  `n_trials`, so the distributed finalize gate
+  (`_tune_cli/_finalize.py`, `_require_terminal_study`) measures progress the
+  way the workers themselves decide to stop. Counting the raw list instead
+  over-reported progress by `#failed + #in-flight`.
+- **A missing cost reads back as `inf`, never `0.0`.** Under the minimize-cost
+  convention `0.0` is the *best possible* value, so substituting it for an
+  absence made an unevaluated trial unbeatable. `study.tell(trial, state=…)`
+  stores no value for a `PRUNED`/`FAIL` trial, so the real cost is stamped into
+  the `pheno_score` user-attr alongside it (`strategy/_optuna_support.py`);
+  `inf` remains for rows written before that sidecar existed, and marks them
+  unrankable rather than perfect.
+
 ### Two diagnostic flags
 - **`gap`** (`_per_trial_dispersion`, `_evaluator.py:76`) = relative IQR of the
   *primary* term computed on the **goodness-equivalent `1 − cost`**, with the
@@ -358,7 +380,7 @@ interaction) contributions. A parameter's importance = the fraction of total
 objective variance explained by varying it. This **accounts for interactions**
 (`interactions_estimated=True`).
 
-### RF-permutation fallback (`_screening.py:132`)
+### RF-permutation fallback (`_screening.py:131`)
 Used for per-objective requests or when no native model exists:
 
 ```python
@@ -370,7 +392,9 @@ Permutation importance = the **drop in model accuracy when one parameter's
 values are randomly shuffled**. A big drop ⇒ an important parameter.
 Categoricals are one-hot encoded and summed back to their original key; this is
 **main-effect only** (`interactions_estimated=False`). Returns `{}` with < 2
-usable trials.
+usable trials. "Usable" is terminal, non-failed and **finite-cost**: an
+in-flight trial has no cost to regress against, and a non-finite one makes the
+forest raise outright (`Input y contains infinity`).
 
 So a knob is "important" if changing it moves the objective a lot — measured
 either by variance decomposition (fANOVA, with interactions) or by accuracy

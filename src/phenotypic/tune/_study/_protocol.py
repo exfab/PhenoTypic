@@ -31,7 +31,18 @@ class StudyStore(Protocol):
 
     @property
     def trials(self) -> list["Trial"]:
-        """The journaled trials in order (a copy)."""
+        """Every recorded trial in order (a copy), in-flight ones included."""
+        ...
+
+    def terminal_trials(self) -> list["Trial"]:
+        """The recorded trials that will never change again.
+
+        A backend that can hold in-flight rows (the Optuna store: a worker's
+        ``RUNNING`` trial, which a Slurm-killed worker leaves behind forever)
+        must exclude them here. Everything that ranks a winner or counts real
+        progress reads this, not :attr:`trials`; the journal, whose rows are
+        appended only once a candidate has resolved, returns the same list.
+        """
         ...
 
     def __len__(self) -> int:
@@ -39,7 +50,7 @@ class StudyStore(Protocol):
         ...
 
     def best(self) -> Optional["Trial"]:
-        """The non-failed trial with the highest score, or ``None``."""
+        """The terminal, non-failed trial with the lowest cost, or ``None``."""
         ...
 
     def is_resumable_in_place(self) -> bool:
@@ -52,10 +63,12 @@ class StudyStore(Protocol):
         ...
 
     def completed_count(self) -> int:
-        """The number of completed (non-failed) trials.
+        """The number of budget-consuming trials.
 
         Pruned trials count as completed — a pruned trial is a real, if partial,
-        evaluation (optuna-integration.md §8).
+        evaluation (optuna-integration.md §8). Failed and in-flight trials do
+        not, which makes this the same quantity ``OptunaStrategy.is_exhausted``
+        compares against ``n_trials``.
         """
         ...
 

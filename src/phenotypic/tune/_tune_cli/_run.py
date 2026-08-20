@@ -1160,11 +1160,16 @@ def _export_trials_parquet(store: StudyStore, trials_path: Path) -> None:
     A :class:`JournalStudyStore` writes itself; any other backend (e.g.
     :class:`OptunaStudyStore`) is mirrored into a fresh journal first so the
     parquet schema is identical regardless of the backend that produced it.
+
+    The mirror takes ``terminal_trials()``, not ``trials``: the parquet carries
+    no trial-state column, so an in-flight row would be indistinguishable from
+    an evaluated one — an empty-``params`` trial with no cost, read by the
+    monitor and by every downstream plot as if it were a real result.
     """
     if isinstance(store, JournalStudyStore):
         store.to_parquet(trials_path)
         return
-    mirror = JournalStudyStore(list(store.trials))
+    mirror = JournalStudyStore(store.terminal_trials())
     mirror.to_parquet(trials_path)
 
 
