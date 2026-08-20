@@ -315,7 +315,13 @@ def _conversion_is_faithful(src: Path, store: Path) -> bool:
         if _stored_work_id(src) != block.get(PhenotypicAttr.WORK_ID):
             return False
 
-        if hasattr(source_image, "nrows"):
+        # Narrowed by class, not by `hasattr`: mypy cannot see through the
+        # latter, and `Image` genuinely has no `nrows`.
+        from phenotypic import GridImage
+
+        if isinstance(source_image, GridImage):
+            if not isinstance(stored_image, GridImage):
+                return False
             if (source_image.nrows, source_image.ncols) != (
                 stored_image.nrows,
                 stored_image.ncols,
