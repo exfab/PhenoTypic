@@ -190,6 +190,48 @@ def demote_store_to_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
     return hdf_path
 
 
+#: A legacy per-topic column injected into every per-dataset measurement
+#: parquet, so a demoted tree is legacy in its **tables** as well as in its
+#: image format.
+#:
+#: Without it the fixture's non-image targets are already canonical, pass 1
+#: short-circuits to ``_compatible_result`` before writing a receipt, and
+#: nothing about pass 1 is exercised at all -- verified: four separate
+#: mutations of the pass-1 scope, the receipt's ``kinds``, its validation, and
+#: its dry-run guard all survived the suite until this existed.
+LEGACY_MEASUREMENT_COLUMN = "MetadataGenetic_Strain"
+LEGACY_MEASUREMENT_VALUE = "BY4741"
+
+
+def make_measurement_headers_legacy(output_dir: Path, dataset: str) -> int:
+    """Add a legacy per-topic column to every per-image measurement parquet.
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+
+    Returns:
+        How many parquets were rewritten.
+    """
+    import polars as pl
+
+    from phenotypic.sdk_ import dataset_measurements_dir
+
+    rewritten = 0
+    measurements = dataset_measurements_dir(output_dir, dataset)
+    if not measurements.is_dir():
+        return 0
+    for parquet in sorted(measurements.glob("*.parquet")):
+        if parquet.name.startswith(("_", ".")):
+            continue
+        frame = pl.read_parquet(parquet)
+        frame.with_columns(
+            pl.lit(LEGACY_MEASUREMENT_VALUE).alias(LEGACY_MEASUREMENT_COLUMN)
+        ).write_parquet(parquet)
+        rewritten += 1
+    return rewritten
+
+
 #: The marker version a genuine legacy tree carries. Phase 3 bumped
 #: ``SUCCESS_MARKER_VERSION`` to 2 **and** added the ``kind`` tag; a legacy
 #: marker predates both.
@@ -231,10 +273,24 @@ def repoint_marker_at_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
     marker["version"] = LEGACY_SUCCESS_MARKER_VERSION
     artifacts = marker["artifacts"]
     artifacts.pop("store", None)
-    for descriptor in artifacts.values():
-        descriptor.pop("kind", None)
-    hdf_path = dataset_hdf_dir(output_dir, dataset) / f"{stem}.h5"
     output_root = Path(output_dir).resolve()
+
+    # Re-fingerprint every surviving descriptor over the bytes as they are
+    # NOW. The legacy headers were injected into the measurement parquets
+    # before this ran, and a marker in a real legacy tree bound the bytes that
+    # existed when it was published -- so pass 1's rewrite of those parquets
+    # genuinely invalidates it. Preserving the pre-injection digest instead
+    # would make the marker stale for the wrong reason and hide MIG-15.
+    for name in list(artifacts):
+        relative = artifacts[name]["path"]
+        resolved = (output_root / relative).resolve(strict=True)
+        descriptor = _artifact_descriptor(
+            resolved, resolved.relative_to(output_root)
+        )
+        descriptor.pop("kind", None)
+        artifacts[name] = descriptor
+
+    hdf_path = dataset_hdf_dir(output_dir, dataset) / f"{stem}.h5"
     resolved = hdf_path.resolve(strict=True)
     descriptor = _artifact_descriptor(resolved, resolved.relative_to(output_root))
     descriptor.pop("kind", None)
@@ -257,6 +313,8 @@ def demote_run_to_hdf(output_dir: Path, *, keep_markers: bool) -> None:
     zarr_dir = dataset_zarr_dir(output_dir, DATASET)
     if zarr_dir.is_dir() and not any(zarr_dir.iterdir()):
         zarr_dir.rmdir()
+
+    make_measurement_headers_legacy(output_dir, DATASET)
 
     if keep_markers:
         # The aggregate the real run published stands as-is. Re-publishing it

@@ -326,3 +326,70 @@ def hdf_world(tmp_path: Path) -> ArtifactWorld:
 def zarr_world(tmp_path: Path) -> ArtifactWorld:
     """Builds the ported artifact set: OME-Zarr store + token + raw array."""
     return ArtifactWorld(tmp_path / "zarr_out", "zarr")
+
+
+# ---------------------------------------------------------------------------
+# ``--mode migrate`` fixtures (Phase 5)
+# ---------------------------------------------------------------------------
+#
+# The builders and the session-scoped real run live beside the sdk_ suite that
+# defines them; importing the fixtures here makes them visible to the CLI
+# tests without promoting six migration-specific fixtures to the repo-root
+# conftest, where they would be global to the whole suite.
+from tests.unit.sdk_.conftest import (  # noqa: E402,F401
+    _completed_run_one,
+    _completed_run_two,
+    finished_legacy_run,
+    half_migrated_run,
+    legacy_run,
+    markerless_legacy_run,
+    migrated_run,
+)
+from tests.unit.sdk_._migration_fixtures import (  # noqa: E402
+    DATASET as _MIGRATION_DATASET,
+)
+
+
+@pytest.fixture
+def legacy_format_run(legacy_run: Path) -> Path:  # noqa: F811
+    """An output tree whose results are ``.h5`` and whose ``zarr/`` is absent.
+
+    Distinct from ``legacy_headers_run`` below, and the distinction is the
+    point (OPEN-QUESTIONS D16): ``recompile`` must **fail** on this one with a
+    pointer to ``--mode migrate``, because the forward path cannot read its
+    images at all.
+    """
+    return legacy_run
+
+
+@pytest.fixture
+def legacy_headers_run(
+    _completed_run_two: Path,  # noqa: F811
+    tmp_path: Path,
+) -> Path:
+    """A tree already converted to stores, whose metadata headers are legacy.
+
+    ``recompile`` must **succeed** on this one, read those headers, and not
+    rewrite them -- flat-metadata decision #3 (permanent stored-data
+    compatibility) is untouched by Task 5.4.
+
+    Task 5.5's cut re-based this fixture on a ``.h5``-backed tree, so the
+    legacy headers live in the per-dataset measurement parquets rather than in
+    a store: ingest canonicalizes on read, so a store cannot hold one.
+    """
+    import shutil
+
+    import polars as pl
+
+    from phenotypic.sdk_ import dataset_measurements_dir
+
+    output_dir = tmp_path / "legacy_headers"
+    shutil.copytree(_completed_run_two, output_dir)
+    measurements = dataset_measurements_dir(output_dir, _MIGRATION_DATASET)
+    for parquet in sorted(measurements.glob("*.parquet")):
+        frame = pl.read_parquet(parquet)
+        frame = frame.with_columns(
+            pl.lit("BY4741").alias("MetadataGenetic_Strain")
+        )
+        frame.write_parquet(parquet)
+    return output_dir

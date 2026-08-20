@@ -264,6 +264,56 @@ DURABLE_WRITES_REJECTED_MODES: frozenset[str] = frozenset(
 )
 
 
+def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
+    """Refuse a tree whose per-image results are still legacy ``.h5``.
+
+    Format conversion rewrites the entire results tree, so it is typed
+    deliberately rather than triggered as a side effect of an unrelated run.
+
+    Args:
+        output_dir: Run output root.
+        mode: The mode being refused, for the message.
+
+    Raises:
+        click.UsageError: At least one dataset holds ``.h5`` results and no
+            store.
+    """
+    from phenotypic.sdk_ import (
+        DIR_HDF,
+        DIR_ZARR,
+        results_dir,
+    )
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
+    root = results_dir(output_dir)
+    if not root.is_dir():
+        return
+    legacy: list[str] = []
+    for dataset_dir in sorted(path for path in root.iterdir() if path.is_dir()):
+        hdf_dir = dataset_dir / DIR_HDF
+        if not hdf_dir.is_dir() or not any(hdf_dir.glob("*.h5")):
+            continue
+        zarr_dir = dataset_dir / DIR_ZARR
+        stores = (
+            [
+                path
+                for path in zarr_dir.glob(f"*{STORE_SUFFIX}")
+                if path.is_dir() and not path.name.startswith(".")
+            ]
+            if zarr_dir.is_dir()
+            else []
+        )
+        if not stores:
+            legacy.append(dataset_dir.name)
+    if legacy:
+        raise click.UsageError(
+            f"--mode {mode} cannot read this output: dataset(s) "
+            f"{', '.join(legacy)} still hold legacy .h5 results. "
+            f"Convert them first with:\n"
+            f"  python -m phenotypic --mode migrate --output {output_dir}"
+        )
+
+
 def _snapshot_metadata_csv(
     output_dir: Path, source: Optional[Path]
 ) -> Optional[Path]:
@@ -977,14 +1027,29 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "-m",
     "--mode",
-    type=click.Choice(["full", "measure", "recompile", "process"]),
+    type=click.Choice(
+        ["full", "measure", "recompile", "process", "migrate"]
+    ),
     default="full",
     show_default=True,
     help=(
         "Execution mode: full applies the pipeline and measures images; "
         "measure reruns measurement from an existing output root; recompile "
         "refreshes aggregate outputs from an existing output root; process "
-        "exports a single layer selected with --layer."
+        "exports a single layer selected with --layer; migrate converts a "
+        "legacy .h5 output tree to OME-Zarr stores IN PLACE, in two passes -- "
+        "pass 1 canonicalizes metadata headers in every non-image target, "
+        "pass 2 converts each per-image .h5 to a store and re-publishes the "
+        "run's completion evidence. Local only; re-run it to resume."
+    ),
+)
+@click.option(
+    "--delete-sources",
+    is_flag=True,
+    help=(
+        "With --mode migrate: delete each legacy .h5 after verifying that its "
+        "store carries the same pixels, metadata and work id. The only "
+        "irreversible step; sources are retained without it."
     ),
 )
 @click.option(
@@ -1224,6 +1289,7 @@ def phenotypic_cli(
     skip_validation: bool,
     no_qc: bool,
     layer: Optional[str],
+    delete_sources: bool,
 ):
     """
     Execute a PhenoTypic image-processing pipeline on a file or directory.
@@ -1237,6 +1303,12 @@ def phenotypic_cli(
       measure    Re-run measurement only against an existing output root.
                  Requires --pipeline; no --input (inputs are discovered
                  from --output).
+      migrate    Convert a legacy .h5 output tree to OME-Zarr stores IN
+                 PLACE, in two passes: metadata headers in every non-image
+                 target first, then each per-image .h5 to a store followed by
+                 the run's completion evidence. Local only, and re-running it
+                 is how an interrupted migration is resumed.
+
       recompile  Refresh aggregate outputs from an existing output root; no
                  --input or --pipeline (both are reloaded from --output).
       process    Apply-only export: write ONE image layer per input (chosen
@@ -1263,6 +1335,7 @@ def phenotypic_cli(
         )  # Click's Choice has already validated this.
         measure_only = cli_mode == "measure"
         recompile_only = cli_mode == "recompile"
+        migrate_only = cli_mode == "migrate"
         process_only_layer: Optional[ProcessOnlyLayer] = None
         if cli_mode == "process":
             if layer is None:
@@ -1273,16 +1346,25 @@ def phenotypic_cli(
                 "--layer can only be used with --mode process."
             )
 
-        if measure_only or recompile_only:
+        if measure_only or recompile_only or migrate_only:
             if input_path is not None:
                 raise click.UsageError(
                     f"--mode {cli_mode} does not accept --input; it discovers "
                     "inputs from the existing output directory."
                 )
-            if dry_run:
+            # `migrate` is deliberately EXEMPT from the --dry-run rejection
+            # (ledger FLOW-34): --dry-run is a required part of the mode --
+            # spec 5.1's interface line, `migrate_run_hdf_to_zarr(dry_run=)`,
+            # and a phase exit criterion all depend on it. Folding migrate
+            # into this condition rejects it.
+            if dry_run and not migrate_only:
                 raise click.UsageError(
                     f"--dry-run cannot be combined with --mode {cli_mode}."
                 )
+        if delete_sources and not migrate_only:
+            raise click.UsageError(
+                "--delete-sources is only accepted with --mode migrate."
+            )
         if durable_writes is not None and cli_mode in (
             DURABLE_WRITES_REJECTED_MODES
         ):
@@ -1294,10 +1376,10 @@ def phenotypic_cli(
                 "does not write image stores from a pipeline."
             )
 
-        if recompile_only and pipeline_json is not None:
+        if (recompile_only or migrate_only) and pipeline_json is not None:
             raise click.UsageError(
-                "--mode recompile does not accept --pipeline; it reloads the "
-                "pipeline from the existing output directory."
+                f"--mode {cli_mode} does not accept --pipeline; it reloads "
+                "the pipeline from the existing output directory."
             )
 
         # ---- Early validation for --mode process -----------------------
@@ -1379,11 +1461,29 @@ def phenotypic_cli(
                 "--restart and --overwrite are mutually exclusive"
             )
 
+        if migrate_only:
+            from phenotypic._cli._cli_migrate import handle_migrate_mode
+
+            if not output_dir.exists():
+                raise click.UsageError(
+                    "--mode migrate output directory does not exist: "
+                    f"{output_dir}."
+                )
+            sys.exit(
+                handle_migrate_mode(
+                    output_dir,
+                    njobs=max(1, n_jobs) if n_jobs > 0 else 1,
+                    dry_run=dry_run,
+                    delete_sources=delete_sources,
+                )
+            )
+
         if recompile_only:
             if not output_dir.exists():
                 raise click.UsageError(
                     f"--mode recompile output directory does not exist: {output_dir}."
                 )
+            _refuse_unmigrated_output(output_dir, mode=cli_mode)
             try:
                 metadata_csv = _snapshot_metadata_csv(output_dir, metadata_csv)
             except Exception as exc:

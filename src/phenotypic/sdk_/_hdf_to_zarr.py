@@ -37,6 +37,8 @@ from ._io_constants import (
 from .ngff_ import STORE_SUFFIX, valid_staged_store
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
+    import numpy as np
+
     from phenotypic._core._image import Image
 
 
@@ -229,6 +231,100 @@ def migrate_hdf_to_zarr(
 
 
 # ---------------------------------------------------------------------------
+# The precondition for the one irreversible step
+# ---------------------------------------------------------------------------
+
+#: Layers compared byte-for-byte before a source may be unlinked.
+_FAITHFULNESS_LAYERS: tuple[str, ...] = ("rgb", "gray", "detect_mat", "objmap")
+
+
+def _layer_digest(array: "np.ndarray") -> str:
+    """Return a content digest of one layer.
+
+    Shapes and dtypes are blind to **content**: a conversion that wrote a
+    correctly-shaped zero ``detect_mat`` has both right. Only the bytes settle
+    it.
+    """
+    import hashlib
+
+    import numpy as np
+
+    contiguous = np.ascontiguousarray(array)
+    return hashlib.sha256(
+        f"{contiguous.shape}|{contiguous.dtype}|".encode() + contiguous.tobytes()
+    ).hexdigest()
+
+
+def _conversion_is_faithful(src: Path, store: Path) -> bool:
+    """Return whether *store* carries everything *src* held.
+
+    The precondition for ``--delete-sources``, and deliberately **stronger
+    than ``valid_staged_store``** (ledger MIG-20). Structural validity proves a
+    store is well-formed, not that the conversion preserved content -- and both
+    Criticals this design round found (a dropped ``Metadata_ImageType``, a
+    dropped ``phenotypic_work_id``) produce structurally valid stores. Unlinking
+    the ``.h5`` on that evidence loses the original permanently, with no receipt
+    and no rollback.
+
+    The comparison is **value-level, not key-level** (ledger MIG-28). MIG-2 is
+    not a dropped key: the loader's restore loop *skips* a key the constructor
+    already set, so ``Metadata_ImageType`` is **present**, carrying ``"Image"``
+    where the file said ``"GridSection"``. Two identical key sets, one wrong
+    value, and a key-set comparison returns ``True``.
+
+    What is compared: the three metadata sections as full mappings; a content
+    digest per layer; ``phenotypic_work_id``; and ``nrows``/``ncols`` when the
+    source is a ``GridImage``.
+
+    Args:
+        src: The legacy ``.h5`` about to be deleted.
+        store: The store that replaced it.
+
+    Returns:
+        ``True`` only when every compared field agrees.
+    """
+    from ._io_constants import load_image_from_store
+
+    try:
+        if not valid_staged_store(store):
+            return False
+        source_image = _load_for_migration(src)
+        stored_image = load_image_from_store(store)
+
+        if type(source_image).__name__ != type(stored_image).__name__:
+            return False
+
+        for section in ("protected", "public", "imported"):
+            expected = dict(getattr(source_image._metadata, section))
+            actual = dict(getattr(stored_image._metadata, section))
+            if {str(k): v for k, v in expected.items()} != {
+                str(k): v for k, v in actual.items()
+            }:
+                return False
+
+        for layer in _FAITHFULNESS_LAYERS:
+            expected_array = getattr(source_image, layer)[:]
+            actual_array = getattr(stored_image, layer)[:]
+            if _layer_digest(expected_array) != _layer_digest(actual_array):
+                return False
+
+        from .ngff_ import PhenotypicAttr, read_phenotypic_attributes
+
+        block = read_phenotypic_attributes(store)
+        if _stored_work_id(src) != block.get(PhenotypicAttr.WORK_ID):
+            return False
+
+        if hasattr(source_image, "nrows"):
+            if (source_image.nrows, source_image.ncols) != (
+                stored_image.nrows,
+                stored_image.ncols,
+            ):
+                return False
+    except Exception:  # noqa: BLE001 - a comparison that cannot run is a refusal
+        return False
+    return True
+
+# ---------------------------------------------------------------------------
 # The canonical metadata view
 # ---------------------------------------------------------------------------
 
@@ -331,6 +427,107 @@ def _convert_one(
     return hdf_path, None
 
 
+def _marker_authority_permits_unlink(
+    output_dir: Path, dataset: str, stem: str
+) -> bool:
+    """Return whether the per-image marker allows this source to be deleted.
+
+    The second half of ``--delete-sources``' precondition: the image must
+    still validate as a success **after** republication, not merely have
+    converted. A tree that never required success markers -- a pre-markers
+    archive -- has no authority to satisfy, and refusing there would make
+    ``--delete-sources`` unreachable for exactly the oldest archives (ledger
+    MIG-23).
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        stem: Image stem.
+
+    Returns:
+        ``True`` when there is no marker authority to satisfy, or when the
+        image's marker validates.
+    """
+    # Lazy, and across the layer on purpose: marker authority lives in the
+    # CLI, and this module is migration glue rather than general SDK surface.
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic._cli._cli_state_management import load_processing_state
+
+    from ._io_constants import image_completion_marker_path
+
+    try:
+        state = load_processing_state(output_dir)
+    except (KeyError, TypeError, ValueError):
+        return False
+    if state is None or not state.config.get("success_markers_required", False):
+        return True
+    if not image_completion_marker_path(output_dir, dataset, stem).is_file():
+        # Nothing was ever certified for this image, so nothing is invalidated
+        # by deleting a source the forward path no longer reads.
+        return True
+    work_ids = state.config.get("work_ids", {})
+    images = work_ids.get(dataset, {}) if isinstance(work_ids, dict) else {}
+    work_id = next(
+        (
+            value
+            for name, value in images.items()
+            if isinstance(name, str) and Path(name).stem == stem
+        ),
+        None,
+    )
+    if not isinstance(work_id, str):
+        return False
+    return valid_image_success(
+        output_dir, dataset=dataset, image_stem=stem, work_id=work_id
+    )
+
+
+def _reclaim_sources(output_dir: Path) -> list[tuple[Path, str]]:
+    """Delete every source whose conversion is provably faithful.
+
+    Per image, immediately before that image's unlink -- so a single
+    unfaithful image does not block the other ninety-nine from reclaiming
+    space, and the run still reports non-clean, naming every source left in
+    place.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        ``(source, reason)`` for every source deliberately left behind.
+    """
+    refusals: list[tuple[Path, str]] = []
+    for dataset, hdf_path in list(iter_legacy_hdfs(output_dir)):
+        store = zarr_store_path(output_dir, dataset, hdf_path.stem)
+        # Read through the module namespace so a monkeypatch of the gate --
+        # which is how the refusal path is exercised -- actually takes effect.
+        import sys
+
+        gate = sys.modules[__name__]._conversion_is_faithful
+        if not gate(hdf_path, store):
+            refusals.append(
+                (
+                    hdf_path,
+                    "re-read of the converted store does not match the source; "
+                    "source retained",
+                )
+            )
+            continue
+        if not _marker_authority_permits_unlink(
+            output_dir, dataset, hdf_path.stem
+        ):
+            refusals.append(
+                (
+                    hdf_path,
+                    "the image does not validate as a success after "
+                    "migration; source retained",
+                )
+            )
+            continue
+        hdf_path.unlink()
+    return refusals
+
+
 def migrate_run_hdf_to_zarr(
     output_dir: Path,
     *,
@@ -396,6 +593,11 @@ def migrate_run_hdf_to_zarr(
 
     emit_canonical_metadata_view(output_dir)
 
+    if not keep_source:
+        # After conversion, and after any marker republication, so the
+        # precondition sees the final state of the tree.
+        failed.extend(_reclaim_sources(output_dir))
+
     return MigrationReport(
         converted=converted, skipped=skipped, failed=tuple(failed)
     )
@@ -403,6 +605,7 @@ def migrate_run_hdf_to_zarr(
 
 __all__ = [
     "CANONICAL_METADATA_CSV_NAME",
+    "_conversion_is_faithful",
     "MigrationReport",
     "canonical_metadata_view_path",
     "emit_canonical_metadata_view",

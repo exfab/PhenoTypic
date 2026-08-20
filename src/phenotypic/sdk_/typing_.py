@@ -114,11 +114,18 @@ DinoVersion = Literal[2, 3]
 DinoSize = Literal["small", "base", "large"]
 
 #: Public top-level CLI execution mode. ``full`` performs the normal
-#: apply-and-measure run, ``measure`` reruns measurement from existing HDFs,
-#: ``recompile`` refreshes aggregate outputs from an existing output root, and
-#: ``process`` performs the apply-only single-layer export selected by
-#: ``--layer``.
-CliMode = Literal["full", "measure", "recompile", "process"]
+#: apply-and-measure run, ``measure`` reruns measurement from existing image
+#: stores, ``recompile`` refreshes aggregate outputs from an existing output
+#: root, ``process`` performs the apply-only single-layer export selected by
+#: ``--layer``, and ``migrate`` converts a legacy ``.h5`` output tree to
+#: OME-Zarr stores in place.
+#:
+#: ``migrate`` is a member here and not only a click ``Choice`` value:
+#: ``phenotypicCLI`` casts the parsed mode to this Literal, so
+#: ``cli_mode == "migrate"`` would otherwise be a ``comparison-overlap`` error
+#: under mypy -- it narrows to the other members and proves the comparison
+#: always ``False``.
+CliMode = Literal["full", "measure", "recompile", "process", "migrate"]
 
 GridSearchSaveData = List[
     Literal["rgb", "gray", "detect_mat", "objmap", "objmask", "map2rgb"]
