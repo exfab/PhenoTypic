@@ -3,6 +3,45 @@
 This module is intentionally isolated from ordinary readers. Readers normalize
 legacy spellings in memory; the functions here are the explicit mutation API
 used by standalone callers and, through a private CLI facade, recompile.
+
+The ``"hdf"`` ``TargetKind`` -- the decision of record
+------------------------------------------------------
+
+**The ``"hdf"`` arm is RETAINED.** It stays reachable from
+:func:`rollback_metadata_migration` and from the standalone-bundle path, and
+neither of those is going away. ``csv`` / ``parquet`` / ``json`` / ``frame``
+are kept unconditionally: ``--mode migrate``'s **pass 1** -- the non-image
+metadata pass -- is built on them. (Pass **2** is the per-image
+``.h5`` -> ``.ome.zarr`` conversion, which touches this module not at all.)
+
+**The reason is reachability, not harmless emptiness.** An earlier
+justification (ledger FLOW-8) argued that *"once stores replace HDFs that
+target set is empty, so those branches are unreachable rather than
+incorrect."* **That premise is false for the default path**, and the
+correction (FLOW-32, confirmed independently as MIG-21) is what this
+paragraph exists to preserve: ``keep_source=True`` is the default and
+``--delete-sources`` is opt-in, so after an ordinary in-place migration
+``results/<ds>/hdf/*.h5`` still exists -- and ``_discover_bundle_targets``
+walks ``dataset_root / "hdf"`` and appends every one of them. The set is not
+empty. Without a filter, pass 1 would rewrite headers into retained files
+nothing will ever read again, each through a full :func:`shutil.copy2`. That
+is doubled migration cost and receipts binding artifacts nothing consumes --
+not a correctness break, but not free either. It is why
+:data:`NON_IMAGE_KINDS` excludes ``.h5`` targets outright (ledger
+MIG-25 / FLOW-35), and why ``--mode migrate`` pass 1 additionally skips an
+``.h5`` whose stem already has a valid store.
+
+So the arm is retained because it is **reachable and load-bearing for legacy
+trees**, not because it is dead. Deleting it "once migration is complete for
+all known trees" is explicitly future work, outside the OME-Zarr store change.
+
+**Do NOT add a ``"store"`` ``TargetKind``.** Nothing needs one. Header
+canonicalization is a property of the **read** path --
+``_normalize_stored_metadata_items`` runs inside both legacy loaders -- so by
+the time :meth:`Image.save2zarr` runs, the metadata is already canonical. A
+converted store is canonical by construction and needs no second header
+migration. That is the same fact that made a planned "canonicalize the store"
+task unnecessary.
 """
 
 from __future__ import annotations

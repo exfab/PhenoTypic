@@ -1,7 +1,11 @@
 # OME-Zarr per-image store
 
 **Date:** 2026-08-18
-**Status:** Draft — revised after independent review; amended 2026-08-19 per plan-refinery user rulings (see the superseded/corrected callouts inline)
+**Status:** **Implemented** (Phase 6, 2026-08-20) — revised after independent review; amended
+2026-08-19 per plan-refinery user rulings (see the superseded/corrected callouts inline).
+Implementation plan: [`docs/superpowers/plans/2026-08-18-ome-zarr-image-store/`](../../plans/2026-08-18-ome-zarr-image-store/README.md).
+Phases 0–6 have landed; Phase 7 (verification: commit protocol, differential resume,
+the Windows lane) is the remaining work.
 **Scope:** Per-image CLI image storage, the staged-GPU commit protocol, GUI tile
 reads, the legacy-HDF migration mode, and the Python support floor
 

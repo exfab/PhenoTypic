@@ -4,7 +4,7 @@ The PhenoTypic CLI has one entry point and one switch that decides what a run
 actually does:
 
 ```bash
-python -m phenotypic --mode {full,measure,recompile,process} ...
+python -m phenotypic --mode {full,measure,recompile,process,migrate} ...
 ```
 
 A colony-phenotyping run is expensive in the detection step and cheap in
@@ -12,13 +12,15 @@ everything downstream. Segmenting a plate costs seconds to minutes per image;
 re-reading a segmentation to compute `Size_Area` costs milliseconds. The four
 modes exist so that when you change your mind about a *measurement*, a
 *dashboard*, or a *threshold*, you only pay for the part that actually changed.
+A fifth, `migrate`, is a one-off format conversion rather than a processing mode.
 
 | Mode | Re-runs detection? | Needs `--input` | Needs `--pipeline` | Produces |
 |------|--------------------|-----------------|--------------------|----------|
-| `full` (default) | Yes | Yes | Yes | Everything: HDFs, measurements, deliverables, QC, dashboard |
-| `measure` | No | No | Yes | New measurements + deliverables from existing HDFs |
+| `full` (default) | Yes | Yes | Yes | Everything: per-image stores, measurements, deliverables, QC, dashboard |
+| `measure` | No | No | Yes | New measurements + deliverables from existing stores |
 | `recompile` | No | No | No | Refreshed aggregate deliverables only |
 | `process` | Yes | Yes | Yes | One exported image layer per input, mirroring the input tree |
+| `migrate` | No | No | No | A legacy `.h5` output tree converted to OME-Zarr stores, in place |
 
 `--output` is required in every mode.
 
@@ -85,13 +87,20 @@ out/
 │   ├── dashboard.html, processing_report.html
 │   └── README.md                           # generated column documentation
 ├── results/<dataset>/
-│   ├── hdf/                # one .h5 per image — the reusable segmentation
+│   ├── zarr/               # one <stem>.ome.zarr store per image — the
+│   │                       #   reusable segmentation
 │   └── measurements/       # one parquet per image
 └── .phenotypic/            # machine state: progress manifest, event log, pipeline copy
 ```
 
-The `hdf/` directory is what makes the other modes cheap: it holds each image's
-object map, so `measure` never has to detect again.
+The `zarr/` directory is what makes the other modes cheap: each store holds that
+image's object map, so `measure` never has to detect again. The stores are
+conformant OME-Zarr (NGFF 0.5 / Zarr v3), so napari, Vizarr, and Fiji open them
+directly.
+
+A tree written by a pre-store release has `hdf/` instead, with one `.h5` per
+image. Convert it once with `--mode migrate`; every mode that writes or
+reprocesses refuses an unconverted tree and points you at that command.
 
 `dashboard.html` is the run-progress and failure surface. Local runs show
 progress directly; SLURM runs add a Download tab. Explore measurements in the
@@ -115,8 +124,8 @@ pipelines on two different images.
 ### Surviving interruptions
 
 Re-running the same compatible command skips completed work automatically.
-Staged GPU pipelines infer the earliest required stage from their HDF, sidecar,
-and Stage-3 marker. If everything is already done, the CLI says so and exits:
+Staged GPU pipelines infer the earliest required stage from their store,
+Stage-2 signal, and Stage-3 marker. If everything is already done, the CLI says so and exits:
 
 ```bash
 python -m phenotypic --pipeline pipe.json --input ./plates --output ./out \
@@ -138,8 +147,8 @@ as OOM or timeout, remain pending and are selected by an ordinary repeat call.
 ## `measure` — new numbers, same segmentation
 
 You ran a detector over 500 plates, then realized you also want texture
-measurements. `measure` re-runs the measurement stage against the HDFs already
-sitting in `results/<dataset>/hdf/`, using a pipeline you supply:
+measurements. `measure` re-runs the measurement stage against the stores already
+sitting in `results/<dataset>/zarr/`, using a pipeline you supply:
 
 ```bash
 python -m phenotypic --mode measure --pipeline pipe.json --output ./out
@@ -151,11 +160,11 @@ one is an error.
 Because `measure` re-reads a finished segmentation rather than producing one, it
 refuses flags that imply a fresh detection pass or mutate run state. This applies
 to `--restart`, `--retry-failures`, `--overwrite`, `--sample`, and `--dry-run`.
-`measure` is all-or-nothing over every HDF it finds.
+`measure` is all-or-nothing over every store it finds.
 
 ```{note}
 Swap the *measurers* freely, but keep the detector consistent with the one that
-wrote the HDFs. `measure` reads the stored object map; changing `OtsuDetector`
+wrote the stores. `measure` reads the stored object map; changing `OtsuDetector`
 to `LiDetector` in the pipeline you pass will not re-segment anything.
 ```
 
@@ -163,7 +172,7 @@ to `LiDetector` in the pipeline you pass will not re-segment anything.
 
 `recompile` takes neither `--input` nor `--pipeline`; both are reloaded from the
 output root. It re-aggregates the per-image parquets into
-`master_measurements.csv`, regenerates any missing overlay PNGs from their HDFs,
+`master_measurements.csv`, regenerates any missing overlay PNGs from their stores,
 rebuilds the progress manifest, and regenerates the progress dashboard.
 
 ```bash
@@ -175,7 +184,7 @@ bundle-owned authoritative metadata to the flat `Metadata_<Label>` namespace.
 The same ordering applies locally and on SLURM. A blocked or failed migration
 aborts before aggregate outputs are published; a canonical bundle is an
 idempotent no-op. The migration receipt printed by the CLI can be used for
-rollback. HDF inputs are migrated copy-on-write, and an external file passed via
+rollback. Legacy HDF inputs are migrated copy-on-write, and an external file passed via
 `--metadata` is copied byte-for-byte to `deliverables/metadata.csv` before work,
 then normalized in memory. Neither the external file nor that provenance
 snapshot is rewritten by migration.
@@ -267,8 +276,9 @@ red-pigmented colonies from agar far better than luminance does. The full set is
 `LabA`, `LabB`.
 
 ```{warning}
-`--ext` no longer selects the output format. Forward runs write a single `.h5`
-per image; the flag now only affects overlay PNG rendering and is deprecated.
+`--ext` no longer selects the output format. Forward runs write a single
+OME-Zarr store per image; the flag now only affects overlay PNG rendering and is
+deprecated.
 ```
 
 ### Scaling out
@@ -305,7 +315,7 @@ array so a walltime kill loses at most N images of progress.
 
 A pipeline containing a `GpuDetector` automatically splits into three stages —
 CPU preprocess, resident-model GPU detect, CPU measure — reusing the per-image
-HDF. You do not opt in; you only tune it:
+OME-Zarr store. You do not opt in; you only tune it:
 
 - `--gpu-slurm KEY=VALUE` — SBATCH profile for the GPU stage. It **inherits and
   deltas over `--slurm`**, so put the GPU partition and account here and leave
@@ -328,8 +338,8 @@ per-forward batching knob — the segmentation models PhenoTypic targets do not
 broadly support batched inference.
 
 Stage 2 survives walltime through dependent continuation rounds. After a GPU
-array terminates, a controller checks which atomic sidecars remain absent and
-submits another array only when work remains. Workers do not catch walltime
+array terminates, a controller checks which images still lack a complete
+Stage-2 signal and submits another array only when work remains. Workers do not catch walltime
 signals and do not call `scontrol requeue`. Cancellation fences the run epoch
 before cancelling every active job in its ledger.
 

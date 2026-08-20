@@ -276,8 +276,14 @@ User-facing run outputs live under `<output>/deliverables/` (hard cutover):
 dashboard is progress-only: local runs render progress directly, while SLURM
 runs add Progress and Download tabs. Use the Results Viewer or the GUI
 `/analysis/` app for interactive exploration. The **per-image** parquets in
-`results/<ds>/measurements/` (and the rest of `results/`)
-stay at the output-dir **root**. Machine state lives under
+`results/<ds>/measurements/` and the per-image **OME-Zarr stores** in
+`results/<ds>/zarr/<stem>.ome.zarr/` (and the rest of `results/`)
+stay at the output-dir **root**. There is no per-image `.h5` on any forward
+path: `results/<ds>/hdf/` appears only in a tree written by a pre-store
+release, or in one migrated with the default `keep_source=True`, and the only
+things that read it are `--mode migrate`, `datasets_needing_migration` (the
+predicate every writing mode refuses on), and the `"hdf"` completion-marker
+fallback described above. Machine state lives under
 `.phenotypic/`: `progress_dir(output)` resolves
 `<output>/.phenotypic/progress/` and `processing_state_path(output)` resolves
 `<output>/.phenotypic/processing_state.json`; the corresponding `resolve_*`

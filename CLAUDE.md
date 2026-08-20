@@ -67,6 +67,20 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
   measurement/deliverables/QC/dashboard; machine-state lives under `.phenotypic/`.
   Full local + SLURM continuation reuse. Run the same command again after an
   interruption or when new compatible inputs appear; there is no `--resume` flag.
+- `uv run python -m phenotypic --mode migrate --output <run>` — convert a legacy
+  `.h5` output tree to OME-Zarr stores **in place**, in two passes: pass 1 migrates
+  the non-image metadata targets (`csv`/`parquet`/`json`/`frame`, never `.h5`), pass 2
+  converts each per-image `results/<ds>/hdf/<stem>.h5` to
+  `results/<ds>/zarr/<stem>.ome.zarr` and re-publishes its marker. Sources are
+  **kept** by default; `--delete-sources` is opt-in and gated on a value-level
+  re-read. Re-running after an interruption *is* the recovery procedure.
+  **Every other mode that writes or reprocesses (`full`, `measure`, `recompile`,
+  `process`) refuses an unconverted tree** with a pointer to this command —
+  conversion rewrites the whole results tree, so it is typed deliberately rather
+  than triggered as a side effect. Per-image storage is OME-Zarr only: `save2zarr`
+  / `load_zarr` / `load_layer_zarr` / `save_intermediate_zarr` replaced the HDF
+  quartet outright, and there is no `Image.save2hdf5`. See
+  `docs/source/how_to/pages/zarr_storage.md`.
 - **GPU detectors stage automatically:** when a pipeline contains a `GpuDetector`,
   `python -m phenotypic` runs detection as three internal stages — CPU preprocess →
   resident-model GPU detect → CPU measure — reusing the per-image OME-Zarr store.
@@ -327,7 +341,7 @@ enforces this for ruff, but the rule binds regardless of the tool.
 - **Output layout (`deliverables/`):** user-facing run outputs live under
   `<output>/deliverables/` (measurements, analysis, dashboards, overlays, and
   the durable QC + curation state under `deliverables/qc/`); per-image
-  parquets/HDF and run state stay at the output root. `master_measurements.*`
+  parquets/stores and run state stay at the output root. `master_measurements.*`
   is the clean pre-post, metadata-free archive; `measurements.*` is the
   post-applied mirror the GUI reads/curates — feed analysis and dashboards from
   the **mirror**, not the master. Always resolve paths via the
