@@ -1244,3 +1244,92 @@ def sweep_orphan_parts(
             shutil.rmtree(long_path(path), ignore_errors=True)
             removed += 1
     return removed
+
+
+# ---------------------------------------------------------------------------
+# Resume validity
+# ---------------------------------------------------------------------------
+
+
+def store_level0_shape(store_path: Path, member_path: str) -> tuple[int, ...] | None:
+    """Return the level-0 shape of one member array, or ``None`` if absent.
+
+    Args:
+        store_path: Store root.
+        member_path: Store-relative group path, e.g. ``"gray"`` or
+            ``"rgb/labels/objmap"``.
+
+    Returns:
+        The level-0 array shape, or ``None`` when the level-0 array is missing.
+    """
+    import zarr
+
+    level0 = Path(store_path) / member_path / "0"
+    if not level0.is_dir():
+        return None
+    return tuple(zarr.open_array(store=long_path(level0), mode="r").shape)
+
+
+def valid_staged_store(path: Path) -> bool:
+    """Return whether *path* holds the image layers Stage 2 requires.
+
+    Mirrors ``valid_staged_hdf`` case for case:
+
+    * the root ``zarr.json`` parses and carries ``store_schema_version``;
+    * every entry in ``phenotypic.series`` **and** ``phenotypic.labels`` opens
+      as a Zarr array group -- objmap included, which Stage 1's zeros write
+      guarantees;
+    * level-0 ``(y, x)`` extents agree across all of them and are non-zero. A
+      zero-size Zarr array is legal and must not pass.
+
+    The exception set is the HDF version's ``(OSError, TypeError,
+    ValueError)`` **plus ``KeyError``** -- which the attribute lookups need and
+    the HDF version did not.
+
+    It does **not** need ``zarr.errors.BaseZarrError``. The spec's §3.6 argues
+    the opposite ("none of zarr's error types are ``ValueError`` subclasses");
+    that is inverted. ``BaseZarrError`` inherits **directly from
+    ``ValueError``** (https://zarr.readthedocs.io/en/stable/api/zarr/errors/),
+    as do ``MetadataValidationError`` and every other zarr error except the four
+    ``IndexError`` ones, none of which this function can raise.
+    ``json.JSONDecodeError`` is likewise a ``ValueError`` and
+    ``FileNotFoundError`` an ``OSError``, so both are already covered. Keeping
+    the shorter tuple also avoids importing ``zarr.errors`` in a function the
+    resume planner calls once per image.
+
+    Args:
+        path: Candidate ``*.ome.zarr`` directory.
+
+    Returns:
+        ``True`` only for a store Stage 2 can consume.
+    """
+    try:
+        store = Path(path)
+        if not store.is_dir():
+            return False
+        block = read_phenotypic_attributes(store)
+        if PhenotypicAttr.STORE_SCHEMA_VERSION not in block:
+            return False
+        members = [
+            *block[PhenotypicAttr.SERIES].values(),
+            # `.get`: a label-less store OMITS the key (Task 1.3, ledger C3).
+            # This is a validity predicate -- it must RETURN FALSE on a store it
+            # does not accept, never raise. Indexing would make a label-less
+            # store a KeyError propagating out of resume classification and
+            # migration, both of which call this to decide what to do next.
+            *block.get(PhenotypicAttr.LABELS, {}).values(),
+        ]
+        if not members:
+            return False
+        shapes: list[tuple[int, ...]] = []
+        for member in members:
+            shape = store_level0_shape(store, member)
+            if shape is None:
+                return False
+            shapes.append(shape)
+        spatial = [shape[-2:] for shape in shapes]
+        if any(len(yx) < 2 or yx[0] <= 0 or yx[1] <= 0 for yx in spatial):
+            return False
+        return all(yx == spatial[0] for yx in spatial[1:])
+    except (OSError, KeyError, TypeError, ValueError):
+        return False

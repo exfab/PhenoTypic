@@ -270,6 +270,16 @@ from .mixin import (
     NormControlMixin,
     NormalizedOutputMixin,
 )
+from .ngff_ import (
+    STORE_SUFFIX,
+    PhenotypicAttr,
+    describe_durability,
+    durable_writes_enabled,
+    new_part_path,
+    promote_store,
+    sweep_orphan_parts,
+    valid_staged_store,
+)
 from .typing_ import InputLayer, NormOut, ProcessOnlyLayer
 
 __all__ = [
@@ -319,6 +329,15 @@ __all__ = [
     "slurm",
     "slurm_",
     "timed_execution",
+    # OME-Zarr per-image store (NGFF 0.5 / Zarr format v3)
+    "PhenotypicAttr",
+    "STORE_SUFFIX",
+    "describe_durability",
+    "durable_writes_enabled",
+    "new_part_path",
+    "promote_store",
+    "sweep_orphan_parts",
+    "valid_staged_store",
     # Typing aliases (closed value sets)
     "InputLayer",
     "NormOut",
