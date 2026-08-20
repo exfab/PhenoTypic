@@ -80,13 +80,28 @@ status=0
 # wide run must cover tests/gui and tests/integration as well as tests/unit --
 # a unit-only run would be green while the default lane is red.
 #
-# tests/migration is listed EXPLICITLY because it is not in `testpaths`
-# (pyproject.toml:218) and therefore never runs in the default lane at all.
-# Phase 3 makes that gap load-bearing: C11 changed recompile dataset discovery,
-# and an unconverted legacy bundle is discoverable only through the DIR_HDF
-# branch that the very recompile run authorizing its metadata migration depends
-# on. Adding it changes the total, so the count below is not comparable to the
-# 8,646 baseline -- compare failures, not totals.
+# Two tests/migration FILES are listed explicitly, not the directory. That
+# directory is not in `testpaths` (pyproject.toml:218), so nothing has run it,
+# and Phase 3 makes part of it load-bearing: C11 changed recompile dataset
+# discovery, and an unconverted legacy bundle is discoverable only through the
+# DIR_HDF branch that the very recompile run authorizing its metadata migration
+# depends on. test_metadata_schema_migration.py + test_curation_imagefile_rename.py
+# cover that and pass (52 passed, 23 s).
+#
+# test_equivalence.py is deliberately EXCLUDED, and adding the bare directory
+# would have made this gate permanently red for reasons unrelated to it:
+# 57 of its 341 tests fail on STALE GOLDENS, not on drift. The failures are
+# structural, not numeric -- the goldens expect `LogGrowthModel_r` while the
+# code emits `LogGrowthModel_Area_r`. Analysis headers became metric-qualified
+# in 67cfa259, an intentional and documented convention change; the goldens
+# were last captured at e2a91078/f3fa28b3, before it, and were never re-taken.
+# The suite is a real pydantic-v2 regression detector that has silently rotted
+# because it is not in `testpaths`. Re-capturing it is its own piece of work,
+# and it belongs to whoever owns that convention -- not to this change, which
+# touches none of the failing modules (denoisers, refiners, analysis, measure).
+#
+# Adding these two files changes the total, so the count below is not
+# comparable to the 8,646 baseline -- compare failures, not totals.
 #
 # tests/e2e is the other orphan, and is deliberately NOT added: it drives
 # Playwright against a real browser, and it is GUI surface that Phase 4 owns.
@@ -94,7 +109,9 @@ status=0
 #
 # `.venv/bin/python -m pytest` rather than `uv run pytest`: roughly 4x faster to
 # start, and it skips the environment resolution that a batch job does not need.
-.venv/bin/python -m pytest tests/unit tests/gui tests/integration tests/smoke tests/migration \
+.venv/bin/python -m pytest tests/unit tests/gui tests/integration tests/smoke \
+    tests/migration/test_metadata_schema_migration.py \
+    tests/migration/test_curation_imagefile_rename.py \
     -q --no-header -p no:randomly -o addopts= -m "not slow" || status=$?
 
 echo
