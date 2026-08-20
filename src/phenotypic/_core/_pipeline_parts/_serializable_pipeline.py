@@ -47,6 +47,7 @@ PHENOTYPIC_CLASS_MODULES: tuple[str, ...] = (
     "phenotypic.tune",
     "phenotypic.tune.score",
     "phenotypic.tune.strategy",
+    "phenotypic.subset",
 )
 
 

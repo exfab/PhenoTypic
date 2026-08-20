@@ -41,8 +41,23 @@ _SUBMODULES_BEFORE_THE_LIFT = (
 
 
 def test_one_shared_module_list():
-    """The constant is the old literal, in order."""
-    assert tuple(PHENOTYPIC_CLASS_MODULES) == _SUBMODULES_BEFORE_THE_LIFT
+    """The constant still opens with the old literal, in order.
+
+    A new module family is **appended**, never interleaved: resolution is
+    first-match, so an appended entry can only lose a duplicate-name collision
+    to a module that already resolved it — which is what makes appending safe
+    and reordering not. Asserting the prefix rather than equality keeps that
+    guarantee while letting the list grow (``phenotypic.subset``, Task 14).
+    """
+    lifted = tuple(PHENOTYPIC_CLASS_MODULES)
+    assert lifted[: len(_SUBMODULES_BEFORE_THE_LIFT)] == _SUBMODULES_BEFORE_THE_LIFT
+
+
+def test_the_selector_subpackage_is_appended_not_interleaved():
+    """``phenotypic.subset`` joins the list Task 14 needs it in, at the end."""
+    lifted = tuple(PHENOTYPIC_CLASS_MODULES)
+    assert "phenotypic.subset" in lifted
+    assert lifted.index("phenotypic.subset") >= len(_SUBMODULES_BEFORE_THE_LIFT)
 
 
 @pytest.mark.parametrize(
