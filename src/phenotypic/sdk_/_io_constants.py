@@ -284,6 +284,83 @@ def paths_fingerprint(paths: Iterable[Path], *, root: Path | None = None) -> str
     return f"sha256:{digest.hexdigest()}"
 
 
+def directory_digest(root: Path, *, relative_to: Path | None = None) -> str:
+    """Fingerprint a whole directory tree by its file *inventory*.
+
+    The identity of an image **set** — what
+    ``campaign_status.comparable`` needs to tell two tuning arms apart, and
+    what a subset artifact records as its ``parent.digest`` so a promotion can
+    verify the full dataset has not changed since development.
+
+    Every regular file under ``root`` contributes its **parent-relative POSIX
+    path, size, and mtime_ns** — the contents are deliberately *not* read. A
+    480-image plate parent is tens of gigabytes; hashing it on every
+    comparison would make the check too expensive to run, and the cheap
+    inventory catches every realistic change: added, removed, renamed, moved
+    between datasets, re-exported, or re-measured. The trade it accepts is
+    stated so a caller can decide: an in-place edit that preserves both size
+    and mtime is invisible, and a byte-identical copy made **without**
+    preserving timestamps reads as a different set. Use
+    :func:`paths_fingerprint` when contents must be hashed.
+
+    Directories contribute nothing of their own — an empty directory does not
+    change the digest, matching ``scan_directory_structure``, which only sees
+    subdirectories that contain images.
+
+    **Digest-format warning.** This returns the ``"sha256:<hex>"`` prefixed
+    form used by :func:`bytes_fingerprint` and :func:`file_fingerprint`.
+    ``pipeline_content_digest`` (``_cli/_cli_staged_resume.py``) returns a
+    **bare** hexdigest. The two are the same hash function over different
+    inputs and **never string-compare equal**; do not mix them in one field.
+
+    Args:
+        root: Directory to fingerprint. Walked recursively.
+        relative_to: Anchor the recorded names against this directory instead
+            of ``root``. Use it when the digest must survive the tree being
+            addressed from a different root; the default (``root``) is what
+            makes a parent copied to another path keep its identity.
+
+    Returns:
+        A deterministic ``"sha256:<hex>"`` digest, independent of the order
+        the filesystem lists entries in.
+
+    Raises:
+        FileNotFoundError: If ``root`` does not exist or is not a directory.
+
+    Example:
+        >>> import tempfile
+        >>> from pathlib import Path
+        >>> with tempfile.TemporaryDirectory() as tmp:
+        ...     _ = (Path(tmp) / "plate_001.tif").write_bytes(b"image")
+        ...     directory_digest(Path(tmp)).startswith("sha256:")
+        True
+    """
+    root_path = Path(root)
+    if not root_path.is_dir():
+        raise FileNotFoundError(f"Not a directory: {root_path}")
+    anchor = Path(relative_to) if relative_to is not None else root_path
+
+    entries: list[tuple[str, int, int]] = []
+    for path in root_path.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            name = path.relative_to(anchor).as_posix()
+        except ValueError:
+            name = path.as_posix()
+        stat = path.stat()
+        entries.append((name, stat.st_size, stat.st_mtime_ns))
+
+    digest = hashlib.sha256()
+    for name, size, mtime_ns in sorted(entries):
+        encoded_name = name.encode("utf-8")
+        digest.update(len(encoded_name).to_bytes(8, "big"))
+        digest.update(encoded_name)
+        digest.update(size.to_bytes(8, "big"))
+        digest.update(mtime_ns.to_bytes(16, "big"))
+    return f"sha256:{digest.hexdigest()}"
+
+
 def source_cache_key(source: Path, fingerprint: str) -> str:
     """Return an opaque cache key bound to canonical source and content."""
     identity = f"{Path(source).resolve(strict=False)}\0{fingerprint}".encode()
