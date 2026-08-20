@@ -785,6 +785,21 @@ keeping Windows paths under MAX_PATH."
   ```
 
 **Constraints specific to this task:**
+- ⚠️ **`metadata_schema_version` is NOT written, and `store_schema_version` is gated by
+  VALUE** (user ruling 2026-08-19, spec §2.3). An earlier draft of this task did the opposite
+  on both counts, and only Task 1.6's *commit message* recorded the ruling correctly.
+
+  Writing `metadata_schema_version` would hard-code an assertion about metadata this same
+  writer stores "verbatim and unvalidated" — no code path enforces it. It also inverts the
+  HDF contract, where the attribute is written only **after** a successful rewrite
+  (`_metadata_migration.py:1401`) and its absence or mismatch is exactly what marks a target
+  migratable. With header-only store migration cut, nothing reads it either. The HDF-side
+  `_METADATA_SCHEMA_VERSION_*` constants are a different contract and stay put.
+
+  For the store version, presence-only would let a **v4** store be read under v3 semantics
+  silently. `valid_staged_store` compares the value and returns `False`; the loader
+  (Phase 2 Task 2.2) raises. Both halves are required — the predicate must not raise, and the
+  loader must not merely return.
 - `series` and `labels` are **separate keys**: `series` maps a logical layer name to a
   group name, `labels` maps a label name to a nested path.
 - **`PhenotypicAttr.METADATA` collides with a banned token and needs an allowlist entry.**
@@ -1178,7 +1193,6 @@ def build_phenotypic_attributes(
     # is ABSENCE, not emptiness, and every reader must use `.get`.
     block: dict = {
         PhenotypicAttr.STORE_SCHEMA_VERSION: STORE_SCHEMA_VERSION,
-        PhenotypicAttr.METADATA_SCHEMA_VERSION: METADATA_SCHEMA_VERSION,
         PhenotypicAttr.PHENOTYPIC_VERSION: (
             phenotypic_version or phenotypic.__version__
         ),
@@ -3076,7 +3090,11 @@ def valid_staged_store(path: "Path") -> bool:
         if not store.is_dir():
             return False
         block = read_phenotypic_attributes(store)
-        if PhenotypicAttr.STORE_SCHEMA_VERSION not in block:
+        # By VALUE, not presence (user ruling 2026-08-19, spec §2.3). A
+        # presence-only check lets a store written by a future v4 be read under
+        # v3 semantics with no error at all -- which is the ruling's stated
+        # reason. `.get` covers absence in the same comparison.
+        if block.get(PhenotypicAttr.STORE_SCHEMA_VERSION) != STORE_SCHEMA_VERSION:
             return False
         members = [
             *block[PhenotypicAttr.SERIES].values(),

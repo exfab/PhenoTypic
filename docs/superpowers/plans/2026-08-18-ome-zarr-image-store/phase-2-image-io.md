@@ -282,6 +282,15 @@ Phase 6, because --mode migrate is built on their readers."
   ```
 
 **Constraints specific to this task:**
+- ⚠️ **`load_zarr` must RAISE on a `store_schema_version` mismatch**, with an explicit
+  "written by a newer PhenoTypic" message naming both the store's version and this build's
+  (user ruling 2026-08-19, spec §2.3). This is the other half of the value gate:
+  `valid_staged_store` is a predicate and returns `False`, but the loader is the path a
+  **user** invokes, and opening a v4 store under v3 semantics is exactly the failure the
+  ruling exists to prevent. Neither half was in the plan's code until Phase 1 was
+  implemented — Task 1.3 wrote the dropped `metadata_schema_version` key and Task 1.6
+  checked presence, with only a commit message recording the ruling correctly. Do not
+  assume the rest of this task's code block reflects it either.
 - `save2zarr` builds into a `.part` via `ngff_.new_part_path`, writes **arrays first, then
   `OME/zarr.json`, then the root `zarr.json` last**, and promotes with
   `ngff_.promote_store(part, final, fsync=ngff_.durable_writes_enabled(durable))`.

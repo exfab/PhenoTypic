@@ -101,7 +101,9 @@ def test_two_version_markers_are_both_present_and_distinct() -> None:
         gamma=None,
     )
     assert block[PhenotypicAttr.STORE_SCHEMA_VERSION] == 3
-    assert block[PhenotypicAttr.METADATA_SCHEMA_VERSION] == 2
+    # `metadata_schema_version` is NOT written (user ruling, 2026-08-19).
+    assert not hasattr(PhenotypicAttr, "METADATA_SCHEMA_VERSION")
+    assert "metadata_schema_version" not in block
 
 
 def test_image_class_and_image_type_stay_distinct() -> None:

@@ -102,6 +102,35 @@ def test_root_without_store_schema_version_is_invalid(tmp_path: Path) -> None:
     assert ngff_.valid_staged_store(store) is False
 
 
+def test_a_future_store_schema_version_is_invalid(tmp_path: Path) -> None:
+    """User ruling 2026-08-19: the gate is by VALUE, not presence.
+
+    Kills the `presence-only` mutant. A store written by a future v4 must not
+    be read under v3 semantics -- and a `not in block` check accepts it
+    silently, which is the whole reason the ruling was made. This is the only
+    test that distinguishes the two; `..._without_store_schema_version_...`
+    above passes under either implementation.
+    """
+    store = _write_store(
+        tmp_path / "future.ome.zarr",
+        shapes={"gray": (64, 48), "detect_mat": (64, 48), "objmap": (64, 48)},
+        series=["gray", "detect_mat"],
+        store_schema_version=ngff_.STORE_SCHEMA_VERSION + 1,
+    )
+    assert ngff_.valid_staged_store(store) is False
+
+
+def test_the_current_store_schema_version_is_valid(tmp_path: Path) -> None:
+    """The companion: proves the gate DISCRIMINATES rather than always failing."""
+    store = _write_store(
+        tmp_path / "current.ome.zarr",
+        shapes={"gray": (64, 48), "detect_mat": (64, 48), "objmap": (64, 48)},
+        series=["gray", "detect_mat"],
+        store_schema_version=ngff_.STORE_SCHEMA_VERSION,
+    )
+    assert ngff_.valid_staged_store(store) is True
+
+
 def test_missing_objmap_is_invalid(tmp_path: Path) -> None:
     """Stage 1 writes a zeros objmap, so its absence means an incomplete write."""
     store = _write_store(

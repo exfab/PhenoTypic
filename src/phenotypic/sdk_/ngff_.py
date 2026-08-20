@@ -336,9 +336,15 @@ def array_create_kwargs(
 # attributes.phenotypic -- the source of truth on read
 # ---------------------------------------------------------------------------
 
-#: Version of the flat ``Metadata_<Label>`` header namespace. Distinct from
-#: :data:`STORE_SCHEMA_VERSION`, which versions groups and arrays.
-METADATA_SCHEMA_VERSION: Final[int] = 2
+# `METADATA_SCHEMA_VERSION` is deliberately NOT defined here (user ruling,
+# 2026-08-19; spec 2.3). Writing it would be a hard-coded constant asserting
+# something about metadata this same writer stores "verbatim and unvalidated" --
+# no code path enforces it. That also inverts the HDF contract, where the
+# attribute is written only AFTER a successful rewrite
+# (`sdk_/_metadata_migration.py:1401`) and its absence or mismatch is precisely
+# what marks a target migratable. With header-only store migration cut, nothing
+# reads it either. The HDF-side `_METADATA_SCHEMA_VERSION_*` constants are a
+# different contract and stay where they are.
 
 
 class PhenotypicAttr:
@@ -351,7 +357,6 @@ class PhenotypicAttr:
 
     ROOT: Final[str] = "phenotypic"
     STORE_SCHEMA_VERSION: Final[str] = "store_schema_version"
-    METADATA_SCHEMA_VERSION: Final[str] = "metadata_schema_version"
     PHENOTYPIC_VERSION: Final[str] = "phenotypic_version"
     IMAGE_CLASS: Final[str] = "image_class"
     WORK_ID: Final[str] = "work_id"
@@ -449,7 +454,6 @@ def build_phenotypic_attributes(
     primary = primary_series(series_names)
     block: dict = {
         PhenotypicAttr.STORE_SCHEMA_VERSION: STORE_SCHEMA_VERSION,
-        PhenotypicAttr.METADATA_SCHEMA_VERSION: METADATA_SCHEMA_VERSION,
         PhenotypicAttr.PHENOTYPIC_VERSION: (
             phenotypic_version or phenotypic.__version__
         ),
@@ -1308,7 +1312,13 @@ def valid_staged_store(path: Path) -> bool:
         if not store.is_dir():
             return False
         block = read_phenotypic_attributes(store)
-        if PhenotypicAttr.STORE_SCHEMA_VERSION not in block:
+        # By VALUE, not presence (user ruling, 2026-08-19). A presence-only
+        # check would let a store written by a future v4 be read under v3
+        # semantics with no error at all. `.get` covers absence in the same
+        # comparison. This predicate RETURNS FALSE rather than raising -- the
+        # explicit "written by a newer PhenoTypic" error belongs in the loader
+        # (Phase 2 `load_zarr`), which is the path a user actually invokes.
+        if block.get(PhenotypicAttr.STORE_SCHEMA_VERSION) != STORE_SCHEMA_VERSION:
             return False
         members = [
             *block[PhenotypicAttr.SERIES].values(),
