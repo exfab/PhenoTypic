@@ -171,6 +171,63 @@ persisting the returned ID.
 - Per-image isolation: a missing prereq (S6) is recorded and skipped, never an
   unhandled raise that aborts a shard.
 
+## Durability (`--durable-writes` / `--no-durable-writes`)
+
+Whether each per-image store is `fsync`ed before its promote. The flag is a
+**tri-state**: unset means *auto-detect* — on under SLURM, off locally — and
+`None` is carried end to end, resolved to a bool in exactly one place,
+`ngff_._resolve_durability`, which also produces the sentence logged at run
+start so the flag and its description cannot drift. **Do not resolve it
+earlier**: that would freeze the submitting node's environment into a value a
+worker on a different node then reuses.
+
+Durability lives on the **`OutputManager`**, not on each call.
+`save_image_store(durable=None)` defers to `self.durable_writes`, which is what
+makes it structurally impossible for a write site to be silently inert. There
+are exactly **three** write sites — `_cli_process_single.py`,
+`_cli_staged_workers.py` Stage 1 and Stage 3. Everything else that appears in a
+grep is a **transport** site: a fresh process that must be handed the flag on
+its command line, namely the staged SLURM worker, the ordinary per-image SLURM
+array (`_cli_slurm_array_scripts.py` → `python -m phenotypic._cli._cli_process_single`),
+and the staged script generator. A new spawn site needs the flag threaded, or
+the option is inert on that path alone.
+
+`durable_writes` is deliberately **not** part of
+`processing_configuration_digest` (`_cli_failure_tracker.py`, an explicit
+allowlist). Durability is a storage guarantee, not a scientific parameter —
+folding it into the work id would make `--no-durable-writes` restart a finished
+run from zero.
+
+Rejected with `--mode recompile` (and `migrate`, when Phase 5 lands): those
+modes write no image store from a pipeline, so the flag could only mislead.
+
+## Per-image completion markers
+
+`publish_image_success` certifies the artifacts an image produced;
+`valid_image_success` is the first conjunct of resume classification. Markers
+are **versioned** (`SUCCESS_MARKER_VERSION`, currently **2**) and a
+version mismatch invalidates rather than migrates.
+
+Never hand-declare the per-image data artifact. Call
+**`image_data_artifact(output_dir, output_manager, dataset, image_stem)`**,
+which returns `("store", <store dir>)` when a store exists and `("hdf", ….h5)`
+otherwise. Three separate clusters each broke a run by declaring `.h5`
+directly after the writer had moved to the store — `publish_image_success`
+resolves every artifact `strict=True`, so the image fails *after* completing
+all of its work.
+
+Descriptors dispatch on `kind`. A **store** is fingerprinted by its root
+`zarr.json` alone, not recursively: the root is written **last** by the promote
+protocol and nothing writes into the store after publication, so a valid root
+implies a complete store. An absent `kind` reads as `"file"` (v1 shape); an
+unknown `kind` **fails closed**.
+
+The `"hdf"` branch is **not** dead code, though no forward path writes an
+`.h5` any more. `_migrate_legacy_success_evidence` promotes trees from older
+releases, which have `results/<ds>/hdf/<stem>.h5` and no store; dropping the
+branch would make it name a nonexistent store and silently refuse to promote
+the very trees it exists to rescue — reprocessing all of them.
+
 ## Environment variables (important for future work)
 
 - `PHENOTYPIC_PRELOAD_MODULES` — comma list of modules staged SLURM **workers and
