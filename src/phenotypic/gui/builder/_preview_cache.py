@@ -194,7 +194,7 @@ def _build_manifest(fingerprint, fingerprint_inputs, scope, pipeline,
         # An interrupted write leaves no root ``zarr.json``, so the store reads
         # as ABSENT rather than as partial -- the same disposition the missing
         # ``.h5`` file used to get.
-        if not (store / "zarr.json").is_file():
+        if not (store / ngff_.STORE_ROOT_JSON).is_file():
             return
         block = ngff_.read_phenotypic_attributes(store)
         series = block.get(ngff_.PhenotypicAttr.SERIES, {})

@@ -12,6 +12,7 @@ from typing import Mapping
 from uuid import uuid4
 
 from phenotypic.sdk_ import (
+    STORE_ROOT_JSON,
     aggregate_publication_marker_path,
     atomic_write_json,
     file_fingerprint,
@@ -32,14 +33,13 @@ from phenotypic.sdk_ import (
 #: ``complete``, not against over-reprocessing (ledger FLOW-23).
 SUCCESS_MARKER_VERSION = 2
 
-#: The root metadata document an OME-Zarr store is fingerprinted by.
-#:
-#: ``promote_store`` writes it **last**, so its digest covers the whole
-#: promoted store: any later re-promote replaces it and invalidates the marker.
-#: Fingerprinting the store *directory* instead would be a constant function of
-#: the path -- ``paths_fingerprint`` emits one sentinel byte for a directory
-#: and does not recurse -- and would certify a store whose contents changed.
-STORE_ROOT_JSON = "zarr.json"
+# ``STORE_ROOT_JSON`` (imported above) is the root metadata document an
+# OME-Zarr store is fingerprinted by. ``promote_store`` writes it **last**, so
+# its digest covers the whole promoted store: any later re-promote replaces it
+# and invalidates the marker. Fingerprinting the store *directory* instead
+# would be a constant function of the path -- ``paths_fingerprint`` emits one
+# sentinel byte for a directory and does not recurse -- and would certify a
+# store whose contents changed.
 
 #: Artifact descriptor kinds. ``"file"`` is the default for a descriptor
 #: written before the ``kind`` tag existed.

@@ -276,6 +276,7 @@ from .mixin import (
     NormalizedOutputMixin,
 )
 from .ngff_ import (
+    STORE_ROOT_JSON,
     STORE_SUFFIX,
     PhenotypicAttr,
     describe_durability,
@@ -336,6 +337,7 @@ __all__ = [
     "timed_execution",
     # OME-Zarr per-image store (NGFF 0.5 / Zarr format v3)
     "PhenotypicAttr",
+    "STORE_ROOT_JSON",
     "STORE_SUFFIX",
     "describe_durability",
     "durable_writes_enabled",

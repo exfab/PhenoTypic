@@ -56,6 +56,12 @@ STORE_SCHEMA_VERSION: Final[int] = 3
 #: Directory suffix for one per-image store.
 STORE_SUFFIX: Final[str] = ".ome.zarr"
 
+#: Zarr v3's root metadata document, at the top of every store. Written
+#: **last** by the promote protocol, which is what lets a reader treat its
+#: presence as "this store is complete" and lets a completion marker
+#: fingerprint the store by this file alone.
+STORE_ROOT_JSON: Final[str] = "zarr.json"
+
 #: Halve pyramid levels until ``max(H, W) <= PYRAMID_STOP_PX``.
 PYRAMID_STOP_PX: Final[int] = 512
 
@@ -520,7 +526,7 @@ def read_root_attributes(store_path: Path) -> dict:
         json.JSONDecodeError: If the root is present but unparseable.
     """
     payload = json.loads(
-        (Path(store_path) / "zarr.json").read_text(encoding="utf-8")
+        (Path(store_path) / STORE_ROOT_JSON).read_text(encoding="utf-8")
     )
     return payload.get("attributes", {})
 
