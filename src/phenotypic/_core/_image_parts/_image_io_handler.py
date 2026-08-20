@@ -1337,12 +1337,22 @@ class ImageIOHandler(ImageColorSpace):
         else:
             img = cls(arr=matrix_data, **kwargs)
 
-        # Detection matrix + mode.
-        detect_mat_ds = layers["detect_mat"]
-        detect_matrix_data = detect_mat_ds[()]
-        detect_mode = detect_mat_ds.attrs.get("detect_mode", "gray")
-        if isinstance(detect_mode, bytes):
-            detect_mode = detect_mode.decode("utf-8", errors="replace")
+        # Detection matrix + mode. Backward compat: 'enh_gray' is the
+        # pre-rename name, still accepted by valid_staged_hdf in
+        # _cli_staged_resume, so schema-2 files carrying it exist. The v1-flat
+        # loader has had this fallback all along; the v2 one raised KeyError,
+        # which is OPEN-QUESTIONS D8. `--mode migrate` reads these files, and
+        # Phase 6 keeps this loader as the migration reader, so the fallback
+        # has to land before the retirement.
+        if "detect_mat" in layers:
+            detect_mat_ds = layers["detect_mat"]
+            detect_matrix_data = detect_mat_ds[()]
+            detect_mode = detect_mat_ds.attrs.get("detect_mode", "gray")
+            if isinstance(detect_mode, bytes):
+                detect_mode = detect_mode.decode("utf-8", errors="replace")
+        else:
+            detect_matrix_data = layers["enh_gray"][()]
+            detect_mode = "gray"
         img.detect_mat[:] = detect_matrix_data
         img._data.detect_mode = detect_mode
 
