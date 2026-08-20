@@ -491,3 +491,29 @@ defeats marker v2 on exactly the path the MCP server will use.
 - Tasks **15 and 16 are clean**; the gate replicated all of C6's mutation claims
   and refuted its own deletable-wiring hypothesis (1158 passed with only the
   injected mutation failing).
+
+---
+
+## Process lesson: mutation-test in an isolated copy, never the shared tree
+
+The C5 gate reported an edit to `subset/_selector.py` being reverted under it
+within minutes. **Not a hook** — the two active git hooks are graphify
+graph-rebuilders that write only to `graphify-out/`, and the `SessionStart` hook
+runs `uv sync`. The cause was a concurrent agent committing while the gate had an
+unstaged mutation in the same tree.
+
+The gate handled it correctly: it moved to a `git archive` copy under scratch with
+a `PYTHONPATH` override and re-derived everything there. Its results stand.
+
+**Standing rule for the rest of this project:** any agent doing mutation testing
+works in an isolated copy. In-tree mutation while another agent is live produces
+results that cannot be trusted — and the failure is silent, because a reverted
+mutation simply looks like a surviving one, which reads as a false green that
+is not real.
+
+This is the second coordination hazard from running several writers in one tree;
+the first was an agent `--amend`-ing a commit that was not its own. File-ownership
+boundaries have held throughout — no two agents have edited the same file — but
+staging and working-tree state are shared whether the files are or not.
+**Prefer a worktree per writer**, as C8 had; its merge was the cleanest of the
+phase.
