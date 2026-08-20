@@ -633,9 +633,16 @@ under .phenotypic/progress/ beside the Stage-3 marker it pairs with."
   (`stage1_preprocess_core` line 99, `stage2_detect_core` line 139,
   `ensure_staged_overlay` line 168, `stage3_merge_measure_core` line 193)
 - Test: `tests/integration/cli/test_staged_store_stages.py` (create)
-- **Test: `tests/integration/cli/test_staged_gpu_local.py` — two edits this task causes**
-  (Task 3.5 owns the file's port; these two are named here because this task is what breaks
-  them, and an executor running only Task 3.3's step-4 command hits them first):
+- **Test: `tests/integration/cli/test_staged_gpu_local.py` — two *named* edits, but expect
+  the file to be broadly red** (Task 3.5 owns the wholesale port):
+
+  > **Measured (C9): after this task the file runs `20 failed, 2 passed` of 22.** The two
+  > edits below are the ones this task must make deliberately; the rest fail because they
+  > still assert on `dataset_hdf_dir(out, ...)/"<stem>.h5"` or on sidecars — e.g.
+  > `assert staged_hdf.is_file()`, and `FileNotFoundError` on `stage2_raw/ds/img.npy` from
+  > the SLURM shard worker. That is **expected sequencing**, not a regression: Task 3.5 ports
+  > the file. Do not try to fix it here, and do not read Task 3.3's step-4 command as a gate
+  > on this file.
   1. `:740-744` monkeypatches the **instance attribute by name**:
      `monkeypatch.setattr(om, "save_image_hdf", lambda *a, **k: None)`. `save_image_hdf` is
      deliberately **kept** until Phase 6 (Task 3.1), so the patch still *succeeds* — it just
@@ -833,11 +840,18 @@ def test_stage3_replays_from_the_raw_array_not_the_store(staged_run, monkeypatch
     staged_run.run_stage1()
     staged_run.run_stage2()
     reads: list[str] = []
-    real = _cli_stage2_token.load_stage2_raw
+    # Patch the WORKER's binding, not `_cli_stage2_token`'s (C9). Step 3's code
+    # block imports `load_stage2_raw` by name, so the worker holds its own
+    # reference and a patch on the defining module is invisible to it -- the
+    # test would fail on `reads == []` no matter what Stage 3 did.
+    #
+    # And assert the PUBLISHED PIXELS, not a call count: the substitute returns
+    # a sentinel label, so this survives an import-style refactor and still
+    # catches a swap back to the store, where substituting the raw loader would
+    # have no observable effect at all.
+    sentinel = np.full(shape, 7, dtype=np.uint16)
     monkeypatch.setattr(
-        _cli_stage2_token,
-        "load_stage2_raw",
-        lambda *a: (reads.append("raw"), real(*a))[1],
+        _cli_staged_workers, "load_stage2_raw", lambda *a: sentinel
     )
     staged_run.run_stage3()
     assert reads == ["raw"]
@@ -1031,15 +1045,20 @@ Seed the store **once, in the test**, then make Stage 3 read it:
 
 ```python
 # 1. In the test, between run_stage2() and the FIRST run_stage3():
-Image.write_layer_zarr(
-    zarr_store_path(run.output_dir, "ds", "img"),
-    "objmap",
-    load_stage2_raw(run.output_dir, "ds", "img"),
-)
+store = zarr_store_path(run.output_dir, "ds", "img")
+seeded = Image.load_zarr(store)
+seeded.objmap[:] = load_stage2_raw(run.output_dir, "ds", "img")
+seeded.save2zarr(store)
 
 # 2. In stage3_merge_measure_core, replacing `result = load_stage2_raw(...)`:
     result = image.objmap[:]
 ```
+
+> **There is no `Image.write_layer_zarr` (C9).** An earlier draft of this seed called one;
+> `grep -rn "write_layer_zarr" src/ tests/` returns nothing. The handler exposes
+> `save2zarr` / `save_intermediate_zarr` / `load_zarr` / `load_layer_zarr` — reading a layer
+> is a one-shot helper, writing one is not. Load, assign, re-promote, as above. What matters
+> for the proof is unchanged: the seed happens **once, in the test, upstream of the retry**.
 
 and re-run:
 
