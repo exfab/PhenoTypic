@@ -21,6 +21,7 @@ from phenotypic.gui._config import QC_CROPS_URL_SEGMENT
 from phenotypic.gui._shared import tiles
 from phenotypic.gui.results_viewer._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.sdk_ import zarr_store_path
 
 from tests._output_layout import write_master
 from phenotypic.schema import IMAGE
@@ -66,7 +67,15 @@ def crop_app(tmp_path: Path):
             data=np.full((100, 100, 3), (255, 0, 0), dtype=np.uint8),
         )
 
-    # 3. Build the app and hand back the Flask test client.
+    # 3. The per-image OME-Zarr store the viewer now binds its pixel-source
+    # identity to. Only the root ``zarr.json`` is load-bearing here: it is
+    # what ``_image_source_token`` stats, and it is what the promote rewrites
+    # on every publish.
+    store = zarr_store_path(tmp_path, "d1", "img-1")
+    store.mkdir(parents=True)
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+
+    # 4. Build the app and hand back the Flask test client.
     output_root = OutputRoot.discover(
         tmp_path,
         cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
@@ -76,7 +85,7 @@ def crop_app(tmp_path: Path):
         app.server.test_client(),
         output_root,
         overlay_dir / "img-1.png",
-        hdf_path,
+        store,
     )
 
 
@@ -121,7 +130,7 @@ def test_crop_route_rejects_unknown_dataset(app_client) -> None:
 
 def test_overlay_replacement_stales_colony_and_qc_crop_routes(crop_app) -> None:
     """Both shared crop namespaces reject a replaced overlay generation."""
-    client, output_root, overlay_path, _hdf_path = crop_app
+    client, output_root, overlay_path, _store = crop_app
     bound_token = output_root.bound_image_source_token("d1", "img-1")
     replacement = overlay_path.with_name("replacement.png")
     PILImage.new("RGB", (100, 100), (0, 255, 0)).save(
@@ -140,18 +149,19 @@ def test_overlay_replacement_stales_colony_and_qc_crop_routes(crop_app) -> None:
         assert response.status_code == 409
 
 
-def test_hdf_replacement_stales_colony_and_qc_crop_routes(crop_app) -> None:
-    """Both shared crop namespaces reject a replaced HDF generation."""
-    client, output_root, _overlay_path, hdf_path = crop_app
+def test_store_replacement_stales_colony_and_qc_crop_routes(crop_app) -> None:
+    """Both shared crop namespaces reject a republished store generation.
+
+    The content-changes-under-the-same-path shape. It is exactly what goes
+    silently stale if the source token keys on the store DIRECTORY: a
+    promote replaces the root ``zarr.json`` without moving the directory's
+    own ``st_mtime_ns``.
+    """
+    client, output_root, _overlay_path, store = crop_app
     bound_token = output_root.bound_image_source_token("d1", "img-1")
-    replacement = hdf_path.with_name("replacement.h5")
-    with h5py.File(replacement, "w") as handle:
-        layers = handle.create_group("layers")
-        layers.create_dataset(
-            "rgb",
-            data=np.full((100, 100, 3), (0, 255, 0), dtype=np.uint8),
-        )
-    replacement.replace(hdf_path)
+    directory_mtime_before = store.stat().st_mtime_ns
+    (store / "zarr.json").write_text('{"republished": 1}', encoding="utf-8")
+    assert store.stat().st_mtime_ns == directory_mtime_before
     assert not output_root.image_source_token_is_current(
         "d1",
         "img-1",
@@ -170,7 +180,7 @@ def test_crop_route_rechecks_snapshot_after_pixel_read(
     segment: str,
 ) -> None:
     """A processing replacement during the read is rejected after cropping."""
-    client, output_root, overlay_path, _hdf_path = crop_app
+    client, output_root, overlay_path, _store = crop_app
     bound_token = output_root.bound_image_source_token("d1", "img-1")
     real_crop = tiles.crop_colony
 

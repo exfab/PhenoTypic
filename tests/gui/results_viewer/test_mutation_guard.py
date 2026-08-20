@@ -57,6 +57,7 @@ from phenotypic.sdk_ import (
     pipeline_json_path,
     resolve_manifest_json_path,
     run_completion_marker_path,
+    zarr_store_path,
 )
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import (
@@ -101,9 +102,9 @@ def _seed_output(
     overlays.mkdir(parents=True)
     for index in range(overlay_count):
         (overlays / f"image-{index}.png").write_bytes(b"overlay")
-    hdf = root / "results" / "plate" / "hdf"
-    hdf.mkdir(parents=True)
-    (hdf / "a.h5").write_bytes(b"hdf")
+    store = zarr_store_path(root, "plate", "a")
+    store.mkdir(parents=True)
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
 
     manifest = resolve_manifest_json_path(root)
     manifest.parent.mkdir(parents=True, exist_ok=True)
@@ -251,7 +252,11 @@ def test_guard_detects_processing_change_before_caller_can_write(
     _seed_output(source, contradictory=False)
     output = _discover(source)
     guard = OutputMutationGuard(output, "generation-3")
-    (source / "results" / "plate" / "hdf" / "a.h5").write_bytes(b"changed")
+    # A republish, not an in-place write: the promote rewrites the root
+    # ``zarr.json``, and that is the only signal a store change emits.
+    (zarr_store_path(source, "plate", "a") / "zarr.json").write_text(
+        '{"republished": 1}', encoding="utf-8"
+    )
     before_attempt = _tree_snapshot(source)
 
     with pytest.raises(OutputMutationBlocked, match="artifacts changed"):

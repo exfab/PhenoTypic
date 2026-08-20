@@ -199,7 +199,7 @@ def test_discover_without_results_dir_boots_standalone(tmp_path: Path) -> None:
 
     Task 4: ``BundleLayout``-backed discovery boots from a deliverables bundle
     alone — datasets are recovered from the master frame's ``Metadata_Dataset``
-    column. ``results/``-backed capabilities (``has_results``/``hdf_path``)
+    column. ``results/``-backed capabilities (``has_results``/``store_path``)
     simply report unavailable.
     """
 
@@ -210,7 +210,7 @@ def test_discover_without_results_dir_boots_standalone(tmp_path: Path) -> None:
 
     out = _discover(tmp_path)
     assert out.has_results is False
-    assert out.hdf_path("d1", "a") is None
+    assert out.store_path("d1", "a") is None
     assert "d1" in out.master_df[str(EXPERIMENT.DATASET)].to_list()
 
 

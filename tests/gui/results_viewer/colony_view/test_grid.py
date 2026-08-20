@@ -26,6 +26,7 @@ from phenotypic.gui.results_viewer.colony_view._grid import (
     selectable_axis_columns,
 )
 from phenotypic.schema import GENETIC
+from phenotypic.sdk_ import zarr_store_path
 
 from tests._output_layout import write_master
 from phenotypic.schema import IMAGE
@@ -236,7 +237,7 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
     )
 
 
-def _make_output_root_with_hdf_only(tmp_path: Path) -> OutputRoot:
+def _make_output_root_with_store_only(tmp_path: Path) -> OutputRoot:
     master = pl.DataFrame(
         {
             "Metadata_Dataset": ["plate1"] * 2,
@@ -252,13 +253,18 @@ def _make_output_root_with_hdf_only(tmp_path: Path) -> OutputRoot:
             "Grid_ColNum": [1, 2],
         }
     )
-    hdf_dir = tmp_path / "results" / "plate1" / "hdf"
-    hdf_dir.mkdir(parents=True, exist_ok=True)
     (tmp_path / "results" / "plate1" / "measurements").mkdir(
         parents=True, exist_ok=True
     )
+    # An existence marker only: ``build_grid`` emits crop *URLs* and reads no
+    # pixels, so a store root is the whole requirement. It must still be a
+    # DIRECTORY carrying a root ``zarr.json`` -- ``store_path`` resolves with
+    # ``is_dir``, which the zero-byte ``.h5`` this used to write could never
+    # satisfy.
     for stem in ("img-001", "img-002"):
-        (hdf_dir / f"{stem}.h5").write_bytes(b"")
+        store = zarr_store_path(tmp_path, "plate1", stem)
+        store.mkdir(parents=True, exist_ok=True)
+        (store / "zarr.json").write_text("{}", encoding="utf-8")
     write_master(tmp_path, master)
     return OutputRoot.discover(
         tmp_path,
@@ -293,8 +299,8 @@ def test_build_grid_returns_component_and_row_major_order(
         assert isinstance(label, int)
 
 
-def test_build_grid_renders_image_for_hdf_only_source(tmp_path: Path) -> None:
-    root = _make_output_root_with_hdf_only(tmp_path)
+def test_build_grid_renders_image_for_store_only_source(tmp_path: Path) -> None:
+    root = _make_output_root_with_store_only(tmp_path)
 
     component, _grid_order = build_grid(
         df=root.master_df,

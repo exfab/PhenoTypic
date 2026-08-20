@@ -40,6 +40,7 @@ from phenotypic.sdk_ import (
     processing_state_path,
     resolve_manifest_json_path,
     run_completion_marker_path,
+    zarr_store_path,
 )
 
 
@@ -59,9 +60,13 @@ def _seed_output(root: Path, *, overlay_count: int = 2) -> None:
     overlays.mkdir(parents=True)
     for index in range(overlay_count):
         (overlays / f"image-{index}.png").write_bytes(b"overlay")
-    hdf = root / "results" / "plate" / "hdf"
-    hdf.mkdir(parents=True)
-    (hdf / "a.h5").write_bytes(b"hdf")
+    # The per-image artifact discovery and the fingerprint contracts read.
+    # A store DIRECTORY carrying a root ``zarr.json``: the root is the file
+    # whose stat and bytes move on every promote, and the only part of a
+    # store any staleness check may key on.
+    store = zarr_store_path(root, "plate", "a")
+    store.mkdir(parents=True)
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
 
 
 def _publish_coherent_manifest(root: Path) -> None:
@@ -401,8 +406,8 @@ def test_changed_processing_product_invalidates_terminal_cache(
     _publish_coherent_manifest(source)
     first = OutputRoot.discover(source, cache_root=cache_root)
 
-    (source / "results" / "plate" / "hdf" / "a.h5").write_bytes(
-        b"changed-hdf"
+    (zarr_store_path(source, "plate", "a") / "zarr.json").write_text(
+        '{"republished": 1}', encoding="utf-8"
     )
     second = OutputRoot.discover(source, cache_root=cache_root)
 
