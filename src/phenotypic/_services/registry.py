@@ -398,10 +398,39 @@ class OperationRegistry:
                     is_point_pickable=False,
                     point_picker_param=None,
                 )
-                self._operations[name] = op_info
-                self._categories.setdefault(category, []).append(op_info)
+                self._register(name, op_info)
             except Exception as e:  # noqa: BLE001
                 print(f"Warning: Could not register analyzer {name}: {e}")
+
+    def _register(self, name: str, op_info: OperationInfo) -> None:
+        """Record one discovered class under *name*, first match winning.
+
+        The pipeline loader resolves a class name by walking
+        ``PHENOTYPIC_CLASS_MODULES`` and taking the **first** module that
+        exports it
+        (``_core/_pipeline_parts/_serializable_pipeline.py``). Discovery
+        walks the same list in the same order, so first-match here is what
+        makes :meth:`discover`'s claim — that the two consumers of the
+        shared list agree — true of *which class* a name resolves to, and
+        not merely of the set of names. Last-match assignment would have
+        the loader deserialize one class while the catalog described
+        another.
+
+        No name is exported twice across the walked modules today, so this
+        is latent by construction: ``test_no_class_name_resolves_to_two_classes``
+        keeps it that way, and
+        ``test_a_duplicate_name_resolves_the_way_the_loader_resolves_it``
+        pins the resolution itself against a pair of deliberately clashing
+        exports, since the shipped modules cannot exercise it.
+
+        Args:
+            name: The public class name being registered.
+            op_info: The descriptor to record, carrying its own category.
+        """
+        if name in self._operations:
+            return
+        self._operations[name] = op_info
+        self._categories.setdefault(op_info.category, []).append(op_info)
 
     def _discover_from_module(
         self,
@@ -444,13 +473,7 @@ class OperationRegistry:
                         point_picker_param=point_picker_param,
                     )
 
-                    # Register operation
-                    self._operations[name] = op_info
-
-                    # Add to category
-                    if category not in self._categories:
-                        self._categories[category] = []
-                    self._categories[category].append(op_info)
+                    self._register(name, op_info)
 
                 except Exception as e:
                     # Skip operations that fail to introspect

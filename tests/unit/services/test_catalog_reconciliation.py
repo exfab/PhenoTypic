@@ -109,9 +109,115 @@ def test_abstract_bases_are_not_registered(discovered_registry):
 
 
 def test_the_pre_existing_categories_are_untouched(discovered_registry):
-    """Rewiring ``discover`` must not drop anything it already found."""
-    names = set(discovered_registry.get_all())
-    assert {"BlurGauss", "OtsuDetector", "MeasureSize", "EdgeCorrector"} <= names
+    """Rewiring ``discover`` must not drop anything it already found.
+
+    One representative per category, not per *sounding* category:
+    ``EdgeCorrector`` is the ``analysis`` edge-correction class (category
+    ``Edge Correction``), so with it as the only C-name the eight-operation
+    ``Corrector`` family had no representative at all — and dropping
+    ``phenotypic.correction`` from discovery passed the whole suite.
+    """
+    registry = discovered_registry
+    names = set(registry.get_all())
+    assert {
+        "BlurGauss",  # Enhancer      <- phenotypic.enhance
+        "OtsuDetector",  # Detector   <- phenotypic.detect
+        "MeasureSize",  # Measure     <- phenotypic.measure
+        "RemoveGridOutliers",  # Refiner  <- phenotypic.refine
+        "GridApply",  # Grid          <- phenotypic.grid
+        "CropImage",  # Corrector     <- phenotypic.correction
+        "AppendString",  # Post       <- phenotypic.post
+        "EdgeCorrector",  # Edge Correction <- phenotypic.analysis
+        "LogGrowthModel",  # Model    <- phenotypic.analysis
+        "MADOutlierRemover",  # Filter <- phenotypic.analysis
+        "GridOccupancy",  # quality_check <- phenotypic.analysis
+    } <= names
+
+    for name, category in (
+        ("GridApply", "Grid"),
+        ("CropImage", "Corrector"),
+        ("EdgeCorrector", "Edge Correction"),
+    ):
+        assert registry.get(name).category == category, name
+
+
+def test_every_walked_module_contributes_at_least_one_class(discovered_registry):
+    """Self-maintaining twin of the named list above.
+
+    Named representatives go stale as classes move; this asserts the
+    property that actually matters — no module in ``_discovery_targets``
+    walks to nothing — so a target dropped from the map fails here even if
+    nobody remembers to add a name.
+    """
+    defining_modules = {info.module for info in discovered_registry.get_all().values()}
+    for module_name in discovered_registry._discovery_targets():
+        assert any(
+            defined == module_name or defined.startswith(f"{module_name}.")
+            for defined in defining_modules
+        ), f"{module_name} is a discovery target but registered nothing"
+
+
+def test_a_duplicate_name_resolves_the_way_the_loader_resolves_it():
+    """First match wins, because that is what the pipeline loader does.
+
+    Unfalsifiable against the shipped modules — there are no duplicate
+    names — so the two competing exports are built here. Last-match
+    registration would have the catalog describe the *second* class while
+    ``ImagePipeline.from_json`` deserializes the first.
+    """
+    import types
+
+    from phenotypic._services.registry import OperationRegistry
+    from phenotypic.abc_ import ObjectDetector
+    from phenotypic.detect import OtsuDetector, TriangleDetector
+
+    first = types.ModuleType("fake_first")
+    first.Clashing = type("Clashing", (OtsuDetector,), {"__module__": "fake_first"})
+    second = types.ModuleType("fake_second")
+    second.Clashing = type("Clashing", (TriangleDetector,), {"__module__": "fake_second"})
+
+    registry = OperationRegistry()
+    registry._discover_from_module(first, "Detector", ObjectDetector)
+    registry._discover_from_module(second, "Detector", ObjectDetector)
+
+    assert registry.get("Clashing").cls is first.Clashing
+    assert [op.name for op in registry.get_by_category("Detector")] == ["Clashing"], (
+        "the loser must not linger in the category listing either"
+    )
+
+
+def test_no_class_name_resolves_to_two_classes():
+    """The catalog and the pipeline loader must not disagree on a name.
+
+    The loader takes the **first** module in ``PHENOTYPIC_CLASS_MODULES``
+    that exports a name; registration is first-match for the same reason.
+    There are no duplicates today — this keeps a new export from
+    introducing one unnoticed, which is the only way the two surfaces can
+    resolve one name to two different classes.
+    """
+    import importlib
+
+    from phenotypic._core._pipeline_parts._serializable_pipeline import (
+        PHENOTYPIC_CLASS_MODULES,
+    )
+    from phenotypic._services.registry import OperationRegistry
+
+    registry = OperationRegistry()
+    targets = registry._discovery_targets()
+
+    exporters: dict[str, set[type]] = {}
+    for module_name in PHENOTYPIC_CLASS_MODULES:
+        if module_name not in targets:
+            continue
+        try:
+            module = importlib.import_module(module_name)
+        except ImportError:
+            continue
+        for name, obj in registry._iter_public_classes(module):
+            exporters.setdefault(name, set()).add(obj)
+
+    clashes = {name: classes for name, classes in exporters.items() if len(classes) > 1}
+    assert not clashes, f"one name, two classes: {sorted(clashes)}"
 
 
 def test_discover_derives_from_the_shared_constant(monkeypatch):
