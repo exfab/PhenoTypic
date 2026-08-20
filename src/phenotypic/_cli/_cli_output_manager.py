@@ -1685,6 +1685,67 @@ class OutputManager:
             )
             return None
 
+    def save_image_store(
+        self,
+        image: "Image",
+        dataset_name: str,
+        image_stem: str,
+        *,
+        work_id: str | None = None,
+        durable: bool | None = None,
+    ) -> Optional[Path]:
+        """Save a processed image as an OME-Zarr store under ``results/<ds>/zarr/``.
+
+        Atomicity comes from :func:`phenotypic.sdk_.ngff_.promote_store`: the
+        image is built into a uuid-suffixed ``.part`` sibling and promoted by
+        directory rename.
+
+        ``work_id`` is a first-class argument rather than the old
+        ``root_attributes`` mapping. The store's root ``zarr.json`` is written
+        last so an interrupted write reads as absent, which makes the previous
+        post-write patch (``h5py.File(tmp, "r+")``) impossible by construction.
+
+        Args:
+            image: Image object with processing results.
+            dataset_name: Dataset name.
+            image_stem: Image filename without extension.
+            work_id: CLI work id, written into ``attributes.phenotypic``.
+            durable: ``fsync`` before promoting; ``None`` auto-detects SLURM.
+
+        Returns:
+            Path where the store was promoted, or ``None`` if saving failed.
+            Callers that require publication (the staged workers) turn ``None``
+            into a ``RuntimeError`` themselves; that layering is deliberate.
+        """
+        from phenotypic.sdk_ import zarr_store_path
+        from phenotypic.sdk_.ngff_ import discard_parts_for
+
+        # OutputManager's root attribute is ``base_dir``; there is no
+        # ``self.output_dir``.
+        final_path = zarr_store_path(self.base_dir, dataset_name, image_stem)
+        final_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            saved = image.save2zarr(
+                final_path,
+                work_id=work_id,
+                durable=durable,
+            )
+            logger.info("Saved OME-Zarr store for %s/%s", dataset_name, image_stem)
+            return saved
+        except Exception as e:
+            # One owner for the .part naming convention: re-encoding it here
+            # would duplicate matching logic sweep_orphan_parts already has,
+            # outside the module that defines the suffix (ledger SIMP-6).
+            discard_parts_for(final_path)
+            logger.warning(
+                "Failed to save OME-Zarr store for %s/%s: %s: %s",
+                dataset_name,
+                image_stem,
+                type(e).__name__,
+                e,
+            )
+            return None
+
     def save_image_layers(
         self,
         image: Image,
