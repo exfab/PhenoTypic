@@ -9,6 +9,8 @@ actionable :class:`ImportError` pointing at ``uv sync --extras tune``.
 """
 from __future__ import annotations
 
+import errno
+import json
 import logging
 import time
 from types import ModuleType
@@ -21,12 +23,69 @@ _logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
 
-#: Bounded transient-DB retry policy (Change 5). A shared SQLite-WAL / Postgres
-#: study occasionally raises a transient ``OperationalError`` (a lock timeout, a
-#: dropped connection) under concurrent ask/tell; a few short backoffs clear it.
-#: A non-transient error is never retried.
+#: Bounded transient-storage retry policy (Change 5). A shared study —
+#: SQLite-WAL / Postgres under ``RDBStorage``, or the ``journal://`` file
+#: backend a ``--slurm`` fleet defaults to — occasionally fails a single
+#: ask/tell for a reason that clears on its own; a few short backoffs absorb it.
+#: A non-transient error is never retried. What counts as transient is
+#: :func:`is_transient_storage_error`.
 _RETRY_ATTEMPTS: Final[int] = 3
 _RETRY_BASE_DELAY_S: Final[float] = 0.1
+
+#: ``errno`` names a shared-filesystem call can fail with **transiently** — the
+#: journal backend's half of :func:`is_transient_storage_error`. Resolved
+#: through :mod:`errno` by name because not every platform defines every one
+#: (the cross-platform rule); a name this interpreter lacks is simply dropped.
+#:
+#: Every member means "the filesystem could not serve this call *right now*":
+#: a GPFS/NFS server hiccup (``EIO``, ``EREMOTEIO``, ``ETIMEDOUT``,
+#: ``ECONNRESET``), a mount re-exported under us (``ESTALE``), a momentarily
+#: unavailable resource or lock (``EAGAIN``/``EWOULDBLOCK``, ``EBUSY``,
+#: ``ENOLCK``), or a signal landing mid-syscall (``EINTR``).
+#:
+#: Deliberately **absent**, because retrying them is a busy-wait on a condition
+#: only an operator can clear: ``ENOSPC`` / ``EDQUOT`` (the filesystem or quota
+#: is full), ``EACCES`` / ``EPERM`` / ``EROFS`` (the run cannot write there),
+#: and ``ENOENT`` (the output directory was removed out from under the run).
+_TRANSIENT_ERRNO_NAMES: Final[tuple[str, ...]] = (
+    "EIO",
+    "ESTALE",
+    "EAGAIN",
+    "EWOULDBLOCK",
+    "EBUSY",
+    "EINTR",
+    "ENOLCK",
+    "ETIMEDOUT",
+    "ECONNRESET",
+    "EREMOTEIO",
+)
+
+#: The resolved ``errno`` values of :data:`_TRANSIENT_ERRNO_NAMES`.
+_TRANSIENT_ERRNOS: Final[frozenset[int]] = frozenset(
+    value
+    for value in (getattr(errno, name, None) for name in _TRANSIENT_ERRNO_NAMES)
+    if isinstance(value, int)
+)
+
+#: The **exact** message optuna's journal reader raises for a line carrying no
+#: trailing newline — a record another worker was still appending when the
+#: reader reached it (``optuna/storages/journal/_file.py``,
+#: ``JournalFileBackend.read_logs``, optuna 4.9.0).
+#:
+#: A newline-less line is by definition the file's last, so the reader only
+#: *stores* the error there; it escapes when the writer's remaining bytes land
+#: before the reader's next ``readline``, turning the tail into another line and
+#: re-raising what was stored. Its sibling outcome — the torn record joined to
+#: the next one, yielding invalid JSON — is a :class:`json.JSONDecodeError`, and
+#: is the arm reachable without racing the writer.
+#:
+#: Optuna raises a bare :class:`ValueError` with no distinguishing type, so the
+#: message is the only signal; matching a bare ``ValueError`` instead would
+#: swallow every programming error on the same path.
+#: ``test_journal_torn_line_message_is_still_optunas`` pins this string against
+#: the installed optuna's source, so an upstream rewording fails a test rather
+#: than silently switching the retry off.
+_JOURNAL_TORN_LINE_MSG: Final[str] = "Invalid log format."
 
 #: The actionable message shown when the ``tune`` extra is not installed.
 _MISSING_OPTUNA_MSG = (
@@ -276,30 +335,114 @@ def fail_stale_running_trials(study: "optuna.Study") -> int:
     return failed
 
 
+def is_transient_storage_error(exc: BaseException) -> bool:
+    """Whether ``exc`` is a study-storage failure worth retrying.
+
+    Classifies by the **exception**, not by the configured backend, because the
+    two backends' transient classes are disjoint and a caller cannot then wire
+    the wrong predicate to the wrong storage:
+
+    * **RDB** (SQLite-WAL / Postgres) — :class:`sqlalchemy.exc.OperationalError`:
+      a lock timeout, a momentarily-dropped connection. SQLAlchemy is imported
+      function-local (the lazy-import boundary); when it is absent no error can
+      match that arm and only the journal arms apply.
+    * **journal** — an :class:`OSError` whose ``errno`` is in
+      :data:`_TRANSIENT_ERRNOS` (a GPFS/NFS hiccup on the ``symlink`` /
+      ``open`` / ``write`` / ``fsync`` the append path makes), or a torn read of
+      a record another worker was mid-append on: a
+      :class:`json.JSONDecodeError`, or optuna's bare
+      :data:`_JOURNAL_TORN_LINE_MSG` ``ValueError``. Re-reading is the one
+      unambiguously safe retry here — the log is append-only, so the second read
+      sees the completed record.
+
+    Lock *contention* never reaches this predicate at all:
+    ``JournalFileSymlinkLock.acquire`` blocks with its own doubling backoff and,
+    after a 30 s grace period, forcibly steals a lock nobody is refreshing. So
+    the journal arms above are about the filesystem failing a call, not about
+    workers queueing behind one another.
+
+    Two journal failures are deliberately **not** transient:
+
+    * ``RuntimeError("Error: did not possess lock")`` from
+      ``JournalFileSymlinkLock.release``. It is raised from the lock context
+      manager's ``finally``, so it is **ambiguous**: it means another worker
+      forcibly stole the lock after the 30 s grace period, and the append it
+      guarded may have already landed (the release runs after a *successful*
+      write just as it does after a failed one). Retrying the ask/tell would
+      then duplicate the record. A worker that dies here is recoverable; a
+      study that silently doubled a record is not.
+    * A non-transient ``errno`` — full disk, permissions, a deleted output
+      directory. See :data:`_TRANSIENT_ERRNO_NAMES` for the full reasoning.
+
+    Args:
+        exc: The exception raised by a single storage operation.
+
+    Returns:
+        ``True`` when a bounded retry is worth attempting.
+
+    Examples:
+        >>> import errno, json
+        >>> is_transient_storage_error(OSError(errno.EIO, "Input/output error"))
+        True
+        >>> is_transient_storage_error(OSError(errno.ENOSPC, "No space left"))
+        False
+        >>> is_transient_storage_error(ValueError("Invalid log format."))
+        True
+        >>> is_transient_storage_error(RuntimeError("Error: did not possess lock"))
+        False
+    """
+    try:
+        from sqlalchemy.exc import OperationalError
+    except ImportError:  # pragma: no cover - sqlalchemy ships with the tune extra
+        pass
+    else:
+        if isinstance(exc, OperationalError):
+            return True
+
+    if isinstance(exc, OSError):
+        return exc.errno in _TRANSIENT_ERRNOS
+    if isinstance(exc, json.JSONDecodeError):
+        return True
+    # `JSONDecodeError` is itself a `ValueError`, so this arm is reached only by
+    # a bare one — match optuna's exact torn-line message, never the type.
+    return type(exc) is ValueError and str(exc) == _JOURNAL_TORN_LINE_MSG
+
+
 def retry_on_transient_db_error(
     func: Callable[[], _T],
     *,
     trial_number: Optional[int] = None,
     attempts: int = _RETRY_ATTEMPTS,
 ) -> _T:
-    """Call ``func`` with a bounded exponential backoff on transient DB errors.
+    """Call ``func`` with a bounded exponential backoff on transient failures.
 
     Wraps a single ``study.ask`` / ``study.tell`` / user-attr / append call
-    (Change 5) so a transient :class:`sqlalchemy.exc.OperationalError` — a lock
-    timeout or a momentarily-dropped connection against the shared SQLite-WAL /
-    Postgres study — is retried up to ``attempts`` times with a doubling delay,
-    rather than crashing the whole worker. Any **non**-``OperationalError`` (a
-    programming bug, a constraint violation, a study-state error) propagates
-    immediately — only the transient class is retried. Each retry is logged with
-    the trial number when known.
+    (Change 5) so a failure :func:`is_transient_storage_error` recognizes is
+    retried up to ``attempts`` times with a doubling delay, rather than crashing
+    the whole worker. Anything else (a programming bug, a constraint violation,
+    a study-state error, a full disk) propagates immediately. Each retry is
+    logged with the trial number when known.
 
-    ``sqlalchemy`` is imported **function-local** (the lazy-import boundary):
-    this module must stay importable without the ``tune`` extra. If SQLAlchemy
-    is somehow unavailable, no error class can match, so ``func`` is called
-    once and any error propagates.
+    **Backend-aware by exception class.** Until P1 this matched
+    ``sqlalchemy.exc.OperationalError`` alone, which made it inert the moment
+    ``journal://`` became the ``--slurm`` default — a journal backend raises no
+    such class, so every filesystem hiccup killed a worker on first occurrence.
+    That resilience matters more on the journal path than it ever did on an RDB:
+    the journal backend supports no heartbeat, so ``fail_stale_trials`` cannot
+    reclaim what a dead worker left ``RUNNING`` (see ``build_optuna_storage``).
+
+    **Retrying is not idempotent, and that is a deliberate trade.** A retried
+    ``ask`` can leave an extra ``RUNNING`` trial behind, and a retry after a
+    partial append can leave a torn record in the log. Both are survivable —
+    a non-terminal trial is excluded from winner selection and from the budget
+    gate, and optuna's reader tolerates a torn *trailing* line — whereas losing
+    the worker costs the rest of its Slurm walltime. The one case where the
+    duplicate would be worse than the crash (the ambiguous stolen-lock
+    ``RuntimeError``) is excluded by the predicate, not by this loop.
 
     Args:
-        func: The zero-argument DB operation to run (e.g. ``lambda: study.ask()``).
+        func: The zero-argument storage operation to run (e.g.
+            ``lambda: study.ask()``).
         trial_number: The trial number for log context, or ``None``.
         attempts: The maximum number of tries (default :data:`_RETRY_ATTEMPTS`).
 
@@ -310,23 +453,20 @@ def retry_on_transient_db_error(
         Exception: The last transient error after ``attempts`` exhausted, or any
             non-transient error on the first occurrence.
     """
-    try:
-        from sqlalchemy.exc import OperationalError
-    except ImportError:  # pragma: no cover - sqlalchemy ships with the tune extra
-        return func()
-
     last_exc: Optional[BaseException] = None
     for attempt in range(attempts):
         try:
             return func()
-        except OperationalError as exc:
+        except Exception as exc:
+            if not is_transient_storage_error(exc):
+                raise
             last_exc = exc
             if attempt + 1 >= attempts:
                 break
             delay = _RETRY_BASE_DELAY_S * (2**attempt)
             _logger.warning(
-                "transient DB error on trial %s (attempt %d/%d); retrying in "
-                "%.2fs: %s",
+                "transient study-storage error on trial %s (attempt %d/%d); "
+                "retrying in %.2fs: %r",
                 trial_number if trial_number is not None else "?",
                 attempt + 1,
                 attempts,
@@ -334,5 +474,5 @@ def retry_on_transient_db_error(
                 exc,
             )
             time.sleep(delay)
-    assert last_exc is not None  # only reached after an OperationalError
+    assert last_exc is not None  # only reached after a transient error
     raise last_exc

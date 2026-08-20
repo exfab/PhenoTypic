@@ -38,13 +38,43 @@ from ..strategy._optuna_support import (
     study_objective_kwargs,
 )
 from .._study_store import Trial
-from ._storage import build_optuna_storage, is_sqlite_url
+from ._storage import (
+    build_optuna_storage,
+    is_journal_url,
+    is_sqlite_url,
+    journal_path_from_url,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only; never imports optuna at runtime
+    from pathlib import Path
+
     import optuna  # type: ignore[import-not-found]
 
 _HEARTBEAT_INTERVAL_S = 60
 _GRACE_PERIOD_S = 180
+
+#: Size at which :func:`warn_if_journal_oversized` speaks up (B4).
+#:
+#: **Measured growth** (optuna 4.9.0, the real ``ask`` → ``set_trial_user_attrs``
+#: → ``tell`` path, 12 knobs, 6 score terms, a quarter of trials pruned after
+#: three ASHA rungs — ``test_journal_growth_per_trial_stays_near_the_measured_rate``
+#: pins it): **~5.9 KB and ~20 log records per trial**, linear — 200 trials
+#: produced 1,168,306 B and 2,000 produced 11,707,588 B (5,841 vs 5,854 B/trial).
+#:
+#: So the real case — a 200-trial × 30-min campaign — is a **1.2 MB** log, and a
+#: 10× overrun is 12 MB. Replay is what scales, not disk: every worker start and
+#: every Monitor open re-reads the whole log (0.07 s at 200 trials, 1.0 s at
+#: 2,000, linear), and per-trial write cost grows from 28 ms to 90 ms over that
+#: range — 0.005% of a 30-minute evaluation. Nothing here needs doing.
+#:
+#: 64 MiB is therefore ~11,000 trials, ~55× the real campaign and ~9 s of replay
+#: per open: not a campaign, but an output directory that has been reused across
+#: many, which is the only way this log gets large. **Compaction is not offered,
+#: and could not be:** ``JournalFileBackend`` addresses records by byte offset in
+#: a per-process ``_log_number_offset`` map, so rewriting the file shorter would
+#: leave every live worker and Monitor seeking into the middle of a record. The
+#: supported remedy is a fresh output directory (or Postgres).
+_JOURNAL_SIZE_WARN_BYTES: int = 64 * 1024 * 1024
 
 _logger = logging.getLogger(__name__)
 
@@ -55,6 +85,103 @@ _CONVENTION_VALUE: str = "minimize-cost-v1"
 # `_LEGACY_STUDY_NAME` ("tune") and the two legacy-study helpers live in the
 # shared `strategy/_optuna_support.py` so the CLI store guard and the GUI
 # monitor (Phase 4) agree — import them, do not re-spell "tune" here.
+
+
+def backing_file_for_url(storage_url: str) -> Optional["Path"]:
+    """The local file a storage URL is backed by, or ``None`` when it has none.
+
+    Both file-backed schemes are covered — ``journal:///…/journal.log`` and
+    ``sqlite:///…/study.db`` — because both are *created on open* by the library
+    that serves them, and neither Postgres nor SQLite's ``:memory:`` has a file
+    to speak of.
+
+    Args:
+        storage_url: A resolved tune storage URL.
+
+    Returns:
+        The backing path, or ``None`` for a server-backed or in-memory URL.
+
+    Examples:
+        >>> backing_file_for_url("journal:///runs/out/journal.log").as_posix()
+        '/runs/out/journal.log'
+        >>> backing_file_for_url("sqlite:///runs/out/study.db").as_posix()
+        '/runs/out/study.db'
+        >>> backing_file_for_url("postgresql+psycopg://host/db") is None
+        True
+        >>> backing_file_for_url("sqlite:///:memory:") is None
+        True
+    """
+    from pathlib import Path
+    from urllib.parse import urlsplit
+
+    if is_journal_url(storage_url):
+        return journal_path_from_url(storage_url)
+    if is_sqlite_url(storage_url):
+        database = urlsplit(storage_url).path
+        if not database or database.endswith(":memory:"):
+            return None
+        return Path(database)
+    return None
+
+
+def require_existing_backing_store(storage_url: str) -> None:
+    """Raise unless a file-backed ``storage_url`` already exists (B2).
+
+    The ``create=False`` open is documented as read-only, but nothing about it
+    was: ``JournalFileBackend.__init__`` ``open(path, "ab")``-s its log into
+    existence, and SQLAlchemy creates a missing SQLite file on connect — so
+    pointing the GUI Monitor at a run that has not started yet **manufactured**
+    ``.pht-tune-cache/journal.log`` (and its parent tree) in the user's output
+    directory, then failed to load the study inside it. An absent study then
+    read as a present-but-empty one to anything checking the file, which is why
+    a file-existence assertion is not evidence a study exists.
+
+    Server-backed and in-memory URLs are untouched: there is no file to
+    accidentally create, and probing a Postgres host for existence is the
+    connect this guard runs *before*.
+
+    Args:
+        storage_url: The resolved tune storage URL being opened read-only.
+
+    Raises:
+        FileNotFoundError: When the URL is file-backed and the file is absent.
+            The caller degrades (the Monitor falls back to the parquet journal);
+            it is raised rather than returned so the read-only open has exactly
+            one failure channel.
+    """
+    backing = backing_file_for_url(storage_url)
+    if backing is not None and not backing.exists():
+        raise FileNotFoundError(str(backing))
+
+
+def warn_if_journal_oversized(storage_url: str) -> None:
+    """Log once per open when ``journal.log`` has grown past the sane bound (B4).
+
+    ``JournalStorage`` is append-only and **never compacts** — see
+    :data:`_JOURNAL_SIZE_WARN_BYTES` for the measured growth model and for why
+    compaction is not offered rather than merely unimplemented. Any failure to
+    stat is swallowed: this is observability on the open path, never a reason an
+    open fails.
+
+    Args:
+        storage_url: The resolved tune storage URL that was just opened.
+    """
+    if not is_journal_url(storage_url):
+        return
+    try:
+        size = journal_path_from_url(storage_url).stat().st_size
+    except OSError:  # pragma: no cover - the open that just succeeded stat-ed it
+        return
+    if size < _JOURNAL_SIZE_WARN_BYTES:
+        return
+    _logger.warning(
+        "the journal study log is %.1f MiB (%s); it is append-only and never "
+        "compacts, so every worker and Monitor poll replays all of it on open. "
+        "Start the next campaign in a fresh output directory (or use Postgres) "
+        "rather than reusing this one.",
+        size / (1024 * 1024),
+        journal_path_from_url(storage_url),
+    )
 
 
 class OptunaStudyStore:
@@ -114,6 +241,9 @@ class OptunaStudyStore:
             self._study = optuna.create_study(**create_kwargs)
             self._study.set_user_attr(_CONVENTION_ATTR, _CONVENTION_VALUE)
         else:
+            # A read-only open must not materialize what it claims only to
+            # observe — the guard runs BEFORE any storage is built.
+            require_existing_backing_store(storage_url)
             # Dispatch here too: `load_study` resolves a storage STRING through
             # the same RDB-only resolver, so a `journal://` URL would die on
             # `NoSuchModuleError` instead of loading. Hand it the built object.
@@ -121,6 +251,7 @@ class OptunaStudyStore:
                 storage=build_optuna_storage(storage_url),
                 study_name=study_name,
             )
+        warn_if_journal_oversized(storage_url)
 
     @property
     def study(self) -> "optuna.Study":

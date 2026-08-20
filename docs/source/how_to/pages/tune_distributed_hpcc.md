@@ -59,8 +59,23 @@ Two limits to know:
   "still in flight" figure `finalize` warns with — a figure that, on this
   backend, cannot be distinguished from live workers and so may never reach
   zero. Where an accurate in-flight count matters, use Postgres.
-- **The log only grows.** Optuna ships no compaction for the file backend, so a
-  long study's `journal.log` grows monotonically. There is no `VACUUM`.
+- **The log only grows** — but not fast enough to matter for a campaign.
+  Optuna ships no compaction for the file backend and there is no `VACUUM`, so
+  `journal.log` grows monotonically at roughly **6 KB (about 20 log records) per
+  trial**: a 200-trial arm is a **1.2 MB** file, and 2,000 trials is 12 MB
+  (measured on optuna 4.9.0 over the real ask/tell path; the rate is pinned by
+  `test_journal_growth_per_trial_stays_near_the_measured_rate`).
+
+  What scales with the file is not disk but *replay*: every worker start and
+  every Monitor poll re-reads the whole log — 0.07 s at 200 trials, 1.0 s at
+  2,000 — and the per-trial write cost rises from ~30 ms to ~90 ms across that
+  range, against a ~30-minute evaluation. Nothing needs doing at campaign scale.
+
+  The size only becomes real if you **reuse one output directory across many
+  campaigns**; past 64 MiB every open logs a warning saying so. The remedy is a
+  fresh `-o` directory (or Postgres), never editing the log: records are
+  addressed by byte offset, so rewriting the file shorter would leave every live
+  worker and Monitor reading from the middle of a record.
 
 Where either matters, use Postgres.
 

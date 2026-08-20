@@ -125,3 +125,39 @@ def test_read_study_for_monitor_does_not_create_missing_live_study(
     assert store is None
     assert note
     assert not db.exists()
+
+
+@pytest.mark.skipif(
+    __import__("importlib").util.find_spec("optuna") is None,
+    reason="live path is gated on the tune extra",
+)
+def test_read_study_for_monitor_does_not_create_a_missing_journal(
+    tmp_path: Path,
+) -> None:
+    """C7b/B2: the Monitor must not manufacture the study it claims to observe.
+
+    The sqlite case above was already guarded; the ``journal://`` default was
+    not, and its backend ``open(path, "ab")``-s the log into existence — so
+    binding the Monitor to a run that had not started yet created
+    ``.pht-tune-cache/journal.log`` (and its parent tree) in the user's output
+    directory. An absent study then looked present to anything that checks for
+    the file, which is why file existence is not evidence a study exists.
+    """
+    from phenotypic.gui.tune._callbacks import read_study_for_monitor
+
+    cache = tmp_path / ".pht-tune-cache"
+    root = TuneRunRoot(
+        path=tmp_path,
+        trials_path=None,
+        storage_url=f"journal:///{cache}/journal.log",
+        study_name="tune_cost_v1",
+        directions=None,
+        images_dir=None,
+        best_pipeline_path=tmp_path / "best_pipeline.json",
+    )
+
+    store, note = read_study_for_monitor(root)
+
+    assert store is None
+    assert note
+    assert not cache.exists()
