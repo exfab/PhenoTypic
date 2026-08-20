@@ -552,6 +552,18 @@ SPLIT_ASSIGNMENT_JSON: Final[str] = "split.json"
 #: :func:`tune_cache_run_marker_path`.
 RUN_MARKER_JSON: Final[str] = "run.json"
 
+#: The finalize-in-progress sentinel written at the run ROOT while a distributed
+#: study's four finalize steps run, and removed once all four complete. Step 2
+#: (``_finalize_pareto_outputs``) OVERWRITES ``best_pipeline.json`` with the
+#: Pareto knee, so a kill between steps 1 and 2 leaves that file holding the
+#: scalar best under a name a later export reads as the knee. The sentinel makes
+#: that half-finished state visible: its presence means "this directory was
+#: never finalized to completion", so a re-finalize refuses instead of exporting
+#: a mislabelled pipeline. Root-level rather than inside
+#: :data:`DIR_PHT_TUNE_CACHE` because it is a claim about the deliverables and
+#: must outlive a machine-state clear. See :func:`tune_finalize_marker_path`.
+FINALIZE_IN_PROGRESS_MARKER: Final[str] = "finalize_in_progress"
+
 #: The robust-eval generalization report ``generalization.json`` written into
 #: :data:`DIR_DELIVERABLES` — a user-facing deliverable (the winner's held-out
 #: gap verdict). See :func:`generalization_path`.
@@ -1300,6 +1312,22 @@ def tune_cache_run_marker_path(output_dir: Path) -> Path:
         ``<output_dir>/.pht-tune-cache/run.json``.
     """
     return tune_cache_dir(output_dir) / RUN_MARKER_JSON
+
+
+def tune_finalize_marker_path(output_dir: Path) -> Path:
+    """Return ``<output>/finalize_in_progress`` — the finalize sentinel.
+
+    Present only between the first and last of a distributed study's finalize
+    steps; a leftover one means an interrupted finalize. See
+    :data:`FINALIZE_IN_PROGRESS_MARKER`.
+
+    Args:
+        output_dir: The run output directory.
+
+    Returns:
+        ``<output_dir>/finalize_in_progress``.
+    """
+    return Path(output_dir) / FINALIZE_IN_PROGRESS_MARKER
 
 
 def tune_cache_study_db_path(output_dir: Path) -> Path:

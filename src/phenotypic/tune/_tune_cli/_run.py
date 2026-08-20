@@ -62,7 +62,15 @@ _DEFAULT_N_TRIALS: Final[int] = 50
 
 #: Schema version of the ``.pht-tune-cache/run.json`` marker (bump on any key
 #: change so a reader can branch on the contract).
-_RUN_MARKER_VERSION: Final[int] = 1
+#:
+#: **v2** adds ``nrows`` / ``ncols``. A distributed study's finalize has to
+#: re-load the calibration plates from ``images_dir`` — nothing else survives
+#: the submitting process — and re-loading them WITHOUT the run's fixed grid
+#: would score the held-out pass on a different ``nrows × ncols`` than the
+#: search used, which for a ``Grid_RowNum``/``Grid_ColNum``-grouped scorer
+#: silently changes the verdict. Every reader uses ``.get()``, so a v1 marker
+#: still loads — with no fixed grid, which is exactly what that run recorded.
+_RUN_MARKER_VERSION: Final[int] = 2
 
 #: The study name every tune run uses (the Optuna ``study_name`` + the marker's
 #: ``study_name`` field). A single constant keeps the store, the SLURM fleet, and
@@ -194,6 +202,8 @@ def _write_run_marker(
     storage_url: Optional[str],
     images_dir: Optional[Path],
     slurm: bool,
+    nrows: Optional[int] = None,
+    ncols: Optional[int] = None,
 ) -> None:
     """Write the ``.pht-tune-cache/run.json`` marker at run START.
 
@@ -211,12 +221,18 @@ def _write_run_marker(
             non-Optuna strategies.
         images_dir: The calibration image directory (the ``-i`` arg), or ``None``.
         slurm: Whether this run submits a distributed worker fleet.
+        nrows: The run's fixed calibration grid row count, or ``None``.
+        ncols: The run's fixed calibration grid column count, or ``None``.
+            Recorded together with ``images_dir`` so a later finalize can
+            re-scan the same plates onto the same grid.
     """
     marker = {
         "version": _RUN_MARKER_VERSION,
         "study_name": _STUDY_NAME,
         "storage_url": storage_url,
         "images_dir": str(images_dir) if images_dir is not None else None,
+        "nrows": nrows,
+        "ncols": ncols,
         "strategy": _strategy_marker_name(spec.strategy),
         "n_trials": getattr(spec.strategy, "n_trials", None),
         "is_multi_objective": is_multi_objective(spec.scorer),
@@ -612,6 +628,8 @@ def run_tuning(
         storage_url=effective_storage_url,
         images_dir=images_dir,
         slurm=slurm,
+        nrows=nrows,
+        ncols=ncols,
     )
 
     if slurm:
@@ -859,7 +877,10 @@ def _submit_slurm_fleet(
 
     The shared study URL is already resolved by run preflight. Fire-and-forget:
     the fleet writes into the shared study; the final ``trials.parquet`` export
-    happens on a later ``--recompile`` finalize.
+    happens on a later
+    :func:`~phenotypic.tune._tune_cli._finalize.finalize_distributed_study`
+    call. (This line used to name a ``--recompile`` flag that has never existed
+    on the tune CLI.)
 
     Args:
         spec: The resolved tuning spec.

@@ -69,13 +69,16 @@ def test_run_marker_written_with_required_keys(tmp_path):
     marker_path = io.tune_cache_run_marker_path(out)
     assert marker_path.is_file()
     marker = json.loads(marker_path.read_text())
-    assert marker["version"] == 1
+    # v2: nrows/ncols joined the marker so a distributed study's finalize can
+    # re-scan images_dir onto the SAME grid the search used.
+    assert marker["version"] == 2
     # Study name bumped for the minimize-cost cutover (Phase 2, OQ7).
     assert marker["study_name"] == _STUDY_NAME
     assert marker["strategy"] == "grid"
     assert marker["is_multi_objective"] is False
     assert marker["slurm"] is False
     assert marker["images_dir"] == str(images_dir)
+    assert marker["nrows"] is None and marker["ncols"] is None
     assert "start_time" in marker and marker["start_time"]
     # Non-Optuna runs have no live Optuna storage; the GUI should read the
     # finished parquet journal instead of trying a bogus live study.
@@ -208,3 +211,28 @@ def test_run_proceeds_when_marker_write_fails(tmp_path, monkeypatch, caplog):
         record.levelno == logging.WARNING and "run.json" in record.getMessage()
         for record in caplog.records
     )
+
+
+def test_run_marker_records_the_fixed_grid(tmp_path):
+    """``--nrows``/``--ncols`` reach the marker, not just the fleet workers.
+
+    A distributed study's finalize re-loads the calibration plates from
+    ``images_dir`` to write ``generalization.json``. Re-loading them without the
+    run's fixed grid would assign a DIFFERENT ``nrows x ncols`` than the search
+    used, and a ``Grid_RowNum``/``Grid_ColNum``-grouped scorer would then score
+    the held-out pass against a grid that never existed — a wrong verdict with
+    no error. The marker is the only place that geometry survives the submitting
+    process.
+    """
+    out = tmp_path / "run"
+    run_tuning(
+        _spec(tmp_path),
+        [load_synth_yeast_plate()],
+        out,
+        images_dir=tmp_path / "images",
+        nrows=8,
+        ncols=12,
+    )
+    marker = json.loads(io.tune_cache_run_marker_path(out).read_text())
+    assert marker["nrows"] == 8
+    assert marker["ncols"] == 12
