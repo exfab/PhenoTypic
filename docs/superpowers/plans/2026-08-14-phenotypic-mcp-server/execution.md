@@ -517,3 +517,41 @@ boundaries have held throughout — no two agents have edited the same file — 
 staging and working-tree state are shared whether the files are or not.
 **Prefer a worktree per writer**, as C8 had; its merge was the cleanest of the
 phase.
+
+---
+
+## The defect that recurred after being diagnosed and written down
+
+**FLOW-40, found in the pre-dispatch gate:** USER-26 reached the spec's defining
+sections and **no plan task owned it**. The plan's own coverage claim — *"every
+P2–P7 item has an owning task"* — was the sentence concealing it, because it
+enumerated a fixed range and silently stopped checking once §7 gained P8.
+
+I recorded the lesson at the time: *a coverage claim must name the range it
+checked, or it stops checking.*
+
+**Then the phase review found X1: USER-33 reached §5.4 and §6.2 — error code
+`sample_excludes_manifest` and all — and no task owns it either.** Written into
+the spec by me roughly an hour after recording the lesson.
+
+**Why the lesson did not take.** I applied it to the *spec* and never to the
+*task list*. The defining-sections map (`refinery/defining-sections-map.md`)
+lists "plan decision records and phase task docs" among defining sections, but
+every ruling I propagated after building it, I propagated into spec files only,
+then checked the spec and called it applied.
+
+**The check that would have caught both**, and which belongs in any future
+phase's exit gate:
+
+> For every USER ruling, grep the plan's task documents for an owning task —
+> not the spec. A ruling with a defining-section home and no task is a design
+> decision nobody will build.
+
+The failure mode is quiet in a specific way: the spec looks complete, the tests
+pass, and the missing behaviour is *absent* rather than wrong — so nothing fails
+until an agent relies on a guarantee that was only ever written down.
+
+**Both instances sat on the consent path** — the manifest a human approves, and
+the refusal that stops a sampled subset silently shrinking it. That is not
+coincidence: the rulings that arrive late are the ones responding to a reviewer's
+finding, and reviewers find the most on the paths that matter most.
