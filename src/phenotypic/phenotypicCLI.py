@@ -207,10 +207,6 @@ from phenotypic._cli._cli_recompile_slurm_scripts import (
     recompile_attempt_dir,
     recompile_task_status_path,
 )
-from phenotypic._cli._cli_recompile_metadata_migration_slurm import (
-    generate_metadata_migration_slurm_scripts,
-    plan_metadata_schema_for_slurm_recompile,
-)
 from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
 from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
 from phenotypic._cli._cli_validation import (
@@ -262,6 +258,43 @@ _DATASET_COL: str = str(EXPERIMENT.DATASET)
 DURABLE_WRITES_REJECTED_MODES: frozenset[str] = frozenset(
     {"recompile", "migrate"}
 )
+
+
+def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
+    """Refuse a tree whose per-image results are not all converted.
+
+    Applied to **every mode that writes or reprocesses** -- ``full``,
+    ``measure``, ``recompile``, ``process`` -- because after Phase 6 the
+    forward path genuinely cannot read an unconverted image. ``migrate``
+    itself is exempt: it is the remedy, and guarding it with its own
+    predicate makes the tree unmigratable (ledger MIG-19).
+
+    The predicate is shared with the viewer, so the two cannot disagree
+    about what "needs migrating" means. The severities differ, not the
+    definition: a writing mode refuses, while the viewer reports.
+
+    Format conversion rewrites the entire results tree, so it is typed
+    deliberately rather than triggered as a side effect of an unrelated run.
+
+    Args:
+        output_dir: Run output root.
+        mode: The mode being refused, for the message.
+
+    Raises:
+        click.UsageError: At least one dataset holds an ``.h5`` result whose
+            store is absent or invalid.
+    """
+    from phenotypic.sdk_ import MIGRATION_REMEDY, datasets_needing_migration
+
+    legacy = datasets_needing_migration(output_dir)
+    if legacy:
+        raise click.UsageError(
+            f"--mode {mode} cannot read this output: dataset(s) "
+            f"{', '.join(legacy)} still hold unconverted .h5 results. "
+            f"Convert them first with:\n"
+            f"  python -m phenotypic {MIGRATION_REMEDY} "
+            f"--output {output_dir}"
+        )
 
 
 def _snapshot_metadata_csv(
@@ -977,14 +1010,29 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "-m",
     "--mode",
-    type=click.Choice(["full", "measure", "recompile", "process"]),
+    type=click.Choice(
+        ["full", "measure", "recompile", "process", "migrate"]
+    ),
     default="full",
     show_default=True,
     help=(
         "Execution mode: full applies the pipeline and measures images; "
         "measure reruns measurement from an existing output root; recompile "
         "refreshes aggregate outputs from an existing output root; process "
-        "exports a single layer selected with --layer."
+        "exports a single layer selected with --layer; migrate converts a "
+        "legacy .h5 output tree to OME-Zarr stores IN PLACE, in two passes -- "
+        "pass 1 canonicalizes metadata headers in every non-image target, "
+        "pass 2 converts each per-image .h5 to a store and re-publishes the "
+        "run's completion evidence. Local only; re-run it to resume."
+    ),
+)
+@click.option(
+    "--delete-sources",
+    is_flag=True,
+    help=(
+        "With --mode migrate: delete each legacy .h5 after verifying that its "
+        "store carries the same pixels, metadata and work id. The only "
+        "irreversible step; sources are retained without it."
     ),
 )
 @click.option(
@@ -1224,6 +1272,7 @@ def phenotypic_cli(
     skip_validation: bool,
     no_qc: bool,
     layer: Optional[str],
+    delete_sources: bool,
 ):
     """
     Execute a PhenoTypic image-processing pipeline on a file or directory.
@@ -1237,6 +1286,12 @@ def phenotypic_cli(
       measure    Re-run measurement only against an existing output root.
                  Requires --pipeline; no --input (inputs are discovered
                  from --output).
+      migrate    Convert a legacy .h5 output tree to OME-Zarr stores IN
+                 PLACE, in two passes: metadata headers in every non-image
+                 target first, then each per-image .h5 to a store followed by
+                 the run's completion evidence. Local only, and re-running it
+                 is how an interrupted migration is resumed.
+
       recompile  Refresh aggregate outputs from an existing output root; no
                  --input or --pipeline (both are reloaded from --output).
       process    Apply-only export: write ONE image layer per input (chosen
@@ -1263,6 +1318,7 @@ def phenotypic_cli(
         )  # Click's Choice has already validated this.
         measure_only = cli_mode == "measure"
         recompile_only = cli_mode == "recompile"
+        migrate_only = cli_mode == "migrate"
         process_only_layer: Optional[ProcessOnlyLayer] = None
         if cli_mode == "process":
             if layer is None:
@@ -1273,16 +1329,32 @@ def phenotypic_cli(
                 "--layer can only be used with --mode process."
             )
 
-        if measure_only or recompile_only:
+        if measure_only or recompile_only or migrate_only:
             if input_path is not None:
                 raise click.UsageError(
                     f"--mode {cli_mode} does not accept --input; it discovers "
                     "inputs from the existing output directory."
                 )
-            if dry_run:
+            # `migrate` is deliberately EXEMPT from the --dry-run rejection
+            # (ledger FLOW-34): --dry-run is a required part of the mode --
+            # spec 5.1's interface line, `migrate_run_hdf_to_zarr(dry_run=)`,
+            # and a phase exit criterion all depend on it. Folding migrate
+            # into this condition rejects it.
+            if dry_run and not migrate_only:
                 raise click.UsageError(
                     f"--dry-run cannot be combined with --mode {cli_mode}."
                 )
+        if delete_sources and not migrate_only:
+            raise click.UsageError(
+                "--delete-sources is only accepted with --mode migrate."
+            )
+
+        # Every mode that writes or reprocesses refuses an unconverted tree;
+        # `migrate` is exempt because it is the remedy (ledger MIG-19). Placed
+        # here so `full`, `measure`, `recompile` and `process` are all covered
+        # by one call rather than four, and before any of them writes.
+        if not migrate_only and output_dir.exists():
+            _refuse_unmigrated_output(output_dir, mode=cli_mode)
         if durable_writes is not None and cli_mode in (
             DURABLE_WRITES_REJECTED_MODES
         ):
@@ -1294,10 +1366,10 @@ def phenotypic_cli(
                 "does not write image stores from a pipeline."
             )
 
-        if recompile_only and pipeline_json is not None:
+        if (recompile_only or migrate_only) and pipeline_json is not None:
             raise click.UsageError(
-                "--mode recompile does not accept --pipeline; it reloads the "
-                "pipeline from the existing output directory."
+                f"--mode {cli_mode} does not accept --pipeline; it reloads "
+                "the pipeline from the existing output directory."
             )
 
         # ---- Early validation for --mode process -----------------------
@@ -1377,6 +1449,23 @@ def phenotypic_cli(
         if restart and overwrite:
             raise click.UsageError(
                 "--restart and --overwrite are mutually exclusive"
+            )
+
+        if migrate_only:
+            from phenotypic._cli._cli_migrate import handle_migrate_mode
+
+            if not output_dir.exists():
+                raise click.UsageError(
+                    "--mode migrate output directory does not exist: "
+                    f"{output_dir}."
+                )
+            sys.exit(
+                handle_migrate_mode(
+                    output_dir,
+                    njobs=max(1, n_jobs) if n_jobs > 0 else 1,
+                    dry_run=dry_run,
+                    delete_sources=delete_sources,
+                )
             )
 
         if recompile_only:
@@ -2708,16 +2797,6 @@ def _handle_recompile_slurm(
 
     attempt_id = new_slurm_generation()
 
-    # The migration preflight is deliberately the first recompile operation
-    # that inspects bundle content. It is read-only, so a conflict produces no
-    # plan, script, status, dashboard, or scheduler submission artifact.
-    try:
-        migration_plan = plan_metadata_schema_for_slurm_recompile(
-            output_dir, attempt_id=attempt_id
-        )
-    except Exception as exc:
-        error_exit("Metadata migration blocked SLURM recompile", str(exc))
-
     prog_dir = progress_dir(output_dir)
     job_meta = load_job_metadata(prog_dir)
     dataset_names = _discover_recompile_dataset_names(output_dir, job_meta)
@@ -2754,7 +2833,7 @@ def _handle_recompile_slurm(
     has_measurement_tasks = any(
         task.get("task_type") == TASK_MEASUREMENTS for task in tasks
     )
-    if not has_measurement_tasks and not migration_plan.targets:
+    if not has_measurement_tasks:
         console.print(
             "[yellow]No measurement sources require SLURM recompile; "
             "running the safe local path.[/yellow]"
@@ -2780,17 +2859,7 @@ def _handle_recompile_slurm(
         array_limit=array_limit,
         attempt_id=attempt_id,
     )
-    migration_scripts = generate_metadata_migration_slurm_scripts(
-        migration_plan,
-        slurm_args=slurm_args,
-        array_limit=array_limit,
-        attempt_id=attempt_id,
-        slurm_generation=attempt_id,
-        has_recompile_downstream=bool(scripts),
-    )
-    if migration_scripts is None and (
-        not tasks or not scripts or finalizer_task_index is None
-    ):
+    if not tasks or not scripts or finalizer_task_index is None:
         console.print(
             "[yellow]No recompile SLURM tasks/scripts were generated; "
             "running local recompile instead.[/yellow]"
@@ -2805,17 +2874,10 @@ def _handle_recompile_slurm(
         )
         return
 
-    flat_scripts: list[Path] = []
-    dependency_kinds: list[str] | None = None
-    if migration_scripts is not None:
-        flat_scripts.extend(migration_scripts.shard_scripts)
-        flat_scripts.append(migration_scripts.finalizer_script)
-    flat_scripts.extend(scripts)
-    if migration_scripts is not None and scripts:
-        dependency_kinds = ["afterany"] * (len(flat_scripts) - 1)
-        barrier_edge = len(migration_scripts.shard_scripts)
-        dependency_kinds[barrier_edge] = "afterok"
-
+    # No metadata-migration prologue any more: recompile does not rewrite
+    # headers, so there is nothing to fan out and no afterok barrier to place
+    # in front of the recompile array.
+    flat_scripts: list[Path] = list(scripts)
     submission_args: dict[str, Any] = {
         "flat_chunk_scripts": flat_scripts,
         "output_dir": output_dir,
@@ -2823,8 +2885,6 @@ def _handle_recompile_slurm(
         "console": console,
         "generation": attempt_id,
     }
-    if dependency_kinds is not None:
-        submission_args["continuation_dependency_kinds"] = dependency_kinds
     try:
         _initialize_recompile_slurm_attempt(output_dir, attempt_id)
     except Exception as exc:
@@ -2866,24 +2926,9 @@ def _handle_recompile_slurm(
             "task_manifest": str(recompile_manifest_path),
             "finalizer_task_index": finalizer_task_index,
             "metadata_migration": {
-                "plan_fingerprint": migration_plan.report.plan_fingerprint,
-                "source_fingerprint": migration_plan.report.source_fingerprint,
-                "target_count": len(migration_plan.targets),
-                "task_manifest": (
-                    str(migration_plan.manifest_path)
-                    if migration_scripts is not None
-                    else None
-                ),
-                "finalizer_status": (
-                    str(migration_plan.finalizer_status_path)
-                    if migration_scripts is not None
-                    else None
-                ),
-                "barrier_dependency": (
-                    "afterok"
-                    if migration_scripts is not None and scripts
-                    else None
-                ),
+                # Retained as a key so a reader of older job metadata sees the
+                # shape change rather than a silently missing field. Recompile
+                # no longer migrates; `--mode migrate` does, locally.
                 "external_metadata_fingerprint": (
                     file_fingerprint(metadata_csv)
                     if metadata_csv is not None and metadata_csv.is_file()
@@ -2906,51 +2951,22 @@ def _handle_recompile_slurm(
         )
 
     if wait:
-        if finalizer_task_index is None:
-            console.print(
-                "\n[cyan]Waiting for metadata migration finalizer...[/cyan]"
-            )
-            _wait_for_metadata_migration_finalizer_status(
-                migration_plan.finalizer_status_path,
-                output_dir=output_dir,
-                slurm_generation=attempt_id,
-            )
-        elif migration_scripts is None:
-            console.print(
-                "\n[cyan]Waiting for recompile finalizer "
-                f"task {finalizer_task_index}...[/cyan]"
-            )
-            _wait_for_recompile_finalizer_status(
-                output_dir,
-                finalizer_task_index,
-                recompile_finalizer_status_path=recompile_task_status_path(
-                    recompile_manifest_path, finalizer_task_index
-                ),
-                slurm_generation=attempt_id,
-            )
-        else:
-            console.print(
-                "\n[cyan]Waiting for recompile finalizer "
-                f"task {finalizer_task_index}...[/cyan]"
-            )
-            _wait_for_recompile_finalizer_status(
-                output_dir,
-                finalizer_task_index,
-                migration_finalizer_status_path=(
-                    migration_plan.finalizer_status_path
-                ),
-                recompile_finalizer_status_path=recompile_task_status_path(
-                    recompile_manifest_path, finalizer_task_index
-                ),
-                slurm_generation=attempt_id,
-            )
+        console.print(
+            "\n[cyan]Waiting for recompile finalizer "
+            f"task {finalizer_task_index}...[/cyan]"
+        )
+        _wait_for_recompile_finalizer_status(
+            output_dir,
+            finalizer_task_index,
+            recompile_finalizer_status_path=recompile_task_status_path(
+                recompile_manifest_path, finalizer_task_index
+            ),
+            slurm_generation=attempt_id,
+        )
         console.print("[bold green]SLURM recompilation complete[/bold green]")
     else:
-        if scripts:
-            click.echo("\nRecompile jobs submitted. Monitor progress with:")
-            click.echo(f"  Open: {dashboard_html_path(output_dir)}")
-        else:
-            click.echo("\nMetadata migration jobs submitted. Monitor with:")
+        click.echo("\nRecompile jobs submitted. Monitor progress with:")
+        click.echo(f"  Open: {dashboard_html_path(output_dir)}")
         click.echo("  squeue -u $USER --array")
         from phenotypic.sdk_ import logs_dir
 
@@ -3152,43 +3168,6 @@ def _read_recompile_wait_status(
     return payload if isinstance(payload, dict) else None
 
 
-def _wait_for_metadata_migration_finalizer_status(
-    status_path: Path,
-    *,
-    output_dir: Path | None = None,
-    slurm_generation: str | None = None,
-    poll_interval: float = 10.0,
-    timeout: Optional[float] = None,
-) -> None:
-    """Wait for a migration-only SLURM chain to complete or fail."""
-    import time
-
-    deadline = time.monotonic() + timeout if timeout is not None else None
-    while True:
-        status = _read_recompile_wait_status(
-            status_path, description="metadata migration finalizer"
-        )
-        if status is not None:
-            state = status.get("status")
-            if state == "completed":
-                return
-            if state == "failed":
-                error = status.get("error") or (
-                    "metadata migration finalizer failed"
-                )
-                raise RuntimeError(str(error))
-        if output_dir is not None and slurm_generation is not None:
-            _raise_if_recompile_attempt_cannot_finish(
-                output_dir, slurm_generation
-            )
-        if deadline is not None and time.monotonic() >= deadline:
-            raise TimeoutError(
-                "Timed out waiting for metadata migration finalizer status: "
-                f"{status_path}"
-            )
-        time.sleep(poll_interval)
-
-
 def _raise_if_recompile_attempt_cannot_finish(
     output_dir: Path, slurm_generation: str
 ) -> None:
@@ -3250,8 +3229,8 @@ def _handle_recompile(
 
     from phenotypic._cli._cli_output_manager import aggregate_measurements
     from phenotypic._cli._cli_recompile_metadata_migration import (
-        RecompileMetadataMigrationError,
-        migrate_metadata_schema_for_recompile,
+        legacy_header_target_count,
+        report_metadata_schema_for_recompile,
     )
     from phenotypic._cli._cli_utils import load_job_metadata
     from phenotypic._cli._dashboard import (
@@ -3272,22 +3251,22 @@ def _handle_recompile(
         f"({len(dataset_names)} dataset(s))"
     )
 
+    # Read-only. Recompile REPORTS a legacy bundle; it does not rewrite one.
+    # The rewrite lives in `--mode migrate` (supersedes flat-metadata decision
+    # #1). Decision #3 is untouched: the read path canonicalizes legacy
+    # headers in memory, so this bundle recompiles correctly as it stands.
     console.print("[cyan]Checking metadata schema...")
-    try:
-        migration = migrate_metadata_schema_for_recompile(output_dir)
-    except RecompileMetadataMigrationError as exc:
-        error_exit("Metadata schema migration blocked recompile", str(exc))
-        return
-    migrated_count = len(migration.migrated_targets)
-    skipped_count = len(migration.skipped_targets)
-    blocked_count = len(migration.blocked_targets)
-    console.print(
-        "[green]Metadata schema: "
-        f"migrated={migrated_count}, skipped={skipped_count}, "
-        f"blocked={blocked_count}"
-    )
-    if migration.receipt_path is not None:
-        console.print(f"[green]Migration receipt: {migration.receipt_path}")
+    schema_report = report_metadata_schema_for_recompile(output_dir)
+    legacy_targets = legacy_header_target_count(schema_report)
+    if legacy_targets:
+        console.print(
+            f"[yellow]Metadata schema: {legacy_targets} target(s) still use "
+            "legacy per-topic headers. They are read correctly as-is; to "
+            "canonicalize them on disk run:\n"
+            f"  python -m phenotypic --mode migrate --output {output_dir}"
+        )
+    else:
+        console.print("[green]Metadata schema: canonical")
 
     console.print("[cyan]Aggregating measurements...")
     master_path = aggregate_measurements(

@@ -43,6 +43,26 @@ MigrationStatus: TypeAlias = Literal[
 ]
 TargetKind: TypeAlias = Literal["csv", "parquet", "json", "hdf", "frame"]
 
+#: Every target kind except ``"hdf"`` -- the scope ``--mode migrate``'s pass 1
+#: runs with.
+#:
+#: Pass 1 must not touch a ``.h5`` **at all**, unconditionally. Every
+#: pre-flat-metadata ``.h5`` is ``migratable`` even when its headers are
+#: already canonical, because ``_inspect_hdf`` sets ``needs_metadata_marker``
+#: on a missing marker alone -- and the apply path for one is
+#: ``_migrate_hdf_copy``, a full ``shutil.copy2`` byte copy. So a first
+#: migration would rewrite every ``.h5`` in the archive before a single store
+#: exists: it destroys the "the originals are still there" rollback story,
+#: invalidates the pre-existing per-image markers that bind each ``.h5``'s
+#: size and sha256, and needs free space for a second full copy.
+#:
+#: Excluding them is not merely cheaper, it is correct: header canonicalization
+#: is a property of the READ path (``_normalize_stored_metadata_items``, inside
+#: both legacy loaders), so ``save2zarr`` writes canonical metadata whether or
+#: not the source ``.h5`` header was ever rewritten. Rewriting it first is dead
+#: work in every case. Ledger MIG-25 / FLOW-35.
+NON_IMAGE_KINDS: frozenset[str] = frozenset({"csv", "parquet", "json", "frame"})
+
 # Version 3 adds a dynamic HDF ``rollback_fingerprint``. Version-2 HDF
 # receipts cannot safely distinguish a valid semantic rollback from external
 # byte-level changes. The receipt schema is global, so all version-2 receipts
@@ -697,8 +717,22 @@ def _preflight_file(
     return _preflight_hdf(path)
 
 
-def _discover_bundle_targets(layout: BundleLayout) -> tuple[Path, ...]:
-    """Return authoritative sources only, never external metadata copies."""
+def _discover_bundle_targets(
+    layout: BundleLayout,
+    *,
+    kinds: frozenset[str] | None = None,
+) -> tuple[Path, ...]:
+    """Return authoritative sources only, never external metadata copies.
+
+    Args:
+        layout: The bundle to enumerate.
+        kinds: Restrict the result to these :data:`TargetKind` values.
+            ``None`` -- the default -- means every kind, which is exactly
+            today's behaviour, so every existing caller is unaffected.
+
+    Returns:
+        The authoritative target paths, de-duplicated and in discovery order.
+    """
     if layout.output_root is not None:
         bundle_root = _require_safe_migration_path(
             layout.output_root, role="Bundle root"
@@ -851,7 +885,10 @@ def _discover_bundle_targets(layout: BundleLayout) -> tuple[Path, ...]:
                 targets.append(
                     validated_candidate(path, deliverables_root, "master")
                 )
-    return tuple(dict.fromkeys(targets))
+    discovered = tuple(dict.fromkeys(targets))
+    if kinds is None:
+        return discovered
+    return tuple(path for path in discovered if _kind_for_file(path) in kinds)
 
 
 def _bundle_target_is_mixed_table(layout: BundleLayout, path: Path) -> bool:
@@ -913,12 +950,23 @@ def _report_from_targets(
     )
 
 
-def preflight_metadata_schema(source: Any) -> MetadataMigrationReport:
+def preflight_metadata_schema(
+    source: Any,
+    *,
+    kinds: frozenset[str] | None = None,
+) -> MetadataMigrationReport:
     """Inspect a frame, supported file, or bundle without changing it.
+
+    Writes nothing. That is what makes ``--mode migrate``'s pass-1 dry run
+    free -- not incidental, but the mechanism.
 
     Args:
         source: pandas/Polars frame, supported file path, run-output path,
             standalone deliverables path, or resolved :class:`BundleLayout`.
+        kinds: Restrict bundle discovery to these :data:`TargetKind` values.
+            ``None`` means every kind, so existing callers are unchanged.
+            Ignored for a frame or a single file, which are already one
+            explicit target.
 
     Returns:
         Immutable migration plan and compatibility status.
@@ -934,7 +982,7 @@ def preflight_metadata_schema(source: Any) -> MetadataMigrationReport:
                 path,
                 mixed_table=_bundle_target_is_mixed_table(layout, path),
             )
-            for path in _discover_bundle_targets(layout)
+            for path in _discover_bundle_targets(layout, kinds=kinds)
         )
         return _report_from_targets(str(layout.deliverables_base), targets)
     path = _require_safe_migration_path(
@@ -949,7 +997,7 @@ def preflight_metadata_schema(source: Any) -> MetadataMigrationReport:
             item,
             mixed_table=_bundle_target_is_mixed_table(layout, item),
         )
-        for item in _discover_bundle_targets(layout)
+        for item in _discover_bundle_targets(layout, kinds=kinds)
     )
     return _report_from_targets(str(path), targets)
 
@@ -970,10 +1018,33 @@ def _receipt_path(
 
 
 def _new_receipt(
-    report: MetadataMigrationReport, *, bundle_root: Path | None
+    report: MetadataMigrationReport,
+    *,
+    bundle_root: Path | None,
+    kinds: frozenset[str] | None = None,
 ) -> dict[str, Any]:
+    """Build a prepared receipt, recording the SCOPE it was planned under.
+
+    ``kinds`` lives in the receipt rather than only in the call because
+    :func:`_validate_receipt` re-derives the target set to prove it is
+    authoritative. Re-deriving the *unfiltered* set against a deliberately
+    filtered receipt makes that check fire on every tree holding a single
+    ``.h5`` -- which is every tree being migrated. Recording the scope keeps
+    the check honest instead of merely quiet: it still catches a target set
+    that drifted, and no longer fires on one that was legitimately scoped
+    (ledger MIG-26, corrected by C10).
+
+    Args:
+        report: The preflight plan being committed.
+        bundle_root: Bundle root, or ``None`` for a single-file scope.
+        kinds: The scope the plan was built with. ``None`` means unfiltered.
+
+    Returns:
+        A JSON-serializable receipt.
+    """
     return {
         "schema_version": _RECEIPT_SCHEMA_VERSION,
+        "kinds": sorted(kinds) if kinds is not None else None,
         "scope": "bundle" if bundle_root is not None else "file",
         "bundle_root": str(bundle_root) if bundle_root is not None else None,
         "state": "prepared",
@@ -1627,9 +1698,23 @@ def _validate_receipt(
     *,
     expected_plan_fingerprint: str | None = None,
 ) -> None:
-    """Strictly validate a receipt and every path before any mutation."""
+    """Strictly validate a receipt and every path before any mutation.
+
+    The authoritative-set check re-derives the bundle's targets with **the
+    receipt's own** ``kinds`` scope. Re-deriving the unfiltered set would
+    reject every deliberately scoped migration -- see :func:`_new_receipt`.
+    """
     if receipt.get("schema_version") != _RECEIPT_SCHEMA_VERSION:
         raise ValueError("Unsupported metadata migration receipt schema")
+    raw_kinds = receipt.get("kinds")
+    if raw_kinds is None:
+        receipt_kinds: frozenset[str] | None = None
+    elif isinstance(raw_kinds, list) and all(
+        isinstance(item, str) for item in raw_kinds
+    ):
+        receipt_kinds = frozenset(raw_kinds)
+    else:
+        raise ValueError("Invalid metadata migration receipt kinds")
     scope = receipt.get("scope")
     if scope not in {"file", "bundle"}:
         raise ValueError("Invalid metadata migration receipt scope")
@@ -1697,7 +1782,7 @@ def _validate_receipt(
             raise ValueError(
                 "Bundle receipt source is not rooted in its bundle"
             )
-        expected_paths = _discover_bundle_targets(layout)
+        expected_paths = _discover_bundle_targets(layout, kinds=receipt_kinds)
         receipt_source = str(layout.deliverables_base)
         expected_receipt = _receipt_path(root, plan_fingerprint, bundle=True)
     if source_text != receipt_source:
@@ -2289,9 +2374,31 @@ def _resolve_bundle(
 
 
 def migrate_metadata_bundle(
-    source: str | Path | BundleLayout, *, expected_plan_fingerprint: str
+    source: str | Path | BundleLayout,
+    *,
+    expected_plan_fingerprint: str,
+    kinds: frozenset[str] | None = None,
 ) -> MetadataMigrationResult:
-    """Migrate authoritative sources in a full or standalone bundle."""
+    """Migrate authoritative sources in a full or standalone bundle.
+
+    Re-running after an interruption is safe, by two mechanisms that are worth
+    naming because "pass 1 is idempotent by content" is **false** -- a parquet
+    rewrite is not byte-idempotent and a re-applied rewrite changes every
+    sha256. The real mechanisms are that an existing receipt short-circuits the
+    re-run onto itself, and that an already-canonical bundle returns a
+    ``compatible`` no-op that rewrites nothing. An executor who "optimizes"
+    past the receipt check on the strength of the wrong reason breaks marker
+    validity for the whole tree.
+
+    Args:
+        source: Bundle path or resolved :class:`BundleLayout`.
+        expected_plan_fingerprint: Fingerprint from the matching preflight.
+        kinds: Restrict the migration to these :data:`TargetKind` values, and
+            record that scope in the receipt. ``None`` means every kind.
+
+    Returns:
+        The migration result.
+    """
     layout, root = _resolve_bundle(source)
     requested_receipt = _receipt_path(
         root, expected_plan_fingerprint, bundle=True
@@ -2308,7 +2415,7 @@ def migrate_metadata_bundle(
             receipt,
             expected_plan_fingerprint=expected_plan_fingerprint,
         )
-    report = preflight_metadata_schema(layout)
+    report = preflight_metadata_schema(layout, kinds=kinds)
     if expected_plan_fingerprint != report.plan_fingerprint:
         mismatch = MetadataMigrationReport(
             source=report.source,
@@ -2324,7 +2431,7 @@ def migrate_metadata_bundle(
     if report.status == "compatible":
         return _compatible_result(report)
     receipt_path = _receipt_path(root, report.plan_fingerprint, bundle=True)
-    receipt = _new_receipt(report, bundle_root=root)
+    receipt = _new_receipt(report, bundle_root=root, kinds=kinds)
     _write_receipt(receipt_path, receipt)
     return _apply_receipt(
         receipt_path,
@@ -2509,6 +2616,7 @@ __all__ = [
     "MetadataMigrationReport",
     "MetadataMigrationResult",
     "MetadataMigrationTarget",
+    "NON_IMAGE_KINDS",
     "migrate_metadata_bundle",
     "migrate_metadata_file",
     "preflight_metadata_schema",

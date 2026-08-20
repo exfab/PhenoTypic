@@ -1457,6 +1457,54 @@ def dataset_zarr_dir(output_dir: Path, dataset: str) -> Path:
     return dataset_results_dir(output_dir, dataset) / DIR_ZARR
 
 
+#: The remedy named in every "this output needs migrating" message. One
+#: string, so the CLI's refusal and the viewer's banner cannot drift apart.
+MIGRATION_REMEDY: Final[str] = "--mode migrate"
+
+
+def datasets_needing_migration(output_dir: Path) -> list[str]:
+    """Datasets holding at least one `.h5` result without a VALID store.
+
+    One predicate, so the CLI and the GUI cannot disagree about what
+    "needs migrating" means.
+
+    Per-IMAGE, not per-dataset: the half-migrated tree this exists to catch
+    has converted and unconverted images in the SAME dataset, so a
+    dataset-level "has .h5 and has no zarr/ dir" test misses it entirely.
+    That tree is the expected state after any interruption, because migration
+    is resumable -- and it is neither "only .h5" nor fully converted, so the
+    older "only .h5" guard let it through and `--mode full` silently
+    reprocessed every unconverted image from source.
+
+    Validity, not existence: `valid_staged_store`, not `path.exists()`. A
+    store written at an older `store_schema_version` is present but the
+    loader refuses it, so an existence test reads that tree as clean while
+    every image fails to open.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        Dataset names needing migration, sorted. Empty for a modern tree.
+    """
+    from phenotypic.sdk_.ngff_ import valid_staged_store
+
+    root = results_dir(Path(output_dir))
+    if not root.is_dir():
+        return []
+    needing: list[str] = []
+    for dataset_dir in sorted(path for path in root.iterdir() if path.is_dir()):
+        hdf_dir = dataset_dir / DIR_HDF
+        if not hdf_dir.is_dir():
+            continue
+        for hdf_path in sorted(hdf_dir.glob("*.h5")):
+            store = zarr_store_path(output_dir, dataset_dir.name, hdf_path.stem)
+            if not valid_staged_store(store):
+                needing.append(dataset_dir.name)
+                break
+    return needing
+
+
 def zarr_store_path(output_dir: Path, dataset: str, stem: str) -> Path:
     """Return ``<output>/results/<dataset>/zarr/<stem>.ome.zarr/``.
 

@@ -298,3 +298,17 @@ def staged_run_with_border_colony(tmp_path: Path) -> StagedStageHarness:
         "drop_frame_background, so the D1 replay would be a no-op"
     )
     return harness
+
+
+# ---------------------------------------------------------------------------
+# ``--mode migrate`` fixtures (Phase 5)
+# ---------------------------------------------------------------------------
+#
+# Imported rather than redefined: the session-scoped real run and the demotion
+# helpers live beside the sdk_ suite that owns them, and promoting six
+# migration-specific fixtures to the repo-root conftest would make them global
+# to the whole suite.
+from tests.unit.sdk_.conftest import (  # noqa: E402,F401
+    _completed_run_two,
+    finished_legacy_run,
+)

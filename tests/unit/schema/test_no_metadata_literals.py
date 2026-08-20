@@ -179,8 +179,27 @@ _LEGACY_ALLOWED = {
         "MetadataSample_Strain",
         "MetadataGenetic_Strain",
     },
-    "tests/unit/cli/test_cli_recompile_metadata_migration_slurm.py": {
-        "MetadataSample_Strain",
+    # ``--mode migrate`` (Phase 5). Legacy per-topic spellings are the SUBJECT
+    # of these files, not incidental usage: the golden fixtures are written
+    # with them, and the tests assert they are gone after conversion. A
+    # migration suite that could only spell canonical names could not test
+    # migration.
+    "tests/fixtures/legacy_hdf/_generate.py": {
+        "MetadataImage_ImageName",
+        "MetadataImage_BitDepth",
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/sdk_/_migration_fixtures.py": {
+        "MetadataImage_ImageFile",
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/sdk_/test_metadata_canonical_view.py": {
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/cli/test_cli_migrate_mode.py": {
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/cli/test_recompile_no_longer_migrates.py": {
         "MetadataGenetic_Strain",
     },
     # Exact legacy/canonical collision and ingress behavior.
