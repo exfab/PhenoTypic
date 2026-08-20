@@ -28,10 +28,7 @@ import h5py
 import numpy as np
 from PIL import Image as PILImage
 
-from phenotypic._cli._cli_completion import (
-    _artifact_descriptor,
-    publish_aggregate_snapshot,
-)
+from phenotypic._cli._cli_completion import _artifact_descriptor
 from phenotypic._cli._cli_state_management import (
     load_processing_state,
     save_processing_state,
@@ -193,10 +190,31 @@ def demote_store_to_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
     return hdf_path
 
 
-def repoint_marker_at_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
-    """Swap a marker's ``store`` descriptor for an ``hdf`` one, in place.
+#: The marker version a genuine legacy tree carries. Phase 3 bumped
+#: ``SUCCESS_MARKER_VERSION`` to 2 **and** added the ``kind`` tag; a legacy
+#: marker predates both.
+LEGACY_SUCCESS_MARKER_VERSION = 1
 
-    Every other field -- ``work_id``, ``attempt_id``, ``lifecycle_epoch``,
+
+def repoint_marker_at_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
+    """Rewrite a marker into the shape a genuine legacy tree carries.
+
+    Three changes, and each one matters:
+
+    * ``version`` drops to 1. ``valid_image_success`` rejects on **strict
+      equality** against ``SUCCESS_MARKER_VERSION``, which Phase 3 bumped to
+      2, so every finished image in every legacy tree reads as
+      unknown-to-complete until Task 5.6 re-publishes it.
+    * The ``store`` descriptor becomes an ``hdf`` one.
+    * That descriptor carries **no** ``kind`` key -- the tag arrived with the
+      bump, so a v1 descriptor cannot have one.
+
+    A fixture that instead minted a *version 2* marker over an ``.h5`` would
+    describe a state that never existed, and -- because ``keep_source=True``
+    leaves the ``.h5`` in place -- would keep validating straight through a
+    migration, quietly certifying that Task 5.6 was unnecessary.
+
+    Everything else -- ``work_id``, ``attempt_id``, ``lifecycle_epoch``,
     ``completed_at``, and the ``measurements`` and ``overlay`` descriptors --
     is preserved verbatim, so the marker stays the one the real run published.
 
@@ -210,14 +228,17 @@ def repoint_marker_at_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
     """
     marker_path = image_completion_marker_path(output_dir, dataset, stem)
     marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    marker["version"] = LEGACY_SUCCESS_MARKER_VERSION
     artifacts = marker["artifacts"]
     artifacts.pop("store", None)
+    for descriptor in artifacts.values():
+        descriptor.pop("kind", None)
     hdf_path = dataset_hdf_dir(output_dir, dataset) / f"{stem}.h5"
     output_root = Path(output_dir).resolve()
     resolved = hdf_path.resolve(strict=True)
-    artifacts["hdf"] = _artifact_descriptor(
-        resolved, resolved.relative_to(output_root)
-    )
+    descriptor = _artifact_descriptor(resolved, resolved.relative_to(output_root))
+    descriptor.pop("kind", None)
+    artifacts["hdf"] = descriptor
     atomic_write_json(marker_path, marker)
     return marker_path
 
@@ -238,9 +259,13 @@ def demote_run_to_hdf(output_dir: Path, *, keep_markers: bool) -> None:
         zarr_dir.rmdir()
 
     if keep_markers:
+        # The aggregate the real run published stands as-is. Re-publishing it
+        # here would fail anyway (``publish_aggregate_snapshot`` refuses when
+        # no marker is currently valid, and the v1 markers below are not) --
+        # and a real legacy tree's aggregate is likewise one an older build
+        # published while its own markers were current.
         for stem in sorted(run_stems(output_dir)):
             repoint_marker_at_hdf(output_dir, DATASET, stem)
-        publish_aggregate_snapshot(output_dir)
     else:
         strip_completion_evidence(output_dir)
 

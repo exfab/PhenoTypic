@@ -28,7 +28,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
 
 from ._io_constants import (
+    deliverables_dir,
     load_image_from_hdf,
+    metadata_csv_deliverable_path,
     results_dir,
     zarr_store_path,
 )
@@ -227,6 +229,69 @@ def migrate_hdf_to_zarr(
 
 
 # ---------------------------------------------------------------------------
+# The canonical metadata view
+# ---------------------------------------------------------------------------
+
+#: Name of the derived view emitted beside the snapshot. It is **not** the
+#: snapshot and carries no provenance role, so it needs no digest in state.
+CANONICAL_METADATA_CSV_NAME: str = "metadata.canonical.csv"
+
+
+def canonical_metadata_view_path(output_dir: Path) -> Path:
+    """Return where the derived canonical metadata view lives.
+
+    Beside the snapshot, in the same ``deliverables/`` directory. Migration is
+    in place, so there is no second location to reconcile.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        ``<output>/deliverables/metadata.canonical.csv``.
+    """
+    return deliverables_dir(Path(output_dir)) / CANONICAL_METADATA_CSV_NAME
+
+
+def emit_canonical_metadata_view(output_dir: Path) -> Path | None:
+    """Derive a canonical-header view of the metadata snapshot.
+
+    **``deliverables/metadata.csv`` is never touched.** It is immutable input
+    provenance (user ruling, ledger FLOW-4): the CLI recomputes
+    ``metadata_sha256`` from that file on *every* run rather than reading it
+    back from state, so rewriting it makes the next run's
+    ``expected_finalization`` diverge from the published
+    ``finalization_input_digest`` and re-finalize the whole tree -- whatever
+    migration wrote into ``state.config``. No ``metadata.original.csv`` is
+    created either; that file only existed to make the withdrawn rewrite
+    reversible.
+
+    The view is additive and optional. Canonicalization goes through the SDK's
+    own :func:`normalize_metadata_columns` -- the primitive the read path
+    already delegates to -- rather than a second mapping.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        The view's path, or ``None`` when there is no snapshot to derive from.
+    """
+    import polars as pl
+
+    from ._metadata_helpers import normalize_metadata_columns
+
+    source = metadata_csv_deliverable_path(Path(output_dir))
+    if not source.is_file():
+        return None
+    # `infer_schema_length=0` reads every column as a string: this is a view of
+    # the user's own bytes, and inferring dtypes would rewrite values (a
+    # zero-padded well id losing its padding, say) that the snapshot holds
+    # verbatim.
+    frame = pl.read_csv(source, infer_schema_length=0)
+    target = canonical_metadata_view_path(output_dir)
+    normalize_metadata_columns(frame).write_csv(target)
+    return target
+
+# ---------------------------------------------------------------------------
 # A whole run
 # ---------------------------------------------------------------------------
 
@@ -329,13 +394,18 @@ def migrate_run_hdf_to_zarr(
         else:
             failed.append((hdf_path, error))
 
+    emit_canonical_metadata_view(output_dir)
+
     return MigrationReport(
         converted=converted, skipped=skipped, failed=tuple(failed)
     )
 
 
 __all__ = [
+    "CANONICAL_METADATA_CSV_NAME",
     "MigrationReport",
+    "canonical_metadata_view_path",
+    "emit_canonical_metadata_view",
     "iter_legacy_hdfs",
     "migrate_hdf_to_zarr",
     "migrate_run_hdf_to_zarr",
