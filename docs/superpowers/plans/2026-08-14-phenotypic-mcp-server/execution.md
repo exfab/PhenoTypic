@@ -428,3 +428,66 @@ git -C $EXFAB branch -D STALE-DO-NOT-USE-see-iwheeldonlab
   session commits there.
 
 **Then** dispatch C7a against `$EXFAB`, and update every remaining brief's path.
+
+---
+
+## C6 gate: Task 18 blocker — a killed worker publishes a phantom winner
+
+**Verified against source. Two defects compose into a default-path failure, no
+`force` flag needed.**
+
+- **B1** — `_optuna_store.py`: `_to_trial` maps `frozen.value is None` to
+  `score = 0.0`, and under the minimize-cost convention **0.0 is the best
+  possible cost**. `best()` (`:304-309`) filters only `t.failed`, so a trial left
+  `RUNNING` by a Slurm-killed worker is "valid" and wins `min()` over every real
+  trial.
+- **B2** — `_finalize.py`: `n_seen = len(store.trials)` counts
+  `COMPLETE|PRUNED|FAIL|RUNNING`, while the budget it compares against is what
+  `OptunaStrategy.is_exhausted` measures as `COMPLETE + PRUNED` only. The gate
+  opens early by `(#failed + #in-flight)`.
+
+B2 opens the gate; B1 then picks the orphan. Reproduced end-to-end through the
+real entry point: 5 real trials (best cost 0.30) plus one orphaned `RUNNING`,
+budget 6 →
+
+    best_params.json = {"trial_number": 5, "score": 0.0, "params": {},
+                        "selection": "single_best"}
+
+`params={}` means `prepare_best_from_run` exports the **untuned base pipeline as
+the tuned optimum, with a perfect reported cost**. No error, no warning,
+`best_params_written=True`.
+
+**Why no test caught it:** no fixture can produce a `RUNNING` trial. The suite is
+structurally incapable of reaching the state.
+
+**Fix:** filter to terminal trials before both the gate and the winner selection;
+add an orphaned `RUNNING` trial to `_build_study`. One change closes both.
+
+**Not shipping** — nothing calls `finalize_distributed_study` today. **It must not
+be wired in Phase 2 as-is**, and C7a is editing the same code path.
+
+### F1 — marker v2's read side is untested (false green)
+
+`_build_study` hardcodes `"nrows": None, "ncols": None`, and no test writes a
+non-null `nrows` into a marker. Replacing the `_load_images(images_dir,
+nrows=…, ncols=…)` call with a bare one: **18 passed, exit 0.** The write side is
+pinned; the half that prevents the wrong generalization verdict is not.
+
+### Real coverage gap the gate surfaced
+
+C8's argv coverage gate is **structurally blind to `phenotypic.tune`'s argparse
+flags** — `_cli_option_flags()` reads only `phenotypic_cli.params` (Click) and
+`_EMITTING_FUNCTIONS` excludes `tune_run_tail` by design. Consequence:
+`--nrows`, `--ncols`, `--slurm-constraint` are **not emittable from the service
+tier**, so every MCP- or GUI-launched tune run records `nrows: null` — which
+defeats marker v2 on exactly the path the MCP server will use.
+
+### Non-blocking
+
+- **N1** — the GUI marks a `--screen --slurm` plan **valid** and emits the argv,
+  which Task 15 now hard-refuses. A silent drop became a post-launch crash with
+  no preflight guard. One line in `build_tune_command`.
+- **N2** — `--slurm-mem 8G --slurm mem_gb=16` still emits `#SBATCH --mem` twice.
+- Tasks **15 and 16 are clean**; the gate replicated all of C6's mutation claims
+  and refuted its own deletable-wiring hypothesis (1158 passed with only the
+  injected mutation failing).
