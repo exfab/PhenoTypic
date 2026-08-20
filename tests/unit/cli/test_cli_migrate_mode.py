@@ -416,3 +416,61 @@ def test_pass_one_canonicalizes_a_measurement_header(legacy_run) -> None:
     after = set(pl.read_parquet(parquets[0]).columns)
     assert "MetadataGenetic_Strain" not in after
     assert "Metadata_Strain" in after
+
+
+def test_a_blocked_preflight_aborts_before_anything_is_written(
+    legacy_run, monkeypatch
+) -> None:
+    """Conflicts a human must resolve stop the run, not get migrated past.
+
+    This coverage moves here from ``test_cli_recompile.py``, which asserted
+    it against recompile's own rewrite -- the rewrite Task 5.4 removed.
+    """
+    from types import SimpleNamespace
+
+    from phenotypic._cli import _cli_migrate
+    from phenotypic.sdk_ import dataset_zarr_dir
+
+    monkeypatch.setattr(
+        _cli_migrate,
+        "preflight_metadata_schema",
+        lambda *a, **k: SimpleNamespace(
+            status="blocked",
+            conflicts=("legacy and canonical values disagree",),
+            targets=(),
+            plan_fingerprint="sha256:0",
+        ),
+    )
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(legacy_run)]
+    )
+    assert result.exit_code != 0
+    assert "legacy and canonical values disagree" in result.output
+    # Pass 1 aborts, so pass 2 never runs and no store is written.
+    assert not dataset_zarr_dir(legacy_run, "ds").exists()
+
+
+def test_a_blocked_preflight_aborts_a_dry_run_too(
+    legacy_run, monkeypatch
+) -> None:
+    """A dry run that reported "would convert N" on a blocked tree would be a
+    plan the real run cannot execute."""
+    from types import SimpleNamespace
+
+    from phenotypic._cli import _cli_migrate
+
+    monkeypatch.setattr(
+        _cli_migrate,
+        "preflight_metadata_schema",
+        lambda *a, **k: SimpleNamespace(
+            status="blocked",
+            conflicts=("legacy and canonical values disagree",),
+            targets=(),
+            plan_fingerprint="sha256:0",
+        ),
+    )
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run), "--dry-run"],
+    )
+    assert result.exit_code != 0

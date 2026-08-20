@@ -207,10 +207,6 @@ from phenotypic._cli._cli_recompile_slurm_scripts import (
     recompile_attempt_dir,
     recompile_task_status_path,
 )
-from phenotypic._cli._cli_recompile_metadata_migration_slurm import (
-    generate_metadata_migration_slurm_scripts,
-    plan_metadata_schema_for_slurm_recompile,
-)
 from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
 from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
 from phenotypic._cli._cli_validation import (
@@ -2808,16 +2804,6 @@ def _handle_recompile_slurm(
 
     attempt_id = new_slurm_generation()
 
-    # The migration preflight is deliberately the first recompile operation
-    # that inspects bundle content. It is read-only, so a conflict produces no
-    # plan, script, status, dashboard, or scheduler submission artifact.
-    try:
-        migration_plan = plan_metadata_schema_for_slurm_recompile(
-            output_dir, attempt_id=attempt_id
-        )
-    except Exception as exc:
-        error_exit("Metadata migration blocked SLURM recompile", str(exc))
-
     prog_dir = progress_dir(output_dir)
     job_meta = load_job_metadata(prog_dir)
     dataset_names = _discover_recompile_dataset_names(output_dir, job_meta)
@@ -2854,7 +2840,7 @@ def _handle_recompile_slurm(
     has_measurement_tasks = any(
         task.get("task_type") == TASK_MEASUREMENTS for task in tasks
     )
-    if not has_measurement_tasks and not migration_plan.targets:
+    if not has_measurement_tasks:
         console.print(
             "[yellow]No measurement sources require SLURM recompile; "
             "running the safe local path.[/yellow]"
@@ -2880,17 +2866,7 @@ def _handle_recompile_slurm(
         array_limit=array_limit,
         attempt_id=attempt_id,
     )
-    migration_scripts = generate_metadata_migration_slurm_scripts(
-        migration_plan,
-        slurm_args=slurm_args,
-        array_limit=array_limit,
-        attempt_id=attempt_id,
-        slurm_generation=attempt_id,
-        has_recompile_downstream=bool(scripts),
-    )
-    if migration_scripts is None and (
-        not tasks or not scripts or finalizer_task_index is None
-    ):
+    if not tasks or not scripts or finalizer_task_index is None:
         console.print(
             "[yellow]No recompile SLURM tasks/scripts were generated; "
             "running local recompile instead.[/yellow]"
@@ -2905,17 +2881,10 @@ def _handle_recompile_slurm(
         )
         return
 
-    flat_scripts: list[Path] = []
-    dependency_kinds: list[str] | None = None
-    if migration_scripts is not None:
-        flat_scripts.extend(migration_scripts.shard_scripts)
-        flat_scripts.append(migration_scripts.finalizer_script)
-    flat_scripts.extend(scripts)
-    if migration_scripts is not None and scripts:
-        dependency_kinds = ["afterany"] * (len(flat_scripts) - 1)
-        barrier_edge = len(migration_scripts.shard_scripts)
-        dependency_kinds[barrier_edge] = "afterok"
-
+    # No metadata-migration prologue any more: recompile does not rewrite
+    # headers, so there is nothing to fan out and no afterok barrier to place
+    # in front of the recompile array.
+    flat_scripts: list[Path] = list(scripts)
     submission_args: dict[str, Any] = {
         "flat_chunk_scripts": flat_scripts,
         "output_dir": output_dir,
@@ -2923,8 +2892,6 @@ def _handle_recompile_slurm(
         "console": console,
         "generation": attempt_id,
     }
-    if dependency_kinds is not None:
-        submission_args["continuation_dependency_kinds"] = dependency_kinds
     try:
         _initialize_recompile_slurm_attempt(output_dir, attempt_id)
     except Exception as exc:
@@ -2966,24 +2933,9 @@ def _handle_recompile_slurm(
             "task_manifest": str(recompile_manifest_path),
             "finalizer_task_index": finalizer_task_index,
             "metadata_migration": {
-                "plan_fingerprint": migration_plan.report.plan_fingerprint,
-                "source_fingerprint": migration_plan.report.source_fingerprint,
-                "target_count": len(migration_plan.targets),
-                "task_manifest": (
-                    str(migration_plan.manifest_path)
-                    if migration_scripts is not None
-                    else None
-                ),
-                "finalizer_status": (
-                    str(migration_plan.finalizer_status_path)
-                    if migration_scripts is not None
-                    else None
-                ),
-                "barrier_dependency": (
-                    "afterok"
-                    if migration_scripts is not None and scripts
-                    else None
-                ),
+                # Retained as a key so a reader of older job metadata sees the
+                # shape change rather than a silently missing field. Recompile
+                # no longer migrates; `--mode migrate` does, locally.
                 "external_metadata_fingerprint": (
                     file_fingerprint(metadata_csv)
                     if metadata_csv is not None and metadata_csv.is_file()
@@ -3006,51 +2958,22 @@ def _handle_recompile_slurm(
         )
 
     if wait:
-        if finalizer_task_index is None:
-            console.print(
-                "\n[cyan]Waiting for metadata migration finalizer...[/cyan]"
-            )
-            _wait_for_metadata_migration_finalizer_status(
-                migration_plan.finalizer_status_path,
-                output_dir=output_dir,
-                slurm_generation=attempt_id,
-            )
-        elif migration_scripts is None:
-            console.print(
-                "\n[cyan]Waiting for recompile finalizer "
-                f"task {finalizer_task_index}...[/cyan]"
-            )
-            _wait_for_recompile_finalizer_status(
-                output_dir,
-                finalizer_task_index,
-                recompile_finalizer_status_path=recompile_task_status_path(
-                    recompile_manifest_path, finalizer_task_index
-                ),
-                slurm_generation=attempt_id,
-            )
-        else:
-            console.print(
-                "\n[cyan]Waiting for recompile finalizer "
-                f"task {finalizer_task_index}...[/cyan]"
-            )
-            _wait_for_recompile_finalizer_status(
-                output_dir,
-                finalizer_task_index,
-                migration_finalizer_status_path=(
-                    migration_plan.finalizer_status_path
-                ),
-                recompile_finalizer_status_path=recompile_task_status_path(
-                    recompile_manifest_path, finalizer_task_index
-                ),
-                slurm_generation=attempt_id,
-            )
+        console.print(
+            "\n[cyan]Waiting for recompile finalizer "
+            f"task {finalizer_task_index}...[/cyan]"
+        )
+        _wait_for_recompile_finalizer_status(
+            output_dir,
+            finalizer_task_index,
+            recompile_finalizer_status_path=recompile_task_status_path(
+                recompile_manifest_path, finalizer_task_index
+            ),
+            slurm_generation=attempt_id,
+        )
         console.print("[bold green]SLURM recompilation complete[/bold green]")
     else:
-        if scripts:
-            click.echo("\nRecompile jobs submitted. Monitor progress with:")
-            click.echo(f"  Open: {dashboard_html_path(output_dir)}")
-        else:
-            click.echo("\nMetadata migration jobs submitted. Monitor with:")
+        click.echo("\nRecompile jobs submitted. Monitor progress with:")
+        click.echo(f"  Open: {dashboard_html_path(output_dir)}")
         click.echo("  squeue -u $USER --array")
         from phenotypic.sdk_ import logs_dir
 
@@ -3252,43 +3175,6 @@ def _read_recompile_wait_status(
     return payload if isinstance(payload, dict) else None
 
 
-def _wait_for_metadata_migration_finalizer_status(
-    status_path: Path,
-    *,
-    output_dir: Path | None = None,
-    slurm_generation: str | None = None,
-    poll_interval: float = 10.0,
-    timeout: Optional[float] = None,
-) -> None:
-    """Wait for a migration-only SLURM chain to complete or fail."""
-    import time
-
-    deadline = time.monotonic() + timeout if timeout is not None else None
-    while True:
-        status = _read_recompile_wait_status(
-            status_path, description="metadata migration finalizer"
-        )
-        if status is not None:
-            state = status.get("status")
-            if state == "completed":
-                return
-            if state == "failed":
-                error = status.get("error") or (
-                    "metadata migration finalizer failed"
-                )
-                raise RuntimeError(str(error))
-        if output_dir is not None and slurm_generation is not None:
-            _raise_if_recompile_attempt_cannot_finish(
-                output_dir, slurm_generation
-            )
-        if deadline is not None and time.monotonic() >= deadline:
-            raise TimeoutError(
-                "Timed out waiting for metadata migration finalizer status: "
-                f"{status_path}"
-            )
-        time.sleep(poll_interval)
-
-
 def _raise_if_recompile_attempt_cannot_finish(
     output_dir: Path, slurm_generation: str
 ) -> None:
@@ -3350,8 +3236,8 @@ def _handle_recompile(
 
     from phenotypic._cli._cli_output_manager import aggregate_measurements
     from phenotypic._cli._cli_recompile_metadata_migration import (
-        RecompileMetadataMigrationError,
-        migrate_metadata_schema_for_recompile,
+        legacy_header_target_count,
+        report_metadata_schema_for_recompile,
     )
     from phenotypic._cli._cli_utils import load_job_metadata
     from phenotypic._cli._dashboard import (
@@ -3372,22 +3258,22 @@ def _handle_recompile(
         f"({len(dataset_names)} dataset(s))"
     )
 
+    # Read-only. Recompile REPORTS a legacy bundle; it does not rewrite one.
+    # The rewrite lives in `--mode migrate` (supersedes flat-metadata decision
+    # #1). Decision #3 is untouched: the read path canonicalizes legacy
+    # headers in memory, so this bundle recompiles correctly as it stands.
     console.print("[cyan]Checking metadata schema...")
-    try:
-        migration = migrate_metadata_schema_for_recompile(output_dir)
-    except RecompileMetadataMigrationError as exc:
-        error_exit("Metadata schema migration blocked recompile", str(exc))
-        return
-    migrated_count = len(migration.migrated_targets)
-    skipped_count = len(migration.skipped_targets)
-    blocked_count = len(migration.blocked_targets)
-    console.print(
-        "[green]Metadata schema: "
-        f"migrated={migrated_count}, skipped={skipped_count}, "
-        f"blocked={blocked_count}"
-    )
-    if migration.receipt_path is not None:
-        console.print(f"[green]Migration receipt: {migration.receipt_path}")
+    schema_report = report_metadata_schema_for_recompile(output_dir)
+    legacy_targets = legacy_header_target_count(schema_report)
+    if legacy_targets:
+        console.print(
+            f"[yellow]Metadata schema: {legacy_targets} target(s) still use "
+            "legacy per-topic headers. They are read correctly as-is; to "
+            "canonicalize them on disk run:\n"
+            f"  python -m phenotypic --mode migrate --output {output_dir}"
+        )
+    else:
+        console.print("[green]Metadata schema: canonical")
 
     console.print("[cyan]Aggregating measurements...")
     master_path = aggregate_measurements(

@@ -232,6 +232,32 @@ def make_measurement_headers_legacy(output_dir: Path, dataset: str) -> int:
     return rewritten
 
 
+def refresh_marker_descriptors(output_dir: Path, dataset: str, stem: str) -> None:
+    """Re-fingerprint every artifact descriptor in one marker, in place.
+
+    Keeps the marker's version and every ``kind`` tag. Used after a fixture
+    edits a marker-bound file: a real tree's markers bound the bytes that
+    existed when they were published, so leaving a stale digest behind would
+    make the fixture fail for a reason that has nothing to do with the test.
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        stem: Image stem.
+    """
+    marker_path = image_completion_marker_path(output_dir, dataset, stem)
+    if not marker_path.is_file():
+        return
+    marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    output_root = Path(output_dir).resolve()
+    for name, descriptor in list(marker["artifacts"].items()):
+        resolved = (output_root / descriptor["path"]).resolve(strict=True)
+        marker["artifacts"][name] = _artifact_descriptor(
+            resolved, resolved.relative_to(output_root)
+        )
+    atomic_write_json(marker_path, marker)
+
+
 #: The marker version a genuine legacy tree carries. Phase 3 bumped
 #: ``SUCCESS_MARKER_VERSION`` to 2 **and** added the ``kind`` tag; a legacy
 #: marker predates both.

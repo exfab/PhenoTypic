@@ -379,17 +379,19 @@ def legacy_headers_run(
     """
     import shutil
 
-    import polars as pl
-
-    from phenotypic.sdk_ import dataset_measurements_dir
+    from tests.unit.sdk_._migration_fixtures import (
+        make_measurement_headers_legacy,
+        refresh_marker_descriptors,
+        run_stems,
+    )
 
     output_dir = tmp_path / "legacy_headers"
     shutil.copytree(_completed_run_two, output_dir)
-    measurements = dataset_measurements_dir(output_dir, _MIGRATION_DATASET)
-    for parquet in sorted(measurements.glob("*.parquet")):
-        frame = pl.read_parquet(parquet)
-        frame = frame.with_columns(
-            pl.lit("BY4741").alias("MetadataGenetic_Strain")
-        )
-        frame.write_parquet(parquet)
+    make_measurement_headers_legacy(output_dir, _MIGRATION_DATASET)
+    # The parquets the run's markers bound have just changed. A real tree's
+    # markers bound the bytes that existed when they were published, so
+    # re-fingerprint them -- otherwise recompile fails on a stale digest,
+    # which is not what these tests are about.
+    for stem in run_stems(output_dir):
+        refresh_marker_descriptors(output_dir, _MIGRATION_DATASET, stem)
     return output_dir

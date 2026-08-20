@@ -76,9 +76,10 @@ V2_GRID_FINDER_RESIDUAL_FRACTION: float = 0.4
 
 #: A legacy per-topic metadata header and the flat header it resolves to.
 #: ``MetadataGenetic_Strain`` is a real legacy spelling -- verified against
-#: ``ensure_metadata_prefix``, which maps it to ``Metadata_Strain``. Spellings
-#: the registry does NOT know (``MetadataPlate_Strain``, say) are preserved
-#: verbatim by ``_remap_legacy_metadata_key`` and would never canonicalize.
+#: ``ensure_metadata_prefix``, which maps it to ``Metadata_Strain``. A
+#: per-topic spelling the registry does NOT know is preserved verbatim by
+#: ``_remap_legacy_metadata_key`` and would never canonicalize, so it cannot
+#: stand in here.
 V1_LEGACY_PUBLIC_HEADER: str = "MetadataGenetic_Strain"
 V1_CANONICAL_PUBLIC_HEADER: str = "Metadata_Strain"
 V1_PUBLIC_VALUE: str = "BY4741"
