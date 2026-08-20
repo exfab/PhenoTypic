@@ -1391,3 +1391,85 @@ original unlabeled image" is the containing group).
 **Recorded deviation, not an oversight:** `build_image_label`'s background-only `colors` is a
 deliberate documented departure from §2.6's *"MUST be a JSON array describing color information
 for the unique label values"* (under a SHOULD-level key). Pre-dates this round; on the record.
+
+---
+
+# IMPLEMENTATION — Phase 0 and Phase 1 complete
+
+Four review rounds and a pre-dispatch gate hardened this plan on paper. Implementation
+then found a further class of defect that **none of them could have caught**, because
+reading a plan cannot tell you whether its tests are capable of failing.
+
+## What the mutation surveys found
+
+Phase 1's tests were surveyed twice: 13 + 8 mutants by the cluster that wrote Tasks 1.5/1.6,
+then **90 mutants** by the phase gate over Tasks 1.1–1.4. **Twenty-six survivors in total** —
+code that could be broken in consequential ways with the entire suite green.
+
+The two worst were both "tests the leaf, not the branch":
+
+- **`build_pyramid`'s `kind` dispatch was untested.** Hard-coding the image reducer
+  mean-downsamples label maps, inventing label values present at no pixel of the original.
+  The only `kind="label"` test asserted **shapes**, and both reducers produce identical
+  shapes. This is the exact mutation the committed validation script names as "the one the
+  pyramid test must catch" — and that script's own claims were never executed by any test or
+  CI job, so it sat a directory away as documentation.
+- **Task 1.5's fifteen tests for the crash-safety primitive caught none of the five
+  crash-safety mutants.** Retry loop cut to one attempt, rollback deleted, `fsync=True`
+  ignored, directories never flushed, a genuine `ENOSPC` retried as transient — all green.
+  A task that exists *only* to be crash-safe had no test of its crash-safety.
+
+Others worth recording: `array_create_kwargs` could drop sharding entirely (40 → 132 files
+per plate by the plan's own numbers); **seven** `attributes.phenotypic` keys could be dropped
+or crossed, including swapping `illuminant`/`gamma` (silently wrong colour on every read) and
+hard-coding `image_class` (every `GridImage` reloads as a plain `Image`); OME-XML `SizeC`
+could be pinned to 1, making an RGB store declare itself single-channel to every Bio-Formats
+consumer while `multiscales` says three — schema-**valid**, so the XSD gate could not see it.
+
+All twenty-six are now killed, each demonstrated red-then-green.
+
+## Rulings the plan carried in prose but not in code
+
+**`store_schema_version` by VALUE, and `metadata_schema_version` dropped** (user ruling
+2026-08-19, spec §2.3). Task 1.3 wrote the dropped key anyway; Task 1.6 checked presence with
+`not in block`. **Only Task 1.6's commit message recorded the ruling correctly** — which is how
+the implementing agent noticed the contradiction, and it correctly declined to resolve it
+alone since it changes what Phase 3's classifier and Phase 5's migrate accept.
+
+Presence-only is not a weaker version of the same check: it **accepts** a v4 store and reads it
+under v3 semantics, which is the ruling's stated reason for existing. The existing test covered
+only the absent case, which passes under both implementations, so the bug was invisible.
+
+## Defects found by executing, not reading
+
+- **`valid_staged_store` raised `AttributeError`** on a store whose `series` is a list rather
+  than a mapping. Its docstring insists it "must RETURN FALSE, never raise", and it is called
+  by resume classification and migration to decide what to do next — a production crash, not a
+  rejected store.
+- **The plan contradicted itself on `long_path`**: the constraint names five call sites that
+  must use it; the code block used bare paths at every one. Implemented verbatim, the MAX_PATH
+  measure would have applied to array I/O only — the exact defect PRE-G3 was raised to fix.
+- **`long_path`'s `resolve()` broke its own passthrough test on macOS**, a supported platform,
+  because `$TMPDIR` is symlinked.
+- **A test block used `np.dtype` nine times without importing numpy** — a `NameError` at
+  *argument* position, firing before the `AttributeError` the plan's Step 2 predicts, which
+  defeats the stop-and-investigate signal the TDD discipline depends on.
+- **`test_no_metadata_literals` failed on the new code**: the gate bans the bare token
+  `METADATA`, which collides with NGFF's mandated `METADATA.ome.xml` filename. Only a
+  **full-suite** run finds this — the task's own tests do not scan the tree, and the task did
+  not list the gate file, so no executor was authorised to fix it.
+
+## Method notes worth keeping
+
+**A green suite is not evidence.** Every claim in this phase that mattered was established by
+mutation: apply the break, watch it go red, revert, watch it go green. Where an agent reported
+"tests pass", that was treated as the beginning of the check rather than the end.
+
+**Two of my own briefs were wrong and the executing agents corrected them** — a mutation I
+described changed the output shape (so existing tests already caught it, meaning it could not
+have been the survivor), and two tests I claimed overlapped are independent because `np.rint`
+is banker's rounding. Both corrections came with the transcript that proved them.
+
+**The full suite is 6,814 tests, not 946.** Both earlier "baseline" measurements used `-x`,
+which stops at the first failure inside `tests/unit/cli/` — early in collection order. Every
+comparison made against that number was measuring a seventh of the suite.
