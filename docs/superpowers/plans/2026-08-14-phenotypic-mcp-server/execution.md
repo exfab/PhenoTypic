@@ -374,3 +374,57 @@ implementation and watching which tests survived, not by reading the diff. The
 third was found by a reviewer checking a citation. None would have surfaced from
 a passing suite — which is the argument for keeping the mutation requirement in
 every cluster brief for the rest of this phase.
+
+### AUTHORIZED: execute the relocation automatically at the next quiet tree
+
+**User authorization, 2026-08-20: do it without checking back.**
+
+**Trigger — all four must hold:**
+1. C6 has landed and passed its cluster gate.
+2. No agent is mid-cluster (`git status --porcelain` shows nothing but untracked reports).
+3. C7a has **not** been dispatched.
+4. `c8-manifest` is merged (done: `b753df3c6`).
+
+Move *before* C7a/C7b/C5, not after the phase. Every cluster dispatched against
+`iwheeldonlab` is another brief carrying a path about to become wrong, and the
+remaining three can start against `exfab` cleanly.
+
+**Procedure — in this order, aborting on any mismatch:**
+
+```
+LIVE=/bigdata/iwheeldonlab/anguy344/PhenoTypic
+EXFAB=/bigdata/exfab/anguy344/PhenoTypic
+
+# 1. capture the tip we are moving
+TIP=$(git -C $LIVE rev-parse feat/mcp-server)
+
+# 2. local fetch -- NEVER rsync/mv: ten worktrees are registered under EXFAB,
+#    including the LIVE worktree-ome-zarr-image-store another session uses
+git -C $EXFAB fetch $LIVE 'refs/heads/feat/mcp-server:refs/heads/feat/mcp-server'
+
+# 3. verify byte-identical before trusting it
+[ "$(git -C $EXFAB rev-parse feat/mcp-server)" = "$TIP" ] || abort
+
+# 4. check it out there
+git -C $EXFAB checkout feat/mcp-server
+
+# 5. retire the LIVE copy IN THE SAME SITTING -- two live feat/mcp-server
+#    checkouts re-create the collision with the roles reversed
+git -C $LIVE branch -m feat/mcp-server MOVED-TO-exfab-do-not-use
+
+# 6. drop the merged worktree
+git -C $LIVE worktree remove $LIVE-worktrees/c8-manifest
+
+# 7. only now, delete the stale marker branch (b4401dee, a strict ancestor)
+git -C $EXFAB branch -D STALE-DO-NOT-USE-see-iwheeldonlab
+```
+
+**Before deleting anything else, verify — do not assume:**
+- `rescued/ome-zarr-image-store` and `rescued/streamlit-run-monitor` in `$LIVE`
+  are mirrors of branches whose originals live in `$EXFAB`. Confirm the originals
+  are still there (`git -C $EXFAB rev-parse <branch>`) before dropping the
+  mirrors. They were rescued because the originals were single-copy.
+- Do **not** touch `$EXFAB/.worktrees/worktree-ome-zarr-image-store`. Another
+  session commits there.
+
+**Then** dispatch C7a against `$EXFAB`, and update every remaining brief's path.
