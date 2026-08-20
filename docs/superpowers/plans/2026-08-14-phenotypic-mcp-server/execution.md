@@ -555,3 +555,80 @@ until an agent relies on a guarantee that was only ever written down.
 the refusal that stops a sampled subset silently shrinking it. That is not
 coincidence: the rulings that arrive late are the ones responding to a reviewer's
 finding, and reviewers find the most on the paths that matter most.
+
+---
+
+# PHASE 1b — CLOSED 2026-08-20
+
+Six clusters, each implemented by one agent, each independently gated, plus a
+phase-level seam review and a simplify pass.
+
+| Cluster | Subject | Gate outcome |
+|---|---|---|
+| C4 | operation catalog | 3 blockers — incl. `derive_columns` under-reporting 19 of 38 columns behind a self-referential "anchor" |
+| C8 | `--image-manifest` + argv composition | 2 blockers — CLI wiring deletable with the suite green; a symlink alias over-selecting |
+| C6 | tune `--slurm k=v`, finalize | T15/16 clean; T18 published a phantom winner |
+| C7a | journal storage dispatch | 1 blocker — a relative `--output` silently un-shared the fleet |
+| C7b | storage failure semantics | 2 blockers — a retry that made a torn journal *unrecoverable* |
+| C5 | subset boundary | 1 blocker — two experiments colliding onto one staging tree |
+| phase | seam review | sound at the seams; 1 cross-cluster blocker (X1) |
+| phase | simplify | one commit; digest values verified byte-identical |
+
+**Final: 776 passed (cli+services), 999 passed / 2 skipped (tune+subset).** Both
+skips are the Postgres lanes.
+
+## What this phase actually cost, and where the defects were
+
+**Every gated cluster returned blockers, and not one was visible from a passing
+suite.** Sixteen false greens, all found by mutation.
+
+Two findings deserve to outlive the phase:
+
+**1. A fix introduced a worse failure than the bug, twice.**
+- C7b's retry survived an `EIO` mid-write and re-appended — turning a torn line
+  into a permanently unreadable journal. Before: one dead Slurm task. After: an
+  unrecoverable ~100-hour campaign.
+- Task 20's proposed lock inversion would have created an ABBA deadlock against
+  the status-poll hot path, and its stated acceptance test passed against it.
+
+Both were caught only because the gate was independent of the implementer.
+
+**2. The defects that mattered were silent wrong answers, not crashes.**
+A killed worker publishing the untuned base pipeline as the tuned optimum at a
+perfect score. A relative `--output` sending every worker to its own node-local
+`/tmp`. Two experiments sharing a naming convention receiving each other's
+images. `produces_columns` telling an agent 19 when the answer was 38.
+
+None raise. All of them would be believed.
+
+## The recurring process defect
+
+A user ruling reaching the spec's defining sections with **no owning plan task**
+— twice (FLOW-40/USER-26, then X1/USER-33), with the lesson recorded in between.
+Both instances sat on the consent path, which is not coincidence: late rulings
+answer reviewer findings, and reviewers concentrate where the stakes are highest.
+
+**The check for future phases:** for every USER ruling, grep the plan's *task
+documents* — not the spec — for an owning task.
+
+## Standing rules earned here
+
+- **Mutation-test in an isolated copy**, never the shared tree. A reverted
+  mutation is indistinguishable from a surviving one.
+- **`optuna` is an optional dependency** — a bare `uv sync` drops it and the tune
+  tests skip *silently*. Always `-rs`.
+- `QT_QPA_PLATFORM=offscreen`, or `tests/unit/sdk_` aborts on a head node.
+- Prefer **a worktree per writer**. C8 had one; its merge was the cleanest.
+
+## Open, carried to Phase 2
+
+- `finalize_distributed_study` has no CLI/GUI caller — Phase 2 wires it, and
+  must not wire it without re-reading the C6 gate.
+- `fail_stale_trials` no-ops under journal storage: **nothing reclaims a stale
+  trial** on the default fleet path.
+- **P9** — `--nrows`/`--ncols` unemittable from the tune tail, so an MCP-launched
+  run records `nrows: null` and marker v2 is inert on exactly the agent path.
+- **Task 20 / CONC-8** — the `RunRegistry` lock ordering, withdrawn to its own
+  design pass. Still live on `main`.
+- Two pre-existing `main` defects for upstream report: the phantom `data`
+  parameter (14 of 143 operations), and the `_infer.py` alias twin.
