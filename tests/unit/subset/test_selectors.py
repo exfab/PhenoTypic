@@ -472,7 +472,7 @@ def test_a_user_named_selection_can_carry_a_group_filter():
     assert selection.method == "user_named"
 
 
-def test_a_selection_is_frozen():
+def test_a_selection_rejects_rebinding_a_field():
     """The artifact is written from it; it must not be edited after the fact."""
     import pydantic
 
@@ -481,6 +481,83 @@ def test_a_selection_is_frozen():
     selection = SubsetSelection(images=("a.tif",), method="user_named")
     with pytest.raises(pydantic.ValidationError):
         selection.images = ("b.tif",)
+
+
+def test_a_selections_group_filter_cannot_be_edited_in_place():
+    """``frozen=True`` blocks assignment and **nothing else**.
+
+    Rebinding ``.images`` — a tuple — passes against a model whose dict fields
+    are wide open, so it proved nothing about the field that matters. USER-21
+    binds a human's approval to a specific ``group_filter``; if one item
+    assignment can retarget it, an ack given for one group is spendable on
+    another with every digest still matching.
+    """
+    from phenotypic.subset import SubsetSelection
+
+    selection = SubsetSelection(
+        images=("plateA/plateA_01.tif",),
+        method="user_named",
+        group_filter={"Metadata_Species": "A_niger"},
+    )
+
+    with pytest.raises(TypeError):
+        selection.group_filter["Metadata_Species"] = "TAMPERED"
+    with pytest.raises(TypeError):
+        selection.group_filter["Metadata_Batch"] = "injected"
+    assert selection.group_filter == {"Metadata_Species": "A_niger"}
+
+
+def test_a_selections_params_are_frozen_through_the_nesting():
+    """``params`` is the selector's ``model_dump``, so it *contains* a filter.
+
+    A shallow freeze would leave ``params["group_filter"]`` editable — the
+    same retargeting one level down, in the copy the artifact records as what
+    actually ran.
+    """
+    from phenotypic.subset import RandomSubsetSelector, SubsetSelection
+
+    selection = SubsetSelection(
+        images=("plateA/plateA_01.tif",),
+        method="user_named",
+        params=RandomSubsetSelector(n=1).model_dump(mode="json"),
+    )
+    assert "group_filter" in selection.params
+
+    with pytest.raises(TypeError):
+        selection.params["injected"] = True
+    with pytest.raises(TypeError):
+        selection.params["group_filter"]["Metadata_Species"] = "TAMPERED"
+
+
+def test_a_selections_allocation_cannot_be_edited_in_place():
+    """The recorded stratification is provenance too."""
+    from phenotypic.subset import SubsetSelection
+
+    selection = SubsetSelection(
+        images=("a.tif",), method="user_named", allocation={"rare": 1}
+    )
+    with pytest.raises(TypeError):
+        selection.allocation["rare"] = 99
+
+
+def test_a_frozen_selection_still_serializes_to_plain_json(batches_csv, image_refs):
+    """Immutability is an internal choice; the artifact must not notice it.
+
+    A ``mappingproxy`` is not JSON-serializable, so a freeze that reached the
+    artifact writer would break the thing it exists to protect.
+    """
+    import json
+
+    from phenotypic.subset import MetadataGroupSubsetSelector
+
+    selection = MetadataGroupSubsetSelector(
+        n=4, seed=0, grouping_metadata=str(batches_csv), group_key="Metadata_Batch"
+    ).select(image_refs)
+
+    payload = json.loads(json.dumps(selection.model_dump(mode="json")))
+    assert payload["params"]["group_filter"] == {}
+    assert isinstance(payload["allocation"], dict)
+    assert selection.group_filter == {}
 
 
 def test_expected_vs_detected_keeps_its_shipped_field_name():
@@ -495,3 +572,88 @@ def test_expected_vs_detected_keeps_its_shipped_field_name():
 
     assert "expected_counts_csv" not in ExpectedVsDetectedCount.model_fields
     assert "metadata" in ExpectedVsDetectedCount.model_fields
+
+
+# --------------------------------------------------------------------------
+# n is the compute budget, min_per_group is a statistical floor
+# --------------------------------------------------------------------------
+
+
+def test_min_per_group_never_overruns_n(batches_csv, image_refs):
+    """The budget is a ceiling, and infeasible floors are refused, not absorbed.
+
+    ``n=2`` with ``min_per_group=3`` over two groups used to return **6**
+    images -- three times the budget -- because the reduction loop refused to
+    go below the floors and broke out. Bounding compute is the whole reason
+    the subset boundary exists, so silently overrunning it defeated the
+    boundary with every downstream check green.
+    """
+    from phenotypic.subset import (
+        GroupFloorsExceedTarget,
+        MetadataGroupSubsetSelector,
+    )
+
+    sel = MetadataGroupSubsetSelector(
+        n=2, seed=0, grouping_metadata=str(batches_csv),
+        group_key="Metadata_Batch", min_per_group=3,
+    )
+    with pytest.raises(GroupFloorsExceedTarget) as raised:
+        sel.select(image_refs)
+
+    assert raised.value.n == 2
+    assert raised.value.min_per_group == 3
+    assert raised.value.required == 5  # rare has only 2 candidates to floor
+    assert "n=2" in str(raised.value)
+
+
+def test_the_floor_is_clamped_to_a_group_smaller_than_it(batches_csv, image_refs):
+    """A group of 2 cannot yield 3, so the floor it contributes is 2.
+
+    Feasibility is judged on the *clamped* floors. Judging it on
+    ``min_per_group * len(groups)`` would refuse selections that are perfectly
+    satisfiable — here ``rare`` has 2 candidates, so floors need 2 + 3 = 5.
+    """
+    from phenotypic.subset import MetadataGroupSubsetSelector
+
+    result = MetadataGroupSubsetSelector(
+        n=5, seed=0, grouping_metadata=str(batches_csv),
+        group_key="Metadata_Batch", min_per_group=3,
+    ).select(image_refs)
+
+    assert len(result.images) == 5
+    assert result.allocation == {"common": 3, "rare": 2}
+
+
+def test_a_feasible_floor_is_still_honoured(batches_csv, image_refs):
+    """The refusal must not have turned every floor into an error."""
+    from phenotypic.subset import MetadataGroupSubsetSelector
+
+    result = MetadataGroupSubsetSelector(
+        n=6, seed=0, grouping_metadata=str(batches_csv),
+        group_key="Metadata_Batch", allocation="proportional", min_per_group=2,
+    ).select(image_refs)
+
+    assert len(result.images) == 6
+    assert result.allocation["rare"] == 2
+
+
+def test_a_selection_never_exceeds_n_across_the_shipped_selectors(
+    batches_csv, image_refs
+):
+    """One assertion covering the property the budget actually needs.
+
+    No floor here: with ``min_per_group=1`` and two groups, ``n=1`` is the
+    infeasible case that now raises, which is a different property.
+    """
+    from phenotypic.subset import (
+        MetadataGroupSubsetSelector,
+        RandomSubsetSelector,
+    )
+
+    for n in (1, 3, 7, 12, 20):
+        assert len(RandomSubsetSelector(n=n, seed=0).select(image_refs).images) <= n
+        stratified = MetadataGroupSubsetSelector(
+            n=n, seed=0, grouping_metadata=str(batches_csv),
+            group_key="Metadata_Batch",
+        ).select(image_refs)
+        assert len(stratified.images) <= n

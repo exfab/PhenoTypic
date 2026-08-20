@@ -16,6 +16,7 @@ from phenotypic.sdk_._metadata_helpers import ensure_metadata_prefix
 
 from ._selector import (
     GroupAllocation,
+    GroupFloorsExceedTarget,
     GroupKeyNotInMetadata,
     ImageRef,
     SelectorCostClass,
@@ -97,6 +98,10 @@ class MetadataGroupSubsetSelector(SubsetSelector):
         allocation: ``"proportional"`` mirrors group sizes; ``"equal"`` gives
             every group the same count, so a rare condition is not swamped.
         min_per_group: Floor per group. Groups smaller than it are taken whole.
+            Bounded by ``n``: the two are separate constraints and can
+            conflict, and when they do the selector raises rather than
+            silently overrunning the budget. See
+            :class:`~GroupFloorsExceedTarget` for which one wins and why.
         group_filter: See :class:`~SubsetSelector`. Applied first, so
             ``allocation`` stratifies *inside* the filtered set.
 
@@ -104,6 +109,8 @@ class MetadataGroupSubsetSelector(SubsetSelector):
         GroupKeyNotInMetadata: From :meth:`select`, if ``group_key`` resolves no
             group for any candidate — including the case where the CSV has the
             column but is keyed by bare filename and so joins to nothing.
+        GroupFloorsExceedTarget: From :meth:`select`, if ``min_per_group``
+            cannot be honoured across the resolved groups within ``n``.
     """
 
     group_key: str
@@ -174,7 +181,10 @@ class MetadataGroupSubsetSelector(SubsetSelector):
 
         Returns:
             Group name → images to take, summing to ``min(n, total)`` whenever
-            the caps allow it.
+            the caps allow it, and **never** more than ``n``.
+
+        Raises:
+            GroupFloorsExceedTarget: If the floors alone need more than ``n``.
         """
         names = sorted(group_sizes)
         total = sum(group_sizes.values())
@@ -198,7 +208,18 @@ class MetadataGroupSubsetSelector(SubsetSelector):
             for name in by_fraction[:shortfall]:
                 raw[name] += 1
 
+        # Clamped to each group's size first: a floor of 3 over a group of 2
+        # asks for an image that does not exist, and the docstring already
+        # promises such a group is taken whole.
         floors = {name: min(self.min_per_group, group_sizes[name]) for name in names}
+        required = sum(floors.values())
+        if required > target:
+            raise GroupFloorsExceedTarget(
+                n=self.n,
+                min_per_group=self.min_per_group,
+                required=required,
+                group_sizes=group_sizes,
+            )
         allocation = {
             name: min(group_sizes[name], max(raw[name], floors[name]))
             for name in names

@@ -19,9 +19,17 @@ import csv
 import random
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Final, Literal, Sequence
+from types import MappingProxyType
+from typing import Annotated, Any, Final, Literal, Mapping, Sequence
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+    model_validator,
+)
 
 from phenotypic.sdk_._metadata_helpers import ensure_metadata_prefix
 
@@ -43,6 +51,72 @@ IMAGE_IDENTITY_COLUMNS: Final[tuple[str, ...]] = (
     "relative_path",
     "metadata_imagefile",
 )
+
+def _deep_freeze(value: Any) -> Any:
+    """Recursively replace mutable containers with immutable equivalents.
+
+    ``ConfigDict(frozen=True)`` blocks attribute **assignment** and nothing
+    else, so a ``dict`` field on a frozen model is wide open:
+    ``selection.group_filter[key] = other`` succeeds. Nesting matters as much
+    as the top level, because a selector's ``params`` is its
+    ``model_dump(mode="json")`` and therefore carries its own ``group_filter``
+    one level down.
+
+    Mappings become :class:`~types.MappingProxyType` over an already-frozen
+    copy — a *copy*, so no caller keeps a live handle to the underlying dict —
+    and sequences become tuples. Both still compare equal to the plain
+    containers they replace, so callers and artifacts read unchanged.
+    """
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {key: _deep_freeze(item) for key, item in value.items()}
+        )
+    if isinstance(value, (list, tuple)):
+        return tuple(_deep_freeze(item) for item in value)
+    if isinstance(value, (set, frozenset)):
+        return frozenset(_deep_freeze(item) for item in value)
+    return value
+
+
+def _deep_thaw(value: Any) -> Any:
+    """Undo :func:`_deep_freeze` for serialization.
+
+    A ``MappingProxyType`` is not JSON-serializable and pydantic will not
+    descend into an ``Any``, so the artifact writer would otherwise receive
+    proxies where it expects objects.
+    """
+    if isinstance(value, Mapping):
+        return {key: _deep_thaw(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_deep_thaw(item) for item in value]
+    if isinstance(value, frozenset):
+        return sorted(_deep_thaw(item) for item in value)
+    return value
+
+
+#: A ``{str: str}`` field that is immutable *through* the value, not merely
+#: unassignable. Serializes back to a plain ``dict``.
+FrozenStrMap = Annotated[
+    Mapping[str, str],
+    AfterValidator(_deep_freeze),
+    PlainSerializer(_deep_thaw, return_type=dict),
+]
+
+#: A ``{str: int}`` field, frozen the same way.
+FrozenIntMap = Annotated[
+    Mapping[str, int],
+    AfterValidator(_deep_freeze),
+    PlainSerializer(_deep_thaw, return_type=dict),
+]
+
+#: A ``{str: Any}`` field, frozen **recursively** — a selector's serialized
+#: params nest, and a shallow freeze leaves the nested levels editable.
+FrozenParams = Annotated[
+    Mapping[str, Any],
+    AfterValidator(_deep_freeze),
+    PlainSerializer(_deep_thaw, return_type=dict),
+]
+
 
 #: Cost tiers a selector can report, matching the server's work classes.
 #: ``W0`` needs only files already on disk; ``W2`` is scheduled compute.
@@ -124,6 +198,54 @@ class GroupKeyNotInMetadata(SubsetMetadataError):
         )
 
 
+class GroupFloorsExceedTarget(ValueError):
+    """``min_per_group`` cannot be honoured inside ``n``.
+
+    ``n`` is the **compute budget** and it wins: bounding compute is the whole
+    reason the subset boundary exists, and a selector that quietly returned
+    three times the budget defeated it with every downstream check green. The
+    ABC's "``n`` is a target, not a contract" licenses taking *fewer* images
+    than asked, never more.
+
+    ``min_per_group`` is a **statistical floor**, so silently dropping below
+    it is equally wrong: it would report a stratified selection whose strata
+    are too thin to mean anything. When the two genuinely conflict there is no
+    correct silent answer, so the selector refuses and names both numbers. The
+    caller raises ``n``, lowers ``min_per_group``, or narrows the groups.
+
+    Not a :class:`SubsetMetadataError`: nothing is wrong with the grouping CSV.
+    It is a ``ValueError`` so ordinary callers catch it without importing this
+    module.
+
+    Attributes:
+        n: The requested target.
+        min_per_group: The requested per-group floor.
+        required: Images the floors demand, after clamping each to its group's
+            size.
+        group_sizes: Group name → candidates available in it.
+    """
+
+    def __init__(
+        self,
+        *,
+        n: int,
+        min_per_group: int,
+        required: int,
+        group_sizes: Mapping[str, int],
+    ) -> None:
+        self.n = n
+        self.min_per_group = min_per_group
+        self.required = required
+        self.group_sizes = dict(group_sizes)
+        super().__init__(
+            f"min_per_group={min_per_group} over {len(self.group_sizes)} "
+            f"groups needs at least {required} images, but n={n}. "
+            "n is the compute budget and is never exceeded; raise n, lower "
+            "min_per_group, or narrow the groups with group_filter. "
+            f"Group sizes: {dict(sorted(self.group_sizes.items()))}"
+        )
+
+
 class ImageRef(BaseModel):
     """One candidate image: where it is, and what it is called under its parent.
 
@@ -171,6 +293,16 @@ class SubsetSelection(BaseModel):
     artifact is written from it: a selection that could be edited afterwards is
     a recorded provenance that need not match what actually ran.
 
+    **Frozen through the values, not just against assignment.**
+    ``ConfigDict(frozen=True)`` stops ``selection.group_filter = other`` and
+    nothing more, so plain ``dict`` fields left the mapping that matters most
+    editable in place. USER-21 binds a human's approval to a specific
+    ``group_filter``; an ack spendable on another group by one item assignment
+    is not an ack. The mapping fields are therefore immutable proxies over
+    deep-frozen copies — including :attr:`params`, which carries a nested copy
+    of the selector's own ``group_filter``. They compare equal to the plain
+    dicts they replace and serialize back to them.
+
     Constructible **directly**, not only as ``select()``'s return value — a
     hand-picked ``user_named`` subset is a first-class selection method with no
     selector behind it, and it must be able to carry a ``group_filter`` too
@@ -194,10 +326,10 @@ class SubsetSelection(BaseModel):
 
     images: tuple[str, ...]
     method: str
-    params: dict[str, Any] = Field(default_factory=dict)
+    params: FrozenParams = Field(default_factory=dict)
     seed: int = 0
-    group_filter: dict[str, str] = Field(default_factory=dict)
-    allocation: dict[str, int] = Field(default_factory=dict)
+    group_filter: FrozenStrMap = Field(default_factory=dict)
+    allocation: FrozenIntMap = Field(default_factory=dict)
     rationale: str = ""
 
 
@@ -211,8 +343,12 @@ class SubsetSelector(BaseModel, ABC):
     the filter or reimplement it differently.
 
     Args:
-        n: Target subset size. A candidate set smaller than ``n`` is taken
-            whole rather than erroring; ``n`` is a target, not a contract.
+        n: Target subset size, and a **ceiling**. A candidate set smaller than
+            ``n`` is taken whole rather than erroring — ``n`` is a target, not
+            a contract — but no selector ever returns *more* than ``n``, since
+            bounding compute is what the subset boundary is for. A subclass
+            constraint that cannot be satisfied within ``n`` raises
+            :class:`GroupFloorsExceedTarget` rather than overrunning it.
         seed: RNG seed; recorded on the artifact so a selection is reproducible.
         grouping_metadata: CSV supplying the metadata columns
             :attr:`group_filter` (and any stratification) reads, joined to
