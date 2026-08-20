@@ -30,23 +30,37 @@ splits it at the detector boundary (`split_pipeline_at_gpu` in
 and runs three content-defined stages. The per-image stage cores live in
 `_cli_staged_workers.py` and are shared by both staged strategies:
 
-1. **Stage 1** `stage1_preprocess_core` — apply pre-detector ops → save the
-   normal `results/<ds>/hdf/<stem>.h5`.
-2. **Stage 2** `stage2_detect_core` — load the input layer (HDF **read-only**),
-   run the resident detector, write a per-image `.npy` objmap **sidecar**
-   (`_cli_sidecar.py`, atomic temp+`os.replace`).
-3. **Stage 3** `stage3_merge_measure_core` — merge the sidecar via the accessor,
-   apply post-ops + `measure(apply_post=False)`, atomically re-save the HDF,
-   **delete the sidecar** (mandatory).
+1. **Stage 1** `stage1_preprocess_core` — apply pre-detector ops → publish the
+   staged OME-Zarr store `results/<ds>/zarr/<stem>.ome.zarr/` (objmap included,
+   as zeros, because `valid_staged_store` requires it).
+2. **Stage 2** `stage2_detect_core` — load the input layer (store **read-only**),
+   run the resident detector, and drop its **Stage-2 signal**: the retained
+   **raw** detector output at
+   `.phenotypic/progress/stage2_raw/<ds>/<stem>.npy`, then a consumable **token**
+   at `.phenotypic/progress/stage2_done/<ds>/<stem>.json` (`_cli_stage2_token.py`,
+   both atomic temp+`os.replace`; raw first, so a crash between them leaves no
+   "done" signal). **Stage 2 does not write into the store** — only the final
+   store needs third-party interop, and an in-store write would be visible to
+   the uncached crop route as raw pre-`drop_frame_background` labels.
+3. **Stage 3** `stage3_merge_measure_core` — replay the **raw** array through the
+   accessor (never the store's own objmap: Stage 3 re-promotes over it, so a
+   retry would refine already-refined labels), apply post-ops +
+   `measure(apply_post=False)`, re-promote the store, then consume the signal —
+   **token first, then the raw array** (mandatory).
 
 **Continuation is automatic and content-defined.** Run the same command again;
 there is no `--resume` flag. Exact terminal failures remain skipped unless
 `--retry-failures` is supplied.
-A missing or invalid HDF selects Stage 1; a valid HDF without a sidecar selects
-Stage 2; and a valid HDF with a sidecar selects Stage 3. Stage 3 writes an atomic
-terminal marker after publishing the parquet, HDF, and plot, then deletes the
-sidecar. The output is
-byte-identical to a single-pass run.
+A missing or invalid store selects Stage 1; a valid store without a complete
+Stage-2 signal selects Stage 2; and a valid store with one selects Stage 3.
+**Every prereq probe tests BOTH halves of the signal** —
+`stage2_result_replayable()` is the one function all five sites call. The token
+is only a flag; Stage 3's actual input is the raw `.npy`, so a
+token-present/raw-missing image is routed back to Stage 2, not into a Stage 3
+that would raise `FileNotFoundError` and be recorded as a terminal *scientific*
+failure. Stage 3 writes an atomic terminal marker after publishing the parquet,
+store, and plot, then consumes the signal. The output is byte-identical to a
+single-pass run.
 
 **Progress events.** Stages emit stage-tagged events via the `stage` field on
 the event log (`_cli_update_state.py`: `append_event(..., stage="stage1|2|3")`).
@@ -82,8 +96,8 @@ trigger must:
 - have tests proving both the trigger routing and the absence of a standalone
   parallel submission.
 
-This scheduler rule is unrelated to the staged GPU `.npy` objmap **sidecar
-file**. It also does not convert a terminal `afterany` finalizer into an array
+This scheduler rule is unrelated to the staged GPU Stage-2 **signal files**
+(the retained raw `.npy` and its token). It also does not convert a terminal `afterany` finalizer into an array
 entry: a finalizer runs after the array becomes terminal and is not a parallel
 sidecar. The existing staged-GPU controller topology is a specialized,
 explicitly capacity-reserved design; do not generalize it into new ordinary
@@ -144,12 +158,12 @@ persisting the returned ID.
   directive so a CPU partition can run the GPU stage, e.g. tests).
 - **Walltime survival:** Stage 2 does not install a signal handler or self-requeue.
   After each array reaches a terminal scheduler state, its dependent controller
-  reclassifies the manifest from valid HDFs, atomic sidecars, Stage-3 markers,
-  and terminal failures. Remaining images launch another array round. One unchanged
+  reclassifies the manifest from valid stores, complete Stage-2 signals,
+  Stage-3 markers, and terminal failures. Remaining images launch another array round. One unchanged
   retryable-set round is retried; a second unchanged round terminalizes the
   remainder and advances to Stage 3.
-- Every worker checks the active epoch immediately before publishing HDF,
-  sidecar, parquet, plot, or deletion changes. Restart and cancellation fence
+- Every worker checks the active epoch immediately before publishing the store,
+  the Stage-2 signal, parquet, plot, or deletion changes. Restart and cancellation fence
   stale workers before clearing or cancelling ledgered jobs.
 - Without `--wait`, staged submission returns `PROCESSING SUBMITTED` and remote
   finalization owns aggregation, reports, README, and the completion marker.

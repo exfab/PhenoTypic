@@ -8,14 +8,14 @@ third-party interop, and an in-store write would be visible to the uncached
 crop route as raw pre-``drop_frame_background`` labels.
 
 The token is deliberately **not** NGFF metadata. Using ``ome.labels`` as the
-"Stage 2 done" signal is not an exact replacement for ``sidecar_exists()`` and
-would break resume in two ways:
+"Stage 2 done" signal is not an exact replacement for the objmap sidecar's
+existence probe, and would break resume in two ways:
 
-* The sidecar is consumable -- ``delete_sidecar`` ran at the end of Stage 3 and
-  the resume planner's ``"complete"`` branch tests its **absence**. A durable
-  labels list makes that conjunct permanently false, so ``"complete"`` never
-  fires and every finished image is reprocessed. It also silently disables
-  ``migrate_legacy_stage3_markers``.
+* The old signal was **consumable** -- Stage 3 deleted the sidecar at the end,
+  and the resume planner's ``"complete"`` branch tests its **absence**. A
+  durable labels list makes that conjunct permanently false, so ``"complete"``
+  never fires and every finished image is reprocessed. It also silently
+  disables ``migrate_legacy_stage3_markers``.
 * The labels list is not the only discovery path: ``zarr.Group.members()``
   enumerates children by store listing and returns a partially written
   ``objmap``, which reads as a mix of real labels and ``fill_value``. NGFF only
@@ -96,7 +96,7 @@ def read_stage2_token(output_dir: Path, dataset: str, image_stem: str) -> dict:
 
 
 def delete_stage2_token(output_dir: Path, dataset: str, image_stem: str) -> None:
-    """Consume the token. Idempotent, mirroring ``delete_sidecar``."""
+    """Consume the token. Idempotent, mirroring the old sidecar delete."""
     stage2_token_path(output_dir, dataset, image_stem).unlink(missing_ok=True)
 
 
@@ -143,6 +143,40 @@ def write_stage2_raw(
 
     atomic_write_with_writer(final, _write)
     return final
+
+
+def stage2_result_replayable(
+    output_dir: Path, dataset: str, image_stem: str
+) -> bool:
+    """Return whether Stage 3 can actually replay this image's Stage-2 result.
+
+    **Both halves, never the token alone.** The token is only a *flag*; Stage
+    3's real input is the retained raw ``.npy``. A token-present/raw-missing
+    state -- a partial cleanup, a truncated copy -- makes
+    :func:`load_stage2_raw` raise an uncaught ``FileNotFoundError`` inside
+    ``stage_event``, which is reported as a terminal **scientific** failure
+    instead of a missing prerequisite. Combined with
+    ``classify_staged_image``'s token-present/raw-missing branch, such an image
+    is otherwise permanently unreachable (ledger **FLOW-17**, extended by
+    **M7**).
+
+    One function so the five probe sites cannot drift: the local strategy's
+    Stage-2 filter, its Stage-3 gate, its ``--layer objmap`` gate, the SLURM
+    shard worker's candidate filter, and the recovery controller's
+    already-done skip.
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        image_stem: Image stem.
+
+    Returns:
+        ``True`` only when the token **and** the raw array are both present.
+    """
+    return (
+        stage2_token_exists(output_dir, dataset, image_stem)
+        and stage2_raw_path(output_dir, dataset, image_stem).is_file()
+    )
 
 
 def load_stage2_raw(output_dir: Path, dataset: str, image_stem: str) -> np.ndarray:

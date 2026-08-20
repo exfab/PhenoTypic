@@ -16,16 +16,20 @@ from uuid import uuid4
 
 from phenotypic import ImagePipeline
 from phenotypic.sdk_ import (
-    dataset_hdf_dir,
     dataset_measurements_dir,
     event_log_path,
+    zarr_store_path,
 )
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import split_pipeline_at_gpu
 from ._cli_preload import preload_custom_operation_modules
-from ._cli_sidecar import delete_sidecar, sidecar_exists
+from ._cli_stage2_token import (
+    delete_stage2_raw,
+    delete_stage2_token,
+    stage2_result_replayable,
+)
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
     assert_active_epoch,
@@ -37,13 +41,17 @@ from ._cli_failure_tracker import (
     append_terminal_failure,
     read_terminal_failures,
 )
-from ._cli_completion import publish_image_success, valid_image_success
+from ._cli_completion import (
+    image_data_artifact,
+    publish_image_success,
+    valid_image_success,
+)
 from ._cli_staged_slurm import partition_shards
 from ._cli_staged_resume import (
     clear_downstream_artifacts_for_stage1,
     stage3_completion_exists,
-    staged_hdf_matches_work_id,
-    valid_staged_hdf,
+    staged_store_matches_work_id,
+    valid_staged_store,
     write_stage3_completion_marker,
 )
 from ._cli_staged_workers import (
@@ -123,15 +131,15 @@ def run_stage1_step(
     epoch: str | None = None,
     resume: bool = False,
 ) -> None:
-    """Preprocess one manifest image into its staged HDF."""
+    """Preprocess one manifest image into its staged OME-Zarr store."""
     item = _entry(manifest[index])
-    hdf = dataset_hdf_dir(output_dir, item.dataset) / f"{item.stem}.h5"
+    store = zarr_store_path(output_dir, item.dataset, item.stem)
     if resume and (
         (
             item.work_id
-            and staged_hdf_matches_work_id(hdf, item.work_id)
+            and staged_store_matches_work_id(store, item.work_id)
         )
-        or (not item.work_id and valid_staged_hdf(hdf))
+        or (not item.work_id and valid_staged_store(store))
     ):
         return
     check = _active_check(output_dir, epoch)
@@ -193,7 +201,7 @@ def run_stage2_shard(
         item
         for item in shard
         if item.work_id not in terminal
-        if not sidecar_exists(output_dir, item.dataset, item.stem)
+        if not stage2_result_replayable(output_dir, item.dataset, item.stem)
         and not (
             bool(
                 item.work_id
@@ -220,11 +228,11 @@ def run_stage2_shard(
     log = event_log_path(output_dir)
     pending: list[StagedManifestEntry] = []
     for item in candidates:
-        hdf = dataset_hdf_dir(output_dir, item.dataset) / f"{item.stem}.h5"
+        store = zarr_store_path(output_dir, item.dataset, item.stem)
         if (
             item.work_id
-            and staged_hdf_matches_work_id(hdf, item.work_id)
-        ) or (not item.work_id and valid_staged_hdf(hdf)):
+            and staged_store_matches_work_id(store, item.work_id)
+        ) or (not item.work_id and valid_staged_store(store)):
             pending.append(item)
             continue
         emit_missing_prereq(
@@ -232,7 +240,7 @@ def run_stage2_shard(
             item.dataset,
             item.image_name,
             STAGE_GPU_DETECT,
-            "staged HDF",
+            "staged store",
         )
     if not pending:
         return
@@ -273,7 +281,7 @@ def run_stage3_step(
     markers_required: bool = True,
     overlay_alpha: float = 0.3,
 ) -> None:
-    """Merge one sidecar, measure it, and publish final per-image outputs."""
+    """Replay one Stage-2 result, measure it, and publish per-image outputs."""
     item = _entry(manifest[index])
     parquet = (
         dataset_measurements_dir(output_dir, item.dataset)
@@ -313,8 +321,8 @@ def run_stage3_step(
         resume
         and item.work_id
         and stage3_completion_exists(output_dir, item.dataset, item.stem)
-        and staged_hdf_matches_work_id(
-            dataset_hdf_dir(output_dir, item.dataset) / f"{item.stem}.h5",
+        and staged_store_matches_work_id(
+            zarr_store_path(output_dir, item.dataset, item.stem),
             item.work_id,
         )
         and parquet.is_file()
@@ -327,10 +335,12 @@ def run_stage3_step(
             image_type,
             active_check=_active_check(output_dir, epoch),
         )
+        data_key, data_path = image_data_artifact(
+            output_dir, output_manager, item.dataset, item.stem
+        )
         artifacts = {
             "measurements": parquet,
-            "hdf": dataset_hdf_dir(output_dir, item.dataset)
-            / f"{item.stem}.h5",
+            data_key: data_path,
             "overlay": output_manager.get_output_path(
                 item.dataset, "overlays", item.stem
             ),
@@ -351,13 +361,17 @@ def run_stage3_step(
     if check is not None:
         check()
     log = event_log_path(output_dir)
-    if not sidecar_exists(output_dir, item.dataset, item.stem):
+    # BOTH halves. The token is only a flag; Stage 3's input is the raw .npy,
+    # and a token-present/raw-missing image would otherwise raise
+    # FileNotFoundError inside stage_event and be recorded as a terminal
+    # SCIENTIFIC failure rather than a missing prereq (ledger FLOW-17/M7).
+    if not stage2_result_replayable(output_dir, item.dataset, item.stem):
         emit_missing_prereq(
             log,
             item.dataset,
             item.image_name,
             STAGE_MEASURE,
-            "objmap sidecar",
+            "Stage 2 result",
         )
         raise SystemExit(1)
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
@@ -375,13 +389,14 @@ def run_stage3_step(
                 work_id=item.work_id,
             )
             if item.work_id:
+                data_key, data_path = image_data_artifact(
+                    output_dir, output_manager, item.dataset, item.stem
+                )
                 artifacts = {
                     "measurements": output_manager.get_output_path(
                         item.dataset, "measurements", item.stem
                     ),
-                    "hdf": output_manager.get_output_path(
-                        item.dataset, "hdf", item.stem
-                    ),
+                    data_key: data_path,
                 }
                 if output_manager.save_overlays:
                     artifacts["overlay"] = output_manager.get_output_path(
@@ -406,7 +421,10 @@ def run_stage3_step(
                 item.image_name,
                 item.stem,
             )
-            delete_sidecar(output_dir, item.dataset, item.stem)
+            # Token FIRST at every consumption site: the only reachable
+            # intermediate state must be "no token, orphan raw".
+            delete_stage2_token(output_dir, item.dataset, item.stem)
+            delete_stage2_raw(output_dir, item.dataset, item.stem)
     except Exception as exc:
         _record_terminal_scientific_failure(output_dir, item, exc, epoch)
         raise

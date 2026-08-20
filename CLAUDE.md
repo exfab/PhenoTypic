@@ -69,10 +69,14 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
   interruption or when new compatible inputs appear; there is no `--resume` flag.
 - **GPU detectors stage automatically:** when a pipeline contains a `GpuDetector`,
   `python -m phenotypic` runs detection as three internal stages — CPU preprocess →
-  resident-model GPU detect → CPU measure — reusing the per-image HDF. Stage 2 writes a
-  per-image `.npy` objmap **sidecar** (HDF opened read-only); Stage 3 merges it into the
-  final HDF, measures, and deletes the sidecar. The output folder is identical to a
-  single-pass run; continuation is content-defined (valid HDF → sidecar → atomic Stage-3
+  resident-model GPU detect → CPU measure — reusing the per-image OME-Zarr store.
+  Stage 2 reads that store **read-only** and never writes into it; its result is a
+  **Stage-2 signal** under `.phenotypic/progress/`: the retained **raw** detector
+  output `stage2_raw/<ds>/<stem>.npy` plus a consumable **token**
+  `stage2_done/<ds>/<stem>.json`. Stage 3 replays the raw array, measures,
+  re-promotes the store, and consumes the token and then the raw array. The output
+  folder is identical to a single-pass run; continuation is content-defined
+  (valid store → complete Stage-2 signal → atomic Stage-3
   completion marker) and progress is
   stage-tagged. `--mode process --layer objmap` exports objmaps after Stages 1–2.
   On SLURM, the stages submit through an **epoch-fenced recoverable controller**:
@@ -82,7 +86,7 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
   chunked). Only Controller 0 is submitted initially; it pre-arms a dependent recovery
   controller before launching Stage-1 chunk 0. Each controller records the next job in
   an append-only ledger. After a Stage-2 timeout, the controller derives remaining work
-  from atomic sidecars and submits another round. No worker signal handler or self-requeue
+  from complete Stage-2 signals and submits another round. No worker signal handler or self-requeue
   is used. Without `--wait`, the CLI reports submission only; the dependent finalizer is
   the sole publisher of aggregated outputs and the completion marker.
   Staged GPU flags (Spec 1 §10):
@@ -105,8 +109,9 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
   `__PHENOTYPIC_MANIFEST__` dispatch pattern. Count every trigger entry when
   sizing chunks against `MaxArraySize`, and test that no standalone parallel job
   is submitted.
-- This rule concerns scheduler jobs, not the staged GPU `.npy` objmap sidecar
-  file. A terminal `afterany` finalizer is also not a parallel sidecar.
+- This rule concerns scheduler jobs, not the staged GPU Stage-2 signal files
+  (the retained raw `.npy` and its token). A terminal `afterany` finalizer is
+  also not a parallel sidecar.
 - See `src/phenotypic/_cli/CLAUDE.md` for the full routing contract. Root
   `AGENTS.md` is a symlink to this file and therefore carries the same rule.
 
@@ -275,7 +280,8 @@ enforces this for ruff, but the rule binds regardless of the tool.
 - **Operations use `.apply()`, not `__call__`:** `op.apply(image)` is correct;
   `op(image)` raises `TypeError`.
 - **GPU pipelines stage internally:** a `GpuDetector` in a CLI run triggers the staged
-  engine (preprocess → GPU → measure) with a per-image objmap **sidecar**, not per-image
+  engine (preprocess → GPU → measure) with a per-image Stage-2 signal (a retained
+  raw `.npy` plus a consumable token under `.phenotypic/progress/`), not per-image
   processing; the resident model loads once. Notebook `op.apply(image)` is unchanged.
   See [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) for the strategy dispatch +
   stages.

@@ -8,8 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal, Mapping, Sequence
 
-import h5py  # type: ignore[import-untyped]
-
 from phenotypic.sdk_ import (
     atomic_write_json,
     dataset_measurements_dir,
@@ -74,63 +72,6 @@ class StagedResumePlan:
 def pipeline_content_digest(pipeline_path: Path) -> str:
     """Return a SHA-256 digest of the serialized pipeline definition."""
     return hashlib.sha256(Path(pipeline_path).read_bytes()).hexdigest()
-
-
-def valid_staged_hdf(path: Path) -> bool:
-    """Return whether *path* contains the image layers Stage 2 requires.
-
-    .. deprecated::
-        Superseded by :func:`phenotypic.sdk_.ngff_.valid_staged_store`, which
-        this module re-exports. Retained only because
-        ``_cli_staged_strategy``, ``_cli_staged_controller`` and
-        ``_cli_staged_slurm_worker`` still probe HDFs; Task 3.5 ports those
-        call sites and deletes this with the last of them.
-    """
-    try:
-        if not path.is_file() or not h5py.is_hdf5(path):
-            return False
-        with h5py.File(path, "r") as handle:
-            schema_version = int(handle.attrs.get("schema_version", 1))
-            layers = (
-                handle["layers"]
-                if schema_version >= 2 and "layers" in handle
-                else handle
-            )
-            detect_name = (
-                "detect_mat" if "detect_mat" in layers else "enh_gray"
-            )
-            names = ("gray", detect_name, "objmap")
-            if any(name not in layers for name in names):
-                return False
-            datasets = [layers[name] for name in names]
-            if any(not isinstance(item, h5py.Dataset) for item in datasets):
-                return False
-            shapes = [item.shape for item in datasets]
-            return all(
-                len(shape) >= 2 and shape[0] > 0 and shape[1] > 0
-                for shape in shapes
-            ) and all(shape[:2] == shapes[0][:2] for shape in shapes[1:])
-    except (OSError, TypeError, ValueError):
-        return False
-
-
-def staged_hdf_matches_work_id(path: Path, work_id: str) -> bool:
-    """Return whether a valid staged HDF is bound to ``work_id``.
-
-    .. deprecated::
-        Superseded by :func:`staged_store_matches_work_id`; see
-        :func:`valid_staged_hdf` for why it outlives the port.
-    """
-    if not valid_staged_hdf(path):
-        return False
-    try:
-        with h5py.File(path, "r") as handle:
-            value = handle.attrs.get("phenotypic_work_id")
-            if isinstance(value, bytes):
-                value = value.decode("utf-8")
-            return value == work_id
-    except (OSError, UnicodeDecodeError):
-        return False
 
 
 def staged_store_matches_work_id(path: Path, work_id: str) -> bool:
@@ -463,9 +404,7 @@ __all__ = [
     "remove_stage3_completion_marker",
     "stage3_completion_exists",
     "stage3_completion_marker_path",
-    "staged_hdf_matches_work_id",
     "staged_store_matches_work_id",
-    "valid_staged_hdf",
     "valid_staged_store",
     "write_stage3_completion_marker",
 ]

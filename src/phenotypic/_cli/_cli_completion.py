@@ -34,6 +34,51 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def image_data_artifact(
+    output_dir: Path,
+    output_manager: object,
+    dataset: str,
+    image_stem: str,
+) -> tuple[str, Path]:
+    """Return the ``(key, path)`` of the per-image data artifact to certify.
+
+    Staged runs publish an OME-Zarr store; the single-pass path still writes an
+    ``.h5`` until Phase 3 Task 3.6 ports it, so both have to be describable
+    from one place.
+
+    A store is named by its **root ``zarr.json``**, not by the directory. That
+    is a regular file, so the existing content-only descriptor
+    (``{"size", "sha256"}``) applies unchanged and is exactly the fingerprint
+    Task 3.8's ``kind: "store"`` descriptor keys on. Fingerprinting the
+    directory instead would be a constant function of the path
+    (``_io_constants.py:215-217`` emits one sentinel byte and does not
+    recurse), which would certify a store whose contents had changed.
+
+    Because the root ``zarr.json`` is written **last** by ``promote_store``,
+    its digest covers the whole promoted store: any later re-promote replaces
+    it and invalidates the marker. That is why no store write may follow
+    ``publish_image_success`` on any path (ledger **FLOW-6**).
+
+    Args:
+        output_dir: Run output root.
+        output_manager: The run's :class:`OutputManager` (HDF fallback only).
+        dataset: Dataset name.
+        image_stem: Image stem.
+
+    Returns:
+        ``("store", <store>/zarr.json)`` when a store exists, else
+        ``("hdf", results/<ds>/hdf/<stem>.h5)``.
+    """
+    from phenotypic.sdk_ import zarr_store_path
+
+    store_root = zarr_store_path(output_dir, dataset, image_stem) / "zarr.json"
+    if store_root.is_file():
+        return "store", store_root
+    return "hdf", output_manager.get_output_path(  # type: ignore[attr-defined]
+        dataset, "hdf", image_stem
+    )
+
+
 def publish_image_success(
     output_dir: Path,
     *,

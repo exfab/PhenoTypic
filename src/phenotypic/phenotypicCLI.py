@@ -1583,11 +1583,11 @@ def phenotypic_cli(
         # prior run's events.
         if restart:
             if output_dir.exists():
-                from phenotypic._cli._cli_staged_orchestration import (
-                    clear_stage2_sidecars,
-                )
-
-                removed_sidecars = clear_stage2_sidecars(output_dir)
+                # The transient Stage-2 signal (retained raw .npy + consumable
+                # token) lives under .phenotypic/progress/, which
+                # clear_machine_state wipes -- so there is nothing extra to
+                # clear here. The old clear_stage2_sidecars() globbed
+                # results/*/objmap/*.npy and would now be a permanent no-op.
                 if clear_machine_state(output_dir):
                     click.echo(
                         f"✓ Cleared previous machine-state (.phenotypic/) from {output_dir}"
@@ -1595,10 +1595,6 @@ def phenotypic_cli(
                 else:
                     click.echo(
                         f"Note: No previous state found in {output_dir} (starting fresh)"
-                    )
-                if removed_sidecars:
-                    click.echo(
-                        f"✓ Cleared {removed_sidecars} transient Stage 2 sidecar(s)"
                     )
             else:
                 click.echo(

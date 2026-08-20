@@ -1,7 +1,8 @@
 """Durable orchestration state for staged SLURM GPU runs.
 
-The staged controller is deliberately artifact-driven. Per-image HDF, objmap
-sidecar, and terminal Stage 3 markers decide what work remains. This module
+The staged controller is deliberately artifact-driven. The per-image OME-Zarr
+store, the Stage-2 signal (a retained raw ``.npy`` plus a consumable token), and
+terminal Stage 3 markers decide what work remains. This module
 supplies the small amount of durable coordination needed to make scheduler
 submissions and run cancellation crash-recoverable.
 """
@@ -22,7 +23,6 @@ from phenotypic.sdk_ import (
     atomic_write_json,
     dataset_measurements_dir,
     progress_dir,
-    results_dir,
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
@@ -658,22 +658,6 @@ def cancel_staged_jobs(output_dir: Path) -> list[str]:
     return sorted(all_ids)
 
 
-def clear_stage2_sidecars(output_dir: Path) -> int:
-    """Delete transient Stage-2 objmap sidecars during an explicit restart."""
-    root = results_dir(output_dir)
-    removed = 0
-    if not root.is_dir():
-        return removed
-    for objmap_dir in root.glob("*/objmap"):
-        if not objmap_dir.is_dir():
-            continue
-        for path in objmap_dir.iterdir():
-            if path.is_file() and path.suffix in {".npy", ".tmp"}:
-                path.unlink()
-                removed += 1
-    return removed
-
-
 def mark_staged_complete(output_dir: Path, epoch: str) -> None:
     """Atomically mark successful remote finalization for *epoch*."""
     assert_active_epoch(output_dir, epoch)
@@ -724,7 +708,6 @@ __all__ = [
     "append_stage2_terminal_failure",
     "assert_active_epoch",
     "cancel_staged_jobs",
-    "clear_stage2_sidecars",
     "completed_inventory_images",
     "current_slurm_job_id",
     "deactivate_orchestration",

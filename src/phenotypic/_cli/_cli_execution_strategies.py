@@ -57,7 +57,7 @@ from ._cli_failure_tracker import (
     read_failures,
     work_id_for_image,
 )
-from ._cli_completion import publish_image_success
+from ._cli_completion import image_data_artifact, publish_image_success
 from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
 from ._cli_constants import MAX_TRACEBACK_LINES
@@ -160,13 +160,14 @@ def _publish_local_image_success(
         }
         mode = "process"
     else:
+        data_key, data_path = image_data_artifact(
+            output_dir, output_manager, dataset, image_path.stem
+        )
         artifacts = {
             "measurements": output_manager.get_output_path(
                 dataset, "measurements", image_path.stem
             ),
-            "hdf": output_manager.get_output_path(
-                dataset, "hdf", image_path.stem
-            ),
+            data_key: data_path,
         }
         if output_manager.save_overlays:
             artifacts["overlay"] = output_manager.get_output_path(
@@ -1259,6 +1260,46 @@ def uses_staged_gpu_strategy(config: ExecutionConfig) -> bool:
     return config.process_only_layer in (None, "objmap")
 
 
+def prepare_store_run_environment(
+    output_dir: Path, *, durable_writes: bool | None = None
+) -> int:
+    """Log the resolved durability mode and sweep stale promote leftovers.
+
+    Both are required mitigations from spec §3.7 and §3.2, and neither is
+    qualified by execution mode: a plain ``--mode full`` CPU run publishes its
+    per-image stores through the same ``promote_store``. So this lives in the
+    shared run setup every strategy is dispatched through, not in the staged
+    strategy (OPEN-QUESTIONS **G6/P21**).
+
+    The sweep runs **here, in the submitting/driving process, before any worker
+    exists** — never from a worker's own start-up. A uuid identifies the
+    *attempt*, not whether its process is alive, and under a SLURM array the
+    tasks share one output root and start at different times, so a per-worker
+    sweep would ``rmtree`` the ``.part`` directories its siblings are actively
+    filling. :func:`~phenotypic.sdk_.ngff_.sweep_orphan_parts`'s age guard is a
+    backstop, not a licence to move this call (OPEN-QUESTIONS **B6/P16**).
+
+    Args:
+        output_dir: Run output root.
+        durable_writes: ``--durable-writes`` / ``--no-durable-writes``, or
+            ``None`` to auto-detect from the SLURM environment.
+
+    Returns:
+        Number of orphaned ``.part`` / ``.trash`` directories removed.
+    """
+    from phenotypic.sdk_ import results_dir
+    from phenotypic.sdk_.ngff_ import describe_durability, sweep_orphan_parts
+
+    logger.info(describe_durability(durable_writes))
+    removed = sweep_orphan_parts(results_dir(output_dir))
+    logger.info(
+        "swept %d orphaned store .part/.trash director%s",
+        removed,
+        "y" if removed == 1 else "ies",
+    )
+    return removed
+
+
 def create_execution_strategy(
     config: ExecutionConfig, output_manager: OutputManager
 ) -> ExecutionStrategy:
@@ -1272,6 +1313,8 @@ def create_execution_strategy(
     Returns:
         ExecutionStrategy instance (Local or SLURM)
     """
+    prepare_store_run_environment(config.output_dir or output_manager.base_dir)
+
     if config.is_slurm_mode():
         # SLURM: a forward GPU run becomes the staged 3-link afterany chain
         # (CPU preprocess -> resident-model GPU detect shards -> CPU measure).

@@ -16,7 +16,12 @@ from phenotypic.schema import IMAGE
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_process_only import process_only_output_path
-from phenotypic._cli._cli_sidecar import sidecar_exists, write_sidecar
+from phenotypic._cli._cli_stage2_token import (
+    stage2_raw_path,
+    stage2_token_exists,
+    write_stage2_raw,
+    write_stage2_token,
+)
 from phenotypic._cli._cli_staged_orchestration import (
     StagedManifestEntry,
     append_stage2_terminal_failure,
@@ -44,10 +49,10 @@ from phenotypic._cli._cli_update_state import (
     parse_event_line,
 )
 from phenotypic.sdk_ import (
-    dataset_hdf_dir,
     dataset_overlays_dir,
     event_log_path,
     manifest_json_path,
+    zarr_store_path,
 )
 from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
@@ -100,6 +105,37 @@ def _write_image(tmp_path):
     return p
 
 
+def _stage2_done(out, dataset, stem):
+    """A finished Stage 2 is the token AND the raw array it replays from.
+
+    Asserting only the token would pass with the ``.npy`` deleted, which is
+    exactly the state Stage 3 cannot recover from.
+    """
+    return (
+        stage2_token_exists(out, dataset, stem)
+        and stage2_raw_path(out, dataset, stem).is_file()
+    )
+
+
+def _stage2_signal_absent(out, dataset, stem):
+    """Cleanup means BOTH are gone -- a survivor of either is a leak."""
+    return not stage2_token_exists(
+        out, dataset, stem
+    ) and not stage2_raw_path(out, dataset, stem).exists()
+
+
+def _stamp_store_work_id(store, work_id):
+    """Bind an already-published store to *work_id*, in place.
+
+    The HDF version set ``handle.attrs["phenotypic_work_id"]`` through
+    ``h5py.File(..., "r+")``; the store's equivalent is its root ``zarr.json``.
+    """
+    root = store / "zarr.json"
+    payload = json.loads(root.read_text(encoding="utf-8"))
+    payload["attributes"]["phenotypic"]["work_id"] = work_id
+    root.write_text(json.dumps(payload), encoding="utf-8")
+
+
 def test_three_stage_cores_end_to_end(tmp_path):
     image_path = _write_image(tmp_path)
     out = tmp_path / "out"
@@ -114,30 +150,30 @@ def test_three_stage_cores_end_to_end(tmp_path):
     om = OutputManager.from_config(out, ".tiff", save_overlays=False)
     om.create_structure([Dataset("ds", [image_path], tmp_path, out)])
 
-    # Stage 1: preprocess -> HDF
+    # Stage 1: preprocess -> staged store
     stage1_preprocess_core(
         plan, image_path, "ds", "img", out, om, image_type="Image"
     )
-    staged_hdf = dataset_hdf_dir(out, "ds") / "img.h5"
-    assert staged_hdf.is_file()
-    pre_fix_image = phenotypic.Image.load_hdf5(staged_hdf)
+    staged_store = zarr_store_path(out, "ds", "img")
+    assert staged_store.is_dir()
+    pre_fix_image = phenotypic.Image.load_zarr(staged_store)
     pre_fix_image.name = str(pre_fix_image.uuid)
-    pre_fix_image.save2hdf5(staged_hdf)
-    assert phenotypic.Image.load_hdf5(staged_hdf).name != "img"
+    pre_fix_image.save2zarr(staged_store)
+    assert phenotypic.Image.load_zarr(staged_store).name != "img"
 
-    # Stage 2: resident detector -> sidecar
+    # Stage 2: resident detector -> retained raw + consumable token
     plan.gpu_detector._ensure_model_loaded()
     stage2_detect_core(plan.gpu_detector, out, "ds", "img")
-    assert sidecar_exists(out, "ds", "img")
+    assert _stage2_done(out, "ds", "img")
 
-    # Stage 3: merge + measure -> parquet, re-save HDF, delete sidecar
+    # Stage 3: replay + measure -> parquet, re-promote store, consume both
     stage3_merge_measure_core(plan, out, "ds", "img", om, image_type="Image")
     measurements_path = out / "results" / "ds" / "measurements" / "img.parquet"
     assert measurements_path.is_file()
     measurements = pl.read_parquet(measurements_path)
     assert measurements[str(IMAGE.IMAGE_NAME)].unique().to_list() == ["img"]
-    assert phenotypic.Image.load_hdf5(staged_hdf).name == "img"
-    assert not sidecar_exists(out, "ds", "img")  # mandatory cleanup
+    assert phenotypic.Image.load_zarr(staged_store).name == "img"
+    assert _stage2_signal_absent(out, "ds", "img")  # mandatory cleanup
 
 
 def test_staged_strategy_runs_all_stages(tmp_path, monkeypatch):
@@ -161,7 +197,7 @@ def test_staged_strategy_runs_all_stages(tmp_path, monkeypatch):
     assert results.total_completed == 1
     assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
     assert (dataset_overlays_dir(out, "ds") / "img.png").is_file()
-    assert not sidecar_exists(out, "ds", "img")
+    assert _stage2_signal_absent(out, "ds", "img")
     manifest = json.loads(
         manifest_json_path(out).read_text(encoding="utf-8")
     )
@@ -216,12 +252,12 @@ def test_staged_strategy_resumes_skipping_done_stages(tmp_path):
     mtime = parquet.stat().st_mtime_ns
 
     # second run with resume=True: every stage skips -> parquet untouched and
-    # no orphan sidecar is recreated.
+    # no orphan Stage-2 signal is recreated.
     StagedGpuStrategy(_config(out, pipe_path, resume=True), om).execute(
         ds, out
     )
     assert parquet.stat().st_mtime_ns == mtime
-    assert not sidecar_exists(out, "ds", "img")
+    assert _stage2_signal_absent(out, "ds", "img")
 
 
 def test_process_objmap_runs_stages_1_2_then_exports(tmp_path):
@@ -240,13 +276,13 @@ def test_process_objmap_runs_stages_1_2_then_exports(tmp_path):
         [Dataset("ds", [image_path], tmp_path, out)], out
     )
 
-    # objmap layer exported (mirrored); no measurement parquet; sidecar cleaned
+    # objmap layer exported (mirrored); no parquet; Stage-2 signal consumed
     expected = process_only_output_path(out, image_path, out, "objmap")
     assert expected.is_file()
     assert not (
         out / "results" / "ds" / "measurements" / "img.parquet"
     ).exists()
-    assert not sidecar_exists(out, "ds", "img")
+    assert _stage2_signal_absent(out, "ds", "img")
 
 
 def test_stage_tagged_events_emitted(tmp_path):
@@ -341,7 +377,7 @@ def test_stage2_shard_worker_processes_its_shard(tmp_path):
         shard_index=0,
         n_shards=1,
     )
-    assert sidecar_exists(out, "ds", "img")
+    assert _stage2_done(out, "ds", "img")
 
 
 def test_stage2_publication_is_fenced_for_stale_epoch(tmp_path):
@@ -368,10 +404,10 @@ def test_stage2_publication_is_fenced_for_stale_epoch(tmp_path):
                 RuntimeError("stale epoch")
             ),
         )
-    assert not sidecar_exists(out, "ds", "img")
+    assert _stage2_signal_absent(out, "ds", "img")
 
 
-def test_plain_resume_reuses_stage1_hdf_after_stage2_failure(
+def test_plain_resume_reuses_stage1_store_after_stage2_failure(
     tmp_path, monkeypatch
 ):
     image_path = _write_image(tmp_path)
@@ -396,7 +432,7 @@ def test_plain_resume_reuses_stage1_hdf_after_stage2_failure(
         datasets, out
     )
     assert failed.total_failed == 1
-    assert (dataset_hdf_dir(out, "ds") / "img.h5").is_file()
+    assert zarr_store_path(out, "ds", "img").is_dir()
     monkeypatch.setattr(FakeGpuDetector, "_infer_one", original_infer)
     monkeypatch.setattr(
         "phenotypic._cli._cli_staged_strategy.stage1_preprocess_core",
@@ -457,7 +493,7 @@ def test_cli_retry_failures_includes_recorded_stage2_failure(
     from phenotypic._cli._cli_staged_orchestration import staged_completion_path
 
     assert not staged_completion_path(out).is_file()
-    assert (dataset_hdf_dir(out, images.name) / f"{image_path.stem}.h5").is_file()
+    assert zarr_store_path(out, images.name, image_path.stem).is_dir()
 
     monkeypatch.setattr(FakeGpuDetector, "_infer_one", original_infer)
     monkeypatch.setattr(
@@ -706,13 +742,11 @@ def test_stage3_resume_does_not_load_gpu_model(tmp_path, monkeypatch):
     image_path = tmp_path / "img.tiff"
     om = OutputManager.from_config(out, ".tiff", save_overlays=False)
     cfg = _config(out, pipe_path, resume=True)
-    import h5py
 
     from phenotypic._cli._cli_failure_tracker import work_id_for_image
 
     expected_work_id, _ = work_id_for_image(cfg, "ds", image_path)
-    with h5py.File(dataset_hdf_dir(out, "ds") / "img.h5", "r+") as handle:
-        handle.attrs["phenotypic_work_id"] = expected_work_id
+    _stamp_store_work_id(zarr_store_path(out, "ds", "img"), expected_work_id)
 
     result = StagedGpuStrategy(cfg, om).execute(
         [Dataset("ds", [image_path], tmp_path, out)], out
@@ -721,7 +755,7 @@ def test_stage3_resume_does_not_load_gpu_model(tmp_path, monkeypatch):
     assert result.total_completed == 1
 
 
-def test_stage3_partial_publication_keeps_sidecar_and_is_resumable(
+def test_stage3_partial_publication_keeps_stage2_signal_and_is_resumable(
     tmp_path, monkeypatch
 ):
     import phenotypic._cli._cli_staged_slurm_worker as worker
@@ -758,7 +792,7 @@ def test_stage3_partial_publication_keeps_sidecar_and_is_resumable(
         )
 
     assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
-    assert sidecar_exists(out, "ds", "img")
+    assert _stage2_done(out, "ds", "img")
     assert not stage3_completion_exists(out, "ds", "img")
     resume_plan = build_staged_resume_plan(
         datasets=[Dataset("ds", [tmp_path / "img.tiff"], tmp_path, out)],
@@ -770,7 +804,7 @@ def test_stage3_partial_publication_keeps_sidecar_and_is_resumable(
     assert resume_plan.initial_stage == "stage3"
 
 
-def test_stage3_reconciliation_cleans_sidecar_and_excludes_partial_parquet(
+def test_stage3_reconciliation_cleans_stage2_signal_and_excludes_partial_parquet(
     tmp_path,
 ):
     out = tmp_path / "out"
@@ -779,7 +813,8 @@ def test_stage3_reconciliation_cleans_sidecar_and_excludes_partial_parquet(
     complete.parent.mkdir(parents=True, exist_ok=True)
     complete.write_bytes(b"complete")
     partial.write_bytes(b"partial")
-    write_sidecar(out, "ds", "done", np.zeros((2, 2)))
+    write_stage2_raw(out, "ds", "done", np.zeros((2, 2), np.uint16))
+    write_stage2_token(out, "ds", "done", objmap_shape=(2, 2))
     from phenotypic._cli._cli_staged_resume import (
         write_stage3_completion_marker,
     )
@@ -793,7 +828,7 @@ def test_stage3_reconciliation_cleans_sidecar_and_excludes_partial_parquet(
     )
 
     assert moved == 1
-    assert not sidecar_exists(out, "ds", "done")
+    assert _stage2_signal_absent(out, "ds", "done")
     assert complete.is_file()
     assert not partial.exists()
     assert (
@@ -808,7 +843,7 @@ def test_stage3_reconciliation_cleans_sidecar_and_excludes_partial_parquet(
 
 
 def _stage1_only(tmp_path):
-    """Shared setup: write an image and run Stage 1 so a staged HDF exists."""
+    """Shared setup: write an image and run Stage 1 so a staged store exists."""
     image_path = _write_image(tmp_path)
     out = tmp_path / "out"
     out.mkdir()
@@ -898,7 +933,7 @@ def test_completed_shard_exits_before_loading_model(tmp_path, monkeypatch):
         shard_index=0,
         n_shards=1,
     )
-    assert sidecar_exists(out, "ds", "img")  # shard complete
+    assert _stage2_done(out, "ds", "img")  # shard complete
 
     monkeypatch.setattr(
         FakeGpuDetector,
@@ -949,14 +984,14 @@ def test_legacy_staged_failure_does_not_suppress_current_work(tmp_path):
         n_shards=1,
         epoch=epoch,
     )
-    assert sidecar_exists(out, "ds", "img")
+    assert _stage2_done(out, "ds", "img")
 
 
-def test_shard_worker_records_missing_hdf_without_requeue(tmp_path):
+def test_shard_worker_records_missing_store_without_requeue(tmp_path):
     import phenotypic._cli._cli_staged_slurm_worker as W
 
-    out, pipe_path = _stage1_only(tmp_path)  # "img" has a staged HDF
-    manifest = [("ds", "img"), ("ds", "ghost")]  # "ghost" has no HDF
+    out, pipe_path = _stage1_only(tmp_path)  # "img" has a staged store
+    manifest = [("ds", "img"), ("ds", "ghost")]  # "ghost" has no store
     W.run_stage2_shard(
         pipeline_path=pipe_path,
         output_dir=out,
@@ -965,8 +1000,375 @@ def test_shard_worker_records_missing_hdf_without_requeue(tmp_path):
         shard_index=0,
         n_shards=1,
     )
-    assert sidecar_exists(out, "ds", "img")
-    assert not sidecar_exists(out, "ds", "ghost")
-    assert "staged HDF missing" in event_log_path(out).read_text(
+    assert _stage2_done(out, "ds", "img")
+    assert _stage2_signal_absent(out, "ds", "ghost")
+    assert "staged store missing" in event_log_path(out).read_text(
         encoding="utf-8"
     )
+
+
+def test_process_objmap_export_writes_the_detected_labels_not_zeros(tmp_path):
+    """``--layer objmap`` replays Stage 2's raw array, never the store.
+
+    Stage 2 does not write into the store, so the store's objmap at export
+    time is still Stage 1's **zeros**. An executor who reads the store here
+    exports an all-zeros PNG for every image, silently, and every assertion
+    about the token still passes (ledger FLOW-16). This is the assertion that
+    notices.
+    """
+    import cv2
+
+    from phenotypic import Image
+
+    image_path = _write_image(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    pipe = ImagePipeline(ops=[FakeGpuDetector(threshold=0.3)])
+    pipe_path = out / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    om.create_structure([Dataset("ds", [image_path], tmp_path, out)])
+
+    cfg = _config(out, pipe_path)
+    cfg.process_only_layer = "objmap"
+    StagedGpuStrategy(cfg, om).execute(
+        [Dataset("ds", [image_path], tmp_path, out)], out
+    )
+
+    exported = process_only_output_path(out, image_path, out, "objmap")
+    assert exported.is_file()
+    labels = cv2.imread(str(exported), cv2.IMREAD_UNCHANGED)
+    assert labels.max() > 0, "exported objmap is all zeros -- store was read"
+
+    # The store keeps Stage 1's zeros: this path never re-promotes, and a
+    # store write placed after the marker publish would invalidate the
+    # descriptor the instant it was written (ledger FLOW-30 / FLOW-6).
+    stored = np.asarray(
+        Image.load_zarr(zarr_store_path(out, "ds", "img")).objmap[:]
+    )
+    assert stored.max() == 0
+
+    # The signal is consumed, and the marker it was published under is valid.
+    assert _stage2_signal_absent(out, "ds", "img")
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic._cli._cli_failure_tracker import work_id_for_image
+
+    work_id, _ = work_id_for_image(cfg, "ds", image_path)
+    assert valid_image_success(
+        out, dataset="ds", image_stem="img", work_id=work_id
+    )
+
+
+def test_stage3_refuses_a_token_whose_raw_array_is_gone(tmp_path):
+    """A token is a flag; Stage 3's input is the ``.npy``.
+
+    Probing only the token routes such an image into Stage 3, where
+    ``load_stage2_raw`` raises inside ``stage_event`` and is recorded as a
+    terminal SCIENTIFIC failure -- permanently, since nothing re-runs a
+    scientifically failed image (ledger FLOW-17 / M7).
+    """
+    from phenotypic._cli._cli_stage2_token import delete_stage2_raw
+
+    out, pipe_path = _stage1_only(tmp_path)
+    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipe_path))
+    plan.gpu_detector._ensure_model_loaded()
+    stage2_detect_core(plan.gpu_detector, out, "ds", "img")
+    delete_stage2_raw(out, "ds", "img")  # partial cleanup / truncated copy
+    assert stage2_token_exists(out, "ds", "img")
+
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    image_path = tmp_path / "img.tiff"
+    datasets = [Dataset("ds", [image_path], tmp_path, out)]
+    cfg = _config(out, pipe_path)
+
+    StagedGpuStrategy(cfg, om).execute(datasets, out)
+
+    # Stage 2 re-ran (the strategy's own pending filter routed it back), so
+    # the pair is whole again and Stage 3 published rather than failing.
+    events = event_log_path(out).read_text(encoding="utf-8")
+    assert "FileNotFoundError" not in events
+    assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
+
+
+def test_the_slurm_stage3_worker_reports_a_raw_less_token_as_a_prereq(tmp_path):
+    """Same probe, the other side of the cluster boundary.
+
+    The SLURM worker cannot re-run Stage 2 itself, so the observable
+    consequence is a *missing prereq* event and a clean non-zero exit -- not a
+    scientific-failure record that would suppress the image forever.
+    """
+    import phenotypic._cli._cli_staged_slurm_worker as worker
+    from phenotypic._cli._cli_failure_tracker import read_terminal_failures
+    from phenotypic._cli._cli_stage2_token import delete_stage2_raw
+
+    out, pipe_path = _stage1_only(tmp_path)
+    worker.run_stage2_shard(
+        pipeline_path=pipe_path,
+        output_dir=out,
+        image_type="Image",
+        manifest=[("ds", "img")],
+        shard_index=0,
+        n_shards=1,
+    )
+    delete_stage2_raw(out, "ds", "img")
+
+    with pytest.raises(SystemExit):
+        worker.run_stage3_step(
+            pipeline_path=pipe_path,
+            output_dir=out,
+            image_type="Image",
+            manifest=[("ds", "img")],
+            index=0,
+        )
+
+    events = event_log_path(out).read_text(encoding="utf-8")
+    assert "Stage 2 result missing" in events
+    assert "FileNotFoundError" not in events
+    assert list(read_terminal_failures(out)) == []
+
+
+def test_workers_never_sweep_orphaned_part_directories(tmp_path):
+    """Only the controller sweeps, and only before submitting anything.
+
+    A uuid identifies the attempt, not whether its process is alive. Under a
+    SLURM array the tasks share one output root and start at different times,
+    so a per-worker sweep would ``rmtree`` a sibling's in-flight ``.part``
+    (OPEN-QUESTIONS B6/P16).
+    """
+    import os
+    import time
+
+    import phenotypic._cli._cli_staged_slurm_worker as worker
+    from phenotypic.sdk_ import dataset_zarr_dir
+
+    out, pipe_path = _stage1_only(tmp_path)
+    dataset_overlays_dir(out, "ds").mkdir(parents=True, exist_ok=True)
+    sibling = dataset_zarr_dir(out, "ds") / ".other.ome.zarr.deadbeef.part"
+    sibling.mkdir(parents=True)
+    old = time.time() - 24 * 60 * 60
+    os.utime(sibling, (old, old))  # old enough for the controller to sweep
+
+    worker.run_stage2_shard(
+        pipeline_path=pipe_path,
+        output_dir=out,
+        image_type="Image",
+        manifest=[("ds", "img")],
+        shard_index=0,
+        n_shards=1,
+    )
+    worker.run_stage3_step(
+        pipeline_path=pipe_path,
+        output_dir=out,
+        image_type="Image",
+        manifest=[("ds", "img")],
+        index=0,
+    )
+
+    assert sibling.is_dir()
+
+
+def test_the_shard_worker_recomputes_when_only_the_token_survives(tmp_path):
+    """The shard worker's candidate filter tests both halves too.
+
+    With a token-only probe the worker treats the image as done and returns
+    without loading the model, so the raw array it never wrote is never
+    written -- and Stage 3 has nothing to replay.
+    """
+    import phenotypic._cli._cli_staged_slurm_worker as worker
+    from phenotypic._cli._cli_stage2_token import delete_stage2_raw
+
+    out, pipe_path = _stage1_only(tmp_path)
+    worker.run_stage2_shard(
+        pipeline_path=pipe_path,
+        output_dir=out,
+        image_type="Image",
+        manifest=[("ds", "img")],
+        shard_index=0,
+        n_shards=1,
+    )
+    delete_stage2_raw(out, "ds", "img")
+    assert stage2_token_exists(out, "ds", "img")
+
+    worker.run_stage2_shard(
+        pipeline_path=pipe_path,
+        output_dir=out,
+        image_type="Image",
+        manifest=[("ds", "img")],
+        shard_index=0,
+        n_shards=1,
+    )
+
+    assert _stage2_done(out, "ds", "img")
+
+
+def _token_without_raw_that_stage2_cannot_rebuild(tmp_path, monkeypatch):
+    """Reach the state Stage 3's own probe exists for.
+
+    Stage 2's pending filter normally recomputes a token-only image, so the
+    Stage-3 gate is unreachable while Stage 2 can run. Break Stage 1 and
+    invalidate the store, and Stage 2 records a missing prereq instead --
+    leaving the token standing with no raw array for Stage 3 to meet.
+    """
+    from phenotypic._cli._cli_stage2_token import delete_stage2_raw
+
+    out, pipe_path = _stage1_only(tmp_path)
+    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipe_path))
+    plan.gpu_detector._ensure_model_loaded()
+    stage2_detect_core(plan.gpu_detector, out, "ds", "img")
+    delete_stage2_raw(out, "ds", "img")
+    (zarr_store_path(out, "ds", "img") / "zarr.json").unlink()
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_strategy.stage1_preprocess_core",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            RuntimeError("Stage 1 unavailable")
+        ),
+    )
+    assert stage2_token_exists(out, "ds", "img")
+    return out, pipe_path
+
+
+def test_stage3_reports_a_prereq_when_stage2_could_not_recompute(
+    tmp_path, monkeypatch
+):
+    """Token-only at the Stage-3 gate must be a prereq, not a science failure.
+
+    ``load_stage2_raw`` raising inside ``stage_event`` is recorded as a
+    terminal *scientific* failure, which nothing ever retries -- so the
+    difference between the two probes is whether the image is recoverable.
+    """
+    out, pipe_path = _token_without_raw_that_stage2_cannot_rebuild(
+        tmp_path, monkeypatch
+    )
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    datasets = [Dataset("ds", [tmp_path / "img.tiff"], tmp_path, out)]
+
+    result = StagedGpuStrategy(_config(out, pipe_path), om).execute(
+        datasets, out
+    )
+
+    events = event_log_path(out).read_text(encoding="utf-8")
+    assert "Stage 2 result missing" in events
+    assert "FileNotFoundError" not in events
+    assert result.total_failed == 1
+
+
+def test_objmap_export_reports_a_prereq_when_stage2_could_not_recompute(
+    tmp_path, monkeypatch
+):
+    """The ``--layer objmap`` gate is the same probe on the export path."""
+    out, pipe_path = _token_without_raw_that_stage2_cannot_rebuild(
+        tmp_path, monkeypatch
+    )
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    image_path = tmp_path / "img.tiff"
+    cfg = _config(out, pipe_path)
+    cfg.process_only_layer = "objmap"
+
+    StagedGpuStrategy(cfg, om).execute(
+        [Dataset("ds", [image_path], tmp_path, out)], out
+    )
+
+    events = event_log_path(out).read_text(encoding="utf-8")
+    assert "Stage 2 result missing" in events
+    assert "FileNotFoundError" not in events
+    assert not process_only_output_path(
+        out, image_path, out, "objmap"
+    ).is_file()
+
+
+def _raise_on_raw_delete(monkeypatch, module):
+    """Simulate a crash *between* the two consumption deletes."""
+    monkeypatch.setattr(
+        module,
+        "delete_stage2_raw",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            RuntimeError("crashed between the two deletes")
+        ),
+    )
+
+
+def test_local_stage3_crash_between_deletes_leaves_the_benign_survivor(
+    tmp_path, monkeypatch
+):
+    """Token first, at every consumption site.
+
+    A crash between the two unlinks must leave "no token, orphan raw" -- inert,
+    because Stage 2 would overwrite the raw array. The reverse leaves "token
+    present, raw missing", which makes the next Stage 3 replay into a
+    ``FileNotFoundError``.
+    """
+    import phenotypic._cli._cli_staged_strategy as strategy
+
+    image_path = _write_image(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    pipe = ImagePipeline(
+        ops=[FakeGpuDetector(threshold=0.3)], meas=[MeasureSize()]
+    )
+    pipe_path = out / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    datasets = [Dataset("ds", [image_path], tmp_path, out)]
+    om.create_structure(datasets)
+    _raise_on_raw_delete(monkeypatch, strategy)
+
+    StagedGpuStrategy(_config(out, pipe_path), om).execute(datasets, out)
+
+    assert not stage2_token_exists(out, "ds", "img")
+    assert stage2_raw_path(out, "ds", "img").is_file()
+
+
+def test_objmap_export_crash_between_deletes_leaves_the_benign_survivor(
+    tmp_path, monkeypatch
+):
+    """Same ordering rule on the ``--layer objmap`` export path."""
+    import phenotypic._cli._cli_staged_strategy as strategy
+
+    image_path = _write_image(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    pipe = ImagePipeline(ops=[FakeGpuDetector(threshold=0.3)])
+    pipe_path = out / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    datasets = [Dataset("ds", [image_path], tmp_path, out)]
+    om.create_structure(datasets)
+    cfg = _config(out, pipe_path)
+    cfg.process_only_layer = "objmap"
+    _raise_on_raw_delete(monkeypatch, strategy)
+
+    StagedGpuStrategy(cfg, om).execute(datasets, out)
+
+    assert not stage2_token_exists(out, "ds", "img")
+    assert stage2_raw_path(out, "ds", "img").is_file()
+
+
+def test_slurm_stage3_crash_between_deletes_leaves_the_benign_survivor(
+    tmp_path, monkeypatch
+):
+    """Same ordering rule across the cluster boundary."""
+    import phenotypic._cli._cli_staged_slurm_worker as worker
+
+    out, pipe_path = _stage1_only(tmp_path)
+    dataset_overlays_dir(out, "ds").mkdir(parents=True, exist_ok=True)
+    worker.run_stage2_shard(
+        pipeline_path=pipe_path,
+        output_dir=out,
+        image_type="Image",
+        manifest=[("ds", "img")],
+        shard_index=0,
+        n_shards=1,
+    )
+    _raise_on_raw_delete(monkeypatch, worker)
+
+    with pytest.raises(RuntimeError, match="between the two deletes"):
+        worker.run_stage3_step(
+            pipeline_path=pipe_path,
+            output_dir=out,
+            image_type="Image",
+            manifest=[("ds", "img")],
+            index=0,
+        )
+
+    assert not stage2_token_exists(out, "ds", "img")
+    assert stage2_raw_path(out, "ds", "img").is_file()
