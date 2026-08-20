@@ -210,6 +210,32 @@ def ensure_typed_json_suffix(path: str | Path, suffix: str) -> Path:
     return Path(f"{text}{suffix}")
 
 
+def update_framed_term(digest: "hashlib._Hash", term: str) -> None:
+    """Feed one length-prefixed UTF-8 ``term`` into an open ``digest``.
+
+    The single definition of the framing rule every content digest here uses:
+    the term's UTF-8 byte length as an 8-byte big-endian prefix, then the
+    bytes. Length-prefixing is what makes a stream of terms unambiguously
+    parseable — without it a longer term and a shorter one followed by
+    whatever comes next could serialize identically, so two different inputs
+    would collide by construction rather than by luck.
+
+    It lives here rather than being spelled out at each site because the
+    digests that use it (:func:`paths_fingerprint`, :func:`directory_digest`,
+    :func:`~phenotypic._services.staging.subset_digest`) are compared against
+    each other's recorded values across process and tool boundaries. A framing
+    change applied to one spelling and not another produces digests that
+    silently stop matching values already on disk, with nothing to say why.
+
+    Args:
+        digest: An open hash object; updated in place.
+        term: The term to frame.
+    """
+    encoded = term.encode("utf-8")
+    digest.update(len(encoded).to_bytes(8, "big"))
+    digest.update(encoded)
+
+
 def bytes_fingerprint(data: bytes) -> str:
     """Return a versioned SHA-256 fingerprint for exact bytes.
 
@@ -268,9 +294,7 @@ def paths_fingerprint(paths: Iterable[Path], *, root: Path | None = None) -> str
 
     digest = hashlib.sha256()
     for name, path in sorted(named_paths, key=lambda item: item[0]):
-        encoded_name = name.encode("utf-8")
-        digest.update(len(encoded_name).to_bytes(8, "big"))
-        digest.update(encoded_name)
+        update_framed_term(digest, name)
         if path.is_dir():
             digest.update(b"\x02")
             continue
@@ -386,12 +410,10 @@ def directory_digest(root: Path, *, relative_to: Path | None = None) -> str:
 
     digest = hashlib.sha256()
     for name, size, mtime_ns in sorted(entries):
-        encoded_name = name.encode("utf-8")
         # Length-prefixed so the (name, size, mtime) stream is unambiguously
         # parseable: without it a longer name and a shorter one followed by
         # leading size bytes could serialize identically.
-        digest.update(len(encoded_name).to_bytes(8, "big"))
-        digest.update(encoded_name)
+        update_framed_term(digest, name)
         digest.update(size.to_bytes(8, "big"))
         # ``signed`` so a pre-1970 mtime -- a mis-set camera clock, or a
         # restored archive -- records rather than raising OverflowError.

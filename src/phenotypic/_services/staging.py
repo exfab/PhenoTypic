@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final, Literal
 
-from phenotypic.sdk_._io_constants import file_fingerprint
+from phenotypic.sdk_._io_constants import file_fingerprint, update_framed_term
 from phenotypic.subset import ImageRef
 
 #: Server scratch namespace. Staging lives here and not under ``runs/`` or the
@@ -191,9 +191,7 @@ def subset_digest(subset: SubsetToStage) -> str:
     digest = hashlib.sha256()
     for ref in sorted(subset.images, key=lambda ref: ref.relative_path):
         for term in (ref.relative_path, file_fingerprint(Path(ref.path))):
-            encoded = term.encode("utf-8")
-            digest.update(len(encoded).to_bytes(8, "big"))
-            digest.update(encoded)
+            update_framed_term(digest, term)
     return f"sha256:{digest.hexdigest()}"
 
 
@@ -281,6 +279,16 @@ def stage_subset(subset: SubsetToStage, *, cache_root: Path) -> StagedSubset:
         if building.exists():
             shutil.rmtree(building, ignore_errors=True)
 
+    return _describe(root, digest, link_mode)
+
+
+def _describe(root: Path, digest: str, link_mode: LinkMode) -> StagedSubset:
+    """Name both layout subdirectories of one staging root.
+
+    The two layout names are derived here and nowhere else, so a builder's
+    result and an adopter's cannot come to disagree about where ``flat/`` and
+    ``nested/`` are.
+    """
     return StagedSubset(
         root=root,
         flat=root / FLAT_LAYOUT_DIR,
@@ -291,14 +299,13 @@ def stage_subset(subset: SubsetToStage, *, cache_root: Path) -> StagedSubset:
 
 
 def _adopt(root: Path, digest: str) -> StagedSubset:
-    """Describe an already-complete staging directory without rebuilding it."""
-    return StagedSubset(
-        root=root,
-        flat=root / FLAT_LAYOUT_DIR,
-        nested=root / NESTED_LAYOUT_DIR,
-        link_mode=_observed_link_mode(root / FLAT_LAYOUT_DIR),
-        digest=digest,
-    )
+    """Describe an already-complete staging directory without rebuilding it.
+
+    The link mode is *observed* from the tree rather than assumed: whoever
+    built it may have fallen back to copying on a filesystem this caller has
+    no reason to know about.
+    """
+    return _describe(root, digest, _observed_link_mode(root / FLAT_LAYOUT_DIR))
 
 
 def _build_layouts(subset: SubsetToStage, staging: Path) -> LinkMode:

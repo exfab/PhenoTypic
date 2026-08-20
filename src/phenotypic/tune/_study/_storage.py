@@ -47,6 +47,18 @@ JOURNAL_SCHEME: str = "journal"
 _TAIL_SCAN_CHUNK: int = 64 * 1024
 
 
+def _base_scheme(storage_url: Optional[str]) -> str:
+    """The backend name of ``storage_url``, or ``""`` when there is no URL.
+
+    The ``+``-split matches SQLAlchemy's backend naming, so ``sqlite+pysqlite``
+    classifies the same as bare ``sqlite``. Shared by the scheme predicates
+    below so they cannot disagree about what counts as a scheme.
+    """
+    if not storage_url:
+        return ""
+    return urlsplit(storage_url).scheme.split("+", 1)[0]
+
+
 def is_journal_url(storage_url: Optional[str]) -> bool:
     """Whether ``storage_url`` names the file-backed journal backend.
 
@@ -65,9 +77,7 @@ def is_journal_url(storage_url: Optional[str]) -> bool:
         >>> is_journal_url(None)
         False
     """
-    if not storage_url:
-        return False
-    return urlsplit(storage_url).scheme.split("+", 1)[0] == JOURNAL_SCHEME
+    return _base_scheme(storage_url) == JOURNAL_SCHEME
 
 
 def is_sqlite_url(storage_url: Optional[str]) -> bool:
@@ -91,9 +101,7 @@ def is_sqlite_url(storage_url: Optional[str]) -> bool:
         >>> is_sqlite_url("postgresql+psycopg://host/db")
         False
     """
-    if not storage_url:
-        return False
-    return urlsplit(storage_url).scheme.split("+", 1)[0] == "sqlite"
+    return _base_scheme(storage_url) == "sqlite"
 
 
 def journal_url_for_path(journal_path: Path) -> str:

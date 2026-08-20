@@ -12,12 +12,12 @@ image paths naming an approved subset of ``--input``. See
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 from typing import Any, Dict, List
 
 from phenotypic.sdk_.constants_ import IO
 from phenotypic.sdk_ import default_output_dir_name, DIR_RESULTS, DIR_HDF
+from phenotypic.sdk_._io_constants import file_fingerprint
 from ._cli_types import Dataset
 
 
@@ -218,11 +218,10 @@ def image_manifest_digest(manifest_path: Path) -> str:
     Raises:
         OSError: If the manifest cannot be read.
     """
-    digest = hashlib.sha256()
-    with Path(manifest_path).open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return f"sha256:{digest.hexdigest()}"
+    # Delegated, not re-implemented: this value and ``subset_digest`` are
+    # string-compared as fields of one plan-token record, so the two must not
+    # be able to drift into different framings of the same bytes.
+    return file_fingerprint(Path(manifest_path))
 
 
 def read_image_manifest(manifest_path: Path) -> List[str]:

@@ -506,14 +506,12 @@ def slurm_argv_extension(slurm_args: Mapping[str, Any]) -> list[str]:
             pairs.append((key, str(value)))
     extra = slurm_args.get("extra") or {}
     if isinstance(extra, Mapping):
-        for extra_key, extra_value in extra.items():
-            if (
-                extra_key is not None
-                and extra_value is not None
-                and str(extra_key)
-                and str(extra_value)
-            ):
-                pairs.append((str(extra_key), str(extra_value)))
+        pairs.extend(_nonempty_str_pairs(extra))
+    # The ``--slurm`` literal stays inside this function rather than moving to
+    # a shared renderer: ``test_argv_coverage`` walks the AST of the three
+    # named emitters looking for flag constants, so a flag emitted from a
+    # helper outside that set drops out of the CLI-option coverage gate
+    # silently. The two-line loop is the price of the gate seeing this flag.
     argv: list[str] = []
     for key, value in pairs:
         argv.extend(["--slurm", f"{key}={value}"])
@@ -559,6 +557,26 @@ def to_subprocess_argv(
     if state.gpu_shards != 1:
         argv.extend(["--gpu-shards", str(state.gpu_shards)])
     return argv
+
+
+def _nonempty_str_pairs(mapping: Mapping[Any, Any]) -> list[tuple[str, str]]:
+    """Stringified ``(key, value)`` pairs, dropping any with an empty half.
+
+    A ``None`` or empty key would render ``--slurm =value``, and a ``None`` or
+    empty value ``--slurm key=``; ``sbatch`` rejects both, so a form field left
+    blank must drop out rather than be forwarded. Iteration order is the
+    mapping's, which is what keeps the rendered argv — and therefore
+    ``argv_digest`` — stable for a given state.
+    """
+    pairs: list[tuple[str, str]] = []
+    for key, value in mapping.items():
+        if key is None or value is None:
+            continue
+        key_text, value_text = str(key), str(value)
+        if not key_text or not value_text:
+            continue
+        pairs.append((key_text, value_text))
+    return pairs
 
 
 def tune_run_tail(
@@ -668,17 +686,16 @@ def _tune_slurm_pairs(slurm_args: Mapping[str, Any] | None) -> list[str]:
 
     Each rendered pair carries the submission request on its own, so a
     non-empty result replaces the bare ``--slurm`` rather than joining it.
+
+    Unlike :func:`slurm_argv_extension` there are no recognised direct keys and
+    no ``extra`` sub-mapping: the tune CLI's ``--slurm`` is free-form
+    throughout, so every entry is rendered in the mapping's own order.
     """
     if not slurm_args:
         return []
     argv: list[str] = []
-    for key, value in slurm_args.items():
-        if key is None or value is None:
-            continue
-        key_text, value_text = str(key), str(value)
-        if not key_text or not value_text:
-            continue
-        argv.extend(["--slurm", f"{key_text}={value_text}"])
+    for key, value in _nonempty_str_pairs(slurm_args):
+        argv.extend(["--slurm", f"{key}={value}"])
     return argv
 
 
