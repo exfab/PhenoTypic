@@ -857,7 +857,8 @@ opening a full Image for a cache entry."
       all against real single files — pipeline JSON, the QC DuckDB, recipe files.)
 - [ ] `grep -rn "\.h5\|load_hdf5\|hdf_path\|_load_hdf_layer_rgb\|crop_hdf_rgb" src/phenotypic/gui/`
       returns no CODE. Three prose mentions survive in `builder/_preview_cache.py`
-      (`:37`, `:196`, `:273`) and are load-bearing: they are the recorded reason
+      (`:37`, `:201`, `:304`) and are a **documented exception** (lead ruling,
+      2026-08-20): they are the recorded reason
       `MANIFEST_VERSION` exists at all — a manifest written before the `.h5` → `.ome.zarr`
       move must MISS and rebuild rather than be read back through a `"hdf"` key. Deleting
       the explanation to satisfy a grep would leave the constant unexplained.
