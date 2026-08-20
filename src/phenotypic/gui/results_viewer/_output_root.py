@@ -892,7 +892,8 @@ def _processing_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
             for path in overlays_root.rglob("*")
             if path.is_file() or path.is_dir()
         )
-    if layout.results_dir is not None:
+    if layout.results_dir is not None and layout.output_root is not None:
+        output_root = layout.output_root
         paths.append(layout.results_dir)
         paths.extend(
             path
@@ -911,7 +912,7 @@ def _processing_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
             for dataset_dir in sorted(layout.results_dir.iterdir())
             if dataset_dir.is_dir()
             for store in sorted(
-                dataset_zarr_dir(layout.output_root, dataset_dir.name).glob(
+                dataset_zarr_dir(output_root, dataset_dir.name).glob(
                     f"*{STORE_SUFFIX}"
                 )
             )

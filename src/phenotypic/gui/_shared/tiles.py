@@ -510,19 +510,19 @@ def _read_store_level(
         mode="r",
     )
     if window is None:
-        data = array[...]
+        raw = array[...]
     else:
         top, bottom, left, right = window
         # Windowed: zarr pulls the covering shards/chunks only. A 64x64 crop
         # from a sharded level 0 costs a shard-index read plus one full
         # 1024x1024 inner chunk -- cheap, but not free, and not "the same as
         # h5py", which an earlier draft implied.
-        data = (
+        raw = (
             array[:, top:bottom, left:right]
             if len(array.shape) == 3
             else array[top:bottom, left:right]
         )
-    data = np.asarray(data)
+    data: np.ndarray = np.asarray(raw)
     return np.moveaxis(data, 0, -1) if layer == "rgb" else data
 
 
