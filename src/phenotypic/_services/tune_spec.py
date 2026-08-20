@@ -571,6 +571,7 @@ def build_tune_command(
     cv_group: str | None = None,
     slurm: bool = False,
     screen: bool = False,
+    slurm_args: Mapping[str, Any] | None = None,
     environ: Mapping[str, str] | None = None,
     additional_issues: Sequence[str] = (),
 ) -> ValidatedTuneCommand:
@@ -597,6 +598,14 @@ def build_tune_command(
         cv_group: Optional cross-validation group.
         slurm: Whether the execution target is SLURM.
         screen: Whether two-round screening is enabled.
+        slurm_args: Free-form ``#SBATCH`` keys the three sugar arguments above
+            cannot express, forwarded verbatim to
+            :func:`~phenotypic._services.argv.tune_run_tail`. This is the only
+            way ``account`` reaches a tune fleet from the validated
+            composition point, and ``--account`` is mandatory on UCR HPCC's
+            ``exfab`` and ``preempt`` partitions — without it the plan this
+            function validates cannot be submitted at all. ``tune_run_tail``
+            emits the pairs only when ``slurm`` is true.
         environ: Server environment mapping. Defaults to :data:`os.environ`.
         additional_issues: Preflight issues owned by the resulting plan.
 
@@ -636,6 +645,18 @@ def build_tune_command(
         issues.append("Worker count must be positive.")
     if held_out_fraction is not None and not 0 <= held_out_fraction <= 1:
         issues.append("Held-out fraction must be between 0 and 1.")
+    # ``run_tuning`` hard-refuses this pair in ``_validate_slurm_request``: the
+    # fleet path returns at the ``if slurm:`` branch before the screening round
+    # runs, and the SLURM worker builds no ScreeningController. Without it here,
+    # this function — the preflight the GUI gates its Launch button on — calls
+    # the plan valid and the failure arrives after submission instead of before
+    # it, which is the one thing a preflight exists to prevent.
+    if slurm and screen:
+        issues.append(
+            "Two-round screening is not supported on SLURM: the fleet path "
+            "returns before the screening round runs. Screen locally, or "
+            "deploy without screening."
+        )
 
     if storage_mode not in {"spec", "local", "environment"}:
         actual_storage = None
@@ -674,6 +695,7 @@ def build_tune_command(
             cv_group=cv_group,
             slurm=slurm,
             screen=screen,
+            slurm_args=slurm_args,
         )
         display_tail = tune_run_tail(
             spec_path=str(resolved_spec),
@@ -690,6 +712,7 @@ def build_tune_command(
             cv_group=cv_group,
             slurm=slurm,
             screen=screen,
+            slurm_args=slurm_args,
         )
 
     argv = (

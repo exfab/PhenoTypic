@@ -119,6 +119,51 @@ def test_account_reaches_the_fleet(cli_sandbox):
 
 
 @pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
+def test_an_account_reaches_the_rendered_script_from_the_service_tier(
+    cli_sandbox, tmp_path
+):
+    """The same account, but supplied at the *validated composition point*.
+
+    ``build_tune_command`` is what the GUI launches through and what the plan
+    designates for the service tier, so an ``account`` the CLI accepts is of no
+    use if the only way to spell it is a direct ``tune_run_tail`` call. This
+    walks the whole chain in one test — service-tier builder -> argv -> the
+    argparse CLI -> ``merge_slurm_args`` -> ``format_sbatch_directives`` — and
+    asserts on the ``#SBATCH`` line, because every link in between could be
+    correct while the directive still never gets written.
+    """
+    from phenotypic._services.tune_spec import build_tune_command
+    from phenotypic.gui.shell._sandbox import SandboxRoot
+    from phenotypic.sdk_.slurm._sbatch import format_sbatch_directives
+
+    spec_path, images_dir, out, captured = cli_sandbox
+
+    command = build_tune_command(
+        sandbox=SandboxRoot.from_path(tmp_path),
+        spec_path=str(spec_path),
+        images_dir=str(images_dir),
+        output_dir=str(out),
+        strategy="tpe",
+        n_trials=4,
+        storage_mode="spec",
+        slurm=True,
+        slurm_args={"account": "exfab", "qos": "high"},
+    )
+
+    assert not command.issues, command.issues
+    main(list(command.semantic_tail))
+
+    directives = format_sbatch_directives(
+        "tune-fleet",
+        captured["slurm_args"],
+        tmp_path / "o.log",
+        tmp_path / "e.log",
+    )
+    assert "#SBATCH --account=exfab" in directives
+    assert "#SBATCH --qos=high" in directives
+
+
+@pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
 def test_legacy_flags_still_work(cli_sandbox):
     """The four sugar flags keep their shipped behaviour."""
     spec_path, images_dir, out, captured = cli_sandbox

@@ -290,6 +290,45 @@ def test_validated_command_owns_actual_display_and_portable_tokens(
     )
 
 
+def test_slurm_plus_screening_is_refused_before_launch_not_after(
+    tmp_path: Path,
+) -> None:
+    """The CLI already refuses this pair; the preflight has to refuse it too.
+
+    ``run_tuning``'s ``_validate_slurm_request`` raises on ``--slurm --screen``
+    because the fleet path returns before the screening round runs and the
+    SLURM worker builds no ``ScreeningController``. This function is what the
+    GUI gates its Launch button on, so calling the plan valid here turns a
+    preflight failure into a post-submission crash — a queued job, a spec echo
+    and a run marker already written to the output directory, and a traceback
+    the operator sees minutes later in a SLURM log.
+
+    Screening alone and SLURM alone must stay valid: the refusal is about the
+    combination, and a guard that rejects either half on its own would be a
+    worse bug than the one it replaces.
+    """
+    from phenotypic.gui.tune._command import build_tune_command
+
+    sandbox, spec, images, output = _command_paths(tmp_path)
+    kwargs = dict(
+        sandbox=sandbox,
+        spec_path=str(spec),
+        images_dir=str(images),
+        output_dir=str(output),
+        strategy="tpe",
+        n_trials=9,
+        storage_mode="spec",
+    )
+
+    both = build_tune_command(**kwargs, slurm=True, screen=True)
+    assert both.deploy_eligible is False
+    assert any("screening" in issue.lower() for issue in both.issues)
+    assert both.argv == ()
+
+    assert build_tune_command(**kwargs, slurm=True, screen=False).issues == ()
+    assert build_tune_command(**kwargs, slurm=False, screen=True).issues == ()
+
+
 def test_inline_password_environment_storage_is_rejected_without_disclosure(
     tmp_path: Path,
 ) -> None:
