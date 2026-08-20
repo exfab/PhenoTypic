@@ -453,9 +453,12 @@ Expected: `ModuleNotFoundError: No module named 'phenotypic._cli._cli_stage2_tok
 ```python
 """Consumable Stage-2 completion token for the staged GPU engine.
 
-Replaces the ``.npy`` objmap sidecar. Stage 2 now writes the detector output
-directly into the promoted store's label array and drops this token; Stage 3
-consumes the token, exactly as it used to consume the sidecar.
+Replaces the ``.npy`` objmap sidecar. Stage 2 retains its **raw** detector
+output under ``stage2_raw/`` and drops this token; Stage 3 replays the raw
+array and consumes both, exactly as it used to consume the sidecar. Stage 2
+does **not** write into the promoted store -- only the final store needs
+third-party interop, and an in-store write would be visible to the uncached
+crop route as raw pre-``drop_frame_background`` labels.
 
 The token is deliberately **not** NGFF metadata. Using ``ome.labels`` as the
 "Stage 2 done" signal is not an exact replacement for ``sidecar_exists()`` and
