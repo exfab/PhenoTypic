@@ -1509,8 +1509,11 @@ def zarr_store_path(output_dir: Path, dataset: str, stem: str) -> Path:
     """Return ``<output>/results/<dataset>/zarr/<stem>.ome.zarr/``.
 
     The single place ``.ome.zarr`` is joined to an image stem. Callers must
-    never hand-join the suffix. A grep gate enforces this from Phase 7
-    onward; it does not exist yet, so this is a convention until then.
+    never hand-join the suffix, and must take the stem back off a store with
+    :func:`store_stem` rather than ``Path.stem``. Both rules are enforced by
+    ``tests/unit/test_ome_zarr_invariants.py``
+    (``test_store_suffix_is_joined_in_exactly_one_place`` and
+    ``test_path_stem_is_never_taken_of_a_store_directory``).
 
     Args:
         output_dir: Run output root.
