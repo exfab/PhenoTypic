@@ -384,6 +384,17 @@ doctests are rewritten against save2zarr/load_zarr."
 - `BundleLayout.hdf_path` is deleted outright — nothing reads legacy trees through
   `BundleLayout`.
 
+> **Settled at the Phase 6 gate (2026-08-20) — do not re-open.** "Legacy layout knowledge
+> lives only in `_hdf_to_zarr`" is **not fully reached, and cannot be.** `_DIR_HDF` ends up
+> defined **twice** — `_io_constants.py:661` and `_hdf_to_zarr.py:53` — because
+> `_io_constants` needs it for `datasets_needing_migration` (the predicate every writing
+> mode refuses an unconverted tree on) while `_hdf_to_zarr` **imports from**
+> `_io_constants`. Importing back would be circular, and the only alternatives are a third
+> module for one three-character string literal, or a fourth hand-spelled `"hdf"`. Both
+> copies are module-private, both are one line, and the duplication is the cheapest of the
+> available options. Verified, not assumed: `_hdf_to_zarr.py:36` is
+> `from ._io_constants import (...)`.
+
 - [ ] **Step 1: Write the guard**
 
 ```python
@@ -578,7 +589,71 @@ surrounding rule still stands."
 ## Phase 6 exit criteria
 
 - [ ] `uv run pytest tests -q` is green (whole suite, not just unit).
-- [ ] `uv run sphinx-build -W -b html docs/source docs/_build/html` succeeds.
+- [ ] `sphinx-build -W` **introduces no new warnings versus the phase base** (`81f16fda`).
+
+      > **Amended (USER RULING, 2026-08-20).** The criterion used to read
+      > *"`uv run sphinx-build -W -b html docs/source docs/_build/html` succeeds."*
+      > **It was never achievable** — not at this phase, not at the phase base, not
+      > anywhere in the OME-Zarr change. Measured at the Phase 6 gate, both sides fail
+      > and both exit **1**:
+      >
+      > | tree | result |
+      > |---|---|
+      > | Phase 6 HEAD (clean single-pass build) | `build finished with problems, 24565 warnings (with warnings treated as errors).` |
+      > | Phase base `81f16fda` | `build finished with problems, 24585 warnings (with warnings treated as errors).` |
+      >
+      > **This amendment is not a weakening made to reach green.** A "succeeds"
+      > criterion that the base already fails by 24,585 warnings tests nothing about
+      > the phase; the no-regression form tests exactly what the phase controls.
+      > Phase 6 passes it at **net −20**.
+      >
+      > **Root cause of the pre-existing debt.** **23,934 of the base's 24,585 (97%)
+      > are a single bug**: `more than one target found for cross-reference 'None':
+      > phenotypic.abc_.FootprintMixin.None, phenotypic.abc_.ImageOperation.None,
+      > phenotypic.abc_.ObjectDetector.None, phenotypic.sdk_.FootprintMixin.None
+      > [ref.python]`. Four classes each register a `.None` attribute target, so
+      > **every** autodoc'd docstring whose `Returns:` is `None` trips it — 2,312
+      > emitted from `enhance/__init__.py`, 1,650 from `refine/`, 1,479 from `detect/`,
+      > 1,264 from `abc_/`, 870 from `tune/`. The remaining ~650 are ordinary RST
+      > problems: 372 `Bullet list ends without a blank line`, 51 `Inline strong
+      > start-string without end-string`, 51 the emphasis equivalent, 14
+      > `autosummary.import_cycle`, 8 autodoc import failures, 8 `Block quote ends
+      > without a blank line`, 4 `Title underline too short`.
+      >
+      > **Phase 6's delta: 11 warnings gone, 1 new.** The 11 gone are exactly the
+      > removed symbols' docstrings — `HDF.assert_swmr_on`, `close_handle`,
+      > `preallocate_series_layout`, `preallocate_frame_layout`,
+      > `save_series_{new,update,append}`, `save_frame_{new,update,append}`, and
+      > `BundleLayout.hdf_path`. The **one new** warning is
+      > `ImageIOHandler.save2zarr`'s docstring hitting **that same pre-existing
+      > `.None` bug**, because `api_reference/core/image_methods.rst` now carries
+      > `.. automethod:: Image.save2zarr` where it carried `Image.save2hdf5`. Net on
+      > that bug alone: **−10**. There is no new *class* of warning.
+      >
+      > **Method, so the next person can re-measure.** Build the base in a **detached
+      > scratch worktree** (`git worktree add --detach <scratch> 81f16fda`) with
+      > `PYTHONPATH=<scratch>/src` — the venv's editable install is a plain-path
+      > `.pth`, so `PYTHONPATH` wins and autodoc documents the base source; confirm
+      > with `python -c "import phenotypic; print(phenotypic.__file__)"` before
+      > trusting the run. Never check anything out in the live worktree. Then compare
+      > **normalized warning sets**: grep `WARNING` from both logs, strip each tree's
+      > path prefix, collapse `:<line>:` to `:L:`, `sort -u`, and `comm`. Two traps:
+      > a build killed mid-write and **resumed** reports order-dependent `duplicate
+      > object description` warnings that a clean build does not (a resumed run here
+      > showed 3 spurious "new" warnings, not 1) — always compare **clean single-pass
+      > against clean single-pass**. And the full build takes **~80 min** per side on
+      > a contended node, so budget the `timeout` accordingly.
+
+      > **The 24,585-warning debt is separate, scoped work — not part of this change.**
+      > It is worth opening on its own, because the expensive half is already done:
+      > **97% of it is one root cause**, the ambiguous `.None` cross-reference target,
+      > and it is a `conf.py`-level fix (disambiguate or suppress the four `.None`
+      > registrations), not 23,934 individual edits. Clearing it would take the build
+      > from 24,585 warnings to roughly 650 — at which point the ordinary RST
+      > problems become individually fixable and a genuine `-W` gate becomes
+      > reachable for the first time. None of that is chasable inside the OME-Zarr
+      > change, and absorbing it here would have buried a repo-wide docs fix inside a
+      > storage-format refactor.
 - [ ] No live reference to the removed public names survives:
 
       ```bash
