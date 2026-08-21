@@ -241,9 +241,9 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
     **Methods and Attributes**
 
-    Attributes:
-        None at the ImageEnhancer level; subclasses define enhancement parameters
-        as instance attributes (e.g., sigma, kernel_size, clip_limit).
+    No attributes are declared at the ImageEnhancer level; subclasses define
+    enhancement parameters as instance attributes (e.g. ``sigma``,
+    ``kernel_size``, ``clip_limit``).
 
     Methods:
         apply(image, inplace=False): Applies the enhancement to an image. Returns a modified

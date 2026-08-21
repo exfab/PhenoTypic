@@ -215,8 +215,11 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     Instance methods work perfectly with parallel execution because the entire
     operation object (with all parameters) is serialized together.
 
-    Attributes:
-        None (all operation state is stored in subclass instances as fields).
+    This class declares no attributes of its own; all operation state lives in
+    subclass instances as pydantic fields. (Written as prose, NOT as
+    ``Attributes:`` / ``None``: napoleon reads that as an attribute *named*
+    ``None`` and registers a ``.None`` cross-reference target, which makes every
+    autodoc'd docstring returning ``None`` ambiguous.)
 
     Methods:
         apply(image, inplace=False): User-facing method that applies the operation.
