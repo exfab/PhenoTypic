@@ -579,6 +579,50 @@ git commit -m "docs: mark the OME-Zarr store design implemented"
 
 ---
 
+### Task 7.5: Comprehensive interface documentation (user request, 2026-08-20)
+
+**Added after the plan was written**, at the user's explicit request: *"at the end, do a
+comprehensive doc update with all the final interfaces."* This is a **deliverable of this
+change**, not optional polish, and it is the last thing done — after Phase 7's verification
+settles, so the documented interfaces are the ones that actually shipped and passed.
+
+**Why it needs its own task rather than riding along in Task 6.4.** Task 6.4 documents what
+was *removed* (the migration page naming the retired symbols). Nothing in phases 0-7
+documents the **complete resulting public surface** in one place. Six phases each added
+interfaces and each documented them locally — in a module `CLAUDE.md`, a docstring, a plan
+blockquote — so a user or a future agent has no single page that answers "what is the API
+now?" The pieces are scattered across `sdk_/ngff_.py`, `_image_io_handler.py`,
+`_cli/CLAUDE.md`, `sdk_/CLAUDE.md`, and four plan documents.
+
+**Scope — every interface this change created, changed, or retired:**
+
+- **`phenotypic.sdk_.ngff_`** — the full public surface: layout constants
+  (`STORE_SUFFIX`, `STORE_ROOT_JSON`, `STORE_SCHEMA_VERSION`, `NGFF_VERSION`,
+  `OBJMAP_LABEL`, `SERIES_ORDER`), pyramid geometry (`pyramid_level_count`,
+  `pyramid_level_shapes`, `level_scale_vector`, `downsample_image`), the
+  `attributes.phenotypic` contract, `promote_store` / `new_part_path` and the commit
+  protocol, `valid_staged_store`, `require_readable_store`, and the durability resolver.
+- **`Image` / `GridImage` I/O** — `save2zarr`, `load_zarr`, `load_layer_zarr`,
+  `save_intermediate_zarr`, and **what replaced each removed HDF method**.
+- **CLI** — `--mode migrate` (in-place; there is no copy mode), `--durable-writes` /
+  `--no-durable-writes` and its tri-state, and the store-era output layout.
+- **The on-disk store layout itself** — the tree, what each group is, and the fact that it
+  opens directly in napari / QuPath / Vizarr with no PhenoTypic install, which is a headline
+  goal of the change and currently documented nowhere a user will find it.
+- **Completion markers and resume** — `image_data_artifact`, `SUCCESS_MARKER_VERSION`, and
+  the store-vs-file descriptor `kind` dispatch.
+
+**Constraints:**
+- Doctest examples must be **runnable** and use `load_synth_yeast_plate()`, per root
+  `CLAUDE.md`. `sphinx-build -W` must still pass afterwards.
+- Examples go in **docstrings**, never in new example files or notebooks (root `CLAUDE.md`).
+- Update, do not duplicate: where `sdk_/CLAUDE.md` or `_cli/CLAUDE.md` already carries a
+  contract, link rather than restate, so the two cannot drift.
+- Record the **invariants a reader must not violate**, since three subsystems now depend on
+  them and none can detect a violation alone: the promote writes the root **last**, nothing
+  writes into a promoted store, and both the completion marker and the viewer's staleness
+  scan therefore key on the root `zarr.json` alone.
+
 ## Phase 7 exit criteria
 
 - [ ] `uv run pytest tests -q` green.
