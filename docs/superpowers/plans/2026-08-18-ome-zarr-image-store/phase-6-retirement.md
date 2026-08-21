@@ -604,11 +604,68 @@ surrounding rule still stands."
       path the unfiltered grep reports.
 - [ ] The forward write path holds no `.h5` reference:
       `grep -rn "\.h5" src/phenotypic --include='*.py' | grep -vE '_hdf_to_zarr|hdf_\.py|_metadata_migration\.py|_image_io_handler\.py'`
-      returns nothing. **The allow-list is required, not a weakening** — verified that
-      `hdf_.py:196` (`EXT = {".h5", ".hdf5", ".hdf", ".he5"}`, on the kept `HDF` class),
-      `_metadata_migration.py:53` (`_HDF_SUFFIXES`), and the retained private readers in
-      `_image_io_handler.py` all survive this phase **by design**. A bare grep would force
-      the implementer to delete a keeper or silently soften the gate (ledger GEN-10).
+      returns **no WRITE site**. **The module allow-list is required, not a weakening** —
+      verified that `hdf_.py:192` (`EXT = {".h5", ".hdf5", ".hdf", ".he5"}`, on the kept
+      `HDF` class), `_metadata_migration.py:112` (`_HDF_SUFFIXES`), and the retained
+      private readers in `_image_io_handler.py` all survive this phase **by design**.
+      A bare grep would force the implementer to delete a keeper or silently soften the
+      gate (ledger GEN-10).
+
+      > **Corrected in execution (2026-08-20), following the Phase 4 ruling.** The
+      > earlier wording said the filtered grep "returns nothing." It never could, and
+      > that was never what the criterion is about. Measured at the Phase 6 gate the
+      > grep reports **40 lines across 12 modules**, and **not one of them is a write**:
+      > 12 are comment-only lines and 17 more are docstring prose (29 explanatory lines
+      > in total), 8 are user-facing strings, 2 are path *naming* in
+      > `_cli_output_manager`, and exactly **one** touches the filesystem —
+      > `_io_constants.py:1500`, `hdf_dir.glob("*.h5")` inside
+      > `datasets_needing_migration`, which is the **detect** predicate every writing
+      > mode refuses an unconverted tree on. Removing it would delete the guard, not
+      > the write path.
+      >
+      > This is the same shape Phase 4 hit at `builder/_preview_cache.py` and the same
+      > ruling applies: **do not delete an explanation, or a message a user needs, to
+      > satisfy a grep for a code pattern.** The criterion is extended to its own stated
+      > intent — *code on a write path* — rather than the prose being deleted or the
+      > allow-list being widened until the count reached zero.
+      >
+      > **Documented exceptions** (lead ruling, 2026-08-20), each reviewed at the gate:
+      >
+      > - `_io_constants.py:1500` — `hdf_dir.glob("*.h5")` in
+      >   `datasets_needing_migration`. A read/detect predicate, shared by the CLI
+      >   refusal and the GUI consistency report. **Load-bearing; must not be removed
+      >   while legacy trees exist.**
+      > - `_cli_output_manager.py:1477` (`extensions={"hdf": ".h5"}`) and `:1549`
+      >   (`ext = self.extensions.get("hdf", ".h5")`) — `get_output_path` *naming* a
+      >   legacy path for the only two readers that resolve one
+      >   (`image_data_artifact`'s `"hdf"` completion-marker fallback and
+      >   `_migrate_legacy_success_evidence`). Its own docstring at `:1451` records
+      >   that nothing has written an `.h5` since Phase 3 Task 3.6.
+      > - `phenotypicCLI.py:293` (the `--mode full/measure/recompile/process` refusal),
+      >   `:1023/:1025/:1033` (`--mode` / `--delete-sources` help), `:1289/:1291`
+      >   (the `--help` mode table), `_cli_migrate.py:185` (pass-2 progress), and
+      >   `_output_consistency.py:318` (the GUI migration prompt) — **user-facing
+      >   strings**. A migration prompt that cannot name the format the user has on
+      >   disk is not a migration prompt.
+      > - The remaining **29** lines are comments and docstrings explaining *why* the
+      >   HDF era ended: `_preview_cache.py:37/:201/:304` (why `MANIFEST_VERSION`
+      >   exists — the Phase 4 exception, carried forward unchanged),
+      >   `_processing_inventory.py:303` and `ngff_.py:1120` (the measured
+      >   entries-per-store figures the store-bounded walk rests on),
+      >   `_cli_completion.py:29/:118/:133/:135/:146`, `_cli_migrate.py:8/:20/:143`,
+      >   `_io_constants.py:1466/:1473/:1475/:1476`,
+      >   `_cli_output_manager.py:1405/:1451/:1453/:1512`,
+      >   `_cli_process_single.py:632`, `typing_.py:120`, `_run.py:57/:59`,
+      >   `_output_consistency.py:72`, `phenotypicCLI.py:253/:284/:2991`.
+      >
+      > Mechanized form of the extended criterion — the filtered grep, minus
+      > comment-only lines, must report only the sites enumerated above:
+      >
+      > ```bash
+      > grep -rn "\.h5" src/phenotypic --include='*.py' \
+      >   | grep -vE '_hdf_to_zarr|hdf_\.py|_metadata_migration\.py|_image_io_handler\.py' \
+      >   | grep -vE ':[0-9]+:[[:space:]]*#'
+      > ```
 - [ ] `wc -l src/phenotypic/sdk_/hdf_.py` is roughly 520.
 - [ ] `docs/source/how_to/pages/zarr_storage.md` exists, is reachable from
       `docs/source/how_to/index.rst`, and names every removed public symbol plus the

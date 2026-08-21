@@ -111,7 +111,9 @@ ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
 - `hdf_.py` — the surviving HDF5 **read** surface (~516 lines). Phase 6 of the
   OME-Zarr change deleted the DataFrame half (`save_series_*`, `load_series`,
   `save_frame_*`, `load_frame`, `preallocate_*`, the fixed-length-string codecs)
-  as unreferenced. What remains is the keeper list, pinned by
+  plus three unrelated dead statics (`assert_swmr_on`,
+  `get_uncompressed_sizes_for_group`, `close_handle`) as unreferenced.
+  What remains is the keeper list, pinned by
   `tests/unit/sdk_/test_hdf_surface.py`: `_open_hdf_with_recovery` /
   `_clear_hdf_consistency_flags` (the migration read path, and the
   retry-with-backoff shape `promote_store` reuses), the writer/reader

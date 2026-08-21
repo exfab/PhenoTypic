@@ -2164,8 +2164,8 @@ class BundleLayout:
         Returns:
             Resolved store path if the **directory** exists, otherwise ``None``.
             Note the ``is_dir`` check: a store is a directory, so the
-            ``is_file`` test used by :meth:`hdf_path` would always return
-            ``None`` here.
+            ``is_file`` test the removed ``hdf_path`` used (it resolved a single
+            per-image HDF file) would always return ``None`` here.
         """
         if self.output_root is None:
             return None

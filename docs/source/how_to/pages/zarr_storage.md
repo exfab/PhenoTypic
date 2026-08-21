@@ -79,7 +79,11 @@ The HDF5 per-image API this page used to document has been removed:
   `load_zarr`, and `load_layer_zarr`.
 - The DataFrame half of `phenotypic.sdk_.HDF` (`save_series_*`, `load_series`,
   `save_frame_*`, `load_frame`, `preallocate_*`, and their fixed-length-string
-  codecs). These had no remaining call sites.
+  codecs), together with three unrelated statics on the same class —
+  `HDF.assert_swmr_on`, `HDF.get_uncompressed_sizes_for_group`, and
+  `HDF.close_handle`. These had no remaining call sites. The HDF **read**
+  surface is unchanged: the writer/reader properties, the group accessors, and
+  `HDF.save_array2hdf5` all survive, because `--mode migrate` is built on them.
 - The HDF path constants `DIR_HDF`, `dataset_hdf_dir`, `HdfAttr`,
   `load_image_from_hdf`, and `BundleLayout.hdf_path`. The two that migration
   still needs live on as private helpers inside
