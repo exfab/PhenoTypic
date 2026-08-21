@@ -133,7 +133,12 @@ def test_a_dimension_names_mismatch_is_rejected(tmp_path: Path) -> None:
     payload = json.loads(level.read_text(encoding="utf-8"))
     payload["dimension_names"] = list(reversed(payload["dimension_names"]))
     level.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(AssertionError):
+    # `match`, like the sibling negatives. Bare, this was satisfied by ANY
+    # AssertionError raised anywhere in `assert_store_conforms` -- which is how
+    # a KeyError in the path-order check went unnoticed once already. The
+    # reversed value is what the assertion reports, so matching it pins the
+    # failure to the dimension_names MUST rather than to "something went wrong".
+    with pytest.raises(AssertionError, match=r"\['x', 'y'\]"):
         assert_store_conforms(store)
 
 
