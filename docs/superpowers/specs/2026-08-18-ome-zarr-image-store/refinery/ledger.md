@@ -1864,3 +1864,116 @@ Parallel worktrees held. Phase 5's only GUI file across the whole phase was
 `results_viewer/_output_consistency.py`, exactly as scoped; Phase 4's only non-GUI file was
 its own plan document. Two agents, two phases, ~2,400 lines of plan, **zero conflicts** —
 boundaries stated as paths, and reported rather than resolved when they chafed.
+
+---
+
+# IMPLEMENTATION — Phases 6 and 7 complete; the change is done
+
+Final gate on `e6877122`: **4 failed, 9,432 passed, 185 skipped** — the same four
+known failures that predate this work (one orientation test, three
+`FilFinderDetector` smoke tests on an absent `topology` extra). The suite grew
+8,646 → 9,432 across the change.
+
+## Phase 6 — retirement
+
+`hdf_.py` 1,984 → **516 lines**; the public HDF image API and the forward HDF writer
+`save_image_hdf` are gone; `Image.load_hdf5` relocated to
+`_hdf_to_zarr._load_image_from_hdf`, which is now the only module allowed to know the
+legacy tree layout.
+
+**The interesting finding was in the supersessions, where being wrong would have been
+silent.** The flat-metadata design records a supersession on its decision #1 (recompile
+no longer auto-migrates), noting decision #3 is untouched so no existing output breaks —
+and **no** supersession on decision #7, because that one was **withdrawn** by user
+ruling. Recording the withdrawn supersession would have re-legitimised the
+metadata-snapshot rewrite in the very document that governs it.
+
+Root `CLAUDE.md` was found still instructing the withdrawn design — that `--mode migrate`
+rewrites `deliverables/metadata.csv` after copying the original aside. That file is what
+a future agent reads before touching migration, so it was prescribing the exact rewrite
+the rule above it forbids. The rule now has **no exception**.
+
+## Phase 7 — verification, and a baseline that was never a baseline
+
+**The mypy criterion nearly shipped violated.** The plan's baseline of "417 errors / 124
+files" was *verified by running `git show HEAD:pyproject.toml`* — comparing a **config
+file** and calling it a type-check baseline. Re-derived properly (`git archive` the
+merge-base into scratch, check with its own config): base 419/123, HEAD 422/122, so the
+branch added **+8**.
+
+Fixing them took four rounds, and **two of my own fixes introduced new errors in turn** —
+a `str | None` widening, then a redefinition against a loop variable four lines above.
+The running total never showed it: after round one it read "415, better than baseline"
+while the file was still +1. Only diffing the **per-file** error set against the
+re-derived base caught each round. Same failure as the plan's, one level down: a number
+that looks right for a reason unrelated to what it measures.
+
+Final: **413 total** (base 419), `_image_io_handler.py` back to the base's 18.
+
+**Phase 7 also refused to manufacture a mutation proof**, which is worth recording as
+correct behaviour. Task 7.1's criterion names a test that exists nowhere; the real
+concurrency test goes red in **2 of 8** runs, on `ENOENT` rather than the `ENOTEMPTY` the
+criterion predicts, and widening the race to 4 writers × 6 rounds will not close it
+because the window is a single `rename`. It documented that and named the deterministic
+injected-interleaving test as the actual gate. **A flaky gate is worse than an honest
+note.**
+
+Two of its gates were **broken on arrival**: one matched docstrings that say "never
+hard-code this" as if they were violations; the other's allow-list exempted a file that
+needed no exemption — blinding the gate — while missing six real hits elsewhere. Its
+`test_every_allow_list_entry_still_earns_its_exemption` is the structural answer: an
+exemption that stops earning its keep can no longer widen a gate forever.
+
+## The docs build: 24,565 warnings were two lines
+
+`sphinx-build -W` had **never been run by any phase**. It failed at 24,565 warnings — and
+identically at the phase base, so the criterion was never achievable. **23,934 of them
+(97%) were one bug.**
+
+Five class docstrings wrote a Google-style `Attributes:` section whose body begins with
+`None`, meaning "this class has no attributes". Napoleon reads that as declaring an
+attribute **named** `None`, registering a `.None` cross-reference target — after which
+**every** autodoc'd docstring returning `None` is ambiguous. The authors documented
+something true; the tool recorded the opposite.
+
+**The first fix found only one of the five**, because it searched for a line that is
+exactly `None`. Four survived in spellings that parse identically —
+`None (all operation state is ...)`, `None at the ImageEnhancer level; ...`,
+`None. This mixin relies on ...`. That partial fix took 23,934 → 18,658 and **would have
+been reported as "root cause fixed" had the build not been re-run and re-counted.**
+
+Final: **24,565 → 651**, zero `.None` warnings. The remaining 651 are ordinary RST across
+files this change never touched — now legible for the first time.
+
+## A process failure of mine, worth recording
+
+I committed a working tree another agent was **mid-edit in**. My scripted edit hit its own
+guard and made no change; instead of stopping there I ran `git add <path>` and committed,
+sweeping the other agent's in-progress text under my message. It caught this and said so
+precisely. The guard prevented a double-*write*; nothing prevented me committing a file I
+did not own. One edit earlier and it would have been a half-written criterion, committed
+under a message asserting it was complete.
+
+**Rule: in a shared worktree, only `git add` paths you edited yourself, and when a scripted
+edit fails its guard, stop and re-read rather than proceeding to the commit.**
+
+## Method notes across the whole change
+
+**Parallel worktrees worked.** Phases 4 and 5 ran concurrently — ~2,400 lines of plan, two
+agents, **zero conflicts**. Phase 4's only non-GUI file was its own plan document; Phase
+5's only GUI file was the one it was scoped to. Boundaries stated as paths, and *reported
+rather than resolved* when they chafed.
+
+**Three lessons generalize past this project**, each a case of a suite being confidently
+green about something it structurally could not observe:
+
+1. **An assertion about results cannot see cost.** Three survivors, three unrelated paths;
+   the sharpest was a recursive `rglob` filtered back to a byte-identical result set.
+2. **A round-trip proves only self-consistency.** Fidelity needs an oracle *outside* the
+   code under test — here, an h5py read of the legacy source.
+3. **A behaviour-preserving refactor is a mutant too.** Any test that fails one is testing
+   the implementation, not the outcome.
+
+And the structural one, hit **four** times: **a gate that has never run is not a gate.**
+`tests/smoke` (Phase 2), `tests/migration` (Phase 3, 57 stale goldens), the `run_console`
+contention flakes, and the docs build.
