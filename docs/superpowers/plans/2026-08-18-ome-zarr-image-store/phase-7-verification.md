@@ -69,7 +69,7 @@ test written here fails, the fix belongs in the phase that owns the code, not he
   non-empty `trash` survives; every later attempt's `os.replace(final, trash)` then fails
   `ENOTEMPTY` until the budget exhausts, stranding the previous store. Rare, but cheap.
 
-- [ ] **Step 1: Write the tests**
+- [x] **Step 1: Write the tests**
 
 Only the cases that need a **real `save2zarr`** live here — cases (b) and (c). Case (a) is
 Phase 3's `test_interrupted_store_classifies_stage1`; see the header for what was deleted and
@@ -128,7 +128,7 @@ def test_a_new_write_does_not_reuse_a_stale_part(tmp_path: Path) -> None:
     assert (Image.load_layer_zarr(final, "gray") == image.gray[:]).all()
 ```
 
-- [ ] **Step 2: Run them.**
+- [x] **Step 2: Run them.**
 
 ```bash
 uv run pytest tests/integration/cli/test_commit_protocol.py -v
@@ -136,7 +136,7 @@ uv run pytest tests/integration/cli/test_commit_protocol.py -v
 
 Expected: all PASS.
 
-- [ ] **Step 3: Prove the concurrency case has teeth**
+- [x] **Step 3: Prove the concurrency case has teeth** — see the correction below
 
 Temporarily replace `promote_store`'s retry loop with a single
 `exists -> move-aside -> replace` pass (the pre-**PRE-B5** shape) and re-run:
@@ -155,7 +155,7 @@ the commit body.
 > **flush** ordering under §3.7, which this suite does not exercise. An earlier draft's
 > mutation proof claimed otherwise and could not work.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit** (`39215314`)
 
 ```bash
 git add tests/integration/cli/test_commit_protocol.py
@@ -193,7 +193,7 @@ test can distinguish the two write orders."
   5. **no case-only collisions** among store path segments;
   6. per-file overhead is documented, not mitigated — no test.
 
-- [ ] **Step 1: Write the platform tests**
+- [x] **Step 1: Write the platform tests**
 
 ```python
 """Windows-specific promote behaviour, asserted rather than assumed."""
@@ -306,11 +306,11 @@ def test_chunk_keys_are_one_path_segment(tmp_path: Path) -> None:
     assert chunk_dirs == [], "chunk keys must not nest into directories"
 ```
 
-- [ ] **Step 2: Wire the CI lanes.** In `run-pytest-full.yml`'s Windows job, ensure
+- [x] **Step 2: Wire the CI lanes.** — already wired; asserted rather than edited. In `run-pytest-full.yml`'s Windows job, ensure
 `tests/integration/cli/test_commit_protocol.py` and `tests/unit/sdk_/test_ngff_windows.py`
 are collected. In `run-pytest.yml`, confirm neither is marked `slow`.
 
-- [ ] **Step 3: Run on Linux**
+- [x] **Step 3: Run on Linux**
 
 ```bash
 uv run pytest tests/unit/sdk_/test_ngff_windows.py -v
@@ -318,7 +318,7 @@ uv run pytest tests/unit/sdk_/test_ngff_windows.py -v
 
 Expected: the four platform-independent tests PASS, the three Windows-only tests SKIP.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit** (`64d9d76f`; `.github/workflows` needed no edit)
 
 ```bash
 git add .github/workflows tests/unit/sdk_/test_ngff_windows.py
@@ -332,6 +332,8 @@ spec accepts the one-day latency rather than promoting the whole Windows
 suite to PR time."
 ```
 
+*Committed as `64d9d76f`.*
+
 ---
 
 ### Task 7.3: Architectural invariant gates
@@ -344,7 +346,7 @@ These are grep-style gates over the source tree, in the same spirit as
 `tests/unit/schema/test_no_metadata_literals.py`. Each one guards an invariant that a
 future edit could plausibly violate without any other test noticing.
 
-- [ ] **Step 1: Write the gates**
+- [x] **Step 1: Write the gates**
 
 ```python
 """Source-tree invariants for the OME-Zarr store. Each guards a silent-failure mode."""
@@ -432,14 +434,14 @@ they are not "helpfully" re-added:
 | `test_resume_state_never_lives_in_ngff_metadata` | `r'labels.*stage2\|stage2.*ome\.labels'` matches nothing plausible. Phase 3 Task 3.4's differential parity test is what actually catches this defect. |
 | `test_zarr_errors_are_caught_not_propagated` (Task 1.6) | `BaseZarrError` subclasses `ValueError`, so the assertion holds with or without it in the tuple. |
 
-- [ ] **Step 2: Run.** Any hit is a real defect; fix it in the owning phase's module, not by
+- [x] **Step 2: Run.** Any hit is a real defect; fix it in the owning phase's module, not by
 relaxing the gate.
 
 ```bash
 uv run pytest tests/unit/test_ome_zarr_invariants.py -v
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit** (`0cd6fbfb`)
 
 ```bash
 git add tests/unit/test_ome_zarr_invariants.py
@@ -484,6 +486,53 @@ passed either way)."
 ---
 
 ### Task 7.4: Full-suite sign-off
+
+> **Executed 2026-08-20, except the wide pytest run.** Measured values below;
+> where one contradicts a number written into this plan, the measurement is
+> authoritative and the plan's figure is corrected in place.
+>
+> | Check | Recorded | Measured | Verdict |
+> |---|---|---|---|
+> | `pytest tests -q` | — | SLURM job `27685608` (`batch`, `c19`, 6 h) | in flight; **started before** `39215314`, `64d9d76f`, `0cd6fbfb`, `21421725`, so it does not cover them |
+> | `mypy src/phenotypic` | 417 errors / 124 files | **422 / 122** (743 files checked) | **REGRESSION — see below** |
+> | `ruff check src/phenotypic` | 25 | **25** (4 E402, 2 E721, 2 F401, 2 F403, 13 F405, 2 F841) | matches exactly |
+> | `ruff check src/phenotypic tests` | *(never recorded)* | **49** = 25 src + **24 tests** | the 24 are in seven files, **none touched by this branch** |
+> | `sphinx-build -W` | — | failed on a missing autosummary stub | **not a docs defect** — see below |
+> | `ngff_store_geometry.py` | exit 0 | **exit 0**, all claims hold; C6 already removed per ALGO-8 | pass |
+> | `check_features_md.py` | — | `OK (451 feature rows, 377 shipping, 0 in progress)` | pass |
+> | `check_workflows_md.py` | — | `OK -- 20 workflows, 20 capture functions, 20 dispatched` | pass |
+> | `tests/unit/core/test_ngff_conformance.py` | — | **22 passed** | pass |
+> | `ome-zarr` / `ome-zarr-models` in `uv.lock` | banned | **0 occurrences** | pass |
+>
+> **mypy is a real regression, and it belongs to Phase 2, not here.** The
+> plan's 417/124 baseline is stale: this branch's merge-base
+> (`a742ac8a`) measures **419 errors in 123 files (729 checked)** under its own
+> `pyproject.toml`. Against *that* baseline the branch adds:
+>
+> * `_core/_image_parts/_image_io_handler.py` — `arg-type` 3 → 6,
+>   `assignment` 7 → 8, `return-value` 3 → 6 (**+7**). Named sites include
+>   `:724` (`Argument "kind" to "build_pyramid" has incompatible type "str";
+>   expected "Literal['image', 'label']"`) and `:1314` / `:1526`
+>   (`moveaxis` applied to `zarr`'s `NDArrayLike` union).
+> * `_cli/_cli_gui_lifecycle.py:116` — `arg-type` (**+1**).
+>
+> and removes 6 (`post/_expand_metadata.py` ×2, `post/_merge_metadata.py` ×3,
+> `sdk_/hdf_.py [misc]` ×1). The exit criterion is "no new errors **and none in
+> any file this change touched**", and `_image_io_handler.py` is the file Phase 2
+> rewrote — so this fails as written. Phase 7 changes no production code; the fix
+> belongs to Phase 2's module.
+>
+> **The sphinx failure was a collision, not a defect.** `sphinx -W` aborted on
+> `docs/source/api_reference/api/phenotypic.enhance.SubtractGaussian.rst` not
+> existing. That directory is **gitignored** (`.gitignore:62`), holds 550
+> autosummary-generated stubs, and a *second* `sphinx -W` process
+> (`/scratch/anguy344/27684616/sphinx_fix2`) was regenerating it in the shared
+> worktree at the time. `SubtractGaussian` is not new on this branch. Re-run it
+> when no concurrent build is writing that directory.
+>
+> **Steps 3 and 4 (a real dataset end-to-end, and the third-party `ome-zarr`
+> read) were not run.** Both are manual release checks, not CI gates, and both
+> want a real image tree and an uncontended node.
 
 - [ ] **Step 1: Run everything**
 
@@ -625,52 +674,98 @@ now?" The pieces are scattered across `sdk_/ngff_.py`, `_image_io_handler.py`,
 
 ## Phase 7 exit criteria
 
-- [ ] `uv run pytest tests -q` green.
+- [ ] `uv run pytest tests -q` green. **In flight as SLURM job `27685608`**
+      (`batch`, `c19`, 6 h walltime — `short`'s 2 h is not enough; a previous gate died at
+      89%). It was submitted **before** commits `39215314`, `64d9d76f`, `0cd6fbfb`, and
+      `21421725`, so it does not cover the three new suites; those were run individually
+      and are green. Known-failing and out of scope: `test_inspect_remeasures_when_explicit_image_changes`,
+      three `FilFinderDetector` smoke tests (the `topology` extra is not installed),
+      `tests/migration/test_equivalence.py` (57 stale-golden failures, pre-existing), and
+      two run-console suites that flake under node load.
 - [ ] `uv run mypy src/phenotypic` and `uv run ruff check src/phenotypic tests` show **no
-      new** errors against the baseline recorded in Phase 0 (417 mypy, 25 ruff), and none in
-      any file this change touched.
+      new** errors against the baseline, and none in any file this change touched.
+      **The baseline is the merge-base, measured, not the Phase-0 figure.**
+      `a742ac8a` = **419 mypy errors / 123 files** and **25 ruff** in `src/phenotypic`
+      (+ **24** pre-existing in `tests/`, in seven files this branch does not touch).
+      Phase 0 recorded 417/124; that number is stale and must not be compared against.
+      **Currently FAILING**: 422 mypy errors, +7 in `_image_io_handler.py` and +1 in
+      `_cli_gui_lifecycle.py`. Owner: Phase 2.
 
 > **This is a NO-NEW-ERRORS gate, not a clean gate — and that is deliberate.**
-> `uv run mypy src/phenotypic` reports **417 errors in 124 files at the baseline**,
-> verified against the pre-change `pyproject.toml` with `git show HEAD:pyproject.toml`
-> and found identical — so none of them belong to this change, and raising the Python
-> floor cannot move them (mypy sets no `python_version`, so it follows the running
+> None of the baseline errors belong to this change, and raising the Python floor
+> cannot move them (mypy sets no `python_version`, so it follows the running
 > interpreter rather than `requires-python`). `uv run ruff check src/phenotypic` is
-> likewise **25 pre-existing errors**, all `F405`/`E402`/`E721`/`F401`/`F403`/`F841`.
+> **25 pre-existing errors**, all `F405`/`E402`/`E721`/`F401`/`F403`/`F841` —
+> re-measured 2026-08-20 and identical.
+>
+> > **Corrected 2026-08-20 (Task 7.4).** This paragraph read *"reports 417 errors in
+> > 124 files at the baseline, verified against the pre-change `pyproject.toml` with
+> > `git show HEAD:pyproject.toml` and found identical"*. The figure does not
+> > reproduce. Measured by extracting the merge-base (`a742ac8a`) with `git archive`
+> > and running `mypy --config-file <base>/pyproject.toml <base>/src/phenotypic`:
+> > **419 errors in 123 files, 729 source files checked**. `git show HEAD:pyproject.toml`
+> > compares a *config file*, which cannot establish an error count; the count was
+> > never re-derived. A stale baseline is worse than none — it makes a real +3
+> > regression read as +5 and invites the executor to argue about which two errors
+> > "were already there".
 >
 > Stating these as "passes" would hand every later phase a gate that was already red,
 > which trains an executor to ignore the one signal that would catch a real regression.
 > Record the counts, compare against them, and treat any *increase* as this phase's.
 
-- [ ] `uv run sphinx-build -W` succeeds.
-- [ ] No consumer takes `Path.stem` of a store directory (ledger **C5**):
-      ```bash
-      grep -rn "\.stem" src/phenotypic/_cli/ | grep -v "store_stem"
-      ```
-      Every surviving hit must be provably operating on a *source image* path, not on a
-      `*.ome.zarr` directory. `.ome.zarr` is a double suffix, so `Path.stem` silently yields
-      `img.ome` and the wrong name propagates into parquet names and marker keys rather than
-      raising.
-- [ ] `ngff_store_geometry.py` exits 0 — **after** Phase 1's edit removing its
+- [ ] `uv run sphinx-build -W` succeeds. **Attempted 2026-08-20 and inconclusive**: it
+      aborted on `docs/source/api_reference/api/phenotypic.enhance.SubtractGaussian.rst`
+      not existing, while a second `sphinx -W` process was regenerating that directory in
+      the same worktree. The directory is gitignored (`.gitignore:62`) autosummary output,
+      and `SubtractGaussian` is not new on this branch. Re-run with no concurrent build.
+- [x] No consumer takes `Path.stem` of a store directory (ledger **C5**). **This is now a
+      gate, not a grep**: `tests/unit/test_ome_zarr_invariants.py::test_path_stem_is_never_taken_of_a_store_directory`
+      resolves the receiver by AST. The plan's `grep -rn "\.stem" src/phenotypic/_cli/`
+      returns ~100 hits and asks for a manual "is this a source image path?" pass; all 100
+      are (`img.stem`, `image.stem`, `item.stem`, `Path(image_name).stem`), so the review
+      passes and teaches nothing, while the gate fails when a store path actually acquires
+      a `.stem`. Proven by mutation: injecting `store.stem` turns it red; renaming `img` to
+      `image_path` at the same call site does not.
+- [x] `ngff_store_geometry.py` exits 0 — **verified 2026-08-20** — **after** Phase 1's edit removing its
       `--pyramid-levels` documentation and its C6 claim block, which PRE-P3 descoped
       (ledger **ALGO-8**).
-- [ ] Task 7.1's concurrency mutation proof holds: breaking `promote_store`'s retry loop
-      makes `test_concurrent_promote_and_read` fail on `ENOTEMPTY`.
+- [x] Task 7.1's concurrency mutation proof holds — **but not through the test this
+      criterion named, and not on the error it named.** Two corrections, both measured:
+      (1) `test_concurrent_promote_and_read` **does not exist**; Task 7.1 defines
+      `test_two_concurrent_writers_produce_one_coherent_winner`. (2) With `promote_store`
+      reduced to a single `exists -> move-aside -> replace` pass, that test goes red in
+      only **2 of 8** runs, and the error is `ENOENT` (a sibling's move-aside took `final`
+      first), not `ENOTEMPTY`. The narrowest window in the race is one `rename`, so no
+      un-instrumented multi-process test closes it reliably.
+      **The deterministic gate is
+      `tests/unit/sdk_/test_ngff_promote.py::test_a_concurrent_promoter_appearing_mid_retry_is_benign`**,
+      which injects the interleaving. The same mutant also kills
+      `test_a_transient_rename_failure_is_retried_not_surfaced`,
+      `test_a_failed_promote_leaves_the_previous_store_in_place`, and
+      `test_a_hard_failure_is_not_retried_five_times` — four red, every run.
 
       > **Replaced (ledger GEN-25).** This criterion previously read "Commit-protocol case
       > (a) demonstrated to fail under a reversed write order", which Task 7.1's own
       > blockquote refutes — *"Do not try to prove 'root last' here… An earlier draft's
       > mutation proof claimed otherwise and could not work"*. The concurrency proof is the
       > one that actually works.
-- [ ] `tests/unit/core/test_ngff_conformance.py` exercises `_assert_reader_level_musts`
-      **and its negative cases fail** — a reordered series list, a dangling
+- [x] `tests/unit/core/test_ngff_conformance.py` exercises `_assert_reader_level_musts`
+      **and its negative cases fail** — 22 passed, and mutation-swept (`21421725`):
+      removing the series-order, `dimension_names`, or separator assertion turns the
+      matching negative red. `test_a_dimension_names_mismatch_is_rejected` used a bare
+      `pytest.raises(AssertionError)` and was tightened to `match` the reported value.
+      Stubbing `zarr.open_array` leaves all 22 green, and that is **correct**: the
+      dangling-path MUST has two routes and the surviving one still names the path.
+      The published criterion, kept for the record: a reordered series list, a dangling
       `datasets[].path`, a `dimension_names` mismatch, and a nested chunk-key separator each
       raise; a label-less store still passes (ledger **GEN-47**). A positive-only suite
       satisfies this criterion vacuously, which is how a `KeyError` in the path-order check
       went unnoticed once already.
-- [ ] Every phase that writes a store still calls `assert_store_conforms`,
-      and every phase that writes a store still calls `assert_store_conforms` (ledger
-      **SIMP-12** — Task 7.3a's checks moved there rather than shipping as their own task).
+- [x] Every phase that writes a store still calls `assert_store_conforms` — verified:
+      `tests/unit/core/test_ngff_conformance.py`, `tests/unit/sdk_/test_ngff_attributes.py`,
+      `tests/unit/sdk_/test_hdf_to_zarr.py`, `tests/integration/cli/test_staged_store_stages.py`,
+      via `tests/_ngff_conformance.py` (ledger **SIMP-12** — Task 7.3a's checks moved
+      there rather than shipping as their own task).
 - [ ] A real run resumes to `complete` on a second invocation with no reprocessing.
 - [ ] A written store is readable by `ome-zarr` in a throwaway isolated environment —
       a **manual release check, not a CI gate**, since that package is banned from every
