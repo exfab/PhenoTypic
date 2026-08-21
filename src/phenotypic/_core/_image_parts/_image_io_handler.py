@@ -8,7 +8,7 @@ import warnings
 from collections.abc import Iterable, Sequence
 from datetime import datetime
 from fractions import Fraction
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
@@ -719,7 +719,9 @@ class ImageIOHandler(ImageColorSpace):
 
         from phenotypic.sdk_ import ngff_
 
-        kind = "label" if series.endswith(ngff_.OBJMAP_LABEL) else "image"
+        kind: Literal["image", "label"] = (
+            "label" if series.endswith(ngff_.OBJMAP_LABEL) else "image"
+        )
         name = ngff_.OBJMAP_LABEL if kind == "label" else series
         for index, level in enumerate(ngff_.build_pyramid(array, levels, kind=kind)):
             handle = zarr.create_array(
@@ -929,19 +931,25 @@ class ImageIOHandler(ImageColorSpace):
 
         # 2. per-group ome metadata
         bit_depth = int(self.bit_depth or 8)
-        name = self._metadata.protected.get(IMAGE.IMAGE_NAME)
+        # ``protected`` is a metadata mapping whose values are the broad
+        # ``int | str | float | None`` union; the OME ``name`` field is a
+        # string. Coerce rather than assume the stored type.
+        # Named ``image_name``, not ``name``: ``name`` is the loop variable a
+        # few lines above, and rebinding it here is a redefinition.
+        raw_name = self._metadata.protected.get(IMAGE.IMAGE_NAME)
+        image_name: str | None = None if raw_name is None else str(raw_name)
         for series_name in series_names:
             shapes = ngff_.pyramid_level_shapes(arrays[series_name].shape, levels)
             block = {
                 "version": ngff_.NGFF_VERSION,
                 **ngff_.build_multiscales(
-                        series=series_name, level_shapes=shapes, name=name
+                        series=series_name, level_shapes=shapes, name=image_name
                 ),
                 **ngff_.build_omero(
                         series=series_name,
                         dtype=arrays[series_name].dtype,
                         bit_depth=bit_depth,
-                        name=name,
+                        name=image_name,
                 ),
             }
             self._write_group_json(part / series_name, {"ome": block})
@@ -967,7 +975,7 @@ class ImageIOHandler(ImageColorSpace):
                             **ngff_.build_multiscales(
                                     series=ngff_.OBJMAP_LABEL,
                                     level_shapes=label_shapes,
-                                    name=f"{name}/{ngff_.OBJMAP_LABEL}" if name else None,
+                                    name=f"{image_name}/{ngff_.OBJMAP_LABEL}" if image_name else None,
                             ),
                             **ngff_.build_image_label(),
                         }
@@ -1290,7 +1298,12 @@ class ImageIOHandler(ImageColorSpace):
             target.clear()
             target.update(normalized)
 
-        return img
+        # ``cls`` is always an ``Image`` subclass -- ``ImageIOHandler`` is a mixin
+        # and is never instantiated on its own -- but mypy resolves ``cls(...)``
+        # to the mixin. The three sibling loaders carry the same unannotated
+        # shape; this one is new, so it is narrowed here rather than adding a
+        # fourth instance of the pattern.
+        return cast("Image", img)
 
     @staticmethod
     def _read_store_array(path, member: str, *, layer: str = "") -> np.ndarray:
@@ -1308,9 +1321,14 @@ class ImageIOHandler(ImageColorSpace):
 
         from phenotypic.sdk_ import ngff_
 
-        array = zarr.open_array(
-                store=ngff_.long_path(Path(path) / member / "0"), mode="r"
-        )[...]
+        # ``np.asarray``: zarr types ``__getitem__`` as a broad scalar-or-array
+        # union, and a full-slice read of a 2-D/3-D array is always an ndarray.
+        # No copy is made for one.
+        array = np.asarray(
+                zarr.open_array(
+                        store=ngff_.long_path(Path(path) / member / "0"), mode="r"
+                )[...]
+        )
         return np.moveaxis(array, 0, -1) if layer == "rgb" else array
 
     @classmethod
@@ -1520,9 +1538,13 @@ class ImageIOHandler(ImageColorSpace):
         ).get(layer)
         if member is None:
             raise KeyError(f"Layer {layer!r} not found in {path}")
-        array = zarr.open_array(
-                store=ngff_.long_path(Path(path) / member / str(level)), mode="r"
-        )[...]
+        # See ``_load_layer_from_store``: narrow zarr's broad read union.
+        array = np.asarray(
+                zarr.open_array(
+                        store=ngff_.long_path(Path(path) / member / str(level)),
+                        mode="r",
+                )[...]
+        )
         return np.moveaxis(array, 0, -1) if layer == "rgb" else array
 
     def save2pickle(self, filename: str) -> None:
