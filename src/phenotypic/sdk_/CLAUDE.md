@@ -127,6 +127,15 @@ ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
 - `ngff_.py` — OME-Zarr (NGFF 0.5 / Zarr v3) layout constants, pyramid
   geometry, the `attributes.phenotypic` contract, the write-only OME
   projection, `promote_store`, and `valid_staged_store`.
+  Published surface: `docs/source/api_reference/core/store_layout.rst`
+  (grouped by task — layout, geometry, reading, the commit protocol,
+  durability); user-facing view, including the on-disk tree and how to open a
+  store in napari/QuPath/Vizarr: `docs/source/how_to/pages/zarr_storage.md`.
+  **Nothing writes into a promoted store**, and the root `zarr.json` is written
+  **last** — the completion marker and the viewer's staleness scan both key on
+  that root alone, so violating either makes both report stale data as fresh
+  with nothing failing. Guard:
+  `tests/unit/sdk_/test_ngff_promote.py::test_nothing_writes_into_a_promoted_store`.
 - `slurm_.py` / `submitit_.py` / `monitor_slurm_jobs.py` — SLURM integration.
 - `generate_report.py` — report generation.
 - `viz/` — shared visualization layer: the centralized Plotly theme
