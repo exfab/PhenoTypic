@@ -4,6 +4,8 @@
 **Status:** **Implemented** (Phase 6, 2026-08-20) — revised after independent review; amended
 2026-08-19 per plan-refinery user rulings (see the superseded/corrected callouts inline).
 Implementation plan: [`docs/superpowers/plans/2026-08-18-ome-zarr-image-store/`](../../plans/2026-08-18-ome-zarr-image-store/README.md).
+Deferred work and known weaknesses this change surfaced but did not fix:
+[`DEFERRED.md`](DEFERRED.md).
 Phases 0–6 have landed; Phase 7 (verification: commit protocol, differential resume,
 the Windows lane) is the remaining work.
 **Scope:** Per-image CLI image storage, the staged-GPU commit protocol, GUI tile
