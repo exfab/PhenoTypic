@@ -64,6 +64,118 @@ change with its own tests.
 
 ---
 
+## D-8. A cancelled or crashed staged run permanently blocks its own continuation
+
+**Severity:** high — the output directory of an interrupted run becomes
+unusable, and continuation is the headline resume feature of the staged engine.
+
+**What happens.** `--mode full` against an existing output directory exits 1
+with:
+
+```
+Error: Cannot continue, restart, or overwrite while SLURM jobs are active:
+  27699330, 27699335, 27700219, 27700283, 27700336, 27700464, 27700465
+```
+
+Every one of those jobs had **already finished** (six `COMPLETED`, one
+`FAILED`). None was in the queue. The message names the jobs, so it reads as a
+safety guard doing its job — it is not.
+
+**Mechanism**, `_cli_staged_orchestration.py`:
+
+```python
+def scheduler_job_is_active(job_id: str) -> bool | None:
+    """Return active/inactive, or ``None`` when SLURM cannot answer."""
+    ...
+    if result.returncode != 0:
+        return None            # <- "squeue said no such job" lands here
+    ...
+
+def active_ledger_job_ids(output_dir: Path) -> list[str]:
+    ...
+    if scheduler_job_is_active(job_id) is not False   # <- unknown counts as ACTIVE
+```
+
+`squeue --noheader --jobs <finished-id> --format=%T` exits **1** with
+`slurm_load_jobs error: Invalid job id specified` — verified. That is the
+**normal** result for a job that has left the queue, not a scheduler failure,
+but the code conflates the two: `returncode != 0` → `None` → `None is not
+False` → **active**.
+
+**Why runs usually work anyway.** A `terminal` ledger row pops the key, so a
+job that recorded its own completion is excluded before the scheduler is ever
+consulted. The trap is entries left at `submitted`/`recovered` with **no
+terminal row** — a run stopped by `scancel`, a node failure, or a controller
+killed mid-flight. Those ids never pop, always read as unknown, and block the
+directory **forever**.
+
+**Blast radius.** The guard covers *continue, restart, and overwrite* alike, so
+there is no in-CLI escape: the run cannot be resumed, restarted, or written
+over. Recovery requires hand-editing `.phenotypic/progress/slurm_jobs.jsonl` or
+deleting run state, neither of which is documented.
+
+**Suggested fix.** Distinguish "the scheduler says this job does not exist"
+from "the scheduler could not be reached":
+
+- Treat `Invalid job id specified` (or `squeue` exit 1 with empty stdout) as
+  **not active** — the job is gone.
+- Fall back to `sacct -j <id> --format=State` before concluding "unknown";
+  `sacct` answers correctly for finished jobs and is the authority for terminal
+  state.
+- Reserve `None` for a genuine scheduler outage (`FileNotFoundError`, timeout),
+  and consider whether even that should block *restart* and *overwrite*, as
+  opposed to *continue*.
+
+**Discovered** 2026-08-21 while running Task 7.4 Step 3, attempting to continue
+a run whose chain had been cancelled with `scancel`. Cancelling through the CLI
+fences the epoch via `deactivate_orchestration` and is likely unaffected — but a
+node failure is not a CLI action, and neither is `scancel`, which is what the
+`slurm-job` skill tells operators to use.
+
+---
+
+## D-9. `--wait` never returns when a run terminalises incomplete
+
+**Severity:** medium — turns a successful run into a job that is killed at
+walltime and reported as `TIMEOUT`.
+
+**What happens.** A staged SLURM run in which **even one image fails
+terminally** finishes all of its real work — Stage 3 completes for every other
+image, the finalizer runs, and `deliverables/` is fully published — but the
+run-level completion marker is never written, because the run's phase is
+`terminal_incomplete` rather than complete. `--wait` monitors that marker, so it
+blocks forever.
+
+**Observed** 2026-08-22 on run `e2e_slurm_27704648`: 110 of 111 images
+processed, 1 failed with a genuine scientific error (`NoObjectsError` — SAM2
+detected nothing on that plate). The finalizer job `27705890` finished
+`COMPLETED` in 46 s and published `dashboard.html`,
+`master_measurements.{csv,parquet}`, `measurements.{csv,parquet}`,
+`measurements_by_feature/`, `overlays/`, and `pipeline.json.pht-pipe`;
+`master_measurements.parquet` holds **2,345 colony rows across 110 images in 136
+columns**. Thirty minutes later, with **zero** phenotypic jobs in the queue,
+`--wait` was still blocking and had to be killed.
+
+**Why it matters.** A single unreadable plate in a batch is ordinary, not
+exceptional — and per-image isolation exists precisely so one bad image does not
+sink a run. But any wrapper that uses `--wait` then burns its entire walltime
+and exits `TIMEOUT`, so a run that succeeded for 110 of 111 images is reported
+as a failed job. Operators reading `sacct` see a failure; the deliverables on
+disk say otherwise.
+
+**Suggested fix.** `--wait` should return when the run reaches **any terminal
+phase**, not only `complete`. On `terminal_incomplete` it should exit non-zero
+with a summary — how many images succeeded, how many terminalised, and where the
+per-image failures are recorded — so the operator gets the distinction between
+"nothing worked" and "110 of 111 worked" from the exit path rather than by
+reading the event log.
+
+**Related:** the completion marker's absence is *correct*; the aggregate should
+not claim completeness when an image is missing. It is `--wait`'s treatment of
+that state as "keep waiting" that is wrong.
+
+---
+
 ## D-2. `sphinx-build -W` cannot pass: ~651 residual RST warnings
 
 **Severity:** low — cosmetic, but it keeps a real gate switched off.
