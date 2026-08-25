@@ -29,8 +29,9 @@ cd "$WORKTREE"
 echo "Commit under test: $(git rev-parse --short HEAD) $(git log -1 --format=%s)"
 echo
 
+PYTEST_GROUP_ID=${SLURM_ARRAY_TASK_ID}
 declare -a TEST_TARGETS
-case "${SLURM_ARRAY_TASK_ID}" in
+case "${PYTEST_GROUP_ID}" in
     0) TEST_TARGETS=(tests/unit/core tests/unit/sdk_) ;;
     1) TEST_TARGETS=(tests/unit/cli tests/unit/analysis tests/unit/schema) ;;
     2) TEST_TARGETS=(tests/unit/gui) ;;
@@ -47,11 +48,16 @@ case "${SLURM_ARRAY_TASK_ID}" in
         tests/migration/test_metadata_schema_migration.py
         tests/migration/test_curation_imagefile_rename.py
     ) ;;
-    *) echo "Unknown pytest group: ${SLURM_ARRAY_TASK_ID}" >&2; exit 2 ;;
+    *) echo "Unknown pytest group: ${PYTEST_GROUP_ID}" >&2; exit 2 ;;
 esac
 
 echo "Targets: ${TEST_TARGETS[*]}"
 echo
+
+# Controller tests model ordinary jobs and intentionally mock SLURM_JOB_ID.
+# Do not leak this verification runner's array identity into their subject.
+unset SLURM_ARRAY_JOB_ID SLURM_ARRAY_TASK_ID SLURM_ARRAY_TASK_COUNT
+unset SLURM_ARRAY_TASK_MIN SLURM_ARRAY_TASK_MAX SLURM_ARRAY_TASK_STEP
 
 # Do not use `-n auto`: xdist would see the node rather than this allocation.
 # Clear repository addopts to avoid uncaptured shared-filesystem log traffic,
@@ -61,6 +67,6 @@ uv run python -m pytest "${TEST_TARGETS[@]}" -q --no-header \
     -p no:randomly -o addopts= -m "not slow" || pytest_status=$?
 
 echo
-echo "pytest group ${SLURM_ARRAY_TASK_ID} exit status: ${pytest_status}"
+echo "pytest group ${PYTEST_GROUP_ID} exit status: ${pytest_status}"
 echo "Finished: $(date -Is)"
 exit "${pytest_status}"
