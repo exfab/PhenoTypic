@@ -752,6 +752,39 @@ def test_odd_singleton_sampling_transforms_follow_the_arrays_on_disk(
             assert rgb_transform[vector_name][1:] == label_transform[vector_name]
 
 
+def test_on_disk_scale_saturates_after_an_axis_reaches_one_sample(
+    tmp_path: Path,
+) -> None:
+    """Inspect level 3 of a real 3 -> 2 -> 1 -> 1 spatial-axis pyramid."""
+    image = Image(np.zeros((2049, 3, 3), dtype=np.uint8))
+    store = image.save2zarr(tmp_path / "transition.ome.zarr")
+    block = read_phenotypic_attributes(store)
+    members = {
+        **block[PhenotypicAttr.SERIES],
+        **block[PhenotypicAttr.LABELS],
+    }
+    expected_2d = [
+        {"type": "scale", "scale": [8.0, 4.0]},
+        {"type": "translation", "translation": [3.5, 1.5]},
+    ]
+    expected_rgb = [
+        {"type": "scale", "scale": [1.0, 8.0, 4.0]},
+        {"type": "translation", "translation": [0.0, 3.5, 1.5]},
+    ]
+
+    for logical_name, member in members.items():
+        group = json.loads(
+            (store / member / "zarr.json").read_text(encoding="utf-8")
+        )["attributes"]["ome"]["multiscales"][0]
+        assert group["datasets"][3]["path"] == "3"
+        assert group["datasets"][3]["coordinateTransformations"] == (
+            expected_rgb if logical_name == "rgb" else expected_2d
+        ), logical_name
+        assert tuple(_read_array_json(store, member, 3)["shape"]) == (
+            (3, 257, 1) if logical_name == "rgb" else (257, 1)
+        ), logical_name
+
+
 # ---------------------------------------------------------------------------
 # The layers on disk -- a lazily-derived layer makes a naive round-trip vacuous
 # ---------------------------------------------------------------------------

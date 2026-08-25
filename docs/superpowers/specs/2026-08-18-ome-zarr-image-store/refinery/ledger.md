@@ -2038,15 +2038,25 @@ and metadata.
 Each mutant was applied alone, run, and restored. `X` means the named test was
 observed failing, not merely expected to fail.
 
-| Mutant | odd scale | transform helper | projection | singleton | channel | on-disk golden | on-disk controls | Result |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
-| M1 restore stored-shape ratios | X |  | X |  |  | X |  | killed: 3 failed |
-| M2 omit translation |  | X | X |  |  | X |  | killed: 3 failed |
-| M3 put translation before scale |  | X | X |  |  |  | X | killed: 3 failed |
-| M4 remove per-axis saturation |  |  |  | X |  | X | X | killed: 3 failed |
-| M5 sample the channel axis |  |  |  |  | X | X | X | killed: 3 failed |
-| M6 omit translation from labels only |  |  |  |  |  | X | X | killed: 2 failed |
+| Mutant | odd scale | transform helper | projection | initial singleton | saturation transition | channel | on-disk golden | on-disk controls | Result |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
+| M1 restore stored-shape ratios | X |  | X |  |  |  | X |  | killed: 3 failed |
+| M2 omit translation |  | X | X |  |  |  | X |  | killed: 3 failed |
+| M3 put translation before scale |  | X | X |  |  |  |  | X | killed: 3 failed |
+| M4 remove all per-axis saturation |  |  |  | X |  |  | X | X | killed: 3 failed |
+| M5 sample the channel axis |  |  |  |  |  | X | X | X | killed: 3 failed |
+| M6 omit translation from labels only |  |  |  |  |  |  | X | X | killed: 2 failed |
+| M7 saturate only axes that start at size 1 |  |  |  |  | X |  |  | X | killed: 2 failed |
 
 The exact old defect is M1: the golden fixture failed alongside the direct
 numeric and projection controls, proving the fixture is load-bearing. After
 restoring all mutants, the focused transform set returned to 8 passed.
+
+M7 closes the non-singleton transition hole found in review fix round 1. The
+single mutant `1 if size == 1 else 2**level` preserved every earlier assertion
+but changed `(2049, 3)` level 3 from scale `[8.0, 4.0]`, translation
+`[3.5, 1.5]` to `[8.0, 8.0]`, `[3.5, 3.5]`. A direct helper test and promoted
+store test both failed. The store control reads all image layers plus `objmap`
+and asserts level-3 array shape `(257, 1)` (RGB `(3, 257, 1)`) as well as the
+literal transforms. Claim C7 already derives the same transition independently
+for size 7 at levels 4–5, so the logic-validation script needed no change.

@@ -113,6 +113,15 @@ def test_scale_vector_saturates_each_singleton_axis_independently() -> None:
     assert ngff_.level_scale_vector((1025, 1), 2) == [4.0, 1.0]
 
 
+def test_scale_vector_saturates_after_an_axis_reaches_one_sample() -> None:
+    """A 3-pixel axis reduces 3 -> 2 -> 1, then stops scaling at level 3."""
+    assert ngff_.level_scale_vector((2049, 3), 3) == [8.0, 4.0]
+    assert ngff_.level_coordinate_transformations((2049, 3), 3) == [
+        {"type": "scale", "scale": [8.0, 4.0]},
+        {"type": "translation", "translation": [3.5, 1.5]},
+    ]
+
+
 def test_level_transformations_put_block_center_translation_after_scale() -> None:
     assert ngff_.level_coordinate_transformations((3, 1025, 1), 0) == [
         {"type": "scale", "scale": [1.0, 1.0, 1.0]}
