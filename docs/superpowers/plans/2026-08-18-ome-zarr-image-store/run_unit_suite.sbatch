@@ -107,9 +107,9 @@ status=0
 # Playwright against a real browser, and it is GUI surface that Phase 4 owns.
 # It needs its own gate, not a line in this one.
 #
-# `.venv/bin/python -m pytest` rather than `uv run pytest`: roughly 4x faster to
-# start, and it skips the environment resolution that a batch job does not need.
-.venv/bin/python -m pytest tests/unit tests/gui tests/integration tests/smoke \
+# Use the repository's sole supported runner so the batch lane resolves the
+# same locked environment as every local verification command.
+uv run python -m pytest tests/unit tests/gui tests/integration tests/smoke \
     tests/migration/test_metadata_schema_migration.py \
     tests/migration/test_curation_imagefile_rename.py \
     -q --no-header -p no:randomly -o addopts= -m "not slow" || status=$?
