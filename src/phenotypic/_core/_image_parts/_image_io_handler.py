@@ -862,11 +862,15 @@ class ImageIOHandler(ImageColorSpace):
         from phenotypic.sdk_ import ngff_
 
         gray = self.gray[:]
+        pyramid_height, pyramid_width = gray.shape[:2]
+        if self._original is not None:
+            pyramid_height = max(pyramid_height, self._original.shape[0])
+            pyramid_width = max(pyramid_width, self._original.shape[1])
         return self._save_store(
                 path,
                 series=tuple(self._series_names()),
                 write_objmap=True,
-                levels=ngff_.pyramid_level_count(gray.shape[0], gray.shape[1]),
+                levels=ngff_.pyramid_level_count(pyramid_height, pyramid_width),
                 work_id=work_id,
                 durable=durable,
         )

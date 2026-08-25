@@ -29,6 +29,7 @@ from phenotypic.sdk_._file_locking import exclusive_path_lock
 from ._cli_file_locking import atomic_append, atomic_read
 from ._cli_slurm_lifecycle import (
     SchedulerQueryUnavailable,
+    SlurmGenerationInactiveError,
     _deactivate_generation_locked,
     append_lifecycle_entry,
     cancel_generation,
@@ -199,17 +200,19 @@ def assert_active_epoch(output_dir: Path, epoch: str) -> None:
     """Raise when a worker/controller belongs to an inactive run epoch."""
     state = load_orchestration_state(output_dir)
     if state is None or state.get("epoch") != epoch:
-        raise RuntimeError(
+        raise SlurmGenerationInactiveError(
             f"Stale staged worker epoch {epoch!r}; active epoch is "
             f"{None if state is None else state.get('epoch')!r}"
         )
     if state.get("phase") in {"cancelled", "complete", "failed"}:
-        raise RuntimeError(
+        raise SlurmGenerationInactiveError(
             f"Staged orchestration {epoch} is already {state.get('phase')}"
         )
     lifecycle = load_slurm_lifecycle(output_dir)
     if lifecycle is not None and not generation_is_active(output_dir, epoch):
-        raise RuntimeError(f"Staged orchestration {epoch} is fenced inactive")
+        raise SlurmGenerationInactiveError(
+            f"Staged orchestration {epoch} is fenced inactive"
+        )
 
 
 def epoch_is_active(output_dir: Path, epoch: str) -> bool:

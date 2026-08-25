@@ -10,6 +10,7 @@ import pytest
 import phenotypic
 from phenotypic import Image, ImagePipeline
 from phenotypic.abc_ import ImageCorrector, ImageEnhancer
+from phenotypic._core._provenance import provenance_success_sink
 from phenotypic.enhance import BlurGauss
 from phenotypic.settings import validation
 
@@ -59,6 +60,36 @@ class _ReplacementCorrector(ImageCorrector):
 
     def _operate(self, image: Image) -> Image:
         return Image(np.zeros_like(image.rgb[:]), name=image.name)
+
+
+class _DiscardedNestedCorrector(ImageCorrector):
+    """Use a distinct nested operation whose returned copy is discarded."""
+
+    def _operate(self, image: Image) -> Image:
+        nested = BlurGauss(sigma=0.75).apply(image, inplace=False)
+        image.detect_mat[:] = nested.detect_mat[:]
+        return image
+
+
+class _NestedFailureCorrector(ImageCorrector):
+    """Invoke a distinct failing operation inside an outer operation."""
+
+    def _operate(self, image: Image) -> Image:
+        _FailingCorrector().apply(image, inplace=True)
+        return image
+
+
+class _OuterFailureAfterNestedCorrector(ImageCorrector):
+    """Fail at the outer public boundary after a nested operation succeeds."""
+
+    def apply(self, image: Image, inplace: bool = False) -> Image:
+        super().apply(image=image, inplace=inplace)
+        raise RuntimeError("outer failure after nested success")
+
+    def _operate(self, image: Image) -> Image:
+        nested = BlurGauss(sigma=0.75).apply(image, inplace=False)
+        image.detect_mat[:] = nested.detect_mat[:]
+        return image
 
 
 def _plate() -> Image:
@@ -194,3 +225,97 @@ def test_failure_after_parent_apply_returns_appends_nothing() -> None:
         _PostApplyFailureCorrector().apply(image, inplace=True)
 
     assert image.provenance == ()
+
+
+def test_distinct_nested_operation_records_inner_then_outer_and_sink_prefixes(
+) -> None:
+    snapshots: list[list[str]] = []
+
+    def _capture(updated: Image) -> None:
+        snapshots.append(
+            [entry["operation_name"] for entry in updated.provenance]
+        )
+
+    with provenance_success_sink(_capture):
+        result = ImagePipeline(
+            ops={"composite": _DiscardedNestedCorrector()}
+        ).apply(_plate())
+
+    assert [entry["operation_name"] for entry in result.provenance] == [
+        "BlurGauss",
+        "_DiscardedNestedCorrector",
+    ]
+    assert [entry["sequence"] for entry in result.provenance] == [1, 2]
+    assert [entry["pipeline_step_path"] for entry in result.provenance] == [
+        ["composite"],
+        ["composite"],
+    ]
+    assert snapshots == [
+        ["BlurGauss"],
+        ["BlurGauss", "_DiscardedNestedCorrector"],
+    ]
+
+
+def test_distinct_nested_failure_records_no_operation_or_sink_prefix() -> None:
+    image = _plate()
+    snapshots: list[list[str]] = []
+
+    with provenance_success_sink(
+        lambda updated: snapshots.append(
+            [entry["operation_name"] for entry in updated.provenance]
+        )
+    ), pytest.raises(RuntimeError):
+        _NestedFailureCorrector().apply(image, inplace=True)
+
+    assert image.provenance == ()
+    assert snapshots == []
+
+
+def test_outer_failure_rolls_back_nested_memory_and_persisted_sink_prefix() -> None:
+    image = _plate()
+    snapshots: list[list[str]] = []
+
+    with provenance_success_sink(
+        lambda updated: snapshots.append(
+            [entry["operation_name"] for entry in updated.provenance]
+        )
+    ), pytest.raises(RuntimeError, match="outer failure after nested success"):
+        _OuterFailureAfterNestedCorrector().apply(image, inplace=True)
+
+    assert image.provenance == ()
+    assert snapshots == [["BlurGauss"], []]
+
+
+def test_deferred_wrapper_factory_is_cached_once_per_concrete_class(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import inspect
+
+    from phenotypic._core import _provenance as provenance_module
+
+    owners: list[type] = []
+    original_factory = provenance_module.wrap_image_operation_apply
+
+    def _counting_factory(apply_method: Any, owner: type) -> Any:
+        owners.append(owner)
+        return original_factory(apply_method, owner)
+
+    monkeypatch.setattr(
+        provenance_module,
+        "wrap_image_operation_apply",
+        _counting_factory,
+    )
+
+    class _DynamicallyWrappedCorrector(ImageCorrector):
+        def _operate(self, image: Image) -> Image:
+            return image
+
+    operation = _DynamicallyWrappedCorrector()
+    operation.apply(_plate())
+    operation.apply(_plate())
+
+    assert owners.count(_DynamicallyWrappedCorrector) == 1
+    assert tuple(inspect.signature(operation.apply).parameters) == (
+        "image",
+        "inplace",
+    )

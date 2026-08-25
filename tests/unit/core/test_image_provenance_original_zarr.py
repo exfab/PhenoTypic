@@ -6,10 +6,12 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pytest
 import zarr
 
 from phenotypic import Image
 from phenotypic.abc_ import ImageCorrector
+from phenotypic.correction import CropImage
 from phenotypic.enhance import BlurGauss
 from phenotypic.sdk_.ngff_ import (
     PhenotypicAttr,
@@ -130,3 +132,55 @@ def test_retained_rgb_original_is_a_full_registered_pyramid_and_repromotes(
     )
     np.testing.assert_array_equal(np.moveaxis(promoted_original, 0, -1), pixels)
     assert_store_conforms(promoted)
+
+
+@pytest.mark.parametrize(
+    ("is_rgb", "expected_axes"),
+    [
+        pytest.param(True, ["c", "y", "x"], id="rgb"),
+        pytest.param(False, ["y", "x"], id="grayscale"),
+    ],
+)
+def test_original_extent_controls_uniform_pyramid_after_large_crop(
+    tmp_path: Path,
+    is_rgb: bool,
+    expected_axes: list[str],
+) -> None:
+    base = np.arange(1025 * 1025, dtype=np.uint32).reshape(1025, 1025)
+    base = (base % 251).astype(np.uint8)
+    pixels = (
+        np.stack((base, np.roll(base, 1, axis=0), base // 2), axis=-1)
+        if is_rgb
+        else base
+    )
+    image = Image(pixels)
+    image._retain_original()
+
+    processed = CropImage(
+        left=462,
+        right=463,
+        top=462,
+        bottom=463,
+    ).apply(image)
+    assert processed.gray[:].shape == (100, 100)
+
+    store = processed.save2zarr(
+        tmp_path / f"cropped-{'rgb' if is_rgb else 'gray'}.ome.zarr"
+    )
+
+    block = read_phenotypic_attributes(store)
+    assert block[PhenotypicAttr.PYRAMID]["levels"] == 3
+    original_ome = _root_payload(store / "original")["attributes"]["ome"]
+    multiscale = original_ome["multiscales"][0]
+    assert [dataset["path"] for dataset in multiscale["datasets"]] == [
+        "0",
+        "1",
+        "2",
+    ]
+    assert [axis["name"] for axis in multiscale["axes"]] == expected_axes
+    assert _root_payload(store / "original" / "0")[
+        "dimension_names"
+    ] == expected_axes
+    xml = (store / "OME" / "METADATA.ome.xml").read_text(encoding="utf-8")
+    assert 'Name="original"' in xml
+    assert_store_conforms(store)

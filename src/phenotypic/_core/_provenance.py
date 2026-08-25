@@ -7,6 +7,7 @@ import json
 from contextlib import contextmanager
 from contextvars import ContextVar
 from copy import deepcopy
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
@@ -22,8 +23,20 @@ if TYPE_CHECKING:
 PROVENANCE_SCHEMA_VERSION = 1
 
 _Apply = TypeVar("_Apply", bound=Callable[..., "Image"])
-_operation_apply_depth: ContextVar[int] = ContextVar(
-    "phenotypic_operation_apply_depth", default=0
+
+
+@dataclass
+class _OperationApplyFrame:
+    """One distinct public operation invocation and its completed children."""
+
+    operation: object
+    owner: type
+    nested_records: list[dict[str, Any]] = field(default_factory=list)
+    nested_sink_published: bool = False
+
+
+_operation_apply_stack: ContextVar[tuple[_OperationApplyFrame, ...]] = ContextVar(
+    "phenotypic_operation_apply_stack", default=()
 )
 _pipeline_step_path: ContextVar[tuple[str, ...] | None] = ContextVar(
     "phenotypic_pipeline_step_path", default=None
@@ -81,10 +94,27 @@ def readonly_operations(journal: Mapping[str, Any]) -> tuple[Mapping[str, Any], 
     return tuple(_freeze(deepcopy(entry)) for entry in journal["operations"])
 
 
+def _journal_with_operations(
+    source_journal: Mapping[str, Any],
+    entries: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Copy a journal and append entries it does not already contain."""
+    merged: dict[str, Any] = deepcopy(dict(source_journal))
+    operations = merged["operations"]
+    for entry in entries:
+        if entry in operations:
+            continue
+        carried_entry = deepcopy(entry)
+        carried_entry["sequence"] = len(operations) + 1
+        operations.append(carried_entry)
+    return merged
+
+
 def _carry_logical_image_state(
     result: "Image",
     source_journal: Mapping[str, Any],
     source_original: Any,
+    nested_operations: list[dict[str, Any]],
 ) -> None:
     """Carry image-owned provenance/source state across replacement operations."""
     returned_operations = deepcopy(
@@ -99,9 +129,21 @@ def _carry_logical_image_state(
             break
         common_prefix += 1
 
-    merged: dict[str, Any] = deepcopy(dict(source_journal))
+    merged = _journal_with_operations(source_journal, nested_operations)
     operations = merged["operations"]
+    unmatched_nested = deepcopy(nested_operations)
     for returned_entry in returned_operations[common_prefix:]:
+        match_index = next(
+            (
+                index
+                for index, nested_entry in enumerate(unmatched_nested)
+                if nested_entry == returned_entry
+            ),
+            None,
+        )
+        if match_index is not None:
+            del unmatched_nested[match_index]
+            continue
         carried_entry = deepcopy(returned_entry)
         carried_entry["sequence"] = len(operations) + 1
         operations.append(carried_entry)
@@ -144,24 +186,40 @@ def wrap_image_operation_apply(apply_method: _Apply, owner: type) -> _Apply:
     def _recording_apply(
         self: "ImageOperation", *args: Any, **kwargs: Any
     ) -> "Image":
-        depth = _operation_apply_depth.get()
-        token = _operation_apply_depth.set(depth + 1)
-        if depth:
-            try:
-                return apply_method(self, *args, **kwargs)
-            finally:
-                _operation_apply_depth.reset(token)
+        stack = _operation_apply_stack.get()
+        if (
+            stack
+            and stack[-1].operation is self
+            and stack[-1].owner is not owner
+            and issubclass(stack[-1].owner, owner)
+        ):
+            # ``super().apply`` is another wrapper layer around the same public
+            # invocation. A distinct operation instance starts its own frame.
+            return apply_method(self, *args, **kwargs)
 
+        parent_frame = stack[-1] if stack else None
+        frame = _OperationApplyFrame(operation=self, owner=owner)
+        token = _operation_apply_stack.set((*stack, frame))
         logical_input = cast(
             "Image", kwargs.get("image", args[0] if args else None)
         )
-        source_journal = deepcopy(logical_input._metadata.provenance_journal)
+        input_journal = deepcopy(logical_input._metadata.provenance_journal)
         source_original = logical_input._original
+        source_journal = _journal_with_operations(
+            input_journal,
+            parent_frame.nested_records if parent_frame is not None else [],
+        )
+        source_length = len(source_journal["operations"])
         started = perf_counter()
         try:
             result = apply_method(self, *args, **kwargs)
             duration = perf_counter() - started
-            _carry_logical_image_state(result, source_journal, source_original)
+            _carry_logical_image_state(
+                result,
+                source_journal,
+                source_original,
+                frame.nested_records,
+            )
             operations = result._metadata.provenance_journal["operations"]
             prior_length = len(operations)
             parameters = json.loads(
@@ -188,16 +246,33 @@ def wrap_image_operation_apply(apply_method: _Apply, owner: type) -> _Apply:
                 sink = _success_sink.get()
                 if sink is not None:
                     sink(result)
+                    frame.nested_sink_published = True
             except BaseException:
                 del operations[prior_length:]
                 raise
+            produced_records = deepcopy(operations[source_length:])
+            if parent_frame is not None:
+                parent_frame.nested_records.extend(produced_records)
+                parent_frame.nested_sink_published = (
+                    parent_frame.nested_sink_published
+                    or frame.nested_sink_published
+                )
             return result
         except BaseException:
-            logical_input._metadata.provenance_journal = source_journal
-            logical_input._original = source_original
+            sink = _success_sink.get()
+            try:
+                if frame.nested_sink_published and sink is not None:
+                    logical_input._metadata.provenance_journal = deepcopy(
+                        source_journal
+                    )
+                    logical_input._original = source_original
+                    sink(logical_input)
+            finally:
+                logical_input._metadata.provenance_journal = input_journal
+                logical_input._original = source_original
             raise
         finally:
-            _operation_apply_depth.reset(token)
+            _operation_apply_stack.reset(token)
 
     setattr(_recording_apply, "__phenotypic_provenance_owner__", owner)
     return cast(_Apply, _recording_apply)

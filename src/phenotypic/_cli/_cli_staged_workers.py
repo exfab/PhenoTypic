@@ -60,6 +60,10 @@ from ._stages import (
 )
 from ._cli_update_state import append_completion_event, append_event
 from ._cli_failure_tracker import PerImageScientificError
+from ._cli_slurm_lifecycle import (
+    SlurmGenerationInactiveError,
+    slurm_generation_inactive_cause,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -92,20 +96,45 @@ def _initialize_stage1_provenance(
     image._metadata.provenance_journal = journal
 
 
-def _mark_failed_checkpoint(store: Path, image: Image) -> None:
+def _write_provenance_checkpoint_fenced(
+    store: Path,
+    image: Image,
+    active_check: ActiveCheck | None,
+    *,
+    journal_only: bool = False,
+) -> None:
+    """Publish one root journal only while this worker owns the lifecycle."""
+    _check_active(active_check)
+    write_provenance_checkpoint(store, image, journal_only=journal_only)
+
+
+def _mark_failed_checkpoint(
+    store: Path,
+    image: Image,
+    active_check: ActiveCheck | None,
+) -> None:
     """Best-effort failure status without hiding the scientific exception."""
-    set_provenance_status(image, "failed")
     try:
+        _check_active(active_check)
+        set_provenance_status(image, "failed")
         write_provenance_checkpoint(store, image)
+    except SlurmGenerationInactiveError:
+        # A superseded worker must not replace the active owner's prefix.
+        return
     except Exception:
         logger.exception("Failed to mark staged provenance failed: %s", store)
 
 
-def _checkpoint_successful_operation(store: Path, image: Image) -> None:
+def _checkpoint_successful_operation(
+    store: Path,
+    image: Image,
+    active_check: ActiveCheck | None,
+) -> None:
     """Publish an appended staged operation or roll it back on sink failure."""
     operations = image._metadata.provenance_journal["operations"]
     prior_length = len(operations) - 1
     try:
+        _check_active(active_check)
         write_provenance_checkpoint(store, image)
     except BaseException:
         del operations[prior_length:]
@@ -114,7 +143,12 @@ def _checkpoint_successful_operation(store: Path, image: Image) -> None:
 
 @contextmanager
 def stage_event(
-    event_log: Path, dataset: str, image: str, stage: StageTag
+    event_log: Path,
+    dataset: str,
+    image: str,
+    stage: StageTag,
+    *,
+    active_check: ActiveCheck | None = None,
 ) -> Iterator[None]:
     """Emit ``started`` -> ``completed`` around a stage body; on exception emit a
     stage-tagged ``failed`` event (``"<ExcType>: <msg>"``) and re-raise.
@@ -123,10 +157,15 @@ def stage_event(
     the SLURM workers. The SLURM workers want the re-raise (fail the task);
     local callers that isolate a bad image wrap the ``with`` in ``try/except``.
     """
+    _check_active(active_check)
     append_event(event_log, dataset, image, "started", stage=stage)
     try:
         yield
     except Exception as e:
+        inactive = slurm_generation_inactive_cause(e)
+        if inactive is not None:
+            raise inactive
+        _check_active(active_check)
         append_event(
             event_log,
             dataset,
@@ -136,6 +175,7 @@ def stage_event(
             stage=stage,
         )
         raise
+    _check_active(active_check)
     append_completion_event(
         event_log, dataset, image, "completed", stage=stage
     )
@@ -203,15 +243,17 @@ def stage1_preprocess_core(
         if detect_mode != "gray":
             image.set_detect_mode(detect_mode)
         with provenance_success_sink(
-            lambda updated: write_provenance_checkpoint(store, updated)
+            lambda updated: _write_provenance_checkpoint_fenced(
+                store, updated, active_check
+            )
         ):
             plan.pre_pipeline.apply(image, inplace=True)
         operation_count = len(
             image._metadata.provenance_journal["operations"]
         )
+        _check_active(active_check)
         set_retry_base_length(image, operation_count)
         set_provenance_status(image, "staged")
-        _check_active(active_check)
         saved_store = output_manager.save_image_store(
             image, dataset_name, image_stem, work_id=work_id
         )
@@ -219,13 +261,18 @@ def stage1_preprocess_core(
             raise RuntimeError(
                 f"Stage 1 store publication failed for {dataset_name}/{image_stem}"
             )
+    except SlurmGenerationInactiveError:
+        raise
     except MemoryError:
         if image is not None and checkpoint_ready:
-            _mark_failed_checkpoint(store, image)
+            _mark_failed_checkpoint(store, image, active_check)
         raise
     except Exception as exc:
+        inactive = slurm_generation_inactive_cause(exc)
+        if inactive is not None:
+            raise inactive
         if image is not None and checkpoint_ready:
-            _mark_failed_checkpoint(store, image)
+            _mark_failed_checkpoint(store, image, active_check)
         raise PerImageScientificError(STAGE_PREPROCESS, exc) from exc
 
 
@@ -263,6 +310,7 @@ def stage2_detect_core(
     # array precedes the token, so a crash before the token leaves no
     # "Stage 2 done" signal and Stage 2 simply recomputes.
     write_stage2_raw(output_dir, dataset_name, image_stem, result)
+    _check_active(active_check)
     write_stage2_token(
         output_dir,
         dataset_name,
@@ -324,6 +372,7 @@ def stage3_merge_measure_core(
     # touches detect_mat or gray is applied twice on a retry. Pre-existing --
     # the HDF path re-saved the same way -- and out of scope here.
     try:
+        _check_active(active_check)
         truncate_provenance_to_retry_base(image)
         set_provenance_status(image, "in_progress")
         write_provenance_checkpoint(store, image)
@@ -343,11 +392,13 @@ def stage3_merge_measure_core(
             ),
             pipeline_step_path=[plan.gpu_key],
         )
-        _checkpoint_successful_operation(store, image)
+        _checkpoint_successful_operation(store, image, active_check)
 
         # post-detector ops (refiners incl. watershed) then measurement.
         with provenance_success_sink(
-            lambda updated: write_provenance_checkpoint(store, updated)
+            lambda updated: _write_provenance_checkpoint_fenced(
+                store, updated, active_check
+            )
         ):
             plan.post_pipeline.apply(image, inplace=True)
         measurements = plan.post_pipeline.measure(image, apply_post=False)
@@ -367,8 +418,8 @@ def stage3_merge_measure_core(
             strict=True,
         )
 
-        set_provenance_status(image, "complete")
         _check_active(active_check)
+        set_provenance_status(image, "complete")
         saved_store = output_manager.save_image_store(
             image, dataset_name, image_stem, work_id=work_id
         )
@@ -387,12 +438,18 @@ def stage3_merge_measure_core(
             _check_active(active_check)
             # Token first: the only partial cleanup is an inert orphan raw.
             delete_stage2_token(output_dir, dataset_name, image_stem)
+            _check_active(active_check)
             delete_stage2_raw(output_dir, dataset_name, image_stem)
+    except SlurmGenerationInactiveError:
+        raise
     except MemoryError:
-        _mark_failed_checkpoint(store, image)
+        _mark_failed_checkpoint(store, image, active_check)
         raise
     except Exception as exc:
-        _mark_failed_checkpoint(store, image)
+        inactive = slurm_generation_inactive_cause(exc)
+        if inactive is not None:
+            raise inactive
+        _mark_failed_checkpoint(store, image, active_check)
         if isinstance(exc, RuntimeError) and str(exc).startswith(
             "Stage 3 store publication failed"
         ):

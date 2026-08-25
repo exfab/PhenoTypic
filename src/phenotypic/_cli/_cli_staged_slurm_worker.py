@@ -164,7 +164,13 @@ def run_stage1_step(
     )
     log = event_log_path(output_dir)
     try:
-        with stage_event(log, item.dataset, item.image_name, STAGE_PREPROCESS):
+        with stage_event(
+            log,
+            item.dataset,
+            item.image_name,
+            STAGE_PREPROCESS,
+            active_check=check,
+        ):
             stage1_preprocess_core(
                 plan,
                 Path(item.input_path),
@@ -247,6 +253,8 @@ def run_stage2_shard(
         ) or (not item.work_id and valid_stage1_store(store)):
             pending.append(item)
             continue
+        if check is not None:
+            check()
         emit_missing_prereq(
             log,
             item.dataset,
@@ -266,7 +274,11 @@ def run_stage2_shard(
             check()
         try:
             with stage_event(
-                log, item.dataset, item.image_name, STAGE_GPU_DETECT
+                log,
+                item.dataset,
+                item.image_name,
+                STAGE_GPU_DETECT,
+                active_check=check,
             ):
                 stage2_detect_core(
                     plan.gpu_detector,
@@ -312,6 +324,7 @@ def run_stage3_step(
         save_overlays=True,
         durable_writes=durable_writes,
     )
+    check = _active_check(output_dir, epoch)
     terminal = bool(
         item.work_id
         and valid_image_success(
@@ -333,7 +346,7 @@ def run_stage3_step(
             item.stem,
             output_manager,
             image_type,
-            active_check=_active_check(output_dir, epoch),
+            active_check=check,
         )
         return
     if (
@@ -352,7 +365,7 @@ def run_stage3_step(
             item.stem,
             output_manager,
             image_type,
-            active_check=_active_check(output_dir, epoch),
+            active_check=check,
         )
         data_key, data_path = image_data_artifact(
             output_dir, output_manager, item.dataset, item.stem
@@ -364,6 +377,8 @@ def run_stage3_step(
                 item.dataset, "overlays", item.stem
             ),
         }
+        if check is not None:
+            check()
         publish_image_success(
             output_dir,
             work_id=item.work_id,
@@ -376,7 +391,6 @@ def run_stage3_step(
             artifacts=artifacts,
         )
         return
-    check = _active_check(output_dir, epoch)
     if check is not None:
         check()
     log = event_log_path(output_dir)
@@ -395,7 +409,13 @@ def run_stage3_step(
         raise SystemExit(1)
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     try:
-        with stage_event(log, item.dataset, item.image_name, STAGE_MEASURE):
+        with stage_event(
+            log,
+            item.dataset,
+            item.image_name,
+            STAGE_MEASURE,
+            active_check=check,
+        ):
             stage3_merge_measure_core(
                 plan,
                 output_dir,
@@ -421,6 +441,8 @@ def run_stage3_step(
                     artifacts["overlay"] = output_manager.get_output_path(
                         item.dataset, "overlays", item.stem
                     )
+                if check is not None:
+                    check()
                 publish_image_success(
                     output_dir,
                     work_id=item.work_id,
@@ -434,6 +456,8 @@ def run_stage3_step(
                     lifecycle_epoch=epoch or "slurm-unfenced",
                     artifacts=artifacts,
                 )
+            if check is not None:
+                check()
             write_stage3_completion_marker(
                 output_dir,
                 item.dataset,
@@ -442,7 +466,11 @@ def run_stage3_step(
             )
             # Token FIRST at every consumption site: the only reachable
             # intermediate state must be "no token, orphan raw".
+            if check is not None:
+                check()
             delete_stage2_token(output_dir, item.dataset, item.stem)
+            if check is not None:
+                check()
             delete_stage2_raw(output_dir, item.dataset, item.stem)
     except Exception as exc:
         _record_terminal_scientific_failure(output_dir, item, exc, epoch)

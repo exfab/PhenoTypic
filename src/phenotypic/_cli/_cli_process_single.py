@@ -13,7 +13,7 @@ import logging
 import click
 import traceback
 from pathlib import Path
-from typing import Optional, Dict, Any, Mapping, cast
+from typing import Optional, Dict, Any, Callable, Mapping, cast
 from uuid import uuid4
 
 import matplotlib
@@ -47,6 +47,11 @@ from ._cli_failure_tracker import (
     file_sha256,
     processing_configuration_digest_from_values,
 )
+from ._cli_slurm_lifecycle import (
+    SlurmGenerationInactiveError,
+    assert_generation_active,
+    slurm_generation_inactive_cause,
+)
 from ._cli_utils import normalize_extension
 from phenotypic.sdk_ import (
     EnvVar,
@@ -58,6 +63,25 @@ from phenotypic.sdk_ import (
 from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
 
 logger = logging.getLogger(__name__)
+
+ActiveCheck = Callable[[], None]
+
+
+def _check_active(active_check: ActiveCheck | None) -> None:
+    if active_check is not None:
+        active_check()
+
+
+def _ordinary_slurm_active_check(output_dir: Path) -> ActiveCheck | None:
+    """Resolve the ordinary worker lifecycle fence, or None when local."""
+    generation = os.environ.get(SLURM_GENERATION_ENV_VAR)
+    if not os.environ.get(EnvVar.SLURM_JOB_ID) or not generation:
+        return None
+
+    def _check() -> None:
+        assert_generation_active(output_dir, generation)
+
+    return _check
 
 
 def _authoritative_lifecycle_epoch() -> str:
@@ -131,6 +155,7 @@ def process_single_image_core(
     cli_ncols: Optional[int] = None,
     drop_originals: bool = False,
     pipeline_identity: Mapping[str, str] | None = None,
+    active_check: ActiveCheck | None = None,
 ) -> bool:
     """
     Core processing logic for a single image.
@@ -150,6 +175,7 @@ def process_single_image_core(
         drop_originals: Skip decoded-source retention when true.
         pipeline_identity: Original user pipeline source identity when
             ``pipeline_path`` is an immutable worker snapshot.
+        active_check: Optional lifecycle ownership assertion for SLURM workers.
 
     Returns:
         True if successful. This function always returns True on success;
@@ -165,12 +191,21 @@ def process_single_image_core(
     image: Image | GridImage | None = None
     checkpoint_ready = False
 
+    def _write_checkpoint(
+        updated: Image, *, journal_only: bool = False
+    ) -> None:
+        _check_active(active_check)
+        write_provenance_checkpoint(store, updated, journal_only=journal_only)
+
     def _mark_failed_checkpoint() -> None:
         if image is None or not checkpoint_ready:
             return
-        set_provenance_status(image, "failed")
         try:
+            _check_active(active_check)
+            set_provenance_status(image, "failed")
             write_provenance_checkpoint(store, image)
+        except SlurmGenerationInactiveError:
+            return
         except Exception:
             logger.exception("Failed to mark provenance checkpoint failed: %s", store)
 
@@ -199,8 +234,9 @@ def process_single_image_core(
             image, pipeline_path, pipeline_identity=pipeline_identity
         )
         if drop_originals:
-            write_provenance_checkpoint(store, image, journal_only=True)
+            _write_checkpoint(image, journal_only=True)
         else:
+            _check_active(active_check)
             image._retain_original()
             saved_store = output_manager.save_image_store(
                 image, dataset_name, image_stem
@@ -212,22 +248,24 @@ def process_single_image_core(
         checkpoint_ready = True
         if detect_mode != "gray":
             image.set_detect_mode(detect_mode)
-        with provenance_success_sink(
-            lambda updated: write_provenance_checkpoint(store, updated)
-        ):
+        with provenance_success_sink(_write_checkpoint):
             measurements = pipeline.apply_and_measure(
                 image, inplace=True, apply_post=False
             )
+        _check_active(active_check)
         output_manager.save_measurements(measurements, dataset_name, image_stem)
         if output_manager.save_overlays:
+            _check_active(active_check)
             output_manager.save_overlay(image, dataset_name, image_stem)
         from phenotypic.plotting._pipeline import PlotCoordinator
 
+        _check_active(active_check)
         PlotCoordinator(pipeline, output_dir).emit_image(
             image,
             dataset=dataset_name,
             image_stem=image_stem,
         )
+        _check_active(active_check)
         set_provenance_status(image, "complete")
         saved_store = output_manager.save_image_store(
             image, dataset_name, image_stem
@@ -236,10 +274,15 @@ def process_single_image_core(
             raise RuntimeError(
                 f"Final image store publication failed for {dataset_name}/{image_stem}"
             )
+    except SlurmGenerationInactiveError:
+        raise
     except MemoryError:
         _mark_failed_checkpoint()
         raise
     except Exception as exc:
+        inactive = slurm_generation_inactive_cause(exc)
+        if inactive is not None:
+            raise inactive
         _mark_failed_checkpoint()
         raise PerImageScientificError("full", exc) from exc
 
@@ -692,6 +735,7 @@ def main(
                 cli_ncols=ncols,
                 drop_originals=drop_originals,
                 pipeline_identity=pipeline_identity,
+                active_check=_ordinary_slurm_active_check(output_dir),
             )
             work_id, relative_path = _worker_work_identity(
                 pipeline=pipeline,

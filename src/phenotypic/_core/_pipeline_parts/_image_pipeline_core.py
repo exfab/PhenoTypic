@@ -965,7 +965,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         """
         effective_reset = reset if reset is not None else self._reset
         img = image if inplace else image.copy()
-        if self._provenance_pipeline is not None:
+        if (
+            self._provenance_pipeline is not None
+            and img._metadata.provenance_journal.get("pipeline") is None
+        ):
             img._metadata.provenance_journal["pipeline"] = dict(
                 self._provenance_pipeline
             )

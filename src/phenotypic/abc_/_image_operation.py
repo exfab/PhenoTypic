@@ -398,17 +398,20 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         """Instrument each subclass's resolved public apply success boundary."""
         super().__pydantic_init_subclass__(**kwargs)
         resolved_apply = cls.apply
+        wrapped_apply: Any = None
 
         @wraps(resolved_apply)
         def _deferred_provenance_apply(
             self: Any, *args: Any, **apply_kwargs: Any
         ) -> Any:
+            nonlocal wrapped_apply
             # Import only after package initialization; importing ``_core`` while
             # the ABC hierarchy is being constructed creates a circular import.
-            from phenotypic._core._provenance import wrap_image_operation_apply
+            if wrapped_apply is None:
+                from phenotypic._core._provenance import wrap_image_operation_apply
 
-            wrapped = wrap_image_operation_apply(resolved_apply, cls)
-            return wrapped(self, *args, **apply_kwargs)
+                wrapped_apply = wrap_image_operation_apply(resolved_apply, cls)
+            return wrapped_apply(self, *args, **apply_kwargs)
 
         cls.apply = _deferred_provenance_apply  # type: ignore[method-assign]
 

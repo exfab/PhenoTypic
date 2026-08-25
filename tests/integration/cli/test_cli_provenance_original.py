@@ -122,3 +122,50 @@ def test_full_local_cli_publishes_complete_provenance_and_original_policy(
         )
         assert second_store.is_dir()
         assert not (second_store / "original").exists()
+
+
+def test_ordinary_worker_preserves_explicit_user_pipeline_identity(
+    tmp_path: Path,
+    simple_pipeline_json: Path,
+    synth_one_level_input: Path,
+) -> None:
+    from phenotypic._cli._cli_process_single import main as process_single
+
+    snapshot = tmp_path / "submission" / "pipeline.snapshot.json"
+    snapshot.parent.mkdir()
+    snapshot.write_bytes(simple_pipeline_json.read_bytes())
+    image = next(synth_one_level_input.rglob("*.tif"))
+    output_dir = tmp_path / "out"
+    explicit_identity = {
+        "source_path": str(simple_pipeline_json.resolve()),
+        "sha256": hashlib.sha256(simple_pipeline_json.read_bytes()).hexdigest(),
+    }
+
+    result = CliRunner().invoke(
+        process_single,
+        [
+            "--pipeline",
+            str(snapshot),
+            "--image",
+            str(image),
+            "--output-dir",
+            str(output_dir),
+            "--dataset-name",
+            "ds",
+            "--image-type",
+            "Image",
+            "--no-save-overlays",
+            "--provenance-pipeline-source-path",
+            explicit_identity["source_path"],
+            "--provenance-pipeline-sha256",
+            explicit_identity["sha256"],
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    store = zarr_store_path(output_dir, "ds", image.stem)
+    root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+    journal = root["attributes"]["phenotypic"]["provenance"]
+    assert journal["status"] == "complete"
+    assert journal["pipeline"] == explicit_identity
+    assert journal["pipeline"]["source_path"] != str(snapshot.resolve())
