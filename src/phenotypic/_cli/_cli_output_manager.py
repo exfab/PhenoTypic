@@ -1693,7 +1693,6 @@ class OutputManager:
             into a ``RuntimeError`` themselves; that layering is deliberate.
         """
         from phenotypic.sdk_ import zarr_store_path
-        from phenotypic.sdk_.ngff_ import discard_parts_for
 
         # OutputManager's root attribute is ``base_dir``; there is no
         # ``self.output_dir``.
@@ -1710,10 +1709,6 @@ class OutputManager:
             logger.info("Saved OME-Zarr store for %s/%s", dataset_name, image_stem)
             return saved
         except Exception as e:
-            # One owner for the .part naming convention: re-encoding it here
-            # would duplicate matching logic sweep_orphan_parts already has,
-            # outside the module that defines the suffix (ledger SIMP-6).
-            discard_parts_for(final_path)
             logger.warning(
                 "Failed to save OME-Zarr store for %s/%s: %s: %s",
                 dataset_name,

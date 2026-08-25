@@ -907,6 +907,33 @@ class ImageIOHandler(ImageColorSpace):
         final = Path(path)
         final.parent.mkdir(parents=True, exist_ok=True)
         part = ngff_.new_part_path(final)
+        try:
+            return self._write_store_part(
+                part,
+                final,
+                series=series,
+                write_objmap=write_objmap,
+                levels=levels,
+                work_id=work_id,
+                durable=durable,
+            )
+        except Exception:
+            shutil.rmtree(ngff_.long_path(part), ignore_errors=True)
+            raise
+
+    def _write_store_part(
+            self,
+            part: Path,
+            final: Path,
+            *,
+            series: Sequence[str],
+            write_objmap: bool,
+            levels: int,
+            work_id: str | None,
+            durable: bool | None,
+    ) -> Path:
+        """Populate one allocated part and promote it to its final path."""
+        from phenotypic.sdk_ import ngff_
 
         series_names = list(series)
         primary = ngff_.primary_series(series_names)

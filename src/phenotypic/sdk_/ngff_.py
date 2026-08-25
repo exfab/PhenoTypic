@@ -1126,6 +1126,24 @@ def _is_retryable(exc: OSError) -> bool:
     return exc.errno in {errno.ENOTEMPTY, errno.ENOENT, errno.EEXIST}
 
 
+def _reconcile_attempt_trash(trash: Path, final: Path) -> None:
+    """Restore or discard the previous store moved aside by one attempt.
+
+    If no concurrent writer has published, restoring *trash* to *final*
+    preserves the previous store. If another writer has published meanwhile,
+    its non-empty *final* wins and only this attempt's now-superseded trash is
+    removed. Any other rollback failure is surfaced with the trash intact.
+    """
+    if not trash.exists():
+        return
+    try:
+        os.replace(long_path(trash), long_path(final))
+    except OSError:
+        if not final.exists():
+            raise
+        shutil.rmtree(long_path(trash))
+
+
 def promote_store(part: Path, final: Path, *, fsync: bool) -> Path:
     """Atomically promote a fully written ``.part`` directory to *final*.
 
@@ -1146,11 +1164,12 @@ def promote_store(part: Path, final: Path, *, fsync: bool) -> Path:
     check-then-act done once lets writer B skip the move-aside because A had not
     yet renamed, then hit ``ENOTEMPTY`` on a now-non-empty target.
 
-    On failure after a successful move-aside, the previous store is **rolled
-    back** into place before retrying or raising. Deleting it in a ``finally``
-    would leave no copy at any path -- a data-loss mode the single-file HDF
-    rename never had, since a failed ``os.replace(tmp, final)`` left ``final``
-    untouched.
+    On failure after a successful move-aside, that attempt's trash is
+    reconciled before retrying or raising. The previous store is rolled back
+    when *final* is absent; if a concurrent writer has already published a new
+    *final*, that winner remains authoritative and only the attempt's
+    superseded trash is removed. Every retry uses a fresh UUID trash path, so
+    no attempt can collide with its predecessor's move-aside directory.
 
     Known weakening versus the single-file rename: the two renames are still not
     one atomic step, so a crash *between* them (as opposed to a raised error)
@@ -1171,9 +1190,9 @@ def promote_store(part: Path, final: Path, *, fsync: bool) -> Path:
     if fsync:
         fsync_tree(part)
 
-    trash = final.parent / f"{part.name[: -len(PART_SUFFIX)]}{TRASH_SUFFIX}"
     last: OSError | None = None
     for attempt in range(PROMOTE_RETRY_ATTEMPTS):
+        trash = final.parent / f".{final.name}.{uuid4().hex}{TRASH_SUFFIX}"
         moved_aside = False
         try:
             # Re-evaluate existence EVERY attempt. A concurrent promoter can
@@ -1186,16 +1205,10 @@ def promote_store(part: Path, final: Path, *, fsync: bool) -> Path:
             os.replace(long_path(part), long_path(final))
         except OSError as exc:
             last = exc
+            if moved_aside:
+                _reconcile_attempt_trash(trash, final)
             if not _is_retryable(exc):
-                if moved_aside and trash.exists() and not final.exists():
-                    os.replace(long_path(trash), long_path(final))
                 raise
-            if moved_aside and trash.exists() and not final.exists():
-                # Roll back. Without this the previous store is already in
-                # `trash` and is about to be deleted, leaving NO copy at any
-                # path -- a data-loss mode the single-file HDF rename never had
-                # (a failed os.replace(tmp, final) left `final` untouched).
-                os.replace(long_path(trash), long_path(final))
             time.sleep(PROMOTE_RETRY_BASE_SECONDS * (2**attempt))
             continue
         # Success: only now is the previous store safe to discard.
@@ -1215,33 +1228,6 @@ def promote_store(part: Path, final: Path, *, fsync: bool) -> Path:
 #: stale directory until the next run; the cost of deleting a live one is a
 #: destroyed in-flight image.
 SWEEP_MIN_AGE_SECONDS: Final[float] = 6 * 60 * 60
-
-
-def discard_parts_for(final: Path) -> int:
-    """Remove every ``.part`` sibling belonging to one target store.
-
-    Shares the naming convention with :func:`new_part_path` and
-    :func:`sweep_orphan_parts` so no caller re-encodes it. The CLI's
-    save-failure path would otherwise hand-roll the dot-prefix + uuid + suffix
-    glob outside this module (ledger **SIMP-6**).
-
-    Scoped to *one* store by anchoring the glob on ``final.name``: a sibling
-    store's in-flight ``.part`` belongs to another writer and is not ours to
-    remove.
-
-    Args:
-        final: The target store path whose parts should be discarded.
-
-    Returns:
-        Number of directories removed.
-    """
-    final = Path(final)
-    removed = 0
-    for path in final.parent.glob(f".{final.name}.*{PART_SUFFIX}"):
-        if path.is_dir():
-            shutil.rmtree(long_path(path), ignore_errors=True)
-            removed += 1
-    return removed
 
 
 def sweep_orphan_parts(

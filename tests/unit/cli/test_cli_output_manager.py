@@ -801,51 +801,24 @@ def test_save_image_store_returns_none_and_logs_on_failure(
     )
 
 
-def test_save_image_store_cleans_up_the_part_directory_on_failure(
+def test_save_image_store_preserves_a_same_target_live_part_on_failure(
     tmp_path, monkeypatch
 ) -> None:
-    """The failing writer leaves a .part behind; the manager must remove it.
-
-    The writer stub deliberately CREATES a .part before raising. A stub that
-    only raises leaves nothing to clean up, so the assertion would hold with
-    the cleanup call deleted -- a test that can never fail.
-    """
+    """OutputManager cannot own a part allocated inside another writer."""
     from phenotypic import Image
-    from phenotypic.sdk_ import dataset_zarr_dir
+    from phenotypic.sdk_ import zarr_store_path
     from phenotypic.sdk_.ngff_ import new_part_path
 
-    def _fail_after_making_a_part(self, path, *, work_id=None, durable=None):
-        part = new_part_path(Path(path))
-        (part / "OME").mkdir(parents=True)
-        raise OSError("boom")
-
-    monkeypatch.setattr(Image, "save2zarr", _fail_after_making_a_part)
     manager = _make_manager(tmp_path)
-    manager.save_image_store(_synth_image(), "ds", "img")
-    leftovers = list(dataset_zarr_dir(tmp_path, "ds").glob("*.part"))
-    assert leftovers == []
+    final = zarr_store_path(tmp_path, "ds", "img")
+    live_part = new_part_path(final)
+    live_part.mkdir(parents=True)
+    monkeypatch.setattr(
+        Image, "save2zarr", lambda *a, **k: (_ for _ in ()).throw(OSError("boom"))
+    )
 
-
-def test_save_image_store_leaves_a_sibling_stores_part_alone(
-    tmp_path, monkeypatch
-) -> None:
-    """Cleanup is scoped to one store; another writer's .part is not ours."""
-    from phenotypic import Image
-    from phenotypic.sdk_ import dataset_zarr_dir, zarr_store_path
-    from phenotypic.sdk_.ngff_ import new_part_path
-
-    other = new_part_path(zarr_store_path(tmp_path, "ds", "other"))
-    other.mkdir(parents=True)
-
-    def _fail_after_making_a_part(self, path, *, work_id=None, durable=None):
-        new_part_path(Path(path)).mkdir(parents=True)
-        raise OSError("boom")
-
-    monkeypatch.setattr(Image, "save2zarr", _fail_after_making_a_part)
-    manager = _make_manager(tmp_path)
-    manager.save_image_store(_synth_image(), "ds", "img")
-    leftovers = sorted(p.name for p in dataset_zarr_dir(tmp_path, "ds").glob("*.part"))
-    assert leftovers == [other.name]
+    assert manager.save_image_store(_synth_image(), "ds", "img") is None
+    assert live_part.is_dir(), "another same-target writer owns this part"
 
 
 def test_save_image_store_result_passes_valid_staged_store(tmp_path) -> None:

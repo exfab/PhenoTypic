@@ -214,6 +214,39 @@ def test_root_zarr_json_is_written_last(
     assert chunks_present_at_root_write == [True]
 
 
+def test_failed_store_write_removes_only_the_part_owned_by_that_attempt(
+    plate: Image, tmp_path: Path, monkeypatch
+) -> None:
+    """A failed writer must not delete a same-target writer's live part."""
+    from phenotypic._core._image_parts._image_io_handler import ImageIOHandler
+    from phenotypic.sdk_ import ngff_
+
+    final = tmp_path / "p.ome.zarr"
+    live_part = ngff_.new_part_path(final)
+    live_part.mkdir()
+    allocated: list[Path] = []
+    real_new_part_path = ngff_.new_part_path
+
+    def _capture_part(path: Path) -> Path:
+        part = real_new_part_path(path)
+        allocated.append(part)
+        return part
+
+    def _fail_after_creating_part(*args, **kwargs) -> None:
+        allocated[0].mkdir(parents=True, exist_ok=True)
+        raise OSError("write failed")
+
+    monkeypatch.setattr(ngff_, "new_part_path", _capture_part)
+    monkeypatch.setattr(ImageIOHandler, "_write_series", _fail_after_creating_part)
+
+    with pytest.raises(OSError, match="write failed"):
+        plate.save2zarr(final)
+
+    assert len(allocated) == 1
+    assert not allocated[0].exists(), "the failed call must remove its own part"
+    assert live_part.is_dir(), "a concurrent same-target writer owns this part"
+
+
 def test_a_store_whose_root_is_missing_reads_as_absent(
     plate: Image, tmp_path: Path
 ) -> None:

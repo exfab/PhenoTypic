@@ -40,24 +40,6 @@ def test_part_name_carries_no_pid(tmp_path: Path) -> None:
     assert str(os.getpid()) not in part.name.replace(".part", "")
 
 
-def test_discard_parts_for_is_scoped_to_one_store(tmp_path: Path) -> None:
-    """A sibling store's in-flight .part must survive (ledger GEN-26).
-
-    The glob is anchored on `final.name`, and this is the assertion that keeps
-    the CLI save-failure path from wiping a concurrent writer's work.
-    """
-    mine = tmp_path / "a.ome.zarr"
-    theirs = tmp_path / "b.ome.zarr"
-    stale = ngff_.new_part_path(mine)
-    stale.mkdir(parents=True)
-    live = ngff_.new_part_path(theirs)
-    live.mkdir(parents=True)
-
-    assert ngff_.discard_parts_for(mine) == 1
-    assert not stale.exists()
-    assert live.is_dir(), "a sibling store's .part is not ours to remove"
-
-
 def test_promote_onto_absent_target(tmp_path: Path) -> None:
     final = tmp_path / "plate_01.ome.zarr"
     part = _fake_store(ngff_.new_part_path(final), "new")
@@ -357,6 +339,72 @@ def test_a_concurrent_promoter_appearing_mid_retry_is_benign(
     _replace_shim(monkeypatch, behaviour)
     assert ngff_.promote_store(part, final, fsync=False) == final
     assert (final / "zarr.json").read_text(encoding="utf-8") == '{"marker": "new"}'
+
+
+def test_a_concurrent_winner_after_move_aside_is_reconciled_before_retry(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A retry must not collide with the preceding attempt's trash.
+
+    Writer A moves the old final aside. Writer B then publishes its own final
+    before A can promote its part, so A's part-to-final rename fails. A must
+    reconcile only the trash created by that attempt and retry with a fresh
+    trash path; reusing the occupied path makes every later move-aside fail.
+    """
+    final = _fake_store(tmp_path / "plate_01.ome.zarr", "old")
+    part = _fake_store(ngff_.new_part_path(final), "writer A")
+
+    def behaviour(call_number: int, src: str, _dst: str):
+        if call_number == 2 and src == str(part):
+            _fake_store(final, "writer B")
+            return OSError(errno.ENOTEMPTY, "writer B won")
+        return None
+
+    calls = _replace_shim(monkeypatch, behaviour)
+
+    assert ngff_.promote_store(part, final, fsync=False) == final
+    assert (final / "zarr.json").read_text(encoding="utf-8") == (
+        '{"marker": "writer A"}'
+    )
+    trash_destinations = [
+        dst for src, dst in calls if src == str(final) and dst.endswith(".trash")
+    ]
+    assert len(trash_destinations) == 2
+    assert len(set(trash_destinations)) == 2
+    assert not any(path.name.endswith(".trash") for path in tmp_path.iterdir())
+
+
+def test_a_concurrent_winner_during_rollback_is_reconciled_before_retry(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A rollback collision must not mask a retryable promote failure.
+
+    The first part-to-final rename fails while final is absent. Writer B lands
+    after A decides to roll back but before A's trash-to-final rename. That
+    rollback now collides with B's non-empty directory; B remains authoritative
+    while A discards only its own superseded trash and retries.
+    """
+    final = _fake_store(tmp_path / "plate_01.ome.zarr", "old")
+    part = _fake_store(ngff_.new_part_path(final), "writer A")
+    injected_winner = False
+
+    def behaviour(call_number: int, src: str, dst: str):
+        nonlocal injected_winner
+        if call_number == 2 and src == str(part):
+            return OSError(errno.ENOENT, "transient promote failure")
+        if src.endswith(".trash") and dst == str(final) and not injected_winner:
+            injected_winner = True
+            _fake_store(final, "writer B")
+        return None
+
+    _replace_shim(monkeypatch, behaviour)
+
+    assert ngff_.promote_store(part, final, fsync=False) == final
+    assert injected_winner is True
+    assert (final / "zarr.json").read_text(encoding="utf-8") == (
+        '{"marker": "writer A"}'
+    )
+    assert not any(path.name.endswith(".trash") for path in tmp_path.iterdir())
 
 
 def test_durable_promote_flushes_every_file_and_every_directory(
