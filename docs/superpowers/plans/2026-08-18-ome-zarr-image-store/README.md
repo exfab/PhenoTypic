@@ -81,9 +81,10 @@ from the spec; where a task restates one, the value here is authoritative.
 - `coordinateTransformations.scale` records the repeated **2x sampling factor**,
   independently saturating each spatial axis after it reaches one pixel; channel axes
   remain scale 1. The downsampled level is translated to its block center by
-  `(scale - 1) / 2` on each spatial axis (and translation 0 on channel or saturated
-  axes). It is never derived from the stored shape ratio, which diverges for odd
-  extents.
+  `(scale - 1) / 2` on each spatial axis; translation 0 applies only to channel axes
+  and spatial axes whose effective scale is 1 (such as an initially singleton axis),
+  not every axis that later saturates. It is never derived from the stored shape ratio,
+  which diverges for odd extents.
 - **The pyramid depth is fixed, not tunable.** `pyramid_level_count(h, w)` is the whole
   policy — a pure function of the level-0 shape. The spec's `--pyramid-levels auto|N`
   (§1.3) is **descoped** and can land later as its own change; with no lever, two stores in
