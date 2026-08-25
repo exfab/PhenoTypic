@@ -41,7 +41,7 @@ from ._cli_staged_resume import (
     clear_downstream_artifacts_for_stage1,
     stage3_completion_exists,
     staged_store_matches_work_id,
-    valid_staged_store,
+    valid_stage1_store,
     write_stage3_completion_marker,
 )
 from ._cli_staged_workers import (
@@ -158,6 +158,11 @@ class StagedGpuStrategy(ExecutionStrategy):
                         plan, img, ds.name, img.stem, output_dir,
                         self.output_manager, cfg.image_type, read_kwargs,
                         work_id=work_id,
+                        pipeline_path=cfg.pipeline_json,
+                        pipeline_identity=getattr(
+                            cfg, "pipeline_identity", None
+                        ),
+                        drop_originals=cfg.drop_originals,
                     )
             except Exception as exc:
                 _record_local_terminal_failure(
@@ -187,7 +192,7 @@ class StagedGpuStrategy(ExecutionStrategy):
             plan.gpu_detector._ensure_model_loaded()  # load ONCE
         for ds, img in stage2_pending:
             store = zarr_store_path(output_dir, ds.name, img.stem)
-            if not valid_staged_store(store):
+            if not valid_stage1_store(store):
                 # Stage 1 failed/absent for this image (S6): skip + record. A
                 # cascade (stage1 failed -> stage2/stage3 prereq missing)
                 # deliberately records a failed event per stage so the per-stage

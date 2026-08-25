@@ -169,6 +169,7 @@ from phenotypic._cli._cli_failure_tracker import (
     migrate_legacy_terminal_failures,
     work_id_for_image,
 )
+from phenotypic._core._provenance import pipeline_source_identity
 from phenotypic._cli._cli_interactive import (
     execute_dry_run,
     get_sample_datasets,
@@ -1046,6 +1047,13 @@ def _print_process_only_dry_run_plan(
     ),
 )
 @click.option(
+    "--drop-originals",
+    is_flag=True,
+    help=(
+        "Do not retain decoded source pixels in full-forward image stores."
+    ),
+)
+@click.option(
     "--image-type",
     type=click.Choice(["Image", "GridImage"], case_sensitive=False),
     default="GridImage",
@@ -1245,6 +1253,7 @@ def phenotypic_cli(
     output_dir: Path,
     mode: str,
     durable_writes: Optional[bool],
+    drop_originals: bool,
     image_type: str,
     nrows: Optional[int],
     ncols: Optional[int],
@@ -1316,6 +1325,10 @@ def phenotypic_cli(
         cli_mode = cast(
             CliMode, mode
         )  # Click's Choice has already validated this.
+        if drop_originals and cli_mode != "full":
+            raise click.UsageError(
+                f"--drop-originals is not accepted with --mode {cli_mode}"
+            )
         measure_only = cli_mode == "measure"
         recompile_only = cli_mode == "recompile"
         migrate_only = cli_mode == "migrate"
@@ -1647,6 +1660,8 @@ def phenotypic_cli(
             ext=ext,
             overlay_alpha=overlay_alpha,
             durable_writes=durable_writes,
+            drop_originals=drop_originals,
+            pipeline_identity=pipeline_source_identity(pipeline_json),
             include_dataset_column=include_dataset_column,
             dry_run=dry_run,
             sample=sample,
@@ -2251,6 +2266,7 @@ def phenotypic_cli(
                     "ext": config.ext,
                     "save_overlays": config.save_overlays,
                     "process_only_layer": config.process_only_layer,
+                    "drop_originals": config.drop_originals,
                     "pipeline_sha256": pipeline_content_digest(
                         config.pipeline_json
                     ),

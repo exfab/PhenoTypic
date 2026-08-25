@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import warnings
 from collections.abc import Iterable, Sequence
+from copy import deepcopy
 from datetime import datetime
 from fractions import Fraction
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -705,7 +706,12 @@ class ImageIOHandler(ImageColorSpace):
         ]
 
     def _write_series(
-            self, part: Path, series: str, array: np.ndarray, levels: int
+            self,
+            part: Path,
+            series: str,
+            array: np.ndarray,
+            levels: int,
+            dimension_series: str | None = None,
     ) -> None:
         """Write every pyramid level of one series (or label) into *part*.
 
@@ -714,6 +720,8 @@ class ImageIOHandler(ImageColorSpace):
             series: Group path relative to *part*.
             array: Level-0 array.
             levels: Level count, uniform across the store.
+            dimension_series: Series whose axes describe *array*. Used by the
+                ``original`` group, whose dimensionality follows decoded pixels.
         """
         import zarr
 
@@ -722,11 +730,13 @@ class ImageIOHandler(ImageColorSpace):
         kind: Literal["image", "label"] = (
             "label" if series.endswith(ngff_.OBJMAP_LABEL) else "image"
         )
-        name = ngff_.OBJMAP_LABEL if kind == "label" else series
+        array_series = dimension_series or (
+            ngff_.OBJMAP_LABEL if kind == "label" else series
+        )
         for index, level in enumerate(ngff_.build_pyramid(array, levels, kind=kind)):
             handle = zarr.create_array(
                     store=ngff_.long_path(part / series / str(index)),
-                    **ngff_.array_create_kwargs(level.shape, level.dtype, name),
+                    **ngff_.array_create_kwargs(level.shape, level.dtype, array_series),
             )
             handle[...] = level
 
@@ -806,6 +816,7 @@ class ImageIOHandler(ImageColorSpace):
                 has_labels=has_labels,
                 grid=self._store_grid_attributes(),
                 work_id=work_id,
+                provenance=deepcopy(self._metadata.provenance_journal),
         )
 
     def save2zarr(
@@ -936,6 +947,11 @@ class ImageIOHandler(ImageColorSpace):
         from phenotypic.sdk_ import ngff_
 
         series_names = list(series)
+        original_axis: str | None = None
+        if self._original is not None:
+            series_names.append("original")
+            original_axis = "rgb" if self._original.ndim == 3 else "gray"
+
         primary = ngff_.primary_series(series_names)
 
         # Only the requested layers are materialised: a preview store must not
@@ -946,12 +962,24 @@ class ImageIOHandler(ImageColorSpace):
             "detect_mat": lambda: self.detect_mat[:],
         }
         arrays: dict[str, np.ndarray] = {
-            name: loaders[name]() for name in series_names
+            name: loaders[name]() for name in series
         }
+        if original_axis is not None and self._original is not None:
+            arrays["original"] = (
+                np.moveaxis(self._original, -1, 0)
+                if original_axis == "rgb"
+                else self._original
+            )
 
         # 1. arrays and chunks
         for name in series_names:
-            self._write_series(part, name, arrays[name], levels)
+            self._write_series(
+                part,
+                name,
+                arrays[name],
+                levels,
+                dimension_series=original_axis if name == "original" else None,
+            )
         objmap = self.objmap[:] if write_objmap else None
         if objmap is not None:
             self._write_series(part, ngff_.objmap_path(primary), objmap, levels)
@@ -967,13 +995,17 @@ class ImageIOHandler(ImageColorSpace):
         image_name: str | None = None if raw_name is None else str(raw_name)
         for series_name in series_names:
             shapes = ngff_.pyramid_level_shapes(arrays[series_name].shape, levels)
+            metadata_series = (
+                original_axis if series_name == "original" else series_name
+            )
+            assert metadata_series is not None
             block = {
                 "version": ngff_.NGFF_VERSION,
                 **ngff_.build_multiscales(
-                        series=series_name, level_shapes=shapes, name=image_name
+                        series=metadata_series, level_shapes=shapes, name=image_name
                 ),
                 **ngff_.build_omero(
-                        series=series_name,
+                        series=metadata_series,
                         dtype=arrays[series_name].dtype,
                         bit_depth=bit_depth,
                         name=image_name,
@@ -1317,6 +1349,15 @@ class ImageIOHandler(ImageColorSpace):
         labels = block.get(ngff_.PhenotypicAttr.LABELS, {})
         if ngff_.OBJMAP_LABEL in labels:
             img.objmap[:] = cls._read_store_array(path, labels[ngff_.OBJMAP_LABEL])
+        if "original" in series:
+            original = cls._read_store_array(path, series["original"])
+            img._original = (
+                np.moveaxis(original, 0, -1) if original.ndim == 3 else original
+            )
+
+        provenance = block.get(ngff_.PhenotypicAttr.PROVENANCE)
+        if isinstance(provenance, dict):
+            img._metadata.provenance_journal = deepcopy(provenance)
 
         targets = {
             ngff_.PhenotypicAttr.PROTECTED: img._metadata.protected,

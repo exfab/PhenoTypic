@@ -406,6 +406,7 @@ class PhenotypicAttr:
     PHENOTYPIC_VERSION: Final[str] = "phenotypic_version"
     IMAGE_CLASS: Final[str] = "image_class"
     WORK_ID: Final[str] = "work_id"
+    PROVENANCE: Final[str] = "provenance"
     SERIES: Final[str] = "series"
     LABELS: Final[str] = "labels"
     PYRAMID: Final[str] = "pyramid"
@@ -459,6 +460,7 @@ def build_phenotypic_attributes(
     has_labels: bool = True,
     grid: dict | None = None,
     work_id: str | None = None,
+    provenance: dict | None = None,
     phenotypic_version: str | None = None,
 ) -> dict:
     """Build the ``attributes.phenotypic`` block for one store.
@@ -481,6 +483,7 @@ def build_phenotypic_attributes(
         work_id: CLI work id, written here at write time and never patched in
             afterwards -- the root ``zarr.json`` is written last, so a post-hoc
             patch would violate the ordering invariant.
+        provenance: Versioned image-operation journal, when owned by an Image.
         phenotypic_version: Package version; resolved from the installed
             package when omitted.
 
@@ -529,6 +532,8 @@ def build_phenotypic_attributes(
             ),
         },
     }
+    if provenance is not None:
+        block[PhenotypicAttr.PROVENANCE] = provenance
     # Omitted entirely when the store carries no label image. An earlier draft
     # emitted this unconditionally, so a preview store written by
     # `save_intermediate_zarr(layers=("gray",))` DECLARED
@@ -1352,7 +1357,8 @@ def valid_staged_store(path: Path) -> bool:
     * every entry in ``phenotypic.series`` **and** ``phenotypic.labels`` opens
       as a Zarr array group -- objmap included, which Stage 1's zeros write
       guarantees;
-    * level-0 ``(y, x)`` extents agree across all of them and are non-zero. A
+    * processed level-0 ``(y, x)`` extents agree and every extent is non-zero;
+      the full decoded ``original`` may differ after geometry-changing pre-ops. A
       zero-size Zarr array is legal and must not pass.
 
     The exception set is the HDF version's ``(OSError, TypeError,
@@ -1394,26 +1400,39 @@ def valid_staged_store(path: Path) -> bool:
         # (Phase 2 `load_zarr`), which is the path a user actually invokes.
         if block.get(PhenotypicAttr.STORE_SCHEMA_VERSION) != STORE_SCHEMA_VERSION:
             return False
+        series = block[PhenotypicAttr.SERIES]
+        labels = block.get(PhenotypicAttr.LABELS, {})
         members = [
-            *block[PhenotypicAttr.SERIES].values(),
+            *series.values(),
             # `.get`: a label-less store OMITS the key (Task 1.3, ledger C3).
             # This is a validity predicate -- it must RETURN FALSE on a store it
             # does not accept, never raise. Indexing would make a label-less
             # store a KeyError propagating out of resume classification and
             # migration, both of which call this to decide what to do next.
-            *block.get(PhenotypicAttr.LABELS, {}).values(),
+            *labels.values(),
         ]
         if not members:
             return False
-        shapes: list[tuple[int, ...]] = []
+        shapes: dict[str, tuple[int, ...]] = {}
         for member in members:
             shape = store_level0_shape(store, member)
             if shape is None:
                 return False
-            shapes.append(shape)
-        spatial = [shape[-2:] for shape in shapes]
+            shapes[member] = shape
+        spatial = [shape[-2:] for shape in shapes.values()]
         if any(len(yx) < 2 or yx[0] <= 0 or yx[1] <= 0 for yx in spatial):
             return False
-        return all(yx == spatial[0] for yx in spatial[1:])
+        # The retained decoded source is a full-forward collection member, not
+        # a Stage-2 input layer. Geometry-changing pre-ops may legitimately
+        # make it larger than every processed series and label.
+        aligned = [
+            shapes[member]
+            for key, member in series.items()
+            if key != "original"
+        ] + [shapes[member] for member in labels.values()]
+        aligned_spatial = [shape[-2:] for shape in aligned]
+        return bool(aligned_spatial) and all(
+            yx == aligned_spatial[0] for yx in aligned_spatial[1:]
+        )
     except (AttributeError, OSError, KeyError, TypeError, ValueError):
         return False

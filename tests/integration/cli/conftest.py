@@ -19,6 +19,7 @@ from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_stage2_token import (
     load_stage2_raw,
+    read_stage2_token,
     write_stage2_raw,
     write_stage2_token,
 )
@@ -30,6 +31,7 @@ from phenotypic._cli._cli_staged_workers import (
 )
 from phenotypic._cli._cli_types import Dataset
 from phenotypic.abc_ import GpuDetector
+from phenotypic.correction import CropImage
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureSize
 from phenotypic.prefab import RoundPeaksPipeline
@@ -157,18 +159,28 @@ class _BorderColonyDetector(GpuDetector):
 class StagedStageHarness:
     """Drive the three stage cores over one image, one dataset (``ds``/``img``)."""
 
-    def __init__(self, plan, image_path, output_dir, output_manager, work_id):
+    def __init__(
+        self,
+        plan,
+        image_path,
+        pipeline_path,
+        output_dir,
+        output_manager,
+        work_id,
+    ):
         self.plan = plan
         self.image_path = image_path
+        self.pipeline_path = pipeline_path
         self.output_dir = output_dir
         self.output_manager = output_manager
         self.work_id = work_id
         self._raw_snapshot: np.ndarray | None = None
+        self._detector_duration_snapshot = 0.0
 
     def store(self, dataset: str = "ds", stem: str = "img") -> Path:
         return zarr_store_path(self.output_dir, dataset, stem)
 
-    def run_stage1(self) -> None:
+    def run_stage1(self, *, drop_originals: bool = False) -> None:
         stage1_preprocess_core(
             self.plan,
             self.image_path,
@@ -178,6 +190,8 @@ class StagedStageHarness:
             self.output_manager,
             image_type="Image",
             work_id=self.work_id,
+            pipeline_path=self.pipeline_path,
+            drop_originals=drop_originals,
         )
 
     def run_stage2(self) -> None:
@@ -187,6 +201,10 @@ class StagedStageHarness:
         # on-disk state of the promote-to-marker window, which a completed
         # Stage 3 has already cleaned up.
         self._raw_snapshot = load_stage2_raw(self.output_dir, "ds", "img")
+        token = read_stage2_token(self.output_dir, "ds", "img")
+        self._detector_duration_snapshot = float(
+            token["detector_duration_seconds"]
+        )
 
     def run_stage3(self) -> None:
         stage3_merge_measure_core(
@@ -217,6 +235,7 @@ class StagedStageHarness:
                 int(self._raw_snapshot.shape[0]),
                 int(self._raw_snapshot.shape[1]),
             ),
+            detector_duration_seconds=self._detector_duration_snapshot,
         )
 
     def read_measurements(self) -> "pl.DataFrame":
@@ -225,12 +244,14 @@ class StagedStageHarness:
         )
 
 
-def _build_stage_harness(tmp_path: Path, ops: list, *, work_id: str | None):
+def _build_stage_harness(tmp_path: Path, ops: list | dict, *, work_id: str | None):
     image_path = tmp_path / "img.tiff"
     load_synth_yeast_plate().rgb.imsave(filepath=image_path)
     output_dir = tmp_path / "out"
     output_dir.mkdir(exist_ok=True)
     pipeline = ImagePipeline(ops=ops, meas=[MeasureSize()])
+    pipeline_path = tmp_path / "pipeline.json"
+    pipeline_path.write_text(pipeline.to_json(), encoding="utf-8")
     plan = split_pipeline_at_gpu(pipeline)
     output_manager = OutputManager.from_config(
         output_dir, ".tiff", save_overlays=False
@@ -239,7 +260,7 @@ def _build_stage_harness(tmp_path: Path, ops: list, *, work_id: str | None):
         [Dataset("ds", [image_path], tmp_path, output_dir)]
     )
     return StagedStageHarness(
-        plan, image_path, output_dir, output_manager, work_id
+        plan, image_path, pipeline_path, output_dir, output_manager, work_id
     )
 
 
@@ -257,6 +278,20 @@ def staged_run_with_size_filter(tmp_path: Path) -> StagedStageHarness:
     return _build_stage_harness(
         tmp_path,
         [_FixedBlobDetector(), SmallObjectRemover(min_size=100)],
+        work_id=None,
+    )
+
+
+@pytest.fixture
+def staged_run_with_provenance(tmp_path: Path) -> StagedStageHarness:
+    """Pre/detect/post keys expose all three staged provenance boundaries."""
+    return _build_stage_harness(
+        tmp_path,
+        {
+            "pre-crop": CropImage(left=1, right=1, top=1, bottom=1),
+            "gpu-detect": _FixedBlobDetector(),
+            "post-filter": SmallObjectRemover(min_size=100),
+        },
         work_id=None,
     )
 

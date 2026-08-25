@@ -74,6 +74,42 @@ def pipeline_content_digest(pipeline_path: Path) -> str:
     return hashlib.sha256(Path(pipeline_path).read_bytes()).hexdigest()
 
 
+def valid_stage1_store(path: Path) -> bool:
+    """Return whether a structurally valid store finished Stage 1.
+
+    A decoded checkpoint is intentionally a valid OME-Zarr store so hard
+    interruption never loses the source image. Its provenance lifecycle is
+    still ``in_progress``, however, and therefore it must not be consumed by
+    Stage 2 or mistaken for a resumable Stage-1 result. Stores created before
+    provenance was introduced remain eligible through the missing-journal
+    compatibility branch.
+    """
+    if not valid_staged_store(path):
+        return False
+    try:
+        journal = read_phenotypic_attributes(path).get(
+            PhenotypicAttr.PROVENANCE
+        )
+    except (OSError, KeyError, ValueError, TypeError, AttributeError):
+        return False
+    if journal is None:
+        return True
+    if not isinstance(journal, Mapping):
+        return False
+    return journal.get("status") in {"staged", "complete"}
+
+
+def _staged_store_has_work_id(path: Path, work_id: str) -> bool:
+    """Return whether a structurally valid store carries ``work_id``."""
+    if not valid_staged_store(path):
+        return False
+    try:
+        block = read_phenotypic_attributes(path)
+        return block.get(PhenotypicAttr.WORK_ID) == work_id
+    except (OSError, KeyError, ValueError, TypeError, AttributeError):
+        return False
+
+
 def staged_store_matches_work_id(path: Path, work_id: str) -> bool:
     """Return whether a valid staged store is bound to ``work_id``.
 
@@ -88,13 +124,9 @@ def staged_store_matches_work_id(path: Path, work_id: str) -> bool:
     Returns:
         ``True`` only for a valid staged store bound to *work_id*.
     """
-    if not valid_staged_store(path):
-        return False
-    try:
-        block = read_phenotypic_attributes(path)
-        return block.get(PhenotypicAttr.WORK_ID) == work_id
-    except (OSError, KeyError, ValueError, TypeError, AttributeError):
-        return False
+    return valid_stage1_store(path) and _staged_store_has_work_id(
+        path, work_id
+    )
 
 
 def stage3_completion_marker_path(
@@ -182,11 +214,20 @@ def classify_staged_image(
             return "complete"
 
     store = zarr_store_path(output_dir, dataset, stem)
+    stage2_done = stage2_token_exists(output_dir, dataset, stem)
     if expected_work_id is not None:
         store_valid = staged_store_matches_work_id(store, expected_work_id)
+        stage2_store_valid = _staged_store_has_work_id(
+            store, expected_work_id
+        )
     else:
-        store_valid = valid_staged_store(store)
-    if not store_valid:
+        store_valid = valid_stage1_store(store)
+        stage2_store_valid = valid_staged_store(store)
+    # Stage 3 deliberately marks the root journal failed/in_progress before
+    # publication. A retained Stage-2 token proves this same store previously
+    # completed Stage 1, so it remains eligible for Stage 3 retry (or Stage 2
+    # regeneration when the token's raw sidecar is missing).
+    if not store_valid and not (stage2_done and stage2_store_valid):
         return "stage1"
 
     if (
@@ -205,7 +246,6 @@ def classify_staged_image(
     ):
         return "stage3"
 
-    stage2_done = stage2_token_exists(output_dir, dataset, stem)
     parquet = (
         dataset_measurements_dir(output_dir, dataset) / f"{stem}.parquet"
     )
@@ -405,6 +445,7 @@ __all__ = [
     "stage3_completion_exists",
     "stage3_completion_marker_path",
     "staged_store_matches_work_id",
+    "valid_stage1_store",
     "valid_staged_store",
     "write_stage3_completion_marker",
 ]

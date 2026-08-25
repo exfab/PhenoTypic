@@ -108,6 +108,7 @@ def processing_configuration_digest_from_values(
     include_dataset_column: bool,
     overlay_alpha: float,
     save_overlays: bool,
+    drop_originals: bool = False,
 ) -> str:
     """Hash explicit settings that affect one image's scientific outputs."""
     payload: dict[str, object] = {
@@ -116,6 +117,7 @@ def processing_configuration_digest_from_values(
         "ncols": ncols,
         "bit_depth": bit_depth,
         "detect_mode": detect_mode,
+        "drop_originals": drop_originals,
     }
     if process_only_layer is not None:
         payload.update(
@@ -148,6 +150,7 @@ def processing_configuration_digest(config: "ExecutionConfig") -> str:
         include_dataset_column=config.include_dataset_column,
         overlay_alpha=config.overlay_alpha,
         save_overlays=config.save_overlays,
+        drop_originals=config.drop_originals,
     )
 
 

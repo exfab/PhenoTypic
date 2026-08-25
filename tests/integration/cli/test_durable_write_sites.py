@@ -137,7 +137,9 @@ def test_process_single_image_core_honours_the_mode(
         output_manager=manager,
     )
 
-    assert fsync_calls == [expected]
+    # Full-forward publishes a decoded-source checkpoint before processing and
+    # then atomically promotes the completed processed store.
+    assert fsync_calls == [expected, expected]
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +163,9 @@ def test_stage1_preprocess_core_honours_the_mode(
 
     staged_run.run_stage1()
 
-    assert fsync_calls == [expected]
+    # Stage 1 publishes the decoded-source checkpoint and then the staged
+    # pre-operation result.
+    assert fsync_calls == [expected, expected]
 
 
 @pytest.mark.parametrize(
@@ -184,10 +188,10 @@ def test_stage3_re_promote_honours_the_mode(
     """
     staged_run.run_stage1()
     staged_run.run_stage2()
-    assert len(fsync_calls) == 1, "Stage 1 promotes exactly once"
+    assert len(fsync_calls) == 2, "Stage 1 publishes checkpoint then staged store"
 
     _set_slurm(monkeypatch, on_slurm)
     staged_run.output_manager.durable_writes = durable_writes
     staged_run.run_stage3()
 
-    assert fsync_calls[1:] == [expected]
+    assert fsync_calls[2:] == [expected]

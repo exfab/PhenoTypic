@@ -34,6 +34,7 @@ from ._cli_types import (
     ExecutionResults,
     ImageFailure,
 )
+from phenotypic._core._provenance import pipeline_source_identity
 from ._cli_output_manager import OutputManager
 from ._cli_process_single import process_single_image_core
 from phenotypic.sdk_.slurm import get_slurm_array_limit
@@ -461,6 +462,8 @@ class LocalParallelStrategy(ExecutionStrategy):
                 read_kwargs=read_kwargs,
                 output_manager=self.output_manager,
                 cli_nrows=self.config.nrows,
+                drop_originals=self.config.drop_originals,
+                pipeline_identity=self.config.pipeline_identity,
                 cli_ncols=self.config.ncols,
             )
 
@@ -895,6 +898,11 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         # remains a separate identity.
         generation = new_slurm_generation()
         self.config.slurm_generation = generation
+        if self.config.pipeline_identity is None:
+            self.config.pipeline_identity = pipeline_source_identity(
+                self.config.pipeline_json
+            )
+
         pipeline_snapshot = (
             progress_dir(output_dir)
             / "worklists"

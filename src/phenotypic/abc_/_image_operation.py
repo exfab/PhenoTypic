@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import wraps
 from typing import TYPE_CHECKING, Any, overload
 
 if TYPE_CHECKING:
@@ -391,6 +392,25 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     _update_button: Any = PrivateAttr(default=None)
     _output_widget: Any = PrivateAttr(default=None)
     _image_ref: Any = PrivateAttr(default=None)
+
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """Instrument each subclass's resolved public apply success boundary."""
+        super().__pydantic_init_subclass__(**kwargs)
+        resolved_apply = cls.apply
+
+        @wraps(resolved_apply)
+        def _deferred_provenance_apply(
+            self: Any, *args: Any, **apply_kwargs: Any
+        ) -> Any:
+            # Import only after package initialization; importing ``_core`` while
+            # the ABC hierarchy is being constructed creates a circular import.
+            from phenotypic._core._provenance import wrap_image_operation_apply
+
+            wrapped = wrap_image_operation_apply(resolved_apply, cls)
+            return wrapped(self, *args, **apply_kwargs)
+
+        cls.apply = _deferred_provenance_apply  # type: ignore[method-assign]
 
     @overload
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage:

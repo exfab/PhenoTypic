@@ -278,6 +278,19 @@ def generate_array_job_script(
             else "--no-durable-writes"
         )
 
+    if config.pipeline_identity is not None:
+        cmd_parts.extend(
+            [
+                "--provenance-pipeline-source-path",
+                shlex.quote(config.pipeline_identity["source_path"]),
+                "--provenance-pipeline-sha256",
+                shlex.quote(config.pipeline_identity["sha256"]),
+            ]
+        )
+
+    if config.drop_originals:
+        cmd_parts.append("--drop-originals")
+
     # Process-only (apply-only) mode: export a single layer, mirror the input
     # tree, and skip overlays/measurement entirely. Mutually exclusive with the
     # measure / forward overlay flags.

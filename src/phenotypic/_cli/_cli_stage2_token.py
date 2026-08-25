@@ -48,10 +48,11 @@ def write_stage2_token(
     image_stem: str,
     *,
     objmap_shape: tuple[int, int],
+    detector_duration_seconds: float = 0.0,
 ) -> Path:
     """Atomically record that Stage 2 finished this image.
 
-    Carries the objmap shape only. An earlier draft also carried ``work_id``,
+    Carries the objmap shape and detector compute duration. It omits ``work_id``,
     which ``stage2_detect_core`` has no parameter for and which could therefore
     only ever be ``None`` (ledger **FLOW-20**). The work-id conjunct that
     matters is read off the store by ``staged_store_matches_work_id``.
@@ -61,6 +62,8 @@ def write_stage2_token(
         dataset: Dataset name.
         image_stem: Image stem.
         objmap_shape: Level-0 ``(y, x)`` extent of the detected objmap.
+        detector_duration_seconds: Stage-2 detector compute time, excluding
+            queueing and later Stage-3 merge work.
 
     Returns:
         The token path.
@@ -70,6 +73,7 @@ def write_stage2_token(
     # numpy expression holds ``np.int64``, which ``json.dumps`` refuses.
     payload = {
         "objmap_shape": [int(objmap_shape[0]), int(objmap_shape[1])],
+        "detector_duration_seconds": float(detector_duration_seconds),
     }
 
     def _write(path: str) -> None:

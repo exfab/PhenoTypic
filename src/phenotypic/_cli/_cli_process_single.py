@@ -13,7 +13,7 @@ import logging
 import click
 import traceback
 from pathlib import Path
-from typing import Optional, Dict, Any, cast
+from typing import Optional, Dict, Any, Mapping, cast
 from uuid import uuid4
 
 import matplotlib
@@ -21,6 +21,12 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend
 
 from phenotypic import Image, GridImage, ImagePipeline
+from phenotypic._core._provenance import (
+    initialize_cli_provenance,
+    provenance_success_sink,
+    set_provenance_status,
+    write_provenance_checkpoint,
+)
 from ._cli_output_manager import OutputManager
 from ._cli_process_only import (
     process_only_output_path,
@@ -47,6 +53,7 @@ from phenotypic.sdk_ import (
     load_image_from_store,
     progress_dir,
     store_stem,
+    zarr_store_path,
 )
 from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
 
@@ -76,6 +83,7 @@ def _worker_work_identity(
     include_dataset_column: bool,
     overlay_alpha: float,
     save_overlays: bool,
+    drop_originals: bool = False,
     mode: str,
 ) -> tuple[str, str]:
     """Calculate the same work identity used by top-level selection."""
@@ -103,6 +111,7 @@ def _worker_work_identity(
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
+                drop_originals=drop_originals,
             ),
             mode=mode,
         ),
@@ -120,6 +129,8 @@ def process_single_image_core(
     output_manager: OutputManager,
     cli_nrows: Optional[int] = None,
     cli_ncols: Optional[int] = None,
+    drop_originals: bool = False,
+    pipeline_identity: Mapping[str, str] | None = None,
 ) -> bool:
     """
     Core processing logic for a single image.
@@ -136,6 +147,9 @@ def process_single_image_core(
         output_manager: OutputManager instance
         cli_nrows: Explicit CLI ``--nrows`` override, or ``None`` if not passed.
         cli_ncols: Explicit CLI ``--ncols`` override, or ``None`` if not passed.
+        drop_originals: Skip decoded-source retention when true.
+        pipeline_identity: Original user pipeline source identity when
+            ``pipeline_path`` is an immutable worker snapshot.
 
     Returns:
         True if successful. This function always returns True on success;
@@ -146,6 +160,20 @@ def process_single_image_core(
             will propagate to the caller. The caller is responsible for catching
             exceptions and handling failures appropriately.
     """
+    image_stem = image_path.stem
+    store = zarr_store_path(output_dir, dataset_name, image_stem)
+    image: Image | GridImage | None = None
+    checkpoint_ready = False
+
+    def _mark_failed_checkpoint() -> None:
+        if image is None or not checkpoint_ready:
+            return
+        set_provenance_status(image, "failed")
+        try:
+            write_provenance_checkpoint(store, image)
+        except Exception:
+            logger.exception("Failed to mark provenance checkpoint failed: %s", store)
+
     try:
         # Load, decode, and run the configured scientific computation. Output
         # publication intentionally occurs after this boundary.
@@ -167,33 +195,53 @@ def process_single_image_core(
 
         detect_mode = read_kwargs.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **read_kwargs)
+        initialize_cli_provenance(
+            image, pipeline_path, pipeline_identity=pipeline_identity
+        )
+        if drop_originals:
+            write_provenance_checkpoint(store, image, journal_only=True)
+        else:
+            image._retain_original()
+            saved_store = output_manager.save_image_store(
+                image, dataset_name, image_stem
+            )
+            if saved_store is None:
+                raise RuntimeError(
+                    f"Initial image checkpoint failed for {dataset_name}/{image_stem}"
+                )
+        checkpoint_ready = True
         if detect_mode != "gray":
             image.set_detect_mode(detect_mode)
-        measurements = pipeline.apply_and_measure(
-            image, inplace=True, apply_post=False
+        with provenance_success_sink(
+            lambda updated: write_provenance_checkpoint(store, updated)
+        ):
+            measurements = pipeline.apply_and_measure(
+                image, inplace=True, apply_post=False
+            )
+        output_manager.save_measurements(measurements, dataset_name, image_stem)
+        if output_manager.save_overlays:
+            output_manager.save_overlay(image, dataset_name, image_stem)
+        from phenotypic.plotting._pipeline import PlotCoordinator
+
+        PlotCoordinator(pipeline, output_dir).emit_image(
+            image,
+            dataset=dataset_name,
+            image_stem=image_stem,
         )
+        set_provenance_status(image, "complete")
+        saved_store = output_manager.save_image_store(
+            image, dataset_name, image_stem
+        )
+        if saved_store is None:
+            raise RuntimeError(
+                f"Final image store publication failed for {dataset_name}/{image_stem}"
+            )
     except MemoryError:
+        _mark_failed_checkpoint()
         raise
     except Exception as exc:
+        _mark_failed_checkpoint()
         raise PerImageScientificError("full", exc) from exc
-
-    # Get image stem for output filenames
-    image_stem = image_path.stem
-
-    # Save measurements + HDF5 (always) and overlay (opt-in), then dispatch
-    # configured PlotImage bindings while measurer caches still refer to this
-    # exact image instance.
-    output_manager.save_measurements(measurements, dataset_name, image_stem)
-    output_manager.save_image_store(image, dataset_name, image_stem)
-    if output_manager.save_overlays:
-        output_manager.save_overlay(image, dataset_name, image_stem)
-    from phenotypic.plotting._pipeline import PlotCoordinator
-
-    PlotCoordinator(pipeline, output_dir).emit_image(
-        image,
-        dataset=dataset_name,
-        image_stem=image_stem,
-    )
 
     return True
 
@@ -374,6 +422,13 @@ def process_single_store_measure_core(
         "flag when it was given explicitly."
     ),
 )
+@click.option(
+    "--drop-originals",
+    is_flag=True,
+    help="Do not retain decoded source pixels in full-forward image stores.",
+)
+@click.option("--provenance-pipeline-source-path", default=None, hidden=True)
+@click.option("--provenance-pipeline-sha256", default=None, hidden=True)
 @click.option("--expected-work-id", default=None, hidden=True)
 @click.option("--expected-input-sha256", default=None, hidden=True)
 @click.option("--expected-pipeline-sha256", default=None, hidden=True)
@@ -397,6 +452,9 @@ def main(
     layer: Optional[str],
     input_root: Optional[Path],
     durable_writes: Optional[bool],
+    drop_originals: bool,
+    provenance_pipeline_source_path: Optional[str],
+    provenance_pipeline_sha256: Optional[str],
     expected_work_id: Optional[str],
     expected_input_sha256: Optional[str],
     expected_pipeline_sha256: Optional[str],
@@ -411,6 +469,10 @@ def main(
     attempt_id = attempt_id or uuid4().hex
     try:
         cli_mode = cast(CliMode, mode)
+        if drop_originals and cli_mode != "full":
+            raise click.UsageError(
+                f"--drop-originals is not accepted with --mode {cli_mode}"
+            )
         measure_only = cli_mode == "measure"
         process_only_layer: Optional[ProcessOnlyLayer] = None
         if cli_mode == "process":
@@ -419,6 +481,22 @@ def main(
             process_only_layer = cast(ProcessOnlyLayer, layer)
         elif layer is not None:
             raise click.UsageError("--layer can only be used with --mode process")
+
+        provenance_identity_values = (
+            provenance_pipeline_source_path,
+            provenance_pipeline_sha256,
+        )
+        if any(value is not None for value in provenance_identity_values):
+            if not all(value is not None for value in provenance_identity_values):
+                raise click.UsageError(
+                    "Incomplete provenance pipeline identity"
+                )
+            pipeline_identity = {
+                "source_path": cast(str, provenance_pipeline_source_path),
+                "sha256": cast(str, provenance_pipeline_sha256),
+            }
+        else:
+            pipeline_identity = None
 
         expected_identity = (
             expected_work_id,
@@ -447,6 +525,7 @@ def main(
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
+                drop_originals=drop_originals,
                 mode=mode,
             )
             if actual_work_id != expected_work_id:
@@ -504,6 +583,7 @@ def main(
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
+                drop_originals=drop_originals,
                 mode=mode,
             )
             publish_image_success(
@@ -610,6 +690,8 @@ def main(
                 output_manager=output_manager,
                 cli_nrows=nrows,
                 cli_ncols=ncols,
+                drop_originals=drop_originals,
+                pipeline_identity=pipeline_identity,
             )
             work_id, relative_path = _worker_work_identity(
                 pipeline=pipeline,
@@ -626,6 +708,7 @@ def main(
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
+                drop_originals=drop_originals,
                 mode=mode,
             )
             # The same resolver the local strategy and the staged SLURM
@@ -705,6 +788,7 @@ def main(
                     include_dataset_column=include_dataset_column,
                     overlay_alpha=overlay_alpha,
                     save_overlays=save_overlays,
+                    drop_originals=drop_originals,
                     mode=mode,
                 )
                 committed = append_terminal_failure(

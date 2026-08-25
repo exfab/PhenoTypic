@@ -307,6 +307,7 @@ def test_staged_submitter_hands_the_flag_to_the_script_generator(
             "full_dataset_inventory": {},
             "nrows": None,
             "ncols": None,
+            "drop_originals": False,
             "durable_writes": value,
         },
     )()

@@ -1,0 +1,318 @@
+"""Context-local operation provenance for :class:`phenotypic.Image`."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from contextlib import contextmanager
+from contextvars import ContextVar
+from copy import deepcopy
+from datetime import datetime, timezone
+from functools import wraps
+from pathlib import Path
+from time import perf_counter
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Mapping, TypeVar, cast
+
+if TYPE_CHECKING:
+    from phenotypic._core._image import Image
+    from phenotypic.abc_._image_operation import ImageOperation
+
+
+PROVENANCE_SCHEMA_VERSION = 1
+
+_Apply = TypeVar("_Apply", bound=Callable[..., "Image"])
+_operation_apply_depth: ContextVar[int] = ContextVar(
+    "phenotypic_operation_apply_depth", default=0
+)
+_pipeline_step_path: ContextVar[tuple[str, ...] | None] = ContextVar(
+    "phenotypic_pipeline_step_path", default=None
+)
+_success_sink: ContextVar[Callable[["Image"], object] | None] = ContextVar(
+    "phenotypic_provenance_success_sink", default=None
+)
+
+
+class _ReadOnlyList(list[Any]):
+    """List-shaped immutable view so JSON arrays still compare as lists."""
+
+    @staticmethod
+    def _immutable(*args: Any, **kwargs: Any) -> None:
+        del args, kwargs
+        raise TypeError("provenance is read-only")
+
+    __setitem__ = _immutable
+    __delitem__ = _immutable
+    __iadd__ = _immutable  # type: ignore[assignment]
+    __imul__ = _immutable  # type: ignore[assignment]
+    append = _immutable
+    clear = _immutable
+    extend = _immutable
+    insert = _immutable
+    pop = _immutable
+    remove = _immutable
+    reverse = _immutable
+    sort = _immutable
+
+
+def new_provenance_journal() -> dict[str, Any]:
+    """Return a fresh version-1 journal owned by one image."""
+    return {
+        "schema_version": PROVENANCE_SCHEMA_VERSION,
+        "status": "complete",
+        "pipeline": None,
+        "retry_base_length": 0,
+        "operations": [],
+    }
+
+
+def readonly_operations(journal: Mapping[str, Any]) -> tuple[Mapping[str, Any], ...]:
+    """Return a deeply detached, immutable view of journal operations."""
+
+    def _freeze(value: Any) -> Any:
+        if isinstance(value, dict):
+            return MappingProxyType(
+                {key: _freeze(item) for key, item in value.items()}
+            )
+        if isinstance(value, list):
+            return _ReadOnlyList(_freeze(item) for item in value)
+        return value
+
+    return tuple(_freeze(deepcopy(entry)) for entry in journal["operations"])
+
+
+def _carry_logical_image_state(
+    result: "Image",
+    source_journal: Mapping[str, Any],
+    source_original: Any,
+) -> None:
+    """Carry image-owned provenance/source state across replacement operations."""
+    returned_operations = deepcopy(
+        result._metadata.provenance_journal.get("operations", [])
+    )
+    source_operations = source_journal["operations"]
+    common_prefix = 0
+    for source_entry, returned_entry in zip(
+        source_operations, returned_operations, strict=False
+    ):
+        if source_entry != returned_entry:
+            break
+        common_prefix += 1
+
+    merged: dict[str, Any] = deepcopy(dict(source_journal))
+    operations = merged["operations"]
+    for returned_entry in returned_operations[common_prefix:]:
+        carried_entry = deepcopy(returned_entry)
+        carried_entry["sequence"] = len(operations) + 1
+        operations.append(carried_entry)
+
+    result._metadata.provenance_journal = merged
+    # The retained pixels are an immutable decoded-source snapshot. Reusing
+    # the reference avoids another full-image allocation at every operation.
+    result._original = source_original
+
+
+@contextmanager
+def pipeline_step(key: str) -> Iterator[None]:
+    """Append one configured operation key to the current nested step path."""
+    parent = _pipeline_step_path.get()
+    token = _pipeline_step_path.set((*parent, key) if parent else (key,))
+    try:
+        yield
+    finally:
+        _pipeline_step_path.reset(token)
+
+
+@contextmanager
+def provenance_success_sink(
+    sink: Callable[["Image"], object],
+) -> Iterator[None]:
+    """Install a context-local sink called after each successful leaf operation."""
+    token = _success_sink.set(sink)
+    try:
+        yield
+    finally:
+        _success_sink.reset(token)
+
+
+def wrap_image_operation_apply(apply_method: _Apply, owner: type) -> _Apply:
+    """Wrap one subclass's resolved public ``apply`` at its outer success edge."""
+    if getattr(apply_method, "__phenotypic_provenance_owner__", None) is owner:
+        return apply_method
+
+    @wraps(apply_method)
+    def _recording_apply(
+        self: "ImageOperation", *args: Any, **kwargs: Any
+    ) -> "Image":
+        depth = _operation_apply_depth.get()
+        token = _operation_apply_depth.set(depth + 1)
+        if depth:
+            try:
+                return apply_method(self, *args, **kwargs)
+            finally:
+                _operation_apply_depth.reset(token)
+
+        logical_input = cast(
+            "Image", kwargs.get("image", args[0] if args else None)
+        )
+        source_journal = deepcopy(logical_input._metadata.provenance_journal)
+        source_original = logical_input._original
+        started = perf_counter()
+        try:
+            result = apply_method(self, *args, **kwargs)
+            duration = perf_counter() - started
+            _carry_logical_image_state(result, source_journal, source_original)
+            operations = result._metadata.provenance_journal["operations"]
+            prior_length = len(operations)
+            parameters = json.loads(
+                json.dumps(self.model_dump(mode="json"), ensure_ascii=False)
+            )
+            step_path = _pipeline_step_path.get()
+            operations.append(
+                {
+                    "sequence": prior_length + 1,
+                    "operation_name": type(self).__name__,
+                    "operation_class": (
+                        f"{type(self).__module__}.{type(self).__qualname__}"
+                    ),
+                    "phenotypic_version": _installed_phenotypic_version(),
+                    "parameters": parameters,
+                    "applied_at_utc": datetime.now(timezone.utc)
+                    .isoformat(timespec="milliseconds")
+                    .replace("+00:00", "Z"),
+                    "duration_seconds": duration,
+                    "pipeline_step_path": list(step_path) if step_path else None,
+                }
+            )
+            try:
+                sink = _success_sink.get()
+                if sink is not None:
+                    sink(result)
+            except BaseException:
+                del operations[prior_length:]
+                raise
+            return result
+        except BaseException:
+            logical_input._metadata.provenance_journal = source_journal
+            logical_input._original = source_original
+            raise
+        finally:
+            _operation_apply_depth.reset(token)
+
+    setattr(_recording_apply, "__phenotypic_provenance_owner__", owner)
+    return cast(_Apply, _recording_apply)
+
+
+def _installed_phenotypic_version() -> str:
+    """Resolve the installed package version without an import cycle at module load."""
+    import phenotypic
+
+    return phenotypic.__version__
+
+
+def pipeline_source_identity(path: str | Path) -> dict[str, str]:
+    """Return resolved source path and SHA-256 content identity for a pipeline."""
+    source = Path(path).resolve()
+    return {
+        "source_path": str(source),
+        "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+    }
+
+
+def initialize_cli_provenance(
+    image: "Image",
+    pipeline_path: str | Path,
+    *,
+    pipeline_identity: Mapping[str, str] | None = None,
+    status: str = "in_progress",
+    retry_base_length: int = 0,
+) -> None:
+    """Reset a decoded image to a fresh CLI journal for this pipeline attempt."""
+    journal = new_provenance_journal()
+    journal.update(
+        {
+            "status": status,
+            "pipeline": (
+                pipeline_source_identity(pipeline_path)
+                if pipeline_identity is None
+                else deepcopy(dict(pipeline_identity))
+            ),
+            "retry_base_length": int(retry_base_length),
+        }
+    )
+    image._metadata.provenance_journal = journal
+
+
+def set_provenance_status(image: "Image", status: str) -> None:
+    """Set the lifecycle status on an image-owned journal."""
+    image._metadata.provenance_journal["status"] = status
+
+
+def set_retry_base_length(image: "Image", length: int) -> None:
+    """Persist the Stage-1 prefix length used to make Stage-3 retries idempotent."""
+    image._metadata.provenance_journal["retry_base_length"] = int(length)
+
+
+def truncate_provenance_to_retry_base(image: "Image") -> None:
+    """Discard entries written after the durable Stage-1 prefix."""
+    journal = image._metadata.provenance_journal
+    base = int(journal.get("retry_base_length", 0))
+    del journal["operations"][base:]
+
+
+def append_operation_provenance(
+    image: "Image",
+    operation: "ImageOperation",
+    *,
+    duration_seconds: float,
+    pipeline_step_path: list[str] | None,
+) -> None:
+    """Append one successful leaf record, including staged detector merges."""
+    operations = image._metadata.provenance_journal["operations"]
+    parameters = json.loads(
+        json.dumps(operation.model_dump(mode="json"), ensure_ascii=False)
+    )
+    operations.append(
+        {
+            "sequence": len(operations) + 1,
+            "operation_name": type(operation).__name__,
+            "operation_class": (
+                f"{type(operation).__module__}.{type(operation).__qualname__}"
+            ),
+            "phenotypic_version": _installed_phenotypic_version(),
+            "parameters": parameters,
+            "applied_at_utc": datetime.now(timezone.utc)
+            .isoformat(timespec="milliseconds")
+            .replace("+00:00", "Z"),
+            "duration_seconds": float(duration_seconds),
+            "pipeline_step_path": pipeline_step_path,
+        }
+    )
+
+
+def write_provenance_checkpoint(
+    store: str | Path,
+    image: "Image",
+    *,
+    journal_only: bool = False,
+) -> Path:
+    """Atomically replace only root provenance, or create a journal-only root."""
+    from phenotypic.sdk_ import atomic_write_json
+
+    root = Path(store) / "zarr.json"
+    if root.is_file():
+        payload = json.loads(root.read_text(encoding="utf-8"))
+    elif journal_only:
+        root.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "zarr_format": 3,
+            "node_type": "group",
+            "attributes": {"phenotypic": {}},
+        }
+    else:
+        raise FileNotFoundError(root)
+    attributes = payload.setdefault("attributes", {})
+    phenotypic = attributes.setdefault("phenotypic", {})
+    phenotypic["provenance"] = deepcopy(image._metadata.provenance_journal)
+    atomic_write_json(root, payload, sort_keys=False)
+    return root.parent

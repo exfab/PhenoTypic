@@ -63,13 +63,20 @@ def test_token_carries_the_objmap_shape_and_no_work_id(tmp_path: Path) -> None:
     The work-id check that matters reads `attributes.phenotypic.work_id` off the
     STORE (`staged_store_matches_work_id`), not the token.
     """
-    write_stage2_token(tmp_path, "ds", "img", objmap_shape=(64, 48))
+    write_stage2_token(
+        tmp_path,
+        "ds",
+        "img",
+        objmap_shape=(64, 48),
+        detector_duration_seconds=1.25,
+    )
     payload = read_stage2_token(tmp_path, "ds", "img")
     assert tuple(payload["objmap_shape"]) == (64, 48)
+    assert payload["detector_duration_seconds"] == 1.25
     assert "work_id" not in payload
     # By exact key set: a field that can only ever be None must not creep back
     # under a different name either.
-    assert set(payload) == {"objmap_shape"}
+    assert set(payload) == {"detector_duration_seconds", "objmap_shape"}
 
 
 def test_token_shape_is_the_shape_it_was_given_not_a_placeholder(

@@ -12,7 +12,7 @@ from phenotypic.sdk_ import dataset_measurements_dir, zarr_store_path
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 from ._cli_stage2_token import stage2_result_replayable
-from ._cli_staged_resume import stage3_completion_exists, valid_staged_store
+from ._cli_staged_resume import stage3_completion_exists, valid_stage1_store
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
     assert_active_epoch,
@@ -91,7 +91,7 @@ def _classify_stage2(
             terminal.append(entry)
             continue
         store = zarr_store_path(output_dir, entry.dataset, entry.stem)
-        if not valid_staged_store(store):
+        if not valid_stage1_store(store):
             terminal.append(entry)
             continue
         retryable.append(entry)

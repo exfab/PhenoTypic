@@ -4,7 +4,7 @@ import uuid
 import warnings
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Any, Literal, Sequence, TYPE_CHECKING, Union
+from typing import Any, cast, Literal, Sequence, TYPE_CHECKING, Union
 
 import numpy as np
 from scipy.sparse import csc_matrix
@@ -98,6 +98,14 @@ class ImageMetadata:
     imported: dict[str, Union[int, str, float, bool]] = field(
             default_factory=dict
     )
+    provenance_journal: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Give every image its own ordered provenance journal."""
+        if not self.provenance_journal:
+            from phenotypic._core._provenance import new_provenance_journal
+
+            self.provenance_journal = new_provenance_journal()
 
     def clear(self) -> None:
         self.protected[IMAGE.IMAGE_NAME] = np.nan
@@ -159,6 +167,7 @@ class ImageDataManager:
                 public={},
                 imported={},
         )
+        self._original: np.ndarray | None = None
 
     @property
     def bit_depth(self) -> Literal[8, 16]:
@@ -181,6 +190,7 @@ class ImageDataManager:
         """
         self._data.clear()
         self._metadata.clear()
+        self._original = None
         return
 
     def _allocate_data(self, shape: Sequence[int]):
@@ -344,7 +354,21 @@ class ImageDataManager:
         # image retains its capture provenance. private (UUID) is intentionally
         # left fresh — see ImageHandler.copy.
         self._metadata.imported = deepcopy(input_cls._metadata.imported)
+        self._metadata.provenance_journal = deepcopy(
+            input_cls._metadata.provenance_journal
+        )
+        self._original = (
+            None
+            if input_cls._original is None
+            else np.array(input_cls._original, copy=True)
+        )
         return
+
+    def _retain_original(self) -> None:
+        """Snapshot decoded primary pixels before CLI processing begins."""
+        image = cast("Image", self)
+        source = image.gray[:] if image.rgb.isempty() else image.rgb[:]
+        self._original = np.array(source, copy=True)
 
     def _set_from_array(self, arr: np.ndarray) -> None:
         """Initialize all components from an array.

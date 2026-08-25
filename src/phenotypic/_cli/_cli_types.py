@@ -137,6 +137,13 @@ class ExecutionConfig:
     # invalidate a run's work ids and restart finished images.
     durable_writes: Optional[bool] = None
 
+    # Full-forward storage policy. The default retains decoded source pixels.
+    drop_originals: bool = False
+
+    # Resolved user-supplied pipeline source, retained when workers execute an
+    # immutable submission snapshot instead of the original JSON path.
+    pipeline_identity: Optional[Dict[str, str]] = None
+
     # Lifecycle mode for staged SLURM orchestration. ``restart`` is distinct
     # from a fresh run because existing terminal artifacts must be regenerated.
     restart: bool = False

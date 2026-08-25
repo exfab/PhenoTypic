@@ -228,6 +228,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     _measurement_memory: Dict[str, float] = PrivateAttr(default_factory=dict)
     _operation_rss: Dict[str, float] = PrivateAttr(default_factory=dict)
     _measurement_rss: Dict[str, float] = PrivateAttr(default_factory=dict)
+    _provenance_pipeline: dict[str, str] | None = PrivateAttr(default=None)
 
     # Lazily-populated ipywidget UI handles used by ``LazyWidgetMixin``.
     # Mirrors the declaration on ``ImageOperation``: both classes mix in
@@ -893,8 +894,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     nested_was_benchmarking = operation._benchmark
                     operation._benchmark = True
 
-                # Apply actual operation
-                operation.apply(img, **apply_params)
+                # Apply actual operation under its configured, nestable key path.
+                from phenotypic._core._provenance import pipeline_step
+
+                with pipeline_step(key):
+                    operation.apply(img, **apply_params)
 
                 # Restore nested pipeline benchmark flag
                 if nested_was_benchmarking is not None and isinstance(
@@ -961,6 +965,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         """
         effective_reset = reset if reset is not None else self._reset
         img = image if inplace else image.copy()
+        if self._provenance_pipeline is not None:
+            img._metadata.provenance_journal["pipeline"] = dict(
+                self._provenance_pipeline
+            )
         if effective_reset:
             img.reset()
         self._run_operations(img)

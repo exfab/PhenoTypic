@@ -11,7 +11,7 @@ import argparse
 import os
 import traceback
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 from uuid import uuid4
 
 from phenotypic import ImagePipeline
@@ -51,7 +51,7 @@ from ._cli_staged_resume import (
     clear_downstream_artifacts_for_stage1,
     stage3_completion_exists,
     staged_store_matches_work_id,
-    valid_staged_store,
+    valid_stage1_store,
     write_stage3_completion_marker,
 )
 from ._cli_staged_workers import (
@@ -131,6 +131,8 @@ def run_stage1_step(
     epoch: str | None = None,
     resume: bool = False,
     durable_writes: bool | None = None,
+    drop_originals: bool = False,
+    pipeline_identity: Mapping[str, str] | None = None,
 ) -> None:
     """Preprocess one manifest image into its staged OME-Zarr store.
 
@@ -146,7 +148,7 @@ def run_stage1_step(
             item.work_id
             and staged_store_matches_work_id(store, item.work_id)
         )
-        or (not item.work_id and valid_staged_store(store))
+        or (not item.work_id and valid_stage1_store(store))
     ):
         return
     check = _active_check(output_dir, epoch)
@@ -173,6 +175,9 @@ def run_stage1_step(
                 image_type,
                 active_check=check,
                 work_id=item.work_id,
+                pipeline_path=pipeline_path,
+                pipeline_identity=pipeline_identity,
+                drop_originals=drop_originals,
             )
     except Exception as exc:
         _record_terminal_scientific_failure(output_dir, item, exc, epoch)
@@ -239,7 +244,7 @@ def run_stage2_shard(
         if (
             item.work_id
             and staged_store_matches_work_id(store, item.work_id)
-        ) or (not item.work_id and valid_staged_store(store)):
+        ) or (not item.work_id and valid_stage1_store(store)):
             pending.append(item)
             continue
         emit_missing_prereq(
@@ -458,6 +463,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--epoch", required=True)
     parser.add_argument("--reuse-existing", action="store_true")
     parser.add_argument("--stage3-markers-required", action="store_true")
+    parser.add_argument("--drop-originals", action="store_true")
+    parser.add_argument(
+        "--provenance-pipeline-source-path",
+        default=None,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--provenance-pipeline-sha256",
+        default=None,
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--overlay-alpha", type=float, default=0.3)
     # BooleanOptionalAction, not store_true: the flag is TRI-state and its
     # default must stay ``None``. ``store_true`` would make an unset flag
@@ -469,6 +485,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=None,
     )
     args = parser.parse_args(argv)
+    provenance_identity_values = (
+        args.provenance_pipeline_source_path,
+        args.provenance_pipeline_sha256,
+    )
+    if any(value is not None for value in provenance_identity_values):
+        if not all(value is not None for value in provenance_identity_values):
+            parser.error("incomplete provenance pipeline identity")
+        pipeline_identity = {
+            "source_path": args.provenance_pipeline_source_path,
+            "sha256": args.provenance_pipeline_sha256,
+        }
+    else:
+        pipeline_identity = None
 
     preload_custom_operation_modules()
     manifest = load_staged_manifest(args.manifest)
@@ -488,6 +517,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             manifest,
             args.index,
             args.ext,
+            drop_originals=args.drop_originals,
+            pipeline_identity=pipeline_identity,
             **common,
         )
     elif args.stage == 2:
