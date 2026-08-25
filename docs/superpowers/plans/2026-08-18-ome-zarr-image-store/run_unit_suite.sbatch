@@ -1,17 +1,18 @@
 #!/bin/bash
-#SBATCH --job-name=omezarr-tests
+#SBATCH --job-name=phenotypic-tests
 #SBATCH --partition=short
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=32G
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=16G
 #SBATCH --time=02:00:00
-#SBATCH --array=0-5%6
+#SBATCH --array=0-23%24
 #SBATCH --output=/bigdata/exfab/anguy344/slurm_logs/%A_%a.log
 set -euo pipefail
 
-# Six disjoint pytest groups run in parallel. Keep the CLI group at 16 CPUs:
-# its concurrency regression launches eight child processes and is otherwise
-# prone to false timeout failures under scheduler contention.
+# The full non-slow verification scope is deterministically file-sharded across
+# 24 array tasks. Twelve CPUs leave enough headroom for tests that spawn eight
+# child processes while keeping the fully active array below account caps.
 WORKTREE=/bigdata/exfab/anguy344/PhenoTypic/.worktrees/worktree-ome-zarr-image-store
+PYTEST_GROUP_COUNT=24
 
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
@@ -20,7 +21,7 @@ export QT_QPA_PLATFORM=offscreen
 echo "Date:  $(date -Is)"
 echo "Node:  $(hostname -s)"
 echo "Job:   ${SLURM_JOB_ID}"
-echo "Group: ${SLURM_ARRAY_TASK_ID}"
+echo "Group: ${SLURM_ARRAY_TASK_ID}/${PYTEST_GROUP_COUNT}"
 echo "CPUs:  ${SLURM_CPUS_PER_TASK}"
 echo "Load:  $(uptime)"
 echo
@@ -30,32 +31,35 @@ echo "Commit under test: $(git rev-parse --short HEAD) $(git log -1 --format=%s)
 echo
 
 PYTEST_GROUP_ID=${SLURM_ARRAY_TASK_ID}
-declare -a TEST_TARGETS
-case "${PYTEST_GROUP_ID}" in
-    0) TEST_TARGETS=(tests/unit/core tests/unit/sdk_) ;;
-    1) TEST_TARGETS=(tests/unit/cli tests/unit/analysis tests/unit/schema) ;;
-    2) TEST_TARGETS=(tests/unit/gui) ;;
-    3) TEST_TARGETS=(tests/unit/tune) ;;
-    4) TEST_TARGETS=(
-        tests/unit/abc_ tests/unit/assets tests/unit/ci tests/unit/correction
-        tests/unit/detect tests/unit/docs tests/unit/enhance tests/unit/grid
-        tests/unit/measure tests/unit/plotting tests/unit/post tests/unit/prefab
-        tests/unit/qc tests/unit/refine tests/unit/resources tests/unit/util
-        tests/unit/viz tests/unit/test_*.py
-    ) ;;
-    5) TEST_TARGETS=(
-        tests/gui tests/integration tests/smoke
-        tests/migration/test_metadata_schema_migration.py
-        tests/migration/test_curation_imagefile_rename.py
-    ) ;;
-    *) echo "Unknown pytest group: ${PYTEST_GROUP_ID}" >&2; exit 2 ;;
-esac
+mapfile -t ALL_TEST_FILES < <(
+    {
+        find tests/unit tests/gui tests/integration tests/smoke \
+            -type f -name 'test_*.py' -print
+        printf '%s\n' \
+            tests/migration/test_metadata_schema_migration.py \
+            tests/migration/test_curation_imagefile_rename.py
+    } | LC_ALL=C sort
+)
 
-echo "Targets: ${TEST_TARGETS[*]}"
+declare -a TEST_TARGETS=()
+for file_index in "${!ALL_TEST_FILES[@]}"; do
+    if ((file_index % PYTEST_GROUP_COUNT == PYTEST_GROUP_ID)); then
+        TEST_TARGETS+=("${ALL_TEST_FILES[file_index]}")
+    fi
+done
+
+if ((${#TEST_TARGETS[@]} == 0)); then
+    echo "Pytest group ${PYTEST_GROUP_ID} has no test files" >&2
+    exit 2
+fi
+
+echo "Discovered files: ${#ALL_TEST_FILES[@]}"
+echo "Group files:      ${#TEST_TARGETS[@]}"
+printf '  %s\n' "${TEST_TARGETS[@]}"
 echo
 
-# Controller tests model ordinary jobs and intentionally mock SLURM_JOB_ID.
-# Do not leak this verification runner's array identity into their subject.
+# Tests model ordinary jobs and intentionally mock SLURM_JOB_ID. Do not leak
+# this verification runner's array identity into their subject.
 unset SLURM_ARRAY_JOB_ID SLURM_ARRAY_TASK_ID SLURM_ARRAY_TASK_COUNT
 unset SLURM_ARRAY_TASK_MIN SLURM_ARRAY_TASK_MAX SLURM_ARRAY_TASK_STEP
 
