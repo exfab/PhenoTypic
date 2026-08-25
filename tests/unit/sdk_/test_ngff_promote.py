@@ -241,6 +241,12 @@ def _replace_shim(monkeypatch, behaviour) -> list[tuple[str, str]]:
     return calls
 
 
+def _equivalent_noncanonical_path(path: Path) -> str:
+    """Spell *path* differently while naming the same filesystem entry."""
+    path = Path(path)
+    return str(path.parent / ".." / path.parent.name / path.name)
+
+
 def test_a_transient_rename_failure_is_retried_not_surfaced(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -353,9 +359,12 @@ def test_a_concurrent_winner_after_move_aside_is_reconciled_before_retry(
     """
     final = _fake_store(tmp_path / "plate_01.ome.zarr", "old")
     part = _fake_store(ngff_.new_part_path(final), "writer A")
+    monkeypatch.setattr(ngff_, "long_path", _equivalent_noncanonical_path)
+    part_operand = ngff_.long_path(part)
+    final_operand = ngff_.long_path(final)
 
     def behaviour(call_number: int, src: str, _dst: str):
-        if call_number == 2 and src == str(part):
+        if call_number == 2 and src == part_operand:
             _fake_store(final, "writer B")
             return OSError(errno.ENOTEMPTY, "writer B won")
         return None
@@ -367,7 +376,7 @@ def test_a_concurrent_winner_after_move_aside_is_reconciled_before_retry(
         '{"marker": "writer A"}'
     )
     trash_destinations = [
-        dst for src, dst in calls if src == str(final) and dst.endswith(".trash")
+        dst for src, dst in calls if src == final_operand and dst.endswith(".trash")
     ]
     assert len(trash_destinations) == 2
     assert len(set(trash_destinations)) == 2
@@ -387,12 +396,15 @@ def test_a_concurrent_winner_during_rollback_is_reconciled_before_retry(
     final = _fake_store(tmp_path / "plate_01.ome.zarr", "old")
     part = _fake_store(ngff_.new_part_path(final), "writer A")
     injected_winner = False
+    monkeypatch.setattr(ngff_, "long_path", _equivalent_noncanonical_path)
+    part_operand = ngff_.long_path(part)
+    final_operand = ngff_.long_path(final)
 
     def behaviour(call_number: int, src: str, dst: str):
         nonlocal injected_winner
-        if call_number == 2 and src == str(part):
+        if call_number == 2 and src == part_operand:
             return OSError(errno.ENOENT, "transient promote failure")
-        if src.endswith(".trash") and dst == str(final) and not injected_winner:
+        if src.endswith(".trash") and dst == final_operand and not injected_winner:
             injected_winner = True
             _fake_store(final, "writer B")
         return None
