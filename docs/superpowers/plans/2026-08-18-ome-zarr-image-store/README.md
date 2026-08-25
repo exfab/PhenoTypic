@@ -78,8 +78,12 @@ from the spec; where a task restates one, the value here is authoritative.
 - `levels = ceil(log2(max(H, W) / 512)) + 1`, and `1` when `max(H, W) <= 512`.
   **`ceil`, not `floor`** — a floor-based draft stopped one level early. Assertion C1.
 - Per-level shape is **ceil-halving**: `(h + 1) // 2, (w + 1) // 2`.
-- `coordinateTransformations.scale` is derived from the **actual level shape ratio**,
-  never from `2 ** n` — odd extents make the two diverge.
+- `coordinateTransformations.scale` records the repeated **2x sampling factor**,
+  independently saturating each spatial axis after it reaches one pixel; channel axes
+  remain scale 1. The downsampled level is translated to its block center by
+  `(scale - 1) / 2` on each spatial axis (and translation 0 on channel or saturated
+  axes). It is never derived from the stored shape ratio, which diverges for odd
+  extents.
 - **The pyramid depth is fixed, not tunable.** `pyramid_level_count(h, w)` is the whole
   policy — a pure function of the level-0 shape. The spec's `--pyramid-levels auto|N`
   (§1.3) is **descoped** and can land later as its own change; with no lever, two stores in
@@ -257,6 +261,7 @@ Phase 6 is what removes the public HDF surface. Phase 6 keeps the private legacy
 | 5 | [`phase-5-migrate.md`](phase-5-migrate.md) | 6 live + 1 tombstone (5.5 **cut**; 5.6, 5.7 added) |
 | 6 | [`phase-6-retirement.md`](phase-6-retirement.md) | 4 (6.3a folded into 6.4 — ledger SIMP-13) |
 | 7 | [`phase-7-verification.md`](phase-7-verification.md) | 4 (7.3a folded into `assert_store_conforms` — ledger SIMP-12) |
+| 8 | [`phase-8-review-fixes.md`](phase-8-review-fixes.md) | 4 review repairs |
 
 ## Existing-test inventory
 

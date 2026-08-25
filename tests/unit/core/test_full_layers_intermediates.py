@@ -1,4 +1,6 @@
 """full_layers=True writes complete OME-Zarr snapshots per node."""
+import json
+
 import numpy as np
 
 from phenotypic import Image
@@ -6,6 +8,7 @@ from phenotypic._core._image_pipeline import ImagePipeline
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import BlurGauss
 from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
+from tests._ngff_conformance import assert_store_conforms
 
 
 def _store_layers(store) -> set[str]:
@@ -14,6 +17,39 @@ def _store_layers(store) -> set[str]:
     return set(block.get(PhenotypicAttr.SERIES, {})) | set(
         block.get(PhenotypicAttr.LABELS, {})
     )
+
+
+def _dataset_count(store, member: str) -> int:
+    """Return the number of declared pyramid datasets for one store member."""
+    payload = json.loads((store / member / "zarr.json").read_text(encoding="utf-8"))
+    return len(payload["attributes"]["ome"]["multiscales"][0]["datasets"])
+
+
+def test_full_layers_preserves_complete_pyramids_and_conformance(tmp_path):
+    """A one-level full snapshot would break third-party pyramid consumers."""
+    side = 513  # strictly above the 512-pixel pyramid threshold
+    ramp = np.linspace(0, 255, side, dtype=np.uint8)
+    rgb = np.repeat(ramp[None, :, None], side, axis=0)
+    image = Image(np.repeat(rgb, 3, axis=2))
+    pipeline = ImagePipeline(ops=[BlurGauss(sigma=1), OtsuDetector()])
+
+    pipeline.apply_with_intermediates(
+        image, output_dir=tmp_path / "full", full_layers=True
+    )
+
+    for store_name in (
+        "base_00.ome.zarr",
+        "00_BlurGauss.ome.zarr",
+        "01_OtsuDetector.ome.zarr",
+    ):
+        store = tmp_path / "full" / store_name
+        block = read_phenotypic_attributes(store)
+        members = [
+            *block[PhenotypicAttr.SERIES].values(),
+            *block[PhenotypicAttr.LABELS].values(),
+        ]
+        assert all(_dataset_count(store, member) > 1 for member in members)
+        assert_store_conforms(store)
 
 
 def test_full_layers_writes_complete_snapshots(tmp_path):

@@ -35,6 +35,16 @@ commit at this point is documentation.
 
 ---
 
+## Phase 8 — Review-fix cluster
+
+**Status:** Task 4 preserves the full-pyramid `full_layers=True` snapshot contract,
+adds a >512-pixel multi-dataset/conformance regression, and records the focused local
+test and mutation evidence. The controller owns the final broad OME-Zarr suite, mypy
+baseline comparison, and Slurm verification; no additional scheduler submission belongs
+to this cluster.
+
+---
+
 ## Shared files — the parallelism constraint
 
 Two tasks that **write** one file cannot run concurrently. Derived, not assumed:

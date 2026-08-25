@@ -72,7 +72,6 @@ valid root and reads as absent rather than partial.
 
 .. autofunction:: new_part_path
 .. autofunction:: promote_store
-.. autofunction:: discard_parts_for
 .. autofunction:: sweep_orphan_parts
 
 Durability
