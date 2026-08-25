@@ -422,6 +422,65 @@ def test_a_concurrent_winner_during_rollback_is_reconciled_before_retry(
     assert not any(path.name.endswith(".trash") for path in tmp_path.iterdir())
 
 
+def test_rollback_trash_sharing_violation_does_not_prevent_retry(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """An undeletable superseded trash must be left for the orphan sweep.
+
+    Writer A moves the old final aside, its promote fails, and writer B lands
+    before A can roll back. Windows then reports a sharing violation while A
+    removes only that attempt's superseded trash. The cleanup failure must not
+    mask the original retryable promote error: A retries with a fresh trash
+    path and eventually publishes, leaving only its undeletable first trash.
+    """
+    final = _fake_store(tmp_path / "plate_01.ome.zarr", "old")
+    part = _fake_store(ngff_.new_part_path(final), "writer A")
+    first_attempt_trash: Path | None = None
+    injected_winner = False
+    monkeypatch.setattr(ngff_, "long_path", _equivalent_noncanonical_path)
+    part_operand = ngff_.long_path(part)
+    final_operand = ngff_.long_path(final)
+
+    def behaviour(call_number: int, src: str, dst: str):
+        nonlocal first_attempt_trash, injected_winner
+        if call_number == 1 and src == final_operand:
+            first_attempt_trash = Path(dst)
+        if call_number == 2 and src == part_operand:
+            return OSError(errno.ENOENT, "transient promote failure")
+        if src.endswith(".trash") and dst == final_operand and not injected_winner:
+            injected_winner = True
+            _fake_store(final, "writer B")
+        return None
+
+    _replace_shim(monkeypatch, behaviour)
+    real_rmtree = ngff_.shutil.rmtree
+
+    def rmtree_with_sharing_violation(path, *args, **kwargs):
+        if first_attempt_trash is not None and Path(path).resolve() == (
+            first_attempt_trash.resolve()
+        ):
+            sharing_violation = OSError(errno.EACCES, "sharing violation")
+            sharing_violation.winerror = 32  # type: ignore[attr-defined]
+            if kwargs.get("ignore_errors"):
+                return None
+            raise sharing_violation
+        return real_rmtree(path, *args, **kwargs)
+
+    monkeypatch.setattr(ngff_.shutil, "rmtree", rmtree_with_sharing_violation)
+
+    assert ngff_.promote_store(part, final, fsync=False) == final
+    assert injected_winner is True
+    assert (final / "zarr.json").read_text(encoding="utf-8") == (
+        '{"marker": "writer A"}'
+    )
+    assert first_attempt_trash is not None
+    remaining_trash = [path for path in tmp_path.iterdir() if path.name.endswith(".trash")]
+    assert remaining_trash == [first_attempt_trash.resolve()]
+    assert (remaining_trash[0] / "zarr.json").read_text(encoding="utf-8") == (
+        '{"marker": "old"}'
+    )
+
+
 def test_durable_promote_flushes_every_file_and_every_directory(
     tmp_path: Path, monkeypatch
 ) -> None:

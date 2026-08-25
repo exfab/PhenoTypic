@@ -190,8 +190,8 @@ def level_coordinate_transformations(
 
     A repeated 2x block reduction with total sampling factor ``scale`` maps a
     level coordinate ``u`` to ``scale * u + (scale - 1) / 2``. Translation is
-    zero for channel and saturated spatial axes, and is omitted entirely when
-    the vector is all zero.
+    zero for channel axes and spatial axes whose effective scale is 1, and is
+    omitted entirely when the vector is all zero.
 
     Args:
         level0: Level-0 shape.
@@ -1175,7 +1175,7 @@ def _reconcile_attempt_trash(trash: Path, final: Path) -> None:
     except OSError:
         if not final.exists():
             raise
-        shutil.rmtree(long_path(trash))
+        shutil.rmtree(long_path(trash), ignore_errors=True)
 
 
 def promote_store(part: Path, final: Path, *, fsync: bool) -> Path:

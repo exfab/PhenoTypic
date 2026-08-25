@@ -2060,3 +2060,16 @@ store test both failed. The store control reads all image layers plus `objmap`
 and asserts level-3 array shape `(257, 1)` (RGB `(3, 257, 1)`) as well as the
 literal transforms. Claim C7 already derives the same transition independently
 for size 7 at levels 4–5, so the logic-validation script needed no change.
+
+## IMPLEMENTATION — Phase 8 final review fix
+
+The rollback-collision path removed a superseded attempt-owned `.trash` with an
+unguarded `rmtree`. On Windows, a sharing violation from that cleanup replaced
+the original retryable promote error, so the retry loop exited before writer A
+could publish. The cleanup now uses the same best-effort policy as successful
+promotion cleanup. If `final` is absent, rollback failure remains hard and the
+trash remains the only retained copy.
+
+| Mutant | Regression | Result |
+|---|---|---|
+| Remove best-effort handling from superseded rollback-trash deletion | `test_rollback_trash_sharing_violation_does_not_prevent_retry` injects a rollback collision, then `winerror=32`; writer A must retry and publish while only its undeletable first trash remains for the age-gated sweep. | killed: sharing violation escaped before retry |

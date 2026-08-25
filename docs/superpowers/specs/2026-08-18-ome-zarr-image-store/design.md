@@ -549,8 +549,10 @@ reader benefit.
 
 Used by every publishing stage (Stage 1, single-pass, and Stage 3):
 
-1. `shutil.rmtree` any pre-existing `.part` for this stem, then build
-   `.<stem>.ome.zarr.<uuid4hex>.part/` as a **sibling** of the target.
+1. Allocate `.<stem>.ome.zarr.<uuid4hex>.part/` as a **sibling** of the target.
+   If the write fails, remove only that attempt-owned `.part`; never remove an
+   arbitrary same-stem `.part` or `.trash`, which may belong to a live sibling
+   writer and is otherwise handled by the age-gated orphan sweep.
    The uuid — matching the `attempt_id = uuid4().hex` convention already used at
    [`_cli_staged_strategy.py:158`](../../../../src/phenotypic/_cli/_cli_staged_strategy.py) —
    replaces an earlier draft's un-suffixed `.part`, which would have let two
@@ -696,9 +698,9 @@ none of zarr's error types are `ValueError` subclasses.
 ### 3.7 Concurrency and durability
 
 Zarr has no locking. Safety rests on: the uuid-suffixed `.part` (§3.2), Stage 2
-being the sole writer of the label array between promotes, and resume state
-living outside the store. Concurrent readers during Stage 2 may observe a torn
-`objmap`; the completion marker, not the store's shape, is what gates consumers.
+writing only external raw/token state, and whole-store promotion. Stage 2 never
+mutates a promoted store, so concurrent readers cannot observe a torn Stage-2
+`objmap`; Stage 3 publishes the refined result through §3.2.
 
 **Durability is environment-dependent.** `write()` returns once data is in the
 page cache; without `fsync` the kernel may flush the root `zarr.json` **before**
@@ -1067,8 +1069,9 @@ material.
 - **Commit protocol.** Three cases, not one: (a) interrupt after chunks but
   before the root `zarr.json`; (b) two concurrent writers on the same stem —
   assert distinct `.part` directories and one coherent winner; (c) a stale
-  `.part` from a killed process is removed, not merged into. Prove (a) can fail
-  by reversing the write order.
+  `.part` from a killed process is ignored and preserved for the age-gated
+  orphan sweep, never reused or merged into. Prove (a) can fail by reversing
+  the write order.
 - **Pyramid correctness.** No label value at level *n* absent from level 0.
   Mutate the downsampler to `mean` and confirm failure (already demonstrated by
   script claim C5).
