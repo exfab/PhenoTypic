@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
+    from phenotypic.sdk_ import CommitGuard
 
 # Check for optional dependencies and import if available
 if importlib.util.find_spec("exifread") is not None:
@@ -825,6 +826,7 @@ class ImageIOHandler(ImageColorSpace):
             *,
             work_id: str | None = None,
             durable: bool | None = None,
+            commit_guard: CommitGuard | None = None,
     ) -> Path:
         """Save the image as an OME-Zarr (NGFF 0.5 / Zarr v3) store.
 
@@ -873,6 +875,7 @@ class ImageIOHandler(ImageColorSpace):
                 levels=ngff_.pyramid_level_count(pyramid_height, pyramid_width),
                 work_id=work_id,
                 durable=durable,
+                commit_guard=commit_guard,
         )
 
     def _save_store(
@@ -884,6 +887,7 @@ class ImageIOHandler(ImageColorSpace):
             levels: int,
             work_id: str | None,
             durable: bool | None,
+            commit_guard: CommitGuard | None = None,
     ) -> Path:
         """Write one OME-Zarr store into a ``.part`` sibling and promote it.
 
@@ -931,6 +935,7 @@ class ImageIOHandler(ImageColorSpace):
                 levels=levels,
                 work_id=work_id,
                 durable=durable,
+                commit_guard=commit_guard,
             )
         except Exception:
             shutil.rmtree(ngff_.long_path(part), ignore_errors=True)
@@ -946,6 +951,7 @@ class ImageIOHandler(ImageColorSpace):
             levels: int,
             work_id: str | None,
             durable: bool | None,
+            commit_guard: CommitGuard | None = None,
     ) -> Path:
         """Populate one allocated part and promote it to its final path."""
         from phenotypic.sdk_ import ngff_
@@ -1085,7 +1091,10 @@ class ImageIOHandler(ImageColorSpace):
                 },
         )
         return ngff_.promote_store(
-                part, final, fsync=ngff_.durable_writes_enabled(durable)
+                part,
+                final,
+                fsync=ngff_.durable_writes_enabled(durable),
+                commit_guard=commit_guard,
         )
 
     def save_intermediate_zarr(self, path, layers: tuple[str, ...]) -> Path:

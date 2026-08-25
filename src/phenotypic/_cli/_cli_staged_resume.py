@@ -9,9 +9,11 @@ from pathlib import Path
 from typing import Literal, Mapping, Sequence
 
 from phenotypic.sdk_ import (
+    CommitGuard,
     atomic_write_json,
     dataset_measurements_dir,
     progress_dir,
+    publication_commit,
     zarr_store_path,
 )
 from phenotypic.sdk_.ngff_ import (  # noqa: F401 -- public re-export
@@ -157,6 +159,7 @@ def write_stage3_completion_marker(
     image_stem: str,
     *,
     legacy_migration: bool = False,
+    commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Atomically record complete Stage 3 publication for one image."""
     path = stage3_completion_marker_path(output_dir, dataset, image_stem)
@@ -170,17 +173,23 @@ def write_stage3_completion_marker(
             "legacy_migration": legacy_migration,
             "completed_at": datetime.now().isoformat(timespec="milliseconds"),
         },
+        commit_guard=commit_guard,
     )
     return path
 
 
 def remove_stage3_completion_marker(
-    output_dir: Path, dataset: str, image_stem: str
+    output_dir: Path,
+    dataset: str,
+    image_stem: str,
+    *,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """Remove a terminal marker before regenerating upstream artifacts."""
-    stage3_completion_marker_path(
-        output_dir, dataset, image_stem
-    ).unlink(missing_ok=True)
+    with publication_commit(commit_guard):
+        stage3_completion_marker_path(
+            output_dir, dataset, image_stem
+        ).unlink(missing_ok=True)
 
 
 def classify_staged_image(
@@ -353,7 +362,11 @@ def migrate_legacy_stage3_markers(
 
 
 def clear_downstream_artifacts_for_stage1(
-    output_dir: Path, dataset: str, image_stem: str
+    output_dir: Path,
+    dataset: str,
+    image_stem: str,
+    *,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """Discard artifacts that cannot survive regeneration of the staged store.
 
@@ -366,9 +379,18 @@ def clear_downstream_artifacts_for_stage1(
     makes the next Stage 3 replay into a ``FileNotFoundError``, while the
     reverse merely orphans a ``.npy`` that Stage 2 overwrites.
     """
-    delete_stage2_token(output_dir, dataset, image_stem)
-    delete_stage2_raw(output_dir, dataset, image_stem)
-    remove_stage3_completion_marker(output_dir, dataset, image_stem)
+    delete_stage2_token(
+        output_dir, dataset, image_stem, commit_guard=commit_guard
+    )
+    delete_stage2_raw(
+        output_dir, dataset, image_stem, commit_guard=commit_guard
+    )
+    remove_stage3_completion_marker(
+        output_dir,
+        dataset,
+        image_stem,
+        commit_guard=commit_guard,
+    )
 
 
 def reconcile_stage3_publications(

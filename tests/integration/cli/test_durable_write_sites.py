@@ -43,6 +43,7 @@ from phenotypic._cli._cli_types import Dataset
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureSize
+from phenotypic.sdk_ import CommitGuard
 
 #: ``(durable_writes, on_slurm, expected_fsync)``. See the module docstring.
 DURABILITY_CASES = [
@@ -60,9 +61,15 @@ def fsync_calls(monkeypatch: pytest.MonkeyPatch) -> list[bool]:
     seen: list[bool] = []
     real = ngff_.promote_store
 
-    def _spy(part: Path, final: Path, *, fsync: bool = False) -> Path:
+    def _spy(
+        part: Path,
+        final: Path,
+        *,
+        fsync: bool = False,
+        commit_guard: CommitGuard | None = None,
+    ) -> Path:
         seen.append(fsync)
-        return real(part, final, fsync=fsync)
+        return real(part, final, fsync=fsync, commit_guard=commit_guard)
 
     monkeypatch.setattr(ngff_, "promote_store", _spy)
     return seen

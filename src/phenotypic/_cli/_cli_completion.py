@@ -12,6 +12,7 @@ from typing import Mapping
 from uuid import uuid4
 
 from phenotypic.sdk_ import (
+    CommitGuard,
     STORE_ROOT_JSON,
     aggregate_publication_marker_path,
     atomic_write_json,
@@ -166,6 +167,7 @@ def publish_image_success(
     attempt_id: str,
     lifecycle_epoch: str,
     artifacts: Mapping[str, Path],
+    commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Validate artifacts and atomically publish the image marker last."""
     if os.environ.get("SLURM_JOB_ID"):
@@ -205,7 +207,7 @@ def publish_image_success(
         ),
     }
     marker_path = image_completion_marker_path(output_dir, dataset, image_stem)
-    atomic_write_json(marker_path, marker)
+    atomic_write_json(marker_path, marker, commit_guard=commit_guard)
     return marker_path
 
 

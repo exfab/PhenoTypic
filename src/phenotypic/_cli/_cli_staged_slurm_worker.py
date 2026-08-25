@@ -8,14 +8,16 @@ controller rather than by signal handling inside this process.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import os
 import traceback
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Iterator, Mapping, Sequence
 from uuid import uuid4
 
 from phenotypic import ImagePipeline
 from phenotypic.sdk_ import (
+    CommitGuard,
     dataset_measurements_dir,
     event_log_path,
     zarr_store_path,
@@ -33,7 +35,6 @@ from ._cli_stage2_token import (
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
     assert_active_epoch,
-    epoch_is_active,
     load_staged_manifest,
 )
 from ._cli_failure_tracker import (
@@ -62,6 +63,10 @@ from ._cli_staged_workers import (
     stage3_merge_measure_core,
     stage_event,
 )
+from ._cli_slurm_lifecycle import (
+    generation_publication_guard,
+    slurm_generation_inactive_cause,
+)
 from ._stages import STAGE_GPU_DETECT, STAGE_MEASURE, STAGE_PREPROCESS
 
 Manifest = Sequence[StagedManifestEntry]
@@ -72,13 +77,13 @@ def _record_terminal_scientific_failure(
     item: StagedManifestEntry,
     exception: Exception,
     epoch: str | None,
+    commit_guard: CommitGuard | None,
 ) -> bool:
     """Commit one current-epoch staged scientific failure when identifiable."""
     if (
         not isinstance(exception, PerImageScientificError)
         or not item.work_id
         or epoch is None
-        or not epoch_is_active(output_dir, epoch)
     ):
         return False
     return append_terminal_failure(
@@ -92,6 +97,7 @@ def _record_terminal_scientific_failure(
         lifecycle_epoch=epoch,
         traceback=traceback.format_exc(),
         slurm_job_id=os.environ.get("SLURM_JOB_ID", ""),
+        commit_guard=commit_guard,
     )
 
 
@@ -104,6 +110,20 @@ def _active_check(output_dir: Path, epoch: str | None):
         assert_active_epoch(output_dir, epoch)
 
     return _check
+
+
+def _commit_guard(output_dir: Path, epoch: str | None) -> CommitGuard | None:
+    """Return the staged lifecycle lock held only at canonical commit points."""
+    if epoch is None:
+        return None
+
+    @contextmanager
+    def _guard() -> Iterator[None]:
+        with generation_publication_guard(output_dir, epoch):
+            assert_active_epoch(output_dir, epoch)
+            yield
+
+    return _guard
 
 
 def _entry(entry: StagedManifestEntry | Sequence[str]) -> StagedManifestEntry:
@@ -152,11 +172,15 @@ def run_stage1_step(
     ):
         return
     check = _active_check(output_dir, epoch)
+    commit_guard = _commit_guard(output_dir, epoch)
     if check is not None:
         check()
     if resume:
         clear_downstream_artifacts_for_stage1(
-            output_dir, item.dataset, item.stem
+            output_dir,
+            item.dataset,
+            item.stem,
+            commit_guard=commit_guard,
         )
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     output_manager = OutputManager.from_config(
@@ -170,6 +194,7 @@ def run_stage1_step(
             item.image_name,
             STAGE_PREPROCESS,
             active_check=check,
+            commit_guard=commit_guard,
         ):
             stage1_preprocess_core(
                 plan,
@@ -181,12 +206,15 @@ def run_stage1_step(
                 image_type,
                 active_check=check,
                 work_id=item.work_id,
+                commit_guard=commit_guard,
                 pipeline_path=pipeline_path,
                 pipeline_identity=pipeline_identity,
                 drop_originals=drop_originals,
             )
     except Exception as exc:
-        _record_terminal_scientific_failure(output_dir, item, exc, epoch)
+        _record_terminal_scientific_failure(
+            output_dir, item, exc, epoch, commit_guard
+        )
         raise
 
 
@@ -204,6 +232,7 @@ def run_stage2_shard(
 ) -> None:
     """Stream one pending shard through one resident GPU model."""
     check = _active_check(output_dir, epoch)
+    commit_guard = _commit_guard(output_dir, epoch)
     if check is not None:
         check()
     shard = [
@@ -261,6 +290,7 @@ def run_stage2_shard(
             item.image_name,
             STAGE_GPU_DETECT,
             "staged store",
+            commit_guard=commit_guard,
         )
     if not pending:
         return
@@ -279,6 +309,7 @@ def run_stage2_shard(
                 item.image_name,
                 STAGE_GPU_DETECT,
                 active_check=check,
+                commit_guard=commit_guard,
             ):
                 stage2_detect_core(
                     plan.gpu_detector,
@@ -287,9 +318,15 @@ def run_stage2_shard(
                     item.stem,
                     image_type,
                     active_check=check,
+                    commit_guard=commit_guard,
                 )
         except Exception as exc:
-            _record_terminal_scientific_failure(output_dir, item, exc, epoch)
+            inactive = slurm_generation_inactive_cause(exc)
+            if inactive is not None:
+                raise inactive
+            _record_terminal_scientific_failure(
+                output_dir, item, exc, epoch, commit_guard
+            )
 
 
 def run_stage3_step(
@@ -325,6 +362,7 @@ def run_stage3_step(
         durable_writes=durable_writes,
     )
     check = _active_check(output_dir, epoch)
+    commit_guard = _commit_guard(output_dir, epoch)
     terminal = bool(
         item.work_id
         and valid_image_success(
@@ -347,6 +385,7 @@ def run_stage3_step(
             output_manager,
             image_type,
             active_check=check,
+            commit_guard=commit_guard,
         )
         return
     if (
@@ -366,6 +405,7 @@ def run_stage3_step(
             output_manager,
             image_type,
             active_check=check,
+            commit_guard=commit_guard,
         )
         data_key, data_path = image_data_artifact(
             output_dir, output_manager, item.dataset, item.stem
@@ -389,6 +429,7 @@ def run_stage3_step(
             attempt_id=item.attempt_id or uuid4().hex,
             lifecycle_epoch=epoch or "slurm-unfenced",
             artifacts=artifacts,
+            commit_guard=commit_guard,
         )
         return
     if check is not None:
@@ -405,6 +446,7 @@ def run_stage3_step(
             item.image_name,
             STAGE_MEASURE,
             "Stage 2 result",
+            commit_guard=commit_guard,
         )
         raise SystemExit(1)
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
@@ -415,6 +457,7 @@ def run_stage3_step(
             item.image_name,
             STAGE_MEASURE,
             active_check=check,
+            commit_guard=commit_guard,
         ):
             stage3_merge_measure_core(
                 plan,
@@ -424,6 +467,7 @@ def run_stage3_step(
                 output_manager,
                 image_type,
                 active_check=check,
+                commit_guard=commit_guard,
                 image_name=item.image_name,
                 work_id=item.work_id,
             )
@@ -455,6 +499,7 @@ def run_stage3_step(
                     attempt_id=item.attempt_id or uuid4().hex,
                     lifecycle_epoch=epoch or "slurm-unfenced",
                     artifacts=artifacts,
+                    commit_guard=commit_guard,
                 )
             if check is not None:
                 check()
@@ -463,17 +508,33 @@ def run_stage3_step(
                 item.dataset,
                 item.image_name,
                 item.stem,
+                commit_guard=commit_guard,
             )
             # Token FIRST at every consumption site: the only reachable
             # intermediate state must be "no token, orphan raw".
             if check is not None:
                 check()
-            delete_stage2_token(output_dir, item.dataset, item.stem)
+            delete_stage2_token(
+                output_dir,
+                item.dataset,
+                item.stem,
+                commit_guard=commit_guard,
+            )
             if check is not None:
                 check()
-            delete_stage2_raw(output_dir, item.dataset, item.stem)
+            delete_stage2_raw(
+                output_dir,
+                item.dataset,
+                item.stem,
+                commit_guard=commit_guard,
+            )
     except Exception as exc:
-        _record_terminal_scientific_failure(output_dir, item, exc, epoch)
+        inactive = slurm_generation_inactive_cause(exc)
+        if inactive is not None:
+            raise inactive
+        _record_terminal_scientific_failure(
+            output_dir, item, exc, epoch, commit_guard
+        )
         raise
 
 

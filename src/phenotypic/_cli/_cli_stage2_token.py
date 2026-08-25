@@ -32,7 +32,12 @@ from pathlib import Path
 
 import numpy as np
 
-from phenotypic.sdk_ import atomic_write_with_writer, progress_dir
+from phenotypic.sdk_ import (
+    CommitGuard,
+    atomic_write_with_writer,
+    progress_dir,
+    publication_commit,
+)
 
 _STAGE2_DIR = "stage2_done"
 
@@ -49,6 +54,7 @@ def write_stage2_token(
     *,
     objmap_shape: tuple[int, int],
     detector_duration_seconds: float = 0.0,
+    commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Atomically record that Stage 2 finished this image.
 
@@ -79,7 +85,7 @@ def write_stage2_token(
     def _write(path: str) -> None:
         Path(path).write_text(json.dumps(payload), encoding="utf-8")
 
-    atomic_write_with_writer(final, _write)
+    atomic_write_with_writer(final, _write, commit_guard=commit_guard)
     return final
 
 
@@ -99,9 +105,16 @@ def read_stage2_token(output_dir: Path, dataset: str, image_stem: str) -> dict:
     )
 
 
-def delete_stage2_token(output_dir: Path, dataset: str, image_stem: str) -> None:
+def delete_stage2_token(
+    output_dir: Path,
+    dataset: str,
+    image_stem: str,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> None:
     """Consume the token. Idempotent, mirroring the old sidecar delete."""
-    stage2_token_path(output_dir, dataset, image_stem).unlink(missing_ok=True)
+    with publication_commit(commit_guard):
+        stage2_token_path(output_dir, dataset, image_stem).unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +130,12 @@ def stage2_raw_path(output_dir: Path, dataset: str, image_stem: str) -> Path:
 
 
 def write_stage2_raw(
-    output_dir: Path, dataset: str, image_stem: str, array: np.ndarray
+    output_dir: Path,
+    dataset: str,
+    image_stem: str,
+    array: np.ndarray,
+    *,
+    commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Atomically retain Stage 2's **raw** detector output for Stage 3 to replay.
 
@@ -145,7 +163,7 @@ def write_stage2_raw(
         with open(path, "wb") as handle:
             np.save(handle, array)
 
-    atomic_write_with_writer(final, _write)
+    atomic_write_with_writer(final, _write, commit_guard=commit_guard)
     return final
 
 
@@ -192,6 +210,13 @@ def load_stage2_raw(output_dir: Path, dataset: str, image_stem: str) -> np.ndarr
     return np.load(stage2_raw_path(output_dir, dataset, image_stem))
 
 
-def delete_stage2_raw(output_dir: Path, dataset: str, image_stem: str) -> None:
+def delete_stage2_raw(
+    output_dir: Path,
+    dataset: str,
+    image_stem: str,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> None:
     """Consume the raw array. Idempotent; always paired with the token."""
-    stage2_raw_path(output_dir, dataset, image_stem).unlink(missing_ok=True)
+    with publication_commit(commit_guard):
+        stage2_raw_path(output_dir, dataset, image_stem).unlink(missing_ok=True)

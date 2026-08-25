@@ -217,9 +217,17 @@ def test_root_zarr_json_is_written_last(
             )
         return real_write(group_dir, attributes)
 
-    def _capture_part(part: Path, final: Path, *, fsync: bool):
+    def _capture_part(
+        part: Path,
+        final: Path,
+        *,
+        fsync: bool,
+        commit_guard=None,
+    ):
         part_dir.append(Path(part))
-        return real_promote(part, final, fsync=fsync)
+        return real_promote(
+            part, final, fsync=fsync, commit_guard=commit_guard
+        )
 
     monkeypatch.setattr(
         ImageIOHandler, "_write_group_json", staticmethod(_record)
@@ -913,9 +921,17 @@ def test_the_durable_flag_reaches_promote_store(
     recorded: list[bool] = []
     real_promote = ngff_.promote_store
 
-    def _capture(part: Path, final: Path, *, fsync: bool):
+    def _capture(
+        part: Path,
+        final: Path,
+        *,
+        fsync: bool,
+        commit_guard=None,
+    ):
         recorded.append(fsync)
-        return real_promote(part, final, fsync=fsync)
+        return real_promote(
+            part, final, fsync=fsync, commit_guard=commit_guard
+        )
 
     monkeypatch.setattr(ngff_, "promote_store", _capture)
     plate.save2zarr(tmp_path / "p.ome.zarr", durable=durable)

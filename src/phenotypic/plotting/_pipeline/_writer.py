@@ -13,6 +13,7 @@ from collections.abc import Callable
 from typing import Any
 
 from phenotypic.sdk_._file_locking import exclusive_path_lock
+from phenotypic.sdk_ import CommitGuard, publication_commit
 
 from phenotypic.abc_.plotting import PlotOutput
 
@@ -57,6 +58,7 @@ def publish_plot_output(
     plot_id: str,
     plot_class: str | None = None,
     publication_guard: Callable[[], bool] | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> dict[str, Any]:
     """Publish successful pages and an authoritative per-plot manifest.
 
@@ -87,6 +89,7 @@ def publish_plot_output(
             plot_id=plot_id,
             plot_class=plot_class,
             publication_guard=publication_guard,
+            commit_guard=commit_guard,
         )
 
 
@@ -97,6 +100,7 @@ def _publish_plot_output_locked(
     plot_id: str,
     plot_class: str | None,
     publication_guard: Callable[[], bool] | None,
+    commit_guard: CommitGuard | None,
 ) -> dict[str, Any]:
     """Publish one plot generation while its directory lock is held."""
     used: dict[str, str] = {}
@@ -126,8 +130,9 @@ def _publish_plot_output_locked(
         try:
             backend = FigureAdapter.backend_name(page.figure)
             FigureAdapter.save_png(page.figure, temporary)
-            _require_plot_publication(publication_guard)
-            os.replace(temporary, destination)
+            with publication_commit(commit_guard):
+                _require_plot_publication(publication_guard)
+                os.replace(temporary, destination)
         except PlotPublicationBlocked:
             temporary.unlink(missing_ok=True)
             FigureAdapter.close(page.figure)
@@ -164,8 +169,9 @@ def _publish_plot_output_locked(
         temporary_manifest.write_text(
             json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
         )
-        _require_plot_publication(publication_guard)
-        os.replace(temporary_manifest, manifest_path)
+        with publication_commit(commit_guard):
+            _require_plot_publication(publication_guard)
+            os.replace(temporary_manifest, manifest_path)
     finally:
         temporary_manifest.unlink(missing_ok=True)
     return manifest

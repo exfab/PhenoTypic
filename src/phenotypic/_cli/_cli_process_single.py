@@ -7,6 +7,7 @@ designed to be called by SLURM batch scripts for autonomous execution.
 
 from __future__ import annotations
 
+from contextlib import AbstractContextManager
 import os
 import sys
 import logging
@@ -50,10 +51,12 @@ from ._cli_failure_tracker import (
 from ._cli_slurm_lifecycle import (
     SlurmGenerationInactiveError,
     assert_generation_active,
+    generation_publication_guard,
     slurm_generation_inactive_cause,
 )
 from ._cli_utils import normalize_extension
 from phenotypic.sdk_ import (
+    CommitGuard,
     EnvVar,
     load_image_from_store,
     progress_dir,
@@ -82,6 +85,18 @@ def _ordinary_slurm_active_check(output_dir: Path) -> ActiveCheck | None:
         assert_generation_active(output_dir, generation)
 
     return _check
+
+
+def _ordinary_slurm_commit_guard(output_dir: Path) -> CommitGuard | None:
+    """Resolve the narrow ordinary-worker publication guard, or None locally."""
+    generation = os.environ.get(SLURM_GENERATION_ENV_VAR)
+    if not os.environ.get(EnvVar.SLURM_JOB_ID) or not generation:
+        return None
+
+    def _guard() -> AbstractContextManager[None]:
+        return generation_publication_guard(output_dir, generation)
+
+    return _guard
 
 
 def _authoritative_lifecycle_epoch() -> str:
@@ -156,6 +171,7 @@ def process_single_image_core(
     drop_originals: bool = False,
     pipeline_identity: Mapping[str, str] | None = None,
     active_check: ActiveCheck | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> bool:
     """
     Core processing logic for a single image.
@@ -176,6 +192,8 @@ def process_single_image_core(
         pipeline_identity: Original user pipeline source identity when
             ``pipeline_path`` is an immutable worker snapshot.
         active_check: Optional lifecycle ownership assertion for SLURM workers.
+        commit_guard: Optional narrow lifecycle guard around each canonical
+            filesystem commit point.
 
     Returns:
         True if successful. This function always returns True on success;
@@ -195,7 +213,12 @@ def process_single_image_core(
         updated: Image, *, journal_only: bool = False
     ) -> None:
         _check_active(active_check)
-        write_provenance_checkpoint(store, updated, journal_only=journal_only)
+        write_provenance_checkpoint(
+            store,
+            updated,
+            journal_only=journal_only,
+            commit_guard=commit_guard,
+        )
 
     def _mark_failed_checkpoint() -> None:
         if image is None or not checkpoint_ready:
@@ -203,7 +226,7 @@ def process_single_image_core(
         try:
             _check_active(active_check)
             set_provenance_status(image, "failed")
-            write_provenance_checkpoint(store, image)
+            write_provenance_checkpoint(store, image, commit_guard=commit_guard)
         except SlurmGenerationInactiveError:
             return
         except Exception:
@@ -239,7 +262,10 @@ def process_single_image_core(
             _check_active(active_check)
             image._retain_original()
             saved_store = output_manager.save_image_store(
-                image, dataset_name, image_stem
+                image,
+                dataset_name,
+                image_stem,
+                commit_guard=commit_guard,
             )
             if saved_store is None:
                 raise RuntimeError(
@@ -253,14 +279,26 @@ def process_single_image_core(
                 image, inplace=True, apply_post=False
             )
         _check_active(active_check)
-        output_manager.save_measurements(measurements, dataset_name, image_stem)
+        output_manager.save_measurements(
+            measurements,
+            dataset_name,
+            image_stem,
+            commit_guard=commit_guard,
+        )
         if output_manager.save_overlays:
             _check_active(active_check)
-            output_manager.save_overlay(image, dataset_name, image_stem)
+            output_manager.save_overlay(
+                image,
+                dataset_name,
+                image_stem,
+                commit_guard=commit_guard,
+            )
         from phenotypic.plotting._pipeline import PlotCoordinator
 
         _check_active(active_check)
-        PlotCoordinator(pipeline, output_dir).emit_image(
+        PlotCoordinator(
+            pipeline, output_dir, commit_guard=commit_guard
+        ).emit_image(
             image,
             dataset=dataset_name,
             image_stem=image_stem,
@@ -268,7 +306,10 @@ def process_single_image_core(
         _check_active(active_check)
         set_provenance_status(image, "complete")
         saved_store = output_manager.save_image_store(
-            image, dataset_name, image_stem
+            image,
+            dataset_name,
+            image_stem,
+            commit_guard=commit_guard,
         )
         if saved_store is None:
             raise RuntimeError(
@@ -296,6 +337,7 @@ def process_single_store_measure_core(
     dataset_name: str,
     image_type: ImageTypeName,
     output_manager: OutputManager,
+    commit_guard: CommitGuard | None = None,
 ) -> bool:
     """Rerun pipeline.measure() on an already-processed OME-Zarr store.
 
@@ -343,10 +385,17 @@ def process_single_store_measure_core(
     stem = store_stem(store_path)
 
     # Save measurements parquet (overlay + store intentionally skipped)
-    output_manager.save_measurements(measurements, dataset_name, stem)
+    output_manager.save_measurements(
+        measurements,
+        dataset_name,
+        stem,
+        commit_guard=commit_guard,
+    )
     from phenotypic.plotting._pipeline import PlotCoordinator
 
-    PlotCoordinator(pipeline, output_dir).emit_image(
+    PlotCoordinator(
+        pipeline, output_dir, commit_guard=commit_guard
+    ).emit_image(
         image,
         dataset=dataset_name,
         image_stem=stem,
@@ -510,6 +559,8 @@ def main(
     execution. It processes one image and logs completion to event log.
     """
     attempt_id = attempt_id or uuid4().hex
+    active_check = _ordinary_slurm_active_check(output_dir)
+    commit_guard = _ordinary_slurm_commit_guard(output_dir)
     try:
         cli_mode = cast(CliMode, mode)
         if drop_originals and cli_mode != "full":
@@ -610,6 +661,7 @@ def main(
                 read_kwargs=process_only_read_kwargs,
                 cli_nrows=nrows,
                 cli_ncols=ncols,
+                commit_guard=commit_guard,
             )
             work_id, relative_path = _worker_work_identity(
                 pipeline=pipeline,
@@ -646,6 +698,7 @@ def main(
                         process_only_layer,
                     )
                 },
+                commit_guard=commit_guard,
             )
             if event_log is not None:
                 append_completion_event(
@@ -654,6 +707,7 @@ def main(
                     image=image.name,
                     status="completed",
                     error_msg="",
+                    commit_guard=commit_guard,
                 )
             click.echo(f"✓ Successfully processed {image.name}")
             sys.exit(0)
@@ -704,6 +758,7 @@ def main(
                 dataset_name=dataset_name,
                 image_type=cast(ImageTypeName, image_type),
                 output_manager=output_manager,
+                commit_guard=commit_guard,
             )
         else:
             # Forward run: prepare read kwargs and dispatch to the detection path.
@@ -735,7 +790,8 @@ def main(
                 cli_ncols=ncols,
                 drop_originals=drop_originals,
                 pipeline_identity=pipeline_identity,
-                active_check=_ordinary_slurm_active_check(output_dir),
+                active_check=active_check,
+                commit_guard=commit_guard,
             )
             work_id, relative_path = _worker_work_identity(
                 pipeline=pipeline,
@@ -783,6 +839,7 @@ def main(
                 attempt_id=attempt_id,
                 lifecycle_epoch=_authoritative_lifecycle_epoch(),
                 artifacts=artifacts,
+                commit_guard=commit_guard,
             )
 
         # Log completion if event log provided
@@ -793,30 +850,21 @@ def main(
                 image=image.name,
                 status="completed",
                 error_msg="",
+                commit_guard=commit_guard,
             )
 
         click.echo(f"✓ Successfully processed {image.name}")
         sys.exit(0)
 
     except Exception as e:
+        if (inactive := slurm_generation_inactive_cause(e)) is not None:
+            raise inactive
         error_msg = f"{type(e).__name__}: {str(e)}"
         tb = traceback.format_exc()
 
         if isinstance(e, PerImageScientificError):
             try:
                 lifecycle_epoch = _authoritative_lifecycle_epoch()
-                if os.environ.get(EnvVar.SLURM_JOB_ID):
-                    from ._cli_slurm_lifecycle import load_slurm_lifecycle
-
-                    lifecycle = load_slurm_lifecycle(output_dir)
-                    if (
-                        lifecycle is None
-                        or lifecycle.get("generation") != lifecycle_epoch
-                        or lifecycle.get("active") is not True
-                    ):
-                        raise RuntimeError(
-                            "stale SLURM lifecycle cannot commit terminal failure"
-                        )
                 work_id, relative_path = _worker_work_identity(
                     pipeline=pipeline,
                     image=image,
@@ -846,13 +894,17 @@ def main(
                     lifecycle_epoch=lifecycle_epoch,
                     traceback=tb,
                     slurm_job_id=os.environ.get(EnvVar.SLURM_JOB_ID, ""),
+                    commit_guard=commit_guard,
                 )
                 if not committed:
                     logger.warning(
                         "Scientific failure remains pending because its "
                         "terminal record was not committed"
                     )
-            except (OSError, RuntimeError, ValueError):
+            except (OSError, RuntimeError, ValueError) as publication_error:
+                inactive = slurm_generation_inactive_cause(publication_error)
+                if inactive is not None:
+                    raise inactive
                 logger.warning(
                     "Scientific failure remains pending because its work "
                     "identity could not be committed",
@@ -871,8 +923,12 @@ def main(
                     image=image.name,
                     status="failed",
                     error_msg=error_msg,
+                    commit_guard=commit_guard,
                 )
-            except Exception:
+            except Exception as publication_error:
+                inactive = slurm_generation_inactive_cause(publication_error)
+                if inactive is not None:
+                    raise inactive
                 logger.warning("Failed to write event log", exc_info=True)
 
         # Write structured failure record
@@ -893,8 +949,12 @@ def main(
                 error_message=str(e),
                 traceback=tb,
                 slurm_job_id=full_slurm_id,
+                commit_guard=commit_guard,
             )
-        except Exception:
+        except Exception as publication_error:
+            inactive = slurm_generation_inactive_cause(publication_error)
+            if inactive is not None:
+                raise inactive
             logger.warning("Failed to write failure record", exc_info=True)
 
         sys.exit(1)

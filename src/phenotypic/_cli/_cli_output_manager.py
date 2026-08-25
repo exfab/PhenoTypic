@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.plotting._pipeline import AnalysisResult
+    from phenotypic.sdk_ import CommitGuard
 
 from ._cli_types import Dataset
 from ._metadata_join import (
@@ -1556,7 +1557,12 @@ class OutputManager:
         return self.results_dir / dataset_name / layer / f"{image_stem}{ext}"
 
     def save_measurements(
-        self, measurements: pd.DataFrame, dataset_name: str, image_stem: str
+        self,
+        measurements: pd.DataFrame,
+        dataset_name: str,
+        image_stem: str,
+        *,
+        commit_guard: CommitGuard | None = None,
     ) -> Path:
         """
         Save measurements as a Parquet file for a single image.
@@ -1585,12 +1591,18 @@ class OutputManager:
         atomic_write_with_writer(
             output_path,
             lambda p: parquet_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
+            commit_guard=commit_guard,
         )
 
         return output_path
 
     def save_overlay(
-        self, image: Image, dataset_name: str, image_stem: str
+        self,
+        image: Image,
+        dataset_name: str,
+        image_stem: str,
+        *,
+        commit_guard: CommitGuard | None = None,
     ) -> Path:
         """
         Save overlay visualization for a single image.
@@ -1610,14 +1622,15 @@ class OutputManager:
             dataset_name, "overlays", image_stem
         )
 
-        if not image.rgb.isempty():
-            image.rgb.save_overlay(
-                filepath=output_path, overlay_alpha=self.overlay_alpha
-            )
-        else:
-            image.gray.save_overlay(
-                filepath=output_path, overlay_alpha=self.overlay_alpha
-            )
+        accessor = image.rgb if not image.rgb.isempty() else image.gray
+        atomic_write_with_writer(
+            output_path,
+            lambda temporary: accessor.save_overlay(
+                filepath=Path(temporary), overlay_alpha=self.overlay_alpha
+            ),
+            commit_guard=commit_guard,
+            temp_suffix=f".tmp{output_path.suffix}",
+        )
 
         return output_path
 
@@ -1662,6 +1675,7 @@ class OutputManager:
         *,
         work_id: str | None = None,
         durable: bool | None = None,
+        commit_guard: CommitGuard | None = None,
     ) -> Optional[Path]:
         """Save a processed image as an OME-Zarr store under ``results/<ds>/zarr/``.
 
@@ -1705,10 +1719,17 @@ class OutputManager:
                 durable=(
                     self.durable_writes if durable is None else durable
                 ),
+                commit_guard=commit_guard,
             )
             logger.info("Saved OME-Zarr store for %s/%s", dataset_name, image_stem)
             return saved
         except Exception as e:
+            # A lifecycle rejection is authoritative infrastructure state,
+            # never a best-effort scientific save failure.
+            from ._cli_slurm_lifecycle import slurm_generation_inactive_cause
+
+            if (inactive := slurm_generation_inactive_cause(e)) is not None:
+                raise inactive
             logger.warning(
                 "Failed to save OME-Zarr store for %s/%s: %s: %s",
                 dataset_name,

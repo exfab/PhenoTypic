@@ -69,8 +69,11 @@ def test_uses_the_promote_primitive(plate: Image, tmp_path: Path, monkeypatch) -
     monkeypatch.setattr(
             ngff_,
             "promote_store",
-            lambda part, final, *, fsync: (
-                calls.append(final.name), real(part, final, fsync=fsync)
+            lambda part, final, *, fsync, commit_guard=None: (
+                calls.append(final.name),
+                real(
+                    part, final, fsync=fsync, commit_guard=commit_guard
+                ),
             )[1],
     )
     plate.save_intermediate_zarr(tmp_path / "n.ome.zarr", layers=("gray",))

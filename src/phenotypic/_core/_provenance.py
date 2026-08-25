@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterator, Mapping, TypeVar, cas
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic.abc_._image_operation import ImageOperation
+    from phenotypic.sdk_ import CommitGuard
 
 
 PROVENANCE_SCHEMA_VERSION = 1
@@ -370,6 +371,7 @@ def write_provenance_checkpoint(
     image: "Image",
     *,
     journal_only: bool = False,
+    commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Atomically replace only root provenance, or create a journal-only root."""
     from phenotypic.sdk_ import atomic_write_json
@@ -389,5 +391,7 @@ def write_provenance_checkpoint(
     attributes = payload.setdefault("attributes", {})
     phenotypic = attributes.setdefault("phenotypic", {})
     phenotypic["provenance"] = deepcopy(image._metadata.provenance_journal)
-    atomic_write_json(root, payload, sort_keys=False)
+    atomic_write_json(
+        root, payload, sort_keys=False, commit_guard=commit_guard
+    )
     return root.parent

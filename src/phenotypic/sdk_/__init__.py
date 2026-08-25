@@ -23,12 +23,14 @@ from . import (
 )
 from . import _io_constants
 from ._atomic_io import (
+    CommitGuard,
     PARQUET_WRITE_OPTIONS,
     atomic_write_bytes,
     atomic_write_json,
     atomic_write_parquet,
     atomic_write_text,
     atomic_write_with_writer,
+    publication_commit,
 )
 from ._column_ref import ColumnRef, ColumnRefList, ColumnSource
 from ._io_constants import (
@@ -299,11 +301,13 @@ __all__ = [
     "LazyWidgetMixin",
     "NormControlMixin",
     "NormalizedOutputMixin",
+    "CommitGuard",
     "atomic_write_bytes",
     "atomic_write_json",
     "atomic_write_parquet",
     "atomic_write_text",
     "atomic_write_with_writer",
+    "publication_commit",
     "PARQUET_WRITE_OPTIONS",
     "canonical_metadata_order",
     "colourspace",

@@ -37,7 +37,7 @@ from phenotypic._core._provenance import (
     write_provenance_checkpoint,
 )
 from phenotypic.abc_ import GpuDetector
-from phenotypic.sdk_ import zarr_store_path
+from phenotypic.sdk_ import CommitGuard, zarr_store_path
 from phenotypic.sdk_.ngff_ import valid_staged_store
 from phenotypic.sdk_.typing_ import ImageTypeName
 
@@ -102,22 +102,29 @@ def _write_provenance_checkpoint_fenced(
     active_check: ActiveCheck | None,
     *,
     journal_only: bool = False,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """Publish one root journal only while this worker owns the lifecycle."""
     _check_active(active_check)
-    write_provenance_checkpoint(store, image, journal_only=journal_only)
+    write_provenance_checkpoint(
+        store,
+        image,
+        journal_only=journal_only,
+        commit_guard=commit_guard,
+    )
 
 
 def _mark_failed_checkpoint(
     store: Path,
     image: Image,
     active_check: ActiveCheck | None,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """Best-effort failure status without hiding the scientific exception."""
     try:
         _check_active(active_check)
         set_provenance_status(image, "failed")
-        write_provenance_checkpoint(store, image)
+        write_provenance_checkpoint(store, image, commit_guard=commit_guard)
     except SlurmGenerationInactiveError:
         # A superseded worker must not replace the active owner's prefix.
         return
@@ -129,13 +136,14 @@ def _checkpoint_successful_operation(
     store: Path,
     image: Image,
     active_check: ActiveCheck | None,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """Publish an appended staged operation or roll it back on sink failure."""
     operations = image._metadata.provenance_journal["operations"]
     prior_length = len(operations) - 1
     try:
         _check_active(active_check)
-        write_provenance_checkpoint(store, image)
+        write_provenance_checkpoint(store, image, commit_guard=commit_guard)
     except BaseException:
         del operations[prior_length:]
         raise
@@ -149,6 +157,7 @@ def stage_event(
     stage: StageTag,
     *,
     active_check: ActiveCheck | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> Iterator[None]:
     """Emit ``started`` -> ``completed`` around a stage body; on exception emit a
     stage-tagged ``failed`` event (``"<ExcType>: <msg>"``) and re-raise.
@@ -158,7 +167,9 @@ def stage_event(
     local callers that isolate a bad image wrap the ``with`` in ``try/except``.
     """
     _check_active(active_check)
-    append_event(event_log, dataset, image, "started", stage=stage)
+    append_event(
+        event_log, dataset, image, "started", stage=stage, commit_guard=commit_guard
+    )
     try:
         yield
     except Exception as e:
@@ -173,16 +184,28 @@ def stage_event(
             "failed",
             error_msg=f"{type(e).__name__}: {e}",
             stage=stage,
+            commit_guard=commit_guard,
         )
         raise
     _check_active(active_check)
     append_completion_event(
-        event_log, dataset, image, "completed", stage=stage
+        event_log,
+        dataset,
+        image,
+        "completed",
+        stage=stage,
+        commit_guard=commit_guard,
     )
 
 
 def emit_missing_prereq(
-    event_log: Path, dataset: str, image: str, stage: StageTag, what: str
+    event_log: Path,
+    dataset: str,
+    image: str,
+    stage: StageTag,
+    what: str,
+    *,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """Record an S6 skip: a stage's input artifact is absent.
 
@@ -196,6 +219,7 @@ def emit_missing_prereq(
         "failed",
         error_msg=f"{stage} skipped: {what} missing",
         stage=stage,
+        commit_guard=commit_guard,
     )
 
 
@@ -210,6 +234,7 @@ def stage1_preprocess_core(
     read_kwargs: Optional[Dict[str, Any]] = None,
     active_check: ActiveCheck | None = None,
     work_id: str | None = None,
+    commit_guard: CommitGuard | None = None,
     pipeline_path: Path | None = None,
     pipeline_identity: Mapping[str, str] | None = None,
     drop_originals: bool = False,
@@ -228,11 +253,20 @@ def stage1_preprocess_core(
         )
         _check_active(active_check)
         if drop_originals:
-            write_provenance_checkpoint(store, image, journal_only=True)
+            write_provenance_checkpoint(
+                store,
+                image,
+                journal_only=True,
+                commit_guard=commit_guard,
+            )
         else:
             image._retain_original()
             initial_store = output_manager.save_image_store(
-                image, dataset_name, image_stem, work_id=work_id
+                image,
+                dataset_name,
+                image_stem,
+                work_id=work_id,
+                commit_guard=commit_guard,
             )
             if initial_store is None or not valid_staged_store(initial_store):
                 raise RuntimeError(
@@ -244,7 +278,10 @@ def stage1_preprocess_core(
             image.set_detect_mode(detect_mode)
         with provenance_success_sink(
             lambda updated: _write_provenance_checkpoint_fenced(
-                store, updated, active_check
+                store,
+                updated,
+                active_check,
+                commit_guard=commit_guard,
             )
         ):
             plan.pre_pipeline.apply(image, inplace=True)
@@ -255,7 +292,11 @@ def stage1_preprocess_core(
         set_retry_base_length(image, operation_count)
         set_provenance_status(image, "staged")
         saved_store = output_manager.save_image_store(
-            image, dataset_name, image_stem, work_id=work_id
+            image,
+            dataset_name,
+            image_stem,
+            work_id=work_id,
+            commit_guard=commit_guard,
         )
         if saved_store is None or not valid_staged_store(saved_store):
             raise RuntimeError(
@@ -265,14 +306,18 @@ def stage1_preprocess_core(
         raise
     except MemoryError:
         if image is not None and checkpoint_ready:
-            _mark_failed_checkpoint(store, image, active_check)
+            _mark_failed_checkpoint(
+                store, image, active_check, commit_guard=commit_guard
+            )
         raise
     except Exception as exc:
         inactive = slurm_generation_inactive_cause(exc)
         if inactive is not None:
             raise inactive
         if image is not None and checkpoint_ready:
-            _mark_failed_checkpoint(store, image, active_check)
+            _mark_failed_checkpoint(
+                store, image, active_check, commit_guard=commit_guard
+            )
         raise PerImageScientificError(STAGE_PREPROCESS, exc) from exc
 
 
@@ -283,6 +328,7 @@ def stage2_detect_core(
     image_stem: str,
     image_type: ImageTypeName = "Image",
     active_check: ActiveCheck | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """Load the input layer (store read-only), infer, retain the raw + token.
 
@@ -309,7 +355,13 @@ def stage2_detect_core(
     # uncached crop route as raw pre-drop_frame_background labels. The raw
     # array precedes the token, so a crash before the token leaves no
     # "Stage 2 done" signal and Stage 2 simply recomputes.
-    write_stage2_raw(output_dir, dataset_name, image_stem, result)
+    write_stage2_raw(
+        output_dir,
+        dataset_name,
+        image_stem,
+        result,
+        commit_guard=commit_guard,
+    )
     _check_active(active_check)
     write_stage2_token(
         output_dir,
@@ -317,6 +369,7 @@ def stage2_detect_core(
         image_stem,
         objmap_shape=(int(result.shape[0]), int(result.shape[1])),
         detector_duration_seconds=detector_duration,
+        commit_guard=commit_guard,
     )
 
 
@@ -327,6 +380,7 @@ def ensure_staged_overlay(
     output_manager: OutputManager,
     image_type: ImageTypeName,
     active_check: ActiveCheck | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> Path | None:
     """Publish a missing staged-run overlay from the completed image store."""
     if not output_manager.save_overlays:
@@ -342,7 +396,12 @@ def ensure_staged_overlay(
     image = _image_class(image_type).load_zarr(store)
     overlay_path.parent.mkdir(parents=True, exist_ok=True)
     _check_active(active_check)
-    return output_manager.save_overlay(image, dataset_name, image_stem)
+    return output_manager.save_overlay(
+        image,
+        dataset_name,
+        image_stem,
+        commit_guard=commit_guard,
+    )
 
 
 def stage3_merge_measure_core(
@@ -353,6 +412,7 @@ def stage3_merge_measure_core(
     output_manager: OutputManager,
     image_type: ImageTypeName,
     active_check: ActiveCheck | None = None,
+    commit_guard: CommitGuard | None = None,
     image_name: str | None = None,
     work_id: str | None = None,
 ) -> None:
@@ -375,7 +435,7 @@ def stage3_merge_measure_core(
         _check_active(active_check)
         truncate_provenance_to_retry_base(image)
         set_provenance_status(image, "in_progress")
-        write_provenance_checkpoint(store, image)
+        write_provenance_checkpoint(store, image, commit_guard=commit_guard)
 
         result = load_stage2_raw(output_dir, dataset_name, image_stem)
         token = read_stage2_token(output_dir, dataset_name, image_stem)
@@ -392,26 +452,43 @@ def stage3_merge_measure_core(
             ),
             pipeline_step_path=[plan.gpu_key],
         )
-        _checkpoint_successful_operation(store, image, active_check)
+        _checkpoint_successful_operation(
+            store, image, active_check, commit_guard=commit_guard
+        )
 
         # post-detector ops (refiners incl. watershed) then measurement.
         with provenance_success_sink(
             lambda updated: _write_provenance_checkpoint_fenced(
-                store, updated, active_check
+                store,
+                updated,
+                active_check,
+                commit_guard=commit_guard,
             )
         ):
             plan.post_pipeline.apply(image, inplace=True)
         measurements = plan.post_pipeline.measure(image, apply_post=False)
 
         _check_active(active_check)
-        output_manager.save_measurements(measurements, dataset_name, image_stem)
+        output_manager.save_measurements(
+            measurements,
+            dataset_name,
+            image_stem,
+            commit_guard=commit_guard,
+        )
         if output_manager.save_overlays:
             _check_active(active_check)
-            output_manager.save_overlay(image, dataset_name, image_stem)
+            output_manager.save_overlay(
+                image,
+                dataset_name,
+                image_stem,
+                commit_guard=commit_guard,
+            )
         from phenotypic.plotting._pipeline import PlotCoordinator
 
         _check_active(active_check)
-        PlotCoordinator(plan.post_pipeline, output_dir).emit_image(
+        PlotCoordinator(
+            plan.post_pipeline, output_dir, commit_guard=commit_guard
+        ).emit_image(
             image,
             dataset=dataset_name,
             image_stem=image_stem,
@@ -421,7 +498,11 @@ def stage3_merge_measure_core(
         _check_active(active_check)
         set_provenance_status(image, "complete")
         saved_store = output_manager.save_image_store(
-            image, dataset_name, image_stem, work_id=work_id
+            image,
+            dataset_name,
+            image_stem,
+            work_id=work_id,
+            commit_guard=commit_guard,
         )
         if saved_store is None or not valid_staged_store(saved_store):
             raise RuntimeError(
@@ -434,22 +515,37 @@ def stage3_merge_measure_core(
                 dataset_name,
                 image_name or image_stem,
                 image_stem,
+                commit_guard=commit_guard,
             )
             _check_active(active_check)
             # Token first: the only partial cleanup is an inert orphan raw.
-            delete_stage2_token(output_dir, dataset_name, image_stem)
+            delete_stage2_token(
+                output_dir,
+                dataset_name,
+                image_stem,
+                commit_guard=commit_guard,
+            )
             _check_active(active_check)
-            delete_stage2_raw(output_dir, dataset_name, image_stem)
+            delete_stage2_raw(
+                output_dir,
+                dataset_name,
+                image_stem,
+                commit_guard=commit_guard,
+            )
     except SlurmGenerationInactiveError:
         raise
     except MemoryError:
-        _mark_failed_checkpoint(store, image, active_check)
+        _mark_failed_checkpoint(
+            store, image, active_check, commit_guard=commit_guard
+        )
         raise
     except Exception as exc:
         inactive = slurm_generation_inactive_cause(exc)
         if inactive is not None:
             raise inactive
-        _mark_failed_checkpoint(store, image, active_check)
+        _mark_failed_checkpoint(
+            store, image, active_check, commit_guard=commit_guard
+        )
         if isinstance(exc, RuntimeError) and str(exc).startswith(
             "Stage 3 store publication failed"
         ):

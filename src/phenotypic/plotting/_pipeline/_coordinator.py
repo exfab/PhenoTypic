@@ -15,7 +15,7 @@ from typing import Any, Mapping
 import pandas as pd
 
 from phenotypic.abc_.plotting import PlotAnalysis, PlotImage, PlotMeas, PlotQc
-from phenotypic.sdk_ import plots_dir
+from phenotypic.sdk_ import CommitGuard, plots_dir, publication_commit
 
 from ._adapter import FigureAdapter
 from ._analysis_registry import AnalysisRegistry
@@ -65,6 +65,7 @@ class PlotCoordinator:
         *,
         plots_base: Path | None = None,
         publication_guard: Callable[[], bool] | None = None,
+        commit_guard: CommitGuard | None = None,
     ) -> None:
         self._pipeline = pipeline
         self._plots_base = (
@@ -73,6 +74,7 @@ class PlotCoordinator:
             else plots_dir(Path(output_dir))
         )
         self._publication_guard = publication_guard
+        self._commit_guard = commit_guard
 
     def emit_image(
         self,
@@ -337,6 +339,7 @@ class PlotCoordinator:
             plot_id=binding.id,
             plot_class=type(binding.plot).__name__,
             publication_guard=self._publication_guard,
+            commit_guard=self._commit_guard,
         )
 
     def _publish_image_value(
@@ -361,6 +364,7 @@ class PlotCoordinator:
                 plot_id=binding.id,
                 plot_class=type(binding.plot).__name__,
                 publication_guard=self._publication_guard,
+                commit_guard=self._commit_guard,
             )
             return
         self._require_publication()
@@ -369,8 +373,9 @@ class PlotCoordinator:
         temporary = destination.parent / f".{destination.name}.{uuid.uuid4().hex}.tmp"
         try:
             FigureAdapter.save_png(output.pages[0].figure, temporary)
-            self._require_publication()
-            os.replace(temporary, destination)
+            with publication_commit(self._commit_guard):
+                self._require_publication()
+                os.replace(temporary, destination)
         finally:
             temporary.unlink(missing_ok=True)
 

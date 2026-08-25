@@ -39,6 +39,8 @@ import numpy as np
 # ahead of their first use is a ruff F401 in this repo's default rule set
 # (E4, E7, E9, F).
 
+from ._atomic_io import CommitGuard, publication_commit
+
 # ---------------------------------------------------------------------------
 # Layout constants
 # ---------------------------------------------------------------------------
@@ -1183,7 +1185,13 @@ def _reconcile_attempt_trash(trash: Path, final: Path) -> None:
         shutil.rmtree(long_path(trash), ignore_errors=True)
 
 
-def promote_store(part: Path, final: Path, *, fsync: bool) -> Path:
+def promote_store(
+    part: Path,
+    final: Path,
+    *,
+    fsync: bool,
+    commit_guard: CommitGuard | None = None,
+) -> Path:
     """Atomically promote a fully written ``.part`` directory to *final*.
 
     The caller is responsible for the write **order** inside *part*: all arrays
@@ -1234,29 +1242,32 @@ def promote_store(part: Path, final: Path, *, fsync: bool) -> Path:
         trash = final.parent / f".{final.name}.{uuid4().hex}{TRASH_SUFFIX}"
         moved_aside = False
         try:
-            # Re-evaluate existence EVERY attempt. A concurrent promoter can
-            # create or remove `final` between the check and either rename, so
-            # a check-then-act done once outside the loop turns a benign
-            # duplicate execution into a hard failure.
-            if final.exists():
-                os.replace(long_path(final), long_path(trash))
-                moved_aside = True
-            os.replace(long_path(part), long_path(final))
+            with publication_commit(commit_guard):
+                try:
+                    # Re-evaluate existence EVERY attempt while the commit
+                    # fence is held. Preparation and fsync_tree stay outside.
+                    if final.exists():
+                        os.replace(long_path(final), long_path(trash))
+                        moved_aside = True
+                    os.replace(long_path(part), long_path(final))
+                except OSError:
+                    if moved_aside:
+                        _reconcile_attempt_trash(trash, final)
+                    raise
+                if fsync and os.name == "posix":
+                    # The rename is a directory-entry change in final.parent.
+                    _fsync_path(final.parent)
         except OSError as exc:
             last = exc
-            if moved_aside:
-                _reconcile_attempt_trash(trash, final)
             if not _is_retryable(exc):
                 raise
+            # Never retain the lifecycle lock during retry backoff.
             time.sleep(PROMOTE_RETRY_BASE_SECONDS * (2**attempt))
             continue
-        # Success: only now is the previous store safe to discard.
+        # The uniquely named prior store can be reclaimed after releasing the
+        # output-wide lifecycle lock; no later publication can adopt it.
         if trash.exists():
             shutil.rmtree(long_path(trash), ignore_errors=True)
-        if fsync and os.name == "posix":
-            # The rename itself is a directory-entry change in final.parent; a
-            # durable store whose dirent is not durable is still a lost store.
-            _fsync_path(final.parent)
         return final
     assert last is not None
     raise last

@@ -759,10 +759,18 @@ def test_save_image_store_forwards_durable_to_the_writer(tmp_path, monkeypatch) 
 
     seen: dict = {}
 
-    def _fake_save2zarr(self, path, *, work_id=None, durable=None):
+    def _fake_save2zarr(
+        self,
+        path,
+        *,
+        work_id=None,
+        durable=None,
+        commit_guard=None,
+    ):
         seen["path"] = Path(path)
         seen["work_id"] = work_id
         seen["durable"] = durable
+        seen["commit_guard"] = commit_guard
         Path(path).mkdir(parents=True, exist_ok=True)
         return Path(path)
 
@@ -772,6 +780,7 @@ def test_save_image_store_forwards_durable_to_the_writer(tmp_path, monkeypatch) 
         _synth_image(), "ds", "img", work_id="w-9", durable=True
     )
     assert seen["durable"] is True
+    assert seen["commit_guard"] is None
     assert seen["work_id"] == "w-9"
 
     seen.clear()

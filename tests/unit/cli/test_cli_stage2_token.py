@@ -105,7 +105,10 @@ def test_token_is_written_atomically(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(
         module,
         "atomic_write_with_writer",
-        lambda final, writer: (seen.append(str(final)), real(final, writer))[1],
+        lambda final, writer, *, commit_guard=None: (
+            seen.append(str(final)),
+            real(final, writer, commit_guard=commit_guard),
+        )[1],
     )
     write_stage2_token(tmp_path, "ds", "img", objmap_shape=(2, 2))
     assert seen == [str(stage2_token_path(tmp_path, "ds", "img"))]
@@ -187,7 +190,10 @@ def test_raw_array_is_written_atomically(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(
         module,
         "atomic_write_with_writer",
-        lambda final, writer: (seen.append(str(final)), real(final, writer))[1],
+        lambda final, writer, *, commit_guard=None: (
+            seen.append(str(final)),
+            real(final, writer, commit_guard=commit_guard),
+        )[1],
     )
     module.write_stage2_raw(tmp_path, "ds", "img", np.zeros((2, 2), dtype=np.uint16))
     assert seen == [str(module.stage2_raw_path(tmp_path, "ds", "img"))]
