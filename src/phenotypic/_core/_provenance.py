@@ -223,25 +223,12 @@ def wrap_image_operation_apply(apply_method: _Apply, owner: type) -> _Apply:
             )
             operations = result._metadata.provenance_journal["operations"]
             prior_length = len(operations)
-            parameters = json.loads(
-                json.dumps(self.model_dump(mode="json"), ensure_ascii=False)
-            )
             step_path = _pipeline_step_path.get()
-            operations.append(
-                {
-                    "sequence": prior_length + 1,
-                    "operation_name": type(self).__name__,
-                    "operation_class": (
-                        f"{type(self).__module__}.{type(self).__qualname__}"
-                    ),
-                    "phenotypic_version": _installed_phenotypic_version(),
-                    "parameters": parameters,
-                    "applied_at_utc": datetime.now(timezone.utc)
-                    .isoformat(timespec="milliseconds")
-                    .replace("+00:00", "Z"),
-                    "duration_seconds": duration,
-                    "pipeline_step_path": list(step_path) if step_path else None,
-                }
+            append_operation_provenance(
+                result,
+                self,
+                duration_seconds=duration,
+                pipeline_step_path=list(step_path) if step_path else None,
             )
             try:
                 sink = _success_sink.get()
