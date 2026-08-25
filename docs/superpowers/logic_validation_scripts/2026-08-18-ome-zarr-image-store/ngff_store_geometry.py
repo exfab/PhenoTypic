@@ -36,6 +36,12 @@ These numeric claims drove design decisions and must not be taken on faith:
       map invents label values that exist at no level-0 pixel, silently
       fabricating objects. This is the mutation the pyramid test must catch.
 
+  C7  SAMPLING TRANSFORMS. Ceil-halved array extents are not sampling factors.
+      Repeated 2x reduction gives scale ``2**n`` until an axis reaches one
+      sample, and composing each block center gives translation
+      ``(scale - 1) / 2``. Channel axes remain scale 1 / translation 0; image
+      and label pyramids share the spatial transform.
+
 Depends only on the stdlib + numpy. Never imports ``phenotypic``.
 
 Exits non-zero on the first failed claim.
@@ -109,6 +115,70 @@ def level_shapes(
         h, w = shapes[-1]
         shapes.append((max(1, (h + 1) // 2), max(1, (w + 1) // 2)))
     return shapes
+
+
+def _iterated_axis_transform(size: int, level: int) -> tuple[float, float]:
+    """Compose repeated 2x block-center maps without using the closed form."""
+    scale = 1.0
+    translation = 0.0
+    extent = size
+    for _ in range(level):
+        if extent == 1:
+            continue
+        translation += scale / 2.0
+        scale *= 2.0
+        extent = (extent + 1) // 2
+    return scale, translation
+
+
+def _check_sampling_transforms() -> None:
+    print("\nC7 -- repeated 2x sampling factors and block-center translations")
+
+    for size in (1025, 7, 2, 1):
+        for level in range(6):
+            scale, translation = _iterated_axis_transform(size, level)
+            closed_scale = float(2 ** min(level, (size - 1).bit_length()))
+            closed_translation = (closed_scale - 1.0) / 2.0
+            check(
+                f"size={size}, level={level}: iterative scale matches closed form",
+                scale == closed_scale,
+                f"{scale} == {closed_scale}",
+            )
+            check(
+                f"size={size}, level={level}: composed center matches closed form",
+                translation == closed_translation,
+                f"{translation} == {closed_translation}",
+            )
+
+    odd_scale, odd_translation = _iterated_axis_transform(1025, 1)
+    check(
+        "1025 -> 513 is one 2x sampling step, not a shape ratio",
+        odd_scale == 2.0 and odd_scale != 1025 / 513,
+        f"scale={odd_scale}, shape ratio={1025 / 513}",
+    )
+    check(
+        "one 2x block is centered at level-0 coordinate 0.5",
+        odd_translation == 0.5,
+        f"translation={odd_translation}",
+    )
+
+    y_transform = _iterated_axis_transform(1025, 2)
+    x_transform = _iterated_axis_transform(1, 2)
+    rgb_scale = [1.0, y_transform[0], x_transform[0]]
+    rgb_translation = [0.0, y_transform[1], x_transform[1]]
+    label_scale = [y_transform[0], x_transform[0]]
+    label_translation = [y_transform[1], x_transform[1]]
+    check(
+        "RGB channel and singleton x axes saturate independently",
+        rgb_scale == [1.0, 4.0, 1.0]
+        and rgb_translation == [0.0, 1.5, 0.0],
+        f"scale={rgb_scale}, translation={rgb_translation}",
+    )
+    check(
+        "image and label spatial transforms are co-registered",
+        rgb_scale[1:] == label_scale and rgb_translation[1:] == label_translation,
+        f"rgb={rgb_scale, rgb_translation}; label={label_scale, label_translation}",
+    )
 
 
 def _check_pyramid() -> None:
@@ -352,6 +422,7 @@ def _check_label_downsampling() -> None:
 def main() -> NoReturn:
     print((__doc__ or "").splitlines()[0])
     _check_pyramid()
+    _check_sampling_transforms()
     _check_divisibility()
     _check_file_counts()
     _check_label_downsampling()

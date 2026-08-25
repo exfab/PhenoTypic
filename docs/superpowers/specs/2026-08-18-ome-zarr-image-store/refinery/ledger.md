@@ -1977,3 +1977,76 @@ green about something it structurally could not observe:
 And the structural one, hit **four** times: **a gate that has never run is not a gate.**
 `tests/smoke` (Phase 2), `tests/migration` (Phase 3, 57 stale goldens), the `run_console`
 contention flakes, and the docs build.
+
+---
+
+# IMPLEMENTATION — Phase 8 Task 2: sampling transforms
+
+## T2-TRANSFORM-1 [Major] [resolved] — shape ratios described storage, not sampling
+
+The writer emitted `level0_size / level_size`, so one 2x reduction of an odd
+1025-pixel axis advertised `1025/513 = 1.998050682…`. That ratio describes the
+two array extents; it does not describe the repeated 2x sampling operation that
+created the lower level. It also carried no block-center offset, placing a
+downsampled image half a level-0 pixel away from its samples.
+
+Resolution: for axis length `size` and level `n`, emit
+`2 ** min(n, (size - 1).bit_length())`; leading channel axes remain 1.0. Emit
+the spatial block-center offset `(scale - 1) / 2` after scale whenever the
+translation vector is nonzero. The cap independently saturates an axis that has
+reached one sample. The same spatial transform is written for the image and
+label pyramids, while the full pyramid and `STORE_SCHEMA_VERSION == 3` remain
+unchanged.
+
+## Published reference and clause-by-clause reconciliation
+
+The published NGFF 0.5 page was downloaded byte-for-byte to
+`refs/ngff-0.5.html`; `refs/SOURCE.md` records URL, retrieval date 2026-08-24,
+and SHA-256
+`75c3e05551d7cf35608567fb32fadb7c60b5216385d56c95878eb10d945d5e2e`.
+There is no reference implementation to diff; the normative prose was
+reconciled clause by clause:
+
+| Published clause | Reference | Reconciliation |
+|---|---|---|
+| Transformations form a list and are applied sequentially in order. | `refs/ngff-0.5.html:2577-2606` | Each dataset carries an ordered list. |
+| Every dataset contains exactly one scale. | `refs/ngff-0.5.html:2621-2624` | Every level, including level 0, starts with exactly one scale. |
+| Without physical calibration, scale expresses the factor between this level and the first, defaulting to 1.0 on an unsampled axis. | `refs/ngff-0.5.html:2623-2624` | Repeated 2x sampling gives powers of two; singleton and channel axes stay 1.0. |
+| Translation is optional and, when present, follows scale. | `refs/ngff-0.5.html:2624-2626` | Nonzero block-center translation is second; the zero vector at level 0 is omitted. |
+| Scale and translation vector lengths equal the axes length. | `refs/ngff-0.5.html:2625-2626` | 2-D series/labels get two entries; RGB gets channel + two spatial entries. |
+| A label image normally shares the corresponding multiscale image's coordinate system. | `refs/ngff-0.5.html:2749-2751` | Label spatial vectors equal the image spatial vectors at every level. |
+
+## Optional-choice / deviation register
+
+No NGFF MUST is departed from. Two optional choices are made explicitly so they
+cannot be mistaken for requirements copied from the reference:
+
+| Choice | Category | Reason |
+|---|---|---|
+| Emit the optional translation only when nonzero. | capability added | Represents block centers without a redundant level-0 identity translation. |
+| Give nearest-neighbour labels the same spatial transform as image layers. | contract-required project policy | Keeps third-party label overlays co-registered; NGFF permits and describes corresponding labels in the same coordinate system. |
+
+Claim C7 in `ngff_store_geometry.py` independently composes repeated 2x affine
+maps and proves the closed forms for odd, singleton, and RGB axes without
+importing `phenotypic`. `tests/fixtures/phenotypic/ngff_multiscales_odd.json`
+pins every public `multiscales` output for `rgb`, `gray`, `detect_mat`, and
+`objmap`; behavioral controls separately inspect the promoted store's arrays
+and metadata.
+
+## Mutant × test matrix
+
+Each mutant was applied alone, run, and restored. `X` means the named test was
+observed failing, not merely expected to fail.
+
+| Mutant | odd scale | transform helper | projection | singleton | channel | on-disk golden | on-disk controls | Result |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
+| M1 restore stored-shape ratios | X |  | X |  |  | X |  | killed: 3 failed |
+| M2 omit translation |  | X | X |  |  | X |  | killed: 3 failed |
+| M3 put translation before scale |  | X | X |  |  |  | X | killed: 3 failed |
+| M4 remove per-axis saturation |  |  |  | X |  | X | X | killed: 3 failed |
+| M5 sample the channel axis |  |  |  |  | X | X | X | killed: 3 failed |
+| M6 omit translation from labels only |  |  |  |  |  | X | X | killed: 2 failed |
+
+The exact old defect is M1: the golden fixture failed alongside the direct
+numeric and projection controls, proving the fixture is load-bearing. After
+restoring all mutants, the focused transform set returned to 8 passed.

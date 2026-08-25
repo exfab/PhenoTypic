@@ -159,22 +159,56 @@ def pyramid_level_shapes(
 
 
 def level_scale_vector(
-    level0: tuple[int, ...], level_n: tuple[int, ...]
+    level0: tuple[int, ...], level_index: int
 ) -> list[float]:
-    """Per-axis downsample factor from the *actual* level shapes.
+    """Per-axis sampling factor after repeated 2x spatial reductions.
 
-    NGFF requires ``coordinateTransformations.scale`` to describe the real
-    relationship between levels. Odd extents make the true ratio diverge from
-    ``2 ** n``, so this is derived from shapes and never from the level index.
+    Ceil-halving changes the stored array extent but not the sampling operation:
+    an odd 1025-pixel axis becomes 513 pixels after one 2x reduction, so its
+    sampling factor is 2 rather than the shape ratio ``1025 / 513``. An axis
+    saturates once it reaches one sample; leading channel axes are never sampled.
 
     Args:
         level0: Level-0 shape.
-        level_n: Shape of the level being described.
+        level_index: Zero-based pyramid level.
 
     Returns:
         One float per axis, in axis order. Any leading channel axis is 1.0.
     """
-    return [float(a) / float(b) for a, b in zip(level0, level_n, strict=True)]
+    leading = [1.0] * max(0, len(level0) - 2)
+    spatial = [
+        float(2 ** min(level_index, (int(size) - 1).bit_length()))
+        for size in level0[-2:]
+    ]
+    return [*leading, *spatial]
+
+
+def level_coordinate_transformations(
+    level0: tuple[int, ...], level_index: int
+) -> list[dict]:
+    """Map a pyramid level's sample centers into level-0 coordinates.
+
+    A repeated 2x block reduction with total sampling factor ``scale`` maps a
+    level coordinate ``u`` to ``scale * u + (scale - 1) / 2``. Translation is
+    zero for channel and saturated spatial axes, and is omitted entirely when
+    the vector is all zero.
+
+    Args:
+        level0: Level-0 shape.
+        level_index: Zero-based pyramid level.
+
+    Returns:
+        A scale transformation followed by a nonzero translation, if any.
+    """
+    scale = level_scale_vector(level0, level_index)
+    leading = [0.0] * max(0, len(level0) - 2)
+    translation = [*leading, *((factor - 1.0) / 2.0 for factor in scale[-2:])]
+    transformations = [{"type": "scale", "scale": scale}]
+    if any(offset != 0.0 for offset in translation):
+        transformations.append(
+            {"type": "translation", "translation": translation}
+        )
+    return transformations
 
 
 def downsample_image(array: np.ndarray) -> np.ndarray:
@@ -598,12 +632,12 @@ def build_multiscales(
 ) -> dict:
     """Build the ``ome.multiscales`` block for one series.
 
-    ``coordinateTransformations`` is derived from the actual level shapes, not
-    from ``2 ** n``: odd extents make the two diverge and NGFF requires the
-    scale vector to describe the real relationship between levels.
+    ``coordinateTransformations`` records the repeated 2x sampling operation,
+    not the ratio between stored level shapes. A block-center translation keeps
+    the downsampled samples registered to level 0.
 
     **Physical resolution is deliberately not projected.** Scale vectors are
-    pure level ratios and ``unit`` is omitted, which §2.1 permits.
+    pure sampling factors and ``unit`` is omitted, which §2.1 permits.
 
     Args:
         series: Series name, selecting the axes.
@@ -620,11 +654,11 @@ def build_multiscales(
     datasets = [
         {
             "path": str(index),
-            "coordinateTransformations": [
-                {"type": "scale", "scale": level_scale_vector(base, tuple(shape))}
-            ],
+            "coordinateTransformations": level_coordinate_transformations(
+                base, index
+            ),
         }
-        for index, shape in enumerate(level_shapes)
+        for index in range(len(level_shapes))
     ]
 
     kind = "label" if series == OBJMAP_LABEL else "image"

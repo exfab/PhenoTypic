@@ -39,6 +39,12 @@ def test_a_single_level_node_preview_store_conforms(tmp_path: Path) -> None:
     assert_store_conforms(store)
 
 
+def test_odd_singleton_rgb_and_label_pyramids_conform(tmp_path: Path) -> None:
+    pixels = np.zeros((1025, 1, 3), dtype=np.uint8)
+    image = Image(pixels)
+    assert_store_conforms(image.save2zarr(tmp_path / "odd.ome.zarr"))
+
+
 def test_a_remote_ref_resolves_from_the_vendored_copy(tmp_path: Path) -> None:
     """An unregistered $ref raises Unresolvable, which is NOT a ValidationError,
     so the suite would error rather than fail. Verified: all three schemas

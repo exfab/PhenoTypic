@@ -98,17 +98,29 @@ def test_level_shapes_leave_channel_axis_alone() -> None:
     assert ngff_.pyramid_level_shapes((3, 1025, 7), 2) == ((3, 1025, 7), (3, 513, 4))
 
 
-def test_scale_vector_comes_from_actual_shapes_not_powers_of_two() -> None:
-    """1025 -> 513 is a ratio of 1025/513, which is NOT 2.0."""
-    scale = ngff_.level_scale_vector((1025, 7), (513, 4))
-    assert scale == pytest.approx([1025 / 513, 7 / 4])
-    assert scale[0] != pytest.approx(2.0)
+def test_scale_vector_records_repeated_two_x_sampling_for_odd_extents() -> None:
+    """A 1025 -> 513 stored shape still comes from one 2x sampling step."""
+    assert ngff_.level_scale_vector((1025, 7), 1) == [2.0, 2.0]
+    assert ngff_.level_scale_vector((1025, 7), 2) == [4.0, 4.0]
 
 
 def test_scale_vector_pins_channel_axis_to_one() -> None:
-    assert ngff_.level_scale_vector((3, 1024, 1024), (3, 512, 512)) == pytest.approx(
-        [1.0, 2.0, 2.0]
-    )
+    assert ngff_.level_scale_vector((3, 1025, 7), 2) == [1.0, 4.0, 4.0]
+
+
+def test_scale_vector_saturates_each_singleton_axis_independently() -> None:
+    assert ngff_.level_scale_vector((1025, 1), 1) == [2.0, 1.0]
+    assert ngff_.level_scale_vector((1025, 1), 2) == [4.0, 1.0]
+
+
+def test_level_transformations_put_block_center_translation_after_scale() -> None:
+    assert ngff_.level_coordinate_transformations((3, 1025, 1), 0) == [
+        {"type": "scale", "scale": [1.0, 1.0, 1.0]}
+    ]
+    assert ngff_.level_coordinate_transformations((3, 1025, 1), 2) == [
+        {"type": "scale", "scale": [1.0, 4.0, 1.0]},
+        {"type": "translation", "translation": [0.0, 1.5, 0.0]},
+    ]
 
 
 def test_label_downsample_invents_no_new_values() -> None:

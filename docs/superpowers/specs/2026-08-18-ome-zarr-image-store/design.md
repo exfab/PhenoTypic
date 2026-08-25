@@ -232,10 +232,33 @@ label image to carry the same level count as its parent, so this cannot be
 per-layer. The resolved count and downsample methods are persisted in
 `phenotypic.pyramid` so readers never infer them.
 
-Per-level shapes use **ceil-halving**: `(h+1)//2, (w+1)//2`. This is normative,
-not incidental — §2.2 derives `coordinateTransformations.scale` from the
-**actual** level shape ratio, not from `2**n`, because odd extents make the two
-diverge and NGFF requires the scale vector to describe the real relationship.
+Per-level shapes use **ceil-halving**: `(h+1)//2, (w+1)//2`. Coordinate
+transformations describe the **sampling operation**, not the ratio between the
+stored array extents: a 1025-pixel axis becomes 513 samples after one 2x
+reduction, but those samples remain spaced 2 level-0 pixels apart. For a
+level-0 axis of length `size` at level `n`, the scale is therefore
+
+```text
+2 ** min(n, (size - 1).bit_length())
+```
+
+The cap saturates each spatial axis independently once it reaches one sample;
+a leading channel axis always has scale 1.0. A repeated 2x block reduction with
+total scale `S` maps a level coordinate `u` to `S*u + (S-1)/2`, so every
+downsampled dataset also carries a block-center translation `(S-1)/2` on its
+spatial axes and 0 on channel axes. `coordinateTransformations` is ordered
+`scale`, then the nonzero `translation`; level 0 is scale-only. Image and label
+pyramids use the same spatial transformations so third-party consumers keep
+them co-registered.
+
+This instantiates the published contract rather than extending it: the vendored
+NGFF 0.5 page defines transformations as an ordered sequence
+(`refs/ngff-0.5.html:2577-2606`), requires exactly one dataset scale and says an
+optional translation follows it (`refs/ngff-0.5.html:2621-2626`), and describes
+label images as sharing the corresponding image's coordinate system
+(`refs/ngff-0.5.html:2749-2751`). The independent derivation and odd/singleton
+controls are claim C7 of
+[`ngff_store_geometry.py`](../../logic_validation_scripts/2026-08-18-ome-zarr-image-store/ngff_store_geometry.py).
 
 Image layers downsample by local mean. `objmap` downsamples by
 **nearest-neighbour**; mean-downsampling fabricates label values present at no
@@ -366,7 +389,7 @@ Derived on every write, **never read back**:
 
 | Source | Projected into |
 |---|---|
-| actual level shape ratios | `datasets[].coordinateTransformations` (one `scale`) |
+| repeated 2x sampling factors + block-center offsets | `datasets[].coordinateTransformations` (`scale`, then nonzero `translation`) |
 | ~~`TIFF:XResolution` / `YResolution`~~ | ~~`axes[].unit` + the level-0 `scale`~~ — **withdrawn**, see below |
 | `Metadata_ImageName` | `multiscales[].name`, `omero.name` |
 | `Metadata_BitDepth`, channel identity | the full `omero.channels` block |
@@ -377,10 +400,11 @@ Derived on every write, **never read back**:
 > DSLR captures this project ingests carry no resolution tags, so the branch had
 > no live input, no caller ever passed it, and no test covered it — and it carried
 > a latent **25400×** error, since `1.0 / x_res` treats a TIFF `XResolution`
-> (px/**inch** by default) as px/micrometre. Scale vectors are pure level ratios
-> and `axes[].unit` is omitted, which §2.1 permits. The tags remain readable in
+> (px/**inch** by default) as px/micrometre. Scale vectors are pure sampling
+> factors and `axes[].unit` is omitted, which §2.1 permits. The tags remain readable in
 > `attributes.phenotypic.metadata.imported` and in the OME-XML annotation block;
-> they are simply not projected into NGFF geometry.
+> they are simply not projected into NGFF geometry. The remaining scale vectors
+> record sampling factors, not physical units or stored-shape ratios.
 
 **`omero` is emitted completely or not at all.** NGFF makes it conditionally
 strict: if present, every channel MUST carry a 6-hex-digit `color` and a
@@ -422,8 +446,9 @@ with `max`/`end` = `2**bit_depth - 1`. `gray` emits a single white channel.
 > analysis input, and run into `detect_mat` values not bounded to `[0, 1]` —
 > which is the `Image` data-model change §10 already defers to its own design. `omero` is omitted entirely from label groups.
 
-When no resolution tag exists, `scale` is the level-ratio vector with `unit`
-omitted, which the spec permits.
+With physical resolution deliberately unprojected, `scale` records the sampling
+factor relative to level 0 and `unit` remains omitted. Downsampled levels carry
+the block-center translation defined in §1.3.
 
 ### 2.3 `image-label` metadata
 

@@ -13,6 +13,14 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
 
 
+_NGFF_ODD_GOLDEN = (
+    Path(__file__).resolve().parents[2]
+    / "fixtures"
+    / "phenotypic"
+    / "ngff_multiscales_odd.json"
+)
+
+
 @pytest.fixture
 def plate() -> Image:
     return Image(load_synth_yeast_plate())
@@ -26,6 +34,18 @@ def blank(plate: Image) -> Image:
     "nothing detected" case needs a fresh image built from its pixels.
     """
     return Image(np.asarray(plate.rgb[:]))
+
+
+@pytest.fixture
+def odd_singleton_rgb() -> Image:
+    """A three-level pyramid with one odd and one singleton spatial extent."""
+    pixels = np.empty((1025, 1, 3), dtype=np.uint8)
+    pixels[..., 0] = 17
+    pixels[..., 1] = 91
+    pixels[..., 2] = 203
+    image = Image(pixels)
+    image._metadata.protected["Metadata_ImageName"] = "odd_plate"
+    return image
 
 
 def _read_array_json(store: Path, member: str, level: int) -> dict:
@@ -624,8 +644,6 @@ def test_multiscales_datasets_describe_every_level_that_was_written(
     viewer then sees a pyramid missing its lower levels, and nothing in
     PhenoTypic notices because PhenoTypic never reads the OME projection.
     """
-    from phenotypic.sdk_ import ngff_
-
     store = plate.save2zarr(tmp_path / "p.ome.zarr")
     block = read_phenotypic_attributes(store)
     levels = block[PhenotypicAttr.PYRAMID]["levels"]
@@ -641,12 +659,97 @@ def test_multiscales_datasets_describe_every_level_that_was_written(
         assert [d["path"] for d in datasets] == [str(i) for i in range(levels)], (
             member
         )
-        level0 = tuple(_read_array_json(store, member, 0)["shape"])
-        for index, dataset in enumerate(datasets):
-            on_disk = tuple(_read_array_json(store, member, index)["shape"])
-            assert dataset["coordinateTransformations"][0]["scale"] == (
-                ngff_.level_scale_vector(level0, on_disk)
-            ), (member, index)
+        for dataset in datasets:
+            assert (store / member / dataset["path"] / "zarr.json").is_file()
+
+
+def test_odd_singleton_multiscales_match_the_on_disk_golden(
+    odd_singleton_rgb: Image, tmp_path: Path
+) -> None:
+    """Pin every image/label multiscales output a third-party reader sees."""
+    store = odd_singleton_rgb.save2zarr(tmp_path / "odd.ome.zarr")
+    block = read_phenotypic_attributes(store)
+    members = {
+        **block[PhenotypicAttr.SERIES],
+        **block[PhenotypicAttr.LABELS],
+    }
+    observed = {
+        logical_name: json.loads(
+            (store / member / "zarr.json").read_text(encoding="utf-8")
+        )["attributes"]["ome"]["multiscales"]
+        for logical_name, member in members.items()
+    }
+    expected = json.loads(_NGFF_ODD_GOLDEN.read_text(encoding="utf-8"))
+    assert observed == expected
+
+
+def test_odd_singleton_sampling_transforms_follow_the_arrays_on_disk(
+    odd_singleton_rgb: Image, tmp_path: Path
+) -> None:
+    """Exercise shapes, channel semantics, ordering, and label co-registration."""
+    store = odd_singleton_rgb.save2zarr(tmp_path / "odd.ome.zarr")
+    block = read_phenotypic_attributes(store)
+    members = {
+        **block[PhenotypicAttr.SERIES],
+        **block[PhenotypicAttr.LABELS],
+    }
+
+    expected_2d_shapes = [(1025, 1), (513, 1), (257, 1)]
+    expected_3d_shapes = [(3, 1025, 1), (3, 513, 1), (3, 257, 1)]
+    expected_2d_transforms = [
+        [{"type": "scale", "scale": [1.0, 1.0]}],
+        [
+            {"type": "scale", "scale": [2.0, 1.0]},
+            {"type": "translation", "translation": [0.5, 0.0]},
+        ],
+        [
+            {"type": "scale", "scale": [4.0, 1.0]},
+            {"type": "translation", "translation": [1.5, 0.0]},
+        ],
+    ]
+    expected_3d_transforms = [
+        [{"type": "scale", "scale": [1.0, 1.0, 1.0]}],
+        [
+            {"type": "scale", "scale": [1.0, 2.0, 1.0]},
+            {"type": "translation", "translation": [0.0, 0.5, 0.0]},
+        ],
+        [
+            {"type": "scale", "scale": [1.0, 4.0, 1.0]},
+            {"type": "translation", "translation": [0.0, 1.5, 0.0]},
+        ],
+    ]
+
+    observed_transforms: dict[str, list[list[dict]]] = {}
+    for logical_name, member in members.items():
+        group = json.loads(
+            (store / member / "zarr.json").read_text(encoding="utf-8")
+        )["attributes"]["ome"]["multiscales"][0]
+        observed_transforms[logical_name] = [
+            dataset["coordinateTransformations"] for dataset in group["datasets"]
+        ]
+        on_disk_shapes = [
+            tuple(_read_array_json(store, member, level)["shape"])
+            for level in range(3)
+        ]
+        expected_shapes = (
+            expected_3d_shapes if logical_name == "rgb" else expected_2d_shapes
+        )
+        assert on_disk_shapes == expected_shapes, logical_name
+
+    assert observed_transforms["rgb"] == expected_3d_transforms
+    for logical_name in ("gray", "detect_mat", "objmap"):
+        assert observed_transforms[logical_name] == expected_2d_transforms
+    for rgb_level, label_level in zip(
+        observed_transforms["rgb"], observed_transforms["objmap"], strict=True
+    ):
+        assert [item["type"] for item in rgb_level] == [
+            item["type"] for item in label_level
+        ]
+        for rgb_transform, label_transform in zip(
+            rgb_level, label_level, strict=True
+        ):
+            vector_name = rgb_transform["type"]
+            assert rgb_transform[vector_name][1:] == label_transform[vector_name]
 
 
 # ---------------------------------------------------------------------------

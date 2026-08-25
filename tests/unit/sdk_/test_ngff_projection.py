@@ -10,18 +10,24 @@ import pytest
 from phenotypic.sdk_ import ngff_
 
 
-def test_multiscales_scale_comes_from_actual_level_shapes() -> None:
+def test_multiscales_records_sampling_scale_and_block_center_translation() -> None:
     shapes = ngff_.pyramid_level_shapes((1025, 7), 3)
     block = ngff_.build_multiscales(series="gray", level_shapes=shapes, name="plate")
-    scales = [
-        transform["scale"]
+    transformations = [
+        dataset["coordinateTransformations"]
         for dataset in block["multiscales"][0]["datasets"]
-        for transform in dataset["coordinateTransformations"]
-        if transform["type"] == "scale"
     ]
-    assert scales[0] == pytest.approx([1.0, 1.0])
-    assert scales[1] == pytest.approx([1025 / 513, 7 / 4])
-    assert scales[1][0] != pytest.approx(2.0)
+    assert transformations == [
+        [{"type": "scale", "scale": [1.0, 1.0]}],
+        [
+            {"type": "scale", "scale": [2.0, 2.0]},
+            {"type": "translation", "translation": [0.5, 0.5]},
+        ],
+        [
+            {"type": "scale", "scale": [4.0, 4.0]},
+            {"type": "translation", "translation": [1.5, 1.5]},
+        ],
+    ]
 
 
 def test_multiscales_axes_are_ordered_channel_then_space() -> None:
