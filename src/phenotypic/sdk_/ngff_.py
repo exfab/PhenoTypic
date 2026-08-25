@@ -1167,22 +1167,27 @@ def _is_retryable(exc: OSError) -> bool:
     return exc.errno in {errno.ENOTEMPTY, errno.ENOENT, errno.EEXIST}
 
 
-def _reconcile_attempt_trash(trash: Path, final: Path) -> None:
-    """Restore or discard the previous store moved aside by one attempt.
+def _reconcile_attempt_trash(trash: Path, final: Path) -> Path | None:
+    """Restore the previous store or identify trash safe to discard.
 
     If no concurrent writer has published, restoring *trash* to *final*
     preserves the previous store. If another writer has published meanwhile,
-    its non-empty *final* wins and only this attempt's now-superseded trash is
-    removed. Any other rollback failure is surfaced with the trash intact.
+    its non-empty *final* wins and this attempt's superseded trash is returned
+    for deletion after the publication guard is released. Any other rollback
+    failure is surfaced with the trash intact.
+
+    Returns:
+        Superseded *trash* safe to delete, or ``None`` if no cleanup remains.
     """
     if not trash.exists():
-        return
+        return None
     try:
         os.replace(long_path(trash), long_path(final))
     except OSError:
         if not final.exists():
             raise
-        shutil.rmtree(long_path(trash), ignore_errors=True)
+        return trash
+    return None
 
 
 def promote_store(
@@ -1241,6 +1246,7 @@ def promote_store(
     for attempt in range(PROMOTE_RETRY_ATTEMPTS):
         trash = final.parent / f".{final.name}.{uuid4().hex}{TRASH_SUFFIX}"
         moved_aside = False
+        discard_trash: Path | None = None
         try:
             with publication_commit(commit_guard):
                 try:
@@ -1252,12 +1258,15 @@ def promote_store(
                     os.replace(long_path(part), long_path(final))
                 except OSError:
                     if moved_aside:
-                        _reconcile_attempt_trash(trash, final)
+                        discard_trash = _reconcile_attempt_trash(trash, final)
                     raise
                 if fsync and os.name == "posix":
                     # The rename is a directory-entry change in final.parent.
                     _fsync_path(final.parent)
         except OSError as exc:
+            if discard_trash is not None:
+                # Recursive cleanup stays outside the output-wide lifecycle lock.
+                shutil.rmtree(long_path(discard_trash), ignore_errors=True)
             last = exc
             if not _is_retryable(exc):
                 raise

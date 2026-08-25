@@ -5,6 +5,8 @@ from __future__ import annotations
 import errno
 import os
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from uuid import UUID
 
@@ -515,3 +517,68 @@ def test_fsync_tree_flushes_directories_deepest_first(tmp_path: Path, monkeypatc
     assert directories, "no directory was flushed at all"
     depths = [len(path.parts) for path in directories]
     assert depths == sorted(depths, reverse=True), directories
+
+
+def test_rollback_collision_discards_trash_after_releasing_commit_guard(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Recursive trash deletion must not retain the lifecycle commit guard.
+
+    Writer A moves the old store aside and then fails to publish. Writer B
+    occupies ``final`` exactly when A tries to restore its trash, forcing A to
+    discard that superseded tree. Both that cleanup and the later successful
+    attempt's cleanup must run after the narrow commit guard is released.
+    """
+    final = _fake_store(tmp_path / "plate_01.ome.zarr", "old")
+    part = _fake_store(ngff_.new_part_path(final), "writer A")
+    injected_winner = False
+    guard_held = False
+    rmtree_guard_states: list[bool] = []
+    monkeypatch.setattr(ngff_, "long_path", _equivalent_noncanonical_path)
+    part_operand = ngff_.long_path(part)
+    final_operand = ngff_.long_path(final)
+
+    @contextmanager
+    def commit_guard() -> Iterator[None]:
+        nonlocal guard_held
+        assert guard_held is False
+        guard_held = True
+        try:
+            yield
+        finally:
+            guard_held = False
+
+    def behaviour(call_number: int, src: str, dst: str):
+        nonlocal injected_winner
+        if call_number == 2 and src == part_operand:
+            return OSError(errno.ENOENT, "transient promote failure")
+        if src.endswith(".trash") and dst == final_operand and not injected_winner:
+            injected_winner = True
+            _fake_store(final, "writer B")
+        return None
+
+    _replace_shim(monkeypatch, behaviour)
+    real_rmtree = ngff_.shutil.rmtree
+
+    def observe_guard_state(path, *args, **kwargs):
+        if Path(path).name.endswith(ngff_.TRASH_SUFFIX):
+            rmtree_guard_states.append(guard_held)
+        return real_rmtree(path, *args, **kwargs)
+
+    monkeypatch.setattr(ngff_.shutil, "rmtree", observe_guard_state)
+
+    assert (
+        ngff_.promote_store(
+            part,
+            final,
+            fsync=False,
+            commit_guard=commit_guard,
+        )
+        == final
+    )
+    assert injected_winner is True
+    assert rmtree_guard_states == [False, False]
+    assert (final / "zarr.json").read_text(encoding="utf-8") == (
+        '{"marker": "writer A"}'
+    )
+    assert not any(path.name.endswith(".trash") for path in tmp_path.iterdir())
