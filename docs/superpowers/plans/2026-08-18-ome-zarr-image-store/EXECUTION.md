@@ -37,11 +37,29 @@ commit at this point is documentation.
 
 ## Phase 8 — Review-fix cluster
 
-**Status:** Task 4 preserves the full-pyramid `full_layers=True` snapshot contract,
-adds a >512-pixel multi-dataset/conformance regression, and records the focused local
-test and mutation evidence. The controller owns the final broad OME-Zarr suite, mypy
-baseline comparison, and Slurm verification; no additional scheduler submission belongs
-to this cluster.
+**Status:** Complete 2026-08-24. The review fixes preserve full-pyramid
+`full_layers=True` snapshots, make store promotion/cleanup attempt-owned and retry-safe,
+encode repeated-2x NGFF sampling transforms, and preserve explicit loader overrides.
+Every task and the final Windows-contention fix passed independent review.
+
+Final verification used Slurm array `27732638`, with corrected array-environment reruns
+`27732832_1` (CLI/analysis/schema) and `27732847_0` (core/SDK). Across the six disjoint
+groups: **9,439 passed, 4 failed, 190 skipped, 579 deselected**. All four failures are the
+recorded pre-existing baseline, not Phase 8 regressions:
+
+- `test_inspect_remeasures_when_explicit_image_changes`;
+- the three `FilFinderDetector` smoke tests that require the absent `topology` extra.
+
+The geometry logic-validation script and explicit changed-path Ruff gate passed. Final
+mypy was **412 errors in 121 files**, improving on the measured merge-base baseline of
+419 errors in 123 files. Native Windows remains a CI surface: the sharing-violation
+regression is deterministic on POSIX, while the real extended-path/UNC lane was not run
+locally.
+
+For future wide runs, `run_unit_suite.sbatch` now discovers the exact supported test-file
+scope and round-robins 658 files across a 24-task array (27–28 files per task), with
+array variables removed before pytest so scheduler identity cannot contaminate controller
+tests. The committed runner passed `bash -n`, `git diff --check`, and Slurm `--test-only`.
 
 ---
 
