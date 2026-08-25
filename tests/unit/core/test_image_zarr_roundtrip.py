@@ -603,6 +603,23 @@ def test_explicit_kwargs_take_priority_over_the_stored_state(
     assert Image.load_zarr(store, illuminant="D65").illuminant == "D65"
 
 
+def test_explicit_name_and_bit_depth_override_stored_protected_metadata(
+    plate: Image, tmp_path: Path
+) -> None:
+    """Caller identity and display depth must not be reset by stored metadata."""
+    source = Image(
+        np.asarray(plate.rgb[:]).astype(np.uint16) * 257,
+        name="stored_plate_A01",
+        bit_depth=16,
+    )
+    store = source.save2zarr(tmp_path / "p.ome.zarr")
+
+    back = Image.load_zarr(store, name="override_plate_B02", bit_depth=8)
+
+    assert back.name == "override_plate_B02"
+    assert back.bit_depth == 8
+
+
 def test_a_failed_ome_xml_build_aborts_the_write(
     plate: Image, tmp_path: Path, monkeypatch
 ) -> None:

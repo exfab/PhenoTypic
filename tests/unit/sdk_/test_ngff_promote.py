@@ -6,6 +6,7 @@ import errno
 import os
 import time
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -35,9 +36,11 @@ def test_part_paths_are_distinct_across_concurrent_writers(tmp_path: Path) -> No
     assert len(parts) == 64
 
 
-def test_part_name_carries_no_pid(tmp_path: Path) -> None:
-    part = ngff_.new_part_path(tmp_path / "plate_01.ome.zarr")
-    assert str(os.getpid()) not in part.name.replace(".part", "")
+def test_part_name_contains_a_uuid4_attempt_component(tmp_path: Path) -> None:
+    final = tmp_path / "plate_01.ome.zarr"
+    part = ngff_.new_part_path(final)
+    attempt_id = part.name.removeprefix(f".{final.name}.").removesuffix(".part")
+    assert UUID(hex=attempt_id).version == 4
 
 
 def test_promote_onto_absent_target(tmp_path: Path) -> None:

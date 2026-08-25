@@ -144,6 +144,25 @@ def test_an_explicit_grid_finder_kwarg_beats_the_stored_one(
     assert (back.nrows, back.ncols) == (4, 6)
 
 
+def test_grid_explicit_name_and_bit_depth_override_stored_protected_metadata(
+    grid: GridImage, tmp_path: Path
+) -> None:
+    """Grid loading shares the base loader's protected-metadata precedence."""
+    source = GridImage(
+        np.asarray(grid.rgb[:]).astype(np.uint16) * 257,
+        name="stored_grid_A01",
+        nrows=grid.nrows,
+        ncols=grid.ncols,
+        bit_depth=16,
+    )
+    store = source.save2zarr(tmp_path / "g.ome.zarr")
+
+    back = GridImage.load_zarr(store, name="override_grid_B02", bit_depth=8)
+
+    assert back.name == "override_grid_B02"
+    assert back.bit_depth == 8
+
+
 def test_image_class_records_gridimage(grid: GridImage, tmp_path: Path) -> None:
     store = grid.save2zarr(tmp_path / "g.ome.zarr")
     block = read_phenotypic_attributes(store)

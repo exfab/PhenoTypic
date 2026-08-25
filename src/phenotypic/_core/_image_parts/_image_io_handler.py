@@ -1267,6 +1267,11 @@ class ImageIOHandler(ImageColorSpace):
         series = block.get(ngff_.PhenotypicAttr.SERIES, {})
         sections = block.get(ngff_.PhenotypicAttr.METADATA, {})
         stored_protected = sections.get(ngff_.PhenotypicAttr.PROTECTED, {})
+        explicit_overrides = {
+            key: kwargs[key]
+            for key in ("name", "bit_depth")
+            if kwargs.get(key) is not None
+        }
 
         bit_depth = stored_protected.get(IMAGE.BIT_DEPTH)
         if bit_depth is not None:
@@ -1324,6 +1329,11 @@ class ImageIOHandler(ImageColorSpace):
             )
             target.clear()
             target.update(normalized)
+
+        if "name" in explicit_overrides:
+            img.name = explicit_overrides["name"]
+        if "bit_depth" in explicit_overrides:
+            img.metadata[IMAGE.BIT_DEPTH] = explicit_overrides["bit_depth"]
 
         # ``cls`` is always an ``Image`` subclass -- ``ImageIOHandler`` is a mixin
         # and is never instantiated on its own -- but mypy resolves ``cls(...)``
