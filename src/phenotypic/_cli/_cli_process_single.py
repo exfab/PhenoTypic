@@ -350,8 +350,7 @@ def process_single_store_measure_core(
         pipeline_path: Path to pipeline JSON file.
         store_path: Path to an existing ``*.ome.zarr`` store produced by a
             prior forward run.
-        output_dir: Base output directory (unused here, but kept symmetric
-            with :func:`process_single_image_core`).
+        output_dir: Base output directory used for plots and marker refresh.
         dataset_name: Dataset name for measurement output.
         image_type: ``"Image"`` or ``"GridImage"`` — the fallback used when the
             store's ``phenotypic`` block carries no ``image_class``.
@@ -392,16 +391,6 @@ def process_single_store_measure_core(
         dataset_name,
         commit_guard=commit_guard,
     )
-    from phenotypic.sdk_ import image_completion_marker_path
-
-    marker_path = image_completion_marker_path(output_dir, dataset_name, stem)
-    if marker_path.is_file():
-        from ._cli_recompile_tables import _republish_table_marker
-
-        _republish_table_marker(
-            output_dir, marker_path, commit_guard=commit_guard
-        )
-
     from phenotypic.plotting._pipeline import PlotCoordinator
 
     PlotCoordinator(
@@ -411,6 +400,19 @@ def process_single_store_measure_core(
         dataset=dataset_name,
         image_stem=stem,
     )
+
+    # Marker refresh is the final successful per-image publication. If any
+    # earlier table or plot work raises, the old marker remains stale against
+    # the new table/root and therefore cannot authorize a partial update.
+    from phenotypic.sdk_ import image_completion_marker_path
+
+    marker_path = image_completion_marker_path(output_dir, dataset_name, stem)
+    if marker_path.is_file():
+        from ._cli_recompile_tables import _republish_table_marker
+
+        _republish_table_marker(
+            output_dir, marker_path, commit_guard=commit_guard
+        )
 
     return True
 

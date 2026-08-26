@@ -9,8 +9,8 @@ These tests exercise the full CLI via :mod:`click.testing.CliRunner`:
   (no per-layer ``rgb/`` / ``gray/`` / ``detect_mat/`` / ``objmap/`` folders,
   and no ``hdf/``).
 * Forward runs always write a PNG overlay per image alongside the store.
-* Schema-3 outputs reject ``--mode measure`` before it can invalidate their
-  marker-authorized per-image evidence.
+* Schema-3 outputs support ``--mode measure`` by replacing embedded tables,
+  refreshing per-image markers last, and rebuilding aggregate publications.
 * ``--mode measure`` rejects incompatible flags with a clear error message.
 
 The store is a directory, so every existence check here is ``is_dir()`` and
@@ -33,6 +33,7 @@ from PIL import Image as PILImage
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic._cli._cli_completion import (
     valid_aggregate_snapshot,
+    valid_image_success,
     valid_run_completion,
 )
 from phenotypic.phenotypicCLI import phenotypic_cli
@@ -294,15 +295,16 @@ class TestOverlayAlwaysOn:
 
 
 class TestMeasureRerun:
-    """Schema-3 marker-authorized outputs reject direct measure mutation."""
+    """Schema-3 marker-authorized outputs support transactional remeasurement."""
 
     def test_measure_rerun_rewrites_measurements(
         self, runner, temp_pipeline, plates_input_dir, tmp_path
     ):
-        """Measure mode cannot invalidate a marker-authorized image outcome."""
-        output_dir = tmp_path / "out"
+        """Measure mode replaces the embedded table and refreshes authority."""
+        from phenotypic import ImagePipeline
+        from phenotypic.measure import MeasureSize
 
-        # Forward run.
+        output_dir = tmp_path / "out"
         forward = runner.invoke(
             phenotypic_cli,
             [
@@ -323,34 +325,37 @@ class TestMeasureRerun:
         )
 
         store = zarr_store_path(output_dir, "plates", "plate_001")
-        store_root = store / "zarr.json"
         table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
-        overlay_path = output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
-
-        assert store_root.is_file()
-        assert table_path.is_file()
-        assert not (output_dir / "results" / "plates" / "measurements").exists()
-        assert overlay_path.exists(), (
-            "Forward run should always write overlay PNG."
+        marker_path = image_completion_marker_path(
+            output_dir, "plates", "plate_001"
         )
-
-        # The root `zarr.json` is written LAST by promote_store, so its
-        # mtime is the whole store's publication time.
-        store_mtime_before = store_root.stat().st_mtime_ns
-        table_bytes_before = table_path.read_bytes()
+        overlay_path = (
+            output_dir
+            / "deliverables"
+            / "overlays"
+            / "plates"
+            / "plate_001.png"
+        )
+        assert table_path.is_file()
+        assert marker_path.is_file()
+        assert overlay_path.is_file()
+        before_columns = pd.read_parquet(table_path).columns.tolist()
+        assert any(column.startswith("Shape_") for column in before_columns)
+        marker_before = marker_path.read_bytes()
         overlay_mtime_before = overlay_path.stat().st_mtime_ns
 
-        # Sleep so mtimes actually differ on filesystems that round to seconds.
-        time.sleep(0.1)
-
-        # Measure rerun discovers image stores under the existing output root.
+        replacement_pipeline = tmp_path / "measure-size.json"
+        replacement_pipeline.write_text(
+            ImagePipeline(meas=[MeasureSize()]).to_json(),
+            encoding="utf-8",
+        )
         measure = runner.invoke(
             phenotypic_cli,
             [
                 "--mode",
                 "measure",
                 "--pipeline",
-                str(temp_pipeline),
+                str(replacement_pipeline),
                 "-o",
                 str(output_dir),
                 "--njobs",
@@ -359,18 +364,31 @@ class TestMeasureRerun:
                 "--force-local",
             ],
         )
-        assert measure.exit_code != 0
-        assert "cannot mutate a marker-authorized incremental run" in measure.output
-        assert table_path.read_bytes() == table_bytes_before
-        assert store_root.stat().st_mtime_ns == store_mtime_before
+
+        assert measure.exit_code == 0, measure.output
+        after = pd.read_parquet(table_path)
+        assert "Size_Area" in after.columns
+        assert not any(column.startswith("Shape_") for column in after.columns)
+        assert marker_path.read_bytes() != marker_before
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        assert valid_image_success(
+            output_dir,
+            dataset="plates",
+            image_stem="plate_001",
+            work_id=str(marker["work_id"]),
+        )
+        assert valid_aggregate_snapshot(output_dir) is not None
+        assert valid_run_completion(output_dir) is not None
+        assert not (
+            output_dir / "results" / "plates" / "measurements"
+        ).exists()
         assert overlay_path.stat().st_mtime_ns == overlay_mtime_before
 
     def test_measure_rerun_grid_image_store(
         self, runner, temp_pipeline, plates_input_dir, tmp_path
     ):
-        """A GridImage store carries the state measure mode dispatches on."""
+        """Measure mode rehydrates GridImage state and republishes its marker."""
         output_dir = tmp_path / "out_grid"
-
         forward = runner.invoke(
             phenotypic_cli,
             [
@@ -397,34 +415,19 @@ class TestMeasureRerun:
         )
 
         store = zarr_store_path(output_dir, "plates", "plate_001")
-        assert store.is_dir(), f"Expected an OME-Zarr store at {store}"
-
-        # ``image_class`` is what ``load_image_from_store`` dispatches on, so
-        # the measure worker rehydrates a GridImage rather than degrading to a
-        # plain Image. It is deliberately NOT ``Metadata_ImageType``.
         block = read_phenotypic_attributes(store)
-        assert block[PhenotypicAttr.IMAGE_CLASS] == "GridImage", (
-            f"Expected image_class='GridImage' so the SLURM/local worker "
-            f"auto-selects GridImage.load_zarr, got "
-            f"{block.get(PhenotypicAttr.IMAGE_CLASS)!r}."
-        )
+        assert block[PhenotypicAttr.IMAGE_CLASS] == "GridImage"
 
-        # The grid state itself must round-trip, or grid info is silently lost
-        # on reload even though image_class is right.
         from phenotypic import GridImage
 
         reloaded = GridImage.load_zarr(store)
         assert isinstance(reloaded, GridImage)
         assert (reloaded.nrows, reloaded.ncols) == (8, 12)
-        assert reloaded.grid_finder is not None, (
-            "The grid finder was not rehydrated from the store."
+        assert reloaded.grid_finder is not None
+        assert (reloaded.grid_finder.nrows, reloaded.grid_finder.ncols) == (
+            8,
+            12,
         )
-        assert (
-            reloaded.grid_finder.nrows,
-            reloaded.grid_finder.ncols,
-        ) == (8, 12)
-
-        time.sleep(0.1)
 
         measure = runner.invoke(
             phenotypic_cli,
@@ -447,32 +450,26 @@ class TestMeasureRerun:
                 "12",
             ],
         )
-        assert measure.exit_code != 0
-        assert "cannot mutate a marker-authorized incremental run" in measure.output
 
+        assert measure.exit_code == 0, measure.output
         table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
-        assert table_path.is_file(), (
-            f"Expected embedded measurements at {table_path}"
+        frame = pd.read_parquet(table_path)
+        assert not frame.empty
+        assert any(column.startswith("Shape_") for column in frame.columns)
+        assert any(column.startswith("Intensity_") for column in frame.columns)
+        marker_path = image_completion_marker_path(
+            output_dir, "plates", "plate_001"
         )
-        assert not (output_dir / "results" / "plates" / "measurements").exists()
-
-        df = pd.read_parquet(table_path)
-        assert not df.empty
-
-        # Sanity: the canonical category-prefixed columns from the
-        # RoundPeaksPipeline measurement set (Shape + Intensity) must be
-        # present — catches regressions where measure mode silently returns a
-        # column-schema-stripped frame.
-        shape_cols = {c for c in df.columns if c.startswith("Shape_")}
-        intensity_cols = {c for c in df.columns if c.startswith("Intensity_")}
-        assert shape_cols, (
-            f"Measurements parquet is missing Shape_* columns after forward mode; "
-            f"columns={list(df.columns)}"
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        assert valid_image_success(
+            output_dir,
+            dataset="plates",
+            image_stem="plate_001",
+            work_id=str(marker["work_id"]),
         )
-        assert intensity_cols, (
-            f"Measurements parquet is missing Intensity_* columns after forward mode; "
-            f"columns={list(df.columns)}"
-        )
+        assert not (
+            output_dir / "results" / "plates" / "measurements"
+        ).exists()
 
     def test_measure_rerun_overwrites_existing_parquet(
         self, runner, temp_pipeline, plates_input_dir, tmp_path

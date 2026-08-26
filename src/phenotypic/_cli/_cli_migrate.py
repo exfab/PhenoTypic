@@ -187,10 +187,11 @@ def migrate_legacy_measurement_tables(
                 migrated += 1
             continue
         try:
-            if embedded.is_file():
-                import pyarrow.parquet as pq
+            from phenotypic.sdk_._measurement_tables import (
+                _valid_embedded_measurement_contract,
+            )
 
-                pq.read_schema(embedded)
+            if _valid_embedded_measurement_contract(store):
                 skipped += 1
             else:
                 if not (store / "zarr.json").is_file():
@@ -202,6 +203,10 @@ def migrate_legacy_measurement_tables(
                     baseline, metadata_csv
                 )
                 replace_embedded_measurement_table(store, prepared)
+                if not _valid_embedded_measurement_contract(store):
+                    raise RuntimeError(
+                        "embedded measurement table validation failed"
+                    )
                 migrated += 1
 
             dataset_work_ids = (

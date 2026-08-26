@@ -160,7 +160,10 @@ one is an error.
 Because `measure` re-reads a finished segmentation rather than producing one, it
 refuses flags that imply a fresh detection pass or mutate run state. This applies
 to `--restart`, `--retry-failures`, `--overwrite`, `--sample`, and `--dry-run`.
-`measure` is all-or-nothing over every store it finds.
+`measure` is all-or-nothing over every store it finds. Each replacement table
+is validated inside its image store, the per-image completion marker is
+refreshed last, and the run aggregates are rebuilt only from those
+marker-authorized embedded tables.
 
 ```{note}
 Swap the *measurers* freely, but keep the detector consistent with the one that
@@ -171,7 +174,7 @@ to `LiDetector` in the pipeline you pass will not re-segment anything.
 ## `recompile` — rebuild the deliverables
 
 `recompile` takes neither `--input` nor `--pipeline`; both are reloaded from the
-output root. It re-aggregates the per-image parquets into
+output root. It re-aggregates marker-authorized embedded tables into
 `master_measurements.csv`, regenerates any missing overlay PNGs from their stores,
 rebuilds the progress manifest, and regenerates the progress dashboard.
 

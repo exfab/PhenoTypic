@@ -129,6 +129,107 @@ def build_measurement_table_descriptor(
     }
 
 
+def _valid_embedded_measurement_contract(store_path: Path) -> bool:
+    """Return whether a store's table payload, groups, and descriptor agree."""
+    from phenotypic.schema import OBJECT
+
+    from . import ngff_
+
+    try:
+        store = Path(store_path)
+        root = json.loads(
+            (store / ngff_.STORE_ROOT_JSON).read_text(encoding="utf-8")
+        )
+        phenotypic = root["attributes"][ngff_.PhenotypicAttr.ROOT]
+        descriptor = phenotypic[ngff_.PhenotypicAttr.TABLES][
+            ngff_.MEASUREMENT_TABLE_GROUP
+        ]
+        columns = descriptor["measurement_columns"]
+        objmap_target = phenotypic[ngff_.PhenotypicAttr.LABELS][
+            ngff_.OBJMAP_LABEL
+        ]
+        if not isinstance(columns, list) or not all(
+            isinstance(column, str) for column in columns
+        ):
+            return False
+        if descriptor != {
+            "schema_version": ngff_.MEASUREMENT_TABLE_SCHEMA_VERSION,
+            "type": "object_measurements",
+            "format": "parquet",
+            "path": ngff_.MEASUREMENT_TABLE_RELATIVE_PATH.as_posix(),
+            "measurement_columns": columns,
+            "target": {
+                "column": str(OBJECT.LABEL),
+                "path": objmap_target,
+            },
+        }:
+            return False
+
+        expected_group = {
+            "zarr_format": 3,
+            "node_type": "group",
+            "attributes": {},
+        }
+        for group in (
+            store / ngff_.TABLES_GROUP,
+            store / ngff_.TABLES_GROUP / ngff_.MEASUREMENT_TABLE_GROUP,
+        ):
+            document = json.loads(
+                (group / ngff_.STORE_ROOT_JSON).read_text(encoding="utf-8")
+            )
+            if document != expected_group:
+                return False
+
+        import pyarrow.parquet as pq  # type: ignore[import-untyped]
+
+        payload = store / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
+        table = pq.read_table(payload)
+        if any(column not in table.column_names for column in columns):
+            return False
+        metadata = table.schema.metadata or {}
+        keys = ngff_.EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS
+        required = tuple(key.encode() for key in keys)
+        if any(key not in metadata for key in required):
+            return False
+        join_status = metadata[keys.JOIN_STATUS.encode()].decode()
+        if join_status not in {
+            "not_requested",
+            "joined",
+            "no_common_keys",
+        }:
+            return False
+        if (
+            metadata[keys.JOIN_KIND.encode()] != b"right"
+            or metadata[keys.JOIN_LEFT.encode()] != b"metadata"
+            or metadata[keys.JOIN_RIGHT.encode()] != b"measurements"
+        ):
+            return False
+        join_keys = json.loads(metadata[keys.JOIN_KEYS.encode()].decode())
+        recorded_columns = json.loads(
+            metadata[keys.MEASUREMENT_COLUMNS.encode()].decode()
+        )
+        if not isinstance(join_keys, list) or not all(
+            isinstance(key, str) for key in join_keys
+        ):
+            return False
+        digest = metadata[keys.METADATA_SNAPSHOT_SHA256.encode()].decode()
+        if join_status == "not_requested":
+            if join_keys or digest:
+                return False
+        else:
+            if len(digest) != 64 or any(
+                character not in "0123456789abcdef" for character in digest
+            ):
+                return False
+            if join_status == "joined" and not join_keys:
+                return False
+            if join_status == "no_common_keys" and join_keys:
+                return False
+        return recorded_columns == columns
+    except Exception:
+        return False
+
+
 def _clone_file_without_pixel_rewrite(source: str, target: str) -> str:
     """Hard-link an existing store file, falling back to a byte copy."""
     try:
@@ -181,7 +282,11 @@ def replace_embedded_measurement_table(
         table, objmap_target=objmap_target
     )
     payload = store_path / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
-    if current == descriptor and payload.is_file():
+    if (
+        current == descriptor
+        and payload.is_file()
+        and _valid_embedded_measurement_contract(store_path)
+    ):
         _write_validated_parquet(payload, table, commit_guard=commit_guard)
         return payload
 

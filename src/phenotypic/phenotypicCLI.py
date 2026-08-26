@@ -1572,16 +1572,6 @@ def phenotypic_cli(
                     "point it at a directory produced by a previous "
                     "`python -m phenotypic ...` invocation."
                 )
-            measure_state = load_processing_state(output_dir)
-            if measure_state is not None and measure_state.config.get(
-                "success_markers_required", False
-            ):
-                raise click.UsageError(
-                    "--mode measure cannot mutate a marker-authorized "
-                    "incremental run. Continue the original full run or use "
-                    "--mode recompile for aggregate-only changes."
-                )
-
         if not measure_only and (pipeline_json is None or input_path is None):
             missing = []
             if pipeline_json is None:
@@ -1617,7 +1607,8 @@ def phenotypic_cli(
                 error_exit(f"Cannot read metadata CSV: {e}")
 
         continuing = (
-            not restart
+            not measure_only
+            and not restart
             and not overwrite
             and output_dir.exists()
             and resolve_processing_state_path(output_dir).is_file()

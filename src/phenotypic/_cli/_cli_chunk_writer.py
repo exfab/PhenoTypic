@@ -1,9 +1,8 @@
 """Checkpoint chunk writer for SLURM array jobs.
 
-Aggregates unchunked per-image Parquet files into dashboard chunks,
-rebuilds the rolling combined measurement state, and updates the master CSV
-(:data:`~phenotypic.sdk_.MASTER_MEASUREMENTS_CSV`) so users can download
-partial results mid-run.
+Aggregates marker-authorized embedded tables into hidden dashboard chunks and
+rebuilds the rolling combined measurement state. Legacy runs without embedded
+authority retain their external-Parquet/master compatibility path.
 
 Note: this writer intentionally bypasses
 :func:`~phenotypic._cli._cli_output_manager.finalize_post_master_outputs`
@@ -572,37 +571,21 @@ def _quarantine_corrupt_aggregate(agg_path: Path) -> Path | None:
 def _rebuild_dataset_aggregate(
     agg_path: Path, read_error: Exception
 ) -> pl.DataFrame | None:
-    """Re-derive an unreadable aggregate from the per-image parquets.
+    """Re-derive an unreadable legacy aggregate from external Parquets.
 
-    The aggregate is a *cache* of ``results/<ds>/measurements/*.parquet``, so
-    the source of truth for rebuilding it sits in the same directory, and the
-    rebuild goes through :func:`_read_and_concat` — the same reader that built
-    the aggregate originally. Reading those files raw would *not* reproduce
-    it: the identity normalization lives in that reader, and two of the three
-    columns it fixes up are colony-key columns, so a raw re-read followed by
-    :func:`_dedupe_on_colony_key` collapses unrelated colonies rather than
-    restoring them.
+    This recovery path is reached only when
+    :func:`authorized_measurement_sources` returned ``None`` and
+    ``embedded_authority`` is false. Current schema-3 runs rebuild checkpoint
+    state from marker-authorized ``tables/measurements/table.parquet`` payloads
+    under each image store and never call this dataset-directory fallback.
 
-    Nothing deletes the per-image parquets. Two staged-GPU paths relocate some
-    of them — ``reconcile_stage3_publications`` (Stage 3 never completed) and
-    ``quarantine_unchanged_restart_parquets`` (stale epoch) — but neither can
-    co-occur with chunking: both are staged-GPU-only, and the staged
-    strategies never write the ``chunk_state.json`` that gates every entry
-    into this module. The two path sets being disjoint is what makes the
-    rebuild sound. Note that it is *not* sound in general — a healthy
-    aggregate is append-only and never drops a row when a per-image parquet
-    goes away, so do not read this as "the aggregate tracks the directory".
+    For a legacy run, the aggregate is a cache of
+    ``results/<ds>/measurements/*.parquet``. Rebuilding must go through
+    :func:`_read_and_concat` so image and dataset identity normalization is
+    identical to the original writer before colony-key deduplication.
 
-    An earlier revision logged "rebuilding from new data" here and then wrote
-    only the incoming chunk, destroying every previously aggregated colony
-    while chunk state still listed their sources as consumed. Nothing could
-    recover them, and final aggregation publishes the master from this file.
-
-    Returns the rebuilt frame, or ``None`` when nothing could be rebuilt, in
-    which case the caller writes the incoming chunk alone. That branch is
-    unreachable from the chunk path — the sources include the very files that
-    produced the incoming chunk, which were read moments earlier — so it is a
-    guard, not a designed behaviour.
+    Returns:
+        The rebuilt legacy frame, or ``None`` when no readable source exists.
     """
     logger.error(
         "Cannot read %s (%s); rebuilding it from the per-image parquets",
