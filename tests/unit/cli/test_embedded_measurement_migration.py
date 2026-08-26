@@ -243,6 +243,35 @@ def test_embedded_table_migration_retries_after_marker_interruption(
     )
 
 
+def test_migration_reconstructs_authority_without_machine_state(
+    legacy_headers_run: Path,
+) -> None:
+    """A state-free archive gains marker and aggregate authority."""
+    from phenotypic._cli._cli_completion import (
+        authorized_measurement_sources,
+        current_aggregate_is_current,
+    )
+    from phenotypic._cli._cli_state_management import load_processing_state
+    from phenotypic.sdk_ import phenotypic_cache_dir
+
+    shutil.rmtree(phenotypic_cache_dir(legacy_headers_run))
+    assert load_processing_state(legacy_headers_run) is None
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_headers_run)],
+    )
+
+    assert result.exit_code == 0, result.output
+    state = load_processing_state(legacy_headers_run)
+    assert state is not None
+    assert state.config["success_markers_required"] is True
+    sources = authorized_measurement_sources(legacy_headers_run)
+    assert sources is not None
+    assert len(sources) == len(run_stems(legacy_headers_run))
+    assert current_aggregate_is_current(legacy_headers_run) is True
+
+
 def test_hdf_only_migration_keeps_store_measurement_free(
     legacy_run: Path,
 ) -> None:

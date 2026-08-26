@@ -29,6 +29,7 @@ so it does not justify another scheduler surface.
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
 
@@ -37,6 +38,7 @@ import click
 from phenotypic.sdk_ import (
     BundleLayout,
     MEASUREMENT_TABLE_RELATIVE_PATH,
+    STORE_SUFFIX,
     deliverables_dir,
     metadata_csv_deliverable_path,
     replace_embedded_measurement_table,
@@ -84,6 +86,110 @@ def _bundle_layout(output_dir: Path) -> BundleLayout:
     return BundleLayout(
         deliverables_base=deliverables_dir(resolved), output_root=resolved
     )
+
+
+def _migration_work_id(dataset: str, stem: str) -> str:
+    """Return the deterministic work id used to authorize a migrated image."""
+    return hashlib.sha256(f"migration:{dataset}/{stem}".encode()).hexdigest()
+
+
+def _file_sha256(path: Path) -> str | None:
+    """Return one file digest, or None when the file is absent."""
+    if not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _ensure_migration_processing_state(output_dir: Path) -> None:
+    """Reconstruct marker authority for a state-free legacy archive.
+
+    Migration fixtures intentionally omit processing state: copying stale run
+    state would make its inventory authoritative over a selected subset. A
+    deterministic state synthesized from the converted stores lets the table
+    pass publish image markers and the aggregate marker without inventing
+    measurement tables for HDF-only stores. Existing state is never replaced.
+    """
+    from phenotypic._cli._cli_state_management import (
+        load_processing_state,
+        save_processing_state,
+    )
+    from phenotypic._cli._cli_types import DatasetState, ProcessingState
+
+    output_dir = Path(output_dir)
+    if load_processing_state(output_dir) is not None:
+        return
+
+    work_ids: dict[str, dict[str, str]] = {}
+    datasets: dict[str, DatasetState] = {}
+    results = output_dir / "results"
+    if not results.is_dir():
+        return
+    for dataset_dir in sorted(
+        path for path in results.iterdir() if path.is_dir()
+    ):
+        stores = sorted((dataset_dir / "zarr").glob(f"*{STORE_SUFFIX}"))
+        if not stores:
+            continue
+        stems = {
+            store.name[: -len(STORE_SUFFIX)]
+            for store in stores
+            if (store / "zarr.json").is_file()
+        }
+        if not stems:
+            continue
+        work_ids[dataset_dir.name] = {
+            stem: _migration_work_id(dataset_dir.name, stem)
+            for stem in sorted(stems)
+        }
+        datasets[dataset_dir.name] = DatasetState(
+            completed=set(stems),
+            initial_images=set(stems),
+        )
+    if not work_ids:
+        return
+
+    provenance_candidates = [
+        *sorted(output_dir.glob("*.pht-pipe")),
+        deliverables_dir(output_dir) / "pipeline.json.pht-pipe",
+    ]
+    pipeline_path = next(
+        (path for path in provenance_candidates if path.is_file()),
+        output_dir / "pipeline.pht-pipe",
+    )
+    inventory = "\n".join(
+        f"{dataset}/{stem}:{work_id}"
+        for dataset, images in sorted(work_ids.items())
+        for stem, work_id in sorted(images.items())
+    )
+    now = datetime.now(timezone.utc)
+    metadata_snapshot = metadata_csv_deliverable_path(output_dir)
+    state = ProcessingState(
+        version="3.0.0",
+        pipeline_path=pipeline_path,
+        input_path=output_dir,
+        output_dir=output_dir,
+        timestamp=now,
+        execution_mode="local",
+        last_updated=now,
+        datasets=datasets,
+        config={
+            "success_markers_required": True,
+            "work_ids": work_ids,
+            "processing_generation": hashlib.sha256(
+                f"migration\n{inventory}".encode()
+            ).hexdigest(),
+            "pipeline_sha256": _file_sha256(pipeline_path),
+            "metadata_sha256": _file_sha256(metadata_snapshot),
+            "include_dataset_column": True,
+            "no_qc": True,
+            "process_only_layer": None,
+        },
+    )
+    save_processing_state(state, output_dir)
 
 
 def _pending_header_targets(report: MetadataMigrationReport) -> int:
@@ -220,9 +326,7 @@ def migrate_legacy_measurement_tables(
                     for image_name, value in dataset_work_ids.items()
                     if Path(str(image_name)).stem == stem
                 ),
-                hashlib.sha256(
-                    f"migration:{dataset}/{stem}".encode()
-                ).hexdigest(),
+                _migration_work_id(dataset, stem),
             )
             marker = publish_image_success(
                 output_dir,
@@ -282,6 +386,8 @@ def run_migrate(
         dry_run=dry_run,
         finalize_publication=False,
     )
+    if not dry_run:
+        _ensure_migration_processing_state(output_dir)
     tables_migrated, tables_skipped, table_failures = (
         migrate_legacy_measurement_tables(
             output_dir,
