@@ -144,13 +144,7 @@ class TestForwardRunStoreLayout:
         dataset_dir = output_dir / "results" / "plates"
         store = zarr_store_path(output_dir, "plates", "plate_001")
         table_file = store / MEASUREMENT_TABLE_RELATIVE_PATH
-        overlay_file = (
-            output_dir
-            / "deliverables"
-            / "overlays"
-            / "plates"
-            / "plate_001.png"
-        )
+        overlay_file = output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
 
         # A store is a DIRECTORY with a root `zarr.json`. `.exists()` alone
         # would also pass for a stray file of the same name.
@@ -287,11 +281,7 @@ class TestOverlayAlwaysOn:
         )
 
         overlay_png = (
-            output_dir
-            / "deliverables"
-            / "overlays"
-            / "plates"
-            / "plate_001.png"
+            output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
         )
         assert overlay_png.exists(), (
             f"Expected overlay PNG at {overlay_png} on a default forward run."
@@ -335,19 +325,11 @@ class TestMeasureRerun:
         store = zarr_store_path(output_dir, "plates", "plate_001")
         store_root = store / "zarr.json"
         table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
-        overlay_path = (
-            output_dir
-            / "deliverables"
-            / "overlays"
-            / "plates"
-            / "plate_001.png"
-        )
+        overlay_path = output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
 
         assert store_root.is_file()
         assert table_path.is_file()
-        assert not (
-            output_dir / "results" / "plates" / "measurements"
-        ).exists()
+        assert not (output_dir / "results" / "plates" / "measurements").exists()
         assert overlay_path.exists(), (
             "Forward run should always write overlay PNG."
         )
@@ -378,10 +360,7 @@ class TestMeasureRerun:
             ],
         )
         assert measure.exit_code != 0
-        assert (
-            "cannot mutate a marker-authorized incremental run"
-            in measure.output
-        )
+        assert "cannot mutate a marker-authorized incremental run" in measure.output
         assert table_path.read_bytes() == table_bytes_before
         assert store_root.stat().st_mtime_ns == store_mtime_before
         assert overlay_path.stat().st_mtime_ns == overlay_mtime_before
@@ -469,18 +448,13 @@ class TestMeasureRerun:
             ],
         )
         assert measure.exit_code != 0
-        assert (
-            "cannot mutate a marker-authorized incremental run"
-            in measure.output
-        )
+        assert "cannot mutate a marker-authorized incremental run" in measure.output
 
         table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
         assert table_path.is_file(), (
             f"Expected embedded measurements at {table_path}"
         )
-        assert not (
-            output_dir / "results" / "plates" / "measurements"
-        ).exists()
+        assert not (output_dir / "results" / "plates" / "measurements").exists()
 
         df = pd.read_parquet(table_path)
         assert not df.empty
@@ -521,16 +495,12 @@ class TestMeasureRerun:
                 "--force-local",
             ],
         )
-        assert first.exit_code == 0, (
-            f"First forward run failed:\n{first.output}"
-        )
+        assert first.exit_code == 0, f"First forward run failed:\n{first.output}"
 
         store = zarr_store_path(output_dir, "plates", "plate_001")
         table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
         assert table_path.is_file()
-        assert not (
-            output_dir / "results" / "plates" / "measurements"
-        ).exists()
+        assert not (output_dir / "results" / "plates" / "measurements").exists()
         table_mtime_before = table_path.stat().st_mtime_ns
 
         time.sleep(0.1)
@@ -558,9 +528,7 @@ class TestMeasureRerun:
         assert table_path.is_file(), (
             "Embedded measurements missing after --overwrite rerun."
         )
-        assert not (
-            output_dir / "results" / "plates" / "measurements"
-        ).exists()
+        assert not (output_dir / "results" / "plates" / "measurements").exists()
         table_mtime_after = table_path.stat().st_mtime_ns
         assert table_mtime_after > table_mtime_before, (
             f"Embedded table mtime did not advance after --overwrite rerun "
@@ -639,9 +607,9 @@ class TestMeasureFlagValidation:
             f"Measure mode with --sample should fail but got exit_code=0:\n"
             f"{result.output}"
         )
-        assert (
-            "--mode measure cannot be combined with --sample" in result.output
-        ), f"Error message missing expected substring:\n{result.output}"
+        assert "--mode measure cannot be combined with --sample" in result.output, (
+            f"Error message missing expected substring:\n{result.output}"
+        )
 
     def test_removed_resume_option_is_rejected(
         self, runner, temp_pipeline, prepared_output_dir
@@ -662,7 +630,8 @@ class TestMeasureFlagValidation:
             ],
         )
         assert result.exit_code != 0, (
-            f"Removed option should fail but got exit_code=0:\n{result.output}"
+            f"Removed option should fail but got exit_code=0:\n"
+            f"{result.output}"
         )
         assert "No such option: --resume" in result.output, (
             f"Error message missing expected substring:\n{result.output}"
@@ -690,9 +659,9 @@ class TestMeasureFlagValidation:
             f"Measure mode with --restart should fail but got exit_code=0:\n"
             f"{result.output}"
         )
-        assert (
-            "--mode measure cannot be combined with --restart" in result.output
-        ), f"Error message missing expected substring:\n{result.output}"
+        assert "--mode measure cannot be combined with --restart" in result.output, (
+            f"Error message missing expected substring:\n{result.output}"
+        )
 
     def test_measure_rejects_retry_failures(
         self, runner, temp_pipeline, prepared_output_dir
@@ -717,8 +686,7 @@ class TestMeasureFlagValidation:
             f"{result.output}"
         )
         assert (
-            "--mode measure cannot be combined with --retry-failures"
-            in result.output
+            "--mode measure cannot be combined with --retry-failures" in result.output
         ), f"Error message missing expected substring:\n{result.output}"
 
     def test_measure_rejects_overwrite(
@@ -743,10 +711,9 @@ class TestMeasureFlagValidation:
             f"Measure mode with --overwrite should fail but got exit_code=0:\n"
             f"{result.output}"
         )
-        assert (
-            "--mode measure cannot be combined with --overwrite"
-            in result.output
-        ), f"Error message missing expected substring:\n{result.output}"
+        assert "--mode measure cannot be combined with --overwrite" in result.output, (
+            f"Error message missing expected substring:\n{result.output}"
+        )
 
     def test_measure_rejects_missing_output_dir(
         self, runner, temp_pipeline, tmp_path
