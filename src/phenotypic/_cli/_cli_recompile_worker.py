@@ -14,6 +14,8 @@ from ._cli_recompile_slurm_scripts import (
     TASK_FINALIZE,
     TASK_MEASUREMENTS,
     TASK_OVERLAY,
+    refresh_overlay_marker_authority,
+    repair_overlay_marker_authority,
     recompile_task_status_path,
     recompile_attempt_dir,
 )
@@ -265,12 +267,29 @@ def _run_measurement_task(
     metadata_csv = Path(str(metadata_csv_raw)) if metadata_csv_raw else None
     from ._cli_recompile_tables import recompile_embedded_measurement_table
 
+    raw_repairs = task.get("overlay_repairs", [])
+    if not isinstance(raw_repairs, list):
+        raise ValueError("Measurement task overlay_repairs must be a list")
+    repairs_by_table: dict[Path, dict[str, Any]] = {}
+    for raw_repair in raw_repairs:
+        if not isinstance(raw_repair, dict):
+            raise ValueError("Measurement task has invalid overlay repair")
+        repair_table = Path(str(raw_repair["table_path"]))
+        repairs_by_table[repair_table] = raw_repair
+
     for table_path in files:
         if tuple(table_path.parts[-3:]) == (
             "tables",
             "measurements",
             "table.parquet",
         ):
+            repair = repairs_by_table.get(table_path)
+            if repair is not None:
+                _repair_measurement_overlay(
+                    output_dir,
+                    repair,
+                    slurm_generation=slurm_generation,
+                )
             dataset = _dataset_name_from_measurement_path(
                 output_dir, table_path
             )
@@ -282,6 +301,7 @@ def _run_measurement_task(
                 commit_guard=lambda: generation_publication_guard(
                     output_dir, slurm_generation
                 ),
+                lifecycle_epoch=slurm_generation,
             )
 
     path_to_dataset = {
@@ -316,6 +336,49 @@ def _run_measurement_task(
             lambda p: shard_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
 
+
+
+def _repair_measurement_overlay(
+    output_dir: Path,
+    repair: dict[str, Any],
+    *,
+    slurm_generation: str,
+) -> None:
+    """Repair a marker-bound overlay before the same task rewrites its table."""
+    from ._cli_output_manager import OutputManager
+
+    dataset_name = str(repair["dataset_name"])
+    store_path = Path(str(repair["store_path"]))
+    expected_table = store_path / "tables" / "measurements" / "table.parquet"
+    if Path(str(repair["table_path"])) != expected_table:
+        raise ValueError("Overlay repair table does not belong to its store")
+    image = load_image_from_store(store_path)
+    stem = store_stem(store_path)
+    output_manager = OutputManager.from_config(
+        base_dir=output_dir,
+        ext=".png",
+        include_dataset_column=False,
+        overlay_alpha=float(repair.get("overlay_alpha", 0.3)),
+        save_overlays=True,
+    )
+
+    def _render() -> object:
+        return output_manager.save_overlay(image, dataset_name, stem)
+
+    if not repair_overlay_marker_authority(
+        output_dir,
+        dataset_name,
+        stem,
+        store_path,
+        _render,
+        lifecycle_epoch=slurm_generation,
+        commit_guard=lambda: generation_publication_guard(
+            output_dir, slurm_generation
+        ),
+    ):
+        raise RuntimeError(
+            "Could not restore marker authority after overlay repair"
+        )
 
 def _sort_measurement_shard(shard_df: Any) -> Any:
     """Sort a shard by stable metadata columns when they are available."""
@@ -367,14 +430,14 @@ def _run_overlay_task(
     *,
     slurm_generation: str,
 ) -> dict[str, Any]:
-    """Regenerate one overlay, treating per-image failures as nonfatal."""
+    """Regenerate one overlay, treating non-authoritative failures as nonfatal."""
     try:
         from ._cli_output_manager import OutputManager
 
         dataset_name = str(task["dataset_name"])
         store_path = Path(str(task["store_path"]))
         image = load_image_from_store(store_path)
-
+        stem = store_stem(store_path)
         output_manager = OutputManager.from_config(
             base_dir=output_dir,
             ext=".png",
@@ -382,24 +445,28 @@ def _run_overlay_task(
             overlay_alpha=float(task.get("overlay_alpha", 0.3)),
             save_overlays=True,
         )
-        with generation_publication_guard(output_dir, slurm_generation):
-            # ``store_stem``, never ``Path.stem``: `.ome.zarr` is a double
-            # suffix, so `.stem` would write `<stem>.ome.png` -- an overlay
-            # under a name nothing ever looks for, leaving the real one
-            # missing and requeued on every recompile.
-            stem = store_stem(store_path)
-            output_manager.save_overlay(image, dataset_name, stem)
-            if task.get("restore_marker_authority"):
-                from phenotypic.sdk_._hdf_to_zarr import (
-                    _republish_image_marker,
-                )
 
-                if not _republish_image_marker(
-                    output_dir, dataset_name, stem, store_path
-                ):
-                    raise RuntimeError(
-                        "Could not restore marker authority after overlay repair"
-                    )
+        def _render() -> object:
+            return output_manager.save_overlay(image, dataset_name, stem)
+
+        if task.get("restore_marker_authority"):
+            if not repair_overlay_marker_authority(
+                output_dir,
+                dataset_name,
+                stem,
+                store_path,
+                _render,
+                lifecycle_epoch=slurm_generation,
+                commit_guard=lambda: generation_publication_guard(
+                    output_dir, slurm_generation
+                ),
+            ):
+                raise RuntimeError(
+                    "Could not restore marker authority after overlay repair"
+                )
+        else:
+            with generation_publication_guard(output_dir, slurm_generation):
+                _render()
     except SlurmGenerationInactiveError:
         raise
     except Exception as exc:
@@ -416,12 +483,13 @@ def _run_overlay_task(
 
     return {"status": "completed", "overlay_failed": False}
 
-
 def _restore_overlay_marker_authority(
-    output_dir: Path, task_manifest: Path
+    output_dir: Path,
+    task_manifest: Path,
+    *,
+    slurm_generation: str | None = None,
 ) -> None:
-    """Re-fingerprint repaired overlay markers after all array work is done."""
-    from phenotypic.sdk_._hdf_to_zarr import _republish_image_marker
+    """Compare and refresh repaired overlay markers after array work is done."""
 
     manifest = json.loads(task_manifest.read_text(encoding="utf-8"))
     tasks = manifest.get("tasks")
@@ -434,11 +502,12 @@ def _restore_overlay_marker_authority(
             continue
         store_path = Path(str(item["store_path"]))
         dataset_name = str(item["dataset_name"])
-        if not _republish_image_marker(
+        if not refresh_overlay_marker_authority(
             output_dir,
             dataset_name,
             store_stem(store_path),
             store_path,
+            lifecycle_epoch=slurm_generation,
         ):
             raise RuntimeError(
                 "Could not restore marker authority after overlay repair"
@@ -479,7 +548,11 @@ def _run_finalizer_task(
         # so the marker always describes the final embedded-table bytes. Fence
         # this canonical mutation before it occurs, not only later publications.
         with generation_publication_guard(output_dir, slurm_generation):
-            _restore_overlay_marker_authority(output_dir, task_manifest)
+            _restore_overlay_marker_authority(
+                output_dir,
+                task_manifest,
+                slurm_generation=slurm_generation,
+            )
         # The aggregate lock excludes competing finalizers. Each canonical
         # mutation also acquires the lifecycle guard independently, allowing a
         # newer generation to fence this worker between publication phases.

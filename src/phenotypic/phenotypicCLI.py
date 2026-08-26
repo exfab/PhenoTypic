@@ -2688,6 +2688,8 @@ def _regenerate_missing_overlays(
 
     from phenotypic._cli._cli_recompile_slurm_scripts import (
         _marker_binds_overlay_and_table,
+        marker_claims_measurement_authority,
+        repair_overlay_marker_authority,
     )
     from phenotypic.sdk_ import (
         MEASUREMENT_TABLE_RELATIVE_PATH,
@@ -2717,7 +2719,8 @@ def _regenerate_missing_overlays(
                     output_dir, dataset.name, stem
                 )
                 if not requires_marker_restore and (
-                    table_path.exists() or marker_path.exists()
+                    table_path.exists()
+                    or marker_claims_measurement_authority(marker_path)
                 ):
                     raise RuntimeError(
                         "Cannot safely restore marker authority for "
@@ -2745,17 +2748,24 @@ def _regenerate_missing_overlays(
     ) -> None:
         image = load_image_from_store(store_path)
         stem = store_stem(store_path)
-        output_manager.save_overlay(image, dataset_name, stem)
-        from phenotypic.sdk_._hdf_to_zarr import _republish_image_marker
+
+        def _render() -> object:
+            return output_manager.save_overlay(image, dataset_name, stem)
 
         if requires_marker_restore:
-            restored = _republish_image_marker(
-                output_dir, dataset_name, stem, store_path
+            restored = repair_overlay_marker_authority(
+                output_dir,
+                dataset_name,
+                stem,
+                store_path,
+                _render,
             )
             if not restored:
                 raise RuntimeError(
                     "Could not restore marker authority after overlay repair"
                 )
+        else:
+            _render()
 
     console.print(
         f"[cyan]Regenerating {len(work)} missing overlay(s) "

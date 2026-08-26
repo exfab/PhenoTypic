@@ -680,7 +680,8 @@ def test_local_recompile_aborts_when_required_overlay_marker_refresh_fails(
 
     with (
         patch(
-            "phenotypic.sdk_._hdf_to_zarr._republish_image_marker",
+            "phenotypic._cli._cli_recompile_slurm_scripts."
+            "repair_overlay_marker_authority",
             **refresh_kwargs,
         ),
         patch(
@@ -698,3 +699,86 @@ def test_local_recompile_aborts_when_required_overlay_marker_refresh_fails(
         )
 
     aggregate.assert_not_called()
+
+def test_local_overlay_recovery_rejects_post_discovery_table_corruption(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Recovery compares non-overlay artifacts again immediately before publish."""
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic._cli._cli_output_manager import OutputManager
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_overlays_dir,
+    )
+    from tests.unit.sdk_._migration_fixtures import (
+        DATASET,
+        run_stems,
+        run_work_id,
+    )
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
+    overlay.unlink()
+    original_save = OutputManager.save_overlay
+
+    def _save_then_corrupt(
+        manager: OutputManager,
+        image: object,
+        dataset_name: str,
+        image_stem: str,
+    ) -> object:
+        result = original_save(
+            manager, image, dataset_name, image_stem  # type: ignore[arg-type]
+        )
+        table.write_bytes(b"not a parquet file")
+        return result
+
+    with (
+        patch.object(OutputManager, "save_overlay", _save_then_corrupt),
+        pytest.raises(RuntimeError, match="marker authority"),
+    ):
+        _regenerate_missing_overlays(output_dir, overlay_alpha=0.6, n_jobs=1)
+
+    assert not valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+
+
+def test_local_process_only_missing_overlay_remains_best_effort(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A marker without measurement authority does not make overlay repair fatal."""
+    import json
+
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_overlays_dir,
+        image_completion_marker_path,
+    )
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "process-only"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    marker_path = image_completion_marker_path(output_dir, DATASET, stem)
+    marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    marker["mode"] = "process"
+    marker["artifacts"].pop("measurements")
+    marker_path.write_text(json.dumps(marker), encoding="utf-8")
+    (store / MEASUREMENT_TABLE_RELATIVE_PATH).unlink()
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
+    overlay.unlink()
+
+    _regenerate_missing_overlays(output_dir, overlay_alpha=0.6, n_jobs=1)
+
+    assert overlay.is_file()

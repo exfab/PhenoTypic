@@ -758,13 +758,29 @@ def test_slurm_recompile_schedules_table_bound_to_missing_overlay(
         / MEASUREMENT_TABLE_RELATIVE_PATH
         for stem in stems
     }
-    overlay_task = next(
+    table = (
+        zarr_store_path(output_dir, DATASET, missing_stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    measurement_task = next(
         task
         for task in tasks
-        if task["task_type"] == TASK_OVERLAY
-        and Path(str(task["store_path"])).name.startswith(missing_stem)
+        if task["task_type"] == TASK_MEASUREMENTS
+        and str(table) in task["files"]
     )
-    assert overlay_task["restore_marker_authority"] is True
+    assert measurement_task["overlay_repairs"] == [
+        {
+            "dataset_name": DATASET,
+            "store_path": str(table.parents[2]),
+            "table_path": str(table),
+            "overlay_alpha": 0.3,
+        }
+    ]
+    assert not any(
+        task["task_type"] == TASK_OVERLAY
+        and task.get("store_path") == str(table.parents[2])
+        for task in tasks
+    )
 
 
 def test_slurm_overlay_worker_restores_marker_authority(
@@ -835,9 +851,7 @@ def test_slurm_overlay_worker_restores_marker_authority(
     table = store / MEASUREMENT_TABLE_RELATIVE_PATH
     assert table in sources
 
-    # A concurrent measurement task can promote a different table after the
-    # overlay task's first refresh. The finalizer must re-fingerprint once all
-    # ordinary tasks are terminal.
+    # A changed non-overlay artifact must never be re-fingerprinted as valid.
     frame = pl.read_parquet(table).with_columns(
         pl.lit("changed").alias("Metadata_ReviewProbe")
     )
@@ -853,9 +867,10 @@ def test_slurm_overlay_worker_restores_marker_authority(
         json.dumps({"tasks": [overlay_task]}), encoding="utf-8"
     )
 
-    _restore_overlay_marker_authority(output_dir, task_manifest)
+    with pytest.raises(RuntimeError, match="non-overlay artifact changed"):
+        _restore_overlay_marker_authority(output_dir, task_manifest)
 
-    assert valid_image_success(
+    assert not valid_image_success(
         output_dir,
         dataset=DATASET,
         image_stem=stem,
@@ -1123,3 +1138,153 @@ def test_missing_overlay_recovery_rejects_store_symlink_outside_output(
     assert (
         store / MEASUREMENT_TABLE_RELATIVE_PATH
     ) not in measurement_files
+
+def test_measurement_worker_refreshes_marker_with_active_slurm_generation(
+    _completed_run_two: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The real worker publishes its active generation, not the old marker epoch."""
+    import shutil
+
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        TASK_MEASUREMENTS,
+        build_recompile_tasks,
+    )
+    from phenotypic._cli._cli_recompile_worker import main
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_overlays_dir,
+        image_completion_marker_path,
+    )
+    from tests.unit.sdk_._migration_fixtures import (
+        DATASET,
+        run_stems,
+        run_work_id,
+    )
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
+    overlay.unlink()
+    generation = "actual-slurm-worker-generation"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
+    tasks = build_recompile_tasks(
+        output_dir,
+        [DATASET],
+        include_dataset_column=True,
+        overlay_alpha=0.6,
+        shard_size=1,
+        attempt_id=generation,
+    )
+    task = next(
+        item
+        for item in tasks
+        if item["task_type"] == TASK_MEASUREMENTS
+        and str(table) in item["files"]
+    )
+    manifest_path = (
+        progress_dir(output_dir)
+        / "recompile"
+        / "attempts"
+        / generation
+        / "task_manifest.json"
+    )
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text(
+        json.dumps({"tasks": [task]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SLURM_JOB_ID", "987654")
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--output-dir",
+            str(output_dir),
+            "--task-manifest",
+            str(manifest_path),
+            "--task-index",
+            "0",
+            "--slurm-generation",
+            generation,
+            "--attempt-id",
+            generation,
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    marker = json.loads(
+        image_completion_marker_path(output_dir, DATASET, stem).read_text(
+            encoding="utf-8"
+        )
+    )
+    assert overlay.is_file()
+    assert marker["lifecycle_epoch"] == generation
+    assert valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+
+
+def test_recoverable_overlay_and_table_share_one_slurm_task(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Same-store overlay and table mutation cannot race in separate tasks."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        TASK_MEASUREMENTS,
+        build_recompile_tasks,
+    )
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_overlays_dir,
+    )
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    (dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png").unlink()
+
+    tasks = build_recompile_tasks(
+        output_dir,
+        [DATASET],
+        include_dataset_column=True,
+        overlay_alpha=0.3,
+        shard_size=1,
+        attempt_id="ordered-recovery",
+    )
+    same_store_tasks = [
+        task
+        for task in tasks
+        if str(table) in task.get("files", [])
+        or task.get("store_path") == str(store)
+    ]
+
+    assert len(same_store_tasks) == 1
+    task = same_store_tasks[0]
+    assert task["task_type"] == TASK_MEASUREMENTS
+    assert task["overlay_repairs"] == [
+        {
+            "dataset_name": DATASET,
+            "store_path": str(store),
+            "table_path": str(table),
+            "overlay_alpha": 0.3,
+        }
+    ]

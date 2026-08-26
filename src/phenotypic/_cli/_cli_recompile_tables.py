@@ -51,6 +51,7 @@ def _republish_table_marker(
     marker_path: Path,
     *,
     commit_guard: CommitGuard | None,
+    lifecycle_epoch: str | None = None,
 ) -> None:
     """Rehash all existing artifacts and publish the marker last."""
     marker = json.loads(marker_path.read_text(encoding="utf-8"))
@@ -62,7 +63,11 @@ def _republish_table_marker(
         image_stem=str(marker["image_stem"]),
         mode=str(marker["mode"]),
         attempt_id=str(marker["attempt_id"]),
-        lifecycle_epoch=str(marker["lifecycle_epoch"]),
+        lifecycle_epoch=(
+            lifecycle_epoch
+            if lifecycle_epoch is not None
+            else str(marker["lifecycle_epoch"])
+        ),
         artifacts=_marker_artifacts(output_dir, marker),
         commit_guard=commit_guard,
     )
@@ -111,6 +116,7 @@ def recompile_embedded_measurement_table(
     metadata_csv: Path | None,
     *,
     commit_guard: CommitGuard | None = None,
+    lifecycle_epoch: str | None = None,
 ) -> None:
     """Rewrite one authorized embedded table and republish its marker last."""
     from phenotypic.sdk_ import image_completion_marker_path
@@ -150,7 +156,12 @@ def recompile_embedded_measurement_table(
     marker_path = image_completion_marker_path(
         output_dir, dataset, store_stem(store_path)
     )
-    _republish_table_marker(output_dir, marker_path, commit_guard=commit_guard)
+    _republish_table_marker(
+        output_dir,
+        marker_path,
+        commit_guard=commit_guard,
+        lifecycle_epoch=lifecycle_epoch,
+    )
 
 
 def recompile_embedded_measurement_tables(
@@ -158,6 +169,7 @@ def recompile_embedded_measurement_tables(
     metadata_csv: Path | None,
     *,
     commit_guard: CommitGuard | None = None,
+    lifecycle_epoch: str | None = None,
 ) -> int:
     """Project, rejoin, replace, and marker-publish every authorized table.
 
@@ -235,7 +247,10 @@ def recompile_embedded_measurement_tables(
             output_dir, dataset, store_stem(store_path)
         )
         _republish_table_marker(
-            output_dir, marker_path, commit_guard=commit_guard
+            output_dir,
+            marker_path,
+            commit_guard=commit_guard,
+            lifecycle_epoch=lifecycle_epoch,
         )
         changed += 1
     return changed
