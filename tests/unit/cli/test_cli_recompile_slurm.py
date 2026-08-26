@@ -1186,6 +1186,7 @@ def test_finalizer_overlay_refresh_locks_store_before_lifecycle(
 def test_superseded_finalizer_cannot_refresh_overlay_marker(
     _completed_run_two: Path,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Final marker refresh is fenced before a stale worker can mutate it."""
     import shutil
@@ -1215,6 +1216,7 @@ def test_superseded_finalizer_cannot_refresh_overlay_marker(
         output_dir, generation=generation, mode="recompile"
     )
     assert deactivate_generation(output_dir, generation)
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
     manifest_path = (
         progress_dir(output_dir)
         / "recompile"
@@ -2283,3 +2285,191 @@ def test_retry_recovers_crash_after_transition_journal_before_promotion(
     )
     assert not transition_path.exists()
     assert list(transition_path.parent.glob(f"{stem}.*.parquet")) == []
+
+@pytest.mark.parametrize(
+    "redirect_component",
+    ["dataset-root", "transition-parent"],
+)
+def test_begin_transition_rejects_symlink_root_without_external_writes(
+    _completed_run_two: Path,
+    tmp_path: Path,
+    redirect_component: str,
+) -> None:
+    """A redirected transition directory cannot receive or delete payloads."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+    transition_root = recompile_table_transition_path(
+        output_dir, DATASET, stem
+    ).parent
+    external = tmp_path / "external-transition-root"
+    external.mkdir()
+    if redirect_component == "dataset-root":
+        redirect = transition_root
+        payload_dir = external
+    else:
+        redirect = transition_root.parent
+        payload_dir = external / DATASET
+        payload_dir.mkdir()
+    redirect.parent.mkdir(parents=True, exist_ok=True)
+    victim = payload_dir / f"{stem}.{'a' * 32}.parquet"
+    victim.write_bytes(b"external victim")
+    redirect.symlink_to(external, target_is_directory=True)
+
+    with pytest.raises((RuntimeError, ValueError)):
+        recompile_embedded_measurement_table(
+            output_dir, table, DATASET, metadata
+        )
+
+    assert victim.read_bytes() == b"external victim"
+    assert sorted(path.name for path in payload_dir.iterdir()) == [victim.name]
+
+
+@pytest.mark.parametrize("forgery", ["receipt-symlink", "external-hardlink"])
+def test_retry_rejects_linked_transition_evidence(
+    _completed_run_two: Path,
+    tmp_path: Path,
+    forgery: str,
+) -> None:
+    """Transition receipts and staged payloads must have one canonical link."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        build_recompile_tasks,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+    with (
+        patch(
+            "phenotypic._cli._cli_recompile_tables._republish_table_marker",
+            side_effect=RuntimeError("simulated crash"),
+        ),
+        pytest.raises(RuntimeError, match="simulated crash"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir, table, DATASET, metadata
+        )
+
+    transition_path = recompile_table_transition_path(
+        output_dir, DATASET, stem
+    )
+    transition = json.loads(transition_path.read_text(encoding="utf-8"))
+    staged = output_dir / str(transition["prepared_path"])
+    if forgery == "receipt-symlink":
+        external_receipt = tmp_path / "external-transition.json"
+        external_receipt.write_bytes(transition_path.read_bytes())
+        transition_path.unlink()
+        transition_path.symlink_to(external_receipt)
+    else:
+        external_alias = tmp_path / "external-stage-alias.parquet"
+        external_alias.hardlink_to(staged)
+
+    with pytest.raises(RuntimeError, match="measurement authority"):
+        build_recompile_tasks(
+            output_dir,
+            [DATASET],
+            include_dataset_column=True,
+            overlay_alpha=0.3,
+            shard_size=1,
+            attempt_id=f"reject-{forgery}",
+        )
+
+
+def test_overlay_refresh_holds_generation_guard_only_for_marker_commit(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Marker discovery and hashing stay outside the lifecycle commit window."""
+    import shutil
+    from contextlib import contextmanager
+    from typing import Iterator
+
+    import phenotypic._cli._cli_recompile_slurm_scripts as scripts
+    from phenotypic.sdk_ import dataset_overlays_dir
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
+    overlay.write_bytes(overlay.read_bytes() + b"repaired")
+    lifecycle_active = False
+    recovery_guard_states: list[bool] = []
+    guard_entries = 0
+    real_recovery = scripts._overlay_recovery_marker
+
+    def _observe_recovery(*args: object, **kwargs: object) -> object:
+        recovery_guard_states.append(lifecycle_active)
+        return real_recovery(*args, **kwargs)  # type: ignore[arg-type]
+
+    @contextmanager
+    def _commit_guard() -> Iterator[None]:
+        nonlocal lifecycle_active, guard_entries
+        guard_entries += 1
+        lifecycle_active = True
+        try:
+            yield
+        finally:
+            lifecycle_active = False
+
+    with patch.object(
+        scripts,
+        "_overlay_recovery_marker",
+        side_effect=_observe_recovery,
+    ):
+        assert scripts.refresh_overlay_marker_authority(
+            output_dir,
+            DATASET,
+            stem,
+            store,
+            commit_guard=_commit_guard,
+        )
+
+    assert recovery_guard_states == [False]
+    assert guard_entries == 1

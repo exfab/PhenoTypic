@@ -390,26 +390,16 @@ def repair_overlay_marker_authority(
     table_path = Path(store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
     lock_path = recompile_store_lock_path(output_dir, dataset_name, stem)
     with exclusive_path_lock(lock_path, timeout=60.0):
-        if commit_guard is None:
-            return _repair_overlay_marker_authority_locked(
-                output_dir,
-                dataset_name,
-                stem,
-                overlay_path,
-                table_path,
-                render_overlay,
-                lifecycle_epoch=lifecycle_epoch,
-            )
-        with commit_guard():
-            return _repair_overlay_marker_authority_locked(
-                output_dir,
-                dataset_name,
-                stem,
-                overlay_path,
-                table_path,
-                render_overlay,
-                lifecycle_epoch=lifecycle_epoch,
-            )
+        return _repair_overlay_marker_authority_locked(
+            output_dir,
+            dataset_name,
+            stem,
+            overlay_path,
+            table_path,
+            render_overlay,
+            lifecycle_epoch=lifecycle_epoch,
+            commit_guard=commit_guard,
+        )
 
 
 def _repair_overlay_marker_authority_locked(
@@ -421,8 +411,9 @@ def _repair_overlay_marker_authority_locked(
     render_overlay: Callable[[], object],
     *,
     lifecycle_epoch: str | None,
+    commit_guard: CommitGuard | None,
 ) -> bool:
-    """Validate, render, compare, and publish while holding recovery locks."""
+    """Validate, render, compare, and publish while holding the store lock."""
     if (
         _overlay_recovery_marker(
             output_dir,
@@ -446,6 +437,7 @@ def _repair_overlay_marker_authority_locked(
         overlay_path,
         table_path,
         lifecycle_epoch=lifecycle_epoch,
+        commit_guard=commit_guard,
     )
 
 
@@ -465,24 +457,15 @@ def refresh_overlay_marker_authority(
     table_path = Path(store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
     lock_path = recompile_store_lock_path(output_dir, dataset_name, stem)
     with exclusive_path_lock(lock_path, timeout=60.0):
-        if commit_guard is None:
-            return _refresh_overlay_marker_authority_locked(
-                output_dir,
-                dataset_name,
-                stem,
-                overlay_path,
-                table_path,
-                lifecycle_epoch=lifecycle_epoch,
-            )
-        with commit_guard():
-            return _refresh_overlay_marker_authority_locked(
-                output_dir,
-                dataset_name,
-                stem,
-                overlay_path,
-                table_path,
-                lifecycle_epoch=lifecycle_epoch,
-            )
+        return _refresh_overlay_marker_authority_locked(
+            output_dir,
+            dataset_name,
+            stem,
+            overlay_path,
+            table_path,
+            lifecycle_epoch=lifecycle_epoch,
+            commit_guard=commit_guard,
+        )
 
 
 def _refresh_overlay_marker_authority_locked(
@@ -493,6 +476,7 @@ def _refresh_overlay_marker_authority_locked(
     table_path: Path,
     *,
     lifecycle_epoch: str | None,
+    commit_guard: CommitGuard | None,
 ) -> bool:
     """Publish only when every non-overlay descriptor still matches disk."""
     recovery = _overlay_recovery_marker(
@@ -525,6 +509,7 @@ def _refresh_overlay_marker_authority_locked(
         ),
         artifacts=artifacts,
         expected_artifact_descriptors=expected_artifact_descriptors,
+        commit_guard=commit_guard,
     )
     return True
 

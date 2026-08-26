@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import stat
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -59,6 +60,81 @@ def _transition_root(output_dir: Path, dataset_name: str) -> Path:
     )
 
 
+def _validated_transition_root(
+    output_root: Path,
+    dataset_name: str,
+    *,
+    create: bool,
+) -> Path:
+    """Return a contained directory tree with no symlink components."""
+    canonical_output = Path(output_root).resolve(strict=True)
+    root = _transition_root(canonical_output, dataset_name)
+    try:
+        relative = root.relative_to(canonical_output)
+    except ValueError as exc:
+        raise ValueError("Transition directory escapes output root") from exc
+    current = canonical_output
+    for component in relative.parts:
+        if component in {"", ".", ".."}:
+            raise ValueError("Transition directory is not canonical")
+        candidate = current / component
+        try:
+            identity = candidate.lstat()
+        except FileNotFoundError:
+            if not create:
+                raise
+            try:
+                candidate.mkdir()
+            except FileExistsError:
+                pass
+            identity = candidate.lstat()
+        if stat.S_ISLNK(identity.st_mode) or not stat.S_ISDIR(
+            identity.st_mode
+        ):
+            raise ValueError("Transition directory is not canonical")
+        current = candidate
+    return root
+
+
+def _canonical_single_link_file(path: Path, *, parent: Path) -> Path:
+    """Return a canonical regular file with exactly one filesystem link."""
+    candidate = Path(path)
+    identity = candidate.lstat()
+    if (
+        candidate.parent != parent
+        or stat.S_ISLNK(identity.st_mode)
+        or not stat.S_ISREG(identity.st_mode)
+        or identity.st_nlink != 1
+        or candidate.resolve(strict=True) != candidate
+    ):
+        raise ValueError("Transition file is not canonical")
+    return candidate
+
+
+def _validated_transition_receipt_path(
+    output_root: Path,
+    dataset_name: str,
+    stem: str,
+    *,
+    allow_missing: bool,
+) -> Path:
+    """Return the canonical single-link transition receipt path."""
+    root = _validated_transition_root(
+        output_root,
+        dataset_name,
+        create=False,
+    )
+    if Path(stem).name != stem or stem in {".", ".."}:
+        raise ValueError("Transition image stem is not canonical")
+    receipt = root / f"{stem}.json"
+    try:
+        return _canonical_single_link_file(receipt, parent=root)
+    except FileNotFoundError:
+        if allow_missing:
+            return receipt
+        raise
+
+
 def recompile_table_transition_path(
     output_dir: Path, dataset_name: str, stem: str
 ) -> Path:
@@ -105,19 +181,23 @@ def _validated_transition_staging_path(
     relative = transition.get("prepared_path")
     if not isinstance(relative, str) or Path(relative).is_absolute():
         raise ValueError("Transition prepared path is not relative")
-    staging_root = _transition_root(output_root, dataset_name)
-    if (
-        staging_root.is_symlink()
-        or staging_root.resolve(strict=True) != staging_root
-    ):
-        raise ValueError("Transition staging directory is not canonical")
+    staging_root = _validated_transition_root(
+        output_root,
+        dataset_name,
+        create=False,
+    )
     candidate = output_root / relative
+    try:
+        candidate = _canonical_single_link_file(
+            candidate,
+            parent=staging_root,
+        )
+    except (OSError, ValueError) as exc:
+        raise ValueError(
+            "Transition prepared payload is not canonical"
+        ) from exc
     if (
-        candidate.parent != staging_root
-        or candidate.is_symlink()
-        or not candidate.is_file()
-        or candidate.resolve(strict=True) != candidate
-        or candidate == table_path
+        candidate == table_path
         or candidate.samefile(table_path)
         or re.fullmatch(
             rf"{re.escape(stem)}\.[0-9a-f]{{32}}\.parquet",
@@ -130,21 +210,26 @@ def _validated_transition_staging_path(
 
 
 def _cleanup_orphan_staging_payloads(
-    staging_root: Path,
+    output_root: Path,
+    dataset_name: str,
     stem: str,
     *,
     keep: Path,
 ) -> None:
-    """Remove only canonical same-stem staging files after journal rotation."""
+    """Remove only canonical single-link staging files after journal rotation."""
+    staging_root = _validated_transition_root(
+        output_root,
+        dataset_name,
+        create=False,
+    )
+    _canonical_single_link_file(keep, parent=staging_root)
     pattern = re.compile(rf"{re.escape(stem)}\.[0-9a-f]{{32}}\.parquet")
-    for candidate in staging_root.glob(f"{stem}.*.parquet"):
-        if (
-            candidate == keep
-            or candidate.is_symlink()
-            or not candidate.is_file()
-            or candidate.parent != staging_root
-            or pattern.fullmatch(candidate.name) is None
-        ):
+    for candidate in staging_root.iterdir():
+        if candidate == keep or pattern.fullmatch(candidate.name) is None:
+            continue
+        try:
+            _canonical_single_link_file(candidate, parent=staging_root)
+        except (OSError, ValueError):
             continue
         candidate.unlink()
 
@@ -194,9 +279,20 @@ def begin_recompile_table_transition(
         raise RuntimeError(
             "Cannot replace an embedded table without marker or transition authority"
         )
-    root = _transition_root(output_root, dataset_name)
+    root = _validated_transition_root(
+        output_root,
+        dataset_name,
+        create=True,
+    )
+    transition_path = _validated_transition_receipt_path(
+        output_root,
+        dataset_name,
+        stem,
+        allow_missing=True,
+    )
     staged = root / f"{stem}.{uuid4().hex}.parquet"
     _write_validated_parquet(staged, prepared)
+    _canonical_single_link_file(staged, parent=root)
     transition = {
         "version": _TRANSITION_VERSION,
         "dataset": dataset_name,
@@ -213,11 +309,19 @@ def begin_recompile_table_transition(
         "prepared_size": staged.stat().st_size,
         "prepared_sha256": _sha256(staged),
     }
-    atomic_write_json(
-        recompile_table_transition_path(output_root, dataset_name, stem),
-        transition,
+    atomic_write_json(transition_path, transition)
+    _validated_transition_receipt_path(
+        output_root,
+        dataset_name,
+        stem,
+        allow_missing=False,
     )
-    _cleanup_orphan_staging_payloads(root, stem, keep=staged)
+    _cleanup_orphan_staging_payloads(
+        output_root,
+        dataset_name,
+        stem,
+        keep=staged,
+    )
     return staged
 
 
@@ -239,10 +343,13 @@ def promote_recompile_table_transition(
     if store != canonical_store:
         raise RuntimeError("Transition store is not canonical")
     table = store / MEASUREMENT_TABLE_RELATIVE_PATH
-    transition_path = recompile_table_transition_path(
-        output_root, dataset_name, stem
-    )
     try:
+        transition_path = _validated_transition_receipt_path(
+            output_root,
+            dataset_name,
+            stem,
+            allow_missing=False,
+        )
         transition = json.loads(transition_path.read_text(encoding="utf-8"))
         marker_path = image_completion_marker_path(
             output_root, dataset_name, stem
@@ -335,7 +442,15 @@ def clear_recompile_table_transition(
 ) -> None:
     """Remove only canonical transition staging after marker-last publication."""
     output_root = Path(output_dir).resolve()
-    path = recompile_table_transition_path(output_root, dataset_name, stem)
+    try:
+        path = _validated_transition_receipt_path(
+            output_root,
+            dataset_name,
+            stem,
+            allow_missing=False,
+        )
+    except (OSError, ValueError):
+        return
     try:
         transition = json.loads(path.read_text(encoding="utf-8"))
         store = zarr_store_path(
@@ -351,7 +466,7 @@ def clear_recompile_table_transition(
         staged.unlink()
     except (OSError, AttributeError, ValueError, json.JSONDecodeError):
         pass
-    path.unlink(missing_ok=True)
+    path.unlink()
 
 
 def recoverable_recompile_table_transition(
@@ -362,10 +477,13 @@ def recoverable_recompile_table_transition(
 ) -> bool:
     """Return whether durable evidence exactly authorizes current table bytes."""
     output_root = Path(output_dir).resolve()
-    transition_path = recompile_table_transition_path(
-        output_root, dataset_name, stem
-    )
     try:
+        transition_path = _validated_transition_receipt_path(
+            output_root,
+            dataset_name,
+            stem,
+            allow_missing=False,
+        )
         transition = json.loads(transition_path.read_text(encoding="utf-8"))
         store = Path(store_path)
         if store.is_symlink():
