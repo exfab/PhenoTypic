@@ -659,16 +659,6 @@ def _marker_work_id_matches_state(
     return expected == {work_id}
 
 
-def marker_claims_measurement_authority(marker_path: Path) -> bool:
-    """Return whether a marker declares an embedded measurement artifact."""
-    try:
-        marker = json.loads(Path(marker_path).read_text(encoding="utf-8"))
-        artifacts = marker.get("artifacts")
-    except (OSError, AttributeError, json.JSONDecodeError):
-        return False
-    return isinstance(artifacts, dict) and "measurements" in artifacts
-
-
 def _chunk_paths(paths: list[Path], shard_size: int) -> list[list[Path]]:
     """Split paths into deterministic non-empty shards."""
     return [

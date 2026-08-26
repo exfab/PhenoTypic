@@ -274,46 +274,11 @@ def recompile_embedded_measurement_tables(
     for table_path, dataset in sorted(
         authorized.items(), key=lambda item: str(item[0])
     ):
-        table_path = Path(table_path)
-        if tuple(table_path.parts[-3:]) != (
-            MEASUREMENT_TABLE_RELATIVE_PATH.parts
-        ):
-            raise RuntimeError(
-                "Current-schema recompile requires embedded measurement "
-                "tables; run --mode migrate"
-            )
-        store_path = table_path.parents[2]
-        attrs = read_phenotypic_attributes(store_path)
-        descriptor = attrs.get(PhenotypicAttr.TABLES, {}).get("measurements")
-        if not isinstance(descriptor, dict):
-            raise ValueError(
-                f"Store lacks measurement descriptor: {store_path}"
-            )
-        raw_baseline = descriptor.get("measurement_columns")
-        if not isinstance(raw_baseline, list) or not all(
-            isinstance(column, str) for column in raw_baseline
-        ):
-            raise ValueError(
-                f"Store has invalid measurement baseline: {store_path}"
-            )
-        payload = pq.read_table(table_path).to_pandas()
-        missing = [
-            column for column in raw_baseline if column not in payload.columns
-        ]
-        if missing:
-            raise ValueError(
-                f"Embedded table cannot project its baseline {missing}: "
-                f"{table_path}"
-            )
-        prepared = prepare_embedded_measurement_table(
-            payload.loc[:, raw_baseline],
-            metadata_csv,
-        )
-        _replace_and_republish_table(
+        recompile_embedded_measurement_table(
             output_dir,
+            table_path,
             dataset,
-            store_path,
-            prepared,
+            metadata_csv,
             commit_guard=commit_guard,
             lifecycle_epoch=lifecycle_epoch,
         )

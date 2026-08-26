@@ -2686,9 +2686,11 @@ def _regenerate_missing_overlays(
         save_overlays=True,
     )
 
+    from phenotypic._cli._cli_recompile_recovery import (
+        marker_claims_measurement_authority,
+    )
     from phenotypic._cli._cli_recompile_slurm_scripts import (
         _marker_binds_overlay_and_table,
-        marker_claims_measurement_authority,
         repair_overlay_marker_authority,
     )
     from phenotypic.sdk_ import (
