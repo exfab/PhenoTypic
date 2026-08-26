@@ -361,8 +361,13 @@ def _repair_measurement_overlay(
         save_overlays=True,
     )
 
-    def _render() -> object:
-        return output_manager.save_overlay(image, dataset_name, stem)
+    def _render(render_guard: Any) -> object:
+        return output_manager.save_overlay(
+            image,
+            dataset_name,
+            stem,
+            commit_guard=render_guard,
+        )
 
     if not repair_overlay_marker_authority(
         output_dir,
@@ -446,8 +451,13 @@ def _run_overlay_task(
             save_overlays=True,
         )
 
-        def _render() -> object:
-            return output_manager.save_overlay(image, dataset_name, stem)
+        def _render(render_guard: Any) -> object:
+            return output_manager.save_overlay(
+                image,
+                dataset_name,
+                stem,
+                commit_guard=render_guard,
+            )
 
         if task.get("restore_marker_authority"):
             if not repair_overlay_marker_authority(
@@ -465,8 +475,11 @@ def _run_overlay_task(
                     "Could not restore marker authority after overlay repair"
                 )
         else:
-            with generation_publication_guard(output_dir, slurm_generation):
-                _render()
+            _render(
+                lambda: generation_publication_guard(
+                    output_dir, slurm_generation
+                )
+            )
     except SlurmGenerationInactiveError:
         raise
     except Exception as exc:

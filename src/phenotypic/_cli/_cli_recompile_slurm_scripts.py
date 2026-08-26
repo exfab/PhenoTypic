@@ -378,7 +378,7 @@ def repair_overlay_marker_authority(
     dataset_name: str,
     stem: str,
     store_path: Path,
-    render_overlay: Callable[[], object],
+    render_overlay: Callable[[CommitGuard | None], object],
     *,
     lifecycle_epoch: str | None = None,
     commit_guard: CommitGuard | None = None,
@@ -408,7 +408,7 @@ def _repair_overlay_marker_authority_locked(
     stem: str,
     overlay_path: Path,
     table_path: Path,
-    render_overlay: Callable[[], object],
+    render_overlay: Callable[[CommitGuard | None], object],
     *,
     lifecycle_epoch: str | None,
     commit_guard: CommitGuard | None,
@@ -429,7 +429,7 @@ def _repair_overlay_marker_authority_locked(
             "Cannot restore marker authority: overlay is not the sole "
             "invalid artifact"
         )
-    render_overlay()
+    render_overlay(commit_guard)
     return _refresh_overlay_marker_authority_locked(
         output_dir,
         dataset_name,

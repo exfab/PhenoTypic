@@ -2009,7 +2009,7 @@ def test_retry_cleans_orphan_after_crash_before_transition_journal(
 
     with (
         patch(
-            "phenotypic._cli._cli_recompile_recovery.atomic_write_json",
+            "phenotypic._cli._cli_recompile_recovery._write_json_at",
             side_effect=RuntimeError("crash before transition journal"),
         ),
         pytest.raises(RuntimeError, match="crash before transition journal"),
@@ -2473,3 +2473,218 @@ def test_overlay_refresh_holds_generation_guard_only_for_marker_commit(
 
     assert recovery_guard_states == [False]
     assert guard_entries == 1
+
+def test_begin_transition_parent_swap_cannot_touch_external_directory(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A validated parent swap cannot redirect staging or orphan cleanup."""
+    import shutil
+
+    import phenotypic._cli._cli_recompile_recovery as recovery
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+    root = recompile_table_transition_path(output_dir, DATASET, stem).parent
+    root.mkdir(parents=True)
+    displaced = tmp_path / "displaced-transition-root"
+    external = tmp_path / "external-transition-root"
+    external.mkdir()
+    victim = external / f"{stem}.{'b' * 32}.parquet"
+    victim.write_bytes(b"external victim")
+    real_write = recovery._write_validated_parquet
+    swapped = False
+
+    def _swap_then_write(*args: object, **kwargs: object) -> None:
+        nonlocal swapped
+        if not swapped:
+            root.rename(displaced)
+            root.symlink_to(external, target_is_directory=True)
+            swapped = True
+        real_write(*args, **kwargs)  # type: ignore[arg-type]
+
+    with (
+        patch.object(
+            recovery,
+            "_write_validated_parquet",
+            _swap_then_write,
+        ),
+        pytest.raises((RuntimeError, ValueError)),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir, table, DATASET, metadata
+        )
+
+    assert victim.read_bytes() == b"external victim"
+    assert sorted(path.name for path in external.iterdir()) == [victim.name]
+
+
+def test_clear_transition_parent_swap_cannot_delete_external_files(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Cleanup remains bound to the opened transition directory identity."""
+    import os
+    import shutil
+
+    from phenotypic._cli._cli_recompile_recovery import (
+        clear_recompile_table_transition,
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+    with (
+        patch(
+            "phenotypic._cli._cli_recompile_tables._republish_table_marker",
+            side_effect=RuntimeError("simulated crash"),
+        ),
+        pytest.raises(RuntimeError, match="simulated crash"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir, table, DATASET, metadata
+        )
+
+    receipt = recompile_table_transition_path(output_dir, DATASET, stem)
+    transition = json.loads(receipt.read_text(encoding="utf-8"))
+    staged_name = Path(str(transition["prepared_path"])).name
+    root = receipt.parent
+    displaced = tmp_path / "displaced-transition-root"
+    external = tmp_path / "external-transition-root"
+    external.mkdir()
+    external_stage = external / staged_name
+    external_receipt = external / receipt.name
+    external_stage.write_bytes(b"external staged victim")
+    external_receipt.write_bytes(b"external receipt victim")
+    real_unlink = os.unlink
+    swapped = False
+
+    def _swap_then_unlink(
+        path: object,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        nonlocal swapped
+        if not swapped:
+            root.rename(displaced)
+            root.symlink_to(external, target_is_directory=True)
+            swapped = True
+        real_unlink(path, *args, **kwargs)  # type: ignore[arg-type]
+
+    with patch.object(os, "unlink", _swap_then_unlink):
+        clear_recompile_table_transition(output_dir, DATASET, stem)
+
+    assert external_stage.read_bytes() == b"external staged victim"
+    assert external_receipt.read_bytes() == b"external receipt victim"
+
+
+def test_recovery_source_discovery_rejects_symlink_root_before_enumeration(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Recovery discovery fails closed instead of walking a redirected root."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_recovery import (
+        recoverable_recompile_measurement_sources,
+        recompile_table_transition_path,
+    )
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    root = recompile_table_transition_path(output_dir, DATASET, stem).parent
+    root.parent.mkdir(parents=True, exist_ok=True)
+    external = tmp_path / "external-transition-root"
+    external.mkdir()
+    (external / "external.json").write_text("{}", encoding="utf-8")
+    root.symlink_to(external, target_is_directory=True)
+
+    with pytest.raises(RuntimeError, match="transition directory"):
+        recoverable_recompile_measurement_sources(output_dir, [DATASET])
+
+
+def test_stale_slurm_overlay_worker_does_not_publish_rendered_bytes(
+    _completed_run_two: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A stale generation is fenced before canonical overlay replacement."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_worker import _run_overlay_task
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        SlurmGenerationInactiveError,
+        deactivate_generation,
+        initialize_slurm_lifecycle,
+    )
+    from phenotypic.sdk_ import dataset_overlays_dir
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
+    overlay.unlink()
+    generation = "stale-overlay-render"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
+    assert deactivate_generation(output_dir, generation)
+    monkeypatch.setenv("SLURM_JOB_ID", "stale-overlay-worker")
+
+    with pytest.raises(SlurmGenerationInactiveError):
+        _run_overlay_task(
+            output_dir,
+            {
+                "task_type": "overlay",
+                "dataset_name": DATASET,
+                "store_path": str(store),
+                "overlay_alpha": 0.3,
+                "restore_marker_authority": True,
+            },
+            slurm_generation=generation,
+        )
+
+    assert not overlay.exists()

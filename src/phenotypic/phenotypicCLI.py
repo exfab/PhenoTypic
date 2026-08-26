@@ -2749,8 +2749,13 @@ def _regenerate_missing_overlays(
         image = load_image_from_store(store_path)
         stem = store_stem(store_path)
 
-        def _render() -> object:
-            return output_manager.save_overlay(image, dataset_name, stem)
+        def _render(render_guard: Any) -> object:
+            return output_manager.save_overlay(
+                image,
+                dataset_name,
+                stem,
+                commit_guard=render_guard,
+            )
 
         if requires_marker_restore:
             restored = repair_overlay_marker_authority(
@@ -2765,7 +2770,7 @@ def _regenerate_missing_overlays(
                     "Could not restore marker authority after overlay repair"
                 )
         else:
-            _render()
+            _render(None)
 
     console.print(
         f"[cyan]Regenerating {len(work)} missing overlay(s) "
