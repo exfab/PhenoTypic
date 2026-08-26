@@ -19,7 +19,12 @@ from phenotypic.sdk_ import (
     read_phenotypic_attributes,
     zarr_store_path,
 )
-from tests.unit.sdk_._migration_fixtures import DATASET, run_stems, run_work_id
+from tests.unit.sdk_._migration_fixtures import (
+    DATASET,
+    LEGACY_MEASUREMENT_COLUMN,
+    run_stems,
+    run_work_id,
+)
 
 
 def _file_inventory(root: Path) -> dict[str, str]:
@@ -95,7 +100,7 @@ def test_migration_repairs_payload_only_store_and_preserves_header_order(
         / f"{stem}.parquet"
     )
     legacy_columns = pl.read_parquet(source).columns
-    legacy_index = legacy_columns.index("MetadataGenetic_Strain")
+    legacy_index = legacy_columns.index(LEGACY_MEASUREMENT_COLUMN)
     store = zarr_store_path(legacy_headers_run, DATASET, stem)
     payload = store / MEASUREMENT_TABLE_RELATIVE_PATH
     payload.parent.mkdir(parents=True)
