@@ -476,8 +476,10 @@ def _run_finalizer_task(
     with exclusive_path_lock(publication_lock, timeout=60.0):
         # Measurement and overlay tasks can touch the same store concurrently.
         # Re-fingerprint recovery markers once more after every task is terminal
-        # so the marker always describes the final embedded-table bytes.
-        _restore_overlay_marker_authority(output_dir, task_manifest)
+        # so the marker always describes the final embedded-table bytes. Fence
+        # this canonical mutation before it occurs, not only later publications.
+        with generation_publication_guard(output_dir, slurm_generation):
+            _restore_overlay_marker_authority(output_dir, task_manifest)
         # The aggregate lock excludes competing finalizers. Each canonical
         # mutation also acquires the lifecycle guard independently, allowing a
         # newer generation to fence this worker between publication phases.

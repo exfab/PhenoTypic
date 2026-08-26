@@ -8,7 +8,14 @@ import shlex
 from pathlib import Path
 from typing import Any, Final
 
-from ._cli_completion import authorized_measurement_sources
+from ._cli_completion import (
+    ARTIFACT_KIND_FILE,
+    ARTIFACT_KIND_STORE,
+    SUCCESS_MARKER_VERSION,
+    _sha256,
+    _store_artifact_matches,
+    authorized_measurement_sources,
+)
 from ._measurement_sources import discover_recompile_measurement_sources
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 from phenotypic.sdk_ import (
@@ -25,6 +32,7 @@ from phenotypic.sdk_ import (
     progress_dir,
     recompile_dir,
     slurm_scripts_dir,
+    zarr_store_path,
 )
 from phenotypic.sdk_.slurm import (
     SlurmArrayScriptSpec,
@@ -291,33 +299,118 @@ def _marker_binds_overlay_and_table(
     overlay_path: Path,
     table_path: Path,
 ) -> bool:
-    """Return whether an existing marker binds the missing overlay and table."""
-    marker_path = image_completion_marker_path(output_dir, dataset_name, stem)
-    if not marker_path.is_file() or not table_path.is_file():
-        return False
+    """Return whether the absent overlay is a marker's sole invalid artifact."""
+    output_root = Path(output_dir).resolve()
+    canonical_store = zarr_store_path(output_root, dataset_name, stem)
+    store_path = Path(table_path).parents[2]
     try:
-        marker = json.loads(marker_path.read_text(encoding="utf-8"))
-        artifacts = marker["artifacts"]
-        if not isinstance(artifacts, dict):
+        if store_path.is_symlink():
             return False
-        expected = {
-            "overlay": overlay_path.resolve(),
-            "measurements": table_path.resolve(),
+        resolved_store = store_path.resolve(strict=True)
+        resolved_store.relative_to(output_root)
+        if resolved_store != canonical_store.resolve(strict=True):
+            return False
+        resolved_table = Path(table_path).resolve(strict=True)
+        resolved_table.relative_to(output_root)
+        resolved_overlay = Path(overlay_path).resolve()
+        resolved_overlay.relative_to(output_root)
+        canonical_overlay = (
+            dataset_overlays_dir(output_root, dataset_name) / f"{stem}.png"
+        ).resolve()
+        if resolved_overlay != canonical_overlay or Path(overlay_path).exists():
+            return False
+
+        marker_path = image_completion_marker_path(
+            output_root, dataset_name, stem
+        )
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        work_id = marker.get("work_id")
+        if (
+            marker.get("version") != SUCCESS_MARKER_VERSION
+            or marker.get("dataset") != dataset_name
+            or marker.get("image_stem") != stem
+            or not isinstance(work_id, str)
+            or not work_id
+            or not _marker_work_id_matches_state(
+                output_root, dataset_name, stem, work_id
+            )
+        ):
+            return False
+        artifacts = marker.get("artifacts")
+        if not isinstance(artifacts, dict) or not artifacts:
+            return False
+        required = {
+            "overlay": (resolved_overlay, ARTIFACT_KIND_FILE),
+            "measurements": (resolved_table, ARTIFACT_KIND_FILE),
+            "store": (resolved_store, ARTIFACT_KIND_STORE),
         }
-        output_root = output_dir.resolve()
-        for name, expected_path in expected.items():
-            descriptor = artifacts.get(name)
+        if not required.keys() <= artifacts.keys():
+            return False
+        for name, descriptor in artifacts.items():
             if not isinstance(descriptor, dict):
                 return False
             relative = descriptor.get("path")
             if not isinstance(relative, str):
                 return False
-            if (output_root / relative).resolve() != expected_path:
+            artifact = (output_root / relative).resolve()
+            artifact.relative_to(output_root)
+            kind = descriptor.get("kind", ARTIFACT_KIND_FILE)
+            expected = required.get(name)
+            if expected is not None and (
+                artifact != expected[0] or kind != expected[1]
+            ):
                 return False
-    except (KeyError, OSError, TypeError, ValueError):
+            if name == "overlay":
+                if (
+                    kind != ARTIFACT_KIND_FILE
+                    or artifact.exists()
+                    or not isinstance(descriptor.get("size"), int)
+                    or not isinstance(descriptor.get("sha256"), str)
+                ):
+                    return False
+            elif kind == ARTIFACT_KIND_STORE:
+                if not _store_artifact_matches(artifact, descriptor):
+                    return False
+            elif kind == ARTIFACT_KIND_FILE:
+                if (
+                    not artifact.is_file()
+                    or artifact.stat().st_size != descriptor.get("size")
+                    or _sha256(artifact) != descriptor.get("sha256")
+                ):
+                    return False
+            else:
+                return False
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
         return False
     return True
 
+
+def _marker_work_id_matches_state(
+    output_dir: Path, dataset_name: str, stem: str, work_id: str
+) -> bool:
+    """Validate marker work identity against processing state when present."""
+    from ._cli_state_management import load_processing_state
+
+    try:
+        state = load_processing_state(output_dir)
+    except (KeyError, TypeError, ValueError):
+        return False
+    if state is None or not state.config.get("success_markers_required", False):
+        return True
+    work_ids = state.config.get("work_ids")
+    if not isinstance(work_ids, dict):
+        return False
+    dataset_work_ids = work_ids.get(dataset_name)
+    if not isinstance(dataset_work_ids, dict):
+        return False
+    expected = {
+        value
+        for image_name, value in dataset_work_ids.items()
+        if isinstance(image_name, str)
+        and Path(image_name).stem == stem
+        and isinstance(value, str)
+    }
+    return expected == {work_id}
 
 def _chunk_paths(paths: list[Path], shard_size: int) -> list[list[Path]]:
     """Split paths into deterministic non-empty shards."""

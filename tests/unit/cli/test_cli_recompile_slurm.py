@@ -935,3 +935,191 @@ def test_measurement_worker_derives_embedded_image_names_from_store(
         "img1",
         "img2",
     ]
+
+
+def test_superseded_finalizer_cannot_refresh_overlay_marker(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Final marker refresh is fenced before a stale worker can mutate it."""
+    import shutil
+
+    import phenotypic._cli._cli_recompile_worker as worker
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        SlurmGenerationInactiveError,
+        deactivate_generation,
+        initialize_slurm_lifecycle,
+    )
+    from phenotypic.sdk_ import (
+        dataset_overlays_dir,
+        image_completion_marker_path,
+    )
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
+    overlay.write_bytes(b"replacement overlay bytes")
+    marker_path = image_completion_marker_path(output_dir, DATASET, stem)
+    marker_before = marker_path.read_bytes()
+    generation = "superseded-overlay-finalizer"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
+    assert deactivate_generation(output_dir, generation)
+    manifest_path = (
+        progress_dir(output_dir)
+        / "recompile"
+        / "attempts"
+        / generation
+        / "task_manifest.json"
+    )
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "task_type": "overlay",
+                        "dataset_name": DATASET,
+                        "store_path": str(store),
+                        "restore_marker_authority": True,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with (
+        patch.object(
+            worker,
+            "_write_master_outputs_from_shards",
+            side_effect=SlurmGenerationInactiveError("superseded"),
+        ),
+        pytest.raises(SlurmGenerationInactiveError, match="superseded"),
+    ):
+        worker._run_finalizer_task(
+            output_dir,
+            manifest_path,
+            {"expected_non_finalizer_tasks": 0},
+            slurm_generation=generation,
+        )
+
+    assert marker_path.read_bytes() == marker_before
+
+
+@pytest.mark.parametrize("corrupt_artifact", ["measurements", "store"])
+def test_missing_overlay_recovery_rejects_other_corrupt_artifact(
+    _completed_run_two: Path,
+    tmp_path: Path,
+    corrupt_artifact: str,
+) -> None:
+    """Overlay recovery is allowed only when every other artifact is valid."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        TASK_MEASUREMENTS,
+        TASK_OVERLAY,
+        build_recompile_tasks,
+    )
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_overlays_dir,
+    )
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    (dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png").unlink()
+    if corrupt_artifact == "measurements":
+        import pyarrow.parquet as pq
+
+        payload = pq.read_table(table)
+        pq.write_table(payload, table, compression="gzip")
+    else:
+        (store / "zarr.json").write_text(
+            '{"corrupt": true}', encoding="utf-8"
+        )
+
+    tasks = build_recompile_tasks(
+        output_dir,
+        [DATASET],
+        include_dataset_column=True,
+        overlay_alpha=0.3,
+        shard_size=1,
+    )
+
+    overlay_task = next(
+        task
+        for task in tasks
+        if task["task_type"] == TASK_OVERLAY
+        and Path(str(task["store_path"])).name.startswith(stem)
+    )
+    assert "restore_marker_authority" not in overlay_task
+    measurement_files = {
+        Path(path)
+        for task in tasks
+        if task["task_type"] == TASK_MEASUREMENTS
+        for path in task["files"]
+    }
+    assert table not in measurement_files
+
+
+def test_missing_overlay_recovery_rejects_store_symlink_outside_output(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A canonical recovery store cannot resolve outside the output root."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        TASK_MEASUREMENTS,
+        TASK_OVERLAY,
+        build_recompile_tasks,
+    )
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_overlays_dir,
+    )
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    outside_store = tmp_path / f"{stem}-outside.ome.zarr"
+    shutil.copytree(store, outside_store)
+    shutil.rmtree(store)
+    store.symlink_to(outside_store, target_is_directory=True)
+    (dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png").unlink()
+
+    tasks = build_recompile_tasks(
+        output_dir,
+        [DATASET],
+        include_dataset_column=True,
+        overlay_alpha=0.3,
+        shard_size=1,
+    )
+
+    overlay_task = next(
+        task
+        for task in tasks
+        if task["task_type"] == TASK_OVERLAY
+        and Path(str(task["store_path"])).name.startswith(stem)
+    )
+    assert "restore_marker_authority" not in overlay_task
+    measurement_files = {
+        Path(path)
+        for task in tasks
+        if task["task_type"] == TASK_MEASUREMENTS
+        for path in task["files"]
+    }
+    assert (
+        store / MEASUREMENT_TABLE_RELATIVE_PATH
+    ) not in measurement_files

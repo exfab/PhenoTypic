@@ -2638,9 +2638,10 @@ def _regenerate_missing_overlays(
     discovery used by measure mode) and, for each store whose
     corresponding overlay PNG is absent, loads the store as the right
     ``Image`` / ``GridImage`` subclass and writes the overlay using the same
-    :class:`OutputManager` writer the forward run uses.  Existing
-    overlays are left untouched.  Per-image failures are logged and
-    swallowed so one corrupt HDF doesn't abort the rest.
+    :class:`OutputManager` writer the forward run uses. Existing
+    overlays are left untouched. Failures remain best-effort unless the
+    missing overlay was the sole reason a valid completion marker lost
+    authority; a failed required marker restoration aborts recompile.
 
     Parallelized with a thread pool sized by ``n_jobs``.  Threading
     rather than multiprocessing because the heavy ops (h5py reads,
@@ -2685,7 +2686,15 @@ def _regenerate_missing_overlays(
         save_overlays=True,
     )
 
-    work: list[tuple[str, Path]] = []
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        _marker_binds_overlay_and_table,
+    )
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        image_completion_marker_path,
+    )
+
+    work: list[tuple[str, Path, bool]] = []
     for dataset in datasets:
         for store_path in dataset.images:
             # ``store_stem``, never ``Path.stem``: `.ome.zarr` is a double
@@ -2695,32 +2704,65 @@ def _regenerate_missing_overlays(
                 dataset.name, "overlays", store_stem(store_path)
             )
             if not overlay_path.exists():
-                work.append((dataset.name, store_path))
+                stem = store_stem(store_path)
+                table_path = store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+                requires_marker_restore = _marker_binds_overlay_and_table(
+                    output_dir,
+                    dataset.name,
+                    stem,
+                    overlay_path,
+                    table_path,
+                )
+                marker_path = image_completion_marker_path(
+                    output_dir, dataset.name, stem
+                )
+                if not requires_marker_restore and (
+                    table_path.exists() or marker_path.exists()
+                ):
+                    raise RuntimeError(
+                        "Cannot safely restore marker authority for "
+                        f"{dataset.name}/{stem}"
+                    )
+                work.append(
+                    (dataset.name, store_path, requires_marker_restore)
+                )
 
     if not work:
         console.print("[green]All overlays present; nothing to regenerate")
         return
 
-    for dataset_name in {ds for ds, _ in work}:
+    for dataset_name in {ds for ds, _, _ in work}:
         dataset_overlays_dir(output_dir, dataset_name).mkdir(
             parents=True, exist_ok=True
         )
 
     workers = resolve_local_worker_count(n_jobs, len(work))
 
-    def _render_one(dataset_name: str, store_path: Path) -> None:
+    def _render_one(
+        dataset_name: str,
+        store_path: Path,
+        requires_marker_restore: bool,
+    ) -> None:
         image = load_image_from_store(store_path)
         stem = store_stem(store_path)
         output_manager.save_overlay(image, dataset_name, stem)
         from phenotypic.sdk_._hdf_to_zarr import _republish_image_marker
 
-        _republish_image_marker(output_dir, dataset_name, stem, store_path)
+        if requires_marker_restore:
+            restored = _republish_image_marker(
+                output_dir, dataset_name, stem, store_path
+            )
+            if not restored:
+                raise RuntimeError(
+                    "Could not restore marker authority after overlay repair"
+                )
 
     console.print(
         f"[cyan]Regenerating {len(work)} missing overlay(s) "
         f"with {workers} thread(s)..."
     )
     failures = 0
+    authority_failures = 0
     with Progress(
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
@@ -2731,18 +2773,22 @@ def _regenerate_missing_overlays(
         task_id = progress.add_task("overlays", total=len(work))
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
-                pool.submit(_render_one, ds_name, store_path): (
+                pool.submit(
+                    _render_one,
                     ds_name,
                     store_path,
-                )
-                for ds_name, store_path in work
+                    requires_marker_restore,
+                ): (ds_name, store_path, requires_marker_restore)
+                for ds_name, store_path, requires_marker_restore in work
             }
             for future in as_completed(futures):
-                ds_name, store_path = futures[future]
+                ds_name, store_path, requires_marker_restore = futures[future]
                 try:
                     future.result()
                 except Exception:
                     failures += 1
+                    if requires_marker_restore:
+                        authority_failures += 1
                     logger.warning(
                         "Failed to regenerate overlay for %s/%s",
                         ds_name,
@@ -2752,6 +2798,11 @@ def _regenerate_missing_overlays(
                 finally:
                     progress.advance(task_id)
 
+    if authority_failures:
+        raise RuntimeError(
+            "Failed to restore marker authority for "
+            f"{authority_failures} required overlay repair(s)"
+        )
     if failures:
         console.print(
             f"[yellow]Overlay regeneration finished with {failures} failure(s); "

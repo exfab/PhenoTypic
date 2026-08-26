@@ -537,7 +537,11 @@ class TestRegenerateMissingOverlays:
                 return None
 
             def submit(
-                self, _fn: object, dataset_name: str, store_path: Path
+                self,
+                _fn: object,
+                dataset_name: str,
+                store_path: Path,
+                _requires_marker_restore: bool,
             ) -> FakeFuture:
                 submitted.append((dataset_name, store_path))
                 return FakeFuture()
@@ -650,3 +654,47 @@ def test_local_recompile_restores_deleted_overlay_marker_and_master(
     master = pl.read_parquet(master_measurements_parquet_path(output_dir))
     assert master.height == expected_rows
     assert set(master[str(IMAGE.IMAGE_NAME)].unique()) == set(stems)
+
+
+@pytest.mark.parametrize("refresh_outcome", ["false", "raise"])
+def test_local_recompile_aborts_when_required_overlay_marker_refresh_fails(
+    _completed_run_two: Path,
+    tmp_path: Path,
+    refresh_outcome: str,
+) -> None:
+    """A marker-bound overlay repair cannot degrade to a partial master."""
+    from phenotypic.sdk_ import dataset_overlays_dir
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    missing_stem = run_stems(output_dir)[0]
+    (
+        dataset_overlays_dir(output_dir, DATASET) / f"{missing_stem}.png"
+    ).unlink()
+    refresh_kwargs = (
+        {"side_effect": RuntimeError("simulated marker refresh failure")}
+        if refresh_outcome == "raise"
+        else {"return_value": False}
+    )
+
+    with (
+        patch(
+            "phenotypic.sdk_._hdf_to_zarr._republish_image_marker",
+            **refresh_kwargs,
+        ),
+        patch(
+            "phenotypic._cli._cli_output_manager.aggregate_measurements"
+        ) as aggregate,
+        pytest.raises(RuntimeError, match="marker authority"),
+    ):
+        _handle_recompile(
+            output_dir,
+            metadata_csv=None,
+            include_dataset_column=True,
+            overlay_alpha=0.6,
+            n_jobs=1,
+            no_qc=True,
+        )
+
+    aggregate.assert_not_called()
