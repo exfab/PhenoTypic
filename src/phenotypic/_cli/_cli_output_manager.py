@@ -872,7 +872,7 @@ def _consistent_embedded_join_keys(
     paths: list[Path],
 ) -> tuple[str, ...] | None:
     """Return one embedded-table join generation or reject a mixed snapshot."""
-    import pyarrow.parquet as pq
+    import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
     from phenotypic.sdk_ import (
         EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS,
