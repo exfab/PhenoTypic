@@ -9,10 +9,14 @@ import pyarrow.parquet as pq
 
 from phenotypic.sdk_ import (
     CommitGuard,
+    DIR_IMAGE_COMPLETE,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     PhenotypicAttr,
+    STORE_SUFFIX,
+    progress_dir,
     read_phenotypic_attributes,
     replace_embedded_measurement_table,
+    store_stem,
 )
 
 from ._cli_completion import (
@@ -67,7 +71,7 @@ def _republish_table_marker(
 def _standalone_marker_sources(output_dir: Path) -> dict[Path, str]:
     """Discover valid embedded authority when no processing state is present."""
     sources: dict[Path, str] = {}
-    marker_root = output_dir / ".phenotypic" / "progress" / "image_complete"
+    marker_root = progress_dir(output_dir) / DIR_IMAGE_COMPLETE
     for marker_path in sorted(marker_root.glob("*/*.json")):
         try:
             marker = json.loads(marker_path.read_text(encoding="utf-8"))
@@ -144,7 +148,7 @@ def recompile_embedded_measurement_table(
         store_path, prepared, commit_guard=commit_guard
     )
     marker_path = image_completion_marker_path(
-        output_dir, dataset, store_path.name.removesuffix(".ome.zarr")
+        output_dir, dataset, store_stem(store_path)
     )
     _republish_table_marker(output_dir, marker_path, commit_guard=commit_guard)
 
@@ -175,7 +179,7 @@ def recompile_embedded_measurement_tables(
             )
             image_sources = list(
                 (output_dir / "results").glob("*/hdf/*.h5")
-            ) + list((output_dir / "results").glob("*/zarr/*.ome.zarr"))
+            ) + list((output_dir / "results").glob(f"*/zarr/*{STORE_SUFFIX}"))
             if legacy and image_sources:
                 raise RuntimeError(
                     "Legacy external measurement Parquets require --mode migrate "
@@ -228,7 +232,7 @@ def recompile_embedded_measurement_tables(
             commit_guard=commit_guard,
         )
         marker_path = image_completion_marker_path(
-            output_dir, dataset, store_path.name.removesuffix(".ome.zarr")
+            output_dir, dataset, store_stem(store_path)
         )
         _republish_table_marker(
             output_dir, marker_path, commit_guard=commit_guard

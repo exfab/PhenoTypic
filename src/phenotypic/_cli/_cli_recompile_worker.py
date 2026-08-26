@@ -667,6 +667,17 @@ def _dataset_totals(
     output_dir: Path, dataset_names: list[str]
 ) -> dict[str, int]:
     """Count per-image measurement Parquets for manifest totals."""
+    from ._cli_completion import authorized_measurement_sources
+
+    authorized = authorized_measurement_sources(output_dir)
+    if authorized is not None:
+        return {
+            dataset_name: sum(
+                dataset == dataset_name for dataset in authorized.values()
+            )
+            for dataset_name in dataset_names
+        }
+
     totals: dict[str, int] = {}
     for dataset_name in dataset_names:
         meas_dir = output_dir / DIR_RESULTS / dataset_name / DIR_MEASUREMENTS

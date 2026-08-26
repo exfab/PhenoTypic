@@ -235,7 +235,10 @@ class ArtifactWorld:
             np.save(path, np.zeros((4, 4), dtype=np.uint16))
             return
         write_stage2_raw(
-            self.root, self.DATASET, self.STEM, np.zeros((4, 4), dtype=np.uint16)
+            self.root,
+            self.DATASET,
+            self.STEM,
+            np.zeros((4, 4), dtype=np.uint16),
         )
         write_stage2_token(
             self.root, self.DATASET, self.STEM, objmap_shape=(4, 4)
@@ -250,6 +253,13 @@ class ArtifactWorld:
         return zarr_store_path(self.root, self.DATASET, self.STEM)
 
     def _parquet_path(self) -> Path:
+        if self.kind == "zarr":
+            from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+
+            return (
+                zarr_store_path(self.root, self.DATASET, self.STEM)
+                / MEASUREMENT_TABLE_RELATIVE_PATH
+            )
         return (
             dataset_measurements_dir(self.root, self.DATASET)
             / f"{self.STEM}.parquet"
@@ -271,7 +281,12 @@ class ArtifactWorld:
         if parquet_path.is_file():
             artifacts = {"measurements": parquet_path}
             image_artifact = self._image_artifact_path()
-            if image_artifact.exists():
+            image_artifact_exists = (
+                image_artifact.is_file()
+                if self.kind == "hdf"
+                else (image_artifact / "zarr.json").is_file()
+            )
+            if image_artifact_exists:
                 artifacts["image_state"] = image_artifact
             publish_image_success(
                 self.root,
@@ -367,18 +382,16 @@ def legacy_headers_run(
     _completed_run_two: Path,  # noqa: F811
     tmp_path: Path,
 ) -> Path:
-    """A tree already converted to stores, whose metadata headers are legacy.
+    """Stores plus legacy external tables, requiring explicit migration.
 
-    ``recompile`` must **succeed** on this one, read those headers, and not
-    rewrite them -- flat-metadata decision #3 (permanent stored-data
-    compatibility) is untouched by Task 5.4.
-
-    Task 5.5's cut re-based this fixture on a ``.h5``-backed tree, so the
-    legacy headers live in the per-dataset measurement parquets rather than in
-    a store: ingest canonicalizes on read, so a store cannot hold one.
+    This is the only legitimate source of legacy headers after embedded tables
+    became the current schema: a store without a table descriptor beside the
+    external Parquet authority written by older releases.
     """
+    import json
     import shutil
 
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
     from tests.unit.sdk_._migration_fixtures import (
         make_measurement_headers_legacy,
         refresh_marker_descriptors,
@@ -387,11 +400,31 @@ def legacy_headers_run(
 
     output_dir = tmp_path / "legacy_headers"
     shutil.copytree(_completed_run_two, output_dir)
+    for stem in run_stems(output_dir):
+        store = zarr_store_path(output_dir, _MIGRATION_DATASET, stem)
+        embedded = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        external = (
+            dataset_measurements_dir(output_dir, _MIGRATION_DATASET)
+            / f"{stem}.parquet"
+        )
+        external.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(embedded, external)
+        shutil.rmtree(store / "tables")
+        root_path = store / "zarr.json"
+        root = json.loads(root_path.read_text(encoding="utf-8"))
+        root["attributes"]["phenotypic"].pop("tables", None)
+        atomic_write_json(root_path, root)
+
+        marker_path = image_completion_marker_path(
+            output_dir, _MIGRATION_DATASET, stem
+        )
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        marker["artifacts"]["measurements"]["path"] = external.relative_to(
+            output_dir
+        ).as_posix()
+        atomic_write_json(marker_path, marker)
+
     make_measurement_headers_legacy(output_dir, _MIGRATION_DATASET)
-    # The parquets the run's markers bound have just changed. A real tree's
-    # markers bound the bytes that existed when they were published, so
-    # re-fingerprint them -- otherwise recompile fails on a stale digest,
-    # which is not what these tests are about.
     for stem in run_stems(output_dir):
         refresh_marker_descriptors(output_dir, _MIGRATION_DATASET, stem)
     return output_dir

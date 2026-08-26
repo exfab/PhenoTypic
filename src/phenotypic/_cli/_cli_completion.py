@@ -13,6 +13,7 @@ from uuid import uuid4
 
 from phenotypic.sdk_ import (
     CommitGuard,
+    DIR_IMAGE_COMPLETE,
     STORE_ROOT_JSON,
     aggregate_publication_marker_path,
     atomic_write_json,
@@ -22,6 +23,7 @@ from phenotypic.sdk_ import (
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
+    progress_dir,
     run_completion_marker_path,
     validated_published_metadata_migration_targets,
 )
@@ -590,9 +592,7 @@ def authorized_measurement_sources(
     if state is None or not state.config.get(
         "success_markers_required", False
     ):
-        marker_root = (
-            Path(output_dir) / ".phenotypic" / "progress" / "image_complete"
-        )
+        marker_root = progress_dir(output_dir) / DIR_IMAGE_COMPLETE
         marker_paths = sorted(marker_root.glob("*/*.json"))
         if not marker_paths:
             return None

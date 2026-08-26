@@ -43,12 +43,17 @@ from phenotypic._cli._cli_staged_workers import (
     stage2_detect_core,
     stage3_merge_measure_core,
 )
-from phenotypic._cli._cli_types import Dataset, ExecutionConfig, ExecutionResults
+from phenotypic._cli._cli_types import (
+    Dataset,
+    ExecutionConfig,
+    ExecutionResults,
+)
 from phenotypic._cli._cli_update_state import (
     aggregate_stage_state_from_events,
     parse_event_line,
 )
 from phenotypic.sdk_ import (
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     dataset_overlays_dir,
     event_log_path,
     manifest_json_path,
@@ -119,9 +124,16 @@ def _stage2_done(out, dataset, stem):
 
 def _stage2_signal_absent(out, dataset, stem):
     """Cleanup means BOTH are gone -- a survivor of either is a leak."""
-    return not stage2_token_exists(
-        out, dataset, stem
-    ) and not stage2_raw_path(out, dataset, stem).exists()
+    return (
+        not stage2_token_exists(out, dataset, stem)
+        and not stage2_raw_path(out, dataset, stem).exists()
+    )
+
+
+def _measurement_table(out, dataset, stem):
+    return (
+        zarr_store_path(out, dataset, stem) / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
 
 
 def _stamp_store_work_id(store, work_id):
@@ -168,7 +180,7 @@ def test_three_stage_cores_end_to_end(tmp_path):
 
     # Stage 3: replay + measure -> parquet, re-promote store, consume both
     stage3_merge_measure_core(plan, out, "ds", "img", om, image_type="Image")
-    measurements_path = out / "results" / "ds" / "measurements" / "img.parquet"
+    measurements_path = _measurement_table(out, "ds", "img")
     assert measurements_path.is_file()
     measurements = pl.read_parquet(measurements_path)
     assert measurements[str(IMAGE.IMAGE_NAME)].unique().to_list() == ["img"]
@@ -195,16 +207,16 @@ def test_staged_strategy_runs_all_stages(tmp_path, monkeypatch):
     results = strat.execute([Dataset("ds", [image_path], tmp_path, out)], out)
 
     assert results.total_completed == 1
-    assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
+    assert _measurement_table(out, "ds", "img").is_file()
     assert (dataset_overlays_dir(out, "ds") / "img.png").is_file()
     assert _stage2_signal_absent(out, "ds", "img")
-    manifest = json.loads(
-        manifest_json_path(out).read_text(encoding="utf-8")
-    )
+    manifest = json.loads(manifest_json_path(out).read_text(encoding="utf-8"))
     assert manifest["gui_record_generation"] == str(generation)
 
 
-def test_staged_strategy_resume_backfills_missing_overlay_without_gpu(tmp_path, monkeypatch):
+def test_staged_strategy_resume_backfills_missing_overlay_without_gpu(
+    tmp_path, monkeypatch
+):
     image_path = _write_image(tmp_path)
     out = tmp_path / "out"
     out.mkdir()
@@ -248,7 +260,7 @@ def test_staged_strategy_resumes_skipping_done_stages(tmp_path):
     ds = [Dataset("ds", [image_path], tmp_path, out)]
 
     StagedGpuStrategy(_config(out, pipe_path), om).execute(ds, out)
-    parquet = out / "results" / "ds" / "measurements" / "img.parquet"
+    parquet = _measurement_table(out, "ds", "img")
     mtime = parquet.stat().st_mtime_ns
 
     # second run with resume=True: every stage skips -> parquet untouched and
@@ -445,7 +457,7 @@ def test_plain_resume_reuses_stage1_store_after_stage2_failure(
     ).execute(datasets, out)
 
     assert resumed.total_completed == 1
-    assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
+    assert _measurement_table(out, "ds", "img").is_file()
     assert stage3_completion_exists(out, "ds", "img")
 
 
@@ -490,7 +502,9 @@ def test_cli_retry_failures_includes_recorded_stage2_failure(
     monkeypatch.setattr(FakeGpuDetector, "_infer_one", fail_second_inference)
     first = CliRunner().invoke(phenotypic_cli, args)
     assert first.exit_code == 1
-    from phenotypic._cli._cli_staged_orchestration import staged_completion_path
+    from phenotypic._cli._cli_staged_orchestration import (
+        staged_completion_path,
+    )
 
     assert not staged_completion_path(out).is_file()
     assert zarr_store_path(out, images.name, image_path.stem).is_dir()
@@ -514,9 +528,7 @@ def test_cli_retry_failures_includes_recorded_stage2_failure(
     monkeypatch.setattr(
         OutputManager, "aggregate_master_csv", capture_full_inventory
     )
-    resumed = CliRunner().invoke(
-        phenotypic_cli, [*args, "--retry-failures"]
-    )
+    resumed = CliRunner().invoke(phenotypic_cli, [*args, "--retry-failures"])
 
     assert resumed.exit_code == 0, resumed.output
     assert "Continuing staged GPU processing" in resumed.output
@@ -577,7 +589,9 @@ def test_cli_continuation_backfills_completed_overlay_before_early_exit(
         observed_alpha.append(manager.overlay_alpha)
         return original_save_overlay(manager, *args, **kwargs)
 
-    monkeypatch.setattr(OutputManager, "save_overlay", _save_overlay_with_alpha)
+    monkeypatch.setattr(
+        OutputManager, "save_overlay", _save_overlay_with_alpha
+    )
 
     resumed = CliRunner().invoke(phenotypic_cli, args)
 
@@ -616,7 +630,9 @@ def test_cli_continues_finalizer_only_when_image_stages_are_complete(
     ]
     first = CliRunner().invoke(phenotypic_cli, [*base_args, "--force-local"])
     assert first.exit_code == 0, first.output
-    from phenotypic._cli._cli_staged_orchestration import staged_completion_path
+    from phenotypic._cli._cli_staged_orchestration import (
+        staged_completion_path,
+    )
 
     staged_completion_path(out).unlink()
     observed: dict[str, object] = {}
@@ -704,7 +720,9 @@ def test_cli_local_continuation_republishes_missing_final_outputs(
     assert "STAGED FINALIZATION FAILED" in first.output
     assert "PROCESSING COMPLETE" not in first.output
 
-    from phenotypic._cli._cli_staged_orchestration import staged_completion_path
+    from phenotypic._cli._cli_staged_orchestration import (
+        staged_completion_path,
+    )
 
     marker = staged_completion_path(out)
     assert not marker.is_file()
@@ -791,7 +809,9 @@ def test_stage3_partial_publication_keeps_stage2_signal_and_is_resumable(
             image_name="img.tiff",
         )
 
-    assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
+    # The table is part of the atomic store publication. A failed promotion
+    # cannot expose a new table inside the still-staged destination store.
+    assert not _measurement_table(out, "ds", "img").is_file()
     assert _stage2_done(out, "ds", "img")
     assert not stage3_completion_exists(out, "ds", "img")
     resume_plan = build_staged_resume_plan(
@@ -864,7 +884,9 @@ def _stage1_only(tmp_path):
     return out, pipe_path
 
 
-def test_slurm_stage3_worker_writes_and_backfills_overlay(tmp_path, monkeypatch):
+def test_slurm_stage3_worker_writes_and_backfills_overlay(
+    tmp_path, monkeypatch
+):
     import phenotypic._cli._cli_staged_slurm_worker as worker
 
     out, pipe_path = _stage1_only(tmp_path)
@@ -877,7 +899,9 @@ def test_slurm_stage3_worker_writes_and_backfills_overlay(tmp_path, monkeypatch)
         observed_alpha.append(manager.overlay_alpha)
         return original_save_overlay(manager, *args, **kwargs)
 
-    monkeypatch.setattr(OutputManager, "save_overlay", _save_overlay_with_alpha)
+    monkeypatch.setattr(
+        OutputManager, "save_overlay", _save_overlay_with_alpha
+    )
     worker.run_stage2_shard(
         pipeline_path=pipe_path,
         output_dir=out,
@@ -1087,10 +1111,12 @@ def test_stage3_refuses_a_token_whose_raw_array_is_gone(tmp_path):
     # the pair is whole again and Stage 3 published rather than failing.
     events = event_log_path(out).read_text(encoding="utf-8")
     assert "FileNotFoundError" not in events
-    assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
+    assert _measurement_table(out, "ds", "img").is_file()
 
 
-def test_the_slurm_stage3_worker_reports_a_raw_less_token_as_a_prereq(tmp_path):
+def test_the_slurm_stage3_worker_reports_a_raw_less_token_as_a_prereq(
+    tmp_path,
+):
     """Same probe, the other side of the cluster boundary.
 
     The SLURM worker cannot re-run Stage 2 itself, so the observable

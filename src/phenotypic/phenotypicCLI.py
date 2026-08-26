@@ -3332,19 +3332,29 @@ def _handle_recompile(
     console.print("[cyan]Rebuilding manifest...")
     prog_dir.mkdir(parents=True, exist_ok=True)
 
-    datasets_totals: dict[str, int] = {}
-    for name in dataset_names:
-        meas_dir = dataset_measurements_dir(output_dir, name)
-        if meas_dir.is_dir():
-            datasets_totals[name] = len(
-                [
-                    p
-                    for p in meas_dir.glob("*.parquet")
-                    if not p.name.startswith("_")
-                ]
+    from phenotypic._cli._cli_completion import authorized_measurement_sources
+
+    authorized = authorized_measurement_sources(output_dir)
+    if authorized is not None:
+        datasets_totals = {
+            name: sum(dataset == name for dataset in authorized.values())
+            for name in dataset_names
+        }
+    else:
+        datasets_totals: dict[str, int] = {}
+        for name in dataset_names:
+            meas_dir = dataset_measurements_dir(output_dir, name)
+            datasets_totals[name] = (
+                len(
+                    [
+                        path
+                        for path in meas_dir.glob("*.parquet")
+                        if not path.name.startswith("_")
+                    ]
+                )
+                if meas_dir.is_dir()
+                else 0
             )
-        else:
-            datasets_totals[name] = 0
 
     regenerate_dashboard_artifacts(output_dir, job_meta, datasets_totals)
     console.print("[green]Manifest + dashboard regenerated")

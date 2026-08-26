@@ -255,11 +255,11 @@ def classify_staged_image(
     ):
         return "stage3"
 
-    parquet = dataset_measurements_dir(output_dir, dataset) / f"{stem}.parquet"
+    measurement_table = store / MEASUREMENT_TABLE_RELATIVE_PATH
     if (
         process_only_layer is None
         and not markers_required
-        and parquet.is_file()
+        and measurement_table.is_file()
         and not stage2_done
     ):
         return "complete"
@@ -338,16 +338,22 @@ def build_staged_resume_plan(
 def migrate_legacy_stage3_markers(
     output_dir: Path, plan: StagedResumePlan
 ) -> int:
-    """Create markers for legacy parquet-only completions discovered safely."""
+    """Create markers for completed embedded or explicit legacy tables."""
     migrated = 0
     for item in plan.items:
         if item.stage != "complete":
             continue
-        parquet = (
+        measurement_table = (
+            zarr_store_path(output_dir, item.dataset, item.image.stem)
+            / MEASUREMENT_TABLE_RELATIVE_PATH
+        )
+        legacy_table = (
             dataset_measurements_dir(output_dir, item.dataset)
             / f"{item.image.stem}.parquet"
         )
-        if not parquet.is_file() or stage3_completion_exists(
+        if (
+            not measurement_table.is_file() and not legacy_table.is_file()
+        ) or stage3_completion_exists(
             output_dir, item.dataset, item.image.stem
         ):
             continue

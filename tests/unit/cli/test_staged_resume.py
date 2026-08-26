@@ -20,7 +20,11 @@ from phenotypic._cli._cli_staged_resume import (
     write_stage3_completion_marker,
 )
 from phenotypic._cli._cli_types import Dataset
-from phenotypic.sdk_ import dataset_measurements_dir, zarr_store_path
+from phenotypic.sdk_ import (
+    MEASUREMENT_TABLE_RELATIVE_PATH,
+    dataset_measurements_dir,
+    zarr_store_path,
+)
 
 
 def _write_stage2_signal(output_dir: Path, stem: str) -> None:
@@ -40,7 +44,9 @@ def _dataset(tmp_path: Path, names: list[str]) -> Dataset:
     return Dataset("plate", images, tmp_path, tmp_path / "out")
 
 
-def _valid_store(output_dir: Path, stem: str, *, work_id: str | None = None) -> Path:
+def _valid_store(
+    output_dir: Path, stem: str, *, work_id: str | None = None
+) -> Path:
     path = zarr_store_path(output_dir, "plate", stem)
     path.parent.mkdir(parents=True, exist_ok=True)
     Image(np.zeros((4, 4, 3), dtype=np.uint8)).save2zarr(path, work_id=work_id)
@@ -56,9 +62,7 @@ def test_resume_plan_classifies_each_durable_stage(tmp_path: Path) -> None:
     _valid_store(output_dir, "stage3")
     _write_stage2_signal(output_dir, "stage3")
     _valid_store(output_dir, "done")
-    write_stage3_completion_marker(
-        output_dir, "plate", "done.tif", "done"
-    )
+    write_stage3_completion_marker(output_dir, "plate", "done.tif", "done")
 
     plan = build_staged_resume_plan(
         datasets=[dataset],
@@ -121,7 +125,9 @@ def test_changed_work_id_restarts_from_stage1(tmp_path: Path) -> None:
     assert plan.initial_stage == "stage1"
 
 
-def test_store_without_phenotypic_block_requires_stage1(tmp_path: Path) -> None:
+def test_store_without_phenotypic_block_requires_stage1(
+    tmp_path: Path,
+) -> None:
     output_dir = tmp_path / "out"
     dataset = _dataset(tmp_path, ["foreign.tif"])
     # A directory that looks like a store to a path glob but carries no
@@ -146,9 +152,7 @@ def test_store_without_phenotypic_block_requires_stage1(tmp_path: Path) -> None:
 def test_terminal_marker_does_not_mask_a_missing_store(tmp_path: Path) -> None:
     output_dir = tmp_path / "out"
     dataset = _dataset(tmp_path, ["broken.tif"])
-    write_stage3_completion_marker(
-        output_dir, "plate", "broken.tif", "broken"
-    )
+    write_stage3_completion_marker(output_dir, "plate", "broken.tif", "broken")
 
     plan = build_staged_resume_plan(
         datasets=[dataset],
@@ -161,13 +165,18 @@ def test_terminal_marker_does_not_mask_a_missing_store(tmp_path: Path) -> None:
     assert plan.initial_stage == "stage1"
 
 
-def test_legacy_parquet_is_migrated_to_terminal_marker(tmp_path: Path) -> None:
+def test_markerless_embedded_table_is_backfilled_with_terminal_marker(
+    tmp_path: Path,
+) -> None:
     output_dir = tmp_path / "out"
     dataset = _dataset(tmp_path, ["legacy.tif"])
     _valid_store(output_dir, "legacy")
-    parquet = dataset_measurements_dir(output_dir, "plate") / "legacy.parquet"
-    parquet.parent.mkdir(parents=True, exist_ok=True)
-    parquet.write_bytes(b"legacy parquet")
+    table = (
+        zarr_store_path(output_dir, "plate", "legacy")
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    table.parent.mkdir(parents=True, exist_ok=True)
+    table.write_bytes(b"embedded measurements")
 
     legacy_plan = build_staged_resume_plan(
         datasets=[dataset],
@@ -313,9 +322,13 @@ def test_clear_downstream_artifacts_removes_token_raw_and_marker(
     assert store.is_dir(), "the store must survive until Stage 1 replaces it"
 
 
-def test_reconcile_consumes_the_token_and_the_raw_array(tmp_path: Path) -> None:
+def test_reconcile_consumes_the_token_and_the_raw_array(
+    tmp_path: Path,
+) -> None:
     from phenotypic._cli._cli_stage2_token import stage2_raw_path
-    from phenotypic._cli._cli_staged_resume import reconcile_stage3_publications
+    from phenotypic._cli._cli_staged_resume import (
+        reconcile_stage3_publications,
+    )
 
     output_dir = tmp_path / "out"
     parquet = dataset_measurements_dir(output_dir, "plate") / "done.parquet"

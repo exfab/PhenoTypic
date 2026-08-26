@@ -4,6 +4,7 @@ Mirrors the synth-plate + pipeline-JSON setup used by
 ``test_cli_hdf_output.py`` so multiple integration modules can share one
 deterministic input dir and serialized pipeline.
 """
+
 from __future__ import annotations
 
 import tempfile
@@ -36,7 +37,7 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureSize
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.refine import SmallObjectRemover
-from phenotypic.sdk_ import dataset_measurements_dir, zarr_store_path
+from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, zarr_store_path
 
 
 def _write_synth_image(target_path: Path) -> None:
@@ -98,6 +99,7 @@ def simple_pipeline_json():
 # Staged-GPU stage harnesses (Phase 3 Task 3.3)
 # ---------------------------------------------------------------------------
 
+
 class _FixedBlobDetector(GpuDetector):
     """Emit a fixed three-blob instance map, ignoring the pixels entirely.
 
@@ -152,7 +154,9 @@ class _BorderColonyDetector(GpuDetector):
         labels[:, -2:] = 1
         mid = height // 2
         labels[mid - 10 : mid + 10, 0:20] = 2  # touches the left frame
-        labels[height // 4 : height // 4 + 20, width // 2 : width // 2 + 20] = 3
+        labels[
+            height // 4 : height // 4 + 20, width // 2 : width // 2 + 20
+        ] = 3
         return labels
 
 
@@ -196,7 +200,9 @@ class StagedStageHarness:
 
     def run_stage2(self) -> None:
         self.plan.gpu_detector._ensure_model_loaded()
-        stage2_detect_core(self.plan.gpu_detector, self.output_dir, "ds", "img")
+        stage2_detect_core(
+            self.plan.gpu_detector, self.output_dir, "ds", "img"
+        )
         # Snapshot so simulate_timeout_after_promote can rebuild the exact
         # on-disk state of the promote-to-marker window, which a completed
         # Stage 3 has already cleaned up.
@@ -240,11 +246,14 @@ class StagedStageHarness:
 
     def read_measurements(self) -> "pl.DataFrame":
         return pl.read_parquet(
-            dataset_measurements_dir(self.output_dir, "ds") / "img.parquet"
+            zarr_store_path(self.output_dir, "ds", "img")
+            / MEASUREMENT_TABLE_RELATIVE_PATH
         )
 
 
-def _build_stage_harness(tmp_path: Path, ops: list | dict, *, work_id: str | None):
+def _build_stage_harness(
+    tmp_path: Path, ops: list | dict, *, work_id: str | None
+):
     image_path = tmp_path / "img.tiff"
     load_synth_yeast_plate().rgb.imsave(filepath=image_path)
     output_dir = tmp_path / "out"
@@ -267,9 +276,7 @@ def _build_stage_harness(tmp_path: Path, ops: list | dict, *, work_id: str | Non
 @pytest.fixture
 def staged_run(tmp_path: Path) -> StagedStageHarness:
     """Baseline: detector emits three blobs, no post-ops, no work id."""
-    return _build_stage_harness(
-        tmp_path, [_FixedBlobDetector()], work_id=None
-    )
+    return _build_stage_harness(tmp_path, [_FixedBlobDetector()], work_id=None)
 
 
 @pytest.fixture

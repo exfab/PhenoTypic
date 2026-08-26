@@ -73,7 +73,9 @@ def _real_store(output_dir: Path, dataset: str, stem: str) -> Path:
     """A genuinely readable store, written by the production writer."""
     from phenotypic._cli._cli_output_manager import OutputManager
 
-    manager = OutputManager.from_config(output_dir, ".tiff", save_overlays=False)
+    manager = OutputManager.from_config(
+        output_dir, ".tiff", save_overlays=False
+    )
     saved = manager.save_image_store(_synth_image(), dataset, stem)
     assert saved is not None
     return saved
@@ -170,13 +172,15 @@ def _measure_pipeline(tmp_path: Path) -> Path:
     return path
 
 
-def test_measure_core_names_the_parquet_by_the_bare_stem(tmp_path: Path) -> None:
-    """`.stem` here writes `img.ome.parquet` -- a wrong name nothing raises on."""
+def test_measure_core_embeds_the_table_in_the_bare_stem_store(
+    tmp_path: Path,
+) -> None:
+    """Measure mode must replace the table in `img.ome.zarr`, not a sibling."""
     from phenotypic._cli._cli_output_manager import OutputManager
     from phenotypic._cli._cli_process_single import (
         process_single_store_measure_core,
     )
-    from phenotypic.sdk_ import dataset_measurements_dir
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
 
     store = _real_store(tmp_path, "ds", "img")
     manager = OutputManager.from_config(tmp_path, ".tiff", save_overlays=False)
@@ -185,7 +189,12 @@ def test_measure_core_names_the_parquet_by_the_bare_stem(tmp_path: Path) -> None
             type(
                 "_D",
                 (),
-                {"name": "ds", "images": [], "input_dir": tmp_path, "output_dir": tmp_path},
+                {
+                    "name": "ds",
+                    "images": [],
+                    "input_dir": tmp_path,
+                    "output_dir": tmp_path,
+                },
             )()
         ]
     )
@@ -199,11 +208,13 @@ def test_measure_core_names_the_parquet_by_the_bare_stem(tmp_path: Path) -> None
         output_manager=manager,
     )
 
-    written = sorted(p.name for p in dataset_measurements_dir(tmp_path, "ds").glob("*.parquet"))
-    assert written == ["img.parquet"]
+    assert (store / MEASUREMENT_TABLE_RELATIVE_PATH).is_file()
+    assert not (tmp_path / "results" / "ds" / "measurements").exists()
 
 
-def test_measure_core_dispatches_on_the_stores_image_class(tmp_path: Path) -> None:
+def test_measure_core_dispatches_on_the_stores_image_class(
+    tmp_path: Path,
+) -> None:
     """A GridImage store must rehydrate as a GridImage, not the configured fallback."""
     from phenotypic import GridImage
     from phenotypic._cli._cli_output_manager import OutputManager
@@ -257,9 +268,9 @@ def test_regenerate_overlays_writes_the_bare_stem_png(tmp_path: Path) -> None:
     _real_store(tmp_path, "ds", "img")
     _regenerate_missing_overlays(tmp_path, overlay_alpha=0.3, n_jobs=1)
 
-    assert sorted(p.name for p in dataset_overlays_dir(tmp_path, "ds").glob("*.png")) == [
-        "img.png"
-    ]
+    assert sorted(
+        p.name for p in dataset_overlays_dir(tmp_path, "ds").glob("*.png")
+    ) == ["img.png"]
 
 
 def test_regenerate_overlays_skips_an_overlay_that_already_exists(
@@ -302,7 +313,9 @@ def test_recompile_overlay_tasks_skip_present_overlays(tmp_path: Path) -> None:
     assert [Path(t["store_path"]).name for t in tasks] == [f"b{STORE_SUFFIX}"]
 
 
-def test_recompile_overlay_tasks_ignore_part_directories(tmp_path: Path) -> None:
+def test_recompile_overlay_tasks_ignore_part_directories(
+    tmp_path: Path,
+) -> None:
     from phenotypic._cli._cli_recompile_slurm_scripts import (
         _overlay_tasks_for_dataset,
     )
@@ -313,7 +326,9 @@ def test_recompile_overlay_tasks_ignore_part_directories(tmp_path: Path) -> None
     assert len(_overlay_tasks_for_dataset(tmp_path, "ds", 0.3)) == 1
 
 
-def test_recompile_overlay_worker_writes_the_bare_stem_png(tmp_path: Path) -> None:
+def test_recompile_overlay_worker_writes_the_bare_stem_png(
+    tmp_path: Path,
+) -> None:
     from phenotypic._cli._cli_recompile_worker import _run_overlay_task
     from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
     from phenotypic.sdk_ import dataset_overlays_dir
@@ -354,7 +369,9 @@ def test_recompile_image_names_come_back_bare(tmp_path: Path) -> None:
     assert _recompile_dataset_image_names(tmp_path, "ds") == ["a", "b"]
 
 
-def test_recompile_discovers_a_dataset_that_only_has_stores(tmp_path: Path) -> None:
+def test_recompile_discovers_a_dataset_that_only_has_stores(
+    tmp_path: Path,
+) -> None:
     from phenotypic.phenotypicCLI import _discover_recompile_dataset_names
 
     _fake_store(tmp_path, "ds", "a")
@@ -451,11 +468,16 @@ def test_process_single_cli_marker_certifies_the_store(tmp_path: Path) -> None:
         result = CliRunner().invoke(
             main,
             [
-                "--pipeline", str(pipeline_path),
-                "--image", str(image_path),
-                "--output-dir", str(out),
-                "--dataset-name", "in",
-                "--input-root", str(input_root),
+                "--pipeline",
+                str(pipeline_path),
+                "--image",
+                str(image_path),
+                "--output-dir",
+                str(out),
+                "--dataset-name",
+                "in",
+                "--input-root",
+                str(input_root),
                 "--no-save-overlays",
             ],
         )
@@ -486,9 +508,10 @@ def test_process_single_cli_marker_certifies_the_store(tmp_path: Path) -> None:
     )
     descriptor = marker["artifacts"]["store"]
     assert descriptor["kind"] == "store"
-    assert descriptor["path"] == zarr_store_path(out, "in", "img").relative_to(
-        out
-    ).as_posix()
+    assert (
+        descriptor["path"]
+        == zarr_store_path(out, "in", "img").relative_to(out).as_posix()
+    )
     assert descriptor["sha256"] == file_fingerprint(
         zarr_store_path(out, "in", "img") / "zarr.json"
     )
@@ -565,7 +588,9 @@ def test_store_stem_raises_on_a_non_store_path() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_readme_documents_the_store_and_its_interoperability(tmp_path: Path) -> None:
+def test_readme_documents_the_store_and_its_interoperability(
+    tmp_path: Path,
+) -> None:
     from phenotypic import ImagePipeline
     from phenotypic._cli._cli_readme_generator import READMEGenerator
     from types import SimpleNamespace
@@ -603,7 +628,9 @@ def test_readme_documents_the_store_and_its_interoperability(tmp_path: Path) -> 
 # ---------------------------------------------------------------------------
 
 
-def test_measure_mode_scan_feeds_paths_store_stem_accepts(tmp_path: Path) -> None:
+def test_measure_mode_scan_feeds_paths_store_stem_accepts(
+    tmp_path: Path,
+) -> None:
     """End-to-end on the contract: every scanned path must survive store_stem."""
     from phenotypic._cli._cli_directory_scanner import scan_store_outputs
 
@@ -621,7 +648,9 @@ def test_measure_mode_scan_feeds_paths_store_stem_accepts(tmp_path: Path) -> Non
         assert zarr_store_path(tmp_path, "ds", store_stem(path)) == path
 
 
-def test_scan_result_json_round_trips_through_a_task_manifest(tmp_path: Path) -> None:
+def test_scan_result_json_round_trips_through_a_task_manifest(
+    tmp_path: Path,
+) -> None:
     """Store paths cross a JSON boundary on the SLURM recompile path."""
     from phenotypic._cli._cli_recompile_slurm_scripts import (
         _overlay_tasks_for_dataset,

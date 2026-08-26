@@ -67,7 +67,9 @@ class StagedGpuStrategy(ExecutionStrategy):
     ) -> ExecutionResults:
         start = datetime.now()
         cfg = self.config
-        plan = split_pipeline_at_gpu(ImagePipeline.from_json(cfg.pipeline_json))
+        plan = split_pipeline_at_gpu(
+            ImagePipeline.from_json(cfg.pipeline_json)
+        )
         event_log = event_log_path(output_dir)
         tasks = [(ds, img) for ds in datasets for img in ds.images]
 
@@ -77,9 +79,12 @@ class StagedGpuStrategy(ExecutionStrategy):
         if cfg.detect_mode != "gray":
             read_kwargs["detect_mode"] = cfg.detect_mode
 
-        def _parquet_path(ds_name: str, stem: str) -> Path:
-            return self.output_manager.get_output_path(
-                ds_name, "measurements", stem
+        def _measurement_table_path(ds_name: str, stem: str) -> Path:
+            from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+
+            return (
+                zarr_store_path(output_dir, ds_name, stem)
+                / MEASUREMENT_TABLE_RELATIVE_PATH
             )
 
         def _terminal_output_exists(ds_name: str, img: Path) -> bool:
@@ -97,7 +102,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                 cfg.resume
                 and stage3_completion_exists(output_dir, ds_name, img.stem)
                 and staged_store_matches_work_id(store, work_id)
-                and _parquet_path(ds_name, img.stem).is_file()
+                and _measurement_table_path(ds_name, img.stem).is_file()
             ):
                 ensure_staged_overlay(
                     output_dir,
@@ -128,7 +133,7 @@ class StagedGpuStrategy(ExecutionStrategy):
             ) or bool(
                 cfg.resume
                 and not cfg.staged_stage3_markers
-                and _parquet_path(ds_name, img.stem).is_file()
+                and _measurement_table_path(ds_name, img.stem).is_file()
             )
             if terminal:
                 ensure_staged_overlay(
@@ -153,10 +158,18 @@ class StagedGpuStrategy(ExecutionStrategy):
                 )
             attempt_id = uuid4().hex
             try:  # isolate one bad image from the batch (failed event logged)
-                with stage_event(event_log, ds.name, img.name, STAGE_PREPROCESS):
+                with stage_event(
+                    event_log, ds.name, img.name, STAGE_PREPROCESS
+                ):
                     stage1_preprocess_core(
-                        plan, img, ds.name, img.stem, output_dir,
-                        self.output_manager, cfg.image_type, read_kwargs,
+                        plan,
+                        img,
+                        ds.name,
+                        img.stem,
+                        output_dir,
+                        self.output_manager,
+                        cfg.image_type,
+                        read_kwargs,
                         work_id=work_id,
                         pipeline_path=cfg.pipeline_json,
                         pipeline_identity=getattr(
@@ -208,9 +221,14 @@ class StagedGpuStrategy(ExecutionStrategy):
                 continue
             attempt_id = uuid4().hex
             try:
-                with stage_event(event_log, ds.name, img.name, STAGE_GPU_DETECT):
+                with stage_event(
+                    event_log, ds.name, img.name, STAGE_GPU_DETECT
+                ):
                     stage2_detect_core(
-                        plan.gpu_detector, output_dir, ds.name, img.stem,
+                        plan.gpu_detector,
+                        output_dir,
+                        ds.name,
+                        img.stem,
                         cfg.image_type,
                     )
             except Exception as exc:
@@ -248,7 +266,11 @@ class StagedGpuStrategy(ExecutionStrategy):
             try:
                 with stage_event(event_log, ds.name, img.name, STAGE_MEASURE):
                     stage3_merge_measure_core(
-                        plan, output_dir, ds.name, img.stem, self.output_manager,
+                        plan,
+                        output_dir,
+                        ds.name,
+                        img.stem,
+                        self.output_manager,
                         cfg.image_type,
                         image_name=img.name,
                         work_id=work_id,
@@ -284,7 +306,9 @@ class StagedGpuStrategy(ExecutionStrategy):
 
         if cfg.process_only_layer == "objmap":
             # process-mode: export the objmap layer (mirrored), no measurement.
-            self._export_objmap_layer(plan, tasks, output_dir, event_log, results)
+            self._export_objmap_layer(
+                plan, tasks, output_dir, event_log, results
+            )
         else:
             for ds_name, ok in Parallel(n_jobs=cfg.n_jobs)(
                 delayed(_stage3)(ds, img) for ds, img in tasks
@@ -293,21 +317,21 @@ class StagedGpuStrategy(ExecutionStrategy):
 
         ds_results = {
             name: DatasetResults(
-                name=name, total=d["total"], completed=d["completed"],
-                failed=d["failed"], failures=[],
+                name=name,
+                total=d["total"],
+                completed=d["completed"],
+                failed=d["failed"],
+                failures=[],
             )
             for name, d in results.items()
         }
         try:
             from ._dashboard._manifest_builder import build_manifest
 
-            datasets_inventory = (
-                cfg.full_dataset_inventory
-                or {
-                    dataset.name: [image.name for image in dataset.images]
-                    for dataset in datasets
-                }
-            )
+            datasets_inventory = cfg.full_dataset_inventory or {
+                dataset.name: [image.name for image in dataset.images]
+                for dataset in datasets
+            }
             build_manifest(
                 output_dir=output_dir,
                 progress_dir=progress_dir(output_dir),

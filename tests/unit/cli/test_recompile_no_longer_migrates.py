@@ -49,27 +49,34 @@ def test_the_fixture_really_carries_legacy_headers(legacy_headers_run) -> None:
     assert "MetadataGenetic_Strain" in _read_headers(legacy_headers_run)
 
 
-def test_recompile_still_reads_legacy_headers(legacy_headers_run) -> None:
-    """Decision #3 is untouched: no existing output directory breaks."""
+def test_recompile_requires_migration_for_legacy_external_authority(
+    legacy_headers_run,
+) -> None:
+    """Current-schema aggregation must not mix embedded and external tables."""
     result = CliRunner().invoke(
-        phenotypic_cli, ["--mode", "recompile", "--output", str(legacy_headers_run)]
+        phenotypic_cli,
+        ["--mode", "recompile", "--output", str(legacy_headers_run)],
     )
-    assert result.exit_code == 0, result.output
+    assert result.exit_code != 0
+    assert "--mode migrate" in result.output
 
 
 def test_recompile_does_not_rewrite_headers(legacy_headers_run) -> None:
     before = _read_headers(legacy_headers_run)
     result = CliRunner().invoke(
-        phenotypic_cli, ["--mode", "recompile", "--output", str(legacy_headers_run)]
+        phenotypic_cli,
+        ["--mode", "recompile", "--output", str(legacy_headers_run)],
     )
-    assert result.exit_code == 0, result.output
+    assert result.exit_code != 0
+    assert "--mode migrate" in result.output
     assert _read_headers(legacy_headers_run) == before
 
 
 def test_recompile_writes_no_migration_receipt(legacy_headers_run) -> None:
     """A receipt is the durable trace of a rewrite; recompile must leave none."""
     CliRunner().invoke(
-        phenotypic_cli, ["--mode", "recompile", "--output", str(legacy_headers_run)]
+        phenotypic_cli,
+        ["--mode", "recompile", "--output", str(legacy_headers_run)],
     )
     receipts = legacy_headers_run / ".phenotypic" / "metadata_migration"
     assert not receipts.exists() or not list(receipts.glob("*.json"))
@@ -89,7 +96,8 @@ def test_the_slurm_fanout_modules_are_gone() -> None:
 def test_migrate_performs_the_header_migration(legacy_headers_run) -> None:
     before = _read_headers(legacy_headers_run)
     result = CliRunner().invoke(
-        phenotypic_cli, ["--mode", "migrate", "--output", str(legacy_headers_run)]
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_headers_run)],
     )
     assert result.exit_code == 0, result.output
     after = _read_headers(legacy_headers_run)
