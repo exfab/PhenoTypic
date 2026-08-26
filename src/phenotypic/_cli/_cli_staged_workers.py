@@ -168,7 +168,12 @@ def stage_event(
     """
     _check_active(active_check)
     append_event(
-        event_log, dataset, image, "started", stage=stage, commit_guard=commit_guard
+        event_log,
+        dataset,
+        image,
+        "started",
+        stage=stage,
+        commit_guard=commit_guard,
     )
     try:
         yield
@@ -248,9 +253,7 @@ def stage1_preprocess_core(
         image_cls = _image_class(image_type)
         detect_mode = read_kwargs.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **read_kwargs)
-        _initialize_stage1_provenance(
-            image, pipeline_path, pipeline_identity
-        )
+        _initialize_stage1_provenance(image, pipeline_path, pipeline_identity)
         _check_active(active_check)
         if drop_originals:
             write_provenance_checkpoint(
@@ -285,9 +288,7 @@ def stage1_preprocess_core(
             )
         ):
             plan.pre_pipeline.apply(image, inplace=True)
-        operation_count = len(
-            image._metadata.provenance_journal["operations"]
-        )
+        operation_count = len(image._metadata.provenance_journal["operations"])
         _check_active(active_check)
         set_retry_base_length(image, operation_count)
         set_provenance_status(image, "staged")
@@ -468,13 +469,6 @@ def stage3_merge_measure_core(
             plan.post_pipeline.apply(image, inplace=True)
         measurements = plan.post_pipeline.measure(image, apply_post=False)
 
-        _check_active(active_check)
-        output_manager.save_measurements(
-            measurements,
-            dataset_name,
-            image_stem,
-            commit_guard=commit_guard,
-        )
         if output_manager.save_overlays:
             _check_active(active_check)
             output_manager.save_overlay(
@@ -503,6 +497,7 @@ def stage3_merge_measure_core(
             image_stem,
             work_id=work_id,
             commit_guard=commit_guard,
+            measurements=measurements,
         )
         if saved_store is None or not valid_staged_store(saved_store):
             raise RuntimeError(

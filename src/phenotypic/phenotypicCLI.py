@@ -1011,9 +1011,7 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "-m",
     "--mode",
-    type=click.Choice(
-        ["full", "measure", "recompile", "process", "migrate"]
-    ),
+    type=click.Choice(["full", "measure", "recompile", "process", "migrate"]),
     default="full",
     show_default=True,
     help=(
@@ -1049,9 +1047,7 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "--drop-originals",
     is_flag=True,
-    help=(
-        "Do not retain decoded source pixels in full-forward image stores."
-    ),
+    help=("Do not retain decoded source pixels in full-forward image stores."),
 )
 @click.option(
     "--image-type",
@@ -2837,12 +2833,23 @@ def _handle_recompile_slurm(
         shard_size=shard_size,
         attempt_id=attempt_id,
     )
+    from phenotypic.sdk_ import metadata_csv_deliverable_path
+
+    stable_metadata = metadata_csv_deliverable_path(output_dir)
+    effective_metadata = (
+        metadata_csv
+        if metadata_csv is not None
+        else (stable_metadata if stable_metadata.is_file() else None)
+    )
+    for task in tasks:
+        if task.get("task_type") in {TASK_MEASUREMENTS, TASK_FINALIZE}:
+            task[JobMetadataKey.METADATA_CSV] = (
+                str(effective_metadata) if effective_metadata else None
+            )
+
     finalizer_task_index: Optional[int] = None
     if tasks and tasks[-1].get("task_type") == TASK_FINALIZE:
         finalizer_task_index = len(tasks) - 1
-        tasks[-1][JobMetadataKey.METADATA_CSV] = (
-            str(metadata_csv) if metadata_csv else None
-        )
         tasks[-1][JobMetadataKey.NO_QC] = no_qc
         tasks[-1]["slurm_generation"] = attempt_id
 
@@ -3011,10 +3018,7 @@ def _discover_recompile_dataset_names(
             d.name
             for d in results_dir.iterdir()
             if d.is_dir()
-            and (
-                (d / DIR_MEASUREMENTS).is_dir()
-                or (d / DIR_ZARR).is_dir()
-            )
+            and ((d / DIR_MEASUREMENTS).is_dir() or (d / DIR_ZARR).is_dir())
         )
 
     if not dataset_names and job_meta:
@@ -3280,6 +3284,25 @@ def _handle_recompile(
         )
     else:
         console.print("[green]Metadata schema: canonical")
+
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_tables,
+    )
+    from phenotypic.sdk_ import metadata_csv_deliverable_path
+
+    stable_metadata = metadata_csv_deliverable_path(output_dir)
+    effective_metadata = (
+        metadata_csv
+        if metadata_csv is not None
+        else (stable_metadata if stable_metadata.is_file() else None)
+    )
+    rewritten = recompile_embedded_measurement_tables(
+        output_dir, effective_metadata
+    )
+    if rewritten:
+        console.print(
+            f"[green]Embedded measurement tables refreshed: {rewritten}"
+        )
 
     console.print("[cyan]Aggregating measurements...")
     master_path = aggregate_measurements(

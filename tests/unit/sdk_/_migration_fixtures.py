@@ -34,7 +34,9 @@ from phenotypic._cli._cli_state_management import (
     save_processing_state,
 )
 from phenotypic.sdk_ import (
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     atomic_write_json,
+    dataset_measurements_dir,
     dataset_zarr_dir,
     deliverables_dir,
     image_completion_marker_path,
@@ -202,6 +204,16 @@ def demote_store_to_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
         with h5py.File(hdf_path, mode="a") as handle:
             handle.attrs["phenotypic_work_id"] = work_id
 
+    # A completed current run owns its table inside the store. Demotion must
+    # carry those exact bytes onto the external path older releases used,
+    # otherwise this fixture becomes HDF-only and no longer exercises the
+    # legacy measurement migration pass.
+    embedded_table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    if embedded_table.is_file():
+        measurements = dataset_measurements_dir(output_dir, dataset)
+        measurements.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(embedded_table, measurements / f"{stem}.parquet")
+
     shutil.rmtree(store)
     return hdf_path
 
@@ -248,7 +260,9 @@ def make_measurement_headers_legacy(output_dir: Path, dataset: str) -> int:
     return rewritten
 
 
-def refresh_marker_descriptors(output_dir: Path, dataset: str, stem: str) -> None:
+def refresh_marker_descriptors(
+    output_dir: Path, dataset: str, stem: str
+) -> None:
     """Re-fingerprint every artifact descriptor in one marker, in place.
 
     Keeps the marker's version and every ``kind`` tag. Used after a fixture
@@ -334,7 +348,9 @@ def repoint_marker_at_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
 
     hdf_path = _dataset_hdf_dir(output_dir, dataset) / f"{stem}.h5"
     resolved = hdf_path.resolve(strict=True)
-    descriptor = _artifact_descriptor(resolved, resolved.relative_to(output_root))
+    descriptor = _artifact_descriptor(
+        resolved, resolved.relative_to(output_root)
+    )
     descriptor.pop("kind", None)
     artifacts["hdf"] = descriptor
     atomic_write_json(marker_path, marker)

@@ -140,9 +140,20 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
     chunked_files: set[str] = set(state.get(ChunkStateKey.CHUNKED_FILES, []))
     next_chunk_id: int = state.get(ChunkStateKey.NEXT_CHUNK_ID, 0)
 
-    new_files = _scan_unchunked_parquets(
-        output_dir / DIR_RESULTS, chunked_files
-    )
+    from ._cli_completion import authorized_measurement_sources
+
+    authorized_sources = authorized_measurement_sources(output_dir)
+    embedded_authority = authorized_sources is not None
+    if embedded_authority:
+        new_files = [
+            path
+            for path in sorted(authorized_sources)
+            if _chunk_state_key(path) not in chunked_files
+        ]
+    else:
+        new_files = _scan_unchunked_parquets(
+            output_dir / DIR_RESULTS, chunked_files
+        )
     if not new_files:
         logger.info("No new measurement files to chunk")
         return
@@ -217,17 +228,19 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
             lambda p: combined.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
 
-        atomic_write_with_writer(
-            master_measurements_csv_path(output_dir),
-            lambda p: combined.write_csv(p),
-        )
-        atomic_write_with_writer(
-            master_measurements_parquet_path(output_dir),
-            lambda p: combined.write_parquet(p, **PARQUET_WRITE_OPTIONS),
-        )
+        if not embedded_authority:
+            atomic_write_with_writer(
+                master_measurements_csv_path(output_dir),
+                lambda p: combined.write_csv(p),
+            )
+            atomic_write_with_writer(
+                master_measurements_parquet_path(output_dir),
+                lambda p: combined.write_parquet(p, **PARQUET_WRITE_OPTIONS),
+            )
 
-    for ds_name, ds_df in chunk_df.group_by(str(EXPERIMENT.DATASET)):
-        _update_dataset_parquet(output_dir, str(ds_name[0]), ds_df)
+    if not embedded_authority:
+        for ds_name, ds_df in chunk_df.group_by(str(EXPERIMENT.DATASET)):
+            _update_dataset_parquet(output_dir, str(ds_name[0]), ds_df)
 
     # Commit the chunk state LAST, once every artifact it describes is durable.
     # SLURM kills checkpoint tasks routinely -- walltime, preemption, node
@@ -306,8 +319,17 @@ def _scan_unchunked_parquets(
 
 
 def _chunk_state_key(parquet_path: Path) -> str:
-    """The ``<dataset>/<file>.parquet`` key chunk state records."""
-    return f"{parquet_path.parent.parent.name}/{parquet_path.name}"
+    """Return a stable dataset/image key for legacy or embedded authority."""
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, STORE_SUFFIX
+
+    path = Path(parquet_path)
+    suffix = MEASUREMENT_TABLE_RELATIVE_PATH.parts
+    if tuple(path.parts[-len(suffix) :]) == suffix:
+        store = path.parents[2]
+        dataset = path.parents[4].name
+        stem = store.name.removesuffix(STORE_SUFFIX)
+        return f"{dataset}/{stem}.parquet"
+    return f"{path.parent.parent.name}/{path.name}"
 
 
 def _attach_image_identity(
@@ -471,9 +493,7 @@ _AGGREGATE_KEY: Final[tuple[str, ...]] = (
 )
 
 
-def _dedupe_on_colony_key(
-    df: pl.DataFrame, *, context: str
-) -> pl.DataFrame:
+def _dedupe_on_colony_key(df: pl.DataFrame, *, context: str) -> pl.DataFrame:
     """Collapse repeated colonies, keeping the later row.
 
     This is what makes every retry-exposed write in this module idempotent, so
@@ -655,7 +675,9 @@ def _update_dataset_parquet(
             if rebuilt is not None:
                 new_df = pl.concat([rebuilt, new_df], how="diagonal_relaxed")
 
-    new_df = _dedupe_on_colony_key(new_df, context=f"aggregate for {dataset_name}")
+    new_df = _dedupe_on_colony_key(
+        new_df, context=f"aggregate for {dataset_name}"
+    )
 
     atomic_write_with_writer(
         agg_path,

@@ -25,7 +25,7 @@ import re as _re
 import shutil
 import time
 from pathlib import Path
-from typing import Final, Literal, Sequence
+from typing import Final, Literal, NamedTuple, Sequence
 from uuid import uuid4
 
 import numpy as np
@@ -72,6 +72,33 @@ OME_XML_NAME: Final[str] = "METADATA.ome.xml"
 LABELS_GROUP: Final[str] = "labels"
 OBJMAP_LABEL: Final[str] = "objmap"
 
+#: Embedded object-measurement table namespace. The sub-schema is versioned
+#: independently from the store group/array schema, which remains version 3.
+TABLES_GROUP: Final[str] = "tables"
+MEASUREMENT_TABLE_GROUP: Final[str] = "measurements"
+MEASUREMENT_TABLE_FILENAME: Final[str] = "table.parquet"
+MEASUREMENT_TABLE_RELATIVE_PATH: Final[Path] = Path(
+    TABLES_GROUP, MEASUREMENT_TABLE_GROUP, MEASUREMENT_TABLE_FILENAME
+)
+MEASUREMENT_TABLE_SCHEMA_VERSION: Final[int] = 1
+
+
+class EmbeddedMeasurementParquetMetadataKeys(NamedTuple):
+    """Stable Parquet key/value metadata names for join provenance."""
+
+    JOIN_STATUS: str = "phenotypic.join.status"
+    JOIN_KIND: str = "phenotypic.join.kind"
+    JOIN_LEFT: str = "phenotypic.join.left"
+    JOIN_RIGHT: str = "phenotypic.join.right"
+    JOIN_KEYS: str = "phenotypic.join.keys"
+    METADATA_SNAPSHOT_SHA256: str = "phenotypic.metadata.snapshot_sha256"
+    MEASUREMENT_COLUMNS: str = "phenotypic.measurement_columns"
+
+
+EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS: Final = (
+    EmbeddedMeasurementParquetMetadataKeys()
+)
+
 #: Canonical series order. ``rgb`` is omitted from a store when empty; the
 #: remaining names keep this relative order.
 SERIES_ORDER: Final[tuple[str, str, str]] = ("rgb", "gray", "detect_mat")
@@ -80,7 +107,11 @@ AXES_3D: Final[tuple[str, str, str]] = ("c", "y", "x")
 AXES_2D: Final[tuple[str, str]] = ("y", "x")
 
 #: NGFF axis ``type`` per dimension name.
-AXIS_TYPES: Final[dict[str, str]] = {"c": "channel", "y": "space", "x": "space"}
+AXIS_TYPES: Final[dict[str, str]] = {
+    "c": "channel",
+    "y": "space",
+    "x": "space",
+}
 
 #: Downscaling method per array kind, with its human-readable description.
 #: Single source for BOTH the public ``multiscales[].type``/``metadata`` (2.4
@@ -343,7 +374,9 @@ def shard_shape_for(shape: tuple[int, ...]) -> tuple[int, ...]:
     chunk = chunk_shape_for(shape)
     lead = tuple(int(extent) for extent in shape[:-2])  # full channel extent
     spatial = tuple(
-        chunk[len(shape) - 2 + axis] if extent < CHUNK_YX[axis] else SHARD_YX[axis]
+        chunk[len(shape) - 2 + axis]
+        if extent < CHUNK_YX[axis]
+        else SHARD_YX[axis]
         for axis, extent in enumerate(shape[-2:])
     )
     return (*lead, *spatial)
@@ -409,6 +442,7 @@ class PhenotypicAttr:
     IMAGE_CLASS: Final[str] = "image_class"
     WORK_ID: Final[str] = "work_id"
     PROVENANCE: Final[str] = "provenance"
+    TABLES: Final[str] = "tables"
     SERIES: Final[str] = "series"
     LABELS: Final[str] = "labels"
     PYRAMID: Final[str] = "pyramid"
@@ -618,10 +652,10 @@ def require_readable_store(store_path: Path) -> dict:
     found = block.get(PhenotypicAttr.STORE_SCHEMA_VERSION)
     if found != STORE_SCHEMA_VERSION:
         raise ValueError(
-                f"Cannot read {store_path}: store_schema_version is {found!r}, "
-                f"but this build of PhenoTypic reads {STORE_SCHEMA_VERSION}. "
-                f"The store was written by a newer PhenoTypic -- upgrade the "
-                f"package to read it."
+            f"Cannot read {store_path}: store_schema_version is {found!r}, "
+            f"but this build of PhenoTypic reads {STORE_SCHEMA_VERSION}. "
+            f"The store was written by a newer PhenoTypic -- upgrade the "
+            f"package to read it."
         )
     return block
 
@@ -685,6 +719,7 @@ def build_multiscales(
         multiscale["name"] = name
     return {"multiscales": [multiscale]}
 
+
 # NOTE (ledger ALGO-R2B-16): 2.4 -- "Each 'multiscales' dictionary SHOULD
 # contain the field 'name'." Pass `name` at the LABEL call site too
 # (phase-2 Task 2.2), not just the three image series, or the label block
@@ -741,9 +776,7 @@ def build_omero(
     if np.issubdtype(dtype, np.floating):
         return {}
     ceiling = (2 ** int(bit_depth)) - 1
-    palette = (
-        _RGB_CHANNEL_COLORS if series == "rgb" else ((series, "FFFFFF"),)
-    )
+    palette = _RGB_CHANNEL_COLORS if series == "rgb" else ((series, "FFFFFF"),)
     channels = [
         {
             "label": label,
@@ -825,7 +858,9 @@ def _ome_xml_modules(metadata_sections: dict[str, dict]) -> dict[str, dict]:
             # ship a Python-internal name as the MapAnnotation Namespace, mixed
             # with plain section fallbacks like "imported". A legal anyURI, so
             # ome.xsd cannot catch it. Ledger ALGO-10.
-            grouped.setdefault(getattr(module, "value", module), {})[key] = value
+            grouped.setdefault(getattr(module, "value", module), {})[key] = (
+                value
+            )
     return grouped
 
 
@@ -841,7 +876,7 @@ def _ome_xml_modules(metadata_sections: dict[str, dict]) -> dict[str, dict]:
 #: Everything else is forbidden OUTRIGHT -- not even as a character reference --
 #: so no amount of escaping rescues it.
 _XML_FORBIDDEN = _re.compile(
-    "[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]"
+    "[^\u0009\u000a\u000d\u0020-\ud7ff\ue000-\ufffd\U00010000-\U0010ffff]"
 )
 
 
@@ -873,9 +908,14 @@ def _xml_text(value: object) -> str:
 #: someone from "fixing" a non-problem. ``int64``/``uint64``/``float16`` have NO OME equivalent at all,
 #: so raising on them is correct, not a gap. Do not "complete" this map.
 _OME_PIXEL_TYPES: Final[dict[str, str]] = {
-    "u1": "uint8", "u2": "uint16", "u4": "uint32",
-    "i1": "int8", "i2": "int16", "i4": "int32",
-    "f4": "float", "f8": "double",
+    "u1": "uint8",
+    "u2": "uint16",
+    "u4": "uint32",
+    "i1": "int8",
+    "i2": "int16",
+    "i4": "int32",
+    "f4": "float",
+    "f8": "double",
 }
 
 
@@ -1141,7 +1181,9 @@ def fsync_tree(root: Path) -> None:
         elif path.is_dir():
             directories.append(path)
     if os.name == "posix":
-        for directory in sorted(directories, key=lambda p: len(p.parts), reverse=True):
+        for directory in sorted(
+            directories, key=lambda p: len(p.parts), reverse=True
+        ):
             _fsync_path(directory)
 
 
@@ -1332,7 +1374,8 @@ def sweep_orphan_parts(
             if not path.is_dir():
                 continue
             if not (
-                path.name.endswith(PART_SUFFIX) or path.name.endswith(TRASH_SUFFIX)
+                path.name.endswith(PART_SUFFIX)
+                or path.name.endswith(TRASH_SUFFIX)
             ):
                 continue
             if STORE_SUFFIX not in path.name:
@@ -1349,7 +1392,9 @@ def sweep_orphan_parts(
 # ---------------------------------------------------------------------------
 
 
-def store_level0_shape(store_path: Path, member_path: str) -> tuple[int, ...] | None:
+def store_level0_shape(
+    store_path: Path, member_path: str
+) -> tuple[int, ...] | None:
     """Return the level-0 shape of one member array, or ``None`` if absent.
 
     Args:
@@ -1418,7 +1463,10 @@ def valid_staged_store(path: Path) -> bool:
         # comparison. This predicate RETURNS FALSE rather than raising -- the
         # explicit "written by a newer PhenoTypic" error belongs in the loader
         # (Phase 2 `load_zarr`), which is the path a user actually invokes.
-        if block.get(PhenotypicAttr.STORE_SCHEMA_VERSION) != STORE_SCHEMA_VERSION:
+        if (
+            block.get(PhenotypicAttr.STORE_SCHEMA_VERSION)
+            != STORE_SCHEMA_VERSION
+        ):
             return False
         series = block[PhenotypicAttr.SERIES]
         labels = block.get(PhenotypicAttr.LABELS, {})

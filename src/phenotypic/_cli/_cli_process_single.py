@@ -58,6 +58,7 @@ from ._cli_utils import normalize_extension
 from phenotypic.sdk_ import (
     CommitGuard,
     EnvVar,
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     load_image_from_store,
     progress_dir,
     store_stem,
@@ -226,11 +227,15 @@ def process_single_image_core(
         try:
             _check_active(active_check)
             set_provenance_status(image, "failed")
-            write_provenance_checkpoint(store, image, commit_guard=commit_guard)
+            write_provenance_checkpoint(
+                store, image, commit_guard=commit_guard
+            )
         except SlurmGenerationInactiveError:
             return
         except Exception:
-            logger.exception("Failed to mark provenance checkpoint failed: %s", store)
+            logger.exception(
+                "Failed to mark provenance checkpoint failed: %s", store
+            )
 
     try:
         # Load, decode, and run the configured scientific computation. Output
@@ -278,13 +283,6 @@ def process_single_image_core(
             measurements = pipeline.apply_and_measure(
                 image, inplace=True, apply_post=False
             )
-        _check_active(active_check)
-        output_manager.save_measurements(
-            measurements,
-            dataset_name,
-            image_stem,
-            commit_guard=commit_guard,
-        )
         if output_manager.save_overlays:
             _check_active(active_check)
             output_manager.save_overlay(
@@ -310,6 +308,7 @@ def process_single_image_core(
             dataset_name,
             image_stem,
             commit_guard=commit_guard,
+            measurements=measurements,
         )
         if saved_store is None:
             raise RuntimeError(
@@ -345,7 +344,7 @@ def process_single_store_measure_core(
     from the store's own ``phenotypic.image_class``, with ``image_type`` as the
     fallback for a block that carries none — runs
     :meth:`ImagePipeline.measure` only (no apply / no detection), and rewrites
-    the measurements parquet.  Does NOT regenerate overlays or touch the store.
+    the embedded measurement table. Does not regenerate overlays or pixel arrays.
 
     Args:
         pipeline_path: Path to pipeline JSON file.
@@ -384,13 +383,25 @@ def process_single_store_measure_core(
     # nothing raises on.
     stem = store_stem(store_path)
 
-    # Save measurements parquet (overlay + store intentionally skipped)
-    output_manager.save_measurements(
+    # Publish the authoritative table inside the existing store. Descriptor
+    # changes use a root-last store transaction; compatible tables use one
+    # validated same-directory atomic file replacement.
+    output_manager.replace_image_store_measurements(
+        store_path,
         measurements,
         dataset_name,
-        stem,
         commit_guard=commit_guard,
     )
+    from phenotypic.sdk_ import image_completion_marker_path
+
+    marker_path = image_completion_marker_path(output_dir, dataset_name, stem)
+    if marker_path.is_file():
+        from ._cli_recompile_tables import _republish_table_marker
+
+        _republish_table_marker(
+            output_dir, marker_path, commit_guard=commit_guard
+        )
+
     from phenotypic.plotting._pipeline import PlotCoordinator
 
     PlotCoordinator(
@@ -424,7 +435,9 @@ def process_single_store_measure_core(
     help="Base output directory",
 )
 @click.option(
-    "--dataset-name", required=True, help="Dataset name (subdirectory name or '_root')"
+    "--dataset-name",
+    required=True,
+    help="Dataset name (subdirectory name or '_root')",
 )
 @click.option(
     "--image-type",
@@ -446,7 +459,9 @@ def process_single_store_measure_core(
     help="Number of grid columns (for GridImage). Overrides any pipeline-level "
     "preset; falls back to the pipeline preset or 12 when omitted.",
 )
-@click.option("--bit-depth", type=int, default=None, help="Bit depth (8 or 16)")
+@click.option(
+    "--bit-depth", type=int, default=None, help="Bit depth (8 or 16)"
+)
 @click.option(
     "--detect-mode",
     type=click.Choice(["gray", "red", "green", "blue"]),
@@ -574,14 +589,18 @@ def main(
                 raise click.UsageError("--mode process requires --layer")
             process_only_layer = cast(ProcessOnlyLayer, layer)
         elif layer is not None:
-            raise click.UsageError("--layer can only be used with --mode process")
+            raise click.UsageError(
+                "--layer can only be used with --mode process"
+            )
 
         provenance_identity_values = (
             provenance_pipeline_source_path,
             provenance_pipeline_sha256,
         )
         if any(value is not None for value in provenance_identity_values):
-            if not all(value is not None for value in provenance_identity_values):
+            if not all(
+                value is not None for value in provenance_identity_values
+            ):
                 raise click.UsageError(
                     "Incomplete provenance pipeline identity"
                 )
@@ -601,9 +620,13 @@ def main(
             if not all(value for value in expected_identity):
                 raise RuntimeError("Incomplete immutable SLURM task identity")
             if file_sha256(image) != expected_input_sha256:
-                raise RuntimeError("Input changed after SLURM worklist creation")
+                raise RuntimeError(
+                    "Input changed after SLURM worklist creation"
+                )
             if file_sha256(pipeline) != expected_pipeline_sha256:
-                raise RuntimeError("Pipeline changed after SLURM worklist creation")
+                raise RuntimeError(
+                    "Pipeline changed after SLURM worklist creation"
+                )
             actual_work_id, _ = _worker_work_identity(
                 pipeline=pipeline,
                 image=image,
@@ -623,7 +646,9 @@ def main(
                 mode=mode,
             )
             if actual_work_id != expected_work_id:
-                raise RuntimeError("SLURM task work identity does not match worklist")
+                raise RuntimeError(
+                    "SLURM task work identity does not match worklist"
+                )
 
         # Process-only (apply-only) mode: run pipeline.apply() and export one
         # layer, mirroring the input tree. No measurement / aggregation output.
@@ -728,7 +753,9 @@ def main(
                 image=image.name,
                 status="started",
                 slurm_job_id=os.environ.get(EnvVar.SLURM_JOB_ID, ""),
-                slurm_array_task_id=os.environ.get(EnvVar.SLURM_ARRAY_TASK_ID, ""),
+                slurm_array_task_id=os.environ.get(
+                    EnvVar.SLURM_ARRAY_TASK_ID, ""
+                ),
                 attempt_id=attempt_id,
                 work_id=expected_work_id or "",
             )
@@ -820,9 +847,7 @@ def main(
                 output_dir, output_manager, dataset_name, image.stem
             )
             artifacts = {
-                "measurements": output_manager.get_output_path(
-                    dataset_name, "measurements", image.stem
-                ),
+                "measurements": data_path / MEASUREMENT_TABLE_RELATIVE_PATH,
                 data_key: data_path,
             }
             if save_overlays:

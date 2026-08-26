@@ -49,7 +49,11 @@ from ._cli_slurm_lifecycle import (
     mirror_job_to_metadata,
     new_slurm_generation,
 )
-from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
+from ._cli_update_state import (
+    append_event,
+    append_completion_event,
+    aggregate_state_from_events,
+)
 from ._cli_failure_tracker import (
     PerImageScientificError,
     append_failure,
@@ -63,6 +67,7 @@ from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 from ._cli_constants import MAX_TRACEBACK_LINES
 from phenotypic.sdk_ import (
     JobMetadataKey,
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     dashboard_html_path,
     event_log_path,
     atomic_write_bytes,
@@ -113,7 +118,9 @@ def _record_local_terminal_failure(
     try:
         work_id, relative_path = work_id_for_image(config, dataset, image_path)
     except OSError:
-        logger.error("Could not calculate terminal work identity", exc_info=True)
+        logger.error(
+            "Could not calculate terminal work identity", exc_info=True
+        )
         return False
     try:
         lifecycle_epoch = config.processing_generation
@@ -162,9 +169,7 @@ def _publish_local_image_success(
             output_dir, output_manager, dataset, image_path.stem
         )
         artifacts = {
-            "measurements": output_manager.get_output_path(
-                dataset, "measurements", image_path.stem
-            ),
+            "measurements": data_path / MEASUREMENT_TABLE_RELATIVE_PATH,
             data_key: data_path,
         }
         if output_manager.save_overlays:
@@ -205,7 +210,9 @@ def _write_slurm_image_task_mapping(
         atomic_write_json(metadata_path, job_metadata)
 
 
-def _truncate_error_message(error_msg: str, max_lines: int = MAX_TRACEBACK_LINES) -> str:
+def _truncate_error_message(
+    error_msg: str, max_lines: int = MAX_TRACEBACK_LINES
+) -> str:
     """
     Truncate error messages to prevent event log bloat.
 
@@ -219,13 +226,13 @@ def _truncate_error_message(error_msg: str, max_lines: int = MAX_TRACEBACK_LINES
     Returns:
         Truncated error message
     """
-    lines = error_msg.split('\n')
+    lines = error_msg.split("\n")
     if len(lines) <= max_lines:
         return error_msg
 
     # Keep first 5 and last 5 lines
-    kept_lines = lines[:5] + ['... (truncated) ...'] + lines[-5:]
-    return '\n'.join(kept_lines)
+    kept_lines = lines[:5] + ["... (truncated) ..."] + lines[-5:]
+    return "\n".join(kept_lines)
 
 
 class ExecutionStrategy(ABC):
@@ -297,9 +304,7 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         console = Console()
         header = (
-            "Measuring Stores (Rerun)"
-            if measure_only
-            else "Processing Images"
+            "Measuring Stores (Rerun)" if measure_only else "Processing Images"
         )
         console.print(f"\n[bold cyan]{header}[/bold cyan]")
         console.rule(style="cyan")
@@ -328,7 +333,9 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         if has_gpu_ops:
             try:
-                from phenotypic.detect.nn._helper._checkpoint_manager import resolve_device
+                from phenotypic.detect.nn._helper._checkpoint_manager import (
+                    resolve_device,
+                )
 
                 device = resolve_device("auto")
                 console.print(f"[green]✓ GPU detected: {device}[/green]")
@@ -364,13 +371,9 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         # Generate progress manifest and dashboard (local mode — runs once)
         try:
-            datasets_inventory = (
-                self.config.full_dataset_inventory
-                or {
-                    ds.name: [image.name for image in ds.images]
-                    for ds in datasets
-                }
-            )
+            datasets_inventory = self.config.full_dataset_inventory or {
+                ds.name: [image.name for image in ds.images] for ds in datasets
+            }
             datasets_totals = {
                 name: len(images)
                 for name, images in datasets_inventory.items()
@@ -415,7 +418,9 @@ class LocalParallelStrategy(ExecutionStrategy):
                     datasets_totals,
                 )
         except Exception:
-            logger.debug("Failed to generate progress dashboard", exc_info=True)
+            logger.debug(
+                "Failed to generate progress dashboard", exc_info=True
+            )
 
         return ExecutionResults(
             datasets=dataset_results,
@@ -501,14 +506,20 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             logger.error(
                 "Processing failed for %s/%s:\n%s",
-                dataset.name, image_path.name, tb,
+                dataset.name,
+                image_path.name,
+                tb,
             )
 
             # Truncate error message to prevent event log bloat
             truncated_msg = _truncate_error_message(error_msg)
 
             append_completion_event(
-                event_log, dataset.name, image_path.name, "failed", truncated_msg
+                event_log,
+                dataset.name,
+                image_path.name,
+                "failed",
+                truncated_msg,
             )
 
             # Write structured failure record
@@ -525,7 +536,10 @@ class LocalParallelStrategy(ExecutionStrategy):
             except Exception:
                 logger.warning("Failed to write failure record", exc_info=True)
 
-            if isinstance(e, PerImageScientificError) and not terminal_committed:
+            if (
+                isinstance(e, PerImageScientificError)
+                and not terminal_committed
+            ):
                 logger.warning(
                     "Scientific failure for %s/%s remains pending because its "
                     "terminal record was not committed",
@@ -600,7 +614,9 @@ class LocalParallelStrategy(ExecutionStrategy):
             )
             logger.error(
                 "Apply-only failed for %s/%s:\n%s",
-                dataset.name, image_path.name, tb,
+                dataset.name,
+                image_path.name,
+                tb,
             )
             append_completion_event(
                 event_log,
@@ -621,7 +637,10 @@ class LocalParallelStrategy(ExecutionStrategy):
                 )
             except Exception:
                 logger.warning("Failed to write failure record", exc_info=True)
-            if isinstance(e, PerImageScientificError) and not terminal_committed:
+            if (
+                isinstance(e, PerImageScientificError)
+                and not terminal_committed
+            ):
                 logger.warning(
                     "Scientific failure for %s/%s remains pending because its "
                     "terminal record was not committed",
@@ -693,7 +712,9 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             logger.error(
                 "Measure rerun failed for %s/%s:\n%s",
-                dataset.name, image_path.name, tb,
+                dataset.name,
+                image_path.name,
+                tb,
             )
 
             truncated_msg = _truncate_error_message(error_msg)
@@ -717,9 +738,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                     traceback=tb,
                 )
             except Exception:
-                logger.warning(
-                    "Failed to write failure record", exc_info=True
-                )
+                logger.warning("Failed to write failure record", exc_info=True)
 
             return (dataset.name, image_path.name, False, tb)
 
@@ -853,12 +872,16 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         # Query SLURM array limits
         console.print("[cyan]Querying SLURM array limits...[/cyan]")
         array_limit = get_slurm_array_limit()
-        console.print(f"[green]✓[/green] SLURM array limit: [bold]{array_limit}[/bold]\n")
+        console.print(
+            f"[green]✓[/green] SLURM array limit: [bold]{array_limit}[/bold]\n"
+        )
 
         from ._cli_validation import pipeline_requires_gpu
 
         # Measure mode never runs detection, so GPU provisioning is skipped.
-        if not measure_only and pipeline_requires_gpu(self.config.pipeline_json):
+        if not measure_only and pipeline_requires_gpu(
+            self.config.pipeline_json
+        ):
             slurm_args = dict(self.config.slurm_args)
 
             if "slurm_gpus_per_node" not in slurm_args:
@@ -872,7 +895,13 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             if partition:
                 try:
                     result = subprocess.run(
-                        ["sinfo", "-p", partition, "--Format=gres", "--noheader"],
+                        [
+                            "sinfo",
+                            "-p",
+                            partition,
+                            "--Format=gres",
+                            "--noheader",
+                        ],
                         capture_output=True,
                         text=True,
                         timeout=10,
@@ -1033,9 +1062,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
                 output_dir,
                 generation=generation,
                 token=(
-                    "dispatcher-1"
-                    if has_initial_dispatcher
-                    else "finalizer"
+                    "dispatcher-1" if has_initial_dispatcher else "finalizer"
                 ),
                 role="dispatcher" if has_initial_dispatcher else "finalizer",
                 job_id=str(job_ids[1]),
@@ -1057,7 +1084,9 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
 
         # Preserve the lifecycle's role-bearing job records.
         _write_slurm_image_task_mapping(metadata_path, image_task_mapping)
-        console.print(f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]")
+        console.print(
+            f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]"
+        )
 
         if self.config.process_only_layer:
             # Process-only (D13): no aggregation/dashboard. A dedicated
@@ -1127,13 +1156,10 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         start_time = datetime.now()
 
         total_images = sum(len(d.images) for d in datasets)
-        inventory = (
-            self.config.full_dataset_inventory
-            or {
-                dataset.name: [image.name for image in dataset.images]
-                for dataset in datasets
-            }
-        )
+        inventory = self.config.full_dataset_inventory or {
+            dataset.name: [image.name for image in dataset.images]
+            for dataset in datasets
+        }
         last_completed = 0
 
         try:
@@ -1222,9 +1248,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         return ExecutionResults(
             datasets=dataset_results,
             total_images=total_images,
-            total_completed=sum(
-                r.completed for r in dataset_results.values()
-            ),
+            total_completed=sum(r.completed for r in dataset_results.values()),
             total_failed=sum(r.failed for r in dataset_results.values()),
             execution_mode="slurm",
             start_time=start_time,

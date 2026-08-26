@@ -112,6 +112,7 @@ def _load_image_from_hdf(
     image_cls = GridImage if cls_attr == GridImage.__name__ else Image
     return image_cls._load_hdf5_for_migration(hdf_path)
 
+
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import numpy as np
 
@@ -124,8 +125,8 @@ class MigrationReport:
 
     ``converted``/``skipped``/``failed`` describe **pass 2** (per-image
     conversion); ``headers_migrated``/``header_failures`` describe **pass 1**
-    (the metadata-schema migration over non-image targets), which without
-    somewhere to land would have failed silently.
+    (the metadata-schema migration over non-image targets). The table fields
+    describe pass 3, which installs legacy external Parquets in image stores.
 
     Attributes:
         converted: Images converted this run. Under ``dry_run`` this is what
@@ -135,6 +136,9 @@ class MigrationReport:
             or whose source could not be safely deleted.
         headers_migrated: Non-image targets whose headers were rewritten.
         header_failures: ``(target, reason)`` per pass-1 failure.
+        tables_migrated: External Parquets embedded this invocation.
+        tables_skipped: Stores whose embedded table was already valid.
+        table_failures: ``(source, reason)`` per pass-3 failure.
     """
 
     converted: int = 0
@@ -142,11 +146,18 @@ class MigrationReport:
     failed: tuple[tuple[Path, str], ...] = ()
     headers_migrated: int = 0
     header_failures: tuple[tuple[Path, str], ...] = ()
+    tables_migrated: int = 0
+    tables_skipped: int = 0
+    table_failures: tuple[tuple[Path, str], ...] = ()
 
     @property
     def ok(self) -> bool:
-        """Whether the run had no per-image and no header failures."""
-        return not self.failed and not self.header_failures
+        """Whether all conversion, header, and table passes were clean."""
+        return (
+            not self.failed
+            and not self.header_failures
+            and not self.table_failures
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -327,7 +338,8 @@ def _layer_digest(array: "np.ndarray") -> str:
 
     contiguous = np.ascontiguousarray(array)
     return hashlib.sha256(
-        f"{contiguous.shape}|{contiguous.dtype}|".encode() + contiguous.tobytes()
+        f"{contiguous.shape}|{contiguous.dtype}|".encode()
+        + contiguous.tobytes()
     ).hexdigest()
 
 
@@ -406,6 +418,7 @@ def _conversion_is_faithful(src: Path, store: Path) -> bool:
         return False
     return True
 
+
 # ---------------------------------------------------------------------------
 # The canonical metadata view
 # ---------------------------------------------------------------------------
@@ -468,6 +481,7 @@ def emit_canonical_metadata_view(output_dir: Path) -> Path | None:
     target = canonical_metadata_view_path(output_dir)
     normalize_metadata_columns(frame).write_csv(target)
     return target
+
 
 # ---------------------------------------------------------------------------
 # A whole run
@@ -619,7 +633,9 @@ def republish_image_markers(output_dir: Path) -> int:
     root = results_dir(Path(output_dir))
     if not root.is_dir():
         return 0
-    for dataset_dir in sorted(path for path in root.iterdir() if path.is_dir()):
+    for dataset_dir in sorted(
+        path for path in root.iterdir() if path.is_dir()
+    ):
         zarr_dir = dataset_results_dir(output_dir, dataset_dir.name) / "zarr"
         if not zarr_dir.is_dir():
             continue
@@ -660,7 +676,9 @@ def republish_aggregate(output_dir: Path) -> bool:
         state = load_processing_state(output_dir)
     except (KeyError, TypeError, ValueError):
         return False
-    if state is None or not state.config.get("success_markers_required", False):
+    if state is None or not state.config.get(
+        "success_markers_required", False
+    ):
         return False
     counts = current_success_counts(output_dir)
     if counts is None or counts[0] == 0:
@@ -704,7 +722,9 @@ def _marker_authority_permits_unlink(
         state = load_processing_state(output_dir)
     except (KeyError, TypeError, ValueError):
         return False
-    if state is None or not state.config.get("success_markers_required", False):
+    if state is None or not state.config.get(
+        "success_markers_required", False
+    ):
         return True
     if not image_completion_marker_path(output_dir, dataset, stem).is_file():
         # Nothing was ever certified for this image, so nothing is invalidated
@@ -779,6 +799,7 @@ def migrate_run_hdf_to_zarr(
     keep_source: bool = True,
     njobs: int = 1,
     dry_run: bool = False,
+    finalize_publication: bool = True,
 ) -> MigrationReport:
     """Convert every legacy per-image HDF5 in a run tree, in place.
 
@@ -795,6 +816,8 @@ def migrate_run_hdf_to_zarr(
         keep_source: Retain the ``.h5`` sources.
         njobs: Worker processes for the conversion pass.
         dry_run: Report what would be converted and write nothing.
+        finalize_publication: Publish legacy markers/aggregates immediately.
+            The combined CLI migration sets this false until tables are embedded.
 
     Returns:
         A :class:`MigrationReport`.
@@ -836,18 +859,17 @@ def migrate_run_hdf_to_zarr(
         else:
             failed.append((hdf_path, error))
 
-    # Markers first, then the aggregate: `source_set_digest` is computed from
-    # `valid_image_success`, so publishing the aggregate before the markers
-    # describe the stores would record a source set that does not validate.
-    republish_image_markers(output_dir)
-    republish_aggregate(output_dir)
+    if finalize_publication:
+        # Markers first, then the aggregate: source_set_digest is computed from
+        # valid_image_success, so aggregate publication must remain last.
+        republish_image_markers(output_dir)
+        republish_aggregate(output_dir)
+        emit_canonical_metadata_view(output_dir)
 
-    emit_canonical_metadata_view(output_dir)
-
-    if not keep_source:
-        # After conversion, and after any marker republication, so the
-        # precondition sees the final state of the tree.
-        failed.extend(_reclaim_sources(output_dir))
+        if not keep_source:
+            # After conversion, and after marker republication, so the
+            # precondition sees the final state of the tree.
+            failed.extend(_reclaim_sources(output_dir))
 
     return MigrationReport(
         converted=converted, skipped=skipped, failed=tuple(failed)

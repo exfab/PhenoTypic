@@ -15,6 +15,9 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
     from phenotypic.sdk_ import CommitGuard
+    from phenotypic.sdk_._measurement_tables import (
+        PreparedEmbeddedMeasurementTable,
+    )
 
 # Check for optional dependencies and import if available
 if importlib.util.find_spec("exifread") is not None:
@@ -99,10 +102,9 @@ def _remap_legacy_metadata_key(key: str) -> str:
     """
     stored_key = str(key)
     normalized = ensure_metadata_prefix(stored_key)
-    if (
-        metadata_member_for_label(stored_key) is None
-        and not is_metadata_header(stored_key)
-    ):
+    if metadata_member_for_label(
+        stored_key
+    ) is None and not is_metadata_header(stored_key):
         return stored_key
     return normalized
 
@@ -114,7 +116,9 @@ def _metadata_values_equal(left: Any, right: Any) -> bool:
     if isinstance(right, np.generic):
         right = right.item()
     if isinstance(left, np.ndarray) or isinstance(right, np.ndarray):
-        if not isinstance(left, np.ndarray) or not isinstance(right, np.ndarray):
+        if not isinstance(left, np.ndarray) or not isinstance(
+            right, np.ndarray
+        ):
             return False
         if left.dtype != right.dtype or left.shape != right.shape:
             return False
@@ -276,8 +280,10 @@ class ImageIOHandler(ImageColorSpace):
     """
 
     def __init__(
-            self, arr: np.ndarray | Image | None = None, name: str | None = None,
-            **kwargs
+        self,
+        arr: np.ndarray | Image | None = None,
+        name: str | None = None,
+        **kwargs,
     ):
         """Initialize ImageIOHandler with I/O capabilities.
 
@@ -376,20 +382,26 @@ class ImageIOHandler(ImageColorSpace):
                     for tag, value in tags.items():
                         if tag.startswith("Thumbnail"):
                             continue  # Skip thumbnail data
-                        normalized = ImageIOHandler._normalize_metadata_value(value)
+                        normalized = ImageIOHandler._normalize_metadata_value(
+                            value
+                        )
                         if normalized is not None:
                             metadata[tag] = normalized
 
                             # Check for PhenoTypic data in EXIF UserComment
-                            if tag == "EXIF UserComment" and isinstance(normalized,
-                                                                        str):
+                            if tag == "EXIF UserComment" and isinstance(
+                                normalized, str
+                            ):
                                 try:
                                     phenotypic_data = json.loads(normalized)
                                     if (
-                                            isinstance(phenotypic_data, dict)
-                                            and "phenotypic_version" in phenotypic_data
+                                        isinstance(phenotypic_data, dict)
+                                        and "phenotypic_version"
+                                        in phenotypic_data
                                     ):
-                                        metadata["_phenotypic_data"] = phenotypic_data
+                                        metadata["_phenotypic_data"] = (
+                                            phenotypic_data
+                                        )
                                 except json.JSONDecodeError:
                                     pass
             except Exception:
@@ -408,14 +420,18 @@ class ImageIOHandler(ImageColorSpace):
                             try:
                                 phenotypic_data = json.loads(value)
                                 if (
-                                        isinstance(phenotypic_data, dict)
-                                        and "phenotypic_version" in phenotypic_data
+                                    isinstance(phenotypic_data, dict)
+                                    and "phenotypic_version" in phenotypic_data
                                 ):
-                                    metadata["_phenotypic_data"] = phenotypic_data
+                                    metadata["_phenotypic_data"] = (
+                                        phenotypic_data
+                                    )
                             except json.JSONDecodeError:
                                 pass
                             continue
-                        normalized = ImageIOHandler._normalize_metadata_value(value)
+                        normalized = ImageIOHandler._normalize_metadata_value(
+                            value
+                        )
                         if normalized is not None:
                             metadata[f"PIL:{key}"] = normalized
 
@@ -429,18 +445,22 @@ class ImageIOHandler(ImageColorSpace):
                             # UserComment may have encoding prefix
                             if isinstance(user_comment, bytes):
                                 # Skip encoding prefix if present (first 8 bytes)
-                                if user_comment.startswith(b"ASCII\x00\x00\x00"):
+                                if user_comment.startswith(
+                                    b"ASCII\x00\x00\x00"
+                                ):
                                     user_comment = user_comment[8:]
                                 elif user_comment.startswith(b"UNICODE\x00"):
-                                    user_comment = user_comment[8:].decode("utf-16")
+                                    user_comment = user_comment[8:].decode(
+                                        "utf-16"
+                                    )
                                 else:
                                     user_comment = user_comment.decode(
-                                            "utf-8", errors="replace"
+                                        "utf-8", errors="replace"
                                     )
                             phenotypic_data = json.loads(user_comment)
                             if (
-                                    isinstance(phenotypic_data, dict)
-                                    and "phenotypic_version" in phenotypic_data
+                                isinstance(phenotypic_data, dict)
+                                and "phenotypic_version" in phenotypic_data
                             ):
                                 metadata["_phenotypic_data"] = phenotypic_data
                         except (json.JSONDecodeError, UnicodeDecodeError):
@@ -468,7 +488,9 @@ class ImageIOHandler(ImageColorSpace):
                 if hasattr(img, "tag_v2") and img.tag_v2:
                     for tag_id, value in img.tag_v2.items():
                         tag_name = TIFF_TAGS.get(tag_id, f"Tag_{tag_id}")
-                        normalized = ImageIOHandler._normalize_metadata_value(value)
+                        normalized = ImageIOHandler._normalize_metadata_value(
+                            value
+                        )
                         if normalized is not None:
                             metadata[f"TIFF:{tag_name}"] = normalized
 
@@ -480,8 +502,8 @@ class ImageIOHandler(ImageColorSpace):
                     try:
                         phenotypic_data = json.loads(desc)
                         if (
-                                isinstance(phenotypic_data, dict)
-                                and "phenotypic_version" in phenotypic_data
+                            isinstance(phenotypic_data, dict)
+                            and "phenotypic_version" in phenotypic_data
                         ):
                             metadata["_phenotypic_data"] = phenotypic_data
                     except json.JSONDecodeError:
@@ -507,10 +529,10 @@ class ImageIOHandler(ImageColorSpace):
         if shutil.which("exiftool"):
             try:
                 result = subprocess.run(
-                        ["exiftool", "-json", "-n", str(filepath)],
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
+                    ["exiftool", "-json", "-n", str(filepath)],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 )
                 if result.returncode == 0:
                     exif_data = json.loads(result.stdout)
@@ -518,11 +540,17 @@ class ImageIOHandler(ImageColorSpace):
                         for key, value in exif_data[0].items():
                             if key == "SourceFile":
                                 continue
-                            normalized = ImageIOHandler._normalize_metadata_value(value)
+                            normalized = (
+                                ImageIOHandler._normalize_metadata_value(value)
+                            )
                             if normalized is not None:
                                 metadata[f"EXIF:{key}"] = normalized
                     return metadata
-            except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
+            except (
+                subprocess.TimeoutExpired,
+                json.JSONDecodeError,
+                Exception,
+            ):
                 pass  # Fall through to rawpy
 
         # Fallback to rawpy if exiftool not available
@@ -531,32 +559,39 @@ class ImageIOHandler(ImageColorSpace):
                 with rawpy.imread(str(filepath)) as raw:
                     # Extract available rawpy metadata attributes
                     metadata["rawpy:camera_whitebalance"] = str(
-                            list(raw.camera_whitebalance)
+                        list(raw.camera_whitebalance)
                     )
                     metadata["rawpy:daylight_whitebalance"] = str(
-                            list(raw.daylight_whitebalance)
+                        list(raw.daylight_whitebalance)
                     )
                     metadata["rawpy:num_colors"] = int(raw.num_colors)
                     metadata["rawpy:color_desc"] = (
-                        raw.color_desc.decode("utf-8") if raw.color_desc else None
+                        raw.color_desc.decode("utf-8")
+                        if raw.color_desc
+                        else None
                     )
                     metadata["rawpy:raw_type"] = str(raw.raw_type)
 
                     if raw.sizes:
-                        metadata["rawpy:raw_height"] = int(raw.sizes.raw_height)
+                        metadata["rawpy:raw_height"] = int(
+                            raw.sizes.raw_height
+                        )
                         metadata["rawpy:raw_width"] = int(raw.sizes.raw_width)
                         metadata["rawpy:height"] = int(raw.sizes.height)
                         metadata["rawpy:width"] = int(raw.sizes.width)
 
                     # Black and white levels
                     if (
-                            hasattr(raw, "black_level_per_channel")
-                            and raw.black_level_per_channel is not None
+                        hasattr(raw, "black_level_per_channel")
+                        and raw.black_level_per_channel is not None
                     ):
                         metadata["rawpy:black_level_per_channel"] = str(
-                                list(raw.black_level_per_channel)
+                            list(raw.black_level_per_channel)
                         )
-                    if hasattr(raw, "white_level") and raw.white_level is not None:
+                    if (
+                        hasattr(raw, "white_level")
+                        and raw.white_level is not None
+                    ):
                         metadata["rawpy:white_level"] = int(raw.white_level)
             except Exception:
                 pass
@@ -565,7 +600,7 @@ class ImageIOHandler(ImageColorSpace):
 
     @classmethod
     def imread(
-            cls, filepath: PathLike, rawpy_params: dict | None = None, **kwargs
+        cls, filepath: PathLike, rawpy_params: dict | None = None, **kwargs
     ) -> Image:
         """
         imread is a class method responsible for reading an image file from the specified
@@ -603,16 +638,16 @@ class ImageIOHandler(ImageColorSpace):
             arr = ski.io.imread(fname=filepath)
 
         elif (
-                suffix in IO.RAW_FILE_EXTENSIONS and rawpy is not None
+            suffix in IO.RAW_FILE_EXTENSIONS and rawpy is not None
         ):  # raw sensor data handling
             use_auto_wb = rawpy_params.pop("use_auto_wb", False)
             use_camera_wb = rawpy_params.pop("use_camera_wb", False)
 
             no_auto_scale = rawpy_params.pop(
-                    "no_auto_scale", False
+                "no_auto_scale", False
             )  # TODO: implement calibration schema
             no_auto_bright = rawpy_params.pop(
-                    "no_auto_bright", False
+                "no_auto_bright", False
             )  # TODO: implement calibration schema
 
             # noinspection PyUnresolvedReferences
@@ -624,22 +659,22 @@ class ImageIOHandler(ImageColorSpace):
                 default_demosaic = rawpy.DemosaicAlgorithm.AHD
 
             demosaic_algorithm = rawpy_params.pop(
-                    "demosaic_algorithm", default_demosaic
+                "demosaic_algorithm", default_demosaic
             )
             gamma = rawpy_params.pop("gamma", (1, 1))
             with rawpy.imread(str(filepath)) as raw:
                 # noinspection PyUnresolvedReferences
                 arr = raw.postprocess(
-                        demosaic_algorithm=demosaic_algorithm,
-                        use_camera_wb=use_camera_wb,
-                        use_auto_wb=use_auto_wb,
-                        no_auto_scale=no_auto_scale,
-                        no_auto_bright=no_auto_bright,
-                        gamma=gamma,
-                        median_filter_passes=0,
-                        output_bps=16,  # Preserve as much detail as possible
-                        output_color=rawpy.ColorSpace.sRGB,
-                        **rawpy_params,
+                    demosaic_algorithm=demosaic_algorithm,
+                    use_camera_wb=use_camera_wb,
+                    use_auto_wb=use_auto_wb,
+                    no_auto_scale=no_auto_scale,
+                    no_auto_bright=no_auto_bright,
+                    gamma=gamma,
+                    median_filter_passes=0,
+                    output_bps=16,  # Preserve as much detail as possible
+                    output_color=rawpy.ColorSpace.sRGB,
+                    **rawpy_params,
                 )
 
         else:
@@ -654,7 +689,10 @@ class ImageIOHandler(ImageColorSpace):
         image.metadata[IMAGE.SUFFIX] = suffix
 
         # Extract and store metadata based on file type
-        if suffix in IO.JPEG_FILE_EXTENSIONS or suffix in IO.PNG_FILE_EXTENSIONS:
+        if (
+            suffix in IO.JPEG_FILE_EXTENSIONS
+            or suffix in IO.PNG_FILE_EXTENSIONS
+        ):
             imported_metadata = cls._extract_jpeg_png_metadata(filepath)
         elif suffix in IO.TIFF_EXTENSIONS:
             imported_metadata = cls._extract_tiff_metadata(filepath)
@@ -668,7 +706,9 @@ class ImageIOHandler(ImageColorSpace):
             phenotypic_data = imported_metadata.pop("_phenotypic_data")
             # Only restore protected/public metadata if saved from rgb or gray property
             # (not from color space accessors or detect_mat which are derived views)
-            source_property = phenotypic_data.get("phenotypic_image_property", "")
+            source_property = phenotypic_data.get(
+                "phenotypic_image_property", ""
+            )
             if source_property in ("Image.rgb", "Image.gray"):
                 protected = _normalize_stored_metadata_items(
                     phenotypic_data.get("protected", {}).items(),
@@ -707,12 +747,12 @@ class ImageIOHandler(ImageColorSpace):
         ]
 
     def _write_series(
-            self,
-            part: Path,
-            series: str,
-            array: np.ndarray,
-            levels: int,
-            dimension_series: str | None = None,
+        self,
+        part: Path,
+        series: str,
+        array: np.ndarray,
+        levels: int,
+        dimension_series: str | None = None,
     ) -> None:
         """Write every pyramid level of one series (or label) into *part*.
 
@@ -734,10 +774,14 @@ class ImageIOHandler(ImageColorSpace):
         array_series = dimension_series or (
             ngff_.OBJMAP_LABEL if kind == "label" else series
         )
-        for index, level in enumerate(ngff_.build_pyramid(array, levels, kind=kind)):
+        for index, level in enumerate(
+            ngff_.build_pyramid(array, levels, kind=kind)
+        ):
             handle = zarr.create_array(
-                    store=ngff_.long_path(part / series / str(index)),
-                    **ngff_.array_create_kwargs(level.shape, level.dtype, array_series),
+                store=ngff_.long_path(part / series / str(index)),
+                **ngff_.array_create_kwargs(
+                    level.shape, level.dtype, array_series
+                ),
             )
             handle[...] = level
 
@@ -757,16 +801,16 @@ class ImageIOHandler(ImageColorSpace):
         group_dir = Path(group_dir)
         group_dir.mkdir(parents=True, exist_ok=True)
         (group_dir / "zarr.json").write_text(
-                json.dumps(
-                        {
-                            "zarr_format": 3,
-                            "node_type" : "group",
-                            "attributes": attributes,
-                        },
-                        indent=2,
-                        default=str,
-                ),
-                encoding="utf-8",
+            json.dumps(
+                {
+                    "zarr_format": 3,
+                    "node_type": "group",
+                    "attributes": attributes,
+                },
+                indent=2,
+                default=str,
+            ),
+            encoding="utf-8",
         )
 
     def _store_grid_attributes(self) -> dict | None:
@@ -783,7 +827,7 @@ class ImageIOHandler(ImageColorSpace):
         return None
 
     def _build_store_attributes(
-            self, *, series_names, levels, sections, work_id, has_labels=True
+        self, *, series_names, levels, sections, work_id, has_labels=True
     ) -> dict:
         """Assemble ``attributes.phenotypic``.
 
@@ -803,30 +847,35 @@ class ImageIOHandler(ImageColorSpace):
         from phenotypic.sdk_ import ngff_
 
         return ngff_.build_phenotypic_attributes(
-                image_class=type(self).__name__,
-                series_names=series_names,
-                pyramid_levels=levels,
-                metadata_sections=sections,
-                detect_mode=self._data.detect_mode,
-                illuminant=str(self.illuminant) if self.illuminant is not None else None,
-                gamma=(
-                    self.gamma.name if hasattr(self.gamma, "name") else str(self.gamma)
-                )
-                if self.gamma is not None
-                else None,
-                has_labels=has_labels,
-                grid=self._store_grid_attributes(),
-                work_id=work_id,
-                provenance=deepcopy(self._metadata.provenance_journal),
+            image_class=type(self).__name__,
+            series_names=series_names,
+            pyramid_levels=levels,
+            metadata_sections=sections,
+            detect_mode=self._data.detect_mode,
+            illuminant=str(self.illuminant)
+            if self.illuminant is not None
+            else None,
+            gamma=(
+                self.gamma.name
+                if hasattr(self.gamma, "name")
+                else str(self.gamma)
+            )
+            if self.gamma is not None
+            else None,
+            has_labels=has_labels,
+            grid=self._store_grid_attributes(),
+            work_id=work_id,
+            provenance=deepcopy(self._metadata.provenance_journal),
         )
 
     def save2zarr(
-            self,
-            path,
-            *,
-            work_id: str | None = None,
-            durable: bool | None = None,
-            commit_guard: CommitGuard | None = None,
+        self,
+        path,
+        *,
+        work_id: str | None = None,
+        durable: bool | None = None,
+        commit_guard: CommitGuard | None = None,
+        measurement_table: PreparedEmbeddedMeasurementTable | None = None,
     ) -> Path:
         """Save the image as an OME-Zarr (NGFF 0.5 / Zarr v3) store.
 
@@ -869,25 +918,27 @@ class ImageIOHandler(ImageColorSpace):
             pyramid_height = max(pyramid_height, self._original.shape[0])
             pyramid_width = max(pyramid_width, self._original.shape[1])
         return self._save_store(
-                path,
-                series=tuple(self._series_names()),
-                write_objmap=True,
-                levels=ngff_.pyramid_level_count(pyramid_height, pyramid_width),
-                work_id=work_id,
-                durable=durable,
-                commit_guard=commit_guard,
+            path,
+            series=tuple(self._series_names()),
+            write_objmap=True,
+            levels=ngff_.pyramid_level_count(pyramid_height, pyramid_width),
+            work_id=work_id,
+            durable=durable,
+            commit_guard=commit_guard,
+            measurement_table=measurement_table,
         )
 
     def _save_store(
-            self,
-            path,
-            *,
-            series: Sequence[str],
-            write_objmap: bool,
-            levels: int,
-            work_id: str | None,
-            durable: bool | None,
-            commit_guard: CommitGuard | None = None,
+        self,
+        path,
+        *,
+        series: Sequence[str],
+        write_objmap: bool,
+        levels: int,
+        work_id: str | None,
+        durable: bool | None,
+        commit_guard: CommitGuard | None = None,
+        measurement_table: PreparedEmbeddedMeasurementTable | None = None,
     ) -> Path:
         """Write one OME-Zarr store into a ``.part`` sibling and promote it.
 
@@ -936,22 +987,24 @@ class ImageIOHandler(ImageColorSpace):
                 work_id=work_id,
                 durable=durable,
                 commit_guard=commit_guard,
+                measurement_table=measurement_table,
             )
         except Exception:
             shutil.rmtree(ngff_.long_path(part), ignore_errors=True)
             raise
 
     def _write_store_part(
-            self,
-            part: Path,
-            final: Path,
-            *,
-            series: Sequence[str],
-            write_objmap: bool,
-            levels: int,
-            work_id: str | None,
-            durable: bool | None,
-            commit_guard: CommitGuard | None = None,
+        self,
+        part: Path,
+        final: Path,
+        *,
+        series: Sequence[str],
+        write_objmap: bool,
+        levels: int,
+        work_id: str | None,
+        durable: bool | None,
+        commit_guard: CommitGuard | None = None,
+        measurement_table: PreparedEmbeddedMeasurementTable | None = None,
     ) -> Path:
         """Populate one allocated part and promote it to its final path."""
         from phenotypic.sdk_ import ngff_
@@ -967,8 +1020,8 @@ class ImageIOHandler(ImageColorSpace):
         # Only the requested layers are materialised: a preview store must not
         # pay for a `detect_mat` the node never touched.
         loaders = {
-            "rgb"       : lambda: np.moveaxis(self.rgb[:], -1, 0),  # (H,W,C)->(c,y,x)
-            "gray"      : lambda: self.gray[:],
+            "rgb": lambda: np.moveaxis(self.rgb[:], -1, 0),  # (H,W,C)->(c,y,x)
+            "gray": lambda: self.gray[:],
             "detect_mat": lambda: self.detect_mat[:],
         }
         arrays: dict[str, np.ndarray] = {
@@ -992,7 +1045,9 @@ class ImageIOHandler(ImageColorSpace):
             )
         objmap = self.objmap[:] if write_objmap else None
         if objmap is not None:
-            self._write_series(part, ngff_.objmap_path(primary), objmap, levels)
+            self._write_series(
+                part, ngff_.objmap_path(primary), objmap, levels
+            )
 
         # 2. per-group ome metadata
         bit_depth = int(self.bit_depth or 8)
@@ -1004,7 +1059,9 @@ class ImageIOHandler(ImageColorSpace):
         raw_name = self._metadata.protected.get(IMAGE.IMAGE_NAME)
         image_name: str | None = None if raw_name is None else str(raw_name)
         for series_name in series_names:
-            shapes = ngff_.pyramid_level_shapes(arrays[series_name].shape, levels)
+            shapes = ngff_.pyramid_level_shapes(
+                arrays[series_name].shape, levels
+            )
             metadata_series = (
                 original_axis if series_name == "original" else series_name
             )
@@ -1012,43 +1069,47 @@ class ImageIOHandler(ImageColorSpace):
             block = {
                 "version": ngff_.NGFF_VERSION,
                 **ngff_.build_multiscales(
-                        series=metadata_series, level_shapes=shapes, name=image_name
+                    series=metadata_series,
+                    level_shapes=shapes,
+                    name=image_name,
                 ),
                 **ngff_.build_omero(
-                        series=metadata_series,
-                        dtype=arrays[series_name].dtype,
-                        bit_depth=bit_depth,
-                        name=image_name,
+                    series=metadata_series,
+                    dtype=arrays[series_name].dtype,
+                    bit_depth=bit_depth,
+                    name=image_name,
                 ),
             }
             self._write_group_json(part / series_name, {"ome": block})
         if objmap is not None:
             label_shapes = ngff_.pyramid_level_shapes(objmap.shape, levels)
             self._write_group_json(
-                    part / primary / ngff_.LABELS_GROUP,
-                    {
-                        "ome": {
-                            "version": ngff_.NGFF_VERSION,
-                            "labels" : [ngff_.OBJMAP_LABEL],
-                        }
-                    },
+                part / primary / ngff_.LABELS_GROUP,
+                {
+                    "ome": {
+                        "version": ngff_.NGFF_VERSION,
+                        "labels": [ngff_.OBJMAP_LABEL],
+                    }
+                },
             )
             self._write_group_json(
-                    part / ngff_.objmap_path(primary),
-                    {
-                        "ome": {
-                            "version": ngff_.NGFF_VERSION,
-                            # `name` here too: §2.4's "SHOULD contain the field
-                            # 'name'" is not scoped to image series, and every
-                            # sibling group honours it (ledger ALGO-R2B-16).
-                            **ngff_.build_multiscales(
-                                    series=ngff_.OBJMAP_LABEL,
-                                    level_shapes=label_shapes,
-                                    name=f"{image_name}/{ngff_.OBJMAP_LABEL}" if image_name else None,
-                            ),
-                            **ngff_.build_image_label(),
-                        }
-                    },
+                part / ngff_.objmap_path(primary),
+                {
+                    "ome": {
+                        "version": ngff_.NGFF_VERSION,
+                        # `name` here too: §2.4's "SHOULD contain the field
+                        # 'name'" is not scoped to image series, and every
+                        # sibling group honours it (ledger ALGO-R2B-16).
+                        **ngff_.build_multiscales(
+                            series=ngff_.OBJMAP_LABEL,
+                            level_shapes=label_shapes,
+                            name=f"{image_name}/{ngff_.OBJMAP_LABEL}"
+                            if image_name
+                            else None,
+                        ),
+                        **ngff_.build_image_label(),
+                    }
+                },
             )
 
         # 3. OME/ group -- all or nothing. `build_ome_xml` RAISES rather than
@@ -1057,44 +1118,68 @@ class ImageIOHandler(ImageColorSpace):
         # consecutive-integer form NGFF 2.2.3 requires when `series` is absent.
         sections = {
             "protected": dict(self._metadata.protected),
-            "public"   : dict(self._metadata.public),
-            "imported" : dict(self._metadata.imported),
+            "public": dict(self._metadata.public),
+            "imported": dict(self._metadata.imported),
         }
         xml = ngff_.build_ome_xml(
-                series_names=series_names,
-                series_shapes={name_: arrays[name_].shape for name_ in series_names},
-                series_dtypes={name_: arrays[name_].dtype for name_ in series_names},
-                metadata_sections=sections,
+            series_names=series_names,
+            series_shapes={
+                name_: arrays[name_].shape for name_ in series_names
+            },
+            series_dtypes={
+                name_: arrays[name_].dtype for name_ in series_names
+            },
+            metadata_sections=sections,
         )
         (part / ngff_.OME_GROUP).mkdir(parents=True, exist_ok=True)
-        (part / ngff_.OME_GROUP / ngff_.OME_XML_NAME).write_text(xml, encoding="utf-8")
+        (part / ngff_.OME_GROUP / ngff_.OME_XML_NAME).write_text(
+            xml, encoding="utf-8"
+        )
         self._write_group_json(
-                part / ngff_.OME_GROUP,
-                {"ome": {"version": ngff_.NGFF_VERSION, "series": series_names}},
+            part / ngff_.OME_GROUP,
+            {"ome": {"version": ngff_.NGFF_VERSION, "series": series_names}},
         )
 
+        tables_descriptor = None
+        if measurement_table is not None:
+            from phenotypic.sdk_._measurement_tables import (
+                build_measurement_table_descriptor,
+                write_embedded_measurement_table,
+            )
+
+            write_embedded_measurement_table(part, measurement_table)
+            tables_descriptor = build_measurement_table_descriptor(
+                measurement_table,
+                objmap_target=ngff_.objmap_path(primary),
+            )
+
         # 4. root zarr.json LAST
+        phenotypic_attributes = self._build_store_attributes(
+            series_names=series_names,
+            levels=levels,
+            sections=sections,
+            work_id=work_id,
+            has_labels=write_objmap,
+        )
+        if tables_descriptor is not None:
+            phenotypic_attributes[ngff_.PhenotypicAttr.TABLES] = {
+                ngff_.MEASUREMENT_TABLE_GROUP: tables_descriptor
+            }
         self._write_group_json(
-                part,
-                {
-                    "ome"                  : {
-                        "version"              : ngff_.NGFF_VERSION,
-                        "bioformats2raw.layout": ngff_.BIOFORMATS2RAW_LAYOUT,
-                    },
-                    ngff_.PhenotypicAttr.ROOT: self._build_store_attributes(
-                            series_names=series_names,
-                            levels=levels,
-                            sections=sections,
-                            work_id=work_id,
-                            has_labels=write_objmap,
-                    ),
+            part,
+            {
+                "ome": {
+                    "version": ngff_.NGFF_VERSION,
+                    "bioformats2raw.layout": ngff_.BIOFORMATS2RAW_LAYOUT,
                 },
+                ngff_.PhenotypicAttr.ROOT: phenotypic_attributes,
+            },
         )
         return ngff_.promote_store(
-                part,
-                final,
-                fsync=ngff_.durable_writes_enabled(durable),
-                commit_guard=commit_guard,
+            part,
+            final,
+            fsync=ngff_.durable_writes_enabled(durable),
+            commit_guard=commit_guard,
         )
 
     def save_intermediate_zarr(self, path, layers: tuple[str, ...]) -> Path:
@@ -1152,14 +1237,14 @@ class ImageIOHandler(ImageColorSpace):
         # preview would abort mid-write.
         wanted = set(layers) | {"gray"}
         return self._save_store(
-                path,
-                series=tuple(
-                        name for name in self._series_names() if name in wanted
-                ),
-                write_objmap=ngff_.OBJMAP_LABEL in layers,
-                levels=1,
-                work_id=None,
-                durable=False,
+            path,
+            series=tuple(
+                name for name in self._series_names() if name in wanted
+            ),
+            write_objmap=ngff_.OBJMAP_LABEL in layers,
+            levels=1,
+            work_id=None,
+            durable=False,
         )
 
     @classmethod
@@ -1207,10 +1292,10 @@ class ImageIOHandler(ImageColorSpace):
                 gamma_val: GAMMA_ENCODINGS = GAMMA_ENCODINGS[gamma_name]
             except KeyError:
                 warnings.warn(
-                        f"Unknown gamma encoding {gamma_name!r}; falling back to "
-                        f"GAMMA_ENCODINGS.SRGB",
-                        UserWarning,
-                        stacklevel=2,
+                    f"Unknown gamma encoding {gamma_name!r}; falling back to "
+                    f"GAMMA_ENCODINGS.SRGB",
+                    UserWarning,
+                    stacklevel=2,
                 )
                 kwargs.setdefault("gamma", GAMMA_ENCODINGS.SRGB)
             else:
@@ -1254,8 +1339,8 @@ class ImageIOHandler(ImageColorSpace):
             meta = group["metadata"]
             targets = {
                 "protected": img._metadata.protected,
-                "public"   : img._metadata.public,
-                "imported" : img._metadata.imported,
+                "public": img._metadata.public,
+                "imported": img._metadata.imported,
             }
             for name, target in targets.items():
                 if name not in meta:
@@ -1336,10 +1421,10 @@ class ImageIOHandler(ImageColorSpace):
                 gamma_val: GAMMA_ENCODINGS = GAMMA_ENCODINGS[str(gamma_name)]
             except KeyError:
                 warnings.warn(
-                        f"Unknown gamma encoding {gamma_name!r}; falling back to "
-                        f"GAMMA_ENCODINGS.SRGB",
-                        UserWarning,
-                        stacklevel=2,
+                    f"Unknown gamma encoding {gamma_name!r}; falling back to "
+                    f"GAMMA_ENCODINGS.SRGB",
+                    UserWarning,
+                    stacklevel=2,
                 )
                 kwargs.setdefault("gamma", GAMMA_ENCODINGS.SRGB)
             else:
@@ -1347,25 +1432,31 @@ class ImageIOHandler(ImageColorSpace):
 
         matrix_data = cls._read_store_array(path, series["gray"])
         if "rgb" in series:
-            img = cls(arr=cls._read_store_array(path, series["rgb"], layer="rgb"),
-                      **kwargs)
+            img = cls(
+                arr=cls._read_store_array(path, series["rgb"], layer="rgb"),
+                **kwargs,
+            )
             img.gray[:] = matrix_data
         else:
             img = cls(arr=matrix_data, **kwargs)
 
         img.detect_mat[:] = cls._read_store_array(path, series["detect_mat"])
         img._data.detect_mode = (
-                block.get(ngff_.PhenotypicAttr.DETECT_MODE) or "gray"
+            block.get(ngff_.PhenotypicAttr.DETECT_MODE) or "gray"
         )
 
         # `.get`: a label-less store OMITS the key entirely (ledger C3).
         labels = block.get(ngff_.PhenotypicAttr.LABELS, {})
         if ngff_.OBJMAP_LABEL in labels:
-            img.objmap[:] = cls._read_store_array(path, labels[ngff_.OBJMAP_LABEL])
+            img.objmap[:] = cls._read_store_array(
+                path, labels[ngff_.OBJMAP_LABEL]
+            )
         if "original" in series:
             original = cls._read_store_array(path, series["original"])
             img._original = (
-                np.moveaxis(original, 0, -1) if original.ndim == 3 else original
+                np.moveaxis(original, 0, -1)
+                if original.ndim == 3
+                else original
             )
 
         provenance = block.get(ngff_.PhenotypicAttr.PROVENANCE)
@@ -1374,12 +1465,12 @@ class ImageIOHandler(ImageColorSpace):
 
         targets = {
             ngff_.PhenotypicAttr.PROTECTED: img._metadata.protected,
-            ngff_.PhenotypicAttr.PUBLIC   : img._metadata.public,
-            ngff_.PhenotypicAttr.IMPORTED : img._metadata.imported,
+            ngff_.PhenotypicAttr.PUBLIC: img._metadata.public,
+            ngff_.PhenotypicAttr.IMPORTED: img._metadata.imported,
         }
         for section_name, target in targets.items():
             normalized = _normalize_stored_metadata_items(
-                    sections.get(section_name, {}).items(), section=section_name
+                sections.get(section_name, {}).items(), section=section_name
             )
             target.clear()
             target.update(normalized)
@@ -1416,9 +1507,9 @@ class ImageIOHandler(ImageColorSpace):
         # union, and a full-slice read of a 2-D/3-D array is always an ndarray.
         # No copy is made for one.
         array = np.asarray(
-                zarr.open_array(
-                        store=ngff_.long_path(Path(path) / member / "0"), mode="r"
-                )[...]
+            zarr.open_array(
+                store=ngff_.long_path(Path(path) / member / "0"), mode="r"
+            )[...]
         )
         return np.moveaxis(array, 0, -1) if layer == "rgb" else array
 
@@ -1530,15 +1621,12 @@ class ImageIOHandler(ImageColorSpace):
             saved_class = filehandler.attrs.get("phenotypic_class")
             if isinstance(saved_class, bytes):
                 saved_class = saved_class.decode("utf-8", errors="replace")
-            if (
-                    saved_class == "GridImage"
-                    and cls.__name__ != "GridImage"
-            ):
+            if saved_class == "GridImage" and cls.__name__ != "GridImage":
                 warnings.warn(
-                        "File was saved as GridImage; "
-                        "use GridImage to preserve grid state",
-                        UserWarning,
-                        stacklevel=2,
+                    "File was saved as GridImage; "
+                    "use GridImage to preserve grid state",
+                    UserWarning,
+                    stacklevel=2,
                 )
             img = cls._load_from_hdf5_group(filehandler, **kwargs)
 
@@ -1585,10 +1673,10 @@ class ImageIOHandler(ImageColorSpace):
         saved_class = block.get(ngff_.PhenotypicAttr.IMAGE_CLASS)
         if saved_class == "GridImage" and cls.__name__ != "GridImage":
             warnings.warn(
-                    "Store was saved as GridImage; use GridImage.load_zarr to "
-                    "preserve grid state",
-                    UserWarning,
-                    stacklevel=2,
+                "Store was saved as GridImage; use GridImage.load_zarr to "
+                "preserve grid state",
+                UserWarning,
+                stacklevel=2,
             )
         return cls._load_from_store(path, block, **kwargs)
 
@@ -1625,16 +1713,16 @@ class ImageIOHandler(ImageColorSpace):
         # (ledger C3), so indexing it would raise KeyError before reaching
         # the `member is None` branch below.
         member = block[ngff_.PhenotypicAttr.SERIES].get(layer) or block.get(
-                ngff_.PhenotypicAttr.LABELS, {}
+            ngff_.PhenotypicAttr.LABELS, {}
         ).get(layer)
         if member is None:
             raise KeyError(f"Layer {layer!r} not found in {path}")
         # See ``_load_layer_from_store``: narrow zarr's broad read union.
         array = np.asarray(
-                zarr.open_array(
-                        store=ngff_.long_path(Path(path) / member / str(level)),
-                        mode="r",
-                )[...]
+            zarr.open_array(
+                store=ngff_.long_path(Path(path) / member / str(level)),
+                mode="r",
+            )[...]
         )
         return np.moveaxis(array, 0, -1) if layer == "rgb" else array
 
@@ -1665,13 +1753,13 @@ class ImageIOHandler(ImageColorSpace):
         """
         with open(filename, "wb") as filehandler:
             data2save = {
-                "_data.rgb"         : self._data.rgb,
-                "_data.gray"        : self._data.gray,
-                "_data.detect_mat"  : self._data.detect_mat,
-                "_data.detect_mode" : self._data.detect_mode,
-                "objmap"            : self.objmap[:],
+                "_data.rgb": self._data.rgb,
+                "_data.gray": self._data.gray,
+                "_data.detect_mat": self._data.detect_mat,
+                "_data.detect_mode": self._data.detect_mode,
+                "objmap": self.objmap[:],
                 "protected_metadata": self._metadata.protected,
-                "public_metadata"   : self._metadata.public,
+                "public_metadata": self._metadata.public,
             }
 
             if hasattr(self, "grid_finder"):
@@ -1754,21 +1842,27 @@ class ImageIOHandler(ImageColorSpace):
             target_class = GridImage
             grid_finder = loaded["grid_finder"]
         else:
-            target_class = cls  # Use Image or whatever class this was called on
+            target_class = (
+                cls  # Use Image or whatever class this was called on
+            )
             grid_finder = None
 
         # Create instance with appropriate type
         # GridImage constructor accepts grid_finder parameter
         if loaded["_data.rgb"].size > 0:
             if has_grid_finder:
-                instance = target_class(arr=loaded["_data.rgb"], name=None,
-                                        grid_finder=grid_finder)
+                instance = target_class(
+                    arr=loaded["_data.rgb"], name=None, grid_finder=grid_finder
+                )
             else:
                 instance = target_class(arr=loaded["_data.rgb"], name=None)
         else:
             if has_grid_finder:
-                instance = target_class(arr=loaded["_data.gray"], name=None,
-                                        grid_finder=grid_finder)
+                instance = target_class(
+                    arr=loaded["_data.gray"],
+                    name=None,
+                    grid_finder=grid_finder,
+                )
             else:
                 instance = target_class(arr=loaded["_data.gray"], name=None)
 
@@ -1778,7 +1872,7 @@ class ImageIOHandler(ImageColorSpace):
 
         # Backward compat: old pickles use '_data.enh_gray', new use '_data.detect_mat'
         instance._data.detect_mat = loaded.get(
-                "_data.detect_mat", loaded.get("_data.enh_gray")
+            "_data.detect_mat", loaded.get("_data.enh_gray")
         )
         instance._data.detect_mode = loaded.get("_data.detect_mode", "gray")
         instance.objmap[:] = loaded["objmap"]

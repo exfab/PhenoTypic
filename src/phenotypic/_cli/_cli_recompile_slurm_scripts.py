@@ -64,6 +64,7 @@ def build_recompile_tasks(
 
     authorized_sources = authorized_measurement_sources(output_dir)
     tasks: list[dict[str, Any]] = []
+    measurement_sources: list[Path] = []
     shard_id = 0
 
     for dataset_name in dataset_names:
@@ -80,6 +81,7 @@ def build_recompile_tasks(
                 for path, dataset in authorized_sources.items()
                 if dataset == dataset_name
             )
+        measurement_sources.extend(source_files)
         for source_shard in _chunk_paths(source_files, shard_size):
             task = {
                 "task_type": TASK_MEASUREMENTS,
@@ -102,11 +104,24 @@ def build_recompile_tasks(
         tasks.extend(overlay_tasks)
 
     if tasks:
+        from ._cli_output_manager import _consistent_embedded_join_keys
+
+        metadata_join_keys = (
+            _consistent_embedded_join_keys(measurement_sources)
+            if measurement_sources
+            else None
+        )
         finalizer_task = {
             "task_type": TASK_FINALIZE,
             "dataset_names": list(dataset_names),
             "include_dataset_column": include_dataset_column,
             JobMetadataKey.METADATA_CSV: None,
+            "metadata_join_keys": list(metadata_join_keys or ()),
+            # Re-read provenance after measurement shards finish: a recompile
+            # with new metadata rewrites these tables after task submission.
+            "measurement_sources": [
+                str(path.absolute()) for path in measurement_sources
+            ],
             "expected_non_finalizer_tasks": len(tasks),
         }
         if attempt_id is not None:

@@ -18,7 +18,7 @@ from uuid import uuid4
 from phenotypic import ImagePipeline
 from phenotypic.sdk_ import (
     CommitGuard,
-    dataset_measurements_dir,
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     event_log_path,
     zarr_store_path,
 )
@@ -164,10 +164,7 @@ def run_stage1_step(
     item = _entry(manifest[index])
     store = zarr_store_path(output_dir, item.dataset, item.stem)
     if resume and (
-        (
-            item.work_id
-            and staged_store_matches_work_id(store, item.work_id)
-        )
+        (item.work_id and staged_store_matches_work_id(store, item.work_id))
         or (not item.work_id and valid_stage1_store(store))
     ):
         return
@@ -263,8 +260,8 @@ def run_stage2_shard(
                 resume
                 and not markers_required
                 and (
-                dataset_measurements_dir(output_dir, item.dataset)
-                / f"{item.stem}.parquet"
+                    zarr_store_path(output_dir, item.dataset, item.stem)
+                    / MEASUREMENT_TABLE_RELATIVE_PATH
                 ).is_file()
             )
         )
@@ -277,8 +274,7 @@ def run_stage2_shard(
     for item in candidates:
         store = zarr_store_path(output_dir, item.dataset, item.stem)
         if (
-            item.work_id
-            and staged_store_matches_work_id(store, item.work_id)
+            item.work_id and staged_store_matches_work_id(store, item.work_id)
         ) or (not item.work_id and valid_stage1_store(store)):
             pending.append(item)
             continue
@@ -350,9 +346,9 @@ def run_stage3_step(
     here costs exactly what a lost value in Stage 1 costs.
     """
     item = _entry(manifest[index])
-    parquet = (
-        dataset_measurements_dir(output_dir, item.dataset)
-        / f"{item.stem}.parquet"
+    measurement_table = (
+        zarr_store_path(output_dir, item.dataset, item.stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
     )
     output_manager = OutputManager.from_config(
         output_dir,
@@ -375,7 +371,7 @@ def run_stage3_step(
         resume
         and (not markers_required or not item.work_id)
         and stage3_completion_exists(output_dir, item.dataset, item.stem)
-        and parquet.is_file()
+        and measurement_table.is_file()
     )
     if terminal:
         ensure_staged_overlay(
@@ -396,7 +392,7 @@ def run_stage3_step(
             zarr_store_path(output_dir, item.dataset, item.stem),
             item.work_id,
         )
-        and parquet.is_file()
+        and measurement_table.is_file()
     ):
         ensure_staged_overlay(
             output_dir,
@@ -411,7 +407,7 @@ def run_stage3_step(
             output_dir, output_manager, item.dataset, item.stem
         )
         artifacts = {
-            "measurements": parquet,
+            "measurements": measurement_table,
             data_key: data_path,
             "overlay": output_manager.get_output_path(
                 item.dataset, "overlays", item.stem
@@ -476,8 +472,9 @@ def run_stage3_step(
                     output_dir, output_manager, item.dataset, item.stem
                 )
                 artifacts = {
-                    "measurements": output_manager.get_output_path(
-                        item.dataset, "measurements", item.stem
+                    "measurements": (
+                        zarr_store_path(output_dir, item.dataset, item.stem)
+                        / MEASUREMENT_TABLE_RELATIVE_PATH
                     ),
                     data_key: data_path,
                 }

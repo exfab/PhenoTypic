@@ -590,7 +590,40 @@ def authorized_measurement_sources(
     if state is None or not state.config.get(
         "success_markers_required", False
     ):
-        return None
+        marker_root = (
+            Path(output_dir) / ".phenotypic" / "progress" / "image_complete"
+        )
+        marker_paths = sorted(marker_root.glob("*/*.json"))
+        if not marker_paths:
+            return None
+        sources: dict[Path, str] = {}
+        output_root = Path(output_dir).resolve()
+        for marker_path in marker_paths:
+            try:
+                marker = json.loads(marker_path.read_text(encoding="utf-8"))
+                dataset = str(marker["dataset"])
+                stem = str(marker["image_stem"])
+                work_id = str(marker["work_id"])
+                if not valid_image_success(
+                    output_dir,
+                    dataset=dataset,
+                    image_stem=stem,
+                    work_id=work_id,
+                ):
+                    continue
+                relative = marker["artifacts"]["measurements"]["path"]
+                source = (output_root / str(relative)).resolve()
+                source.relative_to(output_root)
+            except (
+                KeyError,
+                OSError,
+                ValueError,
+                TypeError,
+                json.JSONDecodeError,
+            ):
+                continue
+            sources[source] = dataset
+        return sources
     raw_work_ids = state.config.get("work_ids")
     if not isinstance(raw_work_ids, dict):
         return {}

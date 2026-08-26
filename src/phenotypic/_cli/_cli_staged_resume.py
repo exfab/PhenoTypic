@@ -11,6 +11,7 @@ from typing import Literal, Mapping, Sequence
 from phenotypic.sdk_ import (
     CommitGuard,
     atomic_write_json,
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     dataset_measurements_dir,
     progress_dir,
     publication_commit,
@@ -187,9 +188,9 @@ def remove_stage3_completion_marker(
 ) -> None:
     """Remove a terminal marker before regenerating upstream artifacts."""
     with publication_commit(commit_guard):
-        stage3_completion_marker_path(
-            output_dir, dataset, image_stem
-        ).unlink(missing_ok=True)
+        stage3_completion_marker_path(output_dir, dataset, image_stem).unlink(
+            missing_ok=True
+        )
 
 
 def classify_staged_image(
@@ -226,9 +227,7 @@ def classify_staged_image(
     stage2_done = stage2_token_exists(output_dir, dataset, stem)
     if expected_work_id is not None:
         store_valid = staged_store_matches_work_id(store, expected_work_id)
-        stage2_store_valid = _staged_store_has_work_id(
-            store, expected_work_id
-        )
+        stage2_store_valid = _staged_store_has_work_id(store, expected_work_id)
     else:
         store_valid = valid_stage1_store(store)
         stage2_store_valid = valid_staged_store(store)
@@ -250,14 +249,13 @@ def classify_staged_image(
         and expected_work_id is not None
         and stage3_completion_exists(output_dir, dataset, stem)
         and (
-            dataset_measurements_dir(output_dir, dataset) / f"{stem}.parquet"
+            zarr_store_path(output_dir, dataset, stem)
+            / MEASUREMENT_TABLE_RELATIVE_PATH
         ).is_file()
     ):
         return "stage3"
 
-    parquet = (
-        dataset_measurements_dir(output_dir, dataset) / f"{stem}.parquet"
-    )
+    parquet = dataset_measurements_dir(output_dir, dataset) / f"{stem}.parquet"
     if (
         process_only_layer is None
         and not markers_required
@@ -277,7 +275,10 @@ def classify_staged_image(
     # conjunct of the "complete" branch above: ANDing the raw in would flip a
     # token-present/raw-missing image that has a parquet all the way to
     # "complete".
-    if stage2_done and not stage2_raw_path(output_dir, dataset, stem).is_file():
+    if (
+        stage2_done
+        and not stage2_raw_path(output_dir, dataset, stem).is_file()
+    ):
         return "stage2"
 
     return "stage3" if stage2_done else "stage2"

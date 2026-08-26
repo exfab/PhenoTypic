@@ -340,11 +340,15 @@ enforces this for ruff, but the rule binds regardless of the tool.
   `image.num_objects`.
 - **Output layout (`deliverables/`):** user-facing run outputs live under
   `<output>/deliverables/` (measurements, analysis, dashboards, overlays, and
-  the durable QC + curation state under `deliverables/qc/`); per-image
-  parquets/stores and run state stay at the output root. `master_measurements.*`
-  is the clean pre-post, metadata-free archive; `measurements.*` is the
-  post-applied mirror the GUI reads/curates — feed analysis and dashboards from
-  the **mirror**, not the master. Always resolve paths via the
+  the durable QC + curation state under `deliverables/qc/`); per-image image
+  state lives in `results/<ds>/zarr/<stem>.ome.zarr/`, with authoritative
+  object measurements at `tables/measurements/table.parquet` inside each
+  store. Forward runs do not create external per-image measurement Parquets.
+  `master_measurements.*` is the exact pre-post concatenation of authorized
+  embedded tables (already metadata-joined measured rows);
+  `measurements.*` appends metadata-only phantoms once and is the post-applied
+  mirror the GUI reads/curates — feed analysis and dashboards from the
+  **mirror**, not the master. Always resolve paths via the
   `phenotypic.sdk_` helpers (never hand-join names), and route any FINAL master
   write through `finalize_post_master_outputs`. Full file inventory,
   master-vs-mirror rules, and the finalize/chunk-writer carve-out are in

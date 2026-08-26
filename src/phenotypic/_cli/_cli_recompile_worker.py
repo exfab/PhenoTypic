@@ -262,6 +262,29 @@ def _run_measurement_task(
     from ._cli_parquet_agg import aggregate_parquet_files
 
     files = [Path(path) for path in task.get("files", [])]
+    metadata_csv_raw = task.get(JobMetadataKey.METADATA_CSV)
+    metadata_csv = Path(str(metadata_csv_raw)) if metadata_csv_raw else None
+    from ._cli_recompile_tables import recompile_embedded_measurement_table
+
+    for table_path in files:
+        if tuple(table_path.parts[-3:]) == (
+            "tables",
+            "measurements",
+            "table.parquet",
+        ):
+            dataset = _dataset_name_from_measurement_path(
+                output_dir, table_path
+            )
+            recompile_embedded_measurement_table(
+                output_dir,
+                table_path,
+                dataset,
+                metadata_csv,
+                commit_guard=lambda: generation_publication_guard(
+                    output_dir, slurm_generation
+                ),
+            )
+
     path_to_dataset = {
         path: _dataset_name_from_measurement_path(output_dir, path)
         for path in files
@@ -329,6 +352,13 @@ def _dataset_name_from_measurement_path(output_dir: Path, path: Path) -> str:
         len(parts) >= 4
         and parts[0] == DIR_RESULTS
         and parts[2] == DIR_MEASUREMENTS
+    ):
+        return parts[1]
+    if (
+        len(parts) >= 7
+        and parts[0] == DIR_RESULTS
+        and parts[2] == "zarr"
+        and tuple(parts[-3:]) == ("tables", "measurements", "table.parquet")
     ):
         return parts[1]
     if path.parent.name == DIR_MEASUREMENTS:
@@ -511,10 +541,9 @@ def _write_master_outputs_from_shards(
     frames = [pl.read_parquet(path) for path in shard_files]
     master_df = pl.concat(frames, how="diagonal_relaxed")
 
-    # External metadata join is applied to the mirror in
-    # ``finalize_post_master_outputs`` (via ``_run_post_master_steps``), not
-    # to the master archive. The master stays a clean, op-free record of
-    # what the per-image workers measured.
+    # Recompiled embedded tables already carry their publication-time metadata.
+    # The master stays their exact, pre-post concatenation; finalization appends
+    # only metadata identities absent from all measured tables to the mirror.
 
     def publish_master_outputs() -> None:
         try:
@@ -565,14 +594,23 @@ def _run_post_master_steps(
 ) -> None:
     """Run canonical post-master outputs before marker publication."""
     from ._cli_output_manager import (
+        _consistent_embedded_join_keys,
         _load_pipeline_from_output_dir,
         finalize_post_master_outputs,
     )
 
+    measurement_sources = task.get("measurement_sources")
+    if measurement_sources is None:
+        metadata_join_keys = tuple(task.get("metadata_join_keys", []))
+    else:
+        metadata_join_keys = _consistent_embedded_join_keys(
+            [Path(str(path)) for path in measurement_sources]
+        )
+
     if merged_df is not None:
-        # Single canonical post-master finalize: applies post to a copy of
-        # the clean master, joins the external metadata CSV (when given)
-        # onto the post-applied frame, seeds ``measurements.{csv,parquet}``,
+        # Single canonical post-master finalize: appends metadata-only
+        # identities once, applies post to the joined measured + phantom
+        # frame, seeds ``measurements.{csv,parquet}``,
         # persists ``pipeline.json``, emits configured analysis outputs, and
         # writes per-feature splits, matching the forward CLI path.
         pipeline = _load_pipeline_from_output_dir(output_dir)
@@ -587,6 +625,7 @@ def _run_post_master_steps(
                 merged_df,
                 pipeline,
                 metadata_csv=metadata_csv,
+                metadata_join_keys=metadata_join_keys,
                 no_qc=no_qc,
             )
         else:
@@ -596,6 +635,7 @@ def _run_post_master_steps(
                     merged_df,
                     pipeline,
                     metadata_csv=metadata_csv,
+                    metadata_join_keys=metadata_join_keys,
                     no_qc=no_qc,
                 )
 

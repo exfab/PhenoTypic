@@ -58,8 +58,9 @@ Stage-2 signal selects Stage 2; and a valid store with one selects Stage 3.
 is only a flag; Stage 3's actual input is the raw `.npy`, so a
 token-present/raw-missing image is routed back to Stage 2, not into a Stage 3
 that would raise `FileNotFoundError` and be recorded as a terminal *scientific*
-failure. Stage 3 writes an atomic terminal marker after publishing the parquet,
-store, and plot, then consumes the signal. The output is byte-identical to a
+failure. Stage 3 embeds the authoritative Parquet inside the final store transaction,
+publishes the image marker over both the store root and table, then consumes the
+signal. The output is byte-identical to a
 single-pass run.
 
 **Progress events.** Stages emit stage-tagged events via the `stage` field on
@@ -275,11 +276,13 @@ User-facing run outputs live under `<output>/deliverables/` (hard cutover):
 `pipeline.json`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
 dashboard is progress-only: local runs render progress directly, while SLURM
 runs add Progress and Download tabs. Use the Results Viewer or the GUI
-`/analysis/` app for interactive exploration. The **per-image** parquets in
-`results/<ds>/measurements/` and the per-image **OME-Zarr stores** in
-`results/<ds>/zarr/<stem>.ome.zarr/` (and the rest of `results/`)
-stay at the output-dir **root**. There is no per-image `.h5` on any forward
-path: `results/<ds>/hdf/` appears only in a tree written by a pre-store
+`/analysis/` app for interactive exploration. Each per-image **OME-Zarr store** stays at
+`results/<ds>/zarr/<stem>.ome.zarr/`. Its authoritative object measurements
+are embedded at `tables/measurements/table.parquet`, described by
+`attributes.phenotypic.tables.measurements` in the store root. Forward,
+staged Stage 3, and measure runs do not create
+`results/<ds>/measurements/<stem>.parquet`; that directory is legacy migration
+input only. There is no per-image `.h5` on any forward path: `results/<ds>/hdf/` appears only in a tree written by a pre-store
 release, or in one migrated with the default `keep_source=True`, and the only
 things that read it are `--mode migrate`, `datasets_needing_migration` (the
 predicate every writing mode refuses on), and the `"hdf"` completion-marker
@@ -297,28 +300,25 @@ single `deliverables/qc/qc.duckdb` (one self-describing table per QC module plus
 `phenotypic.sdk_` helpers (`deliverables_dir`, `master_measurements_parquet_path`,
 `qc_dir`, `qc_duckdb_path`, …), never by hand-joining names.
 
-**Master vs. mirror.** `master_measurements.{csv,parquet}` is a clean, pre-post,
-metadata-free archive of what per-image runs measured; `measurements.{csv,parquet}` is
-the post-applied mirror the GUI reads/curates. Per-image parquets in
-`results/<ds>/measurements/` are also clean — the CLI calls
-`pipeline.measure(image, apply_post=False)` on the per-image path. Post is applied once
-at the end of aggregation against the merged master, and the post-applied frame is what
-the class-named analysis artifacts and `measurements_by_feature/<feature>.{csv,parquet}`
-derive from. Analysis consumers resolve tables through `analysis_manifest.json`, never
-by constructing filenames. The external `--metadata` CSV **left-join** also lands on
-the post-applied frame
-(inside `finalize_post_master_outputs`), so the mirror, per-feature splits, and
-named analysis artifacts carry metadata while the master archive stays post-free and
-metadata-free.
-The join is **left** so metadata rows matching no measured object survive as **phantom
-rows** — metadata + join keys populated, every measurement/info column null, and
-`QC_MetadataOnly=true` (`schema.METADATA_MATCH`) — which is how a user sees the strains
-that were never detected. Measurement rows with no metadata are still dropped
-(measurements are the join's right frame). `join_metadata(df, csv, *, how=...)` defaults
-to `how="inner"`: **only** `finalize_post_master_outputs` passes `how="left"`.
-The mid-run `_cli_chunk_writer` does not join external metadata; it publishes clean
-rolling and master measurement state until finalization creates the metadata-joined
-mirror.
+**Master vs. mirror.** Each embedded table is built by right-joining the stable
+metadata snapshot (metadata left, baseline measurements right), so it contains
+every measured row, excludes metadata-only rows, and records ordered join keys
+and snapshot SHA-256 in Parquet schema metadata.
+`master_measurements.{csv,parquet}` is the exact pre-post concatenation of
+marker-authorized embedded tables; it is already metadata-joined measured data.
+Finalization rejects mixed metadata digests or join keys.
+
+`measurements.{csv,parquet}` is the post-applied mirror the GUI reads and
+curates. Before post, finalization appends the external metadata anti-join once
+using the recorded keys. Measured rows receive `QC_MetadataOnly=false`;
+appended phantoms receive `QC_MetadataOnly=true`, keep their metadata values,
+and have null measurement/info values. Per-feature splits and named analysis
+artifacts derive from the mirror. Analysis consumers resolve tables through
+`analysis_manifest.json`, never by constructing filenames.
+
+Ordinary SLURM checkpoints read only marker-authorized embedded tables and write
+rolling cache state below `.phenotypic/progress/`. They do not recreate
+visible per-image Parquets, dataset aggregates, or a partial deliverable master.
 
 **Metadata snapshot authority.** Before local processing or SLURM submission,
 full runs and recompile atomically copy the configured `--metadata` bytes to
@@ -343,9 +343,8 @@ Feed configured analysis and GUI result exploration from `measurements.parquet`,
 immediately call `phenotypic._cli._cli_output_manager.finalize_post_master_outputs(
 output_dir, master_df, pipeline)` (it writes into `<output>/deliverables/` and emits the
 per-feature splits + analysis chain). The `aggregate_measurements` (forward CLI) and
-`--recompile` worker (`_run_post_master_steps`) callers already do this. Mid-run
-intermediate writers (`_aggregate_chunks_locked` in `_cli_chunk_writer.py`)
-intentionally bypass it — chunks publish partial results for mid-run download, but the
-post pipeline, per-feature splits, analysis chain, and `pipeline.json` persistence are
-deferred to final aggregation. Don't add `finalize_post_master_outputs` to the chunk
-writer — it would re-run expensive finalize work on every checkpoint.
+`--recompile` worker (`_run_post_master_steps`) callers already do this. Mid-run checkpoint writers (`_aggregate_chunks_locked` in
+`_cli_chunk_writer.py`) intentionally bypass it and keep their rolling state
+under `.phenotypic/progress/`; post, per-feature splits, analysis, and
+`pipeline.json` persistence are deferred to final aggregation. Do not add
+`finalize_post_master_outputs` to the chunk writer.

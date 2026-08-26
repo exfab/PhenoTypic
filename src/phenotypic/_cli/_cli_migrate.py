@@ -29,15 +29,26 @@ so it does not justify another scheduler surface.
 from __future__ import annotations
 
 from dataclasses import replace
+import hashlib
 from pathlib import Path
 
 import click
 
-from phenotypic.sdk_ import BundleLayout, deliverables_dir
+from phenotypic.sdk_ import (
+    BundleLayout,
+    MEASUREMENT_TABLE_RELATIVE_PATH,
+    deliverables_dir,
+    metadata_csv_deliverable_path,
+    replace_embedded_measurement_table,
+    zarr_store_path,
+)
 from phenotypic.sdk_._hdf_to_zarr import (
     MigrationReport,
     canonical_metadata_view_path,
+    emit_canonical_metadata_view,
     migrate_run_hdf_to_zarr,
+    republish_aggregate,
+    republish_image_markers,
 )
 from phenotypic.sdk_._metadata_migration import (
     NON_IMAGE_KINDS,
@@ -127,6 +138,112 @@ def run_metadata_pass(output_dir: Path, *, dry_run: bool) -> tuple[int, tuple]:
     return len(result.migrated_targets), ()
 
 
+def migrate_legacy_measurement_tables(
+    output_dir: Path,
+    *,
+    dry_run: bool,
+    delete_sources: bool,
+) -> tuple[int, int, tuple[tuple[Path, str], ...]]:
+    """Install legacy per-image Parquets into corresponding image stores."""
+    import pandas as pd
+
+    from phenotypic._cli._cli_completion import (
+        publish_image_success,
+        valid_image_success,
+    )
+    from phenotypic._cli._embedded_measurement_tables import (
+        prepare_embedded_measurement_table,
+    )
+
+    output_dir = Path(output_dir)
+    from phenotypic._cli._cli_state_management import load_processing_state
+
+    try:
+        state = load_processing_state(output_dir)
+    except (KeyError, TypeError, ValueError):
+        state = None
+    configured_work_ids = (
+        state.config.get("work_ids", {}) if state is not None else {}
+    )
+    metadata_snapshot = metadata_csv_deliverable_path(output_dir)
+    metadata_csv = metadata_snapshot if metadata_snapshot.is_file() else None
+    sources = sorted(
+        path
+        for path in (output_dir / "results").glob("*/measurements/*.parquet")
+        if not path.name.startswith(("_", "."))
+    )
+    migrated = 0
+    skipped = 0
+    failures: list[tuple[Path, str]] = []
+    for source in sources:
+        dataset = source.parent.parent.name
+        stem = source.stem
+        store = zarr_store_path(output_dir, dataset, stem)
+        embedded = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        if dry_run:
+            if embedded.is_file():
+                skipped += 1
+            else:
+                migrated += 1
+            continue
+        try:
+            if embedded.is_file():
+                import pyarrow.parquet as pq
+
+                pq.read_schema(embedded)
+                skipped += 1
+            else:
+                if not (store / "zarr.json").is_file():
+                    raise FileNotFoundError(
+                        f"No converted store exists for {source}"
+                    )
+                baseline = pd.read_parquet(source)
+                prepared = prepare_embedded_measurement_table(
+                    baseline, metadata_csv
+                )
+                replace_embedded_measurement_table(store, prepared)
+                migrated += 1
+
+            dataset_work_ids = (
+                configured_work_ids.get(dataset, {})
+                if isinstance(configured_work_ids, dict)
+                else {}
+            )
+            work_id = next(
+                (
+                    str(value)
+                    for image_name, value in dataset_work_ids.items()
+                    if Path(str(image_name)).stem == stem
+                ),
+                hashlib.sha256(
+                    f"migration:{dataset}/{stem}".encode()
+                ).hexdigest(),
+            )
+            marker = publish_image_success(
+                output_dir,
+                work_id=work_id,
+                dataset=dataset,
+                relative_image_path=f"{dataset}/{stem}",
+                image_stem=stem,
+                mode="full",
+                attempt_id="migration",
+                lifecycle_epoch="migration",
+                artifacts={"measurements": embedded, "store": store},
+            )
+            if not marker.is_file() or not valid_image_success(
+                output_dir,
+                dataset=dataset,
+                image_stem=stem,
+                work_id=work_id,
+            ):
+                raise RuntimeError("migrated marker validation failed")
+            if delete_sources:
+                source.unlink()
+        except Exception as exc:
+            failures.append((source, f"{type(exc).__name__}: {exc}"))
+    return migrated, skipped, tuple(failures)
+
+
 def run_migrate(
     output_dir: Path,
     *,
@@ -155,21 +272,65 @@ def run_migrate(
     )
     report = migrate_run_hdf_to_zarr(
         output_dir,
-        keep_source=not delete_sources,
+        keep_source=True,
         njobs=njobs,
         dry_run=dry_run,
+        finalize_publication=False,
     )
+    tables_migrated, tables_skipped, table_failures = (
+        migrate_legacy_measurement_tables(
+            output_dir,
+            dry_run=dry_run,
+            delete_sources=delete_sources,
+        )
+    )
+    hdf_failures = list(report.failed)
+    if not dry_run:
+        republish_image_markers(output_dir)
+        try:
+            from phenotypic._cli._cli_output_manager import (
+                aggregate_measurements,
+            )
+
+            datasets = sorted(
+                path.name
+                for path in (output_dir / "results").iterdir()
+                if path.is_dir()
+            )
+            snapshot = metadata_csv_deliverable_path(output_dir)
+            aggregate_measurements(
+                output_dir,
+                datasets,
+                metadata_csv=snapshot if snapshot.is_file() else None,
+                no_qc=True,
+            )
+        except Exception as exc:
+            table_failures = (
+                *table_failures,
+                (output_dir, f"aggregate publication failed: {exc}"),
+            )
+        republish_aggregate(output_dir)
+        emit_canonical_metadata_view(output_dir)
+        if delete_sources:
+            from phenotypic.sdk_._hdf_to_zarr import _reclaim_sources
+
+            hdf_failures.extend(_reclaim_sources(output_dir))
+
     return replace(
         report,
+        failed=tuple(hdf_failures),
         headers_migrated=headers_migrated,
         header_failures=header_failures,
+        tables_migrated=tables_migrated,
+        tables_skipped=tables_skipped,
+        table_failures=table_failures,
     )
 
 
 def echo_migration_summary(
     output_dir: Path, report: MigrationReport, *, dry_run: bool
 ) -> None:
-    """Print a summary that names **both** passes.
+    """Print a summary that names all three migration passes.
 
     A summary reporting only the per-image conversion hides a pass-1 failure
     entirely, and the phase's dry-run criterion is stated per pass.
@@ -186,6 +347,10 @@ def echo_migration_summary(
         f"{'would convert' if dry_run else 'converted'} "
         f"{report.converted}, skipped {report.skipped}"
     )
+    click.echo(
+        "  Pass 3 (external Parquet -> embedded table): "
+        f"{verb} {report.tables_migrated}, skipped {report.tables_skipped}"
+    )
     view = canonical_metadata_view_path(output_dir)
     if view.is_file():
         click.echo(f"  Canonical metadata view: {view}")
@@ -193,6 +358,8 @@ def echo_migration_summary(
         click.echo(f"  Pass 1 FAILED {target}: {reason}", err=True)
     for source, reason in report.failed:
         click.echo(f"  Pass 2 FAILED {source}: {reason}", err=True)
+    for source, reason in report.table_failures:
+        click.echo(f"  Pass 3 FAILED {source}: {reason}", err=True)
 
 
 def handle_migrate_mode(
@@ -228,5 +395,6 @@ __all__ = [
     "echo_migration_summary",
     "handle_migrate_mode",
     "run_metadata_pass",
+    "migrate_legacy_measurement_tables",
     "run_migrate",
 ]

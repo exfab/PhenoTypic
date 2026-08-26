@@ -35,7 +35,9 @@ if TYPE_CHECKING:
     from phenotypic.sdk_ import CommitGuard
 
 from ._cli_types import Dataset
+from ._embedded_measurement_tables import prepare_embedded_measurement_table
 from ._metadata_join import (
+    normalize_external_metadata_columns,
     normalize_measurement_metadata_columns,
     prepare_metadata_join_keys,
 )
@@ -50,7 +52,6 @@ from phenotypic.util import split_measurements
 from phenotypic.sdk_ import (
     analysis_manifest_path,
     DIR_RESULTS,
-    DIR_MEASUREMENTS,
     DIR_ZARR,
     PARQUET_WRITE_OPTIONS,
     EnvVar,
@@ -59,6 +60,7 @@ from phenotypic.sdk_ import (
     deliverables_dir,
     master_measurements_csv_path,
     master_measurements_parquet_path,
+    metadata_csv_deliverable_path,
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
@@ -826,11 +828,107 @@ def _image_metadata_from_mirror(mirror_df: "pl.DataFrame") -> list[dict]:
     ]
 
 
+def _append_metadata_only_rows(
+    master_df: "pl.DataFrame",
+    metadata_csv: Path,
+    join_keys: tuple[str, ...],
+) -> "pl.DataFrame":
+    """Append the external metadata anti-join without rejoining measured rows."""
+    working = normalize_measurement_metadata_columns(master_df)
+    metadata = normalize_external_metadata_columns(
+        working, pl.read_csv(metadata_csv)
+    )
+    missing = [
+        key
+        for key in join_keys
+        if key not in working.columns or key not in metadata.columns
+    ]
+    if missing:
+        raise ValueError(
+            "Recorded metadata join keys are absent during finalization: "
+            + ", ".join(missing)
+        )
+    flag = str(METADATA_MATCH.METADATA_ONLY)
+    measured = working.with_columns(pl.lit(False).alias(flag))
+    if not join_keys:
+        return measured
+
+    comparable_measurements = working.with_columns(
+        pl.col(key).cast(pl.String) for key in join_keys
+    )
+    comparable_metadata = metadata.with_columns(
+        pl.col(key).cast(pl.String) for key in join_keys
+    )
+    measured_keys = comparable_measurements.select(join_keys).unique()
+    phantoms = comparable_metadata.join(
+        measured_keys,
+        on=list(join_keys),
+        how="anti",
+    ).with_columns(pl.lit(True).alias(flag))
+    return pl.concat([measured, phantoms], how="diagonal_relaxed")
+
+
+def _consistent_embedded_join_keys(
+    paths: list[Path],
+) -> tuple[str, ...] | None:
+    """Return one embedded-table join generation or reject a mixed snapshot."""
+    import pyarrow.parquet as pq
+
+    from phenotypic.sdk_ import (
+        EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS,
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+    )
+
+    suffix = MEASUREMENT_TABLE_RELATIVE_PATH.parts
+    embedded = [
+        path
+        for path in paths
+        if tuple(Path(path).parts[-len(suffix) :]) == suffix
+    ]
+    if not embedded:
+        return None
+    if len(embedded) != len(paths):
+        raise ValueError(
+            "Cannot aggregate mixed embedded and legacy measurement authority"
+        )
+
+    keys = EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS
+    generations: set[tuple[str, tuple[str, ...]]] = set()
+    for path in embedded:
+        metadata = pq.read_schema(path).metadata or {}
+        required = (
+            keys.JOIN_STATUS,
+            keys.JOIN_KEYS,
+            keys.METADATA_SNAPSHOT_SHA256,
+        )
+        missing = [key for key in required if key.encode() not in metadata]
+        if missing:
+            raise ValueError(
+                f"Embedded measurement table {path} lacks provenance: {missing}"
+            )
+        status = metadata[keys.JOIN_STATUS.encode()].decode()
+        raw_join_keys = json.loads(metadata[keys.JOIN_KEYS.encode()].decode())
+        if not isinstance(raw_join_keys, list) or not all(
+            isinstance(key, str) for key in raw_join_keys
+        ):
+            raise ValueError(f"Invalid embedded join-key provenance in {path}")
+        digest = metadata[keys.METADATA_SNAPSHOT_SHA256.encode()].decode()
+        if status == "joined" and (not raw_join_keys or not digest):
+            raise ValueError(f"Incomplete joined-table provenance in {path}")
+        generations.add((digest, tuple(raw_join_keys)))
+    if len(generations) != 1:
+        raise ValueError(
+            "Embedded measurement tables have mixed metadata digests or join keys"
+        )
+    return next(iter(generations))[1]
+
+
 def finalize_post_master_outputs(
     output_dir: Path,
     master_df: "pl.DataFrame",
     pipeline: Optional["ImagePipeline"],
     metadata_csv: Optional[Path] = None,
+    metadata_join_keys: tuple[str, ...] | None = None,
     no_qc: bool = False,
     study_config: Optional[dict] = None,
 ) -> "pl.DataFrame":
@@ -847,16 +945,14 @@ def finalize_post_master_outputs(
 
     The order is:
 
-    1. If *metadata_csv* is provided, left-join its rows onto a copy of
-       *master_df* via :func:`join_metadata` — so a metadata key that
-       matched no measured object survives as a phantom row flagged
-       ``QC_MetadataOnly = true``. The join lands here — not
-       on the master archive on disk — so
-       ``master_measurements.{csv,parquet}`` stays a clean, op-free
-       archive of what the workers measured, while the working frame
-       used for the mirror picks up the external metadata columns. The
-       join runs **before** post so :class:`PostMeasurement` ops can
-       reference joined columns through their schema member names.
+    1. If *metadata_csv* and recorded *metadata_join_keys* are provided,
+       append only metadata rows whose keys are absent from *master_df*,
+       flagging them ``QC_MetadataOnly = true``. Measured rows already
+       carry their publication-time metadata from the embedded tables and are
+       not joined again. Legacy metadata-free masters without recorded keys
+       retain the historical left join. This runs **before** post so
+       :class:`PostMeasurement` ops can reference joined columns through
+       their schema member names.
     2. Apply ``pipeline._post`` to the (optionally metadata-joined)
        working frame via :func:`_apply_post_to_master`. The resulting
        ``post_df`` is what the GUI viewer/curation layer reads from
@@ -884,17 +980,18 @@ def finalize_post_master_outputs(
         output_dir: Output root that already contains
             :data:`~phenotypic.sdk_.MASTER_MEASUREMENTS_PARQUET` (and the
             CSV counterpart).
-        master_df: The clean (post-free, metadata-free) aggregated master.
+        master_df: Exact concatenation of authorized embedded tables: joined
+            measured rows before post operations. Legacy callers may still
+            supply a metadata-free master.
         pipeline: Recovered pipeline, or ``None`` when it can't be
             located (the SLURM sentinel may run before any pipeline.json
             is persisted).
-        metadata_csv: Optional external metadata CSV. When provided, its
-            columns are left-joined onto an in-memory copy of *master_df*
-            before post ops run, so :class:`PostMeasurement` operations
-            can reference joined columns. Only the mirror (and its
-            derivatives) carry external metadata — never the master
-            archive on disk. Undetected metadata keys survive as phantom
-            rows carrying ``QC_MetadataOnly = true``.
+        metadata_csv: Optional effective metadata snapshot. For embedded
+            masters, measured rows already contain its joined columns; only
+            the anti-join rows absent from measurements are appended to the
+            mirror before post operations. Legacy metadata-free masters use
+            the historical left join. Undetected metadata identities survive
+            as phantom rows carrying ``QC_MetadataOnly = true``.
         no_qc: When ``True``, skip the QC compute step entirely (no ``qc/``
             artifact is written and the GUI review state is left as-is).
             When ``False`` (default), QC runs whenever the pipeline has a
@@ -930,11 +1027,21 @@ def finalize_post_master_outputs(
     working_df = normalize_measurement_metadata_columns(master_df)
     if metadata_csv is not None:
         try:
-            working_df = join_metadata(working_df, metadata_csv, how="left")
+            if metadata_join_keys is None:
+                # Legacy masters are metadata-free and retain the historical
+                # join path. Embedded masters supply their recorded keys and
+                # must never join measured rows a second time.
+                working_df = join_metadata(
+                    working_df, metadata_csv, how="left"
+                )
+            else:
+                working_df = _append_metadata_only_rows(
+                    working_df, metadata_csv, metadata_join_keys
+                )
         except ValueError:
             # Metadata normalization uses ValueError for conflicting aliases,
             # incompatible duplicate dtypes, and lossy coalescing. A fallback
-            # to the metadata-free master would publish an invalid mirror.
+            # to the unaugmented master would publish an invalid mirror.
             raise
         except Exception as e:
             logger.warning(
@@ -1237,12 +1344,12 @@ def _aggregate_measurements_unlocked(
         is available — persists ``pipeline.json`` and runs the analysis chain
         into ``analysis.{csv,parquet}``.
 
-        ``master_measurements.{csv,parquet}`` are intentionally a clean
-        (pre-post) archive of what the per-image runs measured, while
-        ``measurements.{csv,parquet}`` carry the post-applied frame that
-        the GUI viewer reads/curates. The two diverge whenever the
-        pipeline has any :class:`PostMeasurement` op configured. Split
-        and analysis failures never change the return value.
+        ``master_measurements.{csv,parquet}`` are the exact concatenation
+        of authorized embedded tables (joined measured rows, pre-post), while
+        ``measurements.{csv,parquet}`` additionally carry exactly-once
+        metadata-only phantoms and the post-applied frame that the GUI viewer
+        reads/curates. Split and analysis failures never change the return
+        value.
     """
     from ._cli_completion import authorized_measurement_sources
 
@@ -1259,6 +1366,12 @@ def _aggregate_measurements_unlocked(
         # Schema-3 terminal publication never trusts checkpoint aggregates or
         # an unmarked per-image Parquet merely because it exists.
         path_to_dataset = authorized_sources
+
+    metadata_join_keys = (
+        _consistent_embedded_join_keys(list(path_to_dataset))
+        if authorized_sources is not None
+        else None
+    )
 
     # -- Stage to $SCRATCH ---------------------------------------------
     scratch_dir = _stage_to_scratch(list(path_to_dataset.keys()))
@@ -1336,6 +1449,7 @@ def _aggregate_measurements_unlocked(
         master_df,
         resolved_pipeline,
         metadata_csv=metadata_csv,
+        metadata_join_keys=metadata_join_keys,
         no_qc=no_qc,
         study_config=study_config,
     )
@@ -1509,7 +1623,6 @@ class OutputManager:
             dataset_dir = self.results_dir / dataset.name
             dataset_dir.mkdir(exist_ok=True)
 
-            (dataset_dir / DIR_MEASUREMENTS).mkdir(exist_ok=True)
             # ``zarr/``, not ``hdf/``: nothing writes an `.h5` on a
             # forward run any more (Phase 3 Task 3.6), so provisioning
             # ``hdf/`` would leave an empty directory in every output
@@ -1676,6 +1789,7 @@ class OutputManager:
         work_id: str | None = None,
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
+        measurements: pd.DataFrame | None = None,
     ) -> Optional[Path]:
         """Save a processed image as an OME-Zarr store under ``results/<ds>/zarr/``.
 
@@ -1692,6 +1806,9 @@ class OutputManager:
             image: Image object with processing results.
             dataset_name: Dataset name.
             image_stem: Image filename without extension.
+            measurements: Optional baseline per-object measurements. When
+                present they are joined to the stable metadata snapshot and
+                embedded transactionally in the store.
             work_id: CLI work id, written into ``attributes.phenotypic``.
             durable: Per-call override. ``None`` (the default) defers to
                 :attr:`durable_writes`, which is the run's
@@ -1713,15 +1830,38 @@ class OutputManager:
         final_path = zarr_store_path(self.base_dir, dataset_name, image_stem)
         final_path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            saved = image.save2zarr(
-                final_path,
-                work_id=work_id,
-                durable=(
+            table = None
+            if measurements is not None:
+                baseline = measurements.copy()
+                if (
+                    self.include_dataset_column
+                    and str(EXPERIMENT.DATASET) not in baseline.columns
+                ):
+                    baseline.insert(
+                        len(baseline.columns),
+                        str(EXPERIMENT.DATASET),
+                        dataset_name,
+                    )
+                metadata_snapshot = metadata_csv_deliverable_path(
+                    self.base_dir
+                )
+                table = prepare_embedded_measurement_table(
+                    baseline,
+                    metadata_snapshot if metadata_snapshot.is_file() else None,
+                )
+            save_kwargs: dict[str, Any] = {
+                "work_id": work_id,
+                "durable": (
                     self.durable_writes if durable is None else durable
                 ),
-                commit_guard=commit_guard,
+                "commit_guard": commit_guard,
+            }
+            if table is not None:
+                save_kwargs["measurement_table"] = table
+            saved = image.save2zarr(final_path, **save_kwargs)
+            logger.info(
+                "Saved OME-Zarr store for %s/%s", dataset_name, image_stem
             )
-            logger.info("Saved OME-Zarr store for %s/%s", dataset_name, image_stem)
             return saved
         except Exception as e:
             # A lifecycle rejection is authoritative infrastructure state,
@@ -1738,6 +1878,40 @@ class OutputManager:
                 e,
             )
             return None
+
+    def replace_image_store_measurements(
+        self,
+        store_path: Path,
+        measurements: pd.DataFrame,
+        dataset_name: str,
+        *,
+        durable: bool | None = None,
+        commit_guard: CommitGuard | None = None,
+    ) -> Path:
+        """Replace an existing store's authoritative measurement table."""
+        from phenotypic.sdk_ import replace_embedded_measurement_table
+
+        baseline = measurements.copy()
+        if (
+            self.include_dataset_column
+            and str(EXPERIMENT.DATASET) not in baseline.columns
+        ):
+            baseline.insert(
+                len(baseline.columns),
+                str(EXPERIMENT.DATASET),
+                dataset_name,
+            )
+        metadata_snapshot = metadata_csv_deliverable_path(self.base_dir)
+        table = prepare_embedded_measurement_table(
+            baseline,
+            metadata_snapshot if metadata_snapshot.is_file() else None,
+        )
+        return replace_embedded_measurement_table(
+            store_path,
+            table,
+            durable=self.durable_writes if durable is None else durable,
+            commit_guard=commit_guard,
+        )
 
     def aggregate_master_csv(
         self,

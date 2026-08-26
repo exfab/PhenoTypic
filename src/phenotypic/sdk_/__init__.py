@@ -257,6 +257,12 @@ from ._metadata_helpers import (
     normalize_metadata_columns,
     order_measurement_columns,
 )
+from ._measurement_tables import (
+    PreparedEmbeddedMeasurementTable,
+    build_measurement_table_descriptor,
+    replace_embedded_measurement_table,
+    write_embedded_measurement_table,
+)
 from ._metadata_migration import (
     MetadataMigrationReport,
     MetadataMigrationResult,
@@ -276,6 +282,8 @@ from .mixin import (
     NormalizedOutputMixin,
 )
 from .ngff_ import (
+    EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS,
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     STORE_ROOT_JSON,
     STORE_SUFFIX,
     PhenotypicAttr,
@@ -283,6 +291,7 @@ from .ngff_ import (
     durable_writes_enabled,
     new_part_path,
     promote_store,
+    read_phenotypic_attributes,
     sweep_orphan_parts,
     valid_staged_store,
 )
@@ -309,6 +318,10 @@ __all__ = [
     "atomic_write_with_writer",
     "publication_commit",
     "PARQUET_WRITE_OPTIONS",
+    "PreparedEmbeddedMeasurementTable",
+    "build_measurement_table_descriptor",
+    "replace_embedded_measurement_table",
+    "write_embedded_measurement_table",
     "canonical_metadata_order",
     "colourspace",
     "constants_",
@@ -339,12 +352,15 @@ __all__ = [
     "timed_execution",
     # OME-Zarr per-image store (NGFF 0.5 / Zarr format v3)
     "PhenotypicAttr",
+    "EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS",
+    "MEASUREMENT_TABLE_RELATIVE_PATH",
     "STORE_ROOT_JSON",
     "STORE_SUFFIX",
     "describe_durability",
     "durable_writes_enabled",
     "new_part_path",
     "promote_store",
+    "read_phenotypic_attributes",
     "sweep_orphan_parts",
     "valid_staged_store",
     # Typing aliases (closed value sets)
