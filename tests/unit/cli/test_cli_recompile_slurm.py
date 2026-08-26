@@ -713,6 +713,82 @@ def test_finalizer_blocks_publication_on_unknown_failed_task(
     master.assert_not_called()
     post.assert_not_called()
 
+
+def test_finalizer_does_not_publish_after_master_parquet_failure(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A mixed master CSV/Parquet generation cannot receive fresh authority."""
+    import shutil
+
+    import phenotypic._cli._cli_recompile_worker as worker
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+    from phenotypic.sdk_ import (
+        aggregate_publication_marker_path,
+        master_measurements_csv_path,
+        master_measurements_parquet_path,
+    )
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    generation = "master-parquet-failure"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
+    attempt_dir = (
+        progress_dir(output_dir)
+        / "recompile"
+        / "attempts"
+        / generation
+    )
+    shard_dir = attempt_dir / "measurement_shards"
+    _write_parquet(shard_dir / "shard_0.parquet", [999999])
+    manifest_path = attempt_dir / "task_manifest.json"
+    manifest_path.write_text(
+        json.dumps({"tasks": []}),
+        encoding="utf-8",
+    )
+    marker_path = aggregate_publication_marker_path(output_dir)
+    marker_before = marker_path.read_bytes()
+    parquet_before = master_measurements_parquet_path(output_dir).read_bytes()
+    real_atomic_write = worker.atomic_write_with_writer
+
+    def _fail_master_parquet(
+        path: Path,
+        writer: object,
+        **kwargs: object,
+    ) -> None:
+        if Path(path) == master_measurements_parquet_path(output_dir):
+            raise OSError("simulated master Parquet failure")
+        real_atomic_write(path, writer, **kwargs)  # type: ignore[arg-type]
+
+    with (
+        patch.object(
+            worker,
+            "atomic_write_with_writer",
+            _fail_master_parquet,
+        ),
+        patch.object(worker, "_run_post_master_steps"),
+        patch.object(worker, "_regenerate_recompile_dashboard"),
+        pytest.raises(OSError, match="simulated master Parquet failure"),
+    ):
+        worker._run_finalizer_task(
+            output_dir,
+            manifest_path,
+            {"expected_non_finalizer_tasks": 0},
+            slurm_generation=generation,
+        )
+
+    assert pl.read_csv(master_measurements_csv_path(output_dir))[
+        "Size_Area"
+    ].to_list() == [999999]
+    assert (
+        master_measurements_parquet_path(output_dir).read_bytes()
+        == parquet_before
+    )
+    assert marker_path.read_bytes() == marker_before
+
+
 def test_slurm_recompile_schedules_table_bound_to_missing_overlay(
     _completed_run_two: Path,
     tmp_path: Path,
@@ -1009,6 +1085,102 @@ def test_measurement_worker_derives_embedded_image_names_from_store(
         "img1",
         "img2",
     ]
+
+
+
+def test_finalizer_overlay_refresh_locks_store_before_lifecycle(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Final overlay refresh cannot invert the worker store/lifecycle order."""
+    import shutil
+    from contextlib import contextmanager
+    from typing import Iterator
+
+    import phenotypic._cli._cli_recompile_slurm_scripts as scripts
+    import phenotypic._cli._cli_recompile_worker as worker
+    from phenotypic.sdk_ import dataset_overlays_dir
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
+    overlay.write_bytes(overlay.read_bytes() + b"repaired")
+    manifest_path = tmp_path / "task-manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "task_type": "measurements",
+                        "overlay_repairs": [
+                            {
+                                "dataset_name": DATASET,
+                                "store_path": str(store),
+                            }
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    lifecycle_active = False
+    store_active = False
+    inverted = False
+    lifecycle_entered_inside_store = False
+
+    @contextmanager
+    def _lifecycle_guard(*args: object, **kwargs: object) -> Iterator[None]:
+        nonlocal lifecycle_active, lifecycle_entered_inside_store
+        lifecycle_entered_inside_store |= store_active
+        lifecycle_active = True
+        try:
+            yield
+        finally:
+            lifecycle_active = False
+
+    @contextmanager
+    def _store_lock(*args: object, **kwargs: object) -> Iterator[None]:
+        nonlocal store_active, inverted
+        inverted |= lifecycle_active
+        store_active = True
+        try:
+            yield
+        finally:
+            store_active = False
+
+    with (
+        patch.object(
+            worker,
+            "generation_publication_guard",
+            _lifecycle_guard,
+        ),
+        patch.object(scripts, "exclusive_path_lock", _store_lock),
+        patch.object(
+            worker,
+            "_wait_for_non_finalizer_statuses",
+            return_value=[],
+        ),
+        patch.object(
+            worker,
+            "_write_master_outputs_from_shards",
+            return_value=None,
+        ),
+        patch.object(worker, "_run_post_master_steps"),
+        patch.object(worker, "_regenerate_recompile_dashboard"),
+    ):
+        worker._run_finalizer_task(
+            output_dir,
+            manifest_path,
+            {"expected_non_finalizer_tasks": 0},
+            slurm_generation="lock-order",
+        )
+
+    assert not inverted
+    assert lifecycle_entered_inside_store
 
 
 def test_superseded_finalizer_cannot_refresh_overlay_marker(
@@ -1411,6 +1583,525 @@ def test_retry_schedules_table_replaced_before_marker_publish_crash(
     ).exists()
 
 
+
+def test_retry_rejects_self_referential_transition_payload(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Transition evidence cannot nominate the changed canonical table itself."""
+    import hashlib
+    import shutil
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        build_recompile_tasks,
+    )
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+    with (
+        patch(
+            "phenotypic._cli._cli_recompile_tables._republish_table_marker",
+            side_effect=RuntimeError("simulated crash"),
+        ),
+        pytest.raises(RuntimeError, match="simulated crash"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir, table, DATASET, metadata
+        )
+
+    payload = pq.read_table(table)
+    area_index = payload.column_names.index("Shape_Area")
+    payload = payload.set_column(
+        area_index,
+        "Shape_Area",
+        pa.array(
+            [999999] * payload.num_rows,
+            type=payload.schema.field(area_index).type,
+        ),
+    )
+    pq.write_table(payload, table)
+    transition_path = recompile_table_transition_path(
+        output_dir, DATASET, stem
+    )
+    transition = json.loads(transition_path.read_text(encoding="utf-8"))
+    transition["prepared_path"] = table.relative_to(output_dir).as_posix()
+    transition["prepared_size"] = table.stat().st_size
+    transition["prepared_sha256"] = hashlib.sha256(
+        table.read_bytes()
+    ).hexdigest()
+    transition_path.write_text(json.dumps(transition), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="measurement authority"):
+        build_recompile_tasks(
+            output_dir,
+            [DATASET],
+            include_dataset_column=True,
+            overlay_alpha=0.3,
+            shard_size=1,
+            attempt_id="reject-self-reference",
+        )
+
+
+
+
+@pytest.mark.parametrize(
+    "prepared_path_case",
+    ["malformed-name", "outside-root", "symlink", "hardlink"],
+)
+def test_retry_rejects_noncanonical_transition_staging_path(
+    _completed_run_two: Path,
+    tmp_path: Path,
+    prepared_path_case: str,
+) -> None:
+    """Only a private canonical regular staging payload can authorize retry."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        build_recompile_tasks,
+    )
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+    with (
+        patch(
+            "phenotypic._cli._cli_recompile_tables._republish_table_marker",
+            side_effect=RuntimeError("simulated crash"),
+        ),
+        pytest.raises(RuntimeError, match="simulated crash"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir, table, DATASET, metadata
+        )
+
+    transition_path = recompile_table_transition_path(
+        output_dir, DATASET, stem
+    )
+    transition = json.loads(transition_path.read_text(encoding="utf-8"))
+    staged = output_dir / str(transition["prepared_path"])
+    if prepared_path_case == "malformed-name":
+        malformed = staged.with_name(f"{stem}.not-a-uuid.parquet")
+        shutil.copy2(staged, malformed)
+        transition["prepared_path"] = malformed.relative_to(
+            output_dir
+        ).as_posix()
+    elif prepared_path_case == "outside-root":
+        outside = tmp_path / "outside.parquet"
+        shutil.copy2(staged, outside)
+        transition["prepared_path"] = outside.relative_to(
+            output_dir, walk_up=True
+        ).as_posix()
+    elif prepared_path_case == "symlink":
+        outside = tmp_path / "outside.parquet"
+        shutil.copy2(staged, outside)
+        staged.unlink()
+        staged.symlink_to(outside)
+    else:
+        staged.unlink()
+        staged.hardlink_to(table)
+    transition_path.write_text(json.dumps(transition), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="measurement authority"):
+        build_recompile_tasks(
+            output_dir,
+            [DATASET],
+            include_dataset_column=True,
+            overlay_alpha=0.3,
+            shard_size=1,
+            attempt_id=f"reject-{prepared_path_case}",
+        )
+
+
+
+@pytest.mark.parametrize("tamper_case", ["current-bytes", "baseline"])
+def test_retry_rejects_altered_payload_or_measurement_baseline(
+    _completed_run_two: Path,
+    tmp_path: Path,
+    tamper_case: str,
+) -> None:
+    """Retry requires exact intended bytes and the unchanged table contract."""
+    import shutil
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        build_recompile_tasks,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+    with (
+        patch(
+            "phenotypic._cli._cli_recompile_tables._republish_table_marker",
+            side_effect=RuntimeError("simulated crash"),
+        ),
+        pytest.raises(RuntimeError, match="simulated crash"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir, table, DATASET, metadata
+        )
+
+    if tamper_case == "current-bytes":
+        payload = pq.read_table(table)
+        area_index = payload.column_names.index("Shape_Area")
+        payload = payload.set_column(
+            area_index,
+            "Shape_Area",
+            pa.array(
+                [999999] * payload.num_rows,
+                type=payload.schema.field(area_index).type,
+            ),
+        )
+        pq.write_table(payload, table)
+    else:
+        root_path = store / "zarr.json"
+        root = json.loads(root_path.read_text(encoding="utf-8"))
+        root["attributes"]["phenotypic"]["tables"]["measurements"][
+            "measurement_columns"
+        ].append("Shape_MissingBaseline")
+        root_path.write_text(json.dumps(root), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="measurement authority"):
+        build_recompile_tasks(
+            output_dir,
+            [DATASET],
+            include_dataset_column=True,
+            overlay_alpha=0.3,
+            shard_size=1,
+            attempt_id=f"reject-{tamper_case}",
+        )
+
+
+@pytest.mark.parametrize("evidence_case", ["missing-prior", "stale-marker"])
+def test_retry_rejects_stale_or_unbound_prior_table_evidence(
+    _completed_run_two: Path,
+    tmp_path: Path,
+    evidence_case: str,
+) -> None:
+    """Recovery requires the exact marker and prior table fingerprint."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        build_recompile_tasks,
+    )
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+    with (
+        patch(
+            "phenotypic._cli._cli_recompile_tables._republish_table_marker",
+            side_effect=RuntimeError("simulated crash"),
+        ),
+        pytest.raises(RuntimeError, match="simulated crash"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir, table, DATASET, metadata
+        )
+
+    transition_path = recompile_table_transition_path(
+        output_dir, DATASET, stem
+    )
+    transition = json.loads(transition_path.read_text(encoding="utf-8"))
+    if evidence_case == "missing-prior":
+        transition.pop("prior_table_size", None)
+        transition.pop("prior_table_sha256", None)
+        transition_path.write_text(json.dumps(transition), encoding="utf-8")
+    else:
+        from phenotypic.sdk_ import image_completion_marker_path
+
+        marker_path = image_completion_marker_path(output_dir, DATASET, stem)
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        marker["stale_marker_probe"] = True
+        marker_path.write_text(json.dumps(marker), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="measurement authority"):
+        build_recompile_tasks(
+            output_dir,
+            [DATASET],
+            include_dataset_column=True,
+            overlay_alpha=0.3,
+            shard_size=1,
+            attempt_id="reject-unbound-prior-table",
+        )
+
+
+
+
+def test_recompile_rejects_staged_bytes_changed_after_journal(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Canonical replacement must promote exactly the journaled staged bytes."""
+    import shutil
+
+    import phenotypic._cli._cli_recompile_recovery as recovery
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import (
+        DATASET,
+        run_stems,
+        run_work_id,
+    )
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+    real_begin = recovery.begin_recompile_table_transition
+
+    def _begin_then_corrupt(*args: object, **kwargs: object) -> Path:
+        staged = real_begin(*args, **kwargs)  # type: ignore[arg-type]
+        staged.write_bytes(b"changed after journal publication")
+        return staged
+
+    with (
+        patch(
+            "phenotypic._cli._cli_recompile_tables."
+            "begin_recompile_table_transition",
+            _begin_then_corrupt,
+        ),
+        pytest.raises(RuntimeError, match="transition|staged"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir, table, DATASET, metadata
+        )
+
+    assert valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+
+
+def test_retry_cleans_orphan_after_crash_before_transition_journal(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A retry removes staged bytes left before the journal became durable."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+    transition_path = recompile_table_transition_path(
+        output_dir, DATASET, stem
+    )
+
+    with (
+        patch(
+            "phenotypic._cli._cli_recompile_recovery.atomic_write_json",
+            side_effect=RuntimeError("crash before transition journal"),
+        ),
+        pytest.raises(RuntimeError, match="crash before transition journal"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir, table, DATASET, metadata
+        )
+
+    assert not transition_path.exists()
+    assert len(list(transition_path.parent.glob(f"{stem}.*.parquet"))) == 1
+
+    recompile_embedded_measurement_table(
+        output_dir, table, DATASET, metadata
+    )
+
+    assert not transition_path.exists()
+    assert list(transition_path.parent.glob(f"{stem}.*.parquet")) == []
+
+
+
+def test_retry_recovers_crash_after_marker_publish_before_cleanup(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A valid new marker makes leftover transition evidence safely retryable."""
+    import shutil
+
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import (
+        DATASET,
+        run_stems,
+        run_work_id,
+    )
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+    transition_path = recompile_table_transition_path(
+        output_dir, DATASET, stem
+    )
+
+    with (
+        patch(
+            "phenotypic._cli._cli_recompile_tables."
+            "clear_recompile_table_transition",
+            side_effect=RuntimeError("crash before cleanup"),
+        ),
+        pytest.raises(RuntimeError, match="crash before cleanup"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir, table, DATASET, metadata
+        )
+
+    assert valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+    assert transition_path.exists()
+
+    recompile_embedded_measurement_table(
+        output_dir, table, DATASET, metadata
+    )
+
+    assert valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+    assert not transition_path.exists()
+    assert list(transition_path.parent.glob(f"{stem}.*.parquet")) == []
+
+
 def test_retry_refuses_unjournaled_invalid_measurement_table(
     _completed_run_two: Path,
     tmp_path: Path,
@@ -1481,3 +2172,114 @@ def test_slurm_recompile_rejects_nonrecoverable_measurement_overlay(
             shard_size=1,
             attempt_id="reject-nonrecoverable-overlay",
         )
+
+
+
+def test_clear_transition_never_deletes_forged_in_root_payload(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Cleanup must not unlink an arbitrary path named by forged evidence."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_recovery import (
+        clear_recompile_table_transition,
+        recompile_table_transition_path,
+    )
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    transition_path = recompile_table_transition_path(
+        output_dir, DATASET, stem
+    )
+    transition_path.parent.mkdir(parents=True, exist_ok=True)
+    victim = output_dir / "must-survive.parquet"
+    victim.write_bytes(b"not transition staging")
+    transition_path.write_text(
+        json.dumps(
+            {"prepared_path": victim.relative_to(output_dir).as_posix()}
+        ),
+        encoding="utf-8",
+    )
+
+    clear_recompile_table_transition(output_dir, DATASET, stem)
+
+    assert victim.read_bytes() == b"not transition staging"
+    assert not transition_path.exists()
+
+
+def test_retry_recovers_crash_after_transition_journal_before_promotion(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A durable journal with the prior table intact is safely replaceable."""
+    import shutil
+
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import (
+        DATASET,
+        run_stems,
+        run_work_id,
+    )
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+    transition_path = recompile_table_transition_path(
+        output_dir, DATASET, stem
+    )
+
+    with (
+        patch(
+            "phenotypic._cli._cli_recompile_tables."
+            "promote_recompile_table_transition",
+            side_effect=RuntimeError("crash after transition journal"),
+        ),
+        pytest.raises(RuntimeError, match="crash after transition journal"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir, table, DATASET, metadata
+        )
+
+    assert transition_path.exists()
+    assert len(list(transition_path.parent.glob(f"{stem}.*.parquet"))) == 1
+    assert valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+
+    recompile_embedded_measurement_table(
+        output_dir, table, DATASET, metadata
+    )
+
+    assert valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+    assert not transition_path.exists()
+    assert list(transition_path.parent.glob(f"{stem}.*.parquet")) == []

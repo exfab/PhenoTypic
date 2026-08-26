@@ -15,7 +15,6 @@ from phenotypic.sdk_ import (
     STORE_SUFFIX,
     progress_dir,
     read_phenotypic_attributes,
-    replace_embedded_measurement_table,
     store_stem,
 )
 
@@ -30,6 +29,7 @@ from ._cli_recompile_recovery import (
     begin_recompile_table_transition,
     clear_recompile_table_transition,
     recoverable_recompile_measurement_sources,
+    promote_recompile_table_transition,
     recompile_store_lock_path,
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
@@ -105,16 +105,19 @@ def _replace_and_republish_table(
         recompile_store_lock_path(output_dir, dataset, stem),
         timeout=60.0,
     ):
-        begin_recompile_table_transition(
+        staged = begin_recompile_table_transition(
             output_dir,
             dataset,
             stem,
             store_path,
             prepared,
         )
-        replace_embedded_measurement_table(
+        promote_recompile_table_transition(
+            output_dir,
+            dataset,
+            stem,
             store_path,
-            prepared,
+            staged,
             commit_guard=commit_guard,
         )
         marker_path = image_completion_marker_path(output_dir, dataset, stem)

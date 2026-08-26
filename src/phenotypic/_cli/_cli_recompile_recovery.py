@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
 from phenotypic.sdk_ import (
     DIR_RESULTS,
     DIR_ZARR,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     STORE_SUFFIX,
+    CommitGuard,
     PreparedEmbeddedMeasurementTable,
+    atomic_write_bytes,
     atomic_write_json,
     image_completion_marker_path,
     progress_dir,
@@ -64,6 +66,89 @@ def recompile_table_transition_path(
     return _transition_root(output_dir, dataset_name) / f"{stem}.json"
 
 
+def _marker_measurement_fingerprint(
+    output_root: Path,
+    marker: dict[str, Any],
+    table_path: Path,
+) -> tuple[int, str]:
+    """Return the marker-bound prior table fingerprint or raise."""
+    artifacts = marker.get("artifacts")
+    if not isinstance(artifacts, dict):
+        raise ValueError("Marker has no artifact mapping")
+    descriptor = artifacts.get("measurements")
+    if not isinstance(descriptor, dict):
+        raise ValueError("Marker has no measurement descriptor")
+    relative = descriptor.get("path")
+    size = descriptor.get("size")
+    sha256 = descriptor.get("sha256")
+    if (
+        not isinstance(relative, str)
+        or (output_root / relative).resolve() != table_path.resolve(strict=True)
+        or descriptor.get("kind", ARTIFACT_KIND_FILE) != ARTIFACT_KIND_FILE
+        or not isinstance(size, int)
+        or size < 0
+        or not isinstance(sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", sha256) is None
+    ):
+        raise ValueError("Marker measurement descriptor is invalid")
+    return size, sha256
+
+
+def _validated_transition_staging_path(
+    output_root: Path,
+    dataset_name: str,
+    stem: str,
+    transition: dict[str, Any],
+    table_path: Path,
+) -> Path:
+    """Return a canonical, private staged payload or raise."""
+    relative = transition.get("prepared_path")
+    if not isinstance(relative, str) or Path(relative).is_absolute():
+        raise ValueError("Transition prepared path is not relative")
+    staging_root = _transition_root(output_root, dataset_name)
+    if (
+        staging_root.is_symlink()
+        or staging_root.resolve(strict=True) != staging_root
+    ):
+        raise ValueError("Transition staging directory is not canonical")
+    candidate = output_root / relative
+    if (
+        candidate.parent != staging_root
+        or candidate.is_symlink()
+        or not candidate.is_file()
+        or candidate.resolve(strict=True) != candidate
+        or candidate == table_path
+        or candidate.samefile(table_path)
+        or re.fullmatch(
+            rf"{re.escape(stem)}\.[0-9a-f]{{32}}\.parquet",
+            candidate.name,
+        )
+        is None
+    ):
+        raise ValueError("Transition prepared payload is not canonical")
+    return candidate
+
+
+def _cleanup_orphan_staging_payloads(
+    staging_root: Path,
+    stem: str,
+    *,
+    keep: Path,
+) -> None:
+    """Remove only canonical same-stem staging files after journal rotation."""
+    pattern = re.compile(rf"{re.escape(stem)}\.[0-9a-f]{{32}}\.parquet")
+    for candidate in staging_root.glob(f"{stem}.*.parquet"):
+        if (
+            candidate == keep
+            or candidate.is_symlink()
+            or not candidate.is_file()
+            or candidate.parent != staging_root
+            or pattern.fullmatch(candidate.name) is None
+        ):
+            continue
+        candidate.unlink()
+
+
 def marker_claims_measurement_authority(marker_path: Path) -> bool:
     """Return whether a marker declares an embedded measurement artifact."""
     try:
@@ -90,6 +175,11 @@ def begin_recompile_table_transition(
         raise ValueError("Recompile transition store is not canonical")
     marker_path = image_completion_marker_path(output_root, dataset_name, stem)
     marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    prior_table_size, prior_table_sha256 = _marker_measurement_fingerprint(
+        output_root,
+        marker,
+        store / MEASUREMENT_TABLE_RELATIVE_PATH,
+    )
     work_id = str(marker["work_id"])
     marker_authorized = valid_image_success(
         output_root,
@@ -104,16 +194,6 @@ def begin_recompile_table_transition(
         raise RuntimeError(
             "Cannot replace an embedded table without marker or transition authority"
         )
-    prior_staged: Path | None = None
-    if transition_authorized:
-        prior = json.loads(
-            recompile_table_transition_path(
-                output_root, dataset_name, stem
-            ).read_text(encoding="utf-8")
-        )
-        prior_staged = (output_root / str(prior["prepared_path"])).resolve()
-        prior_staged.relative_to(output_root)
-
     root = _transition_root(output_root, dataset_name)
     staged = root / f"{stem}.{uuid4().hex}.parquet"
     _write_validated_parquet(staged, prepared)
@@ -127,6 +207,8 @@ def begin_recompile_table_transition(
         .relative_to(output_root)
         .as_posix(),
         "marker_sha256": _sha256(marker_path),
+        "prior_table_size": prior_table_size,
+        "prior_table_sha256": prior_table_sha256,
         "prepared_path": staged.relative_to(output_root).as_posix(),
         "prepared_size": staged.stat().st_size,
         "prepared_sha256": _sha256(staged),
@@ -135,23 +217,138 @@ def begin_recompile_table_transition(
         recompile_table_transition_path(output_root, dataset_name, stem),
         transition,
     )
-    if prior_staged is not None and prior_staged != staged:
-        prior_staged.unlink(missing_ok=True)
+    _cleanup_orphan_staging_payloads(root, stem, keep=staged)
     return staged
+
+
+def promote_recompile_table_transition(
+    output_dir: Path,
+    dataset_name: str,
+    stem: str,
+    store_path: Path,
+    staged_path: Path,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> Path:
+    """Promote only the exact journaled staged bytes to the canonical table."""
+    output_root = Path(output_dir).resolve()
+    store = Path(store_path).resolve(strict=True)
+    canonical_store = zarr_store_path(
+        output_root, dataset_name, stem
+    ).resolve(strict=True)
+    if store != canonical_store:
+        raise RuntimeError("Transition store is not canonical")
+    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    transition_path = recompile_table_transition_path(
+        output_root, dataset_name, stem
+    )
+    try:
+        transition = json.loads(transition_path.read_text(encoding="utf-8"))
+        marker_path = image_completion_marker_path(
+            output_root, dataset_name, stem
+        )
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        prior_size, prior_sha256 = _marker_measurement_fingerprint(
+            output_root,
+            marker,
+            table,
+        )
+        staged = _validated_transition_staging_path(
+            output_root,
+            dataset_name,
+            stem,
+            transition,
+            table,
+        )
+        intended_size = transition.get("prepared_size")
+        intended_sha256 = transition.get("prepared_sha256")
+        if (
+            staged != Path(staged_path)
+            or transition.get("version") != _TRANSITION_VERSION
+            or transition.get("dataset") != dataset_name
+            or transition.get("image_stem") != stem
+            or transition.get("work_id") != marker.get("work_id")
+            or transition.get("store_path")
+            != store.relative_to(output_root).as_posix()
+            or transition.get("table_path")
+            != table.relative_to(output_root).as_posix()
+            or transition.get("marker_sha256") != _sha256(marker_path)
+            or transition.get("prior_table_size") != prior_size
+            or transition.get("prior_table_sha256") != prior_sha256
+            or not isinstance(intended_size, int)
+            or intended_size < 0
+            or not isinstance(intended_sha256, str)
+            or re.fullmatch(r"[0-9a-f]{64}", intended_sha256) is None
+            or staged.stat().st_size != intended_size
+            or _sha256(staged) != intended_sha256
+            or not _marker_allows_table_transition(
+                output_root, dataset_name, stem, marker, table
+            )
+            or not _valid_embedded_measurement_contract(store)
+        ):
+            raise RuntimeError("Recompile transition evidence is invalid")
+
+        def _fingerprint(path: Path) -> tuple[int, str]:
+            return path.stat().st_size, _sha256(path)
+
+        current = _fingerprint(table)
+        intended = (intended_size, intended_sha256)
+        prior = (prior_size, prior_sha256)
+        if current == intended:
+            return table
+        if current != prior:
+            raise RuntimeError(
+                "Canonical table matches neither prior nor intended transition"
+            )
+        staged_bytes = staged.read_bytes()
+
+        def _validate_immediately_before_replace() -> None:
+            if _fingerprint(staged) != intended or _fingerprint(table) != prior:
+                raise RuntimeError(
+                    "Recompile transition changed before table promotion"
+                )
+
+        atomic_write_bytes(
+            table,
+            staged_bytes,
+            pre_replace=_validate_immediately_before_replace,
+            commit_guard=commit_guard,
+        )
+        if (
+            _fingerprint(table) != intended
+            or not _valid_embedded_measurement_contract(store)
+        ):
+            raise RuntimeError("Promoted embedded table failed validation")
+        return table
+    except (
+        KeyError,
+        OSError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise RuntimeError("Recompile transition evidence is invalid") from exc
 
 
 def clear_recompile_table_transition(
     output_dir: Path, dataset_name: str, stem: str
 ) -> None:
-    """Remove transition evidence after marker-last publication succeeds."""
-    path = recompile_table_transition_path(output_dir, dataset_name, stem)
+    """Remove only canonical transition staging after marker-last publication."""
+    output_root = Path(output_dir).resolve()
+    path = recompile_table_transition_path(output_root, dataset_name, stem)
     try:
         transition = json.loads(path.read_text(encoding="utf-8"))
-        prepared = transition.get("prepared_path")
-        if isinstance(prepared, str):
-            staged = (Path(output_dir).resolve() / prepared).resolve()
-            staged.relative_to(Path(output_dir).resolve())
-            staged.unlink(missing_ok=True)
+        store = zarr_store_path(
+            output_root, dataset_name, stem
+        ).resolve(strict=True)
+        staged = _validated_transition_staging_path(
+            output_root,
+            dataset_name,
+            stem,
+            transition,
+            store / MEASUREMENT_TABLE_RELATIVE_PATH,
+        )
+        staged.unlink()
     except (OSError, AttributeError, ValueError, json.JSONDecodeError):
         pass
     path.unlink(missing_ok=True)
@@ -182,11 +379,18 @@ def recoverable_recompile_table_transition(
             output_root, dataset_name, stem
         )
         marker = json.loads(marker_path.read_text(encoding="utf-8"))
-        prepared_relative = transition["prepared_path"]
-        if not isinstance(prepared_relative, str):
-            return False
-        prepared = (output_root / prepared_relative).resolve(strict=True)
-        prepared.relative_to(output_root)
+        prior_table_size, prior_table_sha256 = _marker_measurement_fingerprint(
+            output_root,
+            marker,
+            table,
+        )
+        prepared = _validated_transition_staging_path(
+            output_root,
+            dataset_name,
+            stem,
+            transition,
+            table,
+        )
         if (
             transition.get("version") != _TRANSITION_VERSION
             or transition.get("dataset") != dataset_name
@@ -197,8 +401,12 @@ def recoverable_recompile_table_transition(
             or transition.get("table_path")
             != table.relative_to(output_root).as_posix()
             or transition.get("marker_sha256") != _sha256(marker_path)
+            or transition.get("prior_table_size") != prior_table_size
+            or transition.get("prior_table_sha256") != prior_table_sha256
             or transition.get("prepared_size") != prepared.stat().st_size
             or transition.get("prepared_sha256") != _sha256(prepared)
+            or transition.get("prepared_size") != table.stat().st_size
+            or transition.get("prepared_sha256") != _sha256(table)
             or store != canonical_store
             or not _marker_allows_table_transition(
                 output_root, dataset_name, stem, marker, table
@@ -206,9 +414,7 @@ def recoverable_recompile_table_transition(
             or not _valid_embedded_measurement_contract(store)
         ):
             return False
-        current_table = pq.read_table(table)
-        prepared_table = pq.read_table(prepared)
-        return current_table.equals(prepared_table, check_metadata=True)
+        return True
     except (
         KeyError,
         OSError,
@@ -329,6 +535,7 @@ __all__ = [
     "begin_recompile_table_transition",
     "clear_recompile_table_transition",
     "marker_claims_measurement_authority",
+    "promote_recompile_table_transition",
     "recoverable_recompile_measurement_sources",
     "recoverable_recompile_table_transition",
     "recompile_store_lock_path",

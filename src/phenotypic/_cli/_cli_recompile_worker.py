@@ -523,6 +523,15 @@ def _restore_overlay_marker_authority(
             store_stem(store_path),
             store_path,
             lifecycle_epoch=slurm_generation,
+            commit_guard=(
+                (
+                    lambda: generation_publication_guard(
+                        output_dir, slurm_generation
+                    )
+                )
+                if slurm_generation is not None
+                else None
+            ),
         ):
             raise RuntimeError(
                 "Could not restore marker authority after overlay repair"
@@ -560,14 +569,12 @@ def _run_finalizer_task(
     with exclusive_path_lock(publication_lock, timeout=60.0):
         # Re-fingerprint co-located overlay repairs once more after every task
         # is terminal so the marker describes the final embedded-table bytes.
-        # Fence this canonical mutation before it occurs, not only later
-        # this canonical mutation before it occurs, not only later publications.
-        with generation_publication_guard(output_dir, slurm_generation):
-            _restore_overlay_marker_authority(
-                output_dir,
-                task_manifest,
-                slurm_generation=slurm_generation,
-            )
+        # Each repair holds its store lock before entering the lifecycle fence.
+        _restore_overlay_marker_authority(
+            output_dir,
+            task_manifest,
+            slurm_generation=slurm_generation,
+        )
         # The aggregate lock excludes competing finalizers. Each canonical
         # mutation also acquires the lifecycle guard independently, allowing a
         # newer generation to fence this worker between publication phases.
@@ -682,16 +689,10 @@ def _write_master_outputs_from_shards(
         except Exception:
             logger.error("Failed to save master CSV during recompile finalize")
             raise
-        try:
-            atomic_write_with_writer(
-                master_measurements_parquet_path(output_dir),
-                lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
-            )
-        except Exception:
-            logger.warning(
-                "Failed to save master Parquet during recompile finalize "
-                "(CSV was saved)"
-            )
+        atomic_write_with_writer(
+            master_measurements_parquet_path(output_dir),
+            lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
+        )
 
     if slurm_generation is None:
         publish_master_outputs()
