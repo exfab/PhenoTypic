@@ -25,6 +25,7 @@ from ._cli_completion import (
 )
 from ._embedded_measurement_tables import prepare_embedded_measurement_table
 from ._cli_recompile_recovery import (
+    _fsync_recompile_directory,
     assert_no_unrecoverable_measurement_authority,
     begin_recompile_table_transition,
     clear_recompile_table_transition,
@@ -127,6 +128,7 @@ def _replace_and_republish_table(
             commit_guard=commit_guard,
             lifecycle_epoch=lifecycle_epoch,
         )
+        _fsync_recompile_directory(marker_path.parent)
         clear_recompile_table_transition(output_dir, dataset, stem)
 
 

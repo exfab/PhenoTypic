@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import stat
 import sys
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -2688,3 +2692,236 @@ def test_stale_slurm_overlay_worker_does_not_publish_rendered_bytes(
         )
 
     assert not overlay.exists()
+
+
+@pytest.mark.skipif(
+    not hasattr(os, "mkfifo"),
+    reason="FIFO blocking regression requires POSIX FIFO support",
+)
+def test_transition_fifo_evidence_is_rejected_without_blocking(
+    tmp_path: Path,
+) -> None:
+    """A FIFO receipt cannot block recovery while the store lock is held."""
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    receipt = recompile_table_transition_path(output_dir, "ds", "img")
+    receipt.parent.mkdir(parents=True)
+    os.mkfifo(receipt)
+    ready = tmp_path / "ready.txt"
+    completed = tmp_path / "completed.txt"
+    probe = (
+        "from pathlib import Path; import sys; "
+        "from phenotypic._cli._cli_recompile_recovery import "
+        "recoverable_recompile_measurement_sources; "
+        "Path(sys.argv[2]).write_text('ready', encoding='utf-8'); "
+        "result = recoverable_recompile_measurement_sources("
+        "Path(sys.argv[1]), ['ds']); "
+        "Path(sys.argv[3]).write_text(repr(result), encoding='utf-8')"
+    )
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            probe,
+            str(output_dir),
+            str(ready),
+            str(completed),
+        ]
+    )
+    import_deadline = time.monotonic() + 15.0
+    while not ready.exists() and time.monotonic() < import_deadline:
+        assert process.poll() is None
+        time.sleep(0.01)
+    assert ready.is_file(), "FIFO recovery probe did not finish importing"
+    try:
+        return_code = process.wait(timeout=1.0)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=2.0)
+        pytest.fail("FIFO receipt blocked recovery discovery")
+
+    assert return_code == 0
+    assert completed.read_text(encoding="utf-8") == "{}"
+
+
+@pytest.mark.skipif(
+    not Path("/proc/self/fd").is_dir(),
+    reason="directory fsync ordering probe requires procfs",
+)
+def test_recompile_fsyncs_transaction_directories_in_publication_order(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Durable directory commits follow receipt, table, marker, cleanup order."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        image_completion_marker_path,
+    )
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    marker = image_completion_marker_path(output_dir, DATASET, stem)
+    transition_dir = recompile_table_transition_path(
+        output_dir,
+        DATASET,
+        stem,
+    ).parent
+    missing_component_parents: list[Path] = []
+    component = output_dir
+    for name in transition_dir.relative_to(output_dir).parts:
+        candidate = component / name
+        if not candidate.exists():
+            missing_component_parents.append(component)
+        component = candidate
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["durable"],
+        }
+    ).write_csv(metadata)
+    real_fsync = os.fsync
+    directory_syncs: list[Path] = []
+
+    def _record_fsync(file_descriptor: int) -> None:
+        identity = os.fstat(file_descriptor)
+        if stat.S_ISDIR(identity.st_mode):
+            directory_syncs.append(
+                Path(os.readlink(f"/proc/self/fd/{file_descriptor}"))
+            )
+        real_fsync(file_descriptor)
+
+    with patch.object(os, "fsync", _record_fsync):
+        recompile_embedded_measurement_table(
+            output_dir,
+            table,
+            DATASET,
+            metadata,
+        )
+
+    table_parent_index = directory_syncs.index(table.parent)
+    marker_parent_index = directory_syncs.index(marker.parent)
+    transition_indices = [
+        index
+        for index, directory in enumerate(directory_syncs)
+        if directory == transition_dir
+    ]
+    assert all(
+        parent in directory_syncs[:table_parent_index]
+        for parent in missing_component_parents
+    )
+    assert len(
+        [index for index in transition_indices if index < table_parent_index]
+    ) >= 2
+    assert table_parent_index < marker_parent_index
+    assert any(index > marker_parent_index for index in transition_indices)
+
+
+@pytest.mark.skipif(
+    not Path("/proc/self/fd").is_dir(),
+    reason="directory fsync fault probe requires procfs",
+)
+def test_marker_directory_fsync_failure_preserves_transition_evidence(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A marker durability failure aborts before receipt and stage cleanup."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        image_completion_marker_path,
+    )
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    marker_parent = image_completion_marker_path(
+        output_dir,
+        DATASET,
+        stem,
+    ).parent
+    receipt = recompile_table_transition_path(output_dir, DATASET, stem)
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["durable"],
+        }
+    ).write_csv(metadata)
+    real_fsync = os.fsync
+
+    def _fail_marker_directory(file_descriptor: int) -> None:
+        identity = os.fstat(file_descriptor)
+        target = Path(os.readlink(f"/proc/self/fd/{file_descriptor}"))
+        if stat.S_ISDIR(identity.st_mode) and target == marker_parent:
+            raise OSError("simulated marker directory fsync failure")
+        real_fsync(file_descriptor)
+
+    with (
+        patch.object(os, "fsync", _fail_marker_directory),
+        pytest.raises(OSError, match="marker directory fsync failure"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir,
+            table,
+            DATASET,
+            metadata,
+        )
+
+    assert receipt.is_file()
+    transition = json.loads(receipt.read_text(encoding="utf-8"))
+    staged = output_dir / str(transition["prepared_path"])
+    assert staged.is_file()
+
+def test_transition_recovery_fails_closed_without_safe_directory_primitives(
+    tmp_path: Path,
+) -> None:
+    """Recovery refuses access when identity-bound primitives are unavailable."""
+    import phenotypic._cli._cli_recompile_recovery as recovery
+
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    with (
+        patch.object(
+            recovery,
+            "_IDENTITY_BOUND_DIRECTORY_OPERATIONS",
+            False,
+        ),
+        pytest.raises(RuntimeError, match="cannot safely access"),
+    ):
+        recovery.recoverable_recompile_measurement_sources(
+            output_dir,
+            ["ds"],
+        )

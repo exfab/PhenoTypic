@@ -103,6 +103,7 @@ _IDENTITY_BOUND_DIRECTORY_OPERATIONS = (
     os.name == "posix"
     and hasattr(os, "O_DIRECTORY")
     and hasattr(os, "O_NOFOLLOW")
+    and hasattr(os, "O_NONBLOCK")
     and os.listdir in os.supports_fd
     and all(
         operation in os.supports_dir_fd
@@ -117,6 +118,22 @@ def _require_identity_bound_directory_operations() -> None:
         raise RuntimeError(
             "This platform cannot safely access recompile transition directories"
         )
+
+
+def _fsync_recompile_directory(path: Path) -> None:
+    """Durably commit directory-entry changes without following the directory."""
+    _require_identity_bound_directory_operations()
+    directory_fd = os.open(
+        Path(path),
+        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+    )
+    try:
+        identity = os.fstat(directory_fd)
+        if not stat.S_ISDIR(identity.st_mode):
+            raise ValueError("Recompile transaction directory is invalid")
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
 
 
 def _validate_transition_component(component: str) -> None:
@@ -154,6 +171,8 @@ def _open_transition_directory(
                     os.mkdir(component, mode=0o700, dir_fd=directory_fd)
                 except FileExistsError:
                     pass
+                else:
+                    os.fsync(directory_fd)
                 child_fd = os.open(component, flags, dir_fd=directory_fd)
             os.close(directory_fd)
             directory_fd = child_fd
@@ -180,7 +199,11 @@ def _read_regular_file_at(directory_fd: int, name: str) -> bytes:
     """Read a single-link regular file relative to a held directory."""
     if Path(name).name != name or name in {"", ".", ".."}:
         raise ValueError("Transition file is not canonical")
-    file_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=directory_fd)
+    file_fd = os.open(
+        name,
+        os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW,
+        dir_fd=directory_fd,
+    )
     try:
         identity = os.fstat(file_fd)
         if not stat.S_ISREG(identity.st_mode) or identity.st_nlink != 1:
@@ -309,6 +332,7 @@ def _cleanup_orphan_staging_payloads_at(
         except (OSError, ValueError):
             continue
         os.unlink(name, dir_fd=directory_fd)
+    os.fsync(directory_fd)
 
 
 def marker_claims_measurement_authority(marker_path: Path) -> bool:
@@ -368,6 +392,7 @@ def begin_recompile_table_transition(
             _write_validated_parquet(prepared_path, prepared)
             prepared_bytes = prepared_path.read_bytes()
         _write_exclusive_file_at(directory_fd, staged_name, prepared_bytes)
+        os.fsync(directory_fd)
         prepared_size, prepared_sha256 = _fingerprint_bytes(prepared_bytes)
         transition = {
             "version": _TRANSITION_VERSION,
@@ -476,6 +501,7 @@ def promote_recompile_table_transition(
             intended = (intended_size, intended_sha256)
             prior = (prior_size, prior_sha256)
             if current == intended:
+                _fsync_recompile_directory(table.parent)
                 return table
             if current != prior:
                 raise RuntimeError(
@@ -500,6 +526,7 @@ def promote_recompile_table_transition(
                 pre_replace=_validate_immediately_before_replace,
                 commit_guard=commit_guard,
             )
+            _fsync_recompile_directory(table.parent)
             if _fingerprint(
                 table
             ) != intended or not _valid_embedded_measurement_contract(store):
@@ -546,6 +573,7 @@ def clear_recompile_table_transition(
             except (OSError, ValueError):
                 pass
             os.unlink(receipt_name, dir_fd=directory_fd)
+            os.fsync(directory_fd)
     except (OSError, ValueError):
         return
 
