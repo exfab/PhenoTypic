@@ -313,8 +313,9 @@ def repoint_marker_at_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
     migration, quietly certifying that Task 5.6 was unnecessary.
 
     Everything else -- ``work_id``, ``attempt_id``, ``lifecycle_epoch``,
-    ``completed_at``, and the ``measurements`` and ``overlay`` descriptors --
-    is preserved verbatim, so the marker stays the one the real run published.
+    ``completed_at``, and the ``overlay`` descriptor -- is preserved. The
+    current marker's embedded-table descriptor is repointed to the external
+    Parquet path that a genuine legacy run published.
 
     Args:
         output_dir: Run output root.
@@ -330,6 +331,13 @@ def repoint_marker_at_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
     artifacts = marker["artifacts"]
     artifacts.pop("store", None)
     output_root = Path(output_dir).resolve()
+    legacy_measurements = (
+        dataset_measurements_dir(output_dir, dataset) / f"{stem}.parquet"
+    )
+    if "measurements" in artifacts and legacy_measurements.is_file():
+        artifacts["measurements"]["path"] = str(
+            legacy_measurements.resolve().relative_to(output_root)
+        )
 
     # Re-fingerprint every surviving descriptor over the bytes as they are
     # NOW. The legacy headers were injected into the measurement parquets
