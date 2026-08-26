@@ -2925,3 +2925,136 @@ def test_transition_recovery_fails_closed_without_safe_directory_primitives(
             output_dir,
             ["ds"],
         )
+
+@pytest.mark.skipif(
+    not Path("/proc/self/fd").is_dir(),
+    reason="directory fsync fault probe requires procfs",
+)
+def test_cleanup_directory_fsync_failure_propagates_after_unlink(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A failed durable cleanup is reported after transition entries mutate."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_recovery import (
+        clear_recompile_table_transition,
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["cleanup-fsync"],
+        }
+    ).write_csv(metadata)
+    with (
+        patch(
+            "phenotypic._cli._cli_recompile_tables._republish_table_marker",
+            side_effect=RuntimeError("leave transition evidence"),
+        ),
+        pytest.raises(RuntimeError, match="leave transition evidence"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir,
+            table,
+            DATASET,
+            metadata,
+        )
+
+    receipt = recompile_table_transition_path(output_dir, DATASET, stem)
+    transition = json.loads(receipt.read_text(encoding="utf-8"))
+    staged = output_dir / str(transition["prepared_path"])
+    transition_dir = receipt.parent
+    real_fsync = os.fsync
+
+    def _fail_cleanup_directory(file_descriptor: int) -> None:
+        identity = os.fstat(file_descriptor)
+        target = Path(os.readlink(f"/proc/self/fd/{file_descriptor}"))
+        if stat.S_ISDIR(identity.st_mode) and target == transition_dir:
+            assert not receipt.exists()
+            assert not staged.exists()
+            raise OSError("simulated cleanup directory fsync failure")
+        real_fsync(file_descriptor)
+
+    with (
+        patch.object(os, "fsync", _fail_cleanup_directory),
+        pytest.raises(OSError, match="cleanup directory fsync failure"),
+    ):
+        clear_recompile_table_transition(output_dir, DATASET, stem)
+
+
+@pytest.mark.skipif(
+    not Path("/proc/self/fd").is_dir(),
+    reason="directory fsync fault probe requires procfs",
+)
+def test_table_directory_fsync_failure_preserves_transition_evidence(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A table durability failure propagates before marker publication."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    receipt = recompile_table_transition_path(output_dir, DATASET, stem)
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["table-fsync"],
+        }
+    ).write_csv(metadata)
+    real_fsync = os.fsync
+
+    def _fail_table_directory(file_descriptor: int) -> None:
+        identity = os.fstat(file_descriptor)
+        target = Path(os.readlink(f"/proc/self/fd/{file_descriptor}"))
+        if stat.S_ISDIR(identity.st_mode) and target == table.parent:
+            raise OSError("simulated table directory fsync failure")
+        real_fsync(file_descriptor)
+
+    with (
+        patch.object(os, "fsync", _fail_table_directory),
+        pytest.raises(RuntimeError, match="transition evidence is invalid"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir,
+            table,
+            DATASET,
+            metadata,
+        )
+
+    assert receipt.is_file()
+    transition = json.loads(receipt.read_text(encoding="utf-8"))
+    staged = output_dir / str(transition["prepared_path"])
+    assert staged.is_file()

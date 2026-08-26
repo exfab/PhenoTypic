@@ -160,30 +160,31 @@ def _open_transition_directory(
     flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
     directory_fd = os.open(canonical_output, flags)
     try:
-        for component in relative.parts:
-            _validate_transition_component(component)
-            try:
-                child_fd = os.open(component, flags, dir_fd=directory_fd)
-            except FileNotFoundError:
-                if not create:
-                    raise
+        try:
+            for component in relative.parts:
+                _validate_transition_component(component)
                 try:
-                    os.mkdir(component, mode=0o700, dir_fd=directory_fd)
-                except FileExistsError:
-                    pass
-                else:
-                    os.fsync(directory_fd)
-                child_fd = os.open(component, flags, dir_fd=directory_fd)
-            os.close(directory_fd)
-            directory_fd = child_fd
-        identity = os.fstat(directory_fd)
-        if not stat.S_ISDIR(identity.st_mode):
-            raise ValueError("Transition directory is not canonical")
+                    child_fd = os.open(component, flags, dir_fd=directory_fd)
+                except FileNotFoundError:
+                    if not create:
+                        raise
+                    try:
+                        os.mkdir(component, mode=0o700, dir_fd=directory_fd)
+                    except FileExistsError:
+                        pass
+                    else:
+                        os.fsync(directory_fd)
+                    child_fd = os.open(component, flags, dir_fd=directory_fd)
+                os.close(directory_fd)
+                directory_fd = child_fd
+            identity = os.fstat(directory_fd)
+            if not stat.S_ISDIR(identity.st_mode):
+                raise ValueError("Transition directory is not canonical")
+        except FileNotFoundError:
+            raise
+        except OSError as exc:
+            raise ValueError("Transition directory is not canonical") from exc
         yield root, directory_fd
-    except FileNotFoundError:
-        raise
-    except OSError as exc:
-        raise ValueError("Transition directory is not canonical") from exc
     finally:
         os.close(directory_fd)
 
@@ -547,6 +548,7 @@ def clear_recompile_table_transition(
 ) -> None:
     """Remove transition entries relative to their identity-bound directory."""
     output_root = Path(output_dir).resolve()
+    mutation_started = False
     try:
         with _open_transition_directory(
             output_root,
@@ -572,10 +574,14 @@ def clear_recompile_table_transition(
                 os.unlink(staged_name, dir_fd=directory_fd)
             except (OSError, ValueError):
                 pass
+            else:
+                mutation_started = True
             os.unlink(receipt_name, dir_fd=directory_fd)
+            mutation_started = True
             os.fsync(directory_fd)
     except (OSError, ValueError):
-        return
+        if mutation_started:
+            raise
 
 
 def recoverable_recompile_table_transition(
