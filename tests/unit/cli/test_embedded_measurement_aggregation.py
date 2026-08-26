@@ -13,6 +13,8 @@ import pytest
 from phenotypic._cli import _cli_recompile_worker
 from phenotypic._cli._cli_output_manager import (
     _consistent_embedded_join_keys,
+    _remap_to_scratch,
+    _stage_to_scratch,
     finalize_post_master_outputs,
 )
 from phenotypic.schema import IMAGE, METADATA_MATCH, OBJECT, SIZE
@@ -145,3 +147,40 @@ def test_aggregation_rejects_mixed_embedded_metadata_generations(
         match="mixed metadata digests or join keys",
     ):
         _consistent_embedded_join_keys(table_paths)
+
+
+def test_scratch_staging_keeps_embedded_table_sources_distinct(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Embedded tables with fixed relative names must not overwrite in scratch."""
+    source_paths: list[Path] = []
+    for index in range(2):
+        table = (
+            tmp_path
+            / "results"
+            / "dataset"
+            / "zarr"
+            / f"image-{index}.ome.zarr"
+            / "tables"
+            / "measurements"
+            / "table.parquet"
+        )
+        table.parent.mkdir(parents=True)
+        pl.DataFrame({"source": [index]}).write_parquet(table)
+        source_paths.append(table)
+
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setenv("SCRATCH", str(scratch))
+
+    staged = _stage_to_scratch(source_paths)
+
+    assert staged is not None
+    remapped = _remap_to_scratch(
+        {source: "dataset" for source in source_paths}, staged
+    )
+    assert len(remapped) == 2
+    assert sorted(
+        pl.read_parquet(path)["source"].item() for path in remapped
+    ) == [0, 1]

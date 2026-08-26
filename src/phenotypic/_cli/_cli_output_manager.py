@@ -8,6 +8,7 @@ error logging to prevent silent data loss.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -226,7 +227,8 @@ def join_metadata(
 
 def _scratch_dest_name(pq: Path) -> str:
     """Build a collision-safe filename for a parquet staged to $SCRATCH."""
-    return f"{pq.parent.parent.name}_{pq.name}"
+    source_digest = hashlib.sha256(str(pq).encode()).hexdigest()
+    return f"{source_digest}_{pq.name}"
 
 
 def _stage_to_scratch(parquet_files: List[Path]) -> Optional[Path]:
