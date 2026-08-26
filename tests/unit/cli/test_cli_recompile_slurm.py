@@ -878,6 +878,65 @@ def test_slurm_overlay_worker_restores_marker_authority(
     )
 
 
+def test_finalizer_refreshes_nested_overlay_repair_authority(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Finalization sees repairs nested in a co-located measurement task."""
+    import shutil
+
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic._cli._cli_recompile_worker import (
+        _restore_overlay_marker_authority,
+    )
+    from phenotypic.sdk_ import dataset_overlays_dir
+    from tests.unit.sdk_._migration_fixtures import (
+        DATASET,
+        run_stems,
+        run_work_id,
+    )
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
+    overlay.write_bytes(overlay.read_bytes() + b"repaired")
+    assert not valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+    task_manifest = tmp_path / "recompile-task-manifest.json"
+    task_manifest.write_text(
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "task_type": "measurements",
+                        "overlay_repairs": [
+                            {
+                                "dataset_name": DATASET,
+                                "store_path": str(store),
+                            }
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    _restore_overlay_marker_authority(output_dir, task_manifest)
+
+    assert valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+
 def test_measurement_worker_derives_embedded_image_names_from_store(
     tmp_path: Path,
 ) -> None:
@@ -1032,12 +1091,10 @@ def test_missing_overlay_recovery_rejects_other_corrupt_artifact(
     tmp_path: Path,
     corrupt_artifact: str,
 ) -> None:
-    """Overlay recovery is allowed only when every other artifact is valid."""
+    """Any second invalid artifact makes measured-overlay recovery fatal."""
     import shutil
 
     from phenotypic._cli._cli_recompile_slurm_scripts import (
-        TASK_MEASUREMENTS,
-        TASK_OVERLAY,
         build_recompile_tasks,
     )
     from phenotypic.sdk_ import (
@@ -1058,50 +1115,27 @@ def test_missing_overlay_recovery_rejects_other_corrupt_artifact(
         payload = pq.read_table(table)
         pq.write_table(payload, table, compression="gzip")
     else:
-        (store / "zarr.json").write_text(
-            '{"corrupt": true}', encoding="utf-8"
+        (store / "zarr.json").write_text('{"corrupt": true}', encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="measurement authority"):
+        build_recompile_tasks(
+            output_dir,
+            [DATASET],
+            include_dataset_column=True,
+            overlay_alpha=0.3,
+            shard_size=1,
         )
-
-    tasks = build_recompile_tasks(
-        output_dir,
-        [DATASET],
-        include_dataset_column=True,
-        overlay_alpha=0.3,
-        shard_size=1,
-    )
-
-    overlay_task = next(
-        task
-        for task in tasks
-        if task["task_type"] == TASK_OVERLAY
-        and Path(str(task["store_path"])).name.startswith(stem)
-    )
-    assert "restore_marker_authority" not in overlay_task
-    measurement_files = {
-        Path(path)
-        for task in tasks
-        if task["task_type"] == TASK_MEASUREMENTS
-        for path in task["files"]
-    }
-    assert table not in measurement_files
-
-
 def test_missing_overlay_recovery_rejects_store_symlink_outside_output(
     _completed_run_two: Path,
     tmp_path: Path,
 ) -> None:
-    """A canonical recovery store cannot resolve outside the output root."""
+    """A measured recovery store resolving outside the output root is fatal."""
     import shutil
 
     from phenotypic._cli._cli_recompile_slurm_scripts import (
-        TASK_MEASUREMENTS,
-        TASK_OVERLAY,
         build_recompile_tasks,
     )
-    from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
-        dataset_overlays_dir,
-    )
+    from phenotypic.sdk_ import dataset_overlays_dir
     from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
 
     output_dir = tmp_path / "completed"
@@ -1114,31 +1148,14 @@ def test_missing_overlay_recovery_rejects_store_symlink_outside_output(
     store.symlink_to(outside_store, target_is_directory=True)
     (dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png").unlink()
 
-    tasks = build_recompile_tasks(
-        output_dir,
-        [DATASET],
-        include_dataset_column=True,
-        overlay_alpha=0.3,
-        shard_size=1,
-    )
-
-    overlay_task = next(
-        task
-        for task in tasks
-        if task["task_type"] == TASK_OVERLAY
-        and Path(str(task["store_path"])).name.startswith(stem)
-    )
-    assert "restore_marker_authority" not in overlay_task
-    measurement_files = {
-        Path(path)
-        for task in tasks
-        if task["task_type"] == TASK_MEASUREMENTS
-        for path in task["files"]
-    }
-    assert (
-        store / MEASUREMENT_TABLE_RELATIVE_PATH
-    ) not in measurement_files
-
+    with pytest.raises(RuntimeError, match="measurement authority"):
+        build_recompile_tasks(
+            output_dir,
+            [DATASET],
+            include_dataset_column=True,
+            overlay_alpha=0.3,
+            shard_size=1,
+        )
 def test_measurement_worker_refreshes_marker_with_active_slurm_generation(
     _completed_run_two: Path,
     tmp_path: Path,
@@ -1288,3 +1305,179 @@ def test_recoverable_overlay_and_table_share_one_slurm_task(
             "overlay_alpha": 0.3,
         }
     ]
+
+
+def test_retry_schedules_table_replaced_before_marker_publish_crash(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Durable exact replacement evidence makes an interrupted table retryable."""
+    import shutil
+
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        TASK_MEASUREMENTS,
+        build_recompile_tasks,
+    )
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_table_transition_path,
+    )
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_table,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        image_completion_marker_path,
+    )
+    from tests.unit.sdk_._migration_fixtures import (
+        DATASET,
+        run_stems,
+        run_work_id,
+    )
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    metadata = tmp_path / "metadata.csv"
+    pl.DataFrame(
+        {
+            str(IMAGE.IMAGE_NAME): [stem],
+            "Metadata_Review": ["replacement"],
+        }
+    ).write_csv(metadata)
+
+    with (
+        patch(
+            "phenotypic._cli._cli_recompile_tables._republish_table_marker",
+            side_effect=RuntimeError("simulated crash before marker publish"),
+        ),
+        pytest.raises(RuntimeError, match="simulated crash"),
+    ):
+        recompile_embedded_measurement_table(
+            output_dir,
+            table,
+            DATASET,
+            metadata,
+        )
+
+    assert (
+        pl.read_parquet(table)["Metadata_Review"].to_list()
+        == ["replacement"] * pl.read_parquet(table).height
+    )
+    assert not valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+    old_marker = image_completion_marker_path(output_dir, DATASET, stem)
+    assert old_marker.is_file()
+
+    tasks = build_recompile_tasks(
+        output_dir,
+        [DATASET],
+        include_dataset_column=True,
+        overlay_alpha=0.3,
+        shard_size=1,
+        attempt_id="retry-after-table-replace",
+    )
+    scheduled = {
+        Path(path)
+        for task in tasks
+        if task["task_type"] == TASK_MEASUREMENTS
+        for path in task["files"]
+    }
+
+    assert table in scheduled
+
+    recompile_embedded_measurement_table(
+        output_dir,
+        table,
+        DATASET,
+        metadata,
+    )
+
+    assert valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+    assert not recompile_table_transition_path(
+        output_dir, DATASET, stem
+    ).exists()
+
+
+def test_retry_refuses_unjournaled_invalid_measurement_table(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """An arbitrary marker-invalid table cannot be omitted into a partial run."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        build_recompile_tasks,
+    )
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    table = (
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    pl.read_parquet(table).with_columns(
+        pl.lit("arbitrary").alias("Metadata_Unjournaled")
+    ).write_parquet(table)
+
+    with pytest.raises(RuntimeError, match="measurement authority"):
+        build_recompile_tasks(
+            output_dir,
+            [DATASET],
+            include_dataset_column=True,
+            overlay_alpha=0.3,
+            shard_size=1,
+            attempt_id="reject-unjournaled-table",
+        )
+
+
+def test_slurm_recompile_rejects_nonrecoverable_measurement_overlay(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A missing overlay plus changed table cannot degrade to best-effort work."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        build_recompile_tasks,
+    )
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_overlays_dir,
+    )
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    (dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png").unlink()
+    pl.read_parquet(table).with_columns(
+        pl.lit("changed").alias("Metadata_OtherInvalidity")
+    ).write_parquet(table)
+
+    with pytest.raises(RuntimeError, match="measurement authority"):
+        build_recompile_tasks(
+            output_dir,
+            [DATASET],
+            include_dataset_column=True,
+            overlay_alpha=0.3,
+            shard_size=1,
+            attempt_id="reject-nonrecoverable-overlay",
+        )

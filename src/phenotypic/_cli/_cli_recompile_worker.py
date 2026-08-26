@@ -337,7 +337,6 @@ def _run_measurement_task(
         )
 
 
-
 def _repair_measurement_overlay(
     output_dir: Path,
     repair: dict[str, Any],
@@ -379,6 +378,7 @@ def _repair_measurement_overlay(
         raise RuntimeError(
             "Could not restore marker authority after overlay repair"
         )
+
 
 def _sort_measurement_shard(shard_df: Any) -> Any:
     """Sort a shard by stable metadata columns when they are available."""
@@ -483,25 +483,40 @@ def _run_overlay_task(
 
     return {"status": "completed", "overlay_failed": False}
 
+
 def _restore_overlay_marker_authority(
     output_dir: Path,
     task_manifest: Path,
     *,
     slurm_generation: str | None = None,
 ) -> None:
-    """Compare and refresh repaired overlay markers after array work is done."""
+    """Compare and refresh every repaired overlay marker after array work."""
 
     manifest = json.loads(task_manifest.read_text(encoding="utf-8"))
     tasks = manifest.get("tasks")
     if not isinstance(tasks, list):
         raise ValueError("Task manifest does not contain a tasks list")
+    repairs: list[dict[str, Any]] = []
     for item in tasks:
-        if not isinstance(item, dict) or not item.get(
-            "restore_marker_authority"
-        ):
+        if not isinstance(item, dict):
             continue
-        store_path = Path(str(item["store_path"]))
-        dataset_name = str(item["dataset_name"])
+        if item.get("restore_marker_authority"):
+            repairs.append(item)
+        nested = item.get("overlay_repairs", [])
+        if not isinstance(nested, list):
+            raise ValueError("Task overlay_repairs must be a list")
+        if not all(isinstance(repair, dict) for repair in nested):
+            raise ValueError("Task overlay_repairs contains an invalid repair")
+        repairs.extend(nested)
+
+    restored: set[tuple[str, Path]] = set()
+    for repair in repairs:
+        store_path = Path(str(repair["store_path"]))
+        dataset_name = str(repair["dataset_name"])
+        identity = (dataset_name, store_path.resolve())
+        if identity in restored:
+            continue
+        restored.add(identity)
         if not refresh_overlay_marker_authority(
             output_dir,
             dataset_name,
@@ -543,9 +558,9 @@ def _run_finalizer_task(
         phenotypic_cache_dir(output_dir) / ".aggregate_publication.lock"
     )
     with exclusive_path_lock(publication_lock, timeout=60.0):
-        # Measurement and overlay tasks can touch the same store concurrently.
-        # Re-fingerprint recovery markers once more after every task is terminal
-        # so the marker always describes the final embedded-table bytes. Fence
+        # Re-fingerprint co-located overlay repairs once more after every task
+        # is terminal so the marker describes the final embedded-table bytes.
+        # Fence this canonical mutation before it occurs, not only later
         # this canonical mutation before it occurs, not only later publications.
         with generation_publication_guard(output_dir, slurm_generation):
             _restore_overlay_marker_authority(

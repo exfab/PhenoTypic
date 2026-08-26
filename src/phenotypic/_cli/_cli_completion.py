@@ -169,6 +169,9 @@ def publish_image_success(
     attempt_id: str,
     lifecycle_epoch: str,
     artifacts: Mapping[str, Path],
+    expected_artifact_descriptors: (
+        Mapping[str, Mapping[str, object]] | None
+    ) = None,
     commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Validate artifacts and atomically publish the image marker last."""
@@ -184,6 +187,7 @@ def publish_image_success(
                 "Cannot publish image success for a stale SLURM lifecycle"
             )
     descriptors: dict[str, dict[str, object]] = {}
+    resolved_artifacts: dict[str, Path] = {}
     output_root = output_dir.resolve()
     for name, artifact in artifacts.items():
         resolved = artifact.resolve(strict=True)
@@ -193,7 +197,28 @@ def publish_image_success(
             raise ValueError(
                 f"Artifact escapes output root: {artifact}"
             ) from exc
+        resolved_artifacts[name] = resolved
         descriptors[name] = _artifact_descriptor(resolved, relative)
+
+    def _validate_expected_artifacts() -> None:
+        if expected_artifact_descriptors is None:
+            return
+        for name, expected in expected_artifact_descriptors.items():
+            artifact = resolved_artifacts.get(name)
+            if artifact is None:
+                raise RuntimeError(
+                    f"Expected marker artifact is missing: {name}"
+                )
+            actual = _artifact_descriptor(
+                artifact,
+                artifact.relative_to(output_root),
+            )
+            if actual != dict(expected):
+                raise RuntimeError(
+                    f"Marker artifact changed before publication: {name}"
+                )
+
+    _validate_expected_artifacts()
     marker = {
         "version": SUCCESS_MARKER_VERSION,
         "work_id": work_id,
@@ -209,7 +234,16 @@ def publish_image_success(
         ),
     }
     marker_path = image_completion_marker_path(output_dir, dataset, image_stem)
-    atomic_write_json(marker_path, marker, commit_guard=commit_guard)
+    atomic_write_json(
+        marker_path,
+        marker,
+        pre_replace=(
+            _validate_expected_artifacts
+            if expected_artifact_descriptors is not None
+            else None
+        ),
+        commit_guard=commit_guard,
+    )
     return marker_path
 
 

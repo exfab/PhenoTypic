@@ -25,6 +25,14 @@ from ._cli_completion import (
     valid_image_success,
 )
 from ._embedded_measurement_tables import prepare_embedded_measurement_table
+from ._cli_recompile_recovery import (
+    assert_no_unrecoverable_measurement_authority,
+    begin_recompile_table_transition,
+    clear_recompile_table_transition,
+    recoverable_recompile_measurement_sources,
+    recompile_store_lock_path,
+)
+from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 
 def _marker_artifacts(output_dir: Path, marker: dict) -> dict[str, Path]:
@@ -73,6 +81,52 @@ def _republish_table_marker(
     )
 
 
+def _replace_and_republish_table(
+    output_dir: Path,
+    dataset: str,
+    store_path: Path,
+    prepared: object,
+    *,
+    commit_guard: CommitGuard | None,
+    lifecycle_epoch: str | None,
+) -> None:
+    """Journal, replace, marker-publish, and clear under one store lock."""
+    from phenotypic.sdk_ import image_completion_marker_path
+    from phenotypic.sdk_._measurement_tables import (
+        PreparedEmbeddedMeasurementTable,
+    )
+
+    if not isinstance(prepared, PreparedEmbeddedMeasurementTable):
+        raise TypeError(
+            "Recompile table preparation returned an invalid payload"
+        )
+    stem = store_stem(store_path)
+    with exclusive_path_lock(
+        recompile_store_lock_path(output_dir, dataset, stem),
+        timeout=60.0,
+    ):
+        begin_recompile_table_transition(
+            output_dir,
+            dataset,
+            stem,
+            store_path,
+            prepared,
+        )
+        replace_embedded_measurement_table(
+            store_path,
+            prepared,
+            commit_guard=commit_guard,
+        )
+        marker_path = image_completion_marker_path(output_dir, dataset, stem)
+        _republish_table_marker(
+            output_dir,
+            marker_path,
+            commit_guard=commit_guard,
+            lifecycle_epoch=lifecycle_epoch,
+        )
+        clear_recompile_table_transition(output_dir, dataset, stem)
+
+
 def _standalone_marker_sources(output_dir: Path) -> dict[Path, str]:
     """Discover valid embedded authority when no processing state is present."""
     sources: dict[Path, str] = {}
@@ -119,7 +173,6 @@ def recompile_embedded_measurement_table(
     lifecycle_epoch: str | None = None,
 ) -> None:
     """Rewrite one authorized embedded table and republish its marker last."""
-    from phenotypic.sdk_ import image_completion_marker_path
 
     table_path = Path(table_path)
     if tuple(table_path.parts[-3:]) != MEASUREMENT_TABLE_RELATIVE_PATH.parts:
@@ -150,15 +203,11 @@ def recompile_embedded_measurement_table(
     prepared = prepare_embedded_measurement_table(
         payload.loc[:, raw_baseline], metadata_csv
     )
-    replace_embedded_measurement_table(
-        store_path, prepared, commit_guard=commit_guard
-    )
-    marker_path = image_completion_marker_path(
-        output_dir, dataset, store_stem(store_path)
-    )
-    _republish_table_marker(
+    _replace_and_republish_table(
         output_dir,
-        marker_path,
+        dataset,
+        store_path,
+        prepared,
         commit_guard=commit_guard,
         lifecycle_epoch=lifecycle_epoch,
     )
@@ -177,14 +226,25 @@ def recompile_embedded_measurement_tables(
     is rewritten, any interruption leaves mixed Parquet generations; aggregate
     publication independently rejects that state until a retry converges.
     """
-    from phenotypic.sdk_ import image_completion_marker_path
 
     output_dir = Path(output_dir)
     authorized = authorized_measurement_sources(output_dir)
+    dataset_names = (
+        sorted(
+            path.name
+            for path in (output_dir / "results").iterdir()
+            if path.is_dir()
+        )
+        if (output_dir / "results").is_dir()
+        else []
+    )
+    recovery_sources = recoverable_recompile_measurement_sources(
+        output_dir, dataset_names
+    )
     if authorized is None:
         marker_sources = _standalone_marker_sources(output_dir)
-        if marker_sources:
-            authorized = marker_sources
+        if marker_sources or recovery_sources:
+            authorized = {**marker_sources, **recovery_sources}
         else:
             legacy = sorted(
                 (output_dir / "results").glob("*/measurements/*.parquet")
@@ -199,6 +259,12 @@ def recompile_embedded_measurement_tables(
                 )
             return 0
 
+    authorized = {**authorized, **recovery_sources}
+    assert_no_unrecoverable_measurement_authority(
+        output_dir,
+        dataset_names,
+        set(authorized),
+    )
     changed = 0
     for table_path, dataset in sorted(
         authorized.items(), key=lambda item: str(item[0])
@@ -238,17 +304,11 @@ def recompile_embedded_measurement_tables(
             payload.loc[:, raw_baseline],
             metadata_csv,
         )
-        replace_embedded_measurement_table(
+        _replace_and_republish_table(
+            output_dir,
+            dataset,
             store_path,
             prepared,
-            commit_guard=commit_guard,
-        )
-        marker_path = image_completion_marker_path(
-            output_dir, dataset, store_stem(store_path)
-        )
-        _republish_table_marker(
-            output_dir,
-            marker_path,
             commit_guard=commit_guard,
             lifecycle_epoch=lifecycle_epoch,
         )

@@ -18,6 +18,11 @@ from ._cli_completion import (
     authorized_measurement_sources,
 )
 from ._measurement_sources import discover_recompile_measurement_sources
+from ._cli_recompile_recovery import (
+    assert_no_unrecoverable_measurement_authority,
+    recoverable_recompile_measurement_sources,
+    recompile_store_lock_path,
+)
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 from phenotypic.sdk_ import (
     CommitGuard,
@@ -86,14 +91,24 @@ def build_recompile_tasks(
         for dataset_name in dataset_names
     }
     recoverable_by_table = {
-        (
-            Path(str(task["store_path"]))
-            / MEASUREMENT_TABLE_RELATIVE_PATH
-        ): task
+        (Path(str(task["store_path"])) / MEASUREMENT_TABLE_RELATIVE_PATH): task
         for overlay_tasks in overlay_tasks_by_dataset.values()
         for task in overlay_tasks
         if task.get("restore_marker_authority")
     }
+    transition_sources = recoverable_recompile_measurement_sources(
+        output_dir, dataset_names
+    )
+    accepted_sources = (
+        set((authorized_sources or {}).keys())
+        | set(recoverable_by_table)
+        | set(transition_sources)
+    )
+    assert_no_unrecoverable_measurement_authority(
+        output_dir,
+        dataset_names,
+        accepted_sources,
+    )
 
     for dataset_name in dataset_names:
         if authorized_sources is None:
@@ -114,8 +129,15 @@ def build_recompile_tasks(
                 for task in overlay_tasks_by_dataset[dataset_name]
                 if task.get("restore_marker_authority")
             }
+            recoverable_transition_tables = {
+                path
+                for path, dataset in transition_sources.items()
+                if dataset == dataset_name
+            }
             source_files = sorted(
-                authorized_for_dataset | recoverable_overlay_tables
+                authorized_for_dataset
+                | recoverable_overlay_tables
+                | recoverable_transition_tables
             )
         measurement_sources.extend(source_files)
         for source_shard in _chunk_paths(source_files, shard_size):
@@ -163,9 +185,13 @@ def build_recompile_tasks(
         from ._cli_output_manager import _consistent_embedded_join_keys
 
         metadata_join_keys = (
-            _consistent_embedded_join_keys(measurement_sources)
-            if measurement_sources
-            else None
+            None
+            if transition_sources
+            else (
+                _consistent_embedded_join_keys(measurement_sources)
+                if measurement_sources
+                else None
+            )
         )
         finalizer_task = {
             "task_type": TASK_FINALIZE,
@@ -358,11 +384,11 @@ def repair_overlay_marker_authority(
     commit_guard: CommitGuard | None = None,
 ) -> bool:
     """Repair one missing overlay and refresh only unchanged marker authority."""
-    overlay_path = dataset_overlays_dir(output_dir, dataset_name) / f"{stem}.png"
+    overlay_path = (
+        dataset_overlays_dir(output_dir, dataset_name) / f"{stem}.png"
+    )
     table_path = Path(store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
-    lock_path = image_completion_marker_path(
-        output_dir, dataset_name, stem
-    ).with_suffix(".overlay-recovery.lock")
+    lock_path = recompile_store_lock_path(output_dir, dataset_name, stem)
     with exclusive_path_lock(lock_path, timeout=60.0):
         if commit_guard is None:
             return _repair_overlay_marker_authority_locked(
@@ -433,11 +459,11 @@ def refresh_overlay_marker_authority(
     commit_guard: CommitGuard | None = None,
 ) -> bool:
     """Compare all stable artifacts and refresh a repaired overlay marker."""
-    overlay_path = dataset_overlays_dir(output_dir, dataset_name) / f"{stem}.png"
+    overlay_path = (
+        dataset_overlays_dir(output_dir, dataset_name) / f"{stem}.png"
+    )
     table_path = Path(store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
-    lock_path = image_completion_marker_path(
-        output_dir, dataset_name, stem
-    ).with_suffix(".overlay-recovery.lock")
+    lock_path = recompile_store_lock_path(output_dir, dataset_name, stem)
     with exclusive_path_lock(lock_path, timeout=60.0):
         if commit_guard is None:
             return _refresh_overlay_marker_authority_locked(
@@ -481,7 +507,7 @@ def _refresh_overlay_marker_authority_locked(
         raise RuntimeError(
             "Cannot restore marker authority: a non-overlay artifact changed"
         )
-    marker, artifacts = recovery
+    marker, artifacts, expected_artifact_descriptors = recovery
     from ._cli_completion import publish_image_success
 
     publish_image_success(
@@ -498,6 +524,7 @@ def _refresh_overlay_marker_authority_locked(
             else str(marker["lifecycle_epoch"])
         ),
         artifacts=artifacts,
+        expected_artifact_descriptors=expected_artifact_descriptors,
     )
     return True
 
@@ -510,7 +537,14 @@ def _overlay_recovery_marker(
     table_path: Path,
     *,
     overlay_present: bool,
-) -> tuple[dict[str, Any], dict[str, Path]] | None:
+) -> (
+    tuple[
+        dict[str, Any],
+        dict[str, Path],
+        dict[str, dict[str, object]],
+    ]
+    | None
+):
     """Return validated marker state for missing or newly repaired overlay."""
     output_root = Path(output_dir).resolve()
     canonical_store = zarr_store_path(output_root, dataset_name, stem)
@@ -568,6 +602,7 @@ def _overlay_recovery_marker(
         if not required.keys() <= raw_artifacts.keys():
             return None
         artifacts: dict[str, Path] = {}
+        stable_descriptors: dict[str, dict[str, object]] = {}
         for name, descriptor in raw_artifacts.items():
             if not isinstance(name, str) or not isinstance(descriptor, dict):
                 return None
@@ -591,6 +626,7 @@ def _overlay_recovery_marker(
                 ):
                     return None
                 continue
+            stable_descriptors[name] = dict(descriptor)
             if kind == ARTIFACT_KIND_STORE:
                 if not _store_artifact_matches(artifact, descriptor):
                     return None
@@ -605,7 +641,7 @@ def _overlay_recovery_marker(
                 return None
     except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None
-    return marker, artifacts
+    return marker, artifacts, stable_descriptors
 
 
 def _marker_work_id_matches_state(
@@ -618,7 +654,9 @@ def _marker_work_id_matches_state(
         state = load_processing_state(output_dir)
     except (KeyError, TypeError, ValueError):
         return False
-    if state is None or not state.config.get("success_markers_required", False):
+    if state is None or not state.config.get(
+        "success_markers_required", False
+    ):
         return True
     work_ids = state.config.get("work_ids")
     if not isinstance(work_ids, dict):
@@ -644,6 +682,7 @@ def marker_claims_measurement_authority(marker_path: Path) -> bool:
     except (OSError, AttributeError, json.JSONDecodeError):
         return False
     return isinstance(artifacts, dict) and "measurements" in artifacts
+
 
 def _chunk_paths(paths: list[Path], shard_size: int) -> list[list[Path]]:
     """Split paths into deterministic non-empty shards."""

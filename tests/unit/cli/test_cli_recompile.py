@@ -700,6 +700,7 @@ def test_local_recompile_aborts_when_required_overlay_marker_refresh_fails(
 
     aggregate.assert_not_called()
 
+
 def test_local_overlay_recovery_rejects_post_discovery_table_corruption(
     _completed_run_two: Path,
     tmp_path: Path,
@@ -733,13 +734,69 @@ def test_local_overlay_recovery_rejects_post_discovery_table_corruption(
         image_stem: str,
     ) -> object:
         result = original_save(
-            manager, image, dataset_name, image_stem  # type: ignore[arg-type]
+            manager,
+            image,
+            dataset_name,
+            image_stem,  # type: ignore[arg-type]
         )
         table.write_bytes(b"not a parquet file")
         return result
 
     with (
         patch.object(OutputManager, "save_overlay", _save_then_corrupt),
+        pytest.raises(RuntimeError, match="marker authority"),
+    ):
+        _regenerate_missing_overlays(output_dir, overlay_alpha=0.6, n_jobs=1)
+
+    assert not valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+
+
+def test_local_overlay_recovery_rejects_publish_window_table_change(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Recovery cannot bless table bytes changed after descriptor validation."""
+    import polars as pl
+
+    from phenotypic._cli import _cli_completion
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_overlays_dir,
+    )
+    from tests.unit.sdk_._migration_fixtures import (
+        DATASET,
+        run_stems,
+        run_work_id,
+    )
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
+    overlay.unlink()
+    original_publish = _cli_completion.publish_image_success
+
+    def _change_table_then_publish(*args: object, **kwargs: object) -> Path:
+        changed = pl.read_parquet(table).with_columns(
+            pl.lit("changed").alias("Metadata_PublishWindowProbe")
+        )
+        changed.write_parquet(table)
+        return original_publish(*args, **kwargs)  # type: ignore[arg-type]
+
+    with (
+        patch.object(
+            _cli_completion,
+            "publish_image_success",
+            _change_table_then_publish,
+        ),
         pytest.raises(RuntimeError, match="marker authority"),
     ):
         _regenerate_missing_overlays(output_dir, overlay_alpha=0.6, n_jobs=1)
