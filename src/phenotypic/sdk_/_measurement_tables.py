@@ -60,8 +60,8 @@ def _write_validated_parquet(
 ) -> None:
     """Atomically write and validate a prepared Arrow table."""
 
-    import pyarrow as pa
-    import pyarrow.parquet as pq
+    import pyarrow as pa  # type: ignore[import-untyped]
+    import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
     def _write(temp_path: str) -> None:
         arrow_table = pa.Table.from_pandas(table.frame, preserve_index=False)

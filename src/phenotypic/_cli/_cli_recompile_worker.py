@@ -600,8 +600,11 @@ def _run_post_master_steps(
     )
 
     measurement_sources = task.get("measurement_sources")
+    metadata_join_keys: tuple[str, ...] | None
     if measurement_sources is None:
-        metadata_join_keys = tuple(task.get("metadata_join_keys", []))
+        metadata_join_keys = tuple(
+            str(key) for key in task.get("metadata_join_keys", [])
+        )
     else:
         metadata_join_keys = _consistent_embedded_join_keys(
             [Path(str(path)) for path in measurement_sources]

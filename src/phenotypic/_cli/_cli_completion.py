@@ -596,7 +596,7 @@ def authorized_measurement_sources(
         marker_paths = sorted(marker_root.glob("*/*.json"))
         if not marker_paths:
             return None
-        sources: dict[Path, str] = {}
+        marker_sources: dict[Path, str] = {}
         output_root = Path(output_dir).resolve()
         for marker_path in marker_paths:
             try:
@@ -622,8 +622,8 @@ def authorized_measurement_sources(
                 json.JSONDecodeError,
             ):
                 continue
-            sources[source] = dataset
-        return sources
+            marker_sources[source] = dataset
+        return marker_sources
     raw_work_ids = state.config.get("work_ids")
     if not isinstance(raw_work_ids, dict):
         return {}

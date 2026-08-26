@@ -144,7 +144,7 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
 
     authorized_sources = authorized_measurement_sources(output_dir)
     embedded_authority = authorized_sources is not None
-    if embedded_authority:
+    if authorized_sources is not None:
         new_files = [
             path
             for path in sorted(authorized_sources)

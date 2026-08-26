@@ -4,8 +4,8 @@ Integration tests for the store-centric CLI output layout and measure-mode rerun
 These tests exercise the full CLI via :mod:`click.testing.CliRunner`:
 
 * Forward runs write exactly one OME-Zarr **store directory** per image under
-  ``results/<dataset>/zarr/<stem>.ome.zarr/`` and a parquet measurements file
-  under ``results/<dataset>/measurements/<stem>.parquet`` — and nothing else
+  ``results/<dataset>/zarr/<stem>.ome.zarr/``, with its Parquet table at
+  ``tables/measurements/table.parquet`` inside that store — and nothing else
   (no per-layer ``rgb/`` / ``gray/`` / ``detect_mat/`` / ``objmap/`` folders,
   and no ``hdf/``).
 * Forward runs always write a PNG overlay per image alongside the store.
@@ -38,6 +38,7 @@ from phenotypic._cli._cli_completion import (
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     aggregate_publication_marker_path,
     image_completion_marker_path,
     manifest_json_path,
@@ -112,12 +113,12 @@ def plates_input_dir(tmp_path):
 
 
 class TestForwardRunStoreLayout:
-    """A forward run must write a store + parquet and nothing else."""
+    """A forward run must embed its table in the store and nothing else."""
 
     def test_forward_run_produces_store_only(
         self, runner, temp_pipeline, plates_input_dir, tmp_path
     ):
-        """Forward run writes zarr/ + measurements/; no per-layer folders."""
+        """Forward run writes only zarr/, with a readable embedded table."""
         output_dir = tmp_path / "out"
 
         result = runner.invoke(
@@ -142,8 +143,14 @@ class TestForwardRunStoreLayout:
 
         dataset_dir = output_dir / "results" / "plates"
         store = zarr_store_path(output_dir, "plates", "plate_001")
-        parquet_file = dataset_dir / "measurements" / "plate_001.parquet"
-        overlay_file = output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
+        table_file = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        overlay_file = (
+            output_dir
+            / "deliverables"
+            / "overlays"
+            / "plates"
+            / "plate_001.png"
+        )
 
         # A store is a DIRECTORY with a root `zarr.json`. `.exists()` alone
         # would also pass for a stray file of the same name.
@@ -155,9 +162,13 @@ class TestForwardRunStoreLayout:
         assert not list(output_dir.rglob("*.h5")), (
             "A forward run must not write an HDF any more."
         )
-        assert parquet_file.exists(), (
-            f"Expected parquet measurements at {parquet_file}"
+        assert table_file.is_file(), (
+            f"Expected embedded measurements at {table_file}"
         )
+        measurements = pd.read_parquet(table_file)
+        assert not measurements.empty
+        assert any(column.startswith("Shape_") for column in measurements)
+        assert not (dataset_dir / "measurements").exists()
         assert overlay_file.exists(), (
             f"Expected overlay PNG at {overlay_file} (overlays are always "
             f"written for forward runs)"
@@ -173,15 +184,12 @@ class TestForwardRunStoreLayout:
                 f"after forward run; CLI regressed to pre-HDF layout."
             )
 
-        # Whitelist check: after a default forward run the dataset directory
-        # must contain exactly `zarr/` and `measurements/`. Any other subdir
-        # — including a leftover empty `hdf/` — regresses the layout the
-        # generated README documents.
+        # Whitelist check: current runs create no sibling measurement or HDF
+        # authority beside the store.
         actual_children = {p.name for p in dataset_dir.iterdir() if p.is_dir()}
-        assert actual_children == {"zarr", "measurements"}, (
-            f"Unexpected dataset-level folders after forward run. "
-            f"Got {sorted(actual_children)}; expected {{'zarr', 'measurements'}} "
-            f"(overlays now live under deliverables/overlays/<ds>/)."
+        assert actual_children == {"zarr"}, (
+            f"Unexpected dataset-level folders after forward run: "
+            f"{sorted(actual_children)}"
         )
 
     def test_default_run_continues_and_processes_only_new_input(
@@ -279,7 +287,11 @@ class TestOverlayAlwaysOn:
         )
 
         overlay_png = (
-            output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
+            output_dir
+            / "deliverables"
+            / "overlays"
+            / "plates"
+            / "plate_001.png"
         )
         assert overlay_png.exists(), (
             f"Expected overlay PNG at {overlay_png} on a default forward run."
@@ -320,13 +332,22 @@ class TestMeasureRerun:
             f"Initial forward run failed:\n{forward.output}"
         )
 
-        dataset_dir = output_dir / "results" / "plates"
-        store_root = zarr_store_path(output_dir, "plates", "plate_001") / "zarr.json"
-        parquet_path = dataset_dir / "measurements" / "plate_001.parquet"
-        overlay_path = output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
+        store = zarr_store_path(output_dir, "plates", "plate_001")
+        store_root = store / "zarr.json"
+        table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        overlay_path = (
+            output_dir
+            / "deliverables"
+            / "overlays"
+            / "plates"
+            / "plate_001.png"
+        )
 
         assert store_root.is_file()
-        assert parquet_path.exists()
+        assert table_path.is_file()
+        assert not (
+            output_dir / "results" / "plates" / "measurements"
+        ).exists()
         assert overlay_path.exists(), (
             "Forward run should always write overlay PNG."
         )
@@ -334,7 +355,7 @@ class TestMeasureRerun:
         # The root `zarr.json` is written LAST by promote_store, so its
         # mtime is the whole store's publication time.
         store_mtime_before = store_root.stat().st_mtime_ns
-        parquet_mtime_before = parquet_path.stat().st_mtime_ns
+        table_bytes_before = table_path.read_bytes()
         overlay_mtime_before = overlay_path.stat().st_mtime_ns
 
         # Sleep so mtimes actually differ on filesystems that round to seconds.
@@ -357,8 +378,11 @@ class TestMeasureRerun:
             ],
         )
         assert measure.exit_code != 0
-        assert "cannot mutate a marker-authorized incremental run" in measure.output
-        assert parquet_path.stat().st_mtime_ns == parquet_mtime_before
+        assert (
+            "cannot mutate a marker-authorized incremental run"
+            in measure.output
+        )
+        assert table_path.read_bytes() == table_bytes_before
         assert store_root.stat().st_mtime_ns == store_mtime_before
         assert overlay_path.stat().st_mtime_ns == overlay_mtime_before
 
@@ -445,16 +469,20 @@ class TestMeasureRerun:
             ],
         )
         assert measure.exit_code != 0
-        assert "cannot mutate a marker-authorized incremental run" in measure.output
-
-        parquet_path = (
-            output_dir / "results" / "plates" / "measurements" / "plate_001.parquet"
-        )
-        assert parquet_path.exists(), (
-            f"Expected rewritten parquet at {parquet_path}"
+        assert (
+            "cannot mutate a marker-authorized incremental run"
+            in measure.output
         )
 
-        df = pd.read_parquet(parquet_path)
+        table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        assert table_path.is_file(), (
+            f"Expected embedded measurements at {table_path}"
+        )
+        assert not (
+            output_dir / "results" / "plates" / "measurements"
+        ).exists()
+
+        df = pd.read_parquet(table_path)
         assert not df.empty
 
         # Sanity: the canonical category-prefixed columns from the
@@ -493,13 +521,17 @@ class TestMeasureRerun:
                 "--force-local",
             ],
         )
-        assert first.exit_code == 0, f"First forward run failed:\n{first.output}"
-
-        parquet_path = (
-            output_dir / "results" / "plates" / "measurements" / "plate_001.parquet"
+        assert first.exit_code == 0, (
+            f"First forward run failed:\n{first.output}"
         )
-        assert parquet_path.exists()
-        parquet_mtime_before = parquet_path.stat().st_mtime_ns
+
+        store = zarr_store_path(output_dir, "plates", "plate_001")
+        table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        assert table_path.is_file()
+        assert not (
+            output_dir / "results" / "plates" / "measurements"
+        ).exists()
+        table_mtime_before = table_path.stat().st_mtime_ns
 
         time.sleep(0.1)
 
@@ -523,20 +555,25 @@ class TestMeasureRerun:
             f"Second (--overwrite) forward run failed:\n{second.output}"
         )
 
-        assert parquet_path.exists(), (
-            "Parquet measurements file missing after --overwrite rerun."
+        assert table_path.is_file(), (
+            "Embedded measurements missing after --overwrite rerun."
         )
-        parquet_mtime_after = parquet_path.stat().st_mtime_ns
-        assert parquet_mtime_after > parquet_mtime_before, (
-            f"Parquet mtime did not advance after --overwrite rerun "
-            f"(before={parquet_mtime_before}, after={parquet_mtime_after})."
+        assert not (
+            output_dir / "results" / "plates" / "measurements"
+        ).exists()
+        table_mtime_after = table_path.stat().st_mtime_ns
+        assert table_mtime_after > table_mtime_before, (
+            f"Embedded table mtime did not advance after --overwrite rerun "
+            f"(before={table_mtime_before}, after={table_mtime_after})."
         )
 
-        # Sanity check: the parquet is readable and non-empty.
-        df = pd.read_parquet(parquet_path)
+        # The replacement is readable, non-empty, and remains authorized.
+        df = pd.read_parquet(table_path)
         assert not df.empty, (
-            "Parquet rewritten by --overwrite forward run is unexpectedly empty."
+            "Embedded table rewritten by --overwrite is unexpectedly empty."
         )
+        assert valid_aggregate_snapshot(output_dir) is not None
+        assert valid_run_completion(output_dir) is not None
 
 
 # ---------------------------------------------------------------------------
@@ -602,9 +639,9 @@ class TestMeasureFlagValidation:
             f"Measure mode with --sample should fail but got exit_code=0:\n"
             f"{result.output}"
         )
-        assert "--mode measure cannot be combined with --sample" in result.output, (
-            f"Error message missing expected substring:\n{result.output}"
-        )
+        assert (
+            "--mode measure cannot be combined with --sample" in result.output
+        ), f"Error message missing expected substring:\n{result.output}"
 
     def test_removed_resume_option_is_rejected(
         self, runner, temp_pipeline, prepared_output_dir
@@ -625,8 +662,7 @@ class TestMeasureFlagValidation:
             ],
         )
         assert result.exit_code != 0, (
-            f"Removed option should fail but got exit_code=0:\n"
-            f"{result.output}"
+            f"Removed option should fail but got exit_code=0:\n{result.output}"
         )
         assert "No such option: --resume" in result.output, (
             f"Error message missing expected substring:\n{result.output}"
@@ -654,9 +690,9 @@ class TestMeasureFlagValidation:
             f"Measure mode with --restart should fail but got exit_code=0:\n"
             f"{result.output}"
         )
-        assert "--mode measure cannot be combined with --restart" in result.output, (
-            f"Error message missing expected substring:\n{result.output}"
-        )
+        assert (
+            "--mode measure cannot be combined with --restart" in result.output
+        ), f"Error message missing expected substring:\n{result.output}"
 
     def test_measure_rejects_retry_failures(
         self, runner, temp_pipeline, prepared_output_dir
@@ -681,7 +717,8 @@ class TestMeasureFlagValidation:
             f"{result.output}"
         )
         assert (
-            "--mode measure cannot be combined with --retry-failures" in result.output
+            "--mode measure cannot be combined with --retry-failures"
+            in result.output
         ), f"Error message missing expected substring:\n{result.output}"
 
     def test_measure_rejects_overwrite(
@@ -706,9 +743,10 @@ class TestMeasureFlagValidation:
             f"Measure mode with --overwrite should fail but got exit_code=0:\n"
             f"{result.output}"
         )
-        assert "--mode measure cannot be combined with --overwrite" in result.output, (
-            f"Error message missing expected substring:\n{result.output}"
-        )
+        assert (
+            "--mode measure cannot be combined with --overwrite"
+            in result.output
+        ), f"Error message missing expected substring:\n{result.output}"
 
     def test_measure_rejects_missing_output_dir(
         self, runner, temp_pipeline, tmp_path

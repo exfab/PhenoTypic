@@ -55,10 +55,10 @@ from phenotypic._cli._cli_update_state import (
     append_completion_event,
 )
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.sdk_ import zarr_store_path
 from phenotypic.phenotypicCLI import _copy_pipeline_to_output, phenotypic_cli
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     deliverables_dir,
     master_measurements_csv_path,
     master_measurements_parquet_path,
@@ -66,6 +66,7 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
     order_measurement_columns,
     pipeline_json_path,
+    zarr_store_path,
 )
 from phenotypic.schema import (
     CONDITION,
@@ -172,7 +173,9 @@ def temp_mixed_input_dir():
 @pytest.fixture
 def temp_pipeline():
     """Create a temporary pipeline JSON file."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".json", delete=False
+    ) as f:
         pipeline = RoundPeaksPipeline(
             blur_sigma=3,
             detector_thresh_method="otsu",
@@ -222,10 +225,14 @@ class TestDirectoryScanning:
 
     def test_scan_mixed_directory_raises_error(self, temp_mixed_input_dir):
         """Test that mixed directories (root images + subdirs) raise an error."""
-        with pytest.raises(ValueError, match="Mixed input structure not allowed"):
+        with pytest.raises(
+            ValueError, match="Mixed input structure not allowed"
+        ):
             scan_directory_structure(temp_mixed_input_dir)
 
-    def test_organize_by_dataset(self, temp_recursive_input_dir, temp_output_dir):
+    def test_organize_by_dataset(
+        self, temp_recursive_input_dir, temp_output_dir
+    ):
         """Test organizing scanned images into Dataset objects."""
         image_paths = scan_directory_structure(temp_recursive_input_dir)
         datasets = organize_by_dataset(image_paths, temp_output_dir)
@@ -240,7 +247,9 @@ class TestDirectoryScanning:
         output_dir = generate_timestamped_output_dir()
 
         assert output_dir.name.startswith("phenotypic_results_")
-        assert len(output_dir.name) == len("phenotypic_results_YYYYMMDD_HHMMSS")
+        assert len(output_dir.name) == len(
+            "phenotypic_results_YYYYMMDD_HHMMSS"
+        )
 
 
 class TestStateManagement:
@@ -403,10 +412,14 @@ class TestOutputManager:
         # Check results/ directory exists
         assert (temp_output_dir / "results").exists()
 
-        # Check dataset-first structure under results/ (results/dataset1/...)
-        assert (temp_output_dir / "results" / "dataset1" / "measurements").exists()
+        # Current runs create no external per-image measurement authority.
+        assert not (
+            temp_output_dir / "results" / "dataset1" / "measurements"
+        ).exists()
         # overlays dir created only because save_overlays=True
-        assert (temp_output_dir / "deliverables" / "overlays" / "dataset1").exists()
+        assert (
+            temp_output_dir / "deliverables" / "overlays" / "dataset1"
+        ).exists()
         # The per-image image directory is `zarr/`: forward runs write one
         # OME-Zarr store per image, and nothing writes an `.h5` any more,
         # so provisioning `hdf/` would leave an empty directory behind.
@@ -417,7 +430,9 @@ class TestOutputManager:
         assert not (temp_output_dir / "dataset1").exists()
         assert not (temp_output_dir / "measurements").exists()
         assert not (temp_output_dir / "overlays").exists()
-        assert not (temp_output_dir / "results" / "dataset1" / "overlays").exists()
+        assert not (
+            temp_output_dir / "results" / "dataset1" / "overlays"
+        ).exists()
 
     def test_create_structure_overlays_gated(self, temp_output_dir):
         """Without save_overlays=True, overlays/ must NOT be created."""
@@ -596,7 +611,9 @@ class TestInteractiveFeatures:
 class TestExecutionStrategies:
     """Test execution strategy selection and behavior."""
 
-    def test_strategy_factory_local(self, temp_output_dir, simple_pipeline_json):
+    def test_strategy_factory_local(
+        self, temp_output_dir, simple_pipeline_json
+    ):
         """Test creating local execution strategy."""
         config = ExecutionConfig(
             pipeline_json=simple_pipeline_json,
@@ -631,7 +648,9 @@ class TestExecutionStrategies:
 
         assert isinstance(strategy, LocalParallelStrategy)
 
-    def test_strategy_factory_slurm(self, temp_output_dir, simple_pipeline_json):
+    def test_strategy_factory_slurm(
+        self, temp_output_dir, simple_pipeline_json
+    ):
         """Test creating SLURM execution strategy."""
         config = ExecutionConfig(
             pipeline_json=simple_pipeline_json,
@@ -884,7 +903,9 @@ class TestCLIv2Integration:
             assert "DRY-RUN MODE" in result.output
             assert "To proceed with execution" in result.output
 
-    def test_cli_uses_explicit_output_dir(self, runner, temp_pipeline, temp_input_dir):
+    def test_cli_uses_explicit_output_dir(
+        self, runner, temp_pipeline, temp_input_dir
+    ):
         """Test CLI with specified output directory in tmp location."""
         # Use isolated filesystem to avoid creating files in repo
         with runner.isolated_filesystem():
@@ -928,7 +949,10 @@ class TestCLIv2Integration:
             )
 
             # Should process limited number of images
-            assert "Sample mode" in result.output or "sample" in result.output.lower()
+            assert (
+                "Sample mode" in result.output
+                or "sample" in result.output.lower()
+            )
 
     def test_cli_slurm_backend_selection(
         self, runner, temp_pipeline, temp_input_dir
@@ -1005,7 +1029,9 @@ class TestAutomaticContinuation:
         )
 
         assert result.exit_code != 0
-        assert "--restart and --overwrite are mutually exclusive" in result.output
+        assert (
+            "--restart and --overwrite are mutually exclusive" in result.output
+        )
 
     def test_continuation_with_changed_input_images(self, runner, tmp_path):
         """Test that continuation fails when admitted input is missing."""
@@ -1070,9 +1096,14 @@ class TestAutomaticContinuation:
 
         # Should fail with input validation error
         assert result.exit_code != 0
-        assert "changed" in result.output.lower() or "input" in result.output.lower()
+        assert (
+            "changed" in result.output.lower()
+            or "input" in result.output.lower()
+        )
 
-    def test_continuation_command_without_output_specified(self, runner, tmp_path):
+    def test_continuation_command_without_output_specified(
+        self, runner, tmp_path
+    ):
         """Test that the public CLI requires --output."""
 
         temp_input_dir = tmp_path / "images"
@@ -1197,7 +1228,10 @@ class TestDryRunMode:
         )
 
         assert result.exit_code == 0
-        assert "dry" in result.output.lower() or "would process" in result.output.lower()
+        assert (
+            "dry" in result.output.lower()
+            or "would process" in result.output.lower()
+        )
 
         # Verify no output files created
         assert not (output_dir / "measurements").exists()
@@ -1240,7 +1274,9 @@ class TestDryRunMode:
 class TestEdgeCases:
     """Test suite for edge cases and boundary conditions."""
 
-    def test_invalid_nrows_zero_rejected(self, runner, tmp_path, temp_pipeline):
+    def test_invalid_nrows_zero_rejected(
+        self, runner, tmp_path, temp_pipeline
+    ):
         """Test that nrows=0 is rejected by Click IntRange validation."""
         input_dir = tmp_path / "input"
         output_dir = tmp_path / "output"
@@ -1269,10 +1305,13 @@ class TestEdgeCases:
 
         assert result.exit_code != 0
         assert (
-            "Invalid value" in result.output or "out of range" in result.output.lower()
+            "Invalid value" in result.output
+            or "out of range" in result.output.lower()
         )
 
-    def test_invalid_ncols_negative_rejected(self, runner, tmp_path, temp_pipeline):
+    def test_invalid_ncols_negative_rejected(
+        self, runner, tmp_path, temp_pipeline
+    ):
         """Test that negative ncols is rejected by Click IntRange validation."""
         input_dir = tmp_path / "input"
         output_dir = tmp_path / "output"
@@ -1301,7 +1340,8 @@ class TestEdgeCases:
 
         assert result.exit_code != 0
         assert (
-            "Invalid value" in result.output or "out of range" in result.output.lower()
+            "Invalid value" in result.output
+            or "out of range" in result.output.lower()
         )
 
     def test_single_image_processing(self, runner, tmp_path, temp_pipeline):
@@ -1338,24 +1378,30 @@ class TestEdgeCases:
 
         # Verify output files created for the single image
         # Output should be in results/dataset folder named after input directory ("input")
-        measurements_file = (
-            output_dir / "results" / "input" / "measurements" / "single.parquet"
+        overlay_file = (
+            output_dir / "deliverables" / "overlays" / "input" / "single.png"
         )
-        overlay_file = output_dir / "deliverables" / "overlays" / "input" / "single.png"
         # A forward run persists one OME-Zarr STORE per image -- a
         # directory, not a file. Resolve it through zarr_store_path so the
         # `.ome.zarr` double suffix is never hand-joined here.
         store = zarr_store_path(output_dir, "input", "single")
 
-        assert measurements_file.exists(), f"Expected {measurements_file} to exist"
+        import pandas as pd
+
+        table = store / MEASUREMENT_TABLE_RELATIVE_PATH
         assert store.is_dir(), f"Expected {store} to exist"
         assert (store / "zarr.json").is_file()
+        assert table.is_file(), f"Expected embedded measurements at {table}"
+        assert not pd.read_parquet(table).empty
+        assert not (output_dir / "results" / "input" / "measurements").exists()
         assert not list(output_dir.rglob("*.h5"))
         # Overlays are always written for forward runs.
         assert overlay_file.exists(), f"Expected {overlay_file} to exist"
 
         # Verify results and dataset folder is created
-        assert (output_dir / "results").exists(), "Results folder should be created"
+        assert (output_dir / "results").exists(), (
+            "Results folder should be created"
+        )
         assert (output_dir / "results" / "input").exists(), (
             "Dataset folder should be created under results/"
         )
@@ -1466,8 +1512,12 @@ class TestNewCoverageGaps:
         ]
 
         # Sample with same seed twice
-        sample1 = get_sample_datasets(datasets, 5, temp_output_dir, random_seed=42)
-        sample2 = get_sample_datasets(datasets, 5, temp_output_dir, random_seed=42)
+        sample1 = get_sample_datasets(
+            datasets, 5, temp_output_dir, random_seed=42
+        )
+        sample2 = get_sample_datasets(
+            datasets, 5, temp_output_dir, random_seed=42
+        )
 
         # Should get exact same images
         assert [img.name for img in sample1[0].images] == [
@@ -1475,7 +1525,9 @@ class TestNewCoverageGaps:
         ]
 
         # Different seed should give different images
-        sample3 = get_sample_datasets(datasets, 5, temp_output_dir, random_seed=123)
+        sample3 = get_sample_datasets(
+            datasets, 5, temp_output_dir, random_seed=123
+        )
         assert [img.name for img in sample1[0].images] != [
             img.name for img in sample3[0].images
         ]
@@ -1492,7 +1544,9 @@ class TestNewCoverageGaps:
         )
 
         # All paths should include results/ and dataset subdirectory
-        path = manager.get_output_path("single_image", "measurements", "image1")
+        path = manager.get_output_path(
+            "single_image", "measurements", "image1"
+        )
         assert (
             path
             == temp_output_dir
@@ -1623,7 +1677,9 @@ class TestNewCoverageGaps:
 
     def test_large_dataset_chunking(self):
         """Test that large datasets are properly chunked for SLURM."""
-        from phenotypic._cli._cli_slurm_config import calculate_optimal_array_chunks
+        from phenotypic._cli._cli_slurm_config import (
+            calculate_optimal_array_chunks,
+        )
 
         # Dataset with 2500 images (should create 3 chunks with 1000 limit)
         num_images = 2500
@@ -1643,7 +1699,9 @@ class TestNewCoverageGaps:
 
     def test_slurm_script_no_flat_mode_flag(self, temp_output_dir):
         """Test that generated SLURM scripts do NOT include --flat-mode (feature removed)."""
-        from phenotypic._cli._cli_slurm_array_scripts import generate_array_job_script
+        from phenotypic._cli._cli_slurm_array_scripts import (
+            generate_array_job_script,
+        )
 
         pipeline_path = temp_output_dir / "pipeline.json"
         pipeline_path.write_text("{}", encoding="utf-8")
@@ -1693,11 +1751,15 @@ class TestNewCoverageGaps:
         assert "--dataset-name" in script_content
         assert "plate1" in script_content
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="bash not available on Windows CI")
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="bash not available on Windows CI"
+    )
     def test_slurm_script_bash_syntax(self, temp_output_dir):
         """Test that generated SLURM scripts have valid bash syntax."""
         import subprocess
-        from phenotypic._cli._cli_slurm_array_scripts import generate_array_job_script
+        from phenotypic._cli._cli_slurm_array_scripts import (
+            generate_array_job_script,
+        )
 
         pipeline_path = temp_output_dir / "pipeline.json"
         pipeline_path.write_text("{}", encoding="utf-8")
@@ -1819,12 +1881,23 @@ class TestAggregateMeasurements:
         """Single dataset: master CSV has correct rows and Metadata_Dataset column."""
         import pandas as pd
 
-        self._create_measurement_csvs(temp_output_dir, {
-            "ds1": [
-                ("img_001", pd.DataFrame({"area": [10, 20], "circularity": [0.9, 0.8]})),
-                ("img_002", pd.DataFrame({"area": [30], "circularity": [0.7]})),
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "ds1": [
+                    (
+                        "img_001",
+                        pd.DataFrame(
+                            {"area": [10, 20], "circularity": [0.9, 0.8]}
+                        ),
+                    ),
+                    (
+                        "img_002",
+                        pd.DataFrame({"area": [30], "circularity": [0.7]}),
+                    ),
+                ],
+            },
+        )
 
         result = aggregate_measurements(
             output_dir=temp_output_dir,
@@ -1841,21 +1914,26 @@ class TestAggregateMeasurements:
 
         # Verify master Parquet is also written
         master_parquet = master_measurements_parquet_path(temp_output_dir)
-        assert master_parquet.exists(), "master_measurements.parquet should be written"
+        assert master_parquet.exists(), (
+            "master_measurements.parquet should be written"
+        )
 
     def test_aggregate_measurements_multi_dataset(self, temp_output_dir):
         """Two datasets: all rows present with correct dataset labels."""
         import pandas as pd
 
-        self._create_measurement_csvs(temp_output_dir, {
-            "plate_A": [
-                ("img_001", pd.DataFrame({"area": [10]})),
-            ],
-            "plate_B": [
-                ("img_001", pd.DataFrame({"area": [20]})),
-                ("img_002", pd.DataFrame({"area": [30]})),
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "plate_A": [
+                    ("img_001", pd.DataFrame({"area": [10]})),
+                ],
+                "plate_B": [
+                    ("img_001", pd.DataFrame({"area": [20]})),
+                    ("img_002", pd.DataFrame({"area": [30]})),
+                ],
+            },
+        )
 
         result = aggregate_measurements(
             output_dir=temp_output_dir,
@@ -1867,7 +1945,10 @@ class TestAggregateMeasurements:
         master = pd.read_csv(result)
         assert len(master) == 3
         assert set(master[DATASET_HEADER]) == {"plate_A", "plate_B"}
-        assert master.loc[master[DATASET_HEADER] == "plate_A", "area"].iloc[0] == 10
+        assert (
+            master.loc[master[DATASET_HEADER] == "plate_A", "area"].iloc[0]
+            == 10
+        )
 
     def test_aggregate_repairs_staged_uuid_when_using_scratch(
         self, temp_output_dir, tmp_path, monkeypatch
@@ -1898,24 +1979,31 @@ class TestAggregateMeasurements:
         )
 
         image_stem = "d000374_280_121_2026-04-11_16-55-18"
-        self._create_measurement_csvs(temp_output_dir, {
-            "plate": [
-                (
-                    image_stem,
-                    pd.DataFrame({
-                        IMAGE_NAME_HEADER: [
-                            "4815d217-4afc-40dd-ab6c-bbf1521f4109"
-                        ],
-                        "area": [10],
-                    }),
-                )
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "plate": [
+                    (
+                        image_stem,
+                        pd.DataFrame(
+                            {
+                                IMAGE_NAME_HEADER: [
+                                    "4815d217-4afc-40dd-ab6c-bbf1521f4109"
+                                ],
+                                "area": [10],
+                            }
+                        ),
+                    )
+                ],
+            },
+        )
         metadata_path = temp_output_dir / "metadata.csv"
-        pd.DataFrame({
-            IMAGE_NAME_HEADER: [image_stem],
-            TREATMENT_LABEL: ["control"],
-        }).to_csv(metadata_path, index=False)
+        pd.DataFrame(
+            {
+                IMAGE_NAME_HEADER: [image_stem],
+                TREATMENT_LABEL: ["control"],
+            }
+        ).to_csv(metadata_path, index=False)
         scratch = tmp_path / "scratch"
         scratch.mkdir()
         monkeypatch.setenv("SCRATCH", str(scratch))
@@ -1939,11 +2027,14 @@ class TestAggregateMeasurements:
         """include_dataset_column=False: no Metadata_Dataset column added."""
         import pandas as pd
 
-        self._create_measurement_csvs(temp_output_dir, {
-            "ds1": [
-                ("img_001", pd.DataFrame({"area": [10]})),
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "ds1": [
+                    ("img_001", pd.DataFrame({"area": [10]})),
+                ],
+            },
+        )
 
         result = aggregate_measurements(
             output_dir=temp_output_dir,
@@ -1968,11 +2059,14 @@ class TestAggregateMeasurements:
         """OutputManager.aggregate_master_csv() produces same result as standalone."""
         import pandas as pd
 
-        self._create_measurement_csvs(temp_output_dir, {
-            "ds1": [
-                ("img_001", pd.DataFrame({"area": [10, 20]})),
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "ds1": [
+                    ("img_001", pd.DataFrame({"area": [10, 20]})),
+                ],
+            },
+        )
 
         om = OutputManager(
             base_dir=temp_output_dir,
@@ -1980,7 +2074,14 @@ class TestAggregateMeasurements:
             extensions={},
             include_dataset_column=True,
         )
-        datasets = [Dataset(name="ds1", images=[], input_dir=temp_output_dir, output_dir=temp_output_dir)]
+        datasets = [
+            Dataset(
+                name="ds1",
+                images=[],
+                input_dir=temp_output_dir,
+                output_dir=temp_output_dir,
+            )
+        ]
         result = om.aggregate_master_csv(datasets)
 
         assert result is not None
@@ -1992,19 +2093,27 @@ class TestAggregateMeasurements:
         """Metadata CSV with shared column joins correctly, new columns appear."""
         import pandas as pd
 
-        self._create_measurement_csvs(temp_output_dir, {
-            "ds1": [
-                ("img_001", pd.DataFrame({"plate": ["A", "A"], "area": [10, 20]})),
-                ("img_002", pd.DataFrame({"plate": ["B"], "area": [30]})),
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "ds1": [
+                    (
+                        "img_001",
+                        pd.DataFrame({"plate": ["A", "A"], "area": [10, 20]}),
+                    ),
+                    ("img_002", pd.DataFrame({"plate": ["B"], "area": [30]})),
+                ],
+            },
+        )
 
         # Create metadata CSV with shared 'plate' column and schema-backed Treatment column.
         metadata_path = temp_output_dir / "metadata.csv"
-        pd.DataFrame({
-            "plate": ["A", "B"],
-            TREATMENT_LABEL: ["control", "drug_X"],
-        }).to_csv(metadata_path, index=False)
+        pd.DataFrame(
+            {
+                "plate": ["A", "B"],
+                TREATMENT_LABEL: ["control", "drug_X"],
+            }
+        ).to_csv(metadata_path, index=False)
 
         result = aggregate_measurements(
             output_dir=temp_output_dir,
@@ -2022,24 +2131,35 @@ class TestAggregateMeasurements:
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         assert TREATMENT_HEADER in mirror.columns
         assert len(mirror) == 3
-        assert list(mirror.loc[mirror["plate"] == "A", TREATMENT_HEADER].unique()) == ["control"]
-        assert list(mirror.loc[mirror["plate"] == "B", TREATMENT_HEADER].unique()) == ["drug_X"]
+        assert list(
+            mirror.loc[mirror["plate"] == "A", TREATMENT_HEADER].unique()
+        ) == ["control"]
+        assert list(
+            mirror.loc[mirror["plate"] == "B", TREATMENT_HEADER].unique()
+        ) == ["drug_X"]
 
-    def test_aggregate_measurements_metadata_no_common_columns(self, temp_output_dir):
+    def test_aggregate_measurements_metadata_no_common_columns(
+        self, temp_output_dir
+    ):
         """No shared columns produces warning, master CSV unchanged."""
         import pandas as pd
 
-        self._create_measurement_csvs(temp_output_dir, {
-            "ds1": [
-                ("img_001", pd.DataFrame({"area": [10]})),
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "ds1": [
+                    ("img_001", pd.DataFrame({"area": [10]})),
+                ],
+            },
+        )
 
         metadata_path = temp_output_dir / "metadata.csv"
-        pd.DataFrame({
-            "strain": ["WT"],
-            "concentration": [0.5],
-        }).to_csv(metadata_path, index=False)
+        pd.DataFrame(
+            {
+                "strain": ["WT"],
+                "concentration": [0.5],
+            }
+        ).to_csv(metadata_path, index=False)
 
         result = aggregate_measurements(
             output_dir=temp_output_dir,
@@ -2055,7 +2175,9 @@ class TestAggregateMeasurements:
         assert "concentration" not in master.columns
         assert "area" in master.columns
 
-    def test_aggregate_measurements_measurement_unmatched_is_dropped(self, temp_output_dir):
+    def test_aggregate_measurements_measurement_unmatched_is_dropped(
+        self, temp_output_dir
+    ):
         """Left join is asymmetric: *measurement* rows with no metadata are dropped.
 
         Measurements are the RIGHT frame, so plate C — measured but absent from
@@ -2063,18 +2185,28 @@ class TestAggregateMeasurements:
         """
         import pandas as pd
 
-        self._create_measurement_csvs(temp_output_dir, {
-            "ds1": [
-                ("img_001", pd.DataFrame({"plate": ["A", "B", "C"], "area": [10, 20, 30]})),
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "ds1": [
+                    (
+                        "img_001",
+                        pd.DataFrame(
+                            {"plate": ["A", "B", "C"], "area": [10, 20, 30]}
+                        ),
+                    ),
+                ],
+            },
+        )
 
         # Only provide metadata for plates A and B, not C
         metadata_path = temp_output_dir / "metadata.csv"
-        pd.DataFrame({
-            "plate": ["A", "B"],
-            TREATMENT_LABEL: ["control", "drug_X"],
-        }).to_csv(metadata_path, index=False)
+        pd.DataFrame(
+            {
+                "plate": ["A", "B"],
+                TREATMENT_LABEL: ["control", "drug_X"],
+            }
+        ).to_csv(metadata_path, index=False)
 
         result = aggregate_measurements(
             output_dir=temp_output_dir,
@@ -2097,7 +2229,9 @@ class TestAggregateMeasurements:
         # Every metadata row matched, so nothing is a phantom.
         assert not mirror[METADATA_ONLY_HEADER].any()
 
-    def test_aggregate_measurements_metadata_duplicate_keys_warns(self, temp_output_dir, caplog):
+    def test_aggregate_measurements_metadata_duplicate_keys_warns(
+        self, temp_output_dir, caplog
+    ):
         """Duplicate keys in metadata CSV inflate rows and produce a warning.
 
         The signal is computed from the metadata frame's own key uniqueness, not
@@ -2107,18 +2241,23 @@ class TestAggregateMeasurements:
         """
         import pandas as pd
 
-        self._create_measurement_csvs(temp_output_dir, {
-            "ds1": [
-                ("img_001", pd.DataFrame({"plate": ["A"], "area": [10]})),
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "ds1": [
+                    ("img_001", pd.DataFrame({"plate": ["A"], "area": [10]})),
+                ],
+            },
+        )
 
         # Metadata has duplicate entries for plate A
         metadata_path = temp_output_dir / "metadata.csv"
-        pd.DataFrame({
-            "plate": ["A", "A"],
-            TREATMENT_LABEL: ["control", "drug_X"],
-        }).to_csv(metadata_path, index=False)
+        pd.DataFrame(
+            {
+                "plate": ["A", "A"],
+                TREATMENT_LABEL: ["control", "drug_X"],
+            }
+        ).to_csv(metadata_path, index=False)
 
         with caplog.at_level(logging.WARNING):
             result = aggregate_measurements(
@@ -2145,16 +2284,24 @@ class TestAggregateMeasurements:
         """Metadata for plates {A, B, C}; only A and B were ever measured."""
         import pandas as pd
 
-        self._create_measurement_csvs(temp_output_dir, {
-            "ds1": [
-                ("img_001", pd.DataFrame({"plate": ["A", "B"], "area": [10, 20]})),
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "ds1": [
+                    (
+                        "img_001",
+                        pd.DataFrame({"plate": ["A", "B"], "area": [10, 20]}),
+                    ),
+                ],
+            },
+        )
         metadata_path = temp_output_dir / "metadata.csv"
-        pd.DataFrame({
-            "plate": ["A", "B", "C"],
-            TREATMENT_LABEL: ["control", "drug_X", "drug_Y"],
-        }).to_csv(metadata_path, index=False)
+        pd.DataFrame(
+            {
+                "plate": ["A", "B", "C"],
+                TREATMENT_LABEL: ["control", "drug_X", "drug_Y"],
+            }
+        ).to_csv(metadata_path, index=False)
         return metadata_path
 
     def test_aggregate_measurements_metadata_unmatched_becomes_phantom_row(
@@ -2194,7 +2341,9 @@ class TestAggregateMeasurements:
         assert phantom["area"].isna().all()
         # Flagged, and only C is flagged.
         assert phantom[METADATA_ONLY_HEADER].tolist() == [True]
-        assert not mirror.loc[mirror["plate"] != "C", METADATA_ONLY_HEADER].any()
+        assert not mirror.loc[
+            mirror["plate"] != "C", METADATA_ONLY_HEADER
+        ].any()
 
     def test_aggregate_measurements_metadata_unmatched_warns(
         self, temp_output_dir, caplog
@@ -2212,7 +2361,9 @@ class TestAggregateMeasurements:
 
         assert result is not None
         warnings_text = "\n".join(
-            r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING
+            r.getMessage()
+            for r in caplog.records
+            if r.levelno >= logging.WARNING
         )
         assert "matched no measured object" in warnings_text
         assert "1/3" in warnings_text
@@ -2265,6 +2416,7 @@ class TestAggregateMeasurements:
         # The real rows keep their exact integer values.
         real = mirror.filter(~pl.col(METADATA_ONLY_HEADER))
         assert sorted(real["area"].to_list()) == [10, 20]
+
     def test_metadata_only_flag_round_trips_as_bool_in_both_mirrors(
         self, temp_output_dir
     ):
@@ -2289,7 +2441,9 @@ class TestAggregateMeasurements:
             metadata_csv=metadata_path,
         )
 
-        from_parquet = pd.read_parquet(measurements_parquet_path(temp_output_dir))
+        from_parquet = pd.read_parquet(
+            measurements_parquet_path(temp_output_dir)
+        )
         from_csv = pd.read_csv(measurements_csv_path(temp_output_dir))
 
         assert is_bool_dtype(from_parquet[METADATA_ONLY_HEADER])
@@ -2297,23 +2451,33 @@ class TestAggregateMeasurements:
         assert from_parquet[METADATA_ONLY_HEADER].sum() == 1
         assert from_csv[METADATA_ONLY_HEADER].sum() == 1
 
-    def test_aggregate_measurements_metadata_dtype_mismatch(self, temp_output_dir):
+    def test_aggregate_measurements_metadata_dtype_mismatch(
+        self, temp_output_dir
+    ):
         """Join columns with mismatched dtypes (int vs str) still match."""
         import pandas as pd
 
         # Measurements have integer plate IDs
-        self._create_measurement_csvs(temp_output_dir, {
-            "ds1": [
-                ("img_001", pd.DataFrame({"plate": [1, 2], "area": [10, 20]})),
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "ds1": [
+                    (
+                        "img_001",
+                        pd.DataFrame({"plate": [1, 2], "area": [10, 20]}),
+                    ),
+                ],
+            },
+        )
 
         # Metadata has string plate IDs
         metadata_path = temp_output_dir / "metadata.csv"
-        pd.DataFrame({
-            "plate": ["1", "2"],
-            TREATMENT_LABEL: ["control", "drug_X"],
-        }).to_csv(metadata_path, index=False)
+        pd.DataFrame(
+            {
+                "plate": ["1", "2"],
+                TREATMENT_LABEL: ["control", "drug_X"],
+            }
+        ).to_csv(metadata_path, index=False)
 
         result = aggregate_measurements(
             output_dir=temp_output_dir,
@@ -2362,7 +2526,9 @@ class TestAggregateMeasurements:
         assert len(master) == 3
         assert DATASET_HEADER in master.columns
 
-    def test_aggregate_measurements_post_seeds_post_applied_mirror(self, temp_output_dir):
+    def test_aggregate_measurements_post_seeds_post_applied_mirror(
+        self, temp_output_dir
+    ):
         """Pipeline post ops are applied to measurements.{csv,parquet} only.
 
         master_measurements.{csv,parquet} stay post-free (a clean archive of
@@ -2380,12 +2546,15 @@ class TestAggregateMeasurements:
                 df["post_marker"] = "applied"
                 return df
 
-        self._create_measurement_csvs(temp_output_dir, {
-            "ds1": [
-                ("img_001", pd.DataFrame({"area": [10, 20]})),
-                ("img_002", pd.DataFrame({"area": [30]})),
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "ds1": [
+                    ("img_001", pd.DataFrame({"area": [10, 20]})),
+                    ("img_002", pd.DataFrame({"area": [30]})),
+                ],
+            },
+        )
 
         pipeline = ImagePipeline(post=[AddPostColumn()])
 
@@ -2521,11 +2690,14 @@ class TestAggregateMeasurements:
 
         from phenotypic import ImagePipeline
 
-        self._create_measurement_csvs(temp_output_dir, {
-            "ds1": [
-                ("img_001", pd.DataFrame({"area": [10, 20]})),
-            ],
-        })
+        self._create_measurement_csvs(
+            temp_output_dir,
+            {
+                "ds1": [
+                    ("img_001", pd.DataFrame({"area": [10, 20]})),
+                ],
+            },
+        )
 
         result = aggregate_measurements(
             output_dir=temp_output_dir,
@@ -2539,7 +2711,11 @@ class TestAggregateMeasurements:
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         expected = master[order_measurement_columns(master.columns)]
         pd.testing.assert_frame_equal(expected, mirror)
-        assert mirror.columns.tolist() == [DATASET_HEADER, "area", IMAGE_NAME_HEADER]
+        assert mirror.columns.tolist() == [
+            DATASET_HEADER,
+            "area",
+            IMAGE_NAME_HEADER,
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -2553,10 +2729,14 @@ def test_layer_rejected_outside_process_mode(
     r = CliRunner().invoke(
         phenotypic_cli,
         [
-            "--pipeline", str(simple_pipeline_json),
-            "--input", str(synth_one_level_input),
-            "--output", str(tmp_path / "o"),
-            "--layer", "rgb",
+            "--pipeline",
+            str(simple_pipeline_json),
+            "--input",
+            str(synth_one_level_input),
+            "--output",
+            str(tmp_path / "o"),
+            "--layer",
+            "rgb",
             "--dry-run",
         ],
     )
@@ -2570,12 +2750,21 @@ def test_process_only_warns_ignored_flags(
     r = CliRunner().invoke(
         phenotypic_cli,
         [
-            "--mode", "process",
-            "--pipeline", str(simple_pipeline_json),
-            "--input", str(synth_one_level_input),
-            "--output", str(tmp_path / "o2"),
-            "--layer", "rgb",
-            "--no-qc", "--force-local", "--njobs", "1", "--dry-run",
+            "--mode",
+            "process",
+            "--pipeline",
+            str(simple_pipeline_json),
+            "--input",
+            str(synth_one_level_input),
+            "--output",
+            str(tmp_path / "o2"),
+            "--layer",
+            "rgb",
+            "--no-qc",
+            "--force-local",
+            "--njobs",
+            "1",
+            "--dry-run",
         ],
     )
     assert r.exit_code == 0, r.output
@@ -2617,12 +2806,18 @@ def test_process_only_dry_run_lists_plan(
     r = CliRunner().invoke(
         phenotypic_cli,
         [
-            "--mode", "process",
-            "--pipeline", str(simple_pipeline_json),
-            "--input", str(synth_one_level_input),
-            "--output", str(tmp_path / "o3"),
-            "--layer", "detect_mat",
-            "--dry-run", "--force-local",
+            "--mode",
+            "process",
+            "--pipeline",
+            str(simple_pipeline_json),
+            "--input",
+            str(synth_one_level_input),
+            "--output",
+            str(tmp_path / "o3"),
+            "--layer",
+            "detect_mat",
+            "--dry-run",
+            "--force-local",
         ],
     )
     assert r.exit_code == 0, r.output

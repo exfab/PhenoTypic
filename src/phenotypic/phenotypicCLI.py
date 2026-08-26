@@ -3335,13 +3335,14 @@ def _handle_recompile(
     from phenotypic._cli._cli_completion import authorized_measurement_sources
 
     authorized = authorized_measurement_sources(output_dir)
+    datasets_totals: dict[str, int]
     if authorized is not None:
         datasets_totals = {
             name: sum(dataset == name for dataset in authorized.values())
             for name in dataset_names
         }
     else:
-        datasets_totals: dict[str, int] = {}
+        datasets_totals = {}
         for name in dataset_names:
             meas_dir = dataset_measurements_dir(output_dir, name)
             datasets_totals[name] = (
