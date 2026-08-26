@@ -184,3 +184,45 @@ def test_scratch_staging_keeps_embedded_table_sources_distinct(
     assert sorted(
         pl.read_parquet(path)["source"].item() for path in remapped
     ) == [0, 1]
+
+
+def test_embedded_filename_recovers_distinct_missing_image_names() -> None:
+    """Fixed table filenames must derive identity from their owning stores."""
+    from phenotypic._cli._measurement_sources import (
+        add_metadata_image_name_from_filename,
+    )
+
+    frame = pl.DataFrame(
+        {
+            "filename": [
+                "/run/results/ds/zarr/alpha.ome.zarr/tables/measurements/table.parquet",
+                "/run/results/ds/zarr/beta.ome.zarr/tables/measurements/table.parquet",
+            ],
+            str(SIZE.AREA): [1.0, 2.0],
+        }
+    )
+
+    recovered = add_metadata_image_name_from_filename(frame)
+
+    assert recovered[str(IMAGE.IMAGE_NAME)].to_list() == ["alpha", "beta"]
+    assert "filename" not in recovered.columns
+
+
+def test_embedded_filename_repairs_uuid_image_name_from_store() -> None:
+    """A UUID fallback must be replaced by the owning embedded store stem."""
+    from phenotypic._cli._measurement_sources import (
+        add_metadata_image_name_from_filename,
+    )
+
+    frame = pl.DataFrame(
+        {
+            "filename": [
+                "/run/results/ds/zarr/alpha.ome.zarr/tables/measurements/table.parquet"
+            ],
+            str(IMAGE.IMAGE_NAME): ["123e4567-e89b-12d3-a456-426614174000"],
+        }
+    )
+
+    recovered = add_metadata_image_name_from_filename(frame)
+
+    assert recovered[str(IMAGE.IMAGE_NAME)].to_list() == ["alpha"]

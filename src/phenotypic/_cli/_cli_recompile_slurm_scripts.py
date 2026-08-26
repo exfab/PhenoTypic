@@ -14,9 +14,11 @@ from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 from phenotypic.sdk_ import (
     DIR_RESULTS,
     DIR_ZARR,
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     STORE_SUFFIX,
     store_stem,
     dataset_overlays_dir,
+    image_completion_marker_path,
     JobMetadataKey,
     RECOMPILE_TASK_MANIFEST_JSON,
     logs_dir,
@@ -66,6 +68,12 @@ def build_recompile_tasks(
     tasks: list[dict[str, Any]] = []
     measurement_sources: list[Path] = []
     shard_id = 0
+    overlay_tasks_by_dataset = {
+        dataset_name: _overlay_tasks_for_dataset(
+            output_dir, dataset_name, overlay_alpha
+        )
+        for dataset_name in dataset_names
+    }
 
     for dataset_name in dataset_names:
         if authorized_sources is None:
@@ -76,10 +84,18 @@ def build_recompile_tasks(
                 )
             ]
         else:
-            source_files = sorted(
+            authorized_for_dataset = {
                 path
                 for path, dataset in authorized_sources.items()
                 if dataset == dataset_name
+            }
+            recoverable_overlay_tables = {
+                Path(str(task["store_path"])) / MEASUREMENT_TABLE_RELATIVE_PATH
+                for task in overlay_tasks_by_dataset[dataset_name]
+                if task.get("restore_marker_authority")
+            }
+            source_files = sorted(
+                authorized_for_dataset | recoverable_overlay_tables
             )
         measurement_sources.extend(source_files)
         for source_shard in _chunk_paths(source_files, shard_size):
@@ -95,9 +111,7 @@ def build_recompile_tasks(
             shard_id += 1
 
     for dataset_name in dataset_names:
-        overlay_tasks = _overlay_tasks_for_dataset(
-            output_dir, dataset_name, overlay_alpha
-        )
+        overlay_tasks = overlay_tasks_by_dataset[dataset_name]
         if attempt_id is not None:
             for task in overlay_tasks:
                 task["slurm_generation"] = attempt_id
@@ -252,15 +266,57 @@ def _overlay_tasks_for_dataset(
         overlay_path = overlay_dir / f"{stem}.png"
         if overlay_path.exists():
             continue
-        tasks.append(
-            {
-                "task_type": TASK_OVERLAY,
-                "dataset_name": dataset_name,
-                "store_path": str(store_path.absolute()),
-                "overlay_alpha": overlay_alpha,
-            }
-        )
+        task: dict[str, Any] = {
+            "task_type": TASK_OVERLAY,
+            "dataset_name": dataset_name,
+            "store_path": str(store_path.absolute()),
+            "overlay_alpha": overlay_alpha,
+        }
+        if _marker_binds_overlay_and_table(
+            output_dir,
+            dataset_name,
+            stem,
+            overlay_path,
+            store_path / MEASUREMENT_TABLE_RELATIVE_PATH,
+        ):
+            task["restore_marker_authority"] = True
+        tasks.append(task)
     return tasks
+
+
+def _marker_binds_overlay_and_table(
+    output_dir: Path,
+    dataset_name: str,
+    stem: str,
+    overlay_path: Path,
+    table_path: Path,
+) -> bool:
+    """Return whether an existing marker binds the missing overlay and table."""
+    marker_path = image_completion_marker_path(output_dir, dataset_name, stem)
+    if not marker_path.is_file() or not table_path.is_file():
+        return False
+    try:
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        artifacts = marker["artifacts"]
+        if not isinstance(artifacts, dict):
+            return False
+        expected = {
+            "overlay": overlay_path.resolve(),
+            "measurements": table_path.resolve(),
+        }
+        output_root = output_dir.resolve()
+        for name, expected_path in expected.items():
+            descriptor = artifacts.get(name)
+            if not isinstance(descriptor, dict):
+                return False
+            relative = descriptor.get("path")
+            if not isinstance(relative, str):
+                return False
+            if (output_root / relative).resolve() != expected_path:
+                return False
+    except (KeyError, OSError, TypeError, ValueError):
+        return False
+    return True
 
 
 def _chunk_paths(paths: list[Path], shard_size: int) -> list[list[Path]]:

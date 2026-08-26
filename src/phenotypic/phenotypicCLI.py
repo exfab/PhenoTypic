@@ -2710,9 +2710,11 @@ def _regenerate_missing_overlays(
 
     def _render_one(dataset_name: str, store_path: Path) -> None:
         image = load_image_from_store(store_path)
-        output_manager.save_overlay(
-            image, dataset_name, store_stem(store_path)
-        )
+        stem = store_stem(store_path)
+        output_manager.save_overlay(image, dataset_name, stem)
+        from phenotypic.sdk_._hdf_to_zarr import _republish_image_marker
+
+        _republish_image_marker(output_dir, dataset_name, stem, store_path)
 
     console.print(
         f"[cyan]Regenerating {len(work)} missing overlay(s) "
@@ -3276,6 +3278,9 @@ def _handle_recompile(
     else:
         console.print("[green]Metadata schema: canonical")
 
+    console.print("[cyan]Checking for missing overlays...")
+    _regenerate_missing_overlays(output_dir, overlay_alpha, n_jobs)
+
     from phenotypic._cli._cli_recompile_tables import (
         recompile_embedded_measurement_tables,
     )
@@ -3316,9 +3321,6 @@ def _handle_recompile(
             )
     else:
         console.print("[yellow]No measurements found for aggregation")
-
-    console.print("[cyan]Checking for missing overlays...")
-    _regenerate_missing_overlays(output_dir, overlay_alpha, n_jobs)
 
     console.print("[cyan]Rebuilding manifest...")
     prog_dir.mkdir(parents=True, exist_ok=True)

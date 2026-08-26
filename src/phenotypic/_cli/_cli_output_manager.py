@@ -1603,9 +1603,10 @@ class OutputManager:
         Create complete output directory structure.
 
         Always creates dataset-first structure with each dataset in its own
-        folder.  Forward runs provision ``measurements/``, ``zarr/``, and
-        ``overlays/`` for every dataset; ``overlays/`` is skipped only
-        when :attr:`save_overlays` is False (e.g. measure-mode reruns).
+        folder. Current-schema forward runs provision ``zarr/`` for every
+        dataset and intentionally do not create legacy ``measurements/``
+        directories. ``overlays/`` is skipped only when
+        :attr:`save_overlays` is False (e.g. measure-mode reruns).
 
         Args:
             datasets: List of datasets to create directories for

@@ -257,7 +257,6 @@ def _run_measurement_task(
     slurm_generation: str,
 ) -> None:
     """Aggregate one measurement shard and write it under progress."""
-    import polars as pl
 
     from ._cli_parquet_agg import aggregate_parquet_files
 
@@ -298,17 +297,11 @@ def _run_measurement_task(
     if shard_df is None:
         raise RuntimeError("No valid measurements found for shard")
 
-    if (
-        str(IMAGE.IMAGE_NAME) not in shard_df.columns
-        and "filename" in shard_df.columns
-    ):
-        shard_df = shard_df.with_columns(
-            pl.col("filename")
-            .str.extract(r"([^/\\]+)\.[^.]+$", 1)
-            .alias(str(IMAGE.IMAGE_NAME))
-        )
-    if "filename" in shard_df.columns:
-        shard_df = shard_df.drop("filename")
+    from ._measurement_sources import (
+        add_metadata_image_name_from_filename,
+    )
+
+    shard_df = add_metadata_image_name_from_filename(shard_df)
     shard_df = _sort_measurement_shard(shard_df)
 
     shard_id = int(task["shard_id"])
@@ -394,20 +387,62 @@ def _run_overlay_task(
             # suffix, so `.stem` would write `<stem>.ome.png` -- an overlay
             # under a name nothing ever looks for, leaving the real one
             # missing and requeued on every recompile.
-            output_manager.save_overlay(
-                image, dataset_name, store_stem(store_path)
-            )
+            stem = store_stem(store_path)
+            output_manager.save_overlay(image, dataset_name, stem)
+            if task.get("restore_marker_authority"):
+                from phenotypic.sdk_._hdf_to_zarr import (
+                    _republish_image_marker,
+                )
+
+                if not _republish_image_marker(
+                    output_dir, dataset_name, stem, store_path
+                ):
+                    raise RuntimeError(
+                        "Could not restore marker authority after overlay repair"
+                    )
     except SlurmGenerationInactiveError:
         raise
     except Exception as exc:
         logger.warning("Overlay regeneration failed", exc_info=True)
         return {
-            "status": "completed",
+            "status": (
+                "failed"
+                if task.get("restore_marker_authority")
+                else "completed"
+            ),
             "overlay_failed": True,
             "error": f"{type(exc).__name__}: {exc}",
         }
 
     return {"status": "completed", "overlay_failed": False}
+
+
+def _restore_overlay_marker_authority(
+    output_dir: Path, task_manifest: Path
+) -> None:
+    """Re-fingerprint repaired overlay markers after all array work is done."""
+    from phenotypic.sdk_._hdf_to_zarr import _republish_image_marker
+
+    manifest = json.loads(task_manifest.read_text(encoding="utf-8"))
+    tasks = manifest.get("tasks")
+    if not isinstance(tasks, list):
+        raise ValueError("Task manifest does not contain a tasks list")
+    for item in tasks:
+        if not isinstance(item, dict) or not item.get(
+            "restore_marker_authority"
+        ):
+            continue
+        store_path = Path(str(item["store_path"]))
+        dataset_name = str(item["dataset_name"])
+        if not _republish_image_marker(
+            output_dir,
+            dataset_name,
+            store_stem(store_path),
+            store_path,
+        ):
+            raise RuntimeError(
+                "Could not restore marker authority after overlay repair"
+            )
 
 
 def _run_finalizer_task(
@@ -439,6 +474,10 @@ def _run_finalizer_task(
         phenotypic_cache_dir(output_dir) / ".aggregate_publication.lock"
     )
     with exclusive_path_lock(publication_lock, timeout=60.0):
+        # Measurement and overlay tasks can touch the same store concurrently.
+        # Re-fingerprint recovery markers once more after every task is terminal
+        # so the marker always describes the final embedded-table bytes.
+        _restore_overlay_marker_authority(output_dir, task_manifest)
         # The aggregate lock excludes competing finalizers. Each canonical
         # mutation also acquires the lifecycle guard independently, allowing a
         # newer generation to fence this worker between publication phases.

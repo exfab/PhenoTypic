@@ -6,14 +6,17 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+from unittest.mock import patch
 
 from click.testing import CliRunner
 import polars as pl
+import pytest
 
 from phenotypic._cli._cli_completion import valid_image_success
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
+    aggregate_publication_marker_path,
     PhenotypicAttr,
     image_completion_marker_path,
     read_phenotypic_attributes,
@@ -279,13 +282,54 @@ def test_hdf_only_migration_keeps_store_measurement_free(
     source = legacy_run / "results" / DATASET / "measurements" / "img.parquet"
     source.unlink()
 
-    result = CliRunner().invoke(
-        phenotypic_cli,
-        ["--mode", "migrate", "--output", str(legacy_run)],
-    )
+    with patch(
+        "phenotypic._cli._cli_migrate.republish_aggregate"
+    ) as republish:
+        result = CliRunner().invoke(
+            phenotypic_cli,
+            ["--mode", "migrate", "--output", str(legacy_run)],
+        )
 
     assert result.exit_code == 0, result.output
+    republish.assert_not_called()
     store = zarr_store_path(legacy_run, DATASET, "img")
     assert store.is_dir()
     assert not (store / MEASUREMENT_TABLE_RELATIVE_PATH).exists()
     assert PhenotypicAttr.TABLES not in read_phenotypic_attributes(store)
+    assert not aggregate_publication_marker_path(legacy_run).exists()
+
+
+@pytest.mark.parametrize("aggregate_outcome", ["raise", "none"])
+def test_migration_does_not_certify_stale_outputs_after_aggregate_failure(
+    legacy_headers_run: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    aggregate_outcome: str,
+) -> None:
+    """A failed or empty rebuild leaves no aggregate authority behind."""
+    first = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_headers_run)],
+    )
+    assert first.exit_code == 0, first.output
+    marker = aggregate_publication_marker_path(legacy_headers_run)
+    assert marker.is_file()
+
+    def fail_or_return_none(**_kwargs: object) -> None:
+        if aggregate_outcome == "raise":
+            raise RuntimeError("simulated aggregate failure")
+        return None
+
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_output_manager.aggregate_measurements",
+        fail_or_return_none,
+    )
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_headers_run)],
+    )
+
+    assert result.exit_code != 0
+    assert "aggregate publication failed" in result.output
+    assert not marker.exists(), (
+        "stale aggregate outputs retained fresh authority"
+    )

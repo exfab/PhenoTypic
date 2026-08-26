@@ -347,11 +347,18 @@ def add_metadata_image_name_from_filename(frame: pl.DataFrame) -> pl.DataFrame:
     image_name_col = str(IMAGE.IMAGE_NAME)
     if "filename" in frame.columns:
         filename_stem = pl.col("filename").str.extract(r"([^/\\]+)\.[^.]+$", 1)
-        is_individual_source = filename_stem != _DATASET_AGGREGATED_STEM
+        embedded_store_stem = pl.col("filename").str.extract(
+            r"([^/\\]+)\.ome\.zarr[/\\]tables[/\\]measurements[/\\]table\.parquet$",
+            1,
+        )
+        source_stem = pl.coalesce(embedded_store_stem, filename_stem)
+        is_individual_source = embedded_store_stem.is_not_null() | (
+            filename_stem != _DATASET_AGGREGATED_STEM
+        )
         if image_name_col not in frame.columns:
             frame = frame.with_columns(
                 pl.when(is_individual_source)
-                .then(filename_stem)
+                .then(source_stem)
                 .otherwise(None)
                 .alias(image_name_col)
             )
@@ -363,7 +370,7 @@ def add_metadata_image_name_from_filename(frame: pl.DataFrame) -> pl.DataFrame:
                     .cast(pl.String, strict=False)
                     .str.contains(_UUID_PATTERN)
                 )
-                .then(filename_stem)
+                .then(source_stem)
                 .otherwise(pl.col(image_name_col))
                 .alias(image_name_col)
             )

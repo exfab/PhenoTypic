@@ -6,6 +6,7 @@ publication, and progress-dashboard regeneration.
 
 from __future__ import annotations
 
+import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -583,3 +584,69 @@ class TestRegenerateMissingOverlays:
         assert sorted(store_stem(p) for _, p in submitted) == sorted(
             f"img{i}" for i in range(10)
         )
+
+
+def test_local_recompile_restores_deleted_overlay_marker_and_master(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A missing marker-bound overlay is repaired before table aggregation."""
+    import polars as pl
+
+    from phenotypic._cli._cli_completion import (
+        authorized_measurement_sources,
+        valid_image_success,
+    )
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_overlays_dir,
+        master_measurements_parquet_path,
+    )
+    from tests.unit.sdk_._migration_fixtures import (
+        DATASET,
+        run_stems,
+        run_work_id,
+    )
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stems = run_stems(output_dir)
+    tables = {
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+        for stem in stems
+    }
+    expected_rows = sum(pl.read_parquet(table).height for table in tables)
+    missing_stem = stems[0]
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{missing_stem}.png"
+    overlay.unlink()
+    assert not valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=missing_stem,
+        work_id=run_work_id(output_dir, missing_stem),
+    )
+
+    _handle_recompile(
+        output_dir,
+        metadata_csv=None,
+        include_dataset_column=True,
+        overlay_alpha=0.6,
+        n_jobs=1,
+        no_qc=True,
+    )
+
+    assert overlay.is_file()
+    assert valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=missing_stem,
+        work_id=run_work_id(output_dir, missing_stem),
+    )
+    authorized = authorized_measurement_sources(output_dir)
+    assert authorized is not None
+    assert set(authorized) == tables
+    master = pl.read_parquet(master_measurements_parquet_path(output_dir))
+    assert master.height == expected_rows
+    assert set(master[str(IMAGE.IMAGE_NAME)].unique()) == set(stems)

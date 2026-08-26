@@ -39,6 +39,7 @@ from phenotypic.sdk_ import (
     BundleLayout,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     STORE_SUFFIX,
+    aggregate_publication_marker_path,
     deliverables_dir,
     metadata_csv_deliverable_path,
     replace_embedded_measurement_table,
@@ -376,6 +377,10 @@ def run_migrate(
         MigrateModeError: Pass 1 is blocked.
     """
     output_dir = Path(output_dir)
+    if not dry_run:
+        # Invalidate prior aggregate authority before any migration mutation.
+        # A failed or empty rebuild must never re-certify stale deliverables.
+        aggregate_publication_marker_path(output_dir).unlink(missing_ok=True)
     headers_migrated, header_failures = run_metadata_pass(
         output_dir, dry_run=dry_run
     )
@@ -409,18 +414,29 @@ def run_migrate(
                 if path.is_dir()
             )
             snapshot = metadata_csv_deliverable_path(output_dir)
-            aggregate_measurements(
+            aggregate_path = aggregate_measurements(
                 output_dir,
                 datasets,
                 metadata_csv=snapshot if snapshot.is_file() else None,
                 no_qc=True,
             )
+            embedded_tables_exist = any(
+                (output_dir / "results").glob(
+                    "*/zarr/*.ome.zarr/tables/measurements/table.parquet"
+                )
+            )
+            if aggregate_path is None and embedded_tables_exist:
+                raise RuntimeError(
+                    "aggregate rebuild produced no measurements"
+                )
         except Exception as exc:
             table_failures = (
                 *table_failures,
                 (output_dir, f"aggregate publication failed: {exc}"),
             )
-        republish_aggregate(output_dir)
+        else:
+            if aggregate_path is not None:
+                republish_aggregate(output_dir)
         emit_canonical_metadata_view(output_dir)
         if delete_sources:
             from phenotypic.sdk_._hdf_to_zarr import _reclaim_sources

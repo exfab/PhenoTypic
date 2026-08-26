@@ -712,3 +712,226 @@ def test_finalizer_blocks_publication_on_unknown_failed_task(
 
     master.assert_not_called()
     post.assert_not_called()
+
+def test_slurm_recompile_schedules_table_bound_to_missing_overlay(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """Submit-time invalid overlay authority is recoverable array work."""
+    import shutil
+
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        TASK_MEASUREMENTS,
+        TASK_OVERLAY,
+        build_recompile_tasks,
+    )
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_overlays_dir,
+    )
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stems = run_stems(output_dir)
+    missing_stem = stems[0]
+    (
+        dataset_overlays_dir(output_dir, DATASET) / f"{missing_stem}.png"
+    ).unlink()
+
+    tasks = build_recompile_tasks(
+        output_dir,
+        [DATASET],
+        include_dataset_column=True,
+        overlay_alpha=0.3,
+        shard_size=1,
+    )
+
+    measurement_files = {
+        Path(path)
+        for task in tasks
+        if task["task_type"] == TASK_MEASUREMENTS
+        for path in task["files"]
+    }
+    assert measurement_files == {
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+        for stem in stems
+    }
+    overlay_task = next(
+        task
+        for task in tasks
+        if task["task_type"] == TASK_OVERLAY
+        and Path(str(task["store_path"])).name.startswith(missing_stem)
+    )
+    assert overlay_task["restore_marker_authority"] is True
+
+
+def test_slurm_overlay_worker_restores_marker_authority(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """A successful overlay repair republishes its complete image marker."""
+    import shutil
+
+    from phenotypic._cli._cli_completion import (
+        authorized_measurement_sources,
+        valid_image_success,
+    )
+    from phenotypic._cli._cli_recompile_worker import (
+        _restore_overlay_marker_authority,
+        _run_overlay_task,
+    )
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_overlays_dir,
+    )
+    from tests.unit.sdk_._migration_fixtures import (
+        DATASET,
+        run_stems,
+        run_work_id,
+    )
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
+    overlay.unlink()
+    generation = "overlay-authority"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
+    assert not valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+
+    overlay_task = {
+        "task_type": "overlay",
+        "dataset_name": DATASET,
+        "store_path": str(store),
+        "overlay_alpha": 0.6,
+        "restore_marker_authority": True,
+    }
+    result = _run_overlay_task(
+        output_dir,
+        overlay_task,
+        slurm_generation=generation,
+    )
+
+    assert result == {"status": "completed", "overlay_failed": False}
+    assert valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+    sources = authorized_measurement_sources(output_dir)
+    assert sources is not None
+    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    assert table in sources
+
+    # A concurrent measurement task can promote a different table after the
+    # overlay task's first refresh. The finalizer must re-fingerprint once all
+    # ordinary tasks are terminal.
+    frame = pl.read_parquet(table).with_columns(
+        pl.lit("changed").alias("Metadata_ReviewProbe")
+    )
+    frame.write_parquet(table)
+    assert not valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+    task_manifest = tmp_path / "recompile-task-manifest.json"
+    task_manifest.write_text(
+        json.dumps({"tasks": [overlay_task]}), encoding="utf-8"
+    )
+
+    _restore_overlay_marker_authority(output_dir, task_manifest)
+
+    assert valid_image_success(
+        output_dir,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=run_work_id(output_dir, stem),
+    )
+
+
+def test_measurement_worker_derives_embedded_image_names_from_store(
+    tmp_path: Path,
+) -> None:
+    """SLURM shards preserve the identity of each fixed-name embedded table."""
+    from phenotypic._cli._cli_recompile_worker import main
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+
+    output_dir = tmp_path / "out"
+    generation = "embedded-name-worker"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
+    tables = [
+        zarr_store_path(output_dir, "plate_a", stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+        for stem in ("img2", "img1")
+    ]
+    for value, table in zip((20, 10), tables, strict=True):
+        _write_parquet(table, [value])
+    manifest_path = (
+        progress_dir(output_dir)
+        / "recompile"
+        / "attempts"
+        / generation
+        / "task_manifest.json"
+    )
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "task_type": "measurements",
+                        "shard_id": 8,
+                        "files": [str(table) for table in tables],
+                        "include_dataset_column": True,
+                        "slurm_generation": generation,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with patch(
+        "phenotypic._cli._cli_recompile_tables.recompile_embedded_measurement_table"
+    ):
+        result = CliRunner().invoke(
+            main,
+            [
+                "--output-dir",
+                str(output_dir),
+                "--task-manifest",
+                str(manifest_path),
+                "--task-index",
+                "0",
+                "--slurm-generation",
+                generation,
+                "--attempt-id",
+                generation,
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    shard = pl.read_parquet(
+        manifest_path.parent / "measurement_shards" / "shard_8.parquet"
+    )
+    assert shard.sort("Size_Area")[str(IMAGE.IMAGE_NAME)].to_list() == [
+        "img1",
+        "img2",
+    ]
