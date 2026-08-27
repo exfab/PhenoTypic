@@ -9,13 +9,22 @@ _ASSET = (
 )
 
 
-def test_single_and_popout_viewers_have_independent_reused_handles() -> None:
+def test_single_viewer_uses_a_reused_named_handle() -> None:
+    """Browse keeps ONE named OSD handle, reused rather than re-created.
+
+    The popout half of this test went with the Timeline: ``ns.popoutViewer``
+    and ``destroyViewer("popout")`` existed only for the Timeline pop-out
+    modal, whose consumer was deleted in phase 2. Leaving those assertions
+    would have pinned ~190 lines of dead code in place, and the next person
+    to delete it would have "fixed" the test by restoring the code.
+
+    ``ns.viewer`` stays asserted-absent: it is the pre-refactor unnamed
+    handle, and its return would be a real regression.
+    """
     script = _ASSET.read_text(encoding="utf-8")
 
     assert "ns.singleViewer" in script
-    assert "ns.popoutViewer" in script
-    assert 'viewer.open(url)' in script
-    assert 'destroyViewer("popout")' in script
+    assert "viewer.open(url)" in script
     assert "ns.viewer" not in script
 
 
