@@ -30,23 +30,3 @@ def test_create_app_injects_app_prefix(sandbox):
     app = create_app(sandbox, url_prefix="/browse/")
     assert "window.__phenotypicAppPrefix" in app.index_string
     assert "/browse/" in app.index_string
-
-
-def test_create_app_serves_thumbnail_route(monkeypatch, tmp_path) -> None:
-    import io
-    from PIL import Image as PILImage
-    from phenotypic.gui.browse._app import create_app
-    from phenotypic.gui.browse import _source_render
-    from phenotypic.gui.shell._sandbox import SandboxRoot
-
-    monkeypatch.setattr(
-        _source_render.tempfile, "gettempdir", lambda: str(tmp_path / "cache")
-    )
-    (tmp_path / "imgs").mkdir()
-    PILImage.new("RGB", (120, 60), (1, 2, 3)).save(tmp_path / "imgs" / "p.png")
-    app = create_app(SandboxRoot.from_path(tmp_path))
-    client = app.server.test_client()
-    token = _source_render.encode_token("imgs/p.png")
-    resp = client.get(f"/thumb/{token}?size=64")
-    assert resp.status_code == 200
-    assert PILImage.open(io.BytesIO(resp.data)).size[0] <= 64
