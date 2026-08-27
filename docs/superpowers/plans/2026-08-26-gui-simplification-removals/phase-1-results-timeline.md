@@ -129,7 +129,8 @@ deletion.
 
 `browse/_assets/timeline.js` is a **separate vendored copy** guarded by a CI
 byte-equality check between the two. Deleting only the results-viewer copy here is
-correct and intentional; phase 2 deletes the browse copy, and phase 3 removes the guard.
+correct and intentional; phase 2 deletes the browse copy, and the guard dies with this
+task (see step 2).
 
 ```bash
 uv run grep -rn "timeline.js" .github/ scripts/ tests/ | head

@@ -279,7 +279,7 @@ label-path rule forbids, reappearing one layer down**. Task 3.1's own test
 **Fix:** derive the readable set per store from `series` + `labels`, or invert to a
 deny-list on `tables/`.
 
-### FLOW-9 [High] [open] — verified
+### FLOW-9 [High] [resolved (round 1: three proof tests named and run in both plans)] — verified
 The curation gate names the wrong file. All 15 tests in `test_colony_callbacks_helpers.py`
 drive pure `_triage_callbacks` helpers against hand-built `ctx.triggered` dicts; nothing
 asserts a radial exists on a tile or that anything reaches disk — so it would pass unmodified

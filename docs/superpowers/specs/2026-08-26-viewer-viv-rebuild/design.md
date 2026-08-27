@@ -18,7 +18,7 @@ range requests, so the server-side tiling step is **deleted**, not optimized.
 |---|---|---|
 | Plate | `_load_hdf_layer_rgb` reads the whole layer → PNG → `_dzi_tiler` writes DZI into `.viewer_cache/` → OpenSeadragon | Viv/deck.gl reads pyramid levels from the store; server serves bytes |
 | Colony tiles | decode the entire `deliverables/overlays/<ds>/<stem>.png`, LRU it, slice 64² crops | level-0 chunk read per crop |
-| Builder preview | HDF layer → PNG → `_dzi_tiler` → DZI | cycle 3; see §7 |
+| Builder preview | per-node `.ome.zarr` → PNG → `_dzi_tiler` → DZI | Viv over `/preview-zarr/…`; see §7 |
 | **Browse** | libvips → DZI → `BrowseCache` → OSD | **unchanged** |
 
 Browse is the deliberate survivor: it reads arbitrary source images with no run behind
@@ -37,9 +37,9 @@ rev 2). Each is recorded with what it costs, so a later reader is not re-derivin
 | C1 | Codec | **Keep zstd, ship the wasm codec** | §5 |
 | C2 | Chunk size | **Keep 1024², unmeasured** | §5.2 — accepted risk, not a verified choice |
 | D | Colony grid | **D3 then D1** — re-source the DOM grid, then deck.gl views | §6 |
-| E | Builder preview | **Ephemeral store** | §7, cycle 3 |
+| E | Builder preview | **Ephemeral store — landed; render swap in scope** | §7 |
 | — | Curation | **Retained on Colony** | superseded read-only; see removals spec §5 |
-| — | Scope | **Three spec→plan cycles** | this is cycle 2 |
+| — | Scope | **Two spec→plan cycles** | cycle 3 folded in as phase 6, 2026-08-26 |
 | — | Governance | **May amend the backend spec, on evidence** | §5.2 |
 
 ## 1. Dependencies on the backend contract
@@ -199,7 +199,7 @@ promote protocol writes last:
 | `_tile_routes.py:471` | `file_fingerprint()` raises `IsADirectoryError` on a store — use `paths_fingerprint()` |
 | `_tile_routes.py:469, :477` | `stat().st_mtime_ns` compare + `os.utime` retarget to the root `zarr.json` |
 | `_shared/tiles.py:518` | mtime-keyed crop path |
-| `builder/_preview_tiles.py:76` | same compare (cycle 3) |
+| `builder/_preview_tiles.py:78-87` | already fixed on the store branch |
 
 The production tile route keys on a **content fingerprint**; only the crop path uses
 mtime. Both need fixing, for different reasons.

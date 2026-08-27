@@ -1,7 +1,7 @@
 # Phase 2 — Browse Timeline mode: delete
 
 **Spec:** §1.1, §1.2, §1.3, §6. **Depends on:** nothing (phase 1 touched a different
-sub-app). **Blocks:** phase 3.
+sub-app). **Blocks:** nothing.
 
 **Deliverable:** the Browse tab has no view-mode toggle and no timeline body, **and the
 shared timeline engine is gone** — this phase kills the second and last of its two
@@ -10,7 +10,7 @@ consumers, so it takes the engine with it (tasks 2.5-2.6).
 The Browse tab has no view-mode toggle and no timeline body. Single mode
 is the whole tab, with **behaviour unchanged**. The four timeline-only browse helpers and
 the browse copy of `timeline.js` / `timeline.css` are gone. `_shared/timeline/` still
-exists — phase 3 removes it.
+exists until tasks 2.5-2.6, which are the last two tasks of THIS phase.
 
 > **The asymmetry to hold on to:** phase 1 removed a tab from a tab bar. This phase removes
 > a *mode* from a two-mode tab, which means the surviving mode stops being conditional.
