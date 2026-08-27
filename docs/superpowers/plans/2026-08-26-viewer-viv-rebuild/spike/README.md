@@ -276,6 +276,47 @@ zarrita probes the Zarr **v2** metadata names before giving up, so a normal open
 first open of `rgb`; 3 on a warm one. Harmless, but the byte route must answer them
 cheaply and the browser console will show them. Not a defect to chase.
 
+### FINDING — Dash loads `viv_viewer.js` BEFORE `viv/viv-bundle.min.js`; task 2.3's façade must not snapshot the global
+
+`_assets/` is walked with `for current, _, files in sorted(os.walk(walk_dir))`, so every
+**root-level** asset is appended before any **subdirectory** asset. Measured by rendering
+a real Dash index against the committed layout:
+
+```text
+/assets/results_viewer.js
+/assets/viv_viewer.js                      <- the façade, FIRST
+/assets/openseadragon/openseadragon.min.js
+/assets/viv/viv-bundle.min.js              <- the bundle, LAST
+```
+
+Plan phase 2 task 2.3's façade snippet opens with `const bundle = window.__vivBundle;`
+at IIFE top level. At that moment the bundle has not executed, so `bundle` is
+`undefined`, and every method fails on a property access rather than on anything
+diagnosable. Nothing in the plan catches this — the ordering is a property of Dash's
+asset walk, not of either file.
+
+**Recommended fix, one line, keeps the committed artifact path:** resolve the global
+lazily inside `ready` (and therefore inside every method, which already awaits it)
+instead of snapshotting it at module scope:
+
+```javascript
+const ready = (async () => {
+  const bundle = window.__vivBundle;   // resolved at await time, not at load time
+  if (!bundle) throw new Error("viv: bundle asset did not load");
+  bundle.zarr.registry.set("zstd", () => bundle.numcodecs.Zstd);
+  return bundle;
+})();
+```
+
+Each method then does `const bundle = await ready;`. The alternatives — renaming the
+artifact so it sorts first at root level, or `assets_ignore` plus an explicit
+`external_scripts` order — both fight the plan's pinned path for no gain.
+
+Note the same walk order means the **2.5 MiB bundle loads on every results-viewer page**,
+including ones with no Viv surface, exactly as `openseadragon.min.js` already does. Phase 3
+should decide whether that is accepted (localhost / SSH tunnel, per the plan's recorded
+cost) or whether both get deferred loading.
+
 ## §5.2 chunk-size decision — pending
 
 Needs a cold-pan measurement over a real SSH tunnel at 1024² and 512². The governance is
