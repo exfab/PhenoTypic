@@ -116,6 +116,63 @@ _STACK_TAB_OFFSET = 14
 #: ``radial-badge--custom`` discriminator (decision D).
 _CORE_CATEGORY_TOKENS: frozenset[str] = frozenset(ErrorCategory.labels())
 
+#: Cells mounted at once. **MEASURED, not chosen** — the D1 render is one
+#: deck.gl view per colony and deck.gl re-renders every view each frame, so
+#: the number came from a prototype grid before any code depended on it.
+#: The measurement, the full frame-time table, and the reasoning behind this
+#: value live in
+#: ``docs/superpowers/plans/2026-08-26-viewer-viv-rebuild/spike/README.md``;
+#: ``docs/superpowers/logic_validation_scripts/2026-08-26-viewer-viv-rebuild/
+#: colony_view_budget.py`` carries it beside the frame time it was chosen
+#: at, and refuses to run without both.
+#:
+#: This caps MOUNTED CELLS. It is not the texture-memory bound — cells are
+#: viewports onto the same store, so the resident tile set is their UNION and
+#: is driven by the number of distinct STORES in the grid, not the cell
+#: count. That bound is derived in the facade (``gridTileCacheBytes``).
+COLONY_VIEW_CELL_CAP = 128
+
+
+def plan_visible_cells(
+    cells: list[Any], focus_index: int = 0
+) -> list[Any]:
+    """Return the contiguous window of ``cells`` to mount.
+
+    Above :data:`COLONY_VIEW_CELL_CAP` the grid virtualizes: a window of at
+    most ``COLONY_VIEW_CELL_CAP`` cells around ``focus_index`` is mounted and
+    the rest render as sized placeholders, keeping the grid's geometry (and
+    therefore its scroll extent and axis alignment) intact.
+
+    The window is contiguous and clamped to the ends rather than centred
+    unconditionally, so scrolling to either edge still mounts a full cap's
+    worth of cells instead of half of one.
+
+    Args:
+        cells: Cells in the grid's own reading order (Y outer, X inner).
+        focus_index: Index into ``cells`` that must be mounted — the cell
+            the user is looking at. Clamped into range.
+
+    Returns:
+        The sub-list of ``cells`` to mount, in the same order. The same
+        objects, not copies.
+
+    Examples:
+        >>> cells = [{"id": i} for i in range(COLONY_VIEW_CELL_CAP * 2)]
+        >>> len(plan_visible_cells(cells)) == COLONY_VIEW_CELL_CAP
+        True
+        >>> len(plan_visible_cells(cells[:8]))
+        8
+    """
+    total = len(cells)
+    if total <= COLONY_VIEW_CELL_CAP:
+        return list(cells)
+    focus = min(max(int(focus_index), 0), total - 1)
+    start = min(
+        max(focus - COLONY_VIEW_CELL_CAP // 2, 0),
+        total - COLONY_VIEW_CELL_CAP,
+    )
+    return list(cells[start : start + COLONY_VIEW_CELL_CAP])
+
 
 # ---------------------------------------------------------------------------
 # Column introspection
@@ -610,6 +667,7 @@ def build_grid(
     category_of: dict[tuple[str, int], str] | None = None,
     layer: str = "rgb",
     mutations_disabled: bool = False,
+    focus_index: int = 0,
 ) -> tuple[Component, list[tuple[str, int]]]:
     """Render the colony-grid component and its row-major key order.
 
@@ -662,6 +720,10 @@ def build_grid(
             onto every crop URL as ``&layer=`` (read from the active-layer
             store). ``"rgb"`` (default) sources the finished plate; the crop
             route ignores it on the overlay fallback (standalone bundle).
+        focus_index: Index, into the row-major populated-cell order, of the
+            cell the user is looking at. Only matters above
+            :data:`COLONY_VIEW_CELL_CAP`, where it anchors the mounted
+            window; below the cap every cell mounts.
 
     Returns:
         A tuple ``(component, grid_order)``. ``grid_order`` is the
@@ -669,6 +731,12 @@ def build_grid(
         keys (Y-axis outer, X-axis inner) in the same iteration order as
         the rendered cells. Consumed by the selection-range callback to
         resolve shift+click slices.
+
+        ``grid_order`` covers **every** populated cell, including ones
+        virtualized out of the mount. A shift+click range that spans a
+        virtualized cell still selects it, and bulk-mark still reaches it —
+        virtualization is a rendering budget, not a change to what the
+        grid contains.
     """
     if display_size is None:
         display_size = max_size
@@ -735,6 +803,21 @@ def build_grid(
             "members": members,
         }
 
+    # Decide which cells MOUNT before rendering any of them. deck.gl
+    # re-renders every view each frame, and the per-cell chrome each mounted
+    # tile carries (crop <img>, radial trigger, checkbox, stack popover) is
+    # not free either — so above the measured cap the grid keeps its
+    # geometry and drops the contents of the cells outside the window.
+    populated_order = [
+        (y_value, x_value)
+        for y_value in y_values
+        for x_value in x_values
+        if cell_index.get((x_value, y_value)) is not None
+    ]
+    mounted_cells = set(
+        plan_visible_cells(populated_order, focus_index=focus_index)
+    )
+
     # Build the grid, walking Y outer / X inner so the row-major key list
     # mirrors the visible reading order (left-to-right within a row).
     children: list[Component] = []
@@ -767,6 +850,27 @@ def build_grid(
                             "width": f"{display_size}px",
                             "height": f"{display_size + _STACK_TAB_OFFSET}px",
                             "background": "rgba(0,54,96,0.03)",
+                            "borderRadius": "4px",
+                        },
+                    )
+                )
+                continue
+            if (y_value, x_value) not in mounted_cells:
+                # Virtualized out. Its key still enters ``grid_order`` above
+                # the placeholder, so range selection and bulk-mark reach it;
+                # it simply has no tile, and therefore no radial — a radial
+                # missing from a MOUNTED cell would be a curation regression,
+                # one on a cell with no tile would be chrome over nothing.
+                grid_order.append(
+                    (str(entry["image_file"]), int(entry["label"]))  # type: ignore[call-overload]
+                )
+                children.append(
+                    html.Div(
+                        className="colony-cell colony-cell--virtualized",
+                        style={
+                            "width": f"{display_size}px",
+                            "height": f"{display_size + _STACK_TAB_OFFSET}px",
+                            "background": "rgba(0,54,96,0.06)",
                             "borderRadius": "4px",
                         },
                     )
@@ -842,6 +946,8 @@ __all__ = [
     "selectable_axis_columns",
     "compute_max_bbox_size",
     "build_grid",
+    "COLONY_VIEW_CELL_CAP",
+    "plan_visible_cells",
     # Re-exported from :mod:`phenotypic.gui._shared.tiles` so colony-view
     # callers keep their historical import path.
     "expand_range",
