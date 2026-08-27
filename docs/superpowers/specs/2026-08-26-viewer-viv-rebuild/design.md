@@ -86,9 +86,21 @@ against an unlanded backend.
 > **Consequence:** between Stage 1 and Stage 3 the in-store `labels/objmap` is **zeros**.
 > The mid-run-objmap benefit is not available, and the Layers panel must not present a
 > zeros objmap as a fault — an empty segmentation is the correct rendering of a correct
-> store. A store mid-run additionally has no `tables/` group, and the absence of
-> `attributes.phenotypic.tables.measurements` is the reliable discriminator between "not
-> yet measured" and "measured, found nothing" (`_image_io_handler.py:1143-1167`).
+> store.
+>
+> **Retracted 2026-08-27 — the `tables` discriminator was wrong.** This section previously
+> claimed the absence of `attributes.phenotypic.tables.measurements` was "the reliable
+> discriminator" between "not yet measured" and "measured, found nothing", and the Layers
+> panel captioned the objmap **"measurement pending"** on that basis. It is not reliable: a
+> `--mode process` run never measures, a store written before embedded tables has none, and
+> a migrated store may carry none either — so a **complete** output was captioned as waiting
+> for something that will never arrive.
+>
+> The error was asking a **run-state** question of a **store** attribute. A store cannot know
+> whether a run is in flight; that lives in `.phenotypic/progress/`. There is **no sound
+> store-only discriminator**, so the viewer no longer claims one: the objmap row reads
+> "label image" unconditionally. The `measured` key, the caption, its tests and its
+> `FEATURES.md` row are removed.
 >
 > Backend spec `2026-08-18` §3.4 carries the same stale claim. It belongs to the parent
 > branch (`worktree-ome-zarr-image-store`) and is **not** edited from here; this note is the
@@ -103,7 +115,7 @@ Stated separately so the unverified claims cannot quietly become facts.
 | zarrita.js reads Zarr v3 **with ZEP2 sharding**, in-browser, zero deps | **verified** | zarrita.dev; `manzt/zarrita.js` |
 | Viv and vizarr are **MIT**, compatible with Apache-2.0 | **verified** | `hms-dbmi/viv`, `BioNGFF/vizarr` |
 | **zstd** needs the `numcodecs.js` wasm codec registered via `zarr.registry.set()` before first read — not in zarrita's built-in registry | **verified, conditional** | numcodecs.js; see §5.1 |
-| vizarr resolves *our* `bioformats2raw.layout` series list and label child without patching | **UNVERIFIED** | §2.1 |
+| vizarr resolves *our* `bioformats2raw.layout` series list and label child without patching | **ANSWERED 2026-08-27: NO** | §2.1 |
 | 1024² chunks pan acceptably over an SSH tunnel | **UNVERIFIED, accepted** | §5.2 |
 
 ### 2.1 Required spike, before implementation
@@ -118,6 +130,24 @@ Build one store with the real writer and open it with an unmodified vizarr/Viv:
 Failure on (1) or (2) is not fatal — it moves work from "configure Viv" to "adapt Viv",
 which decision A already permits — but it changes the estimate, so it is answered before
 the plan is written, not during it.
+
+> **ANSWERED 2026-08-27, against the committed bundle.** Full evidence in the plan's
+> [`spike/README.md`](../../plans/2026-08-26-viewer-viv-rebuild/spike/README.md).
+>
+> | | |
+> |---|---|
+> | **Q1 series list** | **NO.** `loadOmeZarr(<store root>)` fails `Node not found: v2 array`. `loadMultiscales` reads `attributes.ome.multiscales` and falls back to `paths = ["0"]`; **nothing in `@vivjs/loaders` reads `OME/zarr.json` at all.** Handed a resolved series it works unpatched: `levels 4, shape [3,3000,4000], tileSize 1024`. |
+> | **Q2 label child** | **NO.** Viv reads neither `ome.labels` nor `phenotypic.labels`. Handed the resolved path, `loadOmeZarr(<root>/rgb/labels/objmap)` loads as its own multiscale source. |
+> | **Q3 `"."` separator** | **YES.** `rgb/0/c.0.0.0` (3-D), `gray/0/c.0.0` (2-D). |
+> | **Q4 wasm zstd** | **YES, pixel-exact**, and the negative control passes — deleting the codec makes the read **throw**, not return `fill_value` zeros. |
+>
+> **The adaptation is small and lives outside Viv:** resolve the series list and label path
+> server-side and hand `loadOmeZarr` a per-series URL. That is the resolver §1's rule already
+> requires us to own, so it adds a function, not a fork.
+>
+> **The upside is better than this spec hoped.** Because Viv resolves *nothing* by
+> convention, there is no `rgb/labels/objmap` convention to fight — a `gray`-primary store
+> works for free, and the hazard §1.1 was written to guard against cannot arise.
 
 ## 3. Decision A — packaging (`tools/viv-bundle/`)
 
@@ -255,6 +285,9 @@ posture rather than the current card-plus-sidebar one.
   `objmap` tagged as a **label image**, each with visibility, opacity, and a swatch.
   It reads the series list from the store, never a hard-coded set (backend §1.1).
 - A navigator inset carries over OpenSeadragon's one genuinely missed affordance.
+  **Not built (2026-08-27).** Phase 3's own cut order ranked it first out, and it was cut.
+  Filed as a `🔭 planned` row in `FEATURES.md` rather than dropped silently, so the gap
+  reads as a decision. The other four pieces shipped.
 - A **pyramid readout** names the level actually being served
   (`level 1 of 4 · 2048×1536 · zstd · 1024² chunks`). This is instrumentation, not
   decoration: it is the pyramid the old DZI path rebuilt from scratch every time, and it
