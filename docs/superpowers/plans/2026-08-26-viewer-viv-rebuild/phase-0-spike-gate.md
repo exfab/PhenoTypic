@@ -134,7 +134,6 @@ git commit -m "docs(viv): record the spike gate findings"
 ### Task 0.3: Measure the chunk-size risk (§5.2)
 
 **Files:**
-- Create: `docs/superpowers/logic_validation_scripts/2026-08-26-viewer-viv-rebuild/tile_fetch_budget.py`
 - Modify: `spike/README.md`
 
 **Interfaces:**
@@ -147,69 +146,29 @@ git commit -m "docs(viv): record the spike gate findings"
 > moving to 512² is a pure §1.4 amendment with **no GUI rework**, because the client reads
 > whatever `phenotypic.pyramid` describes.
 
-- [ ] **Step 1: Write the logic-validation script**
+- [ ] **Step 1: Record the per-tile arithmetic — no script**
 
-Per root `CLAUDE.md`: stdlib + numpy/scipy only, never imports `phenotypic`, exits non-zero
-on failure, committed beside the spec's topic folder.
+> An earlier draft committed `tile_fetch_budget.py` here. **Dropped** (user ruling,
+> 2026-08-26): it recomputed constants defined at the top of its own file, so its assertion
+> could only fail if someone edited those constants, and it exited 0 regardless — it gated
+> nothing. CLAUDE.md mandates a logic-validation script for "a numeric invariant a reader
+> would otherwise take on faith"; `1024 × 1024 × 3` is not one. Contrast
+> `logic_validation_scripts/2026-08-18-ome-zarr-image-store/ngff_store_geometry.py`, which
+> re-derives pyramid level counts and shard divisibility and has already **refuted three
+> claims** — that is what the rule is for.
 
-```python
-"""Re-derive the per-tile byte budget for the Viv plate surface.
+Write into `spike/README.md`:
 
-Claim under test (viewer-viv-rebuild spec section 5.2): a deck.gl tile fetch
-pulls a whole inner chunk, so at (1, 1024, 1024) uint8 RGB a single tile costs
-roughly 3 MB, and a viewport filled with such tiles costs N times that.
-
-Exits non-zero if the derived figures contradict the spec's stated numbers.
-"""
-
-import sys
-
-import numpy as np
-
-CHUNK = (1, 1024, 1024)
-CHANNELS = 3
-DTYPE_BYTES = 1
-
-
-def bytes_per_tile(chunk=CHUNK, channels=CHANNELS, itemsize=DTYPE_BYTES) -> int:
-    """Bytes pulled for one tile: the inner chunk across every channel."""
-    return int(np.prod(chunk)) * channels * itemsize
-
-
-def tiles_for_viewport(viewport_px, chunk_px) -> int:
-    """Tiles intersecting a viewport, counting partials as whole fetches."""
-    w, h = viewport_px
-    return int(np.ceil(w / chunk_px)) * int(np.ceil(h / chunk_px))
-
-
-def main() -> int:
-    per_tile = bytes_per_tile()
-    if not (2.9e6 <= per_tile <= 3.2e6):
-        print(f"REFUTED: per-tile bytes {per_tile} is not the spec's ~3 MB")
-        return 1
-    print(f"per tile: {per_tile / 1e6:.2f} MB")
-
-    for viewport in ((1920, 1080), (2560, 1440)):
-        for chunk_px in (1024, 512):
-            n = tiles_for_viewport(viewport, chunk_px)
-            total = n * bytes_per_tile((1, chunk_px, chunk_px))
-            print(
-                f"viewport {viewport[0]}x{viewport[1]} @ {chunk_px}^2: "
-                f"{n} tiles, {total / 1e6:.2f} MB"
-            )
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+```text
+A deck.gl tile fetch pulls a whole inner chunk.
+  1024^2 x 3 channels x 1 byte = 3,145,728 B  ~= 3.0 MB per tile
+  512^2  x 3 x 1               =   786,432 B  ~= 0.79 MB per tile
+A 1920x1080 viewport at 1024^2 intersects ceil(1920/1024) x ceil(1080/1024)
+  = 2 x 2 = 4 tiles  -> ~12 MB cold
+                at 512^2: 4 x 3 = 12 tiles -> ~9.4 MB cold
 ```
 
-- [ ] **Step 2: Run it**
-
-```bash
-uv run python docs/superpowers/logic_validation_scripts/2026-08-26-viewer-viv-rebuild/tile_fetch_budget.py
-```
-Expected: exit 0, with a table of per-viewport totals at both chunk sizes.
+The arithmetic is not the risk. **The latency is**, and only step 3 measures it.
 
 - [ ] **Step 3: Measure the real thing over a tunnel**
 
@@ -240,8 +199,7 @@ assertion.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/superpowers/logic_validation_scripts/2026-08-26-viewer-viv-rebuild/ \
-        docs/superpowers/plans/2026-08-26-viewer-viv-rebuild/spike/
+git add docs/superpowers/plans/2026-08-26-viewer-viv-rebuild/spike/
 git commit -m "docs(viv): measure the per-tile fetch budget and settle chunk size"
 ```
 

@@ -8,6 +8,20 @@
 their e2e tests are skip-marked. **`colony_view/` is not touched**, so the curation radial
 survives.
 
+> **`_error_tab/` is a CLI dependency, not only a GUI tab.**
+> `_cli/_cli_error_outputs.py:84` imports `capture_error_source_fingerprints`,
+> `compute_all_category_analysis` and `publish_error_analysis` from
+> `results_viewer/_error_tab/_publication.py`, **on every finalize**. The spec says
+> `_error_tab/` "stays on disk" but never says it *must*. An executor reading "unmount
+> Error" as licence to delete the package breaks CLI finalization, and **no GUI test catches
+> it** — the failure surfaces in a CLI run, in a different subsystem from the one being
+> edited. The same caution applies less sharply to `_qc_tab/` and `_heatmap_tab/`; grep
+> before removing anything:
+>
+> ```bash
+> uv run grep -rn "_error_tab\|_qc_tab\|_heatmap_tab" src/phenotypic/_cli/ src/phenotypic/analysis/
+> ```
+
 > **The correction this phase encodes (spec §5).** An earlier draft had the viewer go
 > read-only on the premise that unmounting QC and Error takes the curation radial with
 > them. That premise is false: the radial is mounted on **Colony** as well —

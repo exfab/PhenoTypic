@@ -1,218 +1,41 @@
-# Phase 1 — The byte route
+# Phase 1 — The byte route and the shared resolver
 
-**Spec:** §4, §4.1. **Depends on:** phase 0. **Blocks:** phases 2-4.
+**Spec:** §4, §4.0, §4.1. **Depends on:** phase 0. **Blocks:** phases 2-4, 6.
 
-**Deliverable:** `GET /zarr/<dataset>/<stem>.ome.zarr/<path...>` on the results viewer's
-blueprint, serving raw store bytes with **HTTP Range**, guarded per path segment, and
-restricted to the pixel groups the client needs. The server does no decode; per-request
-memory is a sendfile buffer.
+**Deliverable:** one `resolve_within_root` in `gui/_shared/tiles.py`, and
+`GET /zarr/<dataset>/<stem>.ome.zarr/<token>/<path...>` on the results viewer's blueprint —
+raw store bytes with **HTTP Range**, a per-store readable-root restriction enforced on the
+**resolved** path, and a generation token that makes a torn read across a promote
+structurally impossible.
 
 > **Why Range is load-bearing, not a nicety.** A sharded read is a shard-index fetch
 > followed by a byte-range fetch into the shard. Without `conditional=True` the client
-> pulls whole shards — up to 96 MB for `rgb` — for every 1024² tile. This is the single
-> flag the phase exists to get right.
+> pulls whole shards — up to 96 MB — for every 1024² tile. This is the single flag the
+> phase exists to get right.
+
+> **Write the resolver once.** Phase 6 needs the same logic for the builder preview. A
+> path-escape guard is a security primitive and spec §9.1 makes correctness binding; two
+> copies drift **silently**, because each phase would test only its own copy. The two
+> *routes* stay separate — they have genuinely different resolution and guard regimes
+> (`OutputRoot.store_path` here, a session shape-check there) — but those regimes live
+> outside the resolver.
 
 ---
 
-### Task 1.1: Serve bytes with Range
+### Task 1.1: The shared resolver
 
 **Files:**
-- Create: `src/phenotypic/gui/results_viewer/_zarr_routes.py`
-- Modify: `src/phenotypic/gui/results_viewer/_app.py` (register the blueprint)
-- Test: `tests/unit/gui/results_viewer/test_zarr_routes.py` (create)
+- Modify: `src/phenotypic/gui/_shared/tiles.py`
+- Test: `tests/unit/gui/shared/test_resolve_within_root.py` (create)
 
 **Interfaces:**
-- Consumes: `OutputRoot.store_path(dataset, stem)` (already exists — confirm its exact name
-  with `uv run grep -n "def store_path" src/phenotypic/gui/results_viewer/_output_root.py`),
-  `phenotypic.gui._shared.tiles.is_safe_path_component`.
-- Produces: `register_zarr_routes(app, output_root) -> None`, and the URL builder
-  `zarr_store_url(url_prefix, dataset, stem) -> str` that phase 2's façade calls.
+- Consumes: `is_safe_path_component` (`tiles.py:755`).
+- Produces: `resolve_within_root(root: Path, tail: str, *, allowed_roots: frozenset[str] | None = None) -> Path`,
+  raising `werkzeug.exceptions.BadRequest` / `NotFound`. Phase 6 task 6.1 calls it too.
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: The guard is already verified — do not re-derive it**
 
-```python
-"""The zarr byte route serves store bytes with HTTP Range.
-
-Three properties, in descending order of how quietly they fail:
-Range (silently pulls whole shards), traversal (silently serves the tree),
-and 404 (loudly wrong, therefore least dangerous).
-"""
-
-import pytest
-
-
-def test_serves_the_root_zarr_json(zarr_route_client, spike_store):
-    resp = zarr_route_client.get("/zarr/ds/plate.ome.zarr/zarr.json")
-    assert resp.status_code == 200
-    assert resp.json["attributes"]["phenotypic"]["store_schema_version"]
-
-
-def test_honours_a_range_request(zarr_route_client, spike_store):
-    resp = zarr_route_client.get(
-        "/zarr/ds/plate.ome.zarr/rgb/0/c.0.0.0",
-        headers={"Range": "bytes=0-15"},
-    )
-    assert resp.status_code == 206
-    assert len(resp.data) == 16
-    assert resp.headers["Accept-Ranges"] == "bytes"
-
-
-def test_missing_chunk_is_404_not_500(zarr_route_client, spike_store):
-    resp = zarr_route_client.get("/zarr/ds/plate.ome.zarr/rgb/0/c.99.99.99")
-    assert resp.status_code == 404
-
-
-@pytest.mark.parametrize(
-    "tail",
-    [
-        "../../../../etc/passwd",
-        "rgb/../../../../etc/passwd",
-        "rgb/0/%2e%2e%2f%2e%2e%2fetc%2fpasswd",
-        "rgb/./../../zarr.json",
-    ],
-)
-def test_rejects_traversal_in_any_segment(zarr_route_client, spike_store, tail):
-    resp = zarr_route_client.get(f"/zarr/ds/plate.ome.zarr/{tail}")
-    assert resp.status_code in (400, 404)
-```
-
-Build `spike_store` by calling the real writer, as in phase 0 task 0.1 — a hand-built
-fixture would not exercise the `"."` chunk keys.
-
-- [ ] **Step 2: Run and watch them fail**
-
-```bash
-QT_QPA_PLATFORM=offscreen uv run pytest \
-  tests/unit/gui/results_viewer/test_zarr_routes.py -v
-```
-Expected: all fail with 404 (no route registered).
-
-- [ ] **Step 3: Implement the route**
-
-```python
-"""Serve raw OME-Zarr store bytes to the browser, with HTTP Range.
-
-The client (Viv/zarrita) reads chunks directly, so this route decodes
-nothing: it resolves a path inside one per-image store and hands the file to
-``send_file(..., conditional=True)``. ``conditional=True`` is what provides
-Range, which sharding requires -- a sharded read is a shard-index fetch
-followed by a byte-range fetch into the shard, so without it every tile pulls
-a whole shard.
-"""
-
-from __future__ import annotations
-
-from pathlib import Path
-
-import dash
-from flask import Blueprint, abort, send_file
-
-from phenotypic.gui._shared.tiles import is_safe_path_component
-
-#: Groups inside a store the browser may read. Everything else -- notably the
-#: embedded ``tables/measurements/table.parquet`` -- is out of scope for a
-#: pixel route and is not exposed.
-_READABLE_ROOTS: frozenset[str] = frozenset({"OME", "rgb", "gray", "detect_mat"})
-
-#: Files at the store root the client needs to bootstrap.
-_READABLE_ROOT_FILES: frozenset[str] = frozenset({"zarr.json"})
-
-
-def _resolve_within_store(store: Path, tail: str) -> Path:
-    """Resolve ``tail`` inside ``store``, or abort.
-
-    Guards **per segment**, not once over the whole tail: the traversal
-    surface here is wider than the DZI route's because the tail is arbitrary
-    depth inside a store.
-    """
-    segments = [s for s in tail.split("/") if s]
-    if not segments:
-        abort(404)
-    for segment in segments:
-        if not is_safe_path_component(segment):
-            abort(400)
-    head = segments[0]
-    if head not in _READABLE_ROOTS and not (
-        len(segments) == 1 and head in _READABLE_ROOT_FILES
-    ):
-        abort(404)
-
-    candidate = store.joinpath(*segments)
-    try:
-        resolved = candidate.resolve(strict=True)
-    except (OSError, RuntimeError):
-        abort(404)
-    # Belt and braces: even with per-segment guards, a symlink inside the
-    # store could escape it. Resolve both sides and compare.
-    if not resolved.is_relative_to(store.resolve(strict=True)):
-        abort(400)
-    if not resolved.is_file():
-        abort(404)
-    return resolved
-```
-
-Then the blueprint:
-
-```python
-def register_zarr_routes(app: dash.Dash, output_root) -> None:
-    """Mount ``/zarr/<dataset>/<stem>.ome.zarr/<path...>`` on ``app``."""
-    bp = Blueprint("zarr_bytes", __name__, url_prefix="/zarr")
-
-    @bp.route("/<dataset>/<stem>.ome.zarr/<path:tail>")
-    def store_bytes(dataset: str, stem: str, tail: str):
-        if not is_safe_path_component(dataset) or not is_safe_path_component(stem):
-            abort(400)
-        store = output_root.store_path(dataset, stem)
-        if store is None or not store.is_dir():
-            abort(404)
-        return send_file(
-            _resolve_within_store(Path(store), tail),
-            conditional=True,
-        )
-
-    app.server.register_blueprint(bp)
-
-
-def zarr_store_url(url_prefix: str, dataset: str, stem: str) -> str:
-    """Base URL a zarr client opens for one per-image store."""
-    base = url_prefix if url_prefix.endswith("/") else f"{url_prefix}/"
-    return f"{base}zarr/{dataset}/{stem}.ome.zarr"
-```
-
-**On `_READABLE_ROOTS`:** the spec sketches the route as an unrestricted tail. Since the
-spec was written, measurements moved *inside* the store at
-`tables/measurements/table.parquet` (see [DRIFT.md](DRIFT.md) D-6), so an unrestricted tail
-serves the measurement table to any browser that asks. The allow-list is a deliberate
-narrowing. **Flag it for sign-off** — it is a divergence from the spec, not an
-implementation detail.
-
-Two properties of the allow-list, both verified during plan refinement, that are easy to
-get wrong when editing it:
-
-- **It gates only `segments[0]`, and that is deliberate.** The label group is
-  `<primary>/labels/objmap`, whose head is `rgb` or `gray` — already allow-listed. Gating
-  every segment against this set instead would block `labels`, `objmap` and every level
-  index, breaking the label layer entirely.
-- **It is the only thing blocking `tables/`.** `is_safe_path_component('tables')` returns
-  `True`, so the per-segment guard passes it. Delete the allow-list and the measurement
-  table is served.
-
-- [ ] **Step 4: Register it and run the tests**
-
-Add `register_zarr_routes(app, output_root)` in `_app.py` beside the existing tile-route
-registration. Then:
-
-```bash
-QT_QPA_PLATFORM=offscreen uv run pytest \
-  tests/unit/gui/results_viewer/test_zarr_routes.py -v
-```
-Expected: all PASS. If `test_honours_a_range_request` returns 200, `conditional=True` is
-missing or a proxy is stripping the header.
-
-- [ ] **Step 5: The guard is already verified — do not re-derive it**
-
-`is_safe_path_component` (`_shared/tiles.py:755`) was run against this route's inputs during
-plan refinement. Verified results:
+`is_safe_path_component` was run against this route's inputs during plan refinement:
 
 ```text
 '..' -> False   '.' -> False    '...' -> False   '.hidden' -> False
@@ -222,90 +45,348 @@ plan refinement. Verified results:
 'labels' -> True     'objmap' -> True   'tables' -> True
 ```
 
-It rejects empty, any leading dot, `/`, `\`, and literal `..`, then requires
-`^[A-Za-z0-9._-]+$` (`_NAME_RE`, `:752`). `%2e%2e` fails the regex directly, and after
-Werkzeug decoding it becomes `..` and fails the explicit check — so the traversal tests do
-**not** pass merely because Werkzeug normalized first. Zarr's `"."`-separated chunk keys
-pass, which is what makes a per-segment guard usable here at all.
+It rejects empty, any leading dot, `/`, `\`, literal `..`, then requires
+`^[A-Za-z0-9._-]+$` (`_NAME_RE`, `:752`). Werkzeug 3.1.x does **not** normalise dot-segments
+before routing, so the handler really does receive `../../../../etc/passwd` and the
+traversal tests exercise the guard rather than passing on Werkzeug's behalf.
 
-**Note `'tables' -> True`.** The guard does not block
-`tables/measurements/table.parquet`; `_READABLE_ROOTS` does. That allow-list is
-load-bearing, not belt-and-braces — see step 3.
+**Note `'tables' -> True`.** The guard does not keep the in-store measurements parquet off
+the wire. The `allowed_roots` restriction does — and only if enforced correctly, which is
+step 3.
 
-If you change the guard, re-run the table above and update it here.
+- [ ] **Step 2: Write the failing tests**
 
-- [ ] **Step 6: Lint and commit**
+```python
+"""One resolver for every client-controlled path tail inside a store.
+
+The third test is the one that matters and the one an earlier draft failed:
+the restriction must bind the RESOLVED path, not the URL segments. Checking
+the unresolved head lets a symlink inside a readable root escape it while
+still passing containment.
+"""
+
+import pytest
+from werkzeug.exceptions import BadRequest, NotFound
+
+from phenotypic.gui._shared.tiles import resolve_within_root
+
+ROOTS = frozenset({"OME", "rgb", "gray", "detect_mat"})
+
+
+def test_resolves_a_file_inside_an_allowed_root(tmp_store):
+    got = resolve_within_root(tmp_store, "rgb/0/c.0.0.0", allowed_roots=ROOTS)
+    assert got == (tmp_store / "rgb" / "0" / "c.0.0.0").resolve()
+
+
+def test_rejects_a_disallowed_root(tmp_store):
+    with pytest.raises(NotFound):
+        resolve_within_root(
+            tmp_store, "tables/measurements/table.parquet", allowed_roots=ROOTS
+        )
+
+
+def test_a_symlink_into_a_disallowed_root_is_rejected(tmp_store):
+    """The escape an unresolved head check misses.
+
+    `rgb/sneak` passes a head check on segments[0] and resolves to a path
+    still INSIDE the store, so containment passes too. Only testing the
+    resolved path's first component catches it.
+    """
+    target = tmp_store / "tables" / "measurements" / "table.parquet"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b"secret")
+    (tmp_store / "rgb" / "sneak").symlink_to(target)
+
+    with pytest.raises((NotFound, BadRequest)):
+        resolve_within_root(tmp_store, "rgb/sneak", allowed_roots=ROOTS)
+
+
+def test_label_group_under_a_series_resolves(tmp_store):
+    """Only the FIRST resolved component is restricted, by design.
+
+    Restricting every component would block `labels`, `objmap` and every
+    level index, killing the label layer.
+    """
+    p = tmp_store / "rgb" / "labels" / "objmap" / "0"
+    p.mkdir(parents=True, exist_ok=True)
+    (p / "c.0.0").write_bytes(b"x")
+    assert resolve_within_root(
+        tmp_store, "rgb/labels/objmap/0/c.0.0", allowed_roots=ROOTS
+    )
+
+
+@pytest.mark.parametrize(
+    "tail",
+    [
+        "../../../../etc/passwd",
+        "rgb/../../../../etc/passwd",
+        "rgb/0/%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+        "rgb/./../../zarr.json",
+        "",
+    ],
+)
+def test_rejects_traversal_in_any_segment(tmp_store, tail):
+    with pytest.raises((BadRequest, NotFound)):
+        resolve_within_root(tmp_store, tail, allowed_roots=ROOTS)
+
+
+def test_no_allow_list_permits_any_root(tmp_store):
+    assert resolve_within_root(tmp_store, "zarr.json") is not None
+```
+
+- [ ] **Step 3: Implement — restriction AFTER resolution**
+
+```python
+def resolve_within_root(
+    root: Path,
+    tail: str,
+    *,
+    allowed_roots: frozenset[str] | None = None,
+) -> Path:
+    """Resolve a client-controlled ``tail`` to a file inside ``root``.
+
+    The single path-escape guard for every route that serves bytes out of a
+    store directory. Two properties are load-bearing and easy to get wrong:
+
+    * Segments are validated INDIVIDUALLY. The traversal surface here is
+      wider than a two-component route's because the tail is arbitrary depth.
+    * ``allowed_roots`` is tested on the RESOLVED path, not on the URL
+      segments. Testing the unresolved head lets a symlink inside a readable
+      root (``<root>/rgb/x -> ../tables/measurements/table.parquet``) satisfy
+      both the head check and containment, and the file is served.
+
+    Only the FIRST resolved component is restricted. Restricting every
+    component would reject ``labels``, ``objmap`` and every level index,
+    which would kill the label layer.
+
+    Args:
+        root: Directory the result must live inside.
+        tail: Client-controlled path, ``/``-separated.
+        allowed_roots: First-component allow-list, or ``None`` for no
+            restriction beyond containment.
+
+    Returns:
+        The resolved file path.
+
+    Raises:
+        BadRequest: A segment is unsafe, or the resolved path escapes ``root``.
+        NotFound: The path does not exist, is not a file, or its first
+            resolved component is not in ``allowed_roots``.
+    """
+    segments = [s for s in tail.split("/") if s]
+    if not segments:
+        raise NotFound()
+    for segment in segments:
+        if not is_safe_path_component(segment):
+            raise BadRequest()
+
+    root_resolved = root.resolve(strict=True)
+    try:
+        resolved = root.joinpath(*segments).resolve(strict=True)
+    except (OSError, RuntimeError):
+        raise NotFound() from None
+    if not resolved.is_relative_to(root_resolved):
+        raise BadRequest()
+    if not resolved.is_file():
+        raise NotFound()
+
+    if allowed_roots is not None:
+        rel = resolved.relative_to(root_resolved)
+        head = rel.parts[0]
+        if head not in allowed_roots and not (
+            len(rel.parts) == 1 and head == ngff_.STORE_ROOT_JSON
+        ):
+            raise NotFound()
+    return resolved
+```
+
+- [ ] **Step 4: Run, lint, commit**
 
 ```bash
-uv run ruff check --fix src/phenotypic/gui/results_viewer/_zarr_routes.py \
-                        src/phenotypic/gui/results_viewer/_app.py \
-                        tests/unit/gui/results_viewer/test_zarr_routes.py
-git add src/phenotypic/gui/results_viewer/_zarr_routes.py \
-        src/phenotypic/gui/results_viewer/_app.py \
-        tests/unit/gui/results_viewer/test_zarr_routes.py
-git commit -m "feat(gui): serve OME-Zarr store bytes with HTTP Range"
+QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/shared/test_resolve_within_root.py -v
+uv run ruff check --fix src/phenotypic/gui/_shared/tiles.py tests/unit/gui/shared/test_resolve_within_root.py
+git add src/phenotypic/gui/_shared/tiles.py tests/unit/gui/shared/test_resolve_within_root.py
+git commit -m "feat(gui): add one path-escape resolver for store byte routes"
 ```
 
 ---
 
-### Task 1.2: Prove the route respects the landed staleness key
+### Task 1.2: Per-store readable roots and the generation token
 
 **Files:**
-- Test: `tests/unit/gui/results_viewer/test_zarr_routes.py` (extend)
+- Create: `src/phenotypic/gui/results_viewer/_zarr_routes.py`
+- Test: `tests/unit/gui/results_viewer/test_zarr_routes.py` (create)
 
 **Interfaces:**
-- Consumes: the root-`zarr.json` staleness key already landed on the store branch
-  ([DRIFT.md](DRIFT.md) D-1).
-- Produces: spec §8's "staleness" check.
+- Consumes: `resolve_within_root`, `OutputRoot.store_path` (`_output_root.py:495`, returns
+  `Path | None`), `paths_fingerprint`, `ngff_.STORE_ROOT_JSON`.
+- Produces: `register_zarr_routes(app, output_root)`,
+  `zarr_store_url(url_prefix, dataset, stem, token)`,
+  `readable_roots_for(store) -> frozenset[str]`, `store_generation_token(store) -> str`.
+  Phase 6 calls the last two.
 
-> The traps are already fixed; this is the regression test that keeps them fixed **for the
-> new route**. Spec §8 requires a test that "must fail if the check is keyed on the store
-> directory" — so the test rewrites a nested chunk, which is exactly the mutation that does
-> **not** move the directory's `st_mtime_ns`.
+- [ ] **Step 1: Derive the readable set from the store, never a literal**
 
-- [ ] **Step 1: Write the test**
+A fixed `{rgb, gray, detect_mat}` is wrong: `_write_store_part` appends `"original"` to
+`series_names` whenever the image carries one (`_image_io_handler.py:1012-1014`), and that
+list lands in `attributes.phenotypic.series`. A literal set makes the Layers panel list a
+series the route 404s — the same hard-coding spec §1's label-path rule forbids, one layer
+down.
 
 ```python
-def test_a_rewritten_nested_chunk_is_served_fresh(zarr_route_client, spike_store):
-    """A nested chunk rewrite must be visible through the route.
+def readable_roots_for(store: Path) -> frozenset[str]:
+    """First-path-components a pixel client may read from this store.
 
-    A store directory's ``st_mtime_ns`` does NOT move when a nested chunk is
-    rewritten. A route or cache keyed on the directory would serve the stale
-    bytes and this test would fail -- which is the whole point of writing it
-    against a nested chunk rather than against ``zarr.json``.
+    Derived from the store's own ``attributes.phenotypic`` block, so a
+    series the writer legitimately added (``original``) is readable without
+    editing this function -- and ``tables/``, which holds the per-object
+    measurement parquet, never is.
     """
-    url = "/zarr/ds/plate.ome.zarr/rgb/0/c.0.0.0"
-    before = zarr_route_client.get(url).data
+    block = _readable_block(store)          # raises StoreUnreadable
+    roots = set(block.get(PhenotypicAttr.SERIES, {}).keys())
+    for label_path in block.get(PhenotypicAttr.LABELS, {}).values():
+        roots.add(PurePosixPath(label_path).parts[0])
+    roots.add("OME")
+    return frozenset(roots)
+```
 
-    chunk = spike_store / "rgb" / "0" / "c.0.0.0"
-    dir_mtime_before = spike_store.stat().st_mtime_ns
-    chunk.write_bytes(before[:-1] + bytes([before[-1] ^ 0xFF]))
-    assert spike_store.stat().st_mtime_ns == dir_mtime_before, (
-        "premise broken: the store directory mtime moved, so this test no "
-        "longer proves what it claims"
+Reuse the landed `_readable_block` (`_shared/tiles.py:304`) rather than a raw `json.loads`
+— it raises `StoreUnreadable` on a schema-version mismatch, which is what keeps Plate and
+Colony agreeing about a store this build cannot decode.
+
+- [ ] **Step 2: The generation token**
+
+`promote_store` (`sdk_/ngff_.py:1235-1300`) republishes by renaming the whole store
+directory. The route resolves fresh per request and holds no handle, so without a token a
+client can read `zarr.json` from promote *N* and chunks from *N+1*. Reuse the landed token
+rather than inventing one:
+
+```python
+def store_generation_token(store: Path) -> str:
+    """Short opaque token identifying one promote of ``store``.
+
+    Same construction as ``_tile_routes._store_content_token``: the root
+    ``zarr.json``'s content fingerprint AND its mtime. Neither alone is
+    enough -- a rewrite can reproduce byte-identical metadata while the
+    pixels underneath differ.
+    """
+    root_json = store / ngff_.STORE_ROOT_JSON
+    digest = paths_fingerprint([root_json]).removeprefix("sha256:")[:16]
+    return f"{digest}-{os.stat(root_json).st_mtime_ns}"
+```
+
+The token is a **path segment**, so a new promote yields a new base URL and mixing is
+structurally impossible rather than merely unlikely. A stale token returns **409**, which
+tells the client to re-read the source spec — a 404 would read as "chunk missing" and be
+retried forever.
+
+- [ ] **Step 3: Write the failing tests**
+
+```python
+def test_serves_the_root_zarr_json(zarr_route_client, spike_store, token):
+    resp = zarr_route_client.get(f"/zarr/ds/plate.ome.zarr/{token}/zarr.json")
+    assert resp.status_code == 200
+
+
+def test_honours_a_range_request(zarr_route_client, spike_store, token):
+    resp = zarr_route_client.get(
+        f"/zarr/ds/plate.ome.zarr/{token}/rgb/0/c.0.0.0",
+        headers={"Range": "bytes=0-15"},
     )
+    assert resp.status_code == 206
+    assert len(resp.data) == 16
+    assert resp.headers["Accept-Ranges"] == "bytes"
 
-    after = zarr_route_client.get(url).data
-    assert after != before
+
+def test_a_stale_token_is_409_not_404(zarr_route_client, spike_store, token):
+    """A re-promote must not be served as a missing chunk.
+
+    404 reads as 'this chunk does not exist' and the client retries; 409
+    tells it to re-read the source spec, which is the actual remedy.
+    """
+    url = f"/zarr/ds/plate.ome.zarr/{token}/rgb/0/c.0.0.0"
+    assert zarr_route_client.get(url).status_code in (200, 206)
+    _repromote(spike_store)
+    assert zarr_route_client.get(url).status_code == 409
+
+
+def test_an_original_series_is_readable(zarr_route_client, store_with_original):
+    """A store carrying `original` must not 404 on it.
+
+    `_write_store_part` appends "original" to series_names when the image
+    has one, so a hard-coded readable set breaks a legitimate store.
+    """
+    tok = store_generation_token(store_with_original)
+    resp = zarr_route_client.get(
+        f"/zarr/ds/orig.ome.zarr/{tok}/original/0/c.0.0.0"
+    )
+    assert resp.status_code in (200, 206)
+
+
+def test_the_measurements_table_is_never_served(zarr_route_client, spike_store, token):
+    resp = zarr_route_client.get(
+        f"/zarr/ds/plate.ome.zarr/{token}/tables/measurements/table.parquet"
+    )
+    assert resp.status_code == 404
 ```
 
-The mid-test assertion on `dir_mtime_before` is deliberate: it fails loudly if the
-platform's directory-mtime behaviour differs, rather than letting the test pass while
-proving nothing.
+- [ ] **Step 4: Implement the route on the shared resolver**
 
-- [ ] **Step 2: Run it**
+```python
+def register_zarr_routes(app: dash.Dash, output_root) -> None:
+    bp = Blueprint("zarr_bytes", __name__, url_prefix="/zarr")
+
+    @bp.route("/<dataset>/<stem>.ome.zarr/<token>/<path:tail>")
+    def store_bytes(dataset: str, stem: str, token: str, tail: str):
+        if not is_safe_path_component(dataset) or not is_safe_path_component(stem):
+            abort(400)
+        store = output_root.store_path(dataset, stem)
+        if store is None or not store.is_dir():
+            abort(404)
+        if token != store_generation_token(store):
+            abort(409)
+        return send_file(
+            resolve_within_root(
+                store, tail, allowed_roots=readable_roots_for(store)
+            ),
+            conditional=True,
+        )
+
+    app.server.register_blueprint(bp)
+```
+
+- [ ] **Step 5: Run, lint, commit**
 
 ```bash
-QT_QPA_PLATFORM=offscreen uv run pytest \
-  tests/unit/gui/results_viewer/test_zarr_routes.py::test_a_rewritten_nested_chunk_is_served_fresh -v
+QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/results_viewer/test_zarr_routes.py -v
+uv run ruff check --fix src/phenotypic/gui/results_viewer/_zarr_routes.py \
+                        src/phenotypic/gui/results_viewer/_app.py \
+                        tests/unit/gui/results_viewer/test_zarr_routes.py
+git add src/phenotypic/gui/results_viewer tests/unit/gui/results_viewer
+git commit -m "feat(gui): serve OME-Zarr bytes with Range, a per-store root set and a generation token"
 ```
-Expected: PASS (the route sends files directly and holds no cache). If it **fails**, a
-cache has been introduced between the file and the response — key it on the root
-`zarr.json` via `paths_fingerprint`, matching `_tile_routes.py:527`.
 
-- [ ] **Step 3: Commit**
+---
 
-```bash
-git add tests/unit/gui/results_viewer/test_zarr_routes.py
-git commit -m "test(gui): pin the zarr route against nested-chunk staleness"
-```
+### Task 1.3: What the route still exposes — record it for sign-off
+
+**Files:**
+- Modify: `docs/superpowers/plans/2026-08-26-viewer-viv-rebuild/spike/README.md`
+
+> Spec §4.0 already records the narrowing. This task exists so the *residual* exposure is
+> stated as a fact rather than left implied by "pixels only".
+
+- [ ] **Step 1: Write down what a browser can read**
+
+The root `zarr.json` is **mandatory** — the client bootstraps from it — and carries
+`attributes.phenotypic.metadata`: the `protected`, `public` and `imported` sections plus
+`work_id` (`sdk_/ngff_.py:559-583`). `OME/METADATA.ome.xml` carries the same `Metadata_*`
+sections. The narrowing keeps `tables/measurements/table.parquet` off the wire; it does
+**not** make the route metadata-free.
+
+Combined with the no-authentication assumption in spec §9, that means: on the documented
+Open OnDemand recipe (`--host 0.0.0.0`, `gui_hub.md:116, :124`), anything that can reach
+the node's port can read a run's image metadata. This is **not new** — the existing DZI and
+crop routes already serve pixels the same way — but it is now written down.
+
+- [ ] **Step 2: No commit** — this rides on the spec §4.0 sign-off already recorded.

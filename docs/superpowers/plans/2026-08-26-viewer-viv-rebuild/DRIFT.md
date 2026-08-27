@@ -35,6 +35,19 @@ change when a nested chunk is rewritten — `_tile_routes.py:471, :469, :477`,
 one regression test (spec §8's "staleness" check) proving the byte route respects the same
 key.
 
+> **Correction, 2026-08-26 (round-1 review).** "All of them already key on the root
+> `zarr.json`" is true for `_tile_routes` and `_preview_tiles` and **vacuous for the crop
+> path**. `crop_colony` (`tiles.py:715`) still passes `os.stat(store).st_mtime_ns` — the
+> store *directory* mtime, the exact key spec §4.1 flags as unsound — into `crop_store_rgb`,
+> which immediately `del`s it (`:585-587`: "Accepted for caller/API compatibility; crop
+> reads are windowed and not full-layer cached, so nothing keys on it").
+>
+> So there is **no staleness bug and no third cache** — but there is a live
+> directory-mtime call sitting exactly where the spec says a trap lives. A reader auditing
+> the fourth fix will find it and reasonably conclude the trap is open. Either drop the
+> vestigial parameter, or leave it and rely on this note; do not "fix" a cache that does
+> not exist.
+
 ---
 
 ## D-2 — §6.2's "ship first (D3)" is already landed

@@ -30,8 +30,8 @@ on its centroid, with the Viv layer stack rendering into all of them and a singl
 
 - [ ] **Step 1: Write the budget script**
 
-Per root `CLAUDE.md`: stdlib + numpy/scipy only, never imports `phenotypic`, exits non-zero
-on failure.
+Per root `CLAUDE.md`: stdlib + numpy/scipy only (this one needs only the stdlib), never
+imports `phenotypic`, exits non-zero on failure.
 
 ```python
 """Re-derive the per-frame cost of one OrthographicView per colony.
@@ -41,19 +41,21 @@ every view each frame, so an uncapped colony grid degrades linearly in cell
 count. This script derives the draw-call and texture budget for a plate's
 worth of cells so the cap is chosen against a number.
 
-Exits non-zero if the derived budget contradicts the recorded cap.
+Exits non-zero until the prototype measurement in task 4.1 step 3 has been
+recorded, so no later task can proceed on an unmeasured cap.
 """
 
 import sys
-
-import numpy as np
 
 #: Layers rendered into EACH view: base image + label overlay.
 LAYERS_PER_VIEW = 2
 #: A common plate: 32 x 48 = 1536 colonies (backend section 2.3's example).
 PLATE_CELLS = 1536
-#: Recorded cap, filled in from the measurement in step 3.
+#: Measured cap, filled in from the prototype in step 3. None until measured.
 RECORDED_CAP: int | None = None
+#: Frame time, in ms, observed at RECORDED_CAP. Recorded beside the number so
+#: the cap can be re-judged later without re-running the prototype blind.
+RECORDED_FRAME_MS: float | None = None
 
 
 def draw_calls(cells: int, layers: int = LAYERS_PER_VIEW) -> int:
@@ -72,13 +74,15 @@ def main() -> int:
             f"{cells:5d} cells: {draw_calls(cells):6d} draw calls/frame, "
             f"{crop_texture_bytes(cells) / 1e6:7.2f} MB textures"
         )
-    if RECORDED_CAP is None:
-        print("NO CAP RECORDED: run the measurement in task 4.1 step 3")
+    if RECORDED_CAP is None or RECORDED_FRAME_MS is None:
+        print("NO MEASUREMENT: run the prototype in task 4.1 step 3")
         return 1
-    if draw_calls(RECORDED_CAP) > 4096:
-        print(f"REFUTED: cap {RECORDED_CAP} exceeds a 4096 draw-call budget")
-        return 1
-    print(f"cap {RECORDED_CAP} holds")
+    print(
+        f"cap {RECORDED_CAP} cells "
+        f"({draw_calls(RECORDED_CAP)} draw calls, "
+        f"{crop_texture_bytes(RECORDED_CAP) / 1e6:.1f} MB, "
+        f"{RECORDED_FRAME_MS:.1f} ms/frame measured)"
+    )
     return 0
 
 
@@ -86,19 +90,34 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
+> **This script fails closed on a missing measurement and asserts nothing else.** An earlier
+> draft additionally refuted the cap against a `draw_calls(cap) > 4096` ceiling; that 4096
+> was invented here and appears in no spec. **Dropped** (user ruling, 2026-08-26) — a
+> measured cap validated against a guessed budget inverts the point. The script's whole job
+> is to stop phase 4 proceeding on an unmeasured number, and to keep the measurement beside
+> the number it justifies.
+>
+> This is the **only** surviving logic-validation script of the three originally proposed,
+> kept because its number lands in shipped code as a behavioural cap.
+
 - [ ] **Step 2: Run it and confirm it fails on the missing cap**
 
 ```bash
 uv run python docs/superpowers/logic_validation_scripts/2026-08-26-viewer-viv-rebuild/colony_view_budget.py
 ```
-Expected: prints the table, then `NO CAP RECORDED`, exit **1**. The script failing at this
+Expected: prints the table, then `NO MEASUREMENT`, exit **1**. The script failing at this
 point is the intended state — it is what stops phase 4 proceeding on an invented number.
 
-- [ ] **Step 3: Measure, then fill in `RECORDED_CAP`**
+- [ ] **Step 3: Measure, then fill in both constants**
 
 Render a prototype grid at 64, 256, 1024 and 1536 cells and record observed frame time at
 each. Choose the cap at the largest count that holds an interactive frame budget, write it
-into `RECORDED_CAP`, and record the measurement in `spike/README.md` beside the number.
+into `RECORDED_CAP` **and its measured frame time into `RECORDED_FRAME_MS`**, and record the
+full table in `spike/README.md`.
+
+The interactive budget is a judgement, not a spec number — spec §9.1 makes interactivity a
+**target**, not a gate. Record what you chose and why; a later reader can re-judge the cap
+from `RECORDED_FRAME_MS` without re-running the prototype.
 
 - [ ] **Step 4: Re-run and commit**
 
