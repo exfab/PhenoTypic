@@ -16,7 +16,17 @@ from typing import Iterator
 import pytest
 from playwright.sync_api import Page, expect
 
-pytestmark = pytest.mark.ci_flaky
+pytestmark = [
+    pytest.mark.ci_flaky,
+    pytest.mark.skip(
+        reason=(
+            "Tune is unmounted by "
+            "docs/superpowers/specs/2026-08-26-gui-simplification-removals "
+            "(spec section 2). These tests are the acceptance suite for the "
+            "re-mount; delete this marker when /tune/ is mounted again."
+        )
+    ),
+]
 
 
 def _free_port() -> int:
