@@ -247,3 +247,71 @@ every range in a multi-phase removal is a moving target by construction.
 
 This is also why the ledger layer could not parallelize (see the DAG): concurrent agents
 would each be computing anchors against a file the other was renumbering.
+
+### Phases 4, 5, 6 and the simplify pass: **COMPLETE**
+
+| Cluster | Commits | Notes |
+|---|---|---|
+| F (phase 4, Tune) | `243f7cda`, `e4f47b66`, `d0226c67` | Sonnet. Found 5 unlisted breakages |
+| G (phase 5, QC/Heatmap/Error) | `bed15d93`, `a720fdef`, `356b8032`, `5111d9d4` | **Escalated a guard conflict rather than breaching it** |
+| H (phase 6, verification) | `82c529f2`, `089963fe` | Extended the dangling-Output check to Browse unprompted |
+| simplify | `dd0cbd01`, `9765c212`, `7237b95a` | All four out-of-scope guards held at **0 lines** |
+
+**Final state:** full GUI lane **2362 passed, 3 skipped, 0 failed**; both ledger gates exit 0
+(408 rows / 230 shipping; 13 workflows, 13 dispatched); Colony curation rows **4** through
+every phase; `test_colony_callbacks_helpers.py` **byte-unmodified**.
+
+#### The one guard that had to bend, and why
+
+Unmounting QC left `colony_view/_callbacks.py:982` writing to `qc-review-dim-readout`, an id
+no longer in the layout. `suppress_callback_exceptions` does **not** cover this — it relaxes
+server-side validation only; the dash-renderer still throws on a missing Output and aborts
+the **whole** response, so the surviving Colony spotlight readout froze.
+
+Spec §5 requires `colony_view/` byte-unchanged. Enforcing that literally would have
+**preserved curation broken**, inverting the guard's purpose. Escalated, user-ruled, and
+repaired in `5111d9d4` — which also removed `colony_view`'s cross-package import of
+`_qc_tab.review._ids`, a coupling the unmount made load-bearing and wrong.
+
+**No Python suite caught it.** The failure is renderer-side, reachable only through a real
+browser, and the e2e that surfaced it is a *filter-offcanvas* test. Hence
+`test_callback_output_ids.py`: boot the app, assert no registered callback writes to a string
+Output id absent from the layout — the whole class, caught without a browser.
+
+#### Where the plan was wrong, and the simplifier was right
+
+Phase 5 task 5.1 step 4 says of orphaned helpers: *"leave the helper defined — it belongs to
+the retained packages' surface area."* For `_resolve_measurement_schema` and
+`_resolve_qc_recipe` that premise is **false**. `_app.py:244-246, :268` resolves and stashes
+`CFG_MEASUREMENT_SCHEMA` / `CFG_QC_RECIPE` independently, and the removed helpers' own
+docstrings said the stash was `_app`'s job. They were the *mounting* module's private
+plumbing for bodies that no longer mount — not retained surface area. `9765c212` removed
+them correctly, and the retained packages still import.
+
+#### The pattern across all five phases
+
+Every phase shipped a follow-up because a prescribed check **could not structurally reach**
+what broke:
+
+| Phase | What broke | Why the check missed it |
+|---|---|---|
+| 1 | two capture tests | referenced the **seed symbols**, not the capture fn's name |
+| 2 | ~190 lines of dead JS | `browse.js` spells ids **kebab-case**; greps were Python-shaped |
+| 4 | harness seeds, a `how_to` link | helpers called from `main()`, independent of the capture fn |
+| 5 | a frozen curation readout | **renderer-side**; every Python suite passed it through |
+
+**A removal's blast radius is not enumerable by grepping the removed surface's name.** The
+durable answers are the two structural tests (`test_callback_output_ids.py`, and the
+`_dzi_tiler` consumer docstring), not longer grep lists.
+
+#### Deliberately left for a follow-up
+- `_preparation.py`'s hoisted-signal invariant holds at **1 of 5** sites; the preview path
+  reproduces the original bug in 23/30 trials. No production consequence
+  (`protected_keys()` covers those keys), but hoisting the other four is a **behaviour
+  change in a concurrency path** — excluded from a quality-only simplify pass by definition.
+- `_config.py`'s ~12 orphaned constants and its stale `register_thumbnail_route` comment.
+  Spec §9 Non-goals forbids `_config.py` constant removal.
+
+#### The two gates only CI can close
+The bare `capture_gui_tutorial_screenshots.py` smoke and the Playwright e2e lane
+(`PLAYWRIGHT=1`). Both need a full synthetic-dataset build; neither was run here.
