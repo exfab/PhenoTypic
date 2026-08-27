@@ -56,14 +56,6 @@ TUNE_LAYOUT_CSV = DATASET_DIR / "tune_layout.csv"
 TUNE_SETUP_SPEC = DATASET_DIR / "tune_setup.json.pht-tune"
 TUNE_LAUNCH_OUTPUT_DIR = DATASET_DIR / "tune_launch_output"
 
-# A small folder/time-series matrix the Browse Timeline capture roots itself at:
-# three timepoint sub-folders, each holding the same three plate filenames, so
-# the matrix is a 3-row x 3-column folder/EXIF filmstrip. Lives INSIDE
-# ``DATASET_DIR`` so the hub (rooted there) can sandbox-reach it.
-TIMELINE_SERIES_DIR = DATASET_DIR / "timeline_series"
-TIMELINE_SERIES_FOLDERS = ("t0", "t1", "t2")
-TIMELINE_SERIES_NAMES = ("plateA.png", "plateB.png", "plateC.png")
-
 VIEWPORT = {"width": 1280, "height": 900}
 
 # ---------------------------------------------------------------------------
@@ -657,7 +649,6 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             context = browser.new_context(viewport=VIEWPORT)
             _capture_setup(context, base_url)
             _capture_browse(context, base_url)
-            _capture_browse_timeline(context, base_url)
             _capture_file_explorer(context, base_url)
             _capture_build_pipeline(context, base_url)
             _capture_run_local(context, base_url)
@@ -925,36 +916,6 @@ def _capture_setup(context, base_url: str) -> None:
 
 # --- browse (source image viewer) ---------------------------------------
 
-def _seed_browse_timeline_series() -> None:
-    """Write a small folder/time-series matrix for the Browse Timeline capture.
-
-    Three timepoint sub-folders (``t0``/``t1``/``t2``), each holding the same
-    three plate PNGs, so the Timeline lays out as a 3-row x 3-column
-    folder/EXIF filmstrip. Idempotent (skips when already present) and called
-    from :func:`main` before the hub boots, so re-runs without ``--force``
-    still get the series.
-    """
-    sentinel = TIMELINE_SERIES_DIR / TIMELINE_SERIES_FOLDERS[0] / TIMELINE_SERIES_NAMES[0]
-    if sentinel.exists():
-        print(
-            f"[dataset] reusing existing {TIMELINE_SERIES_DIR.relative_to(REPO_ROOT)}"
-        )
-        return
-    from PIL import Image as PILImage
-
-    print(
-        f"[dataset] seeding Browse Timeline series under "
-        f"{TIMELINE_SERIES_DIR.relative_to(REPO_ROOT)}"
-    )
-    for r, folder in enumerate(TIMELINE_SERIES_FOLDERS):
-        d = TIMELINE_SERIES_DIR / folder
-        d.mkdir(parents=True, exist_ok=True)
-        for c, name in enumerate(TIMELINE_SERIES_NAMES):
-            # Distinct per-cell colour so the matrix reads as a real time-course.
-            shade = (40 + 30 * c, 70 + 25 * r, 120)
-            PILImage.new("RGB", (320, 220), shade).save(d / name, format="PNG")
-
-
 def _browse_source_payload() -> dict | None:
     """Build the shared-source-root store payload for the Browse capture.
 
@@ -1040,97 +1001,6 @@ def _capture_browse(context, base_url: str) -> None:
         page.wait_for_timeout(1500)
         page.locator("#browse-meta-image-name").scroll_into_view_if_needed()
     _save(page, "browse", "02_viewer.png", full_page=True)
-    page.close()
-
-
-def _browse_timeline_source_payload() -> dict | None:
-    """Build the shared-source-root payload pointing at the time-series matrix.
-
-    Mirrors :func:`_browse_source_payload` but roots at
-    :data:`TIMELINE_SERIES_DIR` so the Browse Timeline lays out the seeded
-    3x3 folder/EXIF filmstrip. Returns ``None`` if the path cannot be resolved.
-    """
-    try:
-        from phenotypic.gui.shell._sandbox import SandboxRoot
-        from phenotypic.gui.shell._source_context import source_payload_from_path
-    except Exception as exc:  # pragma: no cover - best-effort
-        print(f"[shot]   browse_timeline: source payload import failed: {exc!r}")
-        return None
-    sandbox = SandboxRoot.from_path(TIMELINE_SERIES_DIR)
-    payload = source_payload_from_path(sandbox, TIMELINE_SERIES_DIR, source="manual")
-    if payload is None:
-        print("[shot]   browse_timeline: source payload could not be resolved")
-    return payload
-
-
-def _capture_browse_timeline(context, base_url: str) -> None:
-    """Drive the Browse Timeline and capture the focus-and-navigate matrix.
-
-    Mirrors ``docs/source/tutorials/gui/19_browse_timeline.md``:
-
-    1. ``01_timeline.png`` — Browse in Timeline mode over the seeded
-       folder/EXIF matrix: the per-axis source controls, the focus window
-       with one focused cell, the four edge nav buttons, and the position
-       readout.
-    2. ``02_popout.png`` — the single-image deep-zoom pop-out opened from the
-       focused cell (Enter), reusing the browse DZI route + OpenSeadragon.
-
-    The source root is set by writing the real versioned store payload
-    (rooted at the time-series matrix), exactly as the Browse single-view
-    capture does.
-    """
-    print("[shot] workflow=browse_timeline")
-    page = _new_page(context, base_url, "/browse/")
-
-    payload = _browse_timeline_source_payload()
-    if payload is not None:
-        page.evaluate(
-            """payload => {
-                window.dash_clientside.set_props(
-                    'shell-source-image-root-store', {data: payload}
-                );
-            }""",
-            payload,
-        )
-        page.wait_for_timeout(1000)
-
-    # Switch to Timeline mode. Scope the click to the view-mode radio's
-    # "Timeline" label specifically — a bare ``text=Timeline`` would also match
-    # the ``timeline_series`` sidebar entry, so click the radio label by id.
-    try:
-        page.click(
-            "#browse-view-mode-toggle label:has-text('Timeline')", timeout=10_000
-        )
-    except Exception:  # pragma: no cover - best-effort
-        pass
-
-    # Let the matrix render + the focus-and-navigate controller mount the
-    # focused neighborhood's thumbnails before the screenshot.
-    page.wait_for_timeout(500)
-    try:
-        page.wait_for_selector(".timeline-cell[data-src]", timeout=10_000)
-        page.wait_for_timeout(1500)
-    except Exception:  # pragma: no cover - best-effort
-        pass
-    _save(page, "browse_timeline", "01_timeline.png")
-
-    # Open the deep-zoom pop-out for the focused cell (Enter on the viewport).
-    try:
-        page.click(".browse-tl-viewport", timeout=5_000)
-        page.keyboard.press("Enter")
-        page.wait_for_function(
-            "() => { const d = document.getElementById('browse-tl-popout-modal');"
-            " const m = d && d.closest('.modal');"
-            " return m && m.classList.contains('show'); }",
-            timeout=10_000,
-        )
-        page.wait_for_timeout(1500)
-        _save(page, "browse_timeline", "02_popout.png")
-    except Exception:  # pragma: no cover - best-effort
-        # Pop-out is best-effort in capture; the primary matrix shot above is
-        # the required one. Fall back to a second matrix shot so the workflow
-        # folder always carries >=1 PNG for the gate.
-        _save(page, "browse_timeline", "02_popout.png")
     page.close()
 
 
@@ -2721,17 +2591,6 @@ def main(argv: list[str] | None = None) -> int:
     # Build the hermetic tune output the loaded co-pilot capture reads. A
     # valid Setup and Run states are required evidence, so failure is fatal.
     run_tune_once()
-
-    # Seed the small folder/time-series matrix the Browse Timeline capture
-    # roots itself at. Idempotent + non-fatal.
-    try:
-        _seed_browse_timeline_series()
-    except Exception as exc:  # noqa: BLE001 - capture run must not abort here
-        print(
-                f"[seed] FAILED ({exc!r}); continuing — the Browse Timeline "
-                "screenshots may be empty.",
-                file=sys.stderr,
-        )
 
     proc, base_url = boot_gui(DATASET_DIR)
     try:

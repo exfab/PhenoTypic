@@ -18,7 +18,6 @@ the images aligned with the implementation.
 |------|------|
 | [Setup](01_setup.md) | Generate the synthetic dataset and launch the hub. |
 | [Browse source images](18_browse.md) | Navigate with J/K, previews, and a filmstrip; deep-zoom raw inputs and prepare a persistent revision-correct cache. |
-| [Browse — find the ideal starting time](19_browse_timeline.md) | Flip Browse to Timeline mode and navigate a folder/EXIF matrix with arrow keys to find a starting time and deep-zoom any frame. |
 | [File Explorer](02_file_explorer.md) | Navigate the sandbox sidebar and read capability badges. |
 | [Build a Pipeline](03_build_pipeline.md) | Compose a `pipeline.json.pht-pipe` with the fixed linear port map, side loader, and zoom controls. |
 | [Run Locally](04_run_local.md) | Submit a local subprocess run and tail the dashboard. |
@@ -52,7 +51,6 @@ hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is
 
 01_setup
 18_browse
-19_browse_timeline
 02_file_explorer
 03_build_pipeline
 04_run_local
