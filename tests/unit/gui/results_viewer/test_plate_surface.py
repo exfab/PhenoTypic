@@ -139,20 +139,6 @@ def test_a_label_less_store_has_no_objmap_row(label_less_store):
     assert "objmap" not in _rows_text(build_layer_rows("abc", spec, None))
 
 
-def test_an_unmeasured_store_says_measurement_pending(stage1_store):
-    """A zeros objmap mid-run is a CORRECT store, and must read as one.
-
-    Between Stage 1 and Stage 3 the in-store objmap is all zeros because the
-    landed staged engine keeps Stage 2 read-only. Rendered without the tag
-    that is indistinguishable from a finished image whose detector found
-    nothing -- one is a user waiting, the other is a user filing a bug.
-    """
-    spec = build_source_spec(stage1_store, "/zarr/d/s1.ome.zarr/t")
-    text = _rows_text(build_layer_rows("abc", spec, None))
-    assert "objmap" in text
-    assert "measurement pending" in text
-    assert "label image" not in text
-
 
 def test_a_measured_store_tags_the_objmap_as_a_label_image(rgb_store):
     spec = build_source_spec(rgb_store, "/zarr/d/p.ome.zarr/t")

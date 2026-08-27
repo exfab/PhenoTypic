@@ -18,10 +18,21 @@ A store observed between Stage 1 and Stage 3 holds an ALL-ZERO objmap: the
 landed staged engine keeps Stage 2 read-only and publishes the segmentation
 only when Stage 3 re-promotes. This is a valid store, and the Layers panel
 renders the label layer normally. Do not treat zeros as a fault -- see the
-plan's ``DRIFT.md``, row D-4. What the panel *may* say is "measurement
-pending", and the ``measured`` key below is what licenses it: an absent
-``tables`` descriptor is the only reliable way to tell that mid-run state
-from a finished image whose detector found nothing.
+plan's ``DRIFT.md``, row D-4.
+
+An earlier revision exported a ``measured`` key -- ``tables in block`` -- and
+the Layers panel captioned the objmap "measurement pending" when it was
+false. **That inference was wrong and both are gone.** An absent ``tables``
+descriptor does not mean Stage 3 is still coming: a ``--mode process`` run
+never measures, a store written before embedded tables has none, and a
+migrated store may carry none either. Captioning those "pending" tells the
+user to wait for something that will never arrive.
+
+The mistake was asking a **run-state** question of a **store** attribute. A
+store cannot know whether a run is in flight; that lives in
+``.phenotypic/progress/``. There is no sound store-only discriminator between
+"Stage 3 pending" and "detector found nothing", so this module does not
+pretend to one.
 """
 
 from __future__ import annotations
@@ -45,9 +56,9 @@ def build_source_spec(store: Path, base_url: str) -> dict:
     ``storeUrl`` / ``seriesPath`` / ``labelPath`` keys are the three
     ``window.phenotypicViv.setSource`` validates and consumes
     (``_assets/viv_viewer.js``), so a caller hands the dict over unmodified;
-    ``series``, ``pyramid``, ``token`` and ``measured`` are read by the
-    surface's own chrome -- the Layers panel, the pyramid readout, and the
-    "measurement pending" label -- and ignored by the facade.
+    ``series``, ``pyramid`` and ``token`` are read by the surface's own
+    chrome -- the Layers panel and the pyramid readout -- and ignored by the
+    facade.
 
     Args:
         store: Path to a promoted ``*.ome.zarr`` directory.
@@ -59,7 +70,7 @@ def build_source_spec(store: Path, base_url: str) -> dict:
     Returns:
         A JSON-serialisable mapping with keys ``storeUrl``, ``token``,
         ``series`` (ordered, primary first), ``seriesPath`` (the primary),
-        ``labelPath`` (**may be** ``None``), ``pyramid`` and ``measured``.
+        ``labelPath`` (**may be** ``None``) and ``pyramid``.
 
     Raises:
         OSError: If the store's root ``zarr.json`` does not exist -- the
@@ -79,8 +90,8 @@ def build_source_spec(store: Path, base_url: str) -> dict:
         >>> with tempfile.TemporaryDirectory() as tmp:
         ...     store = img.save2zarr(Path(tmp) / 'plate.ome.zarr')
         ...     spec = build_source_spec(store, '/zarr/d1/plate.ome.zarr/t')
-        ...     (spec['seriesPath'], spec['labelPath'], spec['measured'])
-        ('rgb', 'rgb/labels/objmap', False)
+        ...     (spec['seriesPath'], spec['labelPath'])
+        ('rgb', 'rgb/labels/objmap')
     """
     block = _readable_block(store)
 
@@ -104,8 +115,4 @@ def build_source_spec(store: Path, base_url: str) -> dict:
         "seriesPath": primary,
         "labelPath": label_path,  # may be None -- the facade copes
         "pyramid": block[ngff_.PhenotypicAttr.PYRAMID],
-        # Absent ``tables`` means "not yet measured" -- the only reliable way
-        # to tell a mid-run store (Stage 1 done, Stage 3 pending, objmap all
-        # zeros) from a finished image whose detector found nothing.
-        "measured": ngff_.PhenotypicAttr.TABLES in block,
     }

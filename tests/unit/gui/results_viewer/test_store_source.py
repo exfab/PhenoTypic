@@ -80,7 +80,6 @@ def test_the_spec_is_a_valid_facade_source_spec(rgb_store):
         "seriesPath",
         "labelPath",
         "pyramid",
-        "measured",
     }
 
 
@@ -135,10 +134,4 @@ def test_an_all_zero_objmap_is_a_valid_source_not_an_error(stage1_store):
     assert "error" not in spec
 
 
-def test_a_mid_run_store_reports_itself_unmeasured(stage1_store):
-    """"Measurement pending" and "found nothing" must be distinguishable."""
-    assert build_source_spec(stage1_store, "/x")["measured"] is False
 
-
-def test_a_finished_store_reports_itself_measured(rgb_store):
-    assert build_source_spec(rgb_store, "/x")["measured"] is True

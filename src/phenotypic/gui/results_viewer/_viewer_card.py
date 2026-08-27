@@ -531,13 +531,7 @@ def build_layer_rows(
             _layer_row(
                 idx,
                 name=_OBJMAP_LAYER,
-                # An absent `tables` descriptor means Stage 3 has not run,
-                # so the in-store objmap is still zeros. Saying so is the
-                # difference between a user waiting and a user filing a bug
-                # about a detector that "found nothing".
-                kind="label image"
-                if spec.get("measured")
-                else "measurement pending",
+                kind="label image",
                 swatch=OI_GREEN,
                 shown=bool(label_visible),
                 opacity=opacity[_FACADE_LABEL_LAYER],
