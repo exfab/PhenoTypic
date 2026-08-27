@@ -46,7 +46,7 @@ def test_progressive_preview_and_equal_dimension_restore_are_guarded() -> None:
 
     assert "showPreview(payload, generation)" in script
     assert "hidePreview(generation)" in script
-    assert "generation !== ns[generationProperty]" in script
+    assert "generation !== ns.singleGeneration" in script
     assert "equalDimensions(ns.singleState.dimensions, dimensions)" in script
     assert "keepPositionEnabled()" in script
 

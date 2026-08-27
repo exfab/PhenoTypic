@@ -19,7 +19,6 @@
     const POSITION_ID = "browse-position";
     const NAV_EVENT_ID = "browse-nav-event-store";
     const PREPARATION_STATUS_ID = "browse-preparation-status";
-    const VIEW_MODE_TOGGLE_ID = "browse-view-mode-toggle";
     const PREPARATION_PROGRESS_ID = "browse-preparation-progress";
     const PREPARE_BUTTON_ID = "browse-prepare-btn";
     const STOP_BUTTON_ID = "browse-stop-prepare-btn";
@@ -76,13 +75,9 @@
     function publishSessionState(forceEnabled) {
         const dc = window.dash_clientside;
         if (!dc || typeof dc.set_props !== "function") { return false; }
-        const checkedMode = document.querySelector(
-            "#" + VIEW_MODE_TOGGLE_ID + " input:checked"
-        );
-        const singleMode = !checkedMode || checkedMode.value === "single";
         const enabled = (typeof forceEnabled === "boolean")
             ? forceEnabled
-            : (!document.hidden && navigator.onLine !== false && singleMode);
+            : (!document.hidden && navigator.onLine !== false);
         dc.set_props(NAV_EVENT_ID, {
             data: {
                 kind: "session",
@@ -122,12 +117,6 @@
         });
         window.addEventListener("online", function () { publishSessionState(); });
         window.addEventListener("offline", function () { publishSessionState(false); });
-        document.addEventListener("change", function (event) {
-            const target = event.target;
-            if (target && target.closest && target.closest("#" + VIEW_MODE_TOGGLE_ID)) {
-                window.setTimeout(function () { publishSessionState(); }, 0);
-            }
-        });
         window.setTimeout(function () { publishSessionState(); }, 0);
     }
 
@@ -283,20 +272,18 @@
     }
     ns.osdReady = ns.osdReady || loadOSD();
 
-    function destroyViewer(kind) {
-        const property = kind === "single" ? "singleViewer" : "popoutViewer";
-        const viewer = ns[property];
+    function destroyViewer() {
+        const viewer = ns.singleViewer;
         if (viewer) { try { viewer.destroy(); } catch (e) {} }
-        ns[property] = null;
+        ns.singleViewer = null;
     }
 
-    function ensureViewer(kind, divId) {
-        const property = kind === "single" ? "singleViewer" : "popoutViewer";
-        const el = document.getElementById(divId);
+    function ensureViewer() {
+        const el = document.getElementById(OSD_DIV_ID);
         if (!el) { return null; }
-        let viewer = ns[property];
+        let viewer = ns.singleViewer;
         if (viewer && viewer.element === el && el.isConnected) { return viewer; }
-        destroyViewer(kind);
+        destroyViewer();
         viewer = window.OpenSeadragon({
             element: el,
             prefixUrl: appPrefix + "assets/openseadragon/images/",
@@ -309,37 +296,34 @@
             maxZoomPixelRatio: 4,
             immediateRender: false,
         });
-        ns[property] = viewer;
+        ns.singleViewer = viewer;
         return viewer;
     }
 
-    async function mountOSD(kind, divId, payload) {
+    async function mountOSD(payload) {
         await ns.osdReady;
-        const el = document.getElementById(divId);
+        const el = document.getElementById(OSD_DIV_ID);
         if (!el) { return; }
         if (!payload || !payload.token) {
-            destroyViewer(kind);
-            if (kind === "single") { setLoading("hidden"); }
+            destroyViewer();
+            setLoading("hidden");
             return;
         }
-        const generationProperty = kind === "single" ? "singleGeneration" : "popoutGeneration";
-        ns[generationProperty] += 1;
-        const generation = ns[generationProperty];
+        ns.singleGeneration += 1;
+        const generation = ns.singleGeneration;
         const url = dziUrl(payload, generation);
-        const viewer = ensureViewer(kind, divId);
+        const viewer = ensureViewer();
         if (!viewer) { return; }
         const name = basename(payload.label || payload.token);
         const dimensions = payloadDimensions(payload);
         let restore = null;
-        if (kind === "single") {
-            ns.singleStartedAt = window.performance ? performance.now() : Date.now();
-            if (keepPositionEnabled() && equalDimensions(ns.singleState.dimensions, dimensions)) {
-                restore = captureViewport(viewer);
-            }
-            ns.singleState.dimensions = dimensions;
-            showPreview(payload, generation);
-            setLoading("loading", name ? ("Loading " + name + "…") : "Loading image…");
+        ns.singleStartedAt = window.performance ? performance.now() : Date.now();
+        if (keepPositionEnabled() && equalDimensions(ns.singleState.dimensions, dimensions)) {
+            restore = captureViewport(viewer);
         }
+        ns.singleState.dimensions = dimensions;
+        showPreview(payload, generation);
+        setLoading("loading", name ? ("Loading " + name + "…") : "Loading image…");
         if (viewer._phenotypicOpenHandler) {
             viewer.removeHandler("open", viewer._phenotypicOpenHandler);
         }
@@ -347,7 +331,7 @@
             viewer.removeHandler("open-failed", viewer._phenotypicFailureHandler);
         }
         viewer._phenotypicOpenHandler = function () {
-            if (generation !== ns[generationProperty] || viewer._phenotypicDziUrl !== url) {
+            if (generation !== ns.singleGeneration || viewer._phenotypicDziUrl !== url) {
                 return;
             }
             if (restore) {
@@ -357,26 +341,22 @@
             } else {
                 viewer.viewport.goHome(true);
             }
-            if (kind === "single") {
-                setLoading("hidden");
-                hidePreview(generation);
-                if (ns.singleStartedAt && window.console && console.debug) {
-                    console.debug("Browse local timing", {
-                        milestone: "osd-open",
-                        elapsed_ms: (window.performance ? performance.now() : Date.now())
-                            - ns.singleStartedAt,
-                        revision: String(payload.revision || "").slice(0, 12),
-                    });
-                }
+            setLoading("hidden");
+            hidePreview(generation);
+            if (ns.singleStartedAt && window.console && console.debug) {
+                console.debug("Browse local timing", {
+                    milestone: "osd-open",
+                    elapsed_ms: (window.performance ? performance.now() : Date.now())
+                        - ns.singleStartedAt,
+                    revision: String(payload.revision || "").slice(0, 12),
+                });
             }
         };
         viewer._phenotypicFailureHandler = function () {
-            if (generation !== ns[generationProperty] || viewer._phenotypicDziUrl !== url) {
+            if (generation !== ns.singleGeneration || viewer._phenotypicDziUrl !== url) {
                 return;
             }
-            if (kind === "single") {
-                setLoading("error", name ? ("Could not load " + name) : "Could not load image");
-            }
+            setLoading("error", name ? ("Could not load " + name) : "Could not load image");
         };
         viewer.addHandler("open", viewer._phenotypicOpenHandler);
         viewer.addHandler("open-failed", viewer._phenotypicFailureHandler);
@@ -391,7 +371,7 @@
     ns.applyImage = function (payload) {
         renderPosition(payload && payload.position);
         renderFilmstrip(payload && payload.filmstrip, payload);
-        return mountOSD("single", OSD_DIV_ID, payload);
+        return mountOSD(payload);
     };
 
     function renderPosition(position) {
