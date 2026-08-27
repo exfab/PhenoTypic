@@ -65,6 +65,33 @@ def _validate_scope(session_id, scope_hash, block_id) -> Optional[Response]:
 
 `_validate` becomes `_validate_scope(...) or (channel check)`.
 
+- [ ] **Step 1b: Make the preview cache tree private (`mode=0o700`)**
+
+Two lines, and they are **not** the machinery that was dropped. What the scratch-lifecycle
+phase lost was a retention cap, oldest-first eviction and a startup sweep; a directory mode
+is none of those and should not have travelled with them.
+
+Why it matters *more* now, not less: spec §7 as amended makes session-id secrecy the
+**recorded mitigation** — "The id is a secret; treat it as one." But
+`preview_cache_root()` is `tempfile.gettempdir()/phenotypic/pipeline-preview`
+(`_preview_cache.py:51-53`), created by `mkdir(parents=True)` at the default umask, and the
+per-session directories are **named by that secret**. Where `$TMPDIR` is unset or shared,
+any local user can `ls` the tree, read every session id, and at umask 022 read the preview
+stores directly without ever touching the route. That is the accepted-risk ruling being
+undercut by a filesystem mode.
+
+```python
+# init_cache
+preview_cache_root().mkdir(parents=True, exist_ok=True, mode=0o700)
+# _scope_path_by_hash / scope_dir
+d.mkdir(parents=True, exist_ok=True, mode=0o700)
+```
+
+**Scope honestly:** on an HPCC batch job `$TMPDIR` is typically the per-job
+`/scratch/<user>/<jobid>`, already private — so the exposure is real on login and
+interactive sessions and absent inside a job. `mode=` applies only on creation; an existing
+world-readable tree keeps its mode, which is fine because `init_cache` wipes and recreates.
+
 - [ ] **Step 2: Add the hash-keyed cache helpers**
 
 `read_manifest` (`_preview_cache.py:95`) and `scope_dir` (`:83`) key by `scope_path`, a
@@ -131,10 +158,17 @@ def register_preview_zarr_routes(app: dash.Dash) -> None:
         store = _store_for_block(session_id, scope_hash, block_id)
         if store is None:
             abort(404)
-        if token != store_generation_token(store):
-            abort(409)          # stale generation -- see task 6.1 step 5
+        # Guarded for the same reason as the results route: a promote renames
+        # the store directory, so both of these can raise on the ROUTINE path.
+        try:
+            expected = store_generation_token(store)
+            roots = readable_roots_for(store)
+        except (OSError, StoreUnreadable):
+            abort(404)
+        if token != expected:
+            abort(409)          # stale generation -- see step 5
         return send_file(
-            resolve_within_root(store, tail, allowed_roots=readable_roots_for(store)),
+            resolve_within_root(store, tail, allowed_roots=roots),
             conditional=True,
         )
 

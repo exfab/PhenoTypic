@@ -30,7 +30,7 @@ structurally impossible.
 
 **Interfaces:**
 - Consumes: `is_safe_path_component` (`tiles.py:755`).
-- Produces: `resolve_within_root(root: Path, tail: str, *, allowed_roots: frozenset[str] | None = None) -> Path`,
+- Produces: `resolve_within_root(root: Path, tail: str, *, allowed_roots: frozenset[str]) -> Path`,
   raising `werkzeug.exceptions.BadRequest` / `NotFound`. Phase 6 task 6.1 calls it too.
 
 - [ ] **Step 1: The guard is already verified — do not re-derive it**
@@ -130,8 +130,21 @@ def test_rejects_traversal_in_any_segment(tmp_store, tail):
         resolve_within_root(tmp_store, tail, allowed_roots=ROOTS)
 
 
-def test_no_allow_list_permits_any_root(tmp_store):
-    assert resolve_within_root(tmp_store, "zarr.json") is not None
+def test_an_empty_allow_list_rejects_everything(tmp_store):
+    """Fail-closed, and the reason `allowed_roots` has no permissive value."""
+    with pytest.raises(NotFound):
+        resolve_within_root(tmp_store, "rgb/0/c.0.0.0", allowed_roots=frozenset())
+
+
+def test_a_vanished_root_is_404_not_500(tmp_store):
+    """A promote mid-request renames the whole store directory.
+
+    That is the routine path -- it is the event the generation token exists
+    to handle -- so it must not surface as an unhandled exception.
+    """
+    missing = tmp_store.parent / "gone.ome.zarr"
+    with pytest.raises(NotFound):
+        resolve_within_root(missing, "rgb/0/c.0.0.0", allowed_roots=ROOTS)
 ```
 
 - [ ] **Step 3: Implement — restriction AFTER resolution**
@@ -141,7 +154,7 @@ def resolve_within_root(
     root: Path,
     tail: str,
     *,
-    allowed_roots: frozenset[str] | None = None,
+    allowed_roots: frozenset[str],
 ) -> Path:
     """Resolve a client-controlled ``tail`` to a file inside ``root``.
 
@@ -162,8 +175,12 @@ def resolve_within_root(
     Args:
         root: Directory the result must live inside.
         tail: Client-controlled path, ``/``-separated.
-        allowed_roots: First-component allow-list, or ``None`` for no
-            restriction beyond containment.
+        allowed_roots: First-component allow-list. **Required, and there is
+            no permissive value.** A security primitive whose default is "no
+            restriction" is one forgotten keyword from serving
+            ``tables/measurements/table.parquet``, and the omission would read
+            as ordinary code at review. An empty ``frozenset()`` rejects
+            everything, which is the correct fail-closed shape.
 
     Returns:
         The resolved file path.
@@ -180,8 +197,14 @@ def resolve_within_root(
         if not is_safe_path_component(segment):
             raise BadRequest()
 
-    root_resolved = root.resolve(strict=True)
+    # BOTH resolves inside the try. `root` itself can vanish mid-request:
+    # `promote_store` republishes by renaming the whole store directory
+    # (`sdk_/ngff_.py:1235-1300`), so this is the routine path, not an exotic
+    # race -- it is the very event the generation token exists to handle.
+    # Left outside, a promote during a pan raises FileNotFoundError and the
+    # client gets a 500 where 404 is meant.
     try:
+        root_resolved = root.resolve(strict=True)
         resolved = root.joinpath(*segments).resolve(strict=True)
     except (OSError, RuntimeError):
         raise NotFound() from None
@@ -190,13 +213,12 @@ def resolve_within_root(
     if not resolved.is_file():
         raise NotFound()
 
-    if allowed_roots is not None:
-        rel = resolved.relative_to(root_resolved)
-        head = rel.parts[0]
-        if head not in allowed_roots and not (
-            len(rel.parts) == 1 and head == ngff_.STORE_ROOT_JSON
-        ):
-            raise NotFound()
+    rel = resolved.relative_to(root_resolved)
+    head = rel.parts[0]
+    if head not in allowed_roots and not (
+        len(rel.parts) == 1 and head == ngff_.STORE_ROOT_JSON
+    ):
+        raise NotFound()
     return resolved
 ```
 
@@ -275,6 +297,12 @@ def store_generation_token(store: Path) -> str:
     return f"{digest}-{os.stat(root_json).st_mtime_ns}"
 ```
 
+**Memoize it.** Both this and `readable_roots_for` run per request, and this one digests the
+root `zarr.json` — at Viv tile rates that is thousands of re-reads and re-digests per pan.
+Cache on `(path, st_mtime_ns)`; the mtime is already in the token, so the key costs one
+`stat`. Spec §9.1 makes interactivity a target rather than a gate, so this is not a
+correctness item — but it is nearly free.
+
 The token is a **path segment**, so a new promote yields a new base URL and mixing is
 structurally impossible rather than merely unlikely. A stale token returns **409**, which
 tells the client to re-read the source spec — a 404 would read as "chunk missing" and be
@@ -343,12 +371,21 @@ def register_zarr_routes(app: dash.Dash, output_root) -> None:
         store = output_root.store_path(dataset, stem)
         if store is None or not store.is_dir():
             abort(404)
-        if token != store_generation_token(store):
+        # Both calls read the root `zarr.json`, which a concurrent promote can
+        # rename away between the `is_dir()` above and here. `_readable_block`
+        # additionally raises `StoreUnreadable` on a schema mismatch. Unguarded,
+        # the routine promote path yields a 500 where 404 is meant -- and with
+        # `--debug` plus the documented `--host 0.0.0.0`, an unhandled
+        # exception is the Werkzeug interactive debugger.
+        try:
+            expected = store_generation_token(store)
+            roots = readable_roots_for(store)
+        except (OSError, StoreUnreadable):
+            abort(404)
+        if token != expected:
             abort(409)
         return send_file(
-            resolve_within_root(
-                store, tail, allowed_roots=readable_roots_for(store)
-            ),
+            resolve_within_root(store, tail, allowed_roots=roots),
             conditional=True,
         )
 
