@@ -40,7 +40,17 @@ from phenotypic.schema import EXPERIMENT, IMAGE
 
 # Single-threaded dev server + Dash callback chain stochastically exceeds
 # the wait budgets on GHA shared runners; correct locally. See test_qc_tab.py.
-pytestmark = pytest.mark.ci_flaky
+pytestmark = [
+    pytest.mark.ci_flaky,
+    pytest.mark.skip(
+        reason=(
+            "QC/Heatmap/Error are unmounted by "
+            "docs/superpowers/specs/2026-08-26-gui-simplification-removals "
+            "(spec section 3). These tests are the acceptance suite for the "
+            "overhauled tabs; delete this marker when the surface returns."
+        )
+    ),
+]
 
 _OUTPUT_NAME = "CliOutputExample"
 _INSTANCE_ID = "qc-SE-splitter01"
