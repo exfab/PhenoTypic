@@ -51,7 +51,6 @@ from phenotypic.gui._shared._triage_callbacks import (
     register_custom_category_safe,
 )
 from phenotypic.gui.results_viewer import _ids as ids
-from phenotypic.gui.results_viewer._qc_tab.review import _ids as qc_review_ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._filtered_state import (
@@ -971,22 +970,27 @@ def register_callbacks(
         )
 
     # ----------------------------------------------------------------------
-    # 10. Shared readout sync — keep BOTH toolbars' ``dim`` readouts in step
-    #    with the shared store. Registered here (once) because the colony
-    #    surface always mounts with the viewer; the QC readout id is present
-    #    too (suppress_callback_exceptions guards the rare absent case).
+    # 10. Readout sync — keep the colony toolbar's ``dim`` readout in step
+    #    with the shared store. Registered here because the colony surface
+    #    always mounts with the viewer.
+    #
+    #    A second Output drove the QC Review toolbar's readout until the QC
+    #    tab was unmounted (spec §3). That was not a harmless leftover:
+    #    ``suppress_callback_exceptions`` relaxes SERVER-side validation
+    #    only, so the renderer kept throwing on the absent id and discarding
+    #    the whole response — freezing the colony readout this callback
+    #    exists to drive. When QC returns it registers its own readout sync
+    #    rather than being written to from here.
     # ----------------------------------------------------------------------
 
     @app.callback(
         Output(ids.COLONY_DIM_READOUT, "children"),
-        Output(qc_review_ids.QC_REVIEW_DIM_READOUT, "children"),
         Input(ids.STORE_TILE_DIM_ALPHA, "data"),
     )
-    def _sync_dim_readouts(dim_alpha: float | None) -> tuple[str, str]:
-        """Render ``dim 0.60`` into both galleries' readouts from the store."""
+    def _sync_dim_readouts(dim_alpha: float | None) -> str:
+        """Render ``dim 0.60`` into the colony gallery's readout from the store."""
         alpha = TILE_DIM_DEFAULT if dim_alpha is None else float(dim_alpha)
-        text = f"dim {alpha:.2f}"
-        return text, text
+        return f"dim {alpha:.2f}"
 
     # ----------------------------------------------------------------------
     # 11. Pixel-layer toggle → active-layer store
