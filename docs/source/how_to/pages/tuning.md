@@ -266,6 +266,17 @@ scorer = CompositeScorer(
 
 ## GUI interface
 
+```{admonition} Currently unmounted
+:class: warning
+
+The `/tune/` co-pilot described below is unmounted from the GUI hub (see
+`docs/superpowers/specs/2026-08-26-gui-simplification-removals`, §2): its
+code is retained on disk and unit-tested, but it is not reachable from
+`phenotypic-gui`'s top-bar navigation. The section below documents its design
+for when it is re-mounted; use the CLI interface above for tuning in the
+meantime.
+```
+
 `phenotypic-gui` mounts a `/tune/` Dash co-pilot as a tab alongside
 **Home · Builder · Tune · Run · Viewer · Analysis**. The co-pilot is a full
 **author → run → monitor** workflow organised as three top-level destinations,
@@ -331,9 +342,6 @@ button — plus the four classic sub-tabs:
 The co-pilot keeps its import surface optuna-free — the live study is opened
 lazily inside the Monitor poll only — and binding an existing run never writes
 to its directory.
-
-For the full walkthrough, see the
-[Tune co-pilot tutorial](../../tutorials/gui/16_tune_copilot.md).
 
 ## Distributed runs
 
