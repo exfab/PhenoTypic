@@ -177,6 +177,12 @@ lock was held, so `BrowseCache.clear()` — which takes that lock with `timeout=
 skip the entry**. The timeline-thumb `rmtree` at the top of `clear()` had been masking it;
 deleting that dead code exposed it.
 
+> **Correction (phase-2 review).** The rmtree masked it by **timing, not semantics** —
+> ~1 ms of syscalls executing before the entry loop, i.e. an accidental sleep. A bare
+> `time.sleep(0.002)` at the top of `clear()` reproduces the mask exactly. The commit
+> message's causal story is right in effect and wrong in mechanism; a reader should not
+> infer the timeline thumbs mattered.
+
 The obvious objection is that hoisting a completion signal out of a lock trades one race for
 another: there is now a window where the entry is published and the lock released but
 `complete_event` is not yet set, in which a concurrent `clear()` could `rmtree` the entry and
@@ -200,3 +206,21 @@ Verdict: the race C fixed was real; the race the fix could introduce is closed b
 
 Recorded because the reasoning is not visible from the diff, and the next person to read
 that hoist will ask exactly this question.
+
+#### Phase-2 review findings applied
+
+- **Major, fixed** (`browse.js`): ~190 lines of dead Browse Timeline JS, never touched by
+  the phase. **The phase-1 lesson, repeating structurally:** the prescribed greps were
+  Python-symbol-shaped (`BROWSE_TL_*`) and the JS spells the same ids kebab-case
+  (`browse-tl-grid`), so no grep for the removed surface's Python names could reach it.
+  A test was also **pinning** the dead code — narrowed with it.
+- **Minor, not fixed, recorded:** the hoisted-signal invariant holds at **one of five**
+  terminal-signal sites; `_mark_preview_only` / `_mark_cancelled` still set
+  `complete_event` under the lock, and the preview path reproduces the original bug in
+  23/30 trials. No production consequence (`protected_keys()` covers those keys too), but
+  the comment at `_preparation.py:634-638` reads as a general rule the file does not
+  follow. Either hoist the other four or narrow the comment — **carried to the simplify
+  pass**, not done here, because it is a behaviour change outside this phase's scope.
+- **Minor, not fixed:** `_config.py:740-741` says the thumb segments are "mounted by
+  `register_thumbnail_route`", a function that no longer exists. Spec §9 forbids
+  `_config.py` constant removal; the stale comment is inside that carve-out.
