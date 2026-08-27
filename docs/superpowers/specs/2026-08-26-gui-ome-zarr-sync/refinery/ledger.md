@@ -315,3 +315,68 @@ because each plan tests only its own copy — as SEC-2 already demonstrates, the
 exists in one copy and not the other in the very first version. Same commit: split
 `_validate`'s session/scope/block half into a channel-free `_validate_scope` (ORCH-4).
 Under USER-5 both callers are now in one plan, so this is written once, not extracted later.
+
+---
+
+## Round 1 — general and algorithm-fidelity reports
+
+Received late; both `VERDICT: REVISE` / `BLOCKING`. Full reports in `reports/`.
+**Round 1 therefore had full panel coverage after all** — the earlier coverage-gap note is
+withdrawn.
+
+### GEN-6 [Critical] [resolved (round 1: all phases anchor on headings)]
+**Overturns brief §9.** Every `FEATURES.md` range in the removals spec is wrong by ≈ +7 past
+line ~400. `:372-377` are **Colony curation rows**; `### Results Timeline tab` is at `:379`.
+Phase 1 as written deleted four curation rows — a spec §5 violation that phase 5's diff
+guard missed because it watched code, not the ledger. Offsets tabulated in the plan README;
+guard extended to `FEATURES.md`. `WORKFLOWS.md` rows were correct.
+
+### GEN-8 [Critical] [resolved (round 1: paths corrected)]
+`tests/unit/gui/browse/` does not exist — browse and builder GUI tests live at
+`tests/gui/`. Every `pytest tests/unit/gui/browse` command was an exit-4 usage error, and
+`tests/unit/gui` gates silently exclude `tests/gui`, where the curation proof lives.
+
+### GEN-7 [Critical] [resolved (round 1: task 2.4b added)]
+Five test files break in phase 2, listed nowhere: `test_thumb_routes.py` (collection
+`ImportError`), 33/22/7 timeline refs in `test_ids.py` / `test_layout.py` /
+`test_compare_layout.py`, and one integration test. Two `✅ shipping` FEATURES.md rows
+(`:64`, `:87`) point into that set from sections phase 2 never edits.
+
+### GEN-9 [Major] [resolved (round 1: `--skip-cli`)]
+`--smoke` is not a flag — the script takes `--force` / `--headed` / `--skip-cli`
+(`:2913-2926`); argparse exits 2. It appeared in eight places.
+
+### ALGO-1 [Major] [resolved (round 1: recorded as a declared deviation)] `spec-change`
+**Overturns an orchestrator edit made this round.** I reasoned from the absence of camera
+code in `_smart_grid/` that napari shares a camera *value*. Verified in napari source:
+`VispyCamera(view, self.viewer.camera, …)` **per grid view** appended to `grid_cameras`
+(`_vispy/canvas.py:1121-1123`), each event-connected to the shared model
+(`_vispy/camera.py:50-56`), reconciled every draw under `# sync all cameras`
+(`canvas.py:646-648`). It **is** a sync protocol. The deck.gl single-`viewState` design is a
+**declared deviation**, not fidelity — spec §6.2's "sharing one camera" needs the same
+correction.
+
+### ALGO-2 [Critical] [resolved (round 1: per-view target specified, test strengthened)]
+deck.gl `target` lives in **viewState**, not `View`. As specified, every cell inherited one
+target and the grid rendered **the same colony N times** — and the e2e test asserted only
+`len(set(zooms)) == 1`, which that bug satisfies perfectly. The one test guarding the task
+passed hardest when the task was most wrong.
+
+### ALGO-8 [Major] [open]
+`test_recorded_ladder_matches_the_ceil_formula` computes the formula **in the test body**
+and compares it to its own parametrization; it imports `select_pyramid_level` and never
+calls it, so it would pass with `phenotypic` uninstalled and cannot catch the `floor`
+regression its docstring names. Its companion `assert level >= 0` is unconditional.
+`rgb_store` is undefined anywhere. **Positive:** all five parametrized values recomputed
+against `ngff_.py:167-169` and are correct.
+
+### ALGO-3/4/5, ALGO-6/7, GEN-13 [open]
+Port description omits the visible-layers predicate's overlay coupling, the detach +
+draw-order mechanism, and the two user toggles (partly applied); `cleanup_clones`' narrow
+claim holds but the leak *class* survives as an unbounded Viv `TileLayer` texture cache;
+`colony_view_budget.py` models 64² D3 crops rather than D1's 1024² tiles, and nothing
+re-runs it as a gate.
+
+### Still open at end of round 1
+GEN-1..5, GEN-10..17 (minus resolved), FLOW-1 (token specified, invalidation cost unsettled),
+ALGO-3..8. **Not converged.** Round 2 is diff-scoped verification per the cadence rules.

@@ -180,7 +180,20 @@ simplicity argument costing *measured* interactivity is a real conflict; one cos
 
 ## 9. Verified line references
 
-Every `file:line` in the **removals** spec was re-checked and holds, including
+> **CORRECTION, round 1.** This section originally claimed "every `file:line` in the
+> removals spec was re-checked and holds". **That was false for `FEATURES.md`**, and the
+> claim propagated into every reviewer's starting context. What was actually checked was
+> `WORKFLOWS.md`'s rows, the capture-script functions and the tutorial pages — not the
+> `FEATURES.md` ranges.
+>
+> **Every `FEATURES.md` range in the spec is wrong**, by ≈ +7 past line ~400. The dangerous
+> one: `:372-394` is cited for the Results Timeline rows, but `:372-377` are **Colony
+> curation rows** and the `### Results Timeline tab` heading is at `:379`. Anchor on
+> headings; the full offset table is in the removals plan's README Global Constraints.
+>
+> The Python `file:line` references below **do** hold — each was checked individually.
+
+Verified and holding, in `src/`:
 `_layout.py:65/66/72/74/609/610/615/656`, `_callbacks.py:113/114/115/116`,
 `browse/_ids.py:47-49` (+64 `BROWSE_TL_*`), `browse/_callbacks.py:39/44/46/50`,
 `browse/_app.py:33/84`, capture fns at `:1156/1246/1750/1810/1900/1947/2813`,
@@ -188,6 +201,14 @@ WORKFLOWS.md rows `:46/47/51/52/54/55/56`, tutorial pages 10/11/15/16/17/19/20.
 
 The **Viv** spec's `_tile_routes.py` line references are **stale** — the store branch
 rewrote that file. Reviewers should verify against the current file, not the spec.
+
+**Also corrected in round 1:** `tests/unit/gui/browse/` and `tests/gui/builder`-style
+mirroring — browse and builder GUI tests live under **`tests/gui/`**, not
+`tests/unit/gui/`. `tests/unit/gui/` has only `analysis`, `builder`, `results_viewer`,
+`run_console`, `shared`, `shell`. `tests/gui` **is** in `testpaths`
+(`pyproject.toml:218`), so it runs in CI — but every per-phase gate written as
+`pytest tests/unit/gui` silently excludes it, which is exactly where the curation proof and
+the browse fallout live.
 
 ## 10. Curation — the constraint that binds two plans
 
