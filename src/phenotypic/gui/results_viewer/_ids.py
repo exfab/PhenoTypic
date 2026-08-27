@@ -514,12 +514,6 @@ TAB_HEATMAP_ID = "tab-heatmap"
 #: cutoff finder never runs while the user is curating on another tab.
 TAB_ERROR_ID = "tab-error"
 
-#: ``dbc.Tab`` value for the Timeline view (the 6th tab). The body is a
-#: focus-and-navigate matrix of overlay thumbnails over a (row × time)
-#: axis pair drawn from ``OutputRoot.master_df`` (spec §6/§16). Kept
-#: mounted alongside the others; switching is CSS-only.
-TAB_TIMELINE_ID = "tab-timeline"
-
 
 # ---------------------------------------------------------------------------
 # QC stores (Wave D mounts the stores; Wave E writes to them)
@@ -884,7 +878,6 @@ __all__ = [
     "TAB_QC_ID",
     "TAB_HEATMAP_ID",
     "TAB_ERROR_ID",
-    "TAB_TIMELINE_ID",
     "STORE_QC_RECIPE_REVISION",
     "STORE_QC_AUGMENTED_REVISION",
     "COLONY_X_AXIS_DROPDOWN_ID",

@@ -71,9 +71,6 @@ from phenotypic.gui.results_viewer._mutation_guard import (
 )
 from phenotypic.gui.results_viewer._qc_tab import build_qc_tab_body
 from phenotypic.gui.results_viewer.colony_view import _layout as _colony_layout  # noqa: F401
-from phenotypic.gui.results_viewer.timeline_view import (
-    _layout as _timeline_layout,
-)
 
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
@@ -616,7 +613,6 @@ def build_app_layout(
         _resolve_qc_recipe(output_root),
         mutations_disabled=mutations_disabled,
     )
-    timeline_tab_body = _timeline_layout.layout(output_root)
     stores = _build_stores(filtered_state)
 
     tabs = dbc.Tabs(
@@ -645,11 +641,6 @@ def build_app_layout(
                 error_tab_body,
                 label="Error",
                 tab_id=ids.TAB_ERROR_ID,
-            ),
-            dbc.Tab(
-                timeline_tab_body,
-                label="Timeline",
-                tab_id=ids.TAB_TIMELINE_ID,
             ),
         ],
         id=ids.TABS_ID,

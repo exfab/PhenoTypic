@@ -37,5 +37,4 @@ def test_results_tabs_expose_exactly_the_mounted_surfaces(built_results_layout):
         ids.TAB_QC_ID,
         ids.TAB_HEATMAP_ID,
         ids.TAB_ERROR_ID,
-        ids.TAB_TIMELINE_ID,
     ]

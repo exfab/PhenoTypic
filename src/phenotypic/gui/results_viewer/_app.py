@@ -79,9 +79,6 @@ from phenotypic.gui._url_prefix import (
 )
 from phenotypic.gui.results_viewer import _ids as ids, _tile_routes
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
-from phenotypic.gui.results_viewer.timeline_view import (
-    _thumb_routes as timeline_thumb_routes,
-)
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._layout import (
     build_active_snapshot_layout,
@@ -230,7 +227,6 @@ def create_app(
         return configure_url_prefix_routing(app, url_prefix)
 
     _tile_routes.register(app, output_root)
-    timeline_thumb_routes.register(app, output_root)
 
     filtered_state = CurationLabels.load(
         output_root.layout, output_root.master_df
