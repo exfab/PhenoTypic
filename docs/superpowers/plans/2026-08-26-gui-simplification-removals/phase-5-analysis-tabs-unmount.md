@@ -244,6 +244,11 @@ git commit -m "test(gui): skip-mark the QC, Heatmap and Error e2e suites"
 Follow phase 4 task 4.3 step 1's pattern for each of the four **headings** above, pointing
 at spec §3, and use the same status: **`⏸ unmounted`**.
 
+**If phase 4 has not landed, add the legend row here too** — `FEATURES.md:9-16` documents
+four statuses and this introduces a fifth. Phase 4 task 4.3 step 1 carries the row text and
+the reasoning for preferring it over the existing `🧪 internal`. Adding it twice is a
+conflict; adding it never leaves the file documenting four statuses while using five.
+
 That value was settled during plan refinement (ledger ORCH-5) and needs no change to
 `scripts/check_features_md.py` — the row loop skips any status that is neither
 `✅ shipping` nor `🚧 in progress`, so `⏸ unmounted` stops ref resolution and passes

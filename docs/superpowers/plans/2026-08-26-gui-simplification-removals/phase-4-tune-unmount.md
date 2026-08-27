@@ -220,6 +220,23 @@ None of the three existing values is right, which is why a fourth is warranted:
 Spec §6 asks the ledger to carry "exists but unreachable" as a state. `⏸ unmounted` is that
 state named honestly.
 
+**Add it to the legend in the same edit.** `FEATURES.md:9-16` documents a **four**-status
+legend — `🔭 planned`, `🚧 in progress`, `✅ shipping`, and `🧪 internal` (71 rows in use).
+Introducing a fifth status without a legend row leaves the file documenting four while
+using five:
+
+```markdown
+| ⏸ unmounted    | Built and retained on disk, but not reachable from the UI. |
+```
+
+Consider and reject `🧪 internal` — it means "Retained internal/legacy coverage; not
+user-facing", which describes *test coverage of internals*. An unmounted tab is
+user-facing **by design** and merely unreachable; conflating the two loses exactly the
+distinction spec §6 asks the ledger to carry.
+
+Note the legend already documents the mechanism ORCH-5 relies on: *"The validator skips ref
+resolution for non-`✅` rows."*
+
 - [ ] **Step 2: Remove the WORKFLOWS.md row, capture function and tutorial**
 
 WORKFLOWS.md rows are workflow round-trips, not capability records — an unreachable
