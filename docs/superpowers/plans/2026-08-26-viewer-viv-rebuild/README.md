@@ -13,7 +13,8 @@ HTTP Range (sharding needs it). A vendored, pre-built Viv + deck.gl IIFE — bui
 the repo, committed beside `openseadragon.min.js` — is driven by a hand-written imperative
 façade, so Dash clientside callbacks never touch Viv directly. Plate becomes a full-canvas
 deep-zoom surface with floating controls; Colony becomes one `OrthographicView` per colony
-sharing a single `viewState` value.
+over a **single dynamic `viewState` carrying `zoom`**, each view overriding only its own
+`target` — one zoom, so it cannot drift.
 
 **Tech Stack:** Viv + deck.gl (MIT, vendored IIFE), zarrita.js, `numcodecs.js` wasm zstd,
 Flask `send_file(conditional=True)`, Dash clientside callbacks, Python 3.11+, `uv`.

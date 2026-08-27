@@ -8,6 +8,23 @@ in the vizarr / avivator posture rather than the current card-plus-sidebar one. 
 Plate path no longer builds a DZI pyramid: `_dzi_tiler` is unhooked from
 `_tile_routes.py:34, :458, :551`, and no `.viewer_cache/` DZI directory is written for it.
 
+> **This phase carries two kinds of work, and they cut differently.** Tasks 3.1, 3.2 and
+> 3.4 are the **server-side source contract** — read the store's own metadata, pin the
+> ladder, make `measured` distinguishable. Task 3.3 is the **entire Plate redesign**. They
+> have different skills and different failure modes, and 3.3 is the only part with no test
+> of its own.
+>
+> **Phase 6 depends on 3.1 only, not on 3.3.** So if this phase overruns, the source
+> contract can land and unblock the builder preview while the UI rebuild continues.
+>
+> **Cut order inside task 3.3, if it overruns** — affordances first, contract last:
+> 1. Navigator inset (an OpenSeadragon carry-over; nothing depends on it)
+> 2. Pyramid readout (instrumentation; valuable, but diagnostic rather than functional)
+> 3. Image stepping / object summary chrome
+> 4. **Layers panel — do not cut.** It is the only surface that reads the store's real
+>    series list, and cutting it re-hard-codes what §1's rule forbids.
+> 5. **Full-canvas stage — do not cut.** It is the deliverable.
+
 **Mockup:** `docs/superpowers/artifacts/2026-08-26-gui-ome-zarr-sync/mockup/Main.dc.html`,
 published at `https://claude.ai/code/artifact/7a8c50b6-042f-4948-9452-d6b6e557239f`.
 
@@ -226,14 +243,21 @@ git commit -m "feat(gui): resolve the Viv source spec from the store's own metad
 > go the same way; `_store_content_token` is re-homed by phase 1's generation token.
 >
 > **So after this phase there is exactly one level-selection authority — the browser — and
-> the server's is dead code.** Pinning dead code with a new test is worse than leaving it
-> orphaned: it looks maintained. Choose, and say which in the commit:
+> the server's is dead code.** The plan has already done the analysis that makes this
+> determinate, so it is decided here rather than handed to the executor as a branch:
 >
-> - **retire the stack with its tests** and assert the ladder against the *browser's*
->   choice in phase 5's level-selection check; or
-> - **keep it** and state what still calls it.
+> **Retire the stack with its tests.** `select_pyramid_level`, `_load_zarr_layer_rgb`,
+> `_load_zarr_level_rgb` and `_store_level0_longest_edge` all lose their only caller chain
+> when step 4 of task 3.3 removes the Plate DZI path, and Colony does not use them
+> (`crop_store_rgb` is level-0 always, `tiles.py:566`). `_store_content_token` is the
+> exception: phase 1 re-homes it as the generation token, so it stays and gains a caller.
 >
-> The invariant below is worth pinning either way — it is the arithmetic, not the caller.
+> **Consequence for the tests below:** the ladder assertion still belongs here — it is about
+> what the *writer recorded*, and it holds regardless of who selects levels. The
+> `select_pyramid_level` exercise moves with the function: if you retire it, drop that test
+> and let phase 5's level-selection check assert against the **browser's** choice instead.
+> Do not keep a test pinning a function no path calls — tested-but-unreachable reads as
+> maintained.
 
 - [ ] **Step 1: Write it against real stores — not against itself**
 
@@ -252,6 +276,9 @@ git commit -m "feat(gui): resolve the Viv source spec from the store's own metad
 ```python
 """Level selection follows the store's RECORDED ladder, ceil boundary included.
 
+``_level_shapes`` is a conftest helper (see the fixture table in task 3.1);
+import it from there rather than redefining it per test module.
+
 Backend section 1.3: levels halve until ``max(H, W) <= 512``, so
 ``levels = ceil(log2(max(H, W) / 512)) + 1``. A draft used ``floor``, which
 terminates one level early and leaves a 4000x3000 plate's smallest level at
@@ -259,6 +286,8 @@ terminates one level early and leaves a 4000x3000 plate's smallest level at
 assertion here runs against a store written by the real writer -- never
 against a formula restated in the test body.
 """
+
+import json
 
 import pytest
 
@@ -276,11 +305,20 @@ def test_the_written_store_records_the_ceil_ladder(store_at_extent, extent, expe
     4000 each fail under the regression, and 513/1025 are the ceil boundaries
     specifically.
     """
+    # Read the recorded block with plain `json` rather than reaching into
+    # `_shared/tiles.py`'s private `_readable_block`: the claim here is about
+    # what the WRITER recorded, so going through the reader's private path
+    # would weaken it.
     store = store_at_extent(extent)
-    block = _readable_block(store)
+    root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+    block = root["attributes"]["phenotypic"]
     assert block["pyramid"]["levels"] == expected_levels
 
 
+# Keep this test ONLY if `select_pyramid_level` survives (see the preamble --
+# the plan's decision is to retire it). If retired, delete this and the
+# exact-edge test with it, and assert the same contract against the browser's
+# choice in phase 5.
 def test_selected_level_is_the_coarsest_that_still_covers(store_at_extent):
     """Exercises `select_pyramid_level` itself, including the exact-edge case.
 
