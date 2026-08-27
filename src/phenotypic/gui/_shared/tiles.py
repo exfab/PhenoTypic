@@ -44,6 +44,7 @@ from dash import html
 from dash.development.base_component import Component
 from flask import Blueprint, Response
 from PIL import Image as PILImage
+from werkzeug.exceptions import BadRequest, NotFound
 
 from phenotypic.gui._design import TILE_DIM_RGB
 
@@ -771,6 +772,84 @@ def is_safe_path_component(name: str) -> bool:
     if "/" in name or "\\" in name or ".." in name:
         return False
     return bool(_NAME_RE.match(name))
+
+
+def resolve_within_root(
+    root: Path,
+    tail: str,
+    *,
+    allowed_roots: frozenset[str],
+) -> Path:
+    """Resolve a client-controlled ``tail`` to a file inside ``root``.
+
+    The single path-escape guard for every route that serves bytes out of a
+    store directory. Two properties are load-bearing and easy to get wrong:
+
+    * Segments are validated INDIVIDUALLY by
+      :func:`is_safe_path_component`. The traversal surface here is wider
+      than a two-component route's because the tail is arbitrary depth.
+    * ``allowed_roots`` is tested on the RESOLVED path, not on the URL
+      segments. Testing the unresolved head lets a symlink inside a readable
+      root (``<root>/rgb/x -> ../tables/measurements/table.parquet``) satisfy
+      both the head check and containment, and the file is served.
+
+    Only the FIRST resolved component is restricted. Restricting every
+    component would reject ``labels``, ``objmap`` and every level index,
+    which would kill the label layer. The store's own root ``zarr.json`` is
+    exempt at depth 1 only -- a pixel client bootstraps from it, and it is
+    the one file that belongs to no series.
+
+    Args:
+        root: Directory the result must live inside.
+        tail: Client-controlled path, ``/``-separated.
+        allowed_roots: First-component allow-list. **Required, and there is
+            no permissive value.** A security primitive whose default is "no
+            restriction" is one forgotten keyword from serving
+            ``tables/measurements/table.parquet``, and the omission would
+            read as ordinary code at review. An empty ``frozenset()`` rejects
+            everything, which is the correct fail-closed shape.
+
+    Returns:
+        The resolved file path.
+
+    Raises:
+        BadRequest: A segment is unsafe, or the resolved path escapes
+            ``root``.
+        NotFound: The path does not exist, is not a file, or its first
+            resolved component is not in ``allowed_roots``.
+    """
+    from phenotypic.sdk_ import ngff_
+
+    segments = [segment for segment in tail.split("/") if segment]
+    if not segments:
+        raise NotFound()
+    for segment in segments:
+        if not is_safe_path_component(segment):
+            raise BadRequest()
+
+    # BOTH resolves inside the try. ``root`` itself can vanish mid-request:
+    # ``promote_store`` republishes by renaming the whole store directory
+    # (``sdk_/ngff_.py``), so this is the routine path, not an exotic race --
+    # it is the very event the generation token exists to handle. Left
+    # outside, a promote during a pan raises ``FileNotFoundError`` and the
+    # client gets a 500 where 404 is meant.
+    try:
+        root_resolved = root.resolve(strict=True)
+        resolved = root.joinpath(*segments).resolve(strict=True)
+    except (OSError, RuntimeError):
+        raise NotFound() from None
+    if not resolved.is_relative_to(root_resolved):
+        raise BadRequest()
+    if not resolved.is_file():
+        raise NotFound()
+
+    rel = resolved.relative_to(root_resolved)
+    head = rel.parts[0]
+    if head not in allowed_roots and not (
+        len(rel.parts) == 1 and head == ngff_.STORE_ROOT_JSON
+    ):
+        raise NotFound()
+    return resolved
 
 
 # ---------------------------------------------------------------------------
