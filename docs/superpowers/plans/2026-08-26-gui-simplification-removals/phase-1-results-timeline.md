@@ -288,10 +288,10 @@ Delete the Results Timeline tab rows at `FEATURES.md:372-394`. These are **delet
 surfaces, so the rows go entirely — unlike phases 4 and 5, where rows are edited to say
 *unmounted*.
 
-Also remove the two shared-engine rows at `:536-537` (Timeline shared engine, Compare-strip
-cap logic) **only if** phase 3 is being executed in the same PR. If phases are landing as
-separate PRs, leave `:536-537` for phase 3 — the engine still exists until then and
-`check_features_md.py` resolves refs for `✅ shipping` rows.
+Leave the two shared-engine rows at `:536-537` (Timeline shared engine, Compare-strip cap
+logic) **alone**. The engine still has a live consumer — Browse — until phase 2 task 2.5
+deletes it, and `check_features_md.py` resolves refs for `✅ shipping` rows. Phase 2 task 2.6
+retires them.
 
 - [ ] **Step 2: Remove the WORKFLOWS.md row**
 

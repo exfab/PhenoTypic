@@ -144,8 +144,13 @@ git commit -m "chore(viv): log and pin the vendored bundle version"
 
 The Plate and Colony rows now describe a Viv surface, not an OpenSeadragon one. Update the
 capability text and any implementation refs that pointed at `_dzi_tiler` or the `.dzi`
-routes. Add rows for the new affordances: the Layers panel, the navigator inset, the
-pyramid readout, and the shared-camera lock.
+routes. Add rows for the new affordances: the Layers panel, the navigator inset and the
+pyramid readout.
+
+**Add the shared-camera lock row only if phase 4 actually landed.** Phase 4 is optional and
+marked the first thing to cut; a `✅ shipping` row for it makes `check_features_md.py
+--strict` resolve refs for an affordance that does not exist. If phase 4 was cut, either
+omit the row or file it as `🔭 planned`.
 
 ```bash
 uv run grep -n "OpenSeadragon\|DZI\|dzi\|Plate\|Colony" src/phenotypic/gui/FEATURES.md | head -30

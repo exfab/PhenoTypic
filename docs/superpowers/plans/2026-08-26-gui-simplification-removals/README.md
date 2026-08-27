@@ -90,17 +90,20 @@ Re-verified in this worktree on 2026-08-26. These are facts the phases depend on
 
 ## Phases
 
-Strict order. Phase 3 **must** follow 1 and 2 — the shared engine cannot be deleted while
-either consumer still imports it.
+Phase 1 before phase 2; phases 4 and 5 are independent of both and of each other.
 
 | # | Phase | Deliverable | Doc |
 |---|---|---|---|
 | 1 | Results Timeline tab — delete | Results viewer has 5 tabs; `timeline_view/` gone | [phase-1](phase-1-results-timeline.md) |
-| 2 | Browse Timeline mode — delete | Browse has no view-mode toggle; Single is the tab | [phase-2](phase-2-browse-timeline.md) |
-| 3 | Shared timeline engine — delete | `_shared/timeline/` gone; no dangling imports | [phase-3](phase-3-shared-timeline-engine.md) |
+| 2 | Browse Timeline mode **+ the shared engine** — delete | Browse has no view-mode toggle; `_shared/timeline/` gone | [phase-2](phase-2-browse-timeline.md) |
 | 4 | Tune — unmount | `/tune/` 404s; `gui/tune/` still imports and unit-tests | [phase-4](phase-4-tune-unmount.md) |
 | 5 | Heatmap / Error / QC — unmount | Results viewer has 2 tabs; 3 packages retained | [phase-5](phase-5-analysis-tabs-unmount.md) |
-| 6 | Verification & docs | Layout-shape tests, dangling-ref test, `gui/CLAUDE.md` | [phase-6](phase-6-verification.md) |
+| 6 | Verification & docs | Shell-build test, curation gate, `gui/CLAUDE.md` | [phase-6](phase-6-verification.md) |
+
+**Phase 3 was folded into phase 2** (tasks 2.5-2.6). The shared engine's consumer count
+reaches zero at the end of phase 2's first four tasks, so a separate phase bought nothing
+and cost a same-PR conditional in both directions. Numbering is left with a gap rather than
+renumbered, so the phase names in the ledger and commits keep resolving.
 
 ## Definition of done
 
@@ -108,6 +111,7 @@ either consumer still imports it.
 2. `uv run python scripts/check_features_md.py --strict` exits 0.
 3. `uv run python scripts/check_workflows_md.py -v` exits 0.
 4. `uv run python scripts/capture_gui_tutorial_screenshots.py --smoke` exits 0.
-5. The three new tests from phase 6 pass.
+5. The two new checks from phase 6 pass, and the three curation-chain tests it names are
+   green (one of them lives under `tests/gui/`, which a `tests/unit/gui` run never reaches).
 6. `tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py` passes **unmodified** —
    `git diff --stat` shows zero lines changed in that file across the whole plan.
