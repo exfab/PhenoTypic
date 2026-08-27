@@ -169,8 +169,16 @@ def _mount_and_source(page, store_url: str) -> dict:
     outcome = page.evaluate(
         """async ([id, url, cx, cy]) => {
             try {
+                window.__levelReports = [];
                 await window.phenotypicViv.mount(id, {
                     initialViewState: {target: [cx, cy, 0], zoom: -2},
+                    // The seam the Plate's served-level readout is driven
+                    // from. Captured here so the readout's central claim --
+                    // that it names the level deck.gl ACTUALLY asked for --
+                    // is asserted against a real render.
+                    onLevelChange: (info) => {
+                        window.__levelReports.push(info);
+                    },
                 });
                 const loaded = await window.phenotypicViv.setSource(id, {
                     storeUrl: url,
@@ -267,4 +275,101 @@ def test_layer_visibility_reaches_deck_gl(gl_page, gl_store_url: str) -> None:
         f"{painted_again} pixels after re-showing the image layer -- hiding "
         "a layer discarded it rather than filtering it out of the render"
     )
+    assert distinct_again > 100, distinct_again
+
+
+def test_the_served_level_is_reported_from_the_loader(
+    gl_page, gl_store_url: str
+) -> None:
+    """`onLevelChange` names the loader entry deck.gl actually asked for.
+
+    Runs against the instance the first test mounted -- the module-scoped
+    page is shared, so this test is ordered after it and fails with "no
+    level was ever reported" if run alone. `MultiscaleImageLayer`
+    resolves a tile as `loader[Math.round(-z)].getTile(config)`
+    (`@vivjs/layers` index.mjs:951), so the facade observes the served level
+    by wrapping each `loader[i].getTile` rather than by computing anything.
+
+    The assertion deliberately does NOT pin which level deck.gl chose --
+    that is its per-frame decision and pinning it would pin deck internals.
+    What is pinned is that the report names the loader entry that was asked,
+    which is exactly the property a server-side number would not have.
+    """
+    reports = gl_page.evaluate("() => window.__levelReports || []")
+    assert reports, (
+        "no level was ever reported -- the readout would sit at 'no image' "
+        "over a painted canvas"
+    )
+    for report in reports:
+        assert report["levels"] == EXPECTED_LEVELS, report
+        assert 0 <= report["level"] < EXPECTED_LEVELS, report
+
+    # The reported extent must be the reported level's own extent. Read back
+    # out of the live loader rather than recomputed from a halving formula:
+    # the ladder is the writer's, and re-deriving it here would make the test
+    # agree with itself.
+    shapes = gl_page.evaluate(
+        """async ([id, url]) => {
+            const loaded = await window.phenotypicViv.setSource(id, {
+                storeUrl: url, seriesPath: 'rgb',
+                labelPath: 'rgb/labels/objmap',
+            });
+            return loaded.image.data.map((s) => s.shape.slice(-2));
+        }""",
+        [CONTAINER, gl_store_url],
+    )
+    for report in reports:
+        height, width = shapes[report["level"]]
+        assert (report["height"], report["width"]) == (height, width), (
+            f"report {report} does not match loader[{report['level']}] "
+            f"shape {(height, width)}"
+        )
+
+
+def test_layer_opacity_reaches_deck_gl(gl_page, gl_store_url: str) -> None:
+    """`setLayerOpacity` rebuilds the layer rather than poking a live prop.
+
+    Also runs against the shared mounted instance, and re-establishes its
+    own preconditions first because the visibility test above leaves the
+    label layer hidden.
+
+    deck.gl layer props are immutable once handed over, and
+    `MultiscaleImageLayer` additionally folds `opacity` into its
+    `refinementStrategy` choice (`@vivjs/layers` index.mjs:997) -- so an
+    in-place poke would leave the tiling strategy disagreeing with the
+    opacity it was chosen for. The rebuild is what the Layers panel's
+    sliders drive.
+    """
+    gl_page.evaluate(
+        """async ([id]) => {
+            await window.phenotypicViv.setLayerVisibility(id, 'image', true);
+            await window.phenotypicViv.setLayerVisibility(id, 'labels', false);
+            await window.phenotypicViv.setLayerOpacity(id, 'image', 1);
+        }""",
+        [CONTAINER],
+    )
+    gl_page.wait_for_timeout(2_000)
+    painted_opaque, _ = _canvas_stats(gl_page, f"#{CONTAINER}")
+    assert painted_opaque > 20_000, "precondition: the image must be painted"
+
+    gl_page.evaluate(
+        """async ([id]) =>
+            await window.phenotypicViv.setLayerOpacity(id, 'image', 0)""",
+        [CONTAINER],
+    )
+    gl_page.wait_for_timeout(2_000)
+    painted_clear, _ = _canvas_stats(gl_page, f"#{CONTAINER}")
+    assert painted_clear < painted_opaque / 20, (
+        f"{painted_clear} pixels still painted at opacity 0 "
+        f"(was {painted_opaque}) -- opacity never reached deck.gl"
+    )
+
+    gl_page.evaluate(
+        """async ([id]) =>
+            await window.phenotypicViv.setLayerOpacity(id, 'image', 1)""",
+        [CONTAINER],
+    )
+    gl_page.wait_for_timeout(2_000)
+    painted_again, distinct_again = _canvas_stats(gl_page, f"#{CONTAINER}")
+    assert painted_again > 20_000, painted_again
     assert distinct_again > 100, distinct_again
