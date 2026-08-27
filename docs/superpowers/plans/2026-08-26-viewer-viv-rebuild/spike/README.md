@@ -322,3 +322,128 @@ cost) or whether both get deferred loading.
 Needs a cold-pan measurement over a real SSH tunnel at 1024² and 512². The governance is
 explicit: the backend spec may be amended from 1024² to 512² **only** gated on a
 measurement. Not yet taken.
+
+---
+
+# Phase 4 task 4.1 — the colony-view virtualization cap, MEASURED
+
+Run 2026-08-27 on compute node `r32`. Subject: the same fixture store the Viv
+e2e suite uses (1200×900 uint8 noise, 3 pyramid levels, written by `save2zarr`),
+served over the phase-1 byte route by a live `phenotypic-gui`. Client: the
+**committed** bundle plus the shipped façade — the prototype drives
+`window.phenotypicViv.setGridViews(...)`, not a hand-rolled deck.gl page, so the
+numbers are the code's and not a lookalike's.
+
+```text
+renderer  ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)), SwiftShader driver)
+canvas    1200 x 800 CSS px, cells sized to FILL it at each count
+method    120 -> 70 rAF frames per count, first 10 discarded; the ONE shared
+          zoom is nudged every frame so deck.gl must redraw (an idle grid is
+          not redrawn at all, and would time nothing)
+```
+
+Cells are sized so **every** cell is on screen at each count. An offscreen view
+is culled cheaply, so a fixed cell size would have measured 1536 cells by
+drawing 200 of them.
+
+| cells | cell px | median ms | p95 ms | fps | ×frame(1) | draw calls |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 977 | 91.2 | 102.0 | 11.0 | 1.00 | 2 |
+| 4 | 487 | 79.4 | 89.0 | 12.6 | 0.87 | 8 |
+| 16 | 242 | 80.3 | 90.3 | 12.5 | 0.88 | 32 |
+| 64 | 120 | 127.8 | 144.2 | 7.8 | 1.40 | 128 |
+| **128** | **84** | **163.6** | **180.1** | **6.1** | **1.79** | **256** |
+| 256 | 59 | 304.5 | 401.4 | 3.3 | 3.34 | 512 |
+| 512 | 41 | 451.3 | 580.4 | 2.2 | 4.95 | 1024 |
+| 1024 | 28 | 809.2 | 942.6 | 1.2 | 8.87 | 2048 |
+| 1536 | 23 | 1198.2 | 1335.3 | 0.8 | 13.14 | 3072 |
+
+**`RECORDED_CAP = 128`, `RECORDED_FRAME_MS = 163.6`.**
+
+## Why 128, and why the criterion is a ratio
+
+The interactive budget is a judgement — spec §9.1 makes interactivity a
+**target**, not a gate — so the reasoning matters more than the number.
+
+**An absolute millisecond budget was not available to choose against.** This node
+has no GPU; Chromium falls back to SwiftShader, and a **single** view already
+costs 91 ms. No cell count reaches 60 fps, or 30, or even 15 — including a count
+of one. A cap picked as "the largest N under 33 ms" would have been `0`, and one
+picked as "under 100 ms" would have encoded this node's software rasterizer
+rather than anything about the design.
+
+So the cap is chosen on the **ratio** `frame(N) / frame(1)`, which is invariant
+under a uniform hardware speedup in a way an absolute threshold is not. The rule:
+
+> **the grid must not cost more than the canvas it draws into** —
+> `frame(N) ≤ 2 × frame(1)`.
+
+128 cells sits at 1.79×; 256 jumps to 3.34×. Past 128 the per-view work, not the
+canvas, is what the frame is spent on. A later reader with a GPU can re-judge
+from `RECORDED_FRAME_MS` without re-running the prototype.
+
+Two supporting observations:
+
+- **The floor is flat to ~16 cells** (79–91 ms; 4 and 16 cells are *faster* than
+  1, because at 1 cell the single view fills the whole canvas and every fragment
+  is shaded). Below ~16 cells the grid is free.
+- **The marginal cost is linear and stable**: ≈ 0.65–0.75 ms per view across
+  64 → 1536, exactly the linear degradation spec §6.2 predicted. It is the slope
+  the cap is bounding, and the slope is the part a faster GPU shrinks.
+
+## What the measurement ALSO settled — the camera, at every count
+
+The prototype read `__debugViewStates` back at each count. At every one of the
+nine, off the live `Viewport`s deck.gl rendered with:
+
+```text
+distinct zooms   = 1        at 1, 4, 16, 64, 128, 256, 512, 1024, 1536 cells
+distinct targets = N        (1, 4, 16, 64, 128, 256, 512, 1024, 1536)
+```
+
+One zoom and N distinct targets, up to 1536 views. That is the whole task-4.2
+claim — one shared value, per-view `target` overrides — measured rather than
+argued, and it is the pair the e2e test asserts.
+
+## Two things the byte model got wrong, and what they cost
+
+`colony_view_budget.py` is the executable form of the resident-set bound. Two
+corrections landed in it while writing it:
+
+1. **An unclamped cell window escapes the level it is inside.** The union of
+   chunks a full plate's cells touch came out as **16** against a **12**-chunk
+   level-0 ceiling — an impossible resident set. Cause: the first column of an
+   arrayed plate sits 31 px from the edge on the reference geometry, so a 64-px
+   cell window reaches `cc = -0.75` and contributes chunk index `-1`. The window
+   is clamped to the level's extent; the union is then 12, and the bound holds.
+2. **The union is the bound, not the sum.** Already the plan's round-2
+   correction, and it is what makes the number small: 1536 cells over ONE store
+   touch **12** level-0 chunks, not 1536 windows' worth. The quantity that
+   actually drives the cache is the number of distinct **stores** in the grid.
+
+Derived cache bound, over the whole pyramid and all four toggleable layers:
+**≥ 151 MB per distinct store**. The façade computes it per instance
+(`gridTileCacheBytes` in `_assets/viv_viewer.js`) rather than hard-coding it.
+
+## FINDING — the cache bound is a CORRECTNESS requirement, not just a leak guard
+
+The plan frames `maxCacheByteSize` as bounding the leak class `cleanup_clones`
+covers in the napari reference. It is that, but reading deck.gl's own source
+while deriving it turned up something stronger:
+
+```text
+@deck.gl/geo-layers/src/tile-layer/tile-layer.ts   renderLayers()
+    return this.state.tileset.tiles.map(...)          <- the CACHE, not the selection
+@deck.gl/geo-layers/src/tileset-2d/tileset-2d.ts   update(viewport, ...)
+    if (!this._viewport || !viewport.equals(this._viewport)) { ... }
+    _resizeCache(): maxCacheSize ?? DEFAULT_CACHE_SCALE * this.selectedTiles.length
+@vivjs/layers dist/index.mjs:900-908               MultiscaleImageLayerBase._updateTileset()
+    // with no `viewportId` prop, super._updateTileset() runs for EVERY viewport
+```
+
+One `MultiscaleImageLayer` instance draws into all N views. Its `Tileset2D`
+re-selects tiles for whichever viewport updated last, but `renderLayers` draws
+the whole **cache** — so a cell whose tiles were evicted paints nothing. The
+default cache is `5 × selectedTiles.length`, sized for one viewport. Sizing it to
+hold the union is what makes multi-view render **at all**, not merely render
+without leaking.
