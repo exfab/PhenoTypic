@@ -35,14 +35,11 @@ from dash import Input, Output, dcc, html
 from dash.development.base_component import Component
 
 from phenotypic.gui._config import (
-    CFG_QC_RECIPE,
     COLONY_TILE_SIZE_DEFAULT,
     MOUNT_HOME,
     SSH_TUNNEL_HINT,
     TILE_DIM_DEFAULT,
 )
-from phenotypic.gui._schema_cache import MeasurementSchema
-from phenotypic.sdk_._qc_recipe import QcRecipe
 from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui._design import (
     COLOR_BG,
@@ -509,38 +506,6 @@ def _build_stores(filtered_state: "CurationLabels") -> Component:
             ),
         ]
     )
-
-
-def _resolve_measurement_schema(output_root: OutputRoot) -> MeasurementSchema:
-    """Return the measurement-schema cache for the active output root.
-
-    Created at layout build time and intentionally NOT stashed on
-    ``app.server.config`` here - the schema is read by callbacks that
-    pull it from the config directly (see
-    :func:`._heatmap_tab._callbacks._refresh_heatmap_controls`); the
-    Dash app factory in :mod:`._app` is responsible for the stash so
-    construction stays a layout-time concern.
-    """
-    return MeasurementSchema.from_layout(output_root.layout)
-
-
-def _resolve_qc_recipe(output_root: OutputRoot) -> QcRecipe:
-    """Return the QC recipe for the active output root.
-
-    Prefer the app-config-stashed instance (set by :func:`._app.create_app`)
-    so layout and callbacks share the same in-memory object. Falls back
-    to a fresh :meth:`QcRecipe.load` for tests or standalone callers that
-    invoke :func:`build_app_layout` without the app factory.
-    """
-    try:
-        from flask import current_app
-
-        recipe = current_app.config.get(CFG_QC_RECIPE)
-        if isinstance(recipe, QcRecipe):
-            return recipe
-    except RuntimeError:
-        pass  # No application context (test harness, etc.).
-    return QcRecipe.from_layout(output_root.layout)
 
 
 # ---------------------------------------------------------------------------
