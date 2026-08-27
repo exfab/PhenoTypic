@@ -37,22 +37,15 @@ from phenotypic.gui.results_viewer._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import IMAGE
 
+from tests._dash_layout import (
+    DANGLING_OUTPUT_MESSAGE,
+    dangling_callback_outputs,
+)
 from tests._output_layout import (
     write_complete_manifest,
     write_master,
     write_measurements_mirror,
 )
-
-
-def _walk(node):
-    """Yield every component in a built layout tree."""
-    yield node
-    children = getattr(node, "children", None)
-    if isinstance(children, (list, tuple)):
-        for child in children:
-            yield from _walk(child)
-    elif children is not None:
-        yield from _walk(children)
 
 
 @pytest.fixture()
@@ -87,29 +80,6 @@ def test_no_registered_callback_writes_to_an_unmounted_id(
     output_root: OutputRoot,
 ) -> None:
     """No callback Output names a string id the built layout does not carry."""
-    app = create_app(output_root)
-    layout = app.layout() if callable(app.layout) else app.layout
-    mounted = {
-        node.id for node in _walk(layout) if isinstance(getattr(node, "id", None), str)
-    }
+    dangling = dangling_callback_outputs(create_app(output_root))
 
-    dangling: set[tuple[str, str]] = set()
-    for key in app.callback_map:
-        # The callback_map key encodes its outputs as
-        # ``..<id>.<prop>...<id>.<prop>..`` with an optional ``@<hash>``
-        # suffix on ``allow_duplicate`` outputs.
-        for segment in key.strip(".").split("..."):
-            segment = segment.strip(".").split("@", 1)[0]
-            if "." not in segment or segment.startswith("{"):
-                continue  # no property, or a pattern-matching dict id
-            component_id, prop = segment.rsplit(".", 1)
-            if component_id.startswith("{"):
-                continue  # pattern-matching id -- may match zero components
-            if component_id not in mounted:
-                dangling.add((component_id, prop))
-
-    assert not dangling, (
-        "these callback Outputs name components the layout does not mount, so "
-        "dash-renderer will throw and DISCARD the whole callback response "
-        f"(taking any co-outputs with it): {sorted(dangling)}"
-    )
+    assert not dangling, DANGLING_OUTPUT_MESSAGE + f"{sorted(dangling)}"

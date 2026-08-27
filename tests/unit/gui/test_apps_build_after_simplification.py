@@ -26,47 +26,10 @@ from pathlib import Path
 
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
-
-def _walk(node):
-    """Yield every component in a built layout tree."""
-    yield node
-    children = getattr(node, "children", None)
-    if isinstance(children, (list, tuple)):
-        for child in children:
-            yield from _walk(child)
-    elif children is not None:
-        yield from _walk(children)
-
-
-def _dangling_outputs(app) -> set[tuple[str, str]]:
-    """Callback Outputs naming a string id the built layout does not mount.
-
-    Pattern-matching dict ids are excluded on purpose: a
-    ``{"type": ..., "index": ALL}`` id legitimately matches zero components at
-    layout time because the components it targets are created by other
-    callbacks. Only string ids name a component the layout is expected to
-    carry.
-    """
-    layout = app.layout() if callable(app.layout) else app.layout
-    mounted = {
-        node.id for node in _walk(layout) if isinstance(getattr(node, "id", None), str)
-    }
-
-    dangling: set[tuple[str, str]] = set()
-    for key in app.callback_map:
-        # The callback_map key encodes its outputs as
-        # ``..<id>.<prop>...<id>.<prop>..`` with an optional ``@<hash>``
-        # suffix on ``allow_duplicate`` outputs.
-        for segment in key.strip(".").split("..."):
-            segment = segment.strip(".").split("@", 1)[0]
-            if "." not in segment or segment.startswith("{"):
-                continue  # no property, or a pattern-matching dict id
-            component_id, prop = segment.rsplit(".", 1)
-            if component_id.startswith("{"):
-                continue
-            if component_id not in mounted:
-                dangling.add((component_id, prop))
-    return dangling
+from tests._dash_layout import (
+    DANGLING_OUTPUT_MESSAGE,
+    dangling_callback_outputs,
+)
 
 
 def test_hub_app_constructs(tmp_path: Path) -> None:
@@ -85,11 +48,6 @@ def test_browse_registers_no_callback_output_the_layout_dropped(
     """No browse callback Output names an id the view-mode removal took away."""
     from phenotypic.gui.browse._app import create_app
 
-    app = create_app(SandboxRoot.from_path(tmp_path))
+    dangling = dangling_callback_outputs(create_app(SandboxRoot.from_path(tmp_path)))
 
-    assert not _dangling_outputs(app), (
-        "these browse callback Outputs name components the layout does not "
-        "mount, so dash-renderer will throw and DISCARD the whole callback "
-        f"response (taking any co-outputs with it): "
-        f"{sorted(_dangling_outputs(app))}"
-    )
+    assert not dangling, DANGLING_OUTPUT_MESSAGE + f"{sorted(dangling)}"
