@@ -223,18 +223,30 @@ git commit -m "feat(gui): resolve the Viv source spec from the store's own metad
 >
 > The invariant below is worth pinning either way — it is the arithmetic, not the caller.
 
-- [ ] **Step 1: Write it, boundary case first**
+- [ ] **Step 1: Write it against real stores — not against itself**
+
+> **An earlier draft of this test asserted nothing about the code.** It computed
+> `derived = 1 if extent <= 512 else ceil(log2(extent/512)) + 1` **in the test body** and
+> compared it to its own parametrization; it imported `select_pyramid_level` and never
+> called it. It would pass with `phenotypic` uninstalled, and could not fail if the
+> implementation regressed to `floor` — the exact regression its own docstring named. Its
+> companion `assert level >= 0` was unconditional, because `chosen` initialises to `0`
+> (`_shared/tiles.py:414`).
+>
+> The five parametrized values themselves were **checked and are correct** (recomputed
+> against `sdk_/ngff_.py:167-169` and `ngff_store_geometry.py` claim C1). Keep them; drive
+> them against real stores.
 
 ```python
-"""Level selection follows the store's recorded ladder, ceil boundary included.
+"""Level selection follows the store's RECORDED ladder, ceil boundary included.
 
 Backend section 1.3: levels halve until ``max(H, W) <= 512``, so
 ``levels = ceil(log2(max(H, W) / 512)) + 1``. A draft used ``floor``, which
 terminates one level early and leaves a 4000x3000 plate's smallest level at
-1000x750. The parametrization below includes that exact case.
+1000x750. That regression is what these tests exist to catch, so every
+assertion here runs against a store written by the real writer -- never
+against a formula restated in the test body.
 """
-
-import math
 
 import pytest
 
@@ -243,30 +255,64 @@ from phenotypic.gui._shared.tiles import select_pyramid_level
 
 @pytest.mark.parametrize(
     ("extent", "expected_levels"),
-    [
-        (512, 1),
-        (513, 2),
-        (1024, 2),
-        (1025, 3),
-        (4000, 4),
-    ],
+    [(512, 1), (513, 2), (1024, 2), (1025, 3), (4000, 4)],
 )
-def test_recorded_ladder_matches_the_ceil_formula(extent, expected_levels):
-    derived = 1 if extent <= 512 else math.ceil(math.log2(extent / 512)) + 1
-    assert derived == expected_levels
+def test_the_written_store_records_the_ceil_ladder(store_at_extent, extent, expected_levels):
+    """The STORE's recorded ladder, not a formula re-derived here.
+
+    `floor` would give 512->1, 513->1, 1025->2, 4000->3 -- so 513, 1025 and
+    4000 each fail under the regression, and 513/1025 are the ceil boundaries
+    specifically.
+    """
+    store = store_at_extent(extent)
+    block = _readable_block(store)
+    assert block["pyramid"]["levels"] == expected_levels
 
 
-def test_selected_level_covers_the_target_without_overshooting(rgb_store):
-    for target in (128, 256, 512, 1024, 2048):
-        level = select_pyramid_level(rgb_store, "rgb", target)
-        assert level >= 0
+def test_selected_level_is_the_coarsest_that_still_covers(store_at_extent):
+    """Exercises `select_pyramid_level` itself, including the exact-edge case.
+
+    `assert level >= 0` is vacuous -- `chosen` initialises to 0
+    (`_shared/tiles.py:414`), so it holds even if every branch is wrong.
+    Assert the contract in the docstring instead: the chosen level's longest
+    edge is >= target, and the NEXT coarser level's is not.
+    """
+    store = store_at_extent(4000)
+    shapes = _level_shapes(store, "rgb")          # [(4000,3000),(2000,1500),...]
+
+    for target in (4000, 2000, 1024, 1000, 512, 256):
+        level = select_pyramid_level(store, "rgb", target)
+        assert max(shapes[level][-2:]) >= target, (
+            f"level {level} does not cover {target}"
+        )
+        if level + 1 < len(shapes):
+            assert max(shapes[level + 1][-2:]) < target, (
+                f"level {level + 1} also covers {target}; {level} is not the coarsest"
+            )
+
+
+def test_a_target_landing_exactly_on_a_level_edge_picks_that_level(store_at_extent):
+    """`>=` not `>` -- an exact match must not fall through to a finer level."""
+    store = store_at_extent(4000)
+    shapes = _level_shapes(store, "rgb")
+    exact = max(shapes[1][-2:])                   # level 1's longest edge
+    assert select_pyramid_level(store, "rgb", exact) == 1
 ```
 
-Read `select_pyramid_level`'s real signature before writing the second test:
-```bash
-uv run sed -n '378,422p' src/phenotypic/gui/_shared/tiles.py
-```
-Adapt the call to match; do not assume the parameter order above.
+**Define the fixtures — they do not exist.** `rgb_store` was referenced across phase 3 and
+this task and is defined **nowhere** in `tests/` (the only grep hit is an unrelated *test
+name* in `tests/unit/sdk_/test_ngff_validity.py:172`). Add to the results-viewer
+`conftest.py`:
+
+- `store_at_extent(extent) -> Path` — a factory writing a real store at
+  `(extent, extent * 3 // 4)` via the CLI writer, so the recorded ladder is the writer's.
+- `rgb_store`, `gray_only_store`, `label_less_store`, `store_with_original`, `stage1_store`
+  — the five task 3.1 and 3.4 use.
+- `_level_shapes(store, layer)` — read each level's shape from the store rather than
+  computing it.
+
+Build every one with the real writer. A hand-edited `zarr.json` would let the test agree
+with a store no writer produces.
 
 - [ ] **Step 2: Run and commit**
 
