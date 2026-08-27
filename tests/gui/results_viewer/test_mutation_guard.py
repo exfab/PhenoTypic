@@ -15,6 +15,7 @@ from phenotypic.analysis import ReplicateAgreement
 from phenotypic.gui._binding_generation import (
     BINDING_GENERATION_PAYLOAD_KEY,
 )
+from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui.analysis import _ids as analysis_ids
 from phenotypic.gui.analysis._layout import (
     build_app_layout as build_analysis_layout,
@@ -23,7 +24,10 @@ from phenotypic.gui.analysis._recipe_state import RecipeState
 from phenotypic.gui.results_viewer import _ids as viewer_ids
 from phenotypic.gui.results_viewer._app import create_app as create_results_app
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.gui.results_viewer._error_tab import _ids as error_ids
+from phenotypic.gui.results_viewer._error_tab import (
+    _ids as error_ids,
+    build_error_tab_body,
+)
 from phenotypic.gui.results_viewer._layout import (
     build_app_layout as build_results_layout,
 )
@@ -32,7 +36,10 @@ from phenotypic.gui.results_viewer._mutation_guard import (
     OutputMutationGuard,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer._qc_tab import _ids as qc_ids
+from phenotypic.gui.results_viewer._qc_tab import (
+    _ids as qc_ids,
+    build_qc_tab_body,
+)
 from phenotypic.gui.results_viewer._qc_tab._rebuild import (
     QcRebuildError,
     preflight_qc_rebuild,
@@ -50,6 +57,7 @@ from phenotypic.plotting._pipeline import (
     publish_plot_output,
 )
 from phenotypic.schema import IMAGE
+from phenotypic.sdk_._qc_recipe import QcRecipe
 from phenotypic.sdk_ import (
     gui_launch_owner_path,
     master_measurements_parquet_path,
@@ -590,22 +598,42 @@ def test_inconsistent_results_layout_keeps_views_and_disables_mutations(
     assert diagnostic.is_open is True
     assert "will not repair or resume" in diagnostic.children
     assert _component(page, viewer_ids.TABS_ID) is not None
-    disabled_ids = (
-        error_ids.ERROR_PUBLISH_BTN_ID,
+    mounted_disabled_ids = (
+        viewer_ids.COLONY_BULK_REMOVE_BTN_ID,
+        viewer_ids.COLONY_BULK_RESTORE_BTN_ID,
+        viewer_ids.COLONY_BULK_MARK_DROPDOWN_ID,
+    )
+    for component_id in mounted_disabled_ids:
+        assert _component(page, component_id).disabled is True
+
+    # The QC and Error tabs are unmounted by
+    # docs/superpowers/specs/2026-08-26-gui-simplification-removals (spec
+    # section 3), so their bodies are no longer reachable from the results
+    # layout. The packages are retained and still honour
+    # ``mutations_disabled``; build them directly so the read-only contract
+    # stays covered while they are off the tab bar.
+    qc_body = build_qc_tab_body(
+        QcRecipe.from_layout(output.layout),
+        mutations_disabled=True,
+    )
+    for component_id in (
         qc_ids.QC_ADD_CHECK_BTN_ID,
         qc_ids.QC_MIGRATE_RECIPE_BTN_ID,
         qc_ids.QC_REBUILD_DATABASE_BTN_ID,
         qc_ids.QC_MODAL_SUBMIT_BTN_ID,
-        viewer_ids.COLONY_BULK_REMOVE_BTN_ID,
-        viewer_ids.COLONY_BULK_RESTORE_BTN_ID,
-        viewer_ids.COLONY_BULK_MARK_DROPDOWN_ID,
         review_ids.QC_REVIEW_MARK_REVIEWED_BTN_ID,
         review_ids.QC_REVIEW_BULK_REMOVE_BTN_ID,
         review_ids.QC_REVIEW_BULK_RESTORE_BTN_ID,
         review_ids.QC_REVIEW_BULK_MARK_DROPDOWN_ID,
+    ):
+        assert _component(qc_body, component_id).disabled is True
+
+    error_body = build_error_tab_body(
+        output,
+        MeasurementSchema.from_layout(output.layout),
+        mutations_disabled=True,
     )
-    for component_id in disabled_ids:
-        assert _component(page, component_id).disabled is True
+    assert _component(error_body, error_ids.ERROR_PUBLISH_BTN_ID).disabled is True
 
     card = build_viewer_card(
         "card-1",

@@ -62,14 +62,11 @@ from phenotypic.gui.results_viewer import (
     _ids as ids,
     colony_view,
 )
-from phenotypic.gui.results_viewer._error_tab import build_error_tab_body
-from phenotypic.gui.results_viewer._heatmap_tab import build_heatmap_tab_body
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._mutation_guard import (
     output_mutations_disabled,
     output_read_only_diagnostic,
 )
-from phenotypic.gui.results_viewer._qc_tab import build_qc_tab_body
 from phenotypic.gui.results_viewer.colony_view import _layout as _colony_layout  # noqa: F401
 
 if TYPE_CHECKING:
@@ -597,22 +594,6 @@ def build_app_layout(
         output_root,
         mutations_disabled=mutations_disabled,
     )
-
-    # Heatmap tab uses the measurement-schema cache; lazily attach it to
-    # ``app.server.config`` here if ``create_app`` did not. The
-    # analysis sub-app already stashes one when mounted; reusing it
-    # keeps the cache hits warm across tabs.
-    schema = _resolve_measurement_schema(output_root)
-    heatmap_tab_body = build_heatmap_tab_body(output_root, schema)
-    error_tab_body = build_error_tab_body(
-        output_root,
-        schema,
-        mutations_disabled=mutations_disabled,
-    )
-    qc_tab_body = build_qc_tab_body(
-        _resolve_qc_recipe(output_root),
-        mutations_disabled=mutations_disabled,
-    )
     stores = _build_stores(filtered_state)
 
     tabs = dbc.Tabs(
@@ -626,21 +607,6 @@ def build_app_layout(
                 colony_tab_body,
                 label="Colony",
                 tab_id=ids.TAB_COLONY_ID,
-            ),
-            dbc.Tab(
-                qc_tab_body,
-                label="QC",
-                tab_id=ids.TAB_QC_ID,
-            ),
-            dbc.Tab(
-                heatmap_tab_body,
-                label="Heatmap",
-                tab_id=ids.TAB_HEATMAP_ID,
-            ),
-            dbc.Tab(
-                error_tab_body,
-                label="Error",
-                tab_id=ids.TAB_ERROR_ID,
             ),
         ],
         id=ids.TABS_ID,

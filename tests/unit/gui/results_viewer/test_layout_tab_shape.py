@@ -34,7 +34,4 @@ def test_results_tabs_expose_exactly_the_mounted_surfaces(built_results_layout):
     assert _tab_ids(built_results_layout) == [
         ids.TAB_PLATE_ID,
         ids.TAB_COLONY_ID,
-        ids.TAB_QC_ID,
-        ids.TAB_HEATMAP_ID,
-        ids.TAB_ERROR_ID,
     ]
