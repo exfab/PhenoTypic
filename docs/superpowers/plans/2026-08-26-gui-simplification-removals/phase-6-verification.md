@@ -198,7 +198,7 @@ separately.
 QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui -n 4 -q
 uv run python scripts/check_features_md.py --strict
 uv run python scripts/check_workflows_md.py -v
-QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --smoke
+QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli
 ```
 Expected: all green. Then run the full unit suite as a Slurm job per the
 **`run-phenotypic-test`** skill and report it as "green except the known baseline failure".

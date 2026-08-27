@@ -24,7 +24,7 @@ exists — phase 3 removes it.
 ### Task 2.1: Pin Single mode's behaviour before touching it
 
 **Files:**
-- Test: `tests/unit/gui/browse/test_single_mode_survives_removal.py` (create)
+- Test: `tests/gui/browse/test_single_mode_survives_removal.py` (create)
 
 **Interfaces:**
 - Produces: `test_browse_layout_has_no_view_mode_toggle`,
@@ -108,7 +108,7 @@ constants are being deleted, so the test cannot import them.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run pytest \
-  tests/unit/gui/browse/test_single_mode_survives_removal.py -v
+  tests/gui/browse/test_single_mode_survives_removal.py -v
 ```
 Expected: `test_browse_layout_has_no_view_mode_toggle` FAILS (the toggle is present).
 `test_browse_single_body_is_unconditional` may pass already — that is fine; it is a guard
@@ -117,7 +117,7 @@ against what task 2.3 could break, not a statement about today.
 - [ ] **Step 4: Commit the failing test**
 
 ```bash
-git add tests/unit/gui/browse/test_single_mode_survives_removal.py
+git add tests/gui/browse/test_single_mode_survives_removal.py
 git commit -m "test(gui): pin Browse Single mode against the timeline removal"
 ```
 
@@ -248,18 +248,46 @@ Remove the timeline-thumb cache entries in `_cache.py`, and in `_app.py` the
 **Do not remove the Browse DZI/`BrowseCache` path.** Browse keeps libvips → DZI → OSD as
 its only pixel path (viv-rebuild spec §9); only the *timeline thumbnail* route goes.
 
+- [ ] **Step 4b: Repair the five test files this phase breaks**
+
+Neither the spec's delete list nor an earlier draft of this plan mentioned these. Verified
+2026-08-26 — reference counts are to `BROWSE_TL_*` / `_thumb_routes` / `BROWSE_VIEW_MODE_TOGGLE`
+/ `BROWSE_TIMELINE_BODY`:
+
+| File | Refs | Action |
+|---|---|---|
+| `tests/gui/browse/test_thumb_routes.py` | 2 | **delete** — `from ... import _thumb_routes` at `:10` is a collection `ImportError` |
+| `tests/gui/browse/test_ids.py` | 33 | **edit** — drop the timeline half, keep the Single-mode id assertions |
+| `tests/gui/browse/test_layout.py` | 22 | **edit** — same |
+| `tests/gui/browse/test_compare_layout.py` | 7 | **edit** — same |
+| `tests/integration/gui/test_browse_refresh.py::test_timeline_reset_consumes_shared_refresh_revision` | — | **delete that test** |
+
+**Two `✅ shipping` FEATURES.md rows point at tests in that list, and both sit outside any
+section this phase edits** — so breaking them fails `features-md-gate` from rows nobody
+touched:
+
+```text
+FEATURES.md:64  Refresh button              -> test_browse_refresh.py::test_timeline_reset_consumes_shared_refresh_revision
+FEATURES.md:87  Image dropdown + ‹/› stepper -> test_layout.py::test_prev_next_buttons_use_wider_stable_hit_target
+```
+
+Row `:87`'s target survives (it is a Single-mode test — keep it when editing
+`test_layout.py`). Row `:64`'s target is being deleted: **repoint it** at a surviving
+refresh test, or restate the row without the Timeline half. Do this in task 2.4's ledger
+commit, not here.
+
 - [ ] **Step 5: Run the tests written in task 2.1**
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run pytest \
-  tests/unit/gui/browse/test_single_mode_survives_removal.py -v
+  tests/gui/browse/test_single_mode_survives_removal.py -v
 ```
 Expected: both PASS.
 
 - [ ] **Step 6: Run the whole browse unit suite**
 
 ```bash
-QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/browse -n 4 -q
+QT_QPA_PLATFORM=offscreen uv run pytest tests/gui/browse -n 4 -q
 ```
 Expected: PASS. **Any failure in a non-timeline browse test is a regression in Single
 mode** and must be fixed here, not deferred.
@@ -276,7 +304,7 @@ left hidden — the unit test in 2.1 checks the built layout, this checks the ru
 
 ```bash
 uv run ruff check --fix src/phenotypic/gui/browse/
-git add -A src/phenotypic/gui/browse tests/unit/gui/browse tests/gui/browse tests/e2e/gui
+git add -A src/phenotypic/gui/browse tests/gui/browse tests/gui/browse tests/e2e/gui
 git commit -m "refactor(gui): delete Browse Timeline mode, keep Single unchanged"
 ```
 
@@ -304,7 +332,7 @@ Follow phase 1 task 1.4 steps 1-4 verbatim, substituting: `FEATURES.md:104-126`,
 ```bash
 uv run python scripts/check_features_md.py --strict
 uv run python scripts/check_workflows_md.py -v
-QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --smoke
+QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli
 ```
 Expected: all exit 0.
 

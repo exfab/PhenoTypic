@@ -181,7 +181,7 @@ git commit -m "test(gui): skip-mark the Tune e2e suite pending re-mount"
 ### Task 4.3: Mark Tune unmounted in the ledgers and retire its tutorial
 
 **Files:**
-- Modify: `src/phenotypic/gui/FEATURES.md:419-486` (Tune co-pilot section — **edit**, not remove)
+- Modify: `src/phenotypic/gui/FEATURES.md`, section `` ## Tune co-pilot (`/tune/`) `` (**edit**, not remove) — heading at `:426`, section runs to `:493`. The spec's `419-486` is wrong; `:419-425` are Run-console rows.
 - Modify: `src/phenotypic/gui/WORKFLOWS.md:56` (`tune_copilot` row — remove)
 - Modify: `scripts/capture_gui_tutorial_screenshots.py:2813` + call sites + harness block `:2381-2464`, `:2661`
 - Delete: `docs/source/tutorials/gui/16_tune_copilot.md` + its image directory
@@ -189,7 +189,7 @@ git commit -m "test(gui): skip-mark the Tune e2e suite pending re-mount"
 
 - [ ] **Step 1: Edit — do not delete — the FEATURES.md section**
 
-The Tune co-pilot rows at `:419-486` describe an **unmounted** surface. Per spec §6, mark
+The rows under `` ## Tune co-pilot (`/tune/`) `` (`:426-493`) describe an **unmounted** surface. Per spec §6, mark
 them unmounted with a pointer to this spec and change their status **off** `✅ shipping`
 so `check_features_md.py` stops resolving their refs. Add a section note:
 
@@ -232,7 +232,7 @@ harness blocks at `:2381-2464` and `:2661`, page `16_tune_copilot.md`, and its i
 ```bash
 uv run python scripts/check_features_md.py --strict
 uv run python scripts/check_workflows_md.py -v
-QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --smoke
+QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli
 ```
 Expected: all exit 0.
 

@@ -156,6 +156,9 @@ git diff --stat src/phenotypic/gui/results_viewer/colony_view/ \
                  src/phenotypic/gui/results_viewer/_shared/_radial.py \
                  src/phenotypic/gui/results_viewer/_shared/_triage_callbacks.py \
                  tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py
+# The curation rows live in the LEDGER too, and only the code half was watched.
+uv run grep -c "Colony radial lazy-populate\|colony-bulk-mark-dropdown" \
+  src/phenotypic/gui/FEATURES.md    # must be 2, unchanged from baseline
 ```
 Expected: **empty** (adjust the `_shared` paths if they resolve elsewhere —
 `uv run grep -rl "build_radial_trigger" src/`). A non-empty diff on the colony test file
@@ -230,7 +233,7 @@ git commit -m "test(gui): skip-mark the QC, Heatmap and Error e2e suites"
 ### Task 5.3: Mark the three tabs unmounted in the ledgers; retire their tutorials
 
 **Files:**
-- Modify: `src/phenotypic/gui/FEATURES.md:587` (QC tab), `:617` (QC Review), `:658` (Heatmap tab), `:677` (Error analysis tab) — **edit**, not remove
+- Modify: `src/phenotypic/gui/FEATURES.md` — sections `## QC tab` (`:594`), `## QC Review sub-view` (`:624`), `## Heatmap tab` (`:665`), `## Error analysis tab` (`:684`). **Anchor on the headings**; the spec's `587/617/658/677` are each ~7 lines early and land *inside the preceding section*. **Edit**, not remove.
 - Modify: `src/phenotypic/gui/WORKFLOWS.md:46, :47, :51, :52` — remove
 - Modify: `scripts/capture_gui_tutorial_screenshots.py:1750, :1810, :1900, :1947` + call sites
 - Delete: `docs/source/tutorials/gui/10_qc_curation_loop.md`, `11_heatmap_exploration.md`, `15_qc_review.md`, `17_error_analysis.md` + their image directories
@@ -238,8 +241,8 @@ git commit -m "test(gui): skip-mark the QC, Heatmap and Error e2e suites"
 
 - [ ] **Step 1: Edit the four FEATURES.md rows to unmounted**
 
-Follow phase 4 task 4.3 step 1's pattern for each of `:587`, `:617`, `:658`, `:677`,
-pointing at spec §3, and use the same status: **`⏸ unmounted`**.
+Follow phase 4 task 4.3 step 1's pattern for each of the four **headings** above, pointing
+at spec §3, and use the same status: **`⏸ unmounted`**.
 
 That value was settled during plan refinement (ledger ORCH-5) and needs no change to
 `scripts/check_features_md.py` — the row loop skips any status that is neither
@@ -284,7 +287,7 @@ every image path for no benefit; gaps in the sequence are fine and are the cheap
 ```bash
 uv run python scripts/check_features_md.py --strict
 uv run python scripts/check_workflows_md.py -v
-QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --smoke
+QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli
 ```
 Expected: all exit 0.
 

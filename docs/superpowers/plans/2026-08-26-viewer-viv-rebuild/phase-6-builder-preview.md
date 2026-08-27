@@ -258,7 +258,7 @@ Constraints.
 
 ```bash
 git diff --stat src/phenotypic/gui/builder/_point_picker.py
-QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/builder -k point_picker -q
+QT_QPA_PLATFORM=offscreen uv run pytest tests/gui/builder -k point_picker -q
 ```
 Expected: **empty diff**, tests PASS. Spec §7 makes this the executable statement that the
 picker stays on DZI.

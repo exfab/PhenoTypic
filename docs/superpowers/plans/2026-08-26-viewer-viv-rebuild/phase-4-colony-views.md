@@ -141,16 +141,77 @@ git commit -m "docs(viv): measure the colony-view virtualization cap"
 - Produces: `setGridViews(containerId, cells, sharedViewState)` where `cells` is
   `[{id, centroidRr, centroidCc, size}, ...]`.
 
-> **The napari implementation this ports.** `gui/_smart_grid/` patches `viewer.grid` so
-> only **visible** layers get cells, then `create_overlay_clones` duplicates every
-> Labels/Points/Shapes visual into **each** viewbox — every cell shows a different base
-> image under the same annotation, sharing one camera.
+> **The napari implementation this ports** (`gui/_smart_grid/`, 378 lines, read in full
+> during plan refinement — every claim below carries its `file:line`):
 >
-> **The deck.gl translation:** zoom edits **one shared `viewState`** applied to every view.
-> The shared camera is a **value, not a sync protocol** — there is no per-view listener
-> reconciling positions, which is what makes it correct by construction rather than
-> eventually consistent. `create_overlay_clones`' GPU-resource cleanup dance
-> (`cleanup_clones`) has no deck.gl equivalent and is **not ported**.
+> - **Visible-layers-only grid.** `install_smart_grid` (`_install.py:14-15`) shadows exactly
+>   two methods on the grid *instance* (`:90-91`). The real predicate (`:64-70`) is
+>   `layer.visible and not (_overlay_enabled and is_overlay_layer(layer))` — visible **AND
+>   non-overlay**. The overlay exclusion is not a detail: it is what frees the
+>   Labels/Points/Shapes layers from owning a cell so they can be cloned into every cell.
+>   The two are **one coupled mechanism**, not a sequence. `_overlay_enabled` and
+>   `_labels_enabled` are live user toggles (`_grid_popup.py:40-51`), so the reference has
+>   two runtime modes.
+>   **Not ported, declared:** the colony grid has no visibility mapping at all — napari's
+>   cells are per-*layer*, colony cells are per-*region of one image*, so the concept has no
+>   analogue. The two user toggles go with it.
+> - **Detach + draw-order.** `_install.py:130-136` sets the original overlay visuals'
+>   `node.parent = None`, because `patched_position` returns `(-1,-1)` and napari never
+>   re-parents them — left attached they draw canvas-wide at `order=100`, on top of
+>   everything. Clones then take `order = len(viewer.layers) + 10`
+>   (`_overlay_visuals.py:33, :39`). The deck.gl analogue is layer order within each view's
+>   stack; state it explicitly when building the stack rather than relying on insertion
+>   order.
+> - **Overlay cloning.** `create_overlay_clones` (`_overlay_visuals.py:20-42`) iterates
+>   `canvas.grid_views × overlay_layers`, calls `create_vispy_layer(layer)` and parents each
+>   clone to `viewbox.scene`. `is_overlay_layer` (`:16-18`) is exactly
+>   `Labels | Points | Shapes`. Note it clones only **visible** overlay layers (`:26-28`) —
+>   "every Labels/Points/Shapes visual" overstates it.
+>
+> **Correction — napari IS a sync protocol, and the deck.gl design is a declared
+> deviation, not a faithful port.** An earlier draft of this plan (and spec §6.2's "sharing
+> one camera") claimed the reference shares a camera *value* with "no per-view listener
+> reconciling positions". **That is false**, verified in napari's source:
+>
+> ```text
+> napari/_vispy/canvas.py:1121-1123   camera = VispyCamera(view, self.viewer.camera, self.viewer.dims)
+>                                     self.grid_views.append(view); self.grid_cameras.append(camera)
+> napari/_vispy/camera.py:50-56       self._camera.events.center.connect(self._on_center_change)
+>                                     ... zoom / angles / perspective
+> napari/_vispy/canvas.py:646-648     # sync all cameras
+>                                     for camera in (self.camera, *self.grid_cameras):
+>                                         camera.on_draw(event)
+> ```
+>
+> One camera **model**, *N* `VispyCamera` objects, event-connected and re-reconciled on
+> every draw — precisely the per-view listener protocol the draft said did not exist.
+> (`_smart_grid/` itself contains no camera code; it patches grid geometry only. The
+> behaviour is napari's, inherited.)
+>
+> **The deck.gl translation collapses that fan-out to a single `viewState`.** It is still
+> the better design — a shared value cannot tear mid-gesture the way an event-reconciled
+> set can — but it is a **deliberate simplification of the reference**, and per the
+> `porting-a-reference-algorithm` skill it is recorded as a **declared deviation** requiring
+> a user gate, not presented as fidelity. Do not argue "correct by construction" against the
+> strawman the draft invented.
+>
+> **Why `cleanup_clones` is not ported — narrow claim only.** It
+> (`_overlay_visuals.py:45-58`) calls `clone.close()` per clone then
+> `canvas._scene_canvas.context.finish()` (a glFinish, so deletions land before
+> reallocation), reclaiming GPU resources for *N overlay-layers × M viewboxes* separately
+> instantiated vispy visuals. It is **not** a nicety in the reference: it runs at the top of
+> every scenegraph rebuild (`_install.py:125`) against wholesale recreation at `:137`, and
+> rebuilds fire on every visibility toggle, name change and layer insert/remove
+> (`:157-183`). Without it those visuals leak per event.
+>
+> The narrow claim holds: deck.gl reconciles layers by id and finalizes them when dropped,
+> and multi-view draws **one** layer instance per view rather than N instances, so there is
+> no clone lifecycle to manage. **The broad claim does not.** The leak *class* survives —
+> Viv's `TileLayer` texture cache grows with the union of all *N* views' visible tiles,
+> bounded only by `maxCacheSize` / `maxCacheByteSize`, and **nothing in this phase sets,
+> bounds, or tests it.** Task 4.1's cap bounds *cell count*, not *cached tile bytes*. Set an
+> explicit cache bound when building the layer stack, and record its number alongside the
+> cap.
 
 - [ ] **Step 1: Read the napari original before porting**
 
@@ -185,18 +246,54 @@ def test_zooming_one_cell_moves_every_cell(page, live_viewer_url):
         """() => window.phenotypicViv.setViewState(
                'colony-grid', {zoom: 3, target: [0, 0, 0]})"""
     )
-    zooms = page.evaluate(
-        """() => window.phenotypicViv.__debugViewStates('colony-grid')
-                   .map(v => v.zoom)"""
+    states = page.evaluate(
+        """() => window.phenotypicViv.__debugViewStates('colony-grid')"""
     )
+    zooms = [s.zoom for s in states]
+    targets = [tuple(s.target[:2]) for s in states]
+
     assert len(zooms) > 1
-    assert len(set(zooms)) == 1, f"views drifted apart: {sorted(set(zooms))}"
+    assert len(set(zooms)) == 1, f"zoom drifted apart: {sorted(set(zooms))}"
+
+    # The complementary half, and the one that matters. Asserting only
+    # "all zooms equal" is satisfied PERFECTLY by the bug this test exists
+    # to catch: a single shared viewState gives every cell the same target,
+    # so the grid renders one colony N times -- with identical zooms.
+    assert len(set(targets)) == len(targets), (
+        f"every cell is showing the same region: {targets[:4]}"
+    )
 ```
 
-- [ ] **Step 3: Implement `setGridViews` with a single `viewState`**
+- [ ] **Step 3: Implement `setGridViews` — `target` is per-view, `zoom` is shared**
 
-One `OrthographicView` per cell, each with its own `x`/`y`/`width`/`height` and a
-`target` at the colony centroid, but **one** `viewState` object shared by all of them.
+> **Read this before writing the call.** An earlier draft said "one `OrthographicView` per
+> cell, each with its own `x`/`y`/`width`/`height` and a `target` at the colony centroid,
+> but **one** `viewState` object shared by all of them." **`target` does not live on a
+> `View`.** A deck.gl `View` carries `id`/`x`/`y`/`width`/`height`; `target` and `zoom` live
+> in the **viewState**. Built literally as written, every cell inherits the same `target`
+> and the grid renders **the same colony N times**.
+
+deck.gl's multi-view viewState is keyed by view id, which is exactly the split needed —
+per-view `target`, shared `zoom`:
+
+```javascript
+// Views carry GEOMETRY only.
+const views = cells.map((c, i) => new OrthographicView({
+  id: `cell-${c.id}`, x: layout[i].x, y: layout[i].y,
+  width: layout[i].w, height: layout[i].h,
+}));
+
+// viewState is keyed BY VIEW ID: target differs per cell, zoom is the
+// shared value. This is the split the shared-camera lock actually locks --
+// it constrains `zoom`, never `target`.
+const viewState = Object.fromEntries(cells.map((c) => [
+  `cell-${c.id}`,
+  {target: [c.centroidCc, c.centroidRr, 0], zoom: shared.zoom},
+]));
+```
+
+A "shared viewState object" and "a shared zoom across per-cell targets" are different
+things, and only the second renders a grid.
 
 - [ ] **Step 4: Make the shared-camera lock a visible affordance**
 

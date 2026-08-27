@@ -284,12 +284,26 @@ git commit -m "refactor(gui): delete the Results Timeline tab"
 
 - [ ] **Step 1: Remove the FEATURES.md rows**
 
-Delete the Results Timeline tab rows at `FEATURES.md:372-394`. These are **deleted**
-surfaces, so the rows go entirely — unlike phases 4 and 5, where rows are edited to say
-*unmounted*.
+**Anchor on the heading, never the line number.** Delete the rows under
+`### Results Timeline tab` — the heading is at `:379`, and the section runs to `:400`.
 
-Leave the two shared-engine rows at `:536-537` (Timeline shared engine, Compare-strip cap
-logic) **alone**. The engine still has a live consumer — Browse — until phase 2 task 2.5
+> **The spec's `372-394` is wrong and dangerous.** `:372-377` are **Colony curation rows**
+> — `Colony radial lazy-populate`, `Custom folder + ＋ Add custom`,
+> `Bulk "Mark N as ▾" (colony)`, `Pixel layer toggle`. Deleting that range removes four
+> curation rows, violating spec §5, and leaves `:395-400` as orphaned Timeline rows whose
+> Test refs point at files this phase deletes — which fails `features-md-gate`. Verify
+> before and after:
+>
+> ```bash
+> uv run grep -n "^### Results Timeline tab" src/phenotypic/gui/FEATURES.md
+> uv run grep -c "Colony radial lazy-populate" src/phenotypic/gui/FEATURES.md   # must stay 1
+> ```
+
+These are **deleted** surfaces, so the rows go entirely — unlike phases 4 and 5, where rows
+are edited to say *unmounted*.
+
+Leave the two shared-engine rows **alone** (they are at `:543-544`, not the spec's
+`:536-537` — `:536-537` are run-console rows). The engine still has a live consumer — Browse — until phase 2 task 2.5
 deletes it, and `check_features_md.py` resolves refs for `✅ shipping` rows. Phase 2 task 2.6
 retires them.
 
@@ -334,10 +348,14 @@ directory** means step 4 removed images for a row that still exists — recheck 
 - [ ] **Step 6: Smoke the capture script**
 
 ```bash
-QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --smoke
+QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli
 ```
-Expected: exit 0. If `--smoke` is not a supported flag, check the invocation
-`gui-checks.yml`'s `smoke-capture` job uses and copy it verbatim.
+Expected: exit 0. `--skip-cli` skips the synthetic-dataset build and CLI run, which
+`gui-checks.yml:253` does NOT — it runs the script bare. Bare is a full dataset build plus a
+Playwright capture of every tutorial page; running that once per phase is minutes each time.
+Run it bare **once, at the end**, and `--skip-cli` in between. The script accepts only
+`--force`, `--headed` and `--skip-cli` (`:2913-2926`); `--smoke` does not exist and argparse
+exits 2.
 
 - [ ] **Step 7: Commit**
 

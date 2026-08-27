@@ -54,6 +54,32 @@ re-verified against this tree on 2026-08-26 and holds (see §Verified baseline).
 - **The ledgers are at `src/phenotypic/gui/FEATURES.md` and
   `src/phenotypic/gui/WORKFLOWS.md`**, not the repo root. The spec cites them by bare
   filename; the paths above are the real ones.
+- **NEVER edit FEATURES.md by line number. Anchor on its `##` / `###` headings.**
+  **Every line range the spec §6 gives for FEATURES.md is wrong**, by a consistent ≈ +7
+  offset past line ~400 — verified 2026-08-26. The worst case is not cosmetic: spec §6 and
+  an earlier draft of phase 1 said "delete the Results Timeline rows at `FEATURES.md:372-394`",
+  but `:372-377` are **Colony curation rows** (`Colony radial lazy-populate`,
+  `Custom folder + ＋ Add custom`, `Bulk "Mark N as ▾" (colony)`, `Pixel layer toggle`) and
+  the `### Results Timeline tab` heading is at `:379`. Following the spec literally
+  **deletes four curation rows** — a direct spec §5 violation, and phase 5's `git diff`
+  guard would not catch it because that guard watches `colony_view/` and the radial modules,
+  not the ledger.
+
+  | Section | Heading to anchor on | Spec said | Actually |
+  |---|---|---|---|
+  | Browse Timeline | `## Browse tab (source image viewer)` block | 104-126 | 102-126 |
+  | Results Timeline | `### Results Timeline tab` | 372-394 | **379**-400 |
+  | Tune co-pilot | `` ## Tune co-pilot (`/tune/`) `` | 419-486 | **426**-493 |
+  | Timeline shared engine | rows naming `gui/_shared/timeline/` | 536-537 | **543**-544 |
+  | QC tab | `## QC tab` | 587 | **594** |
+  | QC Review | `## QC Review sub-view` | 617 | **624** |
+  | Heatmap tab | `## Heatmap tab` | 658 | **665** |
+  | Error analysis | `## Error analysis tab` | 677 | **684** |
+
+  **WORKFLOWS.md's row numbers `:46/47/51/52/54/55/56` ARE correct** — verified individually.
+  The defect is specific to FEATURES.md.
+- **Add FEATURES.md to phase 5's spec-§5 diff guard.** The curation rows live in the ledger
+  as well as in code, and only the code half was being watched.
 - **Unmounted ≠ deleted in the ledger.** An unmounted surface's FEATURES.md row is
   **edited to say unmounted, with a pointer to this spec** — not removed. A deleted
   surface's row is removed. `check_features_md.py` only resolves refs for `✅ shipping`
@@ -110,7 +136,7 @@ renumbered, so the phase names in the ledger and commits keep resolving.
 1. `uv run pytest tests/unit/gui -n 4` green (minus the known baseline failure).
 2. `uv run python scripts/check_features_md.py --strict` exits 0.
 3. `uv run python scripts/check_workflows_md.py -v` exits 0.
-4. `uv run python scripts/capture_gui_tutorial_screenshots.py --smoke` exits 0.
+4. `uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli` exits 0.
 5. The two new checks from phase 6 pass, and the three curation-chain tests it names are
    green (one of them lives under `tests/gui/`, which a `tests/unit/gui` run never reaches).
 6. `tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py` passes **unmodified** —

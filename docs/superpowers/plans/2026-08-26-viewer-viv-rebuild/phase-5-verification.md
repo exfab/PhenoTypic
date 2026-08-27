@@ -186,7 +186,7 @@ CI gates; doing it once is the point of folding phase 6 in.
 ```bash
 uv run python scripts/check_features_md.py --strict
 uv run python scripts/check_workflows_md.py -v
-QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --smoke
+QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli
 ```
 Expected: all exit 0.
 
