@@ -224,3 +224,26 @@ that hoist will ask exactly this question.
 - **Minor, not fixed:** `_config.py:740-741` says the thumb segments are "mounted by
   `register_thumbnail_route`", a function that no longer exists. Spec §9 forbids
   `_config.py` constant removal; the stale comment is inside that carve-out.
+
+### The heading-anchoring fix, vindicated concretely
+
+Measured before phase 1, and again after phases 1-2 landed:
+
+| Section | Spec said | Before phase 1 | **Now** | Drift |
+|---|---|---|---|---|
+| `## QC tab` | 587 | 594 | **546** | −48 |
+| `## QC Review sub-view` | 617 | 624 | **576** | −48 |
+| `## Heatmap tab` | 658 | 665 | **617** | −48 |
+| `## Error analysis tab` | 677 | 684 | **636** | −48 |
+
+The spec's numbers were already wrong by ≈ +7 when written. Phases 1 and 2 then deleted
+~48 lines of rows **above** these sections, so every one of them has moved again — and will
+move once more when phase 4 retires the Tune block, which sits above all four.
+
+**Had the plan kept line numbers, cluster G would now be editing sections ~48 lines off
+target** — landing inside `## Analysis sub-app` and `## Cross-cutting infrastructure`
+instead. GEN-6 was rated Critical on the strength of one bad range; the real hazard is that
+every range in a multi-phase removal is a moving target by construction.
+
+This is also why the ledger layer could not parallelize (see the DAG): concurrent agents
+would each be computing anchors against a file the other was renumbering.
