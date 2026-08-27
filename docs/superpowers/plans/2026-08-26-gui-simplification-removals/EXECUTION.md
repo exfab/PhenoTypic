@@ -105,3 +105,54 @@ QT_QPA_PLATFORM=offscreen uv run pytest <paths> -n 4 -q
 
 Phase 4 (F) is independent and could move earlier; it is placed after the browse work only
 so the two `FEATURES.md`-heavy phases are not adjacent.
+
+---
+
+## Execution log
+
+### Phase 1 — Results Timeline: **COMPLETE**
+
+| Cluster | Commits | Outcome |
+|---|---|---|
+| A (tasks 1.1-1.3) | `fb56e004`, `fe74d832` | 472 tests green; scope boundary held — zero ledger edits |
+| B (task 1.4) | `fae46da1` | 19 rows + heading, 1 WORKFLOWS row, tutorial + PNGs, 231 capture-script lines |
+| review fix | `936492ef` | two orphaned tests removed |
+
+**Gates at close:** `check_features_md.py` and `--strict` exit 0 (434 rows, 363 shipping);
+`check_workflows_md.py -v` exit 0 (19 workflows, 19 dispatched). Colony curation rows **4,
+unchanged**. `gui/_shared/timeline/` rows **2**, left for phase 2.
+
+**The gate is red between a phase's code commit and its ledger commit** — cluster A deletes
+the tests that cluster B's rows still reference. Expected, and the reason the phase is the
+PR unit rather than the commit (GEN-11).
+
+#### Findings execution produced that two review rounds did not
+
+1. **A plan enumeration gap, now fixed** (`936492ef`).
+   `tests/unit/gui/test_capture_tutorial_script.py:20,41` monkeypatched
+   `RESULTS_TIMELINE_OUTPUT_DIR`, removed by cluster B — both `AttributeError` on the
+   default lane. Task 1.4 prescribed grepping `_capture_results_timeline`; these tests name
+   only the **seed** symbols, which do not match that pattern. **The orchestrator's gate
+   missed it too**, having scoped to `tests/unit/gui/results_viewer`.
+   **Lesson: a removal's blast radius is not enumerable by grepping the removed surface's
+   name.** Later phases run the whole `tests/unit/gui tests/gui tests/integration/gui` lane
+   at their gate, not a scoped subset.
+
+2. **Phase 5 must NOT delete `TAB_QC_ID` / `TAB_HEATMAP_ID` / `TAB_ERROR_ID`** — recorded
+   in phase 5's preamble. Phase 1 deleted `TAB_TIMELINE_ID`, making the analogy inviting and
+   wrong: that tab was *deleted*, these are *unmounted*, and the retained packages still read
+   their ids (`_error_tab/_callbacks.py:442`).
+
+3. **Two Minors deliberately left alone.** `VIEWER_THUMB_URL_SEGMENT` is now orphaned in
+   `_config.py`, but spec §9 Non-goals forbids `_config.py` constant removal. A stale
+   docstring at `colony_view/_grid.py:153` cites the deleted timeline surface — tidying it
+   would put a diff in `colony_view/`, which spec §5 protects and phase 5's guard asserts is
+   byte-unchanged. **The guard is worth more than the tidy.**
+
+#### An orchestration mistake worth not repeating
+
+The full-lane suite was run **while cluster C was mid-edit**, producing 87 failures that all
+cascaded from `browse/` being in its deliberately-unimportable window between tasks 2.2 and
+2.3. Nothing was broken; the measurement was taken at the wrong moment. **Clusters share one
+worktree and run sequentially — verification happens at the gate, never beside a running
+cluster.**
