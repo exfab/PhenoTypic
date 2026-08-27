@@ -25,10 +25,16 @@ published at `https://claude.ai/code/artifact/7a8c50b6-042f-4948-9452-d6b6e55723
 - Test: `tests/unit/gui/results_viewer/test_store_source.py` (create)
 
 **Interfaces:**
-- Consumes: `phenotypic.sdk_.ngff_`, `OutputRoot.store_path`.
-- Produces: `build_source_spec(output_root, dataset, stem, url_prefix) -> dict` with keys
-  `baseUrl`, `series` (ordered, primary first), `primary`, `labelPath`, `pyramid`.
-  Phase 3 task 3.3 hands this dict straight to `window.phenotypicViv.setSource`.
+- Consumes: `_readable_block` and `ngff_.primary_series` (landed), `OutputRoot.store_path`
+  (`_output_root.py:495`, returns `Path | None`), `store_generation_token` / `zarr_store_url`
+  from phase 1.
+- Produces: **`build_source_spec(store: Path, base_url: str) -> dict`** with keys
+  `baseUrl`, `token`, `series` (ordered, primary first), `primary`, `labelPath` (**may be
+  `None`**), `pyramid`, `measured`. Task 3.3 hands this dict to
+  `window.phenotypicViv.setSource`; **phase 6 is the second caller** and is why the
+  signature takes a store path rather than an `OutputRoot` — the builder preview has stores
+  but no output root. Written at its final signature here so phase 6 adds a caller instead
+  of refactoring this function's own work.
 
 > **This is where backend §1.1 is honoured or violated.** The label path is read from
 > `phenotypic.labels.objmap`. Nothing anywhere may construct `f"{primary}/labels/objmap"`.
@@ -86,14 +92,20 @@ def test_pyramid_ladder_is_read_not_recomputed(rgb_store):
     assert spec["pyramid"]["downsample"]["label"] == "nearest"
 ```
 
-Three fixtures, all built with the **real writer** — a hand-edited `zarr.json` would not
-prove the reader handles a real store:
+**Six fixtures, none of which exist yet** — `rgb_store` is referenced across this phase and
+is defined **nowhere** in `tests/` (the only grep hit is an unrelated *test name* at
+`tests/unit/sdk_/test_ngff_validity.py:172`). Define all six in the results-viewer
+`conftest.py`, every one built with the **real writer**; a hand-edited `zarr.json` would let
+a test agree with a store no writer produces:
 
-- `gray_only_store` — an `Image` with no RGB layer, so `gray` is primary.
-- `store_with_original` — an image carrying an `original`, so `series` exceeds the three
-  canonical names.
-- `label_less_store` — `save_intermediate_zarr(layers=("gray",))`, so the `labels` key is
-  absent entirely.
+| Fixture | What it is |
+|---|---|
+| `rgb_store` | an ordinary finished run store, `rgb` primary, measured |
+| `gray_only_store` | an `Image` with no RGB layer, so `gray` is primary |
+| `store_with_original` | an image carrying an `original`, so `series` exceeds the three canonical names |
+| `label_less_store` | `save_intermediate_zarr(layers=("gray",))` — the `labels` key absent entirely |
+| `stage1_store` | Stage 1 only: zeros objmap present, no embedded measurements table |
+| `store_at_extent(extent)` | factory writing at `(extent, extent * 3 // 4)`, for task 3.2 |
 
 - [ ] **Step 2: Run and watch them fail**
 
