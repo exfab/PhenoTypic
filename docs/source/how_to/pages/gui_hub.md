@@ -12,9 +12,10 @@ single server:
 | Path | Tool |
 |------|------|
 | `/` | Home: sandbox tree, capability badges, tab navigation |
-| `/browse/` | Browse source images as deep-zoom single, timeline, or compare views |
+| `/browse/` | Browse source images as a deep-zoom single view |
 | `/builder/` | Pipeline builder (node-graph editor) |
 | `/results/` | Results viewer (OpenSeadragon overlays, measurement tables) |
+| `/analysis/` | Analysis runner (standalone analyzers over a loaded output) |
 | `/run/` | Run console (submit local or SLURM jobs, tail logs, view dashboard) |
 
 All pages share a top-bar tab strip and a sidebar showing the sandbox
@@ -160,9 +161,8 @@ directory.
 
 ### Browse (`/browse/`)
 
-Browse source-image directories in a deep-zoom single view, acquisition-time
-timeline, or synchronized compare view. Image access remains constrained to the
-hub sandbox root.
+Browse source-image directories in a deep-zoom single view. Image access
+remains constrained to the hub sandbox root.
 
 ### Builder (`/builder/`)
 

@@ -1,6 +1,6 @@
 # PhenoTypic GUI Module Guide
 
-The GUI is a Dash-based hub: a shell plus six mounted sub-apps:
+The GUI is a Dash-based hub: a shell plus five mounted sub-apps:
 
 | Mount        | Module                              | Purpose                                  |
 | ------------ | ----------------------------------- | ---------------------------------------- |
@@ -9,8 +9,18 @@ The GUI is a Dash-based hub: a shell plus six mounted sub-apps:
 | `/results/`  | `gui/results_viewer/`               | Output viewer (OpenSeadragon + tables)   |
 | `/run/`      | `gui/run_console/`                  | Run console (form + log tail + recents)  |
 | `/analysis/` | `gui/analysis/`                     | Analyzer runner (via `_AnalysisProxy`)   |
-| `/tune/`     | `gui/tune/`                         | Hyperparameter tuning console            |
 | `/browse/`   | `gui/browse/`                       | File / output browser                    |
+
+> **Unmounted surfaces.** `gui/tune/` is **retained on disk and still
+> imports**, but the hub no longer composes it, so `/tune/` 404s and the
+> **Pipeline ▾** group carries no Tune member. Inside the results viewer the
+> **QC**, **Heatmap** and **Error** tabs are unmounted the same way — package,
+> unit tests and callbacks intact, no `dbc.Tab` and no callback registration.
+> The viewer mounts exactly two tabs: **Plate** and **Colony**. Rationale and
+> the re-mount contract are in
+> [`docs/superpowers/specs/2026-08-26-gui-simplification-removals/design.md`](../../../docs/superpowers/specs/2026-08-26-gui-simplification-removals/design.md).
+> The **Timeline** engine is not in this category — it was **deleted**, not
+> unmounted.
 
 Composition lives in [shell/_app.py](shell/_app.py) (`compose_hub`); the
 hub's WSGI seam is a `werkzeug.middleware.dispatcher.DispatcherMiddleware`
@@ -92,7 +102,7 @@ from phenotypic.gui._config import (
     MOUNT_VIEWER,           # "/results/"
     MOUNT_RUN,              # "/run/"
     MOUNT_ANALYSIS,         # "/analysis/"
-    MOUNT_TUNE,             # "/tune/"
+    MOUNT_TUNE,             # "/tune/" -- declared; NOT mounted (see above)
     MOUNT_BROWSE,           # "/browse/"
     SANDBOX_API_PREFIX,     # "/sandbox/api"
     RUNS_BLUEPRINT_PREFIX,  # "/runs"
@@ -211,7 +221,8 @@ lives under `deliverables/qc/` (`DIR_QC` joined on `deliverables_dir(output)`;
 resolve via `qc_dir(output)` / `qc_duckdb_path(output)` / … — never hand-join
 `qc/`). `run_qc` writes the single `qc.duckdb` (one self-describing table per
 QC module plus a `qc_modules` catalog); the QC tabs read it through the
-`review/_db.py` catalog-driven API. It moved
+`review/_db.py` catalog-driven API (those tabs are currently unmounted --
+the writer, the store and the reader are unaffected). It moved
 *into* `deliverables/` so a deliverables bundle is self-contained and portable;
 `resolve_qc_dir(output)` / `BundleLayout.qc_dir` still read the legacy
 output-root `qc/` of pre-relocation runs, and `migrate_legacy_qc` MOVES a
@@ -439,10 +450,18 @@ notes not tied to that component:
 
 ---
 
-## Error-analysis tab
+## Error-analysis tab (unmounted)
 
-The results viewer's **Error** tab (`results_viewer/_error_tab/`, 5th tab,
-`TAB_ERROR_ID`) ranks the measurements that best separate a chosen error category
+> **Unmounted, not deleted.** The package, its unit tests and its callbacks are
+> intact; the viewer just no longer builds a `dbc.Tab` for it or registers its
+> callbacks. Everything below still describes the code on disk. See
+> [the removals spec](../../../docs/superpowers/specs/2026-08-26-gui-simplification-removals/design.md).
+> The CLI half of this feature -- `reemit_error_deliverables` and the
+> `deliverables/errors/` round trip -- is **untouched and still runs**, because
+> the Colony radial writes those categories and does not need this tab.
+
+The results viewer's **Error** tab (`results_viewer/_error_tab/`, formerly the
+5th tab, `TAB_ERROR_ID`) ranks the measurements that best separate a chosen error category
 from a good baseline via `phenotypic.analysis.ErrorCutoffFinder`, recomputing as
 the user marks objects on other tabs. The package splits `_data` / `_figure` /
 `_layout` / `_callbacks` / `_ids`; the good-baseline toggle, server-side state
