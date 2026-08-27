@@ -44,9 +44,17 @@ rev 2). Each is recorded with what it costs, so a later reader is not re-derivin
 
 ## 1. Dependencies on the backend contract
 
+> **Amended 2026-08-26.** This section originally read: "…which at time of writing is
+> **specification only** — there is no zarr code in `src/`." **That is no longer true.**
+> The store branch landed (248 files, including `sdk_/ngff_.py` at 1,506 lines), and this
+> spec's branch is stacked on it. Roughly a third of §4.1 and §6.2 below is **already
+> implemented**: the four staleness traps, the pyramid-aware server reads, and §6.2's "ship
+> first (D3)" crop re-sourcing. §7's decision E is implemented too. The plan's
+> [`DRIFT.md`](../../plans/2026-08-26-viewer-viv-rebuild/DRIFT.md) enumerates each with its
+> evidence and is required reading before this spec.
+
 This spec is written against
-[2026-08-18-ome-zarr-image-store](../2026-08-18-ome-zarr-image-store/design.md), which at
-time of writing is **specification only** — there is no zarr code in `src/`. The clauses
+[2026-08-18-ome-zarr-image-store](../2026-08-18-ome-zarr-image-store/design.md). The clauses
 this design actually leans on:
 
 | Clause | What this spec needs from it |
@@ -57,8 +65,32 @@ this design actually leans on:
 | §1.4 | `(1,1024,1024)` chunks, `(C,4096,4096)` shards, `zstd`, `"."` chunk-key separator |
 | §4.2 | The four mtime/fingerprint traps — a store's `st_mtime_ns` does not change when a nested chunk is rewritten; staleness must key on the root `zarr.json` |
 
-**Nothing in this spec may start before that lands.** The removals spec (cycle 1) is
-sequenced first precisely because it has no such dependency.
+**That backend has landed.** The removals spec (cycle 1) remains sequenced first, but for
+scheduling rather than dependency reasons — it was always the only one that could execute
+against an unlanded backend.
+
+### 1.1 Stage 2 is read-only — the mid-run objmap benefit does not exist
+
+> **Amended 2026-08-26.** Backend §3.4 states that Stage 2 "opens the promoted store and
+> overwrites `labels/objmap` in place", and §6.2 below inherits that to claim "the GUI can
+> render a real objmap mid-run".
+>
+> **The landed engine inverted this.** Stage 2 reads the store **read-only** and never
+> writes into it; its result is a Stage-2 signal under `.phenotypic/progress/` — the
+> retained raw detector output `stage2_raw/<ds>/<stem>.npy` plus a consumable token
+> `stage2_done/<ds>/<stem>.json`. Stage 3 replays the raw array, measures, re-promotes the
+> store, and consumes the token.
+>
+> **Consequence:** between Stage 1 and Stage 3 the in-store `labels/objmap` is **zeros**.
+> The mid-run-objmap benefit is not available, and the Layers panel must not present a
+> zeros objmap as a fault — an empty segmentation is the correct rendering of a correct
+> store. A store mid-run additionally has no `tables/` group, and the absence of
+> `attributes.phenotypic.tables.measurements` is the reliable discriminator between "not
+> yet measured" and "measured, found nothing" (`_image_io_handler.py:1143-1167`).
+>
+> Backend spec `2026-08-18` §3.4 carries the same stale claim. It belongs to the parent
+> branch (`worktree-ome-zarr-image-store`) and is **not** edited from here; this note is the
+> record that it needs the same correction.
 
 ## 2. Feasibility — verified and unverified
 
@@ -125,7 +157,36 @@ blueprint, using `send_file(..., conditional=True)`.
   applied **per path segment**, not once over the whole URL — the traversal surface is
   wider than today's route because the tail is arbitrary depth inside a store.
 - `_dzi_tiler` is removed from this path entirely. No `.viewer_cache/` directory, no
-  tiling pass, no full raster ever resident.
+  tiling pass, no full raster ever resident. **The module itself survives** — it retains
+  four consumers in Browse and the builder point picker (§9).
+
+### 4.0 The tail is not unrestricted
+
+> **Amended 2026-08-26.** This section originally sketched the route as serving an
+> unrestricted path tail. Since it was written, per-object measurements moved **inside**
+> each store at `tables/measurements/table.parquet`, and forward runs write no external
+> per-image parquet — a group that appears in no layout diagram in either spec. An
+> unrestricted tail therefore serves the measurement table to any browser that asks.
+
+The route serves only the groups a pixel client needs. Two properties are normative:
+
+1. **The restriction is enforced on the *resolved* path, not the URL segments.** Checking
+   the unresolved first segment leaves a symlink inside a readable root
+   (`<store>/rgb/x -> ../tables/measurements/table.parquet`) passing both the head check and
+   containment, and the file is served. Resolve first, then test
+   `resolved.relative_to(store).parts[0]`.
+2. **The readable set is derived per store, not hard-coded.** `attributes.phenotypic.series`
+   legitimately contains `original` when the image carries one
+   (`_image_io_handler.py:1012-1014`), so a fixed `{rgb, gray, detect_mat}` set makes the
+   Layers panel list a series the route 404s. This is the same hard-coding §1's label-path
+   rule forbids, one layer down: read the readable set from `series` + `labels`.
+
+**What remains exposed, stated so the decision is made on the facts:** the root `zarr.json`
+is mandatory (the client bootstraps from it) and carries
+`attributes.phenotypic.metadata` — the `protected`, `public` and `imported` sections plus
+`work_id` (`sdk_/ngff_.py:559-583`). `OME/METADATA.ome.xml` carries the same `Metadata_*`
+sections. The narrowing keeps the per-object measurement table off the wire; it does not
+make the route metadata-free.
 
 ### 4.1 The staleness traps
 
@@ -228,18 +289,54 @@ custom-category strip, matching `_shared/_radial.py`'s anatomy. Bulk-mark still 
 cell count. The number is not set here — it is measured during D1, and until then D3 has
 no such limit.
 
-## 7. Decision E — builder preview (cycle 3)
+## 7. Decision E — builder preview (in scope; folded in 2026-08-26)
 
-The builder previews a pipeline against an **input image**: no run, no `.ome.zarr`, no
-pyramid. "Optimize preview with zarr" therefore needs a source of zarr first.
+> **Amended 2026-08-26.** This section originally deferred the builder preview to a separate
+> "cycle 3" with its own spec and plan. That split was withdrawn: it bought no parallelism
+> (the work is blocked on §§3-4 and reuses all of them), it forced §6.1's
+> `build_source_spec` to be written with a signature the deferred plan already knew was
+> wrong and refactored two phases later, it parked this spec's own open question about
+> asset mounting inside the deferred document, and it ran the whole FEATURES / WORKFLOWS /
+> `gui/CLAUDE.md` / capture-script gate pass twice. The builder preview is now **phase 6 of
+> this spec's plan**.
 
-**Chosen:** each preview node writes its layer to a scratch `.ome.zarr` under the existing
-builder-tiles sandbox, reusing the CLI writer, so the viewer reads it exactly like a real
-run — one reader, one code path, and the writer gets exercised constantly during
-development. Costs: a write the preview does not have today, a scratch dir to
-garbage-collect, and pyramiding that is mostly wasted at preview resolutions.
+**Decision E as originally chosen has already landed.** Each preview node writes its layer
+to a scratch `.ome.zarr` under the builder-tiles sandbox, reusing the CLI writer:
+`_preview_cache.py:48` (`BASE_STORE_NAME = "base_00.ome.zarr"`), `:255`
+(`f"{i:02d}_{op_key}.ome.zarr"`), read back at `_preview_tiles.py:52-65` via
+`Image.load_layer_zarr`, with freshness keyed on the root `zarr.json` (`:78-87`).
 
-This is **cycle 3** and out of scope for this spec's plan.
+**What remains is the client-side render swap** — the same DZI → Viv change §6.1 makes for
+Plate, applied to the preview pane:
+
+- **One bundle, two mounts.** The builder serves the *same* vendored artifact as the results
+  viewer. Committing a second ~1 MB copy would put two artifacts under one build recipe,
+  drifting independently with no npm in CI to catch it.
+- **A second byte route,** `/preview-zarr/<session_id>/<scope_hash>/<block_id>/<path...>`.
+  It cannot reuse §4's route, which resolves through `OutputRoot.store_path`; preview stores
+  live under the builder sandbox and have no `OutputRoot`. **The resolver is shared; the
+  routes are not** — one `resolve_within_root(root, tail, *, allowed_roots)` in
+  `gui/_shared/`, with each route keeping its own resolution and guard regime.
+- **Session scoping is a capability URL, not an authentication check.** `_validate`
+  (`_preview_tiles.py:107-116`) validates the *shape* of `session_id`, `scope_hash` and
+  `block_id`; nothing binds the request to a session. Isolation rests on `session_id` being
+  `uuid.uuid4().hex` — 122 bits, unguessable — carried **in the URL path**, where it reaches
+  access logs, the OOD reverse proxy's logs, browser history and `Referer`. **This is an
+  accepted risk, recorded rather than mitigated** (user ruling, 2026-08-26): the entropy is
+  adequate and the exposure matches the existing `/preview-tiles/` route, so changing it
+  would diverge the two routes for no behaviour change. The id is a secret; treat it as one.
+- **No scratch garbage-collection work.** `init_cache()` already calls `wipe_cache()` on the
+  whole cache root at startup and registers an `atexit` wipe (`_preview_cache.py:61-68`),
+  and `wipe_scope` reclaims on fingerprint change. That **is** the stated policy. An earlier
+  draft specified a measured retention cap with oldest-first eviction and a startup sweep;
+  withdrawn 2026-08-26 as machinery built over wipes that already run.
+- **The point picker stays on DZI.** `builder/_point_picker.py:417` picks points on a
+  *source image*, before any pipeline node has run, so there is no store to read. Migrating
+  it would mean writing a store just to render a picker.
+
+**Not in scope:** what the preview computes (`_run_operations`, the scope/fingerprint model,
+the manifest shape), and preview pyramiding — preview stores stay single-level, which is
+right for a preview pane.
 
 ## 8. Testing
 
@@ -264,6 +361,20 @@ Per **`run-phenotypic-test`**: the full `tests/unit` suite is a ~65-minute Slurm
 - The unmounted Heatmap / Error / QC tabs are not revived here.
 - No new measurement, analysis, or export capability.
 - `--mode process --layer {...}` output formats are unchanged (backend §4.3).
+- **No authentication is added, and none is assumed to exist.** The GUI has none today: the
+  default bind is loopback (`gui/_config.py:221`), but the documented Open OnDemand recipe
+  is `--host 0.0.0.0` on a compute node (`docs/source/how_to/pages/gui_hub.md:116, :124`).
+  On that path both new byte routes are reachable by anything that can reach the node's
+  port, on a multi-user cluster with shared `/rhome` and `/bigdata`. This is **pre-existing**
+  — the DZI tile and crop routes already serve pixels the same way — and is recorded as an
+  assumption rather than introduced by this work: *loopback, or a proxy that authenticates,
+  is assumed.*
+- **`_dzi_tiler` is not deleted, and neither is `_tile_routes.py` as a module.** The tiler
+  keeps four consumers (`browse/_app.py:40`, `browse/_preparation.py:711`,
+  `browse/_preparation_routes.py:95`, `builder/_point_picker.py:417`), and
+  `builder/_preview_tiles.py:31` imports `_TILE_NAME_RE` and `_json_error` from
+  `_tile_routes` — so deleting either module breaks a different sub-app from the one being
+  edited. Only the Plate DZI *routes and calls* come off.
 
 ### 9.1 Non-functional requirements
 
@@ -293,8 +404,24 @@ most important."*
 ## 10. Open questions
 
 1. **Series resolution** (§2.1) — the spike answers it.
-2. **D1's virtualization cap** — measured during D1.
+2. **D1's virtualization cap** — measured during D1. It is the one number in this design
+   that lands in shipped code as a behavioural cap, and it is the only surviving
+   logic-validation script (user ruling, 2026-08-26).
 3. **Bundle staleness signalling** — the recipe is committed and the version logged, but
    nothing *fails* when the bundle drifts from the lockfile. A CI check that rebuilds and
    compares hashes would need npm in CI, which decision A exists to avoid. Currently
    unresolved; the version string is a mitigation, not an answer.
+4. **Serving one `_assets/viv/` to both sub-apps** (§7) — folded in from the retired cycle-3
+   spec. Whether Dash's `assets_folder` / `assets_url_path` can point the builder at the
+   results viewer's copy, or whether a small Flask route is needed, is unverified. It is a
+   packaging question, not a design one: either answer satisfies decision A, and it is
+   answered while the artifact is being built rather than a phase later.
+5. **The promote generation window** — `promote_store` (`sdk_/ngff_.py:1235-1300`) publishes
+   by renaming the whole store directory, and the byte routes resolve fresh per request
+   holding no handle. A client can therefore combine metadata from promote *N* with chunks
+   from *N+1*. Benign for a run-store re-promote (extent unchanged, `labels/objmap` goes
+   zeros → real); **not** benign for the builder preview, where re-running a node
+   legitimately changes extent. The old path was coherent because of `_store_content_token`
+   (`_tile_routes.py:505-527`), which this design deletes. Carrying a generation token in
+   the URL is the intended answer — see the plan's phase 1 — but the choice of token and its
+   invalidation cost are not settled here.

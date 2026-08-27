@@ -159,4 +159,159 @@ simplicity-reviewer · `SEC` security specialist · `ALGO` algorithm-fidelity ·
 
 ### Round 1 reports
 
-*(entries appended as reports arrive)*
+Received: `sec-r1` (VERDICT: REVISE), `flow-r1` (VERDICT: BLOCKING), `simp-r1` (VERDICT:
+BLOCKING). Outstanding at time of writing: `gen-r1`, `algo-r1` — **not** treated as APPROVE.
+
+Full reports: `reports/round-1-{security,data-flow,simplicity}.md`.
+
+**Every load-bearing claim below was independently verified by the orchestrator before
+being acted on.** Five of them break code this plan set had already written.
+
+---
+
+## Round 1 — user rulings
+
+### USER-3 [settled-by-user (round 1: apply all three)]
+- Concern: three spec statements are factually wrong about the landed code.
+- Ruling: apply all three. (1) Viv §1's "specification only — there is no zarr code in
+  `src/`"; (2) Viv §6.2 + backend §3.4's claim that Stage 2 writes the objmap in-store;
+  (3) Viv §4's unrestricted byte-route tail. The backend spec `2026-08-18` is on the parent
+  branch — record the §3.4 correction as a note there rather than editing that branch.
+
+### USER-4 [settled-by-user (round 1: accepted bearer-token risk)] — resolves SEC-3, FLOW-3, ORCH-2
+- Concern: `builder-preview-viv` §2 credits `_validate` with session isolation. Verified
+  false — `_preview_tiles.py:107-116` is shape validation only, with nothing binding the
+  requester to a session. Real isolation is `uuid.uuid4().hex` (122 bits) carried **in the
+  URL path**, so it reaches access logs, the OOD reverse proxy's logs, browser history and
+  `Referer`.
+- Ruling: **record it honestly as an accepted bearer-token / capability-URL risk.** Do not
+  add server-side binding, and do not move the id out of the path — that would diverge from
+  the existing `/preview-tiles/` route for no behaviour change. Amend the spec to describe
+  the capability model and say the id must be treated as a secret.
+- **Permanent.** SEC-4's `CONFLICT with SEC-3` resolves this way: the test asserts the
+  property that actually holds, not a binding that does not exist.
+
+### USER-5 [settled-by-user (round 1: fold)] — resolves SIMP-10
+- Ruling: **pair 3 folds into pair 2.** `viewer-viv-rebuild` gains a phase 6 (preview byte
+  route + shared asset mount + render swap); its phase 5 absorbs the verification.
+  `specs/2026-08-26-builder-preview-viv/` retires as a document, its content replacing
+  viv-rebuild §7's "cycle 3, out of scope" paragraph.
+- Consequences: phase 1 writes the shared resolver with **both** callers in view; phase 3
+  writes `build_source_spec` at its final signature instead of refactoring its own work two
+  phases later; viv-rebuild §7 OQ1 (one `_assets/viv/` for both sub-apps) is answered while
+  that artifact is being built; one ledger-and-gates pass instead of two.
+
+### USER-6 [settled-by-user (round 1: drop entirely)] — resolves SIMP-8, FLOW-11
+- Concern: attacked from both sides. SIMP-8: an accepted *cost* ("a scratch dir to
+  garbage-collect") became a designed subsystem. FLOW-11 (verified): `init_cache()`
+  (`_preview_cache.py:61-68`) already calls `wipe_cache()` — recursive delete of the whole
+  cache root — plus an `atexit` wipe, so the startup sweep is redundant *and* the plan's
+  "`live_session_ids=None` keeps today's behaviour exactly" was false, *and* its own test
+  asserting a live session's tree survives was impossible.
+- Ruling: **drop the phase entirely.** Startup and atexit already wipe everything;
+  `wipe_scope` reclaims on fingerprint change. The residual gap — one session authoring many
+  distinct scopes without a restart — is unevidenced. Record that as the stated policy and
+  amend the spec §3 text accordingly.
+- Note: the two reviewers pointed opposite ways (SIMP-8 said keep the sweep, drop the cap;
+  FLOW-11 said the sweep's premise is false). Resolved on **evidence over argument**, per
+  the conflict ladder rung 2.
+
+### USER-7 [settled-by-user (round 1: colony script only, no 4096)] — resolves SIMP-3, SIMP-4, SIMP-5
+- Ruling: keep **only** `colony_view_budget.py`, and **drop its unsourced 4096 draw-call
+  ceiling** so it fails closed on "no measurement" and nothing else. Delete
+  `tile_fetch_budget.py` (re-derives nothing; exits 0 regardless, so it gates nothing) and
+  `preview_scratch_budget.py` (moot under USER-6; divided a real measurement by two invented
+  budgets). The 3 MB per-tile figure becomes one line of arithmetic in `spike/README.md`.
+- Rationale carried forward: CLAUDE.md mandates a script for a numeric invariant "a reader
+  would otherwise take on faith". `1024×1024×3` is not such an invariant; the surviving
+  script is kept because its number lands in shipped code as a behavioural cap.
+
+---
+
+## Round 1 — orchestrator-verified reviewer findings
+
+Each verified by reading the cited file before being accepted.
+
+### SEC-2 [Major] [open] — **overturns ORCH-1's conclusion**
+`_READABLE_ROOTS` is tested on the **unresolved** `segments[0]` while `send_file` sends
+`resolved`. A symlink inside a readable root (`<store>/rgb/x -> ../tables/measurements/table.parquet`)
+passes the head check *and* `is_relative_to` containment, and the parquet is served.
+ORCH-1 concluded the allow-list "is the only thing keeping `tables/` off the wire", which
+implied it did keep it off. It does not, as written. **Fix:** enforce after resolution —
+`rel = resolved.relative_to(store_resolved)`, test `rel.parts[0]`. One check, not two.
+
+### SEC-4 [Major] [open] — resolved by USER-4
+`test_one_session_cannot_reach_anothers_sandbox` sends session **A's** id with **B's** hash,
+so it 404s on a manifest miss, not on isolation. It would pass with every isolation
+mechanism deleted. The permutation that matters — presenting **B's** id — succeeds today.
+Rewrite to assert the property USER-4 recorded.
+
+### FLOW-1 [Critical] [open]
+Both byte routes carry no generation token, so a client can combine metadata from promote N
+with chunks from N+1 (`promote_store`, `ngff_.py:1235-1300`, renames the whole directory).
+Benign for a run store re-promote (extent unchanged); **not** benign for the builder
+preview, where re-running a node legitimately changes extent → decode error or plausible
+wrong pixels. The old path was coherent *because* of `_store_content_token`
+(`_tile_routes.py:505-527`), which the rebuild deletes without replacement.
+**Fix:** put the token in the URL so a new promote yields a new base URL.
+
+### FLOW-2 [Critical] [open] — verified
+`_store_for_block` reads `manifest.get("blocks", [])` / `entry["block_id"]`. The real shape
+is `{"version","fingerprint","fingerprint_inputs","scope_key","nodes": {block_id: {"store",…}},"error"}`
+(`_preview_cache.py:257-263`) — `nodes` is a **dict keyed by block_id**; no `"blocks"` list
+exists. As written every preview-zarr request 404s. The landed DZI route already does it
+correctly (`_preview_tiles.py:127-140`).
+
+### FLOW-5 [High] [open] — verified
+`build_phenotypic_attributes` **omits** the `labels` key when `has_labels=False`
+(`ngff_.py:576-581`), with an inline note that an earlier draft emitted it unconditionally
+and `assert_store_conforms` then `FileNotFoundError`'d (ledger C3).
+`save_intermediate_zarr` sets `write_objmap = "objmap" in layers`, so most preview stores
+have no `labels` key. `block["labels"]["objmap"]` `KeyError`s. **Fix:** `labelPath` optional
+through the spec dict, the façade and the Layers panel; add a label-less fixture.
+
+### FLOW-6 [High] [open] — verified
+`_write_store_part` appends `"original"` to `series_names` when the image carries one
+(`_image_io_handler.py:1012-1014`), and that list lands in `attributes.phenotypic.series`.
+So the Layers panel lists `original` while the route 404s it — **the hard-coding the
+label-path rule forbids, reappearing one layer down**. Task 3.1's own test
+(`set(spec["series"]) <= {"rgb","gray","detect_mat"}`) fails against such a store.
+**Fix:** derive the readable set per store from `series` + `labels`, or invert to a
+deny-list on `tables/`.
+
+### FLOW-9 [High] [open] — verified
+The curation gate names the wrong file. All 15 tests in `test_colony_callbacks_helpers.py`
+drive pure `_triage_callbacks` helpers against hand-built `ctx.triggered` dicts; nothing
+asserts a radial exists on a tile or that anything reaches disk — so it would pass unmodified
+while the deck.gl rewrite removed the radial entirely. The real proofs exist and are
+collected but **no pytest command in either plan runs them**:
+`tests/gui/results_viewer/colony_view/test_grid.py:454`,
+`tests/integration/gui/test_triage_callbacks.py:227`, `tests/unit/cli/test_cli_error_outputs.py`.
+Keep the "unmodified" rule; stop calling it the proof.
+
+### FLOW-14 [Medium] [open] — DRIFT.md correction
+D-1's "all of them already key on the root `zarr.json`" is true for `_tile_routes` and
+`_preview_tiles` and **vacuous for the crop path**: `crop_colony` (`tiles.py:715`) still
+passes `os.stat(store).st_mtime_ns`, which `crop_store_rgb` then `del`s (`:585-587`) because
+crop reads are windowed and nothing caches on it. No bug — but a reader auditing the fourth
+fix finds a live directory-mtime call and reasonably concludes the trap is open.
+
+### FLOW-17 [Medium] [open] — cross-sub-app hazard
+`builder/_preview_tiles.py:31` imports `_TILE_NAME_RE` and `_json_error` **from
+`results_viewer/_tile_routes`**, and `_validate` returns `_json_error(...)`. Reading viv
+phase 3 step 5's "remove them with their tests" as deleting `_tile_routes.py` breaks the
+builder preview *and* the new preview route at import, in a different sub-app from the one
+being edited. Same shape as the `_dzi_tiler` misreading DRIFT D-5 guards against.
+
+### Accepted without further verification (consistent with verified facts)
+FLOW-4, FLOW-7, FLOW-8, FLOW-10, FLOW-13, FLOW-15, FLOW-16, FLOW-18, FLOW-19;
+SEC-5, SEC-7, SEC-8, SEC-9; SIMP-1, SIMP-2, SIMP-7, SIMP-9.
+
+### SIMP-6 [Major] [open] — ORCH-4 merged in as an alias
+Both routes need one `resolve_within_root(root, tail, *, allowed_roots=None) -> Path`.
+Extract to `gui/_shared/tiles.py` beside `is_safe_path_component`. A path-escape guard is a
+security primitive and USER-1 makes correctness binding; two copies drift **silently**,
+because each plan tests only its own copy — as SEC-2 already demonstrates, the allow-list
+exists in one copy and not the other in the very first version. Same commit: split
+`_validate`'s session/scope/block half into a channel-free `_validate_scope` (ORCH-4).
+Under USER-5 both callers are now in one plan, so this is written once, not extracted later.
