@@ -155,6 +155,7 @@ __all__ = [
     "SANDBOX_API_VIEWER_OUTPUT_ROOT",
     "BUILDER_TILES_PREFIX",
     "VIEWER_TILES_PREFIX",
+    "VIEWER_ZARR_PREFIX",
     "BROWSE_TILES_PREFIX",
     "COLONY_CROPS_URL_SEGMENT",
     "QC_CROPS_URL_SEGMENT",
@@ -531,6 +532,13 @@ VIEWER_TILES_PREFIX: str = "/tiles"
 #: URL prefix for the Browse tab's token-keyed DZI tile blueprint. Mounted on
 #: the Browse sub-app's Flask server; mirrors :data:`VIEWER_TILES_PREFIX`.
 BROWSE_TILES_PREFIX: str = "/tiles"
+
+#: URL prefix for the results-viewer's raw OME-Zarr byte blueprint. The
+#: browser-side pixel client reads store chunks directly from
+#: ``<prefix>zarr/<dataset>/<stem>.ome.zarr/<token>/<path...>`` with HTTP
+#: Range, so this is a **byte** namespace and deliberately distinct from
+#: :data:`VIEWER_TILES_PREFIX`, which serves server-rendered DZI pyramids.
+VIEWER_ZARR_PREFIX: str = "/zarr"
 
 #: URL path segment used for per-colony crop images.
 COLONY_CROPS_URL_SEGMENT: str = "crops"

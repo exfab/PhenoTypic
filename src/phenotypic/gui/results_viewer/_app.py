@@ -90,6 +90,9 @@ from phenotypic.gui.results_viewer._mutation_guard import (
     OutputMutationGuard,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._zarr_routes import (
+    register_zarr_routes,
+)
 from phenotypic.gui.results_viewer.colony_view import (
     _crop_routes as colony_crop_routes,
 )
@@ -227,6 +230,11 @@ def create_app(
         return configure_url_prefix_routing(app, url_prefix)
 
     _tile_routes.register(app, output_root)
+    # Raw store bytes with HTTP Range, for the browser-side pixel client.
+    # Mounted beside the DZI routes rather than replacing them: the two
+    # namespaces serve different things (rendered pyramids vs. store
+    # chunks) and Browse keeps the DZI path.
+    register_zarr_routes(app, output_root)
 
     filtered_state = CurationLabels.load(
         output_root.layout, output_root.master_df

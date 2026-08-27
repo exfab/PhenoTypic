@@ -774,6 +774,39 @@ def is_safe_path_component(name: str) -> bool:
     return bool(_NAME_RE.match(name))
 
 
+#: Zarr **v2** metadata filenames. A v3 store never contains one, but
+#: zarrita probes all four beside every ``zarr.json`` before concluding a
+#: node is v3-only -- 17 of them on a first open of a series, 3 on a warm
+#: one (measured in the phase-0 spike).
+#:
+#: They matter because of how zarrita reads a response: its fetch store
+#: returns ``undefined`` on **404** and *throws* on every other non-2xx
+#: status (``Unexpected response status ...``). Each of these names starts
+#: with a dot, so :func:`is_safe_path_component` rejects it and
+#: :func:`resolve_within_root` raises ``BadRequest`` -- a **400**, which
+#: aborts the store open instead of reading as "absent". Every byte route
+#: that a zarr client opens must answer these 404.
+ZARR_V2_METADATA_NAMES: frozenset[str] = frozenset(
+    {".zarray", ".zattrs", ".zgroup", ".zmetadata"}
+)
+
+
+def is_zarr_v2_metadata_probe(tail: str) -> bool:
+    """Return ``True`` if ``tail`` names a Zarr v2 metadata file.
+
+    Shared by every byte route a zarr client opens, for the reason recorded
+    on :data:`ZARR_V2_METADATA_NAMES`: these probes must answer ``404``, not
+    the ``400`` the leading-dot rule would otherwise produce.
+
+    Args:
+        tail: Client-controlled store-relative path, ``/``-separated.
+
+    Returns:
+        ``True`` when the final segment is a Zarr v2 metadata filename.
+    """
+    return tail.rsplit("/", 1)[-1] in ZARR_V2_METADATA_NAMES
+
+
 def resolve_within_root(
     root: Path,
     tail: str,
