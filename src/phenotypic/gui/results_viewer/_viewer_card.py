@@ -1416,6 +1416,12 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
                 else _FACADE_IMAGE_LAYER
             )
             state["opacity"][facade_layer] = float(value)
+        # Rebuilding the panel RECREATES its sliders, which fires this
+        # callback again with a slider trigger carrying the value it was
+        # just given. Without this guard that is an unbounded
+        # rebuild-refire loop; with it the echo costs one no-op round.
+        if state == display:
+            return no_update, no_update
         return state, build_layer_rows(str(trigger["index"]), spec, state)
 
 

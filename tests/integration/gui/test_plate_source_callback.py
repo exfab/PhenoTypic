@@ -237,3 +237,79 @@ def test_clicking_the_objmap_row_toggles_the_label_layer(output_root):
     # The displayed series is untouched: the two gestures are different in
     # kind, and conflating them would hide the image when hiding the label.
     assert updated["seriesPath"] == "rgb"
+
+
+def _move_slider(app, layer: str, value: float, display: dict, spec: dict):
+    """Fire one Layers-panel opacity change and return the raw response."""
+    key = _layer_controls_key(app)
+    names = ("rgb", "gray", "detect_mat", "objmap")
+    return app.server.test_client().post(
+        "/_dash-update-component",
+        json={
+            "output": key,
+            "outputs": [
+                {"id": {"type": "card-display-state", "index": CARD},
+                 "property": "data"},
+                {"id": {"type": "card-layers-panel", "index": CARD},
+                 "property": "children"},
+            ],
+            "inputs": [
+                [
+                    {"id": {"type": "card-layer-eye", "index": CARD,
+                            "layer": name},
+                     "property": "n_clicks", "value": 0}
+                    for name in names
+                ],
+                [
+                    {"id": {"type": "card-layer-opacity", "index": CARD,
+                            "layer": name},
+                     "property": "value",
+                     "value": value if name == layer else 1.0}
+                    for name in names
+                ],
+            ],
+            "state": [
+                {"id": {"type": "card-display-state", "index": CARD},
+                 "property": "data", "value": display},
+                {"id": {"type": "card-source-spec", "index": CARD},
+                 "property": "data", "value": spec},
+            ],
+            "changedPropIds": [
+                '{"index":"%s","layer":"%s","type":"card-layer-opacity"}.value'
+                % (CARD, layer)
+            ],
+        },
+    ).get_json()
+
+
+def test_an_opacity_change_reaches_the_display_state(output_root):
+    app = create_app(output_root)
+    resolved = _resolve(app, DATASET, STEM)
+    spec = resolved["card-source-spec"]["data"]
+    display = resolved["card-display-state"]["data"]
+
+    payload = _move_slider(app, "objmap", 0.25, display, spec)["response"]
+    updated = next(iter(payload.values()))["data"]
+    assert updated["opacity"]["labels"] == 0.25
+    assert updated["opacity"]["image"] == 1.0
+
+
+def test_an_echoed_slider_value_does_not_re_render_the_panel(output_root):
+    """Rebuilding the panel recreates its sliders, which fire this callback
+    again with the value they were just given.
+
+    Unguarded that is an unbounded rebuild-refire loop, and it would only
+    show up in a browser -- as a Plate card that pegs a CPU the moment a
+    layer control is touched.
+    """
+    app = create_app(output_root)
+    resolved = _resolve(app, DATASET, STEM)
+    spec = resolved["card-source-spec"]["data"]
+    display = resolved["card-display-state"]["data"]
+
+    echoed = _move_slider(
+        app, "objmap", display["opacity"]["labels"], display, spec
+    )
+    assert echoed["response"] == {} or all(
+        props == {} for props in echoed["response"].values()
+    ), echoed
