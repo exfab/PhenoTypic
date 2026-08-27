@@ -55,6 +55,37 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Shared route primitives
+# ---------------------------------------------------------------------------
+
+#: DZI tile filenames are ``<col>_<row>.png`` per the OpenSeadragon spec.
+#: Re-homed here from ``results_viewer/_tile_routes.py``: that module's own
+#: routes went when the results Plate stopped rendering server-built DZI
+#: pyramids, but the BUILDER's preview and point-picker routes still tile
+#: with libvips and still need the name guard. Deleting the module without
+#: moving this would have broken the builder at import, from a different
+#: sub-app than the one being edited.
+TILE_NAME_RE = re.compile(r"^\d+_\d+\.png$")
+
+
+def json_error(message: str, status: int) -> Response:
+    """Build a small JSON error ``Response`` with the given status code.
+
+    Args:
+        message: Human-readable error string surfaced to the caller.
+        status: HTTP status code to attach.
+
+    Returns:
+        A Flask :class:`~flask.Response` with ``application/json`` body.
+    """
+    from flask import jsonify
+
+    response = jsonify({"error": message})
+    response.status_code = status
+    return response
+
+
+# ---------------------------------------------------------------------------
 # Overlay cropping
 # ---------------------------------------------------------------------------
 
@@ -282,14 +313,6 @@ LayerName = Literal["rgb", "detect_mat", "objmap"]
 #: route default can never drift apart.
 DEFAULT_LAYER: LayerName = "rgb"
 
-#: Number of decoded store layers to keep in memory. Sized by the DATA, not by
-#: request variety: the cache key carries the RESOLVED pyramid level rather
-#: than the caller's ``target_px``, so distinct targets selecting the same
-#: level share one entry (ledger FLOW-10). Bound is level-count x layer-count;
-#: a 4000x6000 plate has 5 levels and there are 4 layers.
-_STORE_LAYER_CACHE_SIZE = 24
-
-
 class StoreUnreadable(RuntimeError):
     """A store exists but this build of PhenoTypic cannot decode it.
 
@@ -374,105 +397,6 @@ def _level_shape(
 
     meta = Path(store_path) / member / str(level) / ngff_.STORE_ROOT_JSON
     return tuple(json.loads(meta.read_text(encoding="utf-8"))["shape"])
-
-
-def select_pyramid_level(
-    store_path: Path | str, layer: str, target_px: int
-) -> int:
-    """Return the coarsest pyramid level that still covers ``target_px``.
-
-    "Covers" means the level's longest spatial edge is at least *target_px*.
-    Reading a finer level than that is the pre-pyramid behaviour and wastes
-    the whole point of the change; reading a coarser one renders a visibly
-    soft tile. When even level 0 is smaller than the request, level 0 is
-    returned -- there is nothing better to offer.
-
-    The level count comes from ``phenotypic.pyramid.levels`` and each level's
-    shape from that level's own array metadata. **Never from a directory
-    listing:** a ``.part`` sweep or a partially written store would make a
-    listing report a truncated pyramid as the whole pyramid, and every request
-    would then silently resolve to level 0. A declared level that is missing
-    on disk raises instead.
-
-    Args:
-        store_path: Path to a ``*.ome.zarr`` directory.
-        layer: ``"rgb"``, ``"gray"``, ``"detect_mat"``, or ``"objmap"``.
-        target_px: Longest edge, in pixels, the caller intends to render.
-
-    Returns:
-        A pyramid level index; ``0`` is full resolution.
-
-    Raises:
-        KeyError: If *layer* is not present in the store.
-        FileNotFoundError: If the store declares a level it does not hold.
-        StoreUnreadable: If this build cannot decode the store.
-    """
-    from phenotypic.sdk_ import ngff_
-
-    block = _readable_block(store_path)
-    member = _store_member_path(block, store_path, layer)
-    levels = int(block[ngff_.PhenotypicAttr.PYRAMID]["levels"])
-    chosen = 0
-    for level in range(levels):
-        shape = _level_shape(store_path, member, level)
-        if max(shape[-2:]) >= target_px:
-            chosen = level
-    return chosen
-
-
-@functools.lru_cache(maxsize=_STORE_LAYER_CACHE_SIZE)
-def _load_zarr_level_rgb(
-    path: str, content_token: str, layer: LayerName, level: int
-) -> PILImage.Image:
-    """Decode ONE pyramid level of one store layer to an RGB PIL image.
-
-    Memory discipline: reads only the requested layer's level array -- never
-    ``load_image_from_store`` / ``Image.load_zarr``, which materialise every
-    layer (hundreds of MB for a plate) to discard all but one.
-
-    Args:
-        path: Absolute store path, as a string so the cache key is hashable.
-        content_token: Identity of the store's published content. Including
-            it in the key invalidates the cached frame when the store is
-            republished under a running viewer.
-        layer: Layer to decode.
-        level: Pyramid level index, already resolved by the caller. The key
-            carries the LEVEL rather than the requested pixel size so the
-            key space is bounded by the data, not by request variety.
-
-    Returns:
-        The decoded level as an RGB :class:`PIL.Image.Image`.
-
-    Raises:
-        KeyError: If *layer* is absent from the store.
-        StoreUnreadable: If this build cannot decode the store.
-    """
-    del content_token  # Cache-key only.
-    arr = _read_store_level(path, layer, level)
-    return PILImage.fromarray(_store_layer_array_to_rgb(arr, layer), mode="RGB")
-
-
-def _load_zarr_layer_rgb(
-    path: str, content_token: str, layer: LayerName, target_px: int
-) -> PILImage.Image:
-    """Decode the coarsest store level covering ``target_px``, cached by level.
-
-    Thin resolver over :func:`_load_zarr_level_rgb`. The split is what keeps
-    the LRU useful: several distinct ``target_px`` values routinely select the
-    same level, and keying the cache on the request size instead would thrash
-    a 4-entry cache on exactly the path the pyramid exists to accelerate.
-
-    Args:
-        path: Absolute store path, as a string.
-        content_token: Identity of the store's published content.
-        layer: Layer to decode.
-        target_px: Longest edge, in pixels, the caller intends to render.
-
-    Returns:
-        The decoded level as an RGB :class:`PIL.Image.Image`.
-    """
-    level = select_pyramid_level(path, layer, target_px)
-    return _load_zarr_level_rgb(path, content_token, layer, level)
 
 
 def _read_store_level(
@@ -1468,7 +1392,6 @@ __all__ = [
     "DEFAULT_LAYER",
     "crop_overlay",
     "crop_store_rgb",
-    "select_pyramid_level",
     "StoreUnreadable",
     "crop_colony",
     "is_safe_path_component",

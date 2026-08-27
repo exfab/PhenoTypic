@@ -1,20 +1,24 @@
 """Single-pane viewer card for the results viewer.
 
-A "card" is one independent OpenSeadragon viewport on a particular
-``(dataset, image_stem)`` pair, with a header, info chips, a remove
-button, and a collapsible per-object ``DataTable`` underneath. Cards
-share the filter sidebar and image list but pick images independently;
-many cards can be open at once for side-by-side comparison.
+A "card" is one independent full-canvas Viv stage on a particular
+``(dataset, image_stem)`` pair. Every control floats OVER the stage --
+image stepper and picker top-left, Layers panel top-right, zoom and the
+served-level readout along the bottom -- with a provenance note and a
+collapsible per-object ``DataTable`` underneath. Cards share the filter
+offcanvas and image list but pick images independently; many can be open
+at once for side-by-side comparison, and "Lock views" mirrors one stage's
+viewState onto the rest.
 
 This module owns:
 
 * :func:`layout` -- the per-card component tree, keyed by a hex UUID.
 * :func:`register_callbacks` -- every callback that mutates card state
   (spawn / remove / picker options / per-card state / info chips /
-  details toggle / details DataTable). The OpenSeadragon mount/dispose
-  is owned by the JS layer in ``_assets/results_viewer.js``; this
-  module only renders an empty ``html.Div`` with the agreed
-  pattern-matching id where the JS will mount.
+  details toggle / details DataTable / source spec / Layers panel).
+  The deck.gl mount and teardown are owned by the JS layer in
+  ``_assets/results_viewer.js`` driving ``window.phenotypicViv``; this
+  module renders an empty ``html.Div`` with the agreed pattern-matching
+  id where the stage mounts, and resolves the SPEC that stage reads.
 
 Picker option-value encoding
 -----------------------------
@@ -56,6 +60,8 @@ from phenotypic.gui._design import (
     FONT_FAMILY_MONO,
     FONT_SIZE_BODY_SM,
     FONT_SIZE_CAPTION,
+    OI_GREEN,
+    OKABE_ITO,
     OI_VERMILION_TEXT,
 )
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
@@ -82,18 +88,32 @@ from phenotypic.gui.results_viewer._ids import (
     card_details_collapse_id,
     card_details_table_id,
     card_details_toggle_id,
+    card_display_state_id,
     card_id,
     card_info_chip_count_id,
     card_info_chip_dataset_id,
     card_info_chip_stem_id,
-    card_osd_div_id,
+    card_layer_eye_id,
+    card_layer_opacity_id,
+    card_layers_panel_id,
     card_picker_next_id,
     card_picker_prev_id,
     card_picker_id,
+    card_pyramid_readout_id,
     card_remove_id,
+    card_source_note_id,
+    card_source_store_id,
+    card_stage_id,
     card_state_store_id,
+    card_zoom_readout_id,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui._shared.tiles import StoreUnreadable
+from phenotypic.gui.results_viewer._store_source import build_source_spec
+from phenotypic.gui.results_viewer._zarr_routes import (
+    store_generation_token,
+    zarr_store_url,
+)
 from phenotypic.gui.results_viewer._picker_navigation import (
     picker_button_disabled_states,
     step_picker_value,
@@ -107,8 +127,21 @@ logger = logging.getLogger(__name__)
 # paginates natively, but very large frames slow client-side rendering.
 _MAX_DETAILS_ROWS = 5000
 
-#: Default OSD canvas height; CSS in ``_assets/results_viewer.css`` may override.
-_OSD_CANVAS_STYLE: dict[str, str] = {"height": "600px", "width": "100%"}
+#: Name of the objmap row in the Layers panel. It is the LABEL image, not a
+#: series, and the panel tags it as such -- the store's ``series`` list never
+#: contains it (``_save_store`` keeps the two namespaces apart on purpose).
+_OBJMAP_LAYER = "objmap"
+
+#: Facade layer ids. Mirrors ``IMAGE_LAYER_ID`` / ``LABEL_LAYER_ID`` in
+#: ``_assets/viv_viewer.js``; the display state addresses layers by these.
+_FACADE_IMAGE_LAYER = "image"
+_FACADE_LABEL_LAYER = "labels"
+
+#: Default opacity per facade layer, matching the facade's own defaults.
+_DEFAULT_OPACITY: dict[str, float] = {
+    _FACADE_IMAGE_LAYER: 1.0,
+    _FACADE_LABEL_LAYER: 0.5,
+}
 
 #: Column id and human-facing name for the curation Status column injected
 #: as the leftmost column of the per-object DataTable. Clicking a Status
@@ -200,8 +233,8 @@ def layout(
 
     1. A header row holding the image-picker dropdown, dataset/stem/
        n-objects info chips, and a remove (``x``) button.
-    2. A full-bleed OpenSeadragon canvas div (the JS layer mounts an
-       OSD viewer here when an image is selected).
+    2. A full-canvas Viv stage with every control floating over it
+       (the JS layer mounts deck.gl into it when an image is selected).
     3. A details toggle button and a collapsible per-object
        :class:`dash_table.DataTable`.
     4. A per-card :class:`dcc.Store` holding the selected
@@ -277,25 +310,23 @@ def layout(
             dbc.Badge(
                 "--",
                 id=card_info_chip_dataset_id(idx),
-                color="secondary",
-                className="card-info-chip me-1",
+                color="dark",
+                className="card-info-chip",
             ),
             dbc.Badge(
                 "--",
                 id=card_info_chip_stem_id(idx),
-                color="info",
-                className="card-info-chip me-1",
+                color="dark",
+                className="card-info-chip",
             ),
             dbc.Badge(
                 "-- objects",
                 id=card_info_chip_count_id(idx),
-                color="light",
-                text_color="dark",
+                color="dark",
                 className="card-info-chip",
             ),
         ],
-        className="card-info-chips d-flex align-items-center",
-        style={"gap": "0.25rem"},
+        className="card-info-chips plate-float__chip",
     )
 
     remove_btn = dbc.Button(
@@ -304,30 +335,66 @@ def layout(
         color="danger",
         outline=True,
         size="sm",
-        className="card-remove-btn ms-2",
+        className="card-remove-btn",
         title="Remove this card",
     )
 
-    header = dbc.CardHeader(
-        html.Div(
-            [
-                picker_group,
-                html.Div(
-                    info_chips,
-                    className="card-info-chips-wrap",
-                    style={"flex": "0 0 auto"},
-                ),
-                remove_btn,
-            ],
-            className="d-flex align-items-center",
-            style={"gap": "0.5rem", "flexWrap": "wrap"},
-        )
+    # The Viv mount point. Empty at layout time and never written by Python:
+    # the clientside bridge owns everything inside it.
+    stage_canvas = html.Div(
+        id=card_stage_id(idx),
+        className="plate-stage__canvas",
     )
 
-    osd_div = html.Div(
-        id=card_osd_div_id(idx),
-        className="osd-canvas",
-        style=_OSD_CANVAS_STYLE,
+    layers_panel = html.Div(
+        [
+            html.Div(
+                "Layers",
+                className="plate-layers__title",
+            ),
+            html.Div(
+                [],
+                id=card_layers_panel_id(idx),
+                className="plate-layers__rows",
+            ),
+        ],
+        className="plate-layers",
+    )
+
+    # Bottom-right, over the stage. Written ONLY by the clientside bridge
+    # from the facade's `onLevelChange`; see `card_pyramid_readout_id`.
+    pyramid_readout = html.Div(
+        "no image",
+        id=card_pyramid_readout_id(idx),
+        className="plate-float plate-float--bottom-right plate-readout",
+    )
+    zoom_readout = html.Div(
+        "",
+        id=card_zoom_readout_id(idx),
+        className="plate-float plate-float--bottom-left plate-readout",
+    )
+
+    stage = html.Div(
+        [
+            stage_canvas,
+            html.Div(
+                [picker_group, info_chips],
+                className="plate-float plate-float--top-left",
+            ),
+            html.Div(
+                [remove_btn, layers_panel],
+                className="plate-float plate-float--top-right",
+            ),
+            zoom_readout,
+            pyramid_readout,
+        ],
+        className="plate-stage",
+    )
+
+    source_note = html.Div(
+        "",
+        id=card_source_note_id(idx),
+        className="plate-source-note",
     )
 
     details_toggle = dbc.Button(
@@ -388,32 +455,154 @@ def layout(
         className="card-details-collapse",
     )
 
-    state_store = dcc.Store(
-        id=card_state_store_id(idx),
-        data=None,
-        storage_type="session",
-    )
-
-    body = dbc.CardBody(
+    return html.Div(
         [
-            osd_div,
+            stage,
             html.Div(
-                details_toggle,
-                className="card-details-toggle-wrap mt-2",
+                [source_note, details_toggle],
+                className="plate-underbar",
             ),
             details_collapse,
-            state_store,
+            dcc.Store(
+                id=card_state_store_id(idx),
+                data=None,
+                storage_type="session",
+            ),
+            # The resolved source spec, handed to the facade unmodified.
+            dcc.Store(id=card_source_store_id(idx), data=None),
+            # What the Layers panel has been set to. Kept apart from the
+            # spec so a re-source (a promote, a stepped image) does not
+            # silently reset the user's layer choices.
+            dcc.Store(id=card_display_state_id(idx), data=None),
         ],
-        className="card-body p-3",
-    )
-
-    return dbc.Card(
-        [header, body],
         id=card_id(idx),
-        className="viewer-card mb-3",
+        className="viewer-card plate-card",
     )
 
 
+def build_layer_rows(
+    idx: str, spec: dict[str, Any] | None, display: dict[str, Any] | None
+) -> list[Any]:
+    """Build the Layers-panel rows for one card from the store's REAL series.
+
+    The list comes from ``spec["series"]`` -- the store's own
+    ``attributes.phenotypic.series`` -- never from a literal
+    ``{rgb, gray, detect_mat}``. ``_write_store_part`` appends ``original``
+    whenever the image carries one, and an rgb-less store has no ``rgb``
+    row at all; a hard-coded set would offer a layer the byte route 404s
+    and hide one it serves.
+
+    A series row SELECTS which series the image layer shows (Viv holds one
+    image source at a time), so the eye reads as "displayed". The objmap row
+    is different in kind -- it is the label image, drawn over the series --
+    and its eye is a true visibility toggle.
+
+    Args:
+        idx: Owning card's ``index``.
+        spec: The card's source spec, or ``None`` for an unselected card.
+        display: The card's display state, or ``None`` for its defaults.
+
+    Returns:
+        One row component per readable layer; empty when *spec* is ``None``.
+    """
+    if not spec:
+        return []
+    state = display or {}
+    active_series = state.get("seriesPath") or spec.get("seriesPath")
+    label_visible = state.get("labelVisible", True)
+    opacity = {**_DEFAULT_OPACITY, **(state.get("opacity") or {})}
+
+    rows: list[Any] = []
+    for position, name in enumerate(spec.get("series", [])):
+        shown = name == active_series
+        rows.append(
+            _layer_row(
+                idx,
+                name=name,
+                kind="series",
+                swatch=OKABE_ITO[position % len(OKABE_ITO)],
+                shown=shown,
+                opacity=opacity[_FACADE_IMAGE_LAYER] if shown else 0.0,
+                opacity_enabled=shown,
+            )
+        )
+    if spec.get("labelPath"):
+        rows.append(
+            _layer_row(
+                idx,
+                name=_OBJMAP_LAYER,
+                # An absent `tables` descriptor means Stage 3 has not run,
+                # so the in-store objmap is still zeros. Saying so is the
+                # difference between a user waiting and a user filing a bug
+                # about a detector that "found nothing".
+                kind="label image"
+                if spec.get("measured")
+                else "measurement pending",
+                swatch=OI_GREEN,
+                shown=bool(label_visible),
+                opacity=opacity[_FACADE_LABEL_LAYER],
+                opacity_enabled=True,
+            )
+        )
+    return rows
+
+
+def _layer_row(
+    idx: str,
+    *,
+    name: str,
+    kind: str,
+    swatch: str,
+    shown: bool,
+    opacity: float,
+    opacity_enabled: bool,
+) -> Any:
+    """Build one Layers-panel row: eye, swatch, name, kind tag, opacity."""
+    eye = html.Button(
+        "\u25c9" if shown else "\u25cc",
+        id=card_layer_eye_id(idx, name),
+        n_clicks=0,
+        type="button",
+        title=f"Show {name}" if not shown else f"Hide {name}",
+        className=(
+            "plate-layer__eye"
+            + ("" if shown else " plate-layer__eye--off")
+        ),
+        **cast(Any, {"aria-label": f"Toggle {name}"}),
+    )
+    return html.Div(
+        [
+            eye,
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Span(
+                                className="plate-layer__swatch",
+                                style={"background": swatch},
+                            ),
+                            html.Span(name, className="plate-layer__name"),
+                            html.Span(kind, className="plate-layer__kind"),
+                        ],
+                        className="plate-layer__head",
+                    ),
+                    dcc.Slider(
+                        id=card_layer_opacity_id(idx, name),
+                        min=0,
+                        max=1,
+                        step=0.05,
+                        value=opacity,
+                        marks=None,
+                        tooltip={"placement": "bottom"},
+                        disabled=not opacity_enabled,
+                        className="plate-layer__opacity",
+                    ),
+                ],
+                className="plate-layer__body",
+            ),
+        ],
+        className="plate-layer",
+    )
 # ---------------------------------------------------------------------------
 # Helpers used by callbacks
 # ---------------------------------------------------------------------------
@@ -679,6 +868,10 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
        card (pattern-matching, MATCH).
     8. Toggle the details ``dbc.Collapse`` per card.
     9. Populate the per-object DataTable from the card's state.
+    10. Resolve the card's Viv source spec from the selected image's
+        OME-Zarr store, and render the Layers panel from the store's own
+        series list.
+    11. Fold Layers-panel clicks into the card's display state.
 
     Args:
         app: The Dash application that will own the callbacks.
@@ -709,7 +902,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
 
     # Diff the desired card list against the card IDs rendered in the
     # requesting browser. The client-specific State keeps reloads and
-    # concurrent sessions independent while Patch preserves existing OSD
+    # concurrent sessions independent while Patch preserves existing stage
     # viewers during sibling add/remove operations.
     @app.callback(
         Output(CARDS_CONTAINER_ID, "children"),
@@ -1089,8 +1282,146 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         # ``colony_view._callbacks._mark_colony_category``).
         return (payload,)
 
+    # 10. Resolve the selected image's store into a source spec, and render
+    #     the Layers panel from the store's REAL series list.
+    #
+    #     The spec crosses to `window.phenotypicViv.setSource` unmodified,
+    #     which is why it is built at `build_source_spec`'s own key names
+    #     rather than repacked here.
+    @app.callback(
+        Output({"type": "card-source-spec", "index": MATCH}, "data"),
+        Output({"type": "card-layers-panel", "index": MATCH}, "children"),
+        Output({"type": "card-source-note", "index": MATCH}, "children"),
+        Output(
+            {"type": "card-display-state", "index": MATCH},
+            "data",
+            allow_duplicate=True,
+        ),
+        Input({"type": "card-state", "index": MATCH}, "data"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def _resolve_card_source(
+        state: dict[str, Any] | None,
+    ) -> tuple[dict[str, Any] | None, list[Any], str, dict[str, Any] | None]:
+        dataset = (state or {}).get("dataset")
+        stem = (state or {}).get("stem")
+        if not dataset or not stem:
+            return None, [], "", None
+        store = output_root.store_path(str(dataset), str(stem))
+        if store is None:
+            # A standalone deliverables bundle ships overlays and no
+            # `results/` stores. There is nothing for the pixel client to
+            # read, and saying so beats an empty dark rectangle.
+            return (
+                None,
+                [],
+                f"no OME-Zarr store for {dataset}/{stem}",
+                None,
+            )
+        try:
+            token = store_generation_token(store)
+            spec = build_source_spec(
+                store,
+                zarr_store_url(
+                    app.config.requests_pathname_prefix,
+                    str(dataset),
+                    str(stem),
+                    token,
+                ),
+            )
+        except StoreUnreadable as exc:
+            # Same condition the byte route answers 422 on. Surfacing the
+            # store's own message here means the user reads it before the
+            # canvas starts throwing on every chunk.
+            logger.error("Unreadable store for %s/%s: %s", dataset, stem, exc)
+            return None, [], str(exc), None
+        except (OSError, KeyError, ValueError):
+            logger.exception(
+                "Failed to resolve a Viv source for %s/%s", dataset, stem
+            )
+            return None, [], f"could not read {dataset}/{stem}", None
+
+        display = {
+            "seriesPath": spec["seriesPath"],
+            "labelVisible": True,
+            "opacity": dict(_DEFAULT_OPACITY),
+        }
+        note = f"served directly from {store.name} - no tile cache"
+        # MATCH callbacks do not receive the matched index as an
+        # argument; it is read off the resolved output list.
+        idx_ = str(ctx.outputs_list[0]["id"]["index"])
+        return spec, build_layer_rows(idx_, spec, display), note, display
+
+    # 11. Fold Layers-panel interaction into the card's display state.
+    #
+    #     Two separate gestures land here. An eye click on a SERIES row
+    #     selects which series the image layer shows -- Viv holds one image
+    #     source at a time, so this is a radio, not a checkbox. An eye click
+    #     on the objmap row toggles the label layer's visibility. Sliders
+    #     set the corresponding facade layer's opacity.
+    @app.callback(
+        Output(
+            {"type": "card-display-state", "index": MATCH},
+            "data",
+            allow_duplicate=True,
+        ),
+        Output({"type": "card-layers-panel", "index": MATCH}, "children", allow_duplicate=True),
+        Input({"type": "card-layer-eye", "index": MATCH, "layer": ALL}, "n_clicks"),
+        Input(
+            {"type": "card-layer-opacity", "index": MATCH, "layer": ALL},
+            "value",
+        ),
+        State({"type": "card-display-state", "index": MATCH}, "data"),
+        State({"type": "card-source-spec", "index": MATCH}, "data"),
+        prevent_initial_call=True,
+    )
+    def _apply_layer_controls(
+        _eye_clicks: list[int | None],
+        _opacities: list[float | None],
+        display: dict[str, Any] | None,
+        spec: dict[str, Any] | None,
+    ) -> tuple[dict[str, Any] | Any, list[Any] | Any]:
+        trigger = ctx.triggered_id
+        if not spec or not isinstance(trigger, dict):
+            return no_update, no_update
+        layer = str(trigger.get("layer") or "")
+        if not layer:
+            return no_update, no_update
+        state = dict(display or {})
+        state.setdefault("seriesPath", spec["seriesPath"])
+        state.setdefault("labelVisible", True)
+        state["opacity"] = {**_DEFAULT_OPACITY, **(state.get("opacity") or {})}
+
+        if trigger.get("type") == "card-layer-eye":
+            # A freshly rendered button fires this callback with
+            # ``n_clicks == 0``; only a real click carries a count.
+            if not ctx.triggered[0]["value"]:
+                return no_update, no_update
+            if layer == _OBJMAP_LAYER:
+                state["labelVisible"] = not state["labelVisible"]
+            elif layer == state["seriesPath"]:
+                # Clicking the displayed series is a no-op rather than a
+                # way to show nothing: Viv has one image source, and an
+                # empty stage reads as a broken store.
+                return no_update, no_update
+            else:
+                state["seriesPath"] = layer
+        else:
+            value = ctx.triggered[0]["value"]
+            if value is None:
+                return no_update, no_update
+            facade_layer = (
+                _FACADE_LABEL_LAYER
+                if layer == _OBJMAP_LAYER
+                else _FACADE_IMAGE_LAYER
+            )
+            state["opacity"][facade_layer] = float(value)
+        return state, build_layer_rows(str(trigger["index"]), spec, state)
+
+
 
 __all__ = [
+    "build_layer_rows",
     "layout",
     "register_callbacks",
 ]

@@ -77,7 +77,7 @@ from phenotypic.gui._url_prefix import (
     configure_url_prefix_routing,
     dash_index_string_with_app_prefix,
 )
-from phenotypic.gui.results_viewer import _ids as ids, _tile_routes
+from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._layout import (
@@ -155,7 +155,7 @@ def create_app(
     )
 
     # Inject window.__phenotypicAppPrefix so results_viewer.js can build
-    # mount-aware URLs for DZI tiles and OSD assets.
+    # mount-aware URLs for its assets and byte routes.
     app.index_string = dash_index_string_with_app_prefix(
         url_prefix,
         binding_generation=binding_generation,
@@ -229,11 +229,12 @@ def create_app(
         )
         return configure_url_prefix_routing(app, url_prefix)
 
-    _tile_routes.register(app, output_root)
-    # Raw store bytes with HTTP Range, for the browser-side pixel client.
-    # Mounted beside the DZI routes rather than replacing them: the two
-    # namespaces serve different things (rendered pyramids vs. store
-    # chunks) and Browse keeps the DZI path.
+    # Raw store bytes with HTTP Range: the ONLY pixel source the Plate
+    # surface has. The `/tiles/<ds>/<stem>.dzi` routes that used to sit
+    # beside this are gone -- Plate reads store chunks in the browser, and
+    # the Timeline surfaces that were the only other consumer were
+    # unmounted. Browse and the builder keep their own libvips -> DZI ->
+    # OpenSeadragon path in their own blueprints.
     register_zarr_routes(app, output_root)
 
     filtered_state = CurationLabels.load(

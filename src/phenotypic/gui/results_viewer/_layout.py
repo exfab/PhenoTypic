@@ -47,7 +47,6 @@ from phenotypic.gui._design import (
     COLOR_GOLD,
     COLOR_MUTED,
     COLOR_NAVY,
-    COLOR_RULE,
     COLOR_SURFACE,
     FONT_SIZE_CAPTION,
     FONT_SIZE_LABEL,
@@ -328,17 +327,20 @@ def _build_cards_column() -> Component:
     return html.Div(
         [cards_container, add_card_button],
         className="results-viewer-cards-col",
-        style={
-            "padding": "1rem",
-            "overflowY": "auto",
-            "maxHeight": "calc(100vh - 8rem)",
-        },
+        style={"padding": "1rem"},
     )
 
 
 def _build_startup_banner(output_root: OutputRoot) -> Component:
-    """Build the dismissable startup banner (SSH-forward + cache nuke hint)."""
-    cache_dir = output_root.cache_dir
+    """Build the dismissable startup banner (SSH-forward hint).
+
+    The "nuke the DZI cache" half is gone with the cache. The Plate surface
+    reads store chunks in the browser over the byte route, which holds no
+    cache and resolves fresh per request, so there is nothing on disk to
+    delete when a store is republished -- and telling a user to ``rm -rf`` a
+    directory that no longer explains their symptom is worse than silence.
+    """
+    del output_root  # Kept for the shared builder signature.
     return dbc.Alert(
         [
             html.Span(
@@ -348,17 +350,7 @@ def _build_startup_banner(output_root: OutputRoot) -> Component:
             ),
             html.Span(
                 f"Forward this port over SSH with `{SSH_TUNNEL_HINT}` and "
-                "open the URL in a local browser. Stale tiles? Nuke the "
-                "DZI cache with: ",
-            ),
-            html.Code(
-                f"rm -rf {cache_dir}",
-                style={
-                    "background": COLOR_RULE,
-                    "color": _NAVY,
-                    "padding": "1px 5px",
-                    "borderRadius": "var(--radius-sm)",
-                },
+                "open the URL in a local browser.",
             ),
         ],
         id="results-viewer-startup-banner",
@@ -391,9 +383,9 @@ def _build_stores(filtered_state: "CurationLabels") -> Component:
 
     In addition to the four session-storage stores backing the filter spec,
     image pair list, card list, and lock-views toggle, this also mounts two
-    hidden trigger stores (:data:`ids.OSD_MOUNT_TRIGGER_ID` and
+    hidden trigger stores (:data:`ids.VIV_MOUNT_TRIGGER_ID` and
     :data:`ids.LOCK_VIEWS_EFFECT_ID`) used by the clientside callbacks
-    to bridge Dash state changes into the OpenSeadragon JS lifecycle, plus
+    to bridge Dash state changes into the Viv stage lifecycle, plus
     four memory-storage stores backing the colony-view curation and
     multi-select state (removed keys, current selection, selection delta,
     and visual grid order).
@@ -434,7 +426,7 @@ def _build_stores(filtered_state: "CurationLabels") -> Component:
             # Clientside-callback effect targets — the data itself is a
             # millisecond timestamp used purely as a change-trigger; the
             # Python side never reads it.
-            dcc.Store(id=ids.OSD_MOUNT_TRIGGER_ID, data=0),
+            dcc.Store(id=ids.VIV_MOUNT_TRIGGER_ID, data=0),
             dcc.Store(id=ids.LOCK_VIEWS_EFFECT_ID, data=0),
             dcc.Store(id=ids.COLONY_SELECTION_EFFECT_ID, data=0),
             # Colony-view curation + selection stores. Memory-storage so

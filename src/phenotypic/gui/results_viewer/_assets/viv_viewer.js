@@ -21,6 +21,11 @@
  *       labelPath:  "rgb/labels/objmap"|null,  // OPTIONAL -- may be absent
  *     }
  *
+ * `build_source_spec` returns those three plus `series`, `pyramid`, `token`
+ * and `measured`, which the surface's own chrome reads and this file
+ * ignores. Extra keys are deliberate: it means the dict crosses the Dash
+ * boundary once, unmodified, rather than being split and re-joined.
+ *
  * `storeUrl` carries the generation token as a path segment, so every key
  * resolved against it belongs to one publish by construction.
  */
@@ -235,8 +240,12 @@
    * image. Phase 3 owns real contrast and colour policy and replaces this
    * wholesale by passing `opts.buildLayers`.
    */
-  function defaultLayers(bundle, loaded) {
+  function defaultLayers(bundle, loaded, spec, overrides) {
     const { image, label } = loaded;
+    const opacityFor = (id, fallback) => {
+      const value = overrides && overrides[id];
+      return typeof value === "number" ? value : fallback;
+    };
     const layers = [];
     const source = image.data[0];
     const channelAxis = source.labels.indexOf("c");
@@ -271,6 +280,7 @@
           (_, c) => palette[c % palette.length]
         ),
         channelsVisible: Array.from({ length: nChannels }, () => true),
+        opacity: opacityFor(IMAGE_LAYER_ID, 1),
       })
     );
     if (label) {
@@ -287,7 +297,7 @@
           contrastLimits: [dtypeDomain(labelSource.dtype)],
           colors: [[255, 255, 0]],
           channelsVisible: [true],
-          opacity: 0.5,
+          opacity: opacityFor(LABEL_LAYER_ID, 0.5),
         })
       );
     }
@@ -299,7 +309,55 @@
   /** Rebuild and install this instance's layers from its loaded sources. */
   function rebuildLayers(record, bundle) {
     const build = record.options.buildLayers || defaultLayers;
-    record.viewer.setLayers(build(bundle, record.loaded, record.spec));
+    record.viewer.setLayers(
+      build(bundle, record.loaded, record.spec, record.opacity)
+    );
+  }
+
+  /**
+   * Report the pyramid level deck.gl is ACTUALLY serving.
+   *
+   * Not computed. `MultiscaleImageLayer` resolves a tile as
+   * `loader[Math.round(-z)].getTile(config)` (`@vivjs/layers` index.mjs:951,
+   * vendored beside the spec), so the only honest observation of "the level
+   * being served" is which element of the loader array is asked for a tile.
+   * This wraps each one.
+   *
+   * A server-side number -- `select_pyramid_level` over the same target
+   * pixel size -- would name a level nobody rendered, and a readout labelled
+   * "the level actually being served" is trusted precisely when diagnosing
+   * the bug it would be misreporting.
+   */
+  function instrumentServedLevel(record, loaded) {
+    const notify = record.options.onLevelChange;
+    if (!notify || !loaded.image) return;
+    const sources = loaded.image.data;
+    sources.forEach((source, level) => {
+      if (source.__phenotypicLevelProbe) return;
+      const original = source.getTile.bind(source);
+      // An OWN property shadowing `ZarrPixelSource.prototype.getTile`; the
+      // prototype is shared across every source this page opens, so patching
+      // it there would cross-report between cards.
+      source.getTile = (config) => {
+        if (record.level !== level) {
+          record.level = level;
+          const shape = source.shape;
+          try {
+            notify({
+              level,
+              levels: sources.length,
+              height: shape[shape.length - 2],
+              width: shape[shape.length - 1],
+              tileSize: source.tileSize,
+            });
+          } catch (ignored) {
+            /* a readout must not break a tile fetch */
+          }
+        }
+        return original(config);
+      };
+      source.__phenotypicLevelProbe = true;
+    });
   }
 
   function requireInstance(containerId) {
@@ -313,10 +371,12 @@
    *
    * @param {string} containerId Id of an existing DOM element.
    * @param {object} [opts] Passed through to the bundle's `createViewer`
-   *   (`initialViewState`, `views`, `onViewStateChange`), plus two facade
-   *   options: `buildLayers({bundle, loaded, spec})` replacing the default
-   *   layer policy, and `refetchSource(containerId)` returning a fresh spec
-   *   after a re-promote.
+   *   (`initialViewState`, `views`, `onViewStateChange`), plus three facade
+   *   options: `buildLayers(bundle, loaded, spec, opacity)` replacing the
+   *   default layer policy, `refetchSource(containerId)` returning a fresh
+   *   spec after a re-promote, and `onLevelChange({level, levels, height,
+   *   width, tileSize})` fired when the pyramid level deck.gl is serving
+   *   changes.
    */
   async function mount(containerId, opts) {
     const bundle = await ready();
@@ -330,6 +390,11 @@
       spec: null,
       loaded: null,
       resourcing: null,
+      // Per-layer opacity, addressed by the same ids `setLayerVisibility`
+      // uses. Kept on the RECORD rather than on the layer descriptors so it
+      // survives the wholesale rebuild every `setSource` performs.
+      opacity: {},
+      level: null,
     });
     return viewer;
   }
@@ -365,6 +430,8 @@
     const loaded = { image, label };
     record.spec = spec;
     record.loaded = loaded;
+    record.level = null;
+    instrumentServedLevel(record, loaded);
     // `setLayers` does not reset visibility: the bundle's viewer keeps its
     // own hidden-id set across a re-source, so a layer hidden before a
     // re-promote stays hidden after one.
@@ -428,6 +495,22 @@
     if (visible && record.loaded) rebuildLayers(record, await ready());
   }
 
+  /**
+   * Set one layer's opacity (`IMAGE_LAYER_ID` / `LABEL_LAYER_ID`).
+   *
+   * Rebuilds rather than mutating the live layer: deck.gl layer props are
+   * immutable once handed over, and the composite `MultiscaleImageLayer`
+   * additionally forwards `opacity` into its `refinementStrategy` choice
+   * (`@vivjs/layers` index.mjs:997), so an in-place poke would leave the
+   * tiling strategy disagreeing with the opacity it was chosen for.
+   */
+  async function setLayerOpacity(containerId, name, opacity) {
+    const record = instances.get(containerId);
+    if (!record || !record.loaded) return;
+    record.opacity[name] = Math.max(0, Math.min(1, Number(opacity)));
+    rebuildLayers(record, await ready());
+  }
+
   function destroy(containerId) {
     const record = instances.get(containerId);
     if (!record) return;
@@ -473,6 +556,7 @@
     setSource,
     setViewState,
     setLayerVisibility,
+    setLayerOpacity,
     destroy,
     errors: { StaleGenerationError, StoreUnreadableError },
     IMAGE_LAYER_ID,

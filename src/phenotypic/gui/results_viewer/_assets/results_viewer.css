@@ -18,7 +18,7 @@
     margin-right: var(--sp-3, 0.75rem);
 }
 
-/* ---------- Cards container & OSD canvases ---------- */
+/* ---------- Cards container & the full-canvas Plate stage ---------- */
 /* Vertical stack of viewer cards; padding leaves room for sticky footers. */
 .cards-container {
     display: flex;
@@ -27,18 +27,219 @@
     padding-bottom: 4rem;
 }
 
-/* Each card hosts a single OpenSeadragon viewer. */
-.osd-canvas {
-    width: 100%;
-    height: 600px;
-    background: var(--color-image-stage-dark);  /* deep neutral so tiling artefacts blend in */
-    border-radius: var(--radius);
-    position: relative;
+/* One card is one image stage. There is no card chrome around it any more:
+   the header row it used to carry cost ~50px of the frame and pushed the
+   controls away from the pixels they act on, so every control now floats
+   over the canvas instead. */
+.plate-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
-/* Hook for an optional spinner overlay (cards may toggle a sibling class). */
-.osd-canvas::before {
-    content: "";
+/* The stage. `--color-image-stage-dark` is the one permitted dark surface
+   in this light-theme system (DESIGN.md "09 -- Image Display"); everything
+   floating above it derives its own colours from the same token so a
+   palette swap carries through. */
+.plate-stage {
+    position: relative;
+    width: 100%;
+    height: min(72vh, 720px);
+    min-height: 22rem;
+    border-radius: var(--radius);
+    background: var(--color-image-stage-dark);
+    overflow: hidden;
+}
+
+/* The Viv mount point. Nothing but deck.gl's canvas lives inside it. */
+.plate-stage__canvas {
+    position: absolute;
+    inset: 0;
+}
+
+/* Floating control clusters, anchored to the stage's four corners. */
+.plate-float {
+    position: absolute;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.plate-float--top-left {
+    top: 14px;
+    left: 14px;
+    right: 300px;
+    max-width: 34rem;
+}
+
+.plate-float--top-right {
+    top: 14px;
+    right: 14px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+}
+
+.plate-float--bottom-left {
+    left: 14px;
+    bottom: 14px;
+}
+
+.plate-float--bottom-right {
+    right: 14px;
+    bottom: 14px;
+}
+
+/* Scrim shared by every on-stage readout and chip. Same construction as
+   `browse.css`'s loading overlay: a colour-mix of the stage token rather
+   than a fresh rgba() literal, so the scrim tracks the stage it sits on. */
+.plate-readout,
+.plate-float__chip .badge,
+.plate-picker-scrim {
+    background: color-mix(in srgb, var(--color-image-stage-dark) 72%, transparent);
+    color: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    padding: 5px 10px;
+    border-radius: var(--radius);
+    backdrop-filter: blur(4px);
+}
+
+.plate-float__chip {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.plate-float__chip .badge {
+    font-weight: 400;
+}
+
+/* The image stepper + picker, floated top-left. */
+.plate-float--top-left .card-picker-nav-btn {
+    background: color-mix(in srgb, var(--color-image-stage-dark) 72%, transparent);
+    color: var(--color-surface);
+    border-color: color-mix(in srgb, var(--color-surface) 24%, transparent);
+    backdrop-filter: blur(4px);
+}
+
+.plate-float--top-left .Select-control,
+.plate-float--top-left .Select-menu-outer {
+    font-size: var(--font-size-body-sm);
+}
+
+/* ---------- Layers panel ---------- */
+/* A light surface deliberately: it is UI chrome, not part of the image,
+   and the mockup floats it as a card over the stage. */
+.plate-layers {
+    width: 250px;
+    background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(6px);
+    overflow: hidden;
+}
+
+.plate-layers__title {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-rule);
+    font-family: var(--font-body);
+    font-size: var(--font-size-body-sm);
+    font-weight: 600;
+    color: var(--color-navy);
+}
+
+.plate-layers__rows:empty::after {
+    content: "no image";
+    display: block;
+    padding: 8px 12px;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-micro);
+    color: var(--color-muted);
+}
+
+.plate-layer {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-rule);
+}
+
+.plate-layer:last-child {
+    border-bottom: none;
+}
+
+.plate-layer__eye {
+    border: none;
+    background: transparent;
+    padding: 0;
+    line-height: 1;
+    font-size: var(--font-size-body-sm);
+    color: var(--color-navy);
+    cursor: pointer;
+}
+
+.plate-layer__eye--off {
+    color: var(--color-muted);
+}
+
+.plate-layer__body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.plate-layer__head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.plate-layer__swatch {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.plate-layer__name {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-body-sm);
+    color: var(--color-navy);
+}
+
+/* "series" / "label image" / "measurement pending". The last one is not
+   decoration: an all-zero objmap between Stage 1 and Stage 3 is a CORRECT
+   store, and without the tag it is indistinguishable from a finished image
+   whose detector found nothing. */
+.plate-layer__kind {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-micro);
+    color: var(--color-muted);
+    margin-left: auto;
+}
+
+.plate-layer__opacity {
+    padding: 0;
+}
+
+/* ---------- Under-stage strip ---------- */
+.plate-underbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.plate-source-note {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
 }
 
 /* ---------- Filter sidebar ---------- */

@@ -136,8 +136,11 @@ def _generation_token_for(
 def store_generation_token(store: Path) -> str:
     """Return a short opaque token identifying one promote of ``store``.
 
-    Same construction as ``_tile_routes._store_content_token``: the root
-    ``zarr.json``'s content fingerprint **and** its ``st_mtime_ns``. Neither
+    Construction inherited from the retired
+    ``_tile_routes._store_content_token``, which was the DZI cache's key
+    until the Plate surface stopped rendering server-built pyramids: the
+    root ``zarr.json``'s content fingerprint **and** its
+    ``st_mtime_ns``. Neither
     alone is enough -- a re-promote can reproduce byte-identical metadata
     while the pixels underneath differ, and only the mtime moves; a
     metadata-only change that lands in the same tick moves only the bytes.

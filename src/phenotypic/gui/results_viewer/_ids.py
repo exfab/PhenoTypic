@@ -34,7 +34,7 @@ STORE_IMAGE_PAIRS = "store-image-pairs"
 #: Ordered list of card ids currently rendered in the cards column.
 STORE_CARD_LIST = "store-card-list"
 
-#: Bool: when true, OpenSeadragon viewers across all cards are linked so
+#: Bool: when true, the Viv stages across all cards are linked so
 #: pan/zoom on one mirrors to the others.
 STORE_LOCK_VIEWS = "store-lock-views"
 
@@ -88,7 +88,7 @@ FILTER_TOGGLE_BADGE_ID = "filter-toggle-badge"
 # ---------------------------------------------------------------------------
 
 #: Parent ``<div>`` wrapping every viewer card. The clientside
-#: ``MutationObserver`` watches this node so it can dispose OSD viewers
+#: ``MutationObserver`` watches this node so it can destroy Viv stages
 #: when their card is removed from the DOM.
 CARDS_CONTAINER_ID = "cards-container"
 
@@ -339,20 +339,141 @@ def card_picker_next_id(idx: str) -> Dict[str, str]:
     return {"type": "card-picker-next", "index": idx}
 
 
-def card_osd_div_id(idx: str) -> Dict[str, str]:
-    """Build the pattern-matching id for a card's OpenSeadragon container.
+def card_stage_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's Viv canvas container.
 
-    The clientside JS reads the ``index`` to key the
-    ``Map<divId, OSD.Viewer>`` so each card has exactly one viewer at any
-    time.
+    The clientside bridge reads the ``index`` to key its
+    ``Map<containerId, instance>`` so each card has exactly one deck.gl
+    viewer at any time. Named for the *stage*, not for a library: the
+    element is a full-canvas image surface, and the pixel client mounted
+    into it changed once already.
 
     Args:
         idx: Owning card's ``index``.
 
     Returns:
-        Dict of shape ``{"type": "card-osd-div", "index": idx}``.
+        Dict of shape ``{"type": "card-viv-stage", "index": idx}``.
     """
-    return {"type": "card-osd-div", "index": idx}
+    return {"type": "card-viv-stage", "index": idx}
+
+
+def card_source_store_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's resolved source spec.
+
+    Payload is :func:`~phenotypic.gui.results_viewer._store_source
+    .build_source_spec`'s dict, which crosses to
+    ``window.phenotypicViv.setSource`` unmodified, or ``None`` when the
+    card holds no store-backed image.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-source-spec", "index": idx}``.
+    """
+    return {"type": "card-source-spec", "index": idx}
+
+
+def card_display_state_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's layer display state.
+
+    Payload is ``{"seriesPath": str, "labelVisible": bool, "opacity":
+    {"image": float, "labels": float}}`` -- what the Layers panel has been
+    set to, kept apart from the store-derived spec so a re-source does not
+    silently reset it.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-display-state", "index": idx}``.
+    """
+    return {"type": "card-display-state", "index": idx}
+
+
+def card_layers_panel_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's floating Layers panel body.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-layers-panel", "index": idx}``.
+    """
+    return {"type": "card-layers-panel", "index": idx}
+
+
+def card_layer_eye_id(idx: str, layer: str) -> Dict[str, str]:
+    """Build the pattern-matching id for one Layers-panel visibility button.
+
+    Carries the layer name as a third key so one MATCH/ALL callback covers
+    every row of one card, whatever series the store turned out to hold.
+
+    Args:
+        idx: Owning card's ``index``.
+        layer: Series name, or the objmap label name.
+
+    Returns:
+        Dict of shape ``{"type": "card-layer-eye", "index": idx,
+        "layer": layer}``.
+    """
+    return {"type": "card-layer-eye", "index": idx, "layer": layer}
+
+
+def card_layer_opacity_id(idx: str, layer: str) -> Dict[str, str]:
+    """Build the pattern-matching id for one Layers-panel opacity slider.
+
+    Args:
+        idx: Owning card's ``index``.
+        layer: Series name, or the objmap label name.
+
+    Returns:
+        Dict of shape ``{"type": "card-layer-opacity", "index": idx,
+        "layer": layer}``.
+    """
+    return {"type": "card-layer-opacity", "index": idx, "layer": layer}
+
+
+def card_pyramid_readout_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's served-level readout.
+
+    Written by the clientside bridge from the facade's ``onLevelChange``,
+    never from a server-side level computation: the level in use is
+    deck.gl's per-frame choice, and a readout labelled "the level actually
+    being served" is trusted exactly when diagnosing the bug a
+    server-side number would misreport.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-pyramid-readout", "index": idx}``.
+    """
+    return {"type": "card-pyramid-readout", "index": idx}
+
+
+def card_zoom_readout_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's zoom readout.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-zoom-readout", "index": idx}``.
+    """
+    return {"type": "card-zoom-readout", "index": idx}
+
+
+def card_source_note_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's provenance footer note.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-source-note", "index": idx}``.
+    """
+    return {"type": "card-source-note", "index": idx}
 
 
 def card_details_toggle_id(idx: str) -> Dict[str, str]:
@@ -396,7 +517,7 @@ def card_state_store_id(idx: str) -> Dict[str, str]:
 
     The store payload is a ``{"dataset": str, "stem": str}`` dict (or
     ``None`` for an unselected card); a clientside callback reacts to
-    changes here to (re-)mount the OpenSeadragon viewer.
+    changes here to resolve the card's Viv source spec.
 
     Args:
         idx: Owning card's ``index``.
@@ -467,14 +588,14 @@ def card_info_chip_count_id(idx: str) -> Dict[str, str]:
 INITIAL_CARD_TRIGGER_ID = "initial-card-trigger"
 
 #: Hidden ``dcc.Store`` written by the clientside callback that bridges
-#: per-card image selections to ``window.__phenotypicResultsViewer
-#: .applyImageSelection``. Carries a millisecond timestamp purely as a
+#: per-card source specs to ``window.__phenotypicResultsViewer
+#: .applyPlateSources``. Carries a millisecond timestamp purely as a
 #: change-trigger; the data itself is unused on the Python side.
-OSD_MOUNT_TRIGGER_ID = "osd-mount-trigger"
+VIV_MOUNT_TRIGGER_ID = "viv-mount-trigger"
 
 #: Hidden ``dcc.Store`` written by the clientside callback that bridges
 #: ``STORE_LOCK_VIEWS`` to ``window.__phenotypicResultsViewer.setLockViews``.
-#: Same trigger-only semantics as :data:`OSD_MOUNT_TRIGGER_ID`.
+#: Same trigger-only semantics as :data:`VIV_MOUNT_TRIGGER_ID`.
 LOCK_VIEWS_EFFECT_ID = "lock-views-effect"
 
 #: Hidden ``dcc.Store`` written by the clientside callback that toggles
@@ -859,7 +980,15 @@ __all__ = [
     "card_picker_id",
     "card_picker_prev_id",
     "card_picker_next_id",
-    "card_osd_div_id",
+    "card_stage_id",
+    "card_source_store_id",
+    "card_display_state_id",
+    "card_layers_panel_id",
+    "card_layer_eye_id",
+    "card_layer_opacity_id",
+    "card_pyramid_readout_id",
+    "card_zoom_readout_id",
+    "card_source_note_id",
     "card_details_toggle_id",
     "card_details_table_id",
     "card_remove_id",
@@ -869,7 +998,7 @@ __all__ = [
     "card_info_chip_stem_id",
     "card_info_chip_count_id",
     "INITIAL_CARD_TRIGGER_ID",
-    "OSD_MOUNT_TRIGGER_ID",
+    "VIV_MOUNT_TRIGGER_ID",
     "LOCK_VIEWS_EFFECT_ID",
     "COLONY_SELECTION_EFFECT_ID",
     "TABS_ID",

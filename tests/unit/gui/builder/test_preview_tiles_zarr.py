@@ -32,6 +32,57 @@ def test_channel_png_renders_from_a_node_store(tmp_path: Path) -> None:
     assert png.is_file() and png.stat().st_size > 0
 
 
+def test_channel_png_refreshes_when_the_store_is_republished(
+    tmp_path: Path,
+) -> None:
+    """Freshness is measured against the root ``zarr.json``, not the directory.
+
+    A store DIRECTORY's ``st_mtime_ns`` does not move when a nested chunk is
+    rewritten, so a cache keyed on it serves the previous publish's pixels
+    with nothing failing. The root is the file every promote writes last.
+
+    This claim was carried in ``FEATURES.md`` against a results-viewer DZI
+    test that only ever covered the DZI half; the results Plate has no
+    rendered-PNG cache any more, so the builder half is asserted here
+    directly.
+    """
+    from phenotypic.gui.builder._preview_tiles import stage_channel_png
+
+    scope = tmp_path / "scope"
+    target = tmp_path / "00_base.ome.zarr"
+    first = Image(load_synth_yeast_plate()).save_intermediate_zarr(
+        target, layers=("gray",)
+    )
+    png = stage_channel_png(scope, "00", "gray", first)
+    before = png.read_bytes()
+
+    inverted = Image(load_synth_yeast_plate())
+    # ``gray`` is float in [0, 1]; the accessor asserts the range on write.
+    inverted.gray[:] = 1.0 - inverted.gray[:]
+    republished = inverted.save_intermediate_zarr(target, layers=("gray",))
+
+    assert stage_channel_png(scope, "00", "gray", republished).read_bytes() != (
+        before
+    )
+
+
+def test_channel_png_reuses_the_cache_when_nothing_was_republished(
+    tmp_path: Path,
+) -> None:
+    """The other half of the same key: an unchanged store must not re-render."""
+    from phenotypic.gui.builder._preview_tiles import stage_channel_png
+
+    scope = tmp_path / "scope"
+    store = Image(load_synth_yeast_plate()).save_intermediate_zarr(
+        tmp_path / "00_base.ome.zarr", layers=("gray",)
+    )
+    png = stage_channel_png(scope, "00", "gray", store)
+    stamp = png.stat().st_mtime_ns
+    assert stage_channel_png(scope, "00", "gray", store).stat().st_mtime_ns == (
+        stamp
+    )
+
+
 def test_channel_png_renders_the_requested_channel(tmp_path: Path) -> None:
     """Not merely "a PNG": the objmap and gray renders must differ.
 

@@ -4,201 +4,213 @@
  * Client-side lifecycle layer for the PhenoTypic Results Viewer.
  *
  * Responsibilities:
- *   1. Bootstrap OpenSeadragon (CDN first, vendored fallback).
- *   2. Maintain a registry of OSD viewer instances keyed by their host divId.
- *   3. Provide mount / dispose helpers for use by Dash clientside callbacks.
- *   4. Implement an opt-in "lock views" mode that synchronizes pan/zoom
- *      across all mounted viewers.
- *   5. Watch the cards container for DOM removals and dispose orphaned
- *      viewers automatically (cards come and go via Dash callbacks).
+ *   1. Maintain a registry of mounted Plate stages keyed by their host divId.
+ *   2. Drive `window.phenotypicViv` -- the facade over the vendored Viv +
+ *      deck.gl bundle -- from the per-card source spec and display state
+ *      Dash hands over.
+ *   3. Implement an opt-in "lock views" mode that mirrors one stage's
+ *      viewState onto its peers.
+ *   4. Watch the cards container for DOM removals and destroy orphaned
+ *      stages automatically (cards come and go via Dash callbacks).
+ *   5. Bridge shift-click tile selection into a Dash store (section E).
+ *
+ * OpenSeadragon is gone from this file. The Plate surface reads OME-Zarr
+ * chunks directly in the browser over the `/zarr/...` byte route, so there
+ * is no server-rendered DZI pyramid to point a tile viewer at. Browse and
+ * the builder's point picker keep OSD and their own `_dzi_tiler` path.
  *
  * The Dash app loads this file because `assets_folder="_assets"` is set in
  * `_app.py`, so it is served at `/assets/results_viewer.js`.
  *
  * Public surface (under `window.__phenotypicResultsViewer`):
- *   - osdReady              : Promise that resolves when OSD is loaded.
- *   - viewers               : Map<divId, OpenSeadragon.Viewer>.
- *   - mountViewer(id, dzi)  : (re)create a viewer in the given div.
- *   - disposeViewer(id)     : tear down and forget a viewer.
- *   - setLockViews(active)  : toggle synchronized pan/zoom.
- *   - applyImageSelection(states) : helper invoked from clientside callbacks.
+ *   - stages                     : Map<divId, stage record>.
+ *   - mountStage(record)         : (re)source a stage from one card record.
+ *   - disposeStage(divId)        : tear down and forget a stage.
+ *   - setLockViews(active)       : toggle mirrored pan/zoom.
+ *   - applyPlateSources(records) : helper invoked from clientside callbacks.
  * -------------------------------------------------------------------------
  */
 
 /* ============================================================
- * (A) Bootstrap: load OpenSeadragon, CDN-first with fallback.
- * ============================================================ */
-(function () {
-    "use strict";
-
-    // ``window.__phenotypicAppPrefix`` is injected by the Dash factory
-    // (see gui/_url_prefix.py::dash_index_string_with_app_prefix). It carries
-    // the mount-point prefix when the app is hosted under the unified
-    // GUI hub (``/results/``); falls back to ``/`` for standalone.
-    const appPrefix = (typeof window.__phenotypicAppPrefix === "string"
-        && window.__phenotypicAppPrefix.length > 0)
-        ? window.__phenotypicAppPrefix
-        : "/";
-
-    function loadOpenSeadragon() {
-        return new Promise(function (resolve, reject) {
-            // If something already loaded OSD before us, just resolve.
-            if (window.OpenSeadragon) {
-                resolve("preloaded");
-                return;
-            }
-            const cdn = "https://cdn.jsdelivr.net/npm/openseadragon@5/build/openseadragon/openseadragon.min.js";
-            const local = appPrefix + "assets/openseadragon/openseadragon.min.js";
-            const tag = document.createElement("script");
-            tag.src = cdn;
-            tag.async = true;
-            tag.onload = function () {
-                console.info("[results_viewer] OSD loaded from CDN");
-                resolve("cdn");
-            };
-            tag.onerror = function () {
-                console.warn("[results_viewer] OSD CDN failed, falling back to vendored copy");
-                const fallback = document.createElement("script");
-                fallback.src = local;
-                fallback.async = true;
-                fallback.onload = function () {
-                    console.info("[results_viewer] OSD loaded from vendored copy");
-                    resolve("vendored");
-                };
-                fallback.onerror = function () {
-                    console.error("[results_viewer] OSD failed to load from both CDN and vendored copy");
-                    reject(new Error("OSD load failure"));
-                };
-                document.head.appendChild(fallback);
-            };
-            document.head.appendChild(tag);
-        });
-    }
-
-    const osdReady = loadOpenSeadragon();
-    window.__phenotypicResultsViewer = window.__phenotypicResultsViewer || {};
-    window.__phenotypicResultsViewer.osdReady = osdReady;
-})();
-
-/* ============================================================
- * (B) Viewer registry and lifecycle helpers.
+ * (A) Plate stage registry, driven through the Viv facade.
  * ============================================================ */
 (function () {
     "use strict";
     const ns = window.__phenotypicResultsViewer = window.__phenotypicResultsViewer || {};
-    ns.viewers = ns.viewers || new Map();   // divId -> OpenSeadragon.Viewer
-    const appPrefix = (typeof window.__phenotypicAppPrefix === "string"
-        && window.__phenotypicAppPrefix.length > 0)
-        ? window.__phenotypicAppPrefix
-        : "/";
+    ns.stages = ns.stages || new Map();   // divId -> stage record
+
+    /** Facade layer ids; mirrored in `_viewer_card.py`. */
+    const IMAGE_LAYER = "image";
+    const LABEL_LAYER = "labels";
+
+    /** Separators for the readout, kept out of source as escapes. */
+    const DOT = "·";
+    const TIMES = "×";
+    const SQUARED = "²";
+
+    function facade() {
+        return window.phenotypicViv || null;
+    }
 
     /**
-     * Create (or recreate) an OpenSeadragon viewer in the element with the
-     * given DOM id and load the supplied DZI tile source.
+     * Identity of one (store generation, displayed series, label) triple.
      *
-     * @param {string} divId  - the host element id (matches a card-osd-div).
-     * @param {string} dziUrl - URL to a .dzi descriptor served by the app.
-     * @returns {Promise<OpenSeadragon.Viewer | null>}
+     * `setSource` re-opens the store and rebuilds every layer, so it must
+     * fire only when one of those actually changed. Opacity and label
+     * visibility change far more often -- a slider drag is a stream of
+     * them -- and are applied without re-sourcing.
      */
-    ns.mountViewer = async function (divId, dziUrl) {
-        await ns.osdReady;
-        const el = document.getElementById(divId);
-        if (!el) {
-            console.warn("[results_viewer] mountViewer: no element", divId);
+    function sourceSignature(spec, display) {
+        if (!spec) return null;
+        const series = (display && display.seriesPath) || spec.seriesPath;
+        return [spec.storeUrl, series, spec.labelPath || ""].join(" ");
+    }
+
+    function writeText(elementId, text) {
+        const el = document.getElementById(elementId);
+        if (el) el.textContent = text;
+    }
+
+    /** Render the served-level readout from what the facade reported. */
+    function renderLevel(elementId, info) {
+        if (!info) {
+            writeText(elementId, "no image");
+            return;
+        }
+        const chunk = info.tileSize
+            ? " " + DOT + " " + info.tileSize + SQUARED + " chunks"
+            : "";
+        writeText(
+            elementId,
+            "pyramid level " + info.level + " of " + info.levels + " " +
+            DOT + " " + info.width + TIMES + info.height + chunk
+        );
+    }
+
+    function renderZoom(elementId, viewState) {
+        if (!viewState || typeof viewState.zoom !== "number") {
+            writeText(elementId, "");
+            return;
+        }
+        writeText(elementId, Math.round(Math.pow(2, viewState.zoom) * 100) + "%");
+    }
+
+    /**
+     * (Re)source one card's stage from its record.
+     *
+     * @param {{id: string, levelReadoutId: string, zoomReadoutId: string,
+     *          spec: object|null, display: object|null}} record
+     */
+    ns.mountStage = async function (record) {
+        const viv = facade();
+        if (!viv) {
+            console.error("[results_viewer] window.phenotypicViv is missing");
             return null;
         }
-        // Skip if the same DZI is already mounted on this div: the
-        // pattern-matching ALL clientside callback fires for *every*
-        // card-state change, not just the one that changed, so an
-        // unconditional teardown would needlessly re-fetch tiles for
-        // every other card on every selection.
-        const existing = ns.viewers.get(divId);
-        if (existing && existing._phenotypicDziUrl === dziUrl) {
-            return existing;
+        const divId = record.id;
+        const el = document.getElementById(divId);
+        if (!el) {
+            console.warn("[results_viewer] mountStage: no element", divId);
+            return null;
         }
-        if (existing) {
-            try { existing.destroy(); }
-            catch (e) { console.error(e); }
-            ns.viewers.delete(divId);
+        let entry = ns.stages.get(divId);
+        if (!entry) {
+            await viv.mount(divId, {
+                onLevelChange: function (info) {
+                    renderLevel(record.levelReadoutId, info);
+                },
+                onViewStateChange: function (viewState) {
+                    renderZoom(record.zoomReadoutId, viewState);
+                    if (ns.lockViewsActive) {
+                        ns._broadcastViewState(divId, viewState);
+                    }
+                },
+                // Re-fetching a spec after a re-promote needs a server
+                // round-trip Dash owns, so recovery is a Refresh rather
+                // than a silent re-source. The read still throws
+                // `StaleGenerationError`, which is visible in the console.
+                refetchSource: null
+            });
+            entry = {signature: null, opacity: {}, labelVisible: true};
+            ns.stages.set(divId, entry);
         }
-        const viewer = window.OpenSeadragon({
-            element: el,
-            prefixUrl: appPrefix + "assets/openseadragon/images/",
-            tileSources: dziUrl,
-            showNavigator: false,
-            showRotationControl: false,
-            animationTime: 0.5,
-            blendTime: 0.1,
-            constrainDuringPan: true,
-            visibilityRatio: 0.5,
-            minZoomLevel: 0.5,
-            maxZoomPixelRatio: 2,
-            // Defer rendering until tiles are ready; produces a softer crossfade.
-            immediateRender: false,
+        entry.record = record;
+
+        const display = record.display || {};
+        const signature = sourceSignature(record.spec, display);
+        if (signature !== entry.signature) {
+            const spec = Object.assign({}, record.spec);
+            if (display.seriesPath) spec.seriesPath = display.seriesPath;
+            renderLevel(record.levelReadoutId, null);
+            try {
+                await viv.setSource(divId, spec);
+            } catch (err) {
+                console.error("[results_viewer] setSource failed", divId, err);
+                writeText(record.levelReadoutId, String(err.message || err));
+                return null;
+            }
+            entry.signature = signature;
+            // A fresh source rebuilds every layer, so the display state has
+            // to be re-applied rather than assumed to have survived.
+            entry.opacity = {};
+            entry.labelVisible = true;
+        }
+
+        const opacity = display.opacity || {};
+        [IMAGE_LAYER, LABEL_LAYER].forEach(function (layer) {
+            const value = opacity[layer];
+            if (typeof value === "number" && entry.opacity[layer] !== value) {
+                entry.opacity[layer] = value;
+                viv.setLayerOpacity(divId, layer, value);
+            }
         });
-        viewer._phenotypicDziUrl = dziUrl;
-        ns.viewers.set(divId, viewer);
-        if (ns.lockViewsActive) ns._attachLockHandlers(viewer);
-        return viewer;
+        const labelVisible = display.labelVisible !== false;
+        if (labelVisible !== entry.labelVisible) {
+            entry.labelVisible = labelVisible;
+            viv.setLayerVisibility(divId, LABEL_LAYER, labelVisible);
+        }
+        return entry;
     };
 
-    /**
-     * Dispose a viewer (if any) registered under the given div id.
-     */
-    ns.disposeViewer = function (divId) {
-        const v = ns.viewers.get(divId);
-        if (!v) return;
-        try { v.destroy(); }
+    /** Destroy the stage (if any) registered under the given div id. */
+    ns.disposeStage = function (divId) {
+        if (!ns.stages.has(divId)) return;
+        const viv = facade();
+        try { if (viv) viv.destroy(divId); }
         catch (e) { console.error(e); }
-        ns.viewers.delete(divId);
+        ns.stages.delete(divId);
     };
 })();
 
 /* ============================================================
- * (C) Lock-views: synchronized pan/zoom across all viewers.
+ * (B) Lock-views: mirrored pan/zoom across all mounted stages.
  * ============================================================ */
 (function () {
     "use strict";
     const ns = window.__phenotypicResultsViewer;
     ns.lockViewsActive = false;
-    ns._lockHandlers = new Map();   // viewer -> handler fn
-    let _broadcasting = false;       // re-entrancy guard for cross-broadcast
+    let _broadcasting = false;       // re-entrancy guard
 
-    function broadcastViewport(srcViewer) {
+    /**
+     * Mirror one stage's viewState onto every peer.
+     *
+     * deck.gl re-enters `onViewStateChange` for each viewer pushed into, so
+     * the guard is load-bearing rather than defensive: without it the first
+     * pan recurses until the stack gives out.
+     */
+    ns._broadcastViewState = function (srcDivId, viewState) {
         if (_broadcasting) return;
+        const viv = window.phenotypicViv;
+        if (!viv) return;
         _broadcasting = true;
         try {
-            const center = srcViewer.viewport.getCenter(true);
-            const zoom = srcViewer.viewport.getZoom(true);
-            ns.viewers.forEach(function (v) {
-                if (v === srcViewer) return;
-                v.viewport.zoomTo(zoom, null, true);
-                v.viewport.panTo(center, true);
+            ns.stages.forEach(function (_entry, divId) {
+                if (divId === srcDivId) return;
+                viv.setViewState(divId, viewState);
             });
         } finally {
             _broadcasting = false;
         }
-    }
-
-    /**
-     * Attach an "animation" handler that mirrors this viewer's viewport
-     * onto all peers. Idempotent: re-attaching is a no-op.
-     */
-    ns._attachLockHandlers = function (viewer) {
-        if (ns._lockHandlers.has(viewer)) return;
-        const handler = function () { broadcastViewport(viewer); };
-        viewer.addHandler("animation", handler);
-        ns._lockHandlers.set(viewer, handler);
-    };
-
-    /**
-     * Detach the lock handler that was attached by _attachLockHandlers.
-     */
-    ns._detachLockHandlers = function (viewer) {
-        const h = ns._lockHandlers.get(viewer);
-        if (!h) return;
-        viewer.removeHandler("animation", h);
-        ns._lockHandlers.delete(viewer);
     };
 
     /**
@@ -207,30 +219,26 @@
      */
     ns.setLockViews = function (active) {
         ns.lockViewsActive = !!active;
-        ns.viewers.forEach(function (v) {
-            if (ns.lockViewsActive) ns._attachLockHandlers(v);
-            else ns._detachLockHandlers(v);
-        });
         return ns.lockViewsActive;
     };
 })();
 
 /* ============================================================
- * (D) MutationObserver: dispose viewers when their card is removed.
+ * (C) MutationObserver: destroy stages when their card is removed.
  * ============================================================ */
 (function () {
     "use strict";
     const ns = window.__phenotypicResultsViewer;
 
-    function findOsdCanvases(node) {
+    function findStages(node) {
         if (!node) return [];
         const out = [];
-        const isCanvas = function (el) {
-            return el.classList && el.classList.contains("osd-canvas");
+        const isStage = function (el) {
+            return el.classList && el.classList.contains("plate-stage__canvas");
         };
-        if (node.nodeType === 1 && isCanvas(node)) out.push(node);
+        if (node.nodeType === 1 && isStage(node)) out.push(node);
         if (node.querySelectorAll) {
-            node.querySelectorAll(".osd-canvas").forEach(function (el) {
+            node.querySelectorAll(".plate-stage__canvas").forEach(function (el) {
                 out.push(el);
             });
         }
@@ -243,8 +251,8 @@
         const obs = new MutationObserver(function (mutations) {
             mutations.forEach(function (m) {
                 m.removedNodes.forEach(function (n) {
-                    findOsdCanvases(n).forEach(function (canvas) {
-                        if (canvas.id) ns.disposeViewer(canvas.id);
+                    findStages(n).forEach(function (canvas) {
+                        if (canvas.id) ns.disposeStage(canvas.id);
                     });
                 });
             });
@@ -265,45 +273,40 @@
 })();
 
 /* ============================================================
- * (E) Helper invoked by the Python clientside callbacks.
+ * (D) Helper invoked by the Python clientside callbacks.
  * ============================================================ */
 (function () {
     "use strict";
     const ns = window.__phenotypicResultsViewer;
-    const appPrefix = (typeof window.__phenotypicAppPrefix === "string"
-        && window.__phenotypicAppPrefix.length > 0)
-        ? window.__phenotypicAppPrefix
-        : "/";
 
     /**
-     * Apply a batch of image selections to mounted viewer cards.
+     * Apply a batch of source specs to mounted Plate stages.
      *
-     * Each entry in `cardStates` describes the desired state of one card:
-     *   { id: <divId>, dataset: <dataset>, stem: <imageStem> }
-     * If `dataset` or `stem` is missing/falsy the card's viewer is
-     * disposed (used when a card is "cleared").
+     * Each entry describes one card:
+     *   { id, levelReadoutId, zoomReadoutId, spec, display }
+     * A null `spec` disposes that card's stage -- the card is cleared, its
+     * image has no store, or the store could not be read.
      *
-     * The DZI URL is `/tiles/<dataset>/<stem>.dzi`, served by the
-     * Flask blueprint in `_tile_routes.py`.
+     * The spec arrives exactly as `build_source_spec` produced it and is
+     * handed to the facade unmodified apart from the displayed series the
+     * Layers panel selected.
      */
-    ns.applyImageSelection = function (cardStates) {
-        if (!Array.isArray(cardStates)) return null;
-        cardStates.forEach(function (s) {
-            if (!s || !s.id) return;
-            if (!s.dataset || !s.stem) {
-                ns.disposeViewer(s.id);
+    ns.applyPlateSources = function (records) {
+        if (!Array.isArray(records)) return null;
+        records.forEach(function (record) {
+            if (!record || !record.id) return;
+            if (!record.spec) {
+                ns.disposeStage(record.id);
                 return;
             }
-            const dziUrl = appPrefix + "tiles/" + encodeURIComponent(s.dataset) +
-                           "/" + encodeURIComponent(s.stem) + ".dzi";
-            ns.mountViewer(s.id, dziUrl);
+            ns.mountStage(record);
         });
         return null;
     };
 })();
 
 /* ============================================================
- * (F) Tile multi-select shift-click bridge (colony grid + QC gallery).
+ * (E) Tile multi-select shift-click bridge (colony grid + QC gallery).
  *
  * Bridges native checkbox click events on a tile container into a
  * Dash dcc.Store so the Python side can apply selection logic (single
@@ -436,7 +439,7 @@
 })();
 
 /* ============================================================
- * (G) QC Review worklist drag-splitter.
+ * (F) QC Review worklist drag-splitter.
  *
  * A thin handle (#qc-review-splitter) between the worklist sidebar and
  * the detail/gallery pane. Dragging it widens/narrows the worklist

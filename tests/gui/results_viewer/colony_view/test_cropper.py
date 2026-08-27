@@ -102,19 +102,30 @@ def test_rgba_source_is_normalised_to_rgb(tmp_path: Path) -> None:
 def test_store_crop_reads_window_without_full_layer_loader(
     tmp_path: Path, monkeypatch
 ) -> None:
+    """A crop pulls its window, not the layer.
+
+    Guarded on the number of ELEMENTS the zarr array yields rather than on
+    a monkeypatched full-layer loader: the loaders this test used to poison
+    (`_load_zarr_layer_rgb` / `_load_zarr_level_rgb`) were retired with the
+    Plate DZI path, and a patch on a name nothing imports asserts nothing.
+    """
+    import zarr
+
     from phenotypic import Image
 
     rgb = np.zeros((64, 64, 3), dtype=np.uint8)
     rgb[24:40, 24:40] = (10, 80, 160)
     store = Image(arr=rgb).save2zarr(tmp_path / "plate.ome.zarr")
 
-    def _raise_full_layer(*_args, **_kwargs):
-        raise AssertionError(
-            "crop_store_rgb should not decode the full store layer"
-        )
+    pulled: list[int] = []
+    real_getitem = zarr.Array.__getitem__
 
-    monkeypatch.setattr(tiles, "_load_zarr_layer_rgb", _raise_full_layer)
-    monkeypatch.setattr(tiles, "_load_zarr_level_rgb", _raise_full_layer)
+    def _counting(self, selection):
+        out = real_getitem(self, selection)
+        pulled.append(int(np.asarray(out).size))
+        return out
+
+    monkeypatch.setattr(zarr.Array, "__getitem__", _counting)
 
     png_bytes = tiles.crop_store_rgb(
         store,
@@ -128,3 +139,6 @@ def test_store_crop_reads_window_without_full_layer_loader(
 
     assert img.size == (16, 16)
     assert img.getpixel((8, 8)) == (10, 80, 160)
+    # 3 channels x a 16x16 window. A full-layer read would be 64x64x3.
+    assert pulled, "no zarr read happened at all"
+    assert max(pulled) <= 3 * 16 * 16, pulled

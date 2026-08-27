@@ -28,7 +28,7 @@ from phenotypic.gui.builder._image_renderer import (
     _label_map_to_rgb, _normalize_to_uint8,
 )
 from phenotypic.gui.results_viewer import _dzi_tiler
-from phenotypic.gui.results_viewer._tile_routes import _TILE_NAME_RE, _json_error
+from phenotypic.gui._shared.tiles import TILE_NAME_RE, json_error
 from phenotypic.sdk_ import ngff_
 
 logger = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ def _validate(session_id, scope_hash, block_id, channel) -> Optional[Response]:
         and channel in _VALID_CHANNELS
     ):
         return None
-    return _json_error("invalid preview tile request", 404)
+    return json_error("invalid preview tile request", 404)
 
 
 def register_node_preview_routes(app: dash.Dash) -> None:
@@ -127,27 +127,27 @@ def register_node_preview_routes(app: dash.Dash) -> None:
         sdir = pc.preview_cache_root() / session_id / scope_hash
         manifest_path = sdir / "manifest.json"
         if not manifest_path.exists():
-            return _json_error("scope not cached", 404)
+            return json_error("scope not cached", 404)
         nodes = json.loads(manifest_path.read_text()).get("nodes", {})
         node = nodes.get(block_id)
         if node is None:
-            return _json_error("node not cached", 404)
+            return json_error("node not cached", 404)
         store_path = sdir / node["store"]
         # The ROOT, not the directory: the promote writes it last, so an
         # interrupted write leaves a directory with no root and the store
         # reads as ABSENT rather than as partial -- the same disposition
         # ``_preview_cache`` gives it when building the manifest.
         if not (store_path / ngff_.STORE_ROOT_JSON).is_file():
-            return _json_error("node store missing", 404)
+            return json_error("node store missing", 404)
         try:
             png_path = stage_channel_png(sdir, block_id, channel, store_path)
             _dzi_tiler.tile(png_path, sdir / "dzi")
         except KeyError:
             logger.debug("layer not available in store for %s/%s", block_id, channel)
-            return _json_error("layer not available", 404)
+            return json_error("layer not available", 404)
         except Exception:  # noqa: BLE001
             logger.exception("preview tile generation failed")
-            return _json_error("tile generation failed", 500)
+            return json_error("tile generation failed", 500)
         return send_from_directory(
             sdir / "dzi", f"{block_id}__{channel}.dzi",
             mimetype="application/xml",
@@ -160,14 +160,14 @@ def register_node_preview_routes(app: dash.Dash) -> None:
         if err is not None:
             return err
         secured = secure_filename(filename)
-        if secured != filename or not _TILE_NAME_RE.match(filename):
-            return _json_error("invalid tile filename", 404)
+        if secured != filename or not TILE_NAME_RE.match(filename):
+            return json_error("invalid tile filename", 404)
         tile_dir = (
             pc.preview_cache_root() / session_id / scope_hash / "dzi"
             / f"{block_id}__{channel}_files" / str(level)
         )
         if not tile_dir.is_dir():
-            return _json_error("tile cache missing", 404)
+            return json_error("tile cache missing", 404)
         return send_from_directory(tile_dir, filename, mimetype="image/png")
 
     app.server.register_blueprint(bp)
