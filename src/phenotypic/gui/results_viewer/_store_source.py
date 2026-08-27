@@ -1,0 +1,111 @@
+"""Build the client-facing source spec for one per-image store.
+
+Every fact here is READ from the store, never inferred -- the series list,
+the primary series, the resolved label path, the pyramid ladder. None of it
+is recomputed, because backend section 1.1 forbids hard-coding the label path
+and section 1.3 records that re-deriving the level count has already been got
+wrong once (``floor`` where ``ceil`` was needed).
+
+Built on the LANDED resolvers rather than a second implementation of them.
+:func:`~phenotypic.gui._shared.tiles._readable_block` raises
+:class:`~phenotypic.gui._shared.tiles.StoreUnreadable` on a schema-version
+mismatch, which is what keeps Plate and Colony agreeing about a store this
+build cannot decode -- ``crop_colony`` deliberately does not catch it
+(``tiles.py:685-688``). A raw ``json.loads`` here would let Plate open a
+store that Colony 422s on, with the two surfaces disagreeing about one store.
+
+A store observed between Stage 1 and Stage 3 holds an ALL-ZERO objmap: the
+landed staged engine keeps Stage 2 read-only and publishes the segmentation
+only when Stage 3 re-promotes. This is a valid store, and the Layers panel
+renders the label layer normally. Do not treat zeros as a fault -- see the
+plan's ``DRIFT.md``, row D-4. What the panel *may* say is "measurement
+pending", and the ``measured`` key below is what licenses it: an absent
+``tables`` descriptor is the only reliable way to tell that mid-run state
+from a finished image whose detector found nothing.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from phenotypic.gui._shared.tiles import _readable_block
+from phenotypic.gui.results_viewer._zarr_routes import store_generation_token
+from phenotypic.sdk_ import ngff_
+
+
+def build_source_spec(store: Path, base_url: str) -> dict:
+    """Describe one store generation to the Viv facade.
+
+    Takes a STORE PATH and a base URL rather than an ``OutputRoot``: the
+    builder preview has stores but no output root, and it is the second
+    caller. Written at its final signature here so that phase adds a caller
+    instead of refactoring this function's own work.
+
+    The returned mapping IS the facade's source spec, extended. Its
+    ``storeUrl`` / ``seriesPath`` / ``labelPath`` keys are the three
+    ``window.phenotypicViv.setSource`` validates and consumes
+    (``_assets/viv_viewer.js``), so a caller hands the dict over unmodified;
+    ``series``, ``pyramid``, ``token`` and ``measured`` are read by the
+    surface's own chrome -- the Layers panel, the pyramid readout, and the
+    "measurement pending" label -- and ignored by the facade.
+
+    Args:
+        store: Path to a promoted ``*.ome.zarr`` directory.
+        base_url: Browser-visible base URL of this store generation, as
+            built by
+            :func:`~phenotypic.gui.results_viewer._zarr_routes.zarr_store_url`.
+            Every key the client resolves is relative to it.
+
+    Returns:
+        A JSON-serialisable mapping with keys ``storeUrl``, ``token``,
+        ``series`` (ordered, primary first), ``seriesPath`` (the primary),
+        ``labelPath`` (**may be** ``None``), ``pyramid`` and ``measured``.
+
+    Raises:
+        OSError: If the store's root ``zarr.json`` does not exist -- the
+            routine signal that a promote is in flight.
+        KeyError: If the root exists but carries no ``phenotypic`` block.
+        StoreUnreadable: If the store's schema version is not this build's.
+        ValueError: If the store declares neither ``rgb`` nor ``gray``.
+
+    Examples:
+        Describe a freshly written store to the facade:
+
+        >>> import tempfile
+        >>> from pathlib import Path
+        >>> from phenotypic import Image
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> img = Image(load_synth_yeast_plate())
+        >>> with tempfile.TemporaryDirectory() as tmp:
+        ...     store = img.save2zarr(Path(tmp) / 'plate.ome.zarr')
+        ...     spec = build_source_spec(store, '/zarr/d1/plate.ome.zarr/t')
+        ...     (spec['seriesPath'], spec['labelPath'], spec['measured'])
+        ('rgb', 'rgb/labels/objmap', False)
+    """
+    block = _readable_block(store)
+
+    series_map = block.get(ngff_.PhenotypicAttr.SERIES, {})
+    primary = ngff_.primary_series(list(series_map))
+    ordered = [primary, *(name for name in series_map if name != primary)]
+
+    # ``labels`` is OMITTED ENTIRELY when the store carries no label image
+    # (``ngff_.py:576-581``) -- and ``save_intermediate_zarr`` sets
+    # ``write_objmap = "objmap" in layers``, so MOST builder-preview stores
+    # have no ``labels`` key at all. ``block["labels"]`` would ``KeyError``
+    # on every one of them.
+    label_path = block.get(ngff_.PhenotypicAttr.LABELS, {}).get(
+        ngff_.OBJMAP_LABEL
+    )
+
+    return {
+        "storeUrl": base_url,
+        "token": store_generation_token(store),
+        "series": ordered,
+        "seriesPath": primary,
+        "labelPath": label_path,  # may be None -- the facade copes
+        "pyramid": block[ngff_.PhenotypicAttr.PYRAMID],
+        # Absent ``tables`` means "not yet measured" -- the only reliable way
+        # to tell a mid-run store (Stage 1 done, Stage 3 pending, objmap all
+        # zeros) from a finished image whose detector found nothing.
+        "measured": ngff_.PhenotypicAttr.TABLES in block,
+    }
