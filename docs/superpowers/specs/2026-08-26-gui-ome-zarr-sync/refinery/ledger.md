@@ -380,3 +380,115 @@ re-runs it as a gate.
 ### Still open at end of round 1
 GEN-1..5, GEN-10..17 (minus resolved), FLOW-1 (token specified, invalidation cost unsettled),
 ALGO-3..8. **Not converged.** Round 2 is diff-scoped verification per the cadence rules.
+
+---
+
+## Round 2 — diff-scoped verification
+
+Full panel re-dispatched against the round-0 → round-1 diffs, plus a fresh resolution
+verifier. **No Critical remains anywhere.**
+
+| Reviewer | R1 | R2 |
+|---|---|---|
+| security | REVISE | **APPROVE** |
+| simplicity | BLOCKING | **NON-BLOCKING** |
+| general | BLOCKING | REVISE (was BLOCKING on GEN-6 residue, now fixed) |
+| data-flow | BLOCKING | REVISE |
+| algorithm-fidelity | REVISE | REVISE |
+
+### GEN-6 [Critical] [resolved (round 2: Files headers anchored, task 2.6 corrected)]
+**The round-1 fix was itself incomplete — flagged independently by general and simplicity.**
+Prose and the README table were corrected; the dangerous ranges survived in two **Files**
+headers, and **phase 2 task 2.6 — the task that deletes the rows — had no in-task correction
+at all**, plus a stale conditional contradicting phase 1's new instruction. Both headers now
+anchor on content, and the conditional is gone. General independently re-derived all eight
+offsets in the README table and confirmed every cell.
+
+### ALGO-12 [Major] [resolved (round 2: phase 0 step 1 split, step 1b added)]
+**Verified empirically by the orchestrator:** `python -m http.server` has no `Range` support
+— `curl -r 0-15` against a 100,000-byte file returned `code=200 size=100000`. Phase 0's gate
+expected an unreachable `206`, and since Q1/Q2/Q4 drove the same server the **entire spike
+would have measured the no-Range regime** — the one where shard amplification bites — with
+no byte counts recorded to notice. Step 1 now uses `http.server` only for metadata questions
+and a Range-capable Werkzeug handler for the byte question; step 1b records the ~16×
+amplification number (≈3 MB per tile with Range vs ≈50 MB shard without), which existed in
+no document.
+
+### ALGO-11 [Major] [resolved (round 2: switched to the `View.viewState` merge form)]
+**Overturns the round-1 fix.** The keyed-`viewState` map is correct deck.gl
+(`docs/developer-guide/views.md`) but **is a sync protocol**: `onViewStateChange` fires with
+`{viewId, viewState}` for the one view a gesture touched, so keeping `zoom` common requires
+fanning it back across every entry — the per-view reconciliation task 4.2 disclaims. Now
+uses `View.viewState` merge (`docs/api-reference/core/view.md`): one dynamic viewState
+carrying `zoom`, each `View` overriding only `target`. One zoom, so it cannot drift.
+
+### FLOW-20 [High] [resolved (round 2: 409 client contract specified)]
+The token closed the **server** half of FLOW-1 and left the client half unwritten. Zarr fills
+an unreadable chunk with `fill_value` and store implementations commonly map a failed fetch
+to "absent" — so a swallowed 409 renders **black tiles** after every promote: the
+plausible-wrong-pixels failure the token exists to prevent, relocated to the client and made
+*harder* to see, because a black tile reads as empty data. Façade now carries
+`onChunkResponse` with a three-outcome contract (404 retry / 409 re-fetch spec + `setSource`
+/ 422 surface) and a `refetchSource` hook, without which a 409 is unrecoverable until reload.
+
+### FLOW-24 [Medium] [resolved (round 2)] — **orchestrator error, introduced by the FLOW-9 fix**
+`tests/unit/gui/results_viewer/colony_view` does not exist (that package is at
+`tests/gui/results_viewer/colony_view/`). pytest exits 4 on an unknown path and runs **none**
+of the others in the command — including the curation test the task exists to run. Same class
+as GEN-8, reintroduced inside the fix for it.
+
+### SIMP-14 / GEN-14 / FLOW-23 [Major] [resolved (round 2: test restored as step 4b)]
+Round 1 replaced task 1.2 wholesale and **deleted spec §8's nested-chunk staleness test**
+while four documents still promised it. The token does not cover it — the token keys on the
+root `zarr.json`, which an in-place chunk rewrite does not touch, so the URL stays valid,
+which is correct and is the property worth pinning. Restored, now also asserting the token
+did *not* move.
+
+### FLOW-21 [Medium-High] [resolved (round 2)] · SEC-11 [Minor] [resolved]
+Same defect from two angles. `root.resolve(strict=True)` sat **outside** the try; the token
+and readable-roots calls were unguarded. `promote_store` renames the whole store directory,
+so that window is the **routine** path. Both resolves are now inside the try; both routes
+guard. Two round-2 residues also fixed: `KeyError` named (`require_readable_store` raises
+it and it is not an `OSError`), and `StoreUnreadable` → **422** to match what Colony already
+does, rather than 404 — which would say "no such image" when the truth is a run-wide
+decode failure.
+
+### SEC-8 [Minor] [resolved (round 2: `mode=0o700`)]
+Re-raised on the reviewer's argument that it should not have travelled with the dropped
+scratch phase — a directory mode is not a retention cap. It matters *more* now: spec §7 makes
+session-id secrecy the recorded mitigation while the directories are **named by that secret**
+at default umask.
+
+### SEC-13 [Advisory] [resolved] · SEC-12 [Advisory] [advisory, no action]
+`allowed_roots` is now required with no permissive value. SEC-12's 409-vs-404 existence
+oracle accepted: 409's diagnostic value exceeds the leak, and the landed `/preview-tiles/`
+route already signals existence the same way.
+
+### Also resolved in round 2
+GEN-5 (façade Interfaces contradicted its own implementation), GEN-13 (cap script now
+re-run in phase 5, with a skip-if-phase-4-cut clause), GEN-15 (codec test now asserts a read
+**throws**), GEN-17 (asset mount inverted — Dash takes one `assets_folder` per app and the
+builder's holds eight files), GEN-18 (README dependency contradicted phase 5's own header),
+GEN-19, GEN-20, ALGO-3/4/5 (all four deviations now ride one gate; the `TileLayer` bound is
+closed-form ≈36 MB/level, not linear in cell count — a partial walk-back of ALGO-5's alarm),
+ALGO-6/7 (budget script now models the tile **union**, since cells are viewports onto one
+store), ALGO-13, SIMP-11 (phase 3 cut-order), SIMP-15 (phase 5 runs last), SIMP-17 (orphaned
+stack decided: retire), SIMP-13(2) + GEN-8 (both DoD gates widened to `tests/gui`), FLOW-25,
+FLOW-26.
+
+### GEN-4 [withdrawn as moot]
+The consumer-set test was dropped under SIMP-9, so its dependency on removals phase 2 no
+longer exists. Confirmed by the reviewer who raised it.
+
+### Open at end of round 2
+Minors only: GEN-10, GEN-11, GEN-12 (both nuances now applied — reviewer read a stale state),
+SIMP-12 (class-B "an earlier draft" notes), SIMP-16 (relocate the port drift register),
+FLOW-10 (spec §3 clause), FLOW-22 (memoization — reviewer confirmed already applied).
+
+### Gated to the user, unapplied
+1. **Viv spec §6.2** still says the napari grid shares "one camera" — the strawman ALGO-1
+   refuted. The plan is corrected; the spec is not.
+2. **Removals spec §6** still carries `FEATURES.md:372-394` and the seven other stale
+   ranges. General recommends batching this with USER-3 rather than deferring: §6 currently
+   instructs a violation of §5 in the same document, and the fix is eight heading names for
+   eight line ranges.
