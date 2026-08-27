@@ -315,6 +315,33 @@ def _build_toolbar(layer_toggle: Component | None = None) -> Component:
         readout_id=ids.COLONY_DIM_READOUT,
     )
 
+    # Locked ON, and disabled, because the grid has exactly one camera: every
+    # cell view merges its own ``target`` over ONE shared ``zoom``
+    # (``setGridViews``), so there is no second state to select yet. Shown
+    # anyway — spec section 6.2 wants the lock to be a VISIBLE affordance so
+    # the eventual unlock-one-cell mode has somewhere to live.
+    shared_camera_toggle = html.Div(
+        dbc.Switch(
+            id=ids.COLONY_SHARED_CAMERA_TOGGLE_ID,
+            label="Shared camera",
+            value=True,
+            disabled=True,
+            persistence=False,
+            className="mb-0",
+        ),
+        title=(
+            "Every cell shares one zoom; each cell stays centred on its own "
+            "colony. Unlocking a single cell is not available yet."
+        ),
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "flex": "0 0 auto",
+            "fontSize": FONT_SIZE_LABEL,
+            "color": _NAVY,
+        },
+    )
+
     toolbar_children: list[Component] = [
         html.Div(
             [x_label, x_dropdown],
@@ -334,6 +361,7 @@ def _build_toolbar(layer_toggle: Component | None = None) -> Component:
         ),
         tile_size_stepper,
         dim_stepper,
+        shared_camera_toggle,
     ]
     if layer_toggle is not None:
         toolbar_children.append(layer_toggle)

@@ -39,6 +39,36 @@
   const IMAGE_LAYER_ID = "image";
   const LABEL_LAYER_ID = "labels";
 
+  // ---- colony grid mode ------------------------------------------------
+  //
+  // ONE dynamic viewState, carrying `zoom`, that every per-cell `View`
+  // merges its own `target` over. There is only one zoom, so it cannot
+  // drift -- a value, not a protocol.
+  //
+  // The REJECTED alternative is the keyed viewState map deck.gl's
+  // developer guide describes ("add a key to the `viewState` object
+  // corresponding to the `id` of the view"). It renders identically and it
+  // is itself a sync protocol: `onViewStateChange` fires with
+  // `{viewId, viewState}` for the ONE view a gesture touched, so keeping
+  // `zoom` common means a handler fanning the new zoom back across every
+  // entry. The first real user gesture drifts the zooms apart, and a test
+  // that drives `setViewState` programmatically cannot catch it.
+  //
+  // The merge form is deck.gl's own (`View.filterViewState`, core
+  // `src/views/view.ts`): a `View` whose `props.viewState` carries an `id`
+  // is `deepMergeViewState(shared, own)`, and `deepMergeViewState` merges
+  // position arrays component-wise with the view's finite values winning.
+  // So `target` is per view and `zoom` is shared, from one stored object.
+
+  /** Id of the single shared dynamic viewState every grid view merges. */
+  const GRID_VIEW_STATE_ID = "colony-shared";
+
+  /** Prefix of the per-cell view ids. `cell-<id>`. */
+  const GRID_CELL_VIEW_PREFIX = "cell-";
+
+  /** Gap, in CSS px, between grid cells when the caller names none. */
+  const GRID_GAP_PX = 8;
+
   // `ready()` is a FUNCTION, not a promise, and that is load-bearing.
   //
   // Dash walks `_assets/` with
@@ -306,12 +336,208 @@
 
   // ---- public surface -------------------------------------------------
 
+  /**
+   * Bytes one store's whole pyramid occupies in a `TileLayer` cache.
+   *
+   * Derived, not guessed. `level_tiles x per_tile_bytes x visible_layers`
+   * over every level, which is the CEILING the resident set cannot exceed:
+   * in grid mode every cell is a viewport onto the SAME store, so tiles are
+   * SHARED between cells and the resident set is their UNION, not the sum.
+   * A 4000x3000 plate at level 0 is `ceil(4000/1024) x ceil(3000/1024)` =
+   * 12 chunks, ~38 MB; the coarser levels add about a third again.
+   * `logic_validation_scripts/2026-08-26-viewer-viv-rebuild/
+   * colony_view_budget.py` re-derives it.
+   *
+   * The quantity that drives this is the number of distinct STORES in the
+   * grid, NOT the cell count: 1536 cells over one plate is ~50 MB; 1536
+   * cells over 1536 different images is 1536x that. One instance holds one
+   * store, so this is the per-instance bound.
+   *
+   * It is not only a leak guard. `Tileset2D._resizeCache` defaults to
+   * `5 x selectedTiles.length` entries, and `TileLayer.renderLayers` draws
+   * `tileset.tiles` -- the CACHE, not the selection. With N views over one
+   * layer instance the tileset re-selects for whichever viewport updated
+   * last, so cells whose tiles have been evicted paint nothing. Sizing the
+   * cache to hold the union is what makes multi-view render at all.
+   */
+  function gridTileCacheBytes(loaded, layerCount) {
+    let bytes = 0;
+    for (const source of [loaded.image, loaded.label]) {
+      if (!source) continue;
+      for (const level of source.data) {
+        const tile = level.tileSize || 1024;
+        const shape = level.shape;
+        const height = shape[shape.length - 2];
+        const width = shape[shape.length - 1];
+        const channelAxis = level.labels.indexOf("c");
+        const channels = channelAxis === -1 ? 1 : shape[channelAxis];
+        const itemsize = /(8)$/.test(level.dtype)
+          ? 1
+          : /(16)$/.test(level.dtype)
+            ? 2
+            : 4;
+        bytes +=
+          Math.ceil(height / tile) *
+          Math.ceil(width / tile) *
+          tile *
+          tile *
+          channels *
+          itemsize;
+      }
+    }
+    return bytes * Math.max(1, layerCount);
+  }
+
   /** Rebuild and install this instance's layers from its loaded sources. */
   function rebuildLayers(record, bundle) {
     const build = record.options.buildLayers || defaultLayers;
-    record.viewer.setLayers(
-      build(bundle, record.loaded, record.spec, record.opacity)
+    let layers = build(bundle, record.loaded, record.spec, record.opacity);
+    if (record.grid && record.loaded) {
+      // Cloned rather than passed into the builder, so a caller-supplied
+      // `buildLayers` (the Plate's) gets the bound too without knowing
+      // about grid mode.
+      const budget = gridTileCacheBytes(record.loaded, layers.length);
+      layers = layers.map((layer) =>
+        layer.clone({ maxCacheByteSize: budget })
+      );
+    }
+    record.viewer.setLayers(layers);
+  }
+
+  // ---- the colony grid -------------------------------------------------
+
+  /**
+   * Pack `cells` into a uniform grid of `size`-px viewports.
+   *
+   * Uniform on purpose: the colony grid crops every colony to one
+   * `max_size` square so the tiles share a canvas, and a per-cell size
+   * would make the packing depend on iteration order.
+   */
+  function gridLayout(cells, el, options) {
+    const first = cells.length ? cells[0] : null;
+    const size = Math.max(
+      1,
+      Math.round(options.cellSize || (first && first.size) || 64)
     );
+    const gap = options.gap === undefined ? GRID_GAP_PX : options.gap;
+    const available =
+      (el && el.clientWidth) || cells.length * (size + gap) || size;
+    const columns = Math.max(
+      1,
+      options.columns || Math.floor((available + gap) / (size + gap))
+    );
+    return cells.map((cell, index) => ({
+      x: (index % columns) * (size + gap),
+      y: Math.floor(index / columns) * (size + gap),
+      w: size,
+      h: size,
+    }));
+  }
+
+  /** Push this instance's single shared viewState at deck.gl. */
+  function applyGridViewState(record) {
+    record.viewer.setViewState({
+      [GRID_VIEW_STATE_ID]: { ...record.grid.shared },
+    });
+  }
+
+  /**
+   * Render one `OrthographicView` per colony over ONE shared `viewState`.
+   *
+   * @param {string} containerId Id of a mounted instance.
+   * @param {Array<{id: string|number, centroidRr: number,
+   *   centroidCc: number, size?: number}>} cells One entry per colony, in
+   *   the grid's own reading order. `centroidRr`/`centroidCc` are STORE
+   *   pixel coordinates; the view's `target` is `[cc, rr, 0]` because
+   *   deck.gl's target is `[x, y, z]`.
+   * @param {{zoom?: number}} [sharedViewState] The one dynamic view state.
+   *   Only `zoom` is meaningful -- every cell's `target` overrides.
+   * @param {{cellSize?: number, gap?: number, columns?: number}} [opts]
+   *   Packing. `columns` defaults to what fits the container's width.
+   *
+   * CONTROLLER DECISION, stated rather than implied: every cell view
+   * carries `controller: true`. Two reasons. (1) The vendored bundle passes
+   * `controller: true` at the DECK level, and deck.gl's backward-compat
+   * path force-assigns that onto `views[0]` alone
+   * (`core/src/lib/deck.ts:1240-1242`) -- so leaving the views without one
+   * makes exactly one cell behave differently from the other N-1, which is
+   * worse than either uniform choice. (2) Without a controller the "Shared
+   * camera" lock would have nothing to constrain: zoom would be
+   * programmatic-only and no gesture could ever move it.
+   *
+   * What the gesture is allowed to change is `zoom` and ONLY `zoom` -- the
+   * facade's `onViewStateChange` projects the controller's output down to
+   * that one number. Pan is discarded by construction, because each view's
+   * `target` override wins on every render, so a cell cannot be dragged off
+   * its colony.
+   */
+  async function setGridViews(containerId, cells, sharedViewState, opts) {
+    const bundle = await ready();
+    const record = requireInstance(containerId);
+    const list = Array.from(cells || []);
+    const options = opts || {};
+    if (!list.length) {
+      record.grid = null;
+      record.viewer.setViews([
+        new bundle.deck.OrthographicView({ id: "ortho", controller: true }),
+      ]);
+      if (record.loaded) rebuildLayers(record, bundle);
+      return 0;
+    }
+    const layout = gridLayout(list, document.getElementById(containerId), options);
+    const views = list.map(
+      (cell, index) =>
+        new bundle.deck.OrthographicView({
+          id: `${GRID_CELL_VIEW_PREFIX}${cell.id}`,
+          x: layout[index].x,
+          y: layout[index].y,
+          width: layout[index].w,
+          height: layout[index].h,
+          controller: true,
+          // Overrides ONLY `target`, merging over the shared zoom. A `View`
+          // carries no target of its own -- `target` and `zoom` both live
+          // in the viewState -- so building this literally as "one View per
+          // cell plus one shared viewState" without the merge renders the
+          // SAME colony N times.
+          viewState: {
+            id: GRID_VIEW_STATE_ID,
+            target: [Number(cell.centroidCc), Number(cell.centroidRr), 0],
+          },
+        })
+    );
+    record.grid = {
+      cells: list,
+      views,
+      shared: { zoom: 0, ...(sharedViewState || {}) },
+    };
+    record.viewer.setViews(views);
+    applyGridViewState(record);
+    if (record.loaded) rebuildLayers(record, bundle);
+    return views.length;
+  }
+
+  /**
+   * TEST SEAM -- not API. The view state deck.gl ACTUALLY rendered each
+   * cell with, read off the live `Viewport`s rather than recomputed.
+   *
+   * Returns `[{id, zoom, target}, ...]` in the grid's own cell order.
+   * `page.evaluate` marshals these into Python DICTS, so read them as
+   * `s["zoom"]` and `s["target"]`.
+   */
+  function __debugViewStates(containerId) {
+    const record = requireInstance(containerId);
+    if (!record.grid) return [];
+    const byId = new Map(
+      record.viewer.deck.getViewports().map((viewport) => [viewport.id, viewport])
+    );
+    return record.grid.views
+      .map((view) => byId.get(view.id))
+      .filter(Boolean)
+      .map((viewport) => ({
+        id: viewport.id,
+        zoom: viewport.zoom,
+        target: Array.from(viewport.target),
+      }));
   }
 
   /**
@@ -383,7 +609,29 @@
     const el = document.getElementById(containerId);
     if (!el) throw new Error(`viv: no element #${containerId}`);
     const options = opts || {};
-    const viewer = bundle.createViewer(el, options);
+    // The vendored viewer's own `onViewStateChange` runs FIRST and does
+    // `deck.setProps({viewState: next})` with the raw per-view state the
+    // controller produced -- which in grid mode replaces the keyed
+    // `{colony-shared: {...}}` object with an unkeyed one, and every view
+    // then falls back to reading the whole object as its state. Restoring
+    // the shared entry here happens synchronously inside the same handler
+    // call, before deck.gl's next animation frame, so no frame is drawn
+    // from the clobbered state.
+    //
+    // Only `zoom` is taken. That is the whole camera design in one line:
+    // one number, projected out of whatever the controller produced.
+    const viewerOptions = {
+      ...options,
+      onViewStateChange: (next) => {
+        const current = instances.get(containerId);
+        if (current && current.grid && next) {
+          current.grid.shared = { ...current.grid.shared, zoom: next.zoom };
+          applyGridViewState(current);
+        }
+        if (options.onViewStateChange) options.onViewStateChange(next);
+      },
+    };
+    const viewer = bundle.createViewer(el, viewerOptions);
     instances.set(containerId, {
       viewer,
       options,
@@ -395,6 +643,8 @@
       // survives the wholesale rebuild every `setSource` performs.
       opacity: {},
       level: null,
+      // Grid mode's record, or null for a single-view surface (the Plate).
+      grid: null,
     });
     return viewer;
   }
@@ -464,9 +714,24 @@
     return record.resourcing;
   }
 
+  /**
+   * Set the view state.
+   *
+   * In GRID mode this updates the single `colony-shared` entry -- there is
+   * exactly one, so nothing is fanned across views and nothing can drift.
+   * A `target` passed here is stored but has no visible effect: every
+   * cell's own `target` override wins the merge.
+   */
   function setViewState(containerId, viewState) {
     const record = instances.get(containerId);
-    if (record) record.viewer.setViewState(viewState);
+    if (!record) return;
+    if (record.grid) {
+      record.grid.shared = { ...record.grid.shared, ...(viewState || {}) };
+      delete record.grid.shared.id;
+      applyGridViewState(record);
+      return;
+    }
+    record.viewer.setViewState(viewState);
   }
 
   /**
@@ -555,12 +820,15 @@
     mount,
     setSource,
     setViewState,
+    setGridViews,
     setLayerVisibility,
     setLayerOpacity,
     destroy,
     errors: { StaleGenerationError, StoreUnreadableError },
     IMAGE_LAYER_ID,
     LABEL_LAYER_ID,
+    GRID_VIEW_STATE_ID,
     __debugReadChunk,
+    __debugViewStates,
   };
 })();

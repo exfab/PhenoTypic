@@ -713,6 +713,15 @@ COLONY_DIM_PLUS = "colony-dim-plus"
 #: Synced from :data:`STORE_TILE_DIM_ALPHA` by the shared readout callback.
 COLONY_DIM_READOUT = "colony-dim-readout"
 
+#: "Shared camera" lock in the colony toolbar. Locked ON and disabled: every
+#: cell is a viewport over ONE shared ``zoom`` (``setGridViews`` in
+#: ``_assets/viv_viewer.js``), so today there is nothing to unlock. It is a
+#: VISIBLE affordance rather than hidden behaviour on purpose — the
+#: eventual unlock-one-cell mode needs somewhere to live, and retrofitting
+#: an affordance onto a mode that already shipped as invisible behaviour is
+#: the expensive order.
+COLONY_SHARED_CAMERA_TOGGLE_ID = "colony-shared-camera-toggle"
+
 #: Segmented control (``dbc.RadioItems``, button-group style) choosing which
 #: image layer the colony crops source — ``rgb`` / ``detect_mat`` / ``objmap``
 #: (labelled "RGB" / "Enhanced" / "Labels"). Rendered into the colony toolbar
@@ -1023,6 +1032,7 @@ __all__ = [
     "COLONY_DIM_MINUS",
     "COLONY_DIM_PLUS",
     "COLONY_DIM_READOUT",
+    "COLONY_SHARED_CAMERA_TOGGLE_ID",
     "LAYER_TOGGLE",
     "STORE_ACTIVE_LAYER",
     "COLONY_BULK_BAR_ID",
