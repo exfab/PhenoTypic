@@ -35,7 +35,6 @@ the images aligned with the implementation.
 | [QC review walkthrough](15_qc_review.md) | Switch the QC tab to Review; walk worst-first groups for a module, curate in the tile gallery, mark reviewed, and watch the metric recompute in place. |
 | [Tune co-pilot](16_tune_copilot.md) | Open the `/tune/` read-only co-pilot over a tune output: monitor trials, curate A/B overlays, review the search space, and launch the next run. |
 | [Error analysis](17_error_analysis.md) | Rank the measurements that separate an error category from the good baseline, read off a cutoff, and copy a filter spec. |
-| [Results — trait emergence over time](20_results_timeline.md) | Open the results-viewer Timeline tab, pick a Y grouping + a monotonic X time column, scan one plate's overlay time-course, and deep-zoom any plate. |
 
 ## Prerequisites
 
@@ -70,5 +69,4 @@ hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is
 15_qc_review
 16_tune_copilot
 17_error_analysis
-20_results_timeline
 ```
