@@ -189,17 +189,31 @@ Expected: FAIL — `window.phenotypicViv` is undefined.
 (function () {
   "use strict";
 
-  const bundle = window.__vivBundle;
   const instances = new Map();
 
+  // Resolve the global LAZILY. Dash walks `_assets/` with
+  // `sorted(os.walk(...))`, which appends every ROOT-level asset before any
+  // SUBDIRECTORY asset -- so this file loads BEFORE `viv/viv-bundle.min.js`:
+  //
+  //     /assets/results_viewer.js
+  //     /assets/viv_viewer.js            <- this file, FIRST
+  //     /assets/openseadragon/openseadragon.min.js
+  //     /assets/viv/viv-bundle.min.js    <- the bundle, LAST
+  //
+  // Measured against a real Dash index during the phase-0 spike. Snapshotting
+  // `window.__vivBundle` at module scope would capture `undefined` and every
+  // method would then fail on a property access rather than anything
+  // diagnosable. `ready` is awaited by every entry point, so resolving here
+  // resolves at await time -- after all assets have executed.
   const ready = (async () => {
-    const { zarr, numcodecs } = bundle;
-    zarr.registry.set("zstd", () => numcodecs.Zstd);
-    return true;
+    const bundle = window.__vivBundle;
+    if (!bundle) throw new Error("viv: bundle asset did not load");
+    bundle.zarr.registry.set("zstd", () => bundle.numcodecs.Zstd);
+    return bundle;
   })();
 
   async function mount(containerId, opts) {
-    await ready;
+    const bundle = await ready;
     const el = document.getElementById(containerId);
     if (!el) throw new Error(`viv: no element #${containerId}`);
     const instance = bundle.createViewer(el, opts || {});
@@ -308,11 +322,11 @@ def test_a_read_without_the_codec_fails_rather_than_returning_zeros(
     )
 ```
 
-If the registry offers no `delete`, the evaluate returns `'no-delete'` and the test fails
-with that message — which is the honest outcome. **Do not weaken it to accept
-`'no-delete'`**: a test that passes when it could not run is the failure mode this whole
-step is about. If deletion is genuinely impossible, cut this test and rely on step 1's
-real-pixel read, and say so in the commit.
+**`registry.delete` exists and this test is runnable — confirmed in the phase-0 spike.**
+Deleting the codec then reading gave `"threw: Unknown codec: zstd"`; the read **fails**
+rather than returning `fill_value` zeros, which is the failure mode that would make a broken
+bundle look like an empty plate. So the `'no-delete'` branch is a dead path kept only as an
+honest guard: **do not weaken the assertion to accept it.**
 
 - [ ] **Step 5: Run both, then commit**
 

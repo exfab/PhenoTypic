@@ -79,6 +79,26 @@ baseline test, and the three `gui-checks` CI gates. Additionally:
   request holding no handle — so without a token a client can combine metadata from promote
   *N* with chunks from *N+1*. Harmless for a run-store re-promote; a decode error or
   plausible wrong pixels for a builder preview, where re-running a node changes extent.
+- **Every Viv RENDERING test must launch `channel="chromium"` under `xvfb-run`.** Measured
+  in the phase-0 spike: Playwright's default `chromium` launch uses
+  `chromium_headless_shell`, which ships **no GL stack at all** —
+  `canvas.getContext('webgl2')` returns `null`, and six flag combinations including
+  `--enable-unsafe-swiftshader` and `--use-gl=angle --use-angle=swiftshader` do not change
+  it. The full `chrome-linux64` build beside it does have one (`libEGL.so`, `libGLESv2.so`,
+  `libvk_swiftshader.so`), and additionally needs an X display — bare headless still lost the
+  GPU process to `BindToCurrentSequence failed`, and `xvfb-run -a` fixed it.
+  **Decode tests need neither.** Without this a deck.gl test reports
+  `Failed to create WebGL context` and zero painted pixels — a red that looks like a
+  rendering bug and is not one. This constrains phases 3-5's e2e suite and the
+  `gui-checks` e2e job.
+- **Viv resolves nothing by convention — the resolver is mandatory, not defensive.**
+  Phase-0 answered Q1 and Q2 **NO**: `@vivjs/loaders` never reads `OME/zarr.json`, and
+  `loadOmeZarr` at a store ROOT fails with `Node not found: v2 array` because
+  `loadMultiscales` falls back to `paths = ["0"]`. Pointed at a *resolved series* it works
+  with nothing patched. Same for labels: Viv reads neither `ome.labels` nor
+  `phenotypic.labels`, but loads the label group fine when handed the resolved path.
+  **The upside: since Viv resolves nothing by convention, there is no `rgb/labels/objmap`
+  hard-coding to fight — a `gray`-primary store works for free.**
 - **No npm in CI.** There is no `package.json` anywhere in this repo (verified). The Viv
   bundle is built outside the repo and committed as an artifact; the build recipe is
   committed at `tools/viv-bundle/` with a pinned lockfile and a recorded version string.
