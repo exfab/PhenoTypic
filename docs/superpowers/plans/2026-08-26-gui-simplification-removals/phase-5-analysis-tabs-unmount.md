@@ -8,6 +8,20 @@
 their e2e tests are skip-marked. **`colony_view/` is not touched**, so the curation radial
 survives.
 
+> **Do NOT delete `TAB_QC_ID`, `TAB_HEATMAP_ID` or `TAB_ERROR_ID` from `_ids.py`.**
+> Found during execution, 2026-08-27. Phase 1 *did* delete `TAB_TIMELINE_ID`, so the
+> analogy is inviting and wrong: that tab was **deleted**, these are **unmounted**. The
+> retained packages still reference their ids —
+> `_error_tab/_callbacks.py:442` gates on `active_tab != viewer_ids.TAB_ERROR_ID`,
+> `_error_tab/__init__.py:25` documents the gate, and `_ids.py:511-513` explains why it
+> exists ("so the cutoff finder never runs while the user is curating on another tab").
+> Deleting the constants breaks the retained code at import, which is a deletion wearing an
+> unmount's clothes.
+>
+> The gating callback itself needs no edit: task 5.1 step 6 removes
+> `register_error_callbacks`, so it is never registered. The constant it reads must
+> nonetheless still exist.
+
 > **`_error_tab/` is a CLI dependency, not only a GUI tab.**
 > `_cli/_cli_error_outputs.py:84` imports `capture_error_source_fingerprints`,
 > `compute_all_category_analysis` and `publish_error_analysis` from
