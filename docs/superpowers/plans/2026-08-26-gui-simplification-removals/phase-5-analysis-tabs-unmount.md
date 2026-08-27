@@ -225,7 +225,16 @@ git commit -m "test(gui): skip-mark the QC, Heatmap and Error e2e suites"
 - [ ] **Step 1: Edit the four FEATURES.md rows to unmounted**
 
 Follow phase 4 task 4.3 step 1's pattern for each of `:587`, `:617`, `:658`, `:677`,
-pointing at spec §3. Use the same non-shipping status value chosen in phase 4.
+pointing at spec §3, and use the same status: **`⏸ unmounted`**.
+
+That value was settled during plan refinement (ledger ORCH-5) and needs no change to
+`scripts/check_features_md.py` — the row loop skips any status that is neither
+`✅ shipping` nor `🚧 in progress`, so `⏸ unmounted` stops ref resolution and passes
+`--strict`. Phase 4 task 4.3 step 1 carries the full reasoning and the table of why none of
+the three existing values fits.
+
+**If phase 4 has not run yet** (phases landing as separate PRs), this phase introduces the
+value; nothing about it depends on phase 4 having gone first.
 
 - [ ] **Step 2: Remove the four WORKFLOWS.md rows and four capture functions**
 

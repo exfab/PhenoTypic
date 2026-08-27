@@ -125,6 +125,38 @@ simplicity-reviewer · `SEC` security specialist · `ALGO` algorithm-fidelity ·
   overlaps a `SIMP-` concern on route duplication — merge if so.
 - Resolution: —
 
+### ORCH-5 [Major] [resolved (round 1: `⏸ unmounted` specified in both phases)]
+- Raised: round 1, orchestrator (pre-empting GEN-d)
+- Concern: removals spec §6 requires unmounted surfaces to be "**marked as unmounted with a
+  pointer to this spec**, not deleted outright — the ledger's job is to describe what a user
+  can reach, and 'exists but unreachable' is a state it should carry." The plan's phases 4
+  and 5 deferred *how* to an executor check, with an instruction to escalate if the
+  vocabulary could not express it. That left a spec-stated requirement resting on an
+  unverified assumption, across two phases.
+- Evidence (`scripts/check_features_md.py`): the vocabulary is three constants —
+  `✅ shipping` (`:33`), `🚧 in progress` (`:34`), `🔭 planned` (`:35`). Crucially, the
+  loop at `:148-176` **never validates status against an allowed set**. It branches:
+  `== STATUS_IN_PROGRESS` → collect (failed by `--strict` at `:178-184`);
+  `!= STATUS_SHIPPING` → `continue`, silently skipped; else resolve refs.
+- Resolution: **use `⏸ unmounted`, and no script change is required.** It falls into the
+  `!= STATUS_SHIPPING` skip branch, so it stops ref resolution, and it is not
+  `🚧 in progress`, so `--strict` passes it. Neither existing status is right:
+  `✅ shipping` would keep resolving refs *and* falsely claim reachability; `🚧 in progress`
+  fails the merge gate; `🔭 planned` passes but describes a fully built, parked surface as
+  unbuilt. Both phase docs now specify the value and cite this evidence, and the
+  escalate-to-user step is removed.
+
+### ORCH-6 [Minor] [advisory]
+- Raised: round 1, orchestrator
+- Concern: the silent-skip behaviour above is a latent trap **pre-existing this work**: a
+  typo'd status (`✅ shiping`) is silently skipped rather than rejected, so its row is never
+  ref-checked and the gate reports OK. `⏸ unmounted` works *because* of that permissiveness.
+- Suggested direction: a closed-set validation in `check_features_md.py` rejecting unknown
+  statuses would make the vocabulary real. **Out of scope for these three plans** — it is a
+  pre-existing gate weakness, not something this change introduces. Recorded so the
+  dependence is explicit rather than accidental.
+- Resolution: advisory; no plan change.
+
 ### Round 1 reports
 
 *(entries appended as reports arrive)*

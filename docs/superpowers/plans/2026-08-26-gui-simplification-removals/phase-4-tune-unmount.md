@@ -199,13 +199,26 @@ so `check_features_md.py` stops resolving their refs. Add a section note:
 > below describe code that exists and is unit-tested, not a surface a user can reach.
 ```
 
-Check the status vocabulary `check_features_md.py` accepts before choosing a value:
+**Use the status `⏸ unmounted`.** This was settled during plan refinement (ledger ORCH-5);
+do not re-derive it and do not escalate it.
 
-```bash
-uv run grep -n "shipping\|status\|STATUS" scripts/check_features_md.py | head -20
-```
-Use an existing non-shipping status; if none exists, the gate needs a new one and that is a
-**blocking question for the user**, not a value to invent.
+`scripts/check_features_md.py` defines three constants — `✅ shipping` (`:33`),
+`🚧 in progress` (`:34`), `🔭 planned` (`:35`) — but its row loop (`:148-176`) **never
+validates status against an allowed set**. It branches: `== STATUS_IN_PROGRESS` → collect,
+which `--strict` then fails (`:178-184`); `!= STATUS_SHIPPING` → `continue`, silently
+skipped; otherwise resolve refs. So `⏸ unmounted` requires **no script change**: it stops
+ref resolution and passes `--strict`.
+
+None of the three existing values is right, which is why a fourth is warranted:
+
+| Value | Why not |
+|---|---|
+| `✅ shipping` | keeps resolving refs *and* asserts a user can reach it — the false claim this spec exists to prevent |
+| `🚧 in progress` | **fails `--strict`**, i.e. blocks the merge gate |
+| `🔭 planned` | passes, but describes a fully built, parked sub-app as unbuilt |
+
+Spec §6 asks the ledger to carry "exists but unreachable" as a state. `⏸ unmounted` is that
+state named honestly.
 
 - [ ] **Step 2: Remove the WORKFLOWS.md row, capture function and tutorial**
 
