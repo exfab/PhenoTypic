@@ -186,6 +186,17 @@ serves the measurement table to any browser that asks. The allow-list is a delib
 narrowing. **Flag it for sign-off** — it is a divergence from the spec, not an
 implementation detail.
 
+Two properties of the allow-list, both verified during plan refinement, that are easy to
+get wrong when editing it:
+
+- **It gates only `segments[0]`, and that is deliberate.** The label group is
+  `<primary>/labels/objmap`, whose head is `rgb` or `gray` — already allow-listed. Gating
+  every segment against this set instead would block `labels`, `objmap` and every level
+  index, breaking the label layer entirely.
+- **It is the only thing blocking `tables/`.** `is_safe_path_component('tables')` returns
+  `True`, so the per-segment guard passes it. Delete the allow-list and the measurement
+  table is served.
+
 - [ ] **Step 4: Register it and run the tests**
 
 Add `register_zarr_routes(app, output_root)` in `_app.py` beside the existing tile-route
@@ -198,18 +209,30 @@ QT_QPA_PLATFORM=offscreen uv run pytest \
 Expected: all PASS. If `test_honours_a_range_request` returns 200, `conditional=True` is
 missing or a proxy is stripping the header.
 
-- [ ] **Step 5: Confirm `is_safe_path_component` rejects what the test expects**
+- [ ] **Step 5: The guard is already verified — do not re-derive it**
 
-```bash
-uv run python -c "
-from phenotypic.gui._shared.tiles import is_safe_path_component as ok
-for s in ('..', '.', 'rgb', 'c.0.0.0', '%2e%2e', 'a/b', ''):
-    print(repr(s), ok(s))
-"
+`is_safe_path_component` (`_shared/tiles.py:755`) was run against this route's inputs during
+plan refinement. Verified results:
+
+```text
+'..' -> False   '.' -> False    '...' -> False   '.hidden' -> False
+'a/b' -> False  'a\b' -> False  '%2e%2e' -> False  '' -> False
+'rgb' -> True   'gray' -> True  'detect_mat' -> True  'OME' -> True
+'zarr.json' -> True  'c.0.0.0' -> True  '0.0' -> True
+'labels' -> True     'objmap' -> True   'tables' -> True
 ```
-If it accepts `'..'`, the guard is not the guard this route needs — **stop and fix
-`is_safe_path_component`**, or the traversal tests pass for the wrong reason (Werkzeug's
-own normalization) and stop protecting anything the day the route moves behind a proxy.
+
+It rejects empty, any leading dot, `/`, `\`, and literal `..`, then requires
+`^[A-Za-z0-9._-]+$` (`_NAME_RE`, `:752`). `%2e%2e` fails the regex directly, and after
+Werkzeug decoding it becomes `..` and fails the explicit check — so the traversal tests do
+**not** pass merely because Werkzeug normalized first. Zarr's `"."`-separated chunk keys
+pass, which is what makes a per-segment guard usable here at all.
+
+**Note `'tables' -> True`.** The guard does not block
+`tables/measurements/table.parquet`; `_READABLE_ROOTS` does. That allow-list is
+load-bearing, not belt-and-braces — see step 3.
+
+If you change the guard, re-run the table above and update it here.
 
 - [ ] **Step 6: Lint and commit**
 

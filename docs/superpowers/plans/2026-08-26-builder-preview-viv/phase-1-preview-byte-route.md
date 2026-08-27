@@ -30,14 +30,38 @@ tail.
   `preview_zarr_url(url_prefix, session_id, scope_hash, block_id) -> str` — phase 2's
   clientside callback calls the latter.
 
-- [ ] **Step 1: Read the route this one mirrors**
+- [ ] **Step 1: Split `_validate` into a channel-free core, then mirror the route**
 
 ```bash
 uv run sed -n '101,175p' src/phenotypic/gui/builder/_preview_tiles.py
 ```
-Note `preview_dzi_url`'s shape (`:101`), `_validate`'s signature and what it returns on
-failure (`:107`), and how `register_node_preview_routes` builds its blueprint (`:118`).
-The new route mirrors all three; matching them is what keeps the guard regime uniform.
+Note `preview_dzi_url`'s shape (`:101`), `_validate` (`:107`), and how
+`register_node_preview_routes` builds its blueprint (`:118`).
+
+`_validate` today takes a channel and checks four things:
+
+```python
+def _validate(session_id, scope_hash, block_id, channel) -> Optional[Response]:
+    if (
+        is_safe_path_component(session_id)
+        and bool(_HASH_RE.match(scope_hash))        # ^[0-9a-f]{40}$
+        and is_safe_path_component(block_id)
+        and channel in _VALID_CHANNELS              # rgb|gray|detect_mat|objmap|overlay
+    ):
+        return None
+    return _json_error("invalid preview tile request", 404)
+```
+
+Extract the first three into `_validate_scope_request(session_id, scope_hash, block_id)`
+and have `_validate` call it, then add the channel check. The byte route calls the
+channel-free one.
+
+**Understand what this guard is and is not** (ledger ORCH-2): it is a **shape check**. It
+stops traversal through those three components. It does **not** authenticate — nothing
+establishes that the caller owns the session. Isolation rests on session ids being
+`uuid.uuid4().hex` (`builder/_callbacks.py:3662, :4083`), i.e. a 122-bit bearer token that
+travels in the URL path. Write the tests against that reality, not against an
+authentication that is not there.
 
 - [ ] **Step 2: Confirm the on-disk store naming**
 
@@ -176,7 +200,11 @@ def register_preview_zarr_routes(app: dash.Dash) -> None:
 
     @bp.route("/<session_id>/<scope_hash>/<block_id>/<path:tail>")
     def preview_store_bytes(session_id, scope_hash, block_id, tail):
-        invalid = _validate(session_id, scope_hash, block_id, "gray")
+        # Channel-free half of ``_preview_tiles._validate``. This route has
+        # no channel, and calling the 4-arg guard with a fabricated one
+        # ("gray", chosen only because it passes) is one refactor away from
+        # being called wrongly. See ledger ORCH-4.
+        invalid = _validate_scope_request(session_id, scope_hash, block_id)
         if invalid is not None:
             return invalid
 
@@ -214,13 +242,42 @@ def preview_zarr_url(
     return f"{base}preview-zarr/{session_id}/{scope_hash}/{block_id}"
 ```
 
-`read_manifest_by_hash` / `scope_dir_by_hash` may not exist — `_preview_cache.py:95`
-`read_manifest` and `:83` `scope_dir` take a `scope_path`, not a hash. Check first, and add
-thin hash-keyed wrappers beside them if needed rather than duplicating the path logic:
+**`read_manifest_by_hash` / `scope_dir_by_hash` do not exist — verified.** `read_manifest`
+(`_preview_cache.py:95`) and `scope_dir` (`:83`) key by `scope_path`, a list, and
+`scope_hash` (`:71`) is a one-way sha1. But the lookup is still trivial, because the
+**on-disk directory is already named by the hash**:
 
-```bash
-uv run sed -n '71,116p' src/phenotypic/gui/builder/_preview_cache.py
+```python
+def _scope_path(session_id: str, scope_path: list[str]) -> Path:
+    return preview_cache_root() / session_id / scope_hash(scope_path)
 ```
+
+So no reverse index is needed — add two thin hash-keyed variants beside the existing
+helpers, sharing one path builder:
+
+```python
+def _scope_path_by_hash(session_id: str, scope_hash_hex: str) -> Path:
+    """Per-(session, scope) directory addressed by hash rather than path.
+
+    The route receives a hash, not the scope_path that produced it. Since
+    ``_scope_path`` already names the directory by that hash, this is the
+    same join -- not a lookup.
+    """
+    return preview_cache_root() / session_id / scope_hash_hex
+
+
+def read_manifest_by_hash(session_id: str, scope_hash_hex: str) -> Optional[dict]:
+    path = _scope_path_by_hash(session_id, scope_hash_hex) / "manifest.json"
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+```
+
+Refactor `_scope_path` to delegate to `_scope_path_by_hash(session_id, scope_hash(scope_path))`
+so there is one join, not two.
 
 - [ ] **Step 6: Register and run**
 
