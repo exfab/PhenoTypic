@@ -1,4 +1,6 @@
-"""Dash serves the Viv facade BEFORE the bundle it reads.
+"""On-disk facts about the vendored Viv assets, checkable without a browser.
+
+Dash serves the Viv facade BEFORE the bundle it reads.
 
 This is a property of Dash's asset walk, not of either file: `_assets/` is
 walked with ``for current, _, files in sorted(os.walk(walk_dir))``, which
@@ -25,7 +27,10 @@ import dash
 
 import phenotypic.gui.results_viewer as results_viewer
 
+REPO_ROOT = Path(__file__).resolve().parents[4]
 ASSETS = Path(results_viewer.__file__).parent / "_assets"
+BUNDLE_FILE = ASSETS / "viv" / "viv-bundle.min.js"
+RECIPE_VERSION = REPO_ROOT / "tools" / "viv-bundle" / "VERSION"
 
 FACADE = "/assets/viv_viewer.js"
 BUNDLE = "/assets/viv/viv-bundle.min.js"
@@ -73,3 +78,25 @@ def test_the_bundle_is_served_on_every_results_viewer_page() -> None:
     order = _asset_script_order()
     assert "/assets/openseadragon/openseadragon.min.js" in order
     assert BUNDLE in order
+
+
+def test_the_committed_bundle_matches_its_recorded_version() -> None:
+    """The vendored artifact and its recipe agree about what it is.
+
+    There is no npm in CI by design, so nothing rebuilds the bundle to
+    prove the two are in sync -- ``tools/viv-bundle/VERSION`` and the string
+    ``build.mjs`` stamps into the artifact are the whole provenance of a
+    committed binary. Rebuilding without bumping ``VERSION``, or bumping
+    ``VERSION`` without rebuilding, is otherwise invisible until a browser
+    behaves oddly.
+
+    Reads only the banner, not the whole 2.5 MiB file.
+    """
+    recorded = RECIPE_VERSION.read_text(encoding="utf-8").strip()
+    banner = BUNDLE_FILE.read_text(encoding="utf-8", errors="replace")[:512]
+    assert recorded in banner, (
+        f"tools/viv-bundle/VERSION says {recorded!r}, which does not appear "
+        f"in the committed artifact's banner: {banner.splitlines()[0]!r}. "
+        "Rebuild with `cd tools/viv-bundle && npm ci && node build.mjs`, or "
+        "correct VERSION -- whichever is actually stale."
+    )
