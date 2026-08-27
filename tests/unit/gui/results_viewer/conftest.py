@@ -166,3 +166,38 @@ def live_viewer(tmp_path: Path) -> LiveViewer:
         root=tmp_path,
         output_root=output_root,
     )
+
+
+@pytest.fixture()
+def built_results_layout(tmp_path: Path):
+    """The results viewer's top-level component tree over a minimal run.
+
+    Mirrors ``_make_output`` in ``test_navigation_layout.py``: the layout
+    builder only needs a discoverable output root with one measured image,
+    so the fixture writes the master parquet and one overlay rather than a
+    full store-backed run.
+    """
+    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+    from phenotypic.gui.results_viewer._layout import build_app_layout
+    from phenotypic.sdk_ import master_measurements_parquet_path
+
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"
+    overlay_dir.mkdir(parents=True, exist_ok=True)
+    target = master_measurements_parquet_path(tmp_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    pl.DataFrame(
+        {
+            "Metadata_Dataset": ["d1"],
+            str(IMAGE.IMAGE_NAME): ["a"],
+            "Size_Area": [1.0],
+        }
+    ).write_parquet(target)
+    (overlay_dir / "a.png").touch()
+
+    output_root = OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
+    state = CurationLabels.load(output_root.layout, output_root.clean_master_df)
+    return build_app_layout(output_root, state)
