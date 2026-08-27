@@ -156,3 +156,47 @@ cascaded from `browse/` being in its deliberately-unimportable window between ta
 2.3. Nothing was broken; the measurement was taken at the wrong moment. **Clusters share one
 worktree and run sequentially — verification happens at the gate, never beside a running
 cluster.**
+
+### Phase 2 — Browse Timeline + shared engine: **COMPLETE**
+
+| Cluster | Commits | Outcome |
+|---|---|---|
+| C (2.1-2.3, 2.4b) | `19735350`, `0e20fb4f` | 64 ids, 5,106 deletions; **7** broken test files, not the 5 the plan listed |
+| D (2.5, 2.6) | `2c9f85c8`, `41ace3b4` | engine + 8 test files gone; 2 ledger rows |
+| E (2.4) | `37c31013` | 19 rows retired, 1 **repointed**, tutorial + capture fn |
+
+**Gates at close:** all three exit 0 — 408 feature rows / 339 shipping; 18 workflows, 18
+dispatched. Full GUI lane **2356 passed, 3 skipped, 0 failed**. Curation rows **4**.
+
+#### The `_preparation.py` race — adjudicated, change is CORRECT
+
+Cluster C modified a file the plan said not to touch, and was right to. It hoisted
+`_mark_ready` out of the publication lock because `complete_event` was being set while the
+lock was held, so `BrowseCache.clear()` — which takes that lock with `timeout=0.0` and
+`continue`s on `ArtifactLockTimeout` (`_cache.py:300-312`) — would be refused and **silently
+skip the entry**. The timeline-thumb `rmtree` at the top of `clear()` had been masking it;
+deleting that dead code exposed it.
+
+The obvious objection is that hoisting a completion signal out of a lock trades one race for
+another: there is now a window where the entry is published and the lock released but
+`complete_event` is not yet set, in which a concurrent `clear()` could `rmtree` the entry and
+leave `_mark_ready` marking a deleted one ready.
+
+**That window is not reachable in production.** Traced:
+
+- `clear(*, protected=frozenset())` defaults to protecting **nothing** — so the objection is
+  well-founded on the signature alone.
+- But the **only** production caller is `_preparation_routes.py:153`, and it passes
+  `protected = set(self.manager.protected_keys())` plus pinned selections plus
+  `current_revision`.
+- `protected_keys()` (`_preparation.py:310-317`) returns `set(self._requesters)` ∪ pinned ∪
+  `_active_key`. A key under active preparation **necessarily has requesters** — otherwise
+  `_cancelled()` (`:642`) is true and the work aborts before publishing.
+- Therefore the in-flight key is always in `protected`, and `clear()` skips it for the whole
+  window. The remaining bare `cache.clear()` calls are in tests only.
+
+Verdict: the race C fixed was real; the race the fix could introduce is closed by
+`protected_keys()` at the only call site that matters. **No change required.**
+
+Recorded because the reasoning is not visible from the diff, and the next person to read
+that hoist will ask exactly this question.
