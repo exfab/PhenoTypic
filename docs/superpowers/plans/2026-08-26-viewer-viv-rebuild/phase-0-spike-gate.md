@@ -63,17 +63,48 @@ Any mismatch is a **backend** finding, not a Viv one — file it against the sto
 **Files:**
 - Modify: `spike/README.md`
 
-- [ ] **Step 1: Serve the store over plain HTTP with Range**
+- [ ] **Step 1: Serve the store — and do NOT use `http.server` for the byte question**
+
+> **`python -m http.server` has no `Range` support at all.** Verified in this environment:
+> `curl -r 0-15` against a 100,000-byte file returned `code=200 size=100000` — the whole
+> file. An earlier draft of this step expected `206` from it, which is unreachable, and its
+> own failure note ("the server ignored Range") would have read as a finding about our
+> design rather than a known limitation of the harness. Worse, Q1/Q2/Q4 all drive the
+> browser against that same server, so the **entire spike would have measured the no-Range
+> regime** — the very regime that makes shard amplification bite — with no byte counts
+> recorded to notice it.
+
+Use `http.server` **only** for Q1/Q2/Q3, where the questions are about metadata resolution
+and chunk-key shape and `Range` is irrelevant:
 
 ```bash
 cd /tmp/spike && uv run python -m http.server 8099 &
-curl -s -I http://localhost:8099/plate.ome.zarr/zarr.json
-curl -s -r 0-15 -o /dev/null -w '%{http_code}\n' \
-  http://localhost:8099/plate.ome.zarr/rgb/0/c.0.0.0
+curl -s -I http://localhost:8099/plate.ome.zarr/zarr.json     # expect 200
 ```
-Expected: `200` for the metadata, **`206`** for the ranged chunk read. A `200` on the
-second means the server ignored `Range`; note it, because phase 1's whole job is a route
-that does not.
+
+For the byte question, serve with something Range-capable — ~20 lines of Werkzeug using
+`send_file(..., conditional=True)`, which is exactly what phase 1 builds, so the spike
+exercises the real mechanism rather than a proxy for it:
+
+```bash
+curl -s -r 0-15 -o /dev/null -w 'code=%{http_code} size=%{size_download}\n' \
+  http://localhost:8100/plate.ome.zarr/rgb/0/c.0.0.0
+```
+Expected: `206`, 16 bytes.
+
+- [ ] **Step 1b: Record the amplification number — it exists in no document**
+
+Fetch one chunk under **both** servers and record `size_download`:
+
+```text
+with Range (conditional=True):  ~3 MB   -- one inner chunk
+without Range (http.server):    ~50 MB  -- the whole (3,4096,4096) shard at u8
+                                           (brief §5 puts the ceiling at 96 MB)
+```
+
+That ratio — roughly **16×** — is the justification for `conditional=True` being
+non-negotiable in phase 1, and it is currently written down nowhere. Put it in
+`spike/README.md`.
 
 - [ ] **Step 2: Q1 — does an unmodified vizarr/Viv resolve our series list?**
 

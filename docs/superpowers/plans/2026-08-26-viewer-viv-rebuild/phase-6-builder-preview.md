@@ -238,9 +238,14 @@ uv run grep -n "assets_folder\|assets_url_path\|serve_locally" \
   src/phenotypic/gui/builder/_app.py src/phenotypic/gui/results_viewer/_app.py \
   src/phenotypic/gui/shell/_app.py
 ```
-Prefer Dash's `assets_folder` / `assets_url_path` pointed at the results viewer's
-`_assets/viv/`; fall back to a small Flask route serving the two files from that package
-directory. Record which and why in the commit body — this closes OQ4.
+**Use a small Flask route** serving the two files from the results-viewer package
+directory. This closes OQ4 on evidence rather than on a discovery an executor pays for.
+
+> An earlier draft preferred Dash's `assets_folder` / `assets_url_path` pointed at the
+> results viewer's `_assets/viv/`. **That is not viable:** Dash takes **one**
+> `assets_folder` per app, and `src/phenotypic/gui/builder/assets/` already holds
+> `builder.js`, `preview.js`, `builder.css`, `cytoscape-dagre.min.js`, `point_picker.js`,
+> `palette_dnd.js`, `viewport_ops.js` and `wire_drawing.js`. Repointing it drops all eight.
 
 - [ ] **Step 2: Assert one artifact, not two**
 
@@ -254,6 +259,14 @@ def test_builder_does_not_carry_its_own_bundle_copy():
 
 Reuse phase 3 task 3.1's `build_source_spec`, which phase 3 already wrote at its
 store-path-plus-base-URL signature **because this caller was in view when it was written**.
+
+**Recompute the source spec on every scope recompute — never cache it across one.**
+Preview stores are rewritten in place under the same `scope_hash` when a node's parameters
+change, so the **token moves on every re-run** — which is precisely the case this phase
+exists to serve. If the spec is computed once and held in a `dcc.Store`, the pane 409s
+permanently after the first parameter edit. Rebuild `preview_zarr_url(..., token)` from a
+fresh `build_source_spec` each time the manifest updates, exactly where
+`_preview_callbacks.py` builds its `dzi_url` today.
 
 **`labelPath` is optional here and that is the common case.**
 `build_phenotypic_attributes` omits the `labels` key entirely when `has_labels=False`
@@ -324,7 +337,7 @@ git commit -m "feat(gui): render builder node previews through Viv, off the DZI 
 ```python
 """Deep-Zoom pyramid generation for the GUI's OpenSeadragon surfaces.
 
-NOT DEAD CODE. Three specs each say the tiler is "removed from this path" --
+NOT DEAD CODE. Two specs each say the tiler is "removed from this path" --
 the results Plate path, and the builder preview path. Read together they
 suggest a module that can be deleted. It cannot. Live consumers:
 

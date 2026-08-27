@@ -110,6 +110,11 @@ git commit -m "test(gui): assert both apps build after the simplification"
 **Interfaces:**
 - Consumes: everything. This is spec §7 check 3 and the executable statement of §5.
 
+> **Note the paths.** `tests/unit/gui/results_viewer/` holds **files only** — the
+> `colony_view` package is at `tests/gui/results_viewer/colony_view/`. Naming a nonexistent
+> path makes pytest exit 4 and run **none** of the others in the same command, including the
+> curation test this task exists to run.
+
 > **`test_colony_callbacks_helpers.py` is the constraint, not the proof.** All 15 of its
 > tests drive pure `_triage_callbacks` helpers against **hand-built `ctx.triggered` dicts**
 > in `tmp_path`. Nothing asserts that a radial exists on a tile, and nothing asserts that
@@ -154,7 +159,6 @@ Expected: PASS. Note the first lives under `tests/gui/`, not `tests/unit/gui/` �
 ```bash
 QT_QPA_PLATFORM=offscreen uv run pytest \
   tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py \
-  tests/unit/gui/results_viewer/colony_view \
   tests/gui/results_viewer/colony_view -n 4 -q
 ```
 Expected: PASS.

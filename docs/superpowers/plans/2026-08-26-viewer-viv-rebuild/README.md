@@ -110,12 +110,14 @@ reports. Spec §2.1 requires this explicitly.
 | 2 | Viv bundle + façade | `tools/viv-bundle/`, the vendored IIFE, `viv_viewer.js`, NOTICE/licenses | [phase-2](phase-2-viv-bundle-facade.md) |
 | 3 | Plate surface | Full-canvas Viv Plate; `_dzi_tiler` off the results plate path | [phase-3](phase-3-plate-surface.md) |
 | 4 | Colony D1 | One `OrthographicView` per colony, shared `viewState`, measured cap | [phase-4](phase-4-colony-views.md) |
-| 5 | Verification & ledgers | Spec §8's checks, FEATURES/WORKFLOWS, tutorial refresh | [phase-5](phase-5-verification.md) |
 | 6 | Builder preview | Preview byte route, shared asset mount, render swap | [phase-6](phase-6-builder-preview.md) |
+| 5 | Verification & ledgers — **runs LAST** | Spec §8's checks, FEATURES/WORKFLOWS, tutorial refresh | [phase-5](phase-5-verification.md) |
 
 **Phase 4 is separable and is the first thing to cut.** Colony "D3" — the crop route reading
 level-0 store chunks — is **already landed** (DRIFT.md D-2), so phase 4 is purely the
 deck.gl rendering half and the viewer ships without it.
+
+**Phase 5 is listed after 6 deliberately: it runs LAST.** Its `-k "viv or colony_shared or builder"` e2e selector cannot pass until phase 6 has landed, and both phases edit the same four ledger files through the same three CI gates. The numbering is kept so ledger and commit references keep resolving.
 
 **Phase 6 was a separate spec+plan cycle and was folded in on 2026-08-26.** It depends on
 phases 1-3 and reuses all three, so the split bought no parallelism while forcing phase 3 to
@@ -130,7 +132,10 @@ phase 4. Run phase 5 last, after 6, so the ledger pass happens once.
    including the `ceil` boundary.
 3. A store whose primary series is `gray` (no `rgb`) resolves its objmap through
    `phenotypic.labels.objmap`.
-4. A rewritten nested chunk invalidates the served tile.
+4. A re-promote is refused under a stale token (409), and a rewritten nested chunk is
+   served fresh **without** moving the token.
 5. `tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py` passes **unmodified**.
-6. `uv run pytest tests/unit/gui -n 4` green (minus the known baseline failure); the three
-   `gui-checks` gates exit 0.
+6. `uv run pytest tests/unit/gui tests/gui -n 4` green (minus the known baseline failure);
+   the three `gui-checks` gates exit 0. **`tests/gui` is not optional here** — browse and
+   builder GUI tests live there, and a `tests/unit/gui`-only gate never reaches the code
+   these phases edit.

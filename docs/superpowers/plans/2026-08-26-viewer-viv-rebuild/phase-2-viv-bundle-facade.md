@@ -113,9 +113,14 @@ git commit -m "chore(licensing): record Viv and vizarr MIT notices"
 - Test: `tests/e2e/gui/test_viv_codec_reads_a_real_store.py` (create)
 
 **Interfaces:**
-- Produces: `window.phenotypicViv` with `mount(containerId, opts)`,
-  `setSource(spec)`, `setViewState(viewState)`, `setLayerVisibility(name, visible)`,
-  `destroy(containerId)`. **Dash clientside callbacks talk only to the façade, never to Viv
+- Produces: `window.phenotypicViv` with **`containerId` first on every method** —
+  `mount(containerId, opts)`, `setSource(containerId, spec)`,
+  `setViewState(containerId, viewState)`,
+  `setLayerVisibility(containerId, name, visible)`, `destroy(containerId)`, plus
+  `setGridViews(containerId, cells, sharedViewState)` (phase 4).
+  The façade holds a `Map` of instances, so every call needs the key. Spec §3 writes the
+  three middle methods without it; **the spec is the loose one** — phase 4 and phase 6 both
+  call the containerId-first form, and this block is what they read. **Dash clientside callbacks talk only to the façade, never to Viv
   directly** — that boundary is what makes the vendored bundle replaceable.
 
 - [ ] **Step 1: Write the failing e2e test**
@@ -213,6 +218,29 @@ Expected: FAIL — `window.phenotypicViv` is undefined.
     return instance.setSource(spec);
   }
 
+  // ---- Generation-token handling -------------------------------------
+  // A 409 means the store was re-promoted and this instance's token is
+  // stale. Do NOT let it reach the zarr layer: Zarr's data model fills an
+  // unreadable chunk with `fill_value`, and store implementations commonly
+  // map a failed fetch to "absent" -- so a swallowed 409 renders BLACK
+  // TILES after every promote, which looks like empty data rather than an
+  // error. That is the plausible-wrong-pixels failure the token exists to
+  // prevent, moved to the client and made harder to see.
+  //
+  // The contract, shared with the byte routes:
+  //   404 -> transient (promote in flight); retry briefly
+  //   409 -> stale token; re-fetch the source spec and re-`setSource`
+  //   422 -> this build cannot decode the store; surface to the user
+  async function onChunkResponse(containerId, resp) {
+    if (resp.status === 409) {
+      const fresh = await window.phenotypicViv.refetchSource(containerId);
+      await setSource(containerId, fresh);
+      return "resourced";
+    }
+    if (resp.status === 422) throw new Error(await resp.text());
+    return "ok";
+  }
+
   function setViewState(containerId, viewState) {
     const instance = instances.get(containerId);
     if (instance) instance.setViewState(viewState);
@@ -251,22 +279,40 @@ race on this machine":
 
 ```python
 @pytest.mark.e2e
-def test_reading_before_ready_fails_loudly(page, live_viewer_url):
+def test_a_read_without_the_codec_fails_rather_than_returning_zeros(
+    page, live_viewer_url
+):
+    """Deleting the codec must break the READ, not merely the registry.
+
+    An earlier draft asserted only `outcome in ("deleted", "unavailable")`
+    after removing the codec -- it never attempted a read, so it passed
+    either way and proved nothing about ordering. That is precisely the
+    vacuous test this step exists to avoid, in the step whose stated purpose
+    is to avoid one.
+    """
     page.goto(live_viewer_url)
-    outcome = page.evaluate(
-        """() => {
+    page.wait_for_function("() => window.phenotypicViv !== undefined")
+    threw = page.evaluate(
+        """async () => {
+            try { window.__vivBundle.zarr.registry.delete('zstd'); }
+            catch (e) { return 'no-delete'; }
             try {
-                window.__vivBundle.zarr.registry.delete('zstd');
-                return 'deleted';
-            } catch (e) { return 'unavailable'; }
+                await window.phenotypicViv.__debugReadChunk('rgb', 0, [0,0,0]);
+                return 'read-succeeded';
+            } catch (e) { return 'threw'; }
         }"""
     )
-    assert outcome in ("deleted", "unavailable")
+    assert threw == "threw", (
+        f"expected the read to fail without the zstd codec, got {threw!r}; "
+        "'read-succeeded' means a decode path bypasses the registry"
+    )
 ```
 
-If the registry offers no delete, record that in the test's docstring and assert on the
-`ready` promise being awaited by every entry point instead — a code-shape assertion is
-weaker but honest, and better than a test that passes vacuously.
+If the registry offers no `delete`, the evaluate returns `'no-delete'` and the test fails
+with that message — which is the honest outcome. **Do not weaken it to accept
+`'no-delete'`**: a test that passes when it could not run is the failure mode this whole
+step is about. If deletion is genuinely impossible, cut this test and rely on step 1's
+real-pixel read, and say so in the commit.
 
 - [ ] **Step 5: Run both, then commit**
 

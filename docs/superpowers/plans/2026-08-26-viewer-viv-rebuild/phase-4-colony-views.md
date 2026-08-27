@@ -45,12 +45,19 @@ Exits non-zero until the prototype measurement in task 4.1 step 3 has been
 recorded, so no later task can proceed on an unmeasured cap.
 """
 
+import math
 import sys
 
-#: Layers rendered into EACH view: base image + label overlay.
-LAYERS_PER_VIEW = 2
+#: Layers rendered into EACH view. NOT a constant to assert: Plate section
+#: 6.1's Layers panel exposes rgb, gray, detect_mat and objmap, all
+#: independently toggleable, so the worst case is 4. Take it from the stack
+#: the caller actually builds.
+VISIBLE_LAYERS = 4
 #: A common plate: 32 x 48 = 1536 colonies (backend section 2.3's example).
 PLATE_CELLS = 1536
+#: The reference plate, and the chunk grid it implies.
+PLATE_HW = (4000, 3000)
+CHUNK_PX = 1024
 #: Measured cap, filled in from the prototype in step 3. None until measured.
 RECORDED_CAP: int | None = None
 #: Frame time, in ms, observed at RECORDED_CAP. Recorded beside the number so
@@ -58,30 +65,54 @@ RECORDED_CAP: int | None = None
 RECORDED_FRAME_MS: float | None = None
 
 
-def draw_calls(cells: int, layers: int = LAYERS_PER_VIEW) -> int:
-    """Draw calls per frame: every view renders every layer."""
-    return cells * layers
+def tiles_touched(centroids, level, cell_src_px, chunk_px=CHUNK_PX) -> set:
+    """UNION of chunk indices the cells touch.
+
+    The load-bearing correction. An earlier draft modelled per-cell 64x64
+    crops as if each cell owned private pixels -- that is D3, the
+    overlay-PNG-slicing world. In D1 every cell is a VIEWPORT ONTO THE SAME
+    STORE, so tiles are SHARED between cells and the resident set is the
+    union, bounded above by the whole level. That makes the bound
+    closed-form and small rather than linear in cell count.
+    """
+    touched = set()
+    half = cell_src_px / 2
+    for rr, cc in centroids:
+        for ty in range(int((rr - half) / 2**level) // chunk_px,
+                        int((rr + half) / 2**level) // chunk_px + 1):
+            for tx in range(int((cc - half) / 2**level) // chunk_px,
+                            int((cc + half) / 2**level) // chunk_px + 1):
+                touched.add((ty, tx))
+    return touched
 
 
-def crop_texture_bytes(cells: int, crop_px: int = 64, channels: int = 3) -> int:
-    """Resident texture bytes for a grid of RGB crops."""
-    return cells * crop_px * crop_px * channels
+def resident_bytes(n_tiles, n_series, chunk_px=CHUNK_PX, channels=3, itemsize=1):
+    """Bytes the tile cache holds for one store."""
+    return n_tiles * chunk_px**2 * channels * itemsize * n_series
+
+
+def level_tiles(h, w, level, chunk_px=CHUNK_PX) -> int:
+    """Every chunk at a level -- the ceiling the union cannot exceed."""
+    return (math.ceil(h / 2**level / chunk_px)
+            * math.ceil(w / 2**level / chunk_px))
 
 
 def main() -> int:
+    h, w = PLATE_HW
+    ceiling = level_tiles(h, w, 0)
+    print(
+        f"level-0 ceiling: {ceiling} tiles = "
+        f"{resident_bytes(ceiling, 1) / 1e6:.0f} MB for the WHOLE level"
+    )
     for cells in (64, 256, 1024, PLATE_CELLS):
-        print(
-            f"{cells:5d} cells: {draw_calls(cells):6d} draw calls/frame, "
-            f"{crop_texture_bytes(cells) / 1e6:7.2f} MB textures"
-        )
+        print(f"{cells:5d} cells: {cells * VISIBLE_LAYERS:6d} draw calls/frame")
     if RECORDED_CAP is None or RECORDED_FRAME_MS is None:
         print("NO MEASUREMENT: run the prototype in task 4.1 step 3")
         return 1
     print(
-        f"cap {RECORDED_CAP} cells "
-        f"({draw_calls(RECORDED_CAP)} draw calls, "
-        f"{crop_texture_bytes(RECORDED_CAP) / 1e6:.1f} MB, "
-        f"{RECORDED_FRAME_MS:.1f} ms/frame measured)"
+        f"cap {RECORDED_CAP} cells, {RECORDED_FRAME_MS:.1f} ms/frame measured; "
+        f"set maxCacheByteSize >= {resident_bytes(ceiling, VISIBLE_LAYERS) / 1e6:.0f} MB "
+        f"per distinct store in the grid"
     )
     return 0
 
@@ -130,7 +161,7 @@ git commit -m "docs(viv): measure the colony-view virtualization cap"
 
 ---
 
-### Task 4.2: Shared camera as a value, not a sync protocol
+### Task 4.2: One dynamic viewState, per-view target overrides
 
 **Files:**
 - Modify: `src/phenotypic/gui/results_viewer/_assets/viv_viewer.js` (add `setGridViews`)
@@ -188,6 +219,11 @@ git commit -m "docs(viv): measure the colony-view virtualization cap"
 > (`_smart_grid/` itself contains no camera code; it patches grid geometry only. The
 > behaviour is napari's, inherited.)
 >
+> **All four deviations from the reference ride ONE user gate**, not just the camera:
+> the visibility mapping is not ported, the two `_grid_popup.py` toggles go with it,
+> `cleanup_clones` is not ported, and the camera fan-out collapses to a single value. The
+> `porting-a-reference-algorithm` skill treats the drift register as a whole.
+>
 > **The deck.gl translation collapses that fan-out to a single `viewState`.** It is still
 > the better design — a shared value cannot tear mid-gesture the way an event-reconciled
 > set can — but it is a **deliberate simplification of the reference**, and per the
@@ -209,9 +245,20 @@ git commit -m "docs(viv): measure the colony-view virtualization cap"
 > no clone lifecycle to manage. **The broad claim does not.** The leak *class* survives —
 > Viv's `TileLayer` texture cache grows with the union of all *N* views' visible tiles,
 > bounded only by `maxCacheSize` / `maxCacheByteSize`, and **nothing in this phase sets,
-> bounds, or tests it.** Task 4.1's cap bounds *cell count*, not *cached tile bytes*. Set an
-> explicit cache bound when building the layer stack, and record its number alongside the
-> cap.
+> bounds, or tests it.** Task 4.1's cap bounds *cell count*, not *cached tile bytes*.
+>
+> **But the bound is far tighter than "leak" suggests, and task 4.1 now derives it.** Cells
+> are viewports onto ONE store, so tiles are shared: the resident set is the *union*, and
+> the union cannot exceed the level. A 4000×3000 plate at level 0 is
+> `ceil(4000/1024) × ceil(3000/1024) = 4 × 3 = 12` chunks ≈ **36 MB for the entire level**,
+> coarser levels less. So set `maxCacheByteSize` from
+> `level_tiles × per_tile_bytes × visible_layers` — derived, not guessed.
+>
+> **The parameter that actually drives it is the number of distinct STORES in the grid, not
+> the cell count.** `colony_view/_grid.py` builds tiles carrying their own
+> `Metadata_Dataset` / `Metadata_ImageFile` (`:284, :347, :398`), so a grid can span images:
+> 1536 cells over one plate is ~36 MB; 1536 cells over 1536 *different* images is 1536× that.
+> Cell count is only a proxy for the quantity worth capping.
 
 - [ ] **Step 1: Read the napari original before porting**
 
@@ -249,8 +296,12 @@ def test_zooming_one_cell_moves_every_cell(page, live_viewer_url):
     states = page.evaluate(
         """() => window.phenotypicViv.__debugViewStates('colony-grid')"""
     )
-    zooms = [s.zoom for s in states]
-    targets = [tuple(s.target[:2]) for s in states]
+    # page.evaluate marshals JS objects into Python DICTS -- attribute
+    # access raises AttributeError and the test ERRORS rather than failing
+    # informatively, which is the worst outcome for a test whose job is to
+    # fail informatively.
+    zooms = [s["zoom"] for s in states]
+    targets = [tuple(s["target"][:2]) for s in states]
 
     assert len(zooms) > 1
     assert len(set(zooms)) == 1, f"zoom drifted apart: {sorted(set(zooms))}"
@@ -273,27 +324,46 @@ def test_zooming_one_cell_moves_every_cell(page, live_viewer_url):
 > in the **viewState**. Built literally as written, every cell inherits the same `target`
 > and the grid renders **the same colony N times**.
 
-deck.gl's multi-view viewState is keyed by view id, which is exactly the split needed —
-per-view `target`, shared `zoom`:
+There are **two** deck.gl forms that give per-view targets, and they are not equivalent —
+one of them is the very sync protocol this design exists to avoid.
+
+**Rejected — the keyed viewState map.** The developer guide (`docs/developer-guide/views.md`)
+says: *"To specify the view state for a particular view, you can add a key to the
+`viewState` object. This key should correspond to the `id` of the view."* That works, but
+`onViewStateChange` then fires with `{viewId, viewState}` for the **one** view the gesture
+touched, and keeping `zoom` common requires the handler to fan the new zoom back across
+every entry — per-view reconciliation, reintroduced one layer down. The first real user
+gesture drifts the zooms apart, and step 2's test cannot catch it because it drives
+`setViewState(...)` programmatically rather than gesturing.
+
+**Chosen — `View.viewState` merge.** The API reference (`docs/api-reference/core/view.md`)
+records that a `View`'s `viewState` property, when it carries an `id`, *"merges with a
+dynamic view state… useful for sharing view states… or overriding parts of a dynamic
+state"*. So there is **one** dynamic viewState holding `zoom`, and each `View` overrides
+only its own `target`:
 
 ```javascript
-// Views carry GEOMETRY only.
-const views = cells.map((c, i) => new OrthographicView({
-  id: `cell-${c.id}`, x: layout[i].x, y: layout[i].y,
-  width: layout[i].w, height: layout[i].h,
-}));
+// ONE dynamic viewState. There is only one zoom, so it cannot drift --
+// a value, not a protocol. This is the form that matches the principle.
+const viewState = {"colony-shared": {zoom: shared.zoom}};
 
-// viewState is keyed BY VIEW ID: target differs per cell, zoom is the
-// shared value. This is the split the shared-camera lock actually locks --
-// it constrains `zoom`, never `target`.
-const viewState = Object.fromEntries(cells.map((c) => [
-  `cell-${c.id}`,
-  {target: [c.centroidCc, c.centroidRr, 0], zoom: shared.zoom},
-]));
+// Each View overrides ONLY its target, merging over the shared zoom.
+const views = cells.map((c, i) => new OrthographicView({
+  id: `cell-${c.id}`,
+  x: layout[i].x, y: layout[i].y,
+  width: layout[i].w, height: layout[i].h,
+  viewState: {id: "colony-shared", target: [c.centroidCc, c.centroidRr, 0]},
+}));
 ```
 
-A "shared viewState object" and "a shared zoom across per-cell targets" are different
-things, and only the second renders a grid.
+**State the controller decision explicitly.** If the views carry no `controller`, zoom is
+programmatic-only — and then step 4's "Shared camera" lock has nothing to constrain, which
+must be said rather than left implied. If they do carry one, `setViewState(containerId, …)`
+updates the single `colony-shared` entry, and that is what the façade method means in grid
+mode.
+
+A "shared viewState object" and "a shared zoom over per-cell target overrides" are
+different things, and only the second renders a grid **and** stays shared under gesture.
 
 - [ ] **Step 4: Make the shared-camera lock a visible affordance**
 

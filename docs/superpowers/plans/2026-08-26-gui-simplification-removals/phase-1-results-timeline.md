@@ -134,7 +134,13 @@ correct and intentional; phase 2 deletes the browse copy, and phase 3 removes th
 ```bash
 uv run grep -rn "timeline.js" .github/ scripts/ tests/ | head
 ```
-Expected: a byte-equality guard naming both copies. Note where it lives; phase 3 removes it.
+
+**The guard is not a CI file — it is a pytest test**, at
+`tests/gui/results_viewer/timeline_view/test_assets.py:39`
+`test_viewer_timeline_js_is_byte_identical_to_browse`. It lives **inside the directory step 3
+deletes**, so it disappears with `timeline_view/` in this very task and there is nothing left
+for a later phase to remove. (An earlier draft said "phase 3 removes it"; phase 3 no longer
+exists — it folded into phase 2 as tasks 2.5-2.6.)
 
 - [ ] **Step 3: Delete**
 
@@ -272,7 +278,7 @@ git commit -m "refactor(gui): delete the Results Timeline tab"
 ### Task 1.4: Retire the Results Timeline ledger rows, tutorial and capture function
 
 **Files:**
-- Modify: `src/phenotypic/gui/FEATURES.md:372-394` (Results Timeline rows — remove)
+- Modify: `src/phenotypic/gui/FEATURES.md`, section `### Results Timeline tab` (**anchor on the heading — `:379`, NOT the spec's `:372`, which is a Colony curation row**) — remove
 - Modify: `src/phenotypic/gui/WORKFLOWS.md:55` (`results_timeline` row — remove)
 - Modify: `scripts/capture_gui_tutorial_screenshots.py:1246` (`_capture_results_timeline`) and its call sites
 - Delete: `docs/source/tutorials/gui/20_results_timeline.md` and `docs/source/_static/gui_images/results_timeline/`

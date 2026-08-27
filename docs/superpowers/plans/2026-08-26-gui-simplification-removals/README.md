@@ -116,7 +116,9 @@ Re-verified in this worktree on 2026-08-26. These are facts the phases depend on
 
 ## Phases
 
-Phase 1 before phase 2; phases 4 and 5 are independent of both and of each other.
+**Phase 1 before phases 2 and 5. Phase 4 is independent of all of them.**
+Phase 5 shares `_layout.py` and `_callbacks.py` with phase 1 and *edits*
+`test_layout_tab_shape.py`, which phase 1 task 1.1 creates — so it cannot run first.
 
 | # | Phase | Deliverable | Doc |
 |---|---|---|---|
@@ -133,7 +135,9 @@ renumbered, so the phase names in the ledger and commits keep resolving.
 
 ## Definition of done
 
-1. `uv run pytest tests/unit/gui -n 4` green (minus the known baseline failure).
+1. `uv run pytest tests/unit/gui tests/gui -n 4` green (minus the known baseline failure).
+   **`tests/gui` is not optional** — browse GUI tests and the colony-view package live
+   there, so a `tests/unit/gui`-only gate never reaches what phases 2 and 6 touch.
 2. `uv run python scripts/check_features_md.py --strict` exits 0.
 3. `uv run python scripts/check_workflows_md.py -v` exits 0.
 4. `uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli` exits 0.

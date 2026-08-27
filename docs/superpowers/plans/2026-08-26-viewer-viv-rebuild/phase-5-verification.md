@@ -22,7 +22,7 @@ Spec §8 names five. Four already have homes; confirm each and fill the gap.
 |---|---|---|
 | Codec ordering — open a **CLI-written** store in a real browser, "not 'the codec registered' — the actual read" | phase 2 task 2.3 | run it |
 | Level selection matches `phenotypic.pyramid`'s ladder, `ceil` boundary included | phase 3 task 3.2 | run it — and assert against the **browser's** choice if task 3.2 retired the server-side stack |
-| Staleness — a rewritten nested chunk must invalidate | phase 1 task 1.2 | run it |
+| Staleness — a rewritten nested chunk must invalidate **without moving the token** | phase 1 task 1.2 **step 4b** | run it |
 | Curation regression — colony curation tests pass **unmodified** | phase 4 task 4.3 step 3 | run it, **and run the three tests that actually prove the chain** (below) |
 | Label path — a `gray`-primary store resolves its objmap through `phenotypic.labels.objmap` | phase 3 task 3.1 | run it |
 
@@ -53,6 +53,22 @@ which is exactly what phase 4 endangers. It lives under `tests/gui/`, so no
 `tests/unit/gui` invocation reaches it.
 
 Expected: all PASS.
+
+- [ ] **Step 1b: Re-run the colony budget script — it is the only measurement gate left**
+
+```bash
+uv run python docs/superpowers/logic_validation_scripts/2026-08-26-viewer-viv-rebuild/colony_view_budget.py
+```
+Expected: **exit 0**. A non-zero exit means `RECORDED_CAP` / `RECORDED_FRAME_MS` were never
+filled in, and therefore that `COLONY_VIEW_CELL_CAP` in `_grid.py` is an invented number.
+
+With the other two scripts deleted (user ruling, 2026-08-26) this is the **only** surviving
+logic-validation script and the only measured number that lands in shipped code — and until
+now nothing outside the phase that produces it checked that it was filled in.
+
+**Skip this step if phase 4 was cut.** Phase 4 is optional and marked the first thing to
+cut; if it did not land there is no cap to assert, and the script should not be run. Same
+shape as the shared-camera FEATURES row in task 5.3 step 1.
 
 - [ ] **Step 2: Confirm the spike gate's findings were actually acted on**
 

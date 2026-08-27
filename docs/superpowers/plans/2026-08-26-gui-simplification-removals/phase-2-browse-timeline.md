@@ -304,7 +304,7 @@ left hidden — the unit test in 2.1 checks the built layout, this checks the ru
 
 ```bash
 uv run ruff check --fix src/phenotypic/gui/browse/
-git add -A src/phenotypic/gui/browse tests/gui/browse tests/gui/browse tests/e2e/gui
+git add -A src/phenotypic/gui/browse tests/gui/browse tests/integration/gui tests/e2e/gui
 git commit -m "refactor(gui): delete Browse Timeline mode, keep Single unchanged"
 ```
 
@@ -431,17 +431,24 @@ git commit -m "refactor(gui): delete the shared timeline engine with its last co
 ### Task 2.6: Retire the shared-engine ledger rows
 
 **Files:**
-- Modify: `src/phenotypic/gui/FEATURES.md:536-537`
+- Modify: `src/phenotypic/gui/FEATURES.md`, the two rows naming `gui/_shared/timeline/` (**anchor on content — they are at `:543-544`; the spec's `:536-537` are run-console rows**)
 
 - [ ] **Step 1: Remove the two rows**
 
-Delete the **Timeline shared engine** and **Compare-strip cap logic** rows at
-`FEATURES.md:536-537`. If phase 1 task 1.4 step 1 already removed them (same-PR
-execution), confirm and skip:
+Delete the **Timeline shared engine** and **Compare-strip cap logic** rows — the two whose
+Element column names `gui/_shared/timeline/`.
 
-```bash
-uv run grep -n "shared engine\|Compare-strip" src/phenotypic/gui/FEATURES.md
-```
+> **Do not use the spec's `FEATURES.md:536-537`.** Those are run-console rows
+> (`Progress dashboard iframe`, `postMessage (dashboard → parent)`). The shared-engine rows
+> are at **`:543-544`**. Every FEATURES.md range in the spec is stale by ≈ +7 — the plan
+> README's Global Constraints carry the full offset table. Anchor on content:
+>
+> ```bash
+> uv run grep -n "_shared/timeline/" src/phenotypic/gui/FEATURES.md
+> ```
+> Expected: exactly the two rows to delete. **Phase 1 deliberately left them alone** — the
+> engine still had a live consumer until task 2.5 — so there is no "already removed, skip"
+> case.
 
 - [ ] **Step 2: Run the ledger gates**
 

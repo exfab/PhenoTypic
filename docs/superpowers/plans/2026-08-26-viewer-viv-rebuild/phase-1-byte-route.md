@@ -380,8 +380,19 @@ def register_zarr_routes(app: dash.Dash, output_root) -> None:
         try:
             expected = store_generation_token(store)
             roots = readable_roots_for(store)
-        except (OSError, StoreUnreadable):
+        except (OSError, KeyError):
+            # Root gone (promote in flight) or carrying no `phenotypic`
+            # block. `require_readable_store` raises FileNotFoundError,
+            # KeyError AND ValueError (`ngff_.py:646-649`) -- KeyError is
+            # NOT an OSError, so it must be named.
             abort(404)
+        except StoreUnreadable:
+            # 422, NOT 404 -- matching what Colony already does. `crop_colony`
+            # deliberately does not catch this (`tiles.py:685-688`) because a
+            # store this build cannot decode is a run-wide, actionable
+            # condition; 404 would tell the user "no such image", which is
+            # false and hides it. The two surfaces must agree.
+            abort(422, description=str(sys.exc_info()[1]))
         if token != expected:
             abort(409)
         return send_file(
@@ -391,6 +402,49 @@ def register_zarr_routes(app: dash.Dash, output_root) -> None:
 
     app.server.register_blueprint(bp)
 ```
+
+- [ ] **Step 4b: Restore spec §8's nested-chunk staleness check**
+
+> **This test was deleted in round 1 and nothing replaced it.** Round-0 task 1.2 was
+> "Prove the route respects the landed staleness key"; the rewrite replaced the whole task
+> and dropped its test, while four documents still promised it (phase 5's §8 checklist,
+> DRIFT.md twice, and the plan README's definition of done). **The generation token does not
+> cover it** — the token keys on the root `zarr.json`, which an in-place nested-chunk rewrite
+> does not touch, so the URL stays valid. That is *correct*, and it is exactly the property
+> worth pinning.
+
+```python
+def test_a_rewritten_nested_chunk_is_served_fresh(zarr_route_client, spike_store, token):
+    """A nested-chunk rewrite must be visible WITHOUT changing the token.
+
+    A store directory's ``st_mtime_ns`` does not move when a nested chunk is
+    rewritten, and neither does the root ``zarr.json`` -- so the token is
+    unchanged and the URL stays valid. The route holds no cache, so the new
+    bytes are served. This passes by construction today; it is a forward
+    guard against a cache being added between the file and the response, and
+    it is spec section 8's "staleness" check.
+    """
+    url = f"/zarr/ds/plate.ome.zarr/{token}/rgb/0/c.0.0.0"
+    before = zarr_route_client.get(url).data
+
+    chunk = spike_store / "rgb" / "0" / "c.0.0.0"
+    dir_mtime_before = spike_store.stat().st_mtime_ns
+    chunk.write_bytes(before[:-1] + bytes([before[-1] ^ 0xFF]))
+    assert spike_store.stat().st_mtime_ns == dir_mtime_before, (
+        "premise broken: the store directory mtime moved, so this test no "
+        "longer proves what it claims"
+    )
+
+    assert zarr_route_client.get(url).status_code != 409, (
+        "the token moved on a nested-chunk rewrite; it must key on the root "
+        "zarr.json only"
+    )
+    assert zarr_route_client.get(url).data != before
+```
+
+The mid-test assertion on `dir_mtime_before` is deliberate: it fails loudly if the
+platform's directory-mtime behaviour differs, rather than letting the test pass while
+proving nothing.
 
 - [ ] **Step 5: Run, lint, commit**
 
@@ -405,15 +459,11 @@ git commit -m "feat(gui): serve OME-Zarr bytes with Range, a per-store root set 
 
 ---
 
-### Task 1.3: What the route still exposes — record it for sign-off
+### Note — what the route still exposes
 
-**Files:**
-- Modify: `docs/superpowers/plans/2026-08-26-viewer-viv-rebuild/spike/README.md`
-
-> Spec §4.0 already records the narrowing. This task exists so the *residual* exposure is
-> stated as a fact rather than left implied by "pixels only".
-
-- [ ] **Step 1: Write down what a browser can read**
+> Not a task: it produces no artifact and takes no commit. Fold this paragraph into task
+> 1.2's commit body. Spec §4.0 already records the narrowing; this states the *residual*
+> exposure as a fact rather than leaving it implied by "pixels only".
 
 The root `zarr.json` is **mandatory** — the client bootstraps from it — and carries
 `attributes.phenotypic.metadata`: the `protected`, `public` and `imported` sections plus
@@ -426,4 +476,4 @@ Open OnDemand recipe (`--host 0.0.0.0`, `gui_hub.md:116, :124`), anything that c
 the node's port can read a run's image metadata. This is **not new** — the existing DZI and
 crop routes already serve pixels the same way — but it is now written down.
 
-- [ ] **Step 2: No commit** — this rides on the spec §4.0 sign-off already recorded.
+This rides on the spec §4.0 sign-off already recorded.
