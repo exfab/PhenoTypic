@@ -11,8 +11,11 @@ The script:
 2. Runs the CLI once against that dataset to produce real CLI output
    (``deliverables/`` + ``results/``).
 3. Boots ``phenotypic-gui --root <dataset_parent>`` on a free port.
-4. Drives a headless Chromium browser through every tutorial workflow
-   and saves PNGs into ``docs/source/_static/gui_images/<workflow>/``.
+4. Drives a Chromium browser through every tutorial workflow and saves
+   PNGs into ``docs/source/_static/gui_images/<workflow>/``. The Plate
+   surface and the builder node preview paint through deck.gl, so the
+   browser must have a real WebGL stack -- see ``_gl_chromium``, which
+   pairs the full Chromium build with an ``Xvfb`` display.
 5. Tears down the GUI subprocess.
 
 Re-running this script overwrites the existing screenshots — that is the
@@ -25,8 +28,10 @@ Requires Playwright + Chromium. Install on first run::
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
+import os
 import shutil
 import socket
 import subprocess
@@ -47,6 +52,102 @@ PIPELINE_JSON = DATASET_DIR / "pipeline.json.pht-pipe"
 OUTPUT_DIR = DATASET_DIR / "results"
 
 VIEWPORT = {"width": 1280, "height": 900}
+
+
+# ---------------------------------------------------------------------------
+# A Chromium that can actually paint WebGL
+# ---------------------------------------------------------------------------
+
+
+@contextlib.contextmanager
+def _gl_chromium(pw, headed: bool):
+    """Yield a Chromium with a working WebGL2 stack, on a display it can use.
+
+    The Plate surface and the builder node preview both paint through
+    deck.gl now, so this is no longer a detail of the launch: Playwright's
+    DEFAULT ``chromium`` launch uses ``chromium_headless_shell``, which
+    ships no GL stack at all -- ``canvas.getContext('webgl2')`` returns
+    ``null`` and every deck.gl canvas screenshots as an empty stage. Six
+    flag combinations including ``--enable-unsafe-swiftshader`` were probed
+    and none change it. The full ``chrome-linux64`` build beside it
+    (``channel="chromium"``) does have one, and needs an X display on top --
+    under bare headless the GPU process still dies with
+    ``BindToCurrentSequence failed``.
+
+    A PNG captured without this shows a black rectangle where the plate
+    should be, which is a picture of a rendering bug that does not exist.
+    So when the GL browser cannot be had, this says so loudly and falls
+    back rather than failing the regeneration lane: the shots that do not
+    paint through deck.gl are still correct, and the artifact upload is the
+    canonical output either way.
+    """
+    if headed:
+        # A real window has a real GL stack; Xvfb would hide it.
+        browser = pw.chromium.launch(headless=False)
+        try:
+            yield browser
+        finally:
+            browser.close()
+        return
+
+    with _xvfb_display() as display:
+        if display is not None:
+            env = {**os.environ, "DISPLAY": display}
+            try:
+                browser = pw.chromium.launch(channel="chromium", env=env)
+            except Exception as exc:  # pragma: no cover - environment probe
+                print(
+                        "[shot] WARNING: the full Chromium build "
+                        f"(channel='chromium') would not launch ({exc!r}); "
+                        "deck.gl surfaces will screenshot BLANK. Install it "
+                        "with `uv run playwright install chromium`."
+                )
+            else:
+                try:
+                    yield browser
+                finally:
+                    browser.close()
+                return
+        else:
+            print(
+                    "[shot] WARNING: no Xvfb on PATH, so Chromium has no X "
+                    "display; deck.gl surfaces will screenshot BLANK."
+            )
+
+    browser = pw.chromium.launch(headless=True)
+    try:
+        yield browser
+    finally:
+        browser.close()
+
+
+@contextlib.contextmanager
+def _xvfb_display():
+    """Run an ``Xvfb`` and yield its ``DISPLAY``, or ``None`` if unavailable.
+
+    ``-displayfd`` lets the server pick a free display number and report
+    it; probing numbers here would race anything else on a shared machine.
+    """
+    if shutil.which("Xvfb") is None:
+        yield None
+        return
+    read_fd, write_fd = os.pipe()
+    proc = subprocess.Popen(
+            ["Xvfb", "-displayfd", str(write_fd), "-screen", "0",
+             "1280x1024x24"],
+            pass_fds=(write_fd,),
+    )
+    os.close(write_fd)
+    try:
+        with os.fdopen(read_fd, "r") as handle:
+            number = handle.readline().strip()
+        yield f":{number}" if number else None
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5.0)
+        except subprocess.TimeoutExpired:
+            proc.kill()
 
 # ---------------------------------------------------------------------------
 # Synthetic dataset
@@ -487,8 +588,7 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
                 "  uv run playwright install chromium"
         ) from exc
 
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=not headed)
+    with sync_playwright() as pw, _gl_chromium(pw, headed) as browser:
         try:
             context = browser.new_context(viewport=VIEWPORT)
             _capture_setup(context, base_url)
@@ -505,7 +605,7 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             _capture_wire_pipeline_as_aux(context, base_url)
             _capture_fix_validation_issues(context, base_url)
         finally:
-            browser.close()
+            context.close()
 
 
 def _save(
@@ -1533,8 +1633,7 @@ def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
             print("[shot] standalone analysis did not respond — skipping")
             return
 
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=not headed)
+        with sync_playwright() as pw, _gl_chromium(pw, headed) as browser:
             try:
                 context = browser.new_context(viewport=VIEWPORT)
                 page = _new_page(context, base_url, "/")
@@ -1570,7 +1669,7 @@ def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
 
                 page.close()
             finally:
-                browser.close()
+                context.close()
     finally:
         _stop_process(proc)
 
@@ -1612,8 +1711,7 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
         _wait_for_process_http_200(
                 base_url + "/", proc, log_path, timeout=30.0,
         )
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=not headed)
+        with sync_playwright() as pw, _gl_chromium(pw, headed) as browser:
             try:
                 context = browser.new_context(viewport=VIEWPORT)
                 page = context.new_page()
@@ -1621,27 +1719,47 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
                 page.wait_for_load_state("networkidle")
                 page.wait_for_timeout(2500)
 
-                # Select the first image from the dropdown so the
-                # OpenSeadragon canvas actually renders a colony plate.
-                dropdown = page.locator(
-                        ".Select-control, div[class*='css-'][class*='control']"
-                ).first
-                if dropdown.count() > 0:
-                    try:
-                        dropdown.click(timeout=2000)
-                        page.wait_for_timeout(400)
-                        # Pick the first option that appears.
-                        first_option = page.locator(
-                                ".Select-option, div[class*='option']"
-                        ).first
-                        if first_option.count() > 0:
-                            first_option.click(timeout=2000)
-                            page.wait_for_timeout(2500)
-                    except Exception as exc:  # pragma: no cover - best-effort
-                        print(
-                                f"[shot]   image-dropdown selection skipped: {exc!r}"
-                        )
+                # Step to the first image so the Viv stage actually
+                # paints a colony plate. Driven through the card's `>`
+                # stepper button rather than the react-select dropdown:
+                # the dropdown is a `dcc.Dropdown` whose menu portal and
+                # option classes are library internals, and clicking them
+                # has been failing silently -- the committed
+                # `02_viewer_loaded.png` it produced showed an unselected
+                # picker over an empty stage. The stepper is a plain
+                # button with a stable pattern-matching id, and it is the
+                # affordance the tutorial page describes anyway.
+                try:
+                    page.click(
+                            '[id*="card-picker-next"]',
+                            timeout=5_000,
+                    )
+                    page.wait_for_timeout(1_500)
+                except Exception as exc:  # pragma: no cover - best-effort
+                    print(f"[shot]   image stepper click skipped: {exc!r}")
 
+                # deck.gl paints on its own schedule after the source
+                # resolves; a shot taken before the first frame is a black
+                # stage. Waiting on the canvas ELEMENT is not enough -- it
+                # exists from the first render -- so wait for the facade to
+                # report a served level, which only happens once
+                # ``MultiscaleImageLayer`` has actually asked a loader for a
+                # tile.
+                try:
+                    page.wait_for_function(
+                            "() => {const el = document.querySelector("
+                            "'[id*=\"card-pyramid-readout\"]');"
+                            " return !!el && el.textContent.indexOf("
+                            "'pyramid level') === 0;}",
+                            timeout=20_000,
+                    )
+                except Exception as exc:  # pragma: no cover - best-effort
+                    print(
+                            "[shot]   WARNING: the Plate stage never reported "
+                            f"a served level ({exc!r}); 02_viewer_loaded.png "
+                            "may show an unpainted canvas."
+                    )
+                page.wait_for_timeout(800)
                 _save(page, "view_results", "02_viewer_loaded.png")
 
                 # Open the right-docked filter offcanvas from the top-bar
@@ -1668,13 +1786,34 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
                 except Exception as exc:  # pragma: no cover - best-effort
                     print(f"[shot]   filter-offcanvas shot skipped: {exc!r}")
 
-                page.mouse.wheel(0, 800)
-                page.wait_for_timeout(500)
+                # Open the per-object table and scroll IT into view.
+                # `page.mouse.wheel` cannot do this any more: the Plate is
+                # a full-canvas deck.gl stage that consumes the wheel as a
+                # zoom gesture, so the page never scrolled and the shot
+                # named "measurement table" showed a zoomed plate. Scroll
+                # the document instead, and open the collapse the table
+                # lives in -- it is closed on load.
+                try:
+                    toggle = page.locator(
+                            '[id*="card-details-toggle"]'
+                    ).first
+                    toggle.scroll_into_view_if_needed(timeout=5_000)
+                    toggle.click(timeout=5_000)
+                    table = page.locator('[id*="card-details-table"]').first
+                    table.wait_for(state="visible", timeout=10_000)
+                    table.scroll_into_view_if_needed(timeout=5_000)
+                    page.wait_for_timeout(700)
+                except Exception as exc:  # pragma: no cover - best-effort
+                    print(
+                            "[shot]   WARNING: the per-object table never "
+                            f"opened ({exc!r}); 03_measurement_table.png "
+                            "will not show one."
+                    )
                 _save(page, "view_results", "03_measurement_table.png")
 
                 page.close()
             finally:
-                browser.close()
+                context.close()
     finally:
         _stop_process(proc)
 

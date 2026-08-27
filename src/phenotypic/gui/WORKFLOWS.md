@@ -39,7 +39,7 @@ build.
 | build_pipeline | Build a pipeline     | Fixed linear port map with view-only zoom/fit controls, click-only palette insertion, green continuation target, side loader, Save / Load, and embedded-pipeline breadcrumbs. | `_capture_build_pipeline` | `gui/03_build_pipeline.md`   | ✅ shipping |
 | run_local      | Run locally          | Run console form, pipeline / input / output pickers, automatic compatible continuation and terminal-retry controls, direct progress-only dashboard, generation receipts, uncertain acknowledgement handling, terminal Cancel gating, and retained logs. | `_capture_run_local`      | `gui/04_run_local.md`        | ✅ shipping |
 | run_slurm      | Run on SLURM         | SLURM mode toggle, automatic compatible continuation and terminal-retry controls, advanced config, Progress/Download dashboard tabs, `sbatch --export=ALL`, and durable generation-bound ordinary/staged lifecycle observation, logs, cancellation, publication, restart guidance. | `_capture_run_slurm`      | `gui/05_run_slurm.md`        | ✅ shipping |
-| view_results   | View results         | Empty-state hub mount, asynchronous sidebar binding with coherent read-only Results/Analysis snapshots and consistency diagnostics, populated hub/standalone viewers, and measurement table. | `_capture_view_results`   | `gui/06_view_results.md`     | ✅ shipping |
+| view_results   | View results         | Empty-state hub mount, asynchronous sidebar binding with coherent read-only Results/Analysis snapshots and consistency diagnostics, populated hub/standalone viewers, the full-canvas Viv Plate stage with its Layers panel and served-level readout, and the per-object measurement table. | `_capture_view_results`   | `gui/06_view_results.md`     | ✅ shipping |
 | pick_points    | Manual point picker  | Pickable badge, picker modal, RGB / Input channel toggle, confirm round trip. | `_capture_pick_points`    | `gui/07_pick_points.md`      | ✅ shipping |
 | analysis       | Analysis sub-app     | `/analysis/` mount, pipeline header, post / filter / edge / model section authoring, opaque-analyzer preservation, and atomic guarded publication of class-named artifacts plus configured `PlotAnalysis` refresh. | `_capture_analysis` | `gui/08_analysis.md` | ✅ shipping |
 | aux_ports      | Fill aux op params | Op-typed side-loader rows render gold port buttons on the left; selecting a side target and clicking a compatible operation fills/replaces the hidden aux value, with clear/drill/help actions in the value row. | `_capture_aux_ports` | `gui/09_aux_ports.md`     | ✅ shipping |
@@ -58,6 +58,15 @@ build.
 > standalone viewer against the same real CLI output. All contribute to the
 > same `view_results/` folder; the validator only requires the primary
 > `_capture_view_results` to be defined + dispatched.
+>
+> **The Plate shots need a browser with a real WebGL stack.** The Plate
+> surface and the builder node preview paint through deck.gl now, and
+> Playwright's default `chromium` launch uses `chromium_headless_shell`,
+> which ships no GL at all -- every deck.gl canvas would screenshot as an
+> empty stage. `_gl_chromium` in the capture script pairs the full
+> Chromium build (`channel="chromium"`) with an `Xvfb` display, and says
+> so loudly when it cannot. A regeneration lane without `Xvfb` still
+> produces the non-GL shots correctly.
 
 ## How to add a workflow
 

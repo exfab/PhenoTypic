@@ -6,7 +6,7 @@ The GUI is a Dash-based hub: a shell plus five mounted sub-apps:
 | ------------ | ----------------------------------- | ---------------------------------------- |
 | `/`          | `gui/shell/`                        | Top-bar chrome, sidebar, home page       |
 | `/builder/`  | `gui/builder/`                      | Pipeline builder (dash-cytoscape graph)  |
-| `/results/`  | `gui/results_viewer/`               | Output viewer (OpenSeadragon + tables)   |
+| `/results/`  | `gui/results_viewer/`               | Output viewer (Viv/deck.gl + tables)     |
 | `/run/`      | `gui/run_console/`                  | Run console (form + log tail + recents)  |
 | `/analysis/` | `gui/analysis/`                     | Analyzer runner (via `_AnalysisProxy`)   |
 | `/browse/`   | `gui/browse/`                       | File / output browser                    |
@@ -26,6 +26,64 @@ Composition lives in [shell/_app.py](shell/_app.py) (`compose_hub`); the
 hub's WSGI seam is a `werkzeug.middleware.dispatcher.DispatcherMiddleware`
 that strips each mount prefix before forwarding to the sub-app's Flask
 server.
+
+---
+
+## Pixel paths — which surface renders how
+
+There are now **two** ways a plate reaches a canvas, and picking the wrong one
+is the expensive mistake in this package. They are not interchangeable.
+
+| Surface | Path |
+| --- | --- |
+| Results **Plate** | store chunks → `/zarr/<ds>/<stem>.ome.zarr/<token>/…` → Viv / deck.gl |
+| Results **Colony** | same route, one `OrthographicView` per colony on one shared `zoom` |
+| Builder **node preview** | same client, its own route: `/preview-zarr/…` |
+| **Browse** | libvips → DZI → `BrowseCache` → OpenSeadragon |
+| Builder **point picker** | libvips → DZI → OpenSeadragon |
+
+**The results viewer renders no server-side pyramid and caches no rendered
+PNG.** `_tile_routes.py`'s `.dzi` routes are gone; `build_source_spec`
+(`results_viewer/_store_source.py`) reads the store's own
+`attributes.phenotypic` block and hands the browser a spec, and the browser
+does the tiling. Two rules follow, and both have already been got wrong once:
+
+- **Never hard-code `rgb`, `gray`, `detect_mat` or `rgb/labels/objmap`.** The
+  primary series is `rgb` when present and `gray` otherwise; the label path is
+  read from `phenotypic.labels.objmap` with `.get`, because
+  `build_phenotypic_attributes` **omits** the key entirely for a store with no
+  label image. The readable series set is derived per store — a real store can
+  carry `original`.
+- **Never recompute the pyramid.** The level count is recorded in
+  `phenotypic.pyramid`; the client picks a level per frame and the façade
+  *observes* which one, it does not compute it.
+
+**`_dzi_tiler` stays.** It has **four** consumers — `browse/_preparation.py`,
+`browse/_preparation_routes.py`, `browse/_app.py` and
+`builder/_point_picker.py` — and spec §9 keeps Browse on libvips → DZI →
+`BrowseCache` → OSD deliberately. The node preview left that path in the Viv
+rebuild's phase 6, which is what took the count from five to four. Deleting
+the module breaks Browse. `_tile_routes.py`'s two shared symbols
+(`TILE_NAME_RE`, `json_error`) moved to `gui/_shared/tiles.py` because the
+builder imports them across sub-app boundaries.
+
+**Only `results_viewer/_assets/viv_viewer.js` may touch
+`window.__vivBundle`.** It is the one imperative façade — `mount` /
+`setSource` / `setViewState` / `setGridViews` / `setLayerVisibility` /
+`setLayerOpacity` / `destroy`, all `containerId`-first — and the builder
+reaches it through the two-file `gui/_shared/_viv_assets.py` blueprint at
+`/_viv/` rather than committing a second copy of the 2.5 MiB artifact. Dash
+serves the façade **before** the bundle (root-level assets sort ahead of
+subdirectory ones), so the façade resolves the global lazily inside `ready()`
+and never at module scope. The vendored bundle is built outside the repo from
+`tools/viv-bundle/` — there is no npm in CI — and `create_app` logs its
+version at startup, which is the only signal that the committed artifact has
+drifted from its lockfile.
+
+**Viv rendering tests need a real GL stack.** Playwright's default `chromium`
+launch uses `chromium_headless_shell`, which ships none:
+`canvas.getContext('webgl2')` returns `null` and deck.gl paints nothing. Use
+`channel="chromium"` on an `Xvfb` display. Decode tests need neither.
 
 ---
 
@@ -426,8 +484,9 @@ travels with the field annotation.
   False`) because the RGB/Enhanced/Labels layers source per-image
   `results/<ds>/zarr/<stem>.ome.zarr` stores that a bundle does not ship.
   Curation, QC
-  review, overlays, and DZI deep-zoom (overlay-tiled) all still work; only the
-  per-image full-res layer switch is absent. The `STORE_ACTIVE_LAYER` store
+  review and overlays all still work; the per-image full-res layer switch and
+  the Viv deep-zoom stage are what a bundle cannot offer, because both read
+  the stores it does not ship. The `STORE_ACTIVE_LAYER` store
   stays mounted regardless so the colony render callback's Input is resolvable
   even when the control is hidden.
 
