@@ -1,9 +1,11 @@
 # Results viewer rebuild on Viv
 
 **Date:** 2026-08-26
-**Status:** Draft — blocked on the OME-Zarr backend
-**Scope:** The Plate and Colony surfaces of the results viewer, their pixel path, and the
-JS packaging that path requires.
+**Status:** Draft — refined through two reviewer rounds; the OME-Zarr backend has **landed**
+(see §1), so this is no longer blocked on it
+**Scope:** The Plate and Colony surfaces of the results viewer, the builder node preview
+(§7, folded in from a retired cycle 3), their pixel path, and the JS packaging that path
+requires.
 
 ## Summary
 
