@@ -165,10 +165,16 @@ round trip must stay closed.
 
 - [ ] **Step 3: Update `gui/CLAUDE.md`**
 
-Record: the Plate/Colony pixel path is Viv over `/zarr/...`; Browse remains
-libvips → DZI → `BrowseCache` → OSD; `_dzi_tiler` survives for Browse, the point picker and
-the builder preview; the façade at `_assets/viv_viewer.js` is the only thing that may touch
-`window.__vivBundle`.
+Record: the Plate/Colony pixel path is Viv over `/zarr/...`, and the builder preview is Viv
+over `/preview-zarr/...` (phase 6); Browse remains libvips → DZI → `BrowseCache` → OSD;
+`_dzi_tiler` survives for **Browse and the point picker** — four consumers, not five, once
+phase 6 has landed; `_tile_routes.py` survives as a module even with its `.dzi` routes gone,
+because the builder imports `_TILE_NAME_RE` and `_json_error` from it; and the façade at
+`_assets/viv_viewer.js` is the only thing that may touch `window.__vivBundle`.
+
+**Run this task last, after phase 6.** Both phases edit the same four files
+(`FEATURES.md`, `WORKFLOWS.md`, `gui/CLAUDE.md`, the capture script) through the same three
+CI gates; doing it once is the point of folding phase 6 in.
 
 - [ ] **Step 4: Run all three gates**
 
