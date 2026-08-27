@@ -20,12 +20,14 @@ here rather than as a runtime failure in a browser nobody ran.
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 
 import dash
 
 import phenotypic.gui.results_viewer as results_viewer
+from phenotypic.gui.results_viewer._app import create_app, viv_bundle_version
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 ASSETS = Path(results_viewer.__file__).parent / "_assets"
@@ -100,3 +102,34 @@ def test_the_committed_bundle_matches_its_recorded_version() -> None:
         "Rebuild with `cd tools/viv-bundle && npm ci && node build.mjs`, or "
         "correct VERSION -- whichever is actually stale."
     )
+
+
+def test_the_runtime_reader_agrees_with_the_recipe() -> None:
+    """``viv_bundle_version()`` reports what the recipe recorded.
+
+    The startup log is the only signal that the vendored artifact is
+    stale, so the reader behind it has to resolve the same string the
+    test above pins -- otherwise the log says "unknown", or says
+    something the recipe never claimed, and the mitigation is silently
+    inert.
+
+    It reads the artifact's banner, not ``tools/viv-bundle/VERSION``: an
+    installed PhenoTypic ships the bundle but not the repo's ``tools/``
+    tree, so a reader keyed on the VERSION file would report "unknown"
+    everywhere except a source checkout.
+    """
+    assert viv_bundle_version() == RECIPE_VERSION.read_text(
+        encoding="utf-8"
+    ).strip()
+
+
+def test_the_viewer_logs_the_bundle_version_at_startup(caplog) -> None:
+    """Spec section 3 requires the GUI to say which bundle it shipped.
+
+    Emitted on the empty-state path too -- the version is a property of
+    the installation, not of whether a run is bound.
+    """
+    with caplog.at_level(logging.INFO, logger="phenotypic.gui.results_viewer._app"):
+        create_app(None)
+    logged = [r.getMessage() for r in caplog.records if "viv bundle:" in r.getMessage()]
+    assert logged == [f"viv bundle: {viv_bundle_version()}"], caplog.records

@@ -29,6 +29,7 @@ Phase 5 additions:
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -103,6 +104,43 @@ from phenotypic.sdk_._qc_recipe import QcRecipe
 
 logger = logging.getLogger(__name__)
 
+#: Banner prefix ``tools/viv-bundle/build.mjs`` stamps into the artifact.
+_VIV_BANNER_MARK = "PhenoTypic vendored Viv bundle -- "
+
+#: Only the banner is read; the artifact itself is ~2.5 MiB.
+_VIV_BANNER_BYTES = 512
+
+
+@lru_cache(maxsize=1)
+def viv_bundle_version() -> str:
+    """The version string stamped into the vendored Viv bundle.
+
+    There is no npm in CI by design (spec section 3), so nothing rebuilds
+    the committed artifact to prove it still matches
+    ``tools/viv-bundle/package-lock.json``. Logging what shipped is the
+    mitigation, not a fix: it tells a reader which bundle a browser is
+    running when a render misbehaves, and it is the only such signal.
+
+    ``tools/viv-bundle/VERSION`` is *not* read here -- it lives in the repo,
+    not in the installed package, so an installed PhenoTypic has no copy.
+    The banner travels with the artifact.
+    ``tests/unit/gui/results_viewer/test_viv_asset_order.py`` pins the two
+    to each other.
+
+    Returns:
+        The recorded version, or ``"unknown"`` when the banner is missing
+        or unreadable -- a viewer must still start without it.
+    """
+    bundle = Path(__file__).parent / "_assets" / "viv" / "viv-bundle.min.js"
+    try:
+        with bundle.open("r", encoding="utf-8", errors="replace") as handle:
+            banner = handle.read(_VIV_BANNER_BYTES)
+    except OSError:
+        return "unknown"
+    head = banner.split("\n", 1)[0]
+    _, mark, version = head.partition(_VIV_BANNER_MARK)
+    return version.strip() if mark else "unknown"
+
 
 def create_app(
     output_root: Optional[OutputRoot] = None,
@@ -160,6 +198,8 @@ def create_app(
         url_prefix,
         binding_generation=binding_generation,
     )
+
+    logger.info("viv bundle: %s", viv_bundle_version())
 
     inject_design_tokens(app)
     register_shared_static(app.server)
