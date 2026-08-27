@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GUI × OME-Zarr — Design Decisions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================================
+   PAPER/INK ARTIFACT DESIGN SYSTEM   (~/.claude/assets/paper-ink-artifact.css)
+   ----------------------------------------------------------------------------
+   Reusable "field-notebook / scientific paper" styling for SELF-CONTAINED HTML
+   EXPLAINER ARTIFACTS: visual-explainer output, diagrams, plan/diff reviews,
+   project recaps, comparison pages, slide decks. Warm paper ground, ink text,
+   fine rules, colour-blind-safe Okabe-Ito accents.
+
+   USE FOR : one-off / throwaway visual explainers NOT part of a shipped product.
+   NOT FOR : production HTML — docs sites (Sphinx/MkDocs/Docusaurus), app/GUI UI
+             (React/Vue/Dash/Flask/Django templates, component libraries, shipped
+             .html/.css/.js), email templates, or any file inheriting a project
+             theme. Match project conventions for those.
+
+   HOW TO USE: inline this whole file inside a <style> in the artifact <head> and
+   add the fonts:
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+   COMPONENTS: .topbar/.brand · .hero/.family-badge/.hero-title/.lede · .chip
+   · .badge (.b-a/.b-b/.b-dyn/.b-phys/.b-fit-green/.b-fit-amber/.b-fit-red)
+   · .legend · .band/.section-title · .card-grid/.card/.card-head/.metric-name/.definition
+   · figure.illo (inline <svg> viewBox "0 0 360 220", labels .lbl/.lbl-strong) · .meta/.prov
+   · .callout(.green/.blue) · .footer
+   Regime accents: A=blue B=green Dyn=sky Phys=purple. Fit: green/amber/red.
+   ============================================================================ */
+
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+  /* --- supplementary: tables + decision chrome (not in the base system) --- */
+  table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0 2px}
+  table.tbl th{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--faint);text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);white-space:nowrap}
+  table.tbl td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text)}
+  table.tbl tr:last-child td{border-bottom:none}
+  table.tbl code, .mono{font-family:var(--mono);font-size:.9em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+  .scroller{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px 6px;box-shadow:var(--shadow)}
+  .opt{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;border-top:3px solid var(--rule)}
+  .opt.rec{border-top-color:var(--green)}
+  .opt.warn{border-top-color:var(--orange)}
+  .opt.bad{border-top-color:var(--vermillion)}
+  .opt h3{margin:0;font-family:var(--serif);font-weight:600;font-size:18.5px;color:var(--ink);line-height:1.2}
+  .opt .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  .opt p{margin:0;font-size:14.5px}
+  .opt ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--text-dim)}
+  .opt ul li{margin:3px 0}
+  .opt ul li b{color:var(--text)}
+  .pro::marker{color:var(--green)} .con::marker{color:var(--vermillion)}
+  .qbox{background:var(--inset);border:1px dashed var(--rule);border-radius:10px;padding:12px 16px;margin-top:12px}
+  .qbox p{margin:0;font-size:14px}
+  .qbox .qk{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:4px}
+  .strike{text-decoration:line-through;color:var(--faint)}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="wrap">
+  <div class="brand"><b>PhenoTypic GUI</b> &nbsp;·&nbsp; feat/gui-ome-zarr-sync &nbsp;·&nbsp; design decisions</div>
+  <nav>
+    <a href="#settled">settled</a><a href="#today">today</a><a href="#feas">feasibility</a>
+    <a href="#a">A</a><a href="#b">B</a><a href="#c">C</a><a href="#d">D</a><a href="#e">E</a><a href="#ask">asks</a>
+  </nav>
+</div></div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="family-badge">GUI</div>
+    <div>
+      <div class="hero-kicker">Brainstorm · architectural · 2026-08-26</div>
+      <h1 class="hero-title">Cut three surfaces, then rebuild the viewer on Viv</h1>
+      <p class="lede">
+        The results viewer stops <em>producing</em> pyramids and starts <em>consuming</em> them.
+        Every decision below follows from one shift: with Viv/vizarr the browser reads zarr chunks
+        directly over HTTP range requests, so the server does no tiling at all — a deletion, not an optimization.
+      </p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>settled: removals</span>
+        <span class="chip"><span class="dot" style="background:var(--orange)"></span>5 open decisions</span>
+        <span class="chip"><span class="dot" style="background:var(--vermillion)"></span>1 backend-spec amendment</span>
+        <span class="chip"><span class="dot" style="background:var(--blue)"></span>backend is spec-only, no code yet</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ SETTLED ============================ -->
+  <div class="band" id="settled">
+    <h2 class="section-title">What you've already settled</h2>
+    <p class="prov">from your answers · not up for re-litigation, just recorded</p>
+    <div class="scroller">
+    <table class="tbl">
+      <tr><th>Surface</th><th>Action</th><th>What that means in code</th></tr>
+      <tr>
+        <td><b>Results Timeline tab</b><br><span class="badge b-fit-red">delete</span></td>
+        <td>Hard removal</td>
+        <td><code>results_viewer/timeline_view/</code>, <code>TAB_TIMELINE_ID</code>, thumb routes, compare-selected, multi-select</td>
+      </tr>
+      <tr>
+        <td><b>Browse Timeline mode</b><br><span class="badge b-fit-red">delete</span></td>
+        <td>Hard removal</td>
+        <td>Single/Timeline toggle + row/time-source selectors, pattern input, CSV join, <code>browse/_assets/timeline.js</code></td>
+      </tr>
+      <tr>
+        <td><b><code>gui/_shared/timeline/</code></b><br><span class="badge b-fit-red">delete</span></td>
+        <td>Dies with both consumers</td>
+        <td><code>_compare.py</code> <code>_grid.py</code> <code>_matrix.py</code> <code>_thumbnail.py</code> — no remaining callers</td>
+      </tr>
+      <tr>
+        <td><b>Tune sub-app <code>/tune/</code></b><br><span class="badge b-fit-amber">unmount</span></td>
+        <td>Off the public surface, <b>code kept</b></td>
+        <td>Drop the dispatcher mount + nav leaf. ~6k lines stay on disk for splicing into the simplified tool later.</td>
+      </tr>
+      <tr>
+        <td><b>Heatmap / Error / QC tabs</b><br><span class="badge b-fit-amber">unmount</span></td>
+        <td>Off the public surface, <b>code kept</b></td>
+        <td>Results viewer ships <b>Plate + Colony only</b>. <code>_heatmap_tab/</code>, <code>_error_tab/</code>, <code>_qc_tab/</code> stay importable.</td>
+      </tr>
+      <tr>
+        <td><b>Browse legacy TIFF path</b><br><span class="badge b-fit-green">keep</span></td>
+        <td>Sole survivor of the old stack</td>
+        <td>libvips&rarr;DZI&rarr;<code>BrowseCache</code>&rarr;OSD stays. Browse reads arbitrary source images with no run behind them, so it has no zarr to read.</td>
+      </tr>
+    </table>
+    </div>
+
+    <div class="callout" style="margin-top:16px">
+      <h3>One consequence worth naming now</h3>
+      <p>
+        Unmounting QC and Error takes the <b>curation radial menu</b> with them unless it is deliberately kept on the
+        Colony tab. Curation is the only thing in the viewer that <em>writes</em> — <code>deliverables/errors/&lt;category&gt;.parquet</code>
+        and the durable <code>qc/curation_labels.parquet</code>. If the radial goes dark, the GUI becomes read-only and the CLI's
+        <code>reemit_error_deliverables</code> round-trip has no producer. <b>I need a call on this</b> (see asks).
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================ TODAY ============================ -->
+  <div class="band" id="today">
+    <h2 class="section-title">Where pixels come from today</h2>
+    <p class="lede" style="font-size:16px">
+      Four independent paths. Three of them build a pyramid the zarr store will already contain.
+    </p>
+    <div class="scroller">
+    <table class="tbl">
+      <tr><th>Surface</th><th>Path</th><th>Peak cost</th><th>After zarr</th></tr>
+      <tr>
+        <td><b>Browse</b></td>
+        <td>source image &rarr; libvips DZI &rarr; revision-keyed <code>BrowseCache</code> &rarr; OSD</td>
+        <td>8–10 GiB LRU on disk</td>
+        <td><span class="badge b-fit-green">unchanged</span> no run, no store</td>
+      </tr>
+      <tr>
+        <td><b>Results plate</b></td>
+        <td><code>_load_hdf_layer_rgb</code> reads the <b>whole</b> layer &rarr; PNG &rarr; <code>_dzi_tiler</code> writes DZI files to <code>.viewer_cache/</code> &rarr; OSD</td>
+        <td>full raster resident + a duplicated on-disk pyramid</td>
+        <td><span class="badge b-fit-red">deleted</span> browser reads chunks</td>
+      </tr>
+      <tr>
+        <td><b>Builder preview</b></td>
+        <td>HDF layer &rarr; PNG &rarr; <code>_dzi_tiler</code> &rarr; DZI</td>
+        <td>same, per preview node</td>
+        <td><span class="badge b-fit-amber">decision E</span></td>
+      </tr>
+      <tr>
+        <td><b>Colony tiles</b></td>
+        <td>decode the <b>entire</b> <code>deliverables/overlays/&lt;ds&gt;/&lt;stem&gt;.png</code>, LRU it, slice 64&sup2; crops</td>
+        <td>whole overlay resident to serve a thumbnail</td>
+        <td><span class="badge b-fit-red">deleted</span> chunk read at L0</td>
+      </tr>
+    </table>
+    </div>
+    <div class="callout blue" style="margin-top:16px">
+      <h3>The size of the prize</h3>
+      <p>
+        A 4000&times;3000 plate at <code>--pyramid-levels auto</code> is <b>4 levels</b> (the spec's <code>ceil(log2(max(H,W)/512))+1</code>),
+        smallest level 500&times;375. Today the viewer <em>recomputes</em> exactly that pyramid into <code>.viewer_cache/</code> after
+        materializing the full raster. Post-change the plate tab's server work is: serve bytes. No decode, no resize, no cache directory,
+        no <code>_dzi_tiler</code> at all on this path.
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================ FEASIBILITY ============================ -->
+  <div class="band" id="feas">
+    <h2 class="section-title">Feasibility check — what I verified, what I didn't</h2>
+    <p class="prov">web-verified 2026-08-26 · anything marked UNVERIFIED needs a spike before it enters the spec as fact</p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-head"><h3 class="metric-name">Sharding in the browser</h3><span class="badge b-fit-green">verified</span></div>
+        <p class="definition">
+          zarrita.js supports <b>Zarr v3 with ZEP2 sharding</b>, natively in browsers, zero dependencies.
+          The backend's <code>(C, 4096, 4096)</code> shards over <code>(1,1024,1024)</code> chunks are readable client-side.
+        </p>
+        <div class="meta"><div class="mrow"><span class="mk">source</span><span class="mv">zarrita.dev · github.com/manzt/zarrita.js</span></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3 class="metric-name">zstd in the browser</h3><span class="badge b-fit-amber">conditional</span></div>
+        <p class="definition">
+          <b>Not</b> in zarrita's built-in registry. It requires registering the <code>numcodecs.js</code> wasm zstd codec
+          via <code>zarr.registry.set()</code> before the first read. Workable — but it is an extra wasm payload and an
+          initialization ordering hazard, and it is the kind of thing that fails only in production.
+        </p>
+        <div class="meta"><div class="mrow"><span class="mk">bears on</span><span class="mv">Decision C</span></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3 class="metric-name">Viv &amp; vizarr licensing</h3><span class="badge b-fit-green">verified</span></div>
+        <p class="definition">
+          Both <b>MIT</b>. Compatible with PhenoTypic's Apache-2.0. Adapting the source is fine; it needs a
+          <code>NOTICE</code> entry plus <code>licenses/viv-MIT.txt</code> and <code>licenses/vizarr-MIT.txt</code>,
+          matching the existing pattern for SAM2 / micro-sam / filfinder.
+        </p>
+        <div class="meta"><div class="mrow"><span class="mk">source</span><span class="mv">hms-dbmi/viv · BioNGFF/vizarr</span></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3 class="metric-name"><code>bioformats2raw.layout</code> series</h3><span class="badge b-fit-amber">unverified</span></div>
+        <p class="definition">
+          The store is a <b>named-series collection</b> (<code>rgb</code>/<code>gray</code>/<code>detect_mat</code> + a
+          <code>labels/objmap</code> child). vizarr reads bioformats2raw layouts, but whether it resolves <em>our</em>
+          series list and label child without patching is <b>untested</b>. This is the most likely place the "adapt vizarr"
+          plan meets friction.
+        </p>
+        <div class="meta"><div class="mrow"><span class="mk">spike</span><span class="mv">half a day, before the spec locks</span></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3 class="metric-name">No JS toolchain exists here</h3><span class="badge b-fit-red">blocking</span></div>
+        <p class="definition">
+          There is <b>no <code>package.json</code> anywhere in the repo</b>. Every line of GUI JS is either hand-written vanilla
+          (<code>builder.js</code>, <code>browse.js</code>) or a vendored pre-built bundle
+          (<code>openseadragon.min.js</code>, <code>cytoscape-dagre.min.js</code>) dropped into a Dash <code>_assets/</code> folder.
+          Viv is React + deck.gl; vizarr is Preact + Vite. <b>Neither can be dropped in as a file.</b> This is Decision A and
+          everything else waits on it.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3 class="metric-name">The backend doesn't exist yet</h3><span class="badge b-dyn">sequencing</span></div>
+        <p class="definition">
+          <code>worktree-ome-zarr-image-store</code> is <b>three doc commits</b> — no <code>zarr</code> code in <code>src/</code>.
+          This GUI spec is written against a <em>contract</em>, and the plan can't execute until that contract is code.
+          Good news: it forces the spec to name exactly which clauses of §1–§4 it depends on.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ DECISION A ============================ -->
+  <div class="band" id="a">
+    <h2 class="section-title">Decision A — how does Viv get into a Dash app?</h2>
+    <p class="lede" style="font-size:16px">
+      The hinge decision. Dash <em>is</em> React, so a real component is possible — but it means owning a JS build
+      in a repo that has never had one.
+    </p>
+    <div class="card-grid">
+
+      <div class="opt rec">
+        <span class="tag">Option A1 · recommended</span>
+        <h3>Vendored pre-built bundle + imperative façade</h3>
+        <p>Build Viv+deck.gl into one IIFE bundle <em>outside</em> the repo, commit the artifact next to
+        <code>openseadragon.min.js</code>, and drive it from a hand-written <code>viv_viewer.js</code> that exposes
+        <code>mount/setSource/setViewState/destroy</code>. Dash clientside callbacks talk to that façade.</p>
+        <ul>
+          <li class="pro"><b>Zero new toolchain</b> in CI, in the wheel, in contributor setup.</li>
+          <li class="pro">Exactly the pattern the repo already uses twice — reviewers know how to read it.</li>
+          <li class="pro">Python stays the only thing tests need.</li>
+          <li class="con">Bundle provenance lives outside the repo — needs a committed, reproducible build recipe or it rots.</li>
+          <li class="con">Upgrading Viv is a manual ceremony, not <code>npm update</code>.</li>
+          <li class="con">Bundle size: deck.gl + Viv is not small (~1 MB class). Fine on localhost/SSH-tunnel, which is the whole deployment story.</li>
+        </ul>
+      </div>
+
+      <div class="opt warn">
+        <span class="tag">Option A2</span>
+        <h3>Real JS build in-repo (npm + Vite)</h3>
+        <p>Add <code>package.json</code>, build the viewer bundle at package time, ship the output in the wheel.</p>
+        <ul>
+          <li class="pro">Honest dependency graph; upgrades and audits are ordinary.</li>
+          <li class="pro">Makes future component work cheap instead of one-off.</li>
+          <li class="con"><b>New CI job, new contributor prerequisite, new wheel-build step</b> in a project whose entire toolchain is <code>uv</code>.</li>
+          <li class="con">Sdist/wheel reproducibility gets materially harder — node in the build path.</li>
+          <li class="con">Biggest cost of the four, and it buys nothing the first release needs.</li>
+        </ul>
+      </div>
+
+      <div class="opt warn">
+        <span class="tag">Option A3</span>
+        <h3>iframe a stock vizarr + <code>postMessage</code></h3>
+        <p>Ship vizarr's published build untouched, mount it in an iframe, bridge selection/viewport over <code>postMessage</code>.</p>
+        <ul>
+          <li class="pro">Fastest thing that shows a plate on screen — days, not weeks.</li>
+          <li class="pro">Upstream stays upstream; no fork to maintain.</li>
+          <li class="con"><b>Kills Decision D.</b> The colony grid needs custom deck.gl views; an iframe gives you vizarr's UI, not your own.</li>
+          <li class="con">Curation overlays, radial menus, and tile chrome can't live inside someone else's canvas.</li>
+          <li class="con">Another URL-prefix surface to get right behind Open OnDemand's path-stripping proxy.</li>
+        </ul>
+      </div>
+
+      <div class="opt bad">
+        <span class="tag">Option A4</span>
+        <h3>Proper Dash custom React component</h3>
+        <p>The official <code>dash-component-boilerplate</code> route: a published component package wrapping Viv.</p>
+        <ul>
+          <li class="pro">The "correct" answer in the abstract; cleanest prop/state story.</li>
+          <li class="con">A2's toolchain cost <b>plus</b> a second distributable to version, publish, and pin.</li>
+          <li class="con">Dash component builds are notoriously brittle to React-version drift — Viv pins its own.</li>
+          <li class="con">Wildly out of proportion to one viewer in one internal tool.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="qbox">
+      <span class="qk">my read</span>
+      <p><b>A1</b>, with the build recipe committed as a script + pinned lockfile under <code>tools/viv-bundle/</code> so the artifact is
+      reproducible even though the build isn't run in CI. It preserves the "adapt Viv as much as possible" goal — you're adapting
+      Viv's <em>layers</em>, which is where the value is — while keeping <code>uv</code> the only thing a contributor installs.
+      Take <b>A2</b> instead if you expect more custom JS surfaces within a year; the toolchain amortizes then.</p>
+    </div>
+  </div>
+
+  <!-- ============================ DECISION B ============================ -->
+  <div class="band" id="b">
+    <h2 class="section-title">Decision B — how do zarr bytes reach the browser?</h2>
+    <div class="card-grid">
+      <div class="opt rec">
+        <span class="tag">Option B1 · recommended</span>
+        <h3>Range-capable static route under the results blueprint</h3>
+        <p>A <code>/zarr/&lt;dataset&gt;/&lt;stem&gt;.ome.zarr/&lt;path&gt;</code> Flask route using
+        <code>send_file(..., conditional=True)</code>, reusing the existing <code>is_safe_path_component</code> traversal guard.</p>
+        <ul>
+          <li class="pro">Sharding <b>needs</b> HTTP Range — a shard read is an index fetch plus a byte-range fetch. <code>conditional=True</code> gives it.</li>
+          <li class="pro">Server does no decode. Memory per request is a <code>sendfile</code> buffer.</li>
+          <li class="pro">Same guard, same blueprint conventions as <code>_tile_routes.py</code> today.</li>
+          <li class="con">Path-traversal surface is wider than the old route (arbitrary depth inside a store) — the guard must be per-segment, not per-URL.</li>
+        </ul>
+      </div>
+      <div class="opt warn">
+        <span class="tag">Option B2</span>
+        <h3>Explicit chunk API that reads through <code>zarr-python</code></h3>
+        <p>Server opens the store, slices, returns a typed-array response the client assembles.</p>
+        <ul>
+          <li class="pro">Server controls exactly what's exposed; no raw store on the wire.</li>
+          <li class="pro">Codec problems vanish — server decodes, so Decision C stops mattering.</li>
+          <li class="con">Reintroduces per-request decode — <b>the exact cost this whole change exists to delete</b>.</li>
+          <li class="con">Viv/zarrita would need a custom store adapter; you'd be fighting the library.</li>
+        </ul>
+      </div>
+      <div class="opt bad">
+        <span class="tag">Option B3</span>
+        <h3>Keep serving PNG tiles from zarr levels</h3>
+        <p>Read the right pyramid level server-side, emit PNG tiles, keep OSD.</p>
+        <ul>
+          <li class="pro">Smallest diff. No JS decisions at all. A genuine fallback if A and C both go badly.</li>
+          <li class="con">No Viv, no deck.gl, so <b>no Decision D</b> — the colony grid stays DOM <code>&lt;img&gt;</code> tiles.</li>
+          <li class="con">Still decodes and re-encodes on every request. Keeps the redundancy, just relocates it.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ DECISION C ============================ -->
+  <div class="band" id="c">
+    <h2 class="section-title">Decision C — codec &amp; chunk shape <span class="badge b-fit-red">amends the backend spec</span></h2>
+    <p class="lede" style="font-size:16px">
+      The backend spec locks <code>zstd</code> and <code>(1,1024,1024)</code> chunks (§1.4) — chosen for
+      <em>write</em> throughput on Lustre, with no browser reader in the picture. A client-side viewer changes the constraints
+      that decision was made under, so it is fair to reopen it — but it must be reopened <b>there</b>, as a recorded amendment,
+      not quietly worked around here.
+    </p>
+    <div class="card-grid">
+      <div class="opt rec">
+        <span class="tag">Option C1 · recommended</span>
+        <h3>Keep zstd, ship the wasm codec</h3>
+        <p>Register <code>numcodecs.js</code>'s zstd in the bundle's startup path before any store is opened.</p>
+        <ul>
+          <li class="pro">Backend spec untouched. No amendment, no re-review of a decision that has good write-side reasons.</li>
+          <li class="pro">zstd genuinely is the better stored format — smaller and faster to decompress than gzip-4.</li>
+          <li class="con">Adds a wasm payload and a hard initialization ordering rule: <b>register before first read or every read fails</b>.</li>
+          <li class="con">Needs a real test that a store written by the CLI opens in a browser — not just that the codec registers.</li>
+        </ul>
+      </div>
+      <div class="opt warn">
+        <span class="tag">Option C2</span>
+        <h3>Amend §1.4 to gzip for browser-friendliness</h3>
+        <p>Trade stored size and write speed for a codec every JS reader has built in.</p>
+        <ul>
+          <li class="pro">Removes the wasm dependency and the ordering hazard entirely.</li>
+          <li class="con">Reverses a locked decision to make the <em>client</em> simpler, penalizing every CLI write forever.</li>
+          <li class="con">The spec explicitly moved <em>off</em> gzip-4. Undoing it needs a better reason than "less JS setup".</li>
+        </ul>
+      </div>
+      <div class="opt warn">
+        <span class="tag">Option C3</span>
+        <h3>Revisit chunk size for viewing (1024&sup2; &rarr; 512&sup2;)</h3>
+        <p>Independent of codec: a deck.gl tile fetch pulls a whole inner chunk. At 1024&sup2;&times;3&times;u8 that's ~3 MB per tile.</p>
+        <ul>
+          <li class="pro">512&sup2; quarters the bytes-per-tile and smooths panning noticeably.</li>
+          <li class="con">Quadruples chunk count; the spec's file-count table (16/40/132 files) all shifts.</li>
+          <li class="con"><b>I have not measured this.</b> It may be a non-issue over localhost or an SSH tunnel — which is the only deployment. Do not spec it without a number.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="qbox">
+      <span class="qk">the honest version</span>
+      <p>C1 and C3 are independent, and C3 is the one I'd <b>refuse to decide without measuring</b>. Panning latency over an SSH tunnel
+      at 3 MB/tile is an empirical question with a cheap answer, and guessing it into a spec is how a plausible number becomes a
+      load-bearing one nobody rechecks.</p>
+    </div>
+  </div>
+
+  <!-- ============================ DECISION D ============================ -->
+  <div class="band" id="d">
+    <h2 class="section-title">Decision D — the colony grid, as a port of <code>_smart_grid</code></h2>
+    <p class="lede" style="font-size:16px">
+      What <code>gui/_smart_grid/</code> actually does: patch napari's <code>viewer.grid</code> so only <em>visible</em> layers get
+      cells, then <code>create_overlay_clones</code> duplicates every Labels/Points/Shapes visual into <em>each</em> viewbox — so
+      every cell shows a different base image under the same annotation, sharing one camera. Below: three ways to say that in deck.gl.
+    </p>
+    <div class="card-grid">
+
+      <div class="opt rec">
+        <span class="tag">Option D1 · recommended · closest port</span>
+        <h3>N deck.gl views, one shared view state</h3>
+        <p>One <code>OrthographicView</code> per colony, each with its own <code>viewState</code> centred on that colony's
+        centroid; the Viv layer stack renders into all of them. Zoom/pan edits one shared value applied to every view.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Nine small viewports each showing one colony, all fed by one layer stack and one shared camera">
+            <text class="lbl-strong" x="0" y="12">one layer stack  ·  one camera  ·  N viewports</text>
+            <rect x="0" y="24" width="150" height="46" rx="6" class="struct"/>
+            <text class="lbl" x="10" y="42">rgb (multiscale)</text>
+            <text class="lbl" x="10" y="58">+ objmap label</text>
+            <path class="struct" d="M150 47 H182" stroke-dasharray="3 3"/>
+            <text class="lbl" x="188" y="42">cloned into</text>
+            <text class="lbl" x="188" y="56">every view</text>
+            <g class="struct">
+              <rect x="8"   y="90" width="60" height="52" rx="4"/><rect x="78"  y="90" width="60" height="52" rx="4"/><rect x="148" y="90" width="60" height="52" rx="4"/>
+              <rect x="8"   y="152" width="60" height="52" rx="4"/><rect x="78"  y="152" width="60" height="52" rx="4"/><rect x="148" y="152" width="60" height="52" rx="4"/>
+            </g>
+            <g fill="var(--blue)" opacity=".55">
+              <circle cx="38" cy="116" r="13"/><circle cx="108" cy="116" r="16"/><circle cx="178" cy="116" r="9"/>
+              <circle cx="38" cy="178" r="15"/><circle cx="108" cy="178" r="11"/><circle cx="178" cy="178" r="14"/>
+            </g>
+            <g stroke="var(--green)" fill="none" stroke-width="1.6" stroke-dasharray="2 2">
+              <circle cx="38" cy="116" r="16"/><circle cx="108" cy="116" r="19"/><circle cx="178" cy="116" r="12"/>
+              <circle cx="38" cy="178" r="18"/><circle cx="108" cy="178" r="14"/><circle cx="178" cy="178" r="17"/>
+            </g>
+            <text class="lbl" x="228" y="100">A1</text><text class="lbl" x="228" y="116">A2</text><text class="lbl" x="228" y="132">A3</text>
+            <path class="struct" d="M232 150 v46" stroke="var(--rule)"/>
+            <text class="lbl" x="240" y="166">shared zoom:</text><text class="lbl-strong" x="240" y="182">all cells move</text>
+            <text class="lbl" x="240" y="198">together</text>
+          </svg>
+          <figcaption><b>Direct analogue of the vispy clone trick.</b> Overlays are one layer instance rendered N times, not N copies of state — same as <code>create_overlay_clones</code>, minus the GPU-resource cleanup dance <code>cleanup_clones</code> has to do.</figcaption>
+        </figure>
+        <ul>
+          <li class="pro">Shared camera is free — it's one <code>viewState</code>, not a sync protocol.</li>
+          <li class="pro">Per-cell chrome (label, curation badge) is a deck.gl overlay in that view's own coordinates.</li>
+          <li class="pro">The "only visible layers get cells" rule ports directly as view-list construction.</li>
+          <li class="con">deck.gl re-renders every view each frame; with hundreds of cells that needs a virtualization cap.</li>
+        </ul>
+      </div>
+
+      <div class="opt warn">
+        <span class="tag">Option D2</span>
+        <h3>One view, colonies montaged into a virtual canvas</h3>
+        <p>A single camera over a synthetic layout where each colony is drawn at an offset — the grid is a coordinate transform,
+        not a set of viewports.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A single large canvas with colonies drawn at computed grid offsets under one camera">
+            <text class="lbl-strong" x="0" y="12">one view  ·  colonies placed by offset</text>
+            <rect x="4" y="26" width="272" height="180" rx="6" class="struct"/>
+            <g stroke="var(--rule)" stroke-width="1" stroke-dasharray="2 3">
+              <path d="M94 26 V206"/><path d="M184 26 V206"/><path d="M4 86 H276"/><path d="M4 146 H276"/>
+            </g>
+            <g fill="var(--blue)" opacity=".55">
+              <circle cx="49" cy="56" r="12"/><circle cx="139" cy="56" r="15"/><circle cx="229" cy="56" r="9"/>
+              <circle cx="49" cy="116" r="14"/><circle cx="139" cy="116" r="10"/><circle cx="229" cy="116" r="13"/>
+              <circle cx="49" cy="176" r="11"/><circle cx="139" cy="176" r="16"/><circle cx="229" cy="176" r="12"/>
+            </g>
+            <path class="struct" d="M286 100 h22 m0 0 l-6 -6 m6 6 l-6 6"/>
+            <text class="lbl" x="286" y="132">one</text><text class="lbl" x="286" y="146">camera</text><text class="lbl" x="286" y="160">over the</text><text class="lbl" x="286" y="174">whole</text><text class="lbl" x="286" y="188">montage</text>
+          </svg>
+          <figcaption><b>Cheapest to render</b> — one viewport, one draw pass. But zoom is global to the montage, so "zoom into one colony" and "compare all colonies at the same scale" become the same gesture, which they shouldn't be.</figcaption>
+        </figure>
+        <ul>
+          <li class="pro">Scales to thousands of cells without virtualization.</li>
+          <li class="pro">Selection/box-drag across cells is trivial — one coordinate space.</li>
+          <li class="con">Per-cell independent zoom is impossible by construction.</li>
+          <li class="con">Multiscale level selection gets muddy: one camera zoom, many source regions.</li>
+        </ul>
+      </div>
+
+      <div class="opt warn">
+        <span class="tag">Option D3</span>
+        <h3>Keep the DOM tile grid, re-source it</h3>
+        <p>Today's <code>build_tile_grid</code> chrome stays; only the crop route changes from overlay-PNG slicing to a zarr L0 chunk read.</p>
+        <ul>
+          <li class="pro">Curation radial, multi-select, shift-click ranges, bulk-mark all keep working <b>unchanged</b>.</li>
+          <li class="pro">Smallest risk by a wide margin, and it still deletes the full-overlay-decode.</li>
+          <li class="con">Not a Viv port at all — no shared camera, no live layer toggling, no deck.gl.</li>
+          <li class="con">Server stays in the pixel path for colony tiles.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="qbox">
+      <span class="qk">sequencing note</span>
+      <p><b>D3 is a valid first release and D1 a valid second</b> — they differ in the rendering layer, not the data path, and both
+      need the same zarr crop reader underneath. If you want something usable early, that ordering gets it without wasted work.</p>
+    </div>
+  </div>
+
+  <!-- ============================ DECISION E ============================ -->
+  <div class="band" id="e">
+    <h2 class="section-title">Decision E — builder preview has no store to read</h2>
+    <p class="lede" style="font-size:16px">
+      Easy to miss: the builder previews a pipeline against an <em>input image</em>. There is no run, so there is no
+      <code>.ome.zarr</code> and no pyramid. "Optimize preview with zarr" needs a source of zarr first.
+    </p>
+    <div class="card-grid">
+      <div class="opt rec">
+        <span class="tag">Option E1 · recommended</span>
+        <h3>Preview writes an ephemeral store</h3>
+        <p>Each preview node writes its layer to a scratch <code>.ome.zarr</code> under the existing builder-tiles sandbox dir,
+        reusing the CLI's writer. The viewer then reads it exactly like a real run.</p>
+        <ul>
+          <li class="pro"><b>One reader, one code path</b> for every viewing surface in the GUI.</li>
+          <li class="pro">Exercises the writer constantly during development — bugs surface in the builder, not on a cluster.</li>
+          <li class="con">Preview gets a write cost it doesn't have today, and a scratch dir to garbage-collect.</li>
+          <li class="con">Pyramiding a preview is mostly wasted work at preview resolutions.</li>
+        </ul>
+      </div>
+      <div class="opt warn">
+        <span class="tag">Option E2</span>
+        <h3>Leave the builder on PNG&rarr;DZI</h3>
+        <p>Scope the change to the results viewer; the builder keeps <code>_dzi_tiler</code>.</p>
+        <ul>
+          <li class="pro">Smallest scope. The preview cache's PNG-bytes design (~10–15 MB vs 1–2 GB) is already deliberate and working.</li>
+          <li class="con"><code>_dzi_tiler</code> survives for one consumer — the redundancy shrinks but doesn't die.</li>
+          <li class="con">Two viewer stacks to maintain in one app.</li>
+        </ul>
+      </div>
+      <div class="opt warn">
+        <span class="tag">Option E3</span>
+        <h3>In-memory zarr store served from the process</h3>
+        <p>Keep the preview array in RAM behind a store-shaped route; never touch disk.</p>
+        <ul>
+          <li class="pro">No scratch files, no GC, no cleanup on crash.</li>
+          <li class="pro">Preview images are small; RAM is the right medium for them.</li>
+          <li class="con">A hand-written store endpoint is a <b>third</b> pixel path, not a unification.</li>
+          <li class="con">Doesn't survive the multi-worker deployment the run console already assumes.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ ASKS ============================ -->
+  <div class="band" id="ask">
+    <h2 class="section-title">What I need from you before writing the spec</h2>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-head"><h3 class="metric-name">1 · Curation's fate</h3><span class="badge b-fit-red">blocking</span></div>
+        <p class="definition">Unmounting QC + Error removes the only <em>write</em> path in the viewer. Does the curation radial
+        move onto the Colony tab and stay live, or does the viewer go read-only until the overhauled QC tool lands?</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3 class="metric-name">2 · Decision A</h3><span class="badge b-fit-red">blocking</span></div>
+        <p class="definition">Vendored bundle (A1) or a real npm toolchain (A2)? Everything downstream — D especially — inherits this.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3 class="metric-name">3 · Decision D, and in what order</h3><span class="badge b-fit-amber">shapes scope</span></div>
+        <p class="definition">Full deck.gl grid (D1) now, or D3 first and D1 second? The second ordering ships something usable
+        much sooner and wastes nothing.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3 class="metric-name">4 · Am I allowed to amend the backend spec?</h3><span class="badge b-fit-amber">governance</span></div>
+        <p class="definition">Decision C touches a <b>locked</b> §1.4. If C3 measures badly, does this work get to file an
+        amendment against <code>2026-08-18-ome-zarr-image-store</code>, or must the GUI live with whatever it stores?</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3 class="metric-name">5 · Is this one spec or three?</h3><span class="badge b-dyn">scope</span></div>
+        <p class="definition">Removals, viewer rebuild, and builder preview are three independent efforts with different risk
+        profiles. My instinct: <b>removals ship as their own spec+plan immediately</b> (they're pure deletion and unblock everything),
+        then the viewer rebuild, then the builder. Three cycles, not one.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3 class="metric-name">6 · Which vizarr?</h3><span class="badge b-b">detail</span></div>
+        <p class="definition"><code>hms-dbmi/vizarr</code> and <code>BioNGFF/vizarr</code> both exist; the latter looks like the
+        active home. Per the porting skill, whichever we adapt gets vendored <b>read-only</b> under
+        <code>docs/superpowers/specs/&lt;topic&gt;/refs/</code> so every <code>file:line</code> citation resolves.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>Drafted in the brainstorming phase — <b>no code written, nothing approved</b>. Verified claims are sourced inline;
+    everything marked <span class="badge b-fit-amber">unverified</span> needs a spike before it may appear in a spec as fact.
+    Backend contract: <code>docs/superpowers/specs/2026-08-18-ome-zarr-image-store/design.md</code>.</p>
+  </div>
+
+</div>
+</body>
+</html>
