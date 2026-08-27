@@ -1,4 +1,4 @@
-"""Preview compute callback delegate: builds layer options + DZI url for a node."""
+"""Preview compute delegate: layer options + a Viv source spec for a node."""
 from phenotypic.gui.builder import _preview_cache as pc
 from phenotypic.gui.builder._preview_callbacks import build_preview_payload
 from phenotypic.gui.builder._state import (
@@ -35,5 +35,12 @@ def test_build_payload_lists_available_layers(tmp_path, monkeypatch):
     assert payload["error"] is None
     layer_values = {opt["value"] for opt in payload["options"]}
     assert {"rgb", "gray", "detect_mat", "objmap", "overlay"} & layer_values
-    assert payload["dzi_url"].endswith(".dzi")
     assert payload["value"] in layer_values
+    spec = payload["source_spec"]
+    # The spec crosses to ``setSource`` unmodified, so these are the facade's
+    # own key names -- not a second vocabulary built here.
+    assert spec["storeUrl"].startswith("/preview-zarr/")
+    assert spec["seriesPath"] in {"rgb", "gray", "detect_mat"}
+    # The token is a PATH SEGMENT of ``storeUrl``, so a recompute yields a
+    # different base URL rather than a reusable one with a stale query.
+    assert spec["storeUrl"].endswith(spec["token"])

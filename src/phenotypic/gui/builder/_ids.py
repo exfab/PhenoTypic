@@ -858,17 +858,23 @@ PICKER_PARAM_COUNT_TYPE = "param-point-picker-count"
 
 
 # ---------------------------------------------------------------------------
-# Node-output preview modal (zoomable OSD viewer + layer toggle)
+# Node-output preview modal (deck.gl / Viv stage + layer toggle)
 # ---------------------------------------------------------------------------
 
 MODAL_NODE_PREVIEW = "modal-node-preview"
 MODAL_NODE_PREVIEW_TITLE = "modal-node-preview-title"
-PREVIEW_OSD_DIV = "preview-osd"
+#: Host element the Viv facade mounts a deck.gl canvas into. Named for the
+#: surface, not the renderer it used to carry -- the pane reads store chunks in
+#: the browser and no OpenSeadragon viewer is created for it any more.
+PREVIEW_STAGE_DIV = "preview-viv-stage"
 PREVIEW_LAYER_RADIO = "preview-layer-radio"
 PREVIEW_CAPTION = "preview-caption"
-PREVIEW_DZI_URL_STORE = "preview-dzi-url-store"
+#: Holds ``build_source_spec``'s dict for the selected node and layer. It
+#: carries a GENERATION TOKEN, so it is rewritten on every layer switch and
+#: every scope recompute rather than cached across one.
+PREVIEW_SOURCE_SPEC_STORE = "preview-source-spec-store"
 STORE_PREVIEW_TARGET = "store-preview-target"
-PREVIEW_OSD_MOUNT_TRIGGER = "preview-osd-mount-trigger"
+PREVIEW_VIV_MOUNT_TRIGGER = "preview-viv-mount-trigger"
 
 
 # ---------------------------------------------------------------------------

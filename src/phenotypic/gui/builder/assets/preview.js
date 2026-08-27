@@ -1,56 +1,109 @@
-// Node-preview OSD glue. Exposes window.__phenotypicNodePreview.
+/**
+ * Node-preview stage glue. Exposes `window.__phenotypicNodePreview`.
+ *
+ * The pane reads OME-Zarr chunks straight out of the node's preview store,
+ * in the browser, through the SHARED Viv facade -- the same
+ * `window.phenotypicViv` the results viewer's Plate drives. There is no
+ * server-rendered pyramid on this path any more: no PNG staging, no DZI, no
+ * OpenSeadragon.
+ *
+ * Nothing here touches the vendored bundle's own global. `viv_viewer.js` is
+ * the only file that does, which is what lets the artifact be replaced
+ * without editing any surface -- and is why this file names it nowhere.
+ *
+ * The `spec` this receives is `build_source_spec`'s dict, narrowed by
+ * `build_channel_spec` to the layer the radio selected. It carries a
+ * GENERATION TOKEN inside `storeUrl`, and Python rebuilds it on every layer
+ * switch and every scope recompute -- so a spec whose `storeUrl` differs is a
+ * different publish, not merely a different view, and must be re-sourced.
+ *
+ * The point picker deliberately does NOT come through here: it picks points
+ * on a source image before any node has run, so there is no store to read and
+ * it stays on DZI + OpenSeadragon (`point_picker.js`).
+ */
 (function () {
     "use strict";
     const ns = window.__phenotypicNodePreview =
         window.__phenotypicNodePreview || {};
 
-    const appPrefix = (typeof window.__phenotypicAppPrefix === "string"
-        && window.__phenotypicAppPrefix.length > 0)
-        ? window.__phenotypicAppPrefix : "/";
+    /** Facade layer ids; mirrored in `_preview_callbacks.py`. */
+    const IMAGE_LAYER = "image";
+    const LABEL_LAYER = "labels";
 
-    function siblingPrefix(prefix, mountName) {
-        let base = prefix.endsWith("/") ? prefix : prefix + "/";
-        if (base.endsWith("/builder/")) {
-            base = base.slice(0, -"builder/".length);
+    // The mounted container id, and the spec signature it currently shows.
+    // `setSource` re-opens the store and rebuilds every layer, so it fires
+    // only when the store generation or the displayed series actually moved.
+    let mountedId = null;
+    let signature = null;
+
+    function facade() {
+        return window.phenotypicViv || null;
+    }
+
+    function sourceSignature(spec) {
+        if (!spec) return null;
+        return [
+            spec.storeUrl,
+            spec.seriesPath,
+            spec.labelPath || "",
+            spec.imageVisible === false ? "label-only" : "image"
+        ].join(" ");
+    }
+
+    /**
+     * Mount (once) and point the stage at one node store generation.
+     *
+     * @param {string} divId Id of the host element.
+     * @param {object} spec `build_channel_spec`'s dict.
+     */
+    ns.mountViewer = async function (divId, spec) {
+        const viv = facade();
+        if (!viv) {
+            console.error("[node_preview] window.phenotypicViv is missing");
+            return null;
         }
-        return base + mountName + "/";
-    }
-    const resultsPrefix = siblingPrefix(appPrefix, "results");
-
-    let viewer = null;
-
-    function loadOSD(cb) {
-        if (window.OpenSeadragon) { cb(); return; }
-        const cdn = document.createElement("script");
-        cdn.src = "https://cdn.jsdelivr.net/npm/openseadragon@5/build/openseadragon/openseadragon.min.js";
-        cdn.onload = cb;
-        cdn.onerror = function () {
-            const v = document.createElement("script");
-            v.src = resultsPrefix + "assets/openseadragon/openseadragon.min.js";
-            v.onload = cb;
-            document.head.appendChild(v);
-        };
-        document.head.appendChild(cdn);
-    }
-
-    ns.mountViewer = function (divId, dziUrl) {
-        loadOSD(function () {
-            const el = document.getElementById(divId);
-            if (!el || !dziUrl) { return; }
-            if (viewer && viewer._phenotypicDziUrl === dziUrl) { return; }
-            if (viewer) { viewer.destroy(); viewer = null; }
-            viewer = window.OpenSeadragon({
-                element: el,
-                prefixUrl: resultsPrefix + "assets/openseadragon/images/",
-                tileSources: dziUrl,
-                showNavigator: false,
-                immediateRender: false,
-            });
-            viewer._phenotypicDziUrl = dziUrl;
-        });
+        const el = document.getElementById(divId);
+        if (!el || !spec) { return null; }
+        if (mountedId && mountedId !== divId) { ns.disposeViewer(); }
+        if (!mountedId) {
+            // `refetchSource: null` -- recovery after a re-promote needs a
+            // server round-trip Dash owns (the token is minted Python-side),
+            // so a stale read throws `StaleGenerationError` into the console
+            // and the next layer switch or reopen re-resolves it.
+            await viv.mount(divId, { refetchSource: null });
+            mountedId = divId;
+            signature = null;
+        }
+        const next = sourceSignature(spec);
+        if (next === signature) { return null; }
+        try {
+            await viv.setSource(divId, spec);
+        } catch (err) {
+            console.error("[node_preview] setSource failed", divId, err);
+            signature = null;
+            return null;
+        }
+        signature = next;
+        // Applied AFTER the source: `setSource` rebuilds every layer, and the
+        // facade's viewer keeps its hidden-id set across a re-source, so the
+        // objmap-only channel's hidden image layer must be re-asserted in
+        // BOTH directions rather than assumed to have survived.
+        await viv.setLayerVisibility(
+            divId, IMAGE_LAYER, spec.imageVisible !== false
+        );
+        if (spec.labelPath) {
+            await viv.setLayerVisibility(divId, LABEL_LAYER, true);
+        }
+        return divId;
     };
 
+    /** Tear the stage down, freeing its WebGL context. */
     ns.disposeViewer = function () {
-        if (viewer) { viewer.destroy(); viewer = null; }
+        if (!mountedId) { return; }
+        const viv = facade();
+        try { if (viv) viv.destroy(mountedId); }
+        catch (e) { console.error(e); }
+        mountedId = null;
+        signature = null;
     };
 })();

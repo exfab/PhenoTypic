@@ -2,9 +2,14 @@
 
 One directory per (session, scope). Each scope dir holds full-resolution
 per-node OME-Zarr snapshots (written by ``apply_with_intermediates(...,
-full_layers=True)``), a ``manifest.json`` mapping block_id -> store/layers,
-and (lazily) staged PNGs + DZI tile pyramids. The cache lives under the
-system temp dir and is wiped on launch + ``atexit``.
+full_layers=True)``) plus a ``manifest.json`` mapping block_id -> store /
+layers. Nothing is rendered here any more: the preview pane reads store
+chunks in the browser over ``_preview_zarr_routes``, so the staged PNGs and
+DZI pyramids that used to sit beside the stores went with the tiler.
+
+The cache lives under the system temp dir, is created ``0o700`` because its
+per-session directories are NAMED by the session secret, and is wiped on
+launch + ``atexit``.
 """
 from __future__ import annotations
 
@@ -26,6 +31,7 @@ __all__ = [
     "scope_dir",
     "wipe_scope",
     "read_manifest",
+    "read_manifest_by_hash",
     "write_manifest",
     "compute_scope",
 ]
@@ -62,7 +68,15 @@ def init_cache() -> None:
     """Wipe stale previews on launch and register an atexit cleanup (idempotent)."""
     global _atexit_registered
     wipe_cache()
-    preview_cache_root().mkdir(parents=True, exist_ok=True)
+    # ``mode=0o700``: the per-session directories are NAMED by the session id,
+    # and spec section 7 makes that id's secrecy the recorded mitigation for the
+    # capability-URL design. ``preview_cache_root()`` is
+    # ``tempfile.gettempdir()/phenotypic/pipeline-preview``, so where ``$TMPDIR``
+    # is unset or shared, a default-umask tree lets any local user ``ls`` every
+    # live session id -- and at umask 022 read the preview stores directly,
+    # without ever reaching the route. Applies on CREATION only, which is
+    # sufficient because this function wipes and recreates.
+    preview_cache_root().mkdir(parents=True, exist_ok=True, mode=0o700)
     if not _atexit_registered:
         atexit.register(wipe_cache)
         _atexit_registered = True
@@ -75,15 +89,30 @@ def scope_hash(scope_path: list[str]) -> str:
     ).hexdigest()
 
 
+def _scope_path_by_hash(session_id: str, scope_hash_hex: str) -> Path:
+    """Per-(session, scope) directory path, keyed by the scope HASH.
+
+    The byte route receives a hash, not the ``scope_path`` list that produced
+    it, and :func:`scope_hash` is one-way. No reverse index is needed: the
+    directory has always been NAMED by the hash, so the hash-keyed and
+    list-keyed lookups are the same join. Both spellings delegate here so
+    there is exactly one.
+    """
+    return preview_cache_root() / session_id / scope_hash_hex
+
+
 def _scope_path(session_id: str, scope_path: list[str]) -> Path:
     """Per-(session, scope) directory path WITHOUT creating it."""
-    return preview_cache_root() / session_id / scope_hash(scope_path)
+    return _scope_path_by_hash(session_id, scope_hash(scope_path))
 
 
 def scope_dir(session_id: str, scope_path: list[str]) -> Path:
     """Per-(session, scope) directory, created if missing."""
     d = _scope_path(session_id, scope_path)
-    d.mkdir(parents=True, exist_ok=True)
+    # Private for the same reason ``init_cache`` creates the root private:
+    # this directory's NAME is the session secret's neighbour, and its
+    # contents are the preview stores the route guards.
+    d.mkdir(parents=True, exist_ok=True, mode=0o700)
     return d
 
 
@@ -97,7 +126,23 @@ def read_manifest(session_id: str, scope_path: list[str]) -> Optional[dict]:
 
     Pure read: never creates the scope dir as a side effect.
     """
-    path = _scope_path(session_id, scope_path) / "manifest.json"
+    return read_manifest_by_hash(session_id, scope_hash(scope_path))
+
+
+def read_manifest_by_hash(session_id: str, scope_hash_hex: str) -> Optional[dict]:
+    """Return a scope manifest keyed by the scope HASH, or ``None``.
+
+    The route-facing spelling of :func:`read_manifest`. Same purity
+    guarantee: never creates the scope dir as a side effect.
+
+    Args:
+        session_id: Browser session id (already shape-validated by the route).
+        scope_hash_hex: The 40-hex scope hash from the URL.
+
+    Returns:
+        The manifest dict, or ``None`` when absent or unreadable.
+    """
+    path = _scope_path_by_hash(session_id, scope_hash_hex) / "manifest.json"
     if not path.exists():
         return None
     try:

@@ -1,13 +1,17 @@
-"""Builder node previews render from OME-Zarr node stores.
+"""Builder node-preview MANIFEST entries read store metadata only.
 
-Two contracts here, and the second is the reason the describe helper had to
-be lifted out of ``_build_manifest``:
+One contract, and it is the reason the describe helper had to be lifted out
+of ``_build_manifest``: building a manifest entry reads **metadata** --
+``phenotypic.series`` plus the level-0 array shapes -- and never opens a full
+:class:`Image`. As a closure inside ``_build_manifest`` that invariant was
+unassertable, because ``_preview_cache._describe`` was not a module attribute
+and never was.
 
-* ``stage_channel_png`` renders a channel straight out of a node store.
-* Building a manifest entry reads **metadata** -- ``phenotypic.series`` plus
-  the level-0 array shapes -- and never opens a full :class:`Image`. As a
-  closure inside ``_build_manifest`` that invariant was unassertable:
-  ``_preview_cache._describe`` was not a module attribute and never was.
+The PNG-staging half of this file went with the renderer it tested.
+``stage_channel_png`` existed to hand a rendered channel to the DZI tiler; the
+preview pane now reads store chunks in the browser
+(``tests/unit/gui/builder/test_preview_zarr_routes.py``), so neither the
+staging function nor its root-``zarr.json`` freshness key has a consumer.
 """
 
 from __future__ import annotations
@@ -19,88 +23,6 @@ import pytest
 
 from phenotypic import Image
 from phenotypic.data import load_synth_yeast_plate
-
-
-def test_channel_png_renders_from_a_node_store(tmp_path: Path) -> None:
-    from phenotypic.gui.builder._preview_tiles import stage_channel_png
-
-    store = Image(load_synth_yeast_plate()).save_intermediate_zarr(
-        tmp_path / "00_base.ome.zarr",
-        layers=("gray", "detect_mat", "objmap"),
-    )
-    png = stage_channel_png(tmp_path, "block-1", "gray", store)
-    assert png.is_file() and png.stat().st_size > 0
-
-
-def test_channel_png_refreshes_when_the_store_is_republished(
-    tmp_path: Path,
-) -> None:
-    """Freshness is measured against the root ``zarr.json``, not the directory.
-
-    A store DIRECTORY's ``st_mtime_ns`` does not move when a nested chunk is
-    rewritten, so a cache keyed on it serves the previous publish's pixels
-    with nothing failing. The root is the file every promote writes last.
-
-    This claim was carried in ``FEATURES.md`` against a results-viewer DZI
-    test that only ever covered the DZI half; the results Plate has no
-    rendered-PNG cache any more, so the builder half is asserted here
-    directly.
-    """
-    from phenotypic.gui.builder._preview_tiles import stage_channel_png
-
-    scope = tmp_path / "scope"
-    target = tmp_path / "00_base.ome.zarr"
-    first = Image(load_synth_yeast_plate()).save_intermediate_zarr(
-        target, layers=("gray",)
-    )
-    png = stage_channel_png(scope, "00", "gray", first)
-    before = png.read_bytes()
-
-    inverted = Image(load_synth_yeast_plate())
-    # ``gray`` is float in [0, 1]; the accessor asserts the range on write.
-    inverted.gray[:] = 1.0 - inverted.gray[:]
-    republished = inverted.save_intermediate_zarr(target, layers=("gray",))
-
-    assert stage_channel_png(scope, "00", "gray", republished).read_bytes() != (
-        before
-    )
-
-
-def test_channel_png_reuses_the_cache_when_nothing_was_republished(
-    tmp_path: Path,
-) -> None:
-    """The other half of the same key: an unchanged store must not re-render."""
-    from phenotypic.gui.builder._preview_tiles import stage_channel_png
-
-    scope = tmp_path / "scope"
-    store = Image(load_synth_yeast_plate()).save_intermediate_zarr(
-        tmp_path / "00_base.ome.zarr", layers=("gray",)
-    )
-    png = stage_channel_png(scope, "00", "gray", store)
-    stamp = png.stat().st_mtime_ns
-    assert stage_channel_png(scope, "00", "gray", store).stat().st_mtime_ns == (
-        stamp
-    )
-
-
-def test_channel_png_renders_the_requested_channel(tmp_path: Path) -> None:
-    """Not merely "a PNG": the objmap and gray renders must differ.
-
-    ``_channel_to_rgb_uint8`` dispatches per channel (``label2rgb`` for the
-    objmap, contrast-normalised greyscale otherwise), so a staging function
-    that ignored ``channel`` would still produce a valid PNG.
-    """
-    from phenotypic.gui.builder._preview_tiles import stage_channel_png
-
-    store = Image(load_synth_yeast_plate()).save_intermediate_zarr(
-        tmp_path / "00_base.ome.zarr",
-        layers=("gray", "detect_mat", "objmap"),
-    )
-    gray = stage_channel_png(tmp_path, "block-1", "gray", store).read_bytes()
-    objmap = stage_channel_png(
-        tmp_path, "block-1", "objmap", store
-    ).read_bytes()
-    assert gray != objmap
 
 
 def test_manifest_describe_does_not_load_a_full_image(
