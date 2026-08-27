@@ -21,20 +21,37 @@ Spec §8 names five. Four already have homes; confirm each and fill the gap.
 | Spec §8 check | Where it lives | Action |
 |---|---|---|
 | Codec ordering — open a **CLI-written** store in a real browser, "not 'the codec registered' — the actual read" | phase 2 task 2.3 | run it |
-| Level selection matches `phenotypic.pyramid`'s ladder, `ceil` boundary included | phase 3 task 3.2 | run it |
+| Level selection matches `phenotypic.pyramid`'s ladder, `ceil` boundary included | phase 3 task 3.2 | run it — and assert against the **browser's** choice if task 3.2 retired the server-side stack |
 | Staleness — a rewritten nested chunk must invalidate | phase 1 task 1.2 | run it |
-| Curation regression — colony curation tests pass **unmodified** | phase 4 task 4.3 step 3 | run it |
+| Curation regression — colony curation tests pass **unmodified** | phase 4 task 4.3 step 3 | run it, **and run the three tests that actually prove the chain** (below) |
 | Label path — a `gray`-primary store resolves its objmap through `phenotypic.labels.objmap` | phase 3 task 3.1 | run it |
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run pytest \
+  tests/unit/gui/shared/test_resolve_within_root.py \
   tests/unit/gui/results_viewer/test_zarr_routes.py \
   tests/unit/gui/results_viewer/test_store_source.py \
   tests/unit/gui/results_viewer/test_level_selection.py \
   tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py \
   -n 4 -v
-QT_QPA_PLATFORM=offscreen uv run pytest tests/e2e/gui -k "viv or colony_shared" -v
+QT_QPA_PLATFORM=offscreen uv run pytest tests/e2e/gui -k "viv or colony_shared or builder" -v
 ```
+
+**The curation chain is not proved by `test_colony_callbacks_helpers.py`.** Its 15 tests
+drive pure helpers against hand-built `ctx.triggered` dicts — it would pass unmodified while
+phase 4's deck.gl rewrite removed the radial entirely. Run the three that do:
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run pytest \
+  tests/gui/results_viewer/colony_view/test_grid.py::test_build_grid_tiles_carry_radial_trigger_not_old_remove_button \
+  tests/integration/gui/test_triage_callbacks.py::test_colony_wedge_mark_writes_category_parquet_and_drops_mirror \
+  tests/unit/cli/test_cli_error_outputs.py -v
+```
+
+The first is the **only** assertion anywhere that a cell carries `colony-radial-trigger`,
+which is exactly what phase 4 endangers. It lives under `tests/gui/`, so no
+`tests/unit/gui` invocation reaches it.
+
 Expected: all PASS.
 
 - [ ] **Step 2: Confirm the spike gate's findings were actually acted on**
