@@ -1728,7 +1728,10 @@ class ImageIOHandler(ImageColorSpace):
         Raises:
             FileNotFoundError: If the store has no root ``zarr.json`` -- an
                 interrupted write reads as absent, not as partial.
-            ValueError: If ``store_schema_version`` is not this build's. The
+            ValueError: If the store carries no ``phenotypic.image_class`` --
+                it was written by ``--mode process`` or by another tool and is
+                not a run bundle; use :meth:`imread` to read its pixels. Also
+                if ``store_schema_version`` is not this build's. The
                 gate is by VALUE, not presence: opening a future store under
                 today's semantics is exactly what it exists to prevent.
 
@@ -1746,6 +1749,21 @@ class ImageIOHandler(ImageColorSpace):
             True
         """
         from phenotypic.sdk_ import ngff_
+
+        # BEFORE require_readable_store, deliberately. That call ends in
+        # `attributes[PhenotypicAttr.ROOT]` (ngff_.py:631), a bare subscript,
+        # so a third-party store raises KeyError there and a guard placed
+        # after it would never fire on the case it most needs to serve.
+        # FileNotFoundError from read_root_attributes still propagates: an
+        # interrupted write reads as absent, not as "not a bundle".
+        attributes = ngff_.read_root_attributes(path)
+        phenotypic_block = attributes.get(ngff_.PhenotypicAttr.ROOT, {})
+        if ngff_.PhenotypicAttr.IMAGE_CLASS not in phenotypic_block:
+            raise ValueError(
+                f"{path} carries no phenotypic.image_class and is not a "
+                f"PhenoTypic run bundle. It was written by --mode process or "
+                f"by another tool. Use Image.imread() to read its pixels."
+            )
 
         block = ngff_.require_readable_store(path)
         saved_class = block.get(ngff_.PhenotypicAttr.IMAGE_CLASS)
