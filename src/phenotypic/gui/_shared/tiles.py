@@ -46,7 +46,12 @@ from flask import Blueprint, Response
 from PIL import Image as PILImage
 from werkzeug.exceptions import BadRequest, NotFound
 
-from phenotypic.gui._design import TILE_DIM_RGB
+from phenotypic.gui._design import (
+    FONT_FAMILY_MONO,
+    FONT_SIZE_MICRO,
+    TILE_DIM_RGB,
+)
+from phenotypic.gui._shared._measurement_tint import TileMeasurement
 
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._output_root import OutputRoot
@@ -1098,6 +1103,7 @@ def build_tile_cell(
     remove_button: Component | list[Component],
     extra_children: Iterable[Component] | None = None,
     outer_height: int | None = None,
+    measurement: TileMeasurement | None = None,
 ) -> Component:
     """Render the chrome + crop for a single tile — shared across tabs.
 
@@ -1145,6 +1151,18 @@ def build_tile_cell(
         outer_height: Outer cell height, in pixels. Defaults to
             ``display_size`` (no extra vertical room). Pass a larger value
             to reserve space for a sibling that peeks out below the frame.
+        measurement: The colony's value for the currently-displayed
+            measurement column, already formatted and coloured by
+            :meth:`~phenotypic.gui._shared._measurement_tint.MeasurementScale.measurement_for`.
+            ``None`` -- the default, and the state of every card when no
+            column is chosen -- renders exactly today's card. ``None`` is
+            also the correct rendering for a colony the table has **no row
+            for**: post-measurement operations can drop objects, and a card
+            with no value is a fact about the data, not an error.
+
+            The value is joined on ``label``, which already IS
+            ``Object_Label``; the card needs no new identity plumbing to
+            know which value is its own.
 
     Returns:
         A component ready to drop into a tile grid or gallery container.
@@ -1218,9 +1236,46 @@ def build_tile_cell(
         if isinstance(remove_button, list)
         else [remove_button]
     )
+    # The value ribbon. It carries BOTH halves of the display -- the number
+    # and the tint -- so the colour a card wears is attached to the number
+    # it encodes rather than floating behind an opaque crop. The frame also
+    # takes an inset ring in the same tint, which is what stays legible when
+    # the tile stepper is at its smallest size and the ribbon is a sliver.
+    #
+    # Curation chrome is untouched: the checkbox keeps the top-left corner
+    # and the radial trigger keeps its own, so the ribbon takes the bottom
+    # edge and nothing moves.
+    frame_children: list[Component] = [crop_node, checkbox, *remove_children]
+    frame_style: dict[str, str] = {}
+    if measurement is not None:
+        frame_style["boxShadow"] = f"inset 0 0 0 3px {measurement.tint}"
+        frame_children.append(
+            html.Span(
+                measurement.text,
+                className="colony-cell-measurement",
+                style={
+                    "position": "absolute",
+                    "bottom": "0",
+                    "left": "0",
+                    "right": "0",
+                    "background": measurement.tint,
+                    "color": measurement.ink,
+                    "fontFamily": FONT_FAMILY_MONO,
+                    "fontSize": FONT_SIZE_MICRO,
+                    "lineHeight": "1.5",
+                    "textAlign": "center",
+                    "letterSpacing": "0.01em",
+                    "pointerEvents": "none",
+                    "zIndex": "3",
+                },
+            )
+        )
     frame = html.Div(
-        [crop_node, checkbox, *remove_children],
+        frame_children,
         className="colony-cell-frame",
+        # ``None`` rather than an empty dict so an untinted card's DOM is
+        # byte-identical to what it was before this feature existed.
+        style=frame_style or None,
     )
 
     children: list[Component] = [frame]

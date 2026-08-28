@@ -156,6 +156,7 @@ __all__ = [
     "BUILDER_TILES_PREFIX",
     "VIEWER_TILES_PREFIX",
     "VIEWER_ZARR_PREFIX",
+    "VIEWER_MEASUREMENTS_PREFIX",
     "BROWSE_TILES_PREFIX",
     "COLONY_CROPS_URL_SEGMENT",
     "QC_CROPS_URL_SEGMENT",
@@ -539,6 +540,15 @@ BROWSE_TILES_PREFIX: str = "/tiles"
 #: Range, so this is a **byte** namespace and deliberately distinct from
 #: :data:`VIEWER_TILES_PREFIX`, which serves server-rendered DZI pyramids.
 VIEWER_ZARR_PREFIX: str = "/zarr"
+
+#: URL prefix for the results-viewer's per-image measurement JSON blueprint.
+#: One column of one image's embedded table per request
+#: (``<prefix>measurements/<dataset>/<stem>?column=<name>``), deliberately
+#: separate from :data:`VIEWER_ZARR_PREFIX`: that route serves store *bytes*
+#: and its readable-root allow-list keeps ``tables/`` off the wire. Serving
+#: measurements through a narrow JSON projection preserves that narrowing --
+#: and ships ~2 KB where the whole table is ~71 KB.
+VIEWER_MEASUREMENTS_PREFIX: str = "/measurements"
 
 #: URL path segment used for per-colony crop images.
 COLONY_CROPS_URL_SEGMENT: str = "crops"

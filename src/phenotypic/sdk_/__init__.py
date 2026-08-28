@@ -260,6 +260,9 @@ from ._metadata_helpers import (
 from ._measurement_tables import (
     PreparedEmbeddedMeasurementTable,
     build_measurement_table_descriptor,
+    embedded_measurement_columns,
+    read_embedded_measurement_column,
+    read_embedded_measurement_descriptor,
     replace_embedded_measurement_table,
     write_embedded_measurement_table,
 )
@@ -320,6 +323,9 @@ __all__ = [
     "PARQUET_WRITE_OPTIONS",
     "PreparedEmbeddedMeasurementTable",
     "build_measurement_table_descriptor",
+    "embedded_measurement_columns",
+    "read_embedded_measurement_column",
+    "read_embedded_measurement_descriptor",
     "replace_embedded_measurement_table",
     "write_embedded_measurement_table",
     "canonical_metadata_order",

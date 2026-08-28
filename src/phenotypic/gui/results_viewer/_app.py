@@ -90,6 +90,9 @@ from phenotypic.gui.results_viewer._mutation_guard import (
     OutputMutationBlocked,
     OutputMutationGuard,
 )
+from phenotypic.gui.results_viewer._measurement_routes import (
+    register_measurement_routes,
+)
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._zarr_routes import (
     register_zarr_routes,
@@ -276,6 +279,10 @@ def create_app(
     # unmounted. Browse and the builder keep their own libvips -> DZI ->
     # OpenSeadragon path in their own blueprints.
     register_zarr_routes(app, output_root)
+    # One column of one image's embedded table, as JSON. Deliberately NOT
+    # served through the byte route above, whose readable-root allow-list
+    # keeps ``tables/`` off the wire.
+    register_measurement_routes(app, output_root)
 
     filtered_state = CurationLabels.load(
         output_root.layout, output_root.master_df

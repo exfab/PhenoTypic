@@ -667,6 +667,13 @@ COLONY_X_AXIS_DROPDOWN_ID = "colony-x-axis-dropdown"
 #: y-axis (or used as the secondary sort key when laying out the grid).
 COLONY_Y_AXIS_DROPDOWN_ID = "colony-y-axis-dropdown"
 
+#: Dropdown selecting the measurement column each colony card displays --
+#: as text on the card and as the tint the card is coloured with. Populated
+#: from each store's own declared ``measurement_columns``, so it never offers
+#: a column the measurement route would refuse. An empty picker is a normal
+#: state (a ``--mode process`` run never measured), not a pending one.
+COLONY_MEASUREMENT_DROPDOWN_ID = "colony-measurement-dropdown"
+
 #: Parent ``<div>`` wrapping every colony-cell tile. The clientside layer
 #: queries this node to wire up checkbox / drag-select behaviour.
 COLONY_GRID_CONTAINER_ID = "colony-grid-container"
@@ -1020,6 +1027,7 @@ __all__ = [
     "STORE_QC_AUGMENTED_REVISION",
     "COLONY_X_AXIS_DROPDOWN_ID",
     "COLONY_Y_AXIS_DROPDOWN_ID",
+    "COLONY_MEASUREMENT_DROPDOWN_ID",
     "COLONY_GRID_CONTAINER_ID",
     "COLONY_TOOLBAR_ID",
     "COLONY_CROP_SIZE_INFO_ID",

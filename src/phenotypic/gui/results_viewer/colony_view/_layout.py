@@ -184,7 +184,8 @@ def _build_toolbar(layer_toggle: Component | None = None) -> Component:
     """Build the colony-view toolbar (axis dropdowns + refresh + info chip).
 
     The toolbar is a horizontal flex row that hosts the X / Y axis
-    dropdowns the grid sorts by, a read-only crop-size info chip
+    dropdowns the grid sorts by, the measurement-column picker each card
+    displays its value and tint from, a read-only crop-size info chip
     populated by a callback (e.g. ``"crop size: 320 px"``), and a manual
     refresh button. The dropdown ``options`` and ``value`` lists are
     intentionally empty here — they are populated reactively from the
@@ -234,6 +235,30 @@ def _build_toolbar(layer_toggle: Component | None = None) -> Component:
         placeholder="Y axis…",
         clearable=False,
         style={"minWidth": "200px"},
+    )
+
+    # The measurement picker. Options are populated reactively from each
+    # in-view store's own ``measurement_columns`` -- deliberately empty here,
+    # and legitimately empty at runtime too: a ``--mode process`` run never
+    # measured, so the cards simply render as they do without a column.
+    # Clearable, because "no column" is a state the user returns to.
+    measurement_label = html.Span(
+        "Measure",
+        className="me-1",
+        style={
+            "color": _NAVY,
+            "fontWeight": 500,
+            "fontSize": FONT_SIZE_LABEL,
+            "whiteSpace": "nowrap",
+        },
+    )
+    measurement_dropdown = dcc.Dropdown(
+        id=ids.COLONY_MEASUREMENT_DROPDOWN_ID,
+        options=[],
+        value=None,
+        placeholder="Show measurement…",
+        clearable=True,
+        style={"minWidth": "240px"},
     )
 
     crop_size_info = html.Span(
@@ -353,6 +378,14 @@ def _build_toolbar(layer_toggle: Component | None = None) -> Component:
         ),
         html.Div(
             [y_label, y_dropdown],
+            style={
+                "display": "flex",
+                "alignItems": "center",
+                "gap": "0.25rem",
+            },
+        ),
+        html.Div(
+            [measurement_label, measurement_dropdown],
             style={
                 "display": "flex",
                 "alignItems": "center",

@@ -39,10 +39,17 @@ from phenotypic.gui._config import (
     MOUNT_HOME,
 )
 from phenotypic.gui._design import (
+    COLOR_MUTED,
     COLOR_NAVY,
     FONT_FAMILY_MONO,
     FONT_SIZE_CAPTION,
     FONT_SIZE_LABEL,
+)
+from phenotypic.gui._shared._measurement_tint import (
+    MeasurementScale,
+    TileMeasurement,
+    format_measurement_value,
+    sequential_tint,
 )
 from phenotypic.gui._shared._radial import build_radial_trigger
 from phenotypic.gui._shared.tiles import build_tile_cell, expand_range
@@ -440,6 +447,7 @@ def _build_cell(
     dim_alpha: float = 0.0,
     layer: str = "rgb",
     mutations_disabled: bool = False,
+    measurement: TileMeasurement | None = None,
 ) -> Component:
     """Render the chrome + crop for a single grid cell.
 
@@ -473,6 +481,11 @@ def _build_cell(
             ``&dim=``. ``0.0`` (default) keeps today's full-context crop.
         layer: Pixel layer threaded onto every crop URL in the cell as
             ``&layer=``. ``"rgb"`` (default) sources the finished plate.
+        measurement: This colony's displayed measurement value, already
+            formatted and coloured. ``None`` when no column is chosen, and
+            also when the embedded table has no row for this colony --
+            post-measurement operations can remove objects, so a card with
+            no value is a fact about the data rather than a fault.
 
     Returns:
         A component ready to drop into the grid container.
@@ -530,6 +543,7 @@ def _build_cell(
         extra_children=extra_children,
         # Reserve room beneath the frame for the stack tab to peek out.
         outer_height=display_size + _STACK_TAB_OFFSET,
+        measurement=measurement,
     )
 
 
@@ -653,6 +667,93 @@ def build_stack_popover_rows(
         )
     return rows
 
+#: Width of the legend's gradient track, in pixels. DESIGN.md "12 --
+#: Continuous Colorbar" fixes the track's height and radius but not its
+#: length; 180px reads as a ramp without crowding the toolbar it sits under.
+_LEGEND_TRACK_WIDTH = 180
+
+#: Number of stops baked into the legend's CSS gradient. The ramp has three
+#: control points and CSS interpolates linearly between whatever it is given,
+#: so sampling it at 17 points reproduces the same curve the cards are tinted
+#: from rather than a straight line between its ends.
+_LEGEND_GRADIENT_STOPS = 17
+
+
+def build_measurement_legend(scale: MeasurementScale) -> Component:
+    """Render the continuous legend naming the column and its visible range.
+
+    The tint means nothing without this. It is also the only place the user
+    is told that the range is **what is on screen** rather than the column's
+    range across the run -- which matters, because adding a filter rescales
+    every card.
+
+    Args:
+        scale: The scale the visible cards were tinted from.
+
+    Returns:
+        A DESIGN.md "12 -- Continuous Colorbar" legend: column name, the
+        gradient track, and mono end labels.
+    """
+    gradient = ", ".join(
+        sequential_tint(index / (_LEGEND_GRADIENT_STOPS - 1))
+        for index in range(_LEGEND_GRADIENT_STOPS)
+    )
+    track = html.Div(
+        className="colony-measurement-legend-track",
+        style={
+            "width": f"{_LEGEND_TRACK_WIDTH}px",
+            "height": "10px",
+            "borderRadius": "9999px",
+            "background": f"linear-gradient(to right, {gradient})",
+            "flex": "0 0 auto",
+        },
+    )
+    end_label_style = {
+        "fontFamily": FONT_FAMILY_MONO,
+        "fontSize": FONT_SIZE_CAPTION,
+        "color": COLOR_NAVY,
+        "whiteSpace": "nowrap",
+    }
+    return html.Div(
+        [
+            html.Span(
+                scale.column,
+                style={
+                    "fontFamily": FONT_FAMILY_MONO,
+                    "fontSize": FONT_SIZE_LABEL,
+                    "color": COLOR_NAVY,
+                    "fontWeight": 600,
+                    "whiteSpace": "nowrap",
+                },
+            ),
+            html.Span(
+                format_measurement_value(scale.minimum),
+                style=end_label_style,
+            ),
+            track,
+            html.Span(
+                format_measurement_value(scale.maximum),
+                style=end_label_style,
+            ),
+            html.Span(
+                "range of the colonies shown",
+                style={
+                    "fontFamily": FONT_FAMILY_MONO,
+                    "fontSize": FONT_SIZE_CAPTION,
+                    "color": COLOR_MUTED,
+                    "whiteSpace": "nowrap",
+                },
+            ),
+        ],
+        className="colony-measurement-legend",
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "gap": "0.5rem",
+            "padding": "0.35rem 0.5rem",
+        },
+    )
+
 
 def build_grid(
     df: pl.DataFrame,
@@ -668,6 +769,8 @@ def build_grid(
     layer: str = "rgb",
     mutations_disabled: bool = False,
     focus_index: int = 0,
+    measurement_column: str | None = None,
+    measurement_values: Mapping[tuple[str, int], float | None] | None = None,
 ) -> tuple[Component, list[tuple[str, int]]]:
     """Render the colony-grid component and its row-major key order.
 
@@ -724,6 +827,20 @@ def build_grid(
             cell the user is looking at. Only matters above
             :data:`COLONY_VIEW_CELL_CAP`, where it anchors the mounted
             window; below the cap every cell mounts.
+        measurement_column: Name of the measurement column each card should
+            display, or ``None`` (the default) for today's untinted grid.
+        measurement_values: Mapping ``(image_file, label) -> value`` for the
+            chosen column, read from each image's embedded table. A key with
+            no entry, or a ``None`` value, renders untinted with no text --
+            post-measurement operations can drop objects, and a missing row
+            is a fact about the data, not an error.
+
+            **The scale is built over the values this call actually places
+            on the grid**, never over the column's range across the run. The
+            grid is already filtered, and a scale anchored to a range the
+            user cannot see paints every visible card the same shade. Cells
+            virtualized out of the mount still count: they are content the
+            grid contains, so the legend does not shift as the user scrolls.
 
     Returns:
         A tuple ``(component, grid_order)``. ``grid_order`` is the
@@ -818,6 +935,23 @@ def build_grid(
         plan_visible_cells(populated_order, focus_index=focus_index)
     )
 
+    # Scale over the values THIS grid carries. Built from ``populated_order``
+    # -- every cell the grid contains, mounted or virtualized -- so scrolling
+    # a large grid does not silently re-anchor the legend under the user.
+    scale: MeasurementScale | None = None
+    if measurement_column and measurement_values:
+        in_view: list[float] = []
+        for y_value, x_value in populated_order:
+            populated = cell_index[(x_value, y_value)]
+            cell_key = (
+                str(populated["image_file"]),
+                int(populated["label"]),  # type: ignore[call-overload]
+            )
+            value = measurement_values.get(cell_key)
+            if value is not None:
+                in_view.append(float(value))
+        scale = MeasurementScale.over(measurement_column, in_view)
+
     # Build the grid, walking Y outer / X inner so the row-major key list
     # mirrors the visible reading order (left-to-right within a row).
     children: list[Component] = []
@@ -893,6 +1027,11 @@ def build_grid(
             typed_members = [
                 (str(m[0]), str(m[1]), int(m[2])) for m in members
             ]
+            cell_measurement: TileMeasurement | None = None
+            if scale is not None and measurement_values is not None:
+                cell_value = measurement_values.get(key)
+                if cell_value is not None:
+                    cell_measurement = scale.measurement_for(float(cell_value))
             children.append(
                 _build_cell(
                     image_file=image_file,
@@ -911,6 +1050,7 @@ def build_grid(
                     dim_alpha=dim_alpha,
                     layer=layer,
                     mutations_disabled=mutations_disabled,
+                    measurement=cell_measurement,
                 )
             )
 
@@ -939,10 +1079,19 @@ def build_grid(
             "justifySelf": "start",
         },
     )
-    return grid, grid_order
+    if scale is None:
+        return grid, grid_order
+    return (
+        html.Div(
+            [build_measurement_legend(scale), grid],
+            className="colony-grid-with-measurement",
+        ),
+        grid_order,
+    )
 
 
 __all__ = [
+    "build_measurement_legend",
     "selectable_axis_columns",
     "compute_max_bbox_size",
     "build_grid",
