@@ -482,12 +482,11 @@ def process_single_store_measure_core(
     help="Alpha transparency for label overlay (0.0-1.0)",
 )
 @click.option(
-    "--no-dataset-column",
+    "--dataset-column/--no-dataset-column",
     "include_dataset_column",
-    is_flag=True,
-    flag_value=False,
     default=True,
-    help="Exclude Metadata_Dataset column from measurements CSV (included by default)",
+    help="Include the Metadata_Dataset column in measurements "
+    "(included by default; --no-dataset-column excludes it)",
 )
 @click.option(
     "--event-log",
@@ -649,7 +648,10 @@ def main(
             )
             if actual_work_id != expected_work_id:
                 raise RuntimeError(
-                    "SLURM task work identity does not match worklist"
+                    "SLURM task work identity does not match worklist "
+                    f"(expected {expected_work_id}, computed {actual_work_id}); "
+                    "the worker's processing configuration differs from the "
+                    "one selection digested"
                 )
 
         # Process-only (apply-only) mode: run pipeline.apply() and export one
