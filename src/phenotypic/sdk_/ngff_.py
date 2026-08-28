@@ -24,8 +24,9 @@ import os
 import re as _re
 import shutil
 import time
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Literal, NamedTuple, Sequence
+from typing import Final, Literal, Mapping, NamedTuple, Sequence
 from uuid import uuid4
 
 import numpy as np
@@ -666,6 +667,126 @@ def require_readable_store(store_path: Path) -> dict:
             f"package to read it."
         )
     return block
+
+
+# ---------------------------------------------------------------------------
+# Reading an arbitrary NGFF store as plain pixels (spec 4)
+# ---------------------------------------------------------------------------
+
+
+def project_ngff_axes(
+    axes: Sequence[Mapping[str, object]],
+    shape: Sequence[int],
+    *,
+    t: int | None = None,
+    z: int | None = None,
+    c: int | None = None,
+) -> tuple[tuple[object, ...], bool]:
+    """Map an NGFF array's axes onto PhenoTypic's 2-D image model.
+
+    ``Image`` is 2-D, optionally with three colour channels. NGFF permits 2 to
+    5 axes. This is the total mapping between them, and it **refuses rather
+    than guesses**: silently reading ``t=0`` of a timelapse, or channel 0 of a
+    five-channel acquisition, yields a plausible image and a wrong result that
+    nothing downstream can detect.
+
+    Args:
+        axes: The ``multiscales[].axes`` list.
+        shape: The level's array shape; same length and order as *axes*.
+        t: Index to take on a ``time`` axis of size > 1. ``None`` refuses.
+        z: Index to take on the third ``space`` axis when its size is > 1.
+            ``None`` refuses.
+        c: Index to take on a ``channel`` axis whose size is neither 1 nor 3.
+            ``None`` refuses.
+
+    Returns:
+        ``(index, is_rgb)`` -- an index tuple to apply to the array, and whether
+        the result carries three colour channels. When *is_rgb* is ``True`` the
+        caller must still move the channel axis last; NGFF stores it first.
+
+    Raises:
+        ValueError: If *axes* and *shape* disagree in length, if an axis of
+            size > 1 has no override, if a ``channel`` axis is neither 1 nor 3
+            without an explicit *c*, or if an override is out of range.
+
+    Examples:
+        A plain 2-D plate image passes through untouched:
+
+        >>> from phenotypic.sdk_ import ngff_
+        >>> axes = [{'name': 'y', 'type': 'space'}, {'name': 'x', 'type': 'space'}]
+        >>> ngff_.project_ngff_axes(axes, (40, 30))
+        ((slice(None, None, None), slice(None, None, None)), False)
+    """
+    if len(axes) != len(shape):
+        raise ValueError(
+            f"axes/shape mismatch: {len(axes)} axes for a {len(shape)}-D array"
+        )
+
+    def _pick(
+        kind: str, name: str, override: int | None, size: int, flag: str
+    ) -> object:
+        # Both the TYPE and the name are in the message. NGFF constrains
+        # `axes[].type` but leaves `axes[].name` free, so a store may call its
+        # time axis anything; the type is the half a reader can act on, and
+        # naming only the name would make the error unreadable on any store
+        # that does not use the conventional single letters.
+        if size == 1:
+            return 0
+        if override is None:
+            raise ValueError(
+                f"this store's {kind} axis {name!r} has size {size}; "
+                f"PhenoTypic's Image is 2-D. Pass {flag}=<index> to choose "
+                f"one, or use zarr directly to read the whole array."
+            )
+        if not 0 <= override < size:
+            raise ValueError(
+                f"{flag}={override} is out of range for the {kind} axis "
+                f"{name!r} of size {size}"
+            )
+        return override
+
+    index: list[object] = []
+    is_rgb = False
+    seen_space = 0
+    n_space = sum(1 for a in axes if a.get("type") == "space")
+
+    for axis, size in zip(axes, shape):
+        raw_kind = axis.get("type")
+        kind = str(raw_kind) if raw_kind else "untyped"
+        name = str(axis.get("name", kind))
+        if raw_kind == "time":
+            index.append(_pick(kind, name, t, size, "t"))
+        elif raw_kind == "channel":
+            if size == 3 and c is None:
+                is_rgb = True
+                index.append(slice(None))
+            elif size == 1 and c is None:
+                index.append(0)
+            elif c is None:
+                raise ValueError(
+                    f"this store's channel axis {name!r} has size {size}; "
+                    f"PhenoTypic reads 1 (grayscale) or 3 (RGB). Pass "
+                    f"c=<index> to choose one channel."
+                )
+            else:
+                # An explicit c= wins even at size 3: the caller has said
+                # "this one channel", and quietly returning RGB instead would
+                # ignore an instruction rather than honour it.
+                index.append(_pick(kind, name, c, size, "c"))
+        elif raw_kind == "space":
+            seen_space += 1
+            # Three space axes means the first is the stacking (z) axis.
+            if n_space == 3 and seen_space == 1:
+                index.append(_pick(kind, name, z, size, "z"))
+            else:
+                index.append(slice(None))
+        else:
+            # A custom or null axis type. NGFF permits it; we cannot map it.
+            # Size 1 squeezes; anything larger refuses, and there is no
+            # override to name because there is no axis semantics to override.
+            index.append(_pick(kind, name, None, size, "(no override)"))
+
+    return tuple(index), is_rgb
 
 
 # ---------------------------------------------------------------------------
