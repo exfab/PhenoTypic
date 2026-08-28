@@ -130,6 +130,12 @@ def write_process_only_layer(
             durable=None,
             commit_guard=commit_guard,
             write_image_class=False,
+            # Consolidated INSIDE the .part, before the promote -- see
+            # `_consolidate_store_part`. A process-mode store is written once
+            # and never mutated, so the consolidated view cannot drift from
+            # the tree it describes; do not lift this onto a store that is
+            # rewritten in place.
+            consolidate=True,
         )
         return
 
