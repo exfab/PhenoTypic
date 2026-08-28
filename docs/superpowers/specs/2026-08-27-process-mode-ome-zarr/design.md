@@ -62,10 +62,11 @@ which is what it reads from a TIFF.
    asserting something no code path enforces — and writing `kind` would repeat
    the mistake that ruling exists to prevent.
 7. **Zarr is the default output format, per layer.** `--process-format` defaults
-   to `zarr` for `rgb`/`gray`/`detect_mat` and to `tiff` for `objmap`. No
-   command that works today starts failing.
-8. **`--layer objmap` has no OME-Zarr form.** An explicit
-   `--layer objmap --process-format zarr` is a `UsageError`. See §5.3.
+   to `zarr` for `rgb` and `gray`, and to `tiff` for `detect_mat` and `objmap`.
+   No command that works today starts failing.
+8. **`objmap` and `detect_mat` have no OME-Zarr form**, for two different
+   reasons. An explicit `--process-format zarr` on either is a `UsageError`.
+   See §5.3.
 9. **Float series still emit no `omero`.** The 2026-08-18 ruling stands
    unchanged; `gray` and `detect_mat` carry no rendering block. See §2.6.
 10. **`omero.rdefs.model` is added on integer series.** The one new field in the
@@ -508,9 +509,17 @@ Image.imread() to read its pixels.
 The guard is on `image_class` specifically, not on the absence of `provenance`
 or on any `kind` marker: `image_class` is the field `load_zarr` actually
 dispatches on, so gating the read on the same key it dispatches on keeps the
-check and its purpose from drifting apart. It also gives case C (a third-party
-store, no `phenotypic` block at all) a clear error, where today it raises
-`KeyError` from inside `require_readable_store`.
+check and its purpose from drifting apart. **Corrected 2026-08-27:** an earlier draft claimed the guard also gives case C
+(a third-party store, no `phenotypic` block) a clear error instead of a
+`KeyError`. Placed after `require_readable_store`, it does not — that call
+raises `KeyError` first, at `ngff_.py:623` (`return
+attributes[PhenotypicAttr.ROOT]`), before the guard is reached.
+
+`load_zarr` therefore reads the root attributes directly and raises the **same**
+`ValueError` for both shapes of "not a run bundle": no `phenotypic` block at
+all, and a block with no `image_class`. One error, one remedy, one message — a
+caller does not care which of the two applies, and splitting them would leave
+the more common case (a third-party store) with the worse error.
 
 This is the one place the design lets the file carry a signal, and it is a
 deliberate narrowing of locked decision 3 rather than a hole in it: `imread`
@@ -568,10 +577,24 @@ and auditable in the caller.
 
 ### 4.4 Derive `bit_depth`
 
-`phenotypic.bit_depth` when present; otherwise inferred from dtype (`uint8` ->
-8, `uint16` -> 16); otherwise left to the `Image` constructor's default. A
-third-party store has no `bit_depth` key, so the dtype path is the normal one
-for case C.
+**Corrected 2026-08-27.** An earlier draft read `phenotypic.bit_depth`. **No
+writer emits that key.** `build_phenotypic_attributes` (`ngff_.py:539-570`)
+emits `store_schema_version`, `phenotypic_version`, `image_class`, `series`,
+`pyramid`, `detect_mode`, `illuminant`, `gamma`, `metadata`, and the optional
+`provenance` / `labels` / `work_id` / `grid` — and nothing else. Bit depth lives
+in `metadata.protected[IMAGE.BIT_DEPTH]`, which is where `_load_from_store`
+reads it (`_image_io_handler.py:1406`).
+
+Resolution order:
+
+1. `phenotypic.metadata.protected[Metadata_BitDepth]` when present;
+2. otherwise inferred from dtype (`uint8` -> 8, `uint16` -> 16);
+3. otherwise left to the `Image` constructor's default.
+
+A third-party store has neither, so step 3 is the normal path for case C. Note
+step 2 has no answer for a float dtype, which is why a `gray` or `detect_mat`
+store relies on step 1 — and why reading the wrong key would have silently lost
+bit depth on every float round trip.
 
 ### 4.5 Name and metadata
 
@@ -584,6 +607,17 @@ file says about itself, which is precisely what `imread` already extracts from a
 TIFF via `_extract_tiff_metadata`. The `protected` and `public` sections are
 PhenoTypic run state and are never carried — that is the line that keeps
 `imread` from becoming a partial `load_zarr`.
+
+**The imported section is written through `_metadata.imported`, never through
+`image.metadata[key]`.** `MetadataAccessor.__setitem__`
+([`_metadata_accessor.py:210-218`](../../../../src/phenotypic/_core/_image_parts/accessors/_metadata_accessor.py))
+routes an unrecognised key into `_public_metadata` and raises `ValueError` on
+any non-scalar value — so the obvious loop would land imported tags in the
+`public` section, contradicting the paragraph above, and would raise on a
+structured TIFF tag. The TIFF branch already does it correctly
+(`_image_io_handler.py:727`: `image._metadata.imported.update(…)`) and the store
+branch follows it, normalising through the same helper `_load_from_store` uses
+(`:1466-1472`).
 
 ### 4.6 `imread` does not gate on `store_schema_version`
 
@@ -621,7 +655,8 @@ typo a silent mis-selection.
 
 | `--layer` | default format | output |
 |---|---|---|
-| `rgb`, `gray`, `detect_mat` | `zarr` | `<stem>.ome.zarr/` |
+| `rgb`, `gray` | `zarr` | `<stem>.ome.zarr/` |
+| `detect_mat` | `tiff` | `<stem>.tiff` (float, unchanged) |
 | `objmap` | `tiff` | `<stem>.png` (16-bit raw labels, unchanged) |
 
 Resolved in one function beside the existing `--mode process requires --layer`
@@ -632,7 +667,7 @@ The alternative — a uniform `zarr` default with `--layer objmap` erroring unti
 the user passes `--process-format tiff` — was rejected: it breaks a command that
 works today, and the error is pure ceremony since exactly one answer is legal.
 
-### 5.3 `--layer objmap --process-format zarr` is refused
+### 5.3 Two layers have no OME-Zarr form
 
 NGFF §2.6 is structural about label images:
 
@@ -662,7 +697,81 @@ Use --process-format tiff for the 16-bit raw-label PNG, or --layer rgb.
 Because the default for `objmap` is already `tiff` (§5.2), this fires only on an
 explicit request, never on a bare command.
 
-### 5.4 The full-run bundle store is not affected
+#### `detect_mat` — a PhenoTypic guard, not an NGFF rule
+
+**Amended 2026-08-27 (user ruling), correcting decision 7 as first written.**
+`detect_mat` was specified as defaulting to `zarr`. It cannot: verified by
+execution,
+
+```text
+rgb          OK
+gray         OK
+detect_mat   RAISES: ValueError: no primary series among ['detect_mat']
+```
+
+`_write_store_part` calls `ngff_.primary_series(series_names)` unconditionally
+([`_image_io_handler.py:1019`](../../../../src/phenotypic/_core/_image_parts/_image_io_handler.py)),
+and that function accepts only `rgb` or `gray` (`ngff_.py:471-475`).
+`_save_store`'s own docstring already states the constraint: *"series: … Must
+contain a primary series (`rgb` or `gray`)"*.
+
+Two alternatives were considered and rejected. **Widening `primary_series`** to
+return the sole series of a one-series store is defensible — the function exists
+only to decide where labels attach, and a process store sets
+`write_objmap=False` so it has none — but it edits a function the bundle write
+path also depends on, to serve a float analysis intermediate that is not an
+interop artifact. **Co-writing `gray`** (the existing precedent at
+`_image_io_handler.py:1240`, `wanted = set(layers) | {"gray"}`) would break
+decision 1 and roughly double the store for a layer the user did not ask for.
+
+Be honest about the asymmetry in the error text: `objmap` is refused because
+NGFF says a labels group is not an image; `detect_mat` is refused because
+PhenoTypic's writer requires a primary series. The first is a format rule, the
+second is ours, and a user reading the message deserves to know which:
+
+```text
+UsageError: --layer detect_mat has no single-series OME-Zarr form: PhenoTypic's
+store writer requires a primary series (rgb or gray) and detect_mat is neither.
+Use --process-format tiff for the float TIFF, or --layer gray.
+```
+
+If a `detect_mat` store is ever wanted, widening `primary_series` is the change
+to make, and it belongs in its own design.
+
+### 5.4 The option must reach the user-facing CLI, not just the worker
+
+**Added 2026-08-27.** An earlier draft wired `--process-format` only into
+`_cli_process_single.py`. **That file is the per-image SLURM worker**
+(`@click.command()` at `:420`, function `main` at `:545`), not the command a
+user runs. `python -m phenotypic` is `phenotypicCLI.py`, which declares its own
+`--layer` (`:1235-1240`), validates it (`:1331-1338`), and builds an
+`ExecutionConfig` (`:1663`). Wiring only the worker leaves
+`--mode process --process-format zarr` an unknown-option error.
+
+Three consequences, all in scope:
+
+1. **`--process-format` is declared on `phenotypicCLI.py` and resolved once**,
+   beside the existing `--layer` guard, then carried in
+   `ExecutionConfig` (`_cli_types.py:185`).
+2. **`process_only_output_path` has seven call sites** outside
+   `_cli_process_only.py`, every one of which currently computes a `.tiff` or
+   `.png` path: `phenotypicCLI.py:450` (the continuation artifact) and `:954`
+   (dry-run summary), `_cli_execution_strategies.py:159` (local completion
+   marker), `_cli_process_single.py:721` (the worker's own artifact
+   publication), and `_cli_staged_{strategy.py:128,402, resume.py:220}`
+   (objmap-only, so safe today, but they should pass the format explicitly
+   rather than inherit a default). Because the parameter defaults to `"tiff"`,
+   missing one is silent: continuation hunts for a file that was never written.
+   The format must also reach `_cli_execution_strategies.py:578` (the local
+   strategy's `process_single_apply_only_core` call) and the worker command line
+   built at `_cli_slurm_array_scripts.py:297-303`.
+3. **The format joins the continuation identity.** It is added to
+   `processing_configuration_digest_from_values`
+   (`_cli_failure_tracker.py:101-113`) and the state-compatibility check
+   (`_cli_state_management.py:210,336`), so switching format invalidates
+   continuation rather than silently reusing outputs of the other kind.
+
+### 5.5 The full-run bundle store is not affected
 
 `--mode full` and `--mode measure` are untouched. `--process-format` is rejected
 with a `UsageError` outside `--mode process`, mirroring how `--layer` already
@@ -714,8 +823,21 @@ Three further properties, all verified by execution:
   once into a `.part` and promoted by rename; it is never mutated in place, so
   the consolidated view cannot drift from the tree it describes.
 
-The `zarr-python` warning is suppressed at the single call site with a comment
-citing this section, rather than globally.
+**Consolidation happens inside the `.part`, before the promote — never after.**
+An earlier draft consolidated the returned store path, which rewrites the root
+`zarr.json` **at the final path** and so reintroduces exactly the failure this
+design claims to make unreachable (§"Why change" #2: *"a store either has its
+root `zarr.json` or does not exist"*). It would also land after
+`promote_store`'s optional `fsync`, leaving the consolidated root non-durable
+under SLURM. `_save_store` / `_write_store_part` therefore take
+`consolidate: bool = False`, applied immediately before `ngff_.promote_store`.
+
+Two `zarr-python` warnings are suppressed at that call site, with a comment
+citing this section rather than a global filter: the consolidated-metadata
+notice, and `"Object at METADATA.ome.xml is not recognized as a component of a
+Zarr hierarchy"` — the latter fires once per image at AutoConvertRaw scale.
+Both are `ZarrUserWarning`, a `UserWarning` subclass, so filtering on the class
+covers both.
 
 ---
 
@@ -740,13 +862,32 @@ store: 400k stat calls at 10k images."* A store is a directory full of files, so
 a test asserts non-recursion by stat count rather than by output equality — an
 `rglob` port produces the same file list and only differs in cost.
 
-### 7.3 Work IDs
+### 7.3 Work IDs, and two ways a store input breaks them
 
-Work IDs are derived from the input path relative to `--input`, unchanged. For a
-store the stem comes from `sdk_.store_stem`, never `Path.stem`. The helper's own
-docstring records the consequence of getting this wrong: `img.ome` is *"a
-plausible-looking wrong name rather than an error"* that propagates into parquet
-filenames and completion markers, so every image reprocesses forever.
+Work IDs are derived from the input path relative to `--input`. Two things break
+on a directory input, both found 2026-08-27 and both in scope.
+
+**`file_sha256` opens the input as a file.**
+[`_cli_failure_tracker.py:92-98`](../../../../src/phenotypic/_cli/_cli_failure_tracker.py)
+does `with path.open("rb")`, and is called with the input image path from
+`work_id_for_image` (`:205`), the SLURM identity ledger
+(`_cli_slurm_array_scripts.py:381`, once per image at submit time), and
+`_cli_process_single.py:141,624`. A `*.ome.zarr` input is a directory, so this
+raises `IsADirectoryError` — which would break the whole of §7 and this design's
+own end-to-end criterion.
+
+The store branch digests the store's **root `zarr.json`**. That file is already
+the store's completeness fingerprint: the promote protocol writes it last, so it
+exists only on a fully written store, and it changes whenever any published
+content does. Digesting the whole tree would be correct too but costs a walk per
+image at submit time for no additional guarantee.
+
+**`Path.stem` yields `img.ome`.** `process_only_output_path` and the work-ID
+sites must derive a store's stem with `sdk_.store_stem`
+(`_io_constants.py:1531`), never `Path.stem` — otherwise a store-input run
+writes `p01.ome.ome.zarr`. The helper's own docstring records why: `img.ome` is
+*"a plausible-looking wrong name rather than an error"* that propagates into
+parquet filenames and completion markers, so every image reprocesses forever.
 
 ### 7.4 Mixed input trees
 
@@ -766,8 +907,19 @@ as `<stem>.tiff` and `<stem>.png` are today.
 | `_core/_image_parts/_image_io_handler.py` | `imread` gains the store branch (§7.1); `load_zarr` gains the `image_class` guard (§3.3); `_save_store` and `_build_store_attributes` thread `write_image_class`. |
 | `_cli/_cli_process_only.py` | `process_only_output_path` becomes format-aware; `write_process_only_layer` gains the zarr branch, calling `_save_store(series=(layer,), write_objmap=False, write_image_class=False, levels=pyramid_level_count(h, w))`; `process_single_apply_only_core` calls `initialize_cli_provenance` before `pipeline.apply()` (§2.3.2a). |
 | `_cli/_cli_process_single.py` | The `--process-format` option, the layer-dependent default resolution, and the objmap guard (§5). |
-| `_cli/_cli_directory_scanner.py` | Non-recursive `*.ome.zarr` directory match beside the existing suffix match (§7.2). |
-| `_cli/_cli_readme_generator.py` | Documents the process-mode output layout. |
+| `_cli/_cli_directory_scanner.py` | Non-recursive `*.ome.zarr` directory match beside the existing suffix match (§7.2), on both `scan_directory_structure` and `get_input_structure_summary` — the dry-run path a user runs first. |
+| `phenotypicCLI.py` | Declares and resolves `--process-format`; passes it to the two `process_only_output_path` sites at `:450` and `:954` (§5.4). |
+| `_cli/_cli_types.py` | `ExecutionConfig` carries the resolved format (`:185`). |
+| `_cli/_cli_execution_strategies.py` | Threads the format to `process_only_output_path` (`:159`) and to `process_single_apply_only_core` (`:578`) (§5.4). |
+| `_cli/_cli_slurm_array_scripts.py` | Passes `--process-format` on the worker command line (`:297-303`); store-aware digest in the identity ledger (`:381`) (§7.3). |
+| `_cli/_cli_failure_tracker.py` | `file_sha256` gains a store branch (§7.3); the format joins `processing_configuration_digest_from_values` (§5.4). |
+| `_cli/_cli_state_management.py` | The format joins the continuation compatibility check (`:210,336`) (§5.4). |
+
+`_cli/_cli_readme_generator.py` was listed here in an earlier draft and is
+**not** affected: it documents nothing about process mode (`grep -n process`
+returns only unrelated hits), and `phenotypicCLI.py:2324` skips
+`output_manager.create_structure` for process runs, so the generator is never
+reached on this path.
 
 No new dependency is added. `zarr>=3.0` and `jsonschema` are already declared;
 no `fsspec`/`s3fs`/`gcsfs` is introduced (§11).
