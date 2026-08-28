@@ -12,6 +12,8 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import click
+
 from phenotypic import GridImage, Image, ImagePipeline
 from phenotypic.sdk_ import CommitGuard, atomic_write_with_writer
 from phenotypic._core._provenance import initialize_cli_provenance
@@ -24,6 +26,72 @@ logger = logging.getLogger(__name__)
 #: are absent for two different reasons, and :func:`write_process_only_layer`
 #: refuses each with its own message saying which (spec §5.3).
 _ZARR_CAPABLE_LAYERS: frozenset[str] = frozenset({"rgb", "gray"})
+
+#: Why each non-store layer is refused. Two entries, two reasons, deliberately
+#: not collapsed: ``objmap`` is refused by the FORMAT, ``detect_mat`` by US.
+_NO_ZARR_FORM: dict[str, str] = {
+    "objmap": (
+        "--layer objmap has no single-series OME-Zarr form (NGFF 0.5 §2.6: "
+        "a labels group is nested inside an image group and is not itself an "
+        "image). Use --process-format tiff for the 16-bit raw-label PNG, or "
+        "--layer rgb."
+    ),
+    "detect_mat": (
+        "--layer detect_mat has no single-series OME-Zarr form: PhenoTypic's "
+        "store writer requires a primary series (rgb or gray) and detect_mat "
+        "is neither. Use --process-format tiff for the float TIFF, or "
+        "--layer gray."
+    ),
+}
+
+
+def resolve_process_format(
+    layer: ProcessOnlyLayer, requested: ProcessFormat | None
+) -> ProcessFormat:
+    """Resolve ``--process-format``, whose default depends on ``--layer``.
+
+    The default is not a single constant: ``rgb`` and ``gray`` default to
+    ``zarr`` and ``detect_mat``/``objmap`` to ``tiff``, so every bare command
+    keeps working and each layer gets the format that suits it. The rule lives
+    here rather than in the option declaration so it has exactly one home --
+    the user-facing CLI and the per-image worker both call it.
+
+    The two refusals carry different reasons on purpose. ``objmap`` is refused
+    by NGFF: 0.5 §2.6 nests a label image inside an image group and states
+    that the labels group is not itself an image, so a standalone objmap store
+    has no conformant single-series form. ``detect_mat`` is refused by
+    PhenoTypic: ``_write_store_part`` calls ``ngff_.primary_series``
+    unconditionally and that function accepts only ``rgb`` or ``gray``, so
+    ``_save_store(series=("detect_mat",))`` raises ``no primary series among
+    ['detect_mat']``. The first is a format rule and unfixable here; the second
+    is ours, and widening ``primary_series`` is a change that belongs in its own
+    design. A user reading the message deserves to know which they are hitting.
+
+    Args:
+        layer: The layer being exported.
+        requested: The user's explicit ``--process-format``, or ``None``.
+
+    Returns:
+        The resolved format.
+
+    Raises:
+        click.UsageError: On an explicit ``zarr`` for a layer with no store
+            form, naming the reason and the remedy.
+
+    Examples:
+        >>> from phenotypic._cli._cli_process_only import resolve_process_format
+        >>> resolve_process_format("rgb", None)
+        'zarr'
+        >>> resolve_process_format("objmap", None)
+        'tiff'
+        >>> resolve_process_format("gray", "tiff")
+        'tiff'
+    """
+    if requested is None:
+        return "zarr" if layer in _ZARR_CAPABLE_LAYERS else "tiff"
+    if requested == "zarr" and layer not in _ZARR_CAPABLE_LAYERS:
+        raise click.UsageError(_NO_ZARR_FORM[layer])
+    return requested
 
 
 def process_only_output_path(
