@@ -41,8 +41,9 @@ which is what it reads from a TIFF.
 ## Locked decisions
 
 1. **The artifact is a single-series store plus provenance.** One series — the
-   requested `--layer` — with no objmap, no grid, and no metadata sections. What
-   the store does *not* carry is load-bearing; see decision 3.
+   requested `--layer` — with no objmap, no grid, and no `image_class`. The
+   image's own metadata sections *are* written (§2.2). What the store does not
+   carry is load-bearing; see decision 4.
 2. **Directory store, never zipped.** The destination is NAS then cloud object
    storage, where a directory store supports HTTP range reads and a zip does
    not. NGFF RFC-9 (zipped stores) is out of scope.
@@ -50,23 +51,29 @@ which is what it reads from a TIFF.
    not by the file.** `imread` always reads pixels; `load_zarr` always restores
    state. No role marker is written and nothing sniffs. This preserves the
    2026-08-18 design's decision #1 ("no runtime sniffing in the hot path").
-4. **No `kind` marker.** Nothing would read it. The 2026-08-18 design deleted
+4. **Process-mode stores omit `image_class`.** It is the one key `load_zarr`
+   dispatches on, so omitting it is what makes `load_zarr` refuse a store that
+   is not a run bundle (§3.3). This requires a writer change; see §2.2.
+5. **Provenance is the existing operation journal, reused unchanged**, except
+   that process-mode stores record the pipeline **basename** rather than its
+   resolved absolute path (§2.3).
+6. **No `kind` marker.** Nothing would read it. The 2026-08-18 design deleted
    `metadata_schema_version` for exactly this reason — a hard-coded constant
    asserting something no code path enforces — and writing `kind` would repeat
    the mistake that ruling exists to prevent.
-5. **Zarr is the default output format, per layer.** `--process-format` defaults
+7. **Zarr is the default output format, per layer.** `--process-format` defaults
    to `zarr` for `rgb`/`gray`/`detect_mat` and to `tiff` for `objmap`. No
    command that works today starts failing.
-6. **`--layer objmap` has no OME-Zarr form.** An explicit
+8. **`--layer objmap` has no OME-Zarr form.** An explicit
    `--layer objmap --process-format zarr` is a `UsageError`. See §5.3.
-7. **Float series still emit no `omero`.** The 2026-08-18 ruling stands
-   unchanged; `gray` and `detect_mat` carry no rendering block. See §3.3.
-8. **`omero.rdefs.model` is added on integer series.** The one new field in the
+9. **Float series still emit no `omero`.** The 2026-08-18 ruling stands
+   unchanged; `gray` and `detect_mat` carry no rendering block. See §2.6.
+10. **`omero.rdefs.model` is added on integer series.** The one new field in the
    writer.
-9. **Consolidated metadata is written.** Legal under the Zarr v3 extension
+11. **Consolidated metadata is written.** Legal under the Zarr v3 extension
    mechanism via `must_understand: false`; see §6.
-10. **Provenance carries no timestamp and no source digest.** See §2.3.
-11. **`imread` refuses rather than silently projects.** A store it cannot map
+12. **Provenance carries no *input-image* digest.** See §2.3.3.
+13. **`imread` refuses rather than silently projects.** A store it cannot map
     onto PhenoTypic's 2-D image model raises; it never quietly takes index 0 of
     an axis it does not understand. See §4.
 
@@ -254,55 +261,123 @@ this. **No change is required to make PhenoTypic canonical** — it already is.
   "phenotypic": {
     "store_schema_version": 3,
     "phenotypic_version": "0.18.0",
-    "bit_depth": 16,
+    "series": {"rgb": "rgb"},
+    "pyramid": {"levels": 4, …},
     "illuminant": "D65",
     "gamma": "sRGB",
-    "series": {"rgb": "rgb"},
+    "detect_mode": "gray",
+    "metadata": {"protected": {…}, "public": {…}, "imported": {…}},
     "provenance": {
-      "layer": "rgb",
-      "pipeline": { …ImagePipeline.to_json()… },
-      "pipeline_sha256": "…",
-      "source": "EXPERIMENT/plate01/IMG_4471.tiff"
+      "schema_version": 1,
+      "status": "complete",
+      "retry_base_length": 0,
+      "pipeline": {"source_path": "preprocess_pipeline.json.pht-pipe",
+                   "sha256": "a3f2…"},
+      "operations": [
+        {"sequence": 1,
+         "operation_name": "ColorCorrector",
+         "operation_class": "phenotypic.correction._color_corrector.ColorCorrector",
+         "phenotypic_version": "0.18.0",
+         "parameters": {"profile": {"correction_matrix": [[…], […], […]], …}},
+         "applied_at_utc": "2026-08-27T18:04:11.212Z",
+         "duration_seconds": 4.117,
+         "pipeline_step_path": ["ColorCorrector"]},
+        {"sequence": 2, "operation_name": "ColorDenoise", …}
+      ]
     }
   }}}
 ```
 
-`bit_depth`, `illuminant`, and `gamma` sit at the top of the block, not inside
-`provenance`: they describe the pixels, not the process.
-
 **What is absent is the contract.** No `image_class` — its absence is what makes
-`load_zarr` raise on this store (§3.2). No `grid`, no `metadata` sections, no
-`labels`, no `work_id`. And no `kind` marker (decision 4).
+`load_zarr` raise on this store (§3.3), and the writer omits it deliberately
+(§2.3.2). No `grid`, no `labels`, no `work_id`. And no `kind` marker
+(decision 4).
+
+`metadata` sections **are** written: they are the image's own imported TIFF/EXIF
+tags and schema metadata, which a processed image legitimately carries. Omitting
+them would discard capture provenance for no benefit. It is `image_class` alone
+that gates `load_zarr`.
 
 `store_schema_version` stays gated by value through
 `ngff_.require_readable_store` (`:626`) on every path that decodes store content
 **as PhenoTypic state**. `imread` is deliberately not such a path; see §4.6.
 
-### 2.3 Provenance content
+### 2.3 Provenance is the existing journal, not a new block
 
-`pipeline` is the full `ImagePipeline.to_json()` mapping. This is what
-"retaining the operations applied" means concretely, and it is strictly stronger
-than a label: `ImagePipeline.from_json` consumes the embedded block, so the
-output is re-derivable, not merely annotated.
+An earlier draft of this section specified a bespoke `provenance` mapping
+carrying `ImagePipeline.to_json()`, a `pipeline_sha256`, and a `source` path,
+and ruled out timestamps. **That was written in ignorance of an existing
+system and is withdrawn in full.**
 
-`pipeline_sha256` is the SHA-256 of the canonically-serialised pipeline JSON. It
-is derived and therefore redundant with `pipeline`, and is kept anyway for two
-reasons: it is the join key answering "were these two images processed
-identically?" without a deep diff, and computing it once at write time prevents
-consumers deriving it inconsistently from different key orderings.
-AutoConvertRaw already computes the same class of digest for its
-`.pp.profile.<hash>` marker.
+#### 2.3.1 What already exists
 
-`source` is the input path relative to `--input`, matching how work IDs are
-derived.
+[`_core/_provenance.py`](../../../../src/phenotypic/_core/_provenance.py) (384
+lines) maintains a per-image **operation journal**, and
+`_build_store_attributes` already passes it into every store automatically
+([`_image_io_handler.py:868`](../../../../src/phenotypic/_core/_image_parts/_image_io_handler.py)):
 
-**No timestamp.** A timestamp makes two runs over the same input produce
-different bytes, which defeats content comparison, any content-defined resume,
-and cloud-side deduplication. Filesystem mtime already records when.
+```python
+provenance=deepcopy(self._metadata.provenance_journal),
+```
 
-**No `source_sha256`.** Digesting a 72 MB TIFF per image is real I/O at
-AutoConvertRaw's scale, no current consumer needs it, and AutoConvertRaw does
-not digest its inputs today. It may land later behind a flag.
+`build_phenotypic_attributes` already accepts it (`ngff_.py:498`) and writes it
+under `PhenotypicAttr.PROVENANCE` (`:572`). `_load_from_store` already reads it
+back (`_image_io_handler.py:1462`), and `_cli_staged_resume.py:94` already
+depends on it.
+
+The journal is **strictly better than the withdrawn design**. It records what
+actually ran, with resolved parameters, rather than what was configured:
+`append_operation_provenance` (`_provenance.py:326`) captures
+`operation.model_dump(mode="json")` per operation, so `ColorCorrector`'s 39
+fitted coefficients are recorded as applied. `pipeline.sha256`
+(`pipeline_source_identity`, `:276`) already is the `pipeline_sha256` the
+withdrawn design proposed.
+
+Three consequences:
+
+- **The `pipeline` key of the withdrawn design is deleted.** The journal's
+  `operations[]` supersedes it.
+- **The "no timestamp" ruling is withdrawn.** The journal emits
+  `applied_at_utc` and `duration_seconds` per operation. The reproducibility
+  argument behind that ruling still holds in the abstract, but not at the price
+  of maintaining a second provenance mechanism beside this one. Reuse wins.
+- **`Image` gains no new writer parameter.** The journal rides the existing
+  path.
+
+#### 2.3.2 The two changes that are needed
+
+**(a) Populate the journal on the process path.** `initialize_cli_provenance`
+is called from `_cli_process_single.py:263` on the full path and from
+`_cli_staged_workers.py:88`, but
+[`_cli_process_only.py`](../../../../src/phenotypic/_cli/_cli_process_only.py)
+never touches provenance — verified by grep. So a process-mode store would today
+carry the empty journal `new_provenance_journal()` returns. The fix is one call
+before `pipeline.apply()`, not a subsystem.
+
+**(b) Record the pipeline basename, not the resolved absolute path.**
+`pipeline_source_identity` (`_provenance.py:276-282`) does `Path(path).resolve()`
+and stores the result, so a published store would carry, e.g.,
+`/rhome/<user>/bigdata_exfab/software/AutoConvertRaw/config/preprocess_pipeline.json.pht-pipe`
+— cluster filesystem layout, username, and project directory names, inside an
+artifact bound for a NAS and then object storage.
+
+Process-mode stores record `Path(path).name` instead. `sha256` is unchanged and
+still pins the pipeline's identity exactly, so nothing is lost but the ability
+to point at the file on the cluster — which a published artifact should not be
+asserting anyway.
+
+The journal therefore means slightly different things by mode, and that is
+deliberate: a bundle store stays inside the run directory and benefits from the
+absolute path; a process-mode store is a publication artifact and does not. The
+difference is carried by one explicit parameter, not by inference (§8).
+
+#### 2.3.3 Still deferred
+
+**No `source_sha256`** — a digest of the *input image*, distinct from the
+journal's `pipeline.sha256` (a digest of the *pipeline file*). Digesting a 72 MB
+TIFF per image is real I/O at AutoConvertRaw's scale, no current consumer needs
+it, and AutoConvertRaw does not digest its inputs today. It may land later
+behind a flag.
 
 ### 2.4 Write-only OME projection
 
@@ -382,8 +457,11 @@ read on a QuPath export.
 
 ### 3.3 `load_zarr` needs an explicit guard
 
-An earlier draft of this section claimed `load_zarr` already raises when
-`image_class` is absent. **It does not.** Verified by reading the code:
+`load_zarr` raises on a process-mode store because the writer **omits**
+`image_class` there. Two corrections to an earlier draft underlie that sentence.
+
+**First: `load_zarr` does not raise on a missing `image_class` today.** Verified
+by reading the code:
 
 - `load_zarr` does `block.get(PhenotypicAttr.IMAGE_CLASS)`
   ([`_image_io_handler.py:1673`](../../../../src/phenotypic/_core/_image_parts/_image_io_handler.py)).
@@ -403,8 +481,23 @@ error — the same failure class `store_stem`'s docstring names for `Path.stem`,
 and the same one the 2026-08-19 ruling on `store_schema_version` (presence
 versus value) exists to prevent.
 
-`load_zarr` therefore gains one guard: **absent `image_class` raises**, naming
-`imread` as the remedy.
+**Second: `image_class` is written unconditionally today**, so its absence was
+not something the design could simply rely on. `_build_store_attributes`
+hardcodes `image_class=type(self).__name__`
+([`_image_io_handler.py:850`](../../../../src/phenotypic/_core/_image_parts/_image_io_handler.py)),
+and `build_phenotypic_attributes` declares it a **required** keyword
+(`ngff_.py:489`). Every store carries it, `save_intermediate_zarr`'s GUI preview
+stores included.
+
+Both halves are therefore in scope:
+
+1. **The writer gains a way to omit it.** `_save_store` takes
+   `write_image_class: bool = True`, threads it to `_build_store_attributes`,
+   and `build_phenotypic_attributes`'s `image_class` widens from `str` to
+   `str | None`, omitting the key when `None`. Only the process-mode caller
+   passes `False`; `save2zarr` and `save_intermediate_zarr` are unchanged.
+2. **`load_zarr` gains the guard**: absent `image_class` raises, naming
+   `imread` as the remedy.
 
 ```text
 ValueError: <path> carries no phenotypic.image_class and is not a PhenoTypic
@@ -418,6 +511,11 @@ dispatches on, so gating the read on the same key it dispatches on keeps the
 check and its purpose from drifting apart. It also gives case C (a third-party
 store, no `phenotypic` block at all) a clear error, where today it raises
 `KeyError` from inside `require_readable_store`.
+
+This is the one place the design lets the file carry a signal, and it is a
+deliberate narrowing of locked decision 3 rather than a hole in it: `imread`
+still never inspects the block to decide behaviour. Only `load_zarr` does, on
+the single key it already dispatches on.
 
 ---
 
@@ -663,9 +761,10 @@ as `<stem>.tiff` and `<stem>.png` are today.
 
 | File | Change |
 |---|---|
-| `sdk_/ngff_.py` | New `read_ngff_image_spec()` (the §4 resolver -- pure, no `Image` import) and `build_provenance()`; `rdefs` added to `build_omero` (§2.5). |
-| `_core/_image_parts/_image_io_handler.py` | `imread` gains the store branch (§7.1); `load_zarr` gains the `image_class` guard (§3.3). |
-| `_cli/_cli_process_only.py` | `process_only_output_path` becomes format-aware; `write_process_only_layer` gains the zarr branch, calling `_save_store(series=(layer,), write_objmap=False, levels=pyramid_level_count(h, w))` -- that signature already takes exactly these arguments and needs no change. |
+| `sdk_/ngff_.py` | New `read_ngff_image_spec()` (the §4 resolver -- pure, no `Image` import); `rdefs` added to `build_omero` (§2.5); `build_phenotypic_attributes`'s `image_class` widens to `str \| None` and omits the key when `None` (§3.3). No `build_provenance()` -- the journal already exists (§2.3). |
+| `_core/_provenance.py` | `pipeline_source_identity` gains a switch to record the pipeline **basename** instead of the resolved absolute path; `initialize_cli_provenance` threads it (§2.3.2b). |
+| `_core/_image_parts/_image_io_handler.py` | `imread` gains the store branch (§7.1); `load_zarr` gains the `image_class` guard (§3.3); `_save_store` and `_build_store_attributes` thread `write_image_class`. |
+| `_cli/_cli_process_only.py` | `process_only_output_path` becomes format-aware; `write_process_only_layer` gains the zarr branch, calling `_save_store(series=(layer,), write_objmap=False, write_image_class=False, levels=pyramid_level_count(h, w))`; `process_single_apply_only_core` calls `initialize_cli_provenance` before `pipeline.apply()` (§2.3.2a). |
 | `_cli/_cli_process_single.py` | The `--process-format` option, the layer-dependent default resolution, and the objmap guard (§5). |
 | `_cli/_cli_directory_scanner.py` | Non-recursive `*.ome.zarr` directory match beside the existing suffix match (§7.2). |
 | `_cli/_cli_readme_generator.py` | Documents the process-mode output layout. |
