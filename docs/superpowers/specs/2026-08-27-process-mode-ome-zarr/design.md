@@ -469,18 +469,28 @@ by reading the code:
   A missing key yields `None`, which is not `"GridImage"`, so the
   subclass-mismatch warning does not fire and control falls through to
   `_load_from_store` unimpeded.
-- `_load_from_store` (`:1369`) reads every field with `.get()` and a default:
-  `series` (`{}`), `metadata` (`{}`), `labels` (`{}`), `bit_depth`,
-  `illuminant`, `gamma`.
 - `require_readable_store` passes, because a process-mode store *does* carry a
   correct `store_schema_version`.
+- `_load_from_store` (`:1369`) then reads the *header* fields with defaulting
+  `.get()` calls — `series`, `metadata`, `labels`, `bit_depth`, `illuminant`,
+  `gamma` — so nothing stops it there.
 
-So `load_zarr` on a process-mode store today would **silently succeed**,
-returning an `Image` built from the one present series with empty metadata
-sections and no objmap. That is a plausible-looking wrong result rather than an
-error — the same failure class `store_stem`'s docstring names for `Path.stem`,
-and the same one the 2026-08-19 ruling on `store_schema_version` (presence
-versus value) exists to prevent.
+**Corrected again, 2026-08-28 (found during implementation, verified by
+execution).** An earlier version of this section concluded that `load_zarr`
+would therefore *silently succeed*, returning a degraded `Image`. It does not.
+Having defaulted the header, `_load_from_store` goes on to subscript the series
+mapping **bare** — `series["gray"]` (`:1640`), `series["detect_mat"]` (`:1650`)
+— so a single-series store raises:
+
+```text
+KeyError: 'detect_mat'
+```
+
+The guard is still required, and for a reason that survives the correction: an
+error naming an internal series key tells a user nothing about what they did
+wrong or what to do instead. What changes is only the severity of the
+pre-existing behaviour — an obscure error, not a plausible wrong object. Both
+justify replacing it with one that names `imread`.
 
 **Second: `image_class` is written unconditionally today**, so its absence was
 not something the design could simply rely on. `_build_store_attributes`
