@@ -16,7 +16,10 @@ import click
 
 from phenotypic import GridImage, Image, ImagePipeline
 from phenotypic.sdk_ import CommitGuard, atomic_write_with_writer
-from phenotypic._core._provenance import initialize_cli_provenance
+from phenotypic._core._provenance import (
+    initialize_cli_provenance,
+    set_provenance_status,
+)
 from phenotypic.sdk_.typing_ import ImageTypeName, ProcessFormat, ProcessOnlyLayer
 from ._cli_failure_tracker import PerImageScientificError
 
@@ -260,6 +263,7 @@ def process_single_apply_only_core(
     Raises on failure (caller logs/handles), mirroring
     :func:`process_single_image_core`.
     """
+    image: Image | None = None
     try:
         pipeline = ImagePipeline.from_json(pipeline_path)
         image_cls = GridImage if image_type == "GridImage" else Image
@@ -299,9 +303,21 @@ def process_single_apply_only_core(
         # project directory names. sha256 still pins the pipeline exactly.
         initialize_cli_provenance(image, pipeline_path, basename_only=True)
         pipeline.apply(image, inplace=True)
+        # BEFORE the write below, or the store records the stale default.
+        # `initialize_cli_provenance` opens at `"in_progress"`
+        # (_provenance.py:305), and every sibling path closes it --
+        # `_cli_process_single.py:311`, `_cli_staged_workers.py:493`. This one
+        # did not, so every store this mode published said it was still being
+        # written. `status` is the field that says whether an artifact is
+        # trustworthy: `_cli_staged_resume.py:101` already gates on
+        # `status in {"staged", "complete"}`, so a consumer following that
+        # convention would reject every store we publish (spec 2.3.4).
+        set_provenance_status(image, "complete")
     except MemoryError:
         raise
     except Exception as exc:
+        if image is not None:
+            set_provenance_status(image, "failed")
         raise PerImageScientificError("process", exc) from exc
 
     out_path = process_only_output_path(

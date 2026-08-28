@@ -492,3 +492,65 @@ def test_stripping_leaves_the_rest_of_the_journal_intact(
         "pipeline_step_path",
     ):
         assert key in only
+
+
+# ---------------------------------------------------------------------------
+# Spec 2.3.4 -- a published store reports a terminal status
+# ---------------------------------------------------------------------------
+
+
+def test_a_published_store_reports_a_terminal_status(
+    tmp_path: Path, source_image: Path, pipeline_file: Path
+) -> None:
+    """Spec 2.3.4. `in_progress` in a published artifact is a lie about it.
+
+    `_cli_staged_resume.py` gates on `status in {"staged", "complete"}`, so a
+    consumer following that same convention would reject every store this mode
+    publishes.
+    """
+    store = _run_to_store(pipeline_file, source_image, tmp_path / "out")
+    assert _block(store)[PhenotypicAttr.PROVENANCE]["status"] == "complete"
+
+
+def test_a_failed_apply_leaves_the_journal_marked_failed(
+    tmp_path: Path,
+    source_image: Path,
+    pipeline_file: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The error path is the other half of the status contract.
+
+    No store is written when apply raises, so the mark is observed on the
+    image the core decoded -- captured through `imread` -- rather than on
+    disk.
+    """
+    from phenotypic._cli._cli_failure_tracker import PerImageScientificError
+
+    decoded: list[Image] = []
+    real_imread = Image.imread
+
+    def _spy_imread(path, **kwargs):
+        image = real_imread(path, **kwargs)
+        decoded.append(image)
+        return image
+
+    def _explode(self, image, inplace=False):
+        raise RuntimeError("detector exploded")
+
+    monkeypatch.setattr(Image, "imread", staticmethod(_spy_imread))
+    monkeypatch.setattr(ImagePipeline, "apply", _explode)
+
+    with pytest.raises(PerImageScientificError):
+        process_single_apply_only_core(
+            pipeline_path=pipeline_file,
+            image_path=source_image,
+            input_root=source_image.parent,
+            output_dir=tmp_path / "out",
+            image_type="Image",
+            layer="rgb",
+            read_kwargs={},
+            process_format="zarr",
+        )
+
+    assert decoded, "the core must have decoded an image before applying"
+    assert decoded[-1]._metadata.provenance_journal["status"] == "failed"
