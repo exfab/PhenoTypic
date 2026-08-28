@@ -22,7 +22,6 @@ from ._cli_file_locking import atomic_append, atomic_read, FileLockTimeout
 from phenotypic.sdk_ import (
     CommitGuard,
     FAILURES_JSONL,
-    STORE_ROOT_JSON,
     STORE_SUFFIX,
     publication_commit,
     terminal_failures_jsonl_path,
@@ -95,17 +94,36 @@ def file_sha256(path: Path) -> str:
     """Return the SHA-256 digest of *path* without retaining file contents.
 
     A ``*.ome.zarr`` input is a **directory**, so the streaming read raises
-    ``IsADirectoryError``. A store is digested by its root ``zarr.json``
-    instead, which is already its completeness fingerprint: the promote
-    protocol writes that document last, so it exists only on a fully written
-    store, and it changes whenever any published content does -- the series
-    map, the pyramid level count, the metadata sections, the provenance
-    journal.
+    ``IsADirectoryError``. A store is digested over its whole tree: every
+    member's store-relative path and content, in sorted path order.
 
-    Digesting the whole tree would be correct too, and is not done: it costs a
-    directory walk per image at SLURM submit time (the identity ledger in
-    ``_cli_slurm_array_scripts`` runs this once per image while building the
-    ledger) for no additional guarantee.
+    **Not the root ``zarr.json`` alone.** An earlier version did that, on the
+    reasoning that the promote protocol writes the root last so it fingerprints
+    completeness, and that it "changes whenever any published content does".
+    The first half is true; the second is false, and verified so by execution.
+    The root carries the schema version, the series map, the pyramid geometry,
+    the metadata sections and the provenance journal -- none of which move when
+    pixels do. Two stores whose images differ entirely produced one digest::
+
+        pixels genuinely differ : True (mean 0.640 vs 0.500)
+        shard bytes differ      : True
+        root zarr.json identical: True
+        file_sha256 differs     : False
+
+    That silently breaks content-change detection for a store input: the
+    digest feeds :func:`work_id_for_image` and the SLURM identity ledger, so
+    an edited store would keep its work ID and continuation would reuse stale
+    output. The flat-file path digests every pixel byte; the store path must
+    not be weaker.
+
+    The walk is also not the cost the earlier reasoning assumed. A store holds
+    roughly a dozen files whose bytes are the same bytes an equivalent TIFF
+    would carry, so digesting the tree reads about as much as digesting that
+    TIFF -- plus a directory walk, which is what buys the guarantee.
+
+    Paths are folded in alongside content so that moving a chunk between
+    members, or renaming one, changes the digest. Sorting makes it independent
+    of filesystem iteration order.
 
     A directory that is not a store still raises ``IsADirectoryError``. It has
     no meaningful content fingerprint, and inventing one would let a
@@ -123,15 +141,26 @@ def file_sha256(path: Path) -> str:
             store.
     """
     target = Path(path)
+    digest = hashlib.sha256()
+
     if target.is_dir():
         if not target.name.endswith(STORE_SUFFIX):
             raise IsADirectoryError(
                 f"{target} is a directory but not an OME-Zarr store; "
                 f"it has no content fingerprint"
             )
-        target = target / STORE_ROOT_JSON
+        members = sorted(
+            (p for p in target.rglob("*") if p.is_file()),
+            key=lambda p: p.relative_to(target).as_posix(),
+        )
+        for member in members:
+            digest.update(member.relative_to(target).as_posix().encode("utf-8"))
+            digest.update(b"\0")
+            with member.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+        return digest.hexdigest()
 
-    digest = hashlib.sha256()
     with target.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+
+import numpy as np
 import shutil
 from pathlib import Path
 from types import SimpleNamespace
@@ -35,11 +37,37 @@ def test_a_store_digests_without_raising(tmp_path: Path) -> None:
     assert len(file_sha256(store)) == 64
 
 
-def test_the_digest_is_the_root_zarr_json(tmp_path: Path) -> None:
-    """Named explicitly, so a future change to the tree walk is deliberate."""
+def test_the_digest_covers_every_member_of_the_tree(tmp_path: Path) -> None:
+    """Named explicitly, so a future change to the tree walk is deliberate.
+
+    Supersedes an earlier version that pinned the digest to the root
+    ``zarr.json`` alone. That contract was wrong -- see
+    ``test_two_stores_with_different_pixels_get_different_digests`` -- and
+    pinning it made the defect look intentional.
+    """
     store = _store(tmp_path / "in", "p01")
-    expected = hashlib.sha256((store / "zarr.json").read_bytes()).hexdigest()
-    assert file_sha256(store) == expected
+
+    expected = hashlib.sha256()
+    members = sorted(
+        (p for p in store.rglob("*") if p.is_file()),
+        key=lambda p: p.relative_to(store).as_posix(),
+    )
+    assert len(members) > 1, "a one-file store would not exercise the walk"
+    for member in members:
+        expected.update(member.relative_to(store).as_posix().encode("utf-8"))
+        expected.update(b"\0")
+        expected.update(member.read_bytes())
+
+    assert file_sha256(store) == expected.hexdigest()
+
+
+def test_the_digest_notices_a_changed_shard(tmp_path: Path) -> None:
+    """The pixel bytes are inside a shard, not the root -- the whole point."""
+    store = _store(tmp_path / "in", "p01")
+    shard = next(p for p in store.rglob("c.*") if p.is_file())
+    before = file_sha256(store)
+    shard.write_bytes(shard.read_bytes() + b"\0")
+    assert file_sha256(store) != before
 
 
 def test_the_digest_changes_when_the_store_content_does(tmp_path: Path) -> None:
@@ -179,3 +207,72 @@ def test_a_store_named_input_mirrors_to_a_named_output(tmp_path: Path) -> None:
         ).name
         == "p02.tiff"
     )
+
+
+def test_two_stores_with_different_pixels_get_different_digests(
+    tmp_path: Path,
+) -> None:
+    """The store digest must move when the pixels do.
+
+    Regression for a real defect: ``file_sha256`` digested only the root
+    ``zarr.json``, on the spec's claim that it "changes whenever any published
+    content does". It does not -- it carries the schema version, series map,
+    pyramid geometry, metadata sections and provenance journal, none of which
+    move when pixels change. Two entirely different images hashed identically,
+    which silently breaks content-change detection: the digest feeds
+    ``work_id_for_image`` and the SLURM identity ledger, so an edited store
+    would keep its work ID and continuation would reuse stale output.
+
+    The flat-file path digests every pixel byte. The store path must not be
+    weaker.
+    """
+    import numpy as np
+
+    base = np.asarray(Image(load_synth_yeast_plate()).rgb[:])
+    noisy = (
+        np.random.default_rng(0)
+        .integers(0, 256, size=base.shape)
+        .astype(base.dtype)
+    )
+
+    def _write(name: str, arr: "np.ndarray") -> Path:
+        img = Image(arr)
+        return img._save_store(
+            tmp_path / f"{name}{ngff_.STORE_SUFFIX}",
+            series=("gray",),
+            write_objmap=False,
+            levels=ngff_.pyramid_level_count(*img.gray[:].shape[:2]),
+            work_id=None,
+            durable=False,
+            write_image_class=False,
+        )
+
+    plain, altered = _write("plain", base), _write("altered", noisy)
+
+    # Precondition: the roots really are identical, so this test would be
+    # vacuous against the old implementation for the wrong reason otherwise.
+    assert (plain / "zarr.json").read_bytes() == (
+        altered / "zarr.json"
+    ).read_bytes()
+    assert file_sha256(plain) != file_sha256(altered)
+
+
+def test_a_store_digest_is_stable_across_an_unchanged_rewrite(
+    tmp_path: Path,
+) -> None:
+    """Same content written twice must hash the same, or nothing continues."""
+    arr = np.asarray(Image(load_synth_yeast_plate()).rgb[:])
+
+    def _write(name: str) -> Path:
+        img = Image(arr)
+        return img._save_store(
+            tmp_path / f"{name}{ngff_.STORE_SUFFIX}",
+            series=("gray",),
+            write_objmap=False,
+            levels=ngff_.pyramid_level_count(*img.gray[:].shape[:2]),
+            work_id=None,
+            durable=False,
+            write_image_class=False,
+        )
+
+    assert file_sha256(_write("one")) == file_sha256(_write("two"))

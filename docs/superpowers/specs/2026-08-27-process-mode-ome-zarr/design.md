@@ -902,11 +902,41 @@ does `with path.open("rb")`, and is called with the input image path from
 raises `IsADirectoryError` — which would break the whole of §7 and this design's
 own end-to-end criterion.
 
-The store branch digests the store's **root `zarr.json`**. That file is already
-the store's completeness fingerprint: the promote protocol writes it last, so it
-exists only on a fully written store, and it changes whenever any published
-content does. Digesting the whole tree would be correct too but costs a walk per
-image at submit time for no additional guarantee.
+The store branch digests the **whole tree**: every member's store-relative path
+and content, in sorted path order.
+
+> **Corrected 2026-08-28 (found by execution during the CLI phase).** This
+> section originally specified digesting the **root `zarr.json`** alone, on the
+> reasoning that the promote protocol writes it last so it fingerprints
+> completeness, and that it "changes whenever any published content does".
+>
+> The first half is true. **The second is false.** The root carries the schema
+> version, the series map, the pyramid geometry, the metadata sections and the
+> provenance journal — none of which move when pixels do. Two stores holding
+> entirely different images produced one digest:
+>
+> ```text
+> pixels genuinely differ : True (mean 0.640 vs 0.500)
+> shard bytes differ      : True
+> root zarr.json identical: True
+> file_sha256 differs     : False
+> ```
+>
+> That silently breaks content-change detection for a store input. The digest
+> feeds `work_id_for_image` and the SLURM identity ledger, so an edited store
+> would keep its work ID and continuation would reuse stale output — while the
+> flat-file path digests every pixel byte. A weaker guarantee on the newer path
+> is exactly backwards.
+>
+> The dismissed cost was also wrong. A store holds roughly a dozen files whose
+> bytes are the bytes an equivalent TIFF would carry, so digesting the tree
+> reads about as much as digesting that TIFF, plus a directory walk — which is
+> what buys the guarantee, not what wastes effort.
+
+Paths are folded in alongside content, so moving a chunk between members or
+renaming one changes the digest; sorting makes it independent of filesystem
+iteration order. A directory that is not a store still raises
+`IsADirectoryError` rather than acquiring an invented fingerprint.
 
 **`Path.stem` yields `img.ome`.** `process_only_output_path` and the work-ID
 sites must derive a store's stem with `sdk_.store_stem`
