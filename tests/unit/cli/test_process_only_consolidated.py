@@ -57,12 +57,38 @@ def test_per_node_metadata_still_exists(tmp_path: Path) -> None:
     assert (store / "OME" / "zarr.json").is_file()
 
 
+def _file_count(store: Path) -> int:
+    return len([p for p in store.rglob("*") if p.is_file()])
+
+
 def test_consolidation_adds_no_files(tmp_path: Path) -> None:
-    """The 12-file claim survives it. Same count, one fewer round trip."""
+    """Same count as the SAME store written unconsolidated. One fewer GET.
+
+    An earlier version re-asserted `4 + 2 * levels` and stopped there, which
+    is the arithmetic `test_a_single_series_store_is_four_files_plus_two_per_
+    level` already pins. Repeating it cannot distinguish "consolidation adds
+    no files" from "a store has 8 files": both readings are green while only
+    one is the claim. The comparison is against an unconsolidated store of
+    the same image, so the difference measured is consolidation itself.
+    """
     img = Image(load_synth_yeast_plate())
-    levels = ngff_.pyramid_level_count(*img.rgb[:].shape[:2])
-    store = _store(tmp_path)
-    assert len([p for p in store.rglob("*") if p.is_file()]) == 4 + 2 * levels
+    plain = img._save_store(
+        tmp_path / "plain.ome.zarr",
+        series=("rgb",),
+        write_objmap=False,
+        levels=ngff_.pyramid_level_count(*img.shape[:2]),
+        work_id=None,
+        durable=False,
+        write_image_class=False,
+        consolidate=False,
+    )
+    assert "consolidated_metadata" not in _root(plain), (
+        "the control store must actually be unconsolidated"
+    )
+
+    consolidated = _store(tmp_path)
+    assert "consolidated_metadata" in _root(consolidated)
+    assert _file_count(consolidated) == _file_count(plain)
 
 
 def test_a_consolidated_store_still_round_trips_through_imread(

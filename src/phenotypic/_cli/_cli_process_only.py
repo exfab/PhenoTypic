@@ -21,8 +21,8 @@ from ._cli_failure_tracker import PerImageScientificError
 logger = logging.getLogger(__name__)
 
 #: Layers that have a single-series OME-Zarr form. ``objmap`` and ``detect_mat``
-#: are absent for two different reasons, both spelled out in
-#: :func:`resolve_process_format`'s refusals.
+#: are absent for two different reasons, and :func:`write_process_only_layer`
+#: refuses each with its own message saying which (spec §5.3).
 _ZARR_CAPABLE_LAYERS: frozenset[str] = frozenset({"rgb", "gray"})
 
 
@@ -108,19 +108,31 @@ def write_process_only_layer(
     if fmt == "zarr":
         from phenotypic.sdk_ import ngff_
 
-        if layer not in _ZARR_CAPABLE_LAYERS:
-            # The CLI refuses this earlier and with a better message
-            # (`resolve_process_format`). This guard exists because
-            # `write_process_only_layer` is importable and called directly by
-            # the staged strategy, and because `_save_store` would otherwise
-            # fail for `detect_mat` with `no primary series among
-            # ['detect_mat']` -- true, but about internal series naming rather
-            # than about what the caller asked for.
+        # Two refusals, not one, and the difference is the point (spec §5.3):
+        # `objmap` is refused by an NGFF structural rule, `detect_mat` by
+        # PhenoTypic's own writer requirement. Left to `_save_store` both
+        # would surface as `no primary series among [...]` -- true, but about
+        # internal series naming rather than about what the caller asked for,
+        # and identical for two unrelated causes. The guard lives here, not
+        # only in the CLI, because `write_process_only_layer` is importable
+        # and called directly by the staged strategy.
+        if layer == "objmap":
             raise ValueError(
-                f"layer {layer!r} has no single-series OME-Zarr form; write "
-                f"it with fmt='tiff'"
+                "layer 'objmap' has no single-series OME-Zarr form: NGFF 0.5 "
+                "§2.6 nests a labels group inside an image group and states "
+                "that the labels group is not itself an image. Write it with "
+                "fmt='tiff' for the 16-bit raw-label PNG, or export 'rgb'."
             )
-        height, width = image.gray[:].shape[:2]
+        if layer not in _ZARR_CAPABLE_LAYERS:
+            raise ValueError(
+                f"layer {layer!r} has no single-series OME-Zarr form: "
+                f"PhenoTypic's store writer requires a primary series (rgb or "
+                f"gray) and {layer!r} is neither. Write it with fmt='tiff' "
+                f"for the float TIFF, or export 'gray'."
+            )
+        # `image.shape[:2]` and not `image.gray[:].shape[:2]`: the same two
+        # numbers, without routing through a layer an rgb store never writes.
+        height, width = image.shape[:2]
         image._save_store(
             out_path,
             series=(layer,),

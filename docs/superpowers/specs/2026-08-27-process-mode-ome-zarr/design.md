@@ -372,6 +372,16 @@ deliberate: a bundle store stays inside the run directory and benefits from the
 absolute path; a process-mode store is a publication artifact and does not. The
 difference is carried by one explicit parameter, not by inference (§8).
 
+**Provenance travels with the pixels for exactly one hop.** Because
+`initialize_cli_provenance` opens with `new_provenance_journal()` and `imread`
+reads a store as plain pixels rather than restoring state (§3.2), feeding a
+process-mode store back in as input yields a second store whose journal records
+only the *second* pipeline — a chain of process-mode runs does not accumulate a
+lineage. That follows from decision 3 and is intended, but it is not what "the
+store carries the operations that ran" reads like at first glance, so it is
+stated here rather than left to be discovered. Pinned by
+`test_a_store_round_trips_store_in_to_store_out`.
+
 #### 2.3.3 Still deferred
 
 **No `source_sha256`** — a digest of the *input image*, distinct from the
