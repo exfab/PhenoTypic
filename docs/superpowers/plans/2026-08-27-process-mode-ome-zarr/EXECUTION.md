@@ -122,10 +122,30 @@ sequential is the safe default on a stacked branch.
 Never review with a model weaker than the one that implemented. C2 and C7 are
 Sonnet-implemented and Opus-reviewed, which satisfies that.
 
-## 7. C5 is blocked on an external pin
+## 7. C5's external blocker — CLEARED 2026-08-27
 
-**Do not execute C5 until AutoConvertRaw's PhenoTypic pin is committed.**
-Confirmed 2026-08-27 by a session working on that repo:
+**Resolved.** AutoConvertRaw `HEAD` moved `63c4657` → **`3df608d`**
+(branch `rsync-transport`), tree clean, with the pin in the committed
+`pyproject.toml`. Verified directly from this session, not taken on report.
+C5 is safe to execute.
+
+The pin as landed: `vendor/phenotypic-0.18.0-py3-none-any.whl` (tracked,
+10.6 MB, sha256 `dbafeb7f…`), referenced from `[tool.uv.sources]` and
+`uv.lock:1204`. The stale "the pin lives in .venv only" note in
+`src/config.sh` was replaced, and the wheel-over-git-ref reasoning is recorded
+in both the commit message and a `pyproject.toml` comment so a future reader
+does not "fix" it to a tag.
+
+**One residual:** `rsync-transport` is 27 commits ahead of its remote
+(pre-existing, not introduced by the pin), so the pin is durable **locally
+only**. That is what protects the machine ACR actually runs on, which is the
+machine that matters here.
+
+**C5 stays last-but-one anyway.** The ordering was never only about the pin: it
+costs nothing, and it keeps the one task that changes a production command's
+output at the end of the run where a late problem is cheapest to abandon.
+
+The original hazard, retained because it explains the ordering:
 
 - **The pin is staged, not committed.** ACR `HEAD` is still `63c4657`; the
   change exists only in the working tree (`pyproject.toml`, `uv.lock`,
@@ -147,6 +167,4 @@ Confirmed 2026-08-27 by a session working on that repo:
   directory store breaks *publishing* too — and those `find -type f` sweeps
   would descend into every store.
 
-**Unblock condition:** ACR `HEAD` has moved past `63c4657` with the pin in it.
-That is the user's call on their own production checkout, not something this
-session or the peer session can decide.
+**Unblock condition (met):** ACR `HEAD` past `63c4657` with the pin in it.
