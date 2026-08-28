@@ -640,7 +640,16 @@ class ImageIOHandler(ImageColorSpace):
 
     @classmethod
     def imread(
-        cls, filepath: PathLike, rawpy_params: dict | None = None, **kwargs
+        cls,
+        filepath: PathLike,
+        rawpy_params: dict | None = None,
+        *,
+        series: str | None = None,
+        level: int = 0,
+        t: int | None = None,
+        z: int | None = None,
+        c: int | None = None,
+        **kwargs,
     ) -> Image:
         """
         imread is a class method responsible for reading an image file from the specified
@@ -657,6 +666,19 @@ class ImageIOHandler(ImageColorSpace):
             rawpy_params (dict | None): Optional dictionary of parameters for processing raw image
                 files when using rawpy. Supports options like white balance settings, demosaic
                 algorithm, gamma correction, and others. Defaults to None.
+            series (str | None): OME-Zarr store only. Series to read; ``None``
+                resolves it from the store's own OME metadata. Ignored for a
+                flat image file.
+            level (int): OME-Zarr store only. Pyramid level to read; ``0`` is
+                the highest resolution. Ignored for a flat image file.
+            t (int | None): OME-Zarr store only. Index to take on a ``time``
+                axis of size > 1. ``None`` refuses such a store rather than
+                silently reading its first frame.
+            z (int | None): OME-Zarr store only. Index to take on the stacking
+                ``space`` axis when its size is > 1. ``None`` refuses.
+            c (int | None): OME-Zarr store only. Index to take on a ``channel``
+                axis whose size is neither 1 (grayscale) nor 3 (RGB). ``None``
+                refuses.
             **kwargs: Arbitrary keyword arguments to be passed for additional configurations
                 specific to the Image instantiation.
 
@@ -668,7 +690,42 @@ class ImageIOHandler(ImageColorSpace):
             UnsupportedFileTypeError: If the file type of the provided filepath is not supported
                 by the method, either due to its extension not being recognized or due to the
                 absence of required libraries like rawpy.
+            ValueError: If *filepath* is an OME-Zarr store that cannot be mapped
+                onto the 2-D image model -- an HCS plate, a timelapse, a z-stack,
+                or a channel count that is neither 1 nor 3.
+
+        Examples:
+            Read a process-mode store as plain pixels:
+
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from phenotypic import Image
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> img = Image(load_synth_yeast_plate())
+            >>> with tempfile.TemporaryDirectory() as tmp:
+            ...     store = img.save2zarr(Path(tmp) / 'plate.ome.zarr')
+            ...     Image.imread(store).rgb[:].shape == img.rgb[:].shape
+            True
         """
+        from phenotypic.sdk_ import ngff_
+
+        # A store is a directory, so this is checked before the suffix
+        # dispatch below -- and on its own local, because `filepath` is
+        # annotated `PathLike` and only re-annotated `Path` further down.
+        store_candidate = Path(filepath)
+        if store_candidate.is_dir() and store_candidate.name.endswith(
+            ngff_.STORE_SUFFIX
+        ):
+            return cls._imread_store(
+                store_candidate,
+                series=series,
+                level=level,
+                t=t,
+                z=z,
+                c=c,
+                **kwargs,
+            )
+
         # Convert to a Path object
         filepath: Path = Path(filepath)
         rawpy_params = rawpy_params or {}
@@ -768,6 +825,78 @@ class ImageIOHandler(ImageColorSpace):
         image._metadata.imported.update(imported_metadata)
 
         return image
+
+    @classmethod
+    def _imread_store(
+        cls,
+        store_path: Path,
+        *,
+        series: str | None = None,
+        level: int = 0,
+        t: int | None = None,
+        z: int | None = None,
+        c: int | None = None,
+        **kwargs,
+    ) -> Image:
+        """Read an OME-Zarr store as plain pixels.
+
+        The store analogue of the TIFF branch: pixels in, a fresh image out. It
+        never restores PhenoTypic run state -- that is
+        :meth:`load_zarr`'s job, and it refuses a store that is not a run
+        bundle.
+
+        Only what the file says about itself is carried across: the provenance
+        journal and the ``imported`` metadata section. The ``protected`` and
+        ``public`` sections are run state and are deliberately dropped; that is
+        the line that keeps this from becoming a partial ``load_zarr``.
+
+        Args:
+            store_path: A ``*.ome.zarr`` directory.
+            series: Series to read; ``None`` resolves it from the store.
+            level: Pyramid level to read.
+            t: Index on a ``time`` axis of size > 1.
+            z: Index on the stacking ``space`` axis when its size is > 1.
+            c: Index on a ``channel`` axis that is neither 1 nor 3.
+            **kwargs: Forwarded to the ``Image`` constructor.
+
+        Returns:
+            Image: A fresh image carrying the store's pixels.
+
+        Raises:
+            ValueError: If the store cannot be mapped onto the 2-D image model.
+        """
+        from phenotypic.sdk_ import ngff_, store_stem
+
+        spec = ngff_.read_ngff_image_spec(
+            store_path, series=series, level=level, t=t, z=z, c=c
+        )
+        name = store_stem(store_path)
+        bit_depth = kwargs.pop("bit_depth", None) or spec.bit_depth
+        image = cls(arr=spec.array, name=name, bit_depth=bit_depth, **kwargs)
+        image.name = name
+        image.metadata[IMAGE.SUFFIX] = ngff_.STORE_SUFFIX
+
+        journal = spec.phenotypic.get(ngff_.PhenotypicAttr.PROVENANCE)
+        if journal:
+            image._metadata.provenance_journal = deepcopy(journal)
+
+        # Through `_metadata.imported`, NEVER `image.metadata[key] = value`.
+        # `MetadataAccessor.__setitem__` routes an unrecognised key into
+        # `_public_metadata` and raises ValueError on any non-scalar value, so
+        # the obvious loop would land imported tags in the `public` section --
+        # contradicting the paragraph above -- and raise on a structured TIFF
+        # tag. This is what the TIFF branch already does, normalised through
+        # the same helper `_load_from_store` uses.
+        imported = spec.phenotypic.get(ngff_.PhenotypicAttr.METADATA, {}).get(
+            ngff_.PhenotypicAttr.IMPORTED, {}
+        )
+        if imported:
+            image._metadata.imported.update(
+                _normalize_stored_metadata_items(
+                    imported.items(), section=ngff_.PhenotypicAttr.IMPORTED
+                )
+            )
+        return cast("Image", image)
 
     def _series_names(self) -> list[str]:
         """Series this image will write, in canonical order.
