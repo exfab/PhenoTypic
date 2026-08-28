@@ -359,6 +359,13 @@ def process_only_output_path(
         rel = image_path.relative_to(input_root)
     except ValueError:
         rel = Path(image_path.name)
+    if rel == Path("."):
+        # `--input` names the image itself, so `relative_to` yields `.` and
+        # `Path(".").stem` is `""` -- the run would write `<out>/.ome.zarr`.
+        # Pre-existing on the flat-file path (`--input <one tiff>` writes
+        # `<out>/.tiff` today, verified); fixed here because a single store
+        # input is exactly what spec §7 makes routine.
+        rel = Path(image_path.name)
     # `store_stem`, never `Path.stem`, on a store input: `.ome.zarr` is a
     # double suffix, so `.stem` yields `p01.ome` and a zarr run would write
     # `p01.ome.ome.zarr`. `store_stem` RAISES on a non-store path

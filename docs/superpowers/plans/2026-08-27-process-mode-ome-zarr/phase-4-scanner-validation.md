@@ -42,9 +42,12 @@ submit time for no additional guarantee.
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_failure_tracker.py:92-98` (`file_sha256`)
   and `:182-211` (`work_id_for_image`)
-- Modify: `src/phenotypic/_cli/_cli_process_only.py`
-  (`process_only_output_path`'s degenerate-relative-path fallback)
 - Test: `tests/unit/cli/test_store_work_identity.py` (create)
+
+`process_only_output_path`'s degenerate-relative-path fallback (`--input`
+naming the image itself yields `Path(".")`) was folded into **Task 7**, which
+rewrites that function wholesale. Keeping it here would have made this task
+touch `_cli_process_only.py` and cost C6 its parallelism for one `if`.
 
 **Interfaces:**
 - Consumes: `sdk_.STORE_SUFFIX`, `sdk_.STORE_ROOT_JSON` (both re-exported from
@@ -220,29 +223,7 @@ No call site changes. That is the point of putting the branch here rather than
 at each of the four call sites: a fifth call site added later gets the
 behaviour for free, where a per-site branch would silently miss it.
 
-- [ ] **Step 4: Fix the degenerate relative path**
-
-In `process_only_output_path` (Task 7 rewrote this function), the
-`relative_to` block:
-
-```python
-    try:
-        rel = image_path.relative_to(input_root)
-    except ValueError:
-        rel = Path(image_path.name)
-    if rel == Path("."):
-        # `--input` names the image itself, so `relative_to` yields `.` and
-        # `Path(".").stem` is `""` -- the run would write `<out>/.ome.zarr`.
-        # Pre-existing on the flat-file path (`--input <one tiff>` writes
-        # `<out>/.tiff` today, verified); fixed here because a single store
-        # input is exactly what spec 7 makes routine.
-        rel = Path(image_path.name)
-```
-
-placed immediately before the `store_stem` line, so the store-suffix test runs
-against the recovered name.
-
-- [ ] **Step 5: Run tests to verify they pass**
+- [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
 uv run pytest tests/unit/cli/test_store_work_identity.py -v
@@ -256,7 +237,7 @@ uv run ruff check --fix src/phenotypic/_cli/_cli_failure_tracker.py \
 
 Expected: PASS (6 tests in the new file).
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/phenotypic/_cli/_cli_failure_tracker.py \

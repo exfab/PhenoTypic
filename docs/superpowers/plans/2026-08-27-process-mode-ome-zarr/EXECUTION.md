@@ -106,6 +106,14 @@ scanner detail — it is the precondition that makes the scanner's output usable
 at all. Splitting them would merge a scanner that finds stores and a runner that
 dies on them, which is a worse state than either end.
 
+**C6 keeps its parallelism.** A first pass put
+`process_only_output_path`'s degenerate-relative-path fix in T10a, which would
+have made C6 touch `_cli_process_only.py` and forced the whole run sequential.
+That fix moved to **T7**, which rewrites the function wholesale and is its
+natural owner. C6 now touches only `_cli_failure_tracker.py` and
+`_cli_directory_scanner.py`, neither of which any other cluster reads or
+writes, so it runs beside C4 as decided.
+
 ## 5. Order and parallelism
 
 ```
