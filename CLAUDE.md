@@ -61,12 +61,27 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
 - `uv run python -m phenotypic` — single pipeline on images/directories (parallel,
   SLURM, automatic continuation)
 - `uv run python -m phenotypic --mode process --layer {rgb|gray|detect_mat|objmap}` —
-  apply-only export: runs `pipeline.apply()` and writes ONE image layer per input
-  (via the accessor `imsave` — `rgb` integer TIFF, `gray`/`detect_mat` float TIFF,
-  `objmap` 16-bit raw-label PNG), mirroring the input tree. Skips
-  measurement/deliverables/QC/dashboard; machine-state lives under `.phenotypic/`.
-  Full local + SLURM continuation reuse. Run the same command again after an
-  interruption or when new compatible inputs appear; there is no `--resume` flag.
+  apply-only export: runs `pipeline.apply()` and writes ONE image layer per
+  input, mirroring the input tree. **Output is a single-series OME-Zarr store**
+  (`<stem>.ome.zarr/`) for `rgb`/`gray`, a float TIFF for `detect_mat`, and a
+  16-bit raw-label PNG for `objmap`. `--process-format {tiff,zarr}` overrides;
+  `--layer objmap --process-format zarr` and `--layer detect_mat
+  --process-format zarr` are both refused, for different reasons — NGFF has no
+  standalone label-image form, and PhenoTypic's store writer requires a primary
+  series (`rgb` or `gray`). The store carries the pipeline that produced it in
+  `attributes.phenotypic.provenance` and omits `image_class`, so
+  `Image.load_zarr` refuses it and points at `Image.imread`, which reads any
+  OME-Zarr — PhenoTypic's or a third party's — as plain pixels. A published
+  store is bit-reproducible: `applied_at_utc` and `duration_seconds` are
+  omitted from its journal, so two identical runs write byte-identical stores.
+  Provenance travels one hop — processing a store into another store resets the
+  second store's journal to that second pipeline only, it does not chain. A
+  tree of stores is valid `--input`. Skips measurement/deliverables/QC/
+  dashboard; machine state lives under `.phenotypic/`. Full local + SLURM
+  continuation reuse; switching `--process-format` invalidates continuation
+  rather than reusing outputs of the other kind. Run the same command again
+  after an interruption or when new compatible inputs appear; there is no
+  `--resume` flag.
 - `uv run python -m phenotypic --mode migrate --output <run>` — convert a legacy
   `.h5` output tree to OME-Zarr stores **in place**, in two passes: pass 1 migrates
   the non-image metadata targets (`csv`/`parquet`/`json`/`frame`, never `.h5`), pass 2
@@ -289,6 +304,16 @@ enforces this for ruff, but the rule binds regardless of the tool.
 
 ## Gotchas
 
+- **`imread` vs `load_zarr` on an OME-Zarr store:** the verb decides, never the
+  file. `Image.imread(store)` always reads plain pixels — PhenoTypic's own
+  output, or a napari/QuPath/`bioformats2raw` export — and refuses rather than
+  guessing when a store cannot be projected onto a 2-D image (a real `t` or `z`
+  axis, a channel count that is neither 1 nor 3, an HCS plate); pass
+  `t=`/`z=`/`c=`/`series=` to choose explicitly. `Image.load_zarr(store)`
+  always restores run state and raises on a store with no
+  `phenotypic.image_class`. NGFF has no RGB type: `rgb` is a 3-length `channel`
+  axis ordered **before** the space axes, so stores are planar `(3,H,W)` and
+  `imread` transposes to `(H,W,3)`.
 - Some packages excluded on Windows: `rawpy`, `pympler`, `jupyter` — use try/except.
 - External tools: ExifTool (raw metadata), Pandoc (doc builds).
 - **Operations use `.apply()`, not `__call__`:** `op.apply(image)` is correct;
