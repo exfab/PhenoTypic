@@ -130,6 +130,18 @@ def file_sha256(path: Path) -> str:
     mis-specified ``--input`` produce a stable work ID for something that is
     not an image.
 
+    A directory that merely *looks* like a store -- named ``*.ome.zarr`` with
+    no root ``zarr.json`` -- is **not** refused here, and deliberately so: this
+    function digests bytes, and ``_is_store_dir`` matches by name precisely so
+    that no scan opens a store. Such a directory digests to whatever its
+    members happen to be, which for an empty one is
+    ``e3b0c442...b7852b855``, the digest of zero bytes -- so two different
+    empty ``*.ome.zarr`` directories collide. Nothing downstream is harmed by
+    that, because the run never gets far enough to care: ``Image.imread``
+    raises ``FileNotFoundError`` naming the missing ``zarr.json``, which is
+    the loud later failure ``_is_store_dir``'s docstring promises. Pinned by
+    ``test_a_store_shaped_directory_digests_and_fails_in_imread``.
+
     Args:
         path: An input image file, or a ``*.ome.zarr`` store directory.
 

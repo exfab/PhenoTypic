@@ -89,6 +89,31 @@ def test_a_flat_file_digest_is_untouched(tmp_path: Path) -> None:
     assert file_sha256(target) == hashlib.sha256(target.read_bytes()).hexdigest()
 
 
+def test_a_store_shaped_directory_digests_and_fails_in_imread(
+    tmp_path: Path,
+) -> None:
+    """Where a ``*.ome.zarr`` directory with no root document actually fails.
+
+    `_is_store_dir` matches by NAME and promises such a directory "fails
+    later, loudly, in imread". This pins that the promise is kept, and that
+    `file_sha256` is not the place it breaks: the digest is over whatever
+    members exist, so an empty one yields the digest of zero bytes rather
+    than raising. Two empty store-shaped directories therefore collide -- an
+    honest consequence of a name-matched predicate, and harmless because
+    `imread` refuses before any of it matters.
+    """
+    empty = tmp_path / f"empty{ngff_.STORE_SUFFIX}"
+    empty.mkdir()
+    assert file_sha256(empty) == hashlib.sha256(b"").hexdigest()
+
+    other = tmp_path / f"other{ngff_.STORE_SUFFIX}"
+    other.mkdir()
+    assert file_sha256(other) == file_sha256(empty)
+
+    with pytest.raises(FileNotFoundError, match="zarr.json"):
+        Image.imread(empty)
+
+
 def test_a_plain_directory_is_still_refused(tmp_path: Path) -> None:
     """A directory that is not a store has no fingerprint. Say so."""
     plain = tmp_path / "just_a_folder"
