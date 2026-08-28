@@ -222,13 +222,28 @@ def compute_work_id(
 def work_id_for_image(
     config: "ExecutionConfig", dataset: str, image_path: Path
 ) -> tuple[str, str]:
-    """Return ``(work_id, normalized_relative_path)`` for an input image."""
+    """Return ``(work_id, normalized_relative_path)`` for an input image.
+
+    A ``*.ome.zarr`` store is a directory, so ``--input`` naming one directly
+    does not take the ``is_file`` branch. It falls through to ``relative_to``,
+    which yields ``Path(".")`` when the two paths are the same -- see the
+    degenerate-path recovery below.
+    """
     if config.input_path.is_file():
         relative_path = Path(image_path.name)
     else:
         try:
             relative_path = image_path.relative_to(config.input_path)
         except ValueError:
+            relative_path = Path(image_path.name)
+        if relative_path == Path("."):
+            # `--input` names the image itself, so `relative_to` yields `.`
+            # and every such input shares one relative path. Two stores with
+            # identical content under one dataset would then produce the same
+            # work ID -- the same collapse `process_only_output_path` guards
+            # against, and the same recovery. Pre-existing on the flat-file
+            # path; fixed here because a single store input is exactly what
+            # spec 7 makes routine.
             relative_path = Path(image_path.name)
     mode = (
         "measure"
