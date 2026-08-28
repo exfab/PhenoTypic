@@ -91,10 +91,19 @@ PhaseLift = Literal["monogenic", "conformal"]
 #: PC, so they are not a substitute for PC when detecting edges. Drift ``C15``.
 ColorPhaseOutput = Literal["pc", "orientation", "feature_type"]
 
-#: Image layer a process-mode CLI run exports. A closed
-#: subset of the layers exposed as Image accessors; ``rgb``/``gray``/
-#: ``detect_mat`` save as TIFF, ``objmap`` as a raw-label PNG.
+#: Image layer a process-mode CLI run exports. A closed subset of the layers
+#: exposed as Image accessors. The output FORMAT is a separate axis -- see
+#: :data:`ProcessFormat` -- and its default depends on the layer: ``rgb`` and
+#: ``gray`` default to an OME-Zarr store, ``detect_mat`` to a float TIFF, and
+#: ``objmap`` to a 16-bit raw-label PNG.
 ProcessOnlyLayer = Literal["rgb", "gray", "detect_mat", "objmap"]
+
+#: Output format for ``--mode process``. ``zarr`` writes a single-series
+#: OME-Zarr store; ``tiff`` writes the flat image file (a 16-bit PNG for
+#: ``objmap``). Only ``rgb`` and ``gray`` have a zarr form -- see
+#: ``_cli_process_only.resolve_process_format`` for why, and for the two
+#: distinct refusals.
+ProcessFormat = Literal["tiff", "zarr"]
 
 #: Image layer a GpuDetector consumes as model input. Single-channel layers
 #: (gray/detect_mat) are stacked to (H, W, 3) by GpuDetector.preprocess.
