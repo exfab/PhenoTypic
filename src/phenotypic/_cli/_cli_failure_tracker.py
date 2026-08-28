@@ -22,6 +22,8 @@ from ._cli_file_locking import atomic_append, atomic_read, FileLockTimeout
 from phenotypic.sdk_ import (
     CommitGuard,
     FAILURES_JSONL,
+    STORE_ROOT_JSON,
+    STORE_SUFFIX,
     publication_commit,
     terminal_failures_jsonl_path,
 )
@@ -90,9 +92,47 @@ def _canonical_digest(payload: Mapping[str, Any]) -> str:
 
 
 def file_sha256(path: Path) -> str:
-    """Return the SHA-256 digest of *path* without retaining file contents."""
+    """Return the SHA-256 digest of *path* without retaining file contents.
+
+    A ``*.ome.zarr`` input is a **directory**, so the streaming read raises
+    ``IsADirectoryError``. A store is digested by its root ``zarr.json``
+    instead, which is already its completeness fingerprint: the promote
+    protocol writes that document last, so it exists only on a fully written
+    store, and it changes whenever any published content does -- the series
+    map, the pyramid level count, the metadata sections, the provenance
+    journal.
+
+    Digesting the whole tree would be correct too, and is not done: it costs a
+    directory walk per image at SLURM submit time (the identity ledger in
+    ``_cli_slurm_array_scripts`` runs this once per image while building the
+    ledger) for no additional guarantee.
+
+    A directory that is not a store still raises ``IsADirectoryError``. It has
+    no meaningful content fingerprint, and inventing one would let a
+    mis-specified ``--input`` produce a stable work ID for something that is
+    not an image.
+
+    Args:
+        path: An input image file, or a ``*.ome.zarr`` store directory.
+
+    Returns:
+        The hex digest.
+
+    Raises:
+        IsADirectoryError: If *path* is a directory that is not an OME-Zarr
+            store.
+    """
+    target = Path(path)
+    if target.is_dir():
+        if not target.name.endswith(STORE_SUFFIX):
+            raise IsADirectoryError(
+                f"{target} is a directory but not an OME-Zarr store; "
+                f"it has no content fingerprint"
+            )
+        target = target / STORE_ROOT_JSON
+
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with target.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -182,13 +222,28 @@ def compute_work_id(
 def work_id_for_image(
     config: "ExecutionConfig", dataset: str, image_path: Path
 ) -> tuple[str, str]:
-    """Return ``(work_id, normalized_relative_path)`` for an input image."""
+    """Return ``(work_id, normalized_relative_path)`` for an input image.
+
+    A ``*.ome.zarr`` store is a directory, so ``--input`` naming one directly
+    does not take the ``is_file`` branch. It falls through to ``relative_to``,
+    which yields ``Path(".")`` when the two paths are the same -- see the
+    degenerate-path recovery below.
+    """
     if config.input_path.is_file():
         relative_path = Path(image_path.name)
     else:
         try:
             relative_path = image_path.relative_to(config.input_path)
         except ValueError:
+            relative_path = Path(image_path.name)
+        if relative_path == Path("."):
+            # `--input` names the image itself, so `relative_to` yields `.`
+            # and every such input shares one relative path. Two stores with
+            # identical content under one dataset would then produce the same
+            # work ID -- the same collapse `process_only_output_path` guards
+            # against, and the same recovery. Pre-existing on the flat-file
+            # path; fixed here because a single store input is exactly what
+            # spec 7 makes routine.
             relative_path = Path(image_path.name)
     mode = (
         "measure"
