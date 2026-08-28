@@ -44,11 +44,81 @@ def test_imread_records_the_store_suffix(tmp_path: Path) -> None:
     assert Image.imread(store).metadata[IMAGE.SUFFIX] == ngff_.STORE_SUFFIX
 
 
+def _pipeline_file(tmp_path: Path) -> Path:
+    nested = tmp_path / "config" / "deep"
+    nested.mkdir(parents=True, exist_ok=True)
+    path = nested / "preprocess_pipeline.json.pht-pipe"
+    path.write_text('{"name": "acr_preprocess"}', encoding="utf-8")
+    return path
+
+
+def _provenanced_store(
+    tmp_path: Path, *, basename_only: bool = False
+) -> tuple[Path, Image]:
+    """A store whose journal actually carries a pipeline identity and an op.
+
+    The empty journal every `Image` is born with (`_image_data_manager` fills
+    it from `new_provenance_journal()` unconditionally) makes a bare
+    `is not None` assertion unfalsifiable -- deleting the copy in
+    `_load_from_store`'s imread sibling leaves it green. So populate the
+    source journal first and compare recovered VALUES.
+    """
+    from phenotypic._core._provenance import (
+        append_operation_provenance,
+        initialize_cli_provenance,
+    )
+    from phenotypic.enhance import BlurGauss
+
+    img = Image(load_synth_yeast_plate())
+    initialize_cli_provenance(
+        img, _pipeline_file(tmp_path), basename_only=basename_only
+    )
+    append_operation_provenance(
+        img,
+        BlurGauss(),
+        duration_seconds=0.125,
+        pipeline_step_path=["preprocess", "0"],
+    )
+    store = img._save_store(
+        tmp_path / "provenanced.ome.zarr",
+        series=("rgb",),
+        write_objmap=False,
+        levels=ngff_.pyramid_level_count(*img.rgb[:].shape[:2]),
+        work_id=None,
+        durable=False,
+        write_image_class=False,
+    )
+    return store, img
+
+
 def test_imread_carries_provenance_across(tmp_path: Path) -> None:
-    """The operations that produced the pixels survive the round trip."""
-    store, _ = _processed_rgb_store(tmp_path)
-    loaded = Image.imread(store)
-    assert loaded._metadata.provenance_journal is not None
+    """The operations that produced the pixels survive the round trip.
+
+    Asserted on VALUES, not on presence: every Image has a journal, so
+    `is not None` passes with the copy deleted.
+    """
+    store, img = _provenanced_store(tmp_path)
+    source = img._metadata.provenance_journal
+    assert source["pipeline"]["sha256"]  # the fixture really populated it
+    assert source["operations"], "fixture must record at least one operation"
+
+    recovered = Image.imread(store)._metadata.provenance_journal
+    assert recovered["pipeline"]["sha256"] == source["pipeline"]["sha256"]
+    assert (
+        recovered["operations"][0]["operation_name"]
+        == source["operations"][0]["operation_name"]
+    )
+    assert recovered["operations"][0]["operation_name"] == "BlurGauss"
+
+
+def test_imread_carries_a_basename_only_pipeline_path(tmp_path: Path) -> None:
+    """`basename_only=True` is what keeps a cluster path out of a published
+    store; this is its only end-to-end coverage through a store."""
+    store, img = _provenanced_store(tmp_path, basename_only=True)
+    recovered = Image.imread(store)._metadata.provenance_journal
+    source_path = recovered["pipeline"]["source_path"]
+    assert source_path == "preprocess_pipeline.json.pht-pipe"
+    assert "/" not in source_path
 
 
 def test_imported_tags_land_in_the_imported_section(tmp_path: Path) -> None:
@@ -84,6 +154,7 @@ def test_imread_does_not_carry_run_state_across(tmp_path: Path) -> None:
     """
     img = Image(load_synth_yeast_plate())
     img.metadata["operator_note"] = "run 3, plate B"  # -> public
+    img._metadata.protected["Metadata_ImageType"] = "GridSection"  # -> protected
     store = img._save_store(
         tmp_path / "stateful.ome.zarr",
         series=("rgb",),
@@ -93,7 +164,14 @@ def test_imread_does_not_carry_run_state_across(tmp_path: Path) -> None:
         durable=False,
         write_image_class=False,
     )
-    assert "operator_note" not in Image.imread(store)._metadata.public
+    loaded = Image.imread(store)
+    assert "operator_note" not in loaded._metadata.public
+    # `protected` is the other half of the line, and the store DOES carry it
+    # (`phenotypic.metadata.protected`) -- so this is a real read, not an
+    # absence that was never written.
+    stored = ngff_.read_phenotypic_attributes(store)
+    assert stored["metadata"]["protected"]["Metadata_ImageType"] == "GridSection"
+    assert loaded._metadata.protected["Metadata_ImageType"] != "GridSection"
 
 
 def test_imread_yields_no_objects_from_a_processed_store(tmp_path: Path) -> None:
