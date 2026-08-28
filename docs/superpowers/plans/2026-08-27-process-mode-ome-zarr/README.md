@@ -68,6 +68,9 @@ verbatim from the spec and from `CLAUDE.md`.
 | 3. CLI process mode | 7–9 | [`phase-3-cli-process.md`](phase-3-cli-process.md) |
 | 4. Scanner and validation | 10–11 | [`phase-4-scanner-validation.md`](phase-4-scanner-validation.md) |
 
+Subagent clustering, model assignment, gates, and the dependency DAG:
+[`EXECUTION.md`](EXECUTION.md).
+
 1. `write_image_class` threading — process stores omit the key
 2. `load_zarr` guard — refuse a store that is not a run bundle
 3. `omero.rdefs.model` on integer series
