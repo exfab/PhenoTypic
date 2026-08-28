@@ -382,6 +382,75 @@ store carries the operations that ran" reads like at first glance, so it is
 stated here rather than left to be discovered. Pinned by
 `test_a_store_round_trips_store_in_to_store_out`.
 
+#### 2.3.3 A published store is bit-reproducible
+
+**Added 2026-08-28 (user ruling), after a defect in §7.3 exposed the need.**
+
+A process-mode store omits two fields from every entry in
+`provenance.operations[]`:
+
+```json
+"applied_at_utc": "2026-08-28T19:05:39.448Z",
+"duration_seconds": 0.00850173132494092
+```
+
+They are written by `append_operation_provenance`
+([`_provenance.py:377,380`](../../../../src/phenotypic/_core/_provenance.py))
+from `datetime.now(timezone.utc)` and a `perf_counter` delta, on every
+operation apply. **They are the entire source of non-reproducibility in a
+store.** Everything else in the block is a pure function of the inputs —
+`operation_name`, `operation_class`, `phenotypic_version`, the resolved
+`parameters`, `pipeline_step_path`, and the `pipeline` digest. Measured across
+two runs of one image through one pipeline:
+
+```text
+files differing:            ['zarr.json']
+phenotypic keys differing:  ['provenance']
+operation fields differing: ['applied_at_utc', 'duration_seconds']
+```
+
+**Only the published artifact drops them.** The in-memory journal keeps both,
+and so does the bundle store, which never leaves the run directory. The switch
+is threaded to the writer exactly as `write_image_class` and `consolidate` are,
+rather than mutating the caller's image.
+
+Two things this buys. It makes §7.3's whole-tree digest **stable** across an
+identical regeneration, so the tree walk can stay a dumb complete hash with no
+exclusion list, no JSON round-trip, and no coupling to the metadata schema. And
+it makes the artifact byte-identical across identical runs, which is what
+content-addressed storage, server-side dedup, and "did these two runs agree?"
+all require of an object-storage artifact.
+
+Nothing reads either field on this path: `_cli_staged_resume.py:94-101` reads
+the journal but only `status`, and the two tests asserting on
+`duration_seconds` (`test_staged_store_stages.py:122`,
+`test_cli_provenance_original.py:72`) are both on the staged/bundle path. What
+is lost is human-facing: when a store was processed, and how long each
+operation took. `duration_seconds` is telemetry rather than provenance — it
+says nothing about *what* was computed — and the filesystem still records mtime.
+
+#### 2.3.4 A published store reports a terminal status
+
+**Defect found 2026-08-28 while implementing §2.3.3.** Every published
+process-mode store said:
+
+```json
+"status": "in_progress"
+```
+
+`initialize_cli_provenance` defaults `status="in_progress"`
+(`_provenance.py:305`), and every other CLI path calls
+`set_provenance_status(image, "complete")` on success —
+`_cli_process_single.py:311`, `_cli_staged_workers.py:493`. The process-only
+path never touched status at all.
+
+That is not cosmetic. `status` is the field that says whether an artifact is
+trustworthy, and `_cli_staged_resume.py:101` already gates on
+`status in {"staged", "complete"}` — so a consumer following that same
+convention would reject every store PhenoTypic publishes. The process path sets
+`"complete"` after a successful apply, and `"failed"` on the error path, matching
+its siblings.
+
 #### 2.3.3 Still deferred
 
 **No `source_sha256`** — a digest of the *input image*, distinct from the
