@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -194,3 +195,89 @@ def test_a_non_store_directory_is_still_unsupported(tmp_path: Path) -> None:
     plain.mkdir()
     with pytest.raises((UnsupportedFileTypeError, ValueError, IsADirectoryError)):
         Image.imread(plain)
+
+
+def test_imread_reads_a_store_with_no_phenotypic_block(tmp_path: Path) -> None:
+    """The "never calls require_readable_store" constraint, proven at the
+    PUBLIC verb. It was pinned only at the resolver, so a guard reintroduced
+    anywhere between `Image.imread` and `read_ngff_image_spec` would have gone
+    unnoticed -- and a napari / QuPath / bioformats2raw store has no
+    `phenotypic` block at all (spec 4, case C).
+    """
+    import zarr
+
+    store = tmp_path / "foreign.ome.zarr"
+    group = zarr.create_group(store=str(store), zarr_format=3)
+    axes = [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]
+    pixels = np.arange(16 * 12, dtype=np.uint16).reshape(16, 12)
+    arr = group.create_array(
+        "0", shape=pixels.shape, chunks=pixels.shape, dtype="uint16",
+        dimension_names=["y", "x"],
+    )
+    arr[:] = pixels
+    group.attrs["ome"] = {
+        "version": "0.5",
+        "multiscales": [
+            {
+                "name": "foreign",
+                "axes": axes,
+                "datasets": [
+                    {
+                        "path": "0",
+                        "coordinateTransformations": [
+                            {"type": "scale", "scale": [1.0, 1.0]}
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+
+    assert "phenotypic" not in ngff_.read_root_attributes(store)
+    loaded = Image.imread(store)
+    assert np.array_equal(loaded.gray[:], pixels)
+    assert loaded.name == "foreign"
+
+
+def test_imread_reads_a_consolidated_store(tmp_path: Path) -> None:
+    """The actual on-disk shape of a `--mode process` store: consolidated
+    metadata and no `image_class`. Never read back until now."""
+    img = Image(load_synth_yeast_plate())
+    store = img._save_store(
+        tmp_path / "consolidated.ome.zarr",
+        series=("rgb",),
+        write_objmap=False,
+        levels=ngff_.pyramid_level_count(*img.rgb[:].shape[:2]),
+        work_id=None,
+        durable=False,
+        write_image_class=False,
+        consolidate=True,
+    )
+    root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+    assert "consolidated_metadata" in root, "fixture must really be consolidated"
+
+    loaded = Image.imread(store)
+    assert np.array_equal(loaded.rgb[:], img.rgb[:])
+
+
+def test_imread_round_trips_a_gray_float_store_bit_exactly(tmp_path: Path) -> None:
+    """`gray` is the default layer for `--mode process --layer gray`, and it is
+    float32 -- so `metadata.protected[Metadata_BitDepth]` is the ONLY bit-depth
+    source; dtype inference has no answer for a float array."""
+    img = Image(load_synth_yeast_plate())
+    store = img._save_store(
+        tmp_path / "grayscale.ome.zarr",
+        series=("gray",),
+        write_objmap=False,
+        levels=1,
+        work_id=None,
+        durable=False,
+        write_image_class=False,
+        consolidate=True,
+    )
+    stored = ngff_.read_phenotypic_attributes(store)
+    assert stored["metadata"]["protected"][IMAGE.BIT_DEPTH] == img.bit_depth
+
+    loaded = Image.imread(store)
+    assert loaded.bit_depth == img.bit_depth
+    assert np.array_equal(loaded.gray[:], img.gray[:])

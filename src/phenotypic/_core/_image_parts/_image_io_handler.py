@@ -871,7 +871,10 @@ class ImageIOHandler(ImageColorSpace):
             store_path, series=series, level=level, t=t, z=z, c=c
         )
         name = store_stem(store_path)
-        bit_depth = kwargs.pop("bit_depth", None) or spec.bit_depth
+        # `is None`, not `or`: an explicit `bit_depth=0` is a caller
+        # instruction, and `or` would silently swap the store's value in.
+        explicit = kwargs.pop("bit_depth", None)
+        bit_depth = spec.bit_depth if explicit is None else explicit
         image = cls(arr=spec.array, name=name, bit_depth=bit_depth, **kwargs)
         image.name = name
         image.metadata[IMAGE.SUFFIX] = ngff_.STORE_SUFFIX
