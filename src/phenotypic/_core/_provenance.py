@@ -273,11 +273,26 @@ def _installed_phenotypic_version() -> str:
     return phenotypic.__version__
 
 
-def pipeline_source_identity(path: str | Path) -> dict[str, str]:
-    """Return resolved source path and SHA-256 content identity for a pipeline."""
+def pipeline_source_identity(
+    path: str | Path, *, basename_only: bool = False
+) -> dict[str, str]:
+    """Return the pipeline's recorded source and SHA-256 content identity.
+
+    Args:
+        path: The pipeline file.
+        basename_only: Record only the file's name rather than its resolved
+            absolute path. ``True`` for artifacts that leave the run directory
+            -- a ``--mode process`` store is published to a NAS and then to
+            object storage, and an absolute path there would carry cluster
+            filesystem layout, the username, and project directory names.
+            ``sha256`` is unchanged, so identity is not weakened.
+
+    Returns:
+        ``{"source_path": …, "sha256": …}``.
+    """
     source = Path(path).resolve()
     return {
-        "source_path": str(source),
+        "source_path": source.name if basename_only else str(source),
         "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
     }
 
@@ -289,14 +304,29 @@ def initialize_cli_provenance(
     pipeline_identity: Mapping[str, str] | None = None,
     status: str = "in_progress",
     retry_base_length: int = 0,
+    basename_only: bool = False,
 ) -> None:
-    """Reset a decoded image to a fresh CLI journal for this pipeline attempt."""
+    """Reset a decoded image to a fresh CLI journal for this pipeline attempt.
+
+    Args:
+        image: The image whose provenance journal is reset.
+        pipeline_path: The pipeline file this attempt is running.
+        pipeline_identity: Precomputed identity to record instead of deriving
+            one from *pipeline_path*.
+        status: Initial journal status.
+        retry_base_length: Durable Stage-1 operation-count prefix to seed.
+        basename_only: Forwarded to :func:`pipeline_source_identity`. Ignored
+            when *pipeline_identity* is supplied, since the caller has then
+            already decided what to record.
+    """
     journal = new_provenance_journal()
     journal.update(
         {
             "status": status,
             "pipeline": (
-                pipeline_source_identity(pipeline_path)
+                pipeline_source_identity(
+                    pipeline_path, basename_only=basename_only
+                )
                 if pipeline_identity is None
                 else deepcopy(dict(pipeline_identity))
             ),
