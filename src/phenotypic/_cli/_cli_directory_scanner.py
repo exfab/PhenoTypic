@@ -134,9 +134,20 @@ def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
     # Scan one level of subdirectories
     subdatasets = {}
     for subdir in input_path.iterdir():
-        # A store IS a directory. Without this it is enumerated as a dataset,
-        # finds no image files inside itself, and silently contributes
-        # nothing -- so the images disappear from the run with no error.
+        # A store IS a directory, and this skip is a COST guard, not a
+        # correctness one. Unguarded, a store is read once, yields no image
+        # input at its top level, and is dropped by the `if sub_images:`
+        # below -- and it was already collected by `root_images` above, so
+        # nothing disappears and no dataset is named after it. (An earlier
+        # comment here claimed both "contributes nothing" AND "the images
+        # disappear from the run"; those cannot both be true, and the second
+        # is false -- verified by deleting the guard and watching
+        # `test_a_flat_tree_of_stores_scans_as_one_dataset` stay green.)
+        #
+        # What it buys is one directory read per store avoided -- the same
+        # argument `_is_store_dir` makes for matching by name instead of
+        # opening the store. That cost is what
+        # `test_scanning_does_not_descend_into_stores` measures.
         if not subdir.is_dir() or _is_store_dir(subdir):
             continue
 
@@ -359,8 +370,16 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, Any]:
     # Count subdirectory images
     subdir_counts = {}
     for subdir in input_path.iterdir():
-        # The same store skip as scan_directory_structure: a store is a
-        # directory, and enumerating it as a dataset drops its image silently.
+        # The same cost guard as `scan_directory_structure`, for the same
+        # reason: a store's top level holds no image input, so `sub_count` is
+        # 0 and it never becomes a dataset either way. The skip is what stops
+        # the summary reading every store in the tree.
+        #
+        # This function has no production caller -- `--dry-run` routes through
+        # `scan_directory_structure` (`phenotypicCLI.py:1803`) -- so a
+        # divergence here is not user-visible today. It is kept in step
+        # because the duplicate predicates exist and the next reader will
+        # assume they agree.
         if not subdir.is_dir() or _is_store_dir(subdir):
             continue
 
