@@ -22,6 +22,8 @@ from ._cli_file_locking import atomic_append, atomic_read, FileLockTimeout
 from phenotypic.sdk_ import (
     CommitGuard,
     FAILURES_JSONL,
+    STORE_ROOT_JSON,
+    STORE_SUFFIX,
     publication_commit,
     terminal_failures_jsonl_path,
 )
@@ -90,9 +92,47 @@ def _canonical_digest(payload: Mapping[str, Any]) -> str:
 
 
 def file_sha256(path: Path) -> str:
-    """Return the SHA-256 digest of *path* without retaining file contents."""
+    """Return the SHA-256 digest of *path* without retaining file contents.
+
+    A ``*.ome.zarr`` input is a **directory**, so the streaming read raises
+    ``IsADirectoryError``. A store is digested by its root ``zarr.json``
+    instead, which is already its completeness fingerprint: the promote
+    protocol writes that document last, so it exists only on a fully written
+    store, and it changes whenever any published content does -- the series
+    map, the pyramid level count, the metadata sections, the provenance
+    journal.
+
+    Digesting the whole tree would be correct too, and is not done: it costs a
+    directory walk per image at SLURM submit time (the identity ledger in
+    ``_cli_slurm_array_scripts`` runs this once per image while building the
+    ledger) for no additional guarantee.
+
+    A directory that is not a store still raises ``IsADirectoryError``. It has
+    no meaningful content fingerprint, and inventing one would let a
+    mis-specified ``--input`` produce a stable work ID for something that is
+    not an image.
+
+    Args:
+        path: An input image file, or a ``*.ome.zarr`` store directory.
+
+    Returns:
+        The hex digest.
+
+    Raises:
+        IsADirectoryError: If *path* is a directory that is not an OME-Zarr
+            store.
+    """
+    target = Path(path)
+    if target.is_dir():
+        if not target.name.endswith(STORE_SUFFIX):
+            raise IsADirectoryError(
+                f"{target} is a directory but not an OME-Zarr store; "
+                f"it has no content fingerprint"
+            )
+        target = target / STORE_ROOT_JSON
+
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with target.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
