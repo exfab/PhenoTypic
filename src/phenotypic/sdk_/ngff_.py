@@ -730,6 +730,17 @@ def project_ngff_axes(
         # time axis anything; the type is the half a reader can act on, and
         # naming only the name would make the error unreadable on any store
         # that does not use the conventional single letters.
+        # The range check comes FIRST, before the size-1 shortcut. An
+        # out-of-range override is a caller error at any size, and a size-1
+        # axis is where it is least visible: `c=7` on a 1-channel store
+        # silently returned channel 0, contradicting the comment below on
+        # the explicit-c branch -- "an explicit c= wins ... quietly returning
+        # RGB instead would ignore an instruction rather than honour it".
+        if override is not None and not 0 <= override < size:
+            raise ValueError(
+                f"{flag}={override} is out of range for the {kind} axis "
+                f"{name!r} of size {size}"
+            )
         if size == 1:
             return 0
         if override is None:
@@ -738,17 +749,21 @@ def project_ngff_axes(
                 f"PhenoTypic's Image is 2-D. Pass {flag}=<index> to choose "
                 f"one, or use zarr directly to read the whole array."
             )
-        if not 0 <= override < size:
-            raise ValueError(
-                f"{flag}={override} is out of range for the {kind} axis "
-                f"{name!r} of size {size}"
-            )
         return override
 
     index: list[int | slice] = []
     is_rgb = False
     seen_space = 0
     n_space = sum(1 for a in axes if a.get("type") == "space")
+    # The docstring above claims this is the TOTAL mapping from NGFF axes onto
+    # a 2-D image. That claim only holds for the 2 or 3 space axes NGFF itself
+    # requires: with 0 or 1 there is no plane to read, and with 4+ the
+    # "first of three is z" rule below has no meaning.
+    if not 2 <= n_space <= 3:
+        raise ValueError(
+            f"this store declares {n_space} space axes; PhenoTypic reads 2 "
+            f"(yx) or 3 (zyx, choosing one z). It is not a 2-D image."
+        )
 
     for axis, size in zip(axes, shape):
         raw_kind = axis.get("type")
@@ -782,9 +797,17 @@ def project_ngff_axes(
                 index.append(slice(None))
         else:
             # A custom or null axis type. NGFF permits it; we cannot map it.
-            # Size 1 squeezes; anything larger refuses, and there is no
-            # override to name because there is no axis semantics to override.
-            index.append(_pick(kind, name, None, size, "(no override)"))
+            # Size 1 squeezes; anything larger refuses. Its own message, NOT
+            # `_pick`: there is no override to name here, and _pick's
+            # "Pass (no override)=<index>" reads as a flag that does not exist.
+            if size != 1:
+                raise ValueError(
+                    f"this store's axis {name!r} has type {raw_kind!r}, "
+                    f"which PhenoTypic cannot map onto a 2-D image, and "
+                    f"size {size}. Only a size-1 axis of an unrecognised "
+                    f"type can be squeezed; use zarr directly to read it."
+                )
+            index.append(0)
 
     return tuple(index), is_rgb
 
@@ -810,9 +833,63 @@ class NgffImageSpec:
     phenotypic: dict
 
 
+def _zarr_v2_marker(store_path: Path) -> str | None:
+    """Return the Zarr v2 group marker present at *store_path*, or ``None``.
+
+    A v2 group is spelled ``.zgroup``/``.zattrs`` where v3 writes
+    ``zarr.json``, so a v2 store has no root by :func:`read_root_attributes`'s
+    reckoning and surfaces as ``FileNotFoundError`` -- which is this
+    codebase's established signal for "interrupted write, store absent". The
+    two must not be confused: ``bioformats2raw``'s default output and QuPath's
+    export are NGFF 0.4 / Zarr v2 today (spec 3.1 case C).
+
+    Args:
+        store_path: Directory to inspect.
+
+    Returns:
+        The marker filename found, or ``None`` if the directory is not a
+        Zarr v2 group.
+    """
+    for marker in (".zgroup", ".zattrs"):
+        if (Path(store_path) / marker).is_file():
+            return marker
+    return None
+
+
+def _declared_series(store_path: Path, attributes: dict) -> list[str]:
+    """List the series paths a store declares, for an error message.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+        attributes: The root ``attributes`` mapping.
+
+    Returns:
+        Declared series paths; ``[]`` when the store declares none.
+    """
+    ome_json = Path(store_path) / OME_GROUP / STORE_ROOT_JSON
+    if ome_json.is_file():
+        payload = json.loads(ome_json.read_text(encoding="utf-8"))
+        declared = payload.get("attributes", {}).get("ome", {}).get("series")
+        if declared:
+            return [str(entry) for entry in declared]
+    block = attributes.get(PhenotypicAttr.ROOT, {})
+    series = block.get(PhenotypicAttr.SERIES)
+    if isinstance(series, dict):
+        return [str(value) for value in series.values()]
+    return []
+
+
 def _resolve_series_path(store_path: Path, attributes: dict) -> str:
-    """Pick the series a generic reader should open. See spec 4.1."""
+    """Pick the series a generic reader should open. See spec 4.1.
+
+    The ``ome.plate`` check is FIRST, and deliberately so -- see the comment
+    at that branch and spec 4.1 step 1.
+    """
     ome = attributes.get("ome", {})
+    # STEP 1, before the declared-series list. A `bioformats2raw` plate
+    # carries BOTH a root `ome.plate` and an `OME/zarr.json` series list, so
+    # checking the series list first would return a well field from a store
+    # that must be refused.
     if "plate" in ome:
         raise ValueError(
             f"{store_path} is an HCS plate, which is a collection of wells "
@@ -873,10 +950,12 @@ def read_ngff_image_spec(
         An :class:`NgffImageSpec`.
 
     Raises:
-        FileNotFoundError: If the store has no root ``zarr.json``.
-        ValueError: If the store is an HCS plate, declares no readable image,
-            or cannot be projected onto a 2-D image (see
-            :func:`project_ngff_axes`).
+        FileNotFoundError: If the store has no root ``zarr.json`` and is not
+            a Zarr v2 group either -- an interrupted write reads as absent.
+        ValueError: If the store is Zarr v2 (NGFF 0.4), is an HCS plate,
+            declares no readable image, has no series named by *series*, has
+            no such pyramid *level*, or cannot be projected onto a 2-D image
+            (see :func:`project_ngff_axes`).
 
     Examples:
         Read back the colony plate a run wrote, as plain pixels:
@@ -898,7 +977,21 @@ def read_ngff_image_spec(
     from phenotypic.schema import IMAGE
 
     store_path = Path(store_path)
-    attributes = read_root_attributes(store_path)
+    try:
+        attributes = read_root_attributes(store_path)
+    except FileNotFoundError:
+        # NOT in `_resolve_series_path`, which never runs for a v2 store:
+        # `read_root_attributes` reads `zarr.json` and raises first. This is
+        # the only place the v2 case is reachable.
+        marker = _zarr_v2_marker(store_path)
+        if marker is None:
+            raise
+        raise ValueError(
+            f"{store_path} carries {marker} and no {STORE_ROOT_JSON}, so it "
+            f"is a Zarr v2 store (NGFF 0.4 or earlier). PhenoTypic reads "
+            f"NGFF 0.5 / Zarr v3. Convert the store to Zarr v3 before "
+            f"reading it."
+        ) from None
     phenotypic = attributes.get(PhenotypicAttr.ROOT, {})
 
     resolved = (
@@ -906,7 +999,21 @@ def read_ngff_image_spec(
     )
 
     group_path = store_path / resolved if resolved else store_path
-    payload = json.loads((group_path / STORE_ROOT_JSON).read_text(encoding="utf-8"))
+    group_json = group_path / STORE_ROOT_JSON
+    if not group_json.is_file():
+        # A bad `series=` is a caller error, not a missing store. Letting
+        # `read_text` raise reported `FileNotFoundError` on an internal path,
+        # which reads as "the store is gone".
+        declared = _declared_series(store_path, attributes)
+        available = (
+            "It declares: " + ", ".join(repr(name) for name in declared)
+            if declared
+            else "It declares no series."
+        )
+        raise ValueError(
+            f"{store_path} has no series {resolved!r}. {available}"
+        )
+    payload = json.loads(group_json.read_text(encoding="utf-8"))
     multiscales = payload["attributes"]["ome"]["multiscales"][0]
     axes = multiscales["axes"]
     datasets = multiscales["datasets"]
