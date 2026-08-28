@@ -381,41 +381,16 @@ def test_a_size_one_untyped_axis_is_still_squeezed() -> None:
 
 
 def _write_5d_store(root: Path, *, shape: tuple[int, ...]) -> Path:
-    """A single-series `tczyx` store, values seeded so a projection is checkable."""
-    group = zarr.create_group(store=str(root), zarr_format=3)
-    group.attrs["ome"] = {"version": "0.5", "bioformats2raw.layout": 3}
-    ome_group = group.create_group("OME")
-    ome_group.attrs["ome"] = {"version": "0.5", "series": ["0"]}
+    """A single-series `tczyx` store -- `_write_store` with the axes named.
 
-    axes = _axes("t", "c", "z", "y", "x")
-    sub = group.create_group("0")
-    arr = sub.create_array(
-        "0",
-        shape=shape,
-        chunks=shape,
-        dtype="uint16",
-        dimension_names=[a["name"] for a in axes],
+    The projection assertions read the raw array back off disk rather than
+    trusting a seed, so nothing here depends on which values were written.
+    """
+    return _write_store(
+        root,
+        series={"0": (shape, _axes("t", "c", "z", "y", "x"))},
+        series_list=["0"],
     )
-    rng = np.random.default_rng(7)
-    arr[:] = rng.integers(1, 4096, size=shape, dtype=np.uint16)
-    sub.attrs["ome"] = {
-        "version": "0.5",
-        "multiscales": [
-            {
-                "name": "0",
-                "axes": axes,
-                "datasets": [
-                    {
-                        "path": "0",
-                        "coordinateTransformations": [
-                            {"type": "scale", "scale": [1.0] * len(shape)}
-                        ],
-                    }
-                ],
-            }
-        ],
-    }
-    return root
 
 
 def test_a_5d_tczyx_store_reads_the_named_timepoint_and_plane(

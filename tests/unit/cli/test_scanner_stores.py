@@ -16,19 +16,13 @@ from phenotypic._cli._cli_directory_scanner import (
     get_input_structure_summary,
     scan_directory_structure,
 )
+from tests._process_stores import write_process_store
 
 
 def _store(parent: Path, stem: str) -> Path:
     parent.mkdir(parents=True, exist_ok=True)
-    img = Image(load_synth_yeast_plate())
-    return img._save_store(
-        parent / f"{stem}{ngff_.STORE_SUFFIX}",
-        series=("gray",),
-        write_objmap=False,
-        levels=ngff_.pyramid_level_count(*img.gray[:].shape[:2]),
-        work_id=None,
-        durable=False,
-        write_image_class=False,
+    return write_process_store(
+        parent / f"{stem}{ngff_.STORE_SUFFIX}", Image(load_synth_yeast_plate())
     )
 
 

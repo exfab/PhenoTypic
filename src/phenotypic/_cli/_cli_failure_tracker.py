@@ -155,6 +155,12 @@ def file_sha256(path: Path) -> str:
     target = Path(path)
     digest = hashlib.sha256()
 
+    def _feed(file_path: Path) -> None:
+        """Stream one file into *digest* without retaining its contents."""
+        with file_path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+
     if target.is_dir():
         if not target.name.endswith(STORE_SUFFIX):
             raise IsADirectoryError(
@@ -168,14 +174,10 @@ def file_sha256(path: Path) -> str:
         for member in members:
             digest.update(member.relative_to(target).as_posix().encode("utf-8"))
             digest.update(b"\0")
-            with member.open("rb") as handle:
-                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                    digest.update(chunk)
+            _feed(member)
         return digest.hexdigest()
 
-    with target.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
+    _feed(target)
     return digest.hexdigest()
 
 

@@ -12,6 +12,7 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.sdk_ import ngff_
 from phenotypic.sdk_.ngff_ import PhenotypicAttr
 from phenotypic._cli._cli_process_only import write_process_only_layer
+from tests._process_stores import write_process_store
 
 
 def _store(tmp_path: Path) -> Path:
@@ -72,15 +73,8 @@ def test_consolidation_adds_no_files(tmp_path: Path) -> None:
     the same image, so the difference measured is consolidation itself.
     """
     img = Image(load_synth_yeast_plate())
-    plain = img._save_store(
-        tmp_path / "plain.ome.zarr",
-        series=("rgb",),
-        write_objmap=False,
-        levels=ngff_.pyramid_level_count(*img.shape[:2]),
-        work_id=None,
-        durable=False,
-        write_image_class=False,
-        consolidate=False,
+    plain = write_process_store(
+        tmp_path / "plain.ome.zarr", img, series="rgb", consolidate=False
     )
     assert "consolidated_metadata" not in _root(plain), (
         "the control store must actually be unconsolidated"

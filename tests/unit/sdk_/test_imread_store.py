@@ -12,18 +12,13 @@ from phenotypic import Image
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import ngff_
+from tests._process_stores import write_process_store
 
 
 def _processed_rgb_store(tmp_path: Path) -> tuple[Path, Image]:
     img = Image(load_synth_yeast_plate())
-    store = img._save_store(
-        tmp_path / "IMG_4471.ome.zarr",
-        series=("rgb",),
-        write_objmap=False,
-        levels=ngff_.pyramid_level_count(*img.rgb[:].shape[:2]),
-        work_id=None,
-        durable=False,
-        write_image_class=False,
+    store = write_process_store(
+        tmp_path / "IMG_4471.ome.zarr", img, series="rgb"
     )
     return store, img
 
@@ -80,14 +75,8 @@ def _provenanced_store(
         duration_seconds=0.125,
         pipeline_step_path=["preprocess", "0"],
     )
-    store = img._save_store(
-        tmp_path / "provenanced.ome.zarr",
-        series=("rgb",),
-        write_objmap=False,
-        levels=ngff_.pyramid_level_count(*img.rgb[:].shape[:2]),
-        work_id=None,
-        durable=False,
-        write_image_class=False,
+    store = write_process_store(
+        tmp_path / "provenanced.ome.zarr", img, series="rgb"
     )
     return store, img
 
@@ -133,15 +122,7 @@ def test_imported_tags_land_in_the_imported_section(tmp_path: Path) -> None:
     """
     img = Image(load_synth_yeast_plate())
     img._metadata.imported.update({"Metadata_Make": "Canon"})
-    store = img._save_store(
-        tmp_path / "tagged.ome.zarr",
-        series=("rgb",),
-        write_objmap=False,
-        levels=ngff_.pyramid_level_count(*img.rgb[:].shape[:2]),
-        work_id=None,
-        durable=False,
-        write_image_class=False,
-    )
+    store = write_process_store(tmp_path / "tagged.ome.zarr", img, series="rgb")
     loaded = Image.imread(store)
     assert loaded._metadata.imported["Metadata_Make"] == "Canon"
     assert "Metadata_Make" not in loaded._metadata.public
@@ -156,14 +137,8 @@ def test_imread_does_not_carry_run_state_across(tmp_path: Path) -> None:
     img = Image(load_synth_yeast_plate())
     img.metadata["operator_note"] = "run 3, plate B"  # -> public
     img._metadata.protected["Metadata_ImageType"] = "GridSection"  # -> protected
-    store = img._save_store(
-        tmp_path / "stateful.ome.zarr",
-        series=("rgb",),
-        write_objmap=False,
-        levels=ngff_.pyramid_level_count(*img.rgb[:].shape[:2]),
-        work_id=None,
-        durable=False,
-        write_image_class=False,
+    store = write_process_store(
+        tmp_path / "stateful.ome.zarr", img, series="rgb"
     )
     loaded = Image.imread(store)
     assert "operator_note" not in loaded._metadata.public
@@ -243,15 +218,8 @@ def test_imread_reads_a_consolidated_store(tmp_path: Path) -> None:
     """The actual on-disk shape of a `--mode process` store: consolidated
     metadata and no `image_class`. Never read back until now."""
     img = Image(load_synth_yeast_plate())
-    store = img._save_store(
-        tmp_path / "consolidated.ome.zarr",
-        series=("rgb",),
-        write_objmap=False,
-        levels=ngff_.pyramid_level_count(*img.rgb[:].shape[:2]),
-        work_id=None,
-        durable=False,
-        write_image_class=False,
-        consolidate=True,
+    store = write_process_store(
+        tmp_path / "consolidated.ome.zarr", img, series="rgb", consolidate=True
     )
     root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
     assert "consolidated_metadata" in root, "fixture must really be consolidated"
@@ -265,15 +233,8 @@ def test_imread_round_trips_a_gray_float_store_bit_exactly(tmp_path: Path) -> No
     float32 -- so `metadata.protected[Metadata_BitDepth]` is the ONLY bit-depth
     source; dtype inference has no answer for a float array."""
     img = Image(load_synth_yeast_plate())
-    store = img._save_store(
-        tmp_path / "grayscale.ome.zarr",
-        series=("gray",),
-        write_objmap=False,
-        levels=1,
-        work_id=None,
-        durable=False,
-        write_image_class=False,
-        consolidate=True,
+    store = write_process_store(
+        tmp_path / "grayscale.ome.zarr", img, levels=1, consolidate=True
     )
     stored = ngff_.read_phenotypic_attributes(store)
     assert stored["metadata"]["protected"][IMAGE.BIT_DEPTH] == img.bit_depth

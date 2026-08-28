@@ -15,19 +15,13 @@ from phenotypic import Image
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.sdk_ import ngff_
 from phenotypic._cli._cli_failure_tracker import file_sha256, work_id_for_image
+from tests._process_stores import write_process_store
 
 
 def _store(parent: Path, stem: str) -> Path:
     parent.mkdir(parents=True, exist_ok=True)
-    img = Image(load_synth_yeast_plate())
-    return img._save_store(
-        parent / f"{stem}{ngff_.STORE_SUFFIX}",
-        series=("gray",),
-        write_objmap=False,
-        levels=ngff_.pyramid_level_count(*img.gray[:].shape[:2]),
-        work_id=None,
-        durable=False,
-        write_image_class=False,
+    return write_process_store(
+        parent / f"{stem}{ngff_.STORE_SUFFIX}", Image(load_synth_yeast_plate())
     )
 
 
@@ -262,15 +256,8 @@ def test_two_stores_with_different_pixels_get_different_digests(
     )
 
     def _write(name: str, arr: "np.ndarray") -> Path:
-        img = Image(arr)
-        return img._save_store(
-            tmp_path / f"{name}{ngff_.STORE_SUFFIX}",
-            series=("gray",),
-            write_objmap=False,
-            levels=ngff_.pyramid_level_count(*img.gray[:].shape[:2]),
-            work_id=None,
-            durable=False,
-            write_image_class=False,
+        return write_process_store(
+            tmp_path / f"{name}{ngff_.STORE_SUFFIX}", Image(arr)
         )
 
     plain, altered = _write("plain", base), _write("altered", noisy)
@@ -290,15 +277,8 @@ def test_a_store_digest_is_stable_across_an_unchanged_rewrite(
     arr = np.asarray(Image(load_synth_yeast_plate()).rgb[:])
 
     def _write(name: str) -> Path:
-        img = Image(arr)
-        return img._save_store(
-            tmp_path / f"{name}{ngff_.STORE_SUFFIX}",
-            series=("gray",),
-            write_objmap=False,
-            levels=ngff_.pyramid_level_count(*img.gray[:].shape[:2]),
-            work_id=None,
-            durable=False,
-            write_image_class=False,
+        return write_process_store(
+            tmp_path / f"{name}{ngff_.STORE_SUFFIX}", Image(arr)
         )
 
     assert file_sha256(_write("one")) == file_sha256(_write("two"))

@@ -9,19 +9,12 @@ import pytest
 
 from phenotypic import Image
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.sdk_ import ngff_
+from tests._process_stores import write_process_store
 
 
 def _processed_store(tmp_path: Path) -> Path:
-    img = Image(load_synth_yeast_plate())
-    return img._save_store(
-        tmp_path / "processed.ome.zarr",
-        series=("gray",),
-        write_objmap=False,
-        levels=ngff_.pyramid_level_count(*img.gray[:].shape[:2]),
-        work_id=None,
-        durable=False,
-        write_image_class=False,
+    return write_process_store(
+        tmp_path / "processed.ome.zarr", Image(load_synth_yeast_plate())
     )
 
 
