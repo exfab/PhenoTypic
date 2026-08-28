@@ -156,7 +156,14 @@ phase 4. Run phase 5 last, after 6, so the ledger pass happens once.
 4. A re-promote is refused under a stale token (409), and a rewritten nested chunk is
    served fresh **without** moving the token.
 5. `tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py` passes **unmodified**.
-6. `uv run pytest tests/unit/gui tests/gui -n 4` green (minus the known baseline failure);
+6. **The browser lane actually runs**, not skips:
+   ```bash
+   PLAYWRIGHT=1 QT_QPA_PLATFORM=offscreen xvfb-run -a uv run pytest tests/e2e/gui -q
+   ```
+   Both are required and omitting either is silent — no `PLAYWRIGHT=1` and the conftest
+   skips the module (exit 0, nothing tested); no `xvfb-run` and the rendering tests hit a
+   GL-less `chromium_headless_shell`.
+7. `uv run pytest tests/unit/gui tests/gui -n 4` green (minus the known baseline failure);
    the three `gui-checks` gates exit 0. **`tests/gui` is not optional here** — browse and
    builder GUI tests live there, and a `tests/unit/gui`-only gate never reaches the code
    these phases edit.

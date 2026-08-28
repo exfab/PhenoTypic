@@ -136,6 +136,13 @@ renumbered, so the phase names in the ledger and commits keep resolving.
 ## Definition of done
 
 1. `uv run pytest tests/unit/gui tests/gui -n 4` green (minus the known baseline failure).
+   **And the browser lane, which must RUN rather than skip:**
+   ```bash
+   PLAYWRIGHT=1 QT_QPA_PLATFORM=offscreen xvfb-run -a uv run pytest tests/e2e/gui -q
+   ```
+   Without `PLAYWRIGHT=1` the conftest skips every module and the command exits 0 having
+   tested nothing — which would tick this box while proving the skip-marks compile, not
+   that Browse Single mode still works.
    **`tests/gui` is not optional** — browse GUI tests and the colony-view package live
    there, so a `tests/unit/gui`-only gate never reaches what phases 2 and 6 touch.
 2. `uv run python scripts/check_features_md.py --strict` exits 0.

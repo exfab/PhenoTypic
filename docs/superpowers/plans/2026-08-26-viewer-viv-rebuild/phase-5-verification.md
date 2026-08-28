@@ -34,8 +34,21 @@ QT_QPA_PLATFORM=offscreen uv run pytest \
   tests/unit/gui/results_viewer/test_level_selection.py \
   tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py \
   -n 4 -v
-QT_QPA_PLATFORM=offscreen uv run pytest tests/e2e/gui -k "viv or colony_shared or builder" -v
+PLAYWRIGHT=1 QT_QPA_PLATFORM=offscreen xvfb-run -a \
+  uv run pytest tests/e2e/gui -k "viv or colony_shared or builder" -v
 ```
+
+> **`PLAYWRIGHT=1` and `xvfb-run` are both required, and omitting either is silent.**
+> Without `PLAYWRIGHT=1` the conftest (`tests/e2e/gui/conftest.py:49`) skips the whole
+> module — the command exits 0 having tested **nothing**, and the checklist gets ticked.
+> Without `xvfb-run` the rendering tests launch `chromium_headless_shell`, which has no GL
+> stack, and fail with `Failed to create WebGL context` — a red that looks like a rendering
+> bug and is not one. A verification step that passes by skipping is worse than one that
+> fails.
+>
+> **Measured 2026-08-27:** `15 passed in 81.83s` across
+> `test_viv_codec_reads_a_real_store.py` (5), `test_viv_facade_renders.py` (4),
+> `test_colony_shared_camera.py` (3), `test_builder_preview_viv.py` (3).
 
 **The curation chain is not proved by `test_colony_callbacks_helpers.py`.** Its 15 tests
 drive pure helpers against hand-built `ctx.triggered` dicts — it would pass unmodified while
