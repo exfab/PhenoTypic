@@ -105,9 +105,14 @@ real click options, so documenting an unwired flag fails that gate.
 dependencies (T1, T6) are satisfied once C3 lands. Everything else shares a hot
 file with its neighbour.
 
-Running C6 beside C4→C5 is optional. The gain is real (C4→C5 is the longest
-remaining stretch) and the merge risk is low (one file, no shared imports), but
-sequential is the safe default on a stacked branch.
+**Decided 2026-08-27: run C6 in parallel with C4**, in its own worktree.
+`_cli_directory_scanner.py` is read and written by no other cluster, and C6
+shares no import with C4, so the merge is a fast-forward of one file plus one
+test file. C4 is the longest remaining stretch, so this is where the wall-clock
+actually is.
+
+Merge C6 back before C5 starts, so the deep gate after the CLI phase sees one
+combined diff rather than two.
 
 ## 6. Gates
 
