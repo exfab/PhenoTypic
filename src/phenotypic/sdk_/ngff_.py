@@ -730,6 +730,7 @@ def project_ngff_axes(
         # time axis anything; the type is the half a reader can act on, and
         # naming only the name would make the error unreadable on any store
         # that does not use the conventional single letters.
+        #
         # The range check comes FIRST, before the size-1 shortcut. An
         # out-of-range override is a caller error at any size, and a size-1
         # axis is where it is least visible: `c=7` on a 1-channel store
@@ -856,8 +857,29 @@ def _zarr_v2_marker(store_path: Path) -> str | None:
     return None
 
 
+def _ome_series_list(store_path: Path) -> list[str]:
+    """Read ``OME/zarr.json``'s ``ome.series``, or ``[]`` if it declares none.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+
+    Returns:
+        The declared series paths, in declaration order.
+    """
+    ome_json = Path(store_path) / OME_GROUP / STORE_ROOT_JSON
+    if not ome_json.is_file():
+        return []
+    payload = json.loads(ome_json.read_text(encoding="utf-8"))
+    declared = payload.get("attributes", {}).get("ome", {}).get("series") or []
+    return [str(entry) for entry in declared]
+
+
 def _declared_series(store_path: Path, attributes: dict) -> list[str]:
     """List the series paths a store declares, for an error message.
+
+    Falls back to ``phenotypic.series`` for a PhenoTypic-written store, which
+    the resolver deliberately does not consult -- this is a message, not a
+    resolution.
 
     Args:
         store_path: Path to a ``*.ome.zarr`` directory.
@@ -866,14 +888,10 @@ def _declared_series(store_path: Path, attributes: dict) -> list[str]:
     Returns:
         Declared series paths; ``[]`` when the store declares none.
     """
-    ome_json = Path(store_path) / OME_GROUP / STORE_ROOT_JSON
-    if ome_json.is_file():
-        payload = json.loads(ome_json.read_text(encoding="utf-8"))
-        declared = payload.get("attributes", {}).get("ome", {}).get("series")
-        if declared:
-            return [str(entry) for entry in declared]
-    block = attributes.get(PhenotypicAttr.ROOT, {})
-    series = block.get(PhenotypicAttr.SERIES)
+    declared = _ome_series_list(store_path)
+    if declared:
+        return declared
+    series = attributes.get(PhenotypicAttr.ROOT, {}).get(PhenotypicAttr.SERIES)
     if isinstance(series, dict):
         return [str(value) for value in series.values()]
     return []
@@ -897,12 +915,9 @@ def _resolve_series_path(store_path: Path, attributes: dict) -> str:
             f"a single field."
         )
 
-    ome_json = Path(store_path) / OME_GROUP / STORE_ROOT_JSON
-    if ome_json.is_file():
-        payload = json.loads(ome_json.read_text(encoding="utf-8"))
-        declared = payload.get("attributes", {}).get("ome", {}).get("series")
-        if declared:
-            return str(declared[0])
+    declared = _ome_series_list(store_path)
+    if declared:
+        return declared[0]
 
     if "multiscales" in ome:
         return ""  # the root group is itself the image
