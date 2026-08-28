@@ -772,6 +772,11 @@ def build_omero(
     if the deferred integer conversion ever lands, the affected series get their
     block back automatically.
 
+    ``rdefs.model`` is the only field in NGFF that states the rendering model
+    outright (§2.5: exactly ``"color"`` or ``"greyscale"``), and OMERO and
+    Vizarr read it. It is emitted only where ``omero`` itself is emitted, so
+    the whole-or-nothing rule per group is unaffected.
+
     Args:
         series: ``"rgb"``, ``"gray"``, or ``"detect_mat"``.
         dtype: Level-0 dtype. Float dtypes get no block.
@@ -797,7 +802,10 @@ def build_omero(
         }
         for label, color in palette
     ]
-    block: dict = {"channels": channels}
+    block: dict = {
+        "channels": channels,
+        "rdefs": {"model": "color" if series == "rgb" else "greyscale"},
+    }
     if name is not None:
         block["name"] = name
     return {"omero": block}
