@@ -10,16 +10,21 @@ task's Files block changes, regenerate this.
         T1 ──┬─→ T2                     (guard needs the omission to exist)
              ├─→ T6                     (imread fixtures use write_image_class)
              ├─→ T7                     (writer passes write_image_class=False)
-             └─→ T10                    (scanner fixtures build stores)
+             ├─→ T9                     (writer passes consolidate=True)
+             ├─→ T10a                   (digest fixtures build stores)
+             └─→ T10b                   (scanner fixtures build stores)
 
         T3                              (independent)
         T4 ──→ T7                       (writer passes basename_only=True)
-        T5 ──→ T6 ──→ T10               (resolver → imread → scanner integration)
+        T5 ──→ T6 ──→ T10b              (resolver → imread → scanner integration)
 
-        T7 ──┬─→ T8                     (CLI feeds process_format into the core)
-             ├─→ T9                     (consolidation wraps the zarr branch)
-             └─→ T11
-        T10 ─→ T11
+        T7 ──┬─→ T8a ──→ T8b            (core param → worker option → user CLI)
+             └─→ T9                     (consolidation switches on the writer)
+
+        T10a ─→ T10b                    (file_sha256 must survive a directory
+                                         before the scanner can hand it one)
+
+        T7, T8b, T10b ──→ T11
 ```
 
 ## 2. Shared files — the parallelism constraint
@@ -29,40 +34,51 @@ task's Files block changes, regenerate this.
 | `src/phenotypic/sdk_/ngff_.py` | T1, T3, T5 |
 | `src/phenotypic/_core/_image_parts/_image_io_handler.py` | T1, T2, T6 |
 | `src/phenotypic/_core/_provenance.py` | T4 |
-| `src/phenotypic/_cli/_cli_process_only.py` | T7, T8, T9 |
-| `src/phenotypic/_cli/_cli_process_single.py` | T8 |
-| `src/phenotypic/_cli/_cli_directory_scanner.py` | T10 |
-| `CLAUDE.md`, `_cli_readme_generator.py`, `logic_validation_scripts/…` | T11 |
+| `src/phenotypic/sdk_/typing_.py` | T7, T8b |
+| `src/phenotypic/_cli/_cli_process_only.py` | T7, T8a, T9, T10a |
+| `src/phenotypic/_cli/_cli_process_single.py` | T8a, T8b |
+| `src/phenotypic/_cli/_cli_failure_tracker.py` | T8b, T10a |
+| `src/phenotypic/phenotypicCLI.py`, `_cli_types.py`, `_cli_execution_strategies.py`, `_cli_staged_{strategy,resume}.py`, `_cli_slurm_array_scripts.py`, `_cli_state_management.py` | T8b |
+| `src/phenotypic/_cli/_cli_directory_scanner.py` | T10b |
+| `CLAUDE.md`, `logic_validation_scripts/…` | T11 |
 
 Two hot files (`ngff_.py`, `_image_io_handler.py`) are touched by five of the
-first six tasks, which is what forces Phases 1–2 to run sequentially.
+first six tasks, which is what forces Phases 1–2 to run sequentially. In Phase 3
+the hot file becomes `_cli_process_only.py`, touched by four tasks.
+
+**T10a now shares `_cli_process_only.py` with the Phase-3 cluster** (it fixes
+`process_only_output_path`'s degenerate relative path, which T7 rewrote). That
+is the one change to the parallelism picture from the pre-review plan, and it is
+why C6 no longer runs beside C4 — see §5.
 
 ## 3. Shapes
 
 | Task | Shape | Why |
 |---|---|---|
-| T1 `write_image_class` | **Seam** | Widens a *required* parameter to optional and threads it through three call layers. Every store write in the codebase passes through it; mypy fallout is plausible. Small, risky. |
+| T1 `write_image_class` + `consolidate` | **Seam** | Widens a *required* parameter to optional and threads two keywords through three call layers. Every store write in the codebase passes through it. Small, risky. |
 | T2 `load_zarr` guard | Seam | Behaviour change on a public read path. Inseparable from T1 — its fixture needs T1's flag. |
 | T3 `omero.rdefs` | Leaf | ~5 lines, but conformance-gated. |
 | T4 provenance basename | Leaf | One function, one new keyword, isolated file. |
-| T5 `read_ngff_image_spec` | **Keystone** | Novel core logic — the whole projection rule, ~250 lines and 19 tests. The largest single piece. |
+| T5 `read_ngff_image_spec` | **Keystone** | Novel core logic — the whole projection rule, ~250 lines and 24 tests. The largest single piece. |
 | T6 `imread` store branch | Seam | The public dispatch point changes shape. Thin, but it is *the* wiring. |
 | T7 process-only zarr writer | **Keystone** | Produces the artifact; novel; the spec's centre. |
-| T8 `--process-format` | **Seam** | Flips the default output format. This is where the AutoConvertRaw hazard lands. |
-| T9 consolidation | Leaf | ~20 lines wrapping T7's branch, same file. |
-| T10 scanner | **Seam** | One file, but two traps that both yield plausible wrong results, and a subtle monkeypatched test. |
-| T11 validation + docs | Sweep + Leaf | Three files plus a standalone derivation script. |
+| T8a `resolve_process_format` | Leaf | One pure function, two refusals, plus the worker's option. |
+| T8b user-facing `--process-format` | **Sweep + Seam** | Ten files. Flips the default output format, and this is where the AutoConvertRaw hazard lands. Wide but shallow: the same keyword at eleven sites, plus the continuation digest. |
+| T9 consolidation | Leaf | One keyword on T7's call, plus its regression tests. |
+| T10a store work identity | Seam | One function body, but four call sites depend on it and all four die without it. |
+| T10b scanner | **Seam** | One file, two traps that both yield plausible wrong results, a duplicated dry-run path, and a subtle monkeypatched test. |
+| T11 validation + docs | Sweep + Leaf | Two files plus a standalone derivation script. |
 
 ## 4. Clusters
 
 | # | Tasks | Intent | Model | Effort |
 |---|---|---|---|---|
-| **C1** | T1, T2 | Make a store able to omit `image_class`, and make `load_zarr` refuse one that does | Opus 5 | high |
+| **C1** | T1, T2 | Make a store able to omit `image_class` and to consolidate its part, and make `load_zarr` refuse a store that is not a bundle | Opus 5 | high |
 | **C2** | T3, T4 | Two independent primitives: the render-model field and the provenance basename | Sonnet 5 | medium |
 | **C3** | T5, T6 | The read path end to end — pure projector, resolver, `imread` branch | Opus 5 | high |
 | **C4** | T7, T9 | The writer and its consolidation, one file, one intent | Opus 5 | high |
-| **C5** | T8 | The CLI surface and the default flip | Opus 5 | high |
-| **C6** | T10 | The input scanner | Opus 5 | high |
+| **C5** | T8a, T8b | The CLI surface and the default flip, worker then user-facing | Opus 5 | high |
+| **C6** | T10a, T10b | A store as a first-class input: its digest, its work ID, and the scanner that finds it | Opus 5 | high |
 | **C7** | T11 | Validation script and documentation | Sonnet 5 | medium |
 
 **Why T3+T4 are one cluster and not folded into C1:** they share no file with
@@ -73,46 +89,56 @@ gate instead of two and keeps C1's diff focused on the risky widening.
 **Why C3 merges a Keystone with a Seam:** T6 is ~60 lines that do nothing but
 call T5. Splitting them would hand the second agent an interface it did not
 design and cannot see the reasoning for. Combined they are ~350 source lines and
-26 tests — the upper edge of one reviewable diff, and verifiable in one pytest
-run. **This is the largest cluster; if its diff comes back unreviewable, split
-at T6 and re-gate.**
+33 tests — the upper edge of one reviewable diff, and verifiable in one pytest
+run. **This is the largest library cluster; if its diff comes back
+unreviewable, split at T6 and re-gate.**
 
-**Why C5 is alone despite being small:** it is the task that changes what a
-working production command emits. It earns its own gate.
+**Why C5 holds both halves of the option:** T8a is a pure function plus a worker
+flag, and T8b is the ten-file sweep that makes it reachable. Landing T8a alone
+would merge a resolver nothing calls from a user-facing path — reviewable, but
+not verifiable, since the only end-to-end proof of T8a is a command T8b enables.
+They are one intent and one gate. **C5 is the widest diff in the run**; if the
+ten-file sweep swamps review, split at T8b's Step 5 (the seven call sites) and
+re-gate, but do not split T8a from T8b.
+
+**Why C6 gained T10a:** `file_sha256` raising `IsADirectoryError` is not a
+scanner detail — it is the precondition that makes the scanner's output usable
+at all. Splitting them would merge a scanner that finds stores and a runner that
+dies on them, which is a worse state than either end.
 
 ## 5. Order and parallelism
 
 ```
-C1 → C2 → C3 → ┬─ C4 ──┬─→ C5 → C7
-               └─ C6 ──┘        ▲
-                                └── blocked on an external pin (§7)
+C1 → C2 → C3 → C4 → C6 → C5 → C7
 ```
 
-**C5 is deliberately last-but-one, not adjacent to C4.** Nothing depends on T8:
-T11 needs T7 and T10, neither of which needs the CLI flag. Deferring C5 to just
-before C7 buys the maximum amount of time for the AutoConvertRaw pin to land,
-and if it never does, the run stops with 9 of 11 tasks merged and **nothing
-user-visible changed** — the default `--mode process` output is still a flat
-TIFF, because T7's `process_format` parameter defaults to `"tiff"` until T8
-wires the option.
+**No cluster runs in parallel any more.** The pre-review plan ran C6 beside C4
+on the grounds that `_cli_directory_scanner.py` is touched by nothing else. That
+is still true of T10b, but T10a — added to C6 by the review — edits
+`_cli_process_only.py`, which is C4's own file. A parallel worktree would
+produce two divergent versions of `process_only_output_path` and a merge
+conflict in the exact function whose correctness this design turns on.
 
-C7 must stay after C5: it documents `--process-format`, and
-`tests/unit/test_docs_staged_cli.py` checks documented CLI flags against the
-real click options, so documenting an unwired flag fails that gate.
+The cost is wall-clock, not correctness, and it is recoverable: if the run needs
+the parallelism back, split T10a into C4 (it is a ten-line change to a function
+C4 already rewrites) and run T10b alone in its own worktree. Do that
+deliberately, not by drift.
 
-**C6 is the one parallel-worktree candidate.** It touches
-`_cli_directory_scanner.py`, which no other cluster reads or writes, and its
-dependencies (T1, T6) are satisfied once C3 lands. Everything else shares a hot
-file with its neighbour.
+**C5 is deliberately late.** Nothing depends on T8b: T11 needs T7, T8b, and
+T10b, and T10b needs neither CLI task. Deferring C5 to just before C7 buys the
+maximum amount of time for the AutoConvertRaw pin to hold, and if the run stops
+before it, **nothing user-visible has changed** — the default `--mode process`
+output is still a flat TIFF, because T7's `process_format` parameter defaults to
+`"tiff"` until T8b wires the option to a user.
 
-**Decided 2026-08-27: run C6 in parallel with C4**, in its own worktree.
-`_cli_directory_scanner.py` is read and written by no other cluster, and C6
-shares no import with C4, so the merge is a fast-forward of one file plus one
-test file. C4 is the longest remaining stretch, so this is where the wall-clock
-actually is.
+**C6 must precede C5 rather than follow it**, which is a change from the
+pre-review order. T10a's `file_sha256` branch is what lets a store-input run
+derive a work ID at all, and T8b puts `process_format` into that same work ID
+via `processing_configuration_digest_from_values`. Landing T8b first means
+touching the digest twice.
 
-Merge C6 back before C5 starts, so the deep gate after the CLI phase sees one
-combined diff rather than two.
+C7 stays last: it documents `--process-format` and the closed loop, and its
+end-to-end exit criterion runs the real command twice.
 
 ## 6. Gates
 
@@ -121,11 +147,23 @@ combined diff rather than two.
 | Before any dispatch | `plan-reviewer` over spec + plan — API claims, runnability, test validity, ordering, unnecessary complexity | Opus 5 |
 | After each cluster | Light: read the diff, run the cluster's tests + `ruff` + `mypy` on changed paths | orchestrator |
 | After C3 | Deep: `implementation-test-reviewer` over the combined C1+C2+C3 diff — the library phase, and the phase that adds the most tests | Opus 5 |
-| After C6 | Deep: `implementation-test-reviewer` over the combined C4+C5+C6 diff — the CLI phase | Opus 5 |
+| After C5 | Deep: `implementation-test-reviewer` over the combined C4+C6+C5 diff — the CLI phase, and the one that changes a production command's output | Opus 5 |
 | After C7 | `code-simplifier` over the whole branch diff (quality only, no behaviour change), apply, then re-run `tests/unit` | Opus 5 |
 
 Never review with a model weaker than the one that implemented. C2 and C7 are
 Sonnet-implemented and Opus-reviewed, which satisfies that.
+
+**One gate specific to this run.** After C5, before the deep review, run
+
+```bash
+uv run python -m phenotypic --mode process --layer rgb --dry-run \
+    --input <tree of tiffs> --output /tmp/probe --pipeline <pipeline.json>
+```
+
+and confirm the sample paths it prints end in `.ome.zarr`. That single line
+exercises the one thing eleven separate call-site edits can each silently get
+wrong: `phenotypicCLI.py:954` is the dry-run path, it takes the format from
+`config`, and it defaults to `"tiff"` if the wiring missed it.
 
 ## 7. C5's external blocker — CLEARED 2026-08-27
 
@@ -146,9 +184,9 @@ does not "fix" it to a tag.
 only**. That is what protects the machine ACR actually runs on, which is the
 machine that matters here.
 
-**C5 stays last-but-one anyway.** The ordering was never only about the pin: it
-costs nothing, and it keeps the one task that changes a production command's
-output at the end of the run where a late problem is cheapest to abandon.
+**C5 stays late anyway.** The ordering was never only about the pin: it costs
+nothing, and it keeps the one task that changes a production command's output at
+the end of the run where a late problem is cheapest to abandon.
 
 The original hazard, retained because it explains the ordering:
 

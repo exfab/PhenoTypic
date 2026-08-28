@@ -20,13 +20,14 @@ The axis projection is split into its own pure function so the hard logic is
 testable without building a store on disk.
 
 **Files:**
-- Modify: `src/phenotypic/sdk_/ngff_.py` (append a new section after the
-  existing read helpers, around `:626`)
+- Modify: `src/phenotypic/sdk_/ngff_.py` — append a new section after
+  `require_readable_store` (which ends at `:660`), and add the two missing names
+  to the module imports (see Step 0)
 - Test: `tests/unit/sdk_/test_ngff_read_spec.py` (create)
 
 **Interfaces:**
-- Consumes: `ngff_.read_root_attributes` (`:589`), `ngff_.STORE_ROOT_JSON`,
-  `sdk_.store_stem`.
+- Consumes: `ngff_.read_root_attributes` (`:589-606`), `ngff_.STORE_ROOT_JSON`
+  (`:65`), `ngff_.long_path` (`:1116`), `sdk_.store_stem`.
 - Produces:
 
 ```python
@@ -35,7 +36,7 @@ class NgffImageSpec:
     array: np.ndarray        # projected to (H, W) or (H, W, 3)
     series: str              # resolved series path, relative to the store root
     level: int               # pyramid level actually read
-    bit_depth: int | None    # from phenotypic.bit_depth, else inferred, else None
+    bit_depth: int | None    # from metadata.protected, else inferred, else None
     phenotypic: dict         # the phenotypic block; {} when absent
 
 def project_ngff_axes(
@@ -58,6 +59,29 @@ def read_ngff_image_spec(
     c: int | None = None,
 ) -> NgffImageSpec:
 ```
+
+- [ ] **Step 0: Add the two missing module imports**
+
+`ngff_.py` imports `Sequence` from `typing` (`:28`) but **not** `Mapping`, and
+does not import `dataclass` at all. Both are used by this task's signatures, so
+a missing import is a `NameError` at module import — every test in the repo
+fails, not just this task's. Do this first, not as a lint afterthought.
+
+In `src/phenotypic/sdk_/ngff_.py`, extend the existing stdlib imports:
+
+```python
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Final, Literal, Mapping, NamedTuple, Sequence
+```
+
+Then confirm the module still imports before writing anything else:
+
+```bash
+uv run python -c "from phenotypic.sdk_ import ngff_; print(ngff_.STORE_SUFFIX)"
+```
+
+Expected: `.ome.zarr`.
 
 - [ ] **Step 1: Write the failing tests for the pure projector**
 
@@ -112,8 +136,31 @@ def test_single_channel_squeezes_to_2d() -> None:
 
 
 def test_a_real_time_axis_is_refused() -> None:
-    with pytest.raises(ValueError, match="time"):
+    """The message names the axis TYPE, not just whatever the store called it.
+
+    A store may name its axes anything -- `_pick` is handed both, and the type
+    is the half a reader can act on. An earlier draft asserted `match="time"`
+    against a message that formatted only the name, `'t'`, and would have
+    passed only by accident on a store that happened to use that letter.
+    """
+    with pytest.raises(ValueError, match="time axis 't'"):
         ngff_.project_ngff_axes(_axes("t", "y", "x"), (10, 40, 30))
+
+
+def test_the_refusal_names_the_override_that_would_read_it() -> None:
+    with pytest.raises(ValueError, match=r"t=<index>"):
+        ngff_.project_ngff_axes(_axes("t", "y", "x"), (10, 40, 30))
+
+
+def test_an_oddly_named_time_axis_is_still_named_by_type() -> None:
+    """NGFF constrains `type`, not `name`. The type is what we can rely on."""
+    axes = [
+        {"name": "frame", "type": "time"},
+        {"name": "row", "type": "space"},
+        {"name": "col", "type": "space"},
+    ]
+    with pytest.raises(ValueError, match="time axis 'frame'"):
+        ngff_.project_ngff_axes(axes, (10, 40, 30))
 
 
 def test_a_real_time_axis_is_readable_with_an_explicit_index() -> None:
@@ -122,12 +169,12 @@ def test_a_real_time_axis_is_readable_with_an_explicit_index() -> None:
 
 
 def test_a_real_z_axis_is_refused() -> None:
-    with pytest.raises(ValueError, match="z|space"):
+    with pytest.raises(ValueError, match="space axis 'z'"):
         ngff_.project_ngff_axes(_axes("z", "y", "x"), (12, 40, 30))
 
 
 def test_five_channels_are_refused() -> None:
-    with pytest.raises(ValueError, match="channel"):
+    with pytest.raises(ValueError, match="channel axis"):
         ngff_.project_ngff_axes(_axes("c", "y", "x"), (5, 40, 30))
 
 
@@ -137,15 +184,33 @@ def test_five_channels_are_readable_with_an_explicit_index() -> None:
     assert is_rgb is False
 
 
+def test_an_explicit_c_overrides_a_three_channel_store() -> None:
+    """`c=` means "this one channel", even where RGB was available.
+
+    The override is the caller saying they know better; silently returning RGB
+    because the count happened to be 3 would ignore an explicit instruction.
+    """
+    index, is_rgb = ngff_.project_ngff_axes(
+        _axes("c", "y", "x"), (3, 40, 30), c=0
+    )
+    assert index == (0, slice(None), slice(None))
+    assert is_rgb is False
+
+
 def test_two_channels_are_refused_rather_than_guessed() -> None:
     """2 is neither a grayscale nor an RGB triple. Refuse."""
-    with pytest.raises(ValueError, match="channel"):
+    with pytest.raises(ValueError, match="channel axis"):
         ngff_.project_ngff_axes(_axes("c", "y", "x"), (2, 40, 30))
 
 
 def test_an_out_of_range_override_is_refused() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="out of range"):
         ngff_.project_ngff_axes(_axes("t", "y", "x"), (10, 40, 30), t=99)
+
+
+def test_axes_and_shape_must_agree_in_length() -> None:
+    with pytest.raises(ValueError, match="axes/shape mismatch"):
+        ngff_.project_ngff_axes(_axes("y", "x"), (3, 40, 30))
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -207,19 +272,26 @@ def project_ngff_axes(
             f"axes/shape mismatch: {len(axes)} axes for a {len(shape)}-D array"
         )
 
-    def _pick(name: str, override: int | None, size: int, flag: str) -> object:
+    def _pick(
+        kind: str, name: str, override: int | None, size: int, flag: str
+    ) -> object:
+        # Both the TYPE and the name are in the message. NGFF constrains
+        # `axes[].type` but leaves `axes[].name` free, so a store may call its
+        # time axis anything; the type is the half a reader can act on, and
+        # naming only the name would make the error unreadable on any store
+        # that does not use the conventional single letters.
         if size == 1:
             return 0
         if override is None:
             raise ValueError(
-                f"this store's {name!r} axis has size {size}; PhenoTypic's "
-                f"Image is 2-D. Pass {flag}=<index> to choose one, or use "
-                f"zarr directly to read the whole array."
+                f"this store's {kind} axis {name!r} has size {size}; "
+                f"PhenoTypic's Image is 2-D. Pass {flag}=<index> to choose "
+                f"one, or use zarr directly to read the whole array."
             )
         if not 0 <= override < size:
             raise ValueError(
-                f"{flag}={override} is out of range for a {name!r} axis of "
-                f"size {size}"
+                f"{flag}={override} is out of range for the {kind} axis "
+                f"{name!r} of size {size}"
             )
         return override
 
@@ -229,11 +301,12 @@ def project_ngff_axes(
     n_space = sum(1 for a in axes if a.get("type") == "space")
 
     for axis, size in zip(axes, shape):
-        kind = axis.get("type")
+        raw_kind = axis.get("type")
+        kind = str(raw_kind) if raw_kind else "untyped"
         name = str(axis.get("name", kind))
-        if kind == "time":
-            index.append(_pick(name, t, size, "t"))
-        elif kind == "channel":
+        if raw_kind == "time":
+            index.append(_pick(kind, name, t, size, "t"))
+        elif raw_kind == "channel":
             if size == 3 and c is None:
                 is_rgb = True
                 index.append(slice(None))
@@ -241,22 +314,27 @@ def project_ngff_axes(
                 index.append(0)
             elif c is None:
                 raise ValueError(
-                    f"this store's channel axis has size {size}; PhenoTypic "
-                    f"reads 1 (grayscale) or 3 (RGB). Pass c=<index> to "
-                    f"choose one channel."
+                    f"this store's channel axis {name!r} has size {size}; "
+                    f"PhenoTypic reads 1 (grayscale) or 3 (RGB). Pass "
+                    f"c=<index> to choose one channel."
                 )
             else:
-                index.append(_pick(name, c, size, "c"))
-        elif kind == "space":
+                # An explicit c= wins even at size 3: the caller has said
+                # "this one channel", and quietly returning RGB instead would
+                # ignore an instruction rather than honour it.
+                index.append(_pick(kind, name, c, size, "c"))
+        elif raw_kind == "space":
             seen_space += 1
             # Three space axes means the first is the stacking (z) axis.
             if n_space == 3 and seen_space == 1:
-                index.append(_pick(name, z, size, "z"))
+                index.append(_pick(kind, name, z, size, "z"))
             else:
                 index.append(slice(None))
         else:
             # A custom or null axis type. NGFF permits it; we cannot map it.
-            index.append(_pick(name, None, size, "(unsupported axis)"))
+            # Size 1 squeezes; anything larger refuses, and there is no
+            # override to name because there is no axis semantics to override.
+            index.append(_pick(kind, name, None, size, "(no override)"))
 
     return tuple(index), is_rgb
 ```
@@ -267,7 +345,7 @@ def project_ngff_axes(
 uv run pytest tests/unit/sdk_/test_ngff_read_spec.py -v
 ```
 
-Expected: PASS (11 tests).
+Expected: PASS (15 tests).
 
 - [ ] **Step 5: Commit the projector**
 
@@ -407,12 +485,39 @@ def test_resolver_reads_a_future_store_version(tmp_path: Path) -> None:
 
 
 def test_resolver_prefers_stored_bit_depth_over_dtype(tmp_path: Path) -> None:
+    """From metadata.protected -- `phenotypic.bit_depth` is not a real key.
+
+    No writer emits `phenotypic.bit_depth`: `build_phenotypic_attributes`
+    (ngff_.py:540-586) emits store_schema_version, phenotypic_version,
+    image_class, series, pyramid, detect_mode, illuminant, gamma, metadata,
+    and the optional provenance/labels/work_id/grid -- nothing else. Bit depth
+    lives in metadata.protected[Metadata_BitDepth], which is where
+    `_load_from_store` reads it (_image_io_handler.py:1406). An earlier draft
+    read the non-existent key, which would have silently dropped bit depth on
+    every float round trip -- the one case dtype inference cannot rescue.
+    """
+    from phenotypic.sdk_.constants_ import IMAGE
+
     store = _write_store(
         tmp_path / "s.ome.zarr",
         series={"0": ((8, 6), _axes("y", "x"))},
-        phenotypic={"store_schema_version": 3, "bit_depth": 12},
+        phenotypic={
+            "store_schema_version": 3,
+            "metadata": {"protected": {IMAGE.BIT_DEPTH: 12}},
+        },
     )
     assert ngff_.read_ngff_image_spec(store).bit_depth == 12
+
+
+def test_resolver_infers_bit_depth_from_dtype_when_unstored(
+    tmp_path: Path,
+) -> None:
+    """Case C: a third-party store has no protected section at all."""
+    store = _write_store(
+        tmp_path / "foreign.ome.zarr",
+        series={"0": ((8, 6), _axes("y", "x"))},
+    )
+    assert ngff_.read_ngff_image_spec(store).bit_depth == 16  # uint16
 
 
 def test_resolver_refuses_a_non_image_directory(tmp_path: Path) -> None:
@@ -443,8 +548,9 @@ class NgffImageSpec:
         array: Level pixels as ``(H, W)`` or ``(H, W, 3)``.
         series: Resolved series path, relative to the store root.
         level: Pyramid level actually read.
-        bit_depth: From ``phenotypic.bit_depth`` when present, else inferred
-            from the dtype, else ``None``.
+        bit_depth: From ``phenotypic.metadata.protected[Metadata_BitDepth]``
+            when present, else inferred from an integer dtype, else ``None``.
+            There is no ``phenotypic.bit_depth`` key and never has been.
         phenotypic: The ``attributes.phenotypic`` block; ``{}`` when absent.
     """
 
@@ -542,27 +648,60 @@ def read_ngff_image_spec(
             f"{len(datasets)} pyramid level(s)"
         )
 
-    array = zarr.open_array(store=str(group_path / datasets[level]["path"]), mode="r")
+    # `long_path`, matching `load_layer_zarr` (_image_io_handler.py:1723): a
+    # store path plus a series plus a level segment is long enough to hit
+    # Windows' MAX_PATH, and every other array open in the codebase goes
+    # through this helper.
+    array = zarr.open_array(
+        store=long_path(group_path / datasets[level]["path"]), mode="r"
+    )
     index, is_rgb = project_ngff_axes(axes, array.shape, t=t, z=z, c=c)
     data = np.asarray(array[index])
     if is_rgb:
         data = np.moveaxis(data, 0, -1)  # NGFF stores channels first
 
-    bit_depth = phenotypic.get("bit_depth")
+    # `metadata.protected`, NOT `phenotypic.bit_depth` -- no writer emits the
+    # latter and none ever has. This is the key `_load_from_store` reads
+    # (_image_io_handler.py:1406), and it is the ONLY source for a float
+    # series, where dtype inference has no answer at all.
+    bit_depth = (
+        phenotypic.get(PhenotypicAttr.METADATA, {})
+        .get(PhenotypicAttr.PROTECTED, {})
+        .get(IMAGE.BIT_DEPTH)
+    )
     if bit_depth is None:
         bit_depth = {np.uint8: 8, np.uint16: 16}.get(data.dtype.type)
+    try:
+        resolved_bit_depth = int(bit_depth) if bit_depth is not None else None
+    except (TypeError, ValueError):
+        # A third-party store may put anything in that key. An unparseable
+        # value is "unknown", which the Image constructor's default handles --
+        # not a read failure.
+        resolved_bit_depth = None
 
     return NgffImageSpec(
         array=data,
         series=resolved,
         level=level,
-        bit_depth=int(bit_depth) if bit_depth is not None else None,
+        bit_depth=resolved_bit_depth,
         phenotypic=dict(phenotypic),
     )
 ```
 
-Add `from dataclasses import dataclass` and `from typing import Mapping` to the
-module imports if they are not already present.
+`IMAGE` comes from **`phenotypic.schema`** (`schema/_metadata.py:8`), not from
+`phenotypic.sdk_.constants_` — `constants_` has no `IMAGE`, and importing it
+from there is an `ImportError`. Match `_image_io_handler.py:44`
+(`from phenotypic.schema import IMAGE`). Import it at the top of
+`read_ngff_image_spec` beside `zarr`, function-locally: `ngff_.py` deliberately
+keeps its module-level imports to stdlib plus numpy (`:33-40`).
+
+`IMAGE.BIT_DEPTH` is a `str`-subclass enum member whose value is
+`"Metadata_BitDepth"`, so `.get(IMAGE.BIT_DEPTH)` resolves against a dict
+decoded from JSON — verified by execution, and it is exactly what
+`_load_from_store:1406` already relies on.
+
+Step 0 already added `dataclass` and `Mapping` to the module imports; if you
+skipped it, this section will not import.
 
 - [ ] **Step 9: Run tests to verify they pass**
 
@@ -570,7 +709,7 @@ module imports if they are not already present.
 uv run pytest tests/unit/sdk_/test_ngff_read_spec.py -v
 ```
 
-Expected: PASS (19 tests).
+Expected: PASS (24 tests) -- 15 projector plus 9 resolver.
 
 - [ ] **Step 10: Lint, type-check, commit**
 
@@ -598,12 +737,15 @@ exists to serve."
 `UnsupportedFileTypeError` for anything else, including a store directory.
 
 **Files:**
-- Modify: `src/phenotypic/_core/_image_parts/_image_io_handler.py:602-700`
+- Modify: `src/phenotypic/_core/_image_parts/_image_io_handler.py:601-681`
+  (`imread`; the `Path(filepath)` conversion is `:633`, the suffix dispatch
+  begins `:636`, and `raise UnsupportedFileTypeError(filepath.suffix)` is `:681`)
 - Test: `tests/unit/sdk_/test_imread_store.py` (create)
 
 **Interfaces:**
 - Consumes: `ngff_.read_ngff_image_spec`, `ngff_.STORE_SUFFIX`,
-  `sdk_.store_stem`.
+  `sdk_.store_stem`, `_normalize_stored_metadata_items`
+  (`_image_io_handler.py:158`).
 - Produces: `Image.imread(path, …, series=None, level=0, t=None, z=None,
   c=None)` accepts a `*.ome.zarr` directory.
 
@@ -623,8 +765,8 @@ import pytest
 
 from phenotypic import Image
 from phenotypic.data import load_synth_yeast_plate
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import ngff_
-from phenotypic.sdk_.constants_ import IMAGE
 
 
 def _processed_rgb_store(tmp_path: Path) -> tuple[Path, Image]:
@@ -663,6 +805,52 @@ def test_imread_carries_provenance_across(tmp_path: Path) -> None:
     store, _ = _processed_rgb_store(tmp_path)
     loaded = Image.imread(store)
     assert loaded._metadata.provenance_journal is not None
+
+
+def test_imported_tags_land_in_the_imported_section(tmp_path: Path) -> None:
+    """Not in `public`, which `image.metadata[key] = value` would give.
+
+    MetadataAccessor.__setitem__ (_metadata_accessor.py:210-218) routes any
+    key it does not already know into `_public_metadata` and raises ValueError
+    on a non-scalar value -- so the obvious assignment loop would both put the
+    tags in the wrong section and blow up on a structured TIFF tag. The store
+    branch writes through `_metadata.imported.update(...)`, matching the TIFF
+    branch at _image_io_handler.py:728.
+    """
+    img = Image(load_synth_yeast_plate())
+    img._metadata.imported.update({"Metadata_Make": "Canon"})
+    store = img._save_store(
+        tmp_path / "tagged.ome.zarr",
+        series=("rgb",),
+        write_objmap=False,
+        levels=ngff_.pyramid_level_count(*img.rgb[:].shape[:2]),
+        work_id=None,
+        durable=False,
+        write_image_class=False,
+    )
+    loaded = Image.imread(store)
+    assert loaded._metadata.imported["Metadata_Make"] == "Canon"
+    assert "Metadata_Make" not in loaded._metadata.public
+
+
+def test_imread_does_not_carry_run_state_across(tmp_path: Path) -> None:
+    """`protected` and `public` are run state. That is the line (spec 4.5).
+
+    Carrying them would make imread a partial load_zarr, which is precisely
+    the distinction the two verbs exist to keep.
+    """
+    img = Image(load_synth_yeast_plate())
+    img.metadata["operator_note"] = "run 3, plate B"   # -> public
+    store = img._save_store(
+        tmp_path / "stateful.ome.zarr",
+        series=("rgb",),
+        write_objmap=False,
+        levels=ngff_.pyramid_level_count(*img.rgb[:].shape[:2]),
+        work_id=None,
+        durable=False,
+        write_image_class=False,
+    )
+    assert "operator_note" not in Image.imread(store)._metadata.public
 
 
 def test_imread_yields_no_objects_from_a_processed_store(tmp_path: Path) -> None:
@@ -752,8 +940,7 @@ Then add the helper beside it:
         ``public`` sections are run state and are deliberately dropped; that is
         the line that keeps this from becoming a partial ``load_zarr``.
         """
-        from phenotypic.sdk_ import ngff_
-        from phenotypic.sdk_._io_constants import store_stem
+        from phenotypic.sdk_ import ngff_, store_stem
 
         spec = ngff_.read_ngff_image_spec(
             store_path, series=series, level=level, t=t, z=z, c=c
@@ -768,16 +955,31 @@ Then add the helper beside it:
         if journal:
             image._metadata.provenance_journal = deepcopy(journal)
 
+        # Through `_metadata.imported`, NEVER `image.metadata[key] = value`.
+        # `MetadataAccessor.__setitem__` (_metadata_accessor.py:210-218) routes
+        # an unrecognised key into `_public_metadata` and raises ValueError on
+        # any non-scalar value, so the obvious loop would land imported tags in
+        # the `public` section -- contradicting the paragraph above -- and
+        # raise on a structured TIFF tag. This is what the TIFF branch already
+        # does (`:728`), normalised through the same helper `_load_from_store`
+        # uses (`:1466-1476`).
         imported = spec.phenotypic.get(ngff_.PhenotypicAttr.METADATA, {}).get(
             ngff_.PhenotypicAttr.IMPORTED, {}
         )
-        for key, value in imported.items():
-            image.metadata[key] = value
+        if imported:
+            image._metadata.imported.update(
+                _normalize_stored_metadata_items(
+                    imported.items(), section=ngff_.PhenotypicAttr.IMPORTED
+                )
+            )
         return image
 ```
 
-Read how the TIFF branch assigns imported metadata before writing that loop —
-match it exactly rather than inventing a second idiom.
+`store_stem` is imported from `phenotypic.sdk_`, the public re-export
+(`sdk_/__init__.py:229`), not from `phenotypic.sdk_._io_constants`.
+`_normalize_stored_metadata_items` is already module-level in this file
+(`:158`), so it needs no import. `IMAGE` and `deepcopy` are already imported at
+module scope (`:44` and `:9`).
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -785,7 +987,7 @@ match it exactly rather than inventing a second idiom.
 uv run pytest tests/unit/sdk_/test_imread_store.py -v
 ```
 
-Expected: PASS (7 tests).
+Expected: PASS (9 tests).
 
 - [ ] **Step 5: Add the doctest and run the full image suite**
 

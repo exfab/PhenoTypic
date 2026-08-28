@@ -8,30 +8,50 @@ apply to every task here.
 
 ---
 
-### Task 1: `write_image_class` threading
+### Task 1: `write_image_class` and `consolidate` threading
 
-Process-mode stores must omit `attributes.phenotypic.image_class`. Today it is
-written unconditionally: `_build_store_attributes` hardcodes
-`image_class=type(self).__name__` (`_image_io_handler.py:850`) and
-`build_phenotypic_attributes` declares it a required keyword (`ngff_.py:489`).
+Two writer parameters, landing together because both are keyword-only additions
+to the same three-layer call chain and both exist solely for the `--mode
+process` caller.
+
+**`write_image_class`.** Process-mode stores must omit
+`attributes.phenotypic.image_class`. Today it is written unconditionally:
+`_build_store_attributes` hardcodes `image_class=type(self).__name__`
+(`_image_io_handler.py:850`) and `build_phenotypic_attributes` declares it a
+required keyword (`ngff_.py:489`, written at `:545`).
+
+**`consolidate`.** Consolidated metadata must be written **inside the `.part`,
+immediately before `ngff_.promote_store`** (`_image_io_handler.py:1178`) — never
+on the returned final path. Consolidating after the promote rewrites the root
+`zarr.json` *at the final path*, which reintroduces the exact failure the design
+claims to make unreachable (spec §"Why change" #2: *"a store either has its root
+`zarr.json` or does not exist"*), and it lands after `promote_store`'s optional
+`fsync`, leaving the consolidated root non-durable under SLURM. So it cannot be
+a wrapper around `_save_store`'s return value; it has to be a parameter. Task 9
+switches it on for the process writer and tests the resulting store; nothing
+else ever passes `True`.
 
 **Files:**
-- Modify: `src/phenotypic/sdk_/ngff_.py:487-500` (signature) and the block
-  assembly that follows it
+- Modify: `src/phenotypic/sdk_/ngff_.py:487-501` (signature) and the block
+  assembly at `:540-546`
 - Modify: `src/phenotypic/_core/_image_parts/_image_io_handler.py:829-869`
-  (`_build_store_attributes`), `:931-995` (`_save_store`), `:996-1010`
-  (`_write_store_part`)
-- Test: `tests/unit/sdk_/test_ngff_attributes.py`
+  (`_build_store_attributes`), `:931-994` (`_save_store`), `:996-1183`
+  (`_write_store_part`, whose promote is at `:1178`)
+- Test: `tests/unit/sdk_/test_ngff_attributes.py`,
+  `tests/unit/sdk_/test_write_image_class.py` (create)
 
 **Interfaces:**
 - Produces:
   - `ngff_.build_phenotypic_attributes(*, image_class: str | None, …) -> dict`
     — omits the `image_class` key entirely when `image_class is None`.
   - `Image._save_store(path, *, series, write_objmap, levels, work_id, durable,
-    commit_guard=None, measurement_table=None, write_image_class: bool = True)`
-  - `Image._write_store_part(part, final, *, …, write_image_class: bool = True)`
+    commit_guard=None, measurement_table=None, write_image_class: bool = True,
+    consolidate: bool = False)`
+  - `Image._write_store_part(part, final, *, …, write_image_class: bool = True,
+    consolidate: bool = False)`
   - `Image._build_store_attributes(*, series_names, levels, sections, work_id,
-    has_labels=True, write_image_class: bool = True)`
+    has_labels=True, write_image_class: bool = True)` — no `consolidate`; it
+    builds a dict and never touches the filesystem.
 - Consumes: nothing.
 
 - [ ] **Step 1: Write the failing tests**
@@ -116,7 +136,66 @@ def test_save_store_can_omit_image_class(tmp_path: Path) -> None:
     assert block[PhenotypicAttr.STORE_SCHEMA_VERSION] == ngff_.STORE_SCHEMA_VERSION
     assert block[PhenotypicAttr.SERIES] == {"gray": "gray"}
     assert PhenotypicAttr.LABELS not in block
+
+
+def test_consolidation_is_off_by_default(tmp_path: Path) -> None:
+    """Every existing caller keeps today's unconsolidated store."""
+    img = Image(load_synth_yeast_plate())
+    store = img.save2zarr(tmp_path / "bundle.ome.zarr")
+    root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+    assert "consolidated_metadata" not in root
+
+
+def test_consolidate_writes_the_block_at_the_final_path(tmp_path: Path) -> None:
+    """It is produced inside the .part, so the promoted root already has it.
+
+    The promote is a directory rename, so a root ``zarr.json`` that exists at
+    the final path is by construction the complete one -- which is the property
+    consolidating *after* the promote would destroy.
+    """
+    img = Image(load_synth_yeast_plate())
+    store = img._save_store(
+        tmp_path / "consolidated.ome.zarr",
+        series=("rgb",),
+        write_objmap=False,
+        levels=ngff_.pyramid_level_count(*img.rgb[:].shape[:2]),
+        work_id=None,
+        durable=False,
+        consolidate=True,
+    )
+    root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+    assert root["consolidated_metadata"]["must_understand"] is False
+    assert sorted(root["consolidated_metadata"]["metadata"]) == [
+        "OME", "rgb", "rgb/0", "rgb/1",
+    ]
+    # A sibling of `attributes`, so the phenotypic block is untouched.
+    assert "consolidated_metadata" not in root["attributes"]
+    assert ngff_.read_root_attributes(store)[PhenotypicAttr.ROOT][
+        PhenotypicAttr.SERIES
+    ] == {"rgb": "rgb"}
+
+
+def test_consolidation_leaves_no_stray_part(tmp_path: Path) -> None:
+    """The consolidated root is the promoted one, not a second write."""
+    img = Image(load_synth_yeast_plate())
+    target = tmp_path / "clean.ome.zarr"
+    img._save_store(
+        target,
+        series=("rgb",),
+        write_objmap=False,
+        levels=2,
+        work_id=None,
+        durable=False,
+        consolidate=True,
+    )
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["clean.ome.zarr"]
 ```
+
+The `["OME", "rgb", "rgb/0", "rgb/1"]` node list assumes
+`pyramid_level_count(*img.rgb[:].shape[:2]) == 2`. `load_synth_yeast_plate()` is
+600x800, so `max(600, 800) = 800 > 512` gives `ceil(log2(800/512)) + 1 = 2` —
+verified by execution. If the fixture ever changes size, derive the expected
+list from `levels` rather than pinning the literal.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -125,11 +204,13 @@ uv run pytest tests/unit/sdk_/test_write_image_class.py \
               tests/unit/sdk_/test_ngff_attributes.py -v
 ```
 
-Expected: FAIL. `build_phenotypic_attributes` raises
+Expected: FAIL. `build_phenotypic_attributes` raising
 `TypeError: … got an unexpected keyword` is *not* what you should see — it takes
 `image_class` already. You should see the `None` case write `"image_class": None`
 (so `not in` fails), and `_save_store` raise
 `TypeError: _save_store() got an unexpected keyword argument 'write_image_class'`.
+`test_consolidation_is_off_by_default` PASSES already — it is the regression
+half, pinning that nothing else starts consolidating.
 
 - [ ] **Step 3: Widen `build_phenotypic_attributes`**
 
@@ -153,21 +234,35 @@ def build_phenotypic_attributes(
     """
 ```
 
-Where the block is assembled, replace the unconditional assignment with a
-conditional one:
+The block is assembled as a dict literal at `ngff_.py:540-570`, with
+`PhenotypicAttr.IMAGE_CLASS: image_class` inline at `:545`. Drop that one line
+from the literal and add the conditional immediately after the literal closes,
+beside the existing `if provenance is not None:` at `:571`:
 
 ```python
     block: dict = {
         PhenotypicAttr.STORE_SCHEMA_VERSION: STORE_SCHEMA_VERSION,
+        PhenotypicAttr.PHENOTYPIC_VERSION: (
+            phenotypic_version or phenotypic.__version__
+        ),
+        PhenotypicAttr.SERIES: {name: name for name in series_names},
         ...
     }
     if image_class is not None:
         block[PhenotypicAttr.IMAGE_CLASS] = image_class
+    if provenance is not None:
+        block[PhenotypicAttr.PROVENANCE] = provenance
 ```
 
-Read the surrounding code first: the existing assembly may build the dict as a
-literal with `image_class` inline. If so, drop it from the literal and add the
-conditional immediately after, keeping key insertion order otherwise unchanged.
+Key insertion order moves `image_class` after `metadata` rather than between
+`phenotypic_version` and `series`. Nothing reads the block positionally — it is
+JSON — and the alternative (a literal with a sentinel, popped afterwards) is
+worse. Do not "fix" it back.
+
+Leave `primary = primary_series(series_names)` (`ngff_.py:539`) exactly where it
+is. It runs before the block is built and raises for a series tuple with no
+`rgb`/`gray`, which is one of the two guards that make
+`--layer detect_mat --process-format zarr` refusable (Task 8a).
 
 - [ ] **Step 4: Thread the flag through the three `Image` methods**
 
@@ -192,15 +287,81 @@ conditional immediately after, keeping key insertion order otherwise unchanged.
         )
 ```
 
-`_save_store` and `_write_store_part` each gain
+`_save_store` (`:931-942`) and `_write_store_part` (`:996-1008`) each gain
 `write_image_class: bool = True` as a keyword-only parameter; `_save_store`
-forwards it to `_write_store_part`, which forwards it to
-`_build_store_attributes`. Document it in both docstrings with the same wording.
+forwards it to `_write_store_part` in the call at `:981-991`, and
+`_write_store_part` forwards it to `_build_store_attributes` in the call at
+`:1157-1163`. Document it in both docstrings with the same wording.
 
 Do **not** touch `save2zarr` or `save_intermediate_zarr` — they keep the default
 and their behaviour is unchanged.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [ ] **Step 5: Thread `consolidate` and apply it before the promote**
+
+`_save_store` and `_write_store_part` each gain `consolidate: bool = False`,
+forwarded the same way. In `_write_store_part`, the only new logic is
+immediately before the existing `return ngff_.promote_store(...)` at `:1178`:
+
+```python
+        if consolidate:
+            _consolidate_store_part(part)
+        return ngff_.promote_store(
+            part,
+            final,
+            fsync=ngff_.durable_writes_enabled(durable),
+            commit_guard=commit_guard,
+        )
+```
+
+Add the helper as a module-level function in `_image_io_handler.py`:
+
+```python
+def _consolidate_store_part(part: Path) -> None:
+    """Collapse a written part's per-node metadata into its root ``zarr.json``.
+
+    Opening a store costs one GET per metadata file -- 8 of a single-series
+    store's 12 -- which is the latency that matters once the destination is
+    object storage and a viewer enumerates many stores. Consolidation collapses
+    that to one and **adds no files**: every per-node ``zarr.json`` remains, so
+    a reader that ignores the key still walks the tree.
+
+    Called on the ``.part``, never on the promoted path. Consolidating a
+    promoted store rewrites its root ``zarr.json`` in place, which is the one
+    write this whole design exists to avoid -- a store must either have its
+    root or not exist -- and it would land after ``promote_store``'s ``fsync``,
+    leaving the consolidated root non-durable under SLURM.
+
+    Legal under the Zarr v3 extension mechanism rather than in spite of it: the
+    core specification requires a reader to fail on an unrecognised metadata
+    field *unless* it carries ``"must_understand": false``, and zarr-python
+    writes exactly that (verified against zarr 3.1.5).
+
+    Two ``ZarrUserWarning``s are suppressed here rather than by a global
+    filter: the consolidated-metadata notice, and ``"Object at
+    METADATA.ome.xml is not recognized as a component of a Zarr hierarchy"``,
+    which fires once per image. Both are instances of the same class -- a
+    ``UserWarning`` subclass -- so filtering on the class covers both, where a
+    ``message=`` regex naming only consolidation would let the second through.
+    """
+    import zarr
+    from zarr.errors import ZarrUserWarning
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ZarrUserWarning)
+        zarr.consolidate_metadata(ngff_.long_path(part))
+```
+
+`warnings` and `Path` are already imported at module scope; `ngff_` is imported
+lazily inside each method, so import it at the top of the helper the same way
+(`from phenotypic.sdk_ import ngff_`) rather than at module scope.
+
+Verified by execution against zarr 3.1.5 that consolidating a part and then
+renaming it works: the consolidated block records node paths relative to the
+root (`["OME", "rgb", "rgb/0", "rgb/1"]`), so the rename does not invalidate it,
+and `zarr.open_group` on the promoted store resolves `rgb/0` through the
+consolidated view.
+
+- [ ] **Step 6: Run tests to verify they pass**
 
 ```bash
 uv run pytest tests/unit/sdk_/test_write_image_class.py \
@@ -209,7 +370,7 @@ uv run pytest tests/unit/sdk_/test_write_image_class.py \
 
 Expected: PASS.
 
-- [ ] **Step 6: Run the store regression suite**
+- [ ] **Step 7: Run the store regression suite**
 
 ```bash
 uv run pytest tests/unit/sdk_/ tests/unit/test_ome_zarr_invariants.py -q
@@ -220,26 +381,33 @@ uv run ruff check --fix src/phenotypic/sdk_/ngff_.py \
     tests/unit/sdk_/test_write_image_class.py
 ```
 
-Expected: PASS, no new mypy errors. `image_class` widening to `str | None` may
-surface a call site that passes a possibly-`None` value — fix by making the
-intent explicit at that site, not by casting.
+Expected: PASS, no new mypy errors. Widening `image_class` to `str | None` is
+low-risk: `build_phenotypic_attributes` has exactly one production caller,
+`_build_store_attributes` (`_image_io_handler.py:849`), which passes
+`type(self).__name__` — a `str`. If mypy does flag something, make the intent
+explicit at that site rather than casting.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add src/phenotypic/sdk_/ngff_.py \
         src/phenotypic/_core/_image_parts/_image_io_handler.py \
         tests/unit/sdk_/test_write_image_class.py \
         tests/unit/sdk_/test_ngff_attributes.py
-git commit -m "feat(ngff): allow a store to omit image_class
+git commit -m "feat(ngff): let a store omit image_class and consolidate its part
 
 build_phenotypic_attributes takes image_class: str | None and omits the key
 when None; _save_store / _write_store_part / _build_store_attributes thread
 write_image_class. Only the --mode process writer will pass False. save2zarr
-and save_intermediate_zarr are unchanged.
+and save_intermediate_zarr are unchanged. Omitting the key is what makes
+load_zarr able to refuse a store that is not a run bundle (spec 3.3).
 
-Omitting the key is what makes load_zarr able to refuse a store that is not a
-run bundle (spec 3.3)."
+_save_store / _write_store_part also take consolidate, applied to the .part
+immediately before promote_store. It has to be a parameter rather than a
+wrapper around the returned path: consolidating a promoted store rewrites its
+root zarr.json in place, reintroducing the truncated-artifact failure the
+rename-commit exists to prevent, and lands after promote_store's fsync. Off by
+default; only the process writer turns it on (Task 9)."
 ```
 
 ---
@@ -251,6 +419,17 @@ run bundle (spec 3.3)."
 `"GridImage"`, so control falls through to `_load_from_store` — which reads
 every field with a defaulting `.get()` and happily returns an `Image` with empty
 metadata and no objmap. That is a plausible-looking wrong result, not an error.
+
+**The guard goes before `require_readable_store`, not after it.** That call
+(`:1672`) delegates to `read_phenotypic_attributes`, whose last line is
+`return attributes[PhenotypicAttr.ROOT]` (`ngff_.py:623`) — a bare subscript. On
+a third-party store, which carries no `phenotypic` block at all, it raises
+`KeyError` before any guard placed after it could run. So the guard reads the
+root attributes directly and raises **one** `ValueError` for both shapes of "not
+a run bundle": no `phenotypic` block, and a block with no `image_class`. One
+error, one remedy, one message — a caller does not care which of the two
+applies, and splitting them leaves the more common case (a third-party store)
+with the worse error.
 
 **Files:**
 - Modify: `src/phenotypic/_core/_image_parts/_image_io_handler.py:1636-1681`
@@ -323,7 +502,13 @@ def test_load_zarr_does_not_return_a_degraded_image(tmp_path: Path) -> None:
 
 
 def test_a_third_party_store_raises_the_same_guard(tmp_path: Path) -> None:
-    """No phenotypic block at all: a clear error, not a bare KeyError."""
+    """No phenotypic block at all: a clear ValueError, not a bare KeyError.
+
+    ValueError specifically, and not the wider `(ValueError, KeyError)` an
+    earlier draft allowed: KeyError is exactly what this test exists to rule
+    out, so accepting it would let the guard be placed after
+    `require_readable_store`, where it never fires.
+    """
     store = tmp_path / "foreign.ome.zarr"
     store.mkdir()
     (store / "zarr.json").write_text(
@@ -334,8 +519,19 @@ def test_a_third_party_store_raises_the_same_guard(tmp_path: Path) -> None:
         }),
         encoding="utf-8",
     )
-    with pytest.raises((ValueError, KeyError)):
+    with pytest.raises(ValueError, match="imread"):
         Image.load_zarr(store)
+
+
+def test_a_missing_store_still_raises_file_not_found(tmp_path: Path) -> None:
+    """The guard must not turn an absent store into a 'not a bundle' error.
+
+    `read_root_attributes` raises FileNotFoundError on a store with no root
+    zarr.json, which is the normal 'interrupted write' signal every staged
+    caller depends on. Reading the root before the guard must not swallow it.
+    """
+    with pytest.raises(FileNotFoundError):
+        Image.load_zarr(tmp_path / "absent.ome.zarr")
 
 
 def test_a_bundle_store_still_loads(tmp_path: Path) -> None:
@@ -351,33 +547,55 @@ def test_a_bundle_store_still_loads(tmp_path: Path) -> None:
 uv run pytest tests/unit/sdk_/test_load_zarr_guard.py -v
 ```
 
-Expected: the three guard tests FAIL (no exception raised);
-`test_a_bundle_store_still_loads` PASSES already.
+Expected: the three process-store guard tests FAIL (no exception raised);
+`test_a_third_party_store_raises_the_same_guard` FAILS with `KeyError` rather
+than `ValueError`; `test_a_bundle_store_still_loads` and
+`test_a_missing_store_still_raises_file_not_found` PASS already.
 
-- [ ] **Step 3: Add the guard**
+- [ ] **Step 3: Add the guard, before the version gate**
 
-In `load_zarr`, immediately after `block = ngff_.require_readable_store(path)`:
+Replace `load_zarr`'s two-line preamble (`_image_io_handler.py:1672-1673`):
 
 ```python
-        block = ngff_.require_readable_store(path)
-        if ngff_.PhenotypicAttr.IMAGE_CLASS not in block:
+        from phenotypic.sdk_ import ngff_
+
+        # BEFORE require_readable_store, deliberately. That call ends in
+        # `attributes[PhenotypicAttr.ROOT]` (ngff_.py:623), a bare subscript,
+        # so a third-party store raises KeyError there and a guard placed
+        # after it would never fire on the case it most needs to serve.
+        # FileNotFoundError from read_root_attributes still propagates: an
+        # interrupted write reads as absent, not as "not a bundle".
+        attributes = ngff_.read_root_attributes(path)
+        phenotypic_block = attributes.get(ngff_.PhenotypicAttr.ROOT, {})
+        if ngff_.PhenotypicAttr.IMAGE_CLASS not in phenotypic_block:
             raise ValueError(
                 f"{path} carries no phenotypic.image_class and is not a "
                 f"PhenoTypic run bundle. It was written by --mode process or "
                 f"by another tool. Use Image.imread() to read its pixels."
             )
+
+        block = ngff_.require_readable_store(path)
         saved_class = block.get(ngff_.PhenotypicAttr.IMAGE_CLASS)
 ```
 
-Note `not in`, not a falsy test: the contract is key **absence**, and an
-`image_class` of `""` is a corrupt bundle, not a processed store.
+Three things are deliberate:
 
-Add to the `Raises:` block of the docstring:
+- `not in`, not a falsy test. The contract is key **absence**; an `image_class`
+  of `""` is a corrupt bundle, not a processed store.
+- `.get(ROOT, {})` on the root attributes, so a store with no `phenotypic` block
+  falls into the same branch and gets the same message.
+- `require_readable_store` still runs afterwards and is still the version gate.
+  The guard answers "is this a bundle at all"; the gate answers "can this build
+  decode it". Ordering them this way means a *future* PhenoTypic bundle still
+  gets the version error, not the not-a-bundle one.
+
+Add to the `Raises:` block of the docstring (`:1650-1655`):
 
 ```
-            ValueError: If ``store_schema_version`` is not this build's, or if
-                the store carries no ``image_class`` -- it is not a run bundle.
-                Use :meth:`imread` to read such a store's pixels.
+            ValueError: If the store carries no ``phenotypic.image_class`` --
+                it was written by ``--mode process`` or by another tool and is
+                not a run bundle; use :meth:`imread` to read its pixels. Also
+                if ``store_schema_version`` is not this build's.
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
@@ -386,7 +604,7 @@ Add to the `Raises:` block of the docstring:
 uv run pytest tests/unit/sdk_/test_load_zarr_guard.py -v
 ```
 
-Expected: PASS (5 tests).
+Expected: PASS (6 tests).
 
 - [ ] **Step 5: Run the regression suite**
 
@@ -411,7 +629,14 @@ git commit -m "fix(io): load_zarr refuses a store with no image_class
 It previously fell through to _load_from_store, which reads every field with a
 defaulting .get() and returned an Image with empty metadata and no objmap -- a
 plausible-looking wrong result rather than an error. The guard tests key
-absence and names imread as the remedy."
+absence and names imread as the remedy.
+
+Placed BEFORE require_readable_store: that call ends in a bare
+attributes[PhenotypicAttr.ROOT] subscript, so a third-party store raises
+KeyError there and a guard after it would never fire on the case it most needs
+to serve. Reading the root attributes directly gives both shapes of 'not a run
+bundle' -- no phenotypic block, and a block with no image_class -- one error,
+one remedy, one message."
 ```
 
 ---
@@ -424,7 +649,8 @@ model outright, and OMERO and Vizarr read it. Verified absent today:
 `grep -rn rdefs src/ tests/` returns nothing.
 
 **Files:**
-- Modify: `src/phenotypic/sdk_/ngff_.py:737-796` (`build_omero`)
+- Modify: `src/phenotypic/sdk_/ngff_.py:737-795` (`build_omero`); the float
+  guard is `:776-777` and the block assembly `:792-795`
 - Test: `tests/unit/sdk_/test_ngff_projection.py`
 
 **Interfaces:**
@@ -487,14 +713,21 @@ PASS already.
 
 - [ ] **Step 3: Emit `rdefs`**
 
-In `build_omero`, just before the return, after `block: dict = {"channels": channels}`:
+In `build_omero`, replace the block literal at `:792`:
 
 ```python
     block: dict = {
         "channels": channels,
         "rdefs": {"model": "color" if series == "rgb" else "greyscale"},
     }
+    if name is not None:
+        block["name"] = name
+    return {"omero": block}
 ```
+
+The `name` and `return` lines (`:793-795`) are unchanged; they are shown only so
+the insertion point is unambiguous. The float guard at `:776-777` returns `{}`
+before this line is reached, which is why no `rdefs` reaches a float series.
 
 Add to the docstring, under the existing explanation of the float guard:
 
@@ -548,7 +781,8 @@ directory names. `sha256` already pins the pipeline's identity exactly, so the
 path is convenience, not identity.
 
 **Files:**
-- Modify: `src/phenotypic/_core/_provenance.py:276-307`
+- Modify: `src/phenotypic/_core/_provenance.py:276-282`
+  (`pipeline_source_identity`) and `:285-306` (`initialize_cli_provenance`)
 - Test: `tests/unit/test_provenance_source_identity.py` (create)
 
 **Interfaces:**
