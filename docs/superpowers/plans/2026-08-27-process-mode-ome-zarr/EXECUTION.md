@@ -83,9 +83,22 @@ working production command emits. It earns its own gate.
 ## 5. Order and parallelism
 
 ```
-C1 → C2 → C3 → ┬─ C4 → C5 ─┬─→ C7
-               └─ C6 ──────┘
+C1 → C2 → C3 → ┬─ C4 ──┬─→ C5 → C7
+               └─ C6 ──┘        ▲
+                                └── blocked on an external pin (§7)
 ```
+
+**C5 is deliberately last-but-one, not adjacent to C4.** Nothing depends on T8:
+T11 needs T7 and T10, neither of which needs the CLI flag. Deferring C5 to just
+before C7 buys the maximum amount of time for the AutoConvertRaw pin to land,
+and if it never does, the run stops with 9 of 11 tasks merged and **nothing
+user-visible changed** — the default `--mode process` output is still a flat
+TIFF, because T7's `process_format` parameter defaults to `"tiff"` until T8
+wires the option.
+
+C7 must stay after C5: it documents `--process-format`, and
+`tests/unit/test_docs_staged_cli.py` checks documented CLI flags against the
+real click options, so documenting an unwired flag fails that gate.
 
 **C6 is the one parallel-worktree candidate.** It touches
 `_cli_directory_scanner.py`, which no other cluster reads or writes, and its
@@ -109,10 +122,31 @@ sequential is the safe default on a stacked branch.
 Never review with a model weaker than the one that implemented. C2 and C7 are
 Sonnet-implemented and Opus-reviewed, which satisfies that.
 
-**Pause points requiring the user, not just a gate:**
+## 7. C5 is blocked on an external pin
 
-- **Before C5.** T8 flips the default `--mode process` output from a flat TIFF
-  to a directory. AutoConvertRaw runs `--mode process --layer rgb` and reaps
-  `<batch>_<NNNN>.tiff` (`src/worker_correct.sh:278,306`); an unpinned `uv sync`
-  there after this lands marks every image `cc_failed`. Confirm the ACR pin is
-  durable before executing C5.
+**Do not execute C5 until AutoConvertRaw's PhenoTypic pin is committed.**
+Confirmed 2026-08-27 by a session working on that repo:
+
+- **The pin is staged, not committed.** ACR `HEAD` is still `63c4657`; the
+  change exists only in the working tree (`pyproject.toml`, `uv.lock`,
+  `vendor/`). A `git checkout -- .` or `git stash` there silently restores the
+  hazard.
+- **The pin is a vendored wheel**, not a tag or SHA:
+  `vendor/phenotypic-0.18.0-py3-none-any.whl`, sha256 `dbafeb7f…`, referenced
+  from `[tool.uv.sources]` and `uv.lock:1204`. A git pin was not available —
+  there is a `v0.18.1` tag but no `v0.18.0`, PhenoTypic's version is
+  `dynamic`, and the installed `direct_url.json` records no revision, so the
+  installed commit is not recoverable with confidence.
+- **ACR previously pointed at this very repository.** Both files resolved to
+  `/bigdata/exfab/anguy344/PhenoTypic` — the checkout this branch lives in.
+- **ACR is running right now**, with a live `pht-cri_correct_*` Slurm array. It
+  never invokes `uv` at runtime, so config edits cannot reach a running job; the
+  risk is strictly a future manual `uv sync`.
+- **Reaping is not the only break.** `worker_push.sh:161,163,199,254` assume one
+  file per key (`[[ -f …tiff ]]`, `stat -c '%s'`, `find -type f`), so a
+  directory store breaks *publishing* too — and those `find -type f` sweeps
+  would descend into every store.
+
+**Unblock condition:** ACR `HEAD` has moved past `63c4657` with the pin in it.
+That is the user's call on their own production checkout, not something this
+session or the peer session can decide.
