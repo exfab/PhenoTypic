@@ -20,8 +20,28 @@ from phenotypic.sdk_ import (
 from ._cli_types import Dataset
 
 
-def _is_image_file(path: Path, valid_exts: set[str]) -> bool:
-    """True if ``path`` is a real input image.
+def _is_store_dir(path: Path) -> bool:
+    """True if ``path`` is an OME-Zarr store directory.
+
+    Tested by **name**, not by opening the store: the scanner runs over every
+    entry of every candidate directory, and reading a root ``zarr.json`` per
+    entry would cost an open per file at 10k-image scale. A directory named
+    ``*.ome.zarr`` that is not a store fails later, loudly, in ``imread``.
+
+    This is the same shape as :func:`scan_store_outputs`'s glob, which matches
+    directories non-recursively for the same reason its docstring gives: a
+    store is a directory full of files, so anything recursive costs roughly
+    forty stat calls per store.
+    """
+    return (
+        path.is_dir()
+        and not path.name.startswith(".")
+        and path.name.endswith(STORE_SUFFIX)
+    )
+
+
+def _is_image_input(path: Path, valid_exts: set[str]) -> bool:
+    """True if ``path`` is a real input image -- a flat file or a store.
 
     Dotfiles are excluded, which an extension-only test does not do. macOS
     writes an AppleDouble ``._<name>`` sidecar beside every file on exFAT/FAT
@@ -30,7 +50,16 @@ def _is_image_file(path: Path, valid_exts: set[str]) -> bool:
     twice. Observed on a real run: ``manifest.json`` reported
     ``total_images: 60`` for 30 images and ``is_complete: false`` on a run that
     had finished, which anything gating on completion reads as still running.
+
+    The same dot test also excludes ``promote_store``'s in-flight
+    ``.<stem>.ome.zarr.<uuid>.part`` and ``.trash`` siblings, which is exactly
+    right: neither is a readable store.
+
+    A ``*.ome.zarr`` store counts as one input even though it is a directory.
+    Its contents are never enumerated: see :func:`_is_store_dir`.
     """
+    if _is_store_dir(path):
+        return True
     return (
         path.is_file()
         and not path.name.startswith(".")
@@ -80,15 +109,16 @@ def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
 
     datasets = {}
 
-    # Case 1: Single file
-    if input_path.is_file():
-        if input_path.suffix.lower() in valid_exts:
+    # Case 1: Single file, or a single store
+    if input_path.is_file() or _is_store_dir(input_path):
+        if _is_image_input(input_path, valid_exts):
             datasets["single_image"] = [input_path]
             return datasets
         else:
             raise ValueError(
                     f"File {input_path.name} is not a supported image format. "
-                    f"Supported: {', '.join(sorted(valid_exts))}"
+                    f"Supported: {', '.join(sorted(valid_exts))}, "
+                    f"or an *.ome.zarr store"
             )
 
     # Case 2 & 3: Directory (flat or recursive)
@@ -98,19 +128,22 @@ def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
     # Collect images directly in root directory
     root_images = [
         p for p in input_path.iterdir()
-        if _is_image_file(p, valid_exts)
+        if _is_image_input(p, valid_exts)
     ]
 
     # Scan one level of subdirectories
     subdatasets = {}
     for subdir in input_path.iterdir():
-        if not subdir.is_dir():
+        # A store IS a directory. Without this it is enumerated as a dataset,
+        # finds no image files inside itself, and silently contributes
+        # nothing -- so the images disappear from the run with no error.
+        if not subdir.is_dir() or _is_store_dir(subdir):
             continue
 
         # Collect images in this subdirectory
         sub_images = [
             p for p in subdir.iterdir()
-            if _is_image_file(p, valid_exts)
+            if _is_image_input(p, valid_exts)
         ]
 
         if sub_images:
@@ -304,9 +337,9 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, Any]:
     valid_exts = set(IO.ACCEPTED_FILE_EXTENSIONS + IO.RAW_FILE_EXTENSIONS)
     valid_exts = {ext.lower() for ext in valid_exts}
 
-    # Single file case
-    if input_path.is_file():
-        if input_path.suffix.lower() not in valid_exts:
+    # Single file case, or a single store
+    if input_path.is_file() or _is_store_dir(input_path):
+        if not _is_image_input(input_path, valid_exts):
             raise ValueError(f"File {input_path.name} is not a supported image format")
         return {
             "type"        : "single_file",
@@ -320,18 +353,20 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, Any]:
     # Count root images
     root_count = sum(
             1 for p in input_path.iterdir()
-            if _is_image_file(p, valid_exts)
+            if _is_image_input(p, valid_exts)
     )
 
     # Count subdirectory images
     subdir_counts = {}
     for subdir in input_path.iterdir():
-        if not subdir.is_dir():
+        # The same store skip as scan_directory_structure: a store is a
+        # directory, and enumerating it as a dataset drops its image silently.
+        if not subdir.is_dir() or _is_store_dir(subdir):
             continue
 
         sub_count = sum(
                 1 for p in subdir.iterdir()
-                if _is_image_file(p, valid_exts)
+                if _is_image_input(p, valid_exts)
         )
 
         if sub_count > 0:
