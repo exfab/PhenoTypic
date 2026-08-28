@@ -193,6 +193,46 @@ def _normalize_stored_metadata_items(
     return normalized
 
 
+def _consolidate_store_part(part: Path) -> None:
+    """Collapse a written part's per-node metadata into its root ``zarr.json``.
+
+    Opening a store costs one GET per metadata file -- 8 of a single-series
+    store's 12 -- which is the latency that matters once the destination is
+    object storage and a viewer enumerates many stores. Consolidation collapses
+    that to one and **adds no files**: every per-node ``zarr.json`` remains, so
+    a reader that ignores the key still walks the tree.
+
+    Called on the ``.part``, never on the promoted path. Consolidating a
+    promoted store rewrites its root ``zarr.json`` in place, which is the one
+    write this whole design exists to avoid -- a store must either have its
+    root or not exist -- and it would land after ``promote_store``'s ``fsync``,
+    leaving the consolidated root non-durable under SLURM.
+
+    Legal under the Zarr v3 extension mechanism rather than in spite of it: the
+    core specification requires a reader to fail on an unrecognised metadata
+    field *unless* it carries ``"must_understand": false``, and zarr-python
+    writes exactly that (verified against zarr 3.1.5).
+
+    Two ``ZarrUserWarning``s are suppressed here rather than by a global
+    filter: the consolidated-metadata notice, and ``"Object at
+    METADATA.ome.xml is not recognized as a component of a Zarr hierarchy"``,
+    which fires once per image. Both are instances of the same class -- a
+    ``UserWarning`` subclass -- so filtering on the class covers both, where a
+    ``message=`` regex naming only consolidation would let the second through.
+
+    Args:
+        part: The allocated ``.part`` directory, fully written.
+    """
+    import zarr
+    from zarr.errors import ZarrUserWarning
+
+    from phenotypic.sdk_ import ngff_
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ZarrUserWarning)
+        zarr.consolidate_metadata(ngff_.long_path(part))
+
+
 class _BackCompatUnpickler(pickle.Unpickler):
     """Unpickler that resolves classes which moved since older pickles were written.
 
@@ -827,7 +867,14 @@ class ImageIOHandler(ImageColorSpace):
         return None
 
     def _build_store_attributes(
-        self, *, series_names, levels, sections, work_id, has_labels=True
+        self,
+        *,
+        series_names,
+        levels,
+        sections,
+        work_id,
+        has_labels=True,
+        write_image_class: bool = True,
     ) -> dict:
         """Assemble ``attributes.phenotypic``.
 
@@ -840,6 +887,9 @@ class ImageIOHandler(ImageColorSpace):
                 omits the ``labels`` key **entirely** rather than emitting an
                 empty mapping, so a preview store never declares a group it
                 does not have.
+            write_image_class: Write ``image_class``. ``False`` omits it, which
+                is what makes ``load_zarr`` refuse the store. Only the
+                ``--mode process`` writer passes ``False``.
 
         Returns:
             The ``phenotypic`` attributes block.
@@ -847,7 +897,7 @@ class ImageIOHandler(ImageColorSpace):
         from phenotypic.sdk_ import ngff_
 
         return ngff_.build_phenotypic_attributes(
-            image_class=type(self).__name__,
+            image_class=type(self).__name__ if write_image_class else None,
             series_names=series_names,
             pyramid_levels=levels,
             metadata_sections=sections,
@@ -939,6 +989,8 @@ class ImageIOHandler(ImageColorSpace):
         durable: bool | None,
         commit_guard: CommitGuard | None = None,
         measurement_table: PreparedEmbeddedMeasurementTable | None = None,
+        write_image_class: bool = True,
+        consolidate: bool = False,
     ) -> Path:
         """Write one OME-Zarr store into a ``.part`` sibling and promote it.
 
@@ -965,6 +1017,15 @@ class ImageIOHandler(ImageColorSpace):
             levels: Pyramid level count, uniform across the store.
             work_id: CLI work id, written into the block at build time.
             durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
+            write_image_class: Write ``image_class``. ``False`` omits it, which
+                is what makes ``load_zarr`` refuse the store. Only the
+                ``--mode process`` writer passes ``False``.
+            consolidate: Consolidate the part's metadata into its root
+                ``zarr.json`` immediately before the promote. It is a
+                parameter rather than a step applied to the returned path
+                because consolidating a promoted store rewrites its root in
+                place, which is the non-atomic write the rename-commit exists
+                to prevent, and lands after the ``fsync``.
 
         Returns:
             The promoted store path.
@@ -988,6 +1049,8 @@ class ImageIOHandler(ImageColorSpace):
                 durable=durable,
                 commit_guard=commit_guard,
                 measurement_table=measurement_table,
+                write_image_class=write_image_class,
+                consolidate=consolidate,
             )
         except Exception:
             shutil.rmtree(ngff_.long_path(part), ignore_errors=True)
@@ -1005,8 +1068,20 @@ class ImageIOHandler(ImageColorSpace):
         durable: bool | None,
         commit_guard: CommitGuard | None = None,
         measurement_table: PreparedEmbeddedMeasurementTable | None = None,
+        write_image_class: bool = True,
+        consolidate: bool = False,
     ) -> Path:
-        """Populate one allocated part and promote it to its final path."""
+        """Populate one allocated part and promote it to its final path.
+
+        Args:
+            write_image_class: Write ``image_class``. ``False`` omits it, which
+                is what makes ``load_zarr`` refuse the store. Only the
+                ``--mode process`` writer passes ``False``.
+            consolidate: Consolidate the part's metadata into its root
+                ``zarr.json`` immediately before the promote -- never on the
+                promoted path, which would rewrite a live root in place and
+                land after ``promote_store``'s ``fsync``.
+        """
         from phenotypic.sdk_ import ngff_
 
         series_names = list(series)
@@ -1160,6 +1235,7 @@ class ImageIOHandler(ImageColorSpace):
             sections=sections,
             work_id=work_id,
             has_labels=write_objmap,
+            write_image_class=write_image_class,
         )
         if tables_descriptor is not None:
             phenotypic_attributes[ngff_.PhenotypicAttr.TABLES] = {
@@ -1175,6 +1251,8 @@ class ImageIOHandler(ImageColorSpace):
                 ngff_.PhenotypicAttr.ROOT: phenotypic_attributes,
             },
         )
+        if consolidate:
+            _consolidate_store_part(part)
         return ngff_.promote_store(
             part,
             final,

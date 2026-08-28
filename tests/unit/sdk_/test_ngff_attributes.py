@@ -336,3 +336,35 @@ def test_phenotypic_version_defaults_to_the_installed_package_version() -> None:
         gamma=None,
     )
     assert block[PhenotypicAttr.PHENOTYPIC_VERSION] == phenotypic.__version__
+
+
+def test_image_class_is_omitted_entirely_when_none() -> None:
+    """A process-mode store carries no image_class key at all.
+
+    Not an empty string and not a null: the KEY is absent, because
+    `load_zarr`'s guard tests membership, not truthiness.
+    """
+    block = ngff_.build_phenotypic_attributes(
+        image_class=None,
+        series_names=["rgb"],
+        pyramid_levels=4,
+        metadata_sections=_sections(),
+        detect_mode="gray",
+        illuminant="D65",
+        gamma="SRGB",
+        has_labels=False,
+    )
+    assert PhenotypicAttr.IMAGE_CLASS not in block
+
+
+def test_image_class_is_written_when_given() -> None:
+    block = ngff_.build_phenotypic_attributes(
+        image_class="GridImage",
+        series_names=["rgb"],
+        pyramid_levels=4,
+        metadata_sections=_sections(),
+        detect_mode="gray",
+        illuminant="D65",
+        gamma="SRGB",
+    )
+    assert block[PhenotypicAttr.IMAGE_CLASS] == "GridImage"

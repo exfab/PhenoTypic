@@ -486,7 +486,7 @@ def objmap_path(primary: str) -> str:
 
 def build_phenotypic_attributes(
     *,
-    image_class: str,
+    image_class: str | None,
     series_names: Sequence[str],
     pyramid_levels: int,
     metadata_sections: dict[str, dict],
@@ -504,7 +504,10 @@ def build_phenotypic_attributes(
     Args:
         image_class: ``"Image"`` or ``"GridImage"`` -- drives loader dispatch.
             Distinct from ``Metadata_ImageType``, which is user-visible schema
-            metadata and lives in *metadata_sections*.
+            metadata and lives in *metadata_sections*. ``None`` omits the key
+            entirely, which is what marks a store as **not** a run bundle:
+            :meth:`Image.load_zarr` refuses a store without it. Only the
+            ``--mode process`` writer passes ``None``.
         series_names: Series actually written, in canonical order.
         pyramid_levels: Resolved level count, uniform across the store.
         metadata_sections: ``{"protected": …, "public": …, "imported": …}``
@@ -542,7 +545,6 @@ def build_phenotypic_attributes(
         PhenotypicAttr.PHENOTYPIC_VERSION: (
             phenotypic_version or phenotypic.__version__
         ),
-        PhenotypicAttr.IMAGE_CLASS: image_class,
         PhenotypicAttr.SERIES: {name: name for name in series_names},
         PhenotypicAttr.PYRAMID: {
             "levels": int(pyramid_levels),
@@ -568,6 +570,12 @@ def build_phenotypic_attributes(
             ),
         },
     }
+    # Absence, not a null: `load_zarr`'s guard tests key membership, so
+    # writing `image_class: None` would defeat it. Key insertion order puts
+    # `image_class` after `metadata` rather than between `phenotypic_version`
+    # and `series`; nothing reads the block positionally -- it is JSON.
+    if image_class is not None:
+        block[PhenotypicAttr.IMAGE_CLASS] = image_class
     if provenance is not None:
         block[PhenotypicAttr.PROVENANCE] = provenance
     # Omitted entirely when the store carries no label image. An earlier draft
