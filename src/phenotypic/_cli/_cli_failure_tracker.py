@@ -188,6 +188,7 @@ def processing_configuration_digest_from_values(
     detect_mode: str,
     process_only_layer: str | None,
     ext: str,
+    process_format: str,
     include_dataset_column: bool,
     overlay_alpha: float,
     save_overlays: bool,
@@ -207,6 +208,11 @@ def processing_configuration_digest_from_values(
             {
                 "process_only_layer": process_only_layer,
                 "ext": ext,
+                # Beside `ext` and NOT in the base payload: a full or measure
+                # run has no process format, and folding it into the base
+                # would change every existing run's digest and cold-start
+                # every continuation in flight.
+                "process_format": process_format,
             }
         )
     else:
@@ -230,6 +236,7 @@ def processing_configuration_digest(config: "ExecutionConfig") -> str:
         detect_mode=config.detect_mode,
         process_only_layer=config.process_only_layer,
         ext=config.ext,
+        process_format=config.process_format,
         include_dataset_column=config.include_dataset_column,
         overlay_alpha=config.overlay_alpha,
         save_overlays=config.save_overlays,

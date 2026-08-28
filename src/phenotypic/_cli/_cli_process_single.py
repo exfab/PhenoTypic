@@ -126,6 +126,7 @@ def _worker_work_identity(
     detect_mode: str,
     layer: str | None,
     ext: str,
+    process_format: str,
     include_dataset_column: bool,
     overlay_alpha: float,
     save_overlays: bool,
@@ -154,6 +155,12 @@ def _worker_work_identity(
                 detect_mode=detect_mode,
                 process_only_layer=layer if mode == "process" else None,
                 ext=normalize_extension(ext, ".tiff"),
+                # Mirrors the `process_only_layer` line directly above, so
+                # the two stay consistent: outside process mode the digest
+                # drops both, and a stray format can never reach it.
+                process_format=(
+                    process_format if mode == "process" else "tiff"
+                ),
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
@@ -669,6 +676,7 @@ def main(
                 detect_mode=detect_mode,
                 layer=layer,
                 ext=ext,
+                process_format=resolved_process_format,
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
@@ -731,6 +739,7 @@ def main(
                 detect_mode=detect_mode,
                 layer=layer,
                 ext=ext,
+                process_format=resolved_process_format,
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
@@ -752,6 +761,7 @@ def main(
                         image,
                         input_root,
                         process_only_layer,
+                        fmt=resolved_process_format,
                     )
                 },
                 commit_guard=commit_guard,
@@ -863,6 +873,7 @@ def main(
                 detect_mode=detect_mode,
                 layer=None,
                 ext=ext,
+                process_format=resolved_process_format,
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
@@ -933,6 +944,7 @@ def main(
                     detect_mode=detect_mode,
                     layer=layer,
                     ext=ext,
+                    process_format=resolved_process_format,
                     include_dataset_column=include_dataset_column,
                     overlay_alpha=overlay_alpha,
                     save_overlays=save_overlays,

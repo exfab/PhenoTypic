@@ -126,7 +126,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                 from ._cli_process_only import process_only_output_path
 
                 return process_only_output_path(
-                    output_dir, img, cfg.input_path, "objmap"
+                    output_dir, img, cfg.input_path, "objmap", fmt="tiff"
                 ).is_file()
             terminal = stage3_completion_exists(
                 output_dir, ds_name, img.stem
@@ -400,7 +400,7 @@ class StagedGpuStrategy(ExecutionStrategy):
         image_cls = _image_class(cfg.image_type)
         for ds, img in tasks:
             out_path = process_only_output_path(
-                output_dir, img, cfg.input_path, "objmap"
+                output_dir, img, cfg.input_path, "objmap", fmt="tiff"
             )
             work_id, _ = work_id_for_image(cfg, ds.name, img)
             if cfg.resume and valid_image_success(

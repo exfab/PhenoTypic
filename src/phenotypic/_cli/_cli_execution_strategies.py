@@ -161,6 +161,7 @@ def _publish_local_image_success(
                 image_path,
                 config.input_path,
                 config.process_only_layer,
+                fmt=config.process_format,
             )
         }
         mode = "process"
@@ -585,6 +586,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 read_kwargs=read_kwargs,
                 cli_nrows=self.config.nrows,
                 cli_ncols=self.config.ncols,
+                process_format=self.config.process_format,
             )
             _publish_local_image_success(
                 self.config,

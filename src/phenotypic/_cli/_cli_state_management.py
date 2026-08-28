@@ -208,6 +208,7 @@ def create_initial_state(
             "slurm_args": config.slurm_args,
             "ext": config.ext,
             "process_only_layer": config.process_only_layer,
+            "process_format": config.process_format,
             "include_dataset_column": config.include_dataset_column,
             "overlay_alpha": config.overlay_alpha,
             "save_overlays": config.save_overlays,
@@ -313,6 +314,7 @@ def validate_resume_compatibility(
         "overlay_alpha",
         "drop_originals",
         "save_overlays",
+        "process_format",
     ):
         if key not in state.config:
             continue

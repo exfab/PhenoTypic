@@ -218,7 +218,7 @@ def classify_staged_image(
 
     if process_only_layer == "objmap":
         terminal = process_only_output_path(
-            output_dir, image, input_root, "objmap"
+            output_dir, image, input_root, "objmap", fmt="tiff"
         )
         if terminal.is_file() and expected_work_id is None:
             return "complete"

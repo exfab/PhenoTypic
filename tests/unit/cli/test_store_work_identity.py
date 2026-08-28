@@ -134,6 +134,7 @@ def _config(input_path: Path, pipeline: Path) -> SimpleNamespace:
         detect_mode="gray",
         process_only_layer="rgb",
         ext=".tiff",
+        process_format="tiff",
         include_dataset_column=True,
         overlay_alpha=0.3,
         save_overlays=True,
