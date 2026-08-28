@@ -553,15 +553,31 @@ Implemented as `ngff_.read_ngff_image_spec(store, …)` — a pure resolver in
 
 In order:
 
-1. `OME/zarr.json` carries `ome.series` -> take `series[0]`.
-2. The root itself carries `ome.multiscales` -> the root **is** the image.
-3. The root carries `bioformats2raw.layout` but no `series` -> the
-   consecutive-integer form NGFF §2.2.3 mandates in that case; take group `"0"`.
-4. The root carries `ome.plate` -> **raise.** An HCS plate is a collection of
+1. The root carries `ome.plate` -> **raise.** An HCS plate is a collection of
    wells, not one image; the error names the well-path form to pass instead.
+2. `OME/zarr.json` carries `ome.series` -> take `series[0]`.
+3. The root itself carries `ome.multiscales` -> the root **is** the image.
+4. The root carries `bioformats2raw.layout` but no `series` -> the
+   consecutive-integer form NGFF §2.2.3 mandates in that case; take group `"0"`.
 5. Otherwise -> **raise**: not an OME-Zarr image.
 
-A `series=` keyword overrides steps 1-3.
+**The plate check is first, and the ordering is load-bearing.** An earlier draft
+of this section numbered it 4, after the series list. That is wrong against the
+real artifact: a `bioformats2raw` plate carries **both** a root `ome.plate`
+**and** an `OME/zarr.json` series list of its well fields, so under the
+series-first ordering the resolver returns a single well field and reads it as
+the image — contradicting §9's own "HCS plate -> raises" row. The
+implementation has always checked `plate` first; this is the spec catching up to
+it. `test_resolver_refuses_an_hcs_plate` now builds its fixture with both keys
+present and fails under the series-first ordering, so the two cannot drift again.
+
+A `series=` keyword bypasses the whole ladder, step 1 included — which is
+precisely what step 1's own error message instructs, "pass
+`series=<row>/<col>/<field>`". Reading one well field out of a plate is
+supported; only *guessing* which one is refused. An unknown `series=` raises
+`ValueError` naming the series the store actually declares — not
+`FileNotFoundError`, which in this codebase means "interrupted write, store
+absent".
 
 ### 4.2 Resolve the level
 
@@ -1007,6 +1023,19 @@ if a float layer becomes a primary external deliverable.
 
 **`source_sha256` in provenance.** §2.3. Costs a full read per image at
 AutoConvertRaw's scale with no current consumer.
+
+**NGFF 0.4 / Zarr v2 input.** Refused by name, not converted. A v2 group is
+spelled `.zgroup`/`.zattrs` where v3 writes `zarr.json`, so a 0.4 store has no
+root by this design's reader and would otherwise surface as the bare
+`FileNotFoundError` that means "interrupted write, store absent" — a misdiagnosis
+of exactly the §3.1 case C stores that are most common in the wild, since
+`bioformats2raw`'s default output and QuPath's export are both 0.4/v2 today. The
+reader therefore detects the v2 marker and raises `ValueError` naming NGFF 0.5 /
+Zarr v3 as the requirement. Converting in-process is out of scope: it is a
+whole-store rewrite with its own chunking, sharding and pyramid decisions, all of
+which §1 settles for *written* stores only, and mature external converters
+already exist. Revisit if 0.4 input turns out to be the common case rather than
+the legacy one.
 
 **Cloud URL input.** The destination is object storage, so
 `imread("s3://bucket/…/p01.ome.zarr")` is the natural next step, and zarr 3 plus
