@@ -2046,27 +2046,52 @@ def load_image_from_store(
     user-visible schema metadata and may be ``GridSection`` on a plain
     :class:`Image`.
 
+    **Bypasses the public :meth:`Image.load_zarr` guard, deliberately.** That
+    guard refuses a store carrying no ``image_class``, because a *user* calling
+    the public verb on such a store has almost certainly mistaken a
+    ``--mode process`` export for a run bundle and wants ``imread`` instead.
+    This function is the internal dispatcher: its caller supplies *fallback*
+    and has therefore already made that determination itself
+    (``_cli_process_single`` passes the run's own image type; the tune CLI
+    passes ``"GridImage"``). Routing through ``load_zarr`` would raise before
+    the resolved class could ever be used, making *fallback* dead code. So the
+    resolved class is asked to load the store directly.
+
+    A store with no bundle *content* still fails, one layer down and by its
+    own error: ``_load_from_store`` subscripts the series mapping bare at
+    ``series["gray"]`` and ``series["detect_mat"]``
+    (``_image_io_handler.py``), so a single-series process store raises
+    ``KeyError: 'detect_mat'``.
+
     Args:
         store_path: Path to a ``*.ome.zarr`` directory.
         fallback: Class name used when the block carries no ``image_class``.
 
     Returns:
         An :class:`Image` or :class:`GridImage` loaded from the store.
+
+    Raises:
+        KeyError: If the store root carries no ``phenotypic`` block, or if it
+            carries one but no bundle series.
+        ValueError: If ``store_schema_version`` is not this build's.
     """
     from phenotypic import (
         GridImage,
         Image,
     )  # lazy: avoids circular import at module load
-    from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
+    from phenotypic.sdk_.ngff_ import PhenotypicAttr, require_readable_store
 
-    block = read_phenotypic_attributes(store_path)
+    # `require_readable_store`, not `read_phenotypic_attributes`: bypassing
+    # `load_zarr` must not also bypass the store_schema_version gate it
+    # applied. One read serves both the dispatch and the load.
+    block = require_readable_store(store_path)
     class_name = block.get(PhenotypicAttr.IMAGE_CLASS, fallback)
     # See ``_hdf_to_zarr._load_image_from_hdf``: the comparison is against
     # the class name the writer recorded, not against ``IMAGE_TYPES.GRID`` -- that enum is the
     # ``Metadata_ImageType`` vocabulary, a different field that spec 2.1 keeps
     # deliberately independent of ``image_class``.
     image_cls = GridImage if class_name == GridImage.__name__ else Image
-    return image_cls.load_zarr(store_path)
+    return image_cls._load_from_store(store_path, block)
 
 
 # ---------------------------------------------------------------------------
