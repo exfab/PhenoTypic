@@ -145,3 +145,37 @@ def test_a_store_under_a_parent_input_is_unaffected(tmp_path: Path) -> None:
         _config(root, pipeline), "corrected", store
     )
     assert relative_path == f"p01{ngff_.STORE_SUFFIX}"
+
+
+def test_a_store_named_input_mirrors_to_a_named_output(tmp_path: Path) -> None:
+    """``--input <one store>`` must not write ``<out>/.ome.zarr``.
+
+    The output-path half of the degenerate relative path this module's
+    work-ID tests cover: ``image_path.relative_to(input_root)`` is
+    ``Path(".")`` when the two are the same path, and ``Path(".").stem`` is
+    ``""``. Pre-existing on the flat-file side -- ``--input <one tiff>``
+    wrote ``<out>/.tiff`` -- so this is not a regression the store
+    introduces, but the store case is the one this design makes routine.
+
+    Deferred out of Task 10a, which landed in an isolated worktree in
+    parallel with the task that gave ``process_only_output_path`` its
+    ``fmt`` parameter; re-added here once both had merged.
+    """
+    from phenotypic._cli._cli_process_only import process_only_output_path
+
+    store = _store(tmp_path / "in", "p01")
+    assert (
+        process_only_output_path(
+            tmp_path / "out", store, store, "rgb", fmt="zarr"
+        ).name
+        == f"p01{ngff_.STORE_SUFFIX}"
+    )
+
+    single_file = tmp_path / "in" / "p02.tiff"
+    Image(load_synth_yeast_plate()).rgb.imsave(filepath=single_file)
+    assert (
+        process_only_output_path(
+            tmp_path / "out", single_file, single_file, "rgb", fmt="tiff"
+        ).name
+        == "p02.tiff"
+    )
