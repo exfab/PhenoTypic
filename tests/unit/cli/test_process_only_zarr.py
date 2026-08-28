@@ -349,3 +349,146 @@ def test_a_store_round_trips_store_in_to_store_out(
 
     journal = _block(store_out)[PhenotypicAttr.PROVENANCE]
     assert [o["operation_name"] for o in journal["operations"]] == ["BlurGauss"]
+
+
+# ---------------------------------------------------------------------------
+# Spec 2.3.3 -- a published store is bit-reproducible
+# ---------------------------------------------------------------------------
+
+#: The two journal fields a published store omits. Both are wall-clock
+#: readings taken at apply time (`_provenance.py:377,380`), and measurement
+#: across two runs of one image through one pipeline found them to be the
+#: ENTIRE source of non-reproducibility in a store -- everything else in the
+#: block is a pure function of the inputs.
+_NON_REPRODUCIBLE_FIELDS = ("applied_at_utc", "duration_seconds")
+
+
+def _tree_bytes(store: Path) -> dict[str, bytes]:
+    """Every member of *store*, keyed by store-relative path.
+
+    Comparing the root `zarr.json` alone is not enough and the suite has
+    already been burned by it once (spec 7.3): two stores holding entirely
+    different pixels shared one root. Byte-identity is a claim about the whole
+    published artifact, so the check reads the whole published artifact.
+    """
+    return {
+        p.relative_to(store).as_posix(): p.read_bytes()
+        for p in sorted(store.rglob("*"))
+        if p.is_file()
+    }
+
+
+def _run_to_store(
+    pipeline_file: Path, source_image: Path, out: Path
+) -> Path:
+    process_single_apply_only_core(
+        pipeline_path=pipeline_file,
+        image_path=source_image,
+        input_root=source_image.parent,
+        output_dir=out,
+        image_type="Image",
+        layer="rgb",
+        read_kwargs={},
+        process_format="zarr",
+    )
+    return out / f"{source_image.stem}{ngff_.STORE_SUFFIX}"
+
+
+def test_two_runs_of_one_image_produce_byte_identical_stores(
+    tmp_path: Path, source_image: Path, pipeline_file: Path
+) -> None:
+    """Spec 2.3.3. The headline property, and it is a property of the bytes.
+
+    Content-addressed storage, server-side dedup, and "did these two runs
+    agree?" all reduce to this one comparison. It is asserted over every
+    member rather than the root because the root is not the artifact.
+    """
+    first = _run_to_store(pipeline_file, source_image, tmp_path / "a")
+    second = _run_to_store(pipeline_file, source_image, tmp_path / "b")
+
+    left, right = _tree_bytes(first), _tree_bytes(second)
+    assert sorted(left) == sorted(right)
+    assert [name for name in left if left[name] != right[name]] == []
+
+
+def test_file_sha256_of_two_identical_runs_matches(
+    tmp_path: Path, source_image: Path, pipeline_file: Path
+) -> None:
+    """Spec 7.3's whole-tree digest is stable across an identical regeneration.
+
+    This is the practical reason 2.3.3 exists. `file_sha256` feeds
+    `work_id_for_image` and the SLURM identity ledger, so a digest that moved
+    on every regeneration would give one image a new work ID per run and
+    defeat continuation. Keeping the digest a dumb complete hash -- no
+    exclusion list, no JSON round-trip, no coupling to the metadata schema --
+    is bought by the writer dropping the two wall-clock fields, not by the
+    walk knowing about them.
+    """
+    from phenotypic._cli._cli_failure_tracker import file_sha256
+
+    first = _run_to_store(pipeline_file, source_image, tmp_path / "a")
+    second = _run_to_store(pipeline_file, source_image, tmp_path / "b")
+    assert file_sha256(first) == file_sha256(second)
+
+
+def test_a_published_store_omits_the_wall_clock_fields(
+    tmp_path: Path, source_image: Path, pipeline_file: Path
+) -> None:
+    """Absent from every entry, not merely from the first."""
+    store = _run_to_store(pipeline_file, source_image, tmp_path / "out")
+    operations = _block(store)[PhenotypicAttr.PROVENANCE]["operations"]
+    assert operations, "fixture pipeline must record at least one operation"
+    for entry in operations:
+        for field in _NON_REPRODUCIBLE_FIELDS:
+            assert field not in entry
+
+
+def test_save2zarr_keeps_the_wall_clock_fields(
+    tmp_path: Path, pipeline_file: Path
+) -> None:
+    """Only the PUBLISHED artifact drops them (spec 2.3.3).
+
+    The bundle store never leaves the run directory, so it keeps the
+    human-facing telemetry -- when the image was processed, and how long each
+    operation took. Without this half the paired assertion, a strip applied
+    unconditionally in `_build_store_attributes` would look correct: the
+    process store would be reproducible and nothing would say the bundle had
+    silently lost its timestamps.
+    """
+    from phenotypic._core._provenance import initialize_cli_provenance
+
+    image = Image(load_synth_yeast_plate())
+    initialize_cli_provenance(image, pipeline_file)
+    ImagePipeline.from_json(pipeline_file).apply(image, inplace=True)
+
+    store = image.save2zarr(tmp_path / "bundle.ome.zarr")
+    operations = _block(Path(store))[PhenotypicAttr.PROVENANCE]["operations"]
+    assert [o["operation_name"] for o in operations] == ["BlurGauss"]
+    for field in _NON_REPRODUCIBLE_FIELDS:
+        assert field in operations[0]
+
+
+def test_stripping_leaves_the_rest_of_the_journal_intact(
+    tmp_path: Path, source_image: Path, pipeline_file: Path
+) -> None:
+    """Two keys, from `operations[]` only -- not a general journal scrub.
+
+    The journal is the store's provenance. A strip that took the surrounding
+    keys with it, or that reached into `parameters`, would make the artifact
+    reproducible by making it say nothing.
+    """
+    store = _run_to_store(pipeline_file, source_image, tmp_path / "out")
+    journal = _block(store)[PhenotypicAttr.PROVENANCE]
+    for key in ("schema_version", "status", "pipeline", "retry_base_length"):
+        assert key in journal
+
+    only = journal["operations"][0]
+    assert only["operation_name"] == "BlurGauss"
+    assert only["parameters"] == BlurGauss().model_dump(mode="json")
+    for key in (
+        "sequence",
+        "operation_class",
+        "phenotypic_version",
+        "pipeline_step_path",
+    ):
+        assert key in only

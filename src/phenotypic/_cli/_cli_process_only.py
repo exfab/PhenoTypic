@@ -210,6 +210,15 @@ def write_process_only_layer(
             durable=None,
             commit_guard=commit_guard,
             write_image_class=False,
+            # The published artifact drops the journal's two wall-clock
+            # readings, and nothing else (spec 2.3.3). They are the entire
+            # difference between two runs of one image through one pipeline,
+            # so without this the store is a different object every time it is
+            # regenerated -- which defeats content-addressed storage and
+            # server-side dedup, and destabilises the whole-tree `file_sha256`
+            # that continuation derives a work ID from. The image's own
+            # journal and the bundle store keep them.
+            reproducible_provenance=True,
             # Consolidated INSIDE the .part, before the promote -- see
             # `_consolidate_store_part`. A process-mode store is written once
             # and never mutated, so the consolidated view cannot drift from

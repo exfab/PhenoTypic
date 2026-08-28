@@ -383,6 +383,50 @@ def append_operation_provenance(
     )
 
 
+#: The operation-entry fields that are readings of the wall clock rather than
+#: functions of the inputs, and therefore the entire source of
+#: non-reproducibility in a store. Both are written by
+#: :func:`append_operation_provenance`; keep this tuple beside it.
+NON_REPRODUCIBLE_OPERATION_FIELDS: tuple[str, ...] = (
+    "applied_at_utc",
+    "duration_seconds",
+)
+
+
+def strip_non_reproducible_operation_fields(
+    journal: dict[str, Any],
+) -> dict[str, Any]:
+    """Drop the wall-clock fields from every entry in ``operations[]``, in place.
+
+    Measured across two runs of one image through one pipeline, these two
+    fields are the only bytes that move: everything else in the journal --
+    ``operation_name``, ``operation_class``, ``phenotypic_version``, the
+    resolved ``parameters``, ``pipeline_step_path``, and the ``pipeline``
+    digest -- is a pure function of the inputs. Removing them makes a
+    published ``--mode process`` store byte-identical across identical runs,
+    which is what content-addressed storage, server-side dedup, and the
+    whole-tree ``file_sha256`` of spec 7.3 all require (spec 2.3.3).
+
+    Only ``operations[]`` entries are touched. The surrounding
+    ``schema_version``, ``status``, ``pipeline`` and ``retry_base_length`` are
+    the store's provenance and stay; an artifact made reproducible by saying
+    nothing is not the goal.
+
+    Call this on a *copy*. The image's own journal keeps both fields, and so
+    does the bundle store, which never leaves the run directory.
+
+    Args:
+        journal: A mutable journal copy.
+
+    Returns:
+        The same mapping, for call-site chaining.
+    """
+    for entry in journal.get("operations", ()):
+        for name in NON_REPRODUCIBLE_OPERATION_FIELDS:
+            entry.pop(name, None)
+    return journal
+
+
 def write_provenance_checkpoint(
     store: str | Path,
     image: "Image",

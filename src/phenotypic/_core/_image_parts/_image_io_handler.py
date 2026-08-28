@@ -1007,6 +1007,7 @@ class ImageIOHandler(ImageColorSpace):
         work_id,
         has_labels=True,
         write_image_class: bool = True,
+        reproducible_provenance: bool = False,
     ) -> dict:
         """Assemble ``attributes.phenotypic``.
 
@@ -1022,11 +1023,25 @@ class ImageIOHandler(ImageColorSpace):
             write_image_class: Write ``image_class``. ``False`` omits it, which
                 is what makes ``load_zarr`` refuse the store. Only the
                 ``--mode process`` writer passes ``False``.
+            reproducible_provenance: Omit ``applied_at_utc`` and
+                ``duration_seconds`` from the journal written into the store,
+                making it byte-identical across identical runs (spec 2.3.3).
+                The image's own journal is untouched -- the fields are dropped
+                from a copy on the way in. Only the ``--mode process`` writer
+                passes ``True``; the bundle store never leaves the run
+                directory and keeps its telemetry.
 
         Returns:
             The ``phenotypic`` attributes block.
         """
+        from phenotypic._core._provenance import (
+            strip_non_reproducible_operation_fields,
+        )
         from phenotypic.sdk_ import ngff_
+
+        provenance = deepcopy(self._metadata.provenance_journal)
+        if reproducible_provenance:
+            strip_non_reproducible_operation_fields(provenance)
 
         return ngff_.build_phenotypic_attributes(
             image_class=type(self).__name__ if write_image_class else None,
@@ -1047,7 +1062,7 @@ class ImageIOHandler(ImageColorSpace):
             has_labels=has_labels,
             grid=self._store_grid_attributes(),
             work_id=work_id,
-            provenance=deepcopy(self._metadata.provenance_journal),
+            provenance=provenance,
         )
 
     def save2zarr(
@@ -1123,6 +1138,7 @@ class ImageIOHandler(ImageColorSpace):
         measurement_table: PreparedEmbeddedMeasurementTable | None = None,
         write_image_class: bool = True,
         consolidate: bool = False,
+        reproducible_provenance: bool = False,
     ) -> Path:
         """Write one OME-Zarr store into a ``.part`` sibling and promote it.
 
@@ -1158,6 +1174,10 @@ class ImageIOHandler(ImageColorSpace):
                 because consolidating a promoted store rewrites its root in
                 place, which is the non-atomic write the rename-commit exists
                 to prevent, and lands after the ``fsync``.
+            reproducible_provenance: Omit the journal's ``applied_at_utc`` and
+                ``duration_seconds`` from the store, making it byte-identical
+                across identical runs (spec 2.3.3). Only the ``--mode
+                process`` writer passes ``True``.
 
         Returns:
             The promoted store path.
@@ -1183,6 +1203,7 @@ class ImageIOHandler(ImageColorSpace):
                 measurement_table=measurement_table,
                 write_image_class=write_image_class,
                 consolidate=consolidate,
+                reproducible_provenance=reproducible_provenance,
             )
         except Exception:
             shutil.rmtree(ngff_.long_path(part), ignore_errors=True)
@@ -1202,6 +1223,7 @@ class ImageIOHandler(ImageColorSpace):
         measurement_table: PreparedEmbeddedMeasurementTable | None = None,
         write_image_class: bool = True,
         consolidate: bool = False,
+        reproducible_provenance: bool = False,
     ) -> Path:
         """Populate one allocated part and promote it to its final path.
 
@@ -1213,6 +1235,10 @@ class ImageIOHandler(ImageColorSpace):
                 ``zarr.json`` immediately before the promote -- never on the
                 promoted path, which would rewrite a live root in place and
                 land after ``promote_store``'s ``fsync``.
+            reproducible_provenance: Omit the journal's ``applied_at_utc`` and
+                ``duration_seconds`` from the store, making it byte-identical
+                across identical runs (spec 2.3.3). Only the ``--mode
+                process`` writer passes ``True``.
         """
         from phenotypic.sdk_ import ngff_
 
@@ -1368,6 +1394,7 @@ class ImageIOHandler(ImageColorSpace):
             work_id=work_id,
             has_labels=write_objmap,
             write_image_class=write_image_class,
+            reproducible_provenance=reproducible_provenance,
         )
         if tables_descriptor is not None:
             phenotypic_attributes[ngff_.PhenotypicAttr.TABLES] = {
