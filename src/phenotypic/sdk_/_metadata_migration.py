@@ -1287,6 +1287,7 @@ _JOURNAL_DIR_FD_SUPPORTED = (
     and os.open in os.supports_dir_fd
     and os.link in os.supports_dir_fd
     and os.link in os.supports_follow_symlinks
+    and os.mkdir in os.supports_dir_fd
     and os.rename in os.supports_dir_fd
     and os.stat in os.supports_dir_fd
     and os.stat in os.supports_follow_symlinks
@@ -1371,8 +1372,10 @@ def _verify_anchored_journal_directory(
 def _open_anchored_journal_directory(
     root: Path,
     directory: Path,
+    *,
+    create: bool = False,
 ) -> Iterator[_AnchoredJournalDirectory]:
-    """Open ``directory`` one no-follow component at a time from ``root``."""
+    """Open or create ``directory`` from one held no-follow root descriptor."""
     _require_journal_descriptor_capabilities()
     safe_root = _require_safe_migration_path(
         root, role="Metadata migration journal authoritative root"
@@ -1400,6 +1403,26 @@ def _open_anchored_journal_directory(
                     _journal_directory_flags(),
                     dir_fd=current_fd,
                 )
+            except FileNotFoundError:
+                if not create:
+                    raise ValueError(
+                        "Metadata migration journal directory changed while "
+                        f"opening: {safe_directory}"
+                    ) from None
+                try:
+                    os.mkdir(component, 0o700, dir_fd=current_fd)
+                    os.fsync(current_fd)
+                    next_fd = os.open(
+                        component,
+                        _journal_directory_flags(),
+                        dir_fd=current_fd,
+                    )
+                    os.fsync(next_fd)
+                except OSError as exc:
+                    raise ValueError(
+                        "Metadata migration journal directory changed while "
+                        f"creating: {safe_directory}"
+                    ) from exc
             except OSError as exc:
                 raise ValueError(
                     "Metadata migration journal directory changed while opening: "
@@ -1848,7 +1871,11 @@ def _write_journal_plan(
         log_path = _require_safe_migration_path(
             log_path, role="Metadata migration transition log", root=root
         )
-        _ensure_directory_durable(plan_path.parent)
+        with _open_anchored_journal_directory(
+            root, plan_path.parent, create=True
+        ) as directory:
+            _verify_anchored_journal_directory(directory)
+            _verify_journal_mutation_authority(*authorities)
         if plan_path.is_file():
             existing = _read_anchored_journal_json(
                 plan_path,
@@ -3609,8 +3636,23 @@ def _publish_metadata_authority(
             "resulting_fingerprint": terminal.resulting_fingerprint,
             "compatible_noop": receipt_noop,
         }
-        atomic_write_json(status_path, payload, sort_keys=True)
-        _fsync_directory(status_path.parent)
+        if status_path.exists():
+            existing = _read_anchored_journal_json(
+                status_path,
+                root=root,
+                role="Metadata migration status",
+            )
+            if existing != payload:
+                raise ValueError(
+                    "Competing metadata migration status authority exists"
+                )
+        else:
+            _publish_anchored_journal_json(
+                status_path,
+                payload,
+                root=root,
+                role="Metadata migration status",
+            )
     return MetadataMigrationAuthority(
         status_path=status_path,
         terminal_receipt_path=receipt_path,
@@ -3622,6 +3664,65 @@ def _publish_metadata_authority(
     )
 
 
+def _remove_exact_metadata_authority(
+    root: Path,
+    authority: MetadataMigrationAuthority,
+    *,
+    commit_guard: CommitGuard | None,
+) -> None:
+    """Durably remove only one exact status during authorized supersession."""
+    status_path = _require_safe_migration_path(
+        authority.status_path,
+        role="Metadata migration status",
+        root=root,
+    )
+    expected = {
+        "schema_version": 1,
+        "state": "complete",
+        "terminal_receipt_path": str(authority.terminal_receipt_path),
+        "terminal_receipt_digest": authority.terminal_receipt_digest,
+        "plan_fingerprint": authority.plan_fingerprint,
+        "source_fingerprint": authority.source_fingerprint,
+        "resulting_fingerprint": authority.resulting_fingerprint,
+        "compatible_noop": authority.compatible_noop,
+    }
+    with publication_commit(commit_guard):
+        with _open_anchored_journal_file(
+            status_path,
+            root=root,
+            role="Metadata migration status",
+            flags=os.O_RDONLY,
+            mode="rb",
+        ) as opened:
+            try:
+                payload = json.loads(opened.handle.read().decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise ValueError(
+                    "Competing metadata migration status authority exists"
+                ) from exc
+            _verify_anchored_journal_file(opened)
+            if payload != expected:
+                raise ValueError(
+                    "Competing metadata migration status authority exists"
+                )
+            os.unlink(opened.name, dir_fd=opened.directory.fd)
+            os.fsync(opened.directory.fd)
+            held = os.fstat(opened.handle.fileno())
+            if (
+                not stat.S_ISREG(held.st_mode)
+                or (held.st_dev, held.st_ino) != opened.identity
+            ):
+                raise ValueError(
+                    "Metadata migration status changed during removal"
+                )
+            _verify_anchored_journal_directory(opened.directory)
+            _require_absent_anchored_child(
+                opened.directory,
+                opened.name,
+                role="metadata migration status",
+            )
+
+
 def metadata_migration_authority(
     source: str | Path | BundleLayout,
 ) -> MetadataMigrationAuthority:
@@ -3630,7 +3731,11 @@ def metadata_migration_authority(
     status_path = _require_safe_migration_path(
         _metadata_status_path(root), role="Metadata migration status", root=root
     )
-    payload = json.loads(status_path.read_text(encoding="utf-8"))
+    payload = _read_anchored_journal_json(
+        status_path,
+        root=root,
+        role="Metadata migration status",
+    )
     if not isinstance(payload, dict) or payload.get("schema_version") != 1:
         raise ValueError("Unsupported metadata migration status schema")
     if payload.get("state") != "complete":
@@ -4026,6 +4131,9 @@ def _apply_metadata_journal(
                 if current == target["source_fingerprint"]:
                     temp = Path(str(target["temp_path"]))
                     with publication_commit(commit_guard):
+                        _verify_journal_mutation_authority(
+                            plan_file, log_file, writer_lock_file
+                        )
                         validate_first_mutation()
                         if (
                             file_fingerprint(path)
@@ -4577,12 +4685,17 @@ def reconcile_metadata_migration_bundle(
                         "match the historical receipt"
                     )
             else:
-                _publish_metadata_authority(
+                published_authority = _publish_metadata_authority(
                     root,
                     result,
                     compatible_noop=compatible_noop,
                     commit_guard=commit_guard,
                 )
+            _remove_exact_metadata_authority(
+                root,
+                published_authority,
+                commit_guard=commit_guard,
+            )
             return _migrate_superseding_v4_authority(
                 layout,
                 root,
@@ -4597,6 +4710,11 @@ def reconcile_metadata_migration_bundle(
                 and published_authority.terminal_receipt_path
                 == superseded_receipt
             ):
+                _remove_exact_metadata_authority(
+                    root,
+                    published_authority,
+                    commit_guard=commit_guard,
+                )
                 _publish_metadata_authority(
                     root,
                     result,
