@@ -32,11 +32,14 @@ from ._cli_migrate_manifest import (
     MigrationImageSeal,
     MigrationReclaimSeal,
     _read_manifest,
+    migration_image_seal_path,
+    migration_reclaim_seal_path,
     publish_migration_reclaim_status,
     publish_migration_task_status,
     read_migration_task,
     seal_migration_image_stage,
     seal_migration_reclaim_stage,
+    validate_migration_generation,
 )
 from ._cli_slurm_lifecycle import (
     assert_generation_active,
@@ -72,8 +75,21 @@ def migration_worker_status_path(
     index: int | None = None,
 ) -> Path:
     """Return one generation-bound typed orchestration status path."""
+    generation = validate_migration_generation(generation)
+    if stage not in {
+        "metadata", "image", "seal", "reclaim", "reclaim-seal", "terminal"
+    }:
+        raise ValueError("unknown migration worker stage")
+    if index is not None and (
+        not isinstance(index, int) or isinstance(index, bool) or index < 0
+    ):
+        raise ValueError("migration worker index must be a non-negative integer")
     suffix = stage if index is None else f"{stage}_{index}"
-    return Path(control_root) / "worker_status" / generation / f"{suffix}.json"
+    root = Path(control_root).resolve()
+    path = (root / "worker_status" / generation / f"{suffix}.json").resolve()
+    if not path.is_relative_to(root):
+        raise ValueError("migration worker status escapes control root")
+    return path
 
 
 def _load_worker_config(path: Path) -> _WorkerConfig:
@@ -102,27 +118,28 @@ def _load_worker_config(path: Path) -> _WorkerConfig:
         raise ValueError("invalid migration worker config schema")
     if raw.get("schema_version") != 1:
         raise ValueError("unsupported migration worker config schema")
-    generation = raw.get("generation")
+    generation = validate_migration_generation(raw.get("generation"))
     inventory_digest = raw.get("inventory_digest")
     task_count = raw.get("task_count")
     if (
-        not isinstance(generation, str)
-        or not generation
-        or not isinstance(inventory_digest, str)
+        not isinstance(inventory_digest, str)
         or len(inventory_digest) != 64
         or not isinstance(task_count, int)
         or isinstance(task_count, bool)
         or task_count < 0
     ):
         raise ValueError("invalid migration worker identity fields")
-    control_root = Path(str(raw["control_root"])).resolve()
+    path_fields = ("output_dir", "scientific_output", "control_root", "manifest_path")
+    if any(not isinstance(raw[field], str) or not raw[field] for field in path_fields):
+        raise ValueError("invalid migration worker path fields")
+    control_root = Path(raw["control_root"]).resolve()
     if config_path.resolve().parent != control_root:
         raise ValueError("migration worker config has wrong control root")
-    output_dir = Path(str(raw["output_dir"])).resolve()
-    scientific_output = Path(str(raw["scientific_output"])).resolve()
+    output_dir = Path(raw["output_dir"]).resolve()
+    scientific_output = Path(raw["scientific_output"]).resolve()
     if scientific_output != deliverables_dir(output_dir):
         raise ValueError("migration worker config has wrong scientific output")
-    manifest_path = Path(str(raw["manifest_path"])).resolve()
+    manifest_path = Path(raw["manifest_path"]).resolve()
     _, manifest = _read_manifest(
         manifest_path,
         scientific_output,
@@ -134,6 +151,16 @@ def _load_worker_config(path: Path) -> _WorkerConfig:
         or manifest.task_count != task_count
     ):
         raise ValueError("migration worker config does not match manifest")
+    overlay_alpha = raw["overlay_alpha"]
+    delete_sources = raw["delete_sources"]
+    dry_run = raw["dry_run"]
+    if (
+        not isinstance(overlay_alpha, (int, float))
+        or isinstance(overlay_alpha, bool)
+        or not isinstance(delete_sources, bool)
+        or not isinstance(dry_run, bool)
+    ):
+        raise ValueError("invalid migration worker option fields")
     return _WorkerConfig(
         generation=generation,
         output_dir=output_dir,
@@ -142,9 +169,9 @@ def _load_worker_config(path: Path) -> _WorkerConfig:
         manifest_path=manifest_path,
         inventory_digest=inventory_digest,
         task_count=task_count,
-        overlay_alpha=float(raw["overlay_alpha"]),
-        delete_sources=bool(raw["delete_sources"]),
-        dry_run=bool(raw["dry_run"]),
+        overlay_alpha=float(overlay_alpha),
+        delete_sources=delete_sources,
+        dry_run=dry_run,
     )
 
 
@@ -198,10 +225,17 @@ def _read_worker_status(
         return None
     if (
         not isinstance(raw, Mapping)
+        or raw.get("schema_version") != 1
         or raw.get("generation") != config.generation
         or raw.get("manifest_digest") != config.inventory_digest
         or raw.get("stage") != stage
         or raw.get("index") != index
+        or raw.get("status") not in {"complete", "failed", "blocked"}
+        or not (
+            raw.get("failure_category") is None
+            or isinstance(raw.get("failure_category"), str)
+        )
+        or not (raw.get("reason") is None or isinstance(raw.get("reason"), str))
     ):
         return None
     return raw
@@ -235,15 +269,53 @@ def _authority_from_payload(value: object) -> MetadataMigrationAuthority | None:
     }
     if set(value) != expected:
         return None
-    return MetadataMigrationAuthority(
-        status_path=Path(str(value["status_path"])),
-        terminal_receipt_path=Path(str(value["terminal_receipt_path"])),
-        terminal_receipt_digest=str(value["terminal_receipt_digest"]),
-        plan_fingerprint=str(value["plan_fingerprint"]),
-        source_fingerprint=str(value["source_fingerprint"]),
-        resulting_fingerprint=str(value["resulting_fingerprint"]),
-        compatible_noop=bool(value["compatible_noop"]),
+    path_fields = ("status_path", "terminal_receipt_path")
+    digest_fields = (
+        "terminal_receipt_digest", "plan_fingerprint",
+        "source_fingerprint", "resulting_fingerprint",
     )
+    if (
+        any(not isinstance(value[field], str) or not value[field] for field in path_fields)
+        or any(
+            not isinstance(value[field], str) or not value[field]
+            for field in digest_fields
+        )
+        or not isinstance(value["compatible_noop"], bool)
+    ):
+        return None
+    return MetadataMigrationAuthority(
+        status_path=Path(value["status_path"]),
+        terminal_receipt_path=Path(value["terminal_receipt_path"]),
+        terminal_receipt_digest=value["terminal_receipt_digest"],
+        plan_fingerprint=value["plan_fingerprint"],
+        source_fingerprint=value["source_fingerprint"],
+        resulting_fingerprint=value["resulting_fingerprint"],
+        compatible_noop=value["compatible_noop"],
+    )
+
+
+def _metadata_prerequisite(
+    config: _WorkerConfig, status: Mapping[str, Any] | None
+) -> tuple[MetadataMigrationAuthority | None, str | None]:
+    """Validate typed metadata completion before any image mutation."""
+    if status is None:
+        return None, "metadata stage status is missing or corrupt"
+    if status.get("status") != "complete":
+        reason = status.get("reason")
+        return None, (
+            reason if isinstance(reason, str) and reason else "metadata stage failed"
+        )
+    headers = status.get("headers_migrated")
+    if not isinstance(headers, int) or isinstance(headers, bool) or headers < 0:
+        return None, "metadata stage status has invalid migrated-header count"
+    authority = _authority_from_payload(status.get("authority"))
+    if config.dry_run:
+        if status.get("authority") is not None and authority is None:
+            return None, "metadata stage status has invalid authority"
+        return authority, None
+    if authority is None:
+        return None, "metadata stage authority is missing or corrupt"
+    return authority, None
 
 
 def _run_metadata_worker(config: _WorkerConfig) -> int:
@@ -303,28 +375,25 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
     """Run one independent indexed image migration."""
     assert_generation_active(config.lifecycle_root, config.generation)
     metadata = _read_worker_status(config, "metadata")
-    if metadata is None or metadata.get("status") != "complete":
-        reason = (
-            "metadata stage status is missing"
-            if metadata is None
-            else str(metadata.get("reason") or "metadata stage failed")
-        )
+    authority, prerequisite_failure = _metadata_prerequisite(config, metadata)
+    if prerequisite_failure is not None:
         _publish_worker_status(
             config,
             "image",
             index=index,
             status="blocked",
             failure_category="metadata",
-            reason=reason,
+            reason=prerequisite_failure,
         )
         return 0
-    task = read_migration_task(
-        config.manifest_path,
-        index,
-        expected_scientific_output=config.scientific_output,
-        expected_control_root=config.control_root,
-    )
+    task = None
     try:
+        task = read_migration_task(
+            config.manifest_path,
+            index,
+            expected_scientific_output=config.scientific_output,
+            expected_control_root=config.control_root,
+        )
         result = migrate_image_task(
             config.output_dir,
             task,
@@ -337,10 +406,8 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
             dry_run=config.dry_run,
             commit_guard=None if config.dry_run else _commit_guard(config),
         )
-        authority = _authority_from_payload(metadata.get("authority"))
         if not config.dry_run:
-            if authority is None:
-                raise RuntimeError("metadata stage authority is missing")
+            assert authority is not None
             publish_migration_task_status(
                 config.control_root,
                 manifest_path=config.manifest_path,
@@ -366,7 +433,13 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
             status="failed",
             failure_category="image",
             reason=f"{type(exc).__name__}: {exc}",
-            extra={"target": str(task.hdf_path or task.store_path)},
+            extra={
+                "target": (
+                    str(task.hdf_path or task.store_path)
+                    if task is not None
+                    else f"manifest index {index}"
+                )
+            },
         )
         return 1
 
@@ -377,14 +450,34 @@ def _seal_from_path(path: Path) -> MigrationImageSeal | None:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return None
+    expected = {
+        "schema_version", "generation", "manifest_digest",
+        "ordered_status_digest", "metadata_terminal_digest", "clean", "failures",
+    }
+    if (
+        not isinstance(raw, Mapping)
+        or set(raw) != expected
+        or raw.get("schema_version") != 1
+        or not all(
+            isinstance(raw.get(field), str)
+            for field in (
+                "generation", "manifest_digest", "ordered_status_digest",
+                "metadata_terminal_digest",
+            )
+        )
+        or not isinstance(raw.get("clean"), bool)
+        or not isinstance(raw.get("failures"), list)
+        or not all(isinstance(value, str) for value in raw["failures"])
+    ):
+        return None
     try:
         return MigrationImageSeal(
-            generation=str(raw["generation"]),
-            manifest_digest=str(raw["manifest_digest"]),
-            ordered_status_digest=str(raw["ordered_status_digest"]),
-            metadata_terminal_digest=str(raw["metadata_terminal_digest"]),
-            clean=bool(raw["clean"]),
-            failures=tuple(str(value) for value in raw["failures"]),
+            generation=raw["generation"],
+            manifest_digest=raw["manifest_digest"],
+            ordered_status_digest=raw["ordered_status_digest"],
+            metadata_terminal_digest=raw["metadata_terminal_digest"],
+            clean=raw["clean"],
+            failures=tuple(raw["failures"]),
             seal_path=path,
         )
     except (KeyError, TypeError):
@@ -417,31 +510,44 @@ def _run_image_seal_worker(config: _WorkerConfig) -> int:
         )
         return 0 if not failures else 1
     digest = "" if authority is None else authority.terminal_receipt_digest
-    seal = seal_migration_image_stage(
-        config.control_root,
-        manifest_path=config.manifest_path,
-        expected_scientific_output=config.scientific_output,
-        generation=config.generation,
-        metadata_terminal_digest=digest,
-        commit_guard=_commit_guard(config),
-    )
-    return 0 if seal.clean else 1
+    try:
+        seal = seal_migration_image_stage(
+            config.control_root,
+            manifest_path=config.manifest_path,
+            expected_scientific_output=config.scientific_output,
+            generation=config.generation,
+            metadata_terminal_digest=digest,
+            commit_guard=_commit_guard(config),
+        )
+        _publish_worker_status(
+            config, "seal",
+            status="complete" if seal.clean else "failed",
+            failure_category=None if seal.clean else "image_seal",
+            reason=None if seal.clean else "; ".join(seal.failures),
+            extra={"clean": seal.clean, "failures": list(seal.failures)},
+        )
+        return 0 if seal.clean else 1
+    except Exception as exc:  # noqa: BLE001 - preserve stage failure evidence
+        _publish_worker_status(
+            config, "seal", status="failed", failure_category="image_seal",
+            reason=f"{type(exc).__name__}: {exc}",
+        )
+        return 1
 
 
 def _run_reclaim_worker(config: _WorkerConfig, index: int) -> int:
     """Run one strong source-reclamation check after the image barrier."""
     assert_generation_active(config.lifecycle_root, config.generation)
-    task = read_migration_task(
-        config.manifest_path,
-        index,
-        expected_scientific_output=config.scientific_output,
-        expected_control_root=config.control_root,
-    )
-    seal_path = (
-        config.control_root / "migration" / config.generation / "image_seal.json"
-    )
+    task = None
+    seal_path = migration_image_seal_path(config.control_root, config.generation)
     image_seal = _seal_from_path(seal_path)
     try:
+        task = read_migration_task(
+            config.manifest_path,
+            index,
+            expected_scientific_output=config.scientific_output,
+            expected_control_root=config.control_root,
+        )
         result = (
             _retained_reclaim_result(config.output_dir, task, None)
             if image_seal is None or not image_seal.clean
@@ -481,6 +587,13 @@ def _run_reclaim_worker(config: _WorkerConfig, index: int) -> int:
             status="failed",
             failure_category="reclaim",
             reason=f"{type(exc).__name__}: {exc}",
+            extra={
+                "target": (
+                    f"manifest index {index}"
+                    if task is None
+                    else str(task.store_path)
+                )
+            },
         )
         return 1
 
@@ -489,15 +602,33 @@ def _reclaim_seal_from_path(path: Path) -> MigrationReclaimSeal | None:
     """Load typed reclaim seal evidence from its canonical payload."""
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
+        expected = {
+            "schema_version", "generation", "manifest_digest",
+            "ordered_reclaim_status_digest", "deletion_requested", "clean", "failures",
+        }
+        if (
+            not isinstance(raw, Mapping)
+            or set(raw) != expected
+            or raw.get("schema_version") != 1
+            or not all(
+                isinstance(raw.get(field), str)
+                for field in (
+                    "generation", "manifest_digest", "ordered_reclaim_status_digest"
+                )
+            )
+            or not isinstance(raw.get("deletion_requested"), bool)
+            or not isinstance(raw.get("clean"), bool)
+            or not isinstance(raw.get("failures"), list)
+            or not all(isinstance(value, str) for value in raw["failures"])
+        ):
+            return None
         return MigrationReclaimSeal(
-            generation=str(raw["generation"]),
-            manifest_digest=str(raw["manifest_digest"]),
-            ordered_reclaim_status_digest=str(
-                raw["ordered_reclaim_status_digest"]
-            ),
-            deletion_requested=bool(raw["deletion_requested"]),
-            clean=bool(raw["clean"]),
-            failures=tuple(str(value) for value in raw["failures"]),
+            generation=raw["generation"],
+            manifest_digest=raw["manifest_digest"],
+            ordered_reclaim_status_digest=raw["ordered_reclaim_status_digest"],
+            deletion_requested=raw["deletion_requested"],
+            clean=raw["clean"],
+            failures=tuple(raw["failures"]),
             seal_path=path,
         )
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError):
@@ -508,40 +639,44 @@ def _run_reclaim_seal_worker(config: _WorkerConfig) -> int:
     """Seal exact source transitions after all reclaim chunks are terminal."""
     assert_generation_active(config.lifecycle_root, config.generation)
     image_seal = _seal_from_path(
-        config.control_root / "migration" / config.generation / "image_seal.json"
+        migration_image_seal_path(config.control_root, config.generation)
     )
-    seal = seal_migration_reclaim_stage(
-        config.control_root,
-        manifest_path=config.manifest_path,
-        expected_scientific_output=config.scientific_output,
-        generation=config.generation,
-        deletion_requested=config.delete_sources,
-        image_seal=image_seal,
-        commit_guard=_commit_guard(config),
-    )
-    return 0 if seal is not None and seal.clean else 1
+    try:
+        seal = seal_migration_reclaim_stage(
+            config.control_root,
+            manifest_path=config.manifest_path,
+            expected_scientific_output=config.scientific_output,
+            generation=config.generation,
+            deletion_requested=config.delete_sources,
+            image_seal=image_seal,
+            commit_guard=_commit_guard(config),
+        )
+        clean = seal is not None and seal.clean
+        _publish_worker_status(
+            config, "reclaim-seal",
+            status="complete" if clean else "failed",
+            failure_category=None if clean else "reclaim",
+            reason=None if clean else "reclaim seal is not clean",
+        )
+        return 0 if clean else 1
+    except Exception as exc:  # noqa: BLE001 - preserve stage failure evidence
+        _publish_worker_status(
+            config, "reclaim-seal", status="failed", failure_category="reclaim",
+            reason=f"{type(exc).__name__}: {exc}",
+        )
+        return 1
 
 
 def _metadata_result_from_status(
     config: _WorkerConfig, status: Mapping[str, Any] | None
 ) -> MetadataPassResult:
     """Recover typed metadata-stage evidence for the terminal finalizer."""
-    if status is None or status.get("status") != "complete":
-        reason = (
-            "metadata stage status is missing"
-            if status is None
-            else str(status.get("reason") or "metadata stage failed")
-        )
+    authority, reason = _metadata_prerequisite(config, status)
+    if reason is not None:
         return MetadataPassResult(0, ((config.output_dir, reason),), None)
-    authority = _authority_from_payload(status.get("authority"))
-    if authority is None and not config.dry_run:
-        return MetadataPassResult(
-            0,
-            ((config.output_dir, "metadata stage authority is missing"),),
-            None,
-        )
+    assert status is not None
     return MetadataPassResult(
-        int(status.get("headers_migrated", 0)), (), authority
+        status["headers_migrated"], (), authority
     )
 
 
@@ -571,20 +706,39 @@ def _image_report(config: _WorkerConfig) -> tuple[MigrationReport, tuple[tuple[P
             )
             continue
         raw = status.get("result")
-        if not isinstance(raw, Mapping):
+        expected_result_fields = {
+            "index", "dataset", "stem", "work_id", "converted",
+            "table_installed", "overlay_rendered", "marker_digest", "skipped",
+        }
+        if (
+            not isinstance(raw, Mapping)
+            or set(raw) != expected_result_fields
+            or not isinstance(raw.get("index"), int)
+            or isinstance(raw.get("index"), bool)
+            or not all(
+                isinstance(raw.get(field), str)
+                for field in ("dataset", "stem", "work_id", "marker_digest")
+            )
+            or not all(
+                isinstance(raw.get(field), bool)
+                for field in (
+                    "converted", "table_installed", "overlay_rendered", "skipped"
+                )
+            )
+        ):
             failures.append((task.store_path, "image result evidence is missing"))
             continue
         results.append(
             MigrationImageResult(
-                index=int(raw["index"]),
-                dataset=str(raw["dataset"]),
-                stem=str(raw["stem"]),
-                work_id=str(raw["work_id"]),
-                converted=bool(raw["converted"]),
-                table_installed=bool(raw["table_installed"]),
-                overlay_rendered=bool(raw["overlay_rendered"]),
-                marker_digest=str(raw["marker_digest"]),
-                skipped=bool(raw["skipped"]),
+                index=raw["index"],
+                dataset=raw["dataset"],
+                stem=raw["stem"],
+                work_id=raw["work_id"],
+                converted=raw["converted"],
+                table_installed=raw["table_installed"],
+                overlay_rendered=raw["overlay_rendered"],
+                marker_digest=raw["marker_digest"],
+                skipped=raw["skipped"],
             )
         )
     return _report_from_image_results(tasks, results), tuple(failures)
@@ -600,11 +754,43 @@ def _placeholder_image_seal(config: _WorkerConfig, reason: str) -> MigrationImag
         clean=False,
         failures=(reason,),
         seal_path=(
-            config.control_root
-            / "migration"
-            / config.generation
-            / "image_seal.json"
+            migration_image_seal_path(config.control_root, config.generation)
         ),
+    )
+
+
+def _publish_terminal_and_close(
+    config: _WorkerConfig,
+    *,
+    succeeded: bool,
+    failure_category: str | None,
+    reason: str | None,
+    report: MigrationReport,
+) -> None:
+    """Durably publish terminal evidence, then and only then close lifecycle."""
+    if config.dry_run:
+        _publish_worker_status(
+            config, "terminal",
+            status="complete" if succeeded else "failed",
+            failure_category=failure_category,
+            reason=reason,
+        )
+    else:
+        publish_migration_terminal_status(
+            config.output_dir,
+            generation=config.generation,
+            succeeded=succeeded,
+            failure_category=failure_category,
+            reason=reason,
+            report=report,
+            commit_guard=_commit_guard(config),
+            control_root=config.control_root,
+        )
+    close_migration_generation(
+        config.lifecycle_root,
+        generation=config.generation,
+        succeeded=succeeded,
+        reason=reason,
     )
 
 
@@ -623,29 +809,9 @@ def _run_finalizer_worker(config: _WorkerConfig) -> int:
         report = MigrationReport(
             publication_failures=((config.control_root, reason),)
         )
-        if config.dry_run:
-            _publish_worker_status(
-                config,
-                "terminal",
-                status="failed",
-                failure_category="completion",
-                reason=reason,
-            )
-        else:
-            publish_migration_terminal_status(
-                config.output_dir,
-                generation=config.generation,
-                succeeded=False,
-                failure_category="completion",
-                reason=reason,
-                report=report,
-                commit_guard=_commit_guard(config),
-            )
-        close_migration_generation(
-            config.lifecycle_root,
-            generation=config.generation,
-            succeeded=False,
-            reason=reason,
+        _publish_terminal_and_close(
+            config, succeeded=False, failure_category="completion",
+            reason=reason, report=report,
         )
         return 1
     if config.dry_run:
@@ -668,33 +834,19 @@ def _run_finalizer_worker(config: _WorkerConfig) -> int:
             header_failures=metadata_result.failures,
             failed=report.failed + image_failures,
         )
-        _publish_worker_status(
-            config,
-            "terminal",
-            status="complete" if failure_category is None else "failed",
-            failure_category=failure_category,
-            reason=reason,
-        )
-        close_migration_generation(
-            config.lifecycle_root,
-            generation=config.generation,
-            succeeded=failure_category is None,
-            reason=reason,
+        _publish_terminal_and_close(
+            config, succeeded=failure_category is None,
+            failure_category=failure_category, reason=reason, report=final_report,
         )
         return 0 if failure_category is None and final_report.ok else 1
 
-    image_seal_path = (
-        config.control_root / "migration" / config.generation / "image_seal.json"
-    )
+    image_seal_path = migration_image_seal_path(config.control_root, config.generation)
     image_seal = _seal_from_path(image_seal_path) or _placeholder_image_seal(
         config, "image seal is missing"
     )
     reclaim_seal = (
         _reclaim_seal_from_path(
-            config.control_root
-            / "migration"
-            / config.generation
-            / "reclaim_seal.json"
+            migration_reclaim_seal_path(config.control_root, config.generation)
         )
         if config.delete_sources
         else None
@@ -733,23 +885,10 @@ def _run_finalizer_worker(config: _WorkerConfig) -> int:
             publication_failures=report.publication_failures
             + ((config.output_dir, reason),),
         )
-        try:
-            publish_migration_terminal_status(
-                config.output_dir,
-                generation=config.generation,
-                succeeded=False,
-                failure_category="completion",
-                reason=reason,
-                report=failed_report,
-                commit_guard=_commit_guard(config),
-            )
-        finally:
-            close_migration_generation(
-                config.output_dir,
-                generation=config.generation,
-                succeeded=False,
-                reason=reason,
-            )
+        _publish_terminal_and_close(
+            config, succeeded=False, failure_category="completion",
+            reason=reason, report=failed_report,
+        )
         return 1
 
 

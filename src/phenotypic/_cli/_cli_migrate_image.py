@@ -814,7 +814,10 @@ def reclaim_image_sources(
         path for path in intended if _source_artifact_state(path).exists
     )
     if not intended and not reasons:
-        reasons.append("no migration sources were requested for reclamation")
+        # Discovery legitimately yields a store-only task after a previous
+        # generation reclaimed its sources.  The current marker has already
+        # been revalidated above, so this is authenticated idempotent success.
+        pass
     elif intended and not any(
         state.exists for state in (hdf_prestate, parquet_prestate)
     ) and not reasons:

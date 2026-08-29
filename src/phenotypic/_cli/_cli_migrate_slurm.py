@@ -21,6 +21,7 @@ from phenotypic.sdk_.slurm import (
 
 from ._cli_migrate_manifest import (
     discover_migration_tasks,
+    validate_migration_generation,
     write_migration_manifest,
 )
 from ._cli_slurm_submission import (
@@ -48,9 +49,13 @@ def _dry_control_root(output_dir: Path, generation: str) -> Path:
         os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")
     ).expanduser()
     run_digest = hashlib.sha256(str(output_dir.resolve()).encode()).hexdigest()[:20]
-    return (
+    control_root = (
         cache_base / "phenotypic" / "migration" / run_digest / generation
     ).resolve()
+    scientific_root = output_dir.resolve()
+    if control_root == scientific_root or control_root.is_relative_to(scientific_root):
+        raise ValueError("dry-run control root must be outside scientific output")
+    return control_root
 
 
 def _migration_control_root(
@@ -126,8 +131,7 @@ def generate_migration_slurm_plan(
 ) -> MigrationSlurmPlan:
     """Build one bounded flat migration chain without submitting jobs."""
     output_dir = Path(output_dir).resolve()
-    if not generation:
-        raise ValueError("migration generation must be non-empty")
+    generation = validate_migration_generation(generation)
     tasks = tuple(discover_migration_tasks(output_dir))
     limit = _chunk_limit()
     control_root = _migration_control_root(

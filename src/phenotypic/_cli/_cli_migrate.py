@@ -187,6 +187,7 @@ def publish_migration_terminal_status(
     reason: str | None,
     report: MigrationReport,
     commit_guard: CommitGuard | None = None,
+    control_root: Path | None = None,
 ) -> Path:
     """Atomically publish typed attempt status before lifecycle closure."""
     if succeeded:
@@ -196,9 +197,12 @@ def publish_migration_terminal_status(
         raise ValueError("failed migration status requires a category and reason")
     elif failure_category not in _MIGRATION_FAILURE_CATEGORIES:
         raise ValueError(f"unknown migration failure category: {failure_category}")
-    path = migration_terminal_status_path(
-        phenotypic_cache_dir(output_dir), generation
+    status_root = (
+        phenotypic_cache_dir(output_dir)
+        if control_root is None
+        else Path(control_root).resolve()
     )
+    path = migration_terminal_status_path(status_root, generation)
     atomic_write_json(
         path,
         {
@@ -960,6 +964,7 @@ def finalize_migration_attempt(
         reason=reason,
         report=final_report,
         commit_guard=commit_guard,
+        control_root=control_root,
     )
     status_durable = True
     if status_durable:

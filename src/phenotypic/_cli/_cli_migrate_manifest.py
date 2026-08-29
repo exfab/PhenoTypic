@@ -183,6 +183,11 @@ def _safe_generation(value: object) -> str:
     return _safe_identity_component(value, "generation")
 
 
+def validate_migration_generation(value: object) -> str:
+    """Return a generation safe to use as one control-tree component."""
+    return _safe_generation(value)
+
+
 def _migration_generation_dir(control_root: Path, generation: str) -> Path:
     """Return the private authority root for one migration generation."""
     return Path(control_root).absolute() / "migration_generations" / _safe_generation(
