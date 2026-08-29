@@ -4,26 +4,35 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import replace
+from datetime import datetime
 import json
 import os
 from pathlib import Path
 import shutil
+from types import SimpleNamespace
 
 import h5py
+import numpy as np
 import pandas as pd
 from PIL import Image as PILImage
 import pytest
 
-from phenotypic._cli._cli_completion import valid_image_success
+from phenotypic._cli._cli_completion import (
+    publish_image_success,
+    valid_image_success,
+)
 from phenotypic._cli._cli_migrate_image import migrate_image_task
 from phenotypic._cli._cli_migrate_manifest import MigrationImageTask
 from phenotypic._cli._cli_overlay_rendering import overlay_output_manager
 from phenotypic._cli._cli_overlay_rendering import valid_migration_overlay
+from phenotypic._cli._cli_state_management import save_processing_state
+from phenotypic._cli._cli_types import DatasetState, ProcessingState
 from phenotypic._cli._embedded_measurement_tables import (
     prepare_embedded_measurement_table,
 )
 from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
+    image_completion_marker_path,
     load_image_from_store,
     replace_embedded_measurement_table,
 )
@@ -77,9 +86,7 @@ def _migration_task(
         store_path=output_dir / "results" / "ds" / "zarr" / "img.ome.zarr",
         measurement_path=measurement_path,
         overlay_path=output_dir / "deliverables" / "overlays" / "ds" / "img.png",
-        marker_path=(
-            output_dir / ".phenotypic" / "progress" / "completed" / "ds" / "img.json"
-        ),
+        marker_path=image_completion_marker_path(output_dir, "ds", "img"),
     )
 
 
@@ -128,6 +135,70 @@ def _overlay_size(task: MigrationImageTask) -> tuple[int, int]:
         return image.size
 
 
+def _install_fast_migrated_artifacts(
+    task: MigrationImageTask,
+) -> SimpleNamespace:
+    """Install marker-describable artifacts without invoking Zarr's sync bridge."""
+    task.store_path.mkdir(parents=True)
+    (task.store_path / "zarr.json").write_bytes(b'{"zarr_format": 3}')
+    embedded = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+    embedded.parent.mkdir(parents=True)
+    embedded.write_bytes(b"embedded measurements")
+    task.overlay_path.parent.mkdir(parents=True)
+    PILImage.new("RGB", (6, 4), "red").save(task.overlay_path, format="PNG")
+    return SimpleNamespace(
+        gray=np.zeros((4, 6), dtype=np.uint8),
+        num_objects=1,
+    )
+
+
+def _save_canonical_work_id(output_dir: Path, work_id: str) -> None:
+    """Persist one processing-state-authorized work ID for the fast fixture."""
+    now = datetime.now()
+    save_processing_state(
+        ProcessingState(
+            version="3.0.0",
+            pipeline_path=output_dir / "pipeline.json",
+            input_path=output_dir / "input",
+            output_dir=output_dir,
+            timestamp=now,
+            execution_mode="local",
+            last_updated=now,
+            datasets={"ds": DatasetState(initial_images={"img.tif"})},
+            config={
+                "success_markers_required": True,
+                "work_ids": {"ds": {"img.tif": work_id}},
+            },
+        ),
+        output_dir,
+    )
+
+
+def _patch_fast_migrated_reads(
+    monkeypatch: pytest.MonkeyPatch,
+    task: MigrationImageTask,
+    image: SimpleNamespace,
+) -> None:
+    """Bypass only Zarr decoding while exercising the real marker state machine."""
+    from phenotypic._cli import _cli_migrate_image
+
+    monkeypatch.setattr(
+        _cli_migrate_image,
+        "valid_staged_store",
+        lambda path: path == task.store_path,
+    )
+    monkeypatch.setattr(
+        _cli_migrate_image,
+        "_valid_embedded_measurement_contract",
+        lambda path: path == task.store_path,
+    )
+    monkeypatch.setattr(
+        _cli_migrate_image,
+        "load_image_from_store",
+        lambda path: image if path == task.store_path else None,
+    )
+
+
 @pytest.mark.parametrize(
     ("payload", "expected"),
     [("png", True), ("jpeg", False), ("wrong-size", False), ("corrupt", False)],
@@ -173,6 +244,57 @@ def test_hdf_only_zero_object_image_completes_without_inventing_a_table(
         dataset=task.dataset,
         image_stem=task.stem,
         work_id=result.work_id,
+    )
+
+
+def test_legacy_only_marker_is_republished_with_complete_migrated_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Generic legacy evidence cannot certify the completed migrated task."""
+    output_dir, task = _migration_task(tmp_path)
+    image = _install_fast_migrated_artifacts(task)
+    _save_canonical_work_id(output_dir, "canonical-work-id")
+    assert task.hdf_path is not None
+    publish_image_success(
+        output_dir,
+        work_id="canonical-work-id",
+        dataset=task.dataset,
+        relative_image_path="ds/img.tif",
+        image_stem=task.stem,
+        mode="full",
+        attempt_id="legacy-attempt",
+        lifecycle_epoch="legacy-epoch",
+        artifacts={"hdf": task.hdf_path},
+    )
+    assert valid_image_success(
+        output_dir,
+        dataset=task.dataset,
+        image_stem=task.stem,
+        work_id="canonical-work-id",
+    )
+    _patch_fast_migrated_reads(monkeypatch, task, image)
+
+    result = migrate_image_task(
+        output_dir,
+        task,
+        metadata_csv=None,
+        overlay_alpha=0.3,
+        dry_run=False,
+    )
+
+    marker = json.loads(task.marker_path.read_text(encoding="utf-8"))
+    assert result.skipped is False
+    assert set(marker["artifacts"]) == {"store", "overlay", "measurements"}
+    assert marker["artifacts"]["store"]["path"] == (
+        task.store_path.relative_to(output_dir).as_posix()
+    )
+    assert marker["artifacts"]["overlay"]["path"] == (
+        task.overlay_path.relative_to(output_dir).as_posix()
+    )
+    assert marker["artifacts"]["measurements"]["path"] == (
+        (task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH)
+        .relative_to(output_dir)
+        .as_posix()
     )
 
 
@@ -270,6 +392,51 @@ def test_complete_artifacts_republish_only_missing_or_invalid_marker(
         task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
     ).read_bytes() == table_before
     assert task.overlay_path.read_bytes() == overlay_before
+
+
+def test_conflicting_marker_work_id_is_repaired_with_processing_state_authority(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stale marker identity cannot block canonical work-ID repair."""
+    output_dir, task = _migration_task(tmp_path)
+    image = _install_fast_migrated_artifacts(task)
+    _save_canonical_work_id(output_dir, "canonical-work-id")
+    embedded = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+    publish_image_success(
+        output_dir,
+        work_id="stale-work-id",
+        dataset=task.dataset,
+        relative_image_path="ds/img.tif",
+        image_stem=task.stem,
+        mode="full",
+        attempt_id="old-attempt",
+        lifecycle_epoch="old-epoch",
+        artifacts={
+            "store": task.store_path,
+            "overlay": task.overlay_path,
+            "measurements": embedded,
+        },
+    )
+    _patch_fast_migrated_reads(monkeypatch, task, image)
+
+    result = migrate_image_task(
+        output_dir,
+        task,
+        metadata_csv=None,
+        overlay_alpha=0.3,
+        dry_run=False,
+    )
+
+    marker = json.loads(task.marker_path.read_text(encoding="utf-8"))
+    assert result.work_id == "canonical-work-id"
+    assert result.skipped is False
+    assert marker["work_id"] == "canonical-work-id"
+    assert valid_image_success(
+        output_dir,
+        dataset=task.dataset,
+        image_stem=task.stem,
+        work_id="canonical-work-id",
+    )
 
 
 def test_complete_image_is_a_byte_preserving_no_op(tmp_path: Path) -> None:
@@ -502,6 +669,47 @@ def test_reclaim_records_exact_prestate_poststate_and_deleted_paths(
     assert faithful_calls == [(task.hdf_path, task.store_path)]
 
 
+def test_reclaim_rejects_a_generically_valid_legacy_only_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reclaim requires marker authority over migrated, not deletable, artifacts."""
+    from phenotypic._cli._cli_migrate_image import reclaim_image_sources
+
+    output_dir, task = _migration_task(
+        tmp_path, with_measurements=False, zero_objects=True
+    )
+    _save_canonical_work_id(output_dir, "canonical-work-id")
+    assert task.hdf_path is not None
+    publish_image_success(
+        output_dir,
+        work_id="canonical-work-id",
+        dataset=task.dataset,
+        relative_image_path="ds/img.tif",
+        image_stem=task.stem,
+        mode="full",
+        attempt_id="legacy-attempt",
+        lifecycle_epoch="legacy-epoch",
+        artifacts={"hdf": task.hdf_path},
+    )
+    assert valid_image_success(
+        output_dir,
+        dataset=task.dataset,
+        image_stem=task.stem,
+        work_id="canonical-work-id",
+    )
+    monkeypatch.setattr(
+        "phenotypic.sdk_._hdf_to_zarr._conversion_is_faithful",
+        lambda _source, _store: True,
+    )
+
+    result = reclaim_image_sources(output_dir, task, metadata_csv=None)
+
+    assert task.hdf_path.is_file()
+    assert result.deleted_paths == ()
+    assert result.retained_paths == (task.hdf_path,)
+    assert "marker is not authoritative" in (result.reason or "")
+
+
 def test_reclaim_retains_hdf_when_full_conversion_comparison_refuses(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -520,6 +728,76 @@ def test_reclaim_retains_hdf_when_full_conversion_comparison_refuses(
     result = reclaim_image_sources(output_dir, task, metadata_csv=None)
 
     assert task.hdf_path is not None and task.hdf_path.is_file()
+    assert result.deleted_paths == ()
+    assert result.retained_paths == (task.hdf_path,)
+    assert "does not match" in (result.reason or "")
+
+
+def test_reclaim_rechecks_hdf_fidelity_after_guard_entry_mutates_store(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A store changed while waiting for the lifecycle lock retains its HDF."""
+    from phenotypic._cli import _cli_migrate_image
+    from phenotypic.sdk_ import _hdf_to_zarr
+
+    output_dir, task = _migration_task(
+        tmp_path, with_measurements=False, zero_objects=True
+    )
+    task.store_path.mkdir(parents=True)
+    store_authority = task.store_path / "zarr.json"
+    store_authority.write_bytes(b"faithful")
+    monkeypatch.setattr(
+        _cli_migrate_image,
+        "_configured_work_id",
+        lambda _root, _dataset, _stem: "work-id",
+    )
+    monkeypatch.setattr(
+        _cli_migrate_image,
+        "_current_marker_digest",
+        lambda _root, _task, _work_id: "a" * 64,
+    )
+    monkeypatch.setattr(
+        _cli_migrate_image,
+        "_marker_still_current",
+        lambda _root, _task, _work_id, _digest: True,
+    )
+    monkeypatch.setattr(
+        _hdf_to_zarr,
+        "_marker_authority_permits_unlink",
+        lambda _root, _dataset, _stem: True,
+    )
+    guard_held = False
+    fidelity_guard_states: list[bool] = []
+
+    def faithful_after_latest_store_bytes(_source: Path, _store: Path) -> bool:
+        fidelity_guard_states.append(guard_held)
+        return store_authority.read_bytes() == b"faithful"
+
+    monkeypatch.setattr(
+        _hdf_to_zarr,
+        "_conversion_is_faithful",
+        faithful_after_latest_store_bytes,
+    )
+
+    @contextmanager
+    def mutate_store_on_guard_entry():
+        nonlocal guard_held
+        guard_held = True
+        store_authority.write_bytes(b"changed while waiting")
+        try:
+            yield
+        finally:
+            guard_held = False
+
+    result = _cli_migrate_image.reclaim_image_sources(
+        output_dir,
+        task,
+        metadata_csv=None,
+        commit_guard=lambda: mutate_store_on_guard_entry(),
+    )
+
+    assert task.hdf_path is not None and task.hdf_path.is_file()
+    assert fidelity_guard_states == [True]
     assert result.deleted_paths == ()
     assert result.retained_paths == (task.hdf_path,)
     assert "does not match" in (result.reason or "")

@@ -10,6 +10,8 @@ from pathlib import Path
 import pandas as pd
 
 from phenotypic._cli._cli_completion import (
+    ARTIFACT_KIND_FILE,
+    ARTIFACT_KIND_STORE,
     publish_image_success,
     valid_image_success,
 )
@@ -124,16 +126,78 @@ def _existing_marker_identity(
         "image_stem"
     ) not in {None, stem}:
         return defaults
-    existing_work_id = marker.get("work_id")
-    if isinstance(existing_work_id, str) and existing_work_id != work_id:
-        raise RuntimeError(
-            "existing marker work_id conflicts with processing state"
-        )
-    for field in defaults:
+    for field in (
+        "relative_image_path",
+        "mode",
+        "attempt_id",
+        "lifecycle_epoch",
+    ):
         value = marker.get(field)
         if isinstance(value, str) and value:
             defaults[field] = value
     return defaults
+
+
+def _migration_marker_artifacts(
+    task: MigrationImageTask,
+    *,
+    table_authoritative: bool,
+) -> dict[str, Path]:
+    """Return the exact durable migrated artifacts a marker must declare."""
+    artifacts = {
+        "store": task.store_path,
+        "overlay": task.overlay_path,
+    }
+    if table_authoritative:
+        artifacts["measurements"] = (
+            task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+        )
+    return artifacts
+
+
+def _valid_migration_marker(
+    output_dir: Path,
+    task: MigrationImageTask,
+    work_id: str,
+    *,
+    table_authoritative: bool | None = None,
+) -> bool:
+    """Return whether a marker binds exactly this task's migrated authority."""
+    embedded = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+    if table_authoritative is None:
+        table_authoritative = embedded.is_file()
+    expected = _migration_marker_artifacts(
+        task,
+        table_authoritative=table_authoritative,
+    )
+    if not valid_image_success(
+        output_dir,
+        dataset=task.dataset,
+        image_stem=task.stem,
+        work_id=work_id,
+    ):
+        return False
+    try:
+        marker = json.loads(task.marker_path.read_text(encoding="utf-8"))
+        declared = marker["artifacts"]
+        if not isinstance(declared, dict) or set(declared) != set(expected):
+            return False
+        output_root = output_dir.resolve()
+        for name, path in expected.items():
+            descriptor = declared[name]
+            if not isinstance(descriptor, dict):
+                return False
+            relative = path.resolve(strict=True).relative_to(output_root)
+            expected_kind = (
+                ARTIFACT_KIND_STORE if name == "store" else ARTIFACT_KIND_FILE
+            )
+            if descriptor.get("path") != relative.as_posix() or descriptor.get(
+                "kind"
+            ) != expected_kind:
+                return False
+    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
+        return False
+    return True
 
 
 def _image_plane_shape(image: object) -> tuple[int, ...]:
@@ -203,11 +267,11 @@ def _dry_run_result(
         store_valid
         and (table_valid or getattr(image, "num_objects") == 0)
         and overlay_valid
-        and valid_image_success(
+        and _valid_migration_marker(
             output_dir,
-            dataset=task.dataset,
-            image_stem=task.stem,
-            work_id=work_id,
+            task,
+            work_id,
+            table_authoritative=table_valid,
         )
     )
     marker_digest = (
@@ -290,24 +354,20 @@ def migrate_image_task(
             raise RuntimeError("migrated overlay validation failed")
         overlay_rendered = True
 
-    marker_valid = valid_image_success(
+    marker_valid = _valid_migration_marker(
         output_dir,
-        dataset=task.dataset,
-        image_stem=task.stem,
-        work_id=work_id,
+        task,
+        work_id,
+        table_authoritative=table_valid,
     )
     if not marker_valid:
         identity = _existing_marker_identity(
             output_dir, task.dataset, task.stem, work_id
         )
-        artifacts = {
-            "store": task.store_path,
-            "overlay": task.overlay_path,
-        }
-        if table_valid:
-            artifacts["measurements"] = (
-                task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
-            )
+        artifacts = _migration_marker_artifacts(
+            task,
+            table_authoritative=table_valid,
+        )
         marker_path = publish_image_success(
             output_dir,
             work_id=identity["work_id"],
@@ -330,11 +390,11 @@ def migrate_image_task(
             raise RuntimeError("embedded measurement table validation failed")
         if not valid_migration_overlay(task.overlay_path, expected_shape):
             raise RuntimeError("migrated overlay validation failed")
-        if not valid_image_success(
+        if not _valid_migration_marker(
             output_dir,
-            dataset=task.dataset,
-            image_stem=task.stem,
-            work_id=work_id,
+            task,
+            work_id,
+            table_authoritative=table_valid,
         ):
             raise RuntimeError("migrated marker validation failed")
         marker_digest = hashlib.sha256(task.marker_path.read_bytes()).hexdigest()
@@ -406,12 +466,7 @@ def _marker_still_current(
     """Revalidate exact marker authority at an unlink commit point."""
     return (
         bool(marker_digest)
-        and valid_image_success(
-            output_dir,
-            dataset=task.dataset,
-            image_stem=task.stem,
-            work_id=work_id,
-        )
+        and _valid_migration_marker(output_dir, task, work_id)
         and _current_marker_digest(output_dir, task, work_id) == marker_digest
     )
 
@@ -446,13 +501,7 @@ def reclaim_image_sources(
         reasons.append("the current image marker is not authoritative")
     elif hdf_prestate.exists:
         assert task.hdf_path is not None
-        if not _hdf_to_zarr._conversion_is_faithful(
-            task.hdf_path, task.store_path
-        ):
-            reasons.append(
-                "HDF re-read of the converted store does not match the source"
-            )
-        elif not _hdf_to_zarr._marker_authority_permits_unlink(
+        if not _hdf_to_zarr._marker_authority_permits_unlink(
             output_dir, task.dataset, task.stem
         ):
             reasons.append("HDF marker authority does not permit source unlink")
@@ -466,6 +515,12 @@ def reclaim_image_sources(
                     output_dir, task, work_id, marker_digest
                 ):
                     reasons.append("HDF marker authority changed before unlink")
+                elif not _hdf_to_zarr._conversion_is_faithful(
+                    task.hdf_path, task.store_path
+                ):
+                    reasons.append(
+                        "HDF re-read of the converted store does not match the source"
+                    )
                 else:
                     try:
                         task.hdf_path.unlink()
