@@ -34,7 +34,7 @@ STORE_IMAGE_PAIRS = "store-image-pairs"
 #: Ordered list of card ids currently rendered in the cards column.
 STORE_CARD_LIST = "store-card-list"
 
-#: Bool: when true, OpenSeadragon viewers across all cards are linked so
+#: Bool: when true, the Viv stages across all cards are linked so
 #: pan/zoom on one mirrors to the others.
 STORE_LOCK_VIEWS = "store-lock-views"
 
@@ -88,7 +88,7 @@ FILTER_TOGGLE_BADGE_ID = "filter-toggle-badge"
 # ---------------------------------------------------------------------------
 
 #: Parent ``<div>`` wrapping every viewer card. The clientside
-#: ``MutationObserver`` watches this node so it can dispose OSD viewers
+#: ``MutationObserver`` watches this node so it can destroy Viv stages
 #: when their card is removed from the DOM.
 CARDS_CONTAINER_ID = "cards-container"
 
@@ -339,20 +339,141 @@ def card_picker_next_id(idx: str) -> Dict[str, str]:
     return {"type": "card-picker-next", "index": idx}
 
 
-def card_osd_div_id(idx: str) -> Dict[str, str]:
-    """Build the pattern-matching id for a card's OpenSeadragon container.
+def card_stage_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's Viv canvas container.
 
-    The clientside JS reads the ``index`` to key the
-    ``Map<divId, OSD.Viewer>`` so each card has exactly one viewer at any
-    time.
+    The clientside bridge reads the ``index`` to key its
+    ``Map<containerId, instance>`` so each card has exactly one deck.gl
+    viewer at any time. Named for the *stage*, not for a library: the
+    element is a full-canvas image surface, and the pixel client mounted
+    into it changed once already.
 
     Args:
         idx: Owning card's ``index``.
 
     Returns:
-        Dict of shape ``{"type": "card-osd-div", "index": idx}``.
+        Dict of shape ``{"type": "card-viv-stage", "index": idx}``.
     """
-    return {"type": "card-osd-div", "index": idx}
+    return {"type": "card-viv-stage", "index": idx}
+
+
+def card_source_store_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's resolved source spec.
+
+    Payload is :func:`~phenotypic.gui.results_viewer._store_source
+    .build_source_spec`'s dict, which crosses to
+    ``window.phenotypicViv.setSource`` unmodified, or ``None`` when the
+    card holds no store-backed image.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-source-spec", "index": idx}``.
+    """
+    return {"type": "card-source-spec", "index": idx}
+
+
+def card_display_state_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's layer display state.
+
+    Payload is ``{"seriesPath": str, "labelVisible": bool, "opacity":
+    {"image": float, "labels": float}}`` -- what the Layers panel has been
+    set to, kept apart from the store-derived spec so a re-source does not
+    silently reset it.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-display-state", "index": idx}``.
+    """
+    return {"type": "card-display-state", "index": idx}
+
+
+def card_layers_panel_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's floating Layers panel body.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-layers-panel", "index": idx}``.
+    """
+    return {"type": "card-layers-panel", "index": idx}
+
+
+def card_layer_eye_id(idx: str, layer: str) -> Dict[str, str]:
+    """Build the pattern-matching id for one Layers-panel visibility button.
+
+    Carries the layer name as a third key so one MATCH/ALL callback covers
+    every row of one card, whatever series the store turned out to hold.
+
+    Args:
+        idx: Owning card's ``index``.
+        layer: Series name, or the objmap label name.
+
+    Returns:
+        Dict of shape ``{"type": "card-layer-eye", "index": idx,
+        "layer": layer}``.
+    """
+    return {"type": "card-layer-eye", "index": idx, "layer": layer}
+
+
+def card_layer_opacity_id(idx: str, layer: str) -> Dict[str, str]:
+    """Build the pattern-matching id for one Layers-panel opacity slider.
+
+    Args:
+        idx: Owning card's ``index``.
+        layer: Series name, or the objmap label name.
+
+    Returns:
+        Dict of shape ``{"type": "card-layer-opacity", "index": idx,
+        "layer": layer}``.
+    """
+    return {"type": "card-layer-opacity", "index": idx, "layer": layer}
+
+
+def card_pyramid_readout_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's served-level readout.
+
+    Written by the clientside bridge from the facade's ``onLevelChange``,
+    never from a server-side level computation: the level in use is
+    deck.gl's per-frame choice, and a readout labelled "the level actually
+    being served" is trusted exactly when diagnosing the bug a
+    server-side number would misreport.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-pyramid-readout", "index": idx}``.
+    """
+    return {"type": "card-pyramid-readout", "index": idx}
+
+
+def card_zoom_readout_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's zoom readout.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-zoom-readout", "index": idx}``.
+    """
+    return {"type": "card-zoom-readout", "index": idx}
+
+
+def card_source_note_id(idx: str) -> Dict[str, str]:
+    """Build the pattern-matching id for a card's provenance footer note.
+
+    Args:
+        idx: Owning card's ``index``.
+
+    Returns:
+        Dict of shape ``{"type": "card-source-note", "index": idx}``.
+    """
+    return {"type": "card-source-note", "index": idx}
 
 
 def card_details_toggle_id(idx: str) -> Dict[str, str]:
@@ -396,7 +517,7 @@ def card_state_store_id(idx: str) -> Dict[str, str]:
 
     The store payload is a ``{"dataset": str, "stem": str}`` dict (or
     ``None`` for an unselected card); a clientside callback reacts to
-    changes here to (re-)mount the OpenSeadragon viewer.
+    changes here to resolve the card's Viv source spec.
 
     Args:
         idx: Owning card's ``index``.
@@ -467,14 +588,14 @@ def card_info_chip_count_id(idx: str) -> Dict[str, str]:
 INITIAL_CARD_TRIGGER_ID = "initial-card-trigger"
 
 #: Hidden ``dcc.Store`` written by the clientside callback that bridges
-#: per-card image selections to ``window.__phenotypicResultsViewer
-#: .applyImageSelection``. Carries a millisecond timestamp purely as a
+#: per-card source specs to ``window.__phenotypicResultsViewer
+#: .applyPlateSources``. Carries a millisecond timestamp purely as a
 #: change-trigger; the data itself is unused on the Python side.
-OSD_MOUNT_TRIGGER_ID = "osd-mount-trigger"
+VIV_MOUNT_TRIGGER_ID = "viv-mount-trigger"
 
 #: Hidden ``dcc.Store`` written by the clientside callback that bridges
 #: ``STORE_LOCK_VIEWS`` to ``window.__phenotypicResultsViewer.setLockViews``.
-#: Same trigger-only semantics as :data:`OSD_MOUNT_TRIGGER_ID`.
+#: Same trigger-only semantics as :data:`VIV_MOUNT_TRIGGER_ID`.
 LOCK_VIEWS_EFFECT_ID = "lock-views-effect"
 
 #: Hidden ``dcc.Store`` written by the clientside callback that toggles
@@ -514,12 +635,6 @@ TAB_HEATMAP_ID = "tab-heatmap"
 #: cutoff finder never runs while the user is curating on another tab.
 TAB_ERROR_ID = "tab-error"
 
-#: ``dbc.Tab`` value for the Timeline view (the 6th tab). The body is a
-#: focus-and-navigate matrix of overlay thumbnails over a (row × time)
-#: axis pair drawn from ``OutputRoot.master_df`` (spec §6/§16). Kept
-#: mounted alongside the others; switching is CSS-only.
-TAB_TIMELINE_ID = "tab-timeline"
-
 
 # ---------------------------------------------------------------------------
 # QC stores (Wave D mounts the stores; Wave E writes to them)
@@ -551,6 +666,13 @@ COLONY_X_AXIS_DROPDOWN_ID = "colony-x-axis-dropdown"
 #: Dropdown selecting the measurement column plotted on the colony-grid
 #: y-axis (or used as the secondary sort key when laying out the grid).
 COLONY_Y_AXIS_DROPDOWN_ID = "colony-y-axis-dropdown"
+
+#: Dropdown selecting the measurement column each colony card displays --
+#: as text on the card and as the tint the card is coloured with. Populated
+#: from each store's own declared ``measurement_columns``, so it never offers
+#: a column the measurement route would refuse. An empty picker is a normal
+#: state (a ``--mode process`` run never measured), not a pending one.
+COLONY_MEASUREMENT_DROPDOWN_ID = "colony-measurement-dropdown"
 
 #: Parent ``<div>`` wrapping every colony-cell tile. The clientside layer
 #: queries this node to wire up checkbox / drag-select behaviour.
@@ -597,6 +719,32 @@ COLONY_DIM_PLUS = "colony-dim-plus"
 #: Read-only ``dim 0.60`` readout between the colony stepper's buttons.
 #: Synced from :data:`STORE_TILE_DIM_ALPHA` by the shared readout callback.
 COLONY_DIM_READOUT = "colony-dim-readout"
+
+#: Microscope-stage camera strip controlling every mounted colony tile.
+COLONY_CAMERA_TOOLBAR_ID = "colony-camera-toolbar"
+
+#: Directional buttons apply one bounded shared source-pixel offset.
+COLONY_CAMERA_PAN_UP = "colony-camera-pan-up"
+COLONY_CAMERA_PAN_DOWN = "colony-camera-pan-down"
+COLONY_CAMERA_PAN_LEFT = "colony-camera-pan-left"
+COLONY_CAMERA_PAN_RIGHT = "colony-camera-pan-right"
+
+#: Clear the shared pan offset while retaining the current zoom.
+COLONY_CAMERA_CENTER = "colony-camera-center"
+
+#: Restore the object-centred crop and its fit-derived zoom.
+COLONY_CAMERA_FIT = "colony-camera-fit"
+
+#: Shared zoom controls and actual-pixel shortcut.
+COLONY_CAMERA_ZOOM_OUT = "colony-camera-zoom-out"
+COLONY_CAMERA_ZOOM_IN = "colony-camera-zoom-in"
+COLONY_CAMERA_ONE_TO_ONE = "colony-camera-one-to-one"
+
+#: Live display scale (``21%``, ``100%``) written by the client lifecycle.
+COLONY_CAMERA_ZOOM_READOUT = "colony-camera-zoom-readout"
+
+#: Read-only statement of the grid's one-camera comparison contract.
+COLONY_CAMERA_LINKED_STATUS = "colony-camera-linked-status"
 
 #: Segmented control (``dbc.RadioItems``, button-group style) choosing which
 #: image layer the colony crops source — ``rgb`` / ``detect_mat`` / ``objmap``
@@ -691,6 +839,11 @@ STORE_COLONY_SELECTION_DELTA = "store-colony-selection-delta"
 #: list of ``"<image_file>::<label>"`` keys, so range-selection (shift-click)
 #: in JS can resolve "everything between A and B" without re-querying Dash.
 STORE_COLONY_GRID_ORDER = "store-colony-grid-order"
+
+#: Row-major colony index nearest the browser viewport center. The
+#: client-side scroll observer updates it so server virtualization follows
+#: the user's actual position in grids larger than the mount cap.
+STORE_COLONY_GRID_FOCUS = "store-colony-grid-focus"
 
 
 # ---------------------------------------------------------------------------
@@ -865,7 +1018,15 @@ __all__ = [
     "card_picker_id",
     "card_picker_prev_id",
     "card_picker_next_id",
-    "card_osd_div_id",
+    "card_stage_id",
+    "card_source_store_id",
+    "card_display_state_id",
+    "card_layers_panel_id",
+    "card_layer_eye_id",
+    "card_layer_opacity_id",
+    "card_pyramid_readout_id",
+    "card_zoom_readout_id",
+    "card_source_note_id",
     "card_details_toggle_id",
     "card_details_table_id",
     "card_remove_id",
@@ -875,7 +1036,7 @@ __all__ = [
     "card_info_chip_stem_id",
     "card_info_chip_count_id",
     "INITIAL_CARD_TRIGGER_ID",
-    "OSD_MOUNT_TRIGGER_ID",
+    "VIV_MOUNT_TRIGGER_ID",
     "LOCK_VIEWS_EFFECT_ID",
     "COLONY_SELECTION_EFFECT_ID",
     "TABS_ID",
@@ -884,11 +1045,11 @@ __all__ = [
     "TAB_QC_ID",
     "TAB_HEATMAP_ID",
     "TAB_ERROR_ID",
-    "TAB_TIMELINE_ID",
     "STORE_QC_RECIPE_REVISION",
     "STORE_QC_AUGMENTED_REVISION",
     "COLONY_X_AXIS_DROPDOWN_ID",
     "COLONY_Y_AXIS_DROPDOWN_ID",
+    "COLONY_MEASUREMENT_DROPDOWN_ID",
     "COLONY_GRID_CONTAINER_ID",
     "COLONY_TOOLBAR_ID",
     "COLONY_CROP_SIZE_INFO_ID",
@@ -901,6 +1062,18 @@ __all__ = [
     "COLONY_DIM_MINUS",
     "COLONY_DIM_PLUS",
     "COLONY_DIM_READOUT",
+    "COLONY_CAMERA_TOOLBAR_ID",
+    "COLONY_CAMERA_PAN_UP",
+    "COLONY_CAMERA_PAN_DOWN",
+    "COLONY_CAMERA_PAN_LEFT",
+    "COLONY_CAMERA_PAN_RIGHT",
+    "COLONY_CAMERA_CENTER",
+    "COLONY_CAMERA_FIT",
+    "COLONY_CAMERA_ZOOM_OUT",
+    "COLONY_CAMERA_ZOOM_IN",
+    "COLONY_CAMERA_ONE_TO_ONE",
+    "COLONY_CAMERA_ZOOM_READOUT",
+    "COLONY_CAMERA_LINKED_STATUS",
     "LAYER_TOGGLE",
     "STORE_ACTIVE_LAYER",
     "COLONY_BULK_BAR_ID",
@@ -916,6 +1089,7 @@ __all__ = [
     "STORE_COLONY_SELECTION",
     "STORE_COLONY_SELECTION_DELTA",
     "STORE_COLONY_GRID_ORDER",
+    "STORE_COLONY_GRID_FOCUS",
     "colony_cell_id",
     "colony_cell_remove_btn_id",
     "colony_cell_count_badge_id",

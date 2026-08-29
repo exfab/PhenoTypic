@@ -110,7 +110,7 @@ output_folder/
 |   +-- README.md                     # This file
 +-- results/                          # All dataset results
 {dataset_list}
-|       +-- hdf/                      # Processed images as single .h5 per input (layers + metadata + grid state)
+|       +-- zarr/                     # Processed images as one OME-Zarr store per input (<stem>.ome.zarr: layers + objmap label image + metadata + grid state)
 |       +-- measurements/             # Per-image Parquet measurement files
 +-- .phenotypic/                      # Hidden machine-state cache
 |   +-- processing_state.json         # Continuation/state tracking
@@ -128,8 +128,14 @@ Each dataset directory contains the following folders:
 
 | Folder | Format | Description |
 |--------|--------|-------------|
-| `hdf/` | HDF5 | Processed image (layers + metadata + grid state) saved as a single `.h5` per input image, reloadable via `Image.load_hdf5` / `GridImage.load_hdf5`. |
+| `zarr/` | OME-Zarr (NGFF 0.5) | Processed image (layers + `objmap` label image + metadata + grid state) saved as a single `<stem>.ome.zarr` store directory per input image, reloadable via `Image.load_zarr` / `GridImage.load_zarr`. |
 | `measurements/` | Parquet | Per-object measurements. |
+
+Each `.ome.zarr` store is a standard OME-NGFF image: **napari, QuPath, and
+Vizarr open it directly, with no PhenoTypic install** — drag the store
+directory in, or point the viewer at its path. It carries a resolution
+pyramid, so a viewer reads only the levels and tiles it needs instead of
+decoding the whole plate.
 
 Detection overlay PNGs are written per input image under
 `deliverables/overlays/<dataset>/` (always written for forward runs).

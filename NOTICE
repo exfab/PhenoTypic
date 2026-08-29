@@ -48,6 +48,48 @@ source under that model's own license, which the user must accept.
   attributed here. No FSSDINO code is bundled or redistributed.
   Paper:     https://arxiv.org/abs/2602.07550
 
+Vendored browser bundle (results viewer)
+---------------------------------------
+
+`src/phenotypic/gui/results_viewer/_assets/viv/viv-bundle.min.js` is a
+pre-built IIFE that REDISTRIBUTES the minified code of the components below.
+It is built by hand from the pinned recipe in `tools/viv-bundle/` (there is no
+npm in CI, by design) and committed as an artifact. All five are MIT, which is
+compatible with PhenoTypic's Apache-2.0.
+
+- Viv (@hms-dbmi/viv, @vivjs/*), 2020 viv — OME-Zarr/OME-TIFF pixel sources and
+  deck.gl layers. Bundled: @vivjs/loaders, @vivjs/layers, @vivjs/extensions,
+  @vivjs/constants.
+  Upstream:  https://github.com/hms-dbmi/viv
+  License:   licenses/viv-MIT.txt
+
+- deck.gl (@deck.gl/*), vis.gl contributors — WebGL layer rendering.
+  Upstream:  https://github.com/visgl/deck.gl
+  License:   licenses/deck.gl-MIT.txt
+
+- luma.gl (@luma.gl/*), vis.gl contributors — the GPU abstraction deck.gl and
+  Viv's layers are built on.
+  Upstream:  https://github.com/visgl/luma.gl
+  License:   licenses/luma.gl-MIT.txt
+
+- zarrita.js, Trevor Manz — the Zarr v3 client (chunk grid, sharding codec,
+  codec registry) the pixel sources read through.
+  Upstream:  https://github.com/manzt/zarrita.js
+  License:   licenses/zarrita.js-MIT.txt
+
+- numcodecs.js, Trevor Manz — the wasm zstd/blosc/gzip codecs registered with
+  zarrita before any store is opened. The zstd wasm binary is inlined into the
+  bundle; nothing is fetched at runtime.
+  Upstream:  https://github.com/manzt/numcodecs.js
+  License:   licenses/numcodecs.js-MIT.txt
+
+- vizarr, Trevor Manz — NOT bundled. PhenoTypic's OME-Zarr series and label
+  resolution is written against the same NGFF layout vizarr reads, and vizarr's
+  sources are vendored under `docs/superpowers/specs/` as read-only reference
+  evidence. Attributed here because that logic is adapted, not invented.
+  Upstream:  https://github.com/hms-dbmi/vizarr
+  License:   licenses/vizarr-MIT.txt
+
 Reviewed filamentary-structure method ports
 --------------------------------------------
 

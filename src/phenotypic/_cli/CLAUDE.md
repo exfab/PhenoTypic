@@ -30,23 +30,38 @@ splits it at the detector boundary (`split_pipeline_at_gpu` in
 and runs three content-defined stages. The per-image stage cores live in
 `_cli_staged_workers.py` and are shared by both staged strategies:
 
-1. **Stage 1** `stage1_preprocess_core` — apply pre-detector ops → save the
-   normal `results/<ds>/hdf/<stem>.h5`.
-2. **Stage 2** `stage2_detect_core` — load the input layer (HDF **read-only**),
-   run the resident detector, write a per-image `.npy` objmap **sidecar**
-   (`_cli_sidecar.py`, atomic temp+`os.replace`).
-3. **Stage 3** `stage3_merge_measure_core` — merge the sidecar via the accessor,
-   apply post-ops + `measure(apply_post=False)`, atomically re-save the HDF,
-   **delete the sidecar** (mandatory).
+1. **Stage 1** `stage1_preprocess_core` — apply pre-detector ops → publish the
+   staged OME-Zarr store `results/<ds>/zarr/<stem>.ome.zarr/` (objmap included,
+   as zeros, because `valid_staged_store` requires it).
+2. **Stage 2** `stage2_detect_core` — load the input layer (store **read-only**),
+   run the resident detector, and drop its **Stage-2 signal**: the retained
+   **raw** detector output at
+   `.phenotypic/progress/stage2_raw/<ds>/<stem>.npy`, then a consumable **token**
+   at `.phenotypic/progress/stage2_done/<ds>/<stem>.json` (`_cli_stage2_token.py`,
+   both atomic temp+`os.replace`; raw first, so a crash between them leaves no
+   "done" signal). **Stage 2 does not write into the store** — only the final
+   store needs third-party interop, and an in-store write would be visible to
+   the uncached crop route as raw pre-`drop_frame_background` labels.
+3. **Stage 3** `stage3_merge_measure_core` — replay the **raw** array through the
+   accessor (never the store's own objmap: Stage 3 re-promotes over it, so a
+   retry would refine already-refined labels), apply post-ops +
+   `measure(apply_post=False)`, re-promote the store, then consume the signal —
+   **token first, then the raw array** (mandatory).
 
 **Continuation is automatic and content-defined.** Run the same command again;
 there is no `--resume` flag. Exact terminal failures remain skipped unless
 `--retry-failures` is supplied.
-A missing or invalid HDF selects Stage 1; a valid HDF without a sidecar selects
-Stage 2; and a valid HDF with a sidecar selects Stage 3. Stage 3 writes an atomic
-terminal marker after publishing the parquet, HDF, and plot, then deletes the
-sidecar. The output is
-byte-identical to a single-pass run.
+A missing or invalid store selects Stage 1; a valid store without a complete
+Stage-2 signal selects Stage 2; and a valid store with one selects Stage 3.
+**Every prereq probe tests BOTH halves of the signal** —
+`stage2_result_replayable()` is the one function all five sites call. The token
+is only a flag; Stage 3's actual input is the raw `.npy`, so a
+token-present/raw-missing image is routed back to Stage 2, not into a Stage 3
+that would raise `FileNotFoundError` and be recorded as a terminal *scientific*
+failure. Stage 3 embeds the authoritative Parquet inside the final store transaction,
+publishes the image marker over both the store root and table, then consumes the
+signal. The output is byte-identical to a
+single-pass run.
 
 **Progress events.** Stages emit stage-tagged events via the `stage` field on
 the event log (`_cli_update_state.py`: `append_event(..., stage="stage1|2|3")`).
@@ -82,8 +97,8 @@ trigger must:
 - have tests proving both the trigger routing and the absence of a standalone
   parallel submission.
 
-This scheduler rule is unrelated to the staged GPU `.npy` objmap **sidecar
-file**. It also does not convert a terminal `afterany` finalizer into an array
+This scheduler rule is unrelated to the staged GPU Stage-2 **signal files**
+(the retained raw `.npy` and its token). It also does not convert a terminal `afterany` finalizer into an array
 entry: a finalizer runs after the array becomes terminal and is not a parallel
 sidecar. The existing staged-GPU controller topology is a specialized,
 explicitly capacity-reserved design; do not generalize it into new ordinary
@@ -144,18 +159,75 @@ persisting the returned ID.
   directive so a CPU partition can run the GPU stage, e.g. tests).
 - **Walltime survival:** Stage 2 does not install a signal handler or self-requeue.
   After each array reaches a terminal scheduler state, its dependent controller
-  reclassifies the manifest from valid HDFs, atomic sidecars, Stage-3 markers,
-  and terminal failures. Remaining images launch another array round. One unchanged
+  reclassifies the manifest from valid stores, complete Stage-2 signals,
+  Stage-3 markers, and terminal failures. Remaining images launch another array round. One unchanged
   retryable-set round is retried; a second unchanged round terminalizes the
   remainder and advances to Stage 3.
-- Every worker checks the active epoch immediately before publishing HDF,
-  sidecar, parquet, plot, or deletion changes. Restart and cancellation fence
+- Every worker checks the active epoch immediately before publishing the store,
+  the Stage-2 signal, parquet, plot, or deletion changes. Restart and cancellation fence
   stale workers before clearing or cancelling ledgered jobs.
 - Without `--wait`, staged submission returns `PROCESSING SUBMITTED` and remote
   finalization owns aggregation, reports, README, and the completion marker.
   With `--wait`, the CLI monitors that marker and never duplicates publication.
 - Per-image isolation: a missing prereq (S6) is recorded and skipped, never an
   unhandled raise that aborts a shard.
+
+## Durability (`--durable-writes` / `--no-durable-writes`)
+
+Whether each per-image store is `fsync`ed before its promote. The flag is a
+**tri-state**: unset means *auto-detect* — on under SLURM, off locally — and
+`None` is carried end to end, resolved to a bool in exactly one place,
+`ngff_._resolve_durability`, which also produces the sentence logged at run
+start so the flag and its description cannot drift. **Do not resolve it
+earlier**: that would freeze the submitting node's environment into a value a
+worker on a different node then reuses.
+
+Durability lives on the **`OutputManager`**, not on each call.
+`save_image_store(durable=None)` defers to `self.durable_writes`, which is what
+makes it structurally impossible for a write site to be silently inert. There
+are exactly **three** write sites — `_cli_process_single.py`,
+`_cli_staged_workers.py` Stage 1 and Stage 3. Everything else that appears in a
+grep is a **transport** site: a fresh process that must be handed the flag on
+its command line, namely the staged SLURM worker, the ordinary per-image SLURM
+array (`_cli_slurm_array_scripts.py` → `python -m phenotypic._cli._cli_process_single`),
+and the staged script generator. A new spawn site needs the flag threaded, or
+the option is inert on that path alone.
+
+`durable_writes` is deliberately **not** part of
+`processing_configuration_digest` (`_cli_failure_tracker.py`, an explicit
+allowlist). Durability is a storage guarantee, not a scientific parameter —
+folding it into the work id would make `--no-durable-writes` restart a finished
+run from zero.
+
+Rejected with `--mode recompile` (and `migrate`, when Phase 5 lands): those
+modes write no image store from a pipeline, so the flag could only mislead.
+
+## Per-image completion markers
+
+`publish_image_success` certifies the artifacts an image produced;
+`valid_image_success` is the first conjunct of resume classification. Markers
+are **versioned** (`SUCCESS_MARKER_VERSION`, currently **2**) and a
+version mismatch invalidates rather than migrates.
+
+Never hand-declare the per-image data artifact. Call
+**`image_data_artifact(output_dir, output_manager, dataset, image_stem)`**,
+which returns `("store", <store dir>)` when a store exists and `("hdf", ….h5)`
+otherwise. Three separate clusters each broke a run by declaring `.h5`
+directly after the writer had moved to the store — `publish_image_success`
+resolves every artifact `strict=True`, so the image fails *after* completing
+all of its work.
+
+Descriptors dispatch on `kind`. A **store** is fingerprinted by its root
+`zarr.json` alone, not recursively: the root is written **last** by the promote
+protocol and nothing writes into the store after publication, so a valid root
+implies a complete store. An absent `kind` reads as `"file"` (v1 shape); an
+unknown `kind` **fails closed**.
+
+The `"hdf"` branch is **not** dead code, though no forward path writes an
+`.h5` any more. `_migrate_legacy_success_evidence` promotes trees from older
+releases, which have `results/<ds>/hdf/<stem>.h5` and no store; dropping the
+branch would make it name a nonexistent store and silently refuse to promote
+the very trees it exists to rescue — reprocessing all of them.
 
 ## Environment variables (important for future work)
 
@@ -204,9 +276,17 @@ User-facing run outputs live under `<output>/deliverables/` (hard cutover):
 `pipeline.json`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
 dashboard is progress-only: local runs render progress directly, while SLURM
 runs add Progress and Download tabs. Use the Results Viewer or the GUI
-`/analysis/` app for interactive exploration. The **per-image** parquets in
-`results/<ds>/measurements/` (and the rest of `results/`)
-stay at the output-dir **root**. Machine state lives under
+`/analysis/` app for interactive exploration. Each per-image **OME-Zarr store** stays at
+`results/<ds>/zarr/<stem>.ome.zarr/`. Its authoritative object measurements
+are embedded at `tables/measurements/table.parquet`, described by
+`attributes.phenotypic.tables.measurements` in the store root. Forward,
+staged Stage 3, and measure runs do not create
+`results/<ds>/measurements/<stem>.parquet`; that directory is legacy migration
+input only. There is no per-image `.h5` on any forward path: `results/<ds>/hdf/` appears only in a tree written by a pre-store
+release, or in one migrated with the default `keep_source=True`, and the only
+things that read it are `--mode migrate`, `datasets_needing_migration` (the
+predicate every writing mode refuses on), and the `"hdf"` completion-marker
+fallback described above. Machine state lives under
 `.phenotypic/`: `progress_dir(output)` resolves
 `<output>/.phenotypic/progress/` and `processing_state_path(output)` resolves
 `<output>/.phenotypic/processing_state.json`; the corresponding `resolve_*`
@@ -220,28 +300,25 @@ single `deliverables/qc/qc.duckdb` (one self-describing table per QC module plus
 `phenotypic.sdk_` helpers (`deliverables_dir`, `master_measurements_parquet_path`,
 `qc_dir`, `qc_duckdb_path`, …), never by hand-joining names.
 
-**Master vs. mirror.** `master_measurements.{csv,parquet}` is a clean, pre-post,
-metadata-free archive of what per-image runs measured; `measurements.{csv,parquet}` is
-the post-applied mirror the GUI reads/curates. Per-image parquets in
-`results/<ds>/measurements/` are also clean — the CLI calls
-`pipeline.measure(image, apply_post=False)` on the per-image path. Post is applied once
-at the end of aggregation against the merged master, and the post-applied frame is what
-the class-named analysis artifacts and `measurements_by_feature/<feature>.{csv,parquet}`
-derive from. Analysis consumers resolve tables through `analysis_manifest.json`, never
-by constructing filenames. The external `--metadata` CSV **left-join** also lands on
-the post-applied frame
-(inside `finalize_post_master_outputs`), so the mirror, per-feature splits, and
-named analysis artifacts carry metadata while the master archive stays post-free and
-metadata-free.
-The join is **left** so metadata rows matching no measured object survive as **phantom
-rows** — metadata + join keys populated, every measurement/info column null, and
-`QC_MetadataOnly=true` (`schema.METADATA_MATCH`) — which is how a user sees the strains
-that were never detected. Measurement rows with no metadata are still dropped
-(measurements are the join's right frame). `join_metadata(df, csv, *, how=...)` defaults
-to `how="inner"`: **only** `finalize_post_master_outputs` passes `how="left"`.
-The mid-run `_cli_chunk_writer` does not join external metadata; it publishes clean
-rolling and master measurement state until finalization creates the metadata-joined
-mirror.
+**Master vs. mirror.** Each embedded table is built by right-joining the stable
+metadata snapshot (metadata left, baseline measurements right), so it contains
+every measured row, excludes metadata-only rows, and records ordered join keys
+and snapshot SHA-256 in Parquet schema metadata.
+`master_measurements.{csv,parquet}` is the exact pre-post concatenation of
+marker-authorized embedded tables; it is already metadata-joined measured data.
+Finalization rejects mixed metadata digests or join keys.
+
+`measurements.{csv,parquet}` is the post-applied mirror the GUI reads and
+curates. Before post, finalization appends the external metadata anti-join once
+using the recorded keys. Measured rows receive `QC_MetadataOnly=false`;
+appended phantoms receive `QC_MetadataOnly=true`, keep their metadata values,
+and have null measurement/info values. Per-feature splits and named analysis
+artifacts derive from the mirror. Analysis consumers resolve tables through
+`analysis_manifest.json`, never by constructing filenames.
+
+Ordinary SLURM checkpoints read only marker-authorized embedded tables and write
+rolling cache state below `.phenotypic/progress/`. They do not recreate
+visible per-image Parquets, dataset aggregates, or a partial deliverable master.
 
 **Metadata snapshot authority.** Before local processing or SLURM submission,
 full runs and recompile atomically copy the configured `--metadata` bytes to
@@ -266,9 +343,8 @@ Feed configured analysis and GUI result exploration from `measurements.parquet`,
 immediately call `phenotypic._cli._cli_output_manager.finalize_post_master_outputs(
 output_dir, master_df, pipeline)` (it writes into `<output>/deliverables/` and emits the
 per-feature splits + analysis chain). The `aggregate_measurements` (forward CLI) and
-`--recompile` worker (`_run_post_master_steps`) callers already do this. Mid-run
-intermediate writers (`_aggregate_chunks_locked` in `_cli_chunk_writer.py`)
-intentionally bypass it — chunks publish partial results for mid-run download, but the
-post pipeline, per-feature splits, analysis chain, and `pipeline.json` persistence are
-deferred to final aggregation. Don't add `finalize_post_master_outputs` to the chunk
-writer — it would re-run expensive finalize work on every checkpoint.
+`--recompile` worker (`_run_post_master_steps`) callers already do this. Mid-run checkpoint writers (`_aggregate_chunks_locked` in
+`_cli_chunk_writer.py`) intentionally bypass it and keep their rolling state
+under `.phenotypic/progress/`; post, per-feature splits, analysis, and
+`pipeline.json` persistence are deferred to final aggregation. Do not add
+`finalize_post_master_outputs` to the chunk writer.

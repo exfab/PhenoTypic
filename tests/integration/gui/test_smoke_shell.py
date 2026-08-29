@@ -374,7 +374,6 @@ def test_explicit_url_prefix_routes_backend_subapps_and_shell_blueprints(
         (f"{OOD_NODE_PREFIX}results/_dash-layout", "results-viewer-empty-state"),
         (f"{OOD_NODE_PREFIX}run/_dash-layout", "run-console-root"),
         (f"{OOD_NODE_PREFIX}analysis/_dash-layout", "analysis-page"),
-        (f"{OOD_NODE_PREFIX}tune/_dash-layout", "tune-"),
         (f"{OOD_NODE_PREFIX}browse/_dash-layout", "browse-page"),
     ):
         resp = client.get(path)

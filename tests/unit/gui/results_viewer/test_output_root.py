@@ -14,6 +14,7 @@ import polars as pl
 
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import EXPERIMENT, IMAGE
+from phenotypic.sdk_ import zarr_store_path
 
 
 def _seed_standalone_bundle(base: Path) -> None:
@@ -46,17 +47,18 @@ def test_discover_standalone_deliverables_only(tmp_path: Path) -> None:
     assert "plate1" in root.master_df[str(EXPERIMENT.DATASET)].unique().to_list()
     # Overlay-backed picker still works.
     assert root.has_overlay("plate1", "img001") is True
-    assert root.hdf_path("plate1", "img001") is None
+    assert root.store_path("plate1", "img001") is None
 
 
 def test_discover_full_run_lights_up_results(tmp_path: Path) -> None:
     out = tmp_path / "run"
     _seed_standalone_bundle(out / "deliverables")
-    (out / "results" / "plate1" / "hdf").mkdir(parents=True)
-    (out / "results" / "plate1" / "hdf" / "img001.h5").write_bytes(b"")
+    store = zarr_store_path(out, "plate1", "img001")
+    store.mkdir(parents=True)
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
     root = OutputRoot.discover(
         out,
         cache_root=tmp_path / ".test-phenotypic-viewer-cache",
     )
     assert root.has_results is True
-    assert root.hdf_path("plate1", "img001") is not None
+    assert root.store_path("plate1", "img001") is not None

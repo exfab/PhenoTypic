@@ -1,0 +1,31 @@
+{
+  "name": "phenotypic-viv-bundle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Build recipe for the vendored Viv + deck.gl IIFE shipped in the PhenoTypic results viewer. Built by hand, outside CI; the artifact is committed.",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@deck.gl/core": "9.3.10",
+    "@deck.gl/extensions": "9.3.10",
+    "@deck.gl/geo-layers": "9.3.10",
+    "@deck.gl/layers": "9.3.10",
+    "@deck.gl/mesh-layers": "9.3.10",
+    "@luma.gl/constants": "9.3.6",
+    "@luma.gl/core": "9.3.6",
+    "@luma.gl/engine": "9.3.6",
+    "@luma.gl/shadertools": "9.3.6",
+    "@luma.gl/webgl": "9.3.6",
+    "@vivjs/constants": "0.22.1",
+    "@vivjs/extensions": "0.22.1",
+    "@vivjs/layers": "0.22.1",
+    "@vivjs/loaders": "0.22.1",
+    "numcodecs": "0.3.2",
+    "zarrita": "0.5.4"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

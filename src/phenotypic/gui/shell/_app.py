@@ -53,7 +53,6 @@ from phenotypic.gui._config import (
     MOUNT_BUILDER,
     MOUNT_HOME,
     MOUNT_RUN,
-    MOUNT_TUNE,
     MOUNT_VIEWER,
     TITLE_HUB,
     join_url_prefix,
@@ -67,7 +66,6 @@ from phenotypic.gui.shell._ids import (
     SHELL_TAB_BUILDER,
     SHELL_TAB_HOME,
     SHELL_TAB_RUN,
-    SHELL_TAB_TUNE,
     SHELL_TAB_VIEWER,
 )
 from phenotypic.gui.shell._layout import wrap_in_chrome
@@ -282,7 +280,6 @@ def compose_hub(
         builder,
         results_viewer,
         run_console,
-        tune,
     )
     from phenotypic.gui.results_viewer._output_root import (
         OutputRoot,
@@ -595,27 +592,7 @@ def compose_hub(
         url_prefix=base_url_prefix,
     )
 
-    # 4b. Tune co-pilot Dash (eager). Read-only and lightweight — no heavy
-    #     parquet load, so no ToolSession is needed. Mounted empty-state: the
-    #     user binds a tune run from the sidebar (Chunk C), at which point the
-    #     page re-reads the bound run. The factory stays optuna-free; the live
-    #     study is opened lazily inside the Monitor poll callback only.
-    _tick("tune")
-    tune_app = tune.create_app(
-        root=None,
-        url_prefix=join_url_prefix(base_url_prefix, MOUNT_TUNE),
-        sandbox=sandbox,
-        registry=registry,
-        runner=runner,
-    )
-    wrap_in_chrome(
-        tune_app,
-        active_tab=SHELL_TAB_TUNE,
-        sandbox=sandbox,
-        url_prefix=base_url_prefix,
-    )
-
-    # 4c. Browse Dash (eager — lightweight source-image viewer). No
+    # 4b. Browse Dash (eager — lightweight source-image viewer). No
     #     ToolSession: it loads no heavy parquet, just lists files + serves
     #     ephemeral tiles.
     _tick("browse")
@@ -652,19 +629,17 @@ def compose_hub(
             MOUNT_BUILDER.rstrip("/"): builder_app.server,
             MOUNT_VIEWER.rstrip("/"): viewer_proxy,
             MOUNT_RUN.rstrip("/"): run_app.server,
-            MOUNT_TUNE.rstrip("/"): tune_app.server,
             MOUNT_ANALYSIS.rstrip("/"): analysis_proxy,
             MOUNT_BROWSE.rstrip("/"): browse_app.server,
         },
     )
 
     logger.info(
-        "GUI hub composed: sandbox=%s mounts=%s, %s, %s, %s, %s, %s",
+        "GUI hub composed: sandbox=%s mounts=%s, %s, %s, %s, %s",
         sandbox.root,
         MOUNT_BUILDER,
         MOUNT_VIEWER,
         MOUNT_RUN,
-        MOUNT_TUNE,
         MOUNT_ANALYSIS,
         MOUNT_BROWSE,
     )

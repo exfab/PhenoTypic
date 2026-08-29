@@ -19,7 +19,6 @@
     const POSITION_ID = "browse-position";
     const NAV_EVENT_ID = "browse-nav-event-store";
     const PREPARATION_STATUS_ID = "browse-preparation-status";
-    const VIEW_MODE_TOGGLE_ID = "browse-view-mode-toggle";
     const PREPARATION_PROGRESS_ID = "browse-preparation-progress";
     const PREPARE_BUTTON_ID = "browse-prepare-btn";
     const STOP_BUTTON_ID = "browse-stop-prepare-btn";
@@ -31,9 +30,7 @@
 
     const ns = window.__phenotypicBrowse = window.__phenotypicBrowse || {};
     ns.singleViewer = ns.singleViewer || null;
-    ns.popoutViewer = ns.popoutViewer || null;
     ns.singleGeneration = ns.singleGeneration || 0;
-    ns.popoutGeneration = ns.popoutGeneration || 0;
     ns.navigationSequence = ns.navigationSequence || 0;
     ns.lastRepeatAt = ns.lastRepeatAt || 0;
     ns.singleState = ns.singleState || { dimensions: null };
@@ -78,13 +75,9 @@
     function publishSessionState(forceEnabled) {
         const dc = window.dash_clientside;
         if (!dc || typeof dc.set_props !== "function") { return false; }
-        const checkedMode = document.querySelector(
-            "#" + VIEW_MODE_TOGGLE_ID + " input:checked"
-        );
-        const singleMode = !checkedMode || checkedMode.value === "single";
         const enabled = (typeof forceEnabled === "boolean")
             ? forceEnabled
-            : (!document.hidden && navigator.onLine !== false && singleMode);
+            : (!document.hidden && navigator.onLine !== false);
         dc.set_props(NAV_EVENT_ID, {
             data: {
                 kind: "session",
@@ -124,12 +117,6 @@
         });
         window.addEventListener("online", function () { publishSessionState(); });
         window.addEventListener("offline", function () { publishSessionState(false); });
-        document.addEventListener("change", function (event) {
-            const target = event.target;
-            if (target && target.closest && target.closest("#" + VIEW_MODE_TOGGLE_ID)) {
-                window.setTimeout(function () { publishSessionState(); }, 0);
-            }
-        });
         window.setTimeout(function () { publishSessionState(); }, 0);
     }
 
@@ -285,20 +272,18 @@
     }
     ns.osdReady = ns.osdReady || loadOSD();
 
-    function destroyViewer(kind) {
-        const property = kind === "single" ? "singleViewer" : "popoutViewer";
-        const viewer = ns[property];
+    function destroyViewer() {
+        const viewer = ns.singleViewer;
         if (viewer) { try { viewer.destroy(); } catch (e) {} }
-        ns[property] = null;
+        ns.singleViewer = null;
     }
 
-    function ensureViewer(kind, divId) {
-        const property = kind === "single" ? "singleViewer" : "popoutViewer";
-        const el = document.getElementById(divId);
+    function ensureViewer() {
+        const el = document.getElementById(OSD_DIV_ID);
         if (!el) { return null; }
-        let viewer = ns[property];
+        let viewer = ns.singleViewer;
         if (viewer && viewer.element === el && el.isConnected) { return viewer; }
-        destroyViewer(kind);
+        destroyViewer();
         viewer = window.OpenSeadragon({
             element: el,
             prefixUrl: appPrefix + "assets/openseadragon/images/",
@@ -311,37 +296,34 @@
             maxZoomPixelRatio: 4,
             immediateRender: false,
         });
-        ns[property] = viewer;
+        ns.singleViewer = viewer;
         return viewer;
     }
 
-    async function mountOSD(kind, divId, payload) {
+    async function mountOSD(payload) {
         await ns.osdReady;
-        const el = document.getElementById(divId);
+        const el = document.getElementById(OSD_DIV_ID);
         if (!el) { return; }
         if (!payload || !payload.token) {
-            destroyViewer(kind);
-            if (kind === "single") { setLoading("hidden"); }
+            destroyViewer();
+            setLoading("hidden");
             return;
         }
-        const generationProperty = kind === "single" ? "singleGeneration" : "popoutGeneration";
-        ns[generationProperty] += 1;
-        const generation = ns[generationProperty];
+        ns.singleGeneration += 1;
+        const generation = ns.singleGeneration;
         const url = dziUrl(payload, generation);
-        const viewer = ensureViewer(kind, divId);
+        const viewer = ensureViewer();
         if (!viewer) { return; }
         const name = basename(payload.label || payload.token);
         const dimensions = payloadDimensions(payload);
         let restore = null;
-        if (kind === "single") {
-            ns.singleStartedAt = window.performance ? performance.now() : Date.now();
-            if (keepPositionEnabled() && equalDimensions(ns.singleState.dimensions, dimensions)) {
-                restore = captureViewport(viewer);
-            }
-            ns.singleState.dimensions = dimensions;
-            showPreview(payload, generation);
-            setLoading("loading", name ? ("Loading " + name + "…") : "Loading image…");
+        ns.singleStartedAt = window.performance ? performance.now() : Date.now();
+        if (keepPositionEnabled() && equalDimensions(ns.singleState.dimensions, dimensions)) {
+            restore = captureViewport(viewer);
         }
+        ns.singleState.dimensions = dimensions;
+        showPreview(payload, generation);
+        setLoading("loading", name ? ("Loading " + name + "…") : "Loading image…");
         if (viewer._phenotypicOpenHandler) {
             viewer.removeHandler("open", viewer._phenotypicOpenHandler);
         }
@@ -349,7 +331,7 @@
             viewer.removeHandler("open-failed", viewer._phenotypicFailureHandler);
         }
         viewer._phenotypicOpenHandler = function () {
-            if (generation !== ns[generationProperty] || viewer._phenotypicDziUrl !== url) {
+            if (generation !== ns.singleGeneration || viewer._phenotypicDziUrl !== url) {
                 return;
             }
             if (restore) {
@@ -359,26 +341,22 @@
             } else {
                 viewer.viewport.goHome(true);
             }
-            if (kind === "single") {
-                setLoading("hidden");
-                hidePreview(generation);
-                if (ns.singleStartedAt && window.console && console.debug) {
-                    console.debug("Browse local timing", {
-                        milestone: "osd-open",
-                        elapsed_ms: (window.performance ? performance.now() : Date.now())
-                            - ns.singleStartedAt,
-                        revision: String(payload.revision || "").slice(0, 12),
-                    });
-                }
+            setLoading("hidden");
+            hidePreview(generation);
+            if (ns.singleStartedAt && window.console && console.debug) {
+                console.debug("Browse local timing", {
+                    milestone: "osd-open",
+                    elapsed_ms: (window.performance ? performance.now() : Date.now())
+                        - ns.singleStartedAt,
+                    revision: String(payload.revision || "").slice(0, 12),
+                });
             }
         };
         viewer._phenotypicFailureHandler = function () {
-            if (generation !== ns[generationProperty] || viewer._phenotypicDziUrl !== url) {
+            if (generation !== ns.singleGeneration || viewer._phenotypicDziUrl !== url) {
                 return;
             }
-            if (kind === "single") {
-                setLoading("error", name ? ("Could not load " + name) : "Could not load image");
-            }
+            setLoading("error", name ? ("Could not load " + name) : "Could not load image");
         };
         viewer.addHandler("open", viewer._phenotypicOpenHandler);
         viewer.addHandler("open-failed", viewer._phenotypicFailureHandler);
@@ -393,14 +371,7 @@
     ns.applyImage = function (payload) {
         renderPosition(payload && payload.position);
         renderFilmstrip(payload && payload.filmstrip, payload);
-        return mountOSD("single", OSD_DIV_ID, payload);
-    };
-
-    // Timeline deep-zoom pop-out: mount the same DZI viewer into the modal's
-    // dedicated OSD div. Reuses _mountOSD so the loading/open lifecycle stays
-    // identical to the single Browse viewer.
-    ns.applyPopoutImage = function (payload) {
-        return mountOSD("popout", "browse-tl-popout-osd", payload);
+        return mountOSD(payload);
     };
 
     function renderPosition(position) {
@@ -527,187 +498,4 @@
         return "";
     };
 
-    // Browse-only Timeline event adapter. The shared timeline controller is
-    // also used by Results, but Browse's source can change in place. Delegate
-    // on document so a Dash remount cannot retire the listener, and publish
-    // through Dash's supported set_props API rather than mutating a
-    // React-controlled hidden input.
-    const TL_GRID_ID = "browse-tl-grid";
-    const TL_POPOUT_EVENT_ID = "browse-tl-popout-event";
-    let timelineEventSequence = 0;
-    let timelineRevisionGeneration = 0;
-
-    function browseGrid() {
-        return document.getElementById(TL_GRID_ID);
-    }
-
-    function publishPopout(cell) {
-        const grid = browseGrid();
-        const token = cell && cell.getAttribute("data-ref");
-        const revision = grid && grid.getAttribute("data-grid-revision");
-        const authorized = grid && grid.getAttribute("data-authorized-revision");
-        const generation = grid && grid.getAttribute("data-revision-generation");
-        const sessionId = grid && grid.getAttribute("data-session-id");
-        const dc = window.dash_clientside;
-        if (!grid || !grid.contains(cell) || !token || !revision
-            || revision !== authorized || !generation || !sessionId
-            || !dc || typeof dc.set_props !== "function") {
-            return false;
-        }
-        timelineEventSequence += 1;
-        dc.set_props(TL_POPOUT_EVENT_ID, {
-            data: {
-                token: token,
-                revision: revision,
-                generation: parseInt(generation, 10),
-                session_id: sessionId,
-                sequence: timelineEventSequence,
-            },
-        });
-        return true;
-    }
-
-    function decodeBrowseRef(ref) {
-        try {
-            let encoded = String(ref).replace(/-/g, "+").replace(/_/g, "/");
-            encoded += "=".repeat((4 - encoded.length % 4) % 4);
-            const binary = window.atob(encoded);
-            const bytes = Uint8Array.from(binary, function (ch) {
-                return ch.charCodeAt(0);
-            });
-            if (window.TextDecoder) {
-                return new window.TextDecoder("utf-8", { fatal: true }).decode(bytes);
-            }
-            let escaped = "";
-            bytes.forEach(function (byte) {
-                escaped += "%" + byte.toString(16).padStart(2, "0");
-            });
-            return decodeURIComponent(escaped);
-        } catch (e) {
-            return String(ref);
-        }
-    }
-
-    function browseTimelineDziUrl(ref) {
-        return appPrefix + "tiles/" + encodeURIComponent(String(ref)) + ".dzi";
-    }
-
-    function compareCap(grid) {
-        const parsed = parseInt(grid.getAttribute("data-compare-cap"), 10);
-        return Number.isFinite(parsed) ? parsed : 12;
-    }
-
-    function selectedRefs(grid) {
-        return Array.from(
-            grid.querySelectorAll(".timeline-cell.timeline-cell--selected[data-ref]")
-        ).sort(function (left, right) {
-            const leftRow = parseInt(left.getAttribute("data-row-index"), 10) || 0;
-            const rightRow = parseInt(right.getAttribute("data-row-index"), 10) || 0;
-            if (leftRow !== rightRow) { return leftRow - rightRow; }
-            return (parseInt(left.getAttribute("data-col-index"), 10) || 0)
-                - (parseInt(right.getAttribute("data-col-index"), 10) || 0);
-        }).map(function (cell) { return cell.getAttribute("data-ref"); });
-    }
-
-    function rowRefs(grid, rowValue) {
-        return Array.from(
-            grid.querySelectorAll(".timeline-cell[data-src][data-row][data-ref]")
-        ).filter(function (cell) {
-            return cell.getAttribute("data-row") === rowValue;
-        }).map(function (cell) { return cell.getAttribute("data-ref"); });
-    }
-
-    async function openBrowseCompare(grid, refs) {
-        const timeline = window.__phenotypicTimeline;
-        if (!timeline || !timeline.openCompareStrip || !refs.length) { return; }
-        const requestedRevision = grid.getAttribute("data-grid-revision");
-        const requestedGeneration = timelineRevisionGeneration;
-        await timeline.osdReady;
-        const current = browseGrid();
-        if (!current
-            || requestedGeneration !== timelineRevisionGeneration
-            || requestedRevision !== current.getAttribute("data-grid-revision")) {
-            return;
-        }
-        await timeline.openCompareStrip(refs, {
-            dziUrlBuilder: browseTimelineDziUrl,
-            titleFor: decodeBrowseRef,
-            cap: compareCap(grid),
-        });
-        const after = browseGrid();
-        if (!after
-            || requestedGeneration !== timelineRevisionGeneration
-            || requestedRevision !== after.getAttribute("data-grid-revision")) {
-            timeline.closeCompareStrip();
-        }
-    }
-
-    // Capture phase wins before the shared controller's per-node bubble
-    // listeners. That keeps encoded transport refs out of visible titles while
-    // leaving the shared Results controller byte-identical and untouched.
-    document.addEventListener("click", function (ev) {
-        const target = ev.target;
-        if (!target || !target.closest) { return; }
-        const grid = browseGrid();
-        if (!grid) { return; }
-
-        const popout = target.closest(".timeline-cell-popout");
-        if (popout) {
-            const cell = popout.closest(".timeline-cell[data-ref]");
-            if (cell && grid.contains(cell) && publishPopout(cell)) {
-                ev.preventDefault();
-                ev.stopImmediatePropagation();
-            }
-            return;
-        }
-
-        const compareButton = target.closest("#browse-tl-compare-btn");
-        if (compareButton) {
-            openBrowseCompare(grid, selectedRefs(grid));
-            ev.preventDefault();
-            ev.stopImmediatePropagation();
-            return;
-        }
-
-        const rowHeader = target.closest(".timeline-axis-label--y[data-row]");
-        if (rowHeader && grid.contains(rowHeader)) {
-            openBrowseCompare(grid, rowRefs(grid, rowHeader.getAttribute("data-row")));
-            ev.preventDefault();
-            ev.stopImmediatePropagation();
-        }
-    }, true);
-
-    document.addEventListener("keydown", function (ev) {
-        if (ev.key !== "Enter" && ev.key !== " ") { return; }
-        const grid = browseGrid();
-        const viewport = grid && grid.closest(".browse-tl-viewport");
-        if (!grid || !viewport || !viewport.contains(document.activeElement)) { return; }
-        const focused = grid.querySelector(".timeline-cell--focused[data-ref]");
-        if (focused && publishPopout(focused)) {
-            ev.preventDefault();
-            ev.stopImmediatePropagation();
-        }
-    }, true);
-
-    ns.resetTimelineRevision = function (containerId) {
-        timelineRevisionGeneration += 1;
-        destroyViewer("popout");
-        const grid = document.getElementById(containerId || TL_GRID_ID);
-        if (grid) {
-            grid.querySelectorAll(".timeline-cell--selected").forEach(function (cell) {
-                cell.classList.remove("timeline-cell--selected");
-            });
-        }
-        const timeline = window.__phenotypicTimeline;
-        if (timeline && timeline.closeCompareStrip) {
-            timeline.closeCompareStrip();
-        }
-        const dc = window.dash_clientside;
-        if (dc && typeof dc.set_props === "function") {
-            dc.set_props("browse-tl-popout-modal", { is_open: false });
-            dc.set_props("browse-tl-popout-store", { data: null });
-            dc.set_props("browse-tl-popout-title", { children: "" });
-        }
-        return timelineRevisionGeneration;
-    };
 })();

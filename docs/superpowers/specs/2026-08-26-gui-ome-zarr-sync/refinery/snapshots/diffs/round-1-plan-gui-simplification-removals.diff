@@ -1,0 +1,678 @@
+--- specs/2026-08-26-gui-ome-zarr-sync/refinery/snapshots/round-0-plan-gui-simplification-removals.md	2026-08-26 18:22:11.627224160 -0700
++++ specs/2026-08-26-gui-ome-zarr-sync/refinery/snapshots/round-1-plan-gui-simplification-removals.md	2026-08-26 20:15:20.530972417 -0700
+@@ -284,14 +284,28 @@
+ 
+ - [ ] **Step 1: Remove the FEATURES.md rows**
+ 
+-Delete the Results Timeline tab rows at `FEATURES.md:372-394`. These are **deleted**
+-surfaces, so the rows go entirely — unlike phases 4 and 5, where rows are edited to say
+-*unmounted*.
+-
+-Also remove the two shared-engine rows at `:536-537` (Timeline shared engine, Compare-strip
+-cap logic) **only if** phase 3 is being executed in the same PR. If phases are landing as
+-separate PRs, leave `:536-537` for phase 3 — the engine still exists until then and
+-`check_features_md.py` resolves refs for `✅ shipping` rows.
++**Anchor on the heading, never the line number.** Delete the rows under
++`### Results Timeline tab` — the heading is at `:379`, and the section runs to `:400`.
++
++> **The spec's `372-394` is wrong and dangerous.** `:372-377` are **Colony curation rows**
++> — `Colony radial lazy-populate`, `Custom folder + ＋ Add custom`,
++> `Bulk "Mark N as ▾" (colony)`, `Pixel layer toggle`. Deleting that range removes four
++> curation rows, violating spec §5, and leaves `:395-400` as orphaned Timeline rows whose
++> Test refs point at files this phase deletes — which fails `features-md-gate`. Verify
++> before and after:
++>
++> ```bash
++> uv run grep -n "^### Results Timeline tab" src/phenotypic/gui/FEATURES.md
++> uv run grep -c "Colony radial lazy-populate" src/phenotypic/gui/FEATURES.md   # must stay 1
++> ```
++
++These are **deleted** surfaces, so the rows go entirely — unlike phases 4 and 5, where rows
++are edited to say *unmounted*.
++
++Leave the two shared-engine rows **alone** (they are at `:543-544`, not the spec's
++`:536-537` — `:536-537` are run-console rows). The engine still has a live consumer — Browse — until phase 2 task 2.5
++deletes it, and `check_features_md.py` resolves refs for `✅ shipping` rows. Phase 2 task 2.6
++retires them.
+ 
+ - [ ] **Step 2: Remove the WORKFLOWS.md row**
+ 
+@@ -334,10 +348,14 @@
+ - [ ] **Step 6: Smoke the capture script**
+ 
+ ```bash
+-QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --smoke
++QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli
+ ```
+-Expected: exit 0. If `--smoke` is not a supported flag, check the invocation
+-`gui-checks.yml`'s `smoke-capture` job uses and copy it verbatim.
++Expected: exit 0. `--skip-cli` skips the synthetic-dataset build and CLI run, which
++`gui-checks.yml:253` does NOT — it runs the script bare. Bare is a full dataset build plus a
++Playwright capture of every tutorial page; running that once per phase is minutes each time.
++Run it bare **once, at the end**, and `--skip-cli` in between. The script accepts only
++`--force`, `--headed` and `--skip-cli` (`:2913-2926`); `--smoke` does not exist and argparse
++exits 2.
+ 
+ - [ ] **Step 7: Commit**
+ 
+@@ -351,7 +369,11 @@
+ **Spec:** §1.1, §1.2, §1.3, §6. **Depends on:** nothing (phase 1 touched a different
+ sub-app). **Blocks:** phase 3.
+ 
+-**Deliverable:** the Browse tab has no view-mode toggle and no timeline body. Single mode
++**Deliverable:** the Browse tab has no view-mode toggle and no timeline body, **and the
++shared timeline engine is gone** — this phase kills the second and last of its two
++consumers, so it takes the engine with it (tasks 2.5-2.6).
++
++The Browse tab has no view-mode toggle and no timeline body. Single mode
+ is the whole tab, with **behaviour unchanged**. The four timeline-only browse helpers and
+ the browse copy of `timeline.js` / `timeline.css` are gone. `_shared/timeline/` still
+ exists — phase 3 removes it.
+@@ -368,7 +390,7 @@
+ ### Task 2.1: Pin Single mode's behaviour before touching it
+ 
+ **Files:**
+-- Test: `tests/unit/gui/browse/test_single_mode_survives_removal.py` (create)
++- Test: `tests/gui/browse/test_single_mode_survives_removal.py` (create)
+ 
+ **Interfaces:**
+ - Produces: `test_browse_layout_has_no_view_mode_toggle`,
+@@ -452,7 +474,7 @@
+ 
+ ```bash
+ QT_QPA_PLATFORM=offscreen uv run pytest \
+-  tests/unit/gui/browse/test_single_mode_survives_removal.py -v
++  tests/gui/browse/test_single_mode_survives_removal.py -v
+ ```
+ Expected: `test_browse_layout_has_no_view_mode_toggle` FAILS (the toggle is present).
+ `test_browse_single_body_is_unconditional` may pass already — that is fine; it is a guard
+@@ -461,7 +483,7 @@
+ - [ ] **Step 4: Commit the failing test**
+ 
+ ```bash
+-git add tests/unit/gui/browse/test_single_mode_survives_removal.py
++git add tests/gui/browse/test_single_mode_survives_removal.py
+ git commit -m "test(gui): pin Browse Single mode against the timeline removal"
+ ```
+ 
+@@ -592,18 +614,46 @@
+ **Do not remove the Browse DZI/`BrowseCache` path.** Browse keeps libvips → DZI → OSD as
+ its only pixel path (viv-rebuild spec §9); only the *timeline thumbnail* route goes.
+ 
++- [ ] **Step 4b: Repair the five test files this phase breaks**
++
++Neither the spec's delete list nor an earlier draft of this plan mentioned these. Verified
++2026-08-26 — reference counts are to `BROWSE_TL_*` / `_thumb_routes` / `BROWSE_VIEW_MODE_TOGGLE`
++/ `BROWSE_TIMELINE_BODY`:
++
++| File | Refs | Action |
++|---|---|---|
++| `tests/gui/browse/test_thumb_routes.py` | 2 | **delete** — `from ... import _thumb_routes` at `:10` is a collection `ImportError` |
++| `tests/gui/browse/test_ids.py` | 33 | **edit** — drop the timeline half, keep the Single-mode id assertions |
++| `tests/gui/browse/test_layout.py` | 22 | **edit** — same |
++| `tests/gui/browse/test_compare_layout.py` | 7 | **edit** — same |
++| `tests/integration/gui/test_browse_refresh.py::test_timeline_reset_consumes_shared_refresh_revision` | — | **delete that test** |
++
++**Two `✅ shipping` FEATURES.md rows point at tests in that list, and both sit outside any
++section this phase edits** — so breaking them fails `features-md-gate` from rows nobody
++touched:
++
++```text
++FEATURES.md:64  Refresh button              -> test_browse_refresh.py::test_timeline_reset_consumes_shared_refresh_revision
++FEATURES.md:87  Image dropdown + ‹/› stepper -> test_layout.py::test_prev_next_buttons_use_wider_stable_hit_target
++```
++
++Row `:87`'s target survives (it is a Single-mode test — keep it when editing
++`test_layout.py`). Row `:64`'s target is being deleted: **repoint it** at a surviving
++refresh test, or restate the row without the Timeline half. Do this in task 2.4's ledger
++commit, not here.
++
+ - [ ] **Step 5: Run the tests written in task 2.1**
+ 
+ ```bash
+ QT_QPA_PLATFORM=offscreen uv run pytest \
+-  tests/unit/gui/browse/test_single_mode_survives_removal.py -v
++  tests/gui/browse/test_single_mode_survives_removal.py -v
+ ```
+ Expected: both PASS.
+ 
+ - [ ] **Step 6: Run the whole browse unit suite**
+ 
+ ```bash
+-QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/browse -n 4 -q
++QT_QPA_PLATFORM=offscreen uv run pytest tests/gui/browse -n 4 -q
+ ```
+ Expected: PASS. **Any failure in a non-timeline browse test is a regression in Single
+ mode** and must be fixed here, not deferred.
+@@ -620,7 +670,7 @@
+ 
+ ```bash
+ uv run ruff check --fix src/phenotypic/gui/browse/
+-git add -A src/phenotypic/gui/browse tests/unit/gui/browse tests/gui/browse tests/e2e/gui
++git add -A src/phenotypic/gui/browse tests/gui/browse tests/gui/browse tests/e2e/gui
+ git commit -m "refactor(gui): delete Browse Timeline mode, keep Single unchanged"
+ ```
+ 
+@@ -648,7 +698,7 @@
+ ```bash
+ uv run python scripts/check_features_md.py --strict
+ uv run python scripts/check_workflows_md.py -v
+-QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --smoke
++QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli
+ ```
+ Expected: all exit 0.
+ 
+@@ -659,31 +709,23 @@
+            scripts/capture_gui_tutorial_screenshots.py docs/source
+ git commit -m "docs(gui): retire the Browse Timeline ledger rows and tutorial"
+ ```
+-# Phase 3 — Shared timeline engine: delete
+-
+-**Spec:** §1.1, §1.2, §6. **Depends on:** phases 1 **and** 2. **Blocks:** nothing.
+-
+-**Deliverable:** `src/phenotypic/gui/_shared/timeline/` (5 modules) and
+-`tests/gui/_shared/timeline/` (8 files) are gone, along with the CI byte-equality guard
+-between the two now-deleted `timeline.js` copies. Nothing under `src/phenotypic/gui/`
+-imports `_shared.timeline`.
+-
+-> **Why this is its own phase.** The engine is surface-agnostic by construction: its
+-> controller finds siblings by CSS class scoped to `.timeline-body`, never by
+-> `browse-tl-*` id, and a CI guard enforces that the two vendored `timeline.js` copies stay
+-> byte-equal. That design is what makes it deletable in one move *after* both consumers
+-> are gone — and undeletable before. Attempting it earlier produces a broken import in
+-> whichever consumer is still standing.
+ 
+ ---
+ 
+-### Task 3.1: Delete the engine and its tests
++> **Tasks 2.5-2.6 were phase 3.** Split out, they bought nothing: phase 1 kills the
++> results consumer and tasks 2.1-2.4 kill the browse consumer, so the engine's consumer
++> count reaches zero here. The split cost a conditional in *both* directions — phase 1 task
++> 1.4 had to say "remove `FEATURES.md:536-537` only if phase 3 is in the same PR", and the
++> old phase 3 carried its mirror. A branch that exists only because of a phase boundary is
++> that boundary billing itself to the executor.
++
++### Task 2.5: Delete the engine and its tests
+ 
+ **Files:**
+ - Delete: `src/phenotypic/gui/_shared/timeline/` (5 modules)
+ - Delete: `tests/gui/_shared/timeline/` (8 files)
+ - Modify: whichever CI file carries the `timeline.js` byte-equality guard (located in
+-  phase 1, task 1.2 step 2)
++  task 1.2 step 2)
+ 
+ **Interfaces:**
+ - Consumes: the absence established by phases 1 and 2.
+@@ -752,7 +794,7 @@
+ 
+ ---
+ 
+-### Task 3.2: Retire the shared-engine ledger rows
++### Task 2.6: Retire the shared-engine ledger rows
+ 
+ **Files:**
+ - Modify: `src/phenotypic/gui/FEATURES.md:536-537`
+@@ -964,7 +1006,7 @@
+ ### Task 4.3: Mark Tune unmounted in the ledgers and retire its tutorial
+ 
+ **Files:**
+-- Modify: `src/phenotypic/gui/FEATURES.md:419-486` (Tune co-pilot section — **edit**, not remove)
++- Modify: `src/phenotypic/gui/FEATURES.md`, section `` ## Tune co-pilot (`/tune/`) `` (**edit**, not remove) — heading at `:426`, section runs to `:493`. The spec's `419-486` is wrong; `:419-425` are Run-console rows.
+ - Modify: `src/phenotypic/gui/WORKFLOWS.md:56` (`tune_copilot` row — remove)
+ - Modify: `scripts/capture_gui_tutorial_screenshots.py:2813` + call sites + harness block `:2381-2464`, `:2661`
+ - Delete: `docs/source/tutorials/gui/16_tune_copilot.md` + its image directory
+@@ -972,7 +1014,7 @@
+ 
+ - [ ] **Step 1: Edit — do not delete — the FEATURES.md section**
+ 
+-The Tune co-pilot rows at `:419-486` describe an **unmounted** surface. Per spec §6, mark
++The rows under `` ## Tune co-pilot (`/tune/`) `` (`:426-493`) describe an **unmounted** surface. Per spec §6, mark
+ them unmounted with a pointer to this spec and change their status **off** `✅ shipping`
+ so `check_features_md.py` stops resolving their refs. Add a section note:
+ 
+@@ -982,13 +1024,26 @@
+ > below describe code that exists and is unit-tested, not a surface a user can reach.
+ ```
+ 
+-Check the status vocabulary `check_features_md.py` accepts before choosing a value:
++**Use the status `⏸ unmounted`.** This was settled during plan refinement (ledger ORCH-5);
++do not re-derive it and do not escalate it.
+ 
+-```bash
+-uv run grep -n "shipping\|status\|STATUS" scripts/check_features_md.py | head -20
+-```
+-Use an existing non-shipping status; if none exists, the gate needs a new one and that is a
+-**blocking question for the user**, not a value to invent.
++`scripts/check_features_md.py` defines three constants — `✅ shipping` (`:33`),
++`🚧 in progress` (`:34`), `🔭 planned` (`:35`) — but its row loop (`:148-176`) **never
++validates status against an allowed set**. It branches: `== STATUS_IN_PROGRESS` → collect,
++which `--strict` then fails (`:178-184`); `!= STATUS_SHIPPING` → `continue`, silently
++skipped; otherwise resolve refs. So `⏸ unmounted` requires **no script change**: it stops
++ref resolution and passes `--strict`.
++
++None of the three existing values is right, which is why a fourth is warranted:
++
++| Value | Why not |
++|---|---|
++| `✅ shipping` | keeps resolving refs *and* asserts a user can reach it — the false claim this spec exists to prevent |
++| `🚧 in progress` | **fails `--strict`**, i.e. blocks the merge gate |
++| `🔭 planned` | passes, but describes a fully built, parked sub-app as unbuilt |
++
++Spec §6 asks the ledger to carry "exists but unreachable" as a state. `⏸ unmounted` is that
++state named honestly.
+ 
+ - [ ] **Step 2: Remove the WORKFLOWS.md row, capture function and tutorial**
+ 
+@@ -1002,7 +1057,7 @@
+ ```bash
+ uv run python scripts/check_features_md.py --strict
+ uv run python scripts/check_workflows_md.py -v
+-QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --smoke
++QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli
+ ```
+ Expected: all exit 0.
+ 
+@@ -1023,6 +1078,20 @@
+ their e2e tests are skip-marked. **`colony_view/` is not touched**, so the curation radial
+ survives.
+ 
++> **`_error_tab/` is a CLI dependency, not only a GUI tab.**
++> `_cli/_cli_error_outputs.py:84` imports `capture_error_source_fingerprints`,
++> `compute_all_category_analysis` and `publish_error_analysis` from
++> `results_viewer/_error_tab/_publication.py`, **on every finalize**. The spec says
++> `_error_tab/` "stays on disk" but never says it *must*. An executor reading "unmount
++> Error" as licence to delete the package breaks CLI finalization, and **no GUI test catches
++> it** — the failure surfaces in a CLI run, in a different subsystem from the one being
++> edited. The same caution applies less sharply to `_qc_tab/` and `_heatmap_tab/`; grep
++> before removing anything:
++>
++> ```bash
++> uv run grep -rn "_error_tab\|_qc_tab\|_heatmap_tab" src/phenotypic/_cli/ src/phenotypic/analysis/
++> ```
++
+ > **The correction this phase encodes (spec §5).** An earlier draft had the viewer go
+ > read-only on the premise that unmounting QC and Error takes the curation radial with
+ > them. That premise is false: the radial is mounted on **Colony** as well —
+@@ -1157,6 +1226,9 @@
+                  src/phenotypic/gui/results_viewer/_shared/_radial.py \
+                  src/phenotypic/gui/results_viewer/_shared/_triage_callbacks.py \
+                  tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py
++# The curation rows live in the LEDGER too, and only the code half was watched.
++uv run grep -c "Colony radial lazy-populate\|colony-bulk-mark-dropdown" \
++  src/phenotypic/gui/FEATURES.md    # must be 2, unchanged from baseline
+ ```
+ Expected: **empty** (adjust the `_shared` paths if they resolve elsewhere —
+ `uv run grep -rl "build_radial_trigger" src/`). A non-empty diff on the colony test file
+@@ -1231,7 +1303,7 @@
+ ### Task 5.3: Mark the three tabs unmounted in the ledgers; retire their tutorials
+ 
+ **Files:**
+-- Modify: `src/phenotypic/gui/FEATURES.md:587` (QC tab), `:617` (QC Review), `:658` (Heatmap tab), `:677` (Error analysis tab) — **edit**, not remove
++- Modify: `src/phenotypic/gui/FEATURES.md` — sections `## QC tab` (`:594`), `## QC Review sub-view` (`:624`), `## Heatmap tab` (`:665`), `## Error analysis tab` (`:684`). **Anchor on the headings**; the spec's `587/617/658/677` are each ~7 lines early and land *inside the preceding section*. **Edit**, not remove.
+ - Modify: `src/phenotypic/gui/WORKFLOWS.md:46, :47, :51, :52` — remove
+ - Modify: `scripts/capture_gui_tutorial_screenshots.py:1750, :1810, :1900, :1947` + call sites
+ - Delete: `docs/source/tutorials/gui/10_qc_curation_loop.md`, `11_heatmap_exploration.md`, `15_qc_review.md`, `17_error_analysis.md` + their image directories
+@@ -1239,8 +1311,17 @@
+ 
+ - [ ] **Step 1: Edit the four FEATURES.md rows to unmounted**
+ 
+-Follow phase 4 task 4.3 step 1's pattern for each of `:587`, `:617`, `:658`, `:677`,
+-pointing at spec §3. Use the same non-shipping status value chosen in phase 4.
++Follow phase 4 task 4.3 step 1's pattern for each of the four **headings** above, pointing
++at spec §3, and use the same status: **`⏸ unmounted`**.
++
++That value was settled during plan refinement (ledger ORCH-5) and needs no change to
++`scripts/check_features_md.py` — the row loop skips any status that is neither
++`✅ shipping` nor `🚧 in progress`, so `⏸ unmounted` stops ref resolution and passes
++`--strict`. Phase 4 task 4.3 step 1 carries the full reasoning and the table of why none of
++the three existing values fits.
++
++**If phase 4 has not run yet** (phases landing as separate PRs), this phase introduces the
++value; nothing about it depends on phase 4 having gone first.
+ 
+ - [ ] **Step 2: Remove the four WORKFLOWS.md rows and four capture functions**
+ 
+@@ -1276,7 +1357,7 @@
+ ```bash
+ uv run python scripts/check_features_md.py --strict
+ uv run python scripts/check_workflows_md.py -v
+-QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --smoke
++QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli
+ ```
+ Expected: all exit 0.
+ 
+@@ -1291,12 +1372,16 @@
+ 
+ **Spec:** §7, §6 (last paragraph). **Depends on:** phases 1-5.
+ 
+-**Deliverable:** the three positive checks spec §7 requires, plus `gui/CLAUDE.md` brought
+-in line with the five remaining mounts.
++**Deliverable:** the positive checks spec §7 requires, plus `gui/CLAUDE.md` brought in line
++with the five remaining mounts.
+ 
+ > **Why positive checks.** Removal is verified by absence, which is the weakest kind of
+-> test — an absent module cannot fail a test that no longer exists. These three carry the
+-> weight instead: they assert what must still *work*.
++> test — an absent module cannot fail a test that no longer exists. These carry the weight
++> instead: they assert what must still *work*.
++>
++> Spec §7 names three. **Two survive review**: check 1 (the apps build) reduced to the half
++> that is not already covered, and check 3 (curation), re-pointed at the tests that actually
++> prove it. Check 2 (no dangling references) is cut — see task 6.2 for why.
+ 
+ ---
+ 
+@@ -1306,59 +1391,33 @@
+ - Test: `tests/unit/gui/test_apps_build_after_simplification.py` (create)
+ 
+ **Interfaces:**
+-- Consumes: the two-tab shape from phase 5.
+-- Produces: the check that catches a missed import of a deleted module. This is spec §7
+-  check 1.
++- Consumes: nothing; `test_layout_tab_shape.py` (phase 1, edited in phase 5) owns tab shape.
++- Produces: the check that catches a missed import of a deleted module — specifically in
++  the shell, which no other test builds. Spec §7 check 1.
+ 
+ - [ ] **Step 1: Write the test**
+ 
+ ```python
+-"""Both apps still construct after the simplification.
++"""The hub app still constructs after the simplification.
+ 
+-Spec section 7, check 1. A deleted module that some module still imports fails
+-here at ``create_app`` time, which is the only place it *can* fail now that the
+-tests for the deleted surfaces are gone too.
++Spec section 7, check 1 -- reduced to its load-bearing half. A deleted module
++that some module still imports fails here at ``create_app`` time, which is the
++only place it *can* fail now that the tests for the deleted surfaces are gone
++too.
++
++The results viewer's own tab shape is NOT re-asserted here: phase 1 created
++``test_layout_tab_shape.py`` for exactly that and phase 5 edited it to the
++final two-tab list. Restating it would ship a second ``dbc.Tabs`` walker beside
++that file's, two walkers over one structure. What is genuinely uncovered is the
++SHELL's ``create_app`` -- no phase 1-5 test builds it, and it is what catches a
++missed import after the Tune unmount.
+ """
+ 
+-import dash_bootstrap_components as dbc
+-
+-from phenotypic.gui.results_viewer import _ids as ids
+-
+-
+-def _only_tabs(layout) -> dbc.Tabs:
+-    found = []
+-
+-    def walk(node) -> None:
+-        if isinstance(node, dbc.Tabs):
+-            found.append(node)
+-            return
+-        children = getattr(node, "children", None)
+-        if isinstance(children, (list, tuple)):
+-            for child in children:
+-                walk(child)
+-        elif children is not None:
+-            walk(children)
+-
+-    walk(layout)
+-    assert len(found) == 1, f"expected exactly one dbc.Tabs, found {len(found)}"
+-    return found[0]
+-
+ 
+ def test_hub_app_constructs(tmp_output_root):
+     from phenotypic.gui.shell._app import create_app
+ 
+     assert create_app(root=tmp_output_root) is not None
+-
+-
+-def test_standalone_results_viewer_constructs_with_two_tabs(tmp_output_root):
+-    from phenotypic.gui.results_viewer._app import create_app
+-
+-    app = create_app(output_root=tmp_output_root)
+-    tabs = _only_tabs(app.layout)
+-    assert [t.tab_id for t in tabs.children] == [
+-        ids.TAB_PLATE_ID,
+-        ids.TAB_COLONY_ID,
+-    ]
+ ```
+ 
+ `tmp_output_root` must be a real, discoverable output root. **Reuse the existing fixture**
+@@ -1388,71 +1447,28 @@
+ 
+ ---
+ 
+-### Task 6.2: No dangling references
+-
+-**Files:**
+-- Test: `tests/unit/gui/test_no_dangling_removed_references.py` (create)
++### Task 6.2: ~~No dangling references~~ — **cut**
+ 
+-**Interfaces:**
+-- Produces: spec §7 check 2. This is what stops a deleted module name from creeping back
+-  in via a future edit.
+-
+-- [ ] **Step 1: Write the test**
+-
+-```python
+-"""No module under ``src/phenotypic/gui/`` references a removed surface.
+-
+-Spec section 7, check 2. A source scan rather than an import scan: an import
+-inside a function body or a string used by ``importlib`` would both slip past
+-a module-import check.
+-"""
+-
+-from pathlib import Path
+-
+-import phenotypic.gui as gui_pkg
+-from phenotypic.gui.shell._layout import NAV_MODEL
+-
+-REMOVED_MODULE_NAMES = (
+-    "_shared.timeline",
+-    "_shared import timeline",
+-    "timeline_view",
+-    "_thumb_routes",
+-    "_timeline_records",
+-    "_capture_time",
+-    "_plate_pattern",
+-)
+-
+-
+-def test_no_gui_module_references_a_removed_module():
+-    root = Path(gui_pkg.__file__).parent
+-    offenders: list[str] = []
+-    for path in sorted(root.rglob("*.py")):
+-        text = path.read_text(encoding="utf-8")
+-        for name in REMOVED_MODULE_NAMES:
+-            if name in text:
+-                offenders.append(f"{path.relative_to(root)}: {name}")
+-    assert not offenders, "removed modules still referenced:\n" + "\n".join(offenders)
+-
+-
+-def test_nav_model_carries_no_tune_leaf():
+-    assert "tune" not in repr(NAV_MODEL).lower()
+-```
+-
+-- [ ] **Step 2: Run it**
+-
+-```bash
+-QT_QPA_PLATFORM=offscreen uv run pytest \
+-  tests/unit/gui/test_no_dangling_removed_references.py -v
+-```
+-Expected: PASS. A hit on `_capture_time` inside a *docstring* still counts and should be
+-reworded — a name that survives only in prose invites its reintroduction.
+-
+-- [ ] **Step 3: Commit**
+-
+-```bash
+-git add tests/unit/gui/test_no_dangling_removed_references.py
+-git commit -m "test(gui): forbid references to the removed timeline modules"
+-```
++> **Dropped in round-1 review.** An earlier draft added
++> `tests/unit/gui/test_no_dangling_removed_references.py`, an `rglob` + substring scan
++> asserting no `gui/` module mentions a removed name. Four reasons it does not earn its
++> keep:
++>
++> 1. **The real failure mode fails loudly at `create_app`**, which task 6.1 already covers.
++>    The residual case it claims to catch — a lazy in-function import or an `importlib`
++>    string — is hypothetical: spec §1.1 enumerates every call site of all six deleted
++>    modules and every one is a top-level import.
++> 2. **It is a substring scan**, so `_capture_time` matches `_capture_timeout`,
++>    `read_capture_time`, and any prose mention. The draft conceded this and instructed that
++>    docstring hits "should be reworded" — a test dictating prose.
++> 3. Its `test_nav_model_carries_no_tune_leaf` **duplicates phase 4's** version and does it
++>    worse: `"tune" not in repr(NAV_MODEL).lower()` trips on any word containing "tune" and
++>    passes if the leaf is spelled differently.
++> 4. Ruff's `F401` plus task 6.1's import test already cover what matters.
++>
++> Nothing replaces it. If a deleted module is still referenced, `create_app` raises
++> `ModuleNotFoundError` and task 6.1 fails — which is the loud, specific failure this scan
++> would have restated less precisely.
+ 
+ ---
+ 
+@@ -1464,6 +1480,15 @@
+ **Interfaces:**
+ - Consumes: everything. This is spec §7 check 3 and the executable statement of §5.
+ 
++> **`test_colony_callbacks_helpers.py` is the constraint, not the proof.** All 15 of its
++> tests drive pure `_triage_callbacks` helpers against **hand-built `ctx.triggered` dicts**
++> in `tmp_path`. Nothing asserts that a radial exists on a tile, and nothing asserts that
++> anything reaches disk — so it would pass **unmodified** while the radial ceased to be
++> rendered at all. Keep the unmodified rule (it is the executable statement that §5 was
++> respected), but the chain is proved by three other files, all collected by
++> `pyproject.toml:218`'s `testpaths` and **none of them run by any command in this plan
++> before this fix**.
++
+ - [ ] **Step 1: Prove the file is byte-unchanged across the whole plan**
+ 
+ ```bash
+@@ -1475,25 +1500,41 @@
+ Per spec §7: "If a test in `test_colony_callbacks_helpers.py` needs editing, §5 has been
+ violated." A non-empty diff is a **stop-and-escalate**, not something to reconcile.
+ 
+-- [ ] **Step 2: Run the colony suite**
++- [ ] **Step 2: Run the three tests that actually prove the chain**
+ 
+ ```bash
+ QT_QPA_PLATFORM=offscreen uv run pytest \
+-  tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py \
+-  tests/unit/gui/results_viewer/colony_view -n 4 -q
++  tests/gui/results_viewer/colony_view/test_grid.py::test_build_grid_tiles_carry_radial_trigger_not_old_remove_button \
++  tests/integration/gui/test_triage_callbacks.py::test_colony_wedge_mark_writes_category_parquet_and_drops_mirror \
++  tests/unit/cli/test_cli_error_outputs.py \
++  -v
+ ```
+-Expected: PASS.
+ 
+-- [ ] **Step 3: Confirm the radial's write path still has a producer**
++| Test | What it is the proof of |
++|---|---|
++| `test_grid.py:454` | the **only** assertion that a cell carries `colony-radial-trigger` — exactly what a deck.gl rewrite endangers |
++| `test_triage_callbacks.py:227` | `deliverables/errors/debris.parquet` gains the object and the mirror drops it — the executable statement of spec §5 |
++| `test_cli_error_outputs.py` | the `reemit_error_deliverables` end of the round-trip |
+ 
+-The radial writes `deliverables/errors/<category>.parquet`, and the CLI's
+-`reemit_error_deliverables` round-trip is its counterpart. Confirm both ends survive:
++Expected: PASS. Note the first lives under `tests/gui/`, not `tests/unit/gui/` — a
++`tests/unit/gui` invocation never touches it.
++
++- [ ] **Step 3: Run the rest of the colony suite**
+ 
+ ```bash
+-uv run grep -rn "reemit_error_deliverables" src/phenotypic/ | head
+-uv run grep -rn "build_radial_trigger\|CurationLabels" src/phenotypic/gui/ | head
++QT_QPA_PLATFORM=offscreen uv run pytest \
++  tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py \
++  tests/unit/gui/results_viewer/colony_view \
++  tests/gui/results_viewer/colony_view -n 4 -q
+ ```
+-Expected: both present, the radial's hits now confined to `colony_view/` and `_shared/`.
++Expected: PASS.
++
++For the record, the chain verified during review and unchanged by this plan: radial →
++`apply_wedge_mark` / `bulk_mark` → `mutate_and_payload` → `_save_locked` →
++`_publish_if_current` (`_curation_labels.py:773`) → `_write_curated_mirror` +
++`_write_category_parquets` + `_write_labels_parquet`. `colony_view/_callbacks.py:46-51`
++imports the same helpers QC does, so **no hop needs QC or Error mounted** — which is spec
++§5's claim, confirmed.
+ 
+ - [ ] **Step 4: No commit** — this task is verification only.
+ 
+@@ -1527,7 +1568,7 @@
+ QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui -n 4 -q
+ uv run python scripts/check_features_md.py --strict
+ uv run python scripts/check_workflows_md.py -v
+-QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --smoke
++QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli
+ ```
+ Expected: all green. Then run the full unit suite as a Slurm job per the
+ **`run-phenotypic-test`** skill and report it as "green except the known baseline failure".
+@@ -1594,6 +1635,32 @@
+ - **The ledgers are at `src/phenotypic/gui/FEATURES.md` and
+   `src/phenotypic/gui/WORKFLOWS.md`**, not the repo root. The spec cites them by bare
+   filename; the paths above are the real ones.
++- **NEVER edit FEATURES.md by line number. Anchor on its `##` / `###` headings.**
++  **Every line range the spec §6 gives for FEATURES.md is wrong**, by a consistent ≈ +7
++  offset past line ~400 — verified 2026-08-26. The worst case is not cosmetic: spec §6 and
++  an earlier draft of phase 1 said "delete the Results Timeline rows at `FEATURES.md:372-394`",
++  but `:372-377` are **Colony curation rows** (`Colony radial lazy-populate`,
++  `Custom folder + ＋ Add custom`, `Bulk "Mark N as ▾" (colony)`, `Pixel layer toggle`) and
++  the `### Results Timeline tab` heading is at `:379`. Following the spec literally
++  **deletes four curation rows** — a direct spec §5 violation, and phase 5's `git diff`
++  guard would not catch it because that guard watches `colony_view/` and the radial modules,
++  not the ledger.
++
++  | Section | Heading to anchor on | Spec said | Actually |
++  |---|---|---|---|
++  | Browse Timeline | `## Browse tab (source image viewer)` block | 104-126 | 102-126 |
++  | Results Timeline | `### Results Timeline tab` | 372-394 | **379**-400 |
++  | Tune co-pilot | `` ## Tune co-pilot (`/tune/`) `` | 419-486 | **426**-493 |
++  | Timeline shared engine | rows naming `gui/_shared/timeline/` | 536-537 | **543**-544 |
++  | QC tab | `## QC tab` | 587 | **594** |
++  | QC Review | `## QC Review sub-view` | 617 | **624** |
++  | Heatmap tab | `## Heatmap tab` | 658 | **665** |
++  | Error analysis | `## Error analysis tab` | 677 | **684** |
++
++  **WORKFLOWS.md's row numbers `:46/47/51/52/54/55/56` ARE correct** — verified individually.
++  The defect is specific to FEATURES.md.
++- **Add FEATURES.md to phase 5's spec-§5 diff guard.** The curation rows live in the ledger
++  as well as in code, and only the code half was being watched.
+ - **Unmounted ≠ deleted in the ledger.** An unmounted surface's FEATURES.md row is
+   **edited to say unmounted, with a pointer to this spec** — not removed. A deleted
+   surface's row is removed. `check_features_md.py` only resolves refs for `✅ shipping`
+@@ -1630,24 +1697,28 @@
+ 
+ ## Phases
+ 
+-Strict order. Phase 3 **must** follow 1 and 2 — the shared engine cannot be deleted while
+-either consumer still imports it.
++Phase 1 before phase 2; phases 4 and 5 are independent of both and of each other.
+ 
+ | # | Phase | Deliverable | Doc |
+ |---|---|---|---|
+ | 1 | Results Timeline tab — delete | Results viewer has 5 tabs; `timeline_view/` gone | [phase-1](phase-1-results-timeline.md) |
+-| 2 | Browse Timeline mode — delete | Browse has no view-mode toggle; Single is the tab | [phase-2](phase-2-browse-timeline.md) |
+-| 3 | Shared timeline engine — delete | `_shared/timeline/` gone; no dangling imports | [phase-3](phase-3-shared-timeline-engine.md) |
++| 2 | Browse Timeline mode **+ the shared engine** — delete | Browse has no view-mode toggle; `_shared/timeline/` gone | [phase-2](phase-2-browse-timeline.md) |
+ | 4 | Tune — unmount | `/tune/` 404s; `gui/tune/` still imports and unit-tests | [phase-4](phase-4-tune-unmount.md) |
+ | 5 | Heatmap / Error / QC — unmount | Results viewer has 2 tabs; 3 packages retained | [phase-5](phase-5-analysis-tabs-unmount.md) |
+-| 6 | Verification & docs | Layout-shape tests, dangling-ref test, `gui/CLAUDE.md` | [phase-6](phase-6-verification.md) |
++| 6 | Verification & docs | Shell-build test, curation gate, `gui/CLAUDE.md` | [phase-6](phase-6-verification.md) |
++
++**Phase 3 was folded into phase 2** (tasks 2.5-2.6). The shared engine's consumer count
++reaches zero at the end of phase 2's first four tasks, so a separate phase bought nothing
++and cost a same-PR conditional in both directions. Numbering is left with a gap rather than
++renumbered, so the phase names in the ledger and commits keep resolving.
+ 
+ ## Definition of done
+ 
+ 1. `uv run pytest tests/unit/gui -n 4` green (minus the known baseline failure).
+ 2. `uv run python scripts/check_features_md.py --strict` exits 0.
+ 3. `uv run python scripts/check_workflows_md.py -v` exits 0.
+-4. `uv run python scripts/capture_gui_tutorial_screenshots.py --smoke` exits 0.
+-5. The three new tests from phase 6 pass.
++4. `uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli` exits 0.
++5. The two new checks from phase 6 pass, and the three curation-chain tests it names are
++   green (one of them lives under `tests/gui/`, which a `tests/unit/gui` run never reaches).
+ 6. `tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py` passes **unmodified** —
+    `git diff --stat` shows zero lines changed in that file across the whole plan.

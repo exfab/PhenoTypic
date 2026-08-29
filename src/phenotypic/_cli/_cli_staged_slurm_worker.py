@@ -8,28 +8,33 @@ controller rather than by signal handling inside this process.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import os
 import traceback
 from pathlib import Path
-from typing import Sequence
+from typing import Iterator, Mapping, Sequence
 from uuid import uuid4
 
 from phenotypic import ImagePipeline
 from phenotypic.sdk_ import (
-    dataset_hdf_dir,
-    dataset_measurements_dir,
+    CommitGuard,
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     event_log_path,
+    zarr_store_path,
 )
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import split_pipeline_at_gpu
 from ._cli_preload import preload_custom_operation_modules
-from ._cli_sidecar import delete_sidecar, sidecar_exists
+from ._cli_stage2_token import (
+    delete_stage2_raw,
+    delete_stage2_token,
+    stage2_result_replayable,
+)
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
     assert_active_epoch,
-    epoch_is_active,
     load_staged_manifest,
 )
 from ._cli_failure_tracker import (
@@ -37,13 +42,17 @@ from ._cli_failure_tracker import (
     append_terminal_failure,
     read_terminal_failures,
 )
-from ._cli_completion import publish_image_success, valid_image_success
+from ._cli_completion import (
+    image_data_artifact,
+    publish_image_success,
+    valid_image_success,
+)
 from ._cli_staged_slurm import partition_shards
 from ._cli_staged_resume import (
     clear_downstream_artifacts_for_stage1,
     stage3_completion_exists,
-    staged_hdf_matches_work_id,
-    valid_staged_hdf,
+    staged_store_matches_work_id,
+    valid_stage1_store,
     write_stage3_completion_marker,
 )
 from ._cli_staged_workers import (
@@ -53,6 +62,10 @@ from ._cli_staged_workers import (
     stage2_detect_core,
     stage3_merge_measure_core,
     stage_event,
+)
+from ._cli_slurm_lifecycle import (
+    generation_publication_guard,
+    slurm_generation_inactive_cause,
 )
 from ._stages import STAGE_GPU_DETECT, STAGE_MEASURE, STAGE_PREPROCESS
 
@@ -64,13 +77,13 @@ def _record_terminal_scientific_failure(
     item: StagedManifestEntry,
     exception: Exception,
     epoch: str | None,
+    commit_guard: CommitGuard | None,
 ) -> bool:
     """Commit one current-epoch staged scientific failure when identifiable."""
     if (
         not isinstance(exception, PerImageScientificError)
         or not item.work_id
         or epoch is None
-        or not epoch_is_active(output_dir, epoch)
     ):
         return False
     return append_terminal_failure(
@@ -84,6 +97,7 @@ def _record_terminal_scientific_failure(
         lifecycle_epoch=epoch,
         traceback=traceback.format_exc(),
         slurm_job_id=os.environ.get("SLURM_JOB_ID", ""),
+        commit_guard=commit_guard,
     )
 
 
@@ -96,6 +110,20 @@ def _active_check(output_dir: Path, epoch: str | None):
         assert_active_epoch(output_dir, epoch)
 
     return _check
+
+
+def _commit_guard(output_dir: Path, epoch: str | None) -> CommitGuard | None:
+    """Return the staged lifecycle lock held only at canonical commit points."""
+    if epoch is None:
+        return None
+
+    @contextmanager
+    def _guard() -> Iterator[None]:
+        with generation_publication_guard(output_dir, epoch):
+            assert_active_epoch(output_dir, epoch)
+            yield
+
+    return _guard
 
 
 def _entry(entry: StagedManifestEntry | Sequence[str]) -> StagedManifestEntry:
@@ -122,32 +150,49 @@ def run_stage1_step(
     *,
     epoch: str | None = None,
     resume: bool = False,
+    durable_writes: bool | None = None,
+    drop_originals: bool = False,
+    pipeline_identity: Mapping[str, str] | None = None,
 ) -> None:
-    """Preprocess one manifest image into its staged HDF."""
+    """Preprocess one manifest image into its staged OME-Zarr store.
+
+    ``durable_writes`` is the transported ``--durable-writes`` /
+    ``--no-durable-writes`` tri-state. ``None`` lets this process auto-detect
+    SLURM; an explicit value only exists here because the submitter emitted it
+    (spec §3.7).
+    """
     item = _entry(manifest[index])
-    hdf = dataset_hdf_dir(output_dir, item.dataset) / f"{item.stem}.h5"
+    store = zarr_store_path(output_dir, item.dataset, item.stem)
     if resume and (
-        (
-            item.work_id
-            and staged_hdf_matches_work_id(hdf, item.work_id)
-        )
-        or (not item.work_id and valid_staged_hdf(hdf))
+        (item.work_id and staged_store_matches_work_id(store, item.work_id))
+        or (not item.work_id and valid_stage1_store(store))
     ):
         return
     check = _active_check(output_dir, epoch)
+    commit_guard = _commit_guard(output_dir, epoch)
     if check is not None:
         check()
     if resume:
         clear_downstream_artifacts_for_stage1(
-            output_dir, item.dataset, item.stem
+            output_dir,
+            item.dataset,
+            item.stem,
+            commit_guard=commit_guard,
         )
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     output_manager = OutputManager.from_config(
-        output_dir, ext, save_overlays=False
+        output_dir, ext, save_overlays=False, durable_writes=durable_writes
     )
     log = event_log_path(output_dir)
     try:
-        with stage_event(log, item.dataset, item.image_name, STAGE_PREPROCESS):
+        with stage_event(
+            log,
+            item.dataset,
+            item.image_name,
+            STAGE_PREPROCESS,
+            active_check=check,
+            commit_guard=commit_guard,
+        ):
             stage1_preprocess_core(
                 plan,
                 Path(item.input_path),
@@ -158,9 +203,15 @@ def run_stage1_step(
                 image_type,
                 active_check=check,
                 work_id=item.work_id,
+                commit_guard=commit_guard,
+                pipeline_path=pipeline_path,
+                pipeline_identity=pipeline_identity,
+                drop_originals=drop_originals,
             )
     except Exception as exc:
-        _record_terminal_scientific_failure(output_dir, item, exc, epoch)
+        _record_terminal_scientific_failure(
+            output_dir, item, exc, epoch, commit_guard
+        )
         raise
 
 
@@ -178,6 +229,7 @@ def run_stage2_shard(
 ) -> None:
     """Stream one pending shard through one resident GPU model."""
     check = _active_check(output_dir, epoch)
+    commit_guard = _commit_guard(output_dir, epoch)
     if check is not None:
         check()
     shard = [
@@ -193,7 +245,7 @@ def run_stage2_shard(
         item
         for item in shard
         if item.work_id not in terminal
-        if not sidecar_exists(output_dir, item.dataset, item.stem)
+        if not stage2_result_replayable(output_dir, item.dataset, item.stem)
         and not (
             bool(
                 item.work_id
@@ -208,8 +260,8 @@ def run_stage2_shard(
                 resume
                 and not markers_required
                 and (
-                dataset_measurements_dir(output_dir, item.dataset)
-                / f"{item.stem}.parquet"
+                    zarr_store_path(output_dir, item.dataset, item.stem)
+                    / MEASUREMENT_TABLE_RELATIVE_PATH
                 ).is_file()
             )
         )
@@ -220,19 +272,21 @@ def run_stage2_shard(
     log = event_log_path(output_dir)
     pending: list[StagedManifestEntry] = []
     for item in candidates:
-        hdf = dataset_hdf_dir(output_dir, item.dataset) / f"{item.stem}.h5"
+        store = zarr_store_path(output_dir, item.dataset, item.stem)
         if (
-            item.work_id
-            and staged_hdf_matches_work_id(hdf, item.work_id)
-        ) or (not item.work_id and valid_staged_hdf(hdf)):
+            item.work_id and staged_store_matches_work_id(store, item.work_id)
+        ) or (not item.work_id and valid_stage1_store(store)):
             pending.append(item)
             continue
+        if check is not None:
+            check()
         emit_missing_prereq(
             log,
             item.dataset,
             item.image_name,
             STAGE_GPU_DETECT,
-            "staged HDF",
+            "staged store",
+            commit_guard=commit_guard,
         )
     if not pending:
         return
@@ -246,7 +300,12 @@ def run_stage2_shard(
             check()
         try:
             with stage_event(
-                log, item.dataset, item.image_name, STAGE_GPU_DETECT
+                log,
+                item.dataset,
+                item.image_name,
+                STAGE_GPU_DETECT,
+                active_check=check,
+                commit_guard=commit_guard,
             ):
                 stage2_detect_core(
                     plan.gpu_detector,
@@ -255,9 +314,15 @@ def run_stage2_shard(
                     item.stem,
                     image_type,
                     active_check=check,
+                    commit_guard=commit_guard,
                 )
         except Exception as exc:
-            _record_terminal_scientific_failure(output_dir, item, exc, epoch)
+            inactive = slurm_generation_inactive_cause(exc)
+            if inactive is not None:
+                raise inactive
+            _record_terminal_scientific_failure(
+                output_dir, item, exc, epoch, commit_guard
+            )
 
 
 def run_stage3_step(
@@ -272,19 +337,28 @@ def run_stage3_step(
     resume: bool = False,
     markers_required: bool = True,
     overlay_alpha: float = 0.3,
+    durable_writes: bool | None = None,
 ) -> None:
-    """Merge one sidecar, measure it, and publish final per-image outputs."""
+    """Replay one Stage-2 result, measure it, and publish per-image outputs.
+
+    ``durable_writes`` is the transported tri-state; see
+    :func:`run_stage1_step`. Stage 3 re-promotes the store, so a lost value
+    here costs exactly what a lost value in Stage 1 costs.
+    """
     item = _entry(manifest[index])
-    parquet = (
-        dataset_measurements_dir(output_dir, item.dataset)
-        / f"{item.stem}.parquet"
+    measurement_table = (
+        zarr_store_path(output_dir, item.dataset, item.stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
     )
     output_manager = OutputManager.from_config(
         output_dir,
         ext,
         overlay_alpha=overlay_alpha,
         save_overlays=True,
+        durable_writes=durable_writes,
     )
+    check = _active_check(output_dir, epoch)
+    commit_guard = _commit_guard(output_dir, epoch)
     terminal = bool(
         item.work_id
         and valid_image_success(
@@ -297,7 +371,7 @@ def run_stage3_step(
         resume
         and (not markers_required or not item.work_id)
         and stage3_completion_exists(output_dir, item.dataset, item.stem)
-        and parquet.is_file()
+        and measurement_table.is_file()
     )
     if terminal:
         ensure_staged_overlay(
@@ -306,18 +380,19 @@ def run_stage3_step(
             item.stem,
             output_manager,
             image_type,
-            active_check=_active_check(output_dir, epoch),
+            active_check=check,
+            commit_guard=commit_guard,
         )
         return
     if (
         resume
         and item.work_id
         and stage3_completion_exists(output_dir, item.dataset, item.stem)
-        and staged_hdf_matches_work_id(
-            dataset_hdf_dir(output_dir, item.dataset) / f"{item.stem}.h5",
+        and staged_store_matches_work_id(
+            zarr_store_path(output_dir, item.dataset, item.stem),
             item.work_id,
         )
-        and parquet.is_file()
+        and measurement_table.is_file()
     ):
         ensure_staged_overlay(
             output_dir,
@@ -325,16 +400,21 @@ def run_stage3_step(
             item.stem,
             output_manager,
             image_type,
-            active_check=_active_check(output_dir, epoch),
+            active_check=check,
+            commit_guard=commit_guard,
+        )
+        data_key, data_path = image_data_artifact(
+            output_dir, output_manager, item.dataset, item.stem
         )
         artifacts = {
-            "measurements": parquet,
-            "hdf": dataset_hdf_dir(output_dir, item.dataset)
-            / f"{item.stem}.h5",
+            "measurements": measurement_table,
+            data_key: data_path,
             "overlay": output_manager.get_output_path(
                 item.dataset, "overlays", item.stem
             ),
         }
+        if check is not None:
+            check()
         publish_image_success(
             output_dir,
             work_id=item.work_id,
@@ -345,24 +425,36 @@ def run_stage3_step(
             attempt_id=item.attempt_id or uuid4().hex,
             lifecycle_epoch=epoch or "slurm-unfenced",
             artifacts=artifacts,
+            commit_guard=commit_guard,
         )
         return
-    check = _active_check(output_dir, epoch)
     if check is not None:
         check()
     log = event_log_path(output_dir)
-    if not sidecar_exists(output_dir, item.dataset, item.stem):
+    # BOTH halves. The token is only a flag; Stage 3's input is the raw .npy,
+    # and a token-present/raw-missing image would otherwise raise
+    # FileNotFoundError inside stage_event and be recorded as a terminal
+    # SCIENTIFIC failure rather than a missing prereq (ledger FLOW-17/M7).
+    if not stage2_result_replayable(output_dir, item.dataset, item.stem):
         emit_missing_prereq(
             log,
             item.dataset,
             item.image_name,
             STAGE_MEASURE,
-            "objmap sidecar",
+            "Stage 2 result",
+            commit_guard=commit_guard,
         )
         raise SystemExit(1)
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     try:
-        with stage_event(log, item.dataset, item.image_name, STAGE_MEASURE):
+        with stage_event(
+            log,
+            item.dataset,
+            item.image_name,
+            STAGE_MEASURE,
+            active_check=check,
+            commit_guard=commit_guard,
+        ):
             stage3_merge_measure_core(
                 plan,
                 output_dir,
@@ -371,22 +463,27 @@ def run_stage3_step(
                 output_manager,
                 image_type,
                 active_check=check,
+                commit_guard=commit_guard,
                 image_name=item.image_name,
                 work_id=item.work_id,
             )
             if item.work_id:
+                data_key, data_path = image_data_artifact(
+                    output_dir, output_manager, item.dataset, item.stem
+                )
                 artifacts = {
-                    "measurements": output_manager.get_output_path(
-                        item.dataset, "measurements", item.stem
+                    "measurements": (
+                        zarr_store_path(output_dir, item.dataset, item.stem)
+                        / MEASUREMENT_TABLE_RELATIVE_PATH
                     ),
-                    "hdf": output_manager.get_output_path(
-                        item.dataset, "hdf", item.stem
-                    ),
+                    data_key: data_path,
                 }
                 if output_manager.save_overlays:
                     artifacts["overlay"] = output_manager.get_output_path(
                         item.dataset, "overlays", item.stem
                     )
+                if check is not None:
+                    check()
                 publish_image_success(
                     output_dir,
                     work_id=item.work_id,
@@ -399,16 +496,42 @@ def run_stage3_step(
                     attempt_id=item.attempt_id or uuid4().hex,
                     lifecycle_epoch=epoch or "slurm-unfenced",
                     artifacts=artifacts,
+                    commit_guard=commit_guard,
                 )
+            if check is not None:
+                check()
             write_stage3_completion_marker(
                 output_dir,
                 item.dataset,
                 item.image_name,
                 item.stem,
+                commit_guard=commit_guard,
             )
-            delete_sidecar(output_dir, item.dataset, item.stem)
+            # Token FIRST at every consumption site: the only reachable
+            # intermediate state must be "no token, orphan raw".
+            if check is not None:
+                check()
+            delete_stage2_token(
+                output_dir,
+                item.dataset,
+                item.stem,
+                commit_guard=commit_guard,
+            )
+            if check is not None:
+                check()
+            delete_stage2_raw(
+                output_dir,
+                item.dataset,
+                item.stem,
+                commit_guard=commit_guard,
+            )
     except Exception as exc:
-        _record_terminal_scientific_failure(output_dir, item, exc, epoch)
+        inactive = slurm_generation_inactive_cause(exc)
+        if inactive is not None:
+            raise inactive
+        _record_terminal_scientific_failure(
+            output_dir, item, exc, epoch, commit_guard
+        )
         raise
 
 
@@ -426,15 +549,52 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--epoch", required=True)
     parser.add_argument("--reuse-existing", action="store_true")
     parser.add_argument("--stage3-markers-required", action="store_true")
+    parser.add_argument("--drop-originals", action="store_true")
+    parser.add_argument(
+        "--provenance-pipeline-source-path",
+        default=None,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--provenance-pipeline-sha256",
+        default=None,
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--overlay-alpha", type=float, default=0.3)
+    # BooleanOptionalAction, not store_true: the flag is TRI-state and its
+    # default must stay ``None``. ``store_true`` would make an unset flag
+    # ``False`` and permanently disable fsync in every staged SLURM worker --
+    # the opposite of the spec's default on a cluster (spec §3.7).
+    parser.add_argument(
+        "--durable-writes",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
     args = parser.parse_args(argv)
+    provenance_identity_values = (
+        args.provenance_pipeline_source_path,
+        args.provenance_pipeline_sha256,
+    )
+    if any(value is not None for value in provenance_identity_values):
+        if not all(value is not None for value in provenance_identity_values):
+            parser.error("incomplete provenance pipeline identity")
+        pipeline_identity = {
+            "source_path": args.provenance_pipeline_source_path,
+            "sha256": args.provenance_pipeline_sha256,
+        }
+    else:
+        pipeline_identity = None
 
     preload_custom_operation_modules()
     manifest = load_staged_manifest(args.manifest)
     image_type: ImageTypeName = (
         "GridImage" if args.image_type == "GridImage" else "Image"
     )
-    common = {"epoch": args.epoch, "resume": args.reuse_existing}
+    common = {
+        "epoch": args.epoch,
+        "resume": args.reuse_existing,
+        "durable_writes": args.durable_writes,
+    }
     if args.stage == 1:
         run_stage1_step(
             args.pipeline,
@@ -443,9 +603,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             manifest,
             args.index,
             args.ext,
+            drop_originals=args.drop_originals,
+            pipeline_identity=pipeline_identity,
             **common,
         )
     elif args.stage == 2:
+        # Stage 2 writes no store (it drops a token plus a retained raw array
+        # under .phenotypic/progress/), so durability does not apply to it.
+        stage2_common = {
+            k: v for k, v in common.items() if k != "durable_writes"
+        }
         run_stage2_shard(
             args.pipeline,
             args.output_dir,
@@ -454,7 +621,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.index,
             args.n_shards,
             markers_required=args.stage3_markers_required,
-            **common,
+            **stage2_common,
         )
     else:
         run_stage3_step(

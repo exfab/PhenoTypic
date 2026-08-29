@@ -600,3 +600,88 @@ class TestRunFinalizeCoercion:
 
         assert result.exit_code == 0, result.output
         assert attempts == 2
+
+
+class TestProcessExportManifestRejectsIncompleteRun:
+    """The process/export finalizer must fail when a chunk failed.
+
+    ``_publish_run_completion_marker`` already declines to publish for a
+    terminal-incomplete run and returns ``False``.  ``_run_manifest`` must
+    propagate that as a non-zero exit, or ``afterany`` records the finalizer
+    ``COMPLETED`` and the run looks successful with no marker to show for it.
+    """
+
+    def _prepare(self, tmp_path: Path, *, failed: int):
+        output_dir = tmp_path / "out"
+        progress_dir = output_dir / "progress"
+        generation = "abcdef0123456789abcdef0123456789"
+        _write_job_metadata(
+            progress_dir,
+            {"ds1": {"total": 2, "images": ["a.tif", "b.tif"]}},
+            slurm_generation=generation,
+        )
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=generation,
+            mode="ordinary",
+        )
+
+        def publish_manifest(**_kwargs: object) -> None:
+            atomic_write_json(
+                resolve_manifest_json_path(output_dir),
+                {
+                    "is_complete": failed == 0,
+                    "completed": 2 - failed,
+                    "failed": failed,
+                    "total_images": 2,
+                },
+            )
+
+        return output_dir, progress_dir, publish_manifest
+
+    def test_failed_chunk_makes_the_manifest_finalizer_fail(
+        self, tmp_path: Path
+    ) -> None:
+        output_dir, progress_dir, publish_manifest = self._prepare(
+            tmp_path, failed=1
+        )
+
+        with (
+            patch(
+                "phenotypic._cli._dashboard._manifest_builder.build_manifest",
+                side_effect=publish_manifest,
+            ),
+            patch(
+                "phenotypic._cli._cli_state_management.load_processing_state",
+                return_value=SimpleNamespace(
+                    config={"process_only_layer": "gray"}
+                ),
+            ),
+            pytest.raises(RuntimeError, match="terminal-incomplete"),
+        ):
+            _run_manifest(output_dir, progress_dir)
+
+        assert not run_completion_marker_path(output_dir).exists()
+
+    def test_successful_run_still_publishes_and_returns(
+        self, tmp_path: Path
+    ) -> None:
+        output_dir, progress_dir, publish_manifest = self._prepare(
+            tmp_path, failed=0
+        )
+
+        with (
+            patch(
+                "phenotypic._cli._dashboard._manifest_builder.build_manifest",
+                side_effect=publish_manifest,
+            ),
+            patch(
+                "phenotypic._cli._cli_state_management.load_processing_state",
+                return_value=SimpleNamespace(
+                    config={"process_only_layer": "gray"}
+                ),
+            ),
+        ):
+            _run_manifest(output_dir, progress_dir)
+
+        assert run_completion_marker_path(output_dir).is_file()

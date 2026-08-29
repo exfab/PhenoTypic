@@ -1,7 +1,15 @@
-"""Private metadata-schema migration seam for recompile.
+"""Private metadata-schema **inspection** seam for recompile.
 
-Keeping this adapter separate from aggregation makes the automatic migration
-phase removable without changing measurement publication code.
+``recompile`` stops REWRITING legacy metadata headers; it keeps READING them.
+The rewrite moved to ``--mode migrate``, which supersedes flat-metadata
+decision #1 ("every recompile migrates automatically... not restricted to a
+special command"). Decision #3 -- permanent stored-data compatibility -- is
+untouched: the read path canonicalizes legacy headers in memory
+(``_cli/_metadata_join``), so no existing output directory breaks. Recompile
+simply no longer mutates one as a side effect of an unrelated operation.
+
+What survives here is the read-only preflight, so a recompile can still TELL
+the user their bundle is legacy and name the command that converts it.
 """
 
 from __future__ import annotations
@@ -10,77 +18,38 @@ from pathlib import Path
 
 from phenotypic.sdk_ import (
     BundleLayout,
-    MetadataMigrationResult,
+    MetadataMigrationReport,
     deliverables_dir,
-    migrate_metadata_bundle,
     preflight_metadata_schema,
 )
 
 
-class RecompileMetadataMigrationError(RuntimeError):
-    """Raised when metadata migration cannot safely release recompile."""
-
-    def __init__(self, result: MetadataMigrationResult) -> None:
-        """Build an actionable error from a blocked or failed result.
-
-        Args:
-            result: Durable migration result that prevented recompile.
-        """
-        self.result = result
-        blocked = len(result.blocked_targets)
-        migrated = len(result.migrated_targets)
-        skipped = len(result.skipped_targets)
-        receipt = str(result.receipt_path) if result.receipt_path else "none"
-        details = (
-            "; ".join(result.conflicts) or "no conflict details available"
-        )
-        super().__init__(
-            f"metadata migration {result.status}: migrated={migrated}, "
-            f"skipped={skipped}, blocked={blocked}, receipt={receipt}. "
-            f"{details}"
-        )
-
-
-def migrate_metadata_schema_for_recompile(
+def report_metadata_schema_for_recompile(
     output_dir: Path,
-) -> MetadataMigrationResult:
-    """Preflight and migrate bundle-owned metadata before local recompile.
+) -> MetadataMigrationReport:
+    """Inspect a recompile's bundle-owned metadata **without changing it**.
 
-    The layout is constructed directly because a recoverable run may have
-    per-image HDF authority even when an earlier aggregate is absent. External
-    ``--metadata`` inputs are deliberately outside this function and are never
-    migration targets.
+    ``preflight_metadata_schema`` writes nothing, so this is safe to run on
+    every recompile. The layout is constructed directly because a recoverable
+    run may have per-image authority even when an earlier aggregate is absent;
+    passing a ``Path`` would route through ``BundleLayout.detect``, which
+    raises unless ``deliverables/master_measurements.parquet`` exists.
+
+    External ``--metadata`` inputs are deliberately outside this function and
+    are never migration targets.
 
     Args:
         output_dir: Existing PhenoTypic run-output root.
 
     Returns:
-        A compatible no-op result or an applied migration result.
-
-    Raises:
-        RecompileMetadataMigrationError: Migration was blocked or failed, so
-            aggregation must not start.
+        The read-only migration plan and compatibility status.
     """
-    resolved_output = output_dir.resolve()
-    layout = _metadata_bundle_layout(resolved_output)
-    report = preflight_metadata_schema(layout)
-    result = migrate_metadata_bundle(
-        layout,
-        expected_plan_fingerprint=report.plan_fingerprint,
-    )
-    if result.status not in {"compatible", "applied"}:
-        raise RecompileMetadataMigrationError(result)
-    from ._cli_completion import (
-        refresh_success_markers_after_metadata_migration,
-    )
+    return preflight_metadata_schema(_metadata_bundle_layout(output_dir))
 
-    refresh_success_markers_after_metadata_migration(
-        resolved_output,
-        receipt_paths=(
-            (result.receipt_path,) if result.receipt_path is not None else ()
-        ),
-    )
-    return result
+
+def legacy_header_target_count(report: MetadataMigrationReport) -> int:
+    """Return how many bundle targets still carry legacy metadata headers."""
+    return sum(1 for target in report.targets if target.status == "migratable")
 
 
 def _metadata_bundle_layout(output_dir: Path) -> BundleLayout:
@@ -93,6 +62,6 @@ def _metadata_bundle_layout(output_dir: Path) -> BundleLayout:
 
 
 __all__ = [
-    "RecompileMetadataMigrationError",
-    "migrate_metadata_schema_for_recompile",
+    "legacy_header_target_count",
+    "report_metadata_schema_for_recompile",
 ]

@@ -54,7 +54,12 @@ from ..strategy._config import (
 from .._study._protocol import StudyStore
 from .._study_store import JournalStudyStore, Trial
 
-_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".h5"}
+#: Ordinary image files ``GridImage.imread`` decodes. ``.h5`` used to be
+#: listed here, but ``imread`` never accepted it (``IO.ACCEPTED_FILE_EXTENSIONS``
+#: has no HDF entry), so every ``.h5`` was silently counted as "unreadable"
+#: and skipped. Processed images now arrive as ``*.ome.zarr`` **directories**
+#: and are loaded through :func:`load_image_from_store`, below.
+_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff"}
 
 #: Default trial budget when ``--n-trials`` is omitted for a ``random`` or Optuna
 #: strategy (grid is exhaustive and ignores it).
@@ -238,10 +243,13 @@ def _load_images(
     nrows: Optional[int] = None,
     ncols: Optional[int] = None,
 ) -> list:
-    """Load every image file under ``input_dir`` as a ``GridImage``.
+    """Load every image under ``input_dir`` as a ``GridImage``.
 
     Mirrors the forward CLI's directory scan; tuning targets arrayed plates, so
-    images load as ``GridImage`` via ``imread``. Unreadable / non-grid files are
+    images load as ``GridImage``. Ordinary image files go through ``imread``;
+    ``*.ome.zarr`` **store directories** written by a previous forward run go
+    through :func:`load_image_from_store`, so a tuning run can be pointed
+    straight at ``results/<dataset>/zarr/``. Unreadable / non-grid entries are
     skipped (warned) rather than aborting the whole run.
 
     Args:
@@ -257,9 +265,21 @@ def _load_images(
     Returns:
         The loaded ``GridImage`` instances, in sorted filename order.
     """
+    from phenotypic.sdk_ import STORE_SUFFIX, load_image_from_store
+
+    def _is_store(path: Path) -> bool:
+        # A store is a DIRECTORY, and its `.part`/`.trash` siblings are
+        # dotted -- the same two tests the CLI's own store scan makes.
+        return (
+            path.is_dir()
+            and path.name.endswith(STORE_SUFFIX)
+            and not path.name.startswith(".")
+        )
+
     paths = sorted(
         p for p in Path(input_dir).iterdir()
-        if p.is_file() and p.suffix.lower() in _IMAGE_SUFFIXES
+        if (p.is_file() and p.suffix.lower() in _IMAGE_SUFFIXES)
+        or _is_store(p)
     )
     grid_kwargs: dict[str, int] = {}
     if nrows is not None and ncols is not None:
@@ -268,8 +288,15 @@ def _load_images(
     failures: list[tuple[str, str]] = []
     for path in paths:
         try:
-            images.append(GridImage.imread(path, **grid_kwargs))
-        except Exception as exc:  # skip unreadable / non-grid files, don't abort
+            if _is_store(path):
+                # A store already records its own grid state; the
+                # nrows/ncols imread overrides do not apply to it.
+                images.append(
+                    load_image_from_store(path, fallback="GridImage")
+                )
+            else:
+                images.append(GridImage.imread(path, **grid_kwargs))
+        except Exception as exc:  # skip unreadable / non-grid entries, don't abort
             failures.append((path.name, str(exc)))
     if failures:
         logging.getLogger(__name__).warning(

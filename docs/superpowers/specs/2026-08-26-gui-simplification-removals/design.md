@@ -188,13 +188,37 @@ unmounted — they drop from two consumer surfaces to one.
 Three CI gates in the `gui-checks` workflow make this part of the change, not follow-up:
 
 - **`features-md-gate`** rejects any PR touching `gui/` without modifying
-  `FEATURES.md`. Retire the rows for: Results Timeline tab (`FEATURES.md:372-394`),
-  the Browse Timeline block (`:104-126`), Timeline shared engine and Compare-strip cap
-  logic (`:536-537`), the Tune co-pilot section (`:419-486`), QC tab (`:587`),
-  QC Review (`:617`), Heatmap tab (`:658`), Error analysis tab (`:677`).
+  `FEATURES.md`.
+
+  > **Amended 2026-08-26 — anchor on headings, never line numbers.** An earlier revision
+  > gave eight line ranges. **Every one was wrong**, by ≈ +7 past line ~400, and one was
+  > actively dangerous: it cited `:372-394` for the Results Timeline rows, but `:372-377`
+  > are **Colony curation rows** (`Colony radial lazy-populate`, `Custom folder + ＋ Add
+  > custom`, `Bulk "Mark N as ▾" (colony)`, `Pixel layer toggle`) and the
+  > `### Results Timeline tab` heading is at `:379`. Following it deleted four curation
+  > rows — so §6 instructed a violation of **§5**, the clause this spec spends a whole
+  > section defending. Line numbers move as sections are removed; headings do not.
+
+  Retire the rows under these **headings**:
+
+  | Surface | Heading |
+  |---|---|
+  | Browse Timeline | the timeline block under `## Browse tab (source image viewer)` |
+  | Results Timeline tab | `### Results Timeline tab` |
+  | Timeline shared engine + Compare-strip cap | the two rows whose Element names `gui/_shared/timeline/` |
+  | Tune co-pilot | `` ## Tune co-pilot (`/tune/`) `` |
+  | QC tab | `## QC tab` |
+  | QC Review | `## QC Review sub-view` |
+  | Heatmap tab | `## Heatmap tab` |
+  | Error analysis tab | `## Error analysis tab` |
   Unmounted surfaces are **marked as unmounted with a pointer to this spec**, not deleted
   outright — the ledger's job is to describe what a user can reach, and "exists but
-  unreachable" is a state it should carry.
+  unreachable" is a state it should carry. The status is **`⏸ unmounted`**, and the
+  legend at `FEATURES.md:9-16` gains a row for it: the file currently documents four
+  statuses (`🔭 planned`, `🚧 in progress`, `✅ shipping`, `🧪 internal`) and this makes
+  five. `🧪 internal` is **not** reused — it means "retained internal/legacy coverage; not
+  user-facing", which describes test coverage of internals, whereas an unmounted tab is
+  user-facing by design and merely unreachable.
 - **`workflows-md-gate`** enforces the WORKFLOWS.md ↔ capture-script ↔ tutorial-page
   round-trip. Retire rows `browse_timeline` (`:54`), `results_timeline` (`:55`),
   `tune_copilot` (`:56`), `qc_curation_loop` (`:46`), `heatmap_exploration` (`:47`),
@@ -254,11 +278,21 @@ This is cycle 1 of 3:
 - No change to the pixel path — plate tiles still come from `_dzi_tiler`. That is cycle 2.
 - No `_config.py` constant removal.
 
+### 9.1 Non-functional requirements
+
+**None.** This is a pure removal: it adds no capability and no code path. Deleting work
+makes app construction marginally cheaper, but no threshold is claimed and none should be
+defended. Recorded explicitly so the reviewer panel's precedence table has an anchor rather
+than an absence — a performance argument raised against this spec has nothing to appeal to.
+
+*Settled by the user, 2026-08-26.*
+
 ## 10. Risks
 
 | Risk | Mitigation |
 |---|---|
 | A browse helper is less timeline-only than it looks | §1.1 records the call-site evidence for each; `read_capture_time` was the one that needed checking and has a single call site |
+| `_error_tab/` is deleted rather than retained | It is a **CLI dependency**: `_cli/_cli_error_outputs.py:81` imports `capture_error_source_fingerprints`, `compute_all_category_analysis` and `publish_error_analysis` from `results_viewer/_error_tab/_publication.py` on every finalize. Deleting it breaks CLI finalization, and **no GUI test catches it** |
 | An unmounted tab's callbacks left registered fail silently | §4 removes the register calls; test 2 in §7 has no coverage for this, so it is a review-checklist item |
 | e2e skip-marks rot into permanently dead tests | Each skip reason names this spec, so they are greppable when the surface returns |
 | Deleting tutorial PNGs loses history | They are in git; the pages are recoverable with the surfaces |

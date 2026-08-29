@@ -1,7 +1,13 @@
 # OME-Zarr per-image store
 
 **Date:** 2026-08-18
-**Status:** Draft — revised after independent review
+**Status:** **Implemented** (Phase 6, 2026-08-20) — revised after independent review; amended
+2026-08-19 per plan-refinery user rulings (see the superseded/corrected callouts inline).
+Implementation plan: [`docs/superpowers/plans/2026-08-18-ome-zarr-image-store/`](../../plans/2026-08-18-ome-zarr-image-store/README.md).
+Deferred work and known weaknesses this change surfaced but did not fix:
+[`DEFERRED.md`](DEFERRED.md).
+Phases 0–6 have landed; Phase 7 (verification: commit protocol, differential resume,
+the Windows lane) is the remaining work.
 **Scope:** Per-image CLI image storage, the staged-GPU commit protocol, GUI tile
 reads, the legacy-HDF migration mode, and the Python support floor
 
@@ -36,15 +42,27 @@ dual reader.
 3. **NGFF 0.5 on Zarr format v3**, raising `requires-python` to
    `>=3.11, <3.13`. Python 3.10 is dropped.
 4. **Commit is rename-promote.** Every publishing stage builds a `.part`
-   directory and promotes it by directory rename. Stage 2's in-store label
-   write is an intermediate, not a publish.
+   directory and promotes it by directory rename. ~~Stage 2's in-store label
+   write is an intermediate, not a publish.~~ **Withdrawn 2026-08-19 (user
+   ruling, ledger GEN-37): Stage 2 does not write into the store at all** — see
+   the supersessions on §3.4 and §3.5. There is no Stage-2 publish to classify.
 5. **Resume state is carried by consumable markers**, never by NGFF metadata.
 6. **OME projection is write-only.** `attributes.phenotypic` is the sole source
    of truth on read.
 7. **Layout version and metadata-schema version stay separate** (inherited from
    the flat-metadata design, decision #6).
-8. **Pyramids are in scope and tunable** via `--pyramid-levels`; the GUI reads
+8. **Pyramids are in scope.** ~~Tunable via `--pyramid-levels`~~; the GUI reads
    them.
+
+   > **Superseded (2026-08-19, user ruling).** The `--pyramid-levels` lever is
+   > **descoped**. Pyramid depth is `pyramid_level_count(h, w)`, a pure function
+   > of the level-0 shape. With no user lever, two stores in one tree cannot
+   > disagree — which is what makes mixed-geometry drift unreachable rather than
+   > merely unlikely (it would otherwise raise inside a tile request, since
+   > `select_pyramid_level` reads `phenotypic.pyramid.levels` per store). A
+   > single-level store remains reachable internally via the private `levels=`
+   > argument used for GUI builder node previews. The lever may land later as
+   > its own change.
 9. **The dead HDF DataFrame layer is retired.**
 10. **Per-colony measurements are NOT projected into `image-label.properties`.**
     Considered and deferred; parquet remains the only measurement surface.
@@ -66,12 +84,31 @@ Both changes must be recorded there as superseded when this design is approved.
   legacy headers but **keeps reading** them — its decision #3 (permanent
   stored-data compatibility) is untouched, so no existing output directory
   breaks; recompile simply no longer mutates one as a side effect.
-- **Its decision #7** ("The startup metadata snapshot is immutable provenance…
-  never rewritten") is narrowed to *never rewritten as a side effect*.
-  `--mode migrate` rewrites `deliverables/metadata.csv` with canonical
-  `Metadata_<Label>` headers, after first copying the untouched bytes to
-  `deliverables/metadata.original.csv`. Finalization, chunk writers, and
-  recompile still never rewrite it.
+- ~~**Its decision #7**~~ — **this supersession is WITHDRAWN (2026-08-19, user
+  ruling).** An earlier draft narrowed decision #7 ("The startup metadata
+  snapshot is immutable provenance… never rewritten") so that `--mode migrate`
+  could rewrite `deliverables/metadata.csv` with canonical headers, preserving
+  the original bytes beside it.
+
+  **`--mode migrate` no longer rewrites that file at all**, so decision #7
+  stands unnarrowed and nothing needs recording against the flat-metadata
+  design. Three reasons, the first decisive:
+
+  1. **The rewrite could not work.** `metadata_sha256` is **recomputed from the
+     file on every run** ([`phenotypicCLI.py:1338`](../../../../src/phenotypic/phenotypicCLI.py),
+     `:2135`), not read from state — so the moment migrate rewrote the file the
+     next `full`/`recompile` computed a new digest, `expected_finalization`
+     diverged from the published `finalization_input_digest`, and the whole tree
+     re-finalized regardless of what migration wrote into state.
+  2. **It bought nothing.** The read path already canonicalizes legacy headers
+     in memory (`_cli/_metadata_join.py:86-104`), and `_snapshot_metadata_csv`'s
+     own docstring states the snapshot is normalized only on read.
+  3. **It created a revert hazard.** Passing `--metadata <the original csv>`
+     after a migration would overwrite the canonicalized file with the raw
+     original, silently undoing the migration.
+
+  A canonical *view* may be emitted as `deliverables/metadata.canonical.csv`.
+  The snapshot itself is never rewritten — by migration or by anything else.
 
 ---
 
@@ -184,16 +221,44 @@ leaves a 4000×3000 plate's smallest level at 1000×750. Caught by
 [`ngff_store_geometry.py`](../../logic_validation_scripts/2026-08-18-ome-zarr-image-store/ngff_store_geometry.py)
 claim C1, whose assertion is retained because it has already failed once.
 
-**Tunable.** `--pyramid-levels auto|N`, default `auto`; `1` disables pyramiding.
+**~~Tunable.~~ Fixed — superseded (2026-08-19, user ruling); see decision #8.**
+The paragraph below describes the descoped lever and is retained for its
+reasoning about uniformity, which still binds: depth applies to every series in
+a store because NGFF requires a label image to carry its parent's level count.
+
+~~`--pyramid-levels auto|N`, default `auto`; `1` disables pyramiding.~~
 The value applies **uniformly to every series in a store** — NGFF requires a
 label image to carry the same level count as its parent, so this cannot be
 per-layer. The resolved count and downsample methods are persisted in
 `phenotypic.pyramid` so readers never infer them.
 
-Per-level shapes use **ceil-halving**: `(h+1)//2, (w+1)//2`. This is normative,
-not incidental — §2.2 derives `coordinateTransformations.scale` from the
-**actual** level shape ratio, not from `2**n`, because odd extents make the two
-diverge and NGFF requires the scale vector to describe the real relationship.
+Per-level shapes use **ceil-halving**: `(h+1)//2, (w+1)//2`. Coordinate
+transformations describe the **sampling operation**, not the ratio between the
+stored array extents: a 1025-pixel axis becomes 513 samples after one 2x
+reduction, but those samples remain spaced 2 level-0 pixels apart. For a
+level-0 axis of length `size` at level `n`, the scale is therefore
+
+```text
+2 ** min(n, (size - 1).bit_length())
+```
+
+The cap saturates each spatial axis independently once it reaches one sample;
+a leading channel axis always has scale 1.0. A repeated 2x block reduction with
+total scale `S` maps a level coordinate `u` to `S*u + (S-1)/2`, so every
+downsampled dataset also carries a block-center translation `(S-1)/2` on its
+spatial axes and 0 on channel axes. `coordinateTransformations` is ordered
+`scale`, then the nonzero `translation`; level 0 is scale-only. Image and label
+pyramids use the same spatial transformations so third-party consumers keep
+them co-registered.
+
+This instantiates the published contract rather than extending it: the vendored
+NGFF 0.5 page defines transformations as an ordered sequence
+(`refs/ngff-0.5.html:2577-2606`), requires exactly one dataset scale and says an
+optional translation follows it (`refs/ngff-0.5.html:2621-2626`), and describes
+label images as sharing the corresponding image's coordinate system
+(`refs/ngff-0.5.html:2749-2751`). The independent derivation and odd/singleton
+controls are claim C7 of
+[`ngff_store_geometry.py`](../../logic_validation_scripts/2026-08-18-ome-zarr-image-store/ngff_store_geometry.py).
 
 Image layers downsample by local mean. `objmap` downsamples by
 **nearest-neighbour**; mean-downsampling fabricates label values present at no
@@ -279,7 +344,27 @@ across plate sizes. Two honest qualifications:
 `layers` map, mixing series names with nested paths so readers could not tell
 which was which without special-casing.
 
-**Two version markers, not one** — `store_schema_version` describes groups and
+> **Amended (2026-08-19, user ruling).** `metadata_schema_version` is
+> **dropped** from the block, and `store_schema_version` gains a **value** gate.
+>
+> The marker was to be written as a hard-coded constant over metadata the same
+> writer documents as stored "verbatim and unvalidated" — so it asserted
+> something no code path enforces. That inverts the existing HDF contract, where
+> the attribute is written only *after* a successful rewrite
+> (`sdk_/_metadata_migration.py:1401`) and its absence or mismatch is precisely
+> what marks a target migratable (`:603-606`). With header-only store migration
+> cut (§5.3), nothing reads it either.
+>
+> `store_schema_version` was to be checked for **presence only**, which would let
+> a future v4 store be read under v3 semantics with no error. The loader now
+> compares the value and raises an explicit "written by a newer PhenoTypic"
+> error.
+>
+> The paragraph below is retained for the reasoning behind separating layout
+> from header versioning, which still holds — it is the *unconditional write*
+> that was wrong, not the distinction.
+
+~~**Two version markers, not one**~~ — `store_schema_version` describes groups and
 arrays, `metadata_schema_version` the header namespace. Flat-metadata decision
 #6, carried forward.
 
@@ -304,10 +389,22 @@ Derived on every write, **never read back**:
 
 | Source | Projected into |
 |---|---|
-| actual level shape ratios | `datasets[].coordinateTransformations` (one `scale`) |
-| `TIFF:XResolution` / `YResolution` | `axes[].unit` + the level-0 `scale` |
+| repeated 2x sampling factors + block-center offsets | `datasets[].coordinateTransformations` (`scale`, then nonzero `translation`) |
+| ~~`TIFF:XResolution` / `YResolution`~~ | ~~`axes[].unit` + the level-0 `scale`~~ — **withdrawn**, see below |
 | `Metadata_ImageName` | `multiscales[].name`, `omero.name` |
 | `Metadata_BitDepth`, channel identity | the full `omero.channels` block |
+
+> **Physical resolution is no longer projected (2026-08-19, user ruling — ledger
+> PRE-G1 / ALGO-5, applied by GEN-19).** The `resolution=` parameter was deleted
+> from `build_multiscales` outright, so nothing reads the TIFF tags any more. The
+> DSLR captures this project ingests carry no resolution tags, so the branch had
+> no live input, no caller ever passed it, and no test covered it — and it carried
+> a latent **25400×** error, since `1.0 / x_res` treats a TIFF `XResolution`
+> (px/**inch** by default) as px/micrometre. Scale vectors are pure sampling
+> factors and `axes[].unit` is omitted, which §2.1 permits. The tags remain readable in
+> `attributes.phenotypic.metadata.imported` and in the OME-XML annotation block;
+> they are simply not projected into NGFF geometry. The remaining scale vectors
+> record sampling factors, not physical units or stored-shape ratios.
 
 **`omero` is emitted completely or not at all.** NGFF makes it conditionally
 strict: if present, every channel MUST carry a 6-hex-digit `color` and a
@@ -321,11 +418,37 @@ the first store written. The projection is:
  "window": {"min": 0, "max": 65535, "start": 0, "end": 65535}}
 ```
 
-with `max`/`end` = `2**bit_depth - 1`. `gray` and `detect_mat` emit a single
-white channel. `omero` is omitted entirely from label groups.
+with `max`/`end` = `2**bit_depth - 1`. `gray` emits a single white channel.
 
-When no resolution tag exists, `scale` is the level-ratio vector with `unit`
-omitted, which the spec permits.
+> **Superseded in part (2026-08-19, user rulings).** `omero` is **omitted from
+> every FLOAT series** — `detect_mat` **and `gray`** — and from label groups.
+>
+> Both are float, typically in `[0, 1]`; a `2**bit_depth - 1` window over them
+> renders near-black in any viewer honouring `omero`. Verified by execution:
+> `gray` is `float32` with range `[0.545, 0.955]` while `bit_depth` is 8 —
+> identical to `detect_mat`. An earlier version of this ruling keyed on the
+> series *name* and so covered only `detect_mat`, missing `gray`, which is the
+> **primary series in every rgb-less store** and therefore the layer an external
+> reader opens by default. The test is now the **dtype**, which is
+> self-maintaining.
+>
+> In practice `rgb` is the only series carrying a block, and an rgb-less store
+> carries none. That is conformant: §2.5 states *"The 'omero' metadata is
+> optional"*, `image.schema`'s `properties.ome.required` is
+> `["multiscales", "version"]`, and the whole-or-nothing rule is **per group**.
+>
+> **Deferred, deliberately.** Making these layers *render* — by converting them
+> to an integer dtype, or by deriving the window from the actual range — waits
+> on data about the effect on analysis quality. Note that NGFF mandates integer
+> pixels only for **label** images (§2.6); image series are unconstrained, so
+> omitting `omero` is not a workaround for a conformance problem. Conversion
+> would additionally break the bit-exact round-trip §7 requires, quantize an
+> analysis input, and run into `detect_mat` values not bounded to `[0, 1]` —
+> which is the `Image` data-model change §10 already defers to its own design. `omero` is omitted entirely from label groups.
+
+With physical resolution deliberately unprojected, `scale` records the sampling
+factor relative to level 0 and `unit` remains omitted. Downsampled levels carry
+the block-center translation defined in §1.3.
 
 ### 2.3 `image-label` metadata
 
@@ -339,7 +462,23 @@ though the prose says SHOULD. The store therefore always emits it:
                            {"label-value": 1, "rgba": […]}, …]}
 ```
 
-`colors` MUST carry one entry per unique label value. Colours come from a
+> **Superseded (2026-08-19, user ruling).** `colors` carries **only** the
+> transparent background entry `{"label-value": 0, "rgba": [0,0,0,0]}`.
+>
+> Two reasons, the second discovered after the ruling and independently
+> sufficient. (1) Stage 2 overwrites the objmap **in place without
+> re-promoting** (§3.4), so a per-value palette written at Stage 1 would
+> describe a zeros array while the array held ~1536 labels — leaving the store
+> non-conformant for the entire Stage-2 → Stage-3 window. (2) The "MUST" below
+> is **a PhenoTypic invention, not an NGFF rule**: `label.schema`'s
+> `$defs/image-label` has **no `required` list at all**, so `colors` is optional
+> and nothing obliges exhaustiveness — verified by parsing the published schema.
+> Nothing in PhenoTypic reads `colors` (the GUI colourises via
+> `skimage.color.label2rgb`), so the only consumers are external viewers, which
+> fall back to their own palette. The ~60 KB budget below therefore no longer
+> applies.
+
+~~`colors` MUST carry one entry per unique label value.~~ Colours come from a
 deterministic hash of the label value, so they are reproducible and require no
 stored palette. **Size cost:** a 1536-colony plate yields 1537 entries, roughly
 60 KB of JSON in `labels/objmap/zarr.json`. This is the largest metadata file in
@@ -355,10 +494,28 @@ REMBI-module-grouped view built from `phenotypic.schema.header_to_module()`.
 
 NGFF marks this SHOULD, **but** the named-series rules say every `multiscales`
 group MUST correspond to one OME-XML `Image` in series order. A build failure
-therefore cannot simply be warned past while keeping the `series` list. On
-failure the writer emits **neither** the XML nor the `OME/` group, falling back
-to the consecutive-integer form the spec requires in that case, and logs a
-warning. This keeps every emitted store conforming.
+therefore cannot simply be warned past while keeping the `series` list. **The
+build is fatal:** `build_ome_xml` raises rather than returning `None`, the
+`OME/` group is written unconditionally, and no store is left behind.
+
+> **Superseded (2026-08-19, user ruling — ledger ALGO-1, applied by GEN-19 /
+> ALGO-9).** This section previously read: *"On failure the writer emits neither
+> the XML nor the `OME/` group, falling back to the consecutive-integer form the
+> spec requires in that case, and logs a warning."* Two things were wrong with
+> it.
+>
+> First, the ruling. The user chose *"emit valid OME-XML + vendor `ome.xsd`"*, and
+> a degraded path is what let a real defect hide: an earlier draft's
+> `header_to_module(key)` call raised `TypeError` on the first key, and because
+> the builder caught everything and returned `None`, **every** store would have
+> shipped with no `OME/` group at all, silently.
+>
+> Second, the fallback did not do what it claimed. NGFF §2.2.3: *"If the 'series'
+> attribute does not exist and no 'plate' is present: separate 'multiscales'
+> images MUST be stored in consecutively numbered groups starting from 0."* The
+> branch kept the named `rgb`/`gray`/`detect_mat` groups, so it never reached the
+> consecutive-integer form — it produced a non-conforming store while claiming to
+> avoid one.
 
 ### 2.5 What is deliberately not mapped
 
@@ -392,8 +549,10 @@ reader benefit.
 
 Used by every publishing stage (Stage 1, single-pass, and Stage 3):
 
-1. `shutil.rmtree` any pre-existing `.part` for this stem, then build
-   `.<stem>.ome.zarr.<uuid4hex>.part/` as a **sibling** of the target.
+1. Allocate `.<stem>.ome.zarr.<uuid4hex>.part/` as a **sibling** of the target.
+   If the write fails, remove only that attempt-owned `.part`; never remove an
+   arbitrary same-stem `.part` or `.trash`, which may belong to a live sibling
+   writer and is otherwise handled by the age-gated orphan sweep.
    The uuid — matching the `attempt_id = uuid4().hex` convention already used at
    [`_cli_staged_strategy.py:158`](../../../../src/phenotypic/_cli/_cli_staged_strategy.py) —
    replaces an earlier draft's un-suffixed `.part`, which would have let two
@@ -433,8 +592,26 @@ Builds and promotes a complete store: `rgb` (when present), `gray`,
 
 ### 3.4 Stage 2 — the sidecar becomes a consumable marker
 
-Stage 2 opens the promoted store and overwrites `labels/objmap` in place with
-the detector output, then writes a **consumable Stage-2 token**:
+Stage 2 writes its raw detector output to `.phenotypic/progress/stage2_raw/`
+and then a **consumable Stage-2 token**. It does **not** open the promoted store.
+
+> **Superseded (2026-08-19, user ruling).** This section previously read *"Stage 2
+> opens the promoted store and overwrites `labels/objmap` in place with the
+> detector output."* The user's clarification — *"the stage 2 objmap doesn't need
+> interop, only the final omezarr store"* — removes the only justification the
+> in-store write had left (see the correction at the end of §3.5, which had
+> already reduced it to "third-party interop").
+>
+> Removing it dissolved four separate open concerns at once rather than fixing
+> one — FLOW-5, FLOW-12, D11, and B10 — and restored exact parity with the HDF
+> path. An in-store write here would also be visible to the GUI's *uncached crop
+> route* as raw, pre-`drop_frame_background` labels, which is precisely what a
+> viewer must not be shown.
+>
+> Stage 3 replays from the retained raw array, never from the store's own objmap:
+> Stage 3 re-promotes over that objmap, so using it as input makes a retried
+> Stage 3 re-run `_write_object_output` on already-refined labels, and
+> `drop_frame_background` then deletes a real colony (**D1**).
 
 ```text
 <output>/.phenotypic/progress/stage2_done/<dataset>/<stem>.json
@@ -475,8 +652,31 @@ store's label image holding raw detector output that disagrees with the parquet
 and with a single-pass run — violating the byte-identical-to-single-pass
 contract in [`_cli/CLAUDE.md`](../../../../src/phenotypic/_cli/CLAUDE.md).
 
-Stage 2's in-store write therefore buys two things, not atomicity: the `.npy`
-sidecar format disappears, and the GUI can render a real objmap mid-run.
+Stage 2's in-store write was argued to buy two things, not atomicity — but see
+the corrections below: **neither survived, and the write itself is withdrawn.**
+
+> **Corrected (2026-08-19).** The claim that "the GUI can render a real objmap
+> mid-run" is **false** and is withdrawn. Tile-cache staleness is keyed on the
+> root `zarr.json`, which an in-place write deliberately does not touch — so the
+> GUI serves the Stage-1 zeros objmap for the whole Stage-2 → Stage-3 window.
+> That is correct behaviour, not a regression: the completion marker, not the
+> store's shape, gates consumers, and a torn mid-Stage-2 objmap is exactly what
+> a viewer must not be shown.
+>
+> Note also that the *other* stated benefit was weakened by the same review: the
+> `.npy` sidecar does not fully disappear. Stage 2 retains its **raw** detector
+> output under `.phenotypic/progress/stage2_raw/`, because Stage 3 re-promotes
+> over the store's objmap and so cannot use it as its own replay input — without
+> the retained copy, a retried Stage 3 re-runs `_write_object_output` on
+> already-refined labels and `drop_frame_background` deletes a real colony. The
+> in-store write's remaining justification was **third-party interop**.
+>
+> **And that justification was then withdrawn too (2026-08-19, user ruling —
+> ledger GEN-37).** Only the *final* store needs third-party interop; the
+> mid-run objmap does not. So the in-store write bought **nothing**: the sidecar
+> format did not disappear (the raw array is retained), the GUI never rendered a
+> real objmap mid-run, and interop is a property of the finished store. It is
+> removed — see the supersession on §3.4 and locked decision #4.
 
 ### 3.6 Resume validity
 
@@ -498,9 +698,9 @@ none of zarr's error types are `ValueError` subclasses.
 ### 3.7 Concurrency and durability
 
 Zarr has no locking. Safety rests on: the uuid-suffixed `.part` (§3.2), Stage 2
-being the sole writer of the label array between promotes, and resume state
-living outside the store. Concurrent readers during Stage 2 may observe a torn
-`objmap`; the completion marker, not the store's shape, is what gates consumers.
+writing only external raw/token state, and whole-store promotion. Stage 2 never
+mutates a promoted store, so concurrent readers cannot observe a torn Stage-2
+`objmap`; Stage 3 publishes the refined result through §3.2.
 
 **Durability is environment-dependent.** `write()` returns once data is in the
 page cache; without `fsync` the kernel may flush the root `zarr.json` **before**
@@ -524,8 +724,17 @@ required, not optional:
 - the resolved mode is **logged at run start** ("durable writes: on (SLURM)");
 - `--durable-writes / --no-durable-writes` overrides the detection explicitly.
 
-On POSIX this means `fsync` on each chunk file and on the `.part` directory. On
-Windows the directory `fsync` is skipped (§3.8).
+On POSIX this means `fsync` on each chunk file, on **every directory under**
+the `.part` (not only its root), and on `final.parent` after the promote. On
+Windows all directory `fsync`s are skipped (§3.8).
+
+> **Amended (2026-08-19, user ruling).** An earlier draft flushed files plus the
+> `.part` root only. On POSIX a durable file does **not** imply a durable
+> directory entry, so the nested `gray/0/`, `rgb/labels/objmap/0/` dirents and
+> the post-rename parent were left unflushed — a gap of exactly the shape this
+> section exists to close, and one that would have reintroduced the silent
+> wrong-data mode described above. The extra flushes are a handful per image, on
+> the SLURM path only, against a store that is already flushing ~40 chunk files.
 
 ### 3.8 Windows
 
@@ -586,7 +795,18 @@ last on every promote:
 
 | Site | Problem |
 |---|---|
-| [`_tile_routes.py:471`](../../../../src/phenotypic/gui/results_viewer/_tile_routes.py) | `file_fingerprint()` opens the path as a file → `IsADirectoryError` on a store. Use `paths_fingerprint()`, which handles directories. |
+| [`_tile_routes.py:471`](../../../../src/phenotypic/gui/results_viewer/_tile_routes.py) | `file_fingerprint()` opens the path as a file → `IsADirectoryError` on a store. Key on `paths_fingerprint([store / "zarr.json"])` — **not** on the store directory (see the correction below). |
+
+> **Corrected (2026-08-19).** "`paths_fingerprint()`, which handles directories"
+> is misleading and has caused at least one wrong implementation already. It
+> handles a directory only in the sense that it does not raise: it emits the
+> entry's name plus a single sentinel byte and **does not recurse into the
+> contents** (`sdk_/_io_constants.py:214-217`). `paths_fingerprint([store])` is
+> therefore a constant function of the path and would freeze the tile cache
+> permanently. Every staleness check must key on the root `zarr.json`, which the
+> promote writes last on every publish — plus its `st_mtime_ns`, because a
+> re-promote whose metadata did not change produces byte-identical content while
+> the decoded-array LRU key must still move.
 | `_tile_routes.py:469,477` | `stat().st_mtime_ns` compare + `os.utime` against the store |
 | [`_preview_tiles.py:76`](../../../../src/phenotypic/gui/builder/_preview_tiles.py) | same compare |
 | `tiles.py:518` | mtime-keyed crop path |
@@ -627,7 +847,8 @@ output formats.
 ### 5.1 Interface
 
 ```bash
-uv run python -m phenotypic --mode migrate --output <previous-output-dir> [--njobs N] [--dry-run]
+uv run python -m phenotypic --mode migrate --output <previous-output-dir> \
+    [--njobs N] [--dry-run] [--delete-sources]
 ```
 
 `migrate` joins `{full, measure, recompile, process}` in the existing
@@ -635,18 +856,78 @@ uv run python -m phenotypic --mode migrate --output <previous-output-dir> [--njo
 reusing `recompile`'s argument validation: no `--pipeline`, no `--input`,
 operates on an existing output root.
 
+**Migration is in place.** The tree at `--output` is converted where it sits:
+`results/<ds>/zarr/` appears beside `results/<ds>/hdf/`. Existing measurement
+tables, overlay PNGs, deliverables, and machine state remain in place. Missing
+overlay PNGs are regenerated from the promoted stores with the forward-run
+`OutputManager.save_overlay()` renderer and the requested `--overlay-alpha`
+(default `0.3`); existing PNG bytes are never rewritten.
+
+Publication is terminal and ordered. After every store, embedded measurement
+table, and overlay validates, migration publishes one image-success marker per
+store (a measurement artifact is omitted only for a zero-object store), rebuilds
+and publishes the aggregate snapshot, and finally publishes version-2
+`run_completion.json`. Stale aggregate and completion markers are removed before
+the first mutation, and no terminal marker is published when any preceding pass
+fails.
+
+> **Copy mode was specified and then removed (2026-08-19, user ruling).** An
+> intermediate draft added `--input <src> --output <dst>` to write a converted
+> tree at a new path and leave the source untouched. It is **withdrawn**.
+>
+> Three independent reviewers found it structurally incomplete, and the reason
+> is instructive: in-place migration only has to convert images, because
+> everything else is already in the right place. Copy mode has to reproduce the
+> **entire output contract** at a new path — and the draft's copy set named only
+> `deliverables/` and `.phenotypic/`, omitting `results/<ds>/measurements/*.parquet`.
+> Those are marker-bound artifacts, so the destination would have failed
+> `valid_image_success` for every image, lost `migrate_legacy_stage3_markers`'
+> parquet-presence signal, and silently reprocessed the whole run — the exact
+> outcome migration exists to prevent.
+>
+> **The safety it was reaching for is already provided by `keep_source=True`**,
+> which is the default: the `.h5` files survive the conversion, so if the stores
+> are wrong the originals are still there. What copy mode added beyond that was
+> "never write to the directory at all", which matters only for a tree the user
+> cannot write to — a case not currently on the table — at the cost of a full
+> second copy of every artifact.
+>
+> If migrating a read-only tree becomes a requirement, it should land as its own
+> change, specified against the full output contract rather than an artifact
+> allow-list.
+
 **Local-only, parallel via `--njobs`.** Migration is one-time, resumable, and
 restartable — a partially migrated tree is simply migrated again — so it does
 not justify another SLURM controller/array surface with its own chunking and
 `MaxArraySize` accounting.
 
-Behind it, `sdk_` exposes `migrate_hdf_to_zarr(src, dst=None)` and
-`migrate_run_hdf_to_zarr(output_dir, *, keep_source=True)`.
+**`--delete-sources`** reclaims the retained `.h5` files after conversion. It is
+opt-in because migration is otherwise non-destructive, and it must refuse unless
+the converted store both validates structurally **and** re-reads equal to its
+source — `valid_staged_store` alone is insufficient, since a store that dropped
+`Metadata_ImageType` or `phenotypic_work_id` is still structurally valid.
 
-**A run whose output contains only `.h5` results fails with a pointer to this
-mode** rather than auto-migrating. Format conversion rewrites the entire results
-tree; that should be typed deliberately, not triggered as a side effect of an
-unrelated `--mode full`.
+Behind it, `sdk_` exposes `migrate_hdf_to_zarr(src, dst=None)` and
+`migrate_run_hdf_to_zarr(output_dir, *, keep_source=True, njobs=1, dry_run=False)`.
+
+**A run whose output contains any unconverted `.h5` results fails with a
+pointer to this mode** rather than auto-migrating.
+
+> **Amended (2026-08-19, user ruling).** An earlier draft guarded only on
+> "contains **only** `.h5`", tested through `--mode recompile` alone. But
+> migration is explicitly resumable, so a **half-migrated** tree is the expected
+> state after any interruption — and it is neither "only `.h5`" nor fully
+> converted, so it passed the guard. `--mode full` would then silently reprocess
+> every unconverted image from source.
+>
+> The predicate is therefore defined once — **any dataset containing at least one
+> `.h5` result whose corresponding store is absent or fails `valid_staged_store`**
+> — and applied to **every mode that consumes results**, `migrate` itself
+> excepted. The GUI gets the same detection, surfaced as a reason on the existing
+> `OutputConsistencyReport` (`gui/results_viewer/_output_consistency.py`), which
+> `gui/_snapshot_status.py` already renders as a banner. Format conversion
+> rewrites the entire results tree; that should be typed deliberately, not
+> triggered as a side effect of an unrelated `--mode full`.
 
 ### 5.2 What it converts
 
@@ -659,11 +940,40 @@ unrelated `--mode full`.
    by construction: legacy per-topic headers are read (permanently supported per
    flat-metadata decision #3) and written as flat `Metadata_<Label>`. There is
    no separate header pass for anything that goes through conversion.
-3. **`deliverables/metadata.csv`.** The untouched bytes are copied to
-   `deliverables/metadata.original.csv`, then the file is rewritten with
-   canonical headers. See the supersession note on decision #7.
+3. **`deliverables/metadata.csv` — not touched at all.** A canonical *view* is
+   emitted beside it as `deliverables/metadata.canonical.csv`; the snapshot keeps
+   its original bytes, and no `metadata.original.csv` is ever created.
+
+   > **Superseded (2026-08-19, user ruling — ledger FLOW-4 / D9, applied by
+   > MIG-18).** This item previously read: *"The untouched bytes are copied to
+   > `deliverables/metadata.original.csv`, then the file is rewritten with
+   > canonical headers."* The user's ruling was **"don't rewrite `metadata.csv`
+   > at all"**, which makes the `.original.csv` copy pointless — it existed only
+   > to preserve bytes the rewrite would have destroyed. The startup snapshot is
+   > immutable input provenance (root `CLAUDE.md`); legacy headers are normalized
+   > in memory on read, which is where every other legacy-header path already
+   > handles them.
 
 ### 5.3 Header-only migration is now multi-file
+
+> **Withdrawn (2026-08-19).** This section describes a code path that will not
+> exist. Header-only store migration is **cut**: it has no reachable input,
+> because legacy per-topic headers are canonicalized **on ingest, in memory** —
+> `ensure_metadata_prefix` (`sdk_/_metadata_helpers.py:292-305`) resolves the
+> historical per-topic spellings to `member.value`, and
+> `_remap_legacy_metadata_key` (`_core/_image_parts/_image_io_handler.py:92-106`)
+> routes every stored key through it. An in-memory `Image` therefore cannot hold
+> a known legacy header, so `save2zarr` cannot write one and there is no store
+> for this pass to operate on.
+>
+> **Condition attached to the cut:** with this gone, the product has *zero*
+> header-migration path for stores. That is safe only while the ingest
+> normalization holds, so it is pinned by test rather than inferred — one test
+> asserting a store written from an `Image` constructed with `MetadataPlate_*`
+> headers comes out canonical.
+>
+> The reasoning below is retained because the multi-file-publish observation
+> remains true of any future header rewrite.
 
 An earlier draft claimed a header rename "rewrites one small `zarr.json`". That
 is wrong: a rename also touches `OME/METADATA.ome.xml` (§2.4, derived from
@@ -769,8 +1079,9 @@ material.
 - **Commit protocol.** Three cases, not one: (a) interrupt after chunks but
   before the root `zarr.json`; (b) two concurrent writers on the same stem —
   assert distinct `.part` directories and one coherent winner; (c) a stale
-  `.part` from a killed process is removed, not merged into. Prove (a) can fail
-  by reversing the write order.
+  `.part` from a killed process is ignored and preserved for the age-gated
+  orphan sweep, never reused or merged into. Prove (a) can fail by reversing
+  the write order.
 - **Pyramid correctness.** No label value at level *n* absent from level 0.
   Mutate the downsampler to `mean` and confirm failure (already demonstrated by
   script claim C5).
@@ -779,8 +1090,15 @@ material.
   a store directory where `file_fingerprint` raises.
 - **Migration.** Golden fixtures in v1-flat and v2-grouped layouts, **including
   one with an `enh_gray` layer**, migrate to stores equal to freshly written
-  ones. Assert `metadata.original.csv` is byte-identical to the pre-migration
-  `metadata.csv`.
+  ones. Assert missing overlays are rendered while existing overlays remain
+  byte-identical; zero-object images without legacy Parquets receive store-plus-
+  overlay success markers; nonempty images without measurements fail closed;
+  the aggregate is current; and version-2 run completion validates. Also assert
+  `deliverables/metadata.csv` is **byte-identical before and after** migration,
+  that `metadata.canonical.csv` is emitted beside it, and that no
+  `metadata.original.csv` exists (ledger **MIG-18** — the previous wording
+  asserted the opposite, and Task 6.4's `grep -rn "metadata.original.csv"` gate
+  would have failed against this line).
 
 No check may skip on a missing fixture or optional dependency; a check that
 cannot run must fail.
@@ -819,7 +1137,7 @@ Recorded rather than deleted, so the reasoning survives.
 |---|---|---|
 | OQ1 | `bioformats2raw.layout` is transitional | **Accept the sunset.** The 0.6 `scene` layout is structurally this directory tree, so migration rewrites the root `zarr.json`, not the arrays. |
 | OQ2 | Cost of dropping Python 3.10 | **None.** Floor moves to 3.11. |
-| OQ3 | Inode count acceptable? | **Yes, with a knob.** `--pyramid-levels` makes the cost linear at 8 files/level; 1 level is 16 files/image, auto is 40. |
+| OQ3 | Inode count acceptable? | **Yes.** The cost is linear at 8 files/level; auto is 40 files/image at 4000×3000. ~~with a knob~~ — the `--pyramid-levels` knob is descoped (decision #8, superseded 2026-08-19). |
 | OQ4 | Path layout | **Confirmed** as `results/<dataset>/zarr/<stem>.ome.zarr/`. |
 | OQ5 | Migration ergonomics | **`--mode migrate`**, local-only with `--njobs`, absorbing the metadata-schema migration; a legacy-only output root fails with a pointer rather than auto-migrating. |
 | OQ6 | Move the `<3.13` ceiling? | **No.** Keep `mahotas`; the cap stays and its cause is now documented (§6). |

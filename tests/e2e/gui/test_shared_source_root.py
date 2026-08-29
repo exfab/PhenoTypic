@@ -44,8 +44,8 @@ def test_shared_source_persists_across_pages_and_seeds_builder(
     _select_plate1_source(page, hub_url)
     plate = fake_sandbox / "plate1"
 
-    page.goto(hub_url + "/tune/")
-    _expect_settings_source_label(page, "source: plate1")
+    # Tune is unmounted (docs/superpowers/specs/2026-08-26-gui-simplification-removals
+    # section 2) and no longer one of the pages the shared source persists across.
 
     page.goto(hub_url + "/builder/")
     _expect_settings_source_label(page, "source: plate1")
@@ -131,8 +131,8 @@ def test_status_bar_source_picker_sets_shared_source_and_page_inputs(
         timeout=5_000,
     )
 
-    page.goto(hub_url + "/tune/")
-    _expect_settings_source_label(page, "source: plate1")
+    # Tune is unmounted (docs/superpowers/specs/2026-08-26-gui-simplification-removals
+    # section 2) and no longer one of the pages the shared source persists across.
 
 
 @pytest.mark.parametrize(

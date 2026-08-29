@@ -24,6 +24,7 @@ Plus :func:`expand_range` for resolving shift+click slices.
 from __future__ import annotations
 
 import functools
+import json
 from collections.abc import Mapping
 from typing import Any, cast
 
@@ -39,13 +40,24 @@ from phenotypic.gui._config import (
     MOUNT_HOME,
 )
 from phenotypic.gui._design import (
+    COLOR_MUTED,
     COLOR_NAVY,
     FONT_FAMILY_MONO,
     FONT_SIZE_CAPTION,
     FONT_SIZE_LABEL,
 )
+from phenotypic.gui._shared._measurement_tint import (
+    MeasurementScale,
+    TileMeasurement,
+    format_measurement_value,
+    sequential_tint,
+)
 from phenotypic.gui._shared._radial import build_radial_trigger
-from phenotypic.gui._shared.tiles import build_tile_cell, expand_range
+from phenotypic.gui._shared.tiles import (
+    StoreUnreadable,
+    build_tile_cell,
+    expand_range,
+)
 from phenotypic.gui.results_viewer._ids import (
     colony_cell_count_badge_id,
     colony_cell_popover_body_id,
@@ -59,6 +71,11 @@ from phenotypic.gui.results_viewer._filtered_state import (
     KEY_OBJECT_LABEL,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._store_source import build_source_spec
+from phenotypic.gui.results_viewer._zarr_routes import (
+    store_generation_token,
+    zarr_store_url,
+)
 from phenotypic.gui.results_viewer._metadata import (
     normalize_column_value_sets,
     normalize_metadata_reference,
@@ -115,6 +132,65 @@ _STACK_TAB_OFFSET = 14
 #: is a runtime-registered custom category, so its tile badge gets the
 #: ``radial-badge--custom`` discriminator (decision D).
 _CORE_CATEGORY_TOKENS: frozenset[str] = frozenset(ErrorCategory.labels())
+
+#: Cells mounted at once. **MEASURED, not chosen** — the D1 render is one
+#: deck.gl view per colony and deck.gl re-renders every view each frame, so
+#: the number came from a prototype grid before any code depended on it.
+#: The measurement, the full frame-time table, and the reasoning behind this
+#: value live in
+#: ``docs/superpowers/plans/2026-08-26-viewer-viv-rebuild/spike/README.md``;
+#: ``docs/superpowers/logic_validation_scripts/2026-08-26-viewer-viv-rebuild/
+#: colony_view_budget.py`` carries it beside the frame time it was chosen
+#: at, and refuses to run without both.
+#:
+#: This caps MOUNTED CELLS. It is not the tile-cache bound. The facade derives
+#: that separately as the deduplicated union of active-level chunks intersecting
+#: the mounted fixed regions for each store and image/label source.
+COLONY_VIEW_CELL_CAP = 128
+
+#: Browser mount owned by the Colony grid lifecycle in ``results_viewer.js``.
+_VIV_GRID_STAGE_ID = "colony-viv-grid-stage"
+
+
+def plan_visible_cells(
+    cells: list[Any], focus_index: int = 0
+) -> list[Any]:
+    """Return the contiguous window of ``cells`` to mount.
+
+    Above :data:`COLONY_VIEW_CELL_CAP` the grid virtualizes: a window of at
+    most ``COLONY_VIEW_CELL_CAP`` cells around ``focus_index`` is mounted and
+    the rest render as sized placeholders, keeping the grid's geometry (and
+    therefore its scroll extent and axis alignment) intact.
+
+    The window is contiguous and clamped to the ends rather than centred
+    unconditionally, so scrolling to either edge still mounts a full cap's
+    worth of cells instead of half of one.
+
+    Args:
+        cells: Cells in the grid's own reading order (Y outer, X inner).
+        focus_index: Index into ``cells`` that must be mounted — the cell
+            the user is looking at. Clamped into range.
+
+    Returns:
+        The sub-list of ``cells`` to mount, in the same order. The same
+        objects, not copies.
+
+    Examples:
+        >>> cells = [{"id": i} for i in range(COLONY_VIEW_CELL_CAP * 2)]
+        >>> len(plan_visible_cells(cells)) == COLONY_VIEW_CELL_CAP
+        True
+        >>> len(plan_visible_cells(cells[:8]))
+        8
+    """
+    total = len(cells)
+    if total <= COLONY_VIEW_CELL_CAP:
+        return list(cells)
+    focus = min(max(int(focus_index), 0), total - 1)
+    start = min(
+        max(focus - COLONY_VIEW_CELL_CAP // 2, 0),
+        total - COLONY_VIEW_CELL_CAP,
+    )
+    return list(cells[start : start + COLONY_VIEW_CELL_CAP])
 
 
 # ---------------------------------------------------------------------------
@@ -286,8 +362,28 @@ def _representative_per_cell(
         pl.col(_OBJECT_LABEL_COL).alias("_members_label"),
         pl.len().alias("count"),
     ]
+    if {"Bbox_CenterRR", "Bbox_CenterCC"} <= set(df.columns):
+        aggs.extend(
+            [
+                pl.col("Bbox_CenterRR").first().alias("_centroid_rr"),
+                pl.col("Bbox_CenterCC").first().alias("_centroid_cc"),
+            ]
+        )
+    required_identity = {
+        x_axis_col,
+        y_axis_col,
+        KEY_IMAGE_FILE,
+        KEY_DATASET,
+        _OBJECT_LABEL_COL,
+    }
     return (
-        df.sort([x_axis_col, y_axis_col, _OBJECT_LABEL_COL])
+        df.filter(
+            pl.all_horizontal(
+                pl.col(column).is_not_null()
+                for column in required_identity
+            )
+        )
+        .sort([x_axis_col, y_axis_col, _OBJECT_LABEL_COL])
         .group_by([x_axis_col, y_axis_col], maintain_order=True)
         .agg(*aggs)
     )
@@ -367,6 +463,40 @@ def _colony_crop_url(
     )
 
 
+def _viv_source_spec(
+    output_root: OutputRoot,
+    dataset: str,
+    image_file: str,
+    layer: str,
+) -> dict[str, Any] | None:
+    """Resolve one Colony cell's browser source without guessing paths."""
+    store = output_root.store_path(dataset, image_file)
+    if store is None:
+        return None
+    try:
+        token = store_generation_token(store)
+        spec = build_source_spec(
+            store,
+            zarr_store_url(
+                _url_prefix(), dataset, image_file, token
+            ),
+        )
+    except (OSError, KeyError, ValueError, StoreUnreadable):
+        return None
+
+    if layer == "objmap":
+        label_path = spec.get("labelPath")
+        if not label_path:
+            return None
+        spec["seriesPath"] = label_path
+        spec["labelPath"] = None
+    elif layer in spec.get("series", ()):
+        spec["seriesPath"] = layer
+    else:
+        return None
+    return spec
+
+
 def _build_cell(
     *,
     image_file: str,
@@ -383,6 +513,11 @@ def _build_cell(
     dim_alpha: float = 0.0,
     layer: str = "rgb",
     mutations_disabled: bool = False,
+    measurement: TileMeasurement | None = None,
+    grid_index: int | None = None,
+    viv_spec: Mapping[str, Any] | None = None,
+    centroid_rr: float | None = None,
+    centroid_cc: float | None = None,
 ) -> Component:
     """Render the chrome + crop for a single grid cell.
 
@@ -416,6 +551,11 @@ def _build_cell(
             ``&dim=``. ``0.0`` (default) keeps today's full-context crop.
         layer: Pixel layer threaded onto every crop URL in the cell as
             ``&layer=``. ``"rgb"`` (default) sources the finished plate.
+        measurement: This colony's displayed measurement value, already
+            formatted and coloured. ``None`` when no column is chosen, and
+            also when the embedded table has no row for this colony --
+            post-measurement operations can remove objects, so a card with
+            no value is a fact about the data rather than a fault.
 
     Returns:
         A component ready to drop into the grid container.
@@ -446,6 +586,21 @@ def _build_cell(
                 )
             )
 
+    outer_props: dict[str, Any] = {}
+    if grid_index is not None:
+        outer_props["data-colony-grid-index"] = grid_index
+    if viv_spec is not None and centroid_rr is not None and centroid_cc is not None:
+        outer_props["data-colony-viv-cell"] = json.dumps(
+            {
+                "id": f"{dataset}:{image_file}:{label}",
+                "centroidRr": float(centroid_rr),
+                "centroidCc": float(centroid_cc),
+                "spec": dict(viv_spec),
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+
     return build_tile_cell(
         image_file=image_file,
         label=label,
@@ -473,6 +628,11 @@ def _build_cell(
         extra_children=extra_children,
         # Reserve room beneath the frame for the stack tab to peek out.
         outer_height=display_size + _STACK_TAB_OFFSET,
+        measurement=measurement,
+        outer_props=outer_props,
+        # Store-backed cells are rendered directly by Viv. Avoid issuing a
+        # redundant server-generated PNG crop behind the OME-Zarr canvas.
+        defer_crop_image=viv_spec is not None,
     )
 
 
@@ -570,6 +730,7 @@ def build_stack_popover_rows(
                 [
                     html.Img(
                         src=crop_url,
+                        loading="lazy",
                         style={
                             "width": f"{display_size}px",
                             "height": f"{display_size}px",
@@ -596,6 +757,93 @@ def build_stack_popover_rows(
         )
     return rows
 
+#: Width of the legend's gradient track, in pixels. DESIGN.md "12 --
+#: Continuous Colorbar" fixes the track's height and radius but not its
+#: length; 180px reads as a ramp without crowding the toolbar it sits under.
+_LEGEND_TRACK_WIDTH = 180
+
+#: Number of stops baked into the legend's CSS gradient. The ramp has three
+#: control points and CSS interpolates linearly between whatever it is given,
+#: so sampling it at 17 points reproduces the same curve the cards are tinted
+#: from rather than a straight line between its ends.
+_LEGEND_GRADIENT_STOPS = 17
+
+
+def build_measurement_legend(scale: MeasurementScale) -> Component:
+    """Render the continuous legend naming the column and its visible range.
+
+    The tint means nothing without this. It is also the only place the user
+    is told that the range is **what is on screen** rather than the column's
+    range across the run -- which matters, because adding a filter rescales
+    every card.
+
+    Args:
+        scale: The scale the visible cards were tinted from.
+
+    Returns:
+        A DESIGN.md "12 -- Continuous Colorbar" legend: column name, the
+        gradient track, and mono end labels.
+    """
+    gradient = ", ".join(
+        sequential_tint(index / (_LEGEND_GRADIENT_STOPS - 1))
+        for index in range(_LEGEND_GRADIENT_STOPS)
+    )
+    track = html.Div(
+        className="colony-measurement-legend-track",
+        style={
+            "width": f"{_LEGEND_TRACK_WIDTH}px",
+            "height": "10px",
+            "borderRadius": "9999px",
+            "background": f"linear-gradient(to right, {gradient})",
+            "flex": "0 0 auto",
+        },
+    )
+    end_label_style = {
+        "fontFamily": FONT_FAMILY_MONO,
+        "fontSize": FONT_SIZE_CAPTION,
+        "color": COLOR_NAVY,
+        "whiteSpace": "nowrap",
+    }
+    return html.Div(
+        [
+            html.Span(
+                scale.column,
+                style={
+                    "fontFamily": FONT_FAMILY_MONO,
+                    "fontSize": FONT_SIZE_LABEL,
+                    "color": COLOR_NAVY,
+                    "fontWeight": 600,
+                    "whiteSpace": "nowrap",
+                },
+            ),
+            html.Span(
+                format_measurement_value(scale.minimum),
+                style=end_label_style,
+            ),
+            track,
+            html.Span(
+                format_measurement_value(scale.maximum),
+                style=end_label_style,
+            ),
+            html.Span(
+                "range of the colonies shown",
+                style={
+                    "fontFamily": FONT_FAMILY_MONO,
+                    "fontSize": FONT_SIZE_CAPTION,
+                    "color": COLOR_MUTED,
+                    "whiteSpace": "nowrap",
+                },
+            ),
+        ],
+        className="colony-measurement-legend",
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "gap": "0.5rem",
+            "padding": "0.35rem 0.5rem",
+        },
+    )
+
 
 def build_grid(
     df: pl.DataFrame,
@@ -610,6 +858,10 @@ def build_grid(
     category_of: dict[tuple[str, int], str] | None = None,
     layer: str = "rgb",
     mutations_disabled: bool = False,
+    focus_index: int = 0,
+    measurement_column: str | None = None,
+    measurement_values: Mapping[tuple[str, str, int], float | None]
+    | None = None,
 ) -> tuple[Component, list[tuple[str, int]]]:
     """Render the colony-grid component and its row-major key order.
 
@@ -662,6 +914,24 @@ def build_grid(
             onto every crop URL as ``&layer=`` (read from the active-layer
             store). ``"rgb"`` (default) sources the finished plate; the crop
             route ignores it on the overlay fallback (standalone bundle).
+        focus_index: Index, into the row-major populated-cell order, of the
+            cell the user is looking at. Only matters above
+            :data:`COLONY_VIEW_CELL_CAP`, where it anchors the mounted
+            window; below the cap every cell mounts.
+        measurement_column: Name of the measurement column each card should
+            display, or ``None`` (the default) for today's untinted grid.
+        measurement_values: Mapping ``(image_file, label) -> value`` for the
+            chosen column, read from each image's embedded table. A key with
+            no entry, or a ``None`` value, renders untinted with no text --
+            post-measurement operations can drop objects, and a missing row
+            is a fact about the data, not an error.
+
+            **The scale is built over the values this call actually places
+            on the grid**, never over the column's range across the run. The
+            grid is already filtered, and a scale anchored to a range the
+            user cannot see paints every visible card the same shade. Cells
+            virtualized out of the mount still count: they are content the
+            grid contains, so the legend does not shift as the user scrolls.
 
     Returns:
         A tuple ``(component, grid_order)``. ``grid_order`` is the
@@ -669,6 +939,12 @@ def build_grid(
         keys (Y-axis outer, X-axis inner) in the same iteration order as
         the rendered cells. Consumed by the selection-range callback to
         resolve shift+click slices.
+
+        ``grid_order`` covers **every** populated cell, including ones
+        virtualized out of the mount. A shift+click range that spans a
+        virtualized cell still selects it, and bulk-mark still reaches it —
+        virtualization is a rendering budget, not a change to what the
+        grid contains.
     """
     if display_size is None:
         display_size = max_size
@@ -733,7 +1009,45 @@ def build_grid(
             "label": members_label[0] if members_label else None,
             "count": row["count"],
             "members": members,
+            "centroid_rr": row.get("_centroid_rr"),
+            "centroid_cc": row.get("_centroid_cc"),
         }
+
+    # Decide which cells MOUNT before rendering any of them. deck.gl
+    # re-renders every view each frame, and the per-cell chrome each mounted
+    # tile carries (crop <img>, radial trigger, checkbox, stack popover) is
+    # not free either — so above the measured cap the grid keeps its
+    # geometry and drops the contents of the cells outside the window.
+    populated_order = [
+        (y_value, x_value)
+        for y_value in y_values
+        for x_value in x_values
+        if cell_index.get((x_value, y_value)) is not None
+    ]
+    mounted_cells = set(
+        plan_visible_cells(populated_order, focus_index=focus_index)
+    )
+    populated_indices = {
+        cell: index for index, cell in enumerate(populated_order)
+    }
+
+    # Scale over the values THIS grid carries. Built from ``populated_order``
+    # -- every cell the grid contains, mounted or virtualized -- so scrolling
+    # a large grid does not silently re-anchor the legend under the user.
+    scale: MeasurementScale | None = None
+    if measurement_column and measurement_values:
+        in_view: list[float] = []
+        for y_value, x_value in populated_order:
+            populated = cell_index[(x_value, y_value)]
+            cell_key = (
+                str(populated["dataset"]),
+                str(populated["image_file"]),
+                int(populated["label"]),  # type: ignore[call-overload]
+            )
+            value = measurement_values.get(cell_key)
+            if value is not None:
+                in_view.append(float(value))
+        scale = MeasurementScale.over(measurement_column, in_view)
 
     # Build the grid, walking Y outer / X inner so the row-major key list
     # mirrors the visible reading order (left-to-right within a row).
@@ -772,6 +1086,35 @@ def build_grid(
                     )
                 )
                 continue
+            if (y_value, x_value) not in mounted_cells:
+                # Virtualized out. Its key still enters ``grid_order`` above
+                # the placeholder, so range selection and bulk-mark reach it;
+                # it simply has no tile, and therefore no radial — a radial
+                # missing from a MOUNTED cell would be a curation regression,
+                # one on a cell with no tile would be chrome over nothing.
+                grid_order.append(
+                    (str(entry["image_file"]), int(entry["label"]))  # type: ignore[call-overload]
+                )
+                children.append(
+                    html.Div(
+                        className="colony-cell colony-cell--virtualized",
+                        style={
+                            "width": f"{display_size}px",
+                            "height": f"{display_size + _STACK_TAB_OFFSET}px",
+                            "background": "rgba(0,54,96,0.06)",
+                            "borderRadius": "4px",
+                        },
+                        **cast(
+                            Any,
+                            {
+                                "data-colony-grid-index": populated_indices[
+                                    (y_value, x_value)
+                                ]
+                            },
+                        ),
+                    )
+                )
+                continue
             image_file = str(entry["image_file"])
             dataset = str(entry["dataset"])
             # polars row dicts type values as `object`; the columns are
@@ -779,6 +1122,7 @@ def build_grid(
             label = int(entry["label"])  # type: ignore[call-overload]
             count = int(entry["count"])  # type: ignore[call-overload]
             key = (image_file, label)
+            measurement_key = (dataset, image_file, label)
             grid_order.append(key)
             # polars row dicts type values as ``object``; the index stored a
             # ``list[tuple[str, str, int]]`` under "members". Cast so the
@@ -789,6 +1133,11 @@ def build_grid(
             typed_members = [
                 (str(m[0]), str(m[1]), int(m[2])) for m in members
             ]
+            cell_measurement: TileMeasurement | None = None
+            if scale is not None and measurement_values is not None:
+                cell_value = measurement_values.get(measurement_key)
+                if cell_value is not None:
+                    cell_measurement = scale.measurement_for(float(cell_value))
             children.append(
                 _build_cell(
                     image_file=image_file,
@@ -807,6 +1156,21 @@ def build_grid(
                     dim_alpha=dim_alpha,
                     layer=layer,
                     mutations_disabled=mutations_disabled,
+                    measurement=cell_measurement,
+                    grid_index=populated_indices[(y_value, x_value)],
+                    viv_spec=_viv_source_spec(
+                        output_root, dataset, image_file, layer
+                    ),
+                    centroid_rr=(
+                        float(cast(Any, entry["centroid_rr"]))
+                        if entry.get("centroid_rr") is not None
+                        else None
+                    ),
+                    centroid_cc=(
+                        float(cast(Any, entry["centroid_cc"]))
+                        if entry.get("centroid_cc") is not None
+                        else None
+                    ),
                 )
             )
 
@@ -835,13 +1199,44 @@ def build_grid(
             "justifySelf": "start",
         },
     )
-    return grid, grid_order
+    grid_surface = html.Div(
+        [
+            html.Div(
+                id=_VIV_GRID_STAGE_ID,
+                className="colony-viv-grid-stage",
+                **cast(
+                    Any,
+                    {
+                        "data-colony-crop-size": str(max_size),
+                        "data-colony-display-size": str(display_size),
+                        "tabIndex": 0,
+                        "aria-label": "Linked colony image grid",
+                    },
+                ),
+            ),
+            grid,
+        ],
+        className="colony-grid-viv-surface",
+        style={"position": "relative", "width": "max-content"},
+    )
+    if scale is None:
+        return grid_surface, grid_order
+    return (
+        html.Div(
+            [build_measurement_legend(scale), grid_surface],
+            className="colony-grid-with-measurement",
+        ),
+        grid_order,
+    )
 
 
 __all__ = [
+    "build_measurement_legend",
     "selectable_axis_columns",
     "compute_max_bbox_size",
     "build_grid",
+    "COLONY_VIEW_CELL_CAP",
+    "plan_visible_cells",
     # Re-exported from :mod:`phenotypic.gui._shared.tiles` so colony-view
     # callers keep their historical import path.
     "expand_range",

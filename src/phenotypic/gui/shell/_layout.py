@@ -34,7 +34,6 @@ from phenotypic.gui._config import (
     MOUNT_BUILDER,
     MOUNT_HOME,
     MOUNT_RUN,
-    MOUNT_TUNE,
     MOUNT_VIEWER,
     RSS_INTERVAL_MS,
     SSH_TUNNEL_HINT,
@@ -69,7 +68,6 @@ from phenotypic.gui.shell._ids import (
     SHELL_TAB_GROUP_RESULTS,
     SHELL_TAB_HOME,
     SHELL_TAB_RUN,
-    SHELL_TAB_TUNE,
     SHELL_TAB_VIEWER,
     SHELL_TOP_BAR,
     TUNE_PIPELINE_PATH_STORE,
@@ -127,7 +125,6 @@ _TAB_HREFS = {
     SHELL_TAB_BUILDER: MOUNT_BUILDER,
     SHELL_TAB_VIEWER: MOUNT_VIEWER,
     SHELL_TAB_RUN: MOUNT_RUN,
-    SHELL_TAB_TUNE: MOUNT_TUNE,
     SHELL_TAB_ANALYSIS: MOUNT_ANALYSIS,
 }
 
@@ -137,7 +134,6 @@ _TAB_LABELS = {
     SHELL_TAB_BUILDER: "Builder",
     SHELL_TAB_VIEWER: "Viewer",
     SHELL_TAB_RUN: "Run",
-    SHELL_TAB_TUNE: "Tune",
     SHELL_TAB_ANALYSIS: "Analysis",
 }
 
@@ -160,16 +156,18 @@ class _NavGroup(NamedTuple):
 #: Structured top-bar nav model. Entries are either a **leaf** tab id
 #: (a bare ``SHELL_TAB_*`` string, rendered as a plain anchor) or a
 #: :class:`_NavGroup` dropdown. The sequence follows the user workflow:
-#: land on Home, then the **Pipeline** group (compose in Builder, tune in
-#: Tune, execute in Run), then the **Results** group (inspect output in
-#: Viewer, run downstream stats in Analysis).
+#: land on Home, then the **Pipeline** group (compose in Builder, execute
+#: in Run), then the **Results** group (inspect output in Viewer, run
+#: downstream stats in Analysis). Tune is unmounted (see
+#: docs/superpowers/specs/2026-08-26-gui-simplification-removals) and is
+#: no longer a Pipeline-group member.
 NAV_MODEL: tuple["str | _NavGroup", ...] = (
     SHELL_TAB_HOME,
     SHELL_TAB_BROWSE,
     _NavGroup(
         "Pipeline",
         SHELL_TAB_GROUP_PIPELINE,
-        (SHELL_TAB_BUILDER, SHELL_TAB_TUNE, SHELL_TAB_RUN),
+        (SHELL_TAB_BUILDER, SHELL_TAB_RUN),
     ),
     _NavGroup(
         "Results",

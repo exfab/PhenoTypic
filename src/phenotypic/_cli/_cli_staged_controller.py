@@ -8,11 +8,11 @@ import logging
 from pathlib import Path
 from typing import Any, Sequence
 
-from phenotypic.sdk_ import dataset_hdf_dir, dataset_measurements_dir
+from phenotypic.sdk_ import dataset_measurements_dir, zarr_store_path
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
-from ._cli_sidecar import sidecar_exists
-from ._cli_staged_resume import stage3_completion_exists, valid_staged_hdf
+from ._cli_stage2_token import stage2_result_replayable
+from ._cli_staged_resume import stage3_completion_exists, valid_stage1_store
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
     assert_active_epoch,
@@ -78,7 +78,10 @@ def _classify_stage2(
             dataset_measurements_dir(output_dir, entry.dataset)
             / f"{entry.stem}.parquet"
         )
-        if sidecar_exists(output_dir, entry.dataset, entry.stem):
+        # BOTH halves: a token whose raw array is gone is not a finished
+        # Stage 2, and skipping it here is what would strand the image --
+        # nothing else in the SLURM path routes it back (ledger FLOW-17/M7).
+        if stage2_result_replayable(output_dir, entry.dataset, entry.stem):
             continue
         if stage3_completion_exists(
             output_dir, entry.dataset, entry.stem
@@ -87,8 +90,8 @@ def _classify_stage2(
         if entry.work_id in failed:
             terminal.append(entry)
             continue
-        hdf = dataset_hdf_dir(output_dir, entry.dataset) / f"{entry.stem}.h5"
-        if not valid_staged_hdf(hdf):
+        store = zarr_store_path(output_dir, entry.dataset, entry.stem)
+        if not valid_stage1_store(store):
             terminal.append(entry)
             continue
         retryable.append(entry)

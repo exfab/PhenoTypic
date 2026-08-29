@@ -1,0 +1,1873 @@
+--- specs/2026-08-26-gui-ome-zarr-sync/refinery/snapshots/round-0-plan-viewer-viv-rebuild.md	2026-08-26 18:22:11.639941819 -0700
++++ specs/2026-08-26-gui-ome-zarr-sync/refinery/snapshots/round-1-plan-viewer-viv-rebuild.md	2026-08-26 20:15:20.540520508 -0700
+@@ -35,6 +35,19 @@
+ one regression test (spec §8's "staleness" check) proving the byte route respects the same
+ key.
+ 
++> **Correction, 2026-08-26 (round-1 review).** "All of them already key on the root
++> `zarr.json`" is true for `_tile_routes` and `_preview_tiles` and **vacuous for the crop
++> path**. `crop_colony` (`tiles.py:715`) still passes `os.stat(store).st_mtime_ns` — the
++> store *directory* mtime, the exact key spec §4.1 flags as unsound — into `crop_store_rgb`,
++> which immediately `del`s it (`:585-587`: "Accepted for caller/API compatibility; crop
++> reads are windowed and not full-layer cached, so nothing keys on it").
++>
++> So there is **no staleness bug and no third cache** — but there is a live
++> directory-mtime call sitting exactly where the spec says a trap lives. A reader auditing
++> the fourth fix will find it and reasonably conclude the trap is open. Either drop the
++> vestigial parameter, or leave it and rely on this note; do not "fix" a cache that does
++> not exist.
++
+ ---
+ 
+ ## D-2 — §6.2's "ship first (D3)" is already landed
+@@ -280,7 +293,6 @@
+ ### Task 0.3: Measure the chunk-size risk (§5.2)
+ 
+ **Files:**
+-- Create: `docs/superpowers/logic_validation_scripts/2026-08-26-viewer-viv-rebuild/tile_fetch_budget.py`
+ - Modify: `spike/README.md`
+ 
+ **Interfaces:**
+@@ -293,69 +305,29 @@
+ > moving to 512² is a pure §1.4 amendment with **no GUI rework**, because the client reads
+ > whatever `phenotypic.pyramid` describes.
+ 
+-- [ ] **Step 1: Write the logic-validation script**
+-
+-Per root `CLAUDE.md`: stdlib + numpy/scipy only, never imports `phenotypic`, exits non-zero
+-on failure, committed beside the spec's topic folder.
+-
+-```python
+-"""Re-derive the per-tile byte budget for the Viv plate surface.
+-
+-Claim under test (viewer-viv-rebuild spec section 5.2): a deck.gl tile fetch
+-pulls a whole inner chunk, so at (1, 1024, 1024) uint8 RGB a single tile costs
+-roughly 3 MB, and a viewport filled with such tiles costs N times that.
+-
+-Exits non-zero if the derived figures contradict the spec's stated numbers.
+-"""
+-
+-import sys
+-
+-import numpy as np
+-
+-CHUNK = (1, 1024, 1024)
+-CHANNELS = 3
+-DTYPE_BYTES = 1
+-
+-
+-def bytes_per_tile(chunk=CHUNK, channels=CHANNELS, itemsize=DTYPE_BYTES) -> int:
+-    """Bytes pulled for one tile: the inner chunk across every channel."""
+-    return int(np.prod(chunk)) * channels * itemsize
+-
+-
+-def tiles_for_viewport(viewport_px, chunk_px) -> int:
+-    """Tiles intersecting a viewport, counting partials as whole fetches."""
+-    w, h = viewport_px
+-    return int(np.ceil(w / chunk_px)) * int(np.ceil(h / chunk_px))
++- [ ] **Step 1: Record the per-tile arithmetic — no script**
+ 
++> An earlier draft committed `tile_fetch_budget.py` here. **Dropped** (user ruling,
++> 2026-08-26): it recomputed constants defined at the top of its own file, so its assertion
++> could only fail if someone edited those constants, and it exited 0 regardless — it gated
++> nothing. CLAUDE.md mandates a logic-validation script for "a numeric invariant a reader
++> would otherwise take on faith"; `1024 × 1024 × 3` is not one. Contrast
++> `logic_validation_scripts/2026-08-18-ome-zarr-image-store/ngff_store_geometry.py`, which
++> re-derives pyramid level counts and shard divisibility and has already **refuted three
++> claims** — that is what the rule is for.
+ 
+-def main() -> int:
+-    per_tile = bytes_per_tile()
+-    if not (2.9e6 <= per_tile <= 3.2e6):
+-        print(f"REFUTED: per-tile bytes {per_tile} is not the spec's ~3 MB")
+-        return 1
+-    print(f"per tile: {per_tile / 1e6:.2f} MB")
+-
+-    for viewport in ((1920, 1080), (2560, 1440)):
+-        for chunk_px in (1024, 512):
+-            n = tiles_for_viewport(viewport, chunk_px)
+-            total = n * bytes_per_tile((1, chunk_px, chunk_px))
+-            print(
+-                f"viewport {viewport[0]}x{viewport[1]} @ {chunk_px}^2: "
+-                f"{n} tiles, {total / 1e6:.2f} MB"
+-            )
+-    return 0
+-
++Write into `spike/README.md`:
+ 
+-if __name__ == "__main__":
+-    sys.exit(main())
++```text
++A deck.gl tile fetch pulls a whole inner chunk.
++  1024^2 x 3 channels x 1 byte = 3,145,728 B  ~= 3.0 MB per tile
++  512^2  x 3 x 1               =   786,432 B  ~= 0.79 MB per tile
++A 1920x1080 viewport at 1024^2 intersects ceil(1920/1024) x ceil(1080/1024)
++  = 2 x 2 = 4 tiles  -> ~12 MB cold
++                at 512^2: 4 x 3 = 12 tiles -> ~9.4 MB cold
+ ```
+ 
+-- [ ] **Step 2: Run it**
+-
+-```bash
+-uv run python docs/superpowers/logic_validation_scripts/2026-08-26-viewer-viv-rebuild/tile_fetch_budget.py
+-```
+-Expected: exit 0, with a table of per-viewport totals at both chunk sizes.
++The arithmetic is not the risk. **The latency is**, and only step 3 measures it.
+ 
+ - [ ] **Step 3: Measure the real thing over a tunnel**
+ 
+@@ -386,8 +358,7 @@
+ - [ ] **Step 5: Commit**
+ 
+ ```bash
+-git add docs/superpowers/logic_validation_scripts/2026-08-26-viewer-viv-rebuild/ \
+-        docs/superpowers/plans/2026-08-26-viewer-viv-rebuild/spike/
++git add docs/superpowers/plans/2026-08-26-viewer-viv-rebuild/spike/
+ git commit -m "docs(viv): measure the per-tile fetch budget and settle chunk size"
+ ```
+ 
+@@ -399,68 +370,121 @@
+   with its measurement (or its explicit absence).** Report the findings before starting
+   phase 1. If Q1 or Q2 came back "needs patching", say so in the report — phases 2 and 3
+   grow, and that is the user's call to absorb or re-scope.
+-# Phase 1 — The byte route
++# Phase 1 — The byte route and the shared resolver
+ 
+-**Spec:** §4, §4.1. **Depends on:** phase 0. **Blocks:** phases 2-4.
++**Spec:** §4, §4.0, §4.1. **Depends on:** phase 0. **Blocks:** phases 2-4, 6.
+ 
+-**Deliverable:** `GET /zarr/<dataset>/<stem>.ome.zarr/<path...>` on the results viewer's
+-blueprint, serving raw store bytes with **HTTP Range**, guarded per path segment, and
+-restricted to the pixel groups the client needs. The server does no decode; per-request
+-memory is a sendfile buffer.
++**Deliverable:** one `resolve_within_root` in `gui/_shared/tiles.py`, and
++`GET /zarr/<dataset>/<stem>.ome.zarr/<token>/<path...>` on the results viewer's blueprint —
++raw store bytes with **HTTP Range**, a per-store readable-root restriction enforced on the
++**resolved** path, and a generation token that makes a torn read across a promote
++structurally impossible.
+ 
+ > **Why Range is load-bearing, not a nicety.** A sharded read is a shard-index fetch
+ > followed by a byte-range fetch into the shard. Without `conditional=True` the client
+-> pulls whole shards — up to 96 MB for `rgb` — for every 1024² tile. This is the single
+-> flag the phase exists to get right.
++> pulls whole shards — up to 96 MB — for every 1024² tile. This is the single flag the
++> phase exists to get right.
++
++> **Write the resolver once.** Phase 6 needs the same logic for the builder preview. A
++> path-escape guard is a security primitive and spec §9.1 makes correctness binding; two
++> copies drift **silently**, because each phase would test only its own copy. The two
++> *routes* stay separate — they have genuinely different resolution and guard regimes
++> (`OutputRoot.store_path` here, a session shape-check there) — but those regimes live
++> outside the resolver.
+ 
+ ---
+ 
+-### Task 1.1: Serve bytes with Range
++### Task 1.1: The shared resolver
+ 
+ **Files:**
+-- Create: `src/phenotypic/gui/results_viewer/_zarr_routes.py`
+-- Modify: `src/phenotypic/gui/results_viewer/_app.py` (register the blueprint)
+-- Test: `tests/unit/gui/results_viewer/test_zarr_routes.py` (create)
++- Modify: `src/phenotypic/gui/_shared/tiles.py`
++- Test: `tests/unit/gui/shared/test_resolve_within_root.py` (create)
+ 
+ **Interfaces:**
+-- Consumes: `OutputRoot.store_path(dataset, stem)` (already exists — confirm its exact name
+-  with `uv run grep -n "def store_path" src/phenotypic/gui/results_viewer/_output_root.py`),
+-  `phenotypic.gui._shared.tiles.is_safe_path_component`.
+-- Produces: `register_zarr_routes(app, output_root) -> None`, and the URL builder
+-  `zarr_store_url(url_prefix, dataset, stem) -> str` that phase 2's façade calls.
++- Consumes: `is_safe_path_component` (`tiles.py:755`).
++- Produces: `resolve_within_root(root: Path, tail: str, *, allowed_roots: frozenset[str] | None = None) -> Path`,
++  raising `werkzeug.exceptions.BadRequest` / `NotFound`. Phase 6 task 6.1 calls it too.
++
++- [ ] **Step 1: The guard is already verified — do not re-derive it**
++
++`is_safe_path_component` was run against this route's inputs during plan refinement:
++
++```text
++'..' -> False   '.' -> False    '...' -> False   '.hidden' -> False
++'a/b' -> False  'a\b' -> False  '%2e%2e' -> False  '' -> False
++'rgb' -> True   'gray' -> True  'detect_mat' -> True  'OME' -> True
++'zarr.json' -> True  'c.0.0.0' -> True  '0.0' -> True
++'labels' -> True     'objmap' -> True   'tables' -> True
++```
++
++It rejects empty, any leading dot, `/`, `\`, literal `..`, then requires
++`^[A-Za-z0-9._-]+$` (`_NAME_RE`, `:752`). Werkzeug 3.1.x does **not** normalise dot-segments
++before routing, so the handler really does receive `../../../../etc/passwd` and the
++traversal tests exercise the guard rather than passing on Werkzeug's behalf.
++
++**Note `'tables' -> True`.** The guard does not keep the in-store measurements parquet off
++the wire. The `allowed_roots` restriction does — and only if enforced correctly, which is
++step 3.
+ 
+-- [ ] **Step 1: Write the failing tests**
++- [ ] **Step 2: Write the failing tests**
+ 
+ ```python
+-"""The zarr byte route serves store bytes with HTTP Range.
++"""One resolver for every client-controlled path tail inside a store.
+ 
+-Three properties, in descending order of how quietly they fail:
+-Range (silently pulls whole shards), traversal (silently serves the tree),
+-and 404 (loudly wrong, therefore least dangerous).
++The third test is the one that matters and the one an earlier draft failed:
++the restriction must bind the RESOLVED path, not the URL segments. Checking
++the unresolved head lets a symlink inside a readable root escape it while
++still passing containment.
+ """
+ 
+ import pytest
++from werkzeug.exceptions import BadRequest, NotFound
+ 
++from phenotypic.gui._shared.tiles import resolve_within_root
+ 
+-def test_serves_the_root_zarr_json(zarr_route_client, spike_store):
+-    resp = zarr_route_client.get("/zarr/ds/plate.ome.zarr/zarr.json")
+-    assert resp.status_code == 200
+-    assert resp.json["attributes"]["phenotypic"]["store_schema_version"]
++ROOTS = frozenset({"OME", "rgb", "gray", "detect_mat"})
+ 
+ 
+-def test_honours_a_range_request(zarr_route_client, spike_store):
+-    resp = zarr_route_client.get(
+-        "/zarr/ds/plate.ome.zarr/rgb/0/c.0.0.0",
+-        headers={"Range": "bytes=0-15"},
+-    )
+-    assert resp.status_code == 206
+-    assert len(resp.data) == 16
+-    assert resp.headers["Accept-Ranges"] == "bytes"
++def test_resolves_a_file_inside_an_allowed_root(tmp_store):
++    got = resolve_within_root(tmp_store, "rgb/0/c.0.0.0", allowed_roots=ROOTS)
++    assert got == (tmp_store / "rgb" / "0" / "c.0.0.0").resolve()
+ 
+ 
+-def test_missing_chunk_is_404_not_500(zarr_route_client, spike_store):
+-    resp = zarr_route_client.get("/zarr/ds/plate.ome.zarr/rgb/0/c.99.99.99")
+-    assert resp.status_code == 404
++def test_rejects_a_disallowed_root(tmp_store):
++    with pytest.raises(NotFound):
++        resolve_within_root(
++            tmp_store, "tables/measurements/table.parquet", allowed_roots=ROOTS
++        )
++
++
++def test_a_symlink_into_a_disallowed_root_is_rejected(tmp_store):
++    """The escape an unresolved head check misses.
++
++    `rgb/sneak` passes a head check on segments[0] and resolves to a path
++    still INSIDE the store, so containment passes too. Only testing the
++    resolved path's first component catches it.
++    """
++    target = tmp_store / "tables" / "measurements" / "table.parquet"
++    target.parent.mkdir(parents=True, exist_ok=True)
++    target.write_bytes(b"secret")
++    (tmp_store / "rgb" / "sneak").symlink_to(target)
++
++    with pytest.raises((NotFound, BadRequest)):
++        resolve_within_root(tmp_store, "rgb/sneak", allowed_roots=ROOTS)
++
++
++def test_label_group_under_a_series_resolves(tmp_store):
++    """Only the FIRST resolved component is restricted, by design.
++
++    Restricting every component would block `labels`, `objmap` and every
++    level index, killing the label layer.
++    """
++    p = tmp_store / "rgb" / "labels" / "objmap" / "0"
++    p.mkdir(parents=True, exist_ok=True)
++    (p / "c.0.0").write_bytes(b"x")
++    assert resolve_within_root(
++        tmp_store, "rgb/labels/objmap/0/c.0.0", allowed_roots=ROOTS
++    )
+ 
+ 
+ @pytest.mark.parametrize(
+@@ -470,223 +494,274 @@
+         "rgb/../../../../etc/passwd",
+         "rgb/0/%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+         "rgb/./../../zarr.json",
++        "",
+     ],
+ )
+-def test_rejects_traversal_in_any_segment(zarr_route_client, spike_store, tail):
+-    resp = zarr_route_client.get(f"/zarr/ds/plate.ome.zarr/{tail}")
+-    assert resp.status_code in (400, 404)
++def test_rejects_traversal_in_any_segment(tmp_store, tail):
++    with pytest.raises((BadRequest, NotFound)):
++        resolve_within_root(tmp_store, tail, allowed_roots=ROOTS)
++
++
++def test_no_allow_list_permits_any_root(tmp_store):
++    assert resolve_within_root(tmp_store, "zarr.json") is not None
+ ```
+ 
+-Build `spike_store` by calling the real writer, as in phase 0 task 0.1 — a hand-built
+-fixture would not exercise the `"."` chunk keys.
++- [ ] **Step 3: Implement — restriction AFTER resolution**
+ 
+-- [ ] **Step 2: Run and watch them fail**
++```python
++def resolve_within_root(
++    root: Path,
++    tail: str,
++    *,
++    allowed_roots: frozenset[str] | None = None,
++) -> Path:
++    """Resolve a client-controlled ``tail`` to a file inside ``root``.
++
++    The single path-escape guard for every route that serves bytes out of a
++    store directory. Two properties are load-bearing and easy to get wrong:
++
++    * Segments are validated INDIVIDUALLY. The traversal surface here is
++      wider than a two-component route's because the tail is arbitrary depth.
++    * ``allowed_roots`` is tested on the RESOLVED path, not on the URL
++      segments. Testing the unresolved head lets a symlink inside a readable
++      root (``<root>/rgb/x -> ../tables/measurements/table.parquet``) satisfy
++      both the head check and containment, and the file is served.
++
++    Only the FIRST resolved component is restricted. Restricting every
++    component would reject ``labels``, ``objmap`` and every level index,
++    which would kill the label layer.
++
++    Args:
++        root: Directory the result must live inside.
++        tail: Client-controlled path, ``/``-separated.
++        allowed_roots: First-component allow-list, or ``None`` for no
++            restriction beyond containment.
++
++    Returns:
++        The resolved file path.
++
++    Raises:
++        BadRequest: A segment is unsafe, or the resolved path escapes ``root``.
++        NotFound: The path does not exist, is not a file, or its first
++            resolved component is not in ``allowed_roots``.
++    """
++    segments = [s for s in tail.split("/") if s]
++    if not segments:
++        raise NotFound()
++    for segment in segments:
++        if not is_safe_path_component(segment):
++            raise BadRequest()
++
++    root_resolved = root.resolve(strict=True)
++    try:
++        resolved = root.joinpath(*segments).resolve(strict=True)
++    except (OSError, RuntimeError):
++        raise NotFound() from None
++    if not resolved.is_relative_to(root_resolved):
++        raise BadRequest()
++    if not resolved.is_file():
++        raise NotFound()
++
++    if allowed_roots is not None:
++        rel = resolved.relative_to(root_resolved)
++        head = rel.parts[0]
++        if head not in allowed_roots and not (
++            len(rel.parts) == 1 and head == ngff_.STORE_ROOT_JSON
++        ):
++            raise NotFound()
++    return resolved
++```
++
++- [ ] **Step 4: Run, lint, commit**
+ 
+ ```bash
+-QT_QPA_PLATFORM=offscreen uv run pytest \
+-  tests/unit/gui/results_viewer/test_zarr_routes.py -v
++QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/shared/test_resolve_within_root.py -v
++uv run ruff check --fix src/phenotypic/gui/_shared/tiles.py tests/unit/gui/shared/test_resolve_within_root.py
++git add src/phenotypic/gui/_shared/tiles.py tests/unit/gui/shared/test_resolve_within_root.py
++git commit -m "feat(gui): add one path-escape resolver for store byte routes"
+ ```
+-Expected: all fail with 404 (no route registered).
+ 
+-- [ ] **Step 3: Implement the route**
++---
++
++### Task 1.2: Per-store readable roots and the generation token
++
++**Files:**
++- Create: `src/phenotypic/gui/results_viewer/_zarr_routes.py`
++- Test: `tests/unit/gui/results_viewer/test_zarr_routes.py` (create)
++
++**Interfaces:**
++- Consumes: `resolve_within_root`, `OutputRoot.store_path` (`_output_root.py:495`, returns
++  `Path | None`), `paths_fingerprint`, `ngff_.STORE_ROOT_JSON`.
++- Produces: `register_zarr_routes(app, output_root)`,
++  `zarr_store_url(url_prefix, dataset, stem, token)`,
++  `readable_roots_for(store) -> frozenset[str]`, `store_generation_token(store) -> str`.
++  Phase 6 calls the last two.
++
++- [ ] **Step 1: Derive the readable set from the store, never a literal**
++
++A fixed `{rgb, gray, detect_mat}` is wrong: `_write_store_part` appends `"original"` to
++`series_names` whenever the image carries one (`_image_io_handler.py:1012-1014`), and that
++list lands in `attributes.phenotypic.series`. A literal set makes the Layers panel list a
++series the route 404s — the same hard-coding spec §1's label-path rule forbids, one layer
++down.
+ 
+ ```python
+-"""Serve raw OME-Zarr store bytes to the browser, with HTTP Range.
++def readable_roots_for(store: Path) -> frozenset[str]:
++    """First-path-components a pixel client may read from this store.
+ 
+-The client (Viv/zarrita) reads chunks directly, so this route decodes
+-nothing: it resolves a path inside one per-image store and hands the file to
+-``send_file(..., conditional=True)``. ``conditional=True`` is what provides
+-Range, which sharding requires -- a sharded read is a shard-index fetch
+-followed by a byte-range fetch into the shard, so without it every tile pulls
+-a whole shard.
+-"""
++    Derived from the store's own ``attributes.phenotypic`` block, so a
++    series the writer legitimately added (``original``) is readable without
++    editing this function -- and ``tables/``, which holds the per-object
++    measurement parquet, never is.
++    """
++    block = _readable_block(store)          # raises StoreUnreadable
++    roots = set(block.get(PhenotypicAttr.SERIES, {}).keys())
++    for label_path in block.get(PhenotypicAttr.LABELS, {}).values():
++        roots.add(PurePosixPath(label_path).parts[0])
++    roots.add("OME")
++    return frozenset(roots)
++```
++
++Reuse the landed `_readable_block` (`_shared/tiles.py:304`) rather than a raw `json.loads`
++— it raises `StoreUnreadable` on a schema-version mismatch, which is what keeps Plate and
++Colony agreeing about a store this build cannot decode.
++
++- [ ] **Step 2: The generation token**
++
++`promote_store` (`sdk_/ngff_.py:1235-1300`) republishes by renaming the whole store
++directory. The route resolves fresh per request and holds no handle, so without a token a
++client can read `zarr.json` from promote *N* and chunks from *N+1*. Reuse the landed token
++rather than inventing one:
+ 
+-from __future__ import annotations
++```python
++def store_generation_token(store: Path) -> str:
++    """Short opaque token identifying one promote of ``store``.
+ 
+-from pathlib import Path
++    Same construction as ``_tile_routes._store_content_token``: the root
++    ``zarr.json``'s content fingerprint AND its mtime. Neither alone is
++    enough -- a rewrite can reproduce byte-identical metadata while the
++    pixels underneath differ.
++    """
++    root_json = store / ngff_.STORE_ROOT_JSON
++    digest = paths_fingerprint([root_json]).removeprefix("sha256:")[:16]
++    return f"{digest}-{os.stat(root_json).st_mtime_ns}"
++```
+ 
+-import dash
+-from flask import Blueprint, abort, send_file
++The token is a **path segment**, so a new promote yields a new base URL and mixing is
++structurally impossible rather than merely unlikely. A stale token returns **409**, which
++tells the client to re-read the source spec — a 404 would read as "chunk missing" and be
++retried forever.
+ 
+-from phenotypic.gui._shared.tiles import is_safe_path_component
++- [ ] **Step 3: Write the failing tests**
+ 
+-#: Groups inside a store the browser may read. Everything else -- notably the
+-#: embedded ``tables/measurements/table.parquet`` -- is out of scope for a
+-#: pixel route and is not exposed.
+-_READABLE_ROOTS: frozenset[str] = frozenset({"OME", "rgb", "gray", "detect_mat"})
++```python
++def test_serves_the_root_zarr_json(zarr_route_client, spike_store, token):
++    resp = zarr_route_client.get(f"/zarr/ds/plate.ome.zarr/{token}/zarr.json")
++    assert resp.status_code == 200
+ 
+-#: Files at the store root the client needs to bootstrap.
+-_READABLE_ROOT_FILES: frozenset[str] = frozenset({"zarr.json"})
++
++def test_honours_a_range_request(zarr_route_client, spike_store, token):
++    resp = zarr_route_client.get(
++        f"/zarr/ds/plate.ome.zarr/{token}/rgb/0/c.0.0.0",
++        headers={"Range": "bytes=0-15"},
++    )
++    assert resp.status_code == 206
++    assert len(resp.data) == 16
++    assert resp.headers["Accept-Ranges"] == "bytes"
+ 
+ 
+-def _resolve_within_store(store: Path, tail: str) -> Path:
+-    """Resolve ``tail`` inside ``store``, or abort.
++def test_a_stale_token_is_409_not_404(zarr_route_client, spike_store, token):
++    """A re-promote must not be served as a missing chunk.
+ 
+-    Guards **per segment**, not once over the whole tail: the traversal
+-    surface here is wider than the DZI route's because the tail is arbitrary
+-    depth inside a store.
++    404 reads as 'this chunk does not exist' and the client retries; 409
++    tells it to re-read the source spec, which is the actual remedy.
+     """
+-    segments = [s for s in tail.split("/") if s]
+-    if not segments:
+-        abort(404)
+-    for segment in segments:
+-        if not is_safe_path_component(segment):
+-            abort(400)
+-    head = segments[0]
+-    if head not in _READABLE_ROOTS and not (
+-        len(segments) == 1 and head in _READABLE_ROOT_FILES
+-    ):
+-        abort(404)
++    url = f"/zarr/ds/plate.ome.zarr/{token}/rgb/0/c.0.0.0"
++    assert zarr_route_client.get(url).status_code in (200, 206)
++    _repromote(spike_store)
++    assert zarr_route_client.get(url).status_code == 409
+ 
+-    candidate = store.joinpath(*segments)
+-    try:
+-        resolved = candidate.resolve(strict=True)
+-    except (OSError, RuntimeError):
+-        abort(404)
+-    # Belt and braces: even with per-segment guards, a symlink inside the
+-    # store could escape it. Resolve both sides and compare.
+-    if not resolved.is_relative_to(store.resolve(strict=True)):
+-        abort(400)
+-    if not resolved.is_file():
+-        abort(404)
+-    return resolved
++
++def test_an_original_series_is_readable(zarr_route_client, store_with_original):
++    """A store carrying `original` must not 404 on it.
++
++    `_write_store_part` appends "original" to series_names when the image
++    has one, so a hard-coded readable set breaks a legitimate store.
++    """
++    tok = store_generation_token(store_with_original)
++    resp = zarr_route_client.get(
++        f"/zarr/ds/orig.ome.zarr/{tok}/original/0/c.0.0.0"
++    )
++    assert resp.status_code in (200, 206)
++
++
++def test_the_measurements_table_is_never_served(zarr_route_client, spike_store, token):
++    resp = zarr_route_client.get(
++        f"/zarr/ds/plate.ome.zarr/{token}/tables/measurements/table.parquet"
++    )
++    assert resp.status_code == 404
+ ```
+ 
+-Then the blueprint:
++- [ ] **Step 4: Implement the route on the shared resolver**
+ 
+ ```python
+ def register_zarr_routes(app: dash.Dash, output_root) -> None:
+-    """Mount ``/zarr/<dataset>/<stem>.ome.zarr/<path...>`` on ``app``."""
+     bp = Blueprint("zarr_bytes", __name__, url_prefix="/zarr")
+ 
+-    @bp.route("/<dataset>/<stem>.ome.zarr/<path:tail>")
+-    def store_bytes(dataset: str, stem: str, tail: str):
++    @bp.route("/<dataset>/<stem>.ome.zarr/<token>/<path:tail>")
++    def store_bytes(dataset: str, stem: str, token: str, tail: str):
+         if not is_safe_path_component(dataset) or not is_safe_path_component(stem):
+             abort(400)
+         store = output_root.store_path(dataset, stem)
+         if store is None or not store.is_dir():
+             abort(404)
++        if token != store_generation_token(store):
++            abort(409)
+         return send_file(
+-            _resolve_within_store(Path(store), tail),
++            resolve_within_root(
++                store, tail, allowed_roots=readable_roots_for(store)
++            ),
+             conditional=True,
+         )
+ 
+     app.server.register_blueprint(bp)
+-
+-
+-def zarr_store_url(url_prefix: str, dataset: str, stem: str) -> str:
+-    """Base URL a zarr client opens for one per-image store."""
+-    base = url_prefix if url_prefix.endswith("/") else f"{url_prefix}/"
+-    return f"{base}zarr/{dataset}/{stem}.ome.zarr"
+-```
+-
+-**On `_READABLE_ROOTS`:** the spec sketches the route as an unrestricted tail. Since the
+-spec was written, measurements moved *inside* the store at
+-`tables/measurements/table.parquet` (see [DRIFT.md](DRIFT.md) D-6), so an unrestricted tail
+-serves the measurement table to any browser that asks. The allow-list is a deliberate
+-narrowing. **Flag it for sign-off** — it is a divergence from the spec, not an
+-implementation detail.
+-
+-- [ ] **Step 4: Register it and run the tests**
+-
+-Add `register_zarr_routes(app, output_root)` in `_app.py` beside the existing tile-route
+-registration. Then:
+-
+-```bash
+-QT_QPA_PLATFORM=offscreen uv run pytest \
+-  tests/unit/gui/results_viewer/test_zarr_routes.py -v
+ ```
+-Expected: all PASS. If `test_honours_a_range_request` returns 200, `conditional=True` is
+-missing or a proxy is stripping the header.
+ 
+-- [ ] **Step 5: Confirm `is_safe_path_component` rejects what the test expects**
+-
+-```bash
+-uv run python -c "
+-from phenotypic.gui._shared.tiles import is_safe_path_component as ok
+-for s in ('..', '.', 'rgb', 'c.0.0.0', '%2e%2e', 'a/b', ''):
+-    print(repr(s), ok(s))
+-"
+-```
+-If it accepts `'..'`, the guard is not the guard this route needs — **stop and fix
+-`is_safe_path_component`**, or the traversal tests pass for the wrong reason (Werkzeug's
+-own normalization) and stop protecting anything the day the route moves behind a proxy.
+-
+-- [ ] **Step 6: Lint and commit**
++- [ ] **Step 5: Run, lint, commit**
+ 
+ ```bash
++QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/results_viewer/test_zarr_routes.py -v
+ uv run ruff check --fix src/phenotypic/gui/results_viewer/_zarr_routes.py \
+                         src/phenotypic/gui/results_viewer/_app.py \
+                         tests/unit/gui/results_viewer/test_zarr_routes.py
+-git add src/phenotypic/gui/results_viewer/_zarr_routes.py \
+-        src/phenotypic/gui/results_viewer/_app.py \
+-        tests/unit/gui/results_viewer/test_zarr_routes.py
+-git commit -m "feat(gui): serve OME-Zarr store bytes with HTTP Range"
++git add src/phenotypic/gui/results_viewer tests/unit/gui/results_viewer
++git commit -m "feat(gui): serve OME-Zarr bytes with Range, a per-store root set and a generation token"
+ ```
+ 
+ ---
+ 
+-### Task 1.2: Prove the route respects the landed staleness key
++### Task 1.3: What the route still exposes — record it for sign-off
+ 
+ **Files:**
+-- Test: `tests/unit/gui/results_viewer/test_zarr_routes.py` (extend)
+-
+-**Interfaces:**
+-- Consumes: the root-`zarr.json` staleness key already landed on the store branch
+-  ([DRIFT.md](DRIFT.md) D-1).
+-- Produces: spec §8's "staleness" check.
+-
+-> The traps are already fixed; this is the regression test that keeps them fixed **for the
+-> new route**. Spec §8 requires a test that "must fail if the check is keyed on the store
+-> directory" — so the test rewrites a nested chunk, which is exactly the mutation that does
+-> **not** move the directory's `st_mtime_ns`.
+-
+-- [ ] **Step 1: Write the test**
+-
+-```python
+-def test_a_rewritten_nested_chunk_is_served_fresh(zarr_route_client, spike_store):
+-    """A nested chunk rewrite must be visible through the route.
+-
+-    A store directory's ``st_mtime_ns`` does NOT move when a nested chunk is
+-    rewritten. A route or cache keyed on the directory would serve the stale
+-    bytes and this test would fail -- which is the whole point of writing it
+-    against a nested chunk rather than against ``zarr.json``.
+-    """
+-    url = "/zarr/ds/plate.ome.zarr/rgb/0/c.0.0.0"
+-    before = zarr_route_client.get(url).data
+-
+-    chunk = spike_store / "rgb" / "0" / "c.0.0.0"
+-    dir_mtime_before = spike_store.stat().st_mtime_ns
+-    chunk.write_bytes(before[:-1] + bytes([before[-1] ^ 0xFF]))
+-    assert spike_store.stat().st_mtime_ns == dir_mtime_before, (
+-        "premise broken: the store directory mtime moved, so this test no "
+-        "longer proves what it claims"
+-    )
++- Modify: `docs/superpowers/plans/2026-08-26-viewer-viv-rebuild/spike/README.md`
+ 
+-    after = zarr_route_client.get(url).data
+-    assert after != before
+-```
++> Spec §4.0 already records the narrowing. This task exists so the *residual* exposure is
++> stated as a fact rather than left implied by "pixels only".
+ 
+-The mid-test assertion on `dir_mtime_before` is deliberate: it fails loudly if the
+-platform's directory-mtime behaviour differs, rather than letting the test pass while
+-proving nothing.
++- [ ] **Step 1: Write down what a browser can read**
+ 
+-- [ ] **Step 2: Run it**
++The root `zarr.json` is **mandatory** — the client bootstraps from it — and carries
++`attributes.phenotypic.metadata`: the `protected`, `public` and `imported` sections plus
++`work_id` (`sdk_/ngff_.py:559-583`). `OME/METADATA.ome.xml` carries the same `Metadata_*`
++sections. The narrowing keeps `tables/measurements/table.parquet` off the wire; it does
++**not** make the route metadata-free.
++
++Combined with the no-authentication assumption in spec §9, that means: on the documented
++Open OnDemand recipe (`--host 0.0.0.0`, `gui_hub.md:116, :124`), anything that can reach
++the node's port can read a run's image metadata. This is **not new** — the existing DZI and
++crop routes already serve pixels the same way — but it is now written down.
+ 
+-```bash
+-QT_QPA_PLATFORM=offscreen uv run pytest \
+-  tests/unit/gui/results_viewer/test_zarr_routes.py::test_a_rewritten_nested_chunk_is_served_fresh -v
+-```
+-Expected: PASS (the route sends files directly and holds no cache). If it **fails**, a
+-cache has been introduced between the file and the response — key it on the root
+-`zarr.json` via `paths_fingerprint`, matching `_tile_routes.py:527`.
+-
+-- [ ] **Step 3: Commit**
+-
+-```bash
+-git add tests/unit/gui/results_viewer/test_zarr_routes.py
+-git commit -m "test(gui): pin the zarr route against nested-chunk staleness"
+-```
++- [ ] **Step 2: No commit** — this rides on the spec §4.0 sign-off already recorded.
+ # Phase 2 — Viv bundle and façade
+ 
+ **Spec:** §3, §5.1. **Depends on:** phases 0, 1. **Blocks:** phases 3, 4.
+@@ -1023,10 +1098,16 @@
+ - Test: `tests/unit/gui/results_viewer/test_store_source.py` (create)
+ 
+ **Interfaces:**
+-- Consumes: `phenotypic.sdk_.ngff_`, `OutputRoot.store_path`.
+-- Produces: `build_source_spec(output_root, dataset, stem, url_prefix) -> dict` with keys
+-  `baseUrl`, `series` (ordered, primary first), `primary`, `labelPath`, `pyramid`.
+-  Phase 3 task 3.3 hands this dict straight to `window.phenotypicViv.setSource`.
++- Consumes: `_readable_block` and `ngff_.primary_series` (landed), `OutputRoot.store_path`
++  (`_output_root.py:495`, returns `Path | None`), `store_generation_token` / `zarr_store_url`
++  from phase 1.
++- Produces: **`build_source_spec(store: Path, base_url: str) -> dict`** with keys
++  `baseUrl`, `token`, `series` (ordered, primary first), `primary`, `labelPath` (**may be
++  `None`**), `pyramid`, `measured`. Task 3.3 hands this dict to
++  `window.phenotypicViv.setSource`; **phase 6 is the second caller** and is why the
++  signature takes a store path rather than an `OutputRoot` — the builder preview has stores
++  but no output root. Written at its final signature here so phase 6 adds a caller instead
++  of refactoring this function's own work.
+ 
+ > **This is where backend §1.1 is honoured or violated.** The label path is read from
+ > `phenotypic.labels.objmap`. Nothing anywhere may construct `f"{primary}/labels/objmap"`.
+@@ -1044,28 +1125,60 @@
+ from phenotypic.gui.results_viewer._store_source import build_source_spec
+ 
+ 
+-def test_series_come_from_the_store_in_primary_first_order(output_root, rgb_store):
+-    spec = build_source_spec(output_root, "ds", "plate", "/")
++def test_series_come_from_the_store_in_primary_first_order(rgb_store):
++    spec = build_source_spec(rgb_store, "/zarr/ds/plate.ome.zarr")
+     assert spec["primary"] == "rgb"
+     assert spec["series"][0] == "rgb"
+-    assert set(spec["series"]) <= {"rgb", "gray", "detect_mat"}
+ 
+ 
+-def test_label_path_is_read_not_constructed(output_root, gray_only_store):
+-    spec = build_source_spec(output_root, "ds", "grayplate", "/")
++def test_an_original_series_is_listed(store_with_original):
++    """`_write_store_part` appends "original" when the image carries one.
++
++    A spec that filtered the series list to a literal set would silently drop
++    a layer the writer legitimately produced -- and the byte route's readable
++    set is derived from this same list, so the two would disagree.
++    """
++    spec = build_source_spec(store_with_original, "/zarr/ds/orig.ome.zarr")
++    assert "original" in spec["series"]
++
++
++def test_label_path_is_read_not_constructed(gray_only_store):
++    spec = build_source_spec(gray_only_store, "/zarr/ds/grayplate.ome.zarr")
+     assert spec["primary"] == "gray"
+     assert not spec["labelPath"].startswith("rgb/")
+     assert spec["labelPath"] == "gray/labels/objmap"
+ 
+ 
+-def test_pyramid_ladder_is_read_not_recomputed(output_root, rgb_store):
+-    spec = build_source_spec(output_root, "ds", "plate", "/")
++def test_a_store_with_no_label_image_yields_no_label_path(label_less_store):
++    """`labels` is omitted entirely, not emitted empty (ngff_.py:576-581).
++
++    Most builder-preview stores are like this, because
++    `save_intermediate_zarr` writes an objmap only when it is requested.
++    """
++    spec = build_source_spec(label_less_store, "/zarr/ds/prev.ome.zarr")
++    assert spec["labelPath"] is None
++
++
++def test_pyramid_ladder_is_read_not_recomputed(rgb_store):
++    spec = build_source_spec(rgb_store, "/zarr/ds/plate.ome.zarr")
+     assert spec["pyramid"]["levels"] >= 1
+     assert spec["pyramid"]["downsample"]["label"] == "nearest"
+ ```
+ 
+-`gray_only_store` is a store written from an `Image` with no RGB layer. Build it with the
+-real writer; a hand-edited `zarr.json` would not prove the reader handles a real one.
++**Six fixtures, none of which exist yet** — `rgb_store` is referenced across this phase and
++is defined **nowhere** in `tests/` (the only grep hit is an unrelated *test name* at
++`tests/unit/sdk_/test_ngff_validity.py:172`). Define all six in the results-viewer
++`conftest.py`, every one built with the **real writer**; a hand-edited `zarr.json` would let
++a test agree with a store no writer produces:
++
++| Fixture | What it is |
++|---|---|
++| `rgb_store` | an ordinary finished run store, `rgb` primary, measured |
++| `gray_only_store` | an `Image` with no RGB layer, so `gray` is primary |
++| `store_with_original` | an image carrying an `original`, so `series` exceeds the three canonical names |
++| `label_less_store` | `save_intermediate_zarr(layers=("gray",))` — the `labels` key absent entirely |
++| `stage1_store` | Stage 1 only: zeros objmap present, no embedded measurements table |
++| `store_at_extent(extent)` | factory writing at `(extent, extent * 3 // 4)`, for task 3.2 |
+ 
+ - [ ] **Step 2: Run and watch them fail**
+ 
+@@ -1079,42 +1192,72 @@
+ ```python
+ """Build the client-facing source spec for one per-image store.
+ 
+-Every fact here is READ from the store's ``attributes.phenotypic`` block --
+-series list, primary series, resolved label path, pyramid ladder. None of it
+-is inferred, because backend section 1.1 forbids hard-coding the label path
+-and section 1.3 records that recomputing the level count has already been got
+-wrong once (``floor`` where ``ceil`` was needed).
++Every fact here is READ from the store, never inferred -- series list,
++primary series, resolved label path, pyramid ladder. None of it is
++recomputed, because backend section 1.1 forbids hard-coding the label path
++and section 1.3 records that re-deriving the level count has already been
++got wrong once (``floor`` where ``ceil`` was needed).
++
++Built on the LANDED resolvers rather than a second implementation of them:
++``_readable_block`` raises ``StoreUnreadable`` on a schema-version mismatch,
++which is what keeps Plate and Colony agreeing about a store this build
++cannot decode -- ``crop_colony`` deliberately does not catch it
++(``tiles.py:685-688``). A raw ``json.loads`` here would let Plate open a
++store that Colony 422s on, with the two surfaces disagreeing about one
++store.
+ """
+ 
+ from __future__ import annotations
+ 
+-import json
++from pathlib import Path
+ 
+-from phenotypic.gui.results_viewer._zarr_routes import zarr_store_url
++from phenotypic.gui._shared.tiles import _readable_block
++from phenotypic.gui.results_viewer._zarr_routes import (
++    store_generation_token,
++    zarr_store_url,
++)
+ from phenotypic.sdk_ import ngff_
+ 
+ 
+-def build_source_spec(output_root, dataset: str, stem: str, url_prefix: str) -> dict:
+-    store = output_root.store_path(dataset, stem)
+-    root = json.loads((store / ngff_.STORE_ROOT_JSON).read_text(encoding="utf-8"))
+-    block = root["attributes"]["phenotypic"]
++def build_source_spec(store: Path, base_url: str) -> dict:
++    """Describe one store to the Viv facade.
+ 
+-    series_map = block["series"]
+-    primary = "rgb" if "rgb" in series_map else "gray"
++    Takes a STORE PATH and a base URL rather than an ``OutputRoot``: the
++    builder preview (phase 6) has stores but no output root, and it is the
++    second caller. Written at its final signature here so phase 6 does not
++    refactor this function's own work.
++    """
++    block = _readable_block(store)
++
++    series_map = block.get(ngff_.PhenotypicAttr.SERIES, {})
++    primary = ngff_.primary_series(list(series_map))
+     ordered = [primary] + [name for name in series_map if name != primary]
+ 
++    # `labels` is OMITTED ENTIRELY when the store carries no label image
++    # (`ngff_.py:576-581`, ledger C3) -- and `save_intermediate_zarr` sets
++    # `write_objmap = "objmap" in layers`, so MOST builder-preview stores
++    # have no `labels` key at all. `block["labels"]` would KeyError on them.
++    label_path = block.get(ngff_.PhenotypicAttr.LABELS, {}).get("objmap")
++
++    # Absent `tables.measurements` means "not yet measured" -- the only
++    # reliable way to tell a mid-run store (Stage 1 done, Stage 3 pending,
++    # objmap all zeros) from a finished image whose detector found nothing.
++    # See task 3.4.
++    measured = ngff_.PhenotypicAttr.TABLES in block
++
+     return {
+-        "baseUrl": zarr_store_url(url_prefix, dataset, stem),
++        "baseUrl": base_url,
++        "token": store_generation_token(store),
+         "series": ordered,
+         "primary": primary,
+-        # RESOLVED, never constructed -- backend section 1.1.
+-        "labelPath": block["labels"]["objmap"],
+-        "pyramid": block["pyramid"],
++        "labelPath": label_path,      # may be None -- the facade must cope
++        "pyramid": block[ngff_.PhenotypicAttr.PYRAMID],
++        "measured": measured,
+     }
+ ```
+ 
+-Confirm `ngff_.STORE_ROOT_JSON` exists and confirm the real key names before trusting the
+-literals above:
++Confirm the `PhenotypicAttr` member names and `primary_series`' signature before trusting
++the references above:
+ 
+ ```bash
+ uv run grep -n "STORE_ROOT_JSON\|\"labels\"\|\"pyramid\"\|\"series\"" \
+@@ -1147,20 +1290,49 @@
+ > recorded ladder, **including the `ceil` boundary that backend §1.3 records as having
+ > failed once already**. That boundary is the whole reason this test exists rather than a
+ > smoke check.
++>
++> **First settle whether the thing under test still has a caller.** After step 4 of task
++> 3.3, the server-side selection stack is orphaned: `select_pyramid_level` is called only by
++> `_load_zarr_layer_rgb` (`tiles.py:473`), which is called only by `_tile_routes.py:31, :500`
++> — the Plate DZI path this phase removes. Colony does **not** use it (`crop_store_rgb` is
++> level-0 always, `tiles.py:566`). `_load_zarr_level_rgb` and `_store_level0_longest_edge`
++> go the same way; `_store_content_token` is re-homed by phase 1's generation token.
++>
++> **So after this phase there is exactly one level-selection authority — the browser — and
++> the server's is dead code.** Pinning dead code with a new test is worse than leaving it
++> orphaned: it looks maintained. Choose, and say which in the commit:
++>
++> - **retire the stack with its tests** and assert the ladder against the *browser's*
++>   choice in phase 5's level-selection check; or
++> - **keep it** and state what still calls it.
++>
++> The invariant below is worth pinning either way — it is the arithmetic, not the caller.
++
++- [ ] **Step 1: Write it against real stores — not against itself**
+ 
+-- [ ] **Step 1: Write it, boundary case first**
++> **An earlier draft of this test asserted nothing about the code.** It computed
++> `derived = 1 if extent <= 512 else ceil(log2(extent/512)) + 1` **in the test body** and
++> compared it to its own parametrization; it imported `select_pyramid_level` and never
++> called it. It would pass with `phenotypic` uninstalled, and could not fail if the
++> implementation regressed to `floor` — the exact regression its own docstring named. Its
++> companion `assert level >= 0` was unconditional, because `chosen` initialises to `0`
++> (`_shared/tiles.py:414`).
++>
++> The five parametrized values themselves were **checked and are correct** (recomputed
++> against `sdk_/ngff_.py:167-169` and `ngff_store_geometry.py` claim C1). Keep them; drive
++> them against real stores.
+ 
+ ```python
+-"""Level selection follows the store's recorded ladder, ceil boundary included.
++"""Level selection follows the store's RECORDED ladder, ceil boundary included.
+ 
+ Backend section 1.3: levels halve until ``max(H, W) <= 512``, so
+ ``levels = ceil(log2(max(H, W) / 512)) + 1``. A draft used ``floor``, which
+ terminates one level early and leaves a 4000x3000 plate's smallest level at
+-1000x750. The parametrization below includes that exact case.
++1000x750. That regression is what these tests exist to catch, so every
++assertion here runs against a store written by the real writer -- never
++against a formula restated in the test body.
+ """
+ 
+-import math
+-
+ import pytest
+ 
+ from phenotypic.gui._shared.tiles import select_pyramid_level
+@@ -1168,30 +1340,64 @@
+ 
+ @pytest.mark.parametrize(
+     ("extent", "expected_levels"),
+-    [
+-        (512, 1),
+-        (513, 2),
+-        (1024, 2),
+-        (1025, 3),
+-        (4000, 4),
+-    ],
++    [(512, 1), (513, 2), (1024, 2), (1025, 3), (4000, 4)],
+ )
+-def test_recorded_ladder_matches_the_ceil_formula(extent, expected_levels):
+-    derived = 1 if extent <= 512 else math.ceil(math.log2(extent / 512)) + 1
+-    assert derived == expected_levels
++def test_the_written_store_records_the_ceil_ladder(store_at_extent, extent, expected_levels):
++    """The STORE's recorded ladder, not a formula re-derived here.
+ 
++    `floor` would give 512->1, 513->1, 1025->2, 4000->3 -- so 513, 1025 and
++    4000 each fail under the regression, and 513/1025 are the ceil boundaries
++    specifically.
++    """
++    store = store_at_extent(extent)
++    block = _readable_block(store)
++    assert block["pyramid"]["levels"] == expected_levels
+ 
+-def test_selected_level_covers_the_target_without_overshooting(rgb_store):
+-    for target in (128, 256, 512, 1024, 2048):
+-        level = select_pyramid_level(rgb_store, "rgb", target)
+-        assert level >= 0
+-```
+ 
+-Read `select_pyramid_level`'s real signature before writing the second test:
+-```bash
+-uv run sed -n '378,422p' src/phenotypic/gui/_shared/tiles.py
+-```
+-Adapt the call to match; do not assume the parameter order above.
++def test_selected_level_is_the_coarsest_that_still_covers(store_at_extent):
++    """Exercises `select_pyramid_level` itself, including the exact-edge case.
++
++    `assert level >= 0` is vacuous -- `chosen` initialises to 0
++    (`_shared/tiles.py:414`), so it holds even if every branch is wrong.
++    Assert the contract in the docstring instead: the chosen level's longest
++    edge is >= target, and the NEXT coarser level's is not.
++    """
++    store = store_at_extent(4000)
++    shapes = _level_shapes(store, "rgb")          # [(4000,3000),(2000,1500),...]
++
++    for target in (4000, 2000, 1024, 1000, 512, 256):
++        level = select_pyramid_level(store, "rgb", target)
++        assert max(shapes[level][-2:]) >= target, (
++            f"level {level} does not cover {target}"
++        )
++        if level + 1 < len(shapes):
++            assert max(shapes[level + 1][-2:]) < target, (
++                f"level {level + 1} also covers {target}; {level} is not the coarsest"
++            )
++
++
++def test_a_target_landing_exactly_on_a_level_edge_picks_that_level(store_at_extent):
++    """`>=` not `>` -- an exact match must not fall through to a finer level."""
++    store = store_at_extent(4000)
++    shapes = _level_shapes(store, "rgb")
++    exact = max(shapes[1][-2:])                   # level 1's longest edge
++    assert select_pyramid_level(store, "rgb", exact) == 1
++```
++
++**Define the fixtures — they do not exist.** `rgb_store` was referenced across phase 3 and
++this task and is defined **nowhere** in `tests/` (the only grep hit is an unrelated *test
++name* in `tests/unit/sdk_/test_ngff_validity.py:172`). Add to the results-viewer
++`conftest.py`:
++
++- `store_at_extent(extent) -> Path` — a factory writing a real store at
++  `(extent, extent * 3 // 4)` via the CLI writer, so the recorded ladder is the writer's.
++- `rgb_store`, `gray_only_store`, `label_less_store`, `store_with_original`, `stage1_store`
++  — the five task 3.1 and 3.4 use.
++- `_level_shapes(store, layer)` — read each level's shape from the store rather than
++  computing it.
++
++Build every one with the real writer. A hand-edited `zarr.json` would let the test agree
++with a store no writer produces.
+ 
+ - [ ] **Step 2: Run and commit**
+ 
+@@ -1238,6 +1444,13 @@
+    `level 1 of 4 · 2048×1536 · zstd · 1024² chunks`. This is **instrumentation, not
+    decoration**: it is the pyramid the old DZI path rebuilt from scratch every time, and it
+    is the fastest way to diagnose a level-selection bug.
++
++   **It must be read back from the façade, not computed server-side.** `build_source_spec`
++   returns the *ladder*; the level in use is deck.gl's per-frame choice. A number computed
++   from `select_pyramid_level` would report a level nobody rendered — worse than showing
++   nothing, because a readout labelled "the level actually being served" will be trusted
++   when diagnosing exactly the bug it is misreporting. Add an `onLevelChange` callback (or a
++   `__debugViewStates`-style seam) to the façade in phase 2 and drive the readout from it.
+ 5. **Image stepping** (`‹ dataset / stem ›`) and the object/grid summary, top-left.
+ 
+ - [ ] **Step 3: Wire the clientside callback through the façade only**
+@@ -1268,17 +1481,31 @@
+ ```
+ Expected after the edit: no hits.
+ 
+-- [ ] **Step 5: Decide the fate of the `.dzi` routes**
++- [ ] **Step 5: Remove the `/tiles/<dataset>/<stem>.dzi` routes — the answer is determinate**
++
++Their consumers, enumerated during review:
++
++```text
++results_viewer/_assets/results_viewer.js:286-298   Plate      <- removed by this phase
++timeline_view/_callbacks.py:266                    Timeline   <- DELETED by cycle 1
++results_viewer/_assets/timeline.js:447-454         Timeline   <- DELETED by cycle 1
++```
+ 
+-The `/tiles/<dataset>/<stem>.dzi` routes now have no producer for the Plate layer. Either
+-remove them with their tests, or keep them serving the **overlay** path if the QC review
+-gallery still calls them:
++No `_qc_tab` or `_error_tab` reference exists, so the "keep them for the QC review gallery"
++branch an earlier draft offered is **dead** — it would preserve a route for a consumer that
++cycle 1 unmounts anyway. Remove the routes with their tests.
+ 
+ ```bash
+ uv run grep -rn "\.dzi" src/phenotypic/gui/ --include='*.py' --include='*.js' | grep -v browse
+ ```
+-Whichever you choose, say so in the commit body. Silently leaving a route with no producer
+-is the residue this rebuild should not create.
++**Run this after cycle 1 has landed.** Run before, it returns the timeline hits and argues
++for the wrong answer. Treat it as confirmation of the table above, not as the decision.
++
++**Do not delete `_tile_routes.py` as a module.** `builder/_preview_tiles.py:31` imports
++`_TILE_NAME_RE` and `_json_error` from it, and `_validate` returns through `_json_error` —
++so deleting it breaks the builder preview *and* phase 6's new route at import, in a
++different sub-app from the one being edited. Either relocate those two symbols to
++`_shared/` in this step, or leave the module in place with its routes removed.
+ 
+ - [ ] **Step 6: Run the viewer suite**
+ 
+@@ -1313,10 +1540,22 @@
+ > re-promotes the store. Between Stage 1 and Stage 3 the store's `labels/objmap` is
+ > **zeros**.
+ 
+-- [ ] **Step 1: Write the test**
++> **Zeros is correct, but it is also ambiguous — and the ambiguity is the actionable half.**
++> An all-zero objmap merges two states: (a) Stage 1 done, Stage 3 pending, and (b) a
++> finished image whose detector produced **zero objects**, which is a real QC fault. Plate
++> renders both identically, and so does Colony (no `master_df` rows either way). Nothing
++> treats zeros as an error today, so no correctness change is needed — but a user cannot
++> tell "still running" from "found nothing".
++>
++> **The discriminator is already in the store.** `attributes.phenotypic.tables.measurements`
++> is written **only** when a measurement table was embedded
++> (`_image_io_handler.py:1143-1167`), so its absence is a reliable "not yet measured" — and
++> mid-run there is no `tables/` group at all. `build_source_spec` returns it as `measured`.
++
++- [ ] **Step 1: Write the tests**
+ 
+ ```python
+-def test_an_all_zero_objmap_is_a_valid_source_not_an_error(output_root, stage1_store):
++def test_an_all_zero_objmap_is_a_valid_source_not_an_error(stage1_store):
+     """A store between Stage 1 and Stage 3 holds a zeros objmap.
+ 
+     Backend behaviour (landed): Stage 2 is read-only, so the in-store objmap
+@@ -1324,14 +1563,29 @@
+     label layer normally -- an empty segmentation is the correct rendering of
+     a correct store, not a condition to surface as a fault.
+     """
+-    spec = build_source_spec(output_root, "ds", "stage1plate", "/")
++    spec = build_source_spec(stage1_store, "/zarr/ds/stage1plate.ome.zarr")
+     assert spec["labelPath"]
+     assert "error" not in spec
++
++
++def test_a_mid_run_store_reports_itself_unmeasured(stage1_store):
++    """"Measurement pending" and "found nothing" must be distinguishable."""
++    assert build_source_spec(stage1_store, "/x")["measured"] is False
++
++
++def test_a_finished_store_reports_itself_measured(rgb_store):
++    assert build_source_spec(rgb_store, "/x")["measured"] is True
+ ```
+ 
+ `stage1_store` is a store written by Stage 1 only — a zeros objmap with its `ome.labels`
+ list and `image-label` block present (backend §3.3 guarantees the objmap always exists,
+-including after Stage 1).
++including after Stage 1), and **no** embedded measurements table.
++
++- [ ] **Step 1b: Surface it in the Layers panel**
++
++When `measured` is false, label the objmap layer **"measurement pending"** rather than
++leaving it looking like an empty result. One word of chrome; it is the difference between a
++user waiting and a user filing a bug.
+ 
+ - [ ] **Step 2: Record the correction in the module docstring**
+ 
+@@ -1386,8 +1640,8 @@
+ 
+ - [ ] **Step 1: Write the budget script**
+ 
+-Per root `CLAUDE.md`: stdlib + numpy/scipy only, never imports `phenotypic`, exits non-zero
+-on failure.
++Per root `CLAUDE.md`: stdlib + numpy/scipy only (this one needs only the stdlib), never
++imports `phenotypic`, exits non-zero on failure.
+ 
+ ```python
+ """Re-derive the per-frame cost of one OrthographicView per colony.
+@@ -1397,19 +1651,21 @@
+ count. This script derives the draw-call and texture budget for a plate's
+ worth of cells so the cap is chosen against a number.
+ 
+-Exits non-zero if the derived budget contradicts the recorded cap.
++Exits non-zero until the prototype measurement in task 4.1 step 3 has been
++recorded, so no later task can proceed on an unmeasured cap.
+ """
+ 
+ import sys
+ 
+-import numpy as np
+-
+ #: Layers rendered into EACH view: base image + label overlay.
+ LAYERS_PER_VIEW = 2
+ #: A common plate: 32 x 48 = 1536 colonies (backend section 2.3's example).
+ PLATE_CELLS = 1536
+-#: Recorded cap, filled in from the measurement in step 3.
++#: Measured cap, filled in from the prototype in step 3. None until measured.
+ RECORDED_CAP: int | None = None
++#: Frame time, in ms, observed at RECORDED_CAP. Recorded beside the number so
++#: the cap can be re-judged later without re-running the prototype blind.
++RECORDED_FRAME_MS: float | None = None
+ 
+ 
+ def draw_calls(cells: int, layers: int = LAYERS_PER_VIEW) -> int:
+@@ -1428,13 +1684,15 @@
+             f"{cells:5d} cells: {draw_calls(cells):6d} draw calls/frame, "
+             f"{crop_texture_bytes(cells) / 1e6:7.2f} MB textures"
+         )
+-    if RECORDED_CAP is None:
+-        print("NO CAP RECORDED: run the measurement in task 4.1 step 3")
+-        return 1
+-    if draw_calls(RECORDED_CAP) > 4096:
+-        print(f"REFUTED: cap {RECORDED_CAP} exceeds a 4096 draw-call budget")
++    if RECORDED_CAP is None or RECORDED_FRAME_MS is None:
++        print("NO MEASUREMENT: run the prototype in task 4.1 step 3")
+         return 1
+-    print(f"cap {RECORDED_CAP} holds")
++    print(
++        f"cap {RECORDED_CAP} cells "
++        f"({draw_calls(RECORDED_CAP)} draw calls, "
++        f"{crop_texture_bytes(RECORDED_CAP) / 1e6:.1f} MB, "
++        f"{RECORDED_FRAME_MS:.1f} ms/frame measured)"
++    )
+     return 0
+ 
+ 
+@@ -1442,19 +1700,34 @@
+     sys.exit(main())
+ ```
+ 
++> **This script fails closed on a missing measurement and asserts nothing else.** An earlier
++> draft additionally refuted the cap against a `draw_calls(cap) > 4096` ceiling; that 4096
++> was invented here and appears in no spec. **Dropped** (user ruling, 2026-08-26) — a
++> measured cap validated against a guessed budget inverts the point. The script's whole job
++> is to stop phase 4 proceeding on an unmeasured number, and to keep the measurement beside
++> the number it justifies.
++>
++> This is the **only** surviving logic-validation script of the three originally proposed,
++> kept because its number lands in shipped code as a behavioural cap.
++
+ - [ ] **Step 2: Run it and confirm it fails on the missing cap**
+ 
+ ```bash
+ uv run python docs/superpowers/logic_validation_scripts/2026-08-26-viewer-viv-rebuild/colony_view_budget.py
+ ```
+-Expected: prints the table, then `NO CAP RECORDED`, exit **1**. The script failing at this
++Expected: prints the table, then `NO MEASUREMENT`, exit **1**. The script failing at this
+ point is the intended state — it is what stops phase 4 proceeding on an invented number.
+ 
+-- [ ] **Step 3: Measure, then fill in `RECORDED_CAP`**
++- [ ] **Step 3: Measure, then fill in both constants**
+ 
+ Render a prototype grid at 64, 256, 1024 and 1536 cells and record observed frame time at
+ each. Choose the cap at the largest count that holds an interactive frame budget, write it
+-into `RECORDED_CAP`, and record the measurement in `spike/README.md` beside the number.
++into `RECORDED_CAP` **and its measured frame time into `RECORDED_FRAME_MS`**, and record the
++full table in `spike/README.md`.
++
++The interactive budget is a judgement, not a spec number — spec §9.1 makes interactivity a
++**target**, not a gate. Record what you chose and why; a later reader can re-judge the cap
++from `RECORDED_FRAME_MS` without re-running the prototype.
+ 
+ - [ ] **Step 4: Re-run and commit**
+ 
+@@ -1478,16 +1751,77 @@
+ - Produces: `setGridViews(containerId, cells, sharedViewState)` where `cells` is
+   `[{id, centroidRr, centroidCc, size}, ...]`.
+ 
+-> **The napari implementation this ports.** `gui/_smart_grid/` patches `viewer.grid` so
+-> only **visible** layers get cells, then `create_overlay_clones` duplicates every
+-> Labels/Points/Shapes visual into **each** viewbox — every cell shows a different base
+-> image under the same annotation, sharing one camera.
++> **The napari implementation this ports** (`gui/_smart_grid/`, 378 lines, read in full
++> during plan refinement — every claim below carries its `file:line`):
++>
++> - **Visible-layers-only grid.** `install_smart_grid` (`_install.py:14-15`) shadows exactly
++>   two methods on the grid *instance* (`:90-91`). The real predicate (`:64-70`) is
++>   `layer.visible and not (_overlay_enabled and is_overlay_layer(layer))` — visible **AND
++>   non-overlay**. The overlay exclusion is not a detail: it is what frees the
++>   Labels/Points/Shapes layers from owning a cell so they can be cloned into every cell.
++>   The two are **one coupled mechanism**, not a sequence. `_overlay_enabled` and
++>   `_labels_enabled` are live user toggles (`_grid_popup.py:40-51`), so the reference has
++>   two runtime modes.
++>   **Not ported, declared:** the colony grid has no visibility mapping at all — napari's
++>   cells are per-*layer*, colony cells are per-*region of one image*, so the concept has no
++>   analogue. The two user toggles go with it.
++> - **Detach + draw-order.** `_install.py:130-136` sets the original overlay visuals'
++>   `node.parent = None`, because `patched_position` returns `(-1,-1)` and napari never
++>   re-parents them — left attached they draw canvas-wide at `order=100`, on top of
++>   everything. Clones then take `order = len(viewer.layers) + 10`
++>   (`_overlay_visuals.py:33, :39`). The deck.gl analogue is layer order within each view's
++>   stack; state it explicitly when building the stack rather than relying on insertion
++>   order.
++> - **Overlay cloning.** `create_overlay_clones` (`_overlay_visuals.py:20-42`) iterates
++>   `canvas.grid_views × overlay_layers`, calls `create_vispy_layer(layer)` and parents each
++>   clone to `viewbox.scene`. `is_overlay_layer` (`:16-18`) is exactly
++>   `Labels | Points | Shapes`. Note it clones only **visible** overlay layers (`:26-28`) —
++>   "every Labels/Points/Shapes visual" overstates it.
++>
++> **Correction — napari IS a sync protocol, and the deck.gl design is a declared
++> deviation, not a faithful port.** An earlier draft of this plan (and spec §6.2's "sharing
++> one camera") claimed the reference shares a camera *value* with "no per-view listener
++> reconciling positions". **That is false**, verified in napari's source:
++>
++> ```text
++> napari/_vispy/canvas.py:1121-1123   camera = VispyCamera(view, self.viewer.camera, self.viewer.dims)
++>                                     self.grid_views.append(view); self.grid_cameras.append(camera)
++> napari/_vispy/camera.py:50-56       self._camera.events.center.connect(self._on_center_change)
++>                                     ... zoom / angles / perspective
++> napari/_vispy/canvas.py:646-648     # sync all cameras
++>                                     for camera in (self.camera, *self.grid_cameras):
++>                                         camera.on_draw(event)
++> ```
++>
++> One camera **model**, *N* `VispyCamera` objects, event-connected and re-reconciled on
++> every draw — precisely the per-view listener protocol the draft said did not exist.
++> (`_smart_grid/` itself contains no camera code; it patches grid geometry only. The
++> behaviour is napari's, inherited.)
++>
++> **The deck.gl translation collapses that fan-out to a single `viewState`.** It is still
++> the better design — a shared value cannot tear mid-gesture the way an event-reconciled
++> set can — but it is a **deliberate simplification of the reference**, and per the
++> `porting-a-reference-algorithm` skill it is recorded as a **declared deviation** requiring
++> a user gate, not presented as fidelity. Do not argue "correct by construction" against the
++> strawman the draft invented.
+ >
+-> **The deck.gl translation:** zoom edits **one shared `viewState`** applied to every view.
+-> The shared camera is a **value, not a sync protocol** — there is no per-view listener
+-> reconciling positions, which is what makes it correct by construction rather than
+-> eventually consistent. `create_overlay_clones`' GPU-resource cleanup dance
+-> (`cleanup_clones`) has no deck.gl equivalent and is **not ported**.
++> **Why `cleanup_clones` is not ported — narrow claim only.** It
++> (`_overlay_visuals.py:45-58`) calls `clone.close()` per clone then
++> `canvas._scene_canvas.context.finish()` (a glFinish, so deletions land before
++> reallocation), reclaiming GPU resources for *N overlay-layers × M viewboxes* separately
++> instantiated vispy visuals. It is **not** a nicety in the reference: it runs at the top of
++> every scenegraph rebuild (`_install.py:125`) against wholesale recreation at `:137`, and
++> rebuilds fire on every visibility toggle, name change and layer insert/remove
++> (`:157-183`). Without it those visuals leak per event.
++>
++> The narrow claim holds: deck.gl reconciles layers by id and finalizes them when dropped,
++> and multi-view draws **one** layer instance per view rather than N instances, so there is
++> no clone lifecycle to manage. **The broad claim does not.** The leak *class* survives —
++> Viv's `TileLayer` texture cache grows with the union of all *N* views' visible tiles,
++> bounded only by `maxCacheSize` / `maxCacheByteSize`, and **nothing in this phase sets,
++> bounds, or tests it.** Task 4.1's cap bounds *cell count*, not *cached tile bytes*. Set an
++> explicit cache bound when building the layer stack, and record its number alongside the
++> cap.
+ 
+ - [ ] **Step 1: Read the napari original before porting**
+ 
+@@ -1522,18 +1856,54 @@
+         """() => window.phenotypicViv.setViewState(
+                'colony-grid', {zoom: 3, target: [0, 0, 0]})"""
+     )
+-    zooms = page.evaluate(
+-        """() => window.phenotypicViv.__debugViewStates('colony-grid')
+-                   .map(v => v.zoom)"""
++    states = page.evaluate(
++        """() => window.phenotypicViv.__debugViewStates('colony-grid')"""
+     )
++    zooms = [s.zoom for s in states]
++    targets = [tuple(s.target[:2]) for s in states]
++
+     assert len(zooms) > 1
+-    assert len(set(zooms)) == 1, f"views drifted apart: {sorted(set(zooms))}"
++    assert len(set(zooms)) == 1, f"zoom drifted apart: {sorted(set(zooms))}"
++
++    # The complementary half, and the one that matters. Asserting only
++    # "all zooms equal" is satisfied PERFECTLY by the bug this test exists
++    # to catch: a single shared viewState gives every cell the same target,
++    # so the grid renders one colony N times -- with identical zooms.
++    assert len(set(targets)) == len(targets), (
++        f"every cell is showing the same region: {targets[:4]}"
++    )
+ ```
+ 
+-- [ ] **Step 3: Implement `setGridViews` with a single `viewState`**
++- [ ] **Step 3: Implement `setGridViews` — `target` is per-view, `zoom` is shared**
++
++> **Read this before writing the call.** An earlier draft said "one `OrthographicView` per
++> cell, each with its own `x`/`y`/`width`/`height` and a `target` at the colony centroid,
++> but **one** `viewState` object shared by all of them." **`target` does not live on a
++> `View`.** A deck.gl `View` carries `id`/`x`/`y`/`width`/`height`; `target` and `zoom` live
++> in the **viewState**. Built literally as written, every cell inherits the same `target`
++> and the grid renders **the same colony N times**.
+ 
+-One `OrthographicView` per cell, each with its own `x`/`y`/`width`/`height` and a
+-`target` at the colony centroid, but **one** `viewState` object shared by all of them.
++deck.gl's multi-view viewState is keyed by view id, which is exactly the split needed —
++per-view `target`, shared `zoom`:
++
++```javascript
++// Views carry GEOMETRY only.
++const views = cells.map((c, i) => new OrthographicView({
++  id: `cell-${c.id}`, x: layout[i].x, y: layout[i].y,
++  width: layout[i].w, height: layout[i].h,
++}));
++
++// viewState is keyed BY VIEW ID: target differs per cell, zoom is the
++// shared value. This is the split the shared-camera lock actually locks --
++// it constrains `zoom`, never `target`.
++const viewState = Object.fromEntries(cells.map((c) => [
++  `cell-${c.id}`,
++  {target: [c.centroidCc, c.centroidRr, 0], zoom: shared.zoom},
++]));
++```
++
++A "shared viewState object" and "a shared zoom across per-cell targets" are different
++things, and only the second renders a grid.
+ 
+ - [ ] **Step 4: Make the shared-camera lock a visible affordance**
+ 
+@@ -1654,20 +2024,37 @@
+ | Spec §8 check | Where it lives | Action |
+ |---|---|---|
+ | Codec ordering — open a **CLI-written** store in a real browser, "not 'the codec registered' — the actual read" | phase 2 task 2.3 | run it |
+-| Level selection matches `phenotypic.pyramid`'s ladder, `ceil` boundary included | phase 3 task 3.2 | run it |
++| Level selection matches `phenotypic.pyramid`'s ladder, `ceil` boundary included | phase 3 task 3.2 | run it — and assert against the **browser's** choice if task 3.2 retired the server-side stack |
+ | Staleness — a rewritten nested chunk must invalidate | phase 1 task 1.2 | run it |
+-| Curation regression — colony curation tests pass **unmodified** | phase 4 task 4.3 step 3 | run it |
++| Curation regression — colony curation tests pass **unmodified** | phase 4 task 4.3 step 3 | run it, **and run the three tests that actually prove the chain** (below) |
+ | Label path — a `gray`-primary store resolves its objmap through `phenotypic.labels.objmap` | phase 3 task 3.1 | run it |
+ 
+ ```bash
+ QT_QPA_PLATFORM=offscreen uv run pytest \
++  tests/unit/gui/shared/test_resolve_within_root.py \
+   tests/unit/gui/results_viewer/test_zarr_routes.py \
+   tests/unit/gui/results_viewer/test_store_source.py \
+   tests/unit/gui/results_viewer/test_level_selection.py \
+   tests/unit/gui/results_viewer/test_colony_callbacks_helpers.py \
+   -n 4 -v
+-QT_QPA_PLATFORM=offscreen uv run pytest tests/e2e/gui -k "viv or colony_shared" -v
++QT_QPA_PLATFORM=offscreen uv run pytest tests/e2e/gui -k "viv or colony_shared or builder" -v
+ ```
++
++**The curation chain is not proved by `test_colony_callbacks_helpers.py`.** Its 15 tests
++drive pure helpers against hand-built `ctx.triggered` dicts — it would pass unmodified while
++phase 4's deck.gl rewrite removed the radial entirely. Run the three that do:
++
++```bash
++QT_QPA_PLATFORM=offscreen uv run pytest \
++  tests/gui/results_viewer/colony_view/test_grid.py::test_build_grid_tiles_carry_radial_trigger_not_old_remove_button \
++  tests/integration/gui/test_triage_callbacks.py::test_colony_wedge_mark_writes_category_parquet_and_drops_mirror \
++  tests/unit/cli/test_cli_error_outputs.py -v
++```
++
++The first is the **only** assertion anywhere that a cell carries `colony-radial-trigger`,
++which is exactly what phase 4 endangers. It lives under `tests/gui/`, so no
++`tests/unit/gui` invocation reaches it.
++
+ Expected: all PASS.
+ 
+ - [ ] **Step 2: Confirm the spike gate's findings were actually acted on**
+@@ -1760,8 +2147,13 @@
+ 
+ The Plate and Colony rows now describe a Viv surface, not an OpenSeadragon one. Update the
+ capability text and any implementation refs that pointed at `_dzi_tiler` or the `.dzi`
+-routes. Add rows for the new affordances: the Layers panel, the navigator inset, the
+-pyramid readout, and the shared-camera lock.
++routes. Add rows for the new affordances: the Layers panel, the navigator inset and the
++pyramid readout.
++
++**Add the shared-camera lock row only if phase 4 actually landed.** Phase 4 is optional and
++marked the first thing to cut; a `✅ shipping` row for it makes `check_features_md.py
++--strict` resolve refs for an affordance that does not exist. If phase 4 was cut, either
++omit the row or file it as `🔭 planned`.
+ 
+ ```bash
+ uv run grep -n "OpenSeadragon\|DZI\|dzi\|Plate\|Colony" src/phenotypic/gui/FEATURES.md | head -30
+@@ -1781,17 +2173,23 @@
+ 
+ - [ ] **Step 3: Update `gui/CLAUDE.md`**
+ 
+-Record: the Plate/Colony pixel path is Viv over `/zarr/...`; Browse remains
+-libvips → DZI → `BrowseCache` → OSD; `_dzi_tiler` survives for Browse, the point picker and
+-the builder preview; the façade at `_assets/viv_viewer.js` is the only thing that may touch
+-`window.__vivBundle`.
++Record: the Plate/Colony pixel path is Viv over `/zarr/...`, and the builder preview is Viv
++over `/preview-zarr/...` (phase 6); Browse remains libvips → DZI → `BrowseCache` → OSD;
++`_dzi_tiler` survives for **Browse and the point picker** — four consumers, not five, once
++phase 6 has landed; `_tile_routes.py` survives as a module even with its `.dzi` routes gone,
++because the builder imports `_TILE_NAME_RE` and `_json_error` from it; and the façade at
++`_assets/viv_viewer.js` is the only thing that may touch `window.__vivBundle`.
++
++**Run this task last, after phase 6.** Both phases edit the same four files
++(`FEATURES.md`, `WORKFLOWS.md`, `gui/CLAUDE.md`, the capture script) through the same three
++CI gates; doing it once is the point of folding phase 6 in.
+ 
+ - [ ] **Step 4: Run all three gates**
+ 
+ ```bash
+ uv run python scripts/check_features_md.py --strict
+ uv run python scripts/check_workflows_md.py -v
+-QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --smoke
++QT_QPA_PLATFORM=offscreen uv run python scripts/capture_gui_tutorial_screenshots.py --skip-cli
+ ```
+ Expected: all exit 0.
+ 
+@@ -1849,6 +2247,320 @@
+ 
+ Report the drafts and wait. Amending a spec on the executor's own authority is how a design
+ record stops being a record.
++# Phase 6 — Builder node preview on Viv
++
++**Spec:** §7. **Depends on:** phases 1-3. **Not** blocked on phase 4.
++
++**Deliverable:** the builder's per-node preview pane renders through the shared Viv façade,
++over a session-scoped byte route, with `_dzi_tiler` off the preview path
++(`_preview_tiles.py:30, :144`). The point picker is untouched.
++
++> **Folded in from a retired cycle-3 spec** (`specs/2026-08-26-builder-preview-viv/`,
++> withdrawn 2026-08-26). The split bought no parallelism — this work is blocked on phases
++> 1-3 and reuses all three — while forcing phase 3 to write `build_source_spec` at a
++> signature it would then refactor, parking phase 2's own asset-mount question in a separate
++> document, and running the CI-gate ledger pass twice.
++
++> **The data half already landed.** `_preview_cache.py:48, :255` write per-node
++> `.ome.zarr` stores; `_preview_tiles.py:52-65` reads them via `Image.load_layer_zarr`;
++> `:78-87` keys freshness on the root `zarr.json`. Decision E is implemented. **Do not
++> rebuild it.** This phase is the client-side render swap only.
++
++> **No scratch garbage-collection work.** `init_cache()` already calls `wipe_cache()` on the
++> whole cache root at startup plus an `atexit` wipe (`_preview_cache.py:61-68`), and
++> `wipe_scope` reclaims on fingerprint change. That is the stated policy (spec §7). An
++> earlier draft specified a measured retention cap, oldest-first eviction and a startup
++> sweep; **withdrawn** — the sweep duplicated `wipe_cache`, and the eviction policy
++> generated the blank-pane bug its own second test existed to guard.
++
++---
++
++### Task 6.1: The preview byte route
++
++**Files:**
++- Create: `src/phenotypic/gui/builder/_preview_zarr_routes.py`
++- Modify: `src/phenotypic/gui/builder/_preview_cache.py` (hash-keyed helpers)
++- Modify: `src/phenotypic/gui/builder/_preview_tiles.py` (split `_validate`)
++- Modify: `src/phenotypic/gui/builder/_app.py`
++- Test: `tests/unit/gui/builder/test_preview_zarr_routes.py` (create)
++
++**Interfaces:**
++- Consumes: `resolve_within_root` from phase 1 task 1.1, `_validate_scope` (this task).
++- Produces: `register_preview_zarr_routes(app)` and
++  `preview_zarr_url(url_prefix, session_id, scope_hash, block_id, token)`.
++
++- [ ] **Step 1: Split `_validate` into a channel-free core**
++
++`_validate` (`_preview_tiles.py:107-116`) takes a channel this route does not have. Calling
++it with a fabricated `"gray"` works only because `"gray" in _VALID_CHANNELS` makes that
++clause constant-true — narrowing `_VALID_CHANNELS` would silently change an unrelated
++route's guard. Extract:
++
++```python
++def _validate_scope(session_id, scope_hash, block_id) -> Optional[Response]:
++    """Shape-validate the session/scope/block triple.
++
++    NOT authentication. Nothing here binds the request to a session -- see
++    the capability-URL note in step 2.
++    """
++    if (
++        is_safe_path_component(session_id)
++        and bool(_HASH_RE.match(scope_hash))
++        and is_safe_path_component(block_id)
++    ):
++        return None
++    return _json_error("invalid preview request", 404)
++```
++
++`_validate` becomes `_validate_scope(...) or (channel check)`.
++
++- [ ] **Step 2: Add the hash-keyed cache helpers**
++
++`read_manifest` (`_preview_cache.py:95`) and `scope_dir` (`:83`) key by `scope_path`, a
++list; the route receives a hash. No reverse index is needed — `_scope_path` (`:78`) already
++names the directory by the hash:
++
++```python
++def _scope_path_by_hash(session_id: str, scope_hash_hex: str) -> Path:
++    return preview_cache_root() / session_id / scope_hash_hex
++
++
++def read_manifest_by_hash(session_id: str, scope_hash_hex: str) -> Optional[dict]:
++    path = _scope_path_by_hash(session_id, scope_hash_hex) / "manifest.json"
++    if not path.exists():
++        return None
++    try:
++        return json.loads(path.read_text())
++    except (json.JSONDecodeError, OSError):
++        return None
++```
++
++Refactor `_scope_path` to delegate, so there is one join.
++
++- [ ] **Step 3: Resolve a block id through the REAL manifest shape**
++
++The manifest is **not** a list of blocks. `_build_manifest` (`:257-263`) returns:
++
++```python
++{"version": …, "fingerprint": …, "fingerprint_inputs": …,
++ "scope_key": …, "nodes": {block_id: {"store", "layers", "shape", "num_objects"}},
++ "error": None}
++```
++
++`nodes` is a **dict keyed by block_id**. There is no `"blocks"` list and no `"block_id"`
++field — an earlier draft of this plan read `manifest.get("blocks", [])` and would have
++404'd every request. Mirror the landed DZI route, which is already correct
++(`_preview_tiles.py:127-140`):
++
++```python
++def _store_for_block(session_id: str, scope_hash_hex: str, block_id: str) -> Path | None:
++    manifest = pc.read_manifest_by_hash(session_id, scope_hash_hex)
++    if not manifest:
++        return None
++    node = manifest.get("nodes", {}).get(block_id)
++    if node is None:
++        return None
++    store = pc._scope_path_by_hash(session_id, scope_hash_hex) / node["store"]
++    # The ROOT, not the directory: the promote writes it last, so an
++    # interrupted write reads as ABSENT rather than partial.
++    return store if (store / ngff_.STORE_ROOT_JSON).is_file() else None
++```
++
++- [ ] **Step 4: Write the route on the shared resolver**
++
++```python
++def register_preview_zarr_routes(app: dash.Dash) -> None:
++    bp = Blueprint("preview_zarr", __name__, url_prefix="/preview-zarr")
++
++    @bp.route("/<session_id>/<scope_hash>/<block_id>/<token>/<path:tail>")
++    def preview_store_bytes(session_id, scope_hash, block_id, token, tail):
++        invalid = _validate_scope(session_id, scope_hash, block_id)
++        if invalid is not None:
++            return invalid
++        store = _store_for_block(session_id, scope_hash, block_id)
++        if store is None:
++            abort(404)
++        if token != store_generation_token(store):
++            abort(409)          # stale generation -- see task 6.1 step 5
++        return send_file(
++            resolve_within_root(store, tail, allowed_roots=readable_roots_for(store)),
++            conditional=True,
++        )
++
++    app.server.register_blueprint(bp)
++```
++
++**On session scoping — write the tests against what is actually true.** `_validate_scope`
++is a *shape* check. Nothing binds the request to a session. Isolation rests on `session_id`
++being `uuid.uuid4().hex` (`builder/_callbacks.py:3662, :4083`) — 122 bits, unguessable —
++carried in the URL path, where it reaches access logs, the OOD proxy's logs, browser
++history and `Referer`. Spec §7 records this as an **accepted** capability-URL risk (user
++ruling). So:
++
++```python
++def test_an_unissued_session_id_is_not_served(preview_client):
++    """The property that actually holds: no sandbox, no bytes.
++
++    NOT 'session A cannot present session B's id' -- it can, and the route
++    serves it, exactly as the existing /preview-tiles/ route does. Asserting
++    the stronger property would be asserting a binding that does not exist.
++    """
++    resp = preview_client.get(
++        "/preview-zarr/" + "0" * 32 + "/" + "a" * 40 + "/blk/tok/zarr.json"
++    )
++    assert resp.status_code == 404
++```
++
++An earlier draft asserted session A's id against session B's *hash*, which 404s on a
++manifest miss rather than on isolation — it would have passed with every isolation
++mechanism deleted.
++
++- [ ] **Step 5: Range, traversal and generation tests**
++
++Reuse phase 1's shared parametrized traversal block over `resolve_within_root`; do not
++duplicate it. Add the Range test and a generation test. **The chunk key is `c.0.0`, not
++`0.0`** — `ngff_.py:409-412` sets `chunk_key_encoding` separator `"."` and a Zarr-v3
++default key is `"c" + sep + indices`, so a 2-D `gray` level-0 chunk is `gray/0/c.0.0`
++(phase 1's `rgb/0/c.0.0.0` is the 3-D form). With sharding, a small preview array is one
++file on disk regardless.
++
++```bash
++QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/builder/test_preview_zarr_routes.py -v
++```
++
++- [ ] **Step 6: Commit**
++
++```bash
++uv run ruff check --fix src/phenotypic/gui/builder/ tests/unit/gui/builder/
++git add src/phenotypic/gui/builder tests/unit/gui/builder
++git commit -m "feat(gui): serve builder preview store bytes with Range and a generation token"
++```
++
++---
++
++### Task 6.2: Mount the shared bundle and swap the renderer
++
++**Files:**
++- Modify: `src/phenotypic/gui/builder/_app.py`
++- Modify: `src/phenotypic/gui/builder/_preview_tiles.py` (remove `:30`, `:144`)
++- Modify: `src/phenotypic/gui/builder/_preview_callbacks.py`, `assets/preview.js`
++- Test: `tests/unit/gui/builder/test_shared_viv_asset.py`, `tests/e2e/gui/test_builder_preview_viv.py`
++
++- [ ] **Step 1: Settle the asset-mount mechanism (spec §10 OQ4)**
++
++```bash
++uv run grep -n "assets_folder\|assets_url_path\|serve_locally" \
++  src/phenotypic/gui/builder/_app.py src/phenotypic/gui/results_viewer/_app.py \
++  src/phenotypic/gui/shell/_app.py
++```
++Prefer Dash's `assets_folder` / `assets_url_path` pointed at the results viewer's
++`_assets/viv/`; fall back to a small Flask route serving the two files from that package
++directory. Record which and why in the commit body — this closes OQ4.
++
++- [ ] **Step 2: Assert one artifact, not two**
++
++```python
++def test_builder_does_not_carry_its_own_bundle_copy():
++    stray = list((Path(builder_pkg.__file__).parent / "assets").rglob("viv-bundle*.js"))
++    assert not stray, f"builder has its own bundle copy: {stray}"
++```
++
++- [ ] **Step 3: Build the preview source spec through the shared resolver**
++
++Reuse phase 3 task 3.1's `build_source_spec`, which phase 3 already wrote at its
++store-path-plus-base-URL signature **because this caller was in view when it was written**.
++
++**`labelPath` is optional here and that is the common case.**
++`build_phenotypic_attributes` omits the `labels` key entirely when `has_labels=False`
++(`ngff_.py:576-581`), and `save_intermediate_zarr` sets `write_objmap = "objmap" in layers`
++(`_image_io_handler.py:1244`) — so most preview stores have **no** `labels` key at all.
++Phase 3 task 3.1 already makes `labelPath` optional; this is the caller that proves it.
++
++- [ ] **Step 4: Swap `preview.js` onto the façade**
++
++Replace the OpenSeadragon mount with `window.phenotypicViv.mount` / `.setSource`.
++
++```bash
++uv run grep -rn "__vivBundle" src/phenotypic/gui/builder/
++```
++Expected: no hits — the façade is the only thing that touches the bundle.
++
++- [ ] **Step 5: Unhook `_dzi_tiler` from the preview path**
++
++Remove `_preview_tiles.py:30` and `:144`. Then decide the fate of `stage_channel_png`
++(`:74`) and `_channel_to_rgb_uint8` (`:52`): with Viv reading the store directly the
++intermediate PNG has no consumer, **and neither does the root-`zarr.json` freshness key at
++`:78-87`** — the property the retired spec named as its own test target. Retire the key
++with the staging code, or say what still consumes it.
++
++```bash
++uv run grep -rn "stage_channel_png\|_channel_to_rgb_uint8\|preview_dzi_url" src/ tests/
++```
++
++**Do not delete `_dzi_tiler`, and do not delete `_tile_routes.py`.** The tiler keeps four
++consumers; and `_preview_tiles.py:31` imports `_TILE_NAME_RE` and `_json_error` **from
++`results_viewer/_tile_routes`**, which `_validate_scope` now returns through — so deleting
++that module breaks the builder from a different sub-app. See the plan README's Global
++Constraints.
++
++- [ ] **Step 6: Prove the point picker is untouched**
++
++```bash
++git diff --stat src/phenotypic/gui/builder/_point_picker.py
++QT_QPA_PLATFORM=offscreen uv run pytest tests/gui/builder -k point_picker -q
++```
++Expected: **empty diff**, tests PASS. Spec §7 makes this the executable statement that the
++picker stays on DZI.
++
++- [ ] **Step 7: Run and commit**
++
++```bash
++QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/builder -n 4 -q
++QT_QPA_PLATFORM=offscreen uv run pytest tests/e2e/gui -k builder -q
++uv run ruff check --fix src/phenotypic/gui/builder/
++git add -A src/phenotypic/gui/builder tests/unit/gui/builder tests/e2e/gui
++git commit -m "feat(gui): render builder node previews through Viv, off the DZI path"
++```
++
++---
++
++### Task 6.3: Record the tiler's real consumer set where a deleter will see it
++
++**Files:**
++- Modify: `src/phenotypic/gui/results_viewer/_dzi_tiler.py` (module docstring)
++
++> An earlier draft added a test pinning the consumer set by text scan. Dropped: it is a
++> tripwire, not a check — any legitimate future consumer fails it, and its own failure
++> message says the remedy is to edit the test. A docstring reaches the person about to
++> delete the module at the moment they open it, which a test in another directory does not.
++
++- [ ] **Step 1: Add the consumer list to the module docstring**
++
++```python
++"""Deep-Zoom pyramid generation for the GUI's OpenSeadragon surfaces.
++
++NOT DEAD CODE. Three specs each say the tiler is "removed from this path" --
++the results Plate path, and the builder preview path. Read together they
++suggest a module that can be deleted. It cannot. Live consumers:
++
++    browse/_app.py:40                  DZI_BACKEND_INFO
++    browse/_preparation.py:711         tile()
++    browse/_preparation_routes.py:95   DZI_BACKEND_INFO
++    builder/_point_picker.py:417       tile()
++
++Browse keeps libvips -> DZI -> BrowseCache -> OSD as its ONLY pixel path
++(viewer-viv-rebuild spec section 9), because it reads arbitrary source
++images with no run behind them and so has no store to read. The point
++picker picks points on a source image before any pipeline node has run.
++"""
++```
++
++- [ ] **Step 2: Commit with the `gui/CLAUDE.md` edit in phase 5 task 5.3**
++
++```bash
++git add src/phenotypic/gui/results_viewer/_dzi_tiler.py
++git commit -m "docs(gui): record _dzi_tiler's four remaining consumers on the module"
++```
+ # Results viewer rebuild on Viv: Implementation Plan
+ 
+ > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
+@@ -1901,6 +2613,34 @@
+   `browse/_app.py:40`, `builder/_point_picker.py:417` and `builder/_preview_tiles.py:144`.
+   Deleting the module breaks Browse, which spec §9 explicitly keeps on
+   libvips → DZI → `BrowseCache` → OSD.
++- **`_tile_routes.py` also survives as a module**, even after its `.dzi` routes go.
++  `builder/_preview_tiles.py:31` imports `_TILE_NAME_RE` and `_json_error` from it, and
++  `_validate` returns through `_json_error` — so deleting it breaks the builder preview *and*
++  phase 6's new route, at import, in a different sub-app from the one being edited. Same
++  shape as the `_dzi_tiler` misreading, one module over.
++- **One path-escape guard, not two.** Phases 1 and 6 both resolve a client-controlled tail
++  inside a root. That logic lives **once**, as `resolve_within_root` in `gui/_shared/`
++  beside `is_safe_path_component`. A path-escape guard is a security primitive and
++  correctness is binding (spec §9.1); two copies drift silently, because each phase would
++  test only its own copy.
++- **The readable-root restriction is enforced on the *resolved* path.** Checking the
++  unresolved first URL segment leaves a symlink inside a readable root escaping the
++  restriction while passing containment. Resolve, then test
++  `resolved.relative_to(root).parts[0]`.
++- **Never hard-code the readable series set.** `attributes.phenotypic.series` legitimately
++  contains `original` (`_image_io_handler.py:1012-1014`). Derive the readable set per store
++  from `series` + `labels`, or invert to a deny-list on `tables/`. A fixed
++  `{rgb, gray, detect_mat}` makes the Layers panel list a series the route 404s — the same
++  hard-coding the label-path rule forbids, one layer down.
++- **`labelPath` is optional.** `build_phenotypic_attributes` **omits** the `labels` key when
++  the store carries no label image (`sdk_/ngff_.py:576-581`, ledger C3), and most builder
++  preview stores have none. `block["labels"]["objmap"]` `KeyError`s; use `.get`, as the
++  landed code does (`tiles.py:485`, `_preview_cache.py:206`).
++- **Byte-route URLs carry a generation token.** `promote_store` (`sdk_/ngff_.py:1235-1300`)
++  republishes by renaming the whole store directory, and the routes resolve fresh per
++  request holding no handle — so without a token a client can combine metadata from promote
++  *N* with chunks from *N+1*. Harmless for a run-store re-promote; a decode error or
++  plausible wrong pixels for a builder preview, where re-running a node changes extent.
+ - **No npm in CI.** There is no `package.json` anywhere in this repo (verified). The Viv
+   bundle is built outside the repo and committed as an artifact; the build recipe is
+   committed at `tools/viv-bundle/` with a pinned lockfile and a recorded version string.
+@@ -1928,16 +2668,22 @@
+ 
+ | # | Phase | Deliverable | Doc |
+ |---|---|---|---|
+-| 0 | Spike gate | Four answered questions + a measured chunk-size number | [phase-0](phase-0-spike-gate.md) |
+-| 1 | Byte route | `/zarr/...` serving store bytes with HTTP Range and a per-segment path guard | [phase-1](phase-1-byte-route.md) |
++| 0 | Spike gate | Four answered questions + a measured chunk-size decision | [phase-0](phase-0-spike-gate.md) |
++| 1 | Byte route | `/zarr/...` with Range, a **shared** resolver, and a generation token | [phase-1](phase-1-byte-route.md) |
+ | 2 | Viv bundle + façade | `tools/viv-bundle/`, the vendored IIFE, `viv_viewer.js`, NOTICE/licenses | [phase-2](phase-2-viv-bundle-facade.md) |
+ | 3 | Plate surface | Full-canvas Viv Plate; `_dzi_tiler` off the results plate path | [phase-3](phase-3-plate-surface.md) |
+-| 4 | Colony D1 | One `OrthographicView` per colony, shared `viewState`, virtualization cap | [phase-4](phase-4-colony-views.md) |
+-| 5 | Verification & ledgers | Spec §8's five tests, FEATURES/WORKFLOWS, tutorial refresh | [phase-5](phase-5-verification.md) |
+-
+-**Phase 4 is separable.** Colony "D3" — the crop route reading level-0 store chunks — is
+-**already landed** (see DRIFT.md D-2). Phase 4 is purely the deck.gl rendering half, and
+-the viewer is shippable without it. If the spike or phase 3 overruns, cut phase 4 first.
++| 4 | Colony D1 | One `OrthographicView` per colony, shared `viewState`, measured cap | [phase-4](phase-4-colony-views.md) |
++| 5 | Verification & ledgers | Spec §8's checks, FEATURES/WORKFLOWS, tutorial refresh | [phase-5](phase-5-verification.md) |
++| 6 | Builder preview | Preview byte route, shared asset mount, render swap | [phase-6](phase-6-builder-preview.md) |
++
++**Phase 4 is separable and is the first thing to cut.** Colony "D3" — the crop route reading
++level-0 store chunks — is **already landed** (DRIFT.md D-2), so phase 4 is purely the
++deck.gl rendering half and the viewer ships without it.
++
++**Phase 6 was a separate spec+plan cycle and was folded in on 2026-08-26.** It depends on
++phases 1-3 and reuses all three, so the split bought no parallelism while forcing phase 3 to
++write `build_source_spec` at a signature it would then refactor. It does **not** depend on
++phase 4. Run phase 5 last, after 6, so the ledger pass happens once.
+ 
+ ## Definition of done
+ 

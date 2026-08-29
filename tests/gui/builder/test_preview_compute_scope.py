@@ -1,5 +1,5 @@
 """compute_scope: full-res cache, threaded nested input, chained staleness."""
-import h5py
+from phenotypic import GridImage, Image
 from phenotypic.gui.builder import _preview_cache as pc
 from phenotypic.gui.builder._state import (
     BlockNode, Edge, _DagBuilderState, _DagBuilderScope, _new_block_id,
@@ -36,10 +36,21 @@ def test_root_scope_caches_all_nodes(tmp_path, monkeypatch):
     assert manifest["error"] is None
     # input node + the blur op both have entries
     assert blur.block_id in manifest["nodes"]
-    blur_hdf = pc.scope_dir("sess1", [])/ manifest["nodes"][blur.block_id]["hdf"]
-    assert blur_hdf.exists()
-    with h5py.File(blur_hdf, "r") as f:
-        assert "layers" in f
+    blur_store = (
+        pc.scope_dir("sess1", []) / manifest["nodes"][blur.block_id]["store"]
+    )
+    assert blur_store.is_dir()
+    # ``full_layers=True`` -> a complete snapshot, not a delta.
+    assert manifest["nodes"][blur.block_id]["layers"] == [
+        "rgb", "gray", "detect_mat", "objmap",
+    ]
+    # The nested-scope input path loads a node store back through the shared
+    # SDK helper, which dispatches on the stored ``image_class``.
+    from phenotypic.sdk_ import load_image_from_store
+
+    restored = load_image_from_store(blur_store)
+    assert isinstance(restored, GridImage)
+    assert restored.gray[:].shape == (600, 800)
 
 
 def test_fingerprint_stable_then_invalidates_on_edit(tmp_path, monkeypatch):
@@ -94,18 +105,26 @@ def test_nested_scope_threads_parent_output(tmp_path, monkeypatch):
     import numpy as np
 
     parent_dir = pc.scope_dir("s", [])
-    parent_blur_hdf = (
-        parent_dir / parent_manifest["nodes"][parent_blur.block_id]["hdf"]
+    parent_blur_store = (
+        parent_dir / parent_manifest["nodes"][parent_blur.block_id]["store"]
     )
-    inner_base = pc.scope_dir("s", scope_path) / "base_00.h5"
+    inner_base = pc.scope_dir("s", scope_path) / "base_00.ome.zarr"
 
     def _detect_mat(path):
-        with h5py.File(path, "r") as f:
-            grp = f["layers"] if "layers" in f else f
-            return grp["detect_mat"][()]
+        return Image.load_layer_zarr(path, "detect_mat")
 
     from phenotypic.data._synthetic_data import load_synth_yeast_plate
 
     raw_dm = load_synth_yeast_plate().detect_mat[:]
-    assert np.array_equal(_detect_mat(inner_base), _detect_mat(parent_blur_hdf))
+    assert np.array_equal(_detect_mat(inner_base), _detect_mat(parent_blur_store))
     assert not np.array_equal(_detect_mat(inner_base), raw_dm)
+
+    # The threading also has to preserve the CLASS. Loading the parent store as
+    # a plain Image drops the grid and still reproduces every detect_mat above,
+    # so the pixel assertions cannot see it -- the inner base snapshot's own
+    # ``image_class`` is what records which class was threaded through.
+    from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
+
+    assert read_phenotypic_attributes(inner_base)[PhenotypicAttr.IMAGE_CLASS] == (
+        "GridImage"
+    )

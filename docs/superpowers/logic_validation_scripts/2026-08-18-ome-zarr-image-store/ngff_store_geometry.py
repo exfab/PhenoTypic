@@ -36,6 +36,12 @@ These numeric claims drove design decisions and must not be taken on faith:
       map invents label values that exist at no level-0 pixel, silently
       fabricating objects. This is the mutation the pyramid test must catch.
 
+  C7  SAMPLING TRANSFORMS. Ceil-halved array extents are not sampling factors.
+      Repeated 2x reduction gives scale ``2**n`` until an axis reaches one
+      sample, and composing each block center gives translation
+      ``(scale - 1) / 2``. Channel axes remain scale 1 / translation 0; image
+      and label pyramids share the spatial transform.
+
 Depends only on the stdlib + numpy. Never imports ``phenotypic``.
 
 Exits non-zero on the first failed claim.
@@ -99,14 +105,80 @@ def level_shapes(
 ) -> list[tuple[int, int]]:
     """Explicit (h, w) per level, halving with ceil, as the writer will.
 
-    ``levels=None`` uses the automatic count; an explicit value models the
-    ``--pyramid-levels N`` override.
+    ``levels=None`` uses the automatic count, which is the only count the
+    writer ever produces: depth is a pure function of the level-0 shape (spec
+    1.3, PRE-P3), so there is no user-facing override. The parameter exists so
+    the per-level cost can be exercised directly from the checks below.
     """
     shapes = [(height, width)]
     for _ in range((levels or level_count(height, width)) - 1):
         h, w = shapes[-1]
         shapes.append((max(1, (h + 1) // 2), max(1, (w + 1) // 2)))
     return shapes
+
+
+def _iterated_axis_transform(size: int, level: int) -> tuple[float, float]:
+    """Compose repeated 2x block-center maps without using the closed form."""
+    scale = 1.0
+    translation = 0.0
+    extent = size
+    for _ in range(level):
+        if extent == 1:
+            continue
+        translation += scale / 2.0
+        scale *= 2.0
+        extent = (extent + 1) // 2
+    return scale, translation
+
+
+def _check_sampling_transforms() -> None:
+    print("\nC7 -- repeated 2x sampling factors and block-center translations")
+
+    for size in (1025, 7, 2, 1):
+        for level in range(6):
+            scale, translation = _iterated_axis_transform(size, level)
+            closed_scale = float(2 ** min(level, (size - 1).bit_length()))
+            closed_translation = (closed_scale - 1.0) / 2.0
+            check(
+                f"size={size}, level={level}: iterative scale matches closed form",
+                scale == closed_scale,
+                f"{scale} == {closed_scale}",
+            )
+            check(
+                f"size={size}, level={level}: composed center matches closed form",
+                translation == closed_translation,
+                f"{translation} == {closed_translation}",
+            )
+
+    odd_scale, odd_translation = _iterated_axis_transform(1025, 1)
+    check(
+        "1025 -> 513 is one 2x sampling step, not a shape ratio",
+        odd_scale == 2.0 and odd_scale != 1025 / 513,
+        f"scale={odd_scale}, shape ratio={1025 / 513}",
+    )
+    check(
+        "one 2x block is centered at level-0 coordinate 0.5",
+        odd_translation == 0.5,
+        f"translation={odd_translation}",
+    )
+
+    y_transform = _iterated_axis_transform(1025, 2)
+    x_transform = _iterated_axis_transform(1, 2)
+    rgb_scale = [1.0, y_transform[0], x_transform[0]]
+    rgb_translation = [0.0, y_transform[1], x_transform[1]]
+    label_scale = [y_transform[0], x_transform[0]]
+    label_translation = [y_transform[1], x_transform[1]]
+    check(
+        "RGB channel and singleton x axes saturate independently",
+        rgb_scale == [1.0, 4.0, 1.0]
+        and rgb_translation == [0.0, 1.5, 0.0],
+        f"scale={rgb_scale}, translation={rgb_translation}",
+    )
+    check(
+        "image and label spatial transforms are co-registered",
+        rgb_scale[1:] == label_scale and rgb_translation[1:] == label_translation,
+        f"rgb={rgb_scale, rgb_translation}; label={label_scale, label_translation}",
+    )
 
 
 def _check_pyramid() -> None:
@@ -281,37 +353,19 @@ def _check_file_counts() -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# C6 -- --pyramid-levels is a linear knob
-# ---------------------------------------------------------------------------
-
-
-def _check_tunable_levels() -> None:
-    """Each extra pyramid level costs a constant number of files."""
-    print("\nC6 -- --pyramid-levels N: marginal cost per level (sharded)")
-    for label, h, w in PLATES:
-        auto = level_count(h, w)
-        totals = []
-        for n in range(1, auto + 1):
-            d, m = store_files(h, w, sharded=True, levels=n)
-            totals.append(d + m)
-        deltas = {b - a for a, b in zip(totals, totals[1:])}
-        print(f"    {label:<28} auto={auto}  totals={totals}")
-        check(
-            f"{label}: cost per additional level is constant",
-            len(deltas) == 1,
-            f"deltas={sorted(deltas)}",
-        )
-        check(
-            f"{label}: that constant is 8 files/level (spec figure)",
-            deltas == {8},
-            f"deltas={sorted(deltas)}",
-        )
-        check(
-            f"{label}: --pyramid-levels 1 is the cheapest setting",
-            totals[0] == min(totals),
-            f"1 level = {totals[0]} files vs auto = {totals[-1]}",
-        )
+# C6 -- REMOVED (ledger ALGO-8).
+#
+# This block asserted that "each extra pyramid level costs a constant number of
+# files" and that "--pyramid-levels 1 is the cheapest setting". PRE-P3 descoped
+# that flag: pyramid depth is a pure function of the level-0 shape, so two
+# stores in one tree can never disagree, valid_staged_store needs no level
+# check, and a resumed run cannot produce mixed geometry. There is no knob to
+# tune, so there is nothing here to verify -- and Phase 1 Task 1.1 imports this
+# script as the normative geometry reference, where a claim block about a
+# non-existent flag is worse than no claim at all.
+#
+# The underlying figure is not lost: C4 already reports total file counts per
+# plate at the automatic depth, which is the only depth the writer produces.
 
 
 # ---------------------------------------------------------------------------
@@ -368,9 +422,9 @@ def _check_label_downsampling() -> None:
 def main() -> NoReturn:
     print((__doc__ or "").splitlines()[0])
     _check_pyramid()
+    _check_sampling_transforms()
     _check_divisibility()
     _check_file_counts()
-    _check_tunable_levels()
     _check_label_downsampling()
 
     print()

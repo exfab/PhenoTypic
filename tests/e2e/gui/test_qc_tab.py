@@ -50,7 +50,17 @@ from tests.e2e.gui.conftest import (
 # Playwright ``wait_for_function`` budget or the 10s disk-poll deadline
 # in ``test_toggle_check_enabled``. See ``tests/CLAUDE.md`` for the
 # convention and re-validation workflow.
-pytestmark = pytest.mark.ci_flaky
+pytestmark = [
+    pytest.mark.ci_flaky,
+    pytest.mark.skip(
+        reason=(
+            "QC/Heatmap/Error are unmounted by "
+            "docs/superpowers/specs/2026-08-26-gui-simplification-removals "
+            "(spec section 3). These tests are the acceptance suite for the "
+            "overhauled tabs; delete this marker when the surface returns."
+        )
+    ),
+]
 
 
 # ---------------------------------------------------------------------------

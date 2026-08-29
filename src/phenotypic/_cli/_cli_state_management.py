@@ -203,6 +203,7 @@ def create_initial_state(
             "ncols": config.ncols,
             "bit_depth": config.bit_depth,
             "detect_mode": config.detect_mode,
+            "drop_originals": config.drop_originals,
             "n_jobs": config.n_jobs,
             "slurm_args": config.slurm_args,
             "ext": config.ext,
@@ -310,6 +311,7 @@ def validate_resume_compatibility(
         "detect_mode",
         "include_dataset_column",
         "overlay_alpha",
+        "drop_originals",
         "save_overlays",
     ):
         if key not in state.config:

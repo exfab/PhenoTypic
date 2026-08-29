@@ -8,7 +8,7 @@ import shlex
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, TypeVar
+from typing import Any, Dict, List, Mapping, Sequence, TypeVar
 from uuid import uuid4
 
 from phenotypic.sdk_ import (
@@ -115,6 +115,9 @@ def _stage_worker_body(
     index_var: str = "$SLURM_ARRAY_TASK_ID",
     overlay_alpha: float = 0.3,
     processing_generation: str | None = None,
+    durable_writes: bool | None = None,
+    drop_originals: bool = False,
+    pipeline_identity: Mapping[str, str] | None = None,
 ) -> str:
     """The per-array-task command line that invokes the staged SLURM worker.
 
@@ -143,10 +146,33 @@ def _stage_worker_body(
         parts.append("--reuse-existing")
     if markers_required:
         parts.append("--stage3-markers-required")
+    if stage == 1 and pipeline_identity is not None:
+        parts.extend(
+            [
+                "--provenance-pipeline-source-path "
+                f"{q(pipeline_identity['source_path'])}",
+                f"--provenance-pipeline-sha256 "
+                f"{q(pipeline_identity['sha256'])}",
+            ]
+        )
+    if stage == 1 and drop_originals:
+        parts.append("--drop-originals")
     if stage == 2:
         parts.append(f"--n-shards {n_shards}")
     if stage == 3:
         parts.append(f"--overlay-alpha {overlay_alpha}")
+    # Tri-state, so ONLY an explicit choice is emitted: an unset flag has to
+    # reach the worker unset, where ngff_.durable_writes_enabled re-detects
+    # SLURM on the worker's own node. --no-durable-writes, by contrast, exists
+    # only in this submitting process; dropping it would leave every staged
+    # worker fsyncing and make the flag look inert on the one path where it
+    # costs the most (spec §3.7). Stage 2 writes no store, but the flag is
+    # harmless there and omitting it per stage would be one more branch to get
+    # wrong.
+    if durable_writes is not None:
+        parts.append(
+            "--durable-writes" if durable_writes else "--no-durable-writes"
+        )
     command = " \\\n    ".join(parts)
     if processing_generation:
         return (
@@ -260,6 +286,9 @@ def generate_staged_scripts(
     markers_required: bool = True,
     overlay_alpha: float = 0.3,
     processing_generation: str | None = None,
+    durable_writes: bool | None = None,
+    drop_originals: bool = False,
+    pipeline_identity: Mapping[str, str] | None = None,
 ) -> Dict[str, Any]:
     """Write the per-stage SBATCH array scripts (no submission).
 
@@ -309,6 +338,9 @@ def generate_staged_scripts(
             index_var="$CURRENT_TASK_INDEX",
             overlay_alpha=overlay_alpha,
             processing_generation=processing_generation,
+            durable_writes=durable_writes,
+            drop_originals=drop_originals,
+            pipeline_identity=pipeline_identity,
         )
 
     stage1 = _write_image_stage_chunks(
@@ -339,6 +371,7 @@ def generate_staged_scripts(
             markers_required,
             n_shards=n_shards,
             processing_generation=processing_generation,
+            durable_writes=durable_writes,
         ),
     )
     stage3 = _write_image_stage_chunks(
@@ -545,6 +578,9 @@ class StagedSlurmStrategy(ExecutionStrategy):
             resume=getattr(cfg, "resume", False),
             markers_required=getattr(cfg, "staged_stage3_markers", True),
             overlay_alpha=cfg.overlay_alpha,
+            durable_writes=cfg.durable_writes,
+            drop_originals=cfg.drop_originals,
+            pipeline_identity=getattr(cfg, "pipeline_identity", None),
             processing_generation=getattr(
                 cfg,
                 "processing_generation",

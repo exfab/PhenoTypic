@@ -105,8 +105,8 @@ class NapariLabelsMixin:
         class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):  # Correct
         class ObjectMap(SingleChannelAccessor, NapariLabelsMixin):  # Wrong!
 
-    Attributes:
-        None. This mixin relies on attributes provided by the accessor classes:
+    This mixin declares no attributes; it relies on ones provided by the accessor
+    classes:
         - _accessor_property_name: Layer name prefix (from child class)
         - _root_image: Parent Image object (from ImageAccessorBase)
         - _subject_arr: Array data to visualize (from accessor implementation)

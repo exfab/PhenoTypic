@@ -42,6 +42,13 @@ The following compatibility and migration decisions are final for this design:
    the same metadata-schema migration before consuming an existing per-image
    HDF. Migration is not restricted to a special command, opt-in flag, or one
    execution backend.
+
+   > **Superseded (2026-08-18)** by
+   > [2026-08-18-ome-zarr-image-store](../2026-08-18-ome-zarr-image-store/design.md).
+   > Metadata-schema migration moves out of `--mode recompile` and into `--mode migrate`.
+   > `recompile` stops rewriting legacy headers but keeps reading them — **decision #3
+   > (permanent stored-data compatibility) is untouched**, so no existing output directory
+   > breaks.
 2. **HDF migration is copy-on-write.** Migration builds and validates a sibling
    replacement file, then atomically publishes it. The original HDF remains
    untouched if copying, normalization, validation, or publication fails.

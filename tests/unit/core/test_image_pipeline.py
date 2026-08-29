@@ -178,16 +178,17 @@ def test_apply_with_intermediates_to_disk(tmp_path, plate_12hr_grid_image):
     out_dir = tmp_path / "intermediates"
     result = pipe.apply_with_intermediates(image, output_dir=out_dir)
 
-    # Directory was created and contains the expected HDF5 files
+    # Directory was created and contains the expected OME-Zarr stores
     assert out_dir.is_dir()
-    h5_files = sorted(out_dir.glob("*.h5"))
-    assert len(h5_files) == 4  # base + 3 operations
+    stores = sorted(out_dir.glob("*.ome.zarr"))
+    assert len(stores) == 4  # base + 3 operations
 
-    # Filenames follow the 00_<name>.h5 pattern
+    # Names follow the 00_<name>.ome.zarr pattern
     expected_prefixes = ["00_", "01_", "02_", "base_"]
-    for h5_file, prefix in zip(h5_files, expected_prefixes):
-        assert h5_file.name.startswith(prefix), (
-            f"Expected filename starting with '{prefix}', got '{h5_file.name}'"
+    for store, prefix in zip(stores, expected_prefixes):
+        assert store.is_dir()
+        assert store.name.startswith(prefix), (
+            f"Expected a store name starting with '{prefix}', got '{store.name}'"
         )
 
     # Dict values are None (saved to disk, not kept in memory)

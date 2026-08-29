@@ -30,7 +30,6 @@ from phenotypic.gui._url_prefix import (
 )
 from phenotypic.gui.browse import (
     _preparation_routes,
-    _thumb_routes,
     _tile_routes,
 )
 from phenotypic.gui.browse._cache import BrowseCache
@@ -81,7 +80,6 @@ def create_app(
     atexit.register(manager.close)
 
     _tile_routes.register(app, preparation_api)
-    _thumb_routes.register(app, sandbox, preparation_api)
     _preparation_routes.register(app, preparation_api)
     app.layout = build_browse_layout()
     register_callbacks(app, sandbox, preparation_api)
