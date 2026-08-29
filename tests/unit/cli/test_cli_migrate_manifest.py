@@ -196,6 +196,52 @@ def test_read_seeks_directly_to_requested_index(run: Path) -> None:
     assert task.stem == "image_0073"
 
 
+def test_reader_reads_exactly_one_offset_entry(
+    run: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A late task lookup must not transfer the complete fixed-width index."""
+    from phenotypic._cli._cli_migrate_manifest import read_migration_task
+
+    manifest = _write_fixture_manifest(run, count=100)
+    real_open = Path.open
+    offset_read_sizes: list[int] = []
+
+    class _MeasuredOffsetFile:
+        def __init__(self, handle) -> None:
+            self._handle = handle
+
+        def __enter__(self):
+            self._handle.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self._handle.__exit__(*args)
+
+        def __getattr__(self, name: str):
+            return getattr(self._handle, name)
+
+        def read(self, size: int = -1):
+            offset_read_sizes.append(size)
+            return self._handle.read(size)
+
+    def measured_open(path: Path, *args, **kwargs):
+        handle = real_open(path, *args, **kwargs)
+        if path == manifest.offsets_path:
+            return _MeasuredOffsetFile(handle)
+        return handle
+
+    monkeypatch.setattr(Path, "open", measured_open)
+
+    task = read_migration_task(
+        _manifest_path(run),
+        73,
+        expected_scientific_output=(run / "deliverables").resolve(),
+    )
+
+    assert task.index == 73
+    assert offset_read_sizes == [8]
+
+
 def test_manifest_digest_is_deterministic(run: Path) -> None:
     """Equivalent ordered inventories produce an identical content digest."""
     from phenotypic._cli._cli_migrate_manifest import write_migration_manifest

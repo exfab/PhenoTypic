@@ -827,6 +827,16 @@ def _publish_terminal_and_close(
 ) -> None:
     """Durably publish terminal evidence, then and only then close lifecycle."""
     if config.dry_run:
+        publish_migration_terminal_status(
+            config.output_dir,
+            generation=config.generation,
+            succeeded=succeeded,
+            failure_category=failure_category,
+            reason=reason,
+            report=report,
+            commit_guard=_commit_guard(config),
+            control_root=config.control_root,
+        )
         _publish_worker_status(
             config, "terminal",
             status="complete" if succeeded else "failed",

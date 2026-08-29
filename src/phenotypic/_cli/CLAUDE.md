@@ -184,14 +184,15 @@ that distinction at the Click boundary with `ParameterSource`, never by
 inspecting the numeric value.
 
 Validate incompatible migration options before generating a plan or initializing
-lifecycle state. A SLURM `--dry-run` writes its manifest, config, scripts, and
-logs only below the external cache control root, never inside the scientific
-output tree, and it never submits. Without `--wait`, report only durable
-submission, generation, and control references; do not locally publish science.
-With `--wait`, wait until the finalizer has closed the matching lifecycle, then
-validate that generation's typed terminal status. A failed or missing terminal
-authority is a Click error carrying the durable failure reason. Each rerun is a
-new generation/attempt, rather than reuse of a prior failed scheduler token.
+lifecycle state. A SLURM `--dry-run` writes its manifest, config, scripts,
+statuses, lifecycle, and logs only below the external cache control root, never
+inside the scientific output tree. It submits the metadata preflight and
+throttled per-image validation chain; without `--wait`, report its durable job
+IDs, generation, and control references. With `--wait`, dry and non-dry attempts
+wait until the finalizer has closed the matching lifecycle, then validate that
+generation's typed terminal status. A failed or missing terminal authority is a
+Click error carrying the durable failure reason. Each rerun is a new
+generation/attempt, rather than reuse of a prior failed scheduler token.
 
 ## Durability (`--durable-writes` / `--no-durable-writes`)
 

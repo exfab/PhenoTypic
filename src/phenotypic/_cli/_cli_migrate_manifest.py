@@ -718,12 +718,16 @@ def _read_record_payload(manifest: MigrationManifest, index: int) -> bytes:
     if index < 0 or index >= manifest.task_count:
         raise IndexError(f"migration task index out of range: {index}")
     try:
-        offsets = manifest.offsets_path.read_bytes()
+        with manifest.offsets_path.open("rb") as offsets:
+            if os.fstat(offsets.fileno()).st_size != manifest.task_count * 8:
+                raise ValueError("migration offset file has invalid alignment")
+            offsets.seek(index * 8)
+            offset_bytes = offsets.read(8)
     except OSError as exc:
         raise ValueError(f"cannot read migration offsets: {manifest.offsets_path}") from exc
-    if len(offsets) != manifest.task_count * 8:
+    if len(offset_bytes) != 8:
         raise ValueError("migration offset file has invalid alignment")
-    offset = struct.unpack(">Q", offsets[index * 8 : (index + 1) * 8])[0]
+    offset = struct.unpack(">Q", offset_bytes)[0]
     try:
         with manifest.records_path.open("rb") as records:
             expected_header = _RECORDS_MAGIC + struct.pack(

@@ -72,7 +72,7 @@ from ._atomic_io import (
     atomic_write_json,
     publication_commit,
 )
-from ._file_locking import exclusive_file_lock
+from ._file_locking import exclusive_file_lock, exclusive_path_lock
 from ._io_constants import (
     DATASET_AGGREGATED_PARQUET,
     BundleLayout,
@@ -167,6 +167,27 @@ def _absolute_path(path: str | Path) -> Path:
     return Path(os.path.abspath(os.fspath(path)))
 
 
+def _path_is_junction(path: Path) -> bool:
+    """Return whether *path* is a Windows reparse point on Python 3.11+.
+
+    ``Path.is_junction`` was added in Python 3.12, while PhenoTypic still
+    supports Python 3.11. On that interpreter, refuse every Windows reparse
+    point via the non-following stat attributes; refusing more than directory
+    junctions is the fail-closed choice for migration authority paths.
+    """
+    is_junction = getattr(path, "is_junction", None)
+    if callable(is_junction):
+        return bool(is_junction())
+    try:
+        attributes = getattr(
+            path.stat(follow_symlinks=False), "st_file_attributes"
+        )
+    except (AttributeError, OSError):
+        return False
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    return bool(attributes & reparse_flag)
+
+
 def _require_safe_migration_path(
     path: str | Path,
     *,
@@ -181,11 +202,22 @@ def _require_safe_migration_path(
     resolved spelling.  This also rejects a broken final symlink.
     """
     candidate = _absolute_path(path)
+    cursor = candidate
+    while True:
+        if _path_is_junction(cursor):
+            raise ValueError(f"{role} contains a junction component: {candidate}")
+        if cursor.parent == cursor:
+            break
+        cursor = cursor.parent
     resolved = candidate.resolve(strict=False)
     if candidate.is_symlink() or resolved != candidate:
         raise ValueError(f"{role} contains a symlink component: {candidate}")
     if root is not None:
         boundary = _absolute_path(root)
+        if _path_is_junction(boundary):
+            raise ValueError(
+                f"{role} authoritative root contains a junction component: {boundary}"
+            )
         if boundary.is_symlink() or boundary.resolve(strict=False) != boundary:
             raise ValueError(
                 f"{role} authoritative root contains a symlink component: {boundary}"
@@ -1333,6 +1365,11 @@ _JOURNAL_DIR_FD_SUPPORTED = (
     and os.unlink in os.supports_dir_fd
 )
 
+_PORTABLE_JOURNAL_SUPPORTED = all(
+    callable(candidate)
+    for candidate in (getattr(os, "link", None), getattr(os, "open", None))
+)
+
 
 def _require_journal_descriptor_capabilities() -> None:
     """Refuse authority I/O when no equivalent safe descriptor API exists."""
@@ -1340,6 +1377,77 @@ def _require_journal_descriptor_capabilities() -> None:
         raise RuntimeError(
             "Metadata migration journal descriptor safety is unsupported"
         )
+
+
+def _require_portable_journal_capabilities() -> None:
+    """Fail before authority creation when safe portable primitives are absent."""
+    if not _PORTABLE_JOURNAL_SUPPORTED:
+        raise RuntimeError(
+            "Metadata migration portable journal safety is unsupported"
+        )
+
+
+def _portable_journal_lock_path(root: Path) -> Path:
+    """Return the cross-platform single-writer lock outside authority discovery."""
+    return root / ".phenotypic" / ".metadata-migration.portable.lock"
+
+
+def _portable_read_regular_bytes(path: Path, *, root: Path, role: str) -> bytes:
+    """Read one path while proving its regular-file identity at both seams."""
+    _require_portable_journal_capabilities()
+    safe_path = _require_safe_migration_path(path, role=role, root=root)
+    before = safe_path.stat(follow_symlinks=False)
+    if not stat.S_ISREG(before.st_mode):
+        raise ValueError(f"{role} is not a regular file")
+    with safe_path.open("rb") as handle:
+        opened = os.fstat(handle.fileno())
+        if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+            raise ValueError(f"{role} changed while opening")
+        payload = handle.read()
+        after_open = os.fstat(handle.fileno())
+    after = safe_path.stat(follow_symlinks=False)
+    identities = {
+        (before.st_dev, before.st_ino),
+        (opened.st_dev, opened.st_ino),
+        (after_open.st_dev, after_open.st_ino),
+        (after.st_dev, after.st_ino),
+    }
+    if len(identities) != 1 or not stat.S_ISREG(after.st_mode):
+        raise ValueError(f"{role} changed while reading")
+    return payload
+
+
+def _portable_publish_absent_bytes(
+    path: Path, payload: bytes, *, root: Path, role: str
+) -> None:
+    """Publish immutable bytes with an atomic hard-link no-clobber commit."""
+    _require_portable_journal_capabilities()
+    safe_path = _require_safe_migration_path(path, role=role, root=root)
+    _ensure_directory_durable(safe_path.parent)
+    safe_path = _require_safe_migration_path(safe_path, role=role, root=root)
+    temp = safe_path.with_name(
+        f".{safe_path.name}.{os.getpid()}.{os.urandom(8).hex()}.tmp"
+    )
+    descriptor = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(temp, safe_path)
+        except FileExistsError as exc:
+            raise ValueError(f"Competing {role} already exists") from exc
+        _fsync_directory(safe_path.parent)
+        if _portable_read_regular_bytes(
+            safe_path, root=root, role=role
+        ) != payload:
+            raise ValueError(f"{role} changed during publication")
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        temp.unlink(missing_ok=True)
 
 
 def _require_non_inheritable_descriptor(descriptor: int, *, role: str) -> None:
@@ -1582,6 +1690,8 @@ def _read_anchored_journal_bytes(
     role: str,
 ) -> bytes:
     """Read bytes through one no-follow descriptor and recheck its binding."""
+    if not _JOURNAL_DIR_FD_SUPPORTED:
+        return _portable_read_regular_bytes(path, root=root, role=role)
     with _open_anchored_journal_file(
         path,
         root=root,
@@ -3833,6 +3943,13 @@ def _publish_metadata_authority(
     commit_guard: CommitGuard | None,
 ) -> MetadataMigrationAuthority:
     """Atomically publish and return stable metadata-stage authority."""
+    if not _JOURNAL_DIR_FD_SUPPORTED:
+        return _publish_metadata_authority_portable(
+            root,
+            result,
+            compatible_noop=compatible_noop,
+            commit_guard=commit_guard,
+        )
     if result.receipt_path is None or result.resulting_fingerprint is None:
         raise ValueError("Successful metadata migration lacks terminal evidence")
     receipt_path = _require_safe_migration_path(
@@ -3908,6 +4025,75 @@ def _publish_metadata_authority(
         status_path=status_path,
         terminal_receipt_path=receipt_path,
         terminal_receipt_digest=cast(str, payload["terminal_receipt_digest"]),
+        plan_fingerprint=result.plan_fingerprint,
+        source_fingerprint=result.source_fingerprint,
+        resulting_fingerprint=result.resulting_fingerprint,
+        compatible_noop=compatible_noop,
+    )
+
+
+def _publish_metadata_authority_portable(
+    root: Path,
+    result: MetadataMigrationResult,
+    *,
+    compatible_noop: bool,
+    commit_guard: CommitGuard | None,
+) -> MetadataMigrationAuthority:
+    """Publish immutable terminal status through the portable no-clobber path."""
+    if result.receipt_path is None or result.resulting_fingerprint is None:
+        raise ValueError("Successful metadata migration lacks terminal evidence")
+    receipt_path = _require_safe_migration_path(
+        result.receipt_path, role="Terminal migration receipt", root=root
+    )
+    status_path = _require_safe_migration_path(
+        _metadata_status_path(root), role="Metadata migration status", root=root
+    )
+    with publication_commit(commit_guard):
+        terminal, receipt_noop, receipt_digest = (
+            _validated_terminal_receipt_evidence(root, receipt_path)
+        )
+        if receipt_noop != compatible_noop:
+            raise ValueError("Terminal metadata receipt no-op authority changed")
+        if (
+            terminal.receipt_path != receipt_path
+            or terminal.plan_fingerprint != result.plan_fingerprint
+            or terminal.source_fingerprint != result.source_fingerprint
+            or terminal.resulting_fingerprint != result.resulting_fingerprint
+        ):
+            raise ValueError(
+                "Terminal metadata receipt does not match migration result"
+            )
+        payload = {
+            "schema_version": 1,
+            "state": "complete",
+            "terminal_receipt_path": str(receipt_path),
+            "terminal_receipt_digest": receipt_digest,
+            "plan_fingerprint": terminal.plan_fingerprint,
+            "source_fingerprint": terminal.source_fingerprint,
+            "resulting_fingerprint": terminal.resulting_fingerprint,
+            "compatible_noop": receipt_noop,
+        }
+        document = _anchored_json_document(payload)
+        if status_path.exists():
+            if _portable_read_regular_bytes(
+                status_path,
+                root=root,
+                role="Metadata migration status",
+            ) != document:
+                raise ValueError(
+                    "Competing metadata migration status authority exists"
+                )
+        else:
+            _portable_publish_absent_bytes(
+                status_path,
+                document,
+                root=root,
+                role="Metadata migration status",
+            )
+    return MetadataMigrationAuthority(
+        status_path=status_path,
+        terminal_receipt_path=receipt_path,
+        terminal_receipt_digest=receipt_digest,
         plan_fingerprint=result.plan_fingerprint,
         source_fingerprint=result.source_fingerprint,
         resulting_fingerprint=result.resulting_fingerprint,
@@ -5006,6 +5192,108 @@ def _migrate_superseding_v4_authority(
     return result
 
 
+def _reconcile_portable_metadata_bundle_unlocked(
+    layout: BundleLayout,
+    root: Path,
+    *,
+    kinds: frozenset[str] | None,
+    target_role: ReceiptTargetRole | None,
+    expected_plan_fingerprint: str | None,
+    commit_guard: CommitGuard | None,
+) -> MetadataMigrationResult | None:
+    """Resume the sole portable receipt while a cross-platform lock is held."""
+    candidates = _bundle_authority_candidates(root)
+    status_path = _metadata_status_path(root)
+    if not candidates:
+        if status_path.exists():
+            raise ValueError(
+                "Competing metadata migration status exists without receipt authority"
+            )
+        return None
+    if len(candidates) != 1 or candidates[0][0] != "legacy":
+        raise ValueError(
+            "Portable metadata backend found incompatible or competing authority"
+        )
+    receipt_path = candidates[0][1]
+    receipt_bytes = _portable_read_regular_bytes(
+        receipt_path, root=root, role="Portable metadata migration receipt"
+    )
+    try:
+        receipt = json.loads(receipt_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("Portable metadata migration receipt is malformed") from exc
+    if not isinstance(receipt, dict):
+        raise ValueError("Portable metadata migration receipt is malformed")
+    plan_fingerprint = receipt.get("plan_fingerprint")
+    was_terminal = receipt.get("state") == "applied"
+    if (
+        expected_plan_fingerprint is not None
+        and plan_fingerprint != expected_plan_fingerprint
+        and not was_terminal
+    ):
+        raise ValueError("Portable metadata migration plan is incompatible")
+    if receipt.get("kinds") != (sorted(kinds) if kinds is not None else None):
+        raise ValueError("Portable metadata migration scope is incompatible")
+    if target_role is not None and receipt.get("target_role") != target_role:
+        raise ValueError("Portable metadata migration role is incompatible")
+    compatible_noop = not any(
+        isinstance(target, Mapping) and target.get("status") == "migratable"
+        for target in receipt.get("targets", [])
+    )
+    result = _apply_receipt(
+        receipt_path,
+        receipt,
+        expected_plan_fingerprint=cast(str | None, plan_fingerprint),
+        commit_guard=commit_guard,
+    )
+    if result.status not in {"compatible", "applied"}:
+        return result
+    _publish_metadata_authority_portable(
+        root,
+        result,
+        compatible_noop=compatible_noop,
+        commit_guard=commit_guard,
+    )
+    if not was_terminal:
+        return result
+    return MetadataMigrationResult(
+        status="compatible",
+        source=result.source,
+        source_fingerprint=result.source_fingerprint,
+        resulting_fingerprint=result.resulting_fingerprint,
+        plan_fingerprint=result.plan_fingerprint,
+        receipt_path=result.receipt_path,
+        skipped_targets=result.skipped_targets,
+    )
+
+
+def _reconcile_portable_metadata_bundle(
+    layout: BundleLayout,
+    root: Path,
+    *,
+    kinds: frozenset[str] | None,
+    target_role: ReceiptTargetRole | None,
+    expected_plan_fingerprint: str | None,
+    commit_guard: CommitGuard | None,
+) -> MetadataMigrationResult | None:
+    """Lock and reconcile the path-safe backend used without ``dir_fd``."""
+    _require_portable_journal_capabilities()
+    lock_path = _require_safe_migration_path(
+        _portable_journal_lock_path(root),
+        role="Portable metadata migration writer lock",
+        root=root,
+    )
+    with exclusive_path_lock(lock_path, timeout=0.0):
+        return _reconcile_portable_metadata_bundle_unlocked(
+            layout,
+            root,
+            kinds=kinds,
+            target_role=target_role,
+            expected_plan_fingerprint=expected_plan_fingerprint,
+            commit_guard=commit_guard,
+        )
+
+
 def reconcile_metadata_migration_bundle(
     source: str | Path | BundleLayout,
     *,
@@ -5016,6 +5304,20 @@ def reconcile_metadata_migration_bundle(
 ) -> MetadataMigrationResult | None:
     """Resume or accept the sole existing authority before fresh preflight."""
     layout, root = _resolve_bundle(source)
+    if not _JOURNAL_DIR_FD_SUPPORTED:
+        try:
+            return _reconcile_portable_metadata_bundle(
+                layout,
+                root,
+                kinds=kinds,
+                target_role=target_role,
+                expected_plan_fingerprint=expected_plan_fingerprint,
+                commit_guard=commit_guard,
+            )
+        except Exception as exc:
+            return _authority_failure_result(
+                layout, expected_plan_fingerprint, exc
+            )
     _require_safe_migration_path(
         _receipt_dir(root, bundle=True),
         role="Metadata migration authority root",
@@ -5415,6 +5717,65 @@ def reconcile_metadata_migration_bundle(
         )
 
 
+def _migrate_preflighted_metadata_bundle_portable(
+    layout: BundleLayout,
+    root: Path,
+    *,
+    report: MetadataMigrationReport,
+    kinds: frozenset[str] | None,
+    commit_guard: CommitGuard | None,
+) -> MetadataMigrationResult:
+    """Apply a fresh local migration through the cross-platform receipt backend."""
+    receipt_path = _receipt_path(root, report.plan_fingerprint, bundle=True)
+    receipt = _new_receipt(report, bundle_root=root, kinds=kinds)
+    try:
+        _require_portable_journal_capabilities()
+        lock_path = _require_safe_migration_path(
+            _portable_journal_lock_path(root),
+            role="Portable metadata migration writer lock",
+            root=root,
+        )
+        with exclusive_path_lock(lock_path, timeout=0.0):
+            reconciled = _reconcile_portable_metadata_bundle_unlocked(
+                layout,
+                root,
+                kinds=kinds,
+                target_role=report.target_role,
+                expected_plan_fingerprint=report.plan_fingerprint,
+                commit_guard=commit_guard,
+            )
+            if reconciled is not None:
+                return reconciled
+            if report.status == "blocked":
+                return _blocked_result(report)
+            with publication_commit(commit_guard):
+                _validate_preflighted_bundle_authority(
+                    layout, root, report, kinds=kinds
+                )
+                _portable_publish_absent_bytes(
+                    receipt_path,
+                    _anchored_json_document(receipt),
+                    root=root,
+                    role="Portable metadata migration receipt",
+                )
+            result = _apply_receipt(
+                receipt_path,
+                receipt,
+                expected_plan_fingerprint=report.plan_fingerprint,
+                commit_guard=commit_guard,
+            )
+            if result.status in {"compatible", "applied"}:
+                _publish_metadata_authority_portable(
+                    root,
+                    result,
+                    compatible_noop=report.status == "compatible",
+                    commit_guard=commit_guard,
+                )
+            return result
+    except Exception as exc:
+        return _receipt_validation_failure(receipt_path, receipt, exc)
+
+
 def migrate_preflighted_metadata_bundle(
     source: str | Path | BundleLayout,
     *,
@@ -5424,6 +5785,14 @@ def migrate_preflighted_metadata_bundle(
 ) -> MetadataMigrationResult:
     """Migrate a bundle from one already-computed semantic preflight."""
     layout, root = _resolve_bundle(source)
+    if not _JOURNAL_DIR_FD_SUPPORTED:
+        return _migrate_preflighted_metadata_bundle_portable(
+            layout,
+            root,
+            report=report,
+            kinds=kinds,
+            commit_guard=commit_guard,
+        )
     reconciled = reconcile_metadata_migration_bundle(
         layout,
         kinds=kinds,

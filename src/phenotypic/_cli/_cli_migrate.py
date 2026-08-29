@@ -29,15 +29,17 @@ failed scheduler token.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
+import socket
 import time
 from typing import Any
 
 import click
+import psutil
 
 from ._cli_migrate_image import (
     MigrationImagePartialResult,
@@ -75,12 +77,16 @@ from ._cli_completion import (
     valid_run_completion,
 )
 from ._cli_slurm_lifecycle import (
+    SchedulerQueryUnavailable,
     deactivate_generation,
     generation_publication_guard,
     initialize_slurm_lifecycle,
     load_slurm_lifecycle,
     mark_generation_failed,
     new_slurm_generation,
+    query_scheduler_comments,
+    query_scheduler_job_states,
+    read_lifecycle_ledger,
 )
 from ._cli_migrate_slurm import (
     MigrationSlurmPlan,
@@ -257,6 +263,193 @@ def close_migration_generation(
     if not reason:
         raise ValueError("failed migration closure requires an exact reason")
     mark_generation_failed(output_dir, generation, reason)
+
+
+_ACTIVE_SLURM_STATES = frozenset(
+    {
+        "CONFIGURING",
+        "COMPLETING",
+        "PENDING",
+        "REQUEUED",
+        "RESIZING",
+        "RUNNING",
+        "STAGE_OUT",
+        "SUSPENDED",
+    }
+)
+
+
+def _owned_process_is_alive(state: Mapping[str, Any]) -> bool | None:
+    """Return local owner liveness, or ``None`` when it cannot be proven."""
+    owner_host = state.get("owner_host")
+    owner_pid = state.get("owner_pid")
+    owner_started_at = state.get("owner_started_at")
+    if owner_host != socket.gethostname():
+        return None
+    if (
+        not isinstance(owner_pid, int)
+        or isinstance(owner_pid, bool)
+        or owner_pid <= 0
+        or not isinstance(owner_started_at, (int, float))
+        or isinstance(owner_started_at, bool)
+        or owner_started_at <= 0
+    ):
+        return None
+    try:
+        process = psutil.Process(owner_pid)
+        if process.status() == psutil.STATUS_ZOMBIE:
+            return False
+        return abs(process.create_time() - float(owner_started_at)) < 1e-6
+    except psutil.NoSuchProcess:
+        return False
+    except psutil.AccessDenied:
+        return None
+
+
+def _migration_control_root_from_state(
+    lifecycle_root: Path,
+    state: Mapping[str, Any],
+    *,
+    control_root: Path | None,
+) -> Path:
+    """Resolve and bind recovery to the generation's persisted control root."""
+    stored = state.get("control_root")
+    if not isinstance(stored, str) or not stored:
+        if state.get("owner_kind") == "local":
+            stored_root = phenotypic_cache_dir(lifecycle_root)
+        else:
+            raise RuntimeError(
+                "Active migration lacks recoverable control-root authority"
+            )
+    else:
+        stored_root = Path(stored).resolve()
+    if control_root is not None and Path(control_root).resolve() != stored_root:
+        raise RuntimeError("Migration recovery control root does not match lifecycle")
+    return stored_root
+
+
+def _active_generation_job_ids(
+    lifecycle_root: Path, generation: str
+) -> tuple[str, ...]:
+    """Return the latest non-terminal durable job IDs for one generation."""
+    active_by_token: dict[str, str] = {}
+    for row in read_lifecycle_ledger(lifecycle_root, generation=generation):
+        token = row.get("token")
+        if not isinstance(token, str) or not token:
+            continue
+        if row.get("status") in {"submitted", "recovered"} and str(
+            row.get("job_id", "")
+        ).isdecimal():
+            active_by_token[token] = str(row["job_id"])
+        elif row.get("status") == "terminal":
+            active_by_token.pop(token, None)
+    return tuple(sorted(set(active_by_token.values())))
+
+
+def reconcile_interrupted_migration_attempt(
+    lifecycle_root: Path,
+    *,
+    control_root: Path | None = None,
+    scheduler_state_query: Callable[[Sequence[str]], Mapping[str, str]] | None = None,
+) -> bool:
+    """Terminalize one provably dead local or quiescent SLURM generation.
+
+    Returns ``False`` for no active migration or for ownership that is still
+    live. Unknown ownership and incomplete scheduler evidence fail closed.
+    """
+    lifecycle_root = Path(lifecycle_root).resolve()
+    state = load_slurm_lifecycle(lifecycle_root)
+    if (
+        state is None
+        or state.get("active") is not True
+        or state.get("mode") != "migrate"
+    ):
+        return False
+    generation = str(state["generation"])
+    attempt_control = _migration_control_root_from_state(
+        lifecycle_root, state, control_root=control_root
+    )
+    existing_terminal = _read_migration_terminal_status(
+        migration_terminal_status_path(attempt_control, generation),
+        generation=generation,
+    )
+    if existing_terminal is not None:
+        succeeded = existing_terminal["status"] == "succeeded"
+        close_migration_generation(
+            lifecycle_root,
+            generation=generation,
+            succeeded=succeeded,
+            reason=None if succeeded else str(existing_terminal["reason"]),
+        )
+        return True
+
+    owner_kind = state.get("owner_kind")
+    owner_alive = _owned_process_is_alive(state)
+    reason: str
+    if owner_kind == "local":
+        if owner_alive is True:
+            return False
+        if owner_alive is None:
+            raise RuntimeError("Cannot prove whether the local migration owner is alive")
+        reason = "Interrupted migration: local owner process is no longer alive"
+    elif owner_kind == "slurm":
+        job_ids = _active_generation_job_ids(lifecycle_root, generation)
+        if not job_ids:
+            try:
+                matches = query_scheduler_comments(
+                    prefix=f"phenotypic:{generation}:"
+                )
+            except SchedulerQueryUnavailable:
+                if owner_alive is True:
+                    return False
+                raise
+            job_ids = tuple(
+                sorted({job_id for ids in matches.values() for job_id in ids})
+            )
+        if job_ids:
+            states = dict(
+                (scheduler_state_query or query_scheduler_job_states)(job_ids)
+            )
+            if set(states) != set(job_ids):
+                raise SchedulerQueryUnavailable(
+                    "Scheduler state is incomplete for active migration jobs"
+                )
+            if any(
+                str(state_value).rstrip("+").upper() in _ACTIVE_SLURM_STATES
+                for state_value in states.values()
+            ):
+                return False
+        elif owner_alive is True:
+            return False
+        reason = (
+            "Interrupted migration: SLURM attempt became quiescent without "
+            "terminal finalizer authority"
+        )
+    else:
+        return False
+
+    report = MigrationReport(
+        publication_failures=((attempt_control, reason),)
+    )
+    def commit_guard():
+        return generation_publication_guard(lifecycle_root, generation)
+    publish_migration_terminal_status(
+        lifecycle_root,
+        generation=generation,
+        succeeded=False,
+        failure_category="completion",
+        reason=reason,
+        report=report,
+        commit_guard=commit_guard,
+        control_root=attempt_control,
+    )
+    close_migration_generation(
+        lifecycle_root,
+        generation=generation,
+        succeeded=False,
+        reason=reason,
+    )
+    return True
 
 
 def _bundle_layout(output_dir: Path) -> BundleLayout:
@@ -1261,11 +1454,14 @@ def run_migrate(
             header_failures=metadata_pass.failures,
         )
 
+    reconcile_interrupted_migration_attempt(output_dir)
     generation = new_slurm_generation()
     initialize_slurm_lifecycle(
         output_dir,
         generation=generation,
         mode="migrate",
+        owner_kind="local",
+        control_root=phenotypic_cache_dir(output_dir),
     )
 
     def commit_guard():
@@ -1588,10 +1784,7 @@ def _validate_migration_slurm_selection(
             "--njobs cannot be combined with --slurm for --mode migrate; "
             "the scheduler owns migration worker parallelism."
         )
-    if dry_run and wait:
-        raise click.UsageError(
-            "--wait cannot be combined with --dry-run for --mode migrate."
-        )
+    _ = dry_run
 
 
 def _validated_submission_job_ids(submission: object) -> tuple[str, ...]:
@@ -1731,6 +1924,7 @@ def _wait_for_migration_terminal_status(
     generation: str,
     poll_interval: float = 10.0,
     timeout: float | None = None,
+    scheduler_state_query: Callable[[Sequence[str]], Mapping[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Wait for a closed lifecycle and its matching typed terminal authority."""
     status_path = migration_terminal_status_path(control_root, generation)
@@ -1764,6 +1958,18 @@ def _wait_for_migration_terminal_status(
                 "SLURM migration lifecycle closed without a valid terminal "
                 f"status: {status_path}"
             )
+        try:
+            recovered = reconcile_interrupted_migration_attempt(
+                output_dir,
+                control_root=control_root,
+                scheduler_state_query=scheduler_state_query,
+            )
+        except (RuntimeError, SchedulerQueryUnavailable, ValueError) as exc:
+            raise click.ClickException(
+                f"Could not reconcile active SLURM migration: {exc}"
+            ) from exc
+        if recovered:
+            continue
         if deadline is not None and time.monotonic() >= deadline:
             raise click.ClickException(
                 f"Timed out waiting for SLURM migration terminal status: {status_path}"
@@ -1776,7 +1982,7 @@ def _echo_migration_slurm_submission(
 ) -> None:
     """Report only durable attempt and control references before finalization."""
     heading = (
-        "SLURM migration dry-run generated"
+        "SLURM migration dry-run submitted"
         if dry_run
         else "SLURM migration submitted"
     )
@@ -1853,13 +2059,13 @@ def handle_migrate_mode(
         njobs: Worker processes for local per-image conversion.
         njobs_was_explicit: Whether Click received ``--njobs`` from the user.
         overlay_alpha: Alpha used for newly rendered overlay PNGs.
-        dry_run: Report local work or generate a SLURM plan without science.
+        dry_run: Validate locally or through SLURM without changing science.
         delete_sources: Delete each provably-faithful source after conversion.
         slurm_args: Parsed SLURM arguments, or ``None`` for the local path.
         wait: Wait for a SLURM attempt's finalizer authority.
 
     Returns:
-        ``0`` on a clean local run, generated dry run, submitted attempt, or
+        ``0`` on a clean local run, submitted dry run, submitted attempt, or
         waited successful terminal authority; ``1`` on local migration failure.
     """
     _validate_migration_slurm_selection(
@@ -1879,6 +2085,20 @@ def handle_migrate_mode(
         echo_migration_summary(output_dir, report, dry_run=dry_run)
         return 0 if report.ok else 1
 
+    if not dry_run:
+        try:
+            reconcile_interrupted_migration_attempt(output_dir)
+        except (RuntimeError, SchedulerQueryUnavailable, ValueError) as exc:
+            raise click.ClickException(
+                f"Could not reconcile prior SLURM migration attempt: {exc}"
+            ) from exc
+        active = load_slurm_lifecycle(output_dir)
+        if active is not None and active.get("active") is True:
+            raise click.ClickException(
+                "Could not initialize SLURM migration attempt: Output already "
+                "has an active SLURM generation "
+                f"{active.get('generation')!r}"
+            )
     generation = new_slurm_generation()
     try:
         plan = generate_migration_slurm_plan(
@@ -1893,13 +2113,14 @@ def handle_migrate_mode(
         raise click.ClickException(
             f"Could not plan SLURM migration attempt: {exc}"
         ) from exc
-    if dry_run:
-        _echo_migration_slurm_submission(plan, job_ids=None, dry_run=True)
-        return 0
-
+    lifecycle_root = plan.control_root if dry_run else Path(output_dir)
     try:
         initialize_slurm_lifecycle(
-            output_dir, generation=generation, mode="migrate"
+            lifecycle_root,
+            generation=generation,
+            mode="migrate",
+            owner_kind="slurm",
+            control_root=plan.control_root,
         )
     except RuntimeError as exc:
         if "Output already has an active SLURM generation" not in str(exc):
@@ -1915,22 +2136,24 @@ def handle_migrate_mode(
         )
         job_ids = _validated_submission_job_ids(submission)
     except (OSError, RuntimeError, ValueError) as exc:
-        mark_generation_failed(output_dir, generation, str(exc))
+        mark_generation_failed(lifecycle_root, generation, str(exc))
         raise click.ClickException(
             f"Could not submit SLURM migration attempt: {exc}"
         ) from exc
     except click.ClickException:
-        mark_generation_failed(output_dir, generation, "invalid submission response")
+        mark_generation_failed(
+            lifecycle_root, generation, "invalid submission response"
+        )
         raise
     except Exception as exc:
-        mark_generation_failed(output_dir, generation, str(exc))
+        mark_generation_failed(lifecycle_root, generation, str(exc))
         raise
-    _echo_migration_slurm_submission(plan, job_ids=job_ids, dry_run=False)
+    _echo_migration_slurm_submission(plan, job_ids=job_ids, dry_run=dry_run)
     if not wait:
         return 0
 
     terminal = _wait_for_migration_terminal_status(
-        output_dir,
+        lifecycle_root,
         control_root=plan.control_root,
         generation=generation,
     )

@@ -428,6 +428,38 @@ def test_dry_finalizer_terminalizes_and_closes_failed_generation(
     assert lifecycle["active"] is False
 
 
+def test_dry_finalizer_publishes_waitable_typed_terminal_authority(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Public ``--wait`` reads the same typed terminal shape for dry attempts."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli import _cli_migrate_worker as worker
+    from phenotypic.sdk_._hdf_to_zarr import MigrationReport
+
+    _output_dir, plan = _worker_plan(tmp_path, monkeypatch, dry_run=True)
+    config = worker._load_worker_config(
+        plan.control_root / "migration_config.json"
+    )
+
+    worker._publish_terminal_and_close(
+        config,
+        succeeded=True,
+        failure_category=None,
+        reason=None,
+        report=MigrationReport(converted=2, skipped=1),
+    )
+
+    terminal_path = migrate.migration_terminal_status_path(
+        plan.control_root, plan.generation
+    )
+    terminal = migrate._read_migration_terminal_status(
+        terminal_path, generation=plan.generation
+    )
+    assert terminal is not None
+    assert terminal["status"] == "succeeded"
+    assert terminal["report"]["converted"] == 2
+
+
 def test_nondry_finalizer_validates_attempt_scoped_manifest_and_closes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

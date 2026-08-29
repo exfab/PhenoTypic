@@ -385,6 +385,210 @@ def test_migrate_with_repeated_slurm_plans_and_submits_once(
     assert str(control) in result.output
 
 
+def test_direct_slurm_dry_run_submits_from_external_control_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dry validation must enter the scheduler rather than stop at planning."""
+    from phenotypic._cli import _cli_migrate as migrate
+
+    output = tmp_path / "run"
+    output.mkdir()
+    science = output / "retained.bin"
+    science.write_bytes(b"immutable science")
+    plan = _migration_plan(tmp_path, "attempt-1")
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
+    monkeypatch.setattr(migrate, "generate_migration_slurm_plan", lambda *_a, **_k: plan)
+    submitted: list[object] = []
+
+    def submit(submitted_plan, **_kwargs):
+        submitted.append(submitted_plan)
+        lifecycle = migrate.load_slurm_lifecycle(plan.control_root)
+        assert lifecycle is not None and lifecycle["active"] is True
+        assert migrate.load_slurm_lifecycle(output) is None
+        return SimpleNamespace(job_ids=["101", "102"])
+
+    monkeypatch.setattr(migrate, "submit_migration_slurm_plan", submit)
+
+    result = migrate.handle_migrate_mode(
+        output,
+        slurm_args={"slurm_partition": "short"},
+        dry_run=True,
+    )
+
+    assert result == 0
+    assert submitted == [plan]
+    assert science.read_bytes() == b"immutable science"
+
+
+def test_direct_waited_slurm_dry_run_reads_external_typed_terminal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Waited dry validation observes terminal authority without science writes."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic.sdk_._hdf_to_zarr import MigrationReport
+
+    output = tmp_path / "run"
+    output.mkdir()
+    science = output / "retained.bin"
+    science.write_bytes(b"immutable science")
+    plan = _migration_plan(tmp_path, "attempt-1")
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
+    monkeypatch.setattr(migrate, "generate_migration_slurm_plan", lambda *_a, **_k: plan)
+
+    def submit(*_args, **_kwargs):
+        migrate.publish_migration_terminal_status(
+            output,
+            generation="attempt-1",
+            succeeded=True,
+            failure_category=None,
+            reason=None,
+            report=MigrationReport(),
+            control_root=plan.control_root,
+        )
+        assert migrate.deactivate_generation(plan.control_root, "attempt-1") is True
+        return SimpleNamespace(job_ids=["101"])
+
+    monkeypatch.setattr(migrate, "submit_migration_slurm_plan", submit)
+
+    result = migrate.handle_migrate_mode(
+        output,
+        slurm_args={"slurm_partition": "short"},
+        dry_run=True,
+        wait=True,
+    )
+
+    assert result == 0
+    assert science.read_bytes() == b"immutable science"
+
+
+def test_dead_local_migration_attempt_is_terminalized_before_replay(
+    tmp_path: Path,
+) -> None:
+    """A vanished local owner cannot strand its active generation forever."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        initialize_slurm_lifecycle,
+        lifecycle_state_path,
+        load_slurm_lifecycle,
+    )
+    from phenotypic.sdk_ import atomic_write_json, phenotypic_cache_dir
+
+    output = tmp_path / "run"
+    output.mkdir()
+    control_root = phenotypic_cache_dir(output)
+    state = initialize_slurm_lifecycle(
+        output,
+        generation="dead-local",
+        mode="migrate",
+        owner_kind="local",
+        control_root=control_root,
+    )
+    state["owner_pid"] = 2**30
+    atomic_write_json(lifecycle_state_path(output), state)
+
+    assert migrate.reconcile_interrupted_migration_attempt(output) is True
+
+    closed = load_slurm_lifecycle(output)
+    assert closed is not None and closed["active"] is False
+    terminal = migrate._read_migration_terminal_status(
+        migrate.migration_terminal_status_path(control_root, "dead-local"),
+        generation="dead-local",
+    )
+    assert terminal is not None
+    assert terminal["status"] == "failed"
+    assert "local owner" in terminal["reason"]
+
+
+def test_live_local_migration_attempt_is_never_superseded(tmp_path: Path) -> None:
+    """A second invocation must preserve a generation whose process is alive."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        initialize_slurm_lifecycle,
+        load_slurm_lifecycle,
+    )
+
+    output = tmp_path / "run"
+    output.mkdir()
+    initialize_slurm_lifecycle(
+        output,
+        generation="live-local",
+        mode="migrate",
+        owner_kind="local",
+        control_root=output / ".phenotypic",
+    )
+
+    assert migrate.reconcile_interrupted_migration_attempt(output) is False
+    state = load_slurm_lifecycle(output)
+    assert state is not None and state["active"] is True
+
+
+def test_reused_local_owner_pid_does_not_keep_dead_attempt_live(
+    tmp_path: Path,
+) -> None:
+    """PID reuse cannot make a different process inherit migration ownership."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        initialize_slurm_lifecycle,
+        lifecycle_state_path,
+    )
+    from phenotypic.sdk_ import atomic_write_json
+
+    output = tmp_path / "run"
+    output.mkdir()
+    state = initialize_slurm_lifecycle(
+        output,
+        generation="reused-pid",
+        mode="migrate",
+        owner_kind="local",
+        control_root=output / ".phenotypic",
+    )
+    state["owner_started_at"] = float(state["owner_started_at"]) + 3600.0
+    atomic_write_json(lifecycle_state_path(output), state)
+
+    assert migrate.reconcile_interrupted_migration_attempt(output) is True
+
+
+def test_wait_terminalizes_quiescent_slurm_attempt_missing_finalizer(
+    tmp_path: Path,
+) -> None:
+    """Terminal scheduler states cannot leave public wait polling forever."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        append_lifecycle_entry,
+        initialize_slurm_lifecycle,
+    )
+
+    output = tmp_path / "run"
+    control_root = output / "control"
+    output.mkdir()
+    initialize_slurm_lifecycle(
+        output,
+        generation="quiescent",
+        mode="migrate",
+        owner_kind="slurm",
+        control_root=control_root,
+    )
+    append_lifecycle_entry(
+        output,
+        generation="quiescent",
+        token="chunk-0",
+        role="chunk",
+        status="submitted",
+        job_id="101",
+    )
+
+    terminal = migrate._wait_for_migration_terminal_status(
+        output,
+        control_root=control_root,
+        generation="quiescent",
+        poll_interval=0.0,
+        scheduler_state_query=lambda _ids: {"101": "COMPLETED"},
+    )
+
+    assert terminal["status"] == "failed"
+    assert "SLURM attempt became quiescent" in terminal["reason"]
+
+
 @pytest.mark.parametrize("njobs", [-1, 1])
 def test_explicit_njobs_is_rejected_before_slurm_migration_writes(
     legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, njobs: int
@@ -425,12 +629,18 @@ def test_slurm_migration_dry_run_preserves_every_output_byte(
     legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Scheduler preview owns only an external control tree, never science."""
+    from phenotypic._cli import _cli_migrate as migrate
     from phenotypic._cli import _cli_migrate_slurm as slurm
 
     cache = tmp_path / "cache"
     monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
     monkeypatch.setattr(slurm, "get_slurm_array_limit", lambda: 100)
     monkeypatch.setattr(slurm, "get_slurm_max_submit_jobs", lambda: 100)
+    monkeypatch.setattr(
+        migrate,
+        "submit_migration_slurm_plan",
+        lambda *_a, **_k: SimpleNamespace(job_ids=["101"]),
+    )
     before = _tree_snapshot(legacy_run)
 
     result = CliRunner().invoke(
@@ -730,18 +940,26 @@ def test_local_migration_dry_run_preserves_every_directory_and_file_byte(
 def test_mocked_slurm_dry_run_preserves_every_directory_and_file_byte(
     legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Public dry SLURM dispatch cannot alter science when planner is mocked."""
+    """Public dry SLURM dispatch submits validation from the external root."""
     from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
 
     plan = _migration_plan(tmp_path, "attempt-1")
     before = _tree_snapshot(legacy_run)
+    submissions: list[object] = []
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
     monkeypatch.setattr(migrate, "generate_migration_slurm_plan", lambda *_a, **_k: plan)
-    monkeypatch.setattr(
-        migrate,
-        "submit_migration_slurm_plan",
-        lambda *_a, **_k: pytest.fail("dry-run submitted work"),
-    )
+
+    def submit(submitted_plan, **_kwargs):
+        submissions.append(submitted_plan)
+        lifecycle = load_slurm_lifecycle(plan.control_root)
+        assert lifecycle is not None
+        assert lifecycle["generation"] == "attempt-1"
+        assert lifecycle["active"] is True
+        assert load_slurm_lifecycle(legacy_run) is None
+        return SimpleNamespace(job_ids=["101", "102"])
+
+    monkeypatch.setattr(migrate, "submit_migration_slurm_plan", submit)
 
     result = CliRunner().invoke(
         phenotypic_cli,
@@ -757,6 +975,8 @@ def test_mocked_slurm_dry_run_preserves_every_directory_and_file_byte(
     )
 
     assert result.exit_code == 0, result.output
+    assert submissions == [plan]
+    assert "Initial job IDs: 101, 102" in result.output
     assert _tree_snapshot(legacy_run) == before
 
 
@@ -811,21 +1031,34 @@ def test_local_wait_combinations_reject_before_any_artifact_write(
     assert not cache.exists()
 
 
-def test_slurm_wait_dry_run_rejects_before_scientific_or_control_writes(
+def test_slurm_wait_dry_run_observes_typed_terminal_outside_science(
     legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The parsed SLURM dry-run+wait branch creates neither plan nor cache tree."""
+    """A waited dry validation closes and reports from its external root."""
     from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic.sdk_._hdf_to_zarr import MigrationReport
 
     cache = tmp_path / "external-cache"
     monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
-    monkeypatch.setattr(
-        migrate,
-        "generate_migration_slurm_plan",
-        lambda *_a, **_k: pytest.fail("incompatible dry-run wait planned work"),
-    )
+    plan = _migration_plan(tmp_path, "attempt-1")
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
+    monkeypatch.setattr(migrate, "generate_migration_slurm_plan", lambda *_a, **_k: plan)
+
+    def submit(*_args, **_kwargs):
+        migrate.publish_migration_terminal_status(
+            legacy_run,
+            generation="attempt-1",
+            succeeded=True,
+            failure_category=None,
+            reason=None,
+            report=MigrationReport(),
+            control_root=plan.control_root,
+        )
+        assert migrate.deactivate_generation(plan.control_root, "attempt-1") is True
+        return SimpleNamespace(job_ids=["101"])
+
+    monkeypatch.setattr(migrate, "submit_migration_slurm_plan", submit)
     before_science = _tree_snapshot(legacy_run)
-    before_control = _tree_snapshot(cache)
 
     result = CliRunner().invoke(
         phenotypic_cli,
@@ -841,11 +1074,9 @@ def test_slurm_wait_dry_run_rejects_before_scientific_or_control_writes(
         ],
     )
 
-    assert result.exit_code != 0
-    assert "--wait cannot be combined with --dry-run" in result.output
+    assert result.exit_code == 0, result.output
+    assert "SLURM migration complete" in result.output
     assert _tree_snapshot(legacy_run) == before_science
-    assert _tree_snapshot(cache) == before_control
-    assert not cache.exists()
 
 
 def test_public_rerun_after_waited_terminal_failure_uses_new_attempt(
