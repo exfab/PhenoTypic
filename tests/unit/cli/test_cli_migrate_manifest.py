@@ -186,7 +186,11 @@ def test_read_seeks_directly_to_requested_index(run: Path) -> None:
 
     _write_fixture_manifest(run, count=100)
 
-    task = read_migration_task(_manifest_path(run), 73)
+    task = read_migration_task(
+        _manifest_path(run),
+        73,
+        expected_scientific_output=(run / "deliverables").resolve(),
+    )
 
     assert task.index == 73
     assert task.stem == "image_0073"
@@ -215,7 +219,11 @@ def test_reader_refuses_corrupt_offset_file(run: Path) -> None:
     manifest.offsets_path.write_bytes(b"\0")
 
     with pytest.raises(ValueError, match="offset"):
-        read_migration_task(_manifest_path(run), 0)
+        read_migration_task(
+            _manifest_path(run),
+            0,
+            expected_scientific_output=(run / "deliverables").resolve(),
+        )
 
 
 def test_reader_refuses_truncated_record_frame(run: Path) -> None:
@@ -226,7 +234,11 @@ def test_reader_refuses_truncated_record_frame(run: Path) -> None:
     manifest.records_path.write_bytes(manifest.records_path.read_bytes()[:-10])
 
     with pytest.raises(ValueError, match="truncated"):
-        read_migration_task(_manifest_path(run), 2)
+        read_migration_task(
+            _manifest_path(run),
+            2,
+            expected_scientific_output=(run / "deliverables").resolve(),
+        )
 
 
 def test_reader_refuses_payload_checksum_mismatch(run: Path) -> None:
@@ -240,7 +252,11 @@ def test_reader_refuses_payload_checksum_mismatch(run: Path) -> None:
     manifest.records_path.write_bytes(raw)
 
     with pytest.raises(ValueError, match="checksum"):
-        read_migration_task(_manifest_path(run), 0)
+        read_migration_task(
+            _manifest_path(run),
+            0,
+            expected_scientific_output=(run / "deliverables").resolve(),
+        )
 
 
 def test_reader_refuses_record_with_wrong_generation(run: Path) -> None:
@@ -254,7 +270,11 @@ def test_reader_refuses_record_with_wrong_generation(run: Path) -> None:
     path.write_text(json.dumps(header), encoding="utf-8")
 
     with pytest.raises(ValueError, match="generation"):
-        read_migration_task(path, 0)
+        read_migration_task(
+            path,
+            0,
+            expected_scientific_output=(run / "deliverables").resolve(),
+        )
 
 
 def test_reader_refuses_out_of_range_index(run: Path) -> None:
@@ -264,7 +284,11 @@ def test_reader_refuses_out_of_range_index(run: Path) -> None:
     _write_fixture_manifest(run, count=3)
 
     with pytest.raises(IndexError, match="out of range"):
-        read_migration_task(_manifest_path(run), 3)
+        read_migration_task(
+            _manifest_path(run),
+            3,
+            expected_scientific_output=(run / "deliverables").resolve(),
+        )
 
 
 def test_writer_refuses_symlinked_cache_component_before_writing(run: Path) -> None:
@@ -345,6 +369,16 @@ def test_reader_binds_manifest_to_expected_scientific_output(run: Path) -> None:
         )
 
 
+def test_reader_requires_expected_scientific_output(run: Path) -> None:
+    """Workers must supply independent public-output authority to read work."""
+    from phenotypic._cli._cli_migrate_manifest import read_migration_task
+
+    _write_fixture_manifest(run)
+
+    with pytest.raises(TypeError, match="expected_scientific_output"):
+        read_migration_task(_manifest_path(run), 0)
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     (
@@ -405,9 +439,21 @@ def test_reader_validates_merkle_root_after_reframed_payload_tampering(
     from phenotypic._cli._cli_migrate_manifest import read_migration_task
 
     manifest = _write_fixture_manifest(run, count=5)
-    assert read_migration_task(_manifest_path(run), 0).stem == "image_0000"
-    assert read_migration_task(_manifest_path(run), 2).stem == "image_0002"
-    assert read_migration_task(_manifest_path(run), 4).stem == "image_0004"
+    assert read_migration_task(
+        _manifest_path(run),
+        0,
+        expected_scientific_output=(run / "deliverables").resolve(),
+    ).stem == "image_0000"
+    assert read_migration_task(
+        _manifest_path(run),
+        2,
+        expected_scientific_output=(run / "deliverables").resolve(),
+    ).stem == "image_0002"
+    assert read_migration_task(
+        _manifest_path(run),
+        4,
+        expected_scientific_output=(run / "deliverables").resolve(),
+    ).stem == "image_0004"
 
     raw = manifest.records_path.read_bytes()
     offset = int.from_bytes(manifest.offsets_path.read_bytes()[4 * 8 : 5 * 8], "big")
@@ -425,4 +471,8 @@ def test_reader_validates_merkle_root_after_reframed_payload_tampering(
     manifest.records_path.write_bytes(raw[:offset] + reframed)
 
     with pytest.raises(ValueError, match="inventory digest"):
-        read_migration_task(_manifest_path(run), 4)
+        read_migration_task(
+            _manifest_path(run),
+            4,
+            expected_scientific_output=(run / "deliverables").resolve(),
+        )

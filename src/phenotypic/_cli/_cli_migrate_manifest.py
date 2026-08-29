@@ -454,7 +454,7 @@ def write_migration_manifest(
 
 
 def _read_manifest(
-    manifest_path: Path, expected_scientific_output: Path | None
+    manifest_path: Path, expected_scientific_output: Path
 ) -> tuple[Path, MigrationManifest]:
     """Decode and validate one manifest header and all path boundaries."""
     supplied_path = Path(manifest_path).absolute()
@@ -507,9 +507,7 @@ def _read_manifest(
     )
     if manifest.scientific_output != deliverables_dir(output_root):
         raise ValueError("migration manifest has non-canonical scientific output")
-    if expected_scientific_output is not None and manifest.scientific_output != Path(
-        expected_scientific_output
-    ).resolve():
+    if manifest.scientific_output != Path(expected_scientific_output).resolve():
         raise ValueError(
             "migration manifest scientific output does not match expected scientific output"
         )
@@ -616,14 +614,14 @@ def read_migration_task(
     manifest_path: Path,
     index: int,
     *,
-    expected_scientific_output: Path | None = None,
+    expected_scientific_output: Path,
 ) -> MigrationImageTask:
     """Read exactly one indexed migration task without parsing prior records.
 
     Args:
         manifest_path: Canonical migration manifest header path.
         index: Zero-based array index to load.
-        expected_scientific_output: Optional caller-authorized deliverables root.
+        expected_scientific_output: Caller-authorized deliverables root.
 
     Returns:
         The checksum-verified task at *index*.
