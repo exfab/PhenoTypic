@@ -1070,11 +1070,67 @@ def test_reclaim_reconstructs_duplicate_metadata_fanout_before_parquet_unlink(
     assert result.reason is None
 
 
-def test_reclaim_retains_structurally_valid_table_with_wrong_duplicate_fanout(
+def test_missing_marker_repairs_wrong_duplicate_fanout_before_safe_reclaim(
     tmp_path: Path,
 ) -> None:
-    """One-row embedded data cannot certify a two-row metadata fan-out."""
-    from phenotypic._cli._cli_migrate_image import reclaim_image_sources
+    """Marker repair restores exact fan-out before source reclamation."""
+    from phenotypic._cli._cli_migrate_image import (
+        _valid_migration_marker,
+        reclaim_image_sources,
+    )
+    from phenotypic._cli._embedded_measurement_tables import (
+        embedded_measurement_table_matches,
+    )
+
+    output_dir, task = _migration_task(tmp_path)
+    metadata_csv = output_dir / "deliverables" / "metadata.csv"
+    metadata_csv.parent.mkdir(parents=True)
+    metadata_csv.write_text(
+        "Metadata_ImageName,Metadata_Strain\nimg,BY4741\nimg,BY4742\n",
+        encoding="utf-8",
+    )
+    _complete_image(output_dir, task, metadata_csv=metadata_csv)
+    assert task.measurement_path is not None
+    source_before = task.measurement_path.read_bytes()
+    expected = prepare_embedded_measurement_table(
+        pd.read_parquet(task.measurement_path), metadata_csv
+    )
+    wrong = prepare_embedded_measurement_table(
+        pd.read_parquet(task.measurement_path), None
+    )
+    replace_embedded_measurement_table(task.store_path, wrong)
+    assert not embedded_measurement_table_matches(task.store_path, expected)
+    task.marker_path.unlink()
+    repaired = _complete_image(output_dir, task, metadata_csv=metadata_csv)
+
+    assert repaired.table_installed is True
+    assert embedded_measurement_table_matches(task.store_path, expected)
+    assert task.measurement_path.read_bytes() == source_before
+    assert task.marker_path.is_file()
+    assert _valid_migration_marker(
+        output_dir, task, repaired.work_id, table_authoritative=True
+    )
+    assert task.hdf_path is not None
+    task.hdf_path.unlink()
+    parquet_only = replace(task, hdf_path=None)
+
+    result = reclaim_image_sources(
+        output_dir,
+        parquet_only,
+        metadata_csv=metadata_csv,
+    )
+
+    assert not task.measurement_path.exists()
+    assert result.deleted_paths == (task.measurement_path,)
+    assert result.retained_paths == ()
+    assert result.reason is None
+
+
+def test_reclaim_retains_parquet_if_exact_embedded_mismatch_reaches_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reclaim independently refuses a table mismatch certification missed."""
+    from phenotypic._cli import _cli_migrate_image
 
     output_dir, task = _migration_task(tmp_path)
     metadata_csv = output_dir / "deliverables" / "metadata.csv"
@@ -1089,13 +1145,18 @@ def test_reclaim_retains_structurally_valid_table_with_wrong_duplicate_fanout(
         pd.read_parquet(task.measurement_path), None
     )
     replace_embedded_measurement_table(task.store_path, wrong)
-    task.marker_path.unlink()
-    _complete_image(output_dir, task, metadata_csv=metadata_csv)
     assert task.hdf_path is not None
     task.hdf_path.unlink()
     parquet_only = replace(task, hdf_path=None)
+    # Marker validation normally refuses this state first. Force only that
+    # seam current to keep reclaim's independent exact-equality defense pinned.
+    monkeypatch.setattr(
+        _cli_migrate_image,
+        "_marker_still_current",
+        lambda _root, _task, _work_id, _digest: True,
+    )
 
-    result = reclaim_image_sources(
+    result = _cli_migrate_image.reclaim_image_sources(
         output_dir,
         parquet_only,
         metadata_csv=metadata_csv,
