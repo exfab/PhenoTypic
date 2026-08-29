@@ -13,6 +13,20 @@ from phenotypic.gui.browse._source_probe import probe_source
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
 
+def _write_fake_ngff_image_group(store: Path, member: str) -> None:
+    """Write the minimum real group/array metadata the route validates."""
+    group = store / member
+    (group / "0").mkdir(parents=True, exist_ok=True)
+    (group / "zarr.json").write_text(
+        '{"zarr_format":3,"node_type":"group","attributes":{"ome":{'
+        '"version":"0.5","multiscales":[{"datasets":[{"path":"0"}]}]}}}',
+        encoding="utf-8",
+    )
+    (group / "0" / "zarr.json").write_text(
+        '{"zarr_format":3,"node_type":"array"}', encoding="utf-8"
+    )
+
+
 @pytest.fixture
 def app_and_root(monkeypatch, tmp_path):
     # Redirect the ephemeral cache into the test's tmp dir.
@@ -106,6 +120,7 @@ def test_published_plain_zarr_store_is_served_as_generation_addressed_bytes(
     chunk = store / "rgb" / "0" / "c" / "0"
     chunk.parent.mkdir(parents=True)
     chunk.write_bytes(b"chunk-bytes")
+    _write_fake_ngff_image_group(store, "rgb")
     root = store / "zarr.json"
     root.write_text(
         '{"attributes":{"phenotypic":{'
@@ -149,6 +164,7 @@ def test_published_store_range_does_not_materialize_the_member(
     chunk = store / "rgb" / "0" / "c" / "0"
     chunk.parent.mkdir(parents=True)
     chunk.write_bytes(b"0123456789")
+    _write_fake_ngff_image_group(store, "rgb")
     (store / "zarr.json").write_text(
         '{"attributes":{"phenotypic":{'
         '"store_schema_version":3,'
@@ -186,12 +202,13 @@ def test_published_store_route_exposes_only_declared_image_roots(
     """Embedded measurement tables are not part of the image-byte API."""
     sandbox_root = tmp_path / "sandbox"
     store = sandbox_root / "plate.zarr"
-    image_member = store / "original" / "0" / "zarr.json"
+    image_member = store / "original" / "0" / "c" / "0"
     table_member = store / "tables" / "measurements" / "table.parquet"
     image_member.parent.mkdir(parents=True)
     table_member.parent.mkdir(parents=True)
     image_member.write_bytes(b"image-metadata")
     table_member.write_bytes(b"private-table")
+    _write_fake_ngff_image_group(store, "original")
     (store / "zarr.json").write_text(
         '{"attributes":{"phenotypic":{'
         '"store_schema_version":3,'
@@ -208,7 +225,7 @@ def test_published_store_route_exposes_only_declared_image_roots(
     client = app.server.test_client()
 
     image = client.get(
-        f"/assets/{token}/{revision.cache_key}/zarr/original/0/zarr.json"
+        f"/assets/{token}/{revision.cache_key}/zarr/original/0/c/0"
     )
     table = client.get(
         f"/assets/{token}/{revision.cache_key}/zarr/"
@@ -220,15 +237,216 @@ def test_published_store_route_exposes_only_declared_image_roots(
     assert table.status_code == 404
 
 
+def test_store_declaration_cannot_authorize_reserved_tables_root(
+    tmp_path,
+) -> None:
+    """A crafted series map must not turn measurement tables into images."""
+    sandbox_root = tmp_path / "sandbox"
+    store = sandbox_root / "plate.zarr"
+    table_group = store / "tables"
+    table_group.mkdir(parents=True)
+    (table_group / "zarr.json").write_text(
+        '{"zarr_format":3,"node_type":"group","attributes":{"ome":{'
+        '"version":"0.5","multiscales":[{'
+        '"datasets":[{"path":"0"}]}]}}}',
+        encoding="utf-8",
+    )
+    (table_group / "0").mkdir()
+    (table_group / "0" / "zarr.json").write_text(
+        '{"zarr_format":3,"node_type":"array"}', encoding="utf-8"
+    )
+    secret = table_group / "measurements.parquet"
+    secret.write_bytes(b"private-table")
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{'
+        '"store_schema_version":3,'
+        '"publication_protocol":"root-last-immutable-v1",'
+        '"series":{"rgb":"tables"},"labels":{}}}}',
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(sandbox_root)
+    app = dash.Dash(__name__)
+    app.layout = dash.html.Div()
+    _tile_routes.register(app, sandbox)
+    revision = probe_source(store, sandbox_root=sandbox_root)
+    token = sr.encode_token("plate.zarr")
+
+    response = app.server.test_client().get(
+        f"/assets/{token}/{revision.cache_key}/zarr/"
+        "tables/measurements.parquet"
+    )
+
+    assert response.status_code == 404
+    assert response.data != b"private-table"
+
+
+def test_store_declaration_cannot_authorize_an_arbitrary_directory(
+    tmp_path,
+) -> None:
+    """A declared series must itself carry NGFF image-group metadata."""
+    sandbox_root = tmp_path / "sandbox"
+    store = sandbox_root / "plate.zarr"
+    payload = store / "payload"
+    payload.mkdir(parents=True)
+    victim = payload / "secret.bin"
+    victim.write_bytes(b"not-an-image-group")
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{'
+        '"store_schema_version":3,'
+        '"publication_protocol":"root-last-immutable-v1",'
+        '"series":{"rgb":"payload"},"labels":{}}}}',
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(sandbox_root)
+    app = dash.Dash(__name__)
+    app.layout = dash.html.Div()
+    _tile_routes.register(app, sandbox)
+    revision = probe_source(store, sandbox_root=sandbox_root)
+    token = sr.encode_token("plate.zarr")
+
+    response = app.server.test_client().get(
+        f"/assets/{token}/{revision.cache_key}/zarr/payload/secret.bin"
+    )
+
+    assert response.status_code == 404
+    assert response.data != b"not-an-image-group"
+
+
+def test_label_declaration_requires_an_ngff_image_label_group(
+    tmp_path,
+) -> None:
+    """An ordinary image group cannot be relabelled to widen authorization."""
+    sandbox_root = tmp_path / "sandbox"
+    store = sandbox_root / "plate.zarr"
+    _write_fake_ngff_image_group(store, "labelish")
+    victim = store / "labelish" / "0" / "c" / "0"
+    victim.parent.mkdir(parents=True)
+    victim.write_bytes(b"not-a-label-group")
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{'
+        '"store_schema_version":3,'
+        '"publication_protocol":"root-last-immutable-v1",'
+        '"series":{},"labels":{"objmap":"labelish"}}}}',
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(sandbox_root)
+    app = dash.Dash(__name__)
+    app.layout = dash.html.Div()
+    _tile_routes.register(app, sandbox)
+    revision = probe_source(store, sandbox_root=sandbox_root)
+    token = sr.encode_token("plate.zarr")
+
+    response = app.server.test_client().get(
+        f"/assets/{token}/{revision.cache_key}/zarr/labelish/0/c/0"
+    )
+
+    assert response.status_code == 404
+    assert response.data != b"not-a-label-group"
+
+
+def test_store_member_open_rejects_component_swapped_to_external_symlink(
+    monkeypatch, tmp_path
+) -> None:
+    """Opening is anchored, so a validation/open swap cannot escape."""
+    if not hasattr(os, "O_NOFOLLOW"):
+        pytest.skip("no-follow opens are unavailable")
+    sandbox_root = tmp_path / "sandbox"
+    store = sandbox_root / "plate.zarr"
+    member = store / "rgb" / "0" / "c" / "0"
+    member.parent.mkdir(parents=True)
+    member.write_bytes(b"safe-store-member")
+    (store / "rgb" / "zarr.json").write_text(
+        '{"zarr_format":3,"node_type":"group","attributes":{"ome":{'
+        '"version":"0.5","multiscales":[{"datasets":[{"path":"0"}]}]}}}',
+        encoding="utf-8",
+    )
+    (store / "rgb" / "0" / "zarr.json").write_text(
+        '{"zarr_format":3,"node_type":"array"}', encoding="utf-8"
+    )
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{'
+        '"store_schema_version":3,'
+        '"publication_protocol":"root-last-immutable-v1",'
+        '"series":{"rgb":"rgb"},"labels":{}}}}',
+        encoding="utf-8",
+    )
+    outside = tmp_path / "outside"
+    outside_member = outside / "0" / "c" / "0"
+    outside_member.parent.mkdir(parents=True)
+    outside_member.write_bytes(b"external-victim")
+    sandbox = SandboxRoot.from_path(sandbox_root)
+    app = dash.Dash(__name__)
+    app.layout = dash.html.Div()
+    _tile_routes.register(app, sandbox)
+    revision = probe_source(store, sandbox_root=sandbox_root)
+    token = sr.encode_token("plate.zarr")
+    original_open = os.open
+    swapped = False
+
+    def swap_component_then_open(
+        path, flags, mode=0o777, *, dir_fd=None
+    ) -> int:
+        nonlocal swapped
+        if path == "rgb" and dir_fd is not None and not swapped:
+            swapped = True
+            (store / "rgb").rename(store / "rgb-original")
+            (store / "rgb").symlink_to(outside, target_is_directory=True)
+        return original_open(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(os, "open", swap_component_then_open)
+
+    response = app.server.test_client().get(
+        f"/assets/{token}/{revision.cache_key}/zarr/rgb/0/c/0"
+    )
+
+    assert swapped
+    assert response.status_code == 404
+    assert response.data != b"external-victim"
+
+
+@pytest.mark.parametrize(
+    "member",
+    ["", "%2E", "rgb//0", "%00", "%FF"],
+)
+def test_malformed_store_member_fails_closed(
+    tmp_path, member: str
+) -> None:
+    """Malformed URL members never escape to Dash or raise a server error."""
+    sandbox_root = tmp_path / "sandbox"
+    store = sandbox_root / "plate.zarr"
+    store.mkdir(parents=True)
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{'
+        '"store_schema_version":3,'
+        '"publication_protocol":"root-last-immutable-v1",'
+        '"series":{},"labels":{}}}}',
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(sandbox_root)
+    app = dash.Dash(__name__)
+    app.layout = dash.html.Div()
+    _tile_routes.register(app, sandbox)
+    revision = probe_source(store, sandbox_root=sandbox_root)
+    token = sr.encode_token("plate.zarr")
+
+    response = app.server.test_client().get(
+        f"/assets/{token}/{revision.cache_key}/zarr/{member}",
+        follow_redirects=False,
+    )
+
+    assert response.status_code in {400, 404}
+
+
 def test_published_store_route_maps_unstable_root_to_conflict(
     monkeypatch, tmp_path
 ) -> None:
     """A root change during member open fails closed as a stale generation."""
     sandbox_root = tmp_path / "sandbox"
     store = sandbox_root / "plate.zarr"
-    member = store / "rgb" / "0" / "zarr.json"
+    member = store / "rgb" / "0" / "c" / "0"
     member.parent.mkdir(parents=True)
     member.write_bytes(b"image-metadata")
+    _write_fake_ngff_image_group(store, "rgb")
     (store / "zarr.json").write_text(
         '{"attributes":{"phenotypic":{'
         '"store_schema_version":3,'
@@ -245,11 +463,15 @@ def test_published_store_route_maps_unstable_root_to_conflict(
     observations = iter(
         [
             revision.store_revision,
+            revision.store_revision,
             OSError("root changed during revision inspection"),
         ]
     )
 
-    def unstable_publication(_store: Path) -> str:
+    def unstable_publication(
+        _store: Path, *, root_dir_fd: int | None = None
+    ) -> str:
+        del root_dir_fd
         observed = next(observations)
         if isinstance(observed, OSError):
             raise observed
@@ -261,7 +483,7 @@ def test_published_store_route_maps_unstable_root_to_conflict(
     )
 
     response = app.server.test_client().get(
-        f"/assets/{token}/{revision.cache_key}/zarr/rgb/0/zarr.json"
+        f"/assets/{token}/{revision.cache_key}/zarr/rgb/0/c/0"
     )
 
     assert response.status_code == 409

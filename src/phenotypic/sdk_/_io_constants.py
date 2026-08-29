@@ -72,6 +72,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
 import stat as stat_module
 from dataclasses import dataclass
@@ -1654,7 +1655,11 @@ def store_revision_identity(path: Path) -> str:
     return f"sha256-stat-tree-v1:{digest.hexdigest()}"
 
 
-def store_publication_token(store: Path) -> str | None:
+def store_publication_token(
+    store: Path,
+    *,
+    root_dir_fd: int | None = None,
+) -> str | None:
     """Return the root-last token for a PhenoTypic-published store.
 
     PhenoTypic promotes an immutable store by replacing ``zarr.json`` last.
@@ -1663,16 +1668,44 @@ def store_publication_token(store: Path) -> str | None:
     the gap where a byte-identical replacement preserves the old mtime. A
     generic third-party store has no such publication contract and returns
     ``None`` so the caller uses the conservative recursive snapshot fallback.
+
+    Args:
+        store: Published store path. Used for ordinary path-based inspection.
+        root_dir_fd: Optional held descriptor for the store root. When given,
+            ``zarr.json`` is opened relative to that identity with
+            ``O_NOFOLLOW`` so a route can keep validation and serving bound to
+            one directory generation.
+
+    Returns:
+        The publication token, or ``None`` when the protocol is not declared.
     """
     from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
 
     root = Path(store) / STORE_ROOT_JSON
     try:
-        before = root.lstat()
-        if not stat_module.S_ISREG(before.st_mode):
-            return None
-        raw = root.read_bytes()
-        after = root.lstat()
+        if root_dir_fd is None:
+            before = root.lstat()
+            if not stat_module.S_ISREG(before.st_mode):
+                return None
+            raw = root.read_bytes()
+            after = root.lstat()
+        else:
+            flags = os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW
+            root_fd = os.open(STORE_ROOT_JSON, flags, dir_fd=root_dir_fd)
+            try:
+                before = os.fstat(root_fd)
+                if (
+                    not stat_module.S_ISREG(before.st_mode)
+                    or before.st_nlink != 1
+                ):
+                    return None
+                chunks: list[bytes] = []
+                while chunk := os.read(root_fd, 1024 * 1024):
+                    chunks.append(chunk)
+                raw = b"".join(chunks)
+                after = os.fstat(root_fd)
+            finally:
+                os.close(root_fd)
     except OSError:
         return None
     before_identity = (
