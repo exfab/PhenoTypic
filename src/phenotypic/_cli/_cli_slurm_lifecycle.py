@@ -157,7 +157,14 @@ def generation_publication_guard(
     can deactivate or supersede the generation between this validation and
     the guarded mutation.
     """
-    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
+    # Every recompile/measure worker task (up to the account's concurrency
+    # cap, observed 60-90+) serializes through this single lock via
+    # _write_status on completion. A 60s timeout is too tight when that many
+    # tasks finish in a similar window; one spurious ArtifactLockTimeout here
+    # cascades (via the worker's failure handler) into deactivating the whole
+    # shared generation and failing every sibling task. 300s gives real
+    # headroom under legitimate contention without masking a true deadlock.
+    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=300.0):
         assert_generation_active(output_dir, generation)
         yield
 
