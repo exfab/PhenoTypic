@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import shlex
@@ -132,6 +133,8 @@ def generate_migration_slurm_plan(
     """Build one bounded flat migration chain without submitting jobs."""
     output_dir = Path(output_dir).resolve()
     generation = validate_migration_generation(generation)
+    if not math.isfinite(overlay_alpha) or not 0.0 <= overlay_alpha <= 1.0:
+        raise ValueError("migration overlay alpha must be finite and within [0, 1]")
     tasks = tuple(discover_migration_tasks(output_dir))
     limit = _chunk_limit()
     control_root = _migration_control_root(

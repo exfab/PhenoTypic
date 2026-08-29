@@ -329,9 +329,9 @@ def test_image_failure_does_not_prevent_later_index_completion(
         status_path=plan.control_root / "authority-status.json",
         terminal_receipt_path=plan.control_root / "receipt.json",
         terminal_receipt_digest="sha256:" + "a" * 64,
-        plan_fingerprint="plan",
-        source_fingerprint="source",
-        resulting_fingerprint="result",
+        plan_fingerprint="sha256:" + "1" * 64,
+        source_fingerprint="sha256:" + "2" * 64,
+        resulting_fingerprint="sha256:" + "3" * 64,
         compatible_noop=True,
     )
     monkeypatch.setattr(
@@ -444,9 +444,9 @@ def test_nondry_finalizer_validates_attempt_scoped_manifest_and_closes(
         status_path=plan.control_root / "authority-status.json",
         terminal_receipt_path=plan.control_root / "receipt.json",
         terminal_receipt_digest="sha256:" + "c" * 64,
-        plan_fingerprint="plan",
-        source_fingerprint="source",
-        resulting_fingerprint="result",
+        plan_fingerprint="sha256:" + "1" * 64,
+        source_fingerprint="sha256:" + "2" * 64,
+        resulting_fingerprint="sha256:" + "3" * 64,
         compatible_noop=True,
     )
     monkeypatch.setattr(
@@ -879,9 +879,9 @@ def test_successful_nondry_finalizer_reads_canonical_seal_and_terminalizes(
         status_path=plan.control_root / "authority.json",
         terminal_receipt_path=plan.control_root / "receipt.json",
         terminal_receipt_digest="sha256:" + "e" * 64,
-        plan_fingerprint="plan",
-        source_fingerprint="source",
-        resulting_fingerprint="result",
+        plan_fingerprint="sha256:" + "1" * 64,
+        source_fingerprint="sha256:" + "2" * 64,
+        resulting_fingerprint="sha256:" + "3" * 64,
         compatible_noop=True,
     )
     config = worker._load_worker_config(config_path)
@@ -985,6 +985,333 @@ def test_corrupt_metadata_terminalizes_before_lifecycle_close(
     lifecycle = load_slurm_lifecycle(output)
     assert lifecycle is not None
     assert lifecycle["active"] is False
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("terminal_receipt_digest", "sha256:short"),
+        ("plan_fingerprint", "plan"),
+        ("source_fingerprint", "sha256:" + "G" * 64),
+        ("resulting_fingerprint", "sha256:" + "a" * 63),
+    ],
+)
+def test_image_rejects_malformed_metadata_digests_before_science(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+    value: str,
+) -> None:
+    """Every metadata authority digest is exact before it authorizes mutation."""
+    from phenotypic._cli import _cli_migrate_worker as worker
+
+    _output, plan = _worker_plan(tmp_path, monkeypatch)
+    config_path = plan.control_root / "migration_config.json"
+    config = worker._load_worker_config(config_path)
+    authority = {
+        "status_path": str(plan.control_root / "status.json"),
+        "terminal_receipt_path": str(plan.control_root / "receipt.json"),
+        "terminal_receipt_digest": "sha256:" + "1" * 64,
+        "plan_fingerprint": "sha256:" + "2" * 64,
+        "source_fingerprint": "sha256:" + "3" * 64,
+        "resulting_fingerprint": "sha256:" + "4" * 64,
+        "compatible_noop": False,
+    }
+    authority[field] = value
+    worker._publish_worker_status(
+        config,
+        "metadata",
+        status="complete",
+        extra={"headers_migrated": 0, "authority": authority},
+    )
+    monkeypatch.setattr(
+        worker,
+        "migrate_image_task",
+        lambda *_a, **_k: pytest.fail("malformed authority reached science"),
+    )
+
+    result = CliRunner().invoke(
+        worker.migration_worker_cli,
+        ["--config", str(config_path), "image", "--index", "0"],
+    )
+
+    assert result.exit_code == 0
+    status = json.loads(
+        worker.migration_worker_status_path(
+            plan.control_root, plan.generation, "image", 0
+        ).read_text()
+    )
+    assert status["status"] == "blocked"
+
+
+def test_contradictory_complete_metadata_status_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Complete metadata cannot simultaneously carry typed failure evidence."""
+    from phenotypic._cli import _cli_migrate_worker as worker
+
+    _output, plan = _worker_plan(tmp_path, monkeypatch, dry_run=True)
+    config_path = plan.control_root / "migration_config.json"
+    config = worker._load_worker_config(config_path)
+    worker._publish_worker_status(
+        config,
+        "metadata",
+        status="complete",
+        failure_category="metadata",
+        reason="contradiction",
+        extra={"headers_migrated": 0, "authority": None},
+    )
+    monkeypatch.setattr(
+        worker,
+        "migrate_image_task",
+        lambda *_a, **_k: pytest.fail("contradictory status reached science"),
+    )
+
+    result = CliRunner().invoke(
+        worker.migration_worker_cli,
+        ["--config", str(config_path), "image", "--index", "0"],
+    )
+
+    assert result.exit_code == 0
+    status = json.loads(
+        worker.migration_worker_status_path(
+            plan.control_root, plan.generation, "image", 0
+        ).read_text()
+    )
+    assert status["status"] == "blocked"
+
+
+@pytest.mark.parametrize("overlay_alpha", [float("nan"), float("inf"), -0.1, 1.1])
+def test_plan_rejects_invalid_overlay_alpha_before_control_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    overlay_alpha: float,
+) -> None:
+    """Only finite compositing alpha values in the supported interval persist."""
+    from phenotypic._cli import _cli_migrate_slurm as subject
+
+    output = tmp_path / "run"
+    monkeypatch.setattr(subject, "discover_migration_tasks", lambda *_a: ())
+    monkeypatch.setattr(subject, "get_slurm_array_limit", lambda: 100)
+    monkeypatch.setattr(subject, "get_slurm_max_submit_jobs", lambda: 100)
+
+    with pytest.raises(ValueError, match="overlay alpha"):
+        subject.generate_migration_slurm_plan(
+            output,
+            slurm_args={},
+            overlay_alpha=overlay_alpha,
+            generation="generation-1",
+        )
+    assert not output.exists()
+
+
+def test_dry_scientific_callbacks_always_receive_generation_guard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dry callbacks retain the same lifecycle-fenced validation contract."""
+    from phenotypic._cli import _cli_migrate_worker as worker
+    from phenotypic._cli._cli_migrate import MetadataPassResult
+    from phenotypic._cli._cli_migrate_image import MigrationImageResult
+
+    _output, plan = _worker_plan(tmp_path, monkeypatch, dry_run=True)
+    config_path = plan.control_root / "migration_config.json"
+    guards: list[object] = []
+
+    def _metadata(*_a, commit_guard=None, **_k):
+        guards.append(commit_guard)
+        return MetadataPassResult(0, (), None)
+
+    def _image(_output, task, *, commit_guard=None, **_kwargs):
+        guards.append(commit_guard)
+        return MigrationImageResult(
+            index=task.index,
+            dataset=task.dataset,
+            stem=task.stem,
+            work_id="work",
+            converted=False,
+            table_installed=False,
+            overlay_rendered=False,
+            marker_digest="a" * 64,
+            skipped=True,
+        )
+
+    monkeypatch.setattr(worker, "run_metadata_pass", _metadata)
+    monkeypatch.setattr(worker, "migrate_image_task", _image)
+    assert CliRunner().invoke(
+        worker.migration_worker_cli,
+        ["--config", str(config_path), "metadata"],
+    ).exit_code == 0
+    assert CliRunner().invoke(
+        worker.migration_worker_cli,
+        ["--config", str(config_path), "image", "--index", "0"],
+    ).exit_code == 0
+    assert len(guards) == 2
+    assert all(callable(guard) for guard in guards)
+
+
+@pytest.mark.parametrize(("delete_sources", "seal_valid"), [(False, True), (True, False)])
+def test_reclaim_requires_requested_deletion_and_current_image_authority(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    delete_sources: bool,
+    seal_valid: bool,
+) -> None:
+    """No destructive callback runs without both user intent and current authority."""
+    from phenotypic._cli import _cli_migrate_worker as worker
+    from phenotypic._cli._cli_migrate_manifest import MigrationImageSeal
+
+    _output, plan = _worker_plan(tmp_path, monkeypatch)
+    config_path = plan.control_root / "migration_config.json"
+    raw = json.loads(config_path.read_text())
+    raw["delete_sources"] = delete_sources
+    config_path.write_text(json.dumps(raw))
+    config = worker._load_worker_config(config_path)
+    authority = {
+        "status_path": str(plan.control_root / "status.json"),
+        "terminal_receipt_path": str(plan.control_root / "receipt.json"),
+        "terminal_receipt_digest": "sha256:" + "1" * 64,
+        "plan_fingerprint": "sha256:" + "2" * 64,
+        "source_fingerprint": "sha256:" + "3" * 64,
+        "resulting_fingerprint": "sha256:" + "4" * 64,
+        "compatible_noop": False,
+    }
+    worker._publish_worker_status(
+        config,
+        "metadata",
+        status="complete",
+        extra={"headers_migrated": 0, "authority": authority},
+    )
+    seal = MigrationImageSeal(
+        generation=plan.generation,
+        manifest_digest=config.inventory_digest,
+        ordered_status_digest="ordered",
+        metadata_terminal_digest=authority["terminal_receipt_digest"],
+        clean=True,
+        failures=(),
+        seal_path=worker.migration_image_seal_path(
+            plan.control_root, plan.generation
+        ),
+    )
+    monkeypatch.setattr(worker, "_seal_from_path", lambda *_a: seal)
+    monkeypatch.setattr(
+        worker, "valid_migration_image_seal", lambda *_a, **_k: seal_valid
+    )
+    monkeypatch.setattr(
+        worker,
+        "reclaim_image_sources",
+        lambda *_a, **_k: pytest.fail("destructive reclaim lacked authority"),
+    )
+    monkeypatch.setattr(
+        worker, "publish_migration_reclaim_status", lambda *_a, **_k: None
+    )
+
+    result = CliRunner().invoke(
+        worker.migration_worker_cli,
+        ["--config", str(config_path), "reclaim", "--index", "0"],
+    )
+
+    assert result.exit_code == 1
+    status = json.loads(
+        worker.migration_worker_status_path(
+            plan.control_root, plan.generation, "reclaim", 0
+        ).read_text()
+    )
+    assert status["status"] == "blocked"
+
+
+def test_second_submission_regenerates_and_submits_new_generation_with_noop_retry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A second real plan/submit attempt retries completed image science as a no-op."""
+    from phenotypic._cli import _cli_migrate_slurm as slurm
+    from phenotypic._cli import _cli_migrate_worker as worker
+    from phenotypic._cli._cli_migrate import MetadataPassResult
+    from phenotypic._cli._cli_migrate_image import MigrationImageResult
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+    from phenotypic.sdk_._metadata_migration import MetadataMigrationAuthority
+
+    output = tmp_path / "run"
+    monkeypatch.setattr(slurm, "discover_migration_tasks", lambda *_a: _tasks(output, 2))
+    monkeypatch.setattr(slurm, "get_slurm_array_limit", lambda: 100)
+    monkeypatch.setattr(slurm, "get_slurm_max_submit_jobs", lambda: 100)
+    submissions: list[str] = []
+
+    def _submit(**kwargs):
+        submissions.append(kwargs["generation"])
+        return SimpleNamespace(job_ids=[str(len(submissions))])
+
+    monkeypatch.setattr(slurm, "submit_slurm_script_chain", _submit)
+    first = slurm.generate_migration_slurm_plan(
+        output, slurm_args={}, generation="generation-1"
+    )
+    second = slurm.generate_migration_slurm_plan(
+        output, slurm_args={}, generation="generation-2"
+    )
+    slurm.submit_migration_slurm_plan(
+        first, slurm_args={}, console=SimpleNamespace(print=lambda *_a: None)
+    )
+    slurm.submit_migration_slurm_plan(
+        second, slurm_args={}, console=SimpleNamespace(print=lambda *_a: None)
+    )
+    initialize_slurm_lifecycle(output, generation=second.generation, mode="migrate")
+    authority = MetadataMigrationAuthority(
+        status_path=second.control_root / "status.json",
+        terminal_receipt_path=second.control_root / "receipt.json",
+        terminal_receipt_digest="sha256:" + "1" * 64,
+        plan_fingerprint="sha256:" + "2" * 64,
+        source_fingerprint="sha256:" + "3" * 64,
+        resulting_fingerprint="sha256:" + "4" * 64,
+        compatible_noop=True,
+    )
+    monkeypatch.setattr(
+        worker,
+        "run_metadata_pass",
+        lambda *_a, **_k: MetadataPassResult(0, (), authority),
+    )
+    retried: list[int] = []
+
+    def _migrate(_output, task, **_kwargs):
+        retried.append(task.index)
+        return MigrationImageResult(
+            index=task.index,
+            dataset=task.dataset,
+            stem=task.stem,
+            work_id="work",
+            converted=task.index == 1,
+            table_installed=False,
+            overlay_rendered=False,
+            marker_digest="a" * 64,
+            skipped=task.index == 0,
+        )
+
+    monkeypatch.setattr(worker, "migrate_image_task", _migrate)
+    monkeypatch.setattr(worker, "invalidate_migration_terminal_authority", lambda *_a, **_k: None)
+    monkeypatch.setattr(worker, "publish_migration_task_status", lambda *_a, **_k: None)
+    config_path = second.control_root / "migration_config.json"
+    assert CliRunner().invoke(
+        worker.migration_worker_cli,
+        ["--config", str(config_path), "metadata"],
+    ).exit_code == 0
+    for index in range(2):
+        assert CliRunner().invoke(
+            worker.migration_worker_cli,
+            ["--config", str(config_path), "image", "--index", str(index)],
+        ).exit_code == 0
+
+    assert submissions == ["generation-1", "generation-2"]
+    assert retried == [0, 1]
+    first_status = json.loads(
+        worker.migration_worker_status_path(
+            second.control_root, second.generation, "image", 0
+        ).read_text()
+    )
+    second_status = json.loads(
+        worker.migration_worker_status_path(
+            second.control_root, second.generation, "image", 1
+        ).read_text()
+    )
+    assert first_status["result"]["skipped"] is True
+    assert second_status["result"]["converted"] is True
 
 
 def test_finalizer_closes_when_upstream_status_payload_is_corrupt(

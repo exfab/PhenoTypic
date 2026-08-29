@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, replace
 import json
+import math
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -40,6 +41,7 @@ from ._cli_migrate_manifest import (
     seal_migration_image_stage,
     seal_migration_reclaim_stage,
     validate_migration_generation,
+    valid_migration_image_seal,
 )
 from ._cli_slurm_lifecycle import (
     assert_generation_active,
@@ -157,6 +159,8 @@ def _load_worker_config(path: Path) -> _WorkerConfig:
     if (
         not isinstance(overlay_alpha, (int, float))
         or isinstance(overlay_alpha, bool)
+        or not math.isfinite(overlay_alpha)
+        or not 0.0 <= overlay_alpha <= 1.0
         or not isinstance(delete_sources, bool)
         or not isinstance(dry_run, bool)
     ):
@@ -236,6 +240,22 @@ def _read_worker_status(
             or isinstance(raw.get("failure_category"), str)
         )
         or not (raw.get("reason") is None or isinstance(raw.get("reason"), str))
+        or (
+            raw.get("status") == "complete"
+            and (
+                raw.get("failure_category") is not None
+                or raw.get("reason") is not None
+            )
+        )
+        or (
+            raw.get("status") in {"failed", "blocked"}
+            and (
+                not isinstance(raw.get("failure_category"), str)
+                or not raw.get("failure_category")
+                or not isinstance(raw.get("reason"), str)
+                or not raw.get("reason")
+            )
+        )
     ):
         return None
     return raw
@@ -274,12 +294,22 @@ def _authority_from_payload(value: object) -> MetadataMigrationAuthority | None:
         "terminal_receipt_digest", "plan_fingerprint",
         "source_fingerprint", "resulting_fingerprint",
     )
+
+    def _exact_sha256(field: str) -> bool:
+        candidate = value[field]
+        if not isinstance(candidate, str) or not candidate.startswith("sha256:"):
+            return False
+        digest = candidate.removeprefix("sha256:")
+        if len(digest) != 64:
+            return False
+        try:
+            return bytes.fromhex(digest).hex() == digest
+        except ValueError:
+            return False
+
     if (
         any(not isinstance(value[field], str) or not value[field] for field in path_fields)
-        or any(
-            not isinstance(value[field], str) or not value[field]
-            for field in digest_fields
-        )
+        or any(not _exact_sha256(field) for field in digest_fields)
         or not isinstance(value["compatible_noop"], bool)
     ):
         return None
@@ -329,7 +359,7 @@ def _run_metadata_worker(config: _WorkerConfig) -> int:
         result = run_metadata_pass(
             config.output_dir,
             dry_run=config.dry_run,
-            commit_guard=None if config.dry_run else _commit_guard(config),
+            commit_guard=_commit_guard(config),
         )
         if result.failures or (not config.dry_run and result.authority is None):
             reason = (
@@ -404,7 +434,7 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
             ),
             overlay_alpha=config.overlay_alpha,
             dry_run=config.dry_run,
-            commit_guard=None if config.dry_run else _commit_guard(config),
+            commit_guard=_commit_guard(config),
         )
         if not config.dry_run:
             assert authority is not None
@@ -541,6 +571,31 @@ def _run_reclaim_worker(config: _WorkerConfig, index: int) -> int:
     task = None
     seal_path = migration_image_seal_path(config.control_root, config.generation)
     image_seal = _seal_from_path(seal_path)
+    metadata = _read_worker_status(config, "metadata")
+    authority, metadata_failure = _metadata_prerequisite(config, metadata)
+    authorization_failure: str | None = None
+    if not config.delete_sources:
+        authorization_failure = "source deletion was not requested"
+    elif config.dry_run:
+        authorization_failure = "dry-run cannot reclaim sources"
+    elif metadata_failure is not None or authority is None:
+        authorization_failure = metadata_failure or "metadata authority is missing"
+    elif image_seal is None or not image_seal.clean:
+        authorization_failure = "image seal is missing or not clean"
+    elif (
+        image_seal.generation != config.generation
+        or image_seal.manifest_digest != config.inventory_digest
+        or image_seal.metadata_terminal_digest
+        != authority.terminal_receipt_digest
+    ):
+        authorization_failure = "image seal does not bind current migration authority"
+    elif not valid_migration_image_seal(
+        config.control_root,
+        image_seal,
+        manifest_path=config.manifest_path,
+        expected_scientific_output=config.scientific_output,
+    ):
+        authorization_failure = "image seal is not current canonical authority"
     try:
         task = read_migration_task(
             config.manifest_path,
@@ -549,8 +604,11 @@ def _run_reclaim_worker(config: _WorkerConfig, index: int) -> int:
             expected_control_root=config.control_root,
         )
         result = (
-            _retained_reclaim_result(config.output_dir, task, None)
-            if image_seal is None or not image_seal.clean
+            replace(
+                _retained_reclaim_result(config.output_dir, task, None),
+                reason=authorization_failure,
+            )
+            if authorization_failure is not None
             else reclaim_image_sources(
                 config.output_dir,
                 task,
