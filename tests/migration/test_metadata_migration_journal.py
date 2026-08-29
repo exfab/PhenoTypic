@@ -512,11 +512,9 @@ def test_many_targets_replay_log_once_and_keep_one_append_handle(
     assert len(_decode_frames(log_path)) == target_count * 2
 
 
-@pytest.mark.parametrize("portable", [False, True])
 def test_concurrent_journal_writer_is_refused(
     migratable_bundle: BundleLayout,
     monkeypatch: pytest.MonkeyPatch,
-    portable: bool,
 ) -> None:
     """Removing exclusive ownership must let both writers choose sequence 0."""
     import phenotypic.sdk_._metadata_migration as migration
@@ -524,8 +522,6 @@ def test_concurrent_journal_writer_is_refused(
     report = preflight_metadata_schema(
         migratable_bundle, kinds=NON_IMAGE_KINDS
     )
-    if portable:
-        monkeypatch.setattr(migration, "_JOURNAL_DIR_FD_SUPPORTED", False)
     real_prepare = migration._prepare_receipt_target
     first_prepare_entered = Event()
     release_first_writer = Event()
@@ -568,55 +564,6 @@ def test_concurrent_journal_writer_is_refused(
     assert competing.status == "failed"
     assert "lock" in " ".join(competing.conflicts).lower()
     assert first.status == "applied", first.conflicts
-
-
-def test_portable_receipt_replays_after_process_death(
-    migratable_bundle: BundleLayout,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A durable prepared transition is replayed after its writer disappears."""
-    import phenotypic.sdk_._metadata_migration as migration
-
-    report = preflight_metadata_schema(
-        migratable_bundle, kinds=NON_IMAGE_KINDS
-    )
-    real_write = migration._write_receipt
-    crashed = False
-
-    def crash_after_prepared(path: Path, receipt: dict[str, object]) -> None:
-        nonlocal crashed
-        real_write(path, receipt)
-        targets = receipt.get("targets")
-        if (
-            not crashed
-            and isinstance(targets, list)
-            and any(
-                isinstance(target, dict) and target.get("state") == "prepared"
-                for target in targets
-            )
-        ):
-            crashed = True
-            raise _SimulatedProcessDeath("after portable prepared receipt")
-
-    monkeypatch.setattr(migration, "_JOURNAL_DIR_FD_SUPPORTED", False)
-    monkeypatch.setattr(migration, "_write_receipt", crash_after_prepared)
-    with pytest.raises(_SimulatedProcessDeath, match="portable prepared"):
-        migrate_preflighted_metadata_bundle(
-            migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
-        )
-    monkeypatch.setattr(migration, "_write_receipt", real_write)
-
-    result = reconcile_metadata_migration_bundle(
-        migratable_bundle,
-        kinds=NON_IMAGE_KINDS,
-        target_role=report.target_role,
-        expected_plan_fingerprint=report.plan_fingerprint,
-    )
-
-    assert result is not None and result.status == "applied", result
-    assert metadata_migration_authority(migratable_bundle).terminal_receipt_path == (
-        result.receipt_path
-    )
 
 
 def test_compatible_bundle_reuses_stable_noop_terminal_authority(
@@ -1236,30 +1183,62 @@ def test_torn_log_truncate_rechecks_log_and_lock_after_fsync(
     ).exists()
 
 
-def test_portable_journal_backend_migrates_without_dir_fd_capabilities(
+def test_unanchored_platform_fails_before_scientific_mutation(
     migratable_bundle: BundleLayout,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Supported non-Linux hosts retain journal replay and terminal authority."""
+    """A host without handle-bound traversal cannot use full-path authority I/O."""
     import phenotypic.sdk_._metadata_migration as migration
 
     report = preflight_metadata_schema(
         migratable_bundle, kinds=NON_IMAGE_KINDS
     )
+    before = {
+        target.path: Path(target.path).read_bytes() for target in report.targets
+    }
     monkeypatch.setattr(migration, "_JOURNAL_DIR_FD_SUPPORTED", False)
 
     result = migrate_preflighted_metadata_bundle(
         migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
     )
 
-    assert result.status == "applied"
-    assert result.receipt_path is not None and result.receipt_path.is_file()
-    assert metadata_migration_authority(migratable_bundle).terminal_receipt_path == (
-        result.receipt_path
-    )
+    assert result.status == "failed"
+    assert "descriptor" in " ".join(result.conflicts).lower()
+    assert {
+        target.path: Path(target.path).read_bytes() for target in report.targets
+    } == before
 
 
-def test_unsupported_portable_platform_fails_before_any_mutation(
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_descriptor_relative_noreplace_move_works_without_renameat2(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """macOS uses held-directory hard-link publication when renameat2 is absent."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    authority = tmp_path / "authority"
+    authority.mkdir()
+    source = authority / "source.json"
+    destination = authority / "destination.json"
+    source.write_bytes(b"immutable authority")
+    monkeypatch.setattr(migration, "_RENAMEAT2", None)
+
+    with migration._open_anchored_journal_directory(
+        tmp_path, authority
+    ) as directory:
+        migration._rename_anchored_noreplace(
+            directory,
+            source.name,
+            destination.name,
+            role="test authority",
+        )
+
+    assert not source.exists()
+    assert destination.read_bytes() == b"immutable authority"
+
+
+def test_unsupported_handle_bound_platform_fails_before_any_mutation(
     migratable_bundle: BundleLayout,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1279,26 +1258,24 @@ def test_unsupported_portable_platform_fails_before_any_mutation(
         / "metadata_migration"
     )
     monkeypatch.setattr(migration, "_JOURNAL_DIR_FD_SUPPORTED", False)
-    monkeypatch.setattr(migration, "_PORTABLE_JOURNAL_SUPPORTED", False)
 
     result = migrate_preflighted_metadata_bundle(
         migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
     )
 
     assert result.status == "failed"
-    assert "portable" in " ".join(result.conflicts).lower()
+    assert "descriptor" in " ".join(result.conflicts).lower()
     assert {
         target.path: Path(target.path).read_bytes() for target in report.targets
     } == before
     assert not authority_root.exists()
 
 
-def test_portable_backend_refuses_windows_junction_before_science_mutation(
+def test_handle_bound_backend_refuses_windows_junction_before_science_mutation(
     migratable_bundle: BundleLayout,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A Windows reparse-point ancestor is traversal, even if not a symlink."""
-    import phenotypic.sdk_._metadata_migration as migration
 
     assert migratable_bundle.output_root is not None
     report = preflight_metadata_schema(
@@ -1313,21 +1290,18 @@ def test_portable_backend_refuses_windows_junction_before_science_mutation(
     def fake_is_junction(path: Path) -> bool:
         return path == junction or real_is_junction(path)
 
-    monkeypatch.setattr(migration, "_JOURNAL_DIR_FD_SUPPORTED", False)
     monkeypatch.setattr(Path, "is_junction", fake_is_junction, raising=False)
 
-    result = migrate_preflighted_metadata_bundle(
-        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
-    )
-
-    assert result.status == "failed"
-    assert "junction" in " ".join(result.conflicts).lower()
+    with pytest.raises(ValueError, match="junction"):
+        migrate_preflighted_metadata_bundle(
+            migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+        )
     assert {
         target.path: Path(target.path).read_bytes() for target in report.targets
     } == before
 
 
-def test_python311_portable_guard_refuses_windows_reparse_points() -> None:
+def test_python311_handle_bound_guard_refuses_windows_reparse_points() -> None:
     """Python 3.11 uses stat attributes when pathlib lacks is_junction."""
     import phenotypic.sdk_._metadata_migration as migration
 
@@ -1339,7 +1313,7 @@ def test_python311_portable_guard_refuses_windows_reparse_points() -> None:
     assert migration._path_is_junction(Python311ReparsePath()) is True
 
 
-def test_portable_backend_never_clobbers_competing_receipt(
+def test_handle_bound_backend_never_clobbers_competing_receipt(
     migratable_bundle: BundleLayout,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1361,7 +1335,6 @@ def test_portable_backend_never_clobbers_competing_receipt(
     before = {
         target.path: Path(target.path).read_bytes() for target in report.targets
     }
-    monkeypatch.setattr(migration, "_JOURNAL_DIR_FD_SUPPORTED", False)
 
     result = migrate_preflighted_metadata_bundle(
         migratable_bundle, report=report, kinds=NON_IMAGE_KINDS

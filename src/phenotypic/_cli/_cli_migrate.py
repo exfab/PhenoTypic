@@ -30,16 +30,22 @@ failed scheduler token.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import contextmanager, ExitStack
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
 import socket
 import time
-from typing import Any
+from typing import Any, Iterator
 
 import click
 import psutil
+
+from phenotypic.sdk_._file_locking import (
+    ArtifactLockTimeout,
+    exclusive_path_lock,
+)
 
 from ._cli_migrate_image import (
     MigrationImagePartialResult,
@@ -270,13 +276,49 @@ _ACTIVE_SLURM_STATES = frozenset(
         "CONFIGURING",
         "COMPLETING",
         "PENDING",
+        "REQUEUE_FED",
+        "REQUEUE_HOLD",
         "REQUEUED",
+        "RESV_DEL_HOLD",
         "RESIZING",
         "RUNNING",
+        "SIGNALING",
         "STAGE_OUT",
         "SUSPENDED",
     }
 )
+
+_TERMINAL_SLURM_STATES = frozenset(
+    {
+        "BOOT_FAIL",
+        "CANCELLED",
+        "COMPLETED",
+        "DEADLINE",
+        "FAILED",
+        "NODE_FAIL",
+        "OUT_OF_MEMORY",
+        "PREEMPTED",
+        "REVOKED",
+        "SPECIAL_EXIT",
+        "TIMEOUT",
+    }
+)
+
+
+def migration_attempt_lease_path(lifecycle_root: Path) -> Path:
+    """Return the stable shared-filesystem lease for migration ownership."""
+    return phenotypic_cache_dir(Path(lifecycle_root).resolve()) / (
+        ".migration-attempt.lease"
+    )
+
+
+@contextmanager
+def _migration_attempt_lease(lifecycle_root: Path) -> Iterator[None]:
+    """Hold exclusive migration ownership across one local/submission lifetime."""
+    with exclusive_path_lock(
+        migration_attempt_lease_path(lifecycle_root), timeout=0.0
+    ):
+        yield
 
 
 def _owned_process_is_alive(state: Mapping[str, Any]) -> bool | None:
@@ -351,6 +393,7 @@ def reconcile_interrupted_migration_attempt(
     *,
     control_root: Path | None = None,
     scheduler_state_query: Callable[[Sequence[str]], Mapping[str, str]] | None = None,
+    _lease_held: bool = False,
 ) -> bool:
     """Terminalize one provably dead local or quiescent SLURM generation.
 
@@ -358,6 +401,24 @@ def reconcile_interrupted_migration_attempt(
     live. Unknown ownership and incomplete scheduler evidence fail closed.
     """
     lifecycle_root = Path(lifecycle_root).resolve()
+    if not _lease_held:
+        state_before_lease = load_slurm_lifecycle(lifecycle_root)
+        if (
+            state_before_lease is None
+            or state_before_lease.get("active") is not True
+            or state_before_lease.get("mode") != "migrate"
+        ):
+            return False
+        try:
+            with _migration_attempt_lease(lifecycle_root):
+                return reconcile_interrupted_migration_attempt(
+                    lifecycle_root,
+                    control_root=control_root,
+                    scheduler_state_query=scheduler_state_query,
+                    _lease_held=True,
+                )
+        except ArtifactLockTimeout:
+            return False
     state = load_slurm_lifecycle(lifecycle_root)
     if (
         state is None
@@ -389,8 +450,6 @@ def reconcile_interrupted_migration_attempt(
     if owner_kind == "local":
         if owner_alive is True:
             return False
-        if owner_alive is None:
-            raise RuntimeError("Cannot prove whether the local migration owner is alive")
         reason = "Interrupted migration: local owner process is no longer alive"
     elif owner_kind == "slurm":
         job_ids = _active_generation_job_ids(lifecycle_root, generation)
@@ -414,11 +473,18 @@ def reconcile_interrupted_migration_attempt(
                 raise SchedulerQueryUnavailable(
                     "Scheduler state is incomplete for active migration jobs"
                 )
-            if any(
-                str(state_value).rstrip("+").upper() in _ACTIVE_SLURM_STATES
+            normalized_states = {
+                str(state_value).rstrip("+").upper()
                 for state_value in states.values()
-            ):
+            }
+            if normalized_states & _ACTIVE_SLURM_STATES:
                 return False
+            unknown_states = normalized_states - _TERMINAL_SLURM_STATES
+            if unknown_states:
+                raise SchedulerQueryUnavailable(
+                    "Scheduler returned unknown migration job states: "
+                    + ", ".join(sorted(unknown_states))
+                )
         elif owner_alive is True:
             return False
         reason = (
@@ -1413,6 +1479,34 @@ def run_migrate(
     dry_run: bool = False,
     delete_sources: bool = False,
 ) -> MigrationReport:
+    """Run migration while holding shared-filesystem attempt ownership."""
+    output_dir = Path(output_dir)
+    if dry_run:
+        return _run_migrate_owned(
+            output_dir,
+            njobs=njobs,
+            overlay_alpha=overlay_alpha,
+            dry_run=True,
+            delete_sources=delete_sources,
+        )
+    with _migration_attempt_lease(output_dir):
+        return _run_migrate_owned(
+            output_dir,
+            njobs=njobs,
+            overlay_alpha=overlay_alpha,
+            dry_run=False,
+            delete_sources=delete_sources,
+        )
+
+
+def _run_migrate_owned(
+    output_dir: Path,
+    *,
+    njobs: int = 1,
+    overlay_alpha: float = 0.3,
+    dry_run: bool = False,
+    delete_sources: bool = False,
+) -> MigrationReport:
     """Run both passes over *output_dir* and return the combined report.
 
     Args:
@@ -1454,7 +1548,7 @@ def run_migrate(
             header_failures=metadata_pass.failures,
         )
 
-    reconcile_interrupted_migration_attempt(output_dir)
+    reconcile_interrupted_migration_attempt(output_dir, _lease_held=True)
     generation = new_slurm_generation()
     initialize_slurm_lifecycle(
         output_dir,
@@ -2085,69 +2179,90 @@ def handle_migrate_mode(
         echo_migration_summary(output_dir, report, dry_run=dry_run)
         return 0 if report.ok else 1
 
-    if not dry_run:
-        try:
-            reconcile_interrupted_migration_attempt(output_dir)
-        except (RuntimeError, SchedulerQueryUnavailable, ValueError) as exc:
-            raise click.ClickException(
-                f"Could not reconcile prior SLURM migration attempt: {exc}"
-            ) from exc
-        active = load_slurm_lifecycle(output_dir)
-        if active is not None and active.get("active") is True:
-            raise click.ClickException(
-                "Could not initialize SLURM migration attempt: Output already "
-                "has an active SLURM generation "
-                f"{active.get('generation')!r}"
-            )
     generation = new_slurm_generation()
     try:
-        plan = generate_migration_slurm_plan(
-            output_dir,
-            slurm_args=dict(slurm_args),
-            overlay_alpha=overlay_alpha,
-            delete_sources=delete_sources,
-            dry_run=dry_run,
-            generation=generation,
-        )
-    except (OSError, ValueError) as exc:
-        raise click.ClickException(
-            f"Could not plan SLURM migration attempt: {exc}"
-        ) from exc
-    lifecycle_root = plan.control_root if dry_run else Path(output_dir)
-    try:
-        initialize_slurm_lifecycle(
-            lifecycle_root,
-            generation=generation,
-            mode="migrate",
-            owner_kind="slurm",
-            control_root=plan.control_root,
-        )
-    except RuntimeError as exc:
-        if "Output already has an active SLURM generation" not in str(exc):
-            raise
-        raise click.ClickException(
-            f"Could not initialize SLURM migration attempt: {exc}"
-        ) from exc
-    try:
-        from rich.console import Console
+        with ExitStack() as attempt_lease:
+            if not dry_run:
+                attempt_lease.enter_context(
+                    _migration_attempt_lease(Path(output_dir))
+                )
+                try:
+                    reconcile_interrupted_migration_attempt(
+                        output_dir, _lease_held=True
+                    )
+                except (
+                    RuntimeError,
+                    SchedulerQueryUnavailable,
+                    ValueError,
+                ) as exc:
+                    raise click.ClickException(
+                        "Could not reconcile prior SLURM migration attempt: "
+                        f"{exc}"
+                    ) from exc
+                active = load_slurm_lifecycle(output_dir)
+                if active is not None and active.get("active") is True:
+                    raise click.ClickException(
+                        "Could not initialize SLURM migration attempt: Output "
+                        "already has an active SLURM generation "
+                        f"{active.get('generation')!r}"
+                    )
+            try:
+                plan = generate_migration_slurm_plan(
+                    output_dir,
+                    slurm_args=dict(slurm_args),
+                    overlay_alpha=overlay_alpha,
+                    delete_sources=delete_sources,
+                    dry_run=dry_run,
+                    generation=generation,
+                )
+            except (OSError, ValueError) as exc:
+                raise click.ClickException(
+                    f"Could not plan SLURM migration attempt: {exc}"
+                ) from exc
+            lifecycle_root = plan.control_root if dry_run else Path(output_dir)
+            if dry_run:
+                attempt_lease.enter_context(
+                    _migration_attempt_lease(lifecycle_root)
+                )
+            try:
+                initialize_slurm_lifecycle(
+                    lifecycle_root,
+                    generation=generation,
+                    mode="migrate",
+                    owner_kind="slurm",
+                    control_root=plan.control_root,
+                )
+            except RuntimeError as exc:
+                if "Output already has an active SLURM generation" not in str(exc):
+                    raise
+                raise click.ClickException(
+                    f"Could not initialize SLURM migration attempt: {exc}"
+                ) from exc
+            try:
+                from rich.console import Console
 
-        submission = submit_migration_slurm_plan(
-            plan, slurm_args=dict(slurm_args), console=Console()
-        )
-        job_ids = _validated_submission_job_ids(submission)
-    except (OSError, RuntimeError, ValueError) as exc:
-        mark_generation_failed(lifecycle_root, generation, str(exc))
+                submission = submit_migration_slurm_plan(
+                    plan, slurm_args=dict(slurm_args), console=Console()
+                )
+                job_ids = _validated_submission_job_ids(submission)
+            except (OSError, RuntimeError, ValueError) as exc:
+                mark_generation_failed(lifecycle_root, generation, str(exc))
+                raise click.ClickException(
+                    f"Could not submit SLURM migration attempt: {exc}"
+                ) from exc
+            except click.ClickException:
+                mark_generation_failed(
+                    lifecycle_root, generation, "invalid submission response"
+                )
+                raise
+            except Exception as exc:
+                mark_generation_failed(lifecycle_root, generation, str(exc))
+                raise
+    except ArtifactLockTimeout as exc:
         raise click.ClickException(
-            f"Could not submit SLURM migration attempt: {exc}"
+            "Could not acquire migration attempt lease; another local or "
+            "submission owner is active"
         ) from exc
-    except click.ClickException:
-        mark_generation_failed(
-            lifecycle_root, generation, "invalid submission response"
-        )
-        raise
-    except Exception as exc:
-        mark_generation_failed(lifecycle_root, generation, str(exc))
-        raise
     _echo_migration_slurm_submission(plan, job_ids=job_ids, dry_run=dry_run)
     if not wait:
         return 0

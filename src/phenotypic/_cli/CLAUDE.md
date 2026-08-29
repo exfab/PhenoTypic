@@ -194,6 +194,14 @@ generation's typed terminal status. A failed or missing terminal authority is a
 Click error carrying the durable failure reason. Each rerun is a new
 generation/attempt, rather than reuse of a prior failed scheduler token.
 
+Local mutation and the complete plan/initialize/submit critical section hold a
+shared-filesystem migration attempt lease. Recovery must acquire that lease
+nonblocking before declaring an owner dead or a submission abandoned; hostname
+and PID fields are diagnostic only across hosts. For a ledgered SLURM attempt,
+only an explicit known terminal scheduler state permits interrupted
+terminalization. Every active/held/requeue/signaling state preserves the attempt,
+and an unknown state fails closed.
+
 ## Durability (`--durable-writes` / `--no-durable-writes`)
 
 Whether each per-image store is `fsync`ed before its promote. The flag is a

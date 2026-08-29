@@ -390,6 +390,10 @@ def test_direct_slurm_dry_run_submits_from_external_control_root(
 ) -> None:
     """Dry validation must enter the scheduler rather than stop at planning."""
     from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic.sdk_._file_locking import (
+        ArtifactLockTimeout,
+        exclusive_path_lock,
+    )
 
     output = tmp_path / "run"
     output.mkdir()
@@ -405,6 +409,12 @@ def test_direct_slurm_dry_run_submits_from_external_control_root(
         lifecycle = migrate.load_slurm_lifecycle(plan.control_root)
         assert lifecycle is not None and lifecycle["active"] is True
         assert migrate.load_slurm_lifecycle(output) is None
+        with pytest.raises(ArtifactLockTimeout):
+            with exclusive_path_lock(
+                migrate.migration_attempt_lease_path(plan.control_root),
+                timeout=0.0,
+            ):
+                pass
         return SimpleNamespace(job_ids=["101", "102"])
 
     monkeypatch.setattr(migrate, "submit_migration_slurm_plan", submit)
@@ -546,6 +556,165 @@ def test_reused_local_owner_pid_does_not_keep_dead_attempt_live(
     atomic_write_json(lifecycle_state_path(output), state)
 
     assert migrate.reconcile_interrupted_migration_attempt(output) is True
+
+
+def test_remote_local_owner_is_fenced_by_shared_attempt_lease(
+    tmp_path: Path,
+) -> None:
+    """A remote holder wins over unverifiable host-local PID metadata."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        initialize_slurm_lifecycle,
+        lifecycle_state_path,
+        load_slurm_lifecycle,
+    )
+    from phenotypic.sdk_ import atomic_write_json
+    from phenotypic.sdk_._file_locking import exclusive_path_lock
+
+    output = tmp_path / "run"
+    output.mkdir()
+    state = initialize_slurm_lifecycle(
+        output,
+        generation="remote-local",
+        mode="migrate",
+        owner_kind="local",
+        control_root=output / ".phenotypic",
+    )
+    state["owner_host"] = "remote-compute-node"
+    atomic_write_json(lifecycle_state_path(output), state)
+
+    with exclusive_path_lock(
+        migrate.migration_attempt_lease_path(output), timeout=0.0
+    ):
+        assert migrate.reconcile_interrupted_migration_attempt(output) is False
+        active = load_slurm_lifecycle(output)
+        assert active is not None and active["active"] is True
+
+    assert migrate.reconcile_interrupted_migration_attempt(output) is True
+
+
+def test_remote_slurm_presubmission_is_fenced_by_shared_attempt_lease(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A no-job remote submitter remains live while its shared lease is held."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        initialize_slurm_lifecycle,
+        lifecycle_state_path,
+        load_slurm_lifecycle,
+    )
+    from phenotypic.sdk_ import atomic_write_json
+    from phenotypic.sdk_._file_locking import exclusive_path_lock
+
+    output = tmp_path / "run"
+    output.mkdir()
+    state = initialize_slurm_lifecycle(
+        output,
+        generation="remote-submit",
+        mode="migrate",
+        owner_kind="slurm",
+        control_root=output / "control",
+    )
+    state["owner_host"] = "remote-submit-node"
+    atomic_write_json(lifecycle_state_path(output), state)
+    monkeypatch.setattr(migrate, "query_scheduler_comments", lambda **_kw: {})
+
+    with exclusive_path_lock(
+        migrate.migration_attempt_lease_path(output), timeout=0.0
+    ):
+        assert migrate.reconcile_interrupted_migration_attempt(output) is False
+
+    active = load_slurm_lifecycle(output)
+    assert active is not None and active["active"] is True
+
+
+@pytest.mark.parametrize(
+    "scheduler_state",
+    [
+        "RUNNING",
+        "RESV_DEL_HOLD",
+        "REQUEUE_FED",
+        "REQUEUE_HOLD",
+        "SIGNALING",
+    ],
+)
+def test_slurm_recovery_preserves_every_explicit_active_state(
+    tmp_path: Path,
+    scheduler_state: str,
+) -> None:
+    """Every documented nonterminal scheduler state fences recovery."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        append_lifecycle_entry,
+        initialize_slurm_lifecycle,
+        load_slurm_lifecycle,
+    )
+
+    output = tmp_path / "run"
+    output.mkdir()
+    initialize_slurm_lifecycle(
+        output,
+        generation="active-state",
+        mode="migrate",
+        owner_kind="slurm",
+        control_root=output / "control",
+    )
+    append_lifecycle_entry(
+        output,
+        generation="active-state",
+        token="chunk-0",
+        role="chunk",
+        status="submitted",
+        job_id="101",
+    )
+
+    recovered = migrate.reconcile_interrupted_migration_attempt(
+        output,
+        scheduler_state_query=lambda _ids: {"101": scheduler_state},
+    )
+
+    assert recovered is False
+    state = load_slurm_lifecycle(output)
+    assert state is not None and state["active"] is True
+
+
+def test_slurm_recovery_refuses_unknown_scheduler_state(tmp_path: Path) -> None:
+    """A future scheduler state is not silently classified as terminal."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        SchedulerQueryUnavailable,
+        append_lifecycle_entry,
+        initialize_slurm_lifecycle,
+        load_slurm_lifecycle,
+    )
+
+    output = tmp_path / "run"
+    output.mkdir()
+    initialize_slurm_lifecycle(
+        output,
+        generation="unknown-state",
+        mode="migrate",
+        owner_kind="slurm",
+        control_root=output / "control",
+    )
+    append_lifecycle_entry(
+        output,
+        generation="unknown-state",
+        token="chunk-0",
+        role="chunk",
+        status="submitted",
+        job_id="101",
+    )
+
+    with pytest.raises(SchedulerQueryUnavailable, match="unknown"):
+        migrate.reconcile_interrupted_migration_attempt(
+            output,
+            scheduler_state_query=lambda _ids: {"101": "FUTURE_STATE"},
+        )
+
+    state = load_slurm_lifecycle(output)
+    assert state is not None and state["active"] is True
 
 
 def test_wait_terminalizes_quiescent_slurm_attempt_missing_finalizer(

@@ -1351,7 +1351,6 @@ def _journal_directory_flags() -> int:
 
 _JOURNAL_DIR_FD_SUPPORTED = (
     os.name == "posix"
-    and _RENAMEAT2 is not None
     and hasattr(os, "O_CLOEXEC")
     and hasattr(os, "O_DIRECTORY")
     and hasattr(os, "O_NOFOLLOW")
@@ -1365,10 +1364,10 @@ _JOURNAL_DIR_FD_SUPPORTED = (
     and os.unlink in os.supports_dir_fd
 )
 
-_PORTABLE_JOURNAL_SUPPORTED = all(
-    callable(candidate)
-    for candidate in (getattr(os, "link", None), getattr(os, "open", None))
-)
+# No full-path fallback is safe against an authority-parent swap. Windows must
+# remain fail-closed until a handle-relative implementation provides equivalent
+# reparse-point and file-ID binding.
+_PORTABLE_JOURNAL_SUPPORTED = False
 
 
 def _require_journal_descriptor_capabilities() -> None:
@@ -1383,7 +1382,7 @@ def _require_portable_journal_capabilities() -> None:
     """Fail before authority creation when safe portable primitives are absent."""
     if not _PORTABLE_JOURNAL_SUPPORTED:
         raise RuntimeError(
-            "Metadata migration portable journal safety is unsupported"
+            "Metadata migration handle-bound descriptor safety is unsupported"
         )
 
 
@@ -1737,20 +1736,69 @@ def _rename_anchored_noreplace(
 ) -> None:
     """Rename one held-directory child atomically without replacement."""
     _verify_anchored_journal_directory(directory)
-    _require_absent_anchored_child(directory, destination_name, role=role)
-    renameat2 = _libc_renameat2()
-    result = renameat2(
-        directory.fd,
-        os.fsencode(source_name),
-        directory.fd,
-        os.fsencode(destination_name),
-        _RENAME_NOREPLACE,
+    source = os.stat(
+        source_name, dir_fd=directory.fd, follow_symlinks=False
     )
-    if result != 0:
-        error_number = ctypes.get_errno()
-        if error_number == errno.EEXIST:
-            raise ValueError(f"Competing {role} already exists")
-        raise OSError(error_number, os.strerror(error_number))
+    if not stat.S_ISREG(source.st_mode):
+        raise ValueError(f"{role} source is not a regular file")
+    source_identity = (source.st_dev, source.st_ino)
+    renameat2 = _RENAMEAT2
+    if renameat2 is not None:
+        _require_absent_anchored_child(
+            directory, destination_name, role=role
+        )
+        renameat2 = _libc_renameat2()
+        result = renameat2(
+            directory.fd,
+            os.fsencode(source_name),
+            directory.fd,
+            os.fsencode(destination_name),
+            _RENAME_NOREPLACE,
+        )
+        if result != 0:
+            error_number = ctypes.get_errno()
+            if error_number == errno.EEXIST:
+                raise ValueError(f"Competing {role} already exists")
+            raise OSError(error_number, os.strerror(error_number))
+    else:
+        try:
+            existing = os.stat(
+                destination_name,
+                dir_fd=directory.fd,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError:
+            existing = None
+        if existing is not None:
+            if (
+                not stat.S_ISREG(existing.st_mode)
+                or (existing.st_dev, existing.st_ino) != source_identity
+            ):
+                raise ValueError(f"Competing {role} already exists")
+        else:
+            try:
+                os.link(
+                    source_name,
+                    destination_name,
+                    src_dir_fd=directory.fd,
+                    dst_dir_fd=directory.fd,
+                    follow_symlinks=False,
+                )
+            except FileExistsError as exc:
+                raise ValueError(f"Competing {role} already exists") from exc
+            os.fsync(directory.fd)
+        linked = os.stat(
+            destination_name,
+            dir_fd=directory.fd,
+            follow_symlinks=False,
+        )
+        if (
+            not stat.S_ISREG(linked.st_mode)
+            or (linked.st_dev, linked.st_ino) != source_identity
+        ):
+            raise ValueError(f"{role} no-replace publication identity changed")
+        os.unlink(source_name, dir_fd=directory.fd)
+        os.fsync(directory.fd)
     _verify_anchored_journal_directory(directory)
 
 
