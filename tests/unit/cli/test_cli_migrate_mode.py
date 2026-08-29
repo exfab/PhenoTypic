@@ -421,12 +421,13 @@ def test_pass_one_targets_contain_no_hdf(legacy_run) -> None:
     from phenotypic.sdk_._metadata_migration import (
         NON_IMAGE_KINDS,
         _discover_bundle_targets,
+        _discover_legacy_bundle_targets,
     )
 
     layout = BundleLayout(
         deliverables_base=deliverables_dir(legacy_run), output_root=legacy_run
     )
-    unfiltered = _discover_bundle_targets(layout)
+    unfiltered = _discover_legacy_bundle_targets(layout)
     assert any(path.suffix == ".h5" for path in unfiltered), (
         "fixture must contain a .h5 or this proves nothing"
     )

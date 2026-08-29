@@ -576,6 +576,58 @@ def test_retained_external_parquet_bytes_are_provenance_not_migration_targets(
     ).hexdigest()
 
 
+def test_valid_marker_ignores_later_retained_parquet_scientific_drift(
+    tmp_path: Path,
+) -> None:
+    """Retained provenance cannot replace already-certified embedded science."""
+    output_dir, task = _migration_task(tmp_path)
+    first = _complete_image(output_dir, task)
+    assert task.measurement_path is not None
+    embedded_path = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+    embedded_before = embedded_path.read_bytes()
+    marker_before = task.marker_path.read_bytes()
+    changed = pd.read_parquet(task.measurement_path)
+    changed["Size_Area"] = [999.0]
+    changed.to_parquet(task.measurement_path, index=False)
+
+    rerun = _complete_image(output_dir, task)
+
+    assert rerun.skipped is True
+    assert rerun.marker_digest == first.marker_digest
+    assert embedded_path.read_bytes() == embedded_before
+    assert task.marker_path.read_bytes() == marker_before
+
+
+def test_valid_marker_rerun_never_accesses_retained_external_parquet(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A valid canonical marker gives ordinary reruns a source-free fast path."""
+    output_dir, task = _migration_task(tmp_path)
+    image = _install_fast_migrated_artifacts(task)
+    _save_canonical_work_id(output_dir, "canonical-work-id")
+    _patch_fast_migrated_reads(monkeypatch, task, image)
+    _complete_image(output_dir, task)
+    assert task.measurement_path is not None
+    source = task.measurement_path
+    real_stat = Path.stat
+    real_open = Path.open
+
+    def reject_source_stat(path: Path, *args: object, **kwargs: object):
+        if path == source:
+            raise AssertionError("valid-marker rerun statted retained provenance")
+        return real_stat(path, *args, **kwargs)
+
+    def reject_source_open(path: Path, *args: object, **kwargs: object):
+        if path == source:
+            raise AssertionError("valid-marker rerun opened retained provenance")
+        return real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", reject_source_stat)
+    monkeypatch.setattr(Path, "open", reject_source_open)
+
+    assert _complete_image(output_dir, task).skipped is True
+
+
 def test_marker_repair_replaces_structural_but_scientifically_wrong_table(
     tmp_path: Path,
 ) -> None:

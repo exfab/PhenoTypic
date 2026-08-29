@@ -234,6 +234,138 @@ def test_journal_frames_are_ordered_and_terminal_receipt_is_compact(
     assert "transitions" not in receipt
 
 
+def test_empty_candidate_directory_after_creation_crash_is_reusable(
+    migratable_bundle: BundleLayout, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A crash after mkdir leaves no authority and retry reuses the directory."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    plan_path, _, _ = migration._journal_paths(
+        migratable_bundle.output_root, report.plan_fingerprint
+    )
+    real_ensure = migration._ensure_directory_durable
+    crashed = False
+
+    def die_after_directory_creation(path: Path) -> None:
+        nonlocal crashed
+        real_ensure(path)
+        if path == plan_path.parent and not crashed:
+            crashed = True
+            raise _SimulatedProcessDeath("after journal directory creation")
+
+    monkeypatch.setattr(
+        migration, "_ensure_directory_durable", die_after_directory_creation
+    )
+    with pytest.raises(_SimulatedProcessDeath, match="directory creation"):
+        migrate_preflighted_metadata_bundle(
+            migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+        )
+    assert plan_path.parent.is_dir()
+    assert tuple(plan_path.parent.iterdir()) == ()
+    monkeypatch.setattr(migration, "_ensure_directory_durable", real_ensure)
+
+    retried = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+
+    assert retried.status == "applied"
+
+
+def test_valid_plan_after_publication_crash_initializes_missing_empty_log(
+    migratable_bundle: BundleLayout, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A durable immutable plan can idempotently initialize its absent log."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    plan_path, log_path, receipt_path = migration._journal_paths(
+        migratable_bundle.output_root, report.plan_fingerprint
+    )
+    real_atomic_write = migration.atomic_write_json
+    crashed = False
+
+    def die_after_plan_publication(
+        path: Path, payload: object, *args: object, **kwargs: object
+    ) -> None:
+        nonlocal crashed
+        real_atomic_write(path, payload, *args, **kwargs)
+        if path == plan_path and not crashed:
+            crashed = True
+            raise _SimulatedProcessDeath("after journal plan publication")
+
+    monkeypatch.setattr(migration, "atomic_write_json", die_after_plan_publication)
+    with pytest.raises(_SimulatedProcessDeath, match="plan publication"):
+        migrate_preflighted_metadata_bundle(
+            migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+        )
+    assert plan_path.is_file()
+    assert not log_path.exists()
+    assert not receipt_path.exists()
+    monkeypatch.setattr(migration, "atomic_write_json", real_atomic_write)
+
+    retried = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+
+    assert retried.status == "applied"
+    assert log_path.is_file()
+
+
+def test_no_plan_candidate_with_unexpected_contents_fails_closed(
+    migratable_bundle: BundleLayout,
+) -> None:
+    """Only a strictly empty pre-plan directory is safe to reuse."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    plan_path, _, _ = migration._journal_paths(
+        migratable_bundle.output_root, report.plan_fingerprint
+    )
+    plan_path.parent.mkdir(parents=True)
+    (plan_path.parent / "unexpected.bin").write_bytes(b"unowned")
+
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+
+    assert result.status == "failed"
+    assert "unexpected" in " ".join(result.conflicts).lower()
+
+
+def test_terminal_receipt_without_transition_log_fails_closed(
+    compatible_bundle: BundleLayout,
+) -> None:
+    """A receipt can never make a missing journal log look crash-reusable."""
+
+    report = preflight_metadata_schema(
+        compatible_bundle, kinds=NON_IMAGE_KINDS
+    )
+    first = migrate_preflighted_metadata_bundle(
+        compatible_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+    assert first.status == "compatible" and first.receipt_path is not None
+    log_path = first.receipt_path.with_name("transitions.log")
+    log_path.unlink()
+
+    result = reconcile_metadata_migration_bundle(
+        compatible_bundle, kinds=NON_IMAGE_KINDS
+    )
+
+    assert result is not None and result.status == "failed"
+    assert "receipt" in " ".join(result.conflicts).lower()
+    assert "log" in " ".join(result.conflicts).lower()
+
+
 def test_each_complete_transition_is_fsynced_before_target_publication(
     migratable_bundle: BundleLayout, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -791,6 +923,63 @@ def test_terminal_schema3_authority_is_validated_then_superseded_by_v4(
     assert rerun is not None and rerun.status == "compatible"
 
     old_receipt.write_bytes(b"{corrupt historical authority")
+    with pytest.raises(ValueError, match="supersed|digest|historical"):
+        metadata_migration_authority(compatible_bundle)
+
+
+def test_v4_adoption_does_not_revalidate_obsolete_v3_live_targets(
+    compatible_bundle: BundleLayout,
+) -> None:
+    """One-time v3 adoption survives later Task-1 source reclamation."""
+    old_receipt, _ = _write_historical_v3_journal(
+        compatible_bundle, terminal=True
+    )
+    adopted = reconcile_metadata_migration_bundle(
+        compatible_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+    assert adopted is not None and adopted.status in {"compatible", "applied"}
+    assert compatible_bundle.output_root is not None
+    per_image = (
+        compatible_bundle.output_root
+        / "results"
+        / "dataset"
+        / "measurements"
+        / "plate.parquet"
+    )
+    per_image.unlink()
+
+    authority = metadata_migration_authority(compatible_bundle)
+    rerun = reconcile_metadata_migration_bundle(
+        compatible_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+
+    assert authority.terminal_receipt_path != old_receipt
+    assert rerun is not None and rerun.status == "compatible"
+
+
+@pytest.mark.parametrize("historical_state", ["missing", "tampered"])
+def test_v4_adoption_still_requires_digest_bound_historical_receipt(
+    compatible_bundle: BundleLayout, historical_state: str
+) -> None:
+    """Immutable v3 existence and digest remain part of adopted authority."""
+    old_receipt, _ = _write_historical_v3_journal(
+        compatible_bundle, terminal=True
+    )
+    adopted = reconcile_metadata_migration_bundle(
+        compatible_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+    assert adopted is not None and adopted.status in {"compatible", "applied"}
+    if historical_state == "missing":
+        old_receipt.unlink()
+    else:
+        old_receipt.write_bytes(b"{tampered historical authority")
+
     with pytest.raises(ValueError, match="supersed|digest|historical"):
         metadata_migration_authority(compatible_bundle)
 

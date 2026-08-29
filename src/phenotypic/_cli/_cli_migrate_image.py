@@ -240,26 +240,6 @@ def _valid_migration_marker(
                 "kind"
             ) != expected_kind:
                 return False
-        provenance = marker.get("source_provenance")
-        if provenance is not None:
-            if not isinstance(provenance, dict):
-                return False
-            source = task.measurement_path
-            if source is None:
-                return False
-            expected_source = source.resolve().relative_to(output_root).as_posix()
-            if (
-                provenance.get("path") != expected_source
-                or not isinstance(provenance.get("size"), int)
-                or not isinstance(provenance.get("sha256"), str)
-            ):
-                return False
-            state = _source_artifact_state(source)
-            if state.exists and (
-                state.size != provenance["size"]
-                or state.sha256 != provenance["sha256"]
-            ):
-                return False
     except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
         return False
     return True
@@ -282,7 +262,11 @@ def _table_state(
     valid = _valid_embedded_measurement_contract(task.store_path)
     source = task.measurement_path
     prepared = None
-    if source is not None and source.is_file():
+    if (
+        source is not None
+        and (not valid or require_source_equality)
+        and source.is_file()
+    ):
         baseline = pd.read_parquet(source)
         prepared = prepare_embedded_measurement_table(baseline, metadata_csv)
     exact = (

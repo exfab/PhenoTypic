@@ -511,6 +511,70 @@ def test_post_replace_crash_resumes_by_original_path_and_fingerprint(
     assert resumed.migrated_targets == (str(path),)
 
 
+def _write_historical_v3_file_receipt(
+    path: Path, *, terminal: bool
+) -> tuple[str, Path]:
+    """Create exact schema-3 single-file authority for recovery coverage."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    current = preflight_metadata_schema(path)
+    historical_report = migration._report_from_targets(
+        str(path), current.targets
+    )
+    receipt = migration._new_receipt(
+        historical_report, bundle_root=None
+    )
+    receipt["schema_version"] = 3
+    receipt.pop("target_role")
+    receipt.pop("supersedes_digest")
+    receipt_path = migration._receipt_path(
+        path, historical_report.plan_fingerprint, bundle=False
+    )
+    migration._write_receipt(receipt_path, receipt)
+    if terminal:
+        applied = migration._apply_receipt(receipt_path, receipt)
+        assert applied.status == "applied"
+    return current.targets[0].source_fingerprint, receipt_path
+
+
+def test_interrupted_schema3_single_file_receipt_is_recovered(
+    tmp_path: Path,
+) -> None:
+    """Prepared v3 file authority resumes before fresh v4 preflight."""
+    path = tmp_path / "metadata.csv"
+    path.write_text(f"{LEGACY_STRAIN}\nBY4741\n", encoding="utf-8")
+    source_fingerprint, receipt_path = _write_historical_v3_file_receipt(
+        path, terminal=False
+    )
+
+    recovered = migrate_metadata_file(
+        path, expected_source_fingerprint=source_fingerprint
+    )
+
+    assert recovered.status == "applied"
+    assert recovered.receipt_path == receipt_path
+    assert pd.read_csv(path).columns.tolist() == [CANONICAL_STRAIN]
+
+
+def test_terminal_schema3_single_file_receipt_is_recovered(
+    tmp_path: Path,
+) -> None:
+    """Terminal v3 file authority remains discoverable by original identity."""
+    path = tmp_path / "metadata.csv"
+    path.write_text(f"{LEGACY_STRAIN}\nBY4741\n", encoding="utf-8")
+    source_fingerprint, receipt_path = _write_historical_v3_file_receipt(
+        path, terminal=True
+    )
+
+    recovered = migrate_metadata_file(
+        path, expected_source_fingerprint=source_fingerprint
+    )
+
+    assert recovered.status == "applied"
+    assert recovered.receipt_path == receipt_path
+    assert pd.read_csv(path).columns.tolist() == [CANONICAL_STRAIN]
+
+
 def test_crafted_receipt_cannot_redirect_rollback_to_external_path(
     tmp_path: Path,
 ) -> None:

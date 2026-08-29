@@ -2761,7 +2761,11 @@ def _find_file_receipt(
             receipt = json.loads(candidate.read_text(encoding="utf-8"))
             targets = receipt.get("targets", [])
             if (
-                receipt.get("schema_version") != _RECEIPT_SCHEMA_VERSION
+                receipt.get("schema_version")
+                not in {
+                    _HISTORICAL_RECEIPT_SCHEMA_VERSION,
+                    _RECEIPT_SCHEMA_VERSION,
+                }
                 or len(targets) != 1
                 or Path(str(targets[0]["path"])).resolve() != source
             ):
@@ -2889,6 +2893,57 @@ def _metadata_status_path(root: Path) -> Path:
     return _receipt_dir(root, bundle=True) / "status.json"
 
 
+def _validate_superseded_historical_receipt(
+    root: Path,
+    receipt_path: Path,
+    *,
+    expected_digest: str,
+) -> str:
+    """Validate immutable v3 adoption evidence without live target discovery."""
+    safe_path = _require_safe_migration_path(
+        receipt_path, role="Superseded historical receipt", root=root
+    )
+    if not safe_path.is_file():
+        raise ValueError("Superseded historical metadata receipt is missing")
+    receipt_bytes = safe_path.read_bytes()
+    digest = _sha256_bytes(receipt_bytes)
+    if digest != expected_digest:
+        raise ValueError("Superseded historical metadata receipt digest changed")
+    try:
+        receipt = json.loads(receipt_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            "Superseded historical metadata receipt is malformed"
+        ) from exc
+    if (
+        not isinstance(receipt, dict)
+        or receipt.get("schema_version")
+        != _HISTORICAL_RECEIPT_SCHEMA_VERSION
+        or receipt.get("scope") != "bundle"
+        or receipt.get("bundle_root") != str(root)
+        or receipt.get("state") != "applied"
+    ):
+        raise ValueError(
+            "Superseded metadata authority is not a terminal schema-3 receipt"
+        )
+    plan_fingerprint = receipt.get("plan_fingerprint")
+    if not isinstance(plan_fingerprint, str) or not plan_fingerprint.startswith(
+        "sha256:"
+    ):
+        raise ValueError(
+            "Superseded historical metadata receipt has invalid plan authority"
+        )
+    canonical_paths = {
+        _receipt_path(root, plan_fingerprint, bundle=True),
+        _journal_paths(root, plan_fingerprint)[2],
+    }
+    if safe_path not in canonical_paths:
+        raise ValueError(
+            "Superseded historical metadata receipt path is not canonical"
+        )
+    return digest
+
+
 def _validated_terminal_receipt_evidence(
     root: Path,
     receipt_path: Path,
@@ -2942,38 +2997,10 @@ def _validated_terminal_receipt_evidence(
             raise ValueError(
                 "Superseding metadata authority lacks one historical receipt"
             )
-        historical_path = historical[0]
-        if not historical_path.is_file():
-            raise ValueError(
-                "Superseded historical metadata receipt is missing"
-            )
-        historical_bytes = historical_path.read_bytes()
-        if _sha256_bytes(historical_bytes) != supersedes_digest:
-            raise ValueError(
-                "Superseded historical metadata receipt digest changed"
-            )
-        try:
-            historical_receipt = json.loads(historical_bytes)
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise ValueError(
-                "Superseded historical metadata receipt is malformed"
-            ) from exc
-        if (
-            not isinstance(historical_receipt, dict)
-            or historical_receipt.get("schema_version")
-            != _HISTORICAL_RECEIPT_SCHEMA_VERSION
-        ):
-            raise ValueError(
-                "Superseded metadata authority is not a schema-3 receipt"
-            )
-        _result_from_terminal_receipt(
-            historical_path,
-            historical_receipt,
-            compatible=not any(
-                target.get("status") == "migratable"
-                for target in historical_receipt.get("targets", [])
-                if isinstance(target, dict)
-            ),
+        _validate_superseded_historical_receipt(
+            root,
+            historical[0],
+            expected_digest=supersedes_digest,
         )
     return result, compatible_noop, receipt_digest
 
@@ -3408,6 +3435,8 @@ def _bundle_authority_candidates(root: Path) -> tuple[tuple[str, Path], ...]:
                 f"Metadata migration authority cannot be a symlink: {candidate}"
             )
         if candidate.is_dir() and candidate.name.startswith("metadata-schema-"):
+            if not any(candidate.iterdir()):
+                continue
             candidates.append(("journal", candidate))
         elif (
             candidate.is_file()
@@ -3630,10 +3659,17 @@ def reconcile_metadata_migration_bundle(
             superseded_receipt = (
                 old_path / "receipt.json" if old_kind == "journal" else old_path
             )
-            _, _, old_digest = _validated_terminal_receipt_evidence(
-                root, superseded_receipt
+            new_supersedes_digest = new_plan.get("supersedes_digest")
+            if not isinstance(new_supersedes_digest, str):
+                raise ValueError(
+                    "Competing metadata migration supersession authority"
+                )
+            old_digest = _validate_superseded_historical_receipt(
+                root,
+                superseded_receipt,
+                expected_digest=new_supersedes_digest,
             )
-            if new_plan.get("supersedes_digest") != old_digest:
+            if new_supersedes_digest != old_digest:
                 raise ValueError(
                     "Competing metadata migration supersession authority"
                 )
@@ -3645,8 +3681,12 @@ def reconcile_metadata_migration_bundle(
             plan_path = authority_path / "plan.json"
             log_path = authority_path / "transitions.log"
             receipt_path = authority_path / "receipt.json"
-            if not plan_path.is_file() or not log_path.is_file():
-                raise ValueError("Metadata migration journal is incomplete")
+            journal_entries = {entry.name for entry in authority_path.iterdir()}
+            if not plan_path.is_file():
+                raise ValueError(
+                    "Metadata migration journal has unexpected contents before "
+                    "plan publication"
+                )
             plan = json.loads(plan_path.read_text(encoding="utf-8"))
             if not isinstance(plan, dict):
                 raise ValueError("Metadata migration journal plan is malformed")
@@ -3664,6 +3704,26 @@ def reconcile_metadata_migration_bundle(
             expected_paths = _journal_paths(root, report.plan_fingerprint)
             if (plan_path, log_path, receipt_path) != expected_paths:
                 raise ValueError("Metadata migration journal path is incompatible")
+            if not log_path.exists():
+                if receipt_path.exists():
+                    raise ValueError(
+                        "Metadata migration receipt exists without its transition log"
+                    )
+                if journal_entries != {plan_path.name}:
+                    raise ValueError(
+                        "Metadata migration journal has unexpected contents without "
+                        "its transition log"
+                    )
+                _write_journal_plan(
+                    plan_path,
+                    log_path,
+                    plan,
+                    commit_guard=commit_guard,
+                )
+            elif not log_path.is_file():
+                raise ValueError(
+                    "Metadata migration transition log is not a regular file"
+                )
             terminal_payload: dict[str, Any] | None = None
             if receipt_path.is_file():
                 loaded_terminal = json.loads(
