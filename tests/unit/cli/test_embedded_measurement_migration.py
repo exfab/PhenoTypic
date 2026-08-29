@@ -41,6 +41,47 @@ def _file_inventory(root: Path) -> dict[str, str]:
     }
 
 
+def test_exact_embedded_table_comparison_includes_schema_order_nulls_and_fanout(
+    tmp_path: Path,
+) -> None:
+    """Reclaim equivalence rejects row loss even when the payload is readable."""
+    import pandas as pd
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from phenotypic._cli._embedded_measurement_tables import (
+        embedded_measurement_table_matches,
+        prepare_embedded_measurement_table,
+    )
+
+    metadata = tmp_path / "metadata.csv"
+    metadata.write_text(
+        "Metadata_ImageName,Metadata_Strain\nimg,BY4741\nimg,BY4742\n",
+        encoding="utf-8",
+    )
+    prepared = prepare_embedded_measurement_table(
+        pd.DataFrame(
+            {
+                "Metadata_ImageName": ["img"],
+                "Object_Label": [1],
+                "Size_Area": [None],
+            }
+        ),
+        metadata,
+    )
+    store = tmp_path / "img.ome.zarr"
+    payload = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    payload.parent.mkdir(parents=True)
+
+    exact = pa.Table.from_pandas(prepared.frame, preserve_index=False)
+    exact = exact.replace_schema_metadata(prepared.parquet_metadata())
+    pq.write_table(exact, payload)
+    assert embedded_measurement_table_matches(store, prepared) is True
+
+    pq.write_table(exact.slice(0, 1), payload)
+    assert embedded_measurement_table_matches(store, prepared) is False
+
+
 def test_migration_embeds_parquet_preserves_then_safely_deletes_source(
     legacy_run: Path,
 ) -> None:

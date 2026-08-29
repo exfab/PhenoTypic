@@ -33,13 +33,20 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 import hashlib
-import json
 from pathlib import Path
 
 import click
 
+from ._cli_migrate_image import (
+    _configured_work_id,
+    _existing_marker_identity,
+    _migration_work_id,
+)
+from ._embedded_measurement_tables import embedded_measurement_table_matches
+
 from phenotypic.sdk_ import (
     BundleLayout,
+    CommitGuard,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     STORE_SUFFIX,
     aggregate_publication_marker_path,
@@ -47,6 +54,7 @@ from phenotypic.sdk_ import (
     image_completion_marker_path,
     load_image_from_store,
     metadata_csv_deliverable_path,
+    publication_commit,
     replace_embedded_measurement_table,
     run_completion_marker_path,
     store_stem,
@@ -106,11 +114,6 @@ def _bundle_layout(output_dir: Path) -> BundleLayout:
     return BundleLayout(
         deliverables_base=deliverables_dir(resolved), output_root=resolved
     )
-
-
-def _migration_work_id(dataset: str, stem: str) -> str:
-    """Return the deterministic work id used to authorize a migrated image."""
-    return hashlib.sha256(f"migration:{dataset}/{stem}".encode()).hexdigest()
 
 
 def _file_sha256(path: Path) -> str | None:
@@ -346,6 +349,7 @@ def migrate_legacy_measurement_tables(
     *,
     dry_run: bool,
     delete_sources: bool,
+    commit_guard: CommitGuard | None = None,
 ) -> tuple[int, int, tuple[tuple[Path, str], ...]]:
     """Install legacy per-image Parquets into corresponding image stores."""
     import pandas as pd
@@ -392,7 +396,11 @@ def migrate_legacy_measurement_tables(
                 prepared = prepare_embedded_measurement_table(
                     baseline, metadata_csv
                 )
-                replace_embedded_measurement_table(store, prepared)
+                replace_embedded_measurement_table(
+                    store,
+                    prepared,
+                    commit_guard=commit_guard,
+                )
                 if not _valid_embedded_measurement_contract(store):
                     raise RuntimeError(
                         "embedded measurement table validation failed"
@@ -400,64 +408,24 @@ def migrate_legacy_measurement_tables(
                 migrated += 1
 
             if delete_sources:
-                source.unlink()
+                baseline = pd.read_parquet(source)
+                prepared = prepare_embedded_measurement_table(
+                    baseline, metadata_csv
+                )
+                if not embedded_measurement_table_matches(store, prepared):
+                    raise RuntimeError(
+                        "embedded table does not exactly match the external "
+                        "Parquet source"
+                    )
+                with publication_commit(commit_guard):
+                    if not embedded_measurement_table_matches(store, prepared):
+                        raise RuntimeError(
+                            "embedded table changed before external Parquet unlink"
+                        )
+                    source.unlink()
         except Exception as exc:
             failures.append((source, f"{type(exc).__name__}: {exc}"))
     return migrated, skipped, tuple(failures)
-
-
-def _configured_work_id(output_dir: Path, dataset: str, stem: str) -> str:
-    """Return the state-authorized work id for a migrated store."""
-    from phenotypic._cli._cli_state_management import load_processing_state
-
-    state = load_processing_state(output_dir)
-    work_ids = state.config.get("work_ids", {}) if state is not None else {}
-    images = work_ids.get(dataset, {}) if isinstance(work_ids, dict) else {}
-    if isinstance(images, dict):
-        for image_name, value in images.items():
-            if Path(str(image_name)).stem == stem and isinstance(value, str):
-                return value
-    return _migration_work_id(dataset, stem)
-
-
-def _existing_marker_identity(
-    output_dir: Path, dataset: str, stem: str, work_id: str
-) -> dict[str, str]:
-    """Return preserved identity fields from an existing image marker."""
-    defaults = {
-        "work_id": work_id,
-        "relative_image_path": f"{dataset}/{stem}",
-        "mode": "full",
-        "attempt_id": "migration",
-        "lifecycle_epoch": "migration",
-    }
-    marker_path = image_completion_marker_path(output_dir, dataset, stem)
-    try:
-        marker = json.loads(marker_path.read_text(encoding="utf-8"))
-    except (OSError, TypeError, ValueError, json.JSONDecodeError):
-        return defaults
-    if not isinstance(marker, dict):
-        return defaults
-    marker_dataset = marker.get("dataset")
-    marker_stem = marker.get("image_stem")
-    if marker_dataset not in {None, dataset} or marker_stem not in {None, stem}:
-        return defaults
-    existing_work_id = marker.get("work_id")
-    if isinstance(existing_work_id, str) and existing_work_id != work_id:
-        raise RuntimeError(
-            "existing marker work_id conflicts with processing state"
-        )
-    for field in (
-        "work_id",
-        "relative_image_path",
-        "mode",
-        "attempt_id",
-        "lifecycle_epoch",
-    ):
-        value = marker.get(field)
-        if isinstance(value, str) and value:
-            defaults[field] = value
-    return defaults
 
 
 def publish_migrated_image_markers(

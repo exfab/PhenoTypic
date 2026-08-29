@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
 
+from ._atomic_io import CommitGuard, publication_commit
 from ._io_constants import (
     dataset_results_dir,
     deliverables_dir,
@@ -301,6 +302,7 @@ def migrate_hdf_to_zarr(
     dst: Path | None = None,
     *,
     keep_source: bool = True,
+    commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Convert one legacy per-image HDF5 into an OME-Zarr store.
 
@@ -316,6 +318,7 @@ def migrate_hdf_to_zarr(
         src: Path to the per-image ``.h5``.
         dst: Target ``*.ome.zarr`` directory. Defaults to a sibling of *src*.
         keep_source: Retain the ``.h5``. Deletion is opt-in.
+        commit_guard: Optional lifecycle guard around promotion or unlink.
 
     Returns:
         The promoted store path.
@@ -323,9 +326,18 @@ def migrate_hdf_to_zarr(
     src = Path(src)
     target = default_store_path_for(src) if dst is None else Path(dst)
     image = _load_for_migration(src)
-    store = image.save2zarr(target, work_id=_stored_work_id(src))
+    store = image.save2zarr(
+        target,
+        work_id=_stored_work_id(src),
+        commit_guard=commit_guard,
+    )
     if not keep_source:
-        src.unlink()
+        if not _conversion_is_faithful(src, store):
+            raise RuntimeError(
+                "Converted store does not faithfully match the HDF source"
+            )
+        with publication_commit(commit_guard):
+            src.unlink()
     return store
 
 
@@ -761,7 +773,11 @@ def _marker_authority_permits_unlink(
     )
 
 
-def _reclaim_sources(output_dir: Path) -> list[tuple[Path, str]]:
+def _reclaim_sources(
+    output_dir: Path,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> list[tuple[Path, str]]:
     """Delete every source whose conversion is provably faithful.
 
     Per image, immediately before that image's unlink -- so a single
@@ -803,7 +819,19 @@ def _reclaim_sources(output_dir: Path) -> list[tuple[Path, str]]:
                 )
             )
             continue
-        hdf_path.unlink()
+        with publication_commit(commit_guard):
+            if not _marker_authority_permits_unlink(
+                output_dir, dataset, hdf_path.stem
+            ):
+                refusals.append(
+                    (
+                        hdf_path,
+                        "the image marker changed before source unlink; "
+                        "source retained",
+                    )
+                )
+                continue
+            hdf_path.unlink()
     return refusals
 
 

@@ -43,6 +43,40 @@ class OverlayRenderReport:
     failures: tuple[tuple[Path, str], ...] = ()
 
 
+def valid_migration_overlay(
+    path: Path, expected_shape: tuple[int, ...]
+) -> bool:
+    """Return whether *path* is a decoded full-plane PNG overlay.
+
+    Pillow's ``verify`` catches truncated payloads without decoding pixels;
+    reopening and loading then proves the payload is actually readable. Image
+    arrays use ``(height, width, ...)`` while Pillow exposes ``(width, height)``.
+    """
+    from PIL import Image as PILImage
+
+    if len(expected_shape) < 2:
+        return False
+    height, width = int(expected_shape[0]), int(expected_shape[1])
+    if height <= 0 or width <= 0:
+        return False
+    try:
+        with PILImage.open(path) as image:
+            if image.format != "PNG":
+                return False
+            image.verify()
+        with PILImage.open(path) as image:
+            if image.format != "PNG":
+                return False
+            image.load()
+            return (
+                image.width > 0
+                and image.height > 0
+                and image.size == (width, height)
+            )
+    except Exception:  # noqa: BLE001 - every decode failure means invalid
+        return False
+
+
 def overlay_output_manager(
     output_dir: Path, *, overlay_alpha: float
 ) -> OutputManager:
@@ -169,4 +203,5 @@ __all__ = [
     "discover_missing_overlays",
     "overlay_output_manager",
     "render_overlay_work",
+    "valid_migration_overlay",
 ]

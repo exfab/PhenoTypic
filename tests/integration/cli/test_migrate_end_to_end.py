@@ -168,6 +168,38 @@ def test_the_metadata_snapshot_is_byte_unchanged_by_a_full_migrate(
     assert (tree / "deliverables" / "metadata.canonical.csv").is_file()
 
 
+def test_one_manifest_image_primitive_publishes_complete_scientific_authority(
+    finished_legacy_run: LegacyRun,
+) -> None:
+    """The shared worker core completes one real demoted image without discovery."""
+    from phenotypic._cli._cli_migrate import run_metadata_pass
+    from phenotypic._cli._cli_migrate_image import migrate_image_task
+    from phenotypic._cli._cli_migrate_manifest import discover_migration_tasks
+    from phenotypic.sdk_ import metadata_csv_deliverable_path
+
+    tree = finished_legacy_run.path
+    metadata = metadata_csv_deliverable_path(tree)
+    assert not run_metadata_pass(tree, dry_run=False).failures
+    task = discover_migration_tasks(tree)[0]
+
+    result = migrate_image_task(
+        tree,
+        task,
+        metadata_csv=metadata,
+        overlay_alpha=0.3,
+        dry_run=False,
+    )
+
+    assert valid_staged_store(task.store_path)
+    assert result.marker_digest == _digest(task.marker_path)
+    assert valid_image_success(
+        tree,
+        dataset=task.dataset,
+        image_stem=task.stem,
+        work_id=result.work_id,
+    )
+
+
 def test_delete_sources_reclaims_only_after_the_markers_validate(
     finished_legacy_run: LegacyRun,
 ) -> None:
