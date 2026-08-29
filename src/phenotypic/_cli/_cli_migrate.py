@@ -1627,7 +1627,9 @@ def _read_migration_terminal_status(
     if not isinstance(raw, dict) or set(raw) != required:
         return None
     if (
-        raw["schema_version"] != 1
+        not isinstance(raw["schema_version"], int)
+        or isinstance(raw["schema_version"], bool)
+        or raw["schema_version"] != 1
         or raw["generation"] != generation
         or raw["status"] not in {"succeeded", "failed"}
         or not _valid_migration_terminal_report(raw["report"])
@@ -1635,7 +1637,22 @@ def _read_migration_terminal_status(
     ):
         return None
     if raw["status"] == "succeeded":
-        if raw["failure_category"] is not None or raw["reason"] is not None:
+        report = raw["report"]
+        assert isinstance(report, Mapping)
+        if (
+            raw["failure_category"] is not None
+            or raw["reason"] is not None
+            or any(
+                report[field]
+                for field in (
+                    "failed",
+                    "header_failures",
+                    "table_failures",
+                    "overlay_failures",
+                    "publication_failures",
+                )
+            )
+        ):
             return None
     elif (
         not isinstance(raw["failure_category"], str)
@@ -1878,7 +1895,16 @@ def handle_migrate_mode(
         _echo_migration_slurm_submission(plan, job_ids=None, dry_run=True)
         return 0
 
-    initialize_slurm_lifecycle(output_dir, generation=generation, mode="migrate")
+    try:
+        initialize_slurm_lifecycle(
+            output_dir, generation=generation, mode="migrate"
+        )
+    except RuntimeError as exc:
+        if "Output already has an active SLURM generation" not in str(exc):
+            raise
+        raise click.ClickException(
+            f"Could not initialize SLURM migration attempt: {exc}"
+        ) from exc
     try:
         from rich.console import Console
 

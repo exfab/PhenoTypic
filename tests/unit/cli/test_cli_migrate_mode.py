@@ -558,6 +558,7 @@ def test_wait_rereads_terminal_status_after_observing_lifecycle_closure(
 @pytest.mark.parametrize(
     "field,value",
     [
+        ("schema_version", True),
         ("report", {"converted": "one"}),
         ("failure_category", "unknown"),
         ("completed_at", "not-a-timestamp"),
@@ -573,6 +574,24 @@ def test_terminal_authority_rejects_malformed_typed_fields(
 
     status = _terminal_status_payload(generation="attempt-1", failed=True)
     status[field] = value
+    path = tmp_path / "terminal_status.json"
+    path.write_text(json.dumps(status), encoding="utf-8")
+
+    assert _read_migration_terminal_status(path, generation="attempt-1") is None
+
+
+def test_succeeded_terminal_rejects_any_failure_rows(tmp_path: Path) -> None:
+    """A success authority cannot carry contradictory failed-work evidence."""
+    import json
+
+    from phenotypic._cli._cli_migrate import _read_migration_terminal_status
+
+    status = _terminal_status_payload(generation="attempt-1")
+    report = status["report"]
+    assert isinstance(report, dict)
+    report["overlay_failures"] = [
+        {"path": "/overlay.png", "reason": "render failed"}
+    ]
     path = tmp_path / "terminal_status.json"
     path.write_text(json.dumps(status), encoding="utf-8")
 
@@ -765,6 +784,172 @@ def test_wait_rejects_closed_lifecycle_without_terminal_status(
         )
 
 
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_local_wait_combinations_reject_before_any_artifact_write(
+    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dry_run: bool
+) -> None:
+    """Local wait has no terminal scheduler authority and is invalid before work."""
+    from phenotypic._cli import _cli_migrate as migrate
+
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
+    monkeypatch.setattr(
+        migrate,
+        "generate_migration_slurm_plan",
+        lambda *_a, **_k: pytest.fail("local wait planned scheduler work"),
+    )
+    before = _tree_snapshot(legacy_run)
+    args = ["--mode", "migrate", "--output", str(legacy_run), "--wait"]
+    if dry_run:
+        args.append("--dry-run")
+
+    result = CliRunner().invoke(phenotypic_cli, args)
+
+    assert result.exit_code != 0
+    assert "--wait requires --slurm" in result.output
+    assert _tree_snapshot(legacy_run) == before
+    assert not cache.exists()
+
+
+def test_public_rerun_after_waited_terminal_failure_uses_new_attempt(
+    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """After a real waited finalizer failure, a new public call owns a new generation."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic.sdk_._hdf_to_zarr import MigrationReport
+
+    generations = iter(("attempt-1", "attempt-2"))
+    planned: list[str] = []
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: next(generations))
+    monkeypatch.setattr(
+        migrate,
+        "generate_migration_slurm_plan",
+        lambda _output, **kwargs: (
+            planned.append(kwargs["generation"])
+            or _migration_plan(tmp_path, kwargs["generation"])
+        ),
+    )
+
+    def _submit(plan, **_kwargs):
+        failed = plan.generation == "attempt-1"
+        report = (
+            MigrationReport(failed=((Path("/source.h5"), "conversion failed"),))
+            if failed
+            else MigrationReport()
+        )
+        migrate.publish_migration_terminal_status(
+            legacy_run,
+            generation=plan.generation,
+            succeeded=not failed,
+            failure_category="image" if failed else None,
+            reason="conversion failed" if failed else None,
+            report=report,
+            control_root=plan.control_root,
+        )
+        if failed:
+            migrate.mark_generation_failed(legacy_run, plan.generation, "conversion failed")
+        else:
+            migrate.deactivate_generation(legacy_run, plan.generation)
+        return SimpleNamespace(job_ids=["101"])
+
+    monkeypatch.setattr(migrate, "submit_migration_slurm_plan", _submit)
+    args = [
+        "--mode",
+        "migrate",
+        "--output",
+        str(legacy_run),
+        "--slurm",
+        "slurm_partition=short",
+        "--wait",
+    ]
+
+    first = CliRunner().invoke(phenotypic_cli, args)
+    second = CliRunner().invoke(phenotypic_cli, args)
+
+    assert first.exit_code == 1
+    assert second.exit_code == 0, second.output
+    assert planned == ["attempt-1", "attempt-2"]
+
+
+@pytest.mark.parametrize(
+    "error,expected",
+    [
+        (RuntimeError("Output already has an active SLURM generation 'active'"), "click"),
+        (RuntimeError("programming defect"), "raise"),
+    ],
+)
+def test_initialization_only_normalizes_active_lifecycle_conflicts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    error: RuntimeError,
+    expected: str,
+) -> None:
+    """Only the known active-attempt guard is a user-facing configuration error."""
+    import click
+
+    from phenotypic._cli import _cli_migrate as migrate
+
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
+    monkeypatch.setattr(
+        migrate,
+        "generate_migration_slurm_plan",
+        lambda *_a, **_k: _migration_plan(tmp_path, "attempt-1"),
+    )
+    monkeypatch.setattr(
+        migrate,
+        "initialize_slurm_lifecycle",
+        lambda *_a, **_k: (_ for _ in ()).throw(error),
+    )
+
+    if expected == "click":
+        with pytest.raises(click.ClickException, match="active SLURM generation"):
+            migrate.handle_migrate_mode(
+                tmp_path, slurm_args={"slurm_partition": "short"}
+            )
+    else:
+        with pytest.raises(RuntimeError, match="programming defect"):
+            migrate.handle_migrate_mode(
+                tmp_path, slurm_args={"slurm_partition": "short"}
+            )
+
+
+def test_public_active_attempt_conflict_is_a_click_error(
+    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The public command reports an already-active migration attempt cleanly."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+
+    initialize_slurm_lifecycle(legacy_run, generation="active", mode="migrate")
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
+    monkeypatch.setattr(
+        migrate,
+        "generate_migration_slurm_plan",
+        lambda *_a, **_k: _migration_plan(tmp_path, "attempt-1"),
+    )
+    monkeypatch.setattr(
+        migrate,
+        "submit_migration_slurm_plan",
+        lambda *_a, **_k: pytest.fail("active lifecycle submitted work"),
+    )
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--slurm",
+            "slurm_partition=short",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Error: Could not initialize SLURM migration attempt" in result.output
+    assert "Unexpected error" not in result.output
+
+
 def test_public_rerun_after_failed_submission_uses_a_fresh_attempt(
     legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -899,7 +1084,11 @@ def _terminal_status_payload(*, generation: str, failed: bool = False) -> dict[s
             "tables_skipped": 5,
             "overlays_created": 6,
             "overlays_skipped": 7,
-            "failed": [{"path": "/source.h5", "reason": "conversion failed"}],
+            "failed": (
+                [{"path": "/source.h5", "reason": "conversion failed"}]
+                if failed
+                else []
+            ),
             "header_failures": [],
             "table_failures": [],
             "overlay_failures": [],
