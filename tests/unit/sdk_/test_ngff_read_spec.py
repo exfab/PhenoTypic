@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -204,6 +205,122 @@ def test_resolver_honours_an_explicit_series(tmp_path: Path) -> None:
     assert spec.array.shape == (8, 6)
 
 
+def _hostile_series_path(
+    tmp_path: Path, store: Path, attack: str
+) -> str:
+    outside = _write_store(
+        tmp_path / "outside.ome.zarr",
+        series={"gray": ((8, 6), _axes("y", "x"))},
+        series_list=["gray"],
+    )
+    if attack == "absolute":
+        return (outside / "gray").as_posix()
+    if attack == "traversal":
+        return "../outside.ome.zarr/gray"
+    link = store / "escape"
+    link.symlink_to(outside / "gray", target_is_directory=True)
+    return "escape"
+
+
+@pytest.mark.parametrize("attack", ["absolute", "traversal", "symlink"])
+def test_explicit_series_cannot_escape_store_boundary(
+    tmp_path: Path, attack: str
+) -> None:
+    store = _write_store(
+        tmp_path / "s.ome.zarr",
+        series={"gray": ((8, 6), _axes("y", "x"))},
+        series_list=["gray"],
+    )
+    hostile = _hostile_series_path(tmp_path, store, attack)
+
+    with pytest.raises(ValueError, match="series path"):
+        ngff_.read_ngff_image_spec(store, series=hostile)
+
+
+@pytest.mark.parametrize("attack", ["absolute", "traversal", "symlink"])
+def test_declared_series_cannot_escape_store_boundary(
+    tmp_path: Path, attack: str
+) -> None:
+    store = _write_store(
+        tmp_path / "s.ome.zarr",
+        series={"gray": ((8, 6), _axes("y", "x"))},
+        series_list=["gray"],
+    )
+    hostile = _hostile_series_path(tmp_path, store, attack)
+    ome_json = store / "OME" / "zarr.json"
+    payload = json.loads(ome_json.read_text(encoding="utf-8"))
+    payload["attributes"]["ome"]["series"] = [hostile]
+    ome_json.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="series path"):
+        ngff_.read_ngff_image_spec(store)
+
+
+def test_explicit_series_rejects_backslashes(tmp_path: Path) -> None:
+    store = _write_store(
+        tmp_path / "s.ome.zarr",
+        series={r"bad\series": ((8, 6), _axes("y", "x"))},
+    )
+
+    with pytest.raises(ValueError, match="series path"):
+        ngff_.read_ngff_image_spec(store, series=r"bad\series")
+
+
+def test_explicit_series_rejects_a_dangling_symlink(tmp_path: Path) -> None:
+    store = _write_store(
+        tmp_path / "s.ome.zarr",
+        series={"gray": ((8, 6), _axes("y", "x"))},
+    )
+    (store / "dangling").symlink_to(
+        tmp_path / "missing-series", target_is_directory=True
+    )
+
+    with pytest.raises(ValueError, match="series path"):
+        ngff_.read_ngff_image_spec(store, series="dangling")
+
+
+def _set_first_dataset_path(store: Path, series: str, path: str) -> None:
+    group_json = store / series / "zarr.json"
+    payload = json.loads(group_json.read_text(encoding="utf-8"))
+    payload["attributes"]["ome"]["multiscales"][0]["datasets"][0][
+        "path"
+    ] = path
+    group_json.write_text(json.dumps(payload), encoding="utf-8")
+
+
+@pytest.mark.parametrize("attack", ["absolute", "traversal", "symlink"])
+def test_dataset_path_cannot_escape_selected_series_boundary(
+    tmp_path: Path, attack: str
+) -> None:
+    store = _write_store(
+        tmp_path / "s.ome.zarr",
+        series={"gray": ((8, 6), _axes("y", "x"))},
+        series_list=["gray"],
+    )
+    outside = zarr.create_array(
+        store=str(tmp_path / "outside-array"),
+        shape=(8, 6),
+        chunks=(8, 6),
+        dtype="uint16",
+        zarr_format=3,
+        dimension_names=["y", "x"],
+    )
+    outside[:] = np.ones((8, 6), dtype=np.uint16)
+    if attack == "absolute":
+        hostile = (tmp_path / "outside-array").as_posix()
+    elif attack == "traversal":
+        hostile = "../../outside-array"
+    else:
+        (store / "gray" / "escape").symlink_to(
+            tmp_path / "outside-array", target_is_directory=True
+        )
+        hostile = "escape"
+    _set_first_dataset_path(store, "gray", hostile)
+
+    with pytest.raises(ValueError, match="dataset path"):
+        ngff_.read_ngff_image_spec(store)
+
+
 def test_resolver_falls_back_to_group_zero_without_a_series_list(
     tmp_path: Path,
 ) -> None:
@@ -213,6 +330,22 @@ def test_resolver_falls_back_to_group_zero_without_a_series_list(
         series={"0": ((8, 6), _axes("y", "x"))},
     )
     assert ngff_.read_ngff_image_spec(store).series == "0"
+
+
+def test_group_zero_fallback_requires_bioformats_layout_marker(
+    tmp_path: Path,
+) -> None:
+    store = _write_store(
+        tmp_path / "s.ome.zarr",
+        series={"0": ((8, 6), _axes("y", "x"))},
+    )
+    root_json = store / "zarr.json"
+    payload = json.loads(root_json.read_text(encoding="utf-8"))
+    del payload["attributes"]["ome"]["bioformats2raw.layout"]
+    root_json.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="bioformats2raw.layout"):
+        ngff_.read_ngff_image_spec(store)
 
 
 def test_resolver_refuses_an_hcs_plate(tmp_path: Path) -> None:

@@ -25,7 +25,7 @@ import re as _re
 import shutil
 import time
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Final, Literal, Mapping, NamedTuple, Sequence
 from uuid import uuid4
 
@@ -897,6 +897,64 @@ def _declared_series(store_path: Path, attributes: dict) -> list[str]:
     return []
 
 
+def _resolve_ngff_relative_path(
+    boundary: Path, declared_path: str, *, role: str
+) -> Path:
+    """Resolve one non-empty NGFF POSIX path beneath its owning boundary.
+
+    Args:
+        boundary: Store or selected-series root that owns the declaration.
+        declared_path: Non-empty POSIX relative path from NGFF metadata.
+        role: Human-readable declaration role for refusal messages.
+
+    Returns:
+        The resolved path, proven to remain within *boundary*.
+
+    Raises:
+        ValueError: If the declaration is empty, absolute, uses traversal or
+            backslashes, escapes through a symlink, or contains a dangling
+            symlink.
+    """
+    raw = str(declared_path)
+    if not raw or "\\" in raw:
+        raise ValueError(f"Invalid NGFF {role} {raw!r}: expected a non-empty POSIX path")
+    posix_path = PurePosixPath(raw)
+    if posix_path.is_absolute() or any(
+        part in {".", ".."} for part in posix_path.parts
+    ):
+        raise ValueError(
+            f"Invalid NGFF {role} {raw!r}: path must remain relative to its boundary"
+        )
+
+    owner = Path(boundary)
+    try:
+        resolved_owner = owner.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise ValueError(f"Invalid NGFF {role} boundary: {owner}") from exc
+
+    candidate = owner.joinpath(*posix_path.parts)
+    cursor = owner
+    for part in posix_path.parts:
+        cursor /= part
+        if not cursor.is_symlink():
+            continue
+        try:
+            cursor.resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            raise ValueError(
+                f"Invalid NGFF {role} {raw!r}: dangling symlink"
+            ) from exc
+
+    try:
+        resolved_candidate = candidate.resolve(strict=False)
+        resolved_candidate.relative_to(resolved_owner)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(
+            f"Invalid NGFF {role} {raw!r}: path escapes its boundary"
+        ) from exc
+    return resolved_candidate
+
+
 def _resolve_series_path(store_path: Path, attributes: dict) -> str:
     """Pick the series a generic reader should open. See spec 4.1.
 
@@ -923,7 +981,12 @@ def _resolve_series_path(store_path: Path, attributes: dict) -> str:
         return ""  # the root group is itself the image
 
     if (Path(store_path) / "0" / STORE_ROOT_JSON).is_file():
-        return "0"  # NGFF 2.2.3 consecutive-integer form
+        if "bioformats2raw.layout" not in ome:
+            raise ValueError(
+                f"{store_path} has a group '0' but no root "
+                "ome['bioformats2raw.layout'] marker"
+            )
+        return "0"  # bioformats2raw consecutive-integer image collection
 
     raise ValueError(
         f"{store_path} declares no OME series, no multiscales at its root, "
@@ -1013,7 +1076,13 @@ def read_ngff_image_spec(
         _resolve_series_path(store_path, attributes) if series is None else series
     )
 
-    group_path = store_path / resolved if resolved else store_path
+    group_path = (
+        _resolve_ngff_relative_path(
+            store_path, resolved, role="series path"
+        )
+        if resolved
+        else store_path
+    )
     group_json = group_path / STORE_ROOT_JSON
     if not group_json.is_file():
         # A bad `series=` is a caller error, not a missing store. Letting
@@ -1041,9 +1110,10 @@ def read_ngff_image_spec(
     # `long_path`, matching `load_layer_zarr`: a store path plus a series plus
     # a level segment is long enough to hit Windows' MAX_PATH, and every other
     # array open in the codebase goes through this helper.
-    array = zarr.open_array(
-        store=long_path(group_path / datasets[level]["path"]), mode="r"
+    dataset_path = _resolve_ngff_relative_path(
+        group_path, str(datasets[level]["path"]), role="dataset path"
     )
+    array = zarr.open_array(store=long_path(dataset_path), mode="r")
     index, is_rgb = project_ngff_axes(axes, array.shape, t=t, z=z, c=c)
     data = np.asarray(array[index])
     if is_rgb:
