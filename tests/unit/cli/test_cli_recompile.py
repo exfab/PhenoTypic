@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import shutil
 import sys
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -247,6 +248,70 @@ class TestHandleRecompile:
             _handle_recompile(output_dir, None, True, 0.3, 1)
 
         assert not (output_dir / "deliverables").exists()
+
+
+@pytest.mark.parametrize(
+    "source_kind",
+    ("other_embedded", "other_dataset", "other_stem"),
+)
+def test_crosslinked_accepted_authority_keeps_generic_recovery_error(
+    tmp_path: Path, source_kind: str
+) -> None:
+    """Only this image's canonical external Parquet earns migrate advice."""
+    from phenotypic._cli._cli_recompile_recovery import (
+        assert_no_unrecoverable_measurement_authority,
+    )
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_measurements_dir,
+        image_completion_marker_path,
+    )
+
+    output_dir = tmp_path / "out"
+    store = zarr_store_path(output_dir, "ds", "img")
+    store.mkdir(parents=True)
+    if source_kind == "other_embedded":
+        accepted_source = (
+            zarr_store_path(output_dir, "other", "other")
+            / MEASUREMENT_TABLE_RELATIVE_PATH
+        )
+    elif source_kind == "other_dataset":
+        accepted_source = (
+            dataset_measurements_dir(output_dir, "other") / "img.parquet"
+        )
+    else:
+        accepted_source = (
+            dataset_measurements_dir(output_dir, "ds") / "other.parquet"
+        )
+    accepted_source.parent.mkdir(parents=True, exist_ok=True)
+    accepted_source.write_bytes(b"accepted elsewhere")
+
+    marker_path = image_completion_marker_path(output_dir, "ds", "img")
+    marker_path.parent.mkdir(parents=True, exist_ok=True)
+    marker_path.write_text(
+        json.dumps(
+            {
+                "artifacts": {
+                    "measurements": {
+                        "path": accepted_source.relative_to(
+                            output_dir
+                        ).as_posix()
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="Cannot safely restore measurement authority for ds/img",
+    ):
+        assert_no_unrecoverable_measurement_authority(
+            output_dir,
+            ["ds"],
+            {accepted_source},
+        )
 
 
 class TestResolveLocalWorkerCount:

@@ -22,6 +22,7 @@ from phenotypic.sdk_ import (
     CommitGuard,
     PreparedEmbeddedMeasurementTable,
     atomic_write_bytes,
+    dataset_measurements_dir,
     image_completion_marker_path,
     progress_dir,
     zarr_store_path,
@@ -713,7 +714,14 @@ def assert_no_unrecoverable_measurement_authority(
             marker_source = _marker_measurement_source(
                 output_root, marker_path
             )
-            if marker_source in accepted:
+            canonical_external = (
+                dataset_measurements_dir(output_root, dataset_name)
+                / f"{stem}.parquet"
+            ).resolve()
+            if (
+                marker_source == canonical_external
+                and marker_source in accepted
+            ):
                 raise RuntimeError(
                     "Legacy external measurement Parquets require --mode "
                     "migrate before recompile"
