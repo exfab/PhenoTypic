@@ -13,7 +13,9 @@ Three defects in an earlier draft of this block, all corrected here:
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from click.testing import CliRunner
@@ -265,19 +267,275 @@ def test_migrate_converts_a_legacy_tree(legacy_run) -> None:
     assert valid_staged_store(zarr_store_path(legacy_run, "ds", "img"))
 
 
-def test_migrate_never_submits_a_slurm_job(legacy_run, monkeypatch) -> None:
-    """One-time, resumable work does not justify another scheduler surface."""
-    import subprocess
+def test_migrate_without_slurm_uses_the_local_runner(
+    legacy_run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Omitting --slurm must retain the established local migration path."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic.sdk_._hdf_to_zarr import MigrationReport
+
+    calls: list[dict[str, object]] = []
+
+    def _local(output_dir: Path, **kwargs: object) -> MigrationReport:
+        calls.append({"output_dir": output_dir, **kwargs})
+        return MigrationReport()
+
+    monkeypatch.setattr(migrate, "run_migrate", _local)
+
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(legacy_run)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert len(calls) == 1
+    assert calls[0]["output_dir"] == legacy_run
+
+
+def test_migrate_with_repeated_slurm_plans_and_submits_once(
+    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SLURM flags select one planned scheduler attempt, never local science."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_migrate_slurm import MigrationSlurmPlan
+
+    control = tmp_path / "control"
+    control.mkdir()
+    manifest = control / "migration_manifest.json"
+    manifest.write_text("{}", encoding="utf-8")
+    script = control / "metadata.sh"
+    script.write_text("#!/bin/bash\n", encoding="utf-8")
+    finalizer = control / "finalize.sh"
+    finalizer.write_text("#!/bin/bash\n", encoding="utf-8")
+    plan = MigrationSlurmPlan(
+        generation="attempt-1",
+        control_root=control,
+        manifest_path=manifest,
+        flat_scripts=(script,),
+        finalizer_script=finalizer,
+        task_count=1,
+    )
+    planned: list[dict[str, object]] = []
+    submitted: list[dict[str, object]] = []
 
     monkeypatch.setattr(
-        subprocess, "run", lambda *a, **k: pytest.fail("migrate must not shell out")
+        migrate,
+        "run_migrate",
+        lambda *_a, **_k: pytest.fail("SLURM dispatch ran local migration"),
     )
-    assert (
-        CliRunner()
-        .invoke(phenotypic_cli, ["--mode", "migrate", "--output", str(legacy_run)])
-        .exit_code
-        == 0
+    monkeypatch.setattr(
+        migrate,
+        "new_slurm_generation",
+        lambda: "attempt-1",
     )
+    monkeypatch.setattr(
+        migrate,
+        "generate_migration_slurm_plan",
+        lambda output_dir, **kwargs: (
+            planned.append({"output_dir": output_dir, **kwargs}) or plan
+        ),
+    )
+    monkeypatch.setattr(
+        migrate,
+        "submit_migration_slurm_plan",
+        lambda submitted_plan, **kwargs: (
+            submitted.append({"plan": submitted_plan, **kwargs})
+            or SimpleNamespace(job_ids=["101", "102"])
+        ),
+    )
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--slurm",
+            "slurm_partition=short",
+            "--slurm",
+            "time=30",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert planned == [
+        {
+            "output_dir": legacy_run,
+            "slurm_args": {"slurm_partition": "short", "time": "00:30:00"},
+            "overlay_alpha": 0.3,
+            "delete_sources": False,
+            "dry_run": False,
+            "generation": "attempt-1",
+        }
+    ]
+    assert submitted[0]["plan"] is plan
+    assert "attempt-1" in result.output
+    assert str(control) in result.output
+
+
+@pytest.mark.parametrize("njobs", [-1, 1])
+def test_explicit_njobs_is_rejected_before_slurm_migration_writes(
+    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, njobs: int
+) -> None:
+    """Click provenance, not the numeric value, guards SLURM worker ownership."""
+    from phenotypic._cli import _cli_migrate as migrate
+
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
+    monkeypatch.setattr(
+        migrate,
+        "generate_migration_slurm_plan",
+        lambda *_a, **_k: pytest.fail("invalid options wrote a plan"),
+    )
+    before = _tree_snapshot(legacy_run)
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--slurm",
+            "slurm_partition=short",
+            "--njobs",
+            str(njobs),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--njobs" in result.output
+    assert _tree_snapshot(legacy_run) == before
+    assert not cache.exists()
+
+
+def test_slurm_migration_dry_run_preserves_every_output_byte(
+    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scheduler preview owns only an external control tree, never science."""
+    from phenotypic._cli import _cli_migrate_slurm as slurm
+
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
+    monkeypatch.setattr(slurm, "get_slurm_array_limit", lambda: 100)
+    monkeypatch.setattr(slurm, "get_slurm_max_submit_jobs", lambda: 100)
+    before = _tree_snapshot(legacy_run)
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--slurm",
+            "slurm_partition=short",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert _tree_snapshot(legacy_run) == before
+    controls = list(cache.rglob("migration_manifest.json"))
+    assert len(controls) == 1
+    control_root = controls[0].parent
+    assert not control_root.is_relative_to(legacy_run)
+    assert all(
+        path.is_relative_to(control_root)
+        for path in [
+            controls[0],
+            control_root / "migration_config.json",
+            *(control_root / "scripts").glob("*.sh"),
+            *(control_root / "logs").glob("*"),
+        ]
+    )
+
+
+def test_waited_slurm_failure_is_reported_as_a_click_error_after_closure(
+    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A durable failed terminal status must not be hidden as an unexpected error."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_migrate_slurm import MigrationSlurmPlan
+
+    control = tmp_path / "control"
+    control.mkdir()
+    manifest = control / "migration_manifest.json"
+    manifest.write_text("{}", encoding="utf-8")
+    script = control / "metadata.sh"
+    script.write_text("#!/bin/bash\n", encoding="utf-8")
+    finalizer = control / "finalize.sh"
+    finalizer.write_text("#!/bin/bash\n", encoding="utf-8")
+    plan = MigrationSlurmPlan(
+        generation="attempt-1",
+        control_root=control,
+        manifest_path=manifest,
+        flat_scripts=(script,),
+        finalizer_script=finalizer,
+        task_count=1,
+    )
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
+    monkeypatch.setattr(
+        migrate, "generate_migration_slurm_plan", lambda *_a, **_k: plan
+    )
+    monkeypatch.setattr(
+        migrate,
+        "submit_migration_slurm_plan",
+        lambda *_a, **_k: SimpleNamespace(job_ids=["101"]),
+    )
+    monkeypatch.setattr(
+        migrate,
+        "_wait_for_migration_terminal_status",
+        lambda *_a, **_k: {
+            "status": "failed",
+            "failure_category": "image",
+            "reason": "conversion failed",
+        },
+    )
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--slurm",
+            "slurm_partition=short",
+            "--wait",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Error: SLURM migration failed after lifecycle closure" in result.output
+    assert "Unexpected error" not in result.output
+
+
+def test_wait_rejects_missing_lifecycle_authority_without_polling(
+    tmp_path: Path,
+) -> None:
+    """A vanished attempt fence is terminal evidence failure, not an endless wait."""
+    import click
+
+    from phenotypic._cli._cli_migrate import _wait_for_migration_terminal_status
+
+    with pytest.raises(click.ClickException, match="lifecycle authority is missing"):
+        _wait_for_migration_terminal_status(
+            tmp_path / "output",
+            control_root=tmp_path / "control",
+            generation="attempt-1",
+            poll_interval=0.0,
+            timeout=0.0,
+        )
+
+
+def _tree_snapshot(root: Path) -> dict[str, str]:
+    """Return a byte-sensitive snapshot independent of migration helpers."""
+    return {
+        path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
 
 
 def test_a_legacy_only_output_fails_with_a_pointer(legacy_format_run) -> None:

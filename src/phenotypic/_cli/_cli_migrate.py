@@ -21,18 +21,21 @@ Pass 1 excludes ``.h5`` targets **unconditionally** -- see
 :data:`~phenotypic.sdk_._metadata_migration.NON_IMAGE_KINDS` for why that is
 correct rather than merely cheaper.
 
-**Local only.** No SLURM controller, no array, no chunking, no
-``MaxArraySize`` accounting. Migration is one-time, resumable and restartable,
-so it does not justify another scheduler surface.
+Migration runs locally by default, or through a dispatcher-fed SLURM attempt
+when the CLI receives ``--slurm``. A SLURM attempt has its own generation and
+control tree, so a rerun always submits a fresh attempt rather than reusing a
+failed scheduler token.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
+import time
+from typing import Any
 
 import click
 
@@ -75,8 +78,14 @@ from ._cli_slurm_lifecycle import (
     deactivate_generation,
     generation_publication_guard,
     initialize_slurm_lifecycle,
+    load_slurm_lifecycle,
     mark_generation_failed,
     new_slurm_generation,
+)
+from ._cli_migrate_slurm import (
+    MigrationSlurmPlan,
+    generate_migration_slurm_plan,
+    submit_migration_slurm_plan,
 )
 from ._embedded_measurement_tables import embedded_measurement_table_matches
 
@@ -1560,35 +1569,235 @@ def echo_migration_summary(
         click.echo(f"  Publication FAILED {target}: {reason}", err=True)
 
 
+def _validate_migration_slurm_selection(
+    *,
+    slurm_args: Mapping[str, Any] | None,
+    wait: bool,
+    dry_run: bool,
+    njobs_was_explicit: bool,
+) -> None:
+    """Reject incompatible dispatch options before writing a control artifact."""
+    if slurm_args is None:
+        if wait:
+            raise click.UsageError("--wait requires --slurm with --mode migrate.")
+        return
+    if njobs_was_explicit:
+        raise click.UsageError(
+            "--njobs cannot be combined with --slurm for --mode migrate; "
+            "the scheduler owns migration worker parallelism."
+        )
+    if dry_run and wait:
+        raise click.UsageError(
+            "--wait cannot be combined with --dry-run for --mode migrate."
+        )
+
+
+def _validated_submission_job_ids(submission: object) -> tuple[str, ...]:
+    """Return nonempty numeric scheduler IDs from the shared submitter result."""
+    job_ids = getattr(submission, "job_ids", None)
+    if not isinstance(job_ids, Sequence) or isinstance(job_ids, (str, bytes)):
+        raise click.ClickException("SLURM migration submission returned no job IDs.")
+    normalized = tuple(str(job_id) for job_id in job_ids)
+    if not normalized or any(not job_id.isdecimal() for job_id in normalized):
+        raise click.ClickException(
+            "SLURM migration submission returned invalid job IDs."
+        )
+    return normalized
+
+
+def _read_migration_terminal_status(
+    path: Path, *, generation: str
+) -> dict[str, Any] | None:
+    """Read one complete typed terminal status, rejecting malformed authority."""
+    try:
+        import json
+
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    required = {
+        "schema_version",
+        "generation",
+        "status",
+        "failure_category",
+        "reason",
+        "report",
+        "completed_at",
+    }
+    if not isinstance(raw, dict) or set(raw) != required:
+        return None
+    if (
+        raw["schema_version"] != 1
+        or raw["generation"] != generation
+        or raw["status"] not in {"succeeded", "failed"}
+        or not isinstance(raw["report"], dict)
+        or not isinstance(raw["completed_at"], str)
+        or not raw["completed_at"]
+    ):
+        return None
+    if raw["status"] == "succeeded":
+        if raw["failure_category"] is not None or raw["reason"] is not None:
+            return None
+    elif (
+        not isinstance(raw["failure_category"], str)
+        or not raw["failure_category"]
+        or not isinstance(raw["reason"], str)
+        or not raw["reason"]
+    ):
+        return None
+    return raw
+
+
+def _wait_for_migration_terminal_status(
+    output_dir: Path,
+    *,
+    control_root: Path,
+    generation: str,
+    poll_interval: float = 10.0,
+    timeout: float | None = None,
+) -> dict[str, Any]:
+    """Wait for a closed lifecycle and its matching typed terminal authority."""
+    status_path = migration_terminal_status_path(control_root, generation)
+    deadline = time.monotonic() + timeout if timeout is not None else None
+    while True:
+        status = _read_migration_terminal_status(status_path, generation=generation)
+        lifecycle = load_slurm_lifecycle(output_dir)
+        if lifecycle is None:
+            raise click.ClickException(
+                "SLURM migration lifecycle authority is missing: "
+                f"{output_dir}"
+            )
+        if lifecycle.get("generation") != generation:
+            raise click.ClickException(
+                "SLURM migration attempt was superseded before terminal "
+                f"authority was observed: {generation}"
+            )
+        if lifecycle.get("active") is False:
+            if status is not None:
+                return status
+            raise click.ClickException(
+                "SLURM migration lifecycle closed without a valid terminal "
+                f"status: {status_path}"
+            )
+        if deadline is not None and time.monotonic() >= deadline:
+            raise click.ClickException(
+                f"Timed out waiting for SLURM migration terminal status: {status_path}"
+            )
+        time.sleep(poll_interval)
+
+
+def _echo_migration_slurm_submission(
+    plan: MigrationSlurmPlan, *, job_ids: Sequence[str] | None, dry_run: bool
+) -> None:
+    """Report only durable attempt and control references before finalization."""
+    heading = (
+        "SLURM migration dry-run generated"
+        if dry_run
+        else "SLURM migration submitted"
+    )
+    click.echo(heading)
+    if job_ids is not None:
+        click.echo(f"  Initial job IDs: {', '.join(job_ids)}")
+    click.echo(f"  Generation: {plan.generation}")
+    click.echo(f"  Control root: {plan.control_root}")
+    click.echo(f"  Manifest: {plan.manifest_path}")
+    click.echo(f"  Finalizer script: {plan.finalizer_script}")
+
+
 def handle_migrate_mode(
     output_dir: Path,
     *,
     njobs: int = 1,
+    njobs_was_explicit: bool = False,
     overlay_alpha: float = 0.3,
     dry_run: bool = False,
     delete_sources: bool = False,
+    slurm_args: Mapping[str, Any] | None = None,
+    wait: bool = False,
 ) -> int:
-    """Run ``--mode migrate`` and return the process exit code.
+    """Run local or SLURM ``--mode migrate`` and return its exit semantics.
+
+    SLURM scheduling deliberately creates a fresh generation for each call.
+    With ``wait=False`` it returns after durable submission and prints only
+    durable control references. With ``wait=True`` it waits for the finalizer
+    to close the lifecycle and validates its typed terminal authority.
 
     Args:
         output_dir: Run output root, converted in place.
-        njobs: Worker processes for the per-image conversion pass.
+        njobs: Worker processes for local per-image conversion.
+        njobs_was_explicit: Whether Click received ``--njobs`` from the user.
         overlay_alpha: Alpha used for newly rendered overlay PNGs.
-        dry_run: Report both passes and write nothing.
+        dry_run: Report local work or generate a SLURM plan without science.
         delete_sources: Delete each provably-faithful source after conversion.
+        slurm_args: Parsed SLURM arguments, or ``None`` for the local path.
+        wait: Wait for a SLURM attempt's finalizer authority.
 
     Returns:
-        ``0`` when both passes were clean, ``1`` otherwise.
+        ``0`` on a clean local run, generated dry run, submitted attempt, or
+        waited successful terminal authority; ``1`` on local migration failure.
     """
-    report = run_migrate(
-        output_dir,
-        njobs=njobs,
-        overlay_alpha=overlay_alpha,
+    _validate_migration_slurm_selection(
+        slurm_args=slurm_args,
+        wait=wait,
         dry_run=dry_run,
-        delete_sources=delete_sources,
+        njobs_was_explicit=njobs_was_explicit,
     )
-    echo_migration_summary(output_dir, report, dry_run=dry_run)
-    return 0 if report.ok else 1
+    if slurm_args is None:
+        report = run_migrate(
+            output_dir,
+            njobs=njobs,
+            overlay_alpha=overlay_alpha,
+            dry_run=dry_run,
+            delete_sources=delete_sources,
+        )
+        echo_migration_summary(output_dir, report, dry_run=dry_run)
+        return 0 if report.ok else 1
+
+    generation = new_slurm_generation()
+    plan = generate_migration_slurm_plan(
+        output_dir,
+        slurm_args=dict(slurm_args),
+        overlay_alpha=overlay_alpha,
+        delete_sources=delete_sources,
+        dry_run=dry_run,
+        generation=generation,
+    )
+    if dry_run:
+        _echo_migration_slurm_submission(plan, job_ids=None, dry_run=True)
+        return 0
+
+    initialize_slurm_lifecycle(output_dir, generation=generation, mode="migrate")
+    try:
+        from rich.console import Console
+
+        submission = submit_migration_slurm_plan(
+            plan, slurm_args=dict(slurm_args), console=Console()
+        )
+        job_ids = _validated_submission_job_ids(submission)
+    except Exception as exc:
+        mark_generation_failed(output_dir, generation, str(exc))
+        if isinstance(exc, click.ClickException):
+            raise
+        raise click.ClickException(
+            f"Could not submit SLURM migration attempt: {exc}"
+        ) from exc
+    _echo_migration_slurm_submission(plan, job_ids=job_ids, dry_run=False)
+    if not wait:
+        return 0
+
+    terminal = _wait_for_migration_terminal_status(
+        output_dir,
+        control_root=plan.control_root,
+        generation=generation,
+    )
+    if terminal["status"] == "failed":
+        raise click.ClickException(
+            "SLURM migration failed after lifecycle closure "
+            f"({terminal['failure_category']}): {terminal['reason']}"
+        )
+    click.echo("SLURM migration complete")
+    click.echo(f"  Terminal status: {migration_terminal_status_path(plan.control_root, generation)}")
+    return 0
 
 
 __all__ = [

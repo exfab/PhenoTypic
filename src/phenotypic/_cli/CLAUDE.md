@@ -172,6 +172,27 @@ persisting the returned ID.
 - Per-image isolation: a missing prereq (S6) is recorded and skipped, never an
   unhandled raise that aborts a shard.
 
+## Legacy-tree migration (`--mode migrate`)
+
+Migration runs locally without `--slurm`. With one or more `--slurm key=value`
+arguments, the public CLI creates a fresh generation-scoped
+`MigrationSlurmPlan` and submits its ordered metadata → image → seal → optional
+reclaim → finalizer chain through `submit_migration_slurm_plan`. An explicit
+`--njobs` is invalid on that path — including an explicit value equal to the
+Click default — because the scheduler controls worker parallelism; determine
+that distinction at the Click boundary with `ParameterSource`, never by
+inspecting the numeric value.
+
+Validate incompatible migration options before generating a plan or initializing
+lifecycle state. A SLURM `--dry-run` writes its manifest, config, scripts, and
+logs only below the external cache control root, never inside the scientific
+output tree, and it never submits. Without `--wait`, report only durable
+submission, generation, and control references; do not locally publish science.
+With `--wait`, wait until the finalizer has closed the matching lifecycle, then
+validate that generation's typed terminal status. A failed or missing terminal
+authority is a Click error carrying the durable failure reason. Each rerun is a
+new generation/attempt, rather than reuse of a prior failed scheduler token.
+
 ## Durability (`--durable-writes` / `--no-durable-writes`)
 
 Whether each per-image store is `fsync`ed before its promote. The flag is a
@@ -199,7 +220,7 @@ allowlist). Durability is a storage guarantee, not a scientific parameter —
 folding it into the work id would make `--no-durable-writes` restart a finished
 run from zero.
 
-Rejected with `--mode recompile` (and `migrate`, when Phase 5 lands): those
+Rejected with `--mode recompile` and `migrate`: those
 modes write no image store from a pipeline, so the flag could only mislead.
 
 ## Per-image completion markers

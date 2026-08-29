@@ -152,6 +152,7 @@ from uuid import UUID, uuid4
 
 import click
 import yaml  # type: ignore[import-untyped]
+from click.core import ParameterSource
 
 from phenotypic import ImagePipeline
 from phenotypic._core._image_parts.detection_modes import available_modes
@@ -1021,7 +1022,8 @@ def _print_process_only_dry_run_plan(
         "legacy .h5 output tree to OME-Zarr stores IN PLACE, in two passes -- "
         "pass 1 canonicalizes metadata headers in every non-image target, "
         "pass 2 converts each per-image .h5 to a store and re-publishes the "
-        "run's completion evidence. Local only; re-run it to resume."
+        "run's completion evidence. Runs locally by default or as a "
+        "generation-scoped SLURM attempt with --slurm; re-run it to resume."
     ),
 )
 @click.option(
@@ -1293,8 +1295,9 @@ def phenotypic_cli(
       migrate    Convert a legacy .h5 output tree to OME-Zarr stores IN
                  PLACE, in two passes: metadata headers in every non-image
                  target first, then each per-image .h5 to a store followed by
-                 the run's completion evidence. Local only, and re-running it
-                 is how an interrupted migration is resumed.
+                 the run's completion evidence. It runs locally by default or
+                 through a generation-scoped SLURM attempt with --slurm; re-
+                 running it creates a fresh attempt for interrupted work.
 
       recompile  Refresh aggregate outputs from an existing output root; no
                  --input or --pipeline (both are reloaded from --output).
@@ -1467,13 +1470,23 @@ def phenotypic_cli(
                     "--mode migrate output directory does not exist: "
                     f"{output_dir}."
                 )
+            njobs_was_explicit = (
+                ctx.get_parameter_source("n_jobs") is not ParameterSource.DEFAULT
+            )
             sys.exit(
                 handle_migrate_mode(
                     output_dir,
                     njobs=max(1, n_jobs) if n_jobs > 0 else 1,
+                    njobs_was_explicit=njobs_was_explicit,
                     overlay_alpha=overlay_alpha,
                     dry_run=dry_run,
                     delete_sources=delete_sources,
+                    slurm_args=(
+                        slurm_args_dict
+                        if slurm_args_dict and not force_local
+                        else None
+                    ),
+                    wait=wait,
                 )
             )
 
@@ -2619,6 +2632,9 @@ def phenotypic_cli(
         # two-line output); do NOT swallow into the "Unexpected error"
         # branch below.
         raise
+    except click.ClickException as exc:
+        exc.show()
+        sys.exit(exc.exit_code)
     except Exception as e:
         click.echo(f"\nUnexpected error: {e}", err=True)
         import traceback
