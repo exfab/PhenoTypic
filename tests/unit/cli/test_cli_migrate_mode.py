@@ -330,6 +330,91 @@ def test_dry_run_writes_no_receipt(legacy_run) -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_metadata_pass_reuses_preflight_and_revalidates_before_first_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Semantic parsing is once-only; fresh path/byte checks guard mutation."""
+    import phenotypic.sdk_._metadata_migration as migration
+    from phenotypic._cli._cli_migrate import run_metadata_pass
+
+    output = tmp_path / "output"
+    (output / "deliverables").mkdir(parents=True)
+    measurements = output / "results" / "dataset" / "measurements"
+    measurements.mkdir(parents=True)
+    import pandas as pd
+
+    pd.DataFrame({"MetadataGenetic_Strain": ["WT"]}).to_parquet(
+        measurements / "plate.parquet", index=False
+    )
+    events: list[tuple[str, str | None]] = []
+    real_preflight_file = migration._preflight_file
+    real_discover = migration._discover_bundle_targets
+    real_fingerprint = migration.file_fingerprint
+    real_atomic_write_json = migration.atomic_write_json
+
+    def record_preflight(path: Path, *, mixed_table: bool = False):
+        events.append(("semantic", str(path)))
+        return real_preflight_file(path, mixed_table=mixed_table)
+
+    def record_discovery(*args: object, **kwargs: object):
+        events.append(("discover", None))
+        return real_discover(*args, **kwargs)
+
+    def record_fingerprint(path: Path) -> str:
+        events.append(("fingerprint", str(path)))
+        return real_fingerprint(path)
+
+    def record_write(*args: object, **kwargs: object):
+        events.append(("mutation", str(args[0])))
+        return real_atomic_write_json(*args, **kwargs)
+
+    monkeypatch.setattr(migration, "_preflight_file", record_preflight)
+    monkeypatch.setattr(migration, "_discover_bundle_targets", record_discovery)
+    monkeypatch.setattr(migration, "file_fingerprint", record_fingerprint)
+    monkeypatch.setattr(migration, "atomic_write_json", record_write)
+
+    result = run_metadata_pass(output, dry_run=False)
+
+    assert result.authority is not None
+    first_mutation = next(
+        index for index, event in enumerate(events) if event[0] == "mutation"
+    )
+    pre_mutation = events[:first_mutation]
+    semantic_paths = [value for name, value in pre_mutation if name == "semantic"]
+    assert semantic_paths
+    assert len(semantic_paths) == len(set(semantic_paths))
+    discovery_indices = [
+        index for index, event in enumerate(pre_mutation) if event[0] == "discover"
+    ]
+    assert len(discovery_indices) == 2
+    authoritative = pre_mutation[discovery_indices[-1] + 1 :]
+    assert not [event for event in authoritative if event[0] == "semantic"]
+    assert [value for name, value in authoritative if name == "fingerprint"] == semantic_paths
+
+
+def test_dry_metadata_pass_returns_count_without_authority_or_publication(
+    tmp_path: Path,
+) -> None:
+    import pandas as pd
+
+    from phenotypic._cli._cli_migrate import run_metadata_pass
+
+    output = tmp_path / "output"
+    (output / "deliverables").mkdir(parents=True)
+    measurements = output / "results" / "dataset" / "measurements"
+    measurements.mkdir(parents=True)
+    pd.DataFrame({"MetadataGenetic_Strain": ["WT"]}).to_parquet(
+        measurements / "plate.parquet", index=False
+    )
+
+    result = run_metadata_pass(output, dry_run=True)
+
+    assert result.headers_migrated == 1
+    assert result.failures == ()
+    assert result.authority is None
+    assert not (output / ".phenotypic").exists()
+
+
 def test_pass_one_targets_contain_no_hdf(legacy_run) -> None:
     """MIG-25/FLOW-35: pass 1 must not touch a ``.h5`` at all."""
     from phenotypic.sdk_ import BundleLayout, deliverables_dir

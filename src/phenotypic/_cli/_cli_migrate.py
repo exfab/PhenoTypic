@@ -30,7 +30,7 @@ so it does not justify another scheduler surface.
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -62,14 +62,26 @@ from phenotypic.sdk_._hdf_to_zarr import (
 from phenotypic.sdk_.ngff_ import valid_staged_store
 from phenotypic.sdk_._metadata_migration import (
     NON_IMAGE_KINDS,
+    MetadataMigrationAuthority,
     MetadataMigrationReport,
-    migrate_metadata_bundle,
+    metadata_migration_authority,
+    migrate_preflighted_metadata_bundle,
     preflight_metadata_schema,
+    reconcile_metadata_migration_bundle,
 )
 
 
 class MigrateModeError(click.ClickException):
     """Raised when migration cannot proceed or did not finish cleanly."""
+
+
+@dataclass(frozen=True)
+class MetadataPassResult:
+    """Outcome of pass 1, including stable authority when it wrote."""
+
+    headers_migrated: int
+    failures: tuple[tuple[Path, str], ...]
+    authority: MetadataMigrationAuthority | None
 
 
 def _bundle_layout(output_dir: Path) -> BundleLayout:
@@ -245,7 +257,7 @@ def _pending_header_targets(report: MetadataMigrationReport) -> int:
     return sum(1 for target in report.targets if target.status == "migratable")
 
 
-def run_metadata_pass(output_dir: Path, *, dry_run: bool) -> tuple[int, tuple]:
+def run_metadata_pass(output_dir: Path, *, dry_run: bool) -> MetadataPassResult:
     """Run pass 1 -- the metadata-schema migration over non-image targets.
 
     ``preflight_metadata_schema`` writes nothing, which is what makes pass 1's
@@ -256,13 +268,37 @@ def run_metadata_pass(output_dir: Path, *, dry_run: bool) -> tuple[int, tuple]:
         dry_run: Report what would be rewritten and write nothing.
 
     Returns:
-        ``(headers_migrated, header_failures)``.
+        Counts, failures, and non-dry terminal metadata authority.
 
     Raises:
         MigrateModeError: The preflight is ``blocked`` -- conflicts a human
             must resolve -- or the apply did not succeed.
     """
     layout = _bundle_layout(output_dir)
+    if not dry_run:
+        reconciled = reconcile_metadata_migration_bundle(
+            layout, kinds=NON_IMAGE_KINDS
+        )
+        if reconciled is not None:
+            if reconciled.status not in {"compatible", "applied"}:
+                return MetadataPassResult(
+                    headers_migrated=0,
+                    failures=tuple(
+                        (Path(output_dir), conflict)
+                        for conflict in (
+                            reconciled.conflicts
+                            or (
+                                f"metadata migration {reconciled.status}",
+                            )
+                        )
+                    ),
+                    authority=None,
+                )
+            return MetadataPassResult(
+                headers_migrated=len(reconciled.migrated_targets),
+                failures=(),
+                authority=metadata_migration_authority(layout),
+            )
     report = preflight_metadata_schema(layout, kinds=NON_IMAGE_KINDS)
     if report.status == "blocked":
         raise MigrateModeError(
@@ -270,11 +306,15 @@ def run_metadata_pass(output_dir: Path, *, dry_run: bool) -> tuple[int, tuple]:
             + ("; ".join(report.conflicts) or "no conflict details available")
         )
     if dry_run:
-        return _pending_header_targets(report), ()
+        return MetadataPassResult(
+            headers_migrated=_pending_header_targets(report),
+            failures=(),
+            authority=None,
+        )
 
-    result = migrate_metadata_bundle(
+    result = migrate_preflighted_metadata_bundle(
         layout,
-        expected_plan_fingerprint=report.plan_fingerprint,
+        report=report,
         kinds=NON_IMAGE_KINDS,
     )
     # The RESULT's status, not the report's (ledger C11). `_report_from_targets`
@@ -283,13 +323,22 @@ def run_metadata_pass(output_dir: Path, *, dry_run: bool) -> tuple[int, tuple]:
     # `"migratable"`, so testing the REPORT against {compatible, applied}
     # rejects precisely migration's intended input.
     if result.status not in {"compatible", "applied"}:
-        return 0, tuple(
-            (Path(output_dir), conflict)
-            for conflict in (
-                result.conflicts or (f"metadata migration {result.status}",)
-            )
+        return MetadataPassResult(
+            headers_migrated=0,
+            failures=tuple(
+                (Path(output_dir), conflict)
+                for conflict in (
+                    result.conflicts
+                    or (f"metadata migration {result.status}",)
+                )
+            ),
+            authority=None,
         )
-    return len(result.migrated_targets), ()
+    return MetadataPassResult(
+        headers_migrated=len(result.migrated_targets),
+        failures=(),
+        authority=metadata_migration_authority(layout),
+    )
 
 
 def migrate_legacy_measurement_tables(
@@ -583,9 +632,9 @@ def run_migrate(
         # A failed or empty rebuild must never re-certify stale deliverables.
         aggregate_publication_marker_path(output_dir).unlink(missing_ok=True)
         run_completion_marker_path(output_dir).unlink(missing_ok=True)
-    headers_migrated, header_failures = run_metadata_pass(
-        output_dir, dry_run=dry_run
-    )
+    metadata_pass = run_metadata_pass(output_dir, dry_run=dry_run)
+    headers_migrated = metadata_pass.headers_migrated
+    header_failures = metadata_pass.failures
     report = migrate_run_hdf_to_zarr(
         output_dir,
         keep_source=True,

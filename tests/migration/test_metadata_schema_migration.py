@@ -642,6 +642,47 @@ def test_durable_directory_creation_fsyncs_each_entry_and_parent(
     assert synced == [first, tmp_path, second, first]
 
 
+def test_non_image_preflight_never_traverses_or_opens_hdf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Filtering out HDF must happen before its directory is entered."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    deliverables = tmp_path / "deliverables"
+    deliverables.mkdir()
+    (deliverables / "pipeline.json.pht-pipe").write_text(
+        json.dumps({"name": "canonical"}), encoding="utf-8"
+    )
+    hdf = tmp_path / "results" / "dataset" / "hdf" / "plate.h5"
+    hdf.parent.mkdir(parents=True)
+    _write_v2_hdf(hdf)
+    layout = BundleLayout(deliverables_base=deliverables, output_root=tmp_path)
+    traversed_hdf_dirs: list[Path] = []
+    opened_hdfs: list[Path] = []
+    real_rglob = Path.rglob
+    real_h5py_file = h5py.File
+
+    def record_rglob(path: Path, pattern: str):
+        if path.name == "hdf":
+            traversed_hdf_dirs.append(path)
+        return real_rglob(path, pattern)
+
+    def record_h5py_file(path: object, *args: object, **kwargs: object):
+        candidate = Path(path) if isinstance(path, (str, os.PathLike)) else None
+        if candidate is not None and candidate.suffix.lower() in {".h5", ".hdf5", ".hdf"}:
+            opened_hdfs.append(candidate)
+        return real_h5py_file(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "rglob", record_rglob)
+    monkeypatch.setattr(h5py, "File", record_h5py_file)
+
+    report = preflight_metadata_schema(layout, kinds=migration.NON_IMAGE_KINDS)
+
+    assert report.status == "compatible"
+    assert traversed_hdf_dirs == []
+    assert opened_hdfs == []
+
+
 def test_full_bundle_migrates_hdf_and_pipeline_but_not_external_copy_or_derived(
     tmp_path: Path,
 ) -> None:
@@ -908,7 +949,7 @@ def test_bundle_rejects_symlinked_authoritative_dataset_directories(
         preflight_metadata_schema(output)
 
 
-def test_prepared_unpublished_bundle_rollback_clears_temp_and_reapplies(
+def test_prepared_unpublished_bundle_journal_resumes_without_terminal_receipt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -937,16 +978,9 @@ def test_prepared_unpublished_bundle_rollback_clears_temp_and_reapplies(
     )
     assert failed.status == "failed"
     assert failed.receipt_path is not None
-    prepared = json.loads(failed.receipt_path.read_text(encoding="utf-8"))
-    assert prepared["targets"][0]["state"] == "prepared"
-    assert prepared["targets"][0]["temp_path"] is not None
-
-    rolled_back = rollback_metadata_migration(failed.receipt_path)
-
-    assert rolled_back.status == "rolled_back"
-    journal = json.loads(failed.receipt_path.read_text(encoding="utf-8"))
-    assert journal["targets"][0]["state"] == "rolled_back"
-    assert journal["targets"][0]["temp_path"] is None
+    assert not failed.receipt_path.exists()
+    assert failed.receipt_path.with_name("plan.json").is_file()
+    assert failed.receipt_path.with_name("transitions.log").is_file()
     assert LEGACY_STRAIN in pd.read_parquet(measurement).columns
 
     monkeypatch.setattr(migration, "_publish_temp", real_publish)
