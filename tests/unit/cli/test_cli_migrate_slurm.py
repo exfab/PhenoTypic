@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
+import shutil
 from types import SimpleNamespace
 
+import pandas as pd
 import pytest
 from click.testing import CliRunner
 
@@ -1222,84 +1225,112 @@ def test_reclaim_requires_requested_deletion_and_current_image_authority(
 def test_second_submission_regenerates_and_submits_new_generation_with_noop_retry(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A second real plan/submit attempt retries completed image science as a no-op."""
+    """A second real plan/submit attempt preserves completed image science."""
     from phenotypic._cli import _cli_migrate_slurm as slurm
     from phenotypic._cli import _cli_migrate_worker as worker
-    from phenotypic._cli._cli_migrate import MetadataPassResult
-    from phenotypic._cli._cli_migrate_image import MigrationImageResult
-    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
-    from phenotypic.sdk_._metadata_migration import MetadataMigrationAuthority
+    from phenotypic._cli import _cli_slurm_lifecycle as lifecycle
+    from phenotypic.sdk_ import zarr_store_path
 
     output = tmp_path / "run"
-    monkeypatch.setattr(slurm, "discover_migration_tasks", lambda *_a: _tasks(output, 2))
+    fixture = (
+        Path(__file__).resolve().parents[2]
+        / "fixtures"
+        / "legacy_hdf"
+        / "v2_grouped"
+        / "img.h5"
+    )
+    hdf_dir = output / "results" / "ds" / "hdf"
+    measurement_dir = output / "results" / "ds" / "measurements"
+    hdf_dir.mkdir(parents=True)
+    measurement_dir.mkdir(parents=True)
+    for index in range(2):
+        shutil.copy2(fixture, hdf_dir / f"image_{index}.h5")
+        pd.DataFrame(
+            {
+                "Object_Label": [1],
+                "Size_Area": [25.0],
+                "Metadata_ImageName": [f"image_{index}"],
+            }
+        ).to_parquet(measurement_dir / f"image_{index}.parquet", index=False)
+
     monkeypatch.setattr(slurm, "get_slurm_array_limit", lambda: 100)
     monkeypatch.setattr(slurm, "get_slurm_max_submit_jobs", lambda: 100)
-    submissions: list[str] = []
+    submissions: list[tuple[Path, str, str]] = []
 
-    def _submit(**kwargs):
-        submissions.append(kwargs["generation"])
-        return SimpleNamespace(job_ids=[str(len(submissions))])
+    def _submit(root, *, generation, token, **_kwargs):
+        submissions.append((Path(root), generation, token))
+        return str(len(submissions) + 100)
 
-    monkeypatch.setattr(slurm, "submit_slurm_script_chain", _submit)
+    monkeypatch.setattr(lifecycle, "submit_with_lifecycle", _submit)
     first = slurm.generate_migration_slurm_plan(
         output, slurm_args={}, generation="generation-1"
     )
-    second = slurm.generate_migration_slurm_plan(
-        output, slurm_args={}, generation="generation-2"
+    lifecycle.initialize_slurm_lifecycle(
+        output, generation=first.generation, mode="migrate"
     )
     slurm.submit_migration_slurm_plan(
         first, slurm_args={}, console=SimpleNamespace(print=lambda *_a: None)
     )
+    assert CliRunner().invoke(
+        worker.migration_worker_cli,
+        ["--config", str(first.control_root / "migration_config.json"), "metadata"],
+    ).exit_code == 0
+    assert CliRunner().invoke(
+        worker.migration_worker_cli,
+        [
+            "--config",
+            str(first.control_root / "migration_config.json"),
+            "image",
+            "--index",
+            "0",
+        ],
+    ).exit_code == 0
+
+    completed_store = zarr_store_path(output, "ds", "image_0")
+    completed_marker = next(
+        path
+        for path in (output / ".phenotypic").rglob("image_0.json")
+        if "worker_status" not in path.parts
+    )
+
+    def _tree_digest(root: Path) -> str:
+        digest = hashlib.sha256()
+        for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file()):
+            digest.update(path.relative_to(root).as_posix().encode())
+            digest.update(path.read_bytes())
+        return digest.hexdigest()
+
+    completed_before = (_tree_digest(completed_store), completed_marker.read_bytes())
+    assert not zarr_store_path(output, "ds", "image_1").exists()
+
+    assert lifecycle.deactivate_generation(output, first.generation) is True
+    second = slurm.generate_migration_slurm_plan(
+        output, slurm_args={}, generation="generation-2"
+    )
+    lifecycle.initialize_slurm_lifecycle(
+        output, generation=second.generation, mode="migrate"
+    )
     slurm.submit_migration_slurm_plan(
         second, slurm_args={}, console=SimpleNamespace(print=lambda *_a: None)
     )
-    initialize_slurm_lifecycle(output, generation=second.generation, mode="migrate")
-    authority = MetadataMigrationAuthority(
-        status_path=second.control_root / "status.json",
-        terminal_receipt_path=second.control_root / "receipt.json",
-        terminal_receipt_digest="sha256:" + "1" * 64,
-        plan_fingerprint="sha256:" + "2" * 64,
-        source_fingerprint="sha256:" + "3" * 64,
-        resulting_fingerprint="sha256:" + "4" * 64,
-        compatible_noop=True,
-    )
-    monkeypatch.setattr(
-        worker,
-        "run_metadata_pass",
-        lambda *_a, **_k: MetadataPassResult(0, (), authority),
-    )
-    retried: list[int] = []
-
-    def _migrate(_output, task, **_kwargs):
-        retried.append(task.index)
-        return MigrationImageResult(
-            index=task.index,
-            dataset=task.dataset,
-            stem=task.stem,
-            work_id="work",
-            converted=task.index == 1,
-            table_installed=False,
-            overlay_rendered=False,
-            marker_digest="a" * 64,
-            skipped=task.index == 0,
-        )
-
-    monkeypatch.setattr(worker, "migrate_image_task", _migrate)
-    monkeypatch.setattr(worker, "invalidate_migration_terminal_authority", lambda *_a, **_k: None)
-    monkeypatch.setattr(worker, "publish_migration_task_status", lambda *_a, **_k: None)
-    config_path = second.control_root / "migration_config.json"
+    second_config = second.control_root / "migration_config.json"
     assert CliRunner().invoke(
         worker.migration_worker_cli,
-        ["--config", str(config_path), "metadata"],
+        ["--config", str(second_config), "metadata"],
     ).exit_code == 0
     for index in range(2):
-        assert CliRunner().invoke(
+        result = CliRunner().invoke(
             worker.migration_worker_cli,
-            ["--config", str(config_path), "image", "--index", str(index)],
-        ).exit_code == 0
+            ["--config", str(second_config), "image", "--index", str(index)],
+        )
+        assert result.exit_code == 0, repr(result.exception)
 
-    assert submissions == ["generation-1", "generation-2"]
-    assert retried == [0, 1]
+    assert [(root, generation) for root, generation, _token in submissions] == [
+        (output.resolve(), "generation-1"),
+        (output.resolve(), "generation-1"),
+        (output.resolve(), "generation-2"),
+        (output.resolve(), "generation-2"),
+    ]
     first_status = json.loads(
         worker.migration_worker_status_path(
             second.control_root, second.generation, "image", 0
@@ -1312,6 +1343,11 @@ def test_second_submission_regenerates_and_submits_new_generation_with_noop_retr
     )
     assert first_status["result"]["skipped"] is True
     assert second_status["result"]["converted"] is True
+    assert completed_before == (
+        _tree_digest(completed_store),
+        completed_marker.read_bytes(),
+    )
+    assert zarr_store_path(output, "ds", "image_1").is_dir()
 
 
 def test_finalizer_closes_when_upstream_status_payload_is_corrupt(
