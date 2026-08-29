@@ -74,8 +74,8 @@ def _bundle_layout(output_dir: Path) -> BundleLayout:
     interrupted legacy run is precisely the migration subject, so that
     resolution would abort pass 1 on the trees migration exists for -- with an
     error message ("Point the viewer at a ``python -m phenotypic`` output
-    dir") that names nothing relevant. ``migrate_metadata_schema_for_recompile``
-    constructs the layout directly for exactly this reason.
+    dir") that names nothing relevant. Migration constructs the layout
+    directly for exactly this reason.
 
     Args:
         output_dir: Run output root.

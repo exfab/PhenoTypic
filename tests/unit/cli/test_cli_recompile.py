@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import shutil
 import sys
-from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -177,91 +176,38 @@ class TestHandleRecompile:
         mock_manifest.assert_called_once()
         mock_dashboard.assert_called_once()
 
-    def test_reports_the_schema_before_aggregating_and_never_rewrites_it(
-        self, tmp_path: Path
-    ) -> None:
-        """Recompile INSPECTS the metadata schema; it does not migrate it.
-
-        The rewrite moved to ``--mode migrate`` (Phase 5 Task 5.4, superseding
-        flat-metadata decision #1). Decision #3 is untouched -- the read path
-        canonicalizes legacy headers in memory -- so the inspection still runs
-        first, ahead of aggregation, purely so the user is told.
-        """
-        output_dir = _make_fake_results(tmp_path)
-        events: list[str] = []
-
-        def _report(_output_dir: Path):
-            events.append("report")
-            return SimpleNamespace(targets=())
-
-        def _aggregate(**_kwargs: object) -> None:
-            events.append("aggregate")
-
-        with (
-            patch(
-                "phenotypic._cli._cli_recompile_metadata_migration."
-                "report_metadata_schema_for_recompile",
-                side_effect=_report,
-            ),
-            patch(
-                "phenotypic._cli._cli_output_manager.aggregate_measurements",
-                side_effect=_aggregate,
-            ),
-            patch("phenotypic.phenotypicCLI._regenerate_missing_overlays"),
-            patch("phenotypic._cli._dashboard.regenerate_dashboard_artifacts"),
-        ):
-            _handle_recompile(output_dir, None, True, 0.3, 1)
-
-        assert events == ["report", "aggregate"]
-
-    def test_no_rewriting_entry_point_survives_on_the_recompile_seam(
+    def test_skips_metadata_preflight_and_its_migrate_warning(
         self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """The seam is read-only by construction, not merely by call site.
+        """Only explicit migrate owns metadata migration preflight."""
+        import phenotypic.sdk_ as sdk
 
-        A recompile that still *could* rewrite is one refactor away from
-        doing so again, so the mutating names are asserted absent rather
-        than merely unused.
-        """
-        from phenotypic._cli import _cli_recompile_metadata_migration as seam
-
-        for name in (
-            "migrate_metadata_schema_for_recompile",
-            "RecompileMetadataMigrationError",
-        ):
-            assert not hasattr(seam, name), name
-
-    def test_reports_the_legacy_target_count_and_names_the_remedy(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
         output_dir = _make_fake_results(tmp_path)
-        report = SimpleNamespace(
-            targets=(
-                SimpleNamespace(status="migratable"),
-                SimpleNamespace(status="migratable"),
-                SimpleNamespace(status="compatible"),
-            )
-        )
+        preflight_calls: list[object] = []
 
+        def _unexpected_preflight(*args: object, **_kwargs: object):
+            preflight_calls.extend(args)
+            return SimpleNamespace(
+                targets=(SimpleNamespace(status="migratable"),)
+            )
+
+        monkeypatch.setattr(
+            sdk, "preflight_metadata_schema", _unexpected_preflight
+        )
         with (
-            patch(
-                "phenotypic._cli._cli_recompile_metadata_migration."
-                "report_metadata_schema_for_recompile",
-                return_value=report,
-            ),
-            patch(
-                "phenotypic._cli._cli_output_manager.aggregate_measurements"
-            ),
+            patch("phenotypic._cli._cli_output_manager.aggregate_measurements"),
             patch("phenotypic.phenotypicCLI._regenerate_missing_overlays"),
             patch("phenotypic._cli._dashboard.regenerate_dashboard_artifacts"),
         ):
             _handle_recompile(output_dir, None, True, 0.3, 1)
 
         output = capsys.readouterr().out
-        compact = "".join(output.split())
-        assert "2target(s)" in compact
-        assert "--modemigrate" in compact
-        assert not (output_dir / ".phenotypic" / "metadata_migration").exists()
+        assert preflight_calls == []
+        assert "Metadata schema" not in output
+        assert "--mode migrate" not in output
 
     def test_external_metadata_is_not_a_migration_target_or_mutated(
         self, tmp_path: Path
@@ -289,172 +235,18 @@ class TestHandleRecompile:
         self, tmp_path: Path
     ) -> None:
         output_dir = tmp_path / "out"
-        # A dataset with image stores but no measurements: dataset
-        # discovery must still find it, or the schema report it authorizes
-        # never runs.
+        # A dataset with image stores but no measurements must still be found.
         store = zarr_store_path(output_dir, "store-only", "plateA")
         store.mkdir(parents=True)
         (store / "zarr.json").write_bytes(b"migration authority")
 
         with (
-            patch(
-                "phenotypic._cli._cli_recompile_metadata_migration."
-                "report_metadata_schema_for_recompile",
-                return_value=SimpleNamespace(targets=()),
-            ) as report,
             patch("phenotypic.phenotypicCLI._regenerate_missing_overlays"),
             patch("phenotypic._cli._dashboard.regenerate_dashboard_artifacts"),
         ):
             _handle_recompile(output_dir, None, True, 0.3, 1)
 
-        report.assert_called_once_with(output_dir)
         assert not (output_dir / "deliverables").exists()
-
-
-class TestRecompileMetadataSchemaSeam:
-    """The local metadata seam INSPECTS; it never rewrites."""
-
-    def test_a_legacy_hdf_is_reported_and_left_byte_identical(
-        self, tmp_path: Path
-    ) -> None:
-        """The MIG-25 guard, from the recompile side.
-
-        Recompile used to byte-copy and rewrite every legacy ``.h5`` through
-        ``_migrate_hdf_copy``. Nothing does that now: ``--mode migrate``
-        excludes ``.h5`` from its metadata pass unconditionally, and recompile
-        does not migrate at all. So the originals survive both.
-        """
-        import hashlib
-
-        import h5py
-
-        from phenotypic._cli._cli_recompile_metadata_migration import (
-            legacy_header_target_count,
-            report_metadata_schema_for_recompile,
-        )
-
-        output_dir = _make_fake_results(tmp_path)
-        hdf_path = output_dir / "results" / "ds1" / "hdf" / "plateA.h5"
-        hdf_path.parent.mkdir(parents=True)
-        with h5py.File(hdf_path, "w") as handle:
-            handle.attrs["schema_version"] = 1
-            public = handle.create_group("public_metadata")
-            public.attrs["MetadataGenetic_Strain"] = "S288C"
-        before = hashlib.sha256(hdf_path.read_bytes()).hexdigest()
-
-        report = report_metadata_schema_for_recompile(output_dir)
-
-        assert legacy_header_target_count(report) >= 1
-        assert hashlib.sha256(hdf_path.read_bytes()).hexdigest() == before
-        with h5py.File(hdf_path, "r") as handle:
-            assert (
-                handle["public_metadata"].attrs["MetadataGenetic_Strain"]
-                == "S288C"
-            )
-        assert not (output_dir / ".phenotypic" / "metadata_migration").exists()
-
-    def test_a_canonical_bundle_is_a_repeatable_no_op(
-        self, tmp_path: Path
-    ) -> None:
-        from phenotypic._cli._cli_recompile_metadata_migration import (
-            report_metadata_schema_for_recompile,
-        )
-
-        output_dir = _make_fake_results(tmp_path)
-
-        first = report_metadata_schema_for_recompile(output_dir)
-        second = report_metadata_schema_for_recompile(output_dir)
-
-        assert first.status == second.status == "compatible"
-        assert not (output_dir / ".phenotypic" / "metadata_migration").exists()
-
-    def test_marker_authorized_measurements_are_left_untouched(
-        self, tmp_path: Path
-    ) -> None:
-        """Recompile cannot invalidate per-image authority it never rewrites.
-
-        The old version of this test asserted that a metadata rewrite
-        PRESERVED that authority through a receipt bridge. The rewrite is
-        gone from recompile, so the stronger property now holds: the bytes
-        the markers bind are not touched at all. The migrate-side equivalent
-        is ``test_every_image_still_validates_after_migration``.
-        """
-        import h5py
-
-        from phenotypic._cli._cli_completion import (
-            authorized_measurement_sources,
-            publish_image_success,
-            valid_image_success,
-        )
-        from phenotypic._cli._cli_recompile_metadata_migration import (
-            report_metadata_schema_for_recompile,
-        )
-        from phenotypic._cli._cli_state_management import save_processing_state
-        from phenotypic._cli._cli_types import DatasetState, ProcessingState
-
-        output_dir = tmp_path / "out"
-        measurement = (
-            output_dir / "results" / "ds1" / "measurements" / "img1.parquet"
-        )
-        measurement.parent.mkdir(parents=True)
-        pd.DataFrame(
-            {"MetadataGenetic_Strain": ["S288C"], "Size_Area": [1.0]}
-        ).to_parquet(measurement, index=False)
-        hdf_path = output_dir / "results" / "ds1" / "hdf" / "img1.h5"
-        hdf_path.parent.mkdir(parents=True)
-        with h5py.File(hdf_path, "w") as handle:
-            handle.attrs["schema_version"] = 1
-            public = handle.create_group("public_metadata")
-            public.attrs["MetadataGenetic_Strain"] = "S288C"
-
-        now = datetime.now()
-        save_processing_state(
-            ProcessingState(
-                version="3.0.0",
-                pipeline_path=output_dir / "pipeline.json",
-                input_path=tmp_path / "input",
-                output_dir=output_dir,
-                timestamp=now,
-                execution_mode="local",
-                last_updated=now,
-                datasets={"ds1": DatasetState(initial_images={"img1.tif"})},
-                config={
-                    "success_markers_required": True,
-                    "work_ids": {"ds1": {"img1.tif": "work-1"}},
-                    "pipeline_sha256": "pipeline",
-                },
-            ),
-            output_dir,
-        )
-        publish_image_success(
-            output_dir,
-            work_id="work-1",
-            dataset="ds1",
-            relative_image_path="ds1/img1.tif",
-            image_stem="img1",
-            mode="full",
-            attempt_id="attempt",
-            lifecycle_epoch="local",
-            artifacts={"measurements": measurement, "hdf": hdf_path},
-        )
-        measurement_bytes = measurement.read_bytes()
-
-        report_metadata_schema_for_recompile(output_dir)
-
-        assert measurement.read_bytes() == measurement_bytes
-        assert valid_image_success(
-            output_dir,
-            dataset="ds1",
-            image_stem="img1",
-            work_id="work-1",
-        )
-        assert authorized_measurement_sources(output_dir) == {
-            measurement.resolve(): "ds1"
-        }
-        assert list(pd.read_parquet(measurement).columns) == [
-            "MetadataGenetic_Strain",
-            "Size_Area",
-        ]
 
 
 class TestResolveLocalWorkerCount:

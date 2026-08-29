@@ -346,6 +346,29 @@ def marker_claims_measurement_authority(marker_path: Path) -> bool:
     return isinstance(artifacts, dict) and "measurements" in artifacts
 
 
+def _marker_measurement_source(
+    output_root: Path, marker_path: Path
+) -> Path | None:
+    """Resolve a marker's in-tree measurement source, if well formed."""
+    try:
+        marker = json.loads(Path(marker_path).read_text(encoding="utf-8"))
+        descriptor = marker["artifacts"]["measurements"]
+        relative = descriptor["path"]
+        if not isinstance(relative, str):
+            return None
+        source = (output_root / relative).resolve()
+        source.relative_to(output_root)
+    except (
+        KeyError,
+        OSError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ):
+        return None
+    return source
+
+
 def begin_recompile_table_transition(
     output_dir: Path,
     dataset_name: str,
@@ -687,6 +710,14 @@ def assert_no_unrecoverable_measurement_authority(
             )
             if table.resolve() in accepted:
                 continue
+            marker_source = _marker_measurement_source(
+                output_root, marker_path
+            )
+            if marker_source in accepted:
+                raise RuntimeError(
+                    "Legacy external measurement Parquets require --mode "
+                    "migrate before recompile"
+                )
             if table.is_file() or marker_claims_measurement_authority(
                 marker_path
             ):

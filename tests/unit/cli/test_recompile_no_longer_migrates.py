@@ -12,8 +12,9 @@ Two distinct fixtures, and the distinction is the point (OPEN-QUESTIONS D16):
     ``--mode migrate`` -- the forward path cannot read those images at all.
 
 ``legacy_headers_run``
-    already converted to stores, metadata headers still legacy per-topic.
-    ``recompile`` **succeeds**, reads them, and leaves them alone.
+    already converted to stores, but its authoritative measurement tables are
+    still legacy external Parquets. ``recompile`` **fails** with the explicit
+    migration prerequisite and leaves their headers and receipts alone.
 """
 
 from __future__ import annotations
@@ -58,6 +59,7 @@ def test_recompile_requires_migration_for_legacy_external_authority(
         ["--mode", "recompile", "--output", str(legacy_headers_run)],
     )
     assert result.exit_code != 0
+    assert "Metadata schema" not in result.output
     assert "--mode migrate" in result.output
 
 
@@ -74,10 +76,11 @@ def test_recompile_does_not_rewrite_headers(legacy_headers_run) -> None:
 
 def test_recompile_writes_no_migration_receipt(legacy_headers_run) -> None:
     """A receipt is the durable trace of a rewrite; recompile must leave none."""
-    CliRunner().invoke(
+    result = CliRunner().invoke(
         phenotypic_cli,
         ["--mode", "recompile", "--output", str(legacy_headers_run)],
     )
+    assert result.exit_code != 0
     receipts = legacy_headers_run / ".phenotypic" / "metadata_migration"
     assert not receipts.exists() or not list(receipts.glob("*.json"))
 

@@ -182,15 +182,13 @@ rebuilds the progress manifest, and regenerates the progress dashboard.
 uv run python -m phenotypic --mode recompile --output ./out
 ```
 
-Before aggregation, recompile preflights and automatically migrates
-bundle-owned authoritative metadata to the flat `Metadata_<Label>` namespace.
-The same ordering applies locally and on SLURM. A blocked or failed migration
-aborts before aggregate outputs are published; a canonical bundle is an
-idempotent no-op. The migration receipt printed by the CLI can be used for
-rollback. Legacy HDF inputs are migrated copy-on-write, and an external file passed via
-`--metadata` is copied byte-for-byte to `deliverables/metadata.csv` before work,
-then normalized in memory. Neither the external file nor that provenance
-snapshot is rewritten by migration.
+Recompile performs neither metadata migration preflight nor metadata
+migration. Convert legacy storage or external measurement authority first with
+`--mode migrate`; recompile then rebuilds the current artifacts. Exact legacy
+header spellings that remain in readable provenance inputs are normalized in
+memory. An external file passed via `--metadata` is copied byte-for-byte to
+`deliverables/metadata.csv` before work, then normalized in memory. Neither the
+external file nor that provenance snapshot is rewritten.
 
 Reach for it when the *numbers* are right but the *presentation* is not:
 

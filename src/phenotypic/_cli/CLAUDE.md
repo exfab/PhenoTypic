@@ -324,8 +324,9 @@ visible per-image Parquets, dataset aggregates, or a partial deliverable master.
 full runs and recompile atomically copy the configured `--metadata` bytes to
 `deliverables/metadata.csv`, verify the copy, and use that stable path for
 finalization. The snapshot is source provenance, not a generated schema table:
-legacy headers normalize only in memory, while finalization and recompile
-metadata migration must leave its bytes unchanged. All generated measurement,
+legacy headers normalize only in memory, while finalization, recompile, and
+explicit `--mode migrate` must leave its bytes unchanged. Recompile performs
+no metadata migration preflight or mutation. All generated measurement,
 analysis, QC, and REMBI outputs use canonical flat `Metadata_<Label>` headers.
 
 `QC_MetadataOnly` is a **user-facing output column, not internal machinery** — it is how a

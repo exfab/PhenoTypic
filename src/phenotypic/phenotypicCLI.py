@@ -3306,10 +3306,6 @@ def _handle_recompile(
     from rich.console import Console
 
     from phenotypic._cli._cli_output_manager import aggregate_measurements
-    from phenotypic._cli._cli_recompile_metadata_migration import (
-        legacy_header_target_count,
-        report_metadata_schema_for_recompile,
-    )
     from phenotypic._cli._cli_utils import load_job_metadata
     from phenotypic._cli._dashboard import (
         regenerate_dashboard_artifacts,
@@ -3328,23 +3324,6 @@ def _handle_recompile(
         f"[bold]Recompiling[/bold] from {output_dir} "
         f"({len(dataset_names)} dataset(s))"
     )
-
-    # Read-only. Recompile REPORTS a legacy bundle; it does not rewrite one.
-    # The rewrite lives in `--mode migrate` (supersedes flat-metadata decision
-    # #1). Decision #3 is untouched: the read path canonicalizes legacy
-    # headers in memory, so this bundle recompiles correctly as it stands.
-    console.print("[cyan]Checking metadata schema...")
-    schema_report = report_metadata_schema_for_recompile(output_dir)
-    legacy_targets = legacy_header_target_count(schema_report)
-    if legacy_targets:
-        console.print(
-            f"[yellow]Metadata schema: {legacy_targets} target(s) still use "
-            "legacy per-topic headers. They are read correctly as-is; to "
-            "canonicalize them on disk run:\n"
-            f"  python -m phenotypic --mode migrate --output {output_dir}"
-        )
-    else:
-        console.print("[green]Metadata schema: canonical")
 
     console.print("[cyan]Checking for missing overlays...")
     _regenerate_missing_overlays(output_dir, overlay_alpha, n_jobs)
