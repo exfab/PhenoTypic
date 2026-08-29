@@ -1570,6 +1570,252 @@ def test_competing_status_is_not_overwritten(
     assert status_path.read_bytes() == competing
 
 
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_status_removal_restores_competitor_replaced_at_mutation_seam(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Removal quarantines and verifies the exact named status before unlink."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+    assert result.status == "applied"
+    authority = metadata_migration_authority(migratable_bundle)
+    status_path = authority.status_path
+    retained = status_path.with_name("status.json.retained-before-removal")
+    competitor = status_path.with_name("status.json.competing-removal")
+    competing_payload = json.loads(status_path.read_text(encoding="utf-8"))
+    competing_payload["competing"] = True
+    competitor_bytes = (
+        json.dumps(competing_payload, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    competitor.write_bytes(competitor_bytes)
+    original_bytes = status_path.read_bytes()
+    real_rename = migration.os.rename
+    real_replace = migration.os.replace
+    real_unlink = migration.os.unlink
+    swapped = False
+
+    def replace_named_status(
+        *, parent_fd: int | None = None
+    ) -> None:
+        nonlocal swapped
+        if swapped:
+            return
+        if parent_fd is None:
+            real_rename(status_path, retained)
+            real_replace(competitor, status_path)
+        else:
+            real_rename(
+                status_path.name,
+                retained.name,
+                src_dir_fd=parent_fd,
+                dst_dir_fd=parent_fd,
+            )
+            real_replace(
+                competitor.name,
+                status_path.name,
+                src_dir_fd=parent_fd,
+                dst_dir_fd=parent_fd,
+            )
+        swapped = True
+
+    def swap_before_quarantine(
+        source: object,
+        destination: object,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        if Path(os.fspath(source)).name == status_path.name:
+            raw_parent_fd = kwargs.get("src_dir_fd")
+            replace_named_status(
+                parent_fd=(
+                    raw_parent_fd if isinstance(raw_parent_fd, int) else None
+                )
+            )
+        real_rename(source, destination, *args, **kwargs)
+
+    def swap_before_legacy_unlink(
+        path: object,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        if Path(os.fspath(path)).name == status_path.name:
+            raw_parent_fd = kwargs.get("dir_fd")
+            replace_named_status(
+                parent_fd=(
+                    raw_parent_fd if isinstance(raw_parent_fd, int) else None
+                )
+            )
+        real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(migration.os, "rename", swap_before_quarantine)
+    monkeypatch.setattr(migration.os, "unlink", swap_before_legacy_unlink)
+
+    with pytest.raises(ValueError, match="[Cc]ompeting.*status"):
+        migration._remove_exact_metadata_authority(
+            migratable_bundle.output_root,
+            authority,
+            commit_guard=None,
+        )
+
+    assert swapped is True
+    assert status_path.read_bytes() == competitor_bytes
+    assert retained.read_bytes() == original_bytes
+    assert not tuple(status_path.parent.glob(".status.json.*.quarantine"))
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_status_publish_retains_terminal_receipt_authority_through_link(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Receipt replacement at status link cannot certify terminal authority."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    plan_path, log_path, receipt_path = migration._journal_paths(
+        migratable_bundle.output_root, report.plan_fingerprint
+    )
+    plan = migration._new_journal_plan(
+        report,
+        root=migratable_bundle.output_root,
+        kinds=NON_IMAGE_KINDS,
+    )
+    migration._write_journal_plan(
+        migratable_bundle.output_root,
+        plan_path,
+        log_path,
+        plan,
+        commit_guard=None,
+    )
+    result = migration._apply_metadata_journal(
+        migratable_bundle,
+        migratable_bundle.output_root,
+        plan_path,
+        log_path,
+        receipt_path,
+        kinds=NON_IMAGE_KINDS,
+        commit_guard=None,
+    )
+    assert result.status == "applied"
+    status_path = migration._metadata_status_path(
+        migratable_bundle.output_root
+    )
+    original_bytes = receipt_path.read_bytes()
+    retained = receipt_path.with_name("receipt.json.retained-at-status-link")
+    competitor = receipt_path.with_name("receipt.json.competitor-at-status-link")
+    competitor_bytes = original_bytes + b" "
+    competitor.write_bytes(competitor_bytes)
+    real_link = migration.os.link
+    replaced = False
+
+    def replace_receipt_before_status_link(
+        source: object,
+        destination: object,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        nonlocal replaced
+        if Path(os.fspath(destination)).name == status_path.name and not replaced:
+            receipt_path.rename(retained)
+            competitor.replace(receipt_path)
+            replaced = True
+        real_link(source, destination, *args, **kwargs)
+
+    monkeypatch.setattr(migration.os, "link", replace_receipt_before_status_link)
+
+    with pytest.raises(ValueError, match="Terminal migration receipt.*changed"):
+        migration._publish_metadata_authority(
+            migratable_bundle.output_root,
+            result,
+            compatible_noop=False,
+            commit_guard=None,
+        )
+
+    assert replaced is True
+    assert receipt_path.read_bytes() == competitor_bytes
+    assert retained.read_bytes() == original_bytes
+    assert not status_path.exists()
+    assert not tuple(status_path.parent.glob(".status.json.*.tmp*"))
+
+
+@pytest.mark.skipif(
+    os.name != "posix" or not Path("/proc/self/fd").is_dir(),
+    reason="descriptor leak contract",
+)
+@pytest.mark.parametrize("failure_point", ["identity", "fsync"])
+def test_journal_directory_open_failure_closes_new_descriptor(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_point: str,
+) -> None:
+    """A child directory fd is owned before its first fallible validation."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    root = migratable_bundle.output_root
+    directory = root / ".phenotypic" / "metadata_migration" / "fd-failure"
+    if failure_point == "identity":
+        directory.mkdir(parents=True)
+        real_identity = migration._directory_identity
+        identity_calls = 0
+
+        def fail_child_identity(descriptor: int, *, role: str):
+            nonlocal identity_calls
+            identity_calls += 1
+            if identity_calls == 2:
+                raise OSError("injected directory identity failure")
+            return real_identity(descriptor, role=role)
+
+        monkeypatch.setattr(
+            migration, "_directory_identity", fail_child_identity
+        )
+    else:
+        real_fsync = migration.os.fsync
+        fsync_calls = 0
+
+        def fail_child_fsync(descriptor: int) -> None:
+            nonlocal fsync_calls
+            fsync_calls += 1
+            if fsync_calls == 2:
+                raise OSError("injected directory fsync failure")
+            real_fsync(descriptor)
+
+        monkeypatch.setattr(migration.os, "fsync", fail_child_fsync)
+
+    before_fds = len(tuple(Path("/proc/self/fd").iterdir()))
+    if failure_point == "identity":
+        failure = pytest.raises(OSError, match="identity")
+    else:
+        failure = pytest.raises(ValueError, match="creating")
+    with failure as raised:
+        with migration._open_anchored_journal_directory(
+            root,
+            directory,
+            create=failure_point == "fsync",
+        ):
+            raise AssertionError("failure injection did not fire")
+    if failure_point == "fsync":
+        assert isinstance(raised.value.__cause__, OSError)
+        assert "fsync" in str(raised.value.__cause__)
+    after_fds = len(tuple(Path("/proc/self/fd").iterdir()))
+
+    assert after_fds == before_fds
+    authority_root = root / ".phenotypic" / "metadata_migration"
+    assert not tuple(authority_root.rglob("*.tmp"))
+    assert not tuple(authority_root.rglob("*.ready"))
+
+
 def test_authority_loader_revalidates_live_target_bytes(
     migratable_bundle: BundleLayout,
 ) -> None:
