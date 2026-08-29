@@ -22,7 +22,7 @@ from ._cli_file_locking import atomic_append, atomic_read, FileLockTimeout
 from phenotypic.sdk_ import (
     CommitGuard,
     FAILURES_JSONL,
-    STORE_SUFFIX,
+    is_zarr_store_name,
     publication_commit,
     source_image_stem,
     terminal_failures_jsonl_path,
@@ -96,7 +96,9 @@ def file_sha256(path: Path) -> str:
 
     A ``*.ome.zarr`` input is a **directory**, so the streaming read raises
     ``IsADirectoryError``. A store is digested over its whole tree: every
-    member's store-relative path and content, in sorted path order.
+    member's type, store-relative path, content length, and content, in sorted
+    path order. Variable-length fields are length-framed so member bytes cannot
+    forge the boundary before the next member.
 
     **Not the root ``zarr.json`` alone.** An earlier version did that, on the
     reasoning that the promote protocol writes the root last so it fingerprints
@@ -135,16 +137,15 @@ def file_sha256(path: Path) -> str:
     no root ``zarr.json`` -- is **not** refused here, and deliberately so: this
     function digests bytes, and ``_is_store_dir`` matches by name precisely so
     that no scan opens a store. Such a directory digests to whatever its
-    members happen to be, which for an empty one is
-    ``e3b0c442...b7852b855``, the digest of zero bytes -- so two different
-    empty ``*.ome.zarr`` directories collide. Nothing downstream is harmed by
+    members happen to be, so two empty store-shaped directories share the
+    same domain-separated empty-tree digest. Nothing downstream is harmed by
     that, because the run never gets far enough to care: ``Image.imread``
     raises ``FileNotFoundError`` naming the missing ``zarr.json``, which is
     the loud later failure ``_is_store_dir``'s docstring promises. Pinned by
     ``test_a_store_shaped_directory_digests_and_fails_in_imread``.
 
     Args:
-        path: An input image file, or a ``*.ome.zarr`` store directory.
+        path: An input image file, or a ``*.zarr`` store directory.
 
     Returns:
         The hex digest.
@@ -163,18 +164,32 @@ def file_sha256(path: Path) -> str:
                 digest.update(chunk)
 
     if target.is_dir():
-        if not target.name.endswith(STORE_SUFFIX):
+        if not is_zarr_store_name(target):
             raise IsADirectoryError(
                 f"{target} is a directory but not an OME-Zarr store; "
                 f"it has no content fingerprint"
             )
         members = sorted(
-            (p for p in target.rglob("*") if p.is_file()),
+            target.rglob("*"),
             key=lambda p: p.relative_to(target).as_posix(),
         )
+        digest.update(b"phenotypic-store-tree-v2\0")
         for member in members:
-            digest.update(member.relative_to(target).as_posix().encode("utf-8"))
-            digest.update(b"\0")
+            if member.is_symlink():
+                raise OSError(f"OME-Zarr store contains a symlink: {member}")
+            member_type = b"d" if member.is_dir() else b"f"
+            if member_type == b"f" and not member.is_file():
+                raise OSError(
+                    f"OME-Zarr store contains a non-regular member: {member}"
+                )
+            relative = member.relative_to(target).as_posix().encode("utf-8")
+            digest.update(member_type)
+            digest.update(len(relative).to_bytes(8, "big"))
+            digest.update(relative)
+            if member_type == b"d":
+                digest.update((0).to_bytes(8, "big"))
+                continue
+            digest.update(member.stat().st_size.to_bytes(8, "big"))
             _feed(member)
         return digest.hexdigest()
 

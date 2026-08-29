@@ -1,5 +1,6 @@
 import base64
 import os
+from pathlib import Path
 
 import dash
 import numpy as np
@@ -91,6 +92,211 @@ def test_revisioned_asset_rejects_stale_revision(app_and_root):
     response = client.get(f"/assets/{token}/{stale}/image.dzi")
     assert response.status_code == 409
     assert response.get_json() == {"error": "source image changed"}
+
+
+def test_published_plain_zarr_store_is_served_as_generation_addressed_bytes(
+    monkeypatch, tmp_path
+) -> None:
+    """Browse hands Viv store bytes; it must not build a PNG/DZI pyramid."""
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setattr(sr.tempfile, "gettempdir", lambda: str(cache))
+    sandbox_root = tmp_path / "sandbox"
+    store = sandbox_root / "plate.zarr"
+    chunk = store / "rgb" / "0" / "c" / "0"
+    chunk.parent.mkdir(parents=True)
+    chunk.write_bytes(b"chunk-bytes")
+    root = store / "zarr.json"
+    root.write_text(
+        '{"attributes":{"phenotypic":{'
+        '"store_schema_version":3,'
+        '"publication_protocol":"root-last-immutable-v1",'
+        '"series":{"rgb":"rgb"},"labels":{}}}}',
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(sandbox_root)
+    app = dash.Dash(__name__)
+    app.layout = dash.html.Div()
+    _tile_routes.register(app, sandbox)
+    client = app.server.test_client()
+    revision = probe_source(store, sandbox_root=sandbox_root)
+    token = sr.encode_token("plate.zarr")
+
+    response = client.get(
+        f"/assets/{token}/{revision.cache_key}/zarr/rgb/0/c/0"
+    )
+
+    assert response.status_code == 200
+    assert response.data == b"chunk-bytes"
+    assert response.headers["Accept-Ranges"] == "bytes"
+    assert response.headers["Cache-Control"].endswith("immutable")
+    ranged = client.get(
+        f"/assets/{token}/{revision.cache_key}/zarr/rgb/0/c/0",
+        headers={"Range": "bytes=0-4"},
+    )
+    assert ranged.status_code == 206
+    assert ranged.data == b"chunk"
+    assert ranged.headers["Content-Range"] == "bytes 0-4/11"
+    assert not list(cache.rglob("*.dzi"))
+
+
+def test_published_store_range_does_not_materialize_the_member(
+    monkeypatch, tmp_path
+) -> None:
+    """A range request streams the shard instead of reading all of it."""
+    sandbox_root = tmp_path / "sandbox"
+    store = sandbox_root / "plate.zarr"
+    chunk = store / "rgb" / "0" / "c" / "0"
+    chunk.parent.mkdir(parents=True)
+    chunk.write_bytes(b"0123456789")
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{'
+        '"store_schema_version":3,'
+        '"publication_protocol":"root-last-immutable-v1",'
+        '"series":{"rgb":"rgb"},"labels":{}}}}',
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(sandbox_root)
+    app = dash.Dash(__name__)
+    app.layout = dash.html.Div()
+    _tile_routes.register(app, sandbox)
+    revision = probe_source(store, sandbox_root=sandbox_root)
+    token = sr.encode_token("plate.zarr")
+    original_read_bytes = Path.read_bytes
+
+    def reject_chunk_materialization(path: Path) -> bytes:
+        if path == chunk:
+            raise AssertionError("route materialized a complete Zarr member")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", reject_chunk_materialization)
+
+    response = app.server.test_client().get(
+        f"/assets/{token}/{revision.cache_key}/zarr/rgb/0/c/0",
+        headers={"Range": "bytes=2-5"},
+    )
+
+    assert response.status_code == 206
+    assert response.data == b"2345"
+
+
+def test_published_store_route_exposes_only_declared_image_roots(
+    tmp_path,
+) -> None:
+    """Embedded measurement tables are not part of the image-byte API."""
+    sandbox_root = tmp_path / "sandbox"
+    store = sandbox_root / "plate.zarr"
+    image_member = store / "original" / "0" / "zarr.json"
+    table_member = store / "tables" / "measurements" / "table.parquet"
+    image_member.parent.mkdir(parents=True)
+    table_member.parent.mkdir(parents=True)
+    image_member.write_bytes(b"image-metadata")
+    table_member.write_bytes(b"private-table")
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{'
+        '"store_schema_version":3,'
+        '"publication_protocol":"root-last-immutable-v1",'
+        '"series":{"rgb":"original"},"labels":{}}}}',
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(sandbox_root)
+    app = dash.Dash(__name__)
+    app.layout = dash.html.Div()
+    _tile_routes.register(app, sandbox)
+    revision = probe_source(store, sandbox_root=sandbox_root)
+    token = sr.encode_token("plate.zarr")
+    client = app.server.test_client()
+
+    image = client.get(
+        f"/assets/{token}/{revision.cache_key}/zarr/original/0/zarr.json"
+    )
+    table = client.get(
+        f"/assets/{token}/{revision.cache_key}/zarr/"
+        "tables/measurements/table.parquet"
+    )
+
+    assert image.status_code == 200
+    assert image.data == b"image-metadata"
+    assert table.status_code == 404
+
+
+def test_published_store_route_maps_unstable_root_to_conflict(
+    monkeypatch, tmp_path
+) -> None:
+    """A root change during member open fails closed as a stale generation."""
+    sandbox_root = tmp_path / "sandbox"
+    store = sandbox_root / "plate.zarr"
+    member = store / "rgb" / "0" / "zarr.json"
+    member.parent.mkdir(parents=True)
+    member.write_bytes(b"image-metadata")
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{'
+        '"store_schema_version":3,'
+        '"publication_protocol":"root-last-immutable-v1",'
+        '"series":{"rgb":"rgb"},"labels":{}}}}',
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(sandbox_root)
+    app = dash.Dash(__name__)
+    app.layout = dash.html.Div()
+    _tile_routes.register(app, sandbox)
+    revision = probe_source(store, sandbox_root=sandbox_root)
+    token = sr.encode_token("plate.zarr")
+    observations = iter(
+        [
+            revision.store_revision,
+            OSError("root changed during revision inspection"),
+        ]
+    )
+
+    def unstable_publication(_store: Path) -> str:
+        observed = next(observations)
+        if isinstance(observed, OSError):
+            raise observed
+        assert observed is not None
+        return observed
+
+    monkeypatch.setattr(
+        _tile_routes, "store_publication_token", unstable_publication
+    )
+
+    response = app.server.test_client().get(
+        f"/assets/{token}/{revision.cache_key}/zarr/rgb/0/zarr.json"
+    )
+
+    assert response.status_code == 409
+    assert response.get_json() == {"error": "source image changed"}
+
+
+def test_mutable_third_party_store_fails_closed_without_asset_rescan(
+    monkeypatch, tmp_path
+) -> None:
+    """No publication token means no immutable multi-request Viv source."""
+    from phenotypic.sdk_ import _io_constants as io
+
+    sandbox_root = tmp_path / "sandbox"
+    store = sandbox_root / "third-party.zarr"
+    store.mkdir(parents=True)
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+    sandbox = SandboxRoot.from_path(sandbox_root)
+    app = dash.Dash(__name__)
+    app.layout = dash.html.Div()
+    _tile_routes.register(app, sandbox)
+    token = sr.encode_token("third-party.zarr")
+    monkeypatch.setattr(
+        io,
+        "_store_revision_snapshot",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("asset request recursively traversed the store")
+        ),
+    )
+
+    response = app.server.test_client().get(
+        f"/assets/{token}/{'0' * 64}/zarr/zarr.json"
+    )
+
+    assert response.status_code == 422
+    assert "publication token" in response.get_json()["error"]
 
 
 def test_malformed_token_404(app_and_root):

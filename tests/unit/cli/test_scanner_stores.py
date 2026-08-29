@@ -26,6 +26,16 @@ def _store(parent: Path, stem: str) -> Path:
     )
 
 
+def test_a_plain_zarr_name_is_a_single_image_input(tmp_path: Path) -> None:
+    """Store validity belongs to the reader, not the name-only scanner."""
+    plain_name = tmp_path / "plate.zarr"
+    plain_name.mkdir()
+
+    assert scan_directory_structure(plain_name) == {
+        "single_image": [plain_name]
+    }
+
+
 def test_a_flat_tree_of_stores_scans_as_one_dataset(tmp_path: Path) -> None:
     root = tmp_path / "corrected"
     for stem in ("p01", "p02", "p03"):

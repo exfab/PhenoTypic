@@ -69,3 +69,26 @@ def test_store_probe_rejects_nested_symlink(tmp_path):
 
     with pytest.raises(SourceProbeError):
         probe_source(store, sandbox_root=tmp_path)
+
+
+def test_store_probe_computes_one_already_stable_revision(
+    tmp_path, monkeypatch
+) -> None:
+    """The probe must not wrap a stable store identity in another full pass."""
+    from phenotypic.gui.browse import _source_probe as source_probe
+
+    store = tmp_path / "plate.zarr"
+    store.mkdir()
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+    calls = 0
+
+    def identity(_path):
+        nonlocal calls
+        calls += 1
+        return "sha256-stat-tree-v1:" + "a" * 64
+
+    monkeypatch.setattr(source_probe, "store_revision_identity", identity)
+    revision = probe_source(store, sandbox_root=tmp_path)
+
+    assert revision.store_revision is not None
+    assert calls == 1

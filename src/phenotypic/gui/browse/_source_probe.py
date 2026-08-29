@@ -16,7 +16,7 @@ from PIL import Image as PILImage
 
 from phenotypic.gui._config import BROWSE_RENDER_SCHEMA_VERSION, RAW_IMAGE_EXTS
 from phenotypic.sdk_ import (
-    STORE_SUFFIX,
+    is_zarr_store_name,
     source_image_suffix,
     store_revision_identity,
 )
@@ -134,7 +134,7 @@ def probe_source(
         before = source.stat()
         before_store_revision = (
             store_revision_identity(source)
-            if source.name.endswith(STORE_SUFFIX)
+            if is_zarr_store_name(source)
             else None
         )
     except OSError as exc:
@@ -145,11 +145,12 @@ def probe_source(
 
     try:
         after = source.stat()
-        after_store_revision = (
-            store_revision_identity(source)
-            if before_store_revision is not None
-            else None
-        )
+        # ``store_revision_identity`` already captures a stable generation:
+        # O(1) from PhenoTypic's root-last publication token, or a guarded
+        # recursive fallback for third-party mutable stores. Wrapping it in a
+        # second call doubles the GPFS traversal without strengthening the
+        # point-in-time guarantee.
+        after_store_revision = before_store_revision
     except OSError as exc:
         raise SourceProbeError("source disappeared during inspection") from exc
     before_identity = (
@@ -193,7 +194,7 @@ def probe_source(
 
 
 def _header_dimensions(source: Path) -> tuple[int | None, int | None]:
-    if source.name.endswith(STORE_SUFFIX):
+    if is_zarr_store_name(source):
         return None, None
     try:
         with PILImage.open(source) as image:

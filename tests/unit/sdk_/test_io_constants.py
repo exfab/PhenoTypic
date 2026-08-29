@@ -1,6 +1,7 @@
 """Tests for the shared CLI ↔ GUI artifact-layout constants module."""
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -1545,6 +1546,84 @@ def test_store_revision_identity_changes_for_nested_member(tmp_path) -> None:
     assert store_revision_identity(store) != first
 
 
+def test_phenotypic_store_revision_uses_only_root_last_publication_token(
+    tmp_path, monkeypatch
+) -> None:
+    """Published process stores must not recursively stat every chunk."""
+    from phenotypic.sdk_ import _io_constants as io
+
+    store = tmp_path / "plate.zarr"
+    chunk = store / "rgb" / "0" / "c" / "0"
+    chunk.parent.mkdir(parents=True)
+    chunk.write_bytes(b"pixels")
+    root = store / "zarr.json"
+    root.write_text(
+        '{"attributes":{"phenotypic":{'
+        '"publication_protocol":"root-last-immutable-v1"}}}',
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        io,
+        "_store_revision_snapshot",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("published store was recursively traversed")
+        ),
+    )
+
+    first = io.store_revision_identity(store)
+    chunk.write_bytes(b"different pixels")
+    assert io.store_revision_identity(store) == first
+    root.write_text(
+        '{"attributes":{"phenotypic":{'
+        '"publication_protocol":"root-last-immutable-v1","changed":true}}}',
+        encoding="utf-8",
+    )
+    assert io.store_revision_identity(store) != first
+
+
+def test_publication_token_detects_same_bytes_same_mtime_root_replacement(
+    tmp_path,
+) -> None:
+    """Root identity closes the same-tick, byte-identical replacement gap."""
+    from phenotypic.sdk_ import store_publication_token
+
+    store = tmp_path / "plate.zarr"
+    store.mkdir()
+    root = store / "zarr.json"
+    payload = (
+        '{"attributes":{"phenotypic":{'
+        '"publication_protocol":"root-last-immutable-v1"}}}'
+    )
+    root.write_text(payload, encoding="utf-8")
+    initial_stat = root.stat()
+    first = store_publication_token(store)
+    replacement = store / "replacement.json"
+    replacement.write_text(payload, encoding="utf-8")
+    os.utime(
+        replacement,
+        ns=(initial_stat.st_atime_ns, initial_stat.st_mtime_ns),
+    )
+    replacement.replace(root)
+
+    assert store_publication_token(store) != first
+
+
+def test_phenotypic_named_block_without_publication_protocol_is_not_trusted(
+    tmp_path,
+) -> None:
+    from phenotypic.sdk_ import store_publication_token
+
+    store = tmp_path / "third-party.zarr"
+    store.mkdir()
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{"store_schema_version":3}}}',
+        encoding="utf-8",
+    )
+
+    assert store_publication_token(store) is None
+
+
 def test_store_revision_identity_rejects_nested_symlink(tmp_path) -> None:
     from phenotypic.sdk_ import store_revision_identity
 
@@ -1605,9 +1684,20 @@ def test_store_stem_raises_on_a_path_that_is_not_a_store(tmp_path) -> None:
     with pytest.raises(ValueError, match="not an OME-Zarr store"):
         store_stem(tmp_path / "img.h5")
     with pytest.raises(ValueError, match="not an OME-Zarr store"):
-        store_stem(tmp_path / "img.zarr")
-    with pytest.raises(ValueError, match="not an OME-Zarr store"):
         store_stem(tmp_path / "img.ome")
+
+
+def test_plain_zarr_source_identity_strips_one_store_suffix(tmp_path) -> None:
+    from phenotypic.sdk_ import (
+        source_image_stem,
+        source_image_suffix,
+        store_stem,
+    )
+
+    store = tmp_path / "img.zarr"
+    assert store_stem(store) == "img"
+    assert source_image_stem(store) == "img"
+    assert source_image_suffix(store) == ".zarr"
 
 
 def test_dir_zarr_is_the_directory_name_zarr_store_path_uses(tmp_path) -> None:

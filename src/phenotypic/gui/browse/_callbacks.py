@@ -429,6 +429,36 @@ def current_image_payload(
     return payload
 
 
+def source_asset_payload(
+    prefix: str,
+    token: str,
+    revision: str,
+    *,
+    is_store: bool,
+) -> dict[str, str | None]:
+    """Return the renderer-specific, generation-addressed asset URLs.
+
+    Flat images keep Browse's normalized DZI path. A Zarr store exposes its
+    immutable members directly for the shared Viv facade, so no level-0 PNG or
+    redundant server-side pyramid is materialized.
+    """
+    base = prefix if prefix.endswith("/") else f"{prefix}/"
+    asset = f"{base}assets/{token}/{revision}"
+    if is_store:
+        return {
+            "render_kind": "ome-zarr",
+            "preview_url": None,
+            "dzi_url": None,
+            "store_url": f"{asset}/zarr/",
+        }
+    return {
+        "render_kind": "dzi",
+        "preview_url": f"{asset}/preview.png",
+        "dzi_url": f"{asset}/image.dzi",
+        "store_url": None,
+    }
+
+
 def render_csv_metadata_panel(model: CsvMetadataPanelModel) -> Any:
     """Render Browse's optional metadata CSV section."""
     if model.state == "unset":
@@ -1107,6 +1137,7 @@ def register_callbacks(
                     revisions[name]
                     for name in neighbor_names
                     if name in revisions
+                    and revisions[name].store_revision is None
                 ],
             )
 
@@ -1122,37 +1153,47 @@ def register_callbacks(
             item_token = _source_render.encode_token(
                 sandbox_rel(src_root_rel, dataset or ".", name)
             )
-            status = "queued"
+            status = "ready" if revision.store_revision is not None else "queued"
             if preparation_api is not None:
-                entry = preparation_api.cache.entry(revision)
-                if entry.dzi_ready:
-                    status = "ready"
-                else:
-                    try:
-                        phase = preparation_api.manager.snapshot(
-                            revision
-                        ).phase
-                    except KeyError:
-                        phase = "queued"
-                    status = (
-                        "failed"
-                        if phase in {"failed", "cancelled"}
-                        else "preparing"
-                        if phase not in {"queued", "ready"}
-                        else phase
-                    )
+                if revision.store_revision is None:
+                    entry = preparation_api.cache.entry(revision)
+                    if entry.dzi_ready:
+                        status = "ready"
+                    else:
+                        try:
+                            phase = preparation_api.manager.snapshot(
+                                revision
+                            ).phase
+                        except KeyError:
+                            phase = "queued"
+                        status = (
+                            "failed"
+                            if phase in {"failed", "cancelled"}
+                            else "preparing"
+                            if phase not in {"queued", "ready"}
+                            else phase
+                        )
+            filmstrip_assets = source_asset_payload(
+                prefix,
+                item_token,
+                revision.cache_key,
+                is_store=revision.store_revision is not None,
+            )
             filmstrip.append(
                 {
                     "value": name,
                     "label": name,
-                    "preview_url": (
-                        f"{prefix}assets/{item_token}/{revision.cache_key}/"
-                        "preview-if-ready.png"
-                    ),
+                    "preview_url": filmstrip_assets["preview_url"],
                     "status": status,
                     "current": name == filename,
                 }
             )
+        assets = source_asset_payload(
+            prefix,
+            token,
+            selected_revision.cache_key,
+            is_store=selected_revision.store_revision is not None,
+        )
         return {
             "token": token,
             "label": relative,
@@ -1163,12 +1204,7 @@ def register_callbacks(
             "height": selected_revision.height,
             "position": {"index": position, "total": total},
             "filmstrip": filmstrip,
-            "preview_url": (
-                f"{prefix}assets/{token}/{selected_revision.cache_key}/preview.png"
-            ),
-            "dzi_url": (
-                f"{prefix}assets/{token}/{selected_revision.cache_key}/image.dzi"
-            ),
+            **assets,
         }
 
     @app.callback(

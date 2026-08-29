@@ -1398,6 +1398,26 @@ def phenotypic_cli(
                 "--delete-sources is only accepted with --mode migrate."
             )
 
+        # Process mirrors source-relative names into its output tree. The two
+        # roots therefore must be disjoint in BOTH directions: an output below
+        # the input mutates the source tree during publication, while an input
+        # below the output can be deleted by ``--overwrite``. Resolve aliases
+        # before any output inspection or mutation so symlinked spellings do
+        # not bypass the boundary.
+        if cli_mode == "process" and input_path is not None:
+            canonical_input = Path(input_path).resolve(strict=False)
+            canonical_output = Path(output_dir).resolve(strict=False)
+            if (
+                canonical_input == canonical_output
+                or canonical_input.is_relative_to(canonical_output)
+                or canonical_output.is_relative_to(canonical_input)
+            ):
+                raise click.UsageError(
+                    "--mode process input and output roots must not overlap "
+                    "or contain one another. Choose a disjoint --output so "
+                    "the source can never be modified or deleted."
+                )
+
         # Every mode that writes or reprocesses refuses an unconverted tree;
         # `migrate` is exempt because it is the remedy (ledger MIG-19). Placed
         # here so `full`, `measure`, `recompile` and `process` are all covered

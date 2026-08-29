@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import os
 import re
 import time
+from pathlib import Path, PurePosixPath
 
 import dash
-from flask import Blueprint, Response, jsonify, request, send_from_directory
+from flask import (
+    Blueprint,
+    Response,
+    jsonify,
+    request,
+    send_file,
+    send_from_directory,
+)
 from werkzeug.utils import secure_filename
 
 from phenotypic.gui._config import BROWSE_TILES_PREFIX
@@ -18,7 +27,9 @@ from phenotypic.gui.browse._preparation_routes import (
 from phenotypic.gui.browse._cache import BrowseCache
 from phenotypic.gui.browse._preparation import BrowsePreparationManager
 from phenotypic.gui.browse._source_probe import SourceProbeError
+from phenotypic.gui.browse._source_item import is_source_store
 from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.sdk_ import store_publication_token
 
 _TILE_NAME_RE = re.compile(r"^\d+_\d+\.png$")
 _TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -26,6 +37,46 @@ _REVISION_RE = re.compile(r"^[a-f0-9]{64}$")
 _IMMUTABLE_CACHE = "private, max-age=31536000, immutable"
 
 __all__ = ["register"]
+
+
+class _MutableStoreUnsupported(RuntimeError):
+    """A third-party store has no O(1) immutable publication generation."""
+
+
+class _UnreadableImageStore(RuntimeError):
+    """A published store is not a readable PhenoTypic image store."""
+
+
+def _image_store_roots(store: Path) -> frozenset[str]:
+    """Return top-level roots needed to render declared image series."""
+    from phenotypic.sdk_ import ngff_
+
+    try:
+        block = ngff_.require_readable_store(store)
+        series = block[ngff_.PhenotypicAttr.SERIES]
+        labels = block.get(ngff_.PhenotypicAttr.LABELS, {})
+        if not isinstance(series, dict) or not isinstance(labels, dict):
+            raise TypeError("image-series maps are malformed")
+        members = [
+            *series.values(),
+            *labels.values(),
+        ]
+    except (KeyError, OSError, TypeError, ValueError) as exc:
+        raise _UnreadableImageStore(str(exc)) from exc
+    roots = {ngff_.OME_GROUP}
+    for member in members:
+        if not isinstance(member, str):
+            raise _UnreadableImageStore("image-series path is not a string")
+        relative = PurePosixPath(member)
+        if (
+            relative.is_absolute()
+            or not relative.parts
+            or any(part in {"", ".", ".."} for part in relative.parts)
+            or "\\" in member
+        ):
+            raise _UnreadableImageStore("image-series path is unsafe")
+        roots.add(relative.parts[0])
+    return frozenset(roots)
 
 
 def register(
@@ -79,6 +130,103 @@ def register(
         client_id, generation = _selection_identity()
         handle = api.select(client_id, generation, revision)
         return revision, entry, handle, cache_hit, lookup_ms
+
+    def _published_store_revision(token: str, key: str):
+        """Resolve one immutable PhenoTypic store without a recursive rescan."""
+        if not _TOKEN_RE.fullmatch(token) or not _REVISION_RE.fullmatch(key):
+            raise FileNotFoundError
+        try:
+            relative = _source_render.decode_token(token)
+            source = api.sandbox.resolve(relative)
+        except Exception as exc:  # noqa: BLE001 - fixed route error
+            raise FileNotFoundError from exc
+        if not is_source_store(source):
+            raise FileNotFoundError
+        try:
+            publication = store_publication_token(source)
+        except OSError as exc:
+            raise SourceProbeError("unstable store root") from exc
+        if publication is None:
+            raise _MutableStoreUnsupported
+        revision = resolve_revision(api.sandbox, token, key)
+        if revision.store_revision != publication:
+            raise SourceProbeError("stale source revision")
+        return revision
+
+    @asset_bp.get("/<token>/<revision>/zarr/<path:member>")
+    def zarr_member(token: str, revision: str, member: str) -> Response:
+        """Serve one byte member from an immutable process-store generation."""
+        try:
+            source = _published_store_revision(token, revision)
+        except _MutableStoreUnsupported:
+            return _error(
+                "mutable third-party Zarr store has no root-last publication "
+                "token; Browse refuses an unsafe multi-request image view",
+                422,
+            )
+        except FileNotFoundError:
+            return _error("invalid or unknown image store", 404)
+        except SourceProbeError:
+            return _error("source image changed", 409)
+
+        try:
+            image_roots = _image_store_roots(source.source_path)
+        except _UnreadableImageStore as exc:
+            return _error(str(exc), 422)
+
+        relative = PurePosixPath(member)
+        if (
+            not member
+            or relative.is_absolute()
+            or any(part in {"", ".", ".."} for part in relative.parts)
+            or "\\" in member
+            or (
+                member != "zarr.json"
+                and relative.parts[0] not in image_roots
+            )
+        ):
+            return _error("invalid store member", 404)
+        candidate = source.source_path
+        for part in relative.parts:
+            candidate = candidate / part
+            if candidate.is_symlink():
+                return _error("invalid store member", 404)
+        try:
+            candidate.resolve(strict=True).relative_to(
+                source.source_path.resolve(strict=True)
+            )
+            if not candidate.is_file():
+                raise FileNotFoundError
+            handle = candidate.open("rb")
+        except (OSError, RuntimeError, ValueError):
+            return _error("store member not found", 404)
+        try:
+            try:
+                publication = store_publication_token(source.source_path)
+            except OSError:
+                handle.close()
+                return _error("source image changed", 409)
+            if publication != source.store_revision:
+                handle.close()
+                return _error("source image changed", 409)
+            size = os.fstat(handle.fileno()).st_size
+            response = send_file(
+                handle,
+                conditional=False,
+                download_name=candidate.name,
+            )
+            response.content_length = size
+            response.make_conditional(
+                request,
+                accept_ranges=True,
+                complete_length=size,
+            )
+            response.headers["Cache-Control"] = _IMMUTABLE_CACHE
+            response.call_on_close(handle.close)
+            return response
+        except BaseException:
+            handle.close()
+            raise
 
     @asset_bp.get("/<token>/<revision>/preview.png")
     def preview(token: str, revision: str) -> Response:

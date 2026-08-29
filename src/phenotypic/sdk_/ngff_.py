@@ -130,6 +130,11 @@ DOWNSAMPLE_KINDS: Final[dict[str, str]] = {
     kind: method for kind, (method, _) in DOWNSAMPLE_METHODS.items()
 }
 
+#: Store generations are published by moving a complete part tree into place
+#: and replacing the root ``zarr.json`` last. Consumers may use that root as
+#: the O(1) generation token only when the writer declares this protocol.
+ROOT_LAST_PUBLICATION_PROTOCOL: Final[str] = "root-last-immutable-v1"
+
 
 def axes_for(series: str) -> tuple[str, ...]:
     """Return the ``dimension_names`` tuple for one series or label name.
@@ -442,6 +447,7 @@ class PhenotypicAttr:
     PHENOTYPIC_VERSION: Final[str] = "phenotypic_version"
     IMAGE_CLASS: Final[str] = "image_class"
     WORK_ID: Final[str] = "work_id"
+    PUBLICATION_PROTOCOL: Final[str] = "publication_protocol"
     PROVENANCE: Final[str] = "provenance"
     TABLES: Final[str] = "tables"
     SERIES: Final[str] = "series"
@@ -546,6 +552,7 @@ def build_phenotypic_attributes(
         PhenotypicAttr.PHENOTYPIC_VERSION: (
             phenotypic_version or phenotypic.__version__
         ),
+        PhenotypicAttr.PUBLICATION_PROTOCOL: ROOT_LAST_PUBLICATION_PROTOCOL,
         PhenotypicAttr.SERIES: {name: name for name in series_names},
         PhenotypicAttr.PYRAMID: {
             "levels": int(pyramid_levels),

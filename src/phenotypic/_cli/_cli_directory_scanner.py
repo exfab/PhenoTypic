@@ -16,6 +16,7 @@ from phenotypic.sdk_ import (
     DIR_ZARR,
     STORE_SUFFIX,
     default_output_dir_name,
+    is_zarr_store_name,
 )
 from ._cli_types import Dataset
 
@@ -36,7 +37,7 @@ def _is_store_dir(path: Path) -> bool:
     return (
         path.is_dir()
         and not path.name.startswith(".")
-        and path.name.endswith(STORE_SUFFIX)
+        and is_zarr_store_name(path)
     )
 
 

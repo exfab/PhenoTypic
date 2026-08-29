@@ -40,6 +40,18 @@ def test_imread_records_the_store_suffix(tmp_path: Path) -> None:
     assert Image.imread(store).metadata[IMAGE.SUFFIX] == ngff_.STORE_SUFFIX
 
 
+def test_imread_accepts_a_valid_store_with_plain_zarr_name(tmp_path: Path) -> None:
+    store, img = _processed_rgb_store(tmp_path)
+    plain = store.with_name("IMG_4471.zarr")
+    store.rename(plain)
+
+    loaded = Image.imread(plain)
+
+    assert loaded.name == "IMG_4471"
+    assert loaded.metadata[IMAGE.SUFFIX] == ".zarr"
+    assert np.array_equal(loaded.rgb[:], img.rgb[:])
+
+
 def _pipeline_file(tmp_path: Path) -> Path:
     nested = tmp_path / "config" / "deep"
     nested.mkdir(parents=True, exist_ok=True)

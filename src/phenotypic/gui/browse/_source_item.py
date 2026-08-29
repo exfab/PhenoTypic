@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
 
-from phenotypic.sdk_ import STORE_SUFFIX
+from phenotypic.sdk_ import is_zarr_store_name
 
 __all__ = [
     "is_source_store",
@@ -17,7 +17,7 @@ def is_source_store(path: Path) -> bool:
     """Return whether ``path`` is an exact, non-symlink OME-Zarr directory."""
     candidate = Path(path)
     return (
-        candidate.name.endswith(STORE_SUFFIX)
+        is_zarr_store_name(candidate)
         and not candidate.is_symlink()
         and candidate.is_dir()
     )
@@ -73,7 +73,7 @@ def source_item_relative_path(
     """Return one Browse item path relative to the GUI sandbox."""
     root = PurePosixPath(source_root_rel)
     if (
-        root.name.endswith(STORE_SUFFIX)
+        is_zarr_store_name(root)
         and dataset_rel == "."
         and filename == root.name
     ):

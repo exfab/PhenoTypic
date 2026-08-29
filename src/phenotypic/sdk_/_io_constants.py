@@ -1530,7 +1530,7 @@ def zarr_store_path(output_dir: Path, dataset: str, stem: str) -> Path:
 
 
 def store_stem(store_path: Path) -> str:
-    """Return the image stem of an ``*.ome.zarr`` store directory.
+    """Return the image stem of an ``*.ome.zarr`` or ``*.zarr`` directory.
 
     ``Path.stem`` is WRONG here — it strips one suffix and leaves ``img.ome``,
     which is a plausible-looking wrong name rather than an error: it propagates
@@ -1539,22 +1539,34 @@ def store_stem(store_path: Path) -> str:
     not exist, so every image reprocesses forever.
 
     Args:
-        store_path: A ``<stem>.ome.zarr`` directory.
+        store_path: A ``<stem>.ome.zarr`` or ``<stem>.zarr`` directory.
 
     Returns:
         The bare stem, e.g. ``"img"`` for ``img.ome.zarr``.
 
     Raises:
-        ValueError: If *store_path* does not end in ``.ome.zarr``. It raises
+        ValueError: If *store_path* does not end in ``.zarr``. It raises
             rather than falling back to ``.stem``, because a silent fallback is
             exactly the failure being prevented.
     """
     from phenotypic.sdk_.ngff_ import STORE_SUFFIX
 
     name = Path(store_path).name
-    if not name.endswith(STORE_SUFFIX):
+    suffix = STORE_SUFFIX if name.endswith(STORE_SUFFIX) else ".zarr"
+    if not name.endswith(suffix) or name == suffix:
         raise ValueError(f"not an OME-Zarr store directory: {store_path}")
-    return name[: -len(STORE_SUFFIX)]
+    return name[: -len(suffix)]
+
+
+def is_zarr_store_name(path: Path | str) -> bool:
+    """Return whether a path name uses a supported Zarr store suffix.
+
+    ``.ome.zarr`` remains the canonical PhenoTypic output suffix. Generic
+    ``.zarr`` names are accepted as inputs so validity can be decided by the
+    NGFF reader at the open/render boundary.
+    """
+    name = Path(path).name
+    return name.endswith(".zarr") and name != ".zarr"
 
 
 def source_image_stem(path: Path) -> str:
@@ -1570,10 +1582,8 @@ def source_image_stem(path: Path) -> str:
     Returns:
         The canonical source-image stem.
     """
-    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
-
     source = Path(path)
-    if source.name.endswith(STORE_SUFFIX):
+    if is_zarr_store_name(source):
         return store_stem(source)
     return source.stem
 
@@ -1587,20 +1597,21 @@ def source_image_suffix(path: Path) -> str:
     Returns:
         ``.ome.zarr`` for a store source, otherwise the standard final suffix.
     """
-    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
-
     source = Path(path)
-    return STORE_SUFFIX if source.name.endswith(STORE_SUFFIX) else source.suffix
+    if source.name.endswith(".ome.zarr"):
+        return ".ome.zarr"
+    return ".zarr" if is_zarr_store_name(source) else source.suffix
 
 
 def store_revision_identity(path: Path) -> str:
-    """Return a cheap nested metadata identity for one stable OME-Zarr store.
+    """Return a stable revision identity for one OME-Zarr store.
 
-    The identity hashes framed relative paths, member types, sizes, and
-    nanosecond mtimes. It intentionally does not read chunk contents: CLI work
-    and completion use a separate content-digest contract. The root
-    ``zarr.json`` stat is promoted into a final token because writers publish
-    that document last.
+    PhenoTypic-published immutable generations use the explicit root-last
+    publication token and touch only ``zarr.json``. Generic third-party stores
+    have no publication invariant, so the conservative fallback hashes framed
+    relative paths, member types, sizes, and nanosecond mtimes twice to reject
+    an unstable snapshot. It intentionally does not read chunk contents: CLI
+    work and completion use a separate content-digest contract.
 
     Args:
         path: Existing ``*.ome.zarr`` directory.
@@ -1613,11 +1624,14 @@ def store_revision_identity(path: Path) -> str:
             non-regular member.
         ValueError: If ``path`` is not named as an OME-Zarr store.
     """
-    from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON, STORE_SUFFIX
+    from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
 
     store = Path(path)
-    if not store.name.endswith(STORE_SUFFIX):
+    if not is_zarr_store_name(store):
         raise ValueError(f"not an OME-Zarr store directory: {store}")
+    published = store_publication_token(store)
+    if published is not None:
+        return published
     first = _store_revision_snapshot(store, root_json=STORE_ROOT_JSON)
     second = _store_revision_snapshot(store, root_json=STORE_ROOT_JSON)
     if first != second:
@@ -1638,6 +1652,68 @@ def store_revision_identity(path: Path) -> str:
         digest.update(size.to_bytes(8, "big", signed=False))
         digest.update(mtime_ns.to_bytes(8, "big", signed=True))
     return f"sha256-stat-tree-v1:{digest.hexdigest()}"
+
+
+def store_publication_token(store: Path) -> str | None:
+    """Return the root-last token for a PhenoTypic-published store.
+
+    PhenoTypic promotes an immutable store by replacing ``zarr.json`` last.
+    Its root bytes and file identity therefore identify the complete
+    generation without touching every chunk on GPFS. Inode and ctime close
+    the gap where a byte-identical replacement preserves the old mtime. A
+    generic third-party store has no such publication contract and returns
+    ``None`` so the caller uses the conservative recursive snapshot fallback.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
+
+    root = Path(store) / STORE_ROOT_JSON
+    try:
+        before = root.lstat()
+        if not stat_module.S_ISREG(before.st_mode):
+            return None
+        raw = root.read_bytes()
+        after = root.lstat()
+    except OSError:
+        return None
+    before_identity = (
+        before.st_size,
+        before.st_mtime_ns,
+        before.st_ctime_ns,
+        before.st_ino,
+    )
+    after_identity = (
+        after.st_size,
+        after.st_mtime_ns,
+        after.st_ctime_ns,
+        after.st_ino,
+    )
+    if before_identity != after_identity or len(raw) != after.st_size:
+        raise OSError("OME-Zarr root changed during revision inspection")
+    try:
+        payload = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    attributes = payload.get("attributes") if isinstance(payload, dict) else None
+    phenotypic = attributes.get("phenotypic") if isinstance(attributes, dict) else None
+    if not isinstance(phenotypic, dict):
+        return None
+    from phenotypic.sdk_.ngff_ import (
+        PhenotypicAttr,
+        ROOT_LAST_PUBLICATION_PROTOCOL,
+    )
+
+    if (
+        phenotypic.get(PhenotypicAttr.PUBLICATION_PROTOCOL)
+        != ROOT_LAST_PUBLICATION_PROTOCOL
+    ):
+        return None
+    digest = hashlib.sha256(b"phenotypic-root-publication\x00v2\x00")
+    digest.update(len(raw).to_bytes(8, "big"))
+    digest.update(raw)
+    digest.update(after.st_mtime_ns.to_bytes(8, "big", signed=True))
+    digest.update(after.st_ctime_ns.to_bytes(8, "big", signed=True))
+    digest.update(after.st_ino.to_bytes(8, "big", signed=False))
+    return f"sha256-root-publish-v2:{digest.hexdigest()}"
 
 
 def _store_revision_snapshot(

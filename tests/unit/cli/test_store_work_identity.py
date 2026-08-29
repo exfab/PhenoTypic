@@ -41,18 +41,36 @@ def test_the_digest_covers_every_member_of_the_tree(tmp_path: Path) -> None:
     """
     store = _store(tmp_path / "in", "p01")
 
-    expected = hashlib.sha256()
     members = sorted(
         (p for p in store.rglob("*") if p.is_file()),
         key=lambda p: p.relative_to(store).as_posix(),
     )
     assert len(members) > 1, "a one-file store would not exercise the walk"
-    for member in members:
-        expected.update(member.relative_to(store).as_posix().encode("utf-8"))
-        expected.update(b"\0")
-        expected.update(member.read_bytes())
+    before = file_sha256(store)
+    member = members[-1]
+    moved = member.with_name(f"renamed-{member.name}")
+    member.rename(moved)
+    assert file_sha256(store) != before
 
-    assert file_sha256(store) == expected.hexdigest()
+
+def test_store_digest_frames_member_boundaries_unambiguously(
+    tmp_path: Path,
+) -> None:
+    """A path/content boundary must not be forgeable with member bytes.
+
+    The old ``path + NUL + content`` encoding maps these two distinct trees
+    to the same byte stream: ``a -> b"xb\\0y"`` versus
+    ``a -> b"x", b -> b"y"``.
+    """
+    one = tmp_path / "one.ome.zarr"
+    two = tmp_path / "two.ome.zarr"
+    one.mkdir()
+    two.mkdir()
+    (one / "a").write_bytes(b"xb\0y")
+    (two / "a").write_bytes(b"x")
+    (two / "b").write_bytes(b"y")
+
+    assert file_sha256(one) != file_sha256(two)
 
 
 def test_the_digest_notices_a_changed_shard(tmp_path: Path) -> None:
@@ -91,14 +109,15 @@ def test_a_store_shaped_directory_digests_and_fails_in_imread(
     `_is_store_dir` matches by NAME and promises such a directory "fails
     later, loudly, in imread". This pins that the promise is kept, and that
     `file_sha256` is not the place it breaks: the digest is over whatever
-    members exist, so an empty one yields the digest of zero bytes rather
-    than raising. Two empty store-shaped directories therefore collide -- an
-    honest consequence of a name-matched predicate, and harmless because
+    members exist, so an empty one yields the domain-separated empty-tree
+    digest rather than raising. Two empty store-shaped directories therefore
+    collide -- an honest consequence of a name-matched predicate, and harmless
+    because
     `imread` refuses before any of it matters.
     """
     empty = tmp_path / f"empty{ngff_.STORE_SUFFIX}"
     empty.mkdir()
-    assert file_sha256(empty) == hashlib.sha256(b"").hexdigest()
+    assert len(file_sha256(empty)) == 64
 
     other = tmp_path / f"other{ngff_.STORE_SUFFIX}"
     other.mkdir()

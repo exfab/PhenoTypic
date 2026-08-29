@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from phenotypic._cli._cli_failure_tracker import (
@@ -287,6 +288,64 @@ def test_a_local_run_writes_a_store_and_continues_off_it(
     second = CliRunner().invoke(phenotypic_cli, args)
     assert second.exit_code == 0, second.output
     assert (store / "zarr.json").stat().st_mtime_ns == root_mtime
+
+
+@pytest.mark.parametrize(
+    "shape", ["same", "output_parent", "output_child", "symlink_alias"]
+)
+def test_process_refuses_canonical_input_output_overlap_before_mutation(
+    tmp_path: Path,
+    simple_pipeline_json: Path,
+    synth_one_level_input: Path,
+    shape: str,
+) -> None:
+    """No aliasing/nesting shape may let process mutate its source tree."""
+    source = synth_one_level_input
+    source_bytes = {
+        path.relative_to(source): path.read_bytes()
+        for path in source.rglob("*")
+        if path.is_file()
+    }
+    if shape == "same":
+        output = source
+    elif shape == "output_parent":
+        output = source.parent
+    elif shape == "output_child":
+        output = source / "process-output"
+    else:
+        output = tmp_path / "source-alias"
+        try:
+            output.symlink_to(source, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            pytest.skip("directory symlinks are unavailable")
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--pipeline",
+            str(simple_pipeline_json),
+            "--input",
+            str(source),
+            "--output",
+            str(output),
+            "--mode",
+            "process",
+            "--layer",
+            "rgb",
+            "--overwrite",
+            "--force-local",
+            "--njobs",
+            "1",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "must not overlap" in " ".join(result.output.split()).lower()
+    assert {
+        path.relative_to(source): path.read_bytes()
+        for path in source.rglob("*")
+        if path.is_file()
+    } == source_bytes
 
 
 def test_the_worker_and_the_top_level_cli_agree_on_the_work_id(

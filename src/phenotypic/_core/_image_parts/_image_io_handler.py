@@ -707,15 +707,13 @@ class ImageIOHandler(ImageColorSpace):
             ...     Image.imread(store).rgb[:].shape == img.rgb[:].shape
             True
         """
-        from phenotypic.sdk_ import ngff_
+        from phenotypic.sdk_ import is_zarr_store_name
 
         # A store is a directory, so this is checked before the suffix
         # dispatch below -- and on its own local, because `filepath` is
         # annotated `PathLike` and only re-annotated `Path` further down.
         store_candidate = Path(filepath)
-        if store_candidate.is_dir() and store_candidate.name.endswith(
-            ngff_.STORE_SUFFIX
-        ):
+        if store_candidate.is_dir() and is_zarr_store_name(store_candidate):
             return cls._imread_store(
                 store_candidate,
                 series=series,
@@ -865,7 +863,7 @@ class ImageIOHandler(ImageColorSpace):
         Raises:
             ValueError: If the store cannot be mapped onto the 2-D image model.
         """
-        from phenotypic.sdk_ import ngff_, store_stem
+        from phenotypic.sdk_ import ngff_, source_image_suffix, store_stem
 
         spec = ngff_.read_ngff_image_spec(
             store_path, series=series, level=level, t=t, z=z, c=c
@@ -877,7 +875,7 @@ class ImageIOHandler(ImageColorSpace):
         bit_depth = spec.bit_depth if explicit is None else explicit
         image = cls(arr=spec.array, name=name, bit_depth=bit_depth, **kwargs)
         image.name = name
-        image.metadata[IMAGE.SUFFIX] = ngff_.STORE_SUFFIX
+        image.metadata[IMAGE.SUFFIX] = source_image_suffix(store_path)
 
         journal = spec.phenotypic.get(ngff_.PhenotypicAttr.PROVENANCE)
         if journal:

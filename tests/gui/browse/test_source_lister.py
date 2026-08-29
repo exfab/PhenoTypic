@@ -91,6 +91,14 @@ def test_direct_store_root_is_one_root_dataset_item(tmp_path):
     )
 
 
+def test_plain_zarr_directory_is_listed_and_resolved_atomically(tmp_path):
+    store = tmp_path / "generic.zarr"
+    _touch(store / "zarr.json")
+
+    assert list_datasets(tmp_path) == {".": ["generic.zarr"]}
+    assert resolve_source_item(tmp_path, ".", "generic.zarr") == store
+
+
 def test_container_source_item_resolution_does_not_change(tmp_path):
     store = tmp_path / "batch" / "p01.ome.zarr"
     _touch(store / "zarr.json")

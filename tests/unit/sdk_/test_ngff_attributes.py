@@ -106,6 +106,22 @@ def test_two_version_markers_are_both_present_and_distinct() -> None:
     assert "metadata_schema_version" not in block
 
 
+def test_writer_declares_the_root_last_immutable_publication_protocol() -> None:
+    block = ngff_.build_phenotypic_attributes(
+        image_class=None,
+        series_names=["rgb"],
+        pyramid_levels=1,
+        metadata_sections=_sections(),
+        detect_mode="gray",
+        illuminant=None,
+        gamma=None,
+    )
+
+    assert block[PhenotypicAttr.PUBLICATION_PROTOCOL] == (
+        ngff_.ROOT_LAST_PUBLICATION_PROTOCOL
+    )
+
+
 def test_image_class_and_image_type_stay_distinct() -> None:
     """A GridSection is not a GridImage; collapsing them loses information."""
     sections = _sections()
@@ -272,6 +288,9 @@ def test_every_documented_key_round_trips_with_the_value_that_went_in() -> None:
     assert block == {
         PhenotypicAttr.STORE_SCHEMA_VERSION: 3,
         PhenotypicAttr.PHENOTYPIC_VERSION: "9.9.9",
+        PhenotypicAttr.PUBLICATION_PROTOCOL: (
+            ngff_.ROOT_LAST_PUBLICATION_PROTOCOL
+        ),
         PhenotypicAttr.IMAGE_CLASS: "GridImage",
         PhenotypicAttr.SERIES: {
             "rgb": "rgb",

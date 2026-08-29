@@ -79,6 +79,22 @@ def test_current_image_payload_direct_store_does_not_double_join():
     assert payload["label"] == "inputs/p01.ome.zarr"
 
 
+def test_store_asset_payload_selects_generation_addressed_zarr_not_dzi():
+    payload = cb.source_asset_payload(
+        "/browse/", "opaque-token", "a" * 64, is_store=True
+    )
+
+    assert payload == {
+        "render_kind": "ome-zarr",
+        "preview_url": None,
+        "dzi_url": None,
+        "store_url": (
+            "/browse/assets/opaque-token/"
+            f"{'a' * 64}/zarr/"
+        ),
+    }
+
+
 def test_neighbor_filenames_three_each_side_clamped():
     files = ["a", "b", "c", "d", "e", "f", "g", "h", "i"]
     # Interior: 3 before + 3 after, current excluded, nav order preserved.
