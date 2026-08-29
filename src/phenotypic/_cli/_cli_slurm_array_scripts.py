@@ -230,15 +230,21 @@ def generate_array_job_script(
         "full",
         "--input-root",
         shlex.quote(str(config.input_path.absolute())),
-        "--expected-work-id",
-        '"${CURRENT_WORK_ID}"',
-        "--expected-input-sha256",
-        '"${CURRENT_INPUT_SHA256}"',
-        "--expected-pipeline-sha256",
-        '"${EXPECTED_PIPELINE_SHA256}"',
         "--attempt-id",
         '"${CURRENT_ATTEMPT_ID}"',
     ]
+
+    if not config.measure_only:
+        cmd_parts.extend(
+            [
+                "--expected-work-id",
+                '"${CURRENT_WORK_ID}"',
+                "--expected-input-sha256",
+                '"${CURRENT_INPUT_SHA256}"',
+                "--expected-pipeline-sha256",
+                '"${EXPECTED_PIPELINE_SHA256}"',
+            ]
+        )
 
     # Omit when unset so the worker falls back to the pipeline's preset.
     if config.image_type == "GridImage":
@@ -338,36 +344,45 @@ else
     {cmd}
 fi"""
 
-    identity_assignment = (
-        'CURRENT_WORK_ID="${EXPECTED_WORK_IDS[$SLURM_ARRAY_TASK_ID]}"\n'
-        'CURRENT_INPUT_SHA256="${EXPECTED_INPUT_SHA256S[$SLURM_ARRAY_TASK_ID]}"\n'
-        'CURRENT_ATTEMPT_ID="${ATTEMPT_IDS[$SLURM_ARRAY_TASK_ID]}"'
-    )
-    dispatch_block = f"{identity_assignment}\n\n{dispatch_block}"
-
     script_path = script_dir / script_name
     prelude = SLURM_THREAD_PIN_BASH
-    identity_rows: list[tuple[str, str, str]] = []
-    for entry in entries:
-        if entry in {_CHECKPOINT_SENTINEL, _MANIFEST_SENTINEL}:
-            identity_rows.append(("", "", ""))
-            continue
-        image_path = Path(entry)
-        work_id, _ = work_id_for_image(config, dataset.name, image_path)
-        identity_rows.append((work_id, file_sha256(image_path), uuid4().hex))
-    prelude += "\nEXPECTED_WORK_IDS=(\n" + "\n".join(
-        f"    {shlex.quote(row[0])}" for row in identity_rows
-    ) + "\n)"
-    prelude += "\nEXPECTED_INPUT_SHA256S=(\n" + "\n".join(
-        f"    {shlex.quote(row[1])}" for row in identity_rows
-    ) + "\n)"
-    prelude += "\nATTEMPT_IDS=(\n" + "\n".join(
-        f"    {shlex.quote(row[2])}" for row in identity_rows
-    ) + "\n)"
-    prelude += (
-        "\nEXPECTED_PIPELINE_SHA256="
-        f"{shlex.quote(file_sha256(config.pipeline_json))}"
-    )
+    if config.measure_only:
+        identity_assignment = (
+            'CURRENT_ATTEMPT_ID="${ATTEMPT_IDS[$SLURM_ARRAY_TASK_ID]}"'
+        )
+        attempt_ids = [uuid4().hex for _ in entries]
+        prelude += "\nATTEMPT_IDS=(\n" + "\n".join(
+            f"    {shlex.quote(attempt_id)}" for attempt_id in attempt_ids
+        ) + "\n)"
+    else:
+        identity_assignment = (
+            'CURRENT_WORK_ID="${EXPECTED_WORK_IDS[$SLURM_ARRAY_TASK_ID]}"\n'
+            'CURRENT_INPUT_SHA256="${EXPECTED_INPUT_SHA256S[$SLURM_ARRAY_TASK_ID]}"\n'
+            'CURRENT_ATTEMPT_ID="${ATTEMPT_IDS[$SLURM_ARRAY_TASK_ID]}"'
+        )
+        identity_rows: list[tuple[str, str, str]] = []
+        for entry in entries:
+            if entry in {_CHECKPOINT_SENTINEL, _MANIFEST_SENTINEL}:
+                identity_rows.append(("", "", ""))
+                continue
+            image_path = Path(entry)
+            work_id, _ = work_id_for_image(config, dataset.name, image_path)
+            identity_rows.append((work_id, file_sha256(image_path), uuid4().hex))
+        prelude += "\nEXPECTED_WORK_IDS=(\n" + "\n".join(
+            f"    {shlex.quote(row[0])}" for row in identity_rows
+        ) + "\n)"
+        prelude += "\nEXPECTED_INPUT_SHA256S=(\n" + "\n".join(
+            f"    {shlex.quote(row[1])}" for row in identity_rows
+        ) + "\n)"
+        prelude += "\nATTEMPT_IDS=(\n" + "\n".join(
+            f"    {shlex.quote(row[2])}" for row in identity_rows
+        ) + "\n)"
+        prelude += (
+            "\nEXPECTED_PIPELINE_SHA256="
+            f"{shlex.quote(file_sha256(config.pipeline_json))}"
+        )
+    dispatch_block = f"{identity_assignment}\n\n{dispatch_block}"
+
     if config.processing_generation:
         prelude += (
             "\nexport "

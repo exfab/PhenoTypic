@@ -298,7 +298,7 @@ def validate_resume_compatibility(
         )
     
     # Check input path
-    if state.input_path != config.input_path:
+    if not getattr(config, "measure_only", False) and state.input_path != config.input_path:
         return False, f"Input path mismatch: saved={state.input_path}, current={config.input_path}"
     
     # Check image type
@@ -382,7 +382,11 @@ def get_remaining_images_for_datasets(
         retry_images: list[Path] = []
         for image in dataset.images:
             work_id: str | None = None
-            if config is not None and output_dir is not None:
+            if (
+                config is not None
+                and output_dir is not None
+                and not getattr(config, "measure_only", False)
+            ):
                 try:
                     work_id, _ = work_id_for_image(config, dataset.name, image)
                 except OSError:

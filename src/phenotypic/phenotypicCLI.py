@@ -344,6 +344,22 @@ def _repair_incremental_manifest(
         )
 
 
+def _requires_legacy_success_migration(
+    state: Any, config: ExecutionConfig
+) -> bool:
+    """Return whether this resume must synchronously migrate old markers.
+
+    Measure-only reruns always submit every discovered HDF, and their existing
+    per-image workers publish fresh success markers after remeasurement.
+    Running the legacy migration first would serially validate the same HDF and
+    measurement artifacts before the parallel SLURM workers can begin.
+    """
+    return not (
+        getattr(config, "measure_only", False)
+        or state.config.get("success_markers_required", False)
+    )
+
+
 def _migrate_legacy_success_evidence(
     state: Any,
     config: ExecutionConfig,
@@ -471,7 +487,7 @@ def _parse_slurm_args(slurm_args: Sequence[str]) -> dict:
 
 
 def _validate_resume_input_images(
-    state, current_datasets
+    state, current_datasets, *, measure_only: bool = False
 ) -> tuple[bool, Optional[str]]:
     """
     Validate that accepted inputs remain present during continuation.
@@ -486,6 +502,8 @@ def _validate_resume_input_images(
     Args:
         state: Saved processing state
         current_datasets: Currently scanned datasets
+        measure_only: Whether the scan contains remeasurement HDFs; compare
+            source-image and HDF filename stems in that case.
 
     Returns:
         Tuple of (is_valid, error_message)
@@ -512,9 +530,17 @@ def _validate_resume_input_images(
         else:
             prev_images = ds_state.completed | ds_state.failed
 
+        # Measure-only rescans HDFs, so compare stems (``image.tiff`` →
+        # ``image.h5``) while ordinary continuations retain exact-name checks.
+        if measure_only:
+            prev_images = {Path(image_name).stem for image_name in prev_images}
+
         # Get current image names from scan
         current_dataset = current_datasets_map[ds_name]
-        curr_images = {img.name for img in current_dataset.images}
+        curr_images = {
+            image.stem if measure_only else image.name
+            for image in current_dataset.images
+        }
 
         # Accepted images are append-only. Additions are valid; removals are not.
         if prev_images and not prev_images.issubset(curr_images):
@@ -1794,7 +1820,7 @@ def phenotypic_cli(
 
             # Validate input image set hasn't changed
             images_valid, image_error = _validate_resume_input_images(
-                resume_state, datasets
+                resume_state, datasets, measure_only=config.measure_only
             )
             if not images_valid:
                 click.echo(f"Error: Cannot continue - {image_error}", err=True)
@@ -1821,9 +1847,11 @@ def phenotypic_cli(
                     "terminal failure record(s)."
                 )
 
-            promoted_successes = _migrate_legacy_success_evidence(
-                resume_state, config, full_datasets, output_dir
-            )
+            promoted_successes = 0
+            if _requires_legacy_success_migration(resume_state, config):
+                promoted_successes = _migrate_legacy_success_evidence(
+                    resume_state, config, full_datasets, output_dir
+                )
             if promoted_successes:
                 click.echo(
                     f"Promoted {promoted_successes} validated legacy image "
