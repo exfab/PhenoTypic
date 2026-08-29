@@ -579,6 +579,164 @@ def test_overlay_worker_records_save_failure_as_completed_nonfatal(
     assert "png failed" in status["error"]
 
 
+def test_finalizer_publishes_when_only_overlay_task_failed(
+    tmp_path: Path,
+) -> None:
+    """An optional overlay failure cannot suppress measurement publication."""
+    import phenotypic._cli._cli_recompile_worker as worker
+    from phenotypic._cli._cli_recompile_slurm_scripts import TASK_OVERLAY
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+
+    output_dir = tmp_path / "out"
+    generation = "overlay-failure-nonblocking"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
+    manifest = (
+        progress_dir(output_dir)
+        / "recompile"
+        / "attempts"
+        / generation
+        / "task_manifest.json"
+    )
+    task = {"expected_non_finalizer_tasks": 1}
+    with (
+        patch.object(
+            worker,
+            "_wait_for_non_finalizer_statuses",
+            return_value=[{"task_type": TASK_OVERLAY, "status": "failed"}],
+        ),
+        patch.object(
+            worker, "_write_master_outputs_from_shards", return_value=None
+        ) as master,
+        patch.object(worker, "_run_post_master_steps") as post,
+        patch.object(worker, "_regenerate_recompile_dashboard") as dashboard,
+    ):
+        worker._run_finalizer_task(
+            output_dir,
+            manifest,
+            task,
+            slurm_generation=generation,
+        )
+
+    master.assert_called_once()
+    post.assert_called_once()
+    dashboard.assert_called_once()
+
+
+def test_finalizer_blocks_when_measurement_task_failed(
+    tmp_path: Path,
+) -> None:
+    """A failed measurement shard leaves the aggregate incomplete."""
+    import phenotypic._cli._cli_recompile_worker as worker
+    from phenotypic._cli._cli_recompile_slurm_scripts import TASK_MEASUREMENTS
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+
+    output_dir = tmp_path / "out"
+    generation = "measurement-failure-blocking"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
+    manifest = (
+        progress_dir(output_dir)
+        / "recompile"
+        / "attempts"
+        / generation
+        / "task_manifest.json"
+    )
+    task = {"expected_non_finalizer_tasks": 1}
+    with (
+        patch.object(
+            worker,
+            "_wait_for_non_finalizer_statuses",
+            return_value=[
+                {"task_type": TASK_MEASUREMENTS, "status": "failed"}
+            ],
+        ),
+        patch.object(
+            worker, "_write_master_outputs_from_shards", return_value=None
+        ) as master,
+        patch.object(worker, "_run_post_master_steps"),
+        patch.object(worker, "_regenerate_recompile_dashboard"),
+        pytest.raises(RuntimeError, match="blocking non-finalizer recompile"),
+    ):
+        worker._run_finalizer_task(
+            output_dir,
+            manifest,
+            task,
+            slurm_generation=generation,
+        )
+
+    master.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("task_type", "worker_name"),
+    [
+        ("measurements", "_run_measurement_task"),
+        ("overlay", "_run_overlay_task"),
+    ],
+)
+def test_failed_non_finalizer_keeps_generation_active(
+    tmp_path: Path,
+    task_type: str,
+    worker_name: str,
+) -> None:
+    """Only the finalizer owns teardown of the shared generation."""
+    import phenotypic._cli._cli_recompile_worker as worker
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        generation_is_active,
+        initialize_slurm_lifecycle,
+    )
+
+    output_dir = tmp_path / "out"
+    generation = f"non-finalizer-{task_type}"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
+    manifest = (
+        progress_dir(output_dir)
+        / "recompile"
+        / "attempts"
+        / generation
+        / "task_manifest.json"
+    )
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "task_type": task_type,
+                        "slurm_generation": generation,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with (
+        patch.object(worker, worker_name, side_effect=RuntimeError("failed")),
+        pytest.raises(RuntimeError, match="failed"),
+    ):
+        worker.run_recompile_task(
+            output_dir,
+            manifest,
+            0,
+            slurm_generation=generation,
+            attempt_id=generation,
+        )
+
+    assert generation_is_active(output_dir, generation)
+    status = json.loads(
+        (manifest.parent / "status" / "task_0.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert status["status"] == "failed"
+
+
 def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
     tmp_path: Path,
 ) -> None:

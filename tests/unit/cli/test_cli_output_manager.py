@@ -41,6 +41,7 @@ from phenotypic._cli._cli_output_manager import (
     _reset_qc_review_state,
     aggregate_measurements,
     finalize_post_master_outputs,
+    join_metadata,
     split_master_by_feature,
 )
 from phenotypic.schema import EXPERIMENT, IMAGE
@@ -78,6 +79,32 @@ def test_review_state_reset_serializes_with_gui_writer(tmp_path: Path) -> None:
         reset.result(timeout=5)
 
     assert not state_path.exists()
+
+
+def test_join_metadata_infers_schema_from_string_after_row_100(
+    tmp_path: Path,
+) -> None:
+    """A late alphanumeric strain identifier must not abort CSV loading."""
+    metadata_csv = tmp_path / "metadata.csv"
+    numeric_identifiers = [str(index) for index in range(101)]
+    metadata_csv.write_text(
+        "Metadata_Strain\n"
+        + "\n".join([*numeric_identifiers, "strain-outlier"])
+        + "\n",
+        encoding="utf-8",
+    )
+    measurements = pl.DataFrame(
+        {
+            "Metadata_Strain": ["strain-outlier"],
+            "Size_Area": [12.0],
+        }
+    )
+
+    joined = join_metadata(measurements, metadata_csv)
+
+    assert joined.to_dicts() == [
+        {"Metadata_Strain": "strain-outlier", "Size_Area": 12.0}
+    ]
 
 
 def _make_master_df(pipeline: ImagePipeline) -> pl.DataFrame:

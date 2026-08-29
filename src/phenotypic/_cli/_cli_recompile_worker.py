@@ -201,17 +201,19 @@ def run_recompile_task(
                             sort_keys=False,
                         )
         finally:
-            # Only the finalizer's own failure deactivates the shared
-            # generation. A non-finalizer worker (measurement/overlay) can
-            # fail for a routine, expected reason (e.g. NoObjectsError on a
-            # genuinely empty/no-growth image) — that must not poison every
-            # concurrently-running sibling task. The finalizer already waits
-            # for and inspects all sibling statuses (_wait_for_non_finalizer_
-            # statuses / failed_statuses) and is the correct, single place to
-            # decide the batch failed.
+            # A successfully classified non-finalizer worker (measurement or
+            # overlay) can fail for a routine, expected reason and must not
+            # poison every concurrently-running sibling task. The finalizer
+            # decides whether those recorded failures block publication.
+            #
+            # If bootstrap fails before a valid non-finalizer type can be
+            # loaded, however, the worker has already published the terminal
+            # finalizer status above and must release the attempt fence. This
+            # preserves fail-closed teardown for missing, corrupt, or
+            # semantically invalid manifests.
             if (
                 not isinstance(exc, SlurmGenerationInactiveError)
-                and task_type == TASK_FINALIZE
+                and task_type not in {TASK_MEASUREMENTS, TASK_OVERLAY}
             ):
                 _deactivate_generation_value(output_dir, slurm_generation)
         raise
@@ -401,22 +403,22 @@ def _run_finalizer_task(
     failed_statuses = [
         status for status in statuses if status.get("status") == "failed"
     ]
-    # Only a failed TASK_MEASUREMENTS shard means the aggregate is genuinely
-    # incomplete (some source rows never got merged) — that must block
-    # publication. A failed TASK_OVERLAY is an independent, non-blocking side
-    # artifact: it fails routinely and expectedly for any image with no
-    # detected objects (NoObjectsError), which is normal for this dataset
-    # (e.g. no-growth timepoints) and unrelated to the measurements aggregate.
+    # A failed TASK_OVERLAY is an independent, non-blocking side artifact: it
+    # fails routinely and expectedly for any image with no detected objects
+    # (NoObjectsError), which is normal for this dataset (e.g. no-growth
+    # timepoints) and unrelated to the measurements aggregate. Every other
+    # failure remains blocking, including an unclassified bootstrap failure.
     # Treating every overlay failure as fatal meant recompile could never
     # publish for a dataset with any such images at all.
     blocking_failures = [
         status
         for status in failed_statuses
-        if status.get("task_type") == TASK_MEASUREMENTS
+        if status.get("task_type") != TASK_OVERLAY
     ]
     if blocking_failures:
         raise RuntimeError(
-            f"{len(blocking_failures)} measurements shard task(s) failed "
+            f"{len(blocking_failures)} blocking non-finalizer recompile "
+            "task(s) failed "
             f"(of {len(failed_statuses)} total non-finalizer failures)"
         )
     if failed_statuses:

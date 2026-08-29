@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from contextlib import nullcontext
 from pathlib import Path
 from typing import cast
 
@@ -74,6 +75,29 @@ def _metadata_skeleton(output_dir: Path) -> None:
             JobMetadataKey.SLURM_JOB_IDS: {},
         },
     )
+
+
+def test_generation_publication_guard_uses_five_minute_lock_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Concurrent worker completion receives the 300-second lock budget."""
+    generation = "generation-lock-timeout"
+    initialize_slurm_lifecycle(
+        tmp_path, generation=generation, mode="recompile"
+    )
+    acquisitions: list[tuple[Path, float]] = []
+
+    def record_lock(path: Path, *, timeout: float):
+        acquisitions.append((path, timeout))
+        return nullcontext()
+
+    monkeypatch.setattr(lifecycle, "exclusive_path_lock", record_lock)
+
+    with lifecycle.generation_publication_guard(tmp_path, generation):
+        pass
+
+    assert acquisitions == [(lifecycle.lifecycle_lock_path(tmp_path), 300.0)]
 
 
 def test_intent_precedes_sbatch_and_job_record(monkeypatch, tmp_path) -> None:
