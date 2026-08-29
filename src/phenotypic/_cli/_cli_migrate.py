@@ -762,6 +762,7 @@ def finalize_migration_attempt(
     image_failures: tuple[tuple[Path, str], ...],
     reclaim_failures: tuple[tuple[Path, str], ...],
     commit_guard: CommitGuard | None,
+    control_root: Path | None = None,
 ) -> MigrationReport:
     """Publish terminal migration science and close one owned generation."""
     categorized_image_failures = frozenset(
@@ -783,7 +784,11 @@ def finalize_migration_attempt(
         )
 
     output_dir = Path(output_dir)
-    control_root = phenotypic_cache_dir(output_dir)
+    control_root = (
+        phenotypic_cache_dir(output_dir)
+        if control_root is None
+        else Path(control_root).resolve()
+    )
     final_report = replace(
         report,
         headers_migrated=metadata_pass.headers_migrated,
@@ -831,11 +836,18 @@ def finalize_migration_attempt(
 
         try:
             _, manifest = _read_manifest(
-                manifest_path, expected_scientific_output
+                manifest_path,
+                expected_scientific_output,
+                expected_control_root=control_root,
             )
         except Exception as exc:  # noqa: BLE001 - typed terminal failure
             failure_category = "image_seal"
             reason = f"manifest validation failed: {type(exc).__name__}: {exc}"
+            final_report = _append_publication_failure(
+                final_report,
+                migration_image_seal_path(control_root, generation),
+                reason,
+            )
         else:
             image_seal_valid = (
                 manifest.generation == generation

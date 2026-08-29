@@ -211,6 +211,138 @@ def test_manifest_digest_is_deterministic(run: Path) -> None:
     assert first.inventory_digest == second.inventory_digest
 
 
+def test_manifest_can_separate_control_root_from_scientific_root(
+    run: Path, tmp_path: Path
+) -> None:
+    """Dry-run control bytes can live outside the read-only scientific tree."""
+    from phenotypic._cli._cli_migrate_manifest import (
+        read_migration_task,
+        write_migration_manifest,
+    )
+
+    control_root = tmp_path / "shared-user-cache" / "generation-1"
+    manifest = write_migration_manifest(
+        run,
+        generation="generation-1",
+        scientific_output=(run / "deliverables").resolve(),
+        tasks=_fixture_tasks(run, 2),
+        control_root=control_root,
+    )
+
+    manifest_path = control_root / "migration_manifest.json"
+    assert manifest.records_path.parent == control_root.resolve()
+    assert manifest.offsets_path.parent == control_root.resolve()
+    assert not (run / ".phenotypic").exists()
+    assert read_migration_task(
+        manifest_path,
+        1,
+        expected_scientific_output=(run / "deliverables").resolve(),
+        expected_control_root=control_root.resolve(),
+    ).store_path == _fixture_tasks(run, 2)[1].store_path
+
+
+def test_external_control_manifest_refuses_root_confusion(
+    run: Path, tmp_path: Path
+) -> None:
+    """A persisted cache root cannot authorize a caller-selected cache tree."""
+    from phenotypic._cli._cli_migrate_manifest import (
+        read_migration_task,
+        write_migration_manifest,
+    )
+
+    control_root = tmp_path / "cache-a"
+    write_migration_manifest(
+        run,
+        generation="generation-1",
+        scientific_output=(run / "deliverables").resolve(),
+        tasks=_fixture_tasks(run, 1),
+        control_root=control_root,
+    )
+
+    with pytest.raises(ValueError, match="control root"):
+        read_migration_task(
+            control_root / "migration_manifest.json",
+            0,
+            expected_scientific_output=(run / "deliverables").resolve(),
+            expected_control_root=tmp_path / "cache-b",
+        )
+
+
+def test_external_control_manifest_refuses_persisted_output_root_tamper(
+    run: Path, tmp_path: Path
+) -> None:
+    """A header cannot redirect scientific task validation to another run."""
+    from phenotypic._cli._cli_migrate_manifest import (
+        read_migration_task,
+        write_migration_manifest,
+    )
+
+    control_root = tmp_path / "cache"
+    write_migration_manifest(
+        run,
+        generation="generation-1",
+        scientific_output=(run / "deliverables").resolve(),
+        tasks=_fixture_tasks(run, 1),
+        control_root=control_root,
+    )
+    manifest_path = control_root / "migration_manifest.json"
+    header = json.loads(manifest_path.read_text(encoding="utf-8"))
+    header["output_root"] = str((tmp_path / "other-run").resolve())
+    manifest_path.write_text(json.dumps(header), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="output root"):
+        read_migration_task(
+            manifest_path,
+            0,
+            expected_scientific_output=(run / "deliverables").resolve(),
+            expected_control_root=control_root.resolve(),
+        )
+
+
+def test_manifest_refuses_symlinked_external_control_root(
+    run: Path, tmp_path: Path
+) -> None:
+    """Control publication cannot traverse a symlink chosen by an attacker."""
+    from phenotypic._cli._cli_migrate_manifest import write_migration_manifest
+
+    actual = tmp_path / "actual-cache"
+    actual.mkdir()
+    linked = tmp_path / "linked-cache"
+    linked.symlink_to(actual, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="symlink"):
+        write_migration_manifest(
+            run,
+            generation="generation-1",
+            scientific_output=(run / "deliverables").resolve(),
+            tasks=_fixture_tasks(run, 1),
+            control_root=linked,
+        )
+
+
+def test_reader_preserves_historical_schema_one_manifest_semantics(run: Path) -> None:
+    """An interrupted pre-extension manifest remains readable only in-run."""
+    from phenotypic._cli._cli_migrate_manifest import read_migration_task
+
+    manifest = _write_fixture_manifest(run, count=1)
+    manifest_path = _manifest_path(run)
+    header = json.loads(manifest_path.read_text(encoding="utf-8"))
+    header["schema_version"] = 1
+    header.pop("output_root")
+    header.pop("control_root")
+    manifest_path.write_text(json.dumps(header), encoding="utf-8")
+    records = manifest.records_path.read_bytes()
+    manifest.records_path.write_bytes(records[:8] + struct.pack(">I", 1) + records[12:])
+
+    task = read_migration_task(
+        manifest_path,
+        0,
+        expected_scientific_output=(run / "deliverables").resolve(),
+    )
+
+    assert task.stem == "image_0000"
+
+
 def test_reader_refuses_corrupt_offset_file(run: Path) -> None:
     """Offsets must be a complete aligned u64 index before seeking a record."""
     from phenotypic._cli._cli_migrate_manifest import read_migration_task

@@ -25,7 +25,8 @@ from phenotypic.sdk_ import (
 )
 
 
-_SCHEMA_VERSION: Final = 1
+_SCHEMA_VERSION: Final = 2
+_LEGACY_SCHEMA_VERSION: Final = 1
 _RECORDS_MAGIC: Final = b"PHTMIGR1"
 _RECORDS_HEADER: Final = _RECORDS_MAGIC + struct.pack(">I", _SCHEMA_VERSION)
 _MANIFEST_FILENAME: Final = "migration_manifest.json"
@@ -72,6 +73,8 @@ class MigrationManifest:
     inventory_digest: str
     records_path: Path
     offsets_path: Path
+    output_root: Path
+    control_root: Path
 
 
 @dataclass(frozen=True)
@@ -260,14 +263,34 @@ def _ordered_file_digest(paths: Sequence[Path]) -> str:
     return digest.hexdigest()
 
 
-def _manifest_paths(output_root: Path) -> tuple[Path, Path, Path, Path]:
-    """Validate canonical cache publication paths before any filesystem write."""
-    state_dir = phenotypic_cache_dir(output_root)
+def _checked_control_root(path: Path) -> Path:
+    """Return an absolute control root after rejecting symlink traversal."""
+    candidate = Path(path).absolute()
+    current = candidate
+    while True:
+        if current.is_symlink():
+            raise ValueError(f"migration control root is a symlink: {candidate}")
+        if current.parent == current:
+            break
+        current = current.parent
+    return candidate.resolve()
+
+
+def _manifest_paths(
+    output_root: Path, control_root: Path | None = None
+) -> tuple[Path, Path, Path, Path]:
+    """Validate scientific and control roots before any manifest write."""
+    state_dir = _checked_control_root(
+        phenotypic_cache_dir(output_root)
+        if control_root is None
+        else control_root
+    )
     records_path = state_dir / _RECORDS_FILENAME
     offsets_path = state_dir / _OFFSETS_FILENAME
     manifest_path = state_dir / _MANIFEST_FILENAME
-    for path in (state_dir, records_path, offsets_path, manifest_path):
-        _checked_path(path, output_root)
+    if control_root is None:
+        for path in (state_dir, records_path, offsets_path, manifest_path):
+            _checked_path(path, output_root)
     return state_dir, records_path, offsets_path, manifest_path
 
 
@@ -504,6 +527,7 @@ def write_migration_manifest(
     generation: str,
     scientific_output: Path,
     tasks: Sequence[MigrationImageTask],
+    control_root: Path | None = None,
 ) -> MigrationManifest:
     """Write a header, framed records, and direct-access offset table.
 
@@ -531,9 +555,13 @@ def write_migration_manifest(
     if scientific_path != deliverables_dir(output_root):
         raise ValueError("scientific output must be the canonical deliverables directory")
 
-    state_dir, records_path, offsets_path, manifest_path = _manifest_paths(output_root)
+    state_dir, records_path, offsets_path, manifest_path = _manifest_paths(
+        output_root, control_root
+    )
     state_dir.mkdir(parents=True, exist_ok=True)
-    state_dir, records_path, offsets_path, manifest_path = _manifest_paths(output_root)
+    state_dir, records_path, offsets_path, manifest_path = _manifest_paths(
+        output_root, control_root
+    )
     offsets: list[int] = []
     root, proofs = _merkle_root_and_proofs(normalized)
     with records_path.open("wb") as records:
@@ -556,6 +584,8 @@ def write_migration_manifest(
         inventory_digest=root.hex(),
         records_path=records_path.resolve(),
         offsets_path=offsets_path.resolve(),
+        output_root=output_root,
+        control_root=state_dir,
     )
     manifest_path.write_text(
         json.dumps(
@@ -567,6 +597,8 @@ def write_migration_manifest(
                 "inventory_digest": manifest.inventory_digest,
                 "records_path": str(manifest.records_path),
                 "offsets_path": str(manifest.offsets_path),
+                "output_root": str(manifest.output_root),
+                "control_root": str(manifest.control_root),
             },
             sort_keys=True,
             separators=(",", ":"),
@@ -577,22 +609,38 @@ def write_migration_manifest(
 
 
 def _read_manifest(
-    manifest_path: Path, expected_scientific_output: Path
+    manifest_path: Path,
+    expected_scientific_output: Path,
+    *,
+    expected_control_root: Path | None = None,
 ) -> tuple[Path, MigrationManifest]:
     """Decode and validate one manifest header and all path boundaries."""
     supplied_path = Path(manifest_path).absolute()
-    output_root = supplied_path.parent.parent.resolve()
-    header_path = _checked_path(supplied_path, output_root)
-    if header_path.name != _MANIFEST_FILENAME or header_path.parent != phenotypic_cache_dir(
-        output_root
+    scientific_output = Path(expected_scientific_output).resolve()
+    output_root = scientific_output.parent.resolve()
+    if scientific_output != deliverables_dir(output_root):
+        raise ValueError("expected scientific output is not canonical")
+    default_control = phenotypic_cache_dir(output_root).resolve()
+    bound_control = _checked_control_root(
+        default_control if expected_control_root is None else expected_control_root
+    )
+    header_path = supplied_path.resolve()
+    if (
+        supplied_path.is_symlink()
+        or header_path.name != _MANIFEST_FILENAME
+        or header_path.parent != bound_control
     ):
-        raise ValueError(f"not a canonical migration manifest path: {manifest_path}")
+        raise ValueError(
+            "migration manifest path does not match the expected control root: "
+            f"{manifest_path}"
+        )
     try:
         raw = json.loads(header_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"invalid migration manifest header: {manifest_path}") from exc
     if not isinstance(raw, Mapping):
         raise ValueError("invalid migration manifest header schema")
+    schema_version = raw.get("schema_version")
     expected = {
         "schema_version",
         "generation",
@@ -602,7 +650,11 @@ def _read_manifest(
         "records_path",
         "offsets_path",
     }
-    if set(raw) != expected or raw.get("schema_version") != _SCHEMA_VERSION:
+    if schema_version == _SCHEMA_VERSION:
+        expected |= {"output_root", "control_root"}
+    elif schema_version != _LEGACY_SCHEMA_VERSION:
+        raise ValueError("invalid migration manifest header schema")
+    if set(raw) != expected:
         raise ValueError("invalid migration manifest header schema")
     generation = raw.get("generation")
     task_count = raw.get("task_count")
@@ -617,20 +669,35 @@ def _read_manifest(
     ):
         raise ValueError("invalid migration manifest header schema")
     fields = ("scientific_output", "records_path", "offsets_path")
+    if schema_version == _SCHEMA_VERSION:
+        fields += ("output_root", "control_root")
     if any(not isinstance(raw[name], str) or not Path(raw[name]).is_absolute() for name in fields):
         raise ValueError("migration manifest paths must be absolute")
+    if schema_version == _SCHEMA_VERSION:
+        if Path(raw["output_root"]).resolve() != output_root:
+            raise ValueError("migration manifest output root does not match expected output root")
+        if Path(raw["control_root"]).resolve() != bound_control:
+            raise ValueError("migration manifest control root does not match expected control root")
+    elif bound_control != default_control:
+        raise ValueError("legacy migration manifest requires its historical control root")
+    records_path = Path(raw["records_path"]).resolve()
+    offsets_path = Path(raw["offsets_path"]).resolve()
+    if records_path.parent != bound_control or offsets_path.parent != bound_control:
+        raise ValueError("migration manifest control artifacts escape the expected control root")
     manifest = MigrationManifest(
-        schema_version=_SCHEMA_VERSION,
+        schema_version=int(schema_version),
         generation=generation,
         scientific_output=_checked_path(Path(raw["scientific_output"]), output_root),
         task_count=task_count,
         inventory_digest=digest,
-        records_path=_checked_path(Path(raw["records_path"]), output_root),
-        offsets_path=_checked_path(Path(raw["offsets_path"]), output_root),
+        records_path=records_path,
+        offsets_path=offsets_path,
+        output_root=output_root,
+        control_root=bound_control,
     )
     if manifest.scientific_output != deliverables_dir(output_root):
         raise ValueError("migration manifest has non-canonical scientific output")
-    if manifest.scientific_output != Path(expected_scientific_output).resolve():
+    if manifest.scientific_output != scientific_output:
         raise ValueError(
             "migration manifest scientific output does not match expected scientific output"
         )
@@ -650,9 +717,12 @@ def _read_record_payload(manifest: MigrationManifest, index: int) -> bytes:
     offset = struct.unpack(">Q", offsets[index * 8 : (index + 1) * 8])[0]
     try:
         with manifest.records_path.open("rb") as records:
-            if records.read(len(_RECORDS_HEADER)) != _RECORDS_HEADER:
+            expected_header = _RECORDS_MAGIC + struct.pack(
+                ">I", manifest.schema_version
+            )
+            if records.read(len(expected_header)) != expected_header:
                 raise ValueError("migration records file has invalid magic/version")
-            if offset < len(_RECORDS_HEADER):
+            if offset < len(expected_header):
                 raise ValueError("migration record offset precedes frames")
             records.seek(offset)
             length_bytes = records.read(8)
@@ -738,6 +808,7 @@ def read_migration_task(
     index: int,
     *,
     expected_scientific_output: Path,
+    expected_control_root: Path | None = None,
 ) -> MigrationImageTask:
     """Read exactly one indexed migration task without parsing prior records.
 
@@ -754,7 +825,11 @@ def read_migration_task(
             generation is invalid.
         IndexError: If *index* is outside the inventory.
     """
-    output_root, manifest = _read_manifest(manifest_path, expected_scientific_output)
+    output_root, manifest = _read_manifest(
+        manifest_path,
+        expected_scientific_output,
+        expected_control_root=expected_control_root,
+    )
     return _task_from_payload(
         _read_record_payload(manifest, index),
         output_root=output_root,
@@ -771,11 +846,10 @@ def _validated_manifest_for_authority(
 ) -> tuple[Path, MigrationManifest]:
     """Load a manifest and prove it belongs to this control generation."""
     output_root, manifest = _read_manifest(
-        manifest_path, expected_scientific_output
+        manifest_path,
+        expected_scientific_output,
+        expected_control_root=control_root,
     )
-    canonical_control = phenotypic_cache_dir(output_root).resolve()
-    if Path(control_root).resolve() != canonical_control:
-        raise ValueError("migration authority has a non-canonical control root")
     if manifest.generation != generation:
         raise ValueError("migration authority generation does not match manifest")
     return output_root, manifest
@@ -806,6 +880,7 @@ def publish_migration_task_status(
         manifest_path,
         result.index,
         expected_scientific_output=expected_scientific_output,
+        expected_control_root=control_root,
     )
     if (
         result.dataset != task.dataset
@@ -957,6 +1032,7 @@ def seal_migration_image_stage(
             manifest_path,
             index,
             expected_scientific_output=expected_scientific_output,
+            expected_control_root=control_root,
         )
         if status.get("dataset") != task.dataset or status.get("stem") != task.stem:
             failures.append(f"status index {index} has wrong image identity")
@@ -1248,6 +1324,7 @@ def publish_migration_reclaim_status(
         manifest_path,
         result.index,
         expected_scientific_output=expected_scientific_output,
+        expected_control_root=control_root,
     )
     payload, failures = _validate_reclaim_result(output_root, task, result)
     if failures:
@@ -1377,6 +1454,7 @@ def seal_migration_reclaim_stage(
             manifest_path,
             index,
             expected_scientific_output=expected_scientific_output,
+            expected_control_root=control_root,
         )
         if status.get("dataset") != task.dataset or status.get("stem") != task.stem:
             failures.append(f"reclaim status index {index} has wrong image identity")
@@ -1558,6 +1636,7 @@ def valid_migration_image_seal(
                 manifest_path,
                 index,
                 expected_scientific_output=expected_scientific_output,
+                expected_control_root=control_root,
             )
             status = _read_json_mapping(
                 migration_task_status_path(control_root, seal.generation, index),
@@ -1629,6 +1708,7 @@ def valid_migration_reclaim_seal(
                 manifest_path,
                 index,
                 expected_scientific_output=expected_scientific_output,
+                expected_control_root=control_root,
             )
             status = _read_json_mapping(
                 migration_reclaim_status_path(control_root, seal.generation, index),
