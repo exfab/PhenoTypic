@@ -1643,6 +1643,67 @@ def _rename_anchored_noreplace(
     _verify_anchored_journal_directory(directory)
 
 
+def _rollback_anchored_status_publication(
+    directory: _AnchoredJournalDirectory,
+    *,
+    status_name: str,
+    status_path: Path,
+    expected_identity: tuple[int, int],
+    expected_bytes: bytes,
+) -> None:
+    """Retain a failed status publication without unlinking a named child."""
+    digest = _sha256_bytes(expected_bytes).removeprefix("sha256:")
+    audit_name = (
+        f"status.rejected-publisher-{digest}-{os.urandom(8).hex()}.json"
+    )
+    _rename_anchored_noreplace(
+        directory,
+        status_name,
+        audit_name,
+        role="rejected metadata status rollback audit",
+    )
+    os.fsync(directory.fd)
+    _verify_anchored_journal_directory(directory)
+    descriptor = os.open(
+        audit_name,
+        _journal_open_flags(os.O_RDONLY),
+        dir_fd=directory.fd,
+    )
+    try:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(
+                "Rejected metadata status rollback audit is not regular"
+            )
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            audit = _AnchoredJournalFile(
+                handle=handle,
+                directory=directory,
+                name=audit_name,
+                path=status_path.with_name(audit_name),
+                role="Rejected metadata status rollback audit",
+                identity=(opened.st_dev, opened.st_ino),
+            )
+            _verify_anchored_journal_file(audit)
+            audit_bytes = handle.read()
+            _verify_anchored_journal_file(audit)
+            if audit.identity != expected_identity or audit_bytes != expected_bytes:
+                _restore_competing_metadata_status(
+                    directory,
+                    archive_name=audit_name,
+                    status_name=status_name,
+                    archived_bytes=audit_bytes,
+                )
+                return
+            os.fsync(directory.fd)
+            _verify_anchored_journal_directory(directory)
+            _verify_anchored_journal_file(audit)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
 def _publish_anchored_journal_json(
     path: Path,
     payload: Mapping[str, Any],
@@ -1766,21 +1827,30 @@ def _publish_anchored_journal_json(
             if descriptor >= 0:
                 os.close(descriptor)
             if final_identity is not None and not publication_complete:
-                try:
-                    published = os.stat(
-                        safe_path.name,
-                        dir_fd=directory.fd,
-                        follow_symlinks=False,
+                if role == "Metadata migration status":
+                    _rollback_anchored_status_publication(
+                        directory,
+                        status_name=safe_path.name,
+                        status_path=safe_path,
+                        expected_identity=final_identity,
+                        expected_bytes=document,
                     )
-                    if (
-                        stat.S_ISREG(published.st_mode)
-                        and (published.st_dev, published.st_ino)
-                        == final_identity
-                    ):
-                        os.unlink(safe_path.name, dir_fd=directory.fd)
-                        os.fsync(directory.fd)
-                except OSError:
-                    pass
+                else:
+                    try:
+                        published = os.stat(
+                            safe_path.name,
+                            dir_fd=directory.fd,
+                            follow_symlinks=False,
+                        )
+                        if (
+                            stat.S_ISREG(published.st_mode)
+                            and (published.st_dev, published.st_ino)
+                            == final_identity
+                        ):
+                            os.unlink(safe_path.name, dir_fd=directory.fd)
+                            os.fsync(directory.fd)
+                    except OSError:
+                        pass
             if temp_exists:
                 try:
                     os.unlink(temp_name, dir_fd=directory.fd)
@@ -3853,6 +3923,37 @@ def _remove_exact_metadata_authority(
                     "Competing live metadata status exists beside its exact "
                     "superseded audit"
                 )
+            live_bytes = _read_anchored_journal_bytes(
+                status_path,
+                root=root,
+                role="Metadata migration status before supersession",
+            )
+            if live_bytes != _anchored_json_document(expected):
+                rejected_name = _status_audit_name(
+                    _REJECTED_STATUS_PREFIX, _sha256_bytes(live_bytes)
+                )
+                rejected_path = status_path.with_name(rejected_name)
+                try:
+                    os.stat(
+                        rejected_name,
+                        dir_fd=directory.fd,
+                        follow_symlinks=False,
+                    )
+                except FileNotFoundError:
+                    pass
+                else:
+                    rejected_bytes = _read_anchored_journal_bytes(
+                        rejected_path,
+                        root=root,
+                        role="Rejected metadata status audit",
+                    )
+                    if rejected_bytes != live_bytes:
+                        raise ValueError(
+                            "Competing rejected metadata status audit exists"
+                        )
+                    raise ValueError(
+                        "Competing metadata migration status was already rejected"
+                    )
             _rename_anchored_noreplace(
                 directory,
                 status_path.name,
@@ -3948,14 +4049,30 @@ def _restore_competing_metadata_status(
     rejected_name = _status_audit_name(
         _REJECTED_STATUS_PREFIX, _sha256_bytes(archived_bytes)
     )
-    _require_absent_anchored_child(
+    try:
+        os.stat(
+            rejected_name,
+            dir_fd=directory.fd,
+            follow_symlinks=False,
+        )
+    except FileNotFoundError:
+        pass
+    else:
+        rejected_stem = rejected_name.removesuffix(".json")
+        rejected_name = (
+            f"{rejected_stem}-duplicate-{os.urandom(8).hex()}.json"
+        )
+    _rename_anchored_noreplace(
         directory,
+        archive_name,
         rejected_name,
         role="rejected metadata status audit",
     )
+    os.fsync(directory.fd)
+    _verify_anchored_journal_directory(directory)
     try:
         os.link(
-            archive_name,
+            rejected_name,
             status_name,
             src_dir_fd=directory.fd,
             dst_dir_fd=directory.fd,
@@ -3964,35 +4081,8 @@ def _restore_competing_metadata_status(
     except FileExistsError as exc:
         raise ValueError(
             "Competing metadata migration status appeared during recovery; "
-            f"displaced authority retained as {archive_name}"
+            f"displaced authority retained as {rejected_name}"
         ) from exc
-    os.fsync(directory.fd)
-    _verify_anchored_journal_directory(directory)
-    archived = os.stat(
-        archive_name,
-        dir_fd=directory.fd,
-        follow_symlinks=False,
-    )
-    restored = os.stat(
-        status_name,
-        dir_fd=directory.fd,
-        follow_symlinks=False,
-    )
-    if (
-        not stat.S_ISREG(archived.st_mode)
-        or not stat.S_ISREG(restored.st_mode)
-        or (archived.st_dev, archived.st_ino)
-        != (restored.st_dev, restored.st_ino)
-    ):
-        raise ValueError(
-            "Competing metadata migration status recovery identity changed"
-        )
-    _rename_anchored_noreplace(
-        directory,
-        archive_name,
-        rejected_name,
-        role="rejected metadata status audit",
-    )
     os.fsync(directory.fd)
     _verify_anchored_journal_directory(directory)
     rejected = os.stat(
@@ -4007,11 +4097,12 @@ def _restore_competing_metadata_status(
     )
     if (
         not stat.S_ISREG(rejected.st_mode)
+        or not stat.S_ISREG(restored.st_mode)
         or (rejected.st_dev, rejected.st_ino)
         != (restored.st_dev, restored.st_ino)
     ):
         raise ValueError(
-            "Rejected metadata migration status audit identity changed"
+            "Competing metadata migration status recovery identity changed"
         )
 
 
@@ -4616,19 +4707,6 @@ def _superseded_metadata_status_evidence(
     receipt_path = _require_safe_migration_path(
         receipt_text, role="Superseded terminal migration receipt", root=root
     )
-    _validate_superseded_historical_receipt(
-        root,
-        receipt_path,
-        expected_digest=receipt_digest,
-    )
-    receipt_bytes = _read_anchored_journal_bytes(
-        receipt_path,
-        root=root,
-        role="Superseded terminal migration receipt",
-    )
-    receipt = json.loads(receipt_bytes.decode("utf-8"))
-    if not isinstance(receipt, dict):
-        raise ValueError("Superseded terminal migration receipt is malformed")
     fingerprints = {
         name: payload.get(name)
         for name in (
@@ -4645,28 +4723,9 @@ def _superseded_metadata_status_evidence(
             "Superseded metadata status audit has invalid fingerprints"
         )
     compatible_noop = payload.get("compatible_noop")
-    raw_targets = receipt.get("targets")
-    if not isinstance(compatible_noop, bool) or not isinstance(
-        raw_targets, list
-    ):
+    if not isinstance(compatible_noop, bool):
         raise ValueError(
             "Superseded metadata status audit has invalid no-op authority"
-        )
-    receipt_noop = not any(
-        target.get("status") == "migratable"
-        for target in raw_targets
-        if isinstance(target, dict)
-    )
-    if (
-        fingerprints["plan_fingerprint"] != receipt.get("plan_fingerprint")
-        or fingerprints["source_fingerprint"]
-        != receipt.get("source_fingerprint")
-        or fingerprints["resulting_fingerprint"]
-        != _receipt_resulting_fingerprint(receipt)
-        or compatible_noop != receipt_noop
-    ):
-        raise ValueError(
-            "Superseded metadata status audit conflicts with its receipt"
         )
     return _MetadataMigrationAuthorityEvidence(
         authority=MetadataMigrationAuthority(
@@ -4756,6 +4815,7 @@ def _migrate_superseding_v4_authority(
     root: Path,
     *,
     superseded_receipt: Path,
+    expected_superseded_digest: str,
     kinds: frozenset[str] | None,
     target_role: ReceiptTargetRole,
     commit_guard: CommitGuard | None,
@@ -4770,6 +4830,11 @@ def _migrate_superseding_v4_authority(
     ) as historical_file:
         historical_bytes = historical_file.handle.read()
         _verify_anchored_journal_file(historical_file)
+        supersedes_digest = _sha256_bytes(historical_bytes)
+        if supersedes_digest != expected_superseded_digest:
+            raise ValueError(
+                "Superseded historical metadata receipt digest changed"
+            )
         try:
             superseded = json.loads(historical_bytes.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -4790,7 +4855,6 @@ def _migrate_superseding_v4_authority(
             ),
         )
         _verify_anchored_journal_file(historical_file)
-        supersedes_digest = _sha256_bytes(historical_bytes)
         report = preflight_metadata_schema(
             layout, kinds=kinds, target_role=target_role
         )
@@ -5140,6 +5204,7 @@ def reconcile_metadata_migration_bundle(
                     != result.source_fingerprint
                     or archived_authority.resulting_fingerprint
                     != result.resulting_fingerprint
+                    or archived_authority.compatible_noop != compatible_noop
                 ):
                     raise ValueError(
                         "Superseded metadata status audit does not match the "
@@ -5164,10 +5229,23 @@ def reconcile_metadata_migration_bundle(
                     commit_guard=commit_guard,
                     status_digest=published_status_digest,
                 )
+            if archived_evidence is not None:
+                expected_superseded_digest = (
+                    archived_evidence.authority.terminal_receipt_digest
+                )
+            elif published_authority is not None:
+                expected_superseded_digest = (
+                    published_authority.terminal_receipt_digest
+                )
+            else:
+                raise ValueError(
+                    "Historical metadata status lacks receipt digest authority"
+                )
             return _migrate_superseding_v4_authority(
                 layout,
                 root,
                 superseded_receipt=result.receipt_path,
+                expected_superseded_digest=expected_superseded_digest,
                 kinds=kinds,
                 target_role=target_role or BUNDLE_ALL_TARGET_ROLE,
                 commit_guard=commit_guard,

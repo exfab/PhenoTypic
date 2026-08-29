@@ -1857,6 +1857,116 @@ def test_superseded_status_archive_is_idempotent_and_conflicts_fail(
     assert "superseded" in " ".join(conflicted.conflicts).lower()
 
 
+def test_exact_status_archive_transition_is_directly_idempotent(
+    migratable_bundle: BundleLayout,
+) -> None:
+    """Repeating the exact transition returns its retained audit unchanged."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+    assert result.status == "applied"
+    authority = metadata_migration_authority(migratable_bundle)
+
+    first = migration._remove_exact_metadata_authority(
+        migratable_bundle.output_root,
+        authority,
+        commit_guard=None,
+    )
+    before = first.read_bytes()
+    second = migration._remove_exact_metadata_authority(
+        migratable_bundle.output_root,
+        authority,
+        commit_guard=None,
+    )
+
+    assert second == first
+    assert second.read_bytes() == before
+    assert not authority.status_path.exists()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_archived_status_receipt_digest_is_held_through_v4_plan_publication(
+    compatible_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A post-archive receipt replacement cannot become v4 authority."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert compatible_bundle.output_root is not None
+    receipt_path, original_digest = _write_historical_v3_journal(
+        compatible_bundle, terminal=True
+    )
+    receipt_payload = json.loads(receipt_path.read_text(encoding="utf-8"))
+    historical = migration._result_from_terminal_receipt(
+        receipt_path,
+        receipt_payload,
+        compatible=True,
+    )
+    authority = migration._publish_metadata_authority(
+        compatible_bundle.output_root,
+        historical,
+        compatible_noop=True,
+        commit_guard=None,
+    )
+    migration._remove_exact_metadata_authority(
+        compatible_bundle.output_root,
+        authority,
+        commit_guard=None,
+    )
+    original_bytes = receipt_path.read_bytes()
+    retained = receipt_path.with_name("receipt.json.retained-after-archive")
+    replacement_bytes = original_bytes + b" "
+    replacement_digest = "sha256:" + hashlib.sha256(
+        replacement_bytes
+    ).hexdigest()
+    real_archived_evidence = migration._superseded_metadata_status_evidence
+    replaced = False
+
+    def replace_after_archived_status_validation(root: Path):
+        nonlocal replaced
+        evidence = real_archived_evidence(root)
+        receipt_path.rename(retained)
+        receipt_path.write_bytes(replacement_bytes)
+        replaced = True
+        return evidence
+
+    monkeypatch.setattr(
+        migration,
+        "_superseded_metadata_status_evidence",
+        replace_after_archived_status_validation,
+    )
+
+    result = reconcile_metadata_migration_bundle(
+        compatible_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+
+    assert replaced is True
+    assert result is not None and result.status == "failed"
+    assert "digest" in " ".join(result.conflicts).lower()
+    assert retained.read_bytes() == original_bytes
+    assert receipt_path.read_bytes() == replacement_bytes
+    assert replacement_digest != original_digest
+    v4_plans = [
+        payload
+        for path in receipt_path.parent.parent.glob(
+            "metadata-schema-*/plan.json"
+        )
+        if (payload := json.loads(path.read_text(encoding="utf-8"))).get(
+            "schema_version"
+        )
+        == 4
+    ]
+    assert not v4_plans
+
+
 @pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
 def test_status_publish_retains_terminal_receipt_authority_through_link(
     migratable_bundle: BundleLayout,
@@ -2014,6 +2124,178 @@ def test_status_publish_rechecks_receipt_after_final_status_validation(
     assert retained.read_bytes() == original_bytes
     assert not status_path.exists()
     assert not tuple(status_path.parent.glob(".status.json.*.tmp*"))
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_status_rollback_restores_competitor_without_unlinking_its_name(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A competitor substituted at rollback survives at canonical status."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    plan_path, log_path, receipt_path = migration._journal_paths(
+        migratable_bundle.output_root, report.plan_fingerprint
+    )
+    plan = migration._new_journal_plan(
+        report,
+        root=migratable_bundle.output_root,
+        kinds=NON_IMAGE_KINDS,
+    )
+    migration._write_journal_plan(
+        migratable_bundle.output_root,
+        plan_path,
+        log_path,
+        plan,
+        commit_guard=None,
+    )
+    result = migration._apply_metadata_journal(
+        migratable_bundle,
+        migratable_bundle.output_root,
+        plan_path,
+        log_path,
+        receipt_path,
+        kinds=NON_IMAGE_KINDS,
+        commit_guard=None,
+    )
+    assert result.status == "applied"
+    status_path = migration._metadata_status_path(
+        migratable_bundle.output_root
+    )
+    retained_status = status_path.with_name("status.publisher-owned-retained")
+    competitor_path = status_path.with_name("status.rollback-competitor")
+    competitor_bytes = b"late rollback competitor"
+    competitor_path.write_bytes(competitor_bytes)
+    prior_rejected = status_path.with_name(
+        "status.rejected-"
+        f"{hashlib.sha256(competitor_bytes).hexdigest()}.json"
+    )
+    prior_rejected.write_bytes(competitor_bytes)
+    original_receipt = receipt_path.read_bytes()
+    retained_receipt = receipt_path.with_name(
+        "receipt.json.retained-for-rollback"
+    )
+    receipt_path.write_bytes(original_receipt)
+    real_verify = migration._verify_anchored_journal_file
+    real_rename = migration._rename_anchored_noreplace
+    real_unlink = migration.os.unlink
+    final_status_validations = 0
+    swapped = False
+    status_unlinks = 0
+
+    def invalidate_receipt_after_status_validation(file: object) -> None:
+        nonlocal final_status_validations
+        real_verify(file)
+        if getattr(file, "role", "") != "Metadata migration status":
+            return
+        final_status_validations += 1
+        if final_status_validations == 2:
+            receipt_path.rename(retained_receipt)
+            receipt_path.write_bytes(original_receipt + b" ")
+
+    def substitute_status() -> None:
+        nonlocal swapped
+        if swapped:
+            return
+        status_path.rename(retained_status)
+        competitor_path.rename(status_path)
+        swapped = True
+
+    def inject_at_verified_rollback_move(
+        directory: object,
+        source: str,
+        destination: str,
+        *,
+        role: str,
+    ) -> None:
+        if role == "rejected metadata status rollback audit":
+            substitute_status()
+        real_rename(directory, source, destination, role=role)
+
+    def inject_at_legacy_status_unlink(
+        path: object,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        nonlocal status_unlinks
+        if Path(os.fspath(path)).name == status_path.name:
+            status_unlinks += 1
+            substitute_status()
+        real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(
+        migration,
+        "_verify_anchored_journal_file",
+        invalidate_receipt_after_status_validation,
+    )
+    monkeypatch.setattr(
+        migration, "_rename_anchored_noreplace", inject_at_verified_rollback_move
+    )
+    monkeypatch.setattr(migration.os, "unlink", inject_at_legacy_status_unlink)
+
+    with pytest.raises(ValueError, match="Terminal migration receipt.*changed"):
+        migration._publish_metadata_authority(
+            migratable_bundle.output_root,
+            result,
+            compatible_noop=False,
+            commit_guard=None,
+        )
+
+    assert swapped is True
+    assert status_unlinks == 0
+    assert status_path.read_bytes() == competitor_bytes
+    assert retained_status.is_file()
+    assert status_path.read_bytes() != retained_status.read_bytes()
+    assert prior_rejected.read_bytes() == competitor_bytes
+    assert tuple(status_path.parent.glob("status.rejected-*.json"))
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_rejected_competing_status_remains_truthful_across_retries(
+    migratable_bundle: BundleLayout,
+) -> None:
+    """Repeated rejection keeps the competitor live and its audit exact."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+    assert result.status == "applied"
+    authority = metadata_migration_authority(migratable_bundle)
+    status_path = authority.status_path
+    payload = json.loads(status_path.read_text(encoding="utf-8"))
+    payload["competing"] = True
+    competitor_bytes = (
+        json.dumps(payload, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    status_path.write_bytes(competitor_bytes)
+    rejected = status_path.with_name(
+        "status.rejected-"
+        f"{hashlib.sha256(competitor_bytes).hexdigest()}.json"
+    )
+    superseded = status_path.with_name(
+        "status.superseded-"
+        f"{hashlib.sha256(migration._anchored_json_document(migration._metadata_authority_payload(authority))).hexdigest()}.json"
+    )
+
+    for _ in range(2):
+        with pytest.raises(ValueError, match="[Cc]ompeting.*status"):
+            migration._remove_exact_metadata_authority(
+                migratable_bundle.output_root,
+                authority,
+                commit_guard=None,
+            )
+        assert status_path.read_bytes() == competitor_bytes
+        assert rejected.read_bytes() == competitor_bytes
+        assert not superseded.exists()
 
 
 def test_metadata_authority_constructor_preserves_previous_signature() -> None:
