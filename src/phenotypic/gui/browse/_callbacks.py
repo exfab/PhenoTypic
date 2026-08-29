@@ -15,7 +15,6 @@ import threading
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from pathlib import PurePosixPath
 from typing import Any, Literal
 
 import dash
@@ -40,6 +39,7 @@ from phenotypic.gui._shared.timeline import build_matrix, build_timeline_grid
 from phenotypic.gui.browse import _ids as ids
 from phenotypic.gui.browse import _metadata, _source_lister, _source_render
 from phenotypic.gui.browse._preparation_routes import BrowsePreparationApi
+from phenotypic.gui.browse._source_item import source_item_relative_path
 from phenotypic.gui.browse._source_probe import SourceRevision, probe_source
 from phenotypic.gui.browse._capture_time import read_capture_time
 from phenotypic.gui.browse._layout import DATASET_ROW_STYLE
@@ -65,6 +65,7 @@ from phenotypic.gui.shell._metadata_context import (
 )
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._source_context import resolve_source_image_root
+from phenotypic.sdk_ import source_image_stem
 
 logger = logging.getLogger(__name__)
 
@@ -341,8 +342,7 @@ def dataset_row_hidden(datasets: dict[str, list[str]]) -> bool:
 
 def sandbox_rel(src_root_rel: str, dataset_rel: str, filename: str) -> str:
     """Join the image's path relative to the sandbox root (POSIX)."""
-    parts = [p for p in (src_root_rel, dataset_rel) if p and p != "."]
-    return PurePosixPath(*parts, filename).as_posix() if parts else filename
+    return source_item_relative_path(src_root_rel, dataset_rel, filename)
 
 
 def neighbor_filenames(
@@ -568,7 +568,9 @@ def pattern_preview_rows(
         )
 
     flat_stems = [
-        Path(name).stem for files in datasets.values() for name in files
+        source_image_stem(Path(name))
+        for files in datasets.values()
+        for name in files
     ]
     preview_stems = flat_stems[:8]
     try:
@@ -1227,7 +1229,7 @@ def register_callbacks(
         result = read_metadata_row_for_image_stem(
             sandbox,
             metadata_payload,
-            Path(original).stem,
+            source_image_stem(Path(original)),
         )
         return render_csv_metadata_panel(_csv_panel_model(result))
 

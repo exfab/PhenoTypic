@@ -145,3 +145,24 @@ def test_build_timeline_records_emits_one_per_overlay_pair(tmp_path: Path) -> No
     assert rows == {"1", "2"}        # plate numbers
     times = {r["time_value"] for r in records}
     assert times == {"1", "2"}       # image numbers (stringified)
+
+
+def test_build_timeline_records_normalizes_store_source_identity(
+    tmp_path: Path,
+) -> None:
+    root = _make_output_root(tmp_path)
+    frame = root.master_df.with_columns(
+        pl.when(pl.col(str(IMAGE.IMAGE_NAME)) == "a")
+        .then(pl.lit("a.ome.zarr"))
+        .otherwise(pl.col(str(IMAGE.IMAGE_NAME)))
+        .alias(str(IMAGE.IMAGE_NAME))
+    )
+
+    records = build_timeline_records(
+        root,
+        frame,
+        row_col="Metadata_PlateNum",
+        time_col="Metadata_ImageNumber",
+    )
+
+    assert ("ds", "a") in {record["cell_ref"] for record in records}

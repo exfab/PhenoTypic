@@ -35,6 +35,7 @@ from phenotypic.gui.builder._directory_browser import IMAGE_EXTS
 from phenotypic.sdk_ import (
     BundleLayout,
     PIPELINE_CONFIG_SUFFIXES,
+    STORE_SUFFIX,
     matches_any_suffix,
 )
 
@@ -236,6 +237,18 @@ def _classify_file(path: Path) -> Capabilities:
 
 def _classify_dir(path: Path) -> Capabilities:
     """Directory classifier. One ``listdir``; stat-only per child."""
+    if path.name.endswith(STORE_SUFFIX) and not path.is_symlink():
+        return Capabilities(
+            is_image_dir=True,
+            has_pipeline_json=False,
+            is_cli_output=False,
+            is_deliverables_bundle=False,
+            has_dashboard=False,
+            is_process_only_output=False,
+            is_tune_output=False,
+            image_count=1,
+            bad_perms=False,
+        )
     try:
         children = list(path.iterdir())
     except PermissionError:
@@ -252,6 +265,13 @@ def _classify_dir(path: Path) -> Capabilities:
             is_cli_output_results = True
             continue
         if image_count < _IMAGE_COUNT_CAP:
+            if (
+                name.endswith(STORE_SUFFIX)
+                and not child.is_symlink()
+                and child.is_dir()
+            ):
+                image_count += 1
+                continue
             suffix = child.suffix.lower()
             if suffix in IMAGE_EXTS and child.is_file():
                 image_count += 1

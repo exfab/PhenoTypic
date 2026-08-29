@@ -10,6 +10,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import phenotypic._cli._cli_failure_tracker as failure_tracker
 from phenotypic._cli._cli_failure_tracker import (
     TerminalFailureJournalError,
     append_terminal_failure,
@@ -19,8 +20,10 @@ from phenotypic._cli._cli_failure_tracker import (
     terminal_failure_index,
     work_id_for_image,
 )
+from phenotypic._cli._cli_process_single import _worker_work_identity
 from phenotypic._cli._cli_state_management import get_remaining_images_for_datasets
 from phenotypic._cli._cli_types import Dataset, DatasetState, ProcessingState
+from phenotypic._cli._cli_completion import publish_image_success
 from phenotypic.sdk_ import failures_jsonl_path, terminal_failures_jsonl_path
 
 
@@ -60,6 +63,65 @@ def test_work_id_binds_every_scientific_identity_field() -> None:
     assert _work_id(relative_image_path="other/image.tif") != baseline
 
 
+def test_direct_store_relative_identity_is_its_name_not_dot(tmp_path: Path) -> None:
+    store = tmp_path / "p01.ome.zarr"
+
+    assert failure_tracker._normalized_input_relative_path(store, store) == Path(
+        "p01.ome.zarr"
+    )
+    assert failure_tracker._normalized_input_relative_path(None, store) == Path(
+        "p01.ome.zarr"
+    )
+
+
+def test_submission_and_worker_share_direct_store_identity(tmp_path: Path) -> None:
+    store = tmp_path / "p01.ome.zarr"
+    store.mkdir()
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+    pipeline = tmp_path / "pipeline.json"
+    pipeline.write_text("{}", encoding="utf-8")
+    config = SimpleNamespace(
+        input_path=store,
+        pipeline_json=pipeline,
+        image_type="Image",
+        nrows=None,
+        ncols=None,
+        bit_depth=None,
+        detect_mode="gray",
+        process_only_layer=None,
+        ext=".tiff",
+        process_format="tiff",
+        include_dataset_column=True,
+        overlay_alpha=0.3,
+        save_overlays=True,
+        drop_originals=False,
+        measure_only=False,
+    )
+
+    submission = work_id_for_image(config, "plate", store)
+    worker = _worker_work_identity(
+        pipeline=pipeline,
+        image=store,
+        input_root=store,
+        dataset_name="plate",
+        image_type="Image",
+        nrows=None,
+        ncols=None,
+        bit_depth=None,
+        detect_mode="gray",
+        layer=None,
+        ext=".tiff",
+        process_format="tiff",
+        include_dataset_column=True,
+        overlay_alpha=0.3,
+        save_overlays=True,
+        mode="full",
+    )
+
+    assert submission == worker
+    assert submission[1] == "p01.ome.zarr"
+
+
 def test_append_is_durable_and_index_uses_latest_duplicate(tmp_path: Path) -> None:
     for attempt in ("first", "second"):
         assert append_terminal_failure(
@@ -76,6 +138,37 @@ def test_append_is_durable_and_index_uses_latest_duplicate(tmp_path: Path) -> No
     records = read_terminal_failures(tmp_path)
     assert [record.attempt_id for record in records] == ["first", "second"]
     assert terminal_failure_index(tmp_path)["same-work"].attempt_id == "second"
+
+
+def test_failure_does_not_override_direct_store_canonical_success(
+    tmp_path: Path,
+) -> None:
+    artifact = tmp_path / "results" / "plate" / "p01.parquet"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"measurement")
+    publish_image_success(
+        tmp_path,
+        work_id="work-p01",
+        dataset="plate",
+        relative_image_path="p01.ome.zarr",
+        image_stem="p01",
+        mode="full",
+        attempt_id="success",
+        lifecycle_epoch="epoch",
+        artifacts={"measurements": artifact},
+    )
+
+    assert not append_terminal_failure(
+        tmp_path,
+        work_id="work-p01",
+        dataset="plate",
+        relative_image_path="p01.ome.zarr",
+        failed_stage="full",
+        exception=RuntimeError("late worker"),
+        attempt_id="late",
+        lifecycle_epoch="epoch",
+    )
+    assert read_terminal_failures(tmp_path) == []
 
 
 def test_append_preserves_and_skips_killed_partial_line(tmp_path: Path) -> None:

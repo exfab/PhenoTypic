@@ -30,6 +30,7 @@ from phenotypic.sdk_ import (
     DIR_ZARR,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     STORE_SUFFIX,
+    source_image_stem,
     store_stem,
     dataset_overlays_dir,
     image_completion_marker_path,
@@ -653,7 +654,7 @@ def _marker_work_id_matches_state(
         value
         for image_name, value in dataset_work_ids.items()
         if isinstance(image_name, str)
-        and Path(image_name).stem == stem
+        and source_image_stem(Path(image_name)) == stem
         and isinstance(value, str)
     }
     return expected == {work_id}

@@ -15,6 +15,11 @@ import exifread
 from PIL import Image as PILImage
 
 from phenotypic.gui._config import BROWSE_RENDER_SCHEMA_VERSION, RAW_IMAGE_EXTS
+from phenotypic.sdk_ import (
+    STORE_SUFFIX,
+    source_image_suffix,
+    store_revision_identity,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +45,7 @@ class SourceRevision:
     size_bytes: int
     mtime_ns: int
     ctime_ns: int | None
+    store_revision: str | None
     width: int | None
     height: int | None
     exif: Mapping[str, str] = field(compare=False, hash=False)
@@ -62,6 +68,7 @@ class SourceRevision:
                 self.size_bytes,
                 self.mtime_ns,
                 self.ctime_ns,
+                self.store_revision,
                 self.render_schema,
                 self.tile_size,
                 self.overlap,
@@ -70,6 +77,14 @@ class SourceRevision:
 
     def matches_disk(self) -> bool:
         """Return whether size and timestamps still identify this revision."""
+        if self.store_revision is not None:
+            try:
+                return (
+                    store_revision_identity(self.source_path)
+                    == self.store_revision
+                )
+            except (OSError, ValueError):
+                return False
         try:
             stat = self.source_path.stat()
         except OSError:
@@ -117,14 +132,24 @@ def probe_source(
     rel = relative_path or derived_rel
     try:
         before = source.stat()
+        before_store_revision = (
+            store_revision_identity(source)
+            if source.name.endswith(STORE_SUFFIX)
+            else None
+        )
     except OSError as exc:
         raise SourceProbeError("source cannot be inspected") from exc
 
     width, height = _header_dimensions(source)
-    imported = _read_exif(source)
+    imported = {} if before_store_revision is not None else _read_exif(source)
 
     try:
         after = source.stat()
+        after_store_revision = (
+            store_revision_identity(source)
+            if before_store_revision is not None
+            else None
+        )
     except OSError as exc:
         raise SourceProbeError("source disappeared during inspection") from exc
     before_identity = (
@@ -137,7 +162,10 @@ def probe_source(
         after.st_mtime_ns,
         getattr(after, "st_ctime_ns", None),
     )
-    if before_identity != after_identity:
+    if (
+        before_identity != after_identity
+        or before_store_revision != after_store_revision
+    ):
         raise SourceProbeError("source changed during inspection")
 
     revision = SourceRevision(
@@ -147,6 +175,7 @@ def probe_source(
         size_bytes=after.st_size,
         mtime_ns=after.st_mtime_ns,
         ctime_ns=getattr(after, "st_ctime_ns", None),
+        store_revision=after_store_revision,
         width=width,
         height=height,
         exif=MappingProxyType(imported),
@@ -164,11 +193,13 @@ def probe_source(
 
 
 def _header_dimensions(source: Path) -> tuple[int | None, int | None]:
+    if source.name.endswith(STORE_SUFFIX):
+        return None, None
     try:
         with PILImage.open(source) as image:
             return int(image.width), int(image.height)
     except Exception:  # noqa: BLE001 - RAW support is optional
-        if source.suffix.lower() not in RAW_IMAGE_EXTS:
+        if source_image_suffix(source).lower() not in RAW_IMAGE_EXTS:
             logger.debug("image header read failed", exc_info=True)
             return None, None
     try:

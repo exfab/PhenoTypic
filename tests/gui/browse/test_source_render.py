@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 import tifffile
 from PIL import Image as PILImage
+from pathlib import Path
 
 from phenotypic.gui.browse import _source_render as sr
 
@@ -94,6 +95,53 @@ def test_normalize_standard_decode_failure_reraises(monkeypatch, tmp_path):
     monkeypatch.setattr(sr.Image, "imread", _boom)
     with pytest.raises(ValueError, match="corrupt tiff"):
         sr.normalize_to_png(tiff, sr.cache_png_path("bt"))
+
+
+def test_normalize_store_uses_image_imread_then_png(monkeypatch, tmp_path):
+    store = tmp_path / "p01.ome.zarr"
+    store.mkdir()
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+    calls = []
+
+    class _Rgb:
+        def __getitem__(self, key):
+            assert key == slice(None)
+            return np.full((3, 4, 3), 127, dtype=np.uint8)
+
+    class _Image:
+        rgb = _Rgb()
+
+    def fake_imread(path):
+        calls.append(Path(path))
+        return _Image()
+
+    monkeypatch.setattr(sr.Image, "imread", fake_imread)
+    target = tmp_path / "cache" / "normalized.png"
+
+    result = sr.normalize_to_png(store, target)
+
+    assert calls == [store]
+    assert result == target
+    assert np.asarray(PILImage.open(target)).shape == (3, 4, 3)
+
+
+def test_process_store_round_trips_through_cli_scan_and_browse(tmp_path):
+    from phenotypic import Image
+    from phenotypic._cli._cli_directory_scanner import scan_directory_structure
+    from phenotypic._cli._cli_process_only import write_process_only_layer
+    from phenotypic.gui.browse._source_item import resolve_source_item
+    from phenotypic.gui.browse._source_lister import list_datasets
+
+    store = tmp_path / "process-out" / "p01.ome.zarr"
+    rgb = np.full((12, 16, 3), 64, dtype=np.uint8)
+    write_process_only_layer(Image(arr=rgb), "rgb", store, fmt="zarr")
+
+    assert scan_directory_structure(store) == {"single_image": [store]}
+    assert Image.imread(store).rgb[:].shape == rgb.shape
+    assert list_datasets(store) == {".": ["p01.ome.zarr"]}
+    assert resolve_source_item(store, ".", "p01.ome.zarr") == store
+    normalized = sr.normalize_to_png(store, tmp_path / "cache" / "p01.png")
+    assert np.asarray(PILImage.open(normalized)).shape == rgb.shape
 
 
 def test_init_cache_registers_atexit_once(monkeypatch, tmp_path):

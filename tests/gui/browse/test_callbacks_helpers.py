@@ -68,6 +68,17 @@ def test_current_image_payload_flat_source_round_trips():
     assert "prefetch" not in payload
 
 
+def test_current_image_payload_direct_store_does_not_double_join():
+    from phenotypic.gui.browse._source_render import decode_token
+
+    payload = cb.current_image_payload(
+        "inputs/p01.ome.zarr", ".", "p01.ome.zarr"
+    )
+
+    assert decode_token(payload["token"]) == "inputs/p01.ome.zarr"
+    assert payload["label"] == "inputs/p01.ome.zarr"
+
+
 def test_neighbor_filenames_three_each_side_clamped():
     files = ["a", "b", "c", "d", "e", "f", "g", "h", "i"]
     # Interior: 3 before + 3 after, current excluded, nav order preserved.

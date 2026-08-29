@@ -22,6 +22,7 @@ from phenotypic.sdk_ import (
     processing_state_path,
     resolve_event_log_path,
     resolve_processing_state_path,
+    source_image_stem,
 )
 
 from ._cli_staged_resume import pipeline_content_digest
@@ -406,7 +407,7 @@ def get_remaining_images_for_datasets(
                     if valid_image_success(
                         output_dir,
                         dataset=dataset.name,
-                        image_stem=image.stem,
+                        image_stem=source_image_stem(image),
                         work_id=work_id,
                     ):
                         continue

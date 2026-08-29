@@ -73,6 +73,7 @@ import hashlib
 import json
 import logging
 import re
+import stat as stat_module
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -1554,6 +1555,157 @@ def store_stem(store_path: Path) -> str:
     if not name.endswith(STORE_SUFFIX):
         raise ValueError(f"not an OME-Zarr store directory: {store_path}")
     return name[: -len(STORE_SUFFIX)]
+
+
+def source_image_stem(path: Path) -> str:
+    """Return the canonical artifact stem for a source image path.
+
+    OME-Zarr source images use a double suffix, so their identity strips the
+    complete ``.ome.zarr`` suffix. Every other source keeps the standard
+    :attr:`pathlib.Path.stem` contract, including ordinary multi-dot files.
+
+    Args:
+        path: Source image file or OME-Zarr store path.
+
+    Returns:
+        The canonical source-image stem.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
+    source = Path(path)
+    if source.name.endswith(STORE_SUFFIX):
+        return store_stem(source)
+    return source.stem
+
+
+def source_image_suffix(path: Path) -> str:
+    """Return the canonical suffix for a source image path.
+
+    Args:
+        path: Source image file or OME-Zarr store path.
+
+    Returns:
+        ``.ome.zarr`` for a store source, otherwise the standard final suffix.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
+    source = Path(path)
+    return STORE_SUFFIX if source.name.endswith(STORE_SUFFIX) else source.suffix
+
+
+def store_revision_identity(path: Path) -> str:
+    """Return a cheap nested metadata identity for one stable OME-Zarr store.
+
+    The identity hashes framed relative paths, member types, sizes, and
+    nanosecond mtimes. It intentionally does not read chunk contents: CLI work
+    and completion use a separate content-digest contract. The root
+    ``zarr.json`` stat is promoted into a final token because writers publish
+    that document last.
+
+    Args:
+        path: Existing ``*.ome.zarr`` directory.
+
+    Returns:
+        A versioned SHA-256 metadata identity.
+
+    Raises:
+        OSError: If the store is unstable or contains a symlink or another
+            non-regular member.
+        ValueError: If ``path`` is not named as an OME-Zarr store.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON, STORE_SUFFIX
+
+    store = Path(path)
+    if not store.name.endswith(STORE_SUFFIX):
+        raise ValueError(f"not an OME-Zarr store directory: {store}")
+    first = _store_revision_snapshot(store, root_json=STORE_ROOT_JSON)
+    second = _store_revision_snapshot(store, root_json=STORE_ROOT_JSON)
+    if first != second:
+        raise OSError("OME-Zarr store changed during revision inspection")
+
+    members, promoted_root_token = second
+    digest = hashlib.sha256(b"phenotypic-store-revision\x00v1\x00")
+    for relative_path, member_type, size, mtime_ns in members:
+        encoded_path = relative_path.encode("utf-8")
+        digest.update(len(encoded_path).to_bytes(8, "big"))
+        digest.update(encoded_path)
+        digest.update(member_type)
+        digest.update(size.to_bytes(8, "big", signed=False))
+        digest.update(mtime_ns.to_bytes(8, "big", signed=True))
+    digest.update(b"\x01" if promoted_root_token is not None else b"\x00")
+    if promoted_root_token is not None:
+        size, mtime_ns = promoted_root_token
+        digest.update(size.to_bytes(8, "big", signed=False))
+        digest.update(mtime_ns.to_bytes(8, "big", signed=True))
+    return f"sha256-stat-tree-v1:{digest.hexdigest()}"
+
+
+def _store_revision_snapshot(
+    store: Path,
+    *,
+    root_json: str,
+) -> tuple[tuple[tuple[str, bytes, int, int], ...], tuple[int, int] | None]:
+    """Capture one symlink-free stat snapshot for ``store``."""
+    try:
+        root_stat = store.lstat()
+    except OSError as exc:
+        raise OSError("OME-Zarr store cannot be inspected") from exc
+    if stat_module.S_ISLNK(root_stat.st_mode):
+        raise OSError("OME-Zarr store cannot be a symlink")
+    if not stat_module.S_ISDIR(root_stat.st_mode):
+        raise OSError("OME-Zarr store must be a directory")
+
+    members: list[tuple[str, bytes, int, int]] = []
+    directories = [store]
+    while directories:
+        directory = directories.pop()
+        try:
+            entries = sorted(directory.iterdir(), key=lambda item: item.name)
+        except OSError as exc:
+            raise OSError("OME-Zarr store member cannot be inspected") from exc
+        child_directories: list[Path] = []
+        for entry in entries:
+            try:
+                entry_stat = entry.lstat()
+            except OSError as exc:
+                raise OSError(
+                    "OME-Zarr store member cannot be inspected"
+                ) from exc
+            relative = entry.relative_to(store).as_posix()
+            mode = entry_stat.st_mode
+            if stat_module.S_ISLNK(mode):
+                raise OSError(
+                    f"OME-Zarr store contains symlink member: {relative}"
+                )
+            if stat_module.S_ISDIR(mode):
+                member_type = b"d"
+                child_directories.append(entry)
+            elif stat_module.S_ISREG(mode):
+                member_type = b"f"
+            else:
+                raise OSError(
+                    f"OME-Zarr store contains non-regular member: {relative}"
+                )
+            members.append(
+                (
+                    relative,
+                    member_type,
+                    entry_stat.st_size,
+                    entry_stat.st_mtime_ns,
+                )
+            )
+        directories.extend(reversed(child_directories))
+
+    members.sort(key=lambda item: item[0])
+    root_record = next(
+        (
+            (size, mtime_ns)
+            for relative, member_type, size, mtime_ns in members
+            if relative == root_json and member_type == b"f"
+        ),
+        None,
+    )
+    return tuple(members), root_record
 
 
 def overlays_dir(output_dir: Path) -> Path:

@@ -23,6 +23,7 @@ from phenotypic.sdk_ import (
     atomic_write_json,
     dataset_measurements_dir,
     progress_dir,
+    source_image_stem,
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
@@ -271,7 +272,7 @@ def completed_inventory_images(
     old_fingerprints = state.get("restart_parquet_fingerprints", {})
     completed: set[str] = set()
     for image_name in image_names:
-        stem = Path(image_name).stem
+        stem = source_image_stem(Path(image_name))
         if markers_required:
             if stage3_completion_exists(output_dir, dataset, stem):
                 completed.add(image_name)
@@ -296,7 +297,7 @@ def snapshot_inventory_parquets(
     for dataset, image_names in inventory.items():
         measurements = dataset_measurements_dir(output_dir, dataset)
         for image_name in image_names:
-            parquet = measurements / f"{Path(image_name).stem}.parquet"
+            parquet = measurements / f"{source_image_stem(Path(image_name))}.parquet"
             try:
                 stat = parquet.stat()
             except FileNotFoundError:
@@ -326,7 +327,7 @@ def quarantine_unchanged_restart_parquets(output_dir: Path, epoch: str) -> int:
             continue
         parquet = (
             dataset_measurements_dir(output_dir, dataset)
-            / f"{Path(image_name).stem}.parquet"
+            / f"{source_image_stem(Path(image_name))}.parquet"
         )
         try:
             stat = parquet.stat()

@@ -26,6 +26,7 @@ from phenotypic.sdk_ import (
     metadata_member_for_header,
     metadata_member_for_label,
     normalize_metadata_columns,
+    source_image_stem,
 )
 from phenotypic.sdk_._metadata_compatibility import LEGACY_HEADER_TO_CANONICAL
 from phenotypic.gui.shell._sandbox import (
@@ -370,7 +371,8 @@ def normalize_metadata_image_identity(
     if not text:
         return None
     if column == "Metadata_ImageFileName":
-        return PurePosixPath(text.replace("\\", "/")).stem or None
+        filename = PurePosixPath(text.replace("\\", "/")).name
+        return source_image_stem(Path(filename)) or None
     return text
 
 

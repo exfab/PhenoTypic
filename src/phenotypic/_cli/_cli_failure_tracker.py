@@ -24,6 +24,7 @@ from phenotypic.sdk_ import (
     FAILURES_JSONL,
     STORE_SUFFIX,
     publication_commit,
+    source_image_stem,
     terminal_failures_jsonl_path,
 )
 from phenotypic.sdk_.typing_ import FailureSource
@@ -269,6 +270,37 @@ def compute_work_id(
     )
 
 
+def _normalized_input_relative_path(
+    input_root: Path | None, image: Path
+) -> Path:
+    """Return a stable input-relative identity for a source image.
+
+    ``Path.relative_to`` returns ``Path(".")`` when a direct OME-Zarr input is
+    its own input root. A direct image must retain its filename identity, just
+    like a flat-file input whose root takes the ``is_file`` branch.
+
+    Args:
+        input_root: Configured input file, directory, store, or ``None`` in a
+            worker invoked without an input root.
+        image: Source image path.
+
+    Returns:
+        A relative source path, falling back to the image name when the paths
+        are unrelated or identify the same direct input.
+    """
+    source = Path(image)
+    if input_root is None:
+        return Path(source.name)
+    root = Path(input_root)
+    if root.is_file():
+        return Path(source.name)
+    try:
+        relative = source.relative_to(root)
+    except ValueError:
+        return Path(source.name)
+    return Path(source.name) if relative == Path(".") else relative
+
+
 def work_id_for_image(
     config: "ExecutionConfig", dataset: str, image_path: Path
 ) -> tuple[str, str]:
@@ -279,22 +311,9 @@ def work_id_for_image(
     which yields ``Path(".")`` when the two paths are the same -- see the
     degenerate-path recovery below.
     """
-    if config.input_path.is_file():
-        relative_path = Path(image_path.name)
-    else:
-        try:
-            relative_path = image_path.relative_to(config.input_path)
-        except ValueError:
-            relative_path = Path(image_path.name)
-        if relative_path == Path("."):
-            # `--input` names the image itself, so `relative_to` yields `.`
-            # and every such input shares one relative path. Two stores with
-            # identical content under one dataset would then produce the same
-            # work ID -- the same collapse `process_only_output_path` guards
-            # against, and the same recovery. Pre-existing on the flat-file
-            # path; fixed here because a single store input is exactly what
-            # spec 7 makes routine.
-            relative_path = Path(image_path.name)
+    relative_path = _normalized_input_relative_path(
+        config.input_path, image_path
+    )
     mode = (
         "measure"
         if config.measure_only
@@ -343,7 +362,7 @@ def append_terminal_failure(
     if valid_image_success(
         output_dir,
         dataset=dataset,
-        image_stem=Path(relative_image_path).stem,
+        image_stem=source_image_stem(Path(relative_image_path)),
         work_id=work_id,
     ):
         return False

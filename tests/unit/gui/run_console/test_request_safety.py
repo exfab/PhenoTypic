@@ -225,6 +225,45 @@ def test_preflight_uses_every_source_level_production_join_key(
     assert production_result.height == 0
 
 
+def test_direct_store_preflight_uses_canonical_name_and_suffix(
+    tmp_path: Path,
+) -> None:
+    store = tmp_path / "p01.ome.zarr"
+    store.mkdir()
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+    metadata = tmp_path / "metadata.csv"
+    metadata.write_text(
+        f"{IMAGE.IMAGE_NAME},{IMAGE.SUFFIX},{EXPERIMENT.DATASET}\n"
+        "p01,.ome.zarr,single_image\n",
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+
+    preflight = build_metadata_preflight(
+        sandbox,
+        str(store),
+        metadata_payload_from_path(sandbox, metadata),
+    )
+
+    assert preflight.compatibility == "compatible"
+    assert preflight.matched_source_count == 1
+
+
+def test_store_preflight_revision_changes_with_nested_member(tmp_path: Path) -> None:
+    store = tmp_path / "p01.ome.zarr"
+    chunk = store / "rgb" / "c" / "0"
+    chunk.parent.mkdir(parents=True)
+    chunk.write_bytes(b"first")
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+    sandbox = SandboxRoot.from_path(tmp_path)
+
+    first = build_metadata_preflight(sandbox, str(store), None)
+    chunk.write_bytes(b"second-version")
+    second = build_metadata_preflight(sandbox, str(store), None)
+
+    assert first.source_fingerprint != second.source_fingerprint
+
+
 def test_preflight_duplicate_risk_uses_full_production_key_grain(
     tmp_path: Path,
 ) -> None:

@@ -43,6 +43,7 @@ from ._cli_update_state import (
 )
 from ._cli_failure_tracker import (
     PerImageScientificError,
+    _normalized_input_relative_path,
     append_failure,
     append_terminal_failure,
     compute_work_id,
@@ -62,6 +63,7 @@ from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
     load_image_from_store,
     progress_dir,
+    source_image_stem,
     store_stem,
     zarr_store_path,
 )
@@ -134,13 +136,9 @@ def _worker_work_identity(
     mode: str,
 ) -> tuple[str, str]:
     """Calculate the same work identity used by top-level selection."""
-    if input_root is None or input_root.is_file():
-        relative_path = image.name
-    else:
-        try:
-            relative_path = image.relative_to(input_root).as_posix()
-        except ValueError:
-            relative_path = image.name
+    relative_path = _normalized_input_relative_path(
+        input_root, image
+    ).as_posix()
     return (
         compute_work_id(
             dataset=dataset_name,
@@ -218,7 +216,7 @@ def process_single_image_core(
             will propagate to the caller. The caller is responsible for catching
             exceptions and handling failures appropriately.
     """
-    image_stem = image_path.stem
+    image_stem = source_image_stem(image_path)
     store = zarr_store_path(output_dir, dataset_name, image_stem)
     image: Image | GridImage | None = None
     checkpoint_ready = False
@@ -751,7 +749,7 @@ def main(
                 work_id=work_id,
                 dataset=dataset_name,
                 relative_image_path=relative_path,
-                image_stem=image.stem,
+                image_stem=source_image_stem(image),
                 mode="process",
                 attempt_id=attempt_id,
                 lifecycle_epoch=_authoritative_lifecycle_epoch(),
@@ -886,7 +884,10 @@ def main(
             # `publish_image_success` resolves every artifact strict=True, so
             # naming a dead file is a FileNotFoundError, not a stale marker.
             data_key, data_path = image_data_artifact(
-                output_dir, output_manager, dataset_name, image.stem
+                output_dir,
+                output_manager,
+                dataset_name,
+                source_image_stem(image),
             )
             artifacts = {
                 "measurements": data_path / MEASUREMENT_TABLE_RELATIVE_PATH,
@@ -894,14 +895,14 @@ def main(
             }
             if save_overlays:
                 artifacts["overlay"] = output_manager.get_output_path(
-                    dataset_name, "overlays", image.stem
+                    dataset_name, "overlays", source_image_stem(image)
                 )
             publish_image_success(
                 output_dir,
                 work_id=work_id,
                 dataset=dataset_name,
                 relative_image_path=relative_path,
-                image_stem=image.stem,
+                image_stem=source_image_stem(image),
                 mode="full",
                 attempt_id=attempt_id,
                 lifecycle_epoch=_authoritative_lifecycle_epoch(),

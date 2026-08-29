@@ -15,7 +15,11 @@ from typing import Any, Dict, Optional
 import click
 
 from phenotypic import GridImage, Image, ImagePipeline
-from phenotypic.sdk_ import CommitGuard, atomic_write_with_writer
+from phenotypic.sdk_ import (
+    CommitGuard,
+    atomic_write_with_writer,
+    source_image_stem,
+)
 from phenotypic._core._provenance import (
     initialize_cli_provenance,
     set_provenance_status,
@@ -119,7 +123,7 @@ def process_only_output_path(
     Returns:
         The output path. Bounded by the 1-level dataset scanner (D12).
     """
-    from phenotypic.sdk_ import STORE_SUFFIX, store_stem
+    from phenotypic.sdk_ import STORE_SUFFIX
 
     if fmt == "zarr":
         ext = STORE_SUFFIX
@@ -140,7 +144,7 @@ def process_only_output_path(
     # double suffix, so `.stem` yields `p01.ome` and a zarr run would write
     # `p01.ome.ome.zarr`. `store_stem` RAISES on a non-store path
     # (_io_constants.py:1554), so the suffix test is required, not defensive.
-    stem = store_stem(rel) if rel.name.endswith(STORE_SUFFIX) else rel.stem
+    stem = source_image_stem(rel)
     return output_dir / rel.parent / f"{stem}{ext}"
 
 

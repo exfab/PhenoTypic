@@ -42,6 +42,7 @@ from phenotypic.sdk_ import (
     job_metadata_path,
     resolve_manifest_json_path,
     run_completion_marker_path,
+    source_image_stem,
 )
 
 logger = logging.getLogger(__name__)
@@ -1346,7 +1347,7 @@ def _all_stage3_markers_exist(output_dir: Path) -> bool:
             return False
         for image_name in images:
             if not isinstance(image_name, str) or not stage3_completion_exists(
-                output_dir, str(dataset), Path(image_name).stem
+                output_dir, str(dataset), source_image_stem(Path(image_name))
             ):
                 return False
     return True

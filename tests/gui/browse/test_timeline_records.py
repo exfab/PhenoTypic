@@ -97,3 +97,31 @@ def test_csv_source_joins_by_stem_and_warns_on_cross_folder_collision() -> None:
     # plateA/plateB stems each appear in TWO folders while a CSV axis is active
     # → collision warning (same stem can't disambiguate per-folder rows).
     assert any("plateA" in w or "stem" in w.lower() for w in warnings)
+
+
+def test_direct_store_pattern_and_csv_identity_use_canonical_stem() -> None:
+    datasets = {".": ["p01.ome.zarr"]}
+    config = BrowseAxisConfig(
+        row_source="pattern",
+        time_source="csv",
+        pattern="{plate}",
+        csv_image_col="image",
+        time_csv_col="tp",
+    )
+
+    records, warnings = build_browse_records(
+        datasets,
+        "inputs/p01.ome.zarr",
+        config,
+        csv_rows=[{"image": "p01.ome.zarr", "tp": "0h"}],
+        capture_time_of=lambda rel: None,
+    )
+
+    assert warnings == []
+    assert records == [
+        {
+            "row_value": "p01",
+            "time_value": "0h",
+            "cell_ref": "inputs/p01.ome.zarr",
+        }
+    ]

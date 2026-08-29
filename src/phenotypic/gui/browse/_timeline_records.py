@@ -12,9 +12,11 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from phenotypic.gui.browse._plate_pattern import parse_plate_identity
+from phenotypic.gui.browse._source_item import source_item_relative_path
+from phenotypic.sdk_ import source_image_stem
 
 __all__ = ["BrowseAxisConfig", "build_browse_records"]
 
@@ -36,8 +38,7 @@ _UNMATCHED = "unmatched"
 
 
 def _sandbox_rel(src_root_rel: str, folder: str, filename: str) -> str:
-    parts = [p for p in (src_root_rel, folder) if p and p != "."]
-    return PurePosixPath(*parts, filename).as_posix() if parts else filename
+    return source_item_relative_path(src_root_rel, folder, filename)
 
 
 def build_browse_records(
@@ -75,14 +76,14 @@ def build_browse_records(
             raw = row.get(config.csv_image_col)
             if raw is None:
                 continue
-            csv_by_stem[Path(str(raw)).stem] = row
+            csv_by_stem[source_image_stem(Path(str(raw)))] = row
 
     # Pattern matches, computed per folder so rows stay folder-scoped.
     pattern_by_folder: dict[str, dict[str, tuple[str | None, str | None]]] = {}
     uses_pattern = "pattern" in (config.row_source, config.time_source)
     if uses_pattern:
         for folder, files in datasets.items():
-            stems = [Path(f).stem for f in files]
+            stems = [source_image_stem(Path(f)) for f in files]
             matches = parse_plate_identity(
                 stems, config.pattern, advanced=config.advanced_pattern
             )
@@ -95,7 +96,9 @@ def build_browse_records(
         seen: dict[str, set[str]] = {}
         for folder, files in datasets.items():
             for filename in files:
-                seen.setdefault(Path(filename).stem, set()).add(folder)
+                seen.setdefault(source_image_stem(Path(filename)), set()).add(
+                    folder
+                )
         collided = sorted(s for s, folders in seen.items() if len(folders) > 1)
         if collided:
             warnings.append(
@@ -106,7 +109,7 @@ def build_browse_records(
     records: list[dict[str, object]] = []
     for folder, files in datasets.items():
         for filename in files:
-            stem = Path(filename).stem
+            stem = source_image_stem(Path(filename))
             rel = _sandbox_rel(src_root_rel, folder, filename)
             plate, ptime = pattern_by_folder.get(folder, {}).get(stem, (None, None))
             csv_row = csv_by_stem.get(stem)

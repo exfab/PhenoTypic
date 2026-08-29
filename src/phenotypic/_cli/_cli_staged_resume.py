@@ -15,6 +15,7 @@ from phenotypic.sdk_ import (
     dataset_measurements_dir,
     progress_dir,
     publication_commit,
+    source_image_stem,
     zarr_store_path,
 )
 from phenotypic.sdk_.ngff_ import (  # noqa: F401 -- public re-export
@@ -204,7 +205,7 @@ def classify_staged_image(
     expected_work_id: str | None = None,
 ) -> ResumeStage:
     """Return the earliest stage required by one image's durable artifacts."""
-    stem = image.stem
+    stem = source_image_stem(image)
     if expected_work_id is not None:
         from ._cli_completion import valid_image_success
 
@@ -344,24 +345,26 @@ def migrate_legacy_stage3_markers(
         if item.stage != "complete":
             continue
         measurement_table = (
-            zarr_store_path(output_dir, item.dataset, item.image.stem)
+            zarr_store_path(
+                output_dir, item.dataset, source_image_stem(item.image)
+            )
             / MEASUREMENT_TABLE_RELATIVE_PATH
         )
         legacy_table = (
             dataset_measurements_dir(output_dir, item.dataset)
-            / f"{item.image.stem}.parquet"
+            / f"{source_image_stem(item.image)}.parquet"
         )
         if (
             not measurement_table.is_file() and not legacy_table.is_file()
         ) or stage3_completion_exists(
-            output_dir, item.dataset, item.image.stem
+            output_dir, item.dataset, source_image_stem(item.image)
         ):
             continue
         write_stage3_completion_marker(
             output_dir,
             item.dataset,
             item.image.name,
-            item.image.stem,
+            source_image_stem(item.image),
             legacy_migration=True,
         )
         migrated += 1
@@ -421,7 +424,7 @@ def reconcile_stage3_publications(
     work_ids = state.config.get("work_ids", {}) if state is not None else {}
     for dataset, image_names in inventory.items():
         for image_name in image_names:
-            stem = Path(image_name).stem
+            stem = source_image_stem(Path(image_name))
             dataset_work_ids = (
                 work_ids.get(dataset, {}) if isinstance(work_ids, dict) else {}
             )

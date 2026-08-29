@@ -229,6 +229,7 @@ from phenotypic.sdk_ import (
     dashboard_html_path,
     dataset_measurements_dir,
     load_image_from_store,
+    source_image_stem,
     store_stem,
     clear_machine_state,
     atomic_write_bytes,
@@ -397,7 +398,7 @@ def _repair_incremental_manifest(
             datasets={name: len(images) for name, images in inventory.items()},
             execution_mode=("slurm" if config.is_slurm_mode() else "local"),
             start_time=state.timestamp.isoformat(timespec="milliseconds"),
-            input_path=config.input_path.stem,
+            input_path=source_image_stem(config.input_path),
             dataset_inventory=inventory,
             processing_generation=state.config.get("processing_generation"),
             gui_record_generation=os.environ.get(
@@ -447,7 +448,7 @@ def _migrate_legacy_success_evidence(
             legacy_complete = image.name in ds_state.completed
             if staged:
                 legacy_complete = legacy_complete or stage3_completion_exists(
-                    output_dir, dataset.name, image.stem
+                    output_dir, dataset.name, source_image_stem(image)
                 )
             if not legacy_complete:
                 continue
@@ -471,17 +472,22 @@ def _migrate_legacy_success_evidence(
                 # FileNotFoundError, so the symptom was not a crash but a
                 # silent refusal to promote and a full reprocess.
                 data_key, data_path = image_data_artifact(
-                    output_dir, output_manager, dataset.name, image.stem
+                    output_dir,
+                    output_manager,
+                    dataset.name,
+                    source_image_stem(image),
                 )
                 artifacts = {
                     "measurements": output_manager.get_output_path(
-                        dataset.name, "measurements", image.stem
+                        dataset.name,
+                        "measurements",
+                        source_image_stem(image),
                     ),
                     data_key: data_path,
                 }
                 if config.save_overlays:
                     artifacts["overlay"] = output_manager.get_output_path(
-                        dataset.name, "overlays", image.stem
+                        dataset.name, "overlays", source_image_stem(image)
                     )
                 mode = "full"
             try:
@@ -490,7 +496,7 @@ def _migrate_legacy_success_evidence(
                     work_id=work_id,
                     dataset=dataset.name,
                     relative_image_path=relative_path,
-                    image_stem=image.stem,
+                    image_stem=source_image_stem(image),
                     mode=mode,
                     attempt_id="legacy-migration",
                     lifecycle_epoch=str(
@@ -2128,7 +2134,7 @@ def phenotypic_cli(
                             ensure_staged_overlay(
                                 output_dir,
                                 resume_item.dataset,
-                                resume_item.image.stem,
+                                source_image_stem(resume_item.image),
                                 resume_output_manager,
                                 config.image_type,
                             )
@@ -2540,7 +2546,7 @@ def phenotypic_cli(
                         start_time=results.start_time.isoformat(
                             timespec="milliseconds"
                         ),
-                        input_path=config.input_path.stem,
+                        input_path=source_image_stem(config.input_path),
                         dataset_inventory=inventory,
                         processing_generation=config.processing_generation,
                     )
@@ -2590,7 +2596,9 @@ def phenotypic_cli(
             )
 
             full_stage3_complete = all(
-                stage3_completion_exists(output_dir, dataset, Path(image).stem)
+                stage3_completion_exists(
+                    output_dir, dataset, source_image_stem(Path(image))
+                )
                 for dataset, images in config.full_dataset_inventory.items()
                 for image in images
             )

@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime
 
 from phenotypic._cli._cli_completion import (
+    current_success_counts,
     current_aggregate_is_current,
     current_run_is_complete,
     publish_aggregate_snapshot,
@@ -54,6 +55,47 @@ def test_success_marker_binds_work_id_and_artifact_bytes(tmp_path: Path) -> None
     assert not valid_image_success(
         tmp_path, dataset="plate", image_stem="image", work_id="work-a"
     )
+
+
+def test_completion_resolves_direct_store_inventory_to_canonical_marker(
+    tmp_path: Path,
+) -> None:
+    artifact = tmp_path / "results" / "plate" / "p01.parquet"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"measurement")
+    publish_image_success(
+        tmp_path,
+        work_id="work-p01",
+        dataset="plate",
+        relative_image_path="p01.ome.zarr",
+        image_stem="p01",
+        mode="full",
+        attempt_id="attempt",
+        lifecycle_epoch="epoch",
+        artifacts={"measurements": artifact},
+    )
+    now = datetime.now()
+    save_processing_state(
+        ProcessingState(
+            version="3.0.0",
+            pipeline_path=tmp_path / "pipeline.json",
+            input_path=tmp_path / "p01.ome.zarr",
+            output_dir=tmp_path,
+            timestamp=now,
+            execution_mode="local",
+            last_updated=now,
+            datasets={
+                "plate": DatasetState(initial_images={"p01.ome.zarr"})
+            },
+            config={
+                "success_markers_required": True,
+                "work_ids": {"plate": {"p01.ome.zarr": "work-p01"}},
+            },
+        ),
+        tmp_path,
+    )
+
+    assert current_success_counts(tmp_path) == (1, 1)
 
 
 def test_aggregate_and_run_markers_reject_mixed_core_bytes(tmp_path: Path) -> None:

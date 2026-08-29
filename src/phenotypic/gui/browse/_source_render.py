@@ -24,6 +24,7 @@ from skimage.util import img_as_ubyte
 
 from phenotypic import Image
 from phenotypic.gui._config import BROWSE_CACHE_TMP_SUBPATH, RAW_IMAGE_EXTS
+from phenotypic.sdk_ import source_image_suffix
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ def normalize_to_png(original: Path, cache_png: Path) -> Path:
     try:
         rgb = Image.imread(original).rgb[:]
     except Exception as exc:  # noqa: BLE001 - classify by extension below
-        if original.suffix.lower() in RAW_IMAGE_EXTS:
+        if source_image_suffix(original).lower() in RAW_IMAGE_EXTS:
             raise SourceRenderUnavailable(
                 f"cannot decode RAW source on this platform: {original.name}"
             ) from exc

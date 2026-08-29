@@ -403,6 +403,82 @@ def test_strategy_rejects_max_submit_limit_below_three(monkeypatch, tmp_path):
         strategy.execute([], tmp_path)
 
 
+def test_staged_slurm_manifest_uses_canonical_direct_store_stem(
+    monkeypatch,
+    tmp_path,
+):
+    captured = {}
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_slurm.work_id_for_image",
+        lambda *_args: ("work-p01", "p01.ome.zarr"),
+    )
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_slurm.get_slurm_array_limit",
+        lambda: 1000,
+    )
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_slurm.get_slurm_max_submit_jobs",
+        lambda: 1000,
+    )
+
+    def _fake_generate(**kwargs):
+        captured["manifest"] = kwargs["datasets_manifest"]
+        return {
+            "stage1": [tmp_path / "s1.sh"],
+            "stage2": tmp_path / "s2.sh",
+            "stage3": [tmp_path / "s3.sh"],
+            "finalizer": tmp_path / "finalizer.sh",
+            "controller": tmp_path / "controller.sh",
+            "controller_config": tmp_path / "controller.json",
+        }
+
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_slurm.generate_staged_scripts",
+        _fake_generate,
+    )
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_slurm.submit_with_intent",
+        lambda *args, **kwargs: "100",
+    )
+    source = tmp_path / "p01.ome.zarr"
+    config = SimpleNamespace(
+        pipeline_json=tmp_path / "pipeline.json",
+        image_type="Image",
+        slurm_args={},
+        gpu_slurm_args={},
+        gpu_shards=1,
+        ext=None,
+        overlay_alpha=0.3,
+        include_dataset_column=False,
+        metadata_csv=None,
+        no_qc=False,
+        input_path=source,
+        resume=False,
+        restart=False,
+        staged_resume_phase=None,
+        staged_finalizer_only=False,
+        staged_stage3_markers=True,
+        wait=False,
+        full_dataset_inventory={"plate": [source.name]},
+        nrows=None,
+        ncols=None,
+        durable_writes=None,
+        drop_originals=False,
+        pipeline_identity=None,
+        processing_generation="generation",
+    )
+    strategy = object.__new__(StagedSlurmStrategy)
+    strategy.config = config
+    strategy.execute(
+        [Dataset("plate", [source], tmp_path, tmp_path)], tmp_path
+    )
+
+    [entry] = captured["manifest"]
+    assert entry.image_name == "p01.ome.zarr"
+    assert entry.stem == "p01"
+    assert entry.relative_image_path == "p01.ome.zarr"
+
+
 def test_staged_job_metadata_supports_canonical_finalizer(
     tmp_path,
     monkeypatch,

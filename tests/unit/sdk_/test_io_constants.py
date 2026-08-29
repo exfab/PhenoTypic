@@ -1519,6 +1519,75 @@ def test_store_stem_strips_the_whole_double_suffix(tmp_path) -> None:
     assert store_stem(store) == "img"
 
 
+def test_source_image_stem_normalizes_only_ome_zarr_sources() -> None:
+    """A generic multi-dot file must keep pathlib's one-suffix behavior."""
+    import phenotypic.sdk_ as sdk
+
+    assert sdk.source_image_stem(Path("p01.ome.zarr")) == "p01"
+    assert sdk.source_image_stem(Path("p01.channel.tiff")) == "p01.channel"
+    assert sdk.source_image_stem(Path("p01.tiff")) == "p01"
+    assert sdk.source_image_suffix(Path("p01.ome.zarr")) == ".ome.zarr"
+    assert sdk.source_image_suffix(Path("p01.channel.tiff")) == ".tiff"
+
+
+def test_store_revision_identity_changes_for_nested_member(tmp_path) -> None:
+    from phenotypic.sdk_ import store_revision_identity
+
+    store = tmp_path / "p01.ome.zarr"
+    chunk = store / "rgb" / "c" / "0"
+    chunk.parent.mkdir(parents=True)
+    chunk.write_bytes(b"first")
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+    first = store_revision_identity(store)
+
+    chunk.write_bytes(b"second-version")
+
+    assert store_revision_identity(store) != first
+
+
+def test_store_revision_identity_rejects_nested_symlink(tmp_path) -> None:
+    from phenotypic.sdk_ import store_revision_identity
+
+    store = tmp_path / "p01.ome.zarr"
+    store.mkdir()
+    outside = tmp_path / "outside"
+    outside.write_bytes(b"secret")
+    link = store / "chunk"
+    try:
+        link.symlink_to(outside)
+    except (OSError, NotImplementedError):  # pragma: no cover - platform guard
+        pytest.skip("symlinks not supported on this platform/filesystem")
+
+    with pytest.raises(OSError, match="symlink"):
+        store_revision_identity(store)
+
+
+def test_store_revision_identity_rejects_mutating_snapshot(
+    tmp_path, monkeypatch
+) -> None:
+    from phenotypic.sdk_ import _io_constants as io
+
+    store = tmp_path / "p01.ome.zarr"
+    store.mkdir()
+    chunk = store / "chunk"
+    chunk.write_bytes(b"first")
+    original = io._store_revision_snapshot
+    calls = 0
+
+    def mutating_snapshot(*args, **kwargs):
+        nonlocal calls
+        snapshot = original(*args, **kwargs)
+        calls += 1
+        if calls == 1:
+            chunk.write_bytes(b"second-version")
+        return snapshot
+
+    monkeypatch.setattr(io, "_store_revision_snapshot", mutating_snapshot)
+
+    with pytest.raises(OSError, match="changed during revision"):
+        io.store_revision_identity(store)
+
+
 def test_store_stem_round_trips_through_zarr_store_path(tmp_path) -> None:
     """The composition must be the identity, or resume reprocesses forever."""
     from phenotypic.sdk_ import store_stem, zarr_store_path

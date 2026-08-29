@@ -19,6 +19,8 @@ from phenotypic._cli._cli_types import (
     ProcessingState,
 )
 from phenotypic._cli._cli_staged_resume import pipeline_content_digest
+from phenotypic._cli._cli_completion import publish_image_success
+from phenotypic._cli._cli_failure_tracker import work_id_for_image
 from phenotypic._cli._cli_update_state import append_completion_event
 from phenotypic.sdk_ import event_log_path, processing_state_path
 
@@ -145,6 +147,64 @@ def test_cpu_resume_still_requires_retry_failures_for_failed_images(
         state, [dataset], retry_failures=True
     )
     assert retry[0].images == [image]
+
+
+def test_continuation_recognizes_direct_store_canonical_success(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "p01.ome.zarr"
+    source.mkdir()
+    (source / "zarr.json").write_text("{}", encoding="utf-8")
+    pipeline = tmp_path / "pipeline.json"
+    pipeline.write_text("{}", encoding="utf-8")
+    config = SimpleNamespace(
+        input_path=source,
+        pipeline_json=pipeline,
+        image_type="Image",
+        nrows=None,
+        ncols=None,
+        bit_depth=None,
+        detect_mode="gray",
+        process_only_layer=None,
+        ext=".tiff",
+        process_format="tiff",
+        include_dataset_column=True,
+        overlay_alpha=0.3,
+        save_overlays=False,
+        drop_originals=False,
+        measure_only=False,
+    )
+    dataset = Dataset("plate", [source], source.parent, tmp_path)
+    work_id, _ = work_id_for_image(config, "plate", source)
+    artifact = tmp_path / "results" / "plate" / "p01.parquet"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"measurement")
+    publish_image_success(
+        tmp_path,
+        work_id=work_id,
+        dataset="plate",
+        relative_image_path="p01.ome.zarr",
+        image_stem="p01",
+        mode="full",
+        attempt_id="attempt",
+        lifecycle_epoch="epoch",
+        artifacts={"measurements": artifact},
+    )
+    state = _make_state(tmp_path)
+    state.datasets["plate"] = DatasetState(
+        initial_images={"p01.ome.zarr"}
+    )
+    state.config = {
+        "success_markers_required": True,
+        "work_ids": {"plate": {"p01.ome.zarr": work_id}},
+    }
+
+    assert get_remaining_images_for_datasets(
+        state,
+        [dataset],
+        config=config,
+        output_dir=tmp_path,
+    ) == []
 
 
 def test_resume_rejects_changed_pipeline_contents(tmp_path: Path) -> None:

@@ -22,6 +22,7 @@ from phenotypic._cli._cli_staged_orchestration import (
 )
 from phenotypic._cli._cli_staged_resume import write_stage3_completion_marker
 from phenotypic.gui.run_console._slurm_observer import (
+    _all_stage3_markers_exist,
     discover_log_files,
     IncrementalLogReader,
     SchedulerCommentQueryResult,
@@ -1044,6 +1045,31 @@ def test_exact_staged_completion_precedes_inactive_fence(
         updated.status_detail
         == "staged orchestration and publication completed"
     )
+
+
+def test_stage3_inventory_uses_canonical_direct_store_stem(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "out"
+    atomic_write_json(
+        job_metadata_path(output),
+        {
+            "datasets": {
+                "single_image": {
+                    "total": 1,
+                    "images": ["p01.ome.zarr"],
+                }
+            }
+        },
+    )
+    write_stage3_completion_marker(
+        output,
+        "single_image",
+        "p01.ome.zarr",
+        "p01",
+    )
+
+    assert _all_stage3_markers_exist(output)
 
 
 def test_inactive_fence_with_staged_publication_reconciles_finalizer(

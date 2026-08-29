@@ -28,7 +28,7 @@ from phenotypic.gui.results_viewer.colony_view._grid import (
     _OBJECT_LABEL_COL,
 )
 from phenotypic.schema import MeasurementInfo, MetadataInfo
-from phenotypic.sdk_ import is_metadata_header
+from phenotypic.sdk_ import is_metadata_header, source_image_stem
 
 __all__ = [
     "selectable_time_columns",
@@ -197,7 +197,7 @@ def build_timeline_records(
     for record in slim.iter_rows(named=True):
         dataset = str(record[KEY_DATASET])
         image_file = str(record[KEY_IMAGE_FILE])
-        stem = Path(image_file).stem if Path(image_file).suffix else image_file
+        stem = source_image_stem(Path(image_file))
         if not output_root.has_overlay(dataset, stem):
             continue
         records.append(

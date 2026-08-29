@@ -43,6 +43,7 @@ from phenotypic.sdk_ import (
     deliverables_dir,
     metadata_csv_deliverable_path,
     replace_embedded_measurement_table,
+    source_image_stem,
     zarr_store_path,
 )
 from phenotypic.sdk_._hdf_to_zarr import (
@@ -325,7 +326,7 @@ def migrate_legacy_measurement_tables(
                 (
                     str(value)
                     for image_name, value in dataset_work_ids.items()
-                    if Path(str(image_name)).stem == stem
+                    if source_image_stem(Path(str(image_name))) == stem
                 ),
                 _migration_work_id(dataset, stem),
             )
