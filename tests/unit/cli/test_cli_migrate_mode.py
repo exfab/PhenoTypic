@@ -350,7 +350,7 @@ def test_metadata_pass_reuses_preflight_and_revalidates_before_first_write(
     real_preflight_file = migration._preflight_file
     real_discover = migration._discover_bundle_targets
     real_fingerprint = migration.file_fingerprint
-    real_atomic_write_json = migration.atomic_write_json
+    real_publish_anchored_journal_json = migration._publish_anchored_journal_json
 
     def record_preflight(path: Path, *, mixed_table: bool = False):
         events.append(("semantic", str(path)))
@@ -364,14 +364,18 @@ def test_metadata_pass_reuses_preflight_and_revalidates_before_first_write(
         events.append(("fingerprint", str(path)))
         return real_fingerprint(path)
 
-    def record_write(*args: object, **kwargs: object):
+    def record_first_durable_publication(*args: object, **kwargs: object):
         events.append(("mutation", str(args[0])))
-        return real_atomic_write_json(*args, **kwargs)
+        return real_publish_anchored_journal_json(*args, **kwargs)
 
     monkeypatch.setattr(migration, "_preflight_file", record_preflight)
     monkeypatch.setattr(migration, "_discover_bundle_targets", record_discovery)
     monkeypatch.setattr(migration, "file_fingerprint", record_fingerprint)
-    monkeypatch.setattr(migration, "atomic_write_json", record_write)
+    monkeypatch.setattr(
+        migration,
+        "_publish_anchored_journal_json",
+        record_first_durable_publication,
+    )
 
     result = run_metadata_pass(output, dry_run=False)
 
@@ -602,48 +606,71 @@ def test_migration_never_rewrites_a_source_hdf(legacy_run) -> None:
 def test_running_migrate_twice_converts_zero_and_migrates_zero_headers(
     legacy_run,
 ) -> None:
-    """Phase 5 exit criterion 3.
+    """A per-image source embeds once without a durable header rewrite."""
+    import polars as pl
 
-    The header half holds because an already-canonical bundle short-circuits
-    to ``_compatible_result``, **not** because of any per-image skip -- a
-    criterion that would pass either way gates nothing (ledger MIG-31).
-    """
     from phenotypic._cli._cli_migrate import run_migrate
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, zarr_store_path
+
+    source = legacy_run / "results" / "ds" / "measurements" / "img.parquet"
+    source_bytes = source.read_bytes()
+    assert "MetadataGenetic_Strain" in pl.read_parquet(source).columns
 
     first = run_migrate(legacy_run, njobs=1, dry_run=False, delete_sources=False)
     second = run_migrate(legacy_run, njobs=1, dry_run=False, delete_sources=False)
+    assert first.ok
     assert first.converted > 0
-    # Without this the criterion passes on a run that never migrated a header
-    # at all -- verified: skipping pass 1 entirely survived until it was here.
-    assert first.headers_migrated > 0
+    assert first.headers_migrated == 0
+    assert first.tables_migrated > 0
+    embedded_columns = pl.read_parquet(
+        zarr_store_path(legacy_run, "ds", "img")
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    ).columns
+    assert "MetadataGenetic_Strain" not in embedded_columns
+    assert "Metadata_Strain" in embedded_columns
+    assert source.read_bytes() == source_bytes
     assert second.converted == 0
     assert second.headers_migrated == 0
+    assert second.tables_migrated == 0
+    assert second.overlays_created == 0
+    assert second.ok
+    assert source.read_bytes() == source_bytes
 
 
-def test_pass_one_canonicalizes_a_measurement_header(legacy_run) -> None:
-    """Pass 1's observable effect, asserted on the bytes it rewrites.
-
-    A count is not an effect: a driver that skipped pass 1 and reported zero
-    would satisfy every count-shaped assertion in this file.
-    """
+def test_pass_three_embeds_canonical_measurement_headers_without_rewriting_source(
+    legacy_run,
+) -> None:
+    """Pass 3 embeds canonical headers without rewriting retained sources."""
     import polars as pl
 
-    from phenotypic.sdk_ import dataset_measurements_dir
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_measurements_dir,
+        zarr_store_path,
+    )
     from phenotypic._cli._cli_migrate import run_migrate
 
     measurements = dataset_measurements_dir(legacy_run, "ds")
     parquets = sorted(measurements.glob("*.parquet"))
     assert parquets, "fixture has no measurements"
-    before = set(pl.read_parquet(parquets[0]).columns)
-    assert "MetadataGenetic_Strain" in before, (
+    source = next(path for path in parquets if not path.name.startswith("_"))
+    source_bytes = source.read_bytes()
+    source_columns = set(pl.read_parquet(source).columns)
+    assert "MetadataGenetic_Strain" in source_columns, (
         "fixture is already canonical, so pass 1 would be a no-op"
     )
 
     run_migrate(legacy_run, njobs=1, dry_run=False, delete_sources=False)
 
-    after = set(pl.read_parquet(parquets[0]).columns)
-    assert "MetadataGenetic_Strain" not in after
-    assert "Metadata_Strain" in after
+    assert source.read_bytes() == source_bytes
+    embedded_columns = set(
+        pl.read_parquet(
+            zarr_store_path(legacy_run, "ds", source.stem)
+            / MEASUREMENT_TABLE_RELATIVE_PATH
+        ).columns
+    )
+    assert "MetadataGenetic_Strain" not in embedded_columns
+    assert "Metadata_Strain" in embedded_columns
 
 
 def test_a_blocked_preflight_aborts_before_anything_is_written(
