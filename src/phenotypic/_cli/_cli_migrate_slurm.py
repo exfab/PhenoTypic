@@ -33,6 +33,9 @@ from ._cli_slurm_submission import (
 from ._cli_utils import get_python_command
 
 
+_MIGRATION_CONTINUATION: SlurmDependencyKind = "afterany"
+
+
 @dataclass(frozen=True)
 class MigrationSlurmPlan:
     """One immutable migration generation and its flat scheduler chain."""
@@ -277,7 +280,7 @@ def submit_migration_slurm_plan(
         else Path(str(config["output_dir"])).resolve()
     )
     dependencies: tuple[SlurmDependencyKind, ...] = (
-        "afterany",
+        _MIGRATION_CONTINUATION,
     ) * len(plan.flat_scripts)
     return submit_slurm_script_chain(
         flat_chunk_scripts=plan.flat_scripts,
