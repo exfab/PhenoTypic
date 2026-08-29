@@ -58,7 +58,7 @@ import tempfile
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Literal, TypeAlias, cast
+from typing import Any, BinaryIO, Literal, TypeAlias, cast
 
 import numpy as np
 import pandas as pd
@@ -68,6 +68,7 @@ from ._atomic_io import (
     atomic_write_json,
     publication_commit,
 )
+from ._file_locking import exclusive_path_lock
 from ._io_constants import (
     DATASET_AGGREGATED_PARQUET,
     BundleLayout,
@@ -1136,7 +1137,7 @@ def _decode_journal_frames(
 
 
 def _append_journal_transition(
-    log_path: Path,
+    writer: _JournalWriter,
     transition: Mapping[str, Any],
     *,
     commit_guard: CommitGuard | None = None,
@@ -1148,17 +1149,24 @@ def _append_journal_transition(
         + payload
         + hashlib.sha256(payload).digest()
     )
+    if transition.get("sequence") != writer.next_sequence:
+        raise ValueError("Metadata migration journal sequence is not monotonic")
     with publication_commit(commit_guard):
-        existing, valid_size, torn = _decode_journal_frames(log_path)
-        if transition.get("sequence") != len(existing):
-            raise ValueError("Metadata migration journal sequence is not monotonic")
-        with log_path.open("r+b") as handle:
-            if torn:
-                handle.truncate(valid_size)
-            handle.seek(valid_size)
-            handle.write(frame)
-            handle.flush()
-            os.fsync(handle.fileno())
+        writer.handle.seek(writer.end_offset)
+        writer.handle.write(frame)
+        writer.handle.flush()
+        os.fsync(writer.handle.fileno())
+    writer.end_offset += len(frame)
+    writer.next_sequence += 1
+
+
+@dataclass
+class _JournalWriter:
+    """Exclusive retained append state established by one journal replay."""
+
+    handle: BinaryIO
+    next_sequence: int
+    end_offset: int
 
 
 def _new_journal_plan(
@@ -1200,7 +1208,7 @@ def _write_journal_plan(
 
 def _replay_journal(
     plan: Mapping[str, Any], log_path: Path
-) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
+) -> tuple[dict[str, Any], list[dict[str, Any]], int, bool]:
     """Rebuild mutable receipt state from an immutable plan and frames."""
     receipt = json.loads(json.dumps(plan))
     raw_targets = receipt.get("targets")
@@ -1209,7 +1217,7 @@ def _replay_journal(
         or not isinstance(raw_targets, list)
     ):
         raise ValueError("Unsupported metadata migration journal plan")
-    frames, _, torn = _decode_journal_frames(log_path)
+    frames, valid_size, torn = _decode_journal_frames(log_path)
     last_target = -1
     runtime_fields = (
         "post_fingerprint",
@@ -1255,7 +1263,7 @@ def _replay_journal(
         target["state"] = next_state
         last_target = target_index
     receipt["state"] = "prepared"
-    return receipt, frames, torn
+    return receipt, frames, valid_size, torn
 
 
 def _journal_transition(
@@ -2694,6 +2702,46 @@ def _metadata_status_path(root: Path) -> Path:
     return _receipt_dir(root, bundle=True) / "status.json"
 
 
+def _validated_terminal_receipt_evidence(
+    root: Path,
+    receipt_path: Path,
+    *,
+    expected_digest: str | None = None,
+) -> tuple[MetadataMigrationResult, bool, str]:
+    """Validate terminal receipt bytes, bindings, target set, and live bytes."""
+    safe_receipt_path = _require_safe_migration_path(
+        receipt_path, role="Terminal migration receipt", root=root
+    )
+    if not safe_receipt_path.is_file():
+        raise ValueError("Metadata migration terminal receipt is missing")
+    receipt_bytes = safe_receipt_path.read_bytes()
+    receipt_digest = _sha256_bytes(receipt_bytes)
+    if expected_digest is not None and receipt_digest != expected_digest:
+        raise ValueError("Metadata migration terminal receipt digest changed")
+    try:
+        receipt = json.loads(receipt_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            "Metadata migration terminal receipt is malformed"
+        ) from exc
+    if not isinstance(receipt, dict):
+        raise ValueError("Metadata migration terminal receipt is malformed")
+    raw_targets = receipt.get("targets")
+    if not isinstance(raw_targets, list):
+        raise ValueError("Metadata migration terminal receipt lacks targets")
+    compatible_noop = not any(
+        target.get("status") == "migratable"
+        for target in raw_targets
+        if isinstance(target, dict)
+    )
+    result = _result_from_terminal_receipt(
+        safe_receipt_path,
+        receipt,
+        compatible=compatible_noop,
+    )
+    return result, compatible_noop, receipt_digest
+
+
 def _publish_metadata_authority(
     root: Path,
     result: MetadataMigrationResult,
@@ -2710,19 +2758,33 @@ def _publish_metadata_authority(
     status_path = _require_safe_migration_path(
         _metadata_status_path(root), role="Metadata migration status", root=root
     )
-    payload = {
-        "schema_version": 1,
-        "state": "complete",
-        "terminal_receipt_path": str(receipt_path),
-        "terminal_receipt_digest": file_fingerprint(receipt_path),
-        "plan_fingerprint": result.plan_fingerprint,
-        "source_fingerprint": result.source_fingerprint,
-        "resulting_fingerprint": result.resulting_fingerprint,
-        "compatible_noop": compatible_noop,
-    }
     with publication_commit(commit_guard):
-        if file_fingerprint(receipt_path) != payload["terminal_receipt_digest"]:
-            raise ValueError("Terminal metadata receipt changed before status publication")
+        terminal, receipt_noop, receipt_digest = (
+            _validated_terminal_receipt_evidence(root, receipt_path)
+        )
+        if receipt_noop != compatible_noop:
+            raise ValueError(
+                "Terminal metadata receipt no-op authority changed"
+            )
+        if (
+            terminal.receipt_path != receipt_path
+            or terminal.plan_fingerprint != result.plan_fingerprint
+            or terminal.source_fingerprint != result.source_fingerprint
+            or terminal.resulting_fingerprint != result.resulting_fingerprint
+        ):
+            raise ValueError(
+                "Terminal metadata receipt does not match migration result"
+            )
+        payload = {
+            "schema_version": 1,
+            "state": "complete",
+            "terminal_receipt_path": str(receipt_path),
+            "terminal_receipt_digest": receipt_digest,
+            "plan_fingerprint": terminal.plan_fingerprint,
+            "source_fingerprint": terminal.source_fingerprint,
+            "resulting_fingerprint": terminal.resulting_fingerprint,
+            "compatible_noop": receipt_noop,
+        }
         atomic_write_json(status_path, payload, sort_keys=True)
         _fsync_directory(status_path.parent)
     return MetadataMigrationAuthority(
@@ -2756,8 +2818,11 @@ def metadata_migration_authority(
     receipt_path = _require_safe_migration_path(
         receipt_text, role="Terminal migration receipt", root=root
     )
-    if not receipt_path.is_file() or file_fingerprint(receipt_path) != receipt_digest:
-        raise ValueError("Metadata migration terminal receipt failed validation")
+    terminal, receipt_noop, _ = _validated_terminal_receipt_evidence(
+        root,
+        receipt_path,
+        expected_digest=receipt_digest,
+    )
     fingerprints = {
         name: payload.get(name)
         for name in (
@@ -2774,6 +2839,16 @@ def metadata_migration_authority(
     compatible_noop = payload.get("compatible_noop")
     if not isinstance(compatible_noop, bool):
         raise ValueError("Metadata migration status has invalid no-op authority")
+    if (
+        fingerprints["plan_fingerprint"] != terminal.plan_fingerprint
+        or fingerprints["source_fingerprint"] != terminal.source_fingerprint
+        or fingerprints["resulting_fingerprint"]
+        != terminal.resulting_fingerprint
+        or compatible_noop != receipt_noop
+    ):
+        raise ValueError(
+            "Metadata migration status conflicts with terminal receipt authority"
+        )
     return MetadataMigrationAuthority(
         status_path=status_path,
         terminal_receipt_path=receipt_path,
@@ -2874,22 +2949,14 @@ def _validate_replayed_authority(
 def _publish_journal_terminal_receipt(
     layout: BundleLayout,
     root: Path,
-    plan: Mapping[str, Any],
-    log_path: Path,
+    receipt: dict[str, Any],
     receipt_path: Path,
     *,
     kinds: frozenset[str] | None,
     commit_guard: CommitGuard | None,
 ) -> dict[str, Any]:
-    """Replay, validate, and atomically compact one terminal receipt."""
+    """Validate retained replay state and atomically compact one receipt."""
     with publication_commit(commit_guard):
-        receipt, _, torn = _replay_journal(plan, log_path)
-        if torn:
-            _, valid_size, _ = _decode_journal_frames(log_path)
-            with log_path.open("r+b") as handle:
-                handle.truncate(valid_size)
-                handle.flush()
-                os.fsync(handle.fileno())
         _validate_replayed_authority(
             layout, root, receipt, kinds=kinds
         )
@@ -2919,126 +2986,159 @@ def _apply_metadata_journal(
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     if not isinstance(plan, dict):
         raise ValueError("Metadata migration plan must be a JSON object")
-    if receipt_path.is_file():
-        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-        if not isinstance(receipt, dict):
-            raise ValueError("Metadata migration receipt must be a JSON object")
-        compatible = not any(
-            target.get("status") == "migratable"
-            for target in receipt.get("targets", [])
-        )
-        return _result_from_terminal_receipt(
-            receipt_path, receipt, compatible=compatible
-        )
     try:
-        receipt, frames, _ = _replay_journal(plan, log_path)
-        _validate_replayed_authority(
-            layout, root, receipt, kinds=kinds
-        )
-        sequence = len(frames)
-        first_mutation_validated = False
-
-        def validate_first_mutation() -> None:
-            nonlocal first_mutation_validated
-            if first_mutation_validated:
-                return
+        writer_lock = log_path.with_name(f".{log_path.name}.writer.lock")
+        with exclusive_path_lock(writer_lock, timeout=0.0):
+            if receipt_path.is_file():
+                receipt = json.loads(
+                    receipt_path.read_text(encoding="utf-8")
+                )
+                if not isinstance(receipt, dict):
+                    raise ValueError(
+                        "Metadata migration receipt must be a JSON object"
+                    )
+                compatible = not any(
+                    target.get("status") == "migratable"
+                    for target in receipt.get("targets", [])
+                )
+                return _result_from_terminal_receipt(
+                    receipt_path, receipt, compatible=compatible
+                )
+            receipt, frames, valid_size, torn = _replay_journal(
+                plan, log_path
+            )
             _validate_replayed_authority(
                 layout, root, receipt, kinds=kinds
             )
-            first_mutation_validated = True
+            first_mutation_validated = False
 
-        migrated: list[str] = []
-        skipped: list[str] = []
-        for target_index, target in enumerate(receipt["targets"]):
-            path = Path(target["path"])
-            state = target["state"]
-            if state == "skipped":
-                skipped.append(str(path))
-                continue
-            if state == "applied":
-                migrated.append(str(path))
-                continue
-            if state == "pending":
-                with publication_commit(commit_guard):
-                    validate_first_mutation()
-                    if file_fingerprint(path) != target["source_fingerprint"]:
-                        raise ValueError(f"Source changed after preflight: {path}")
-                    _prepare_receipt_target(target, receipt_path)
-                transition = _journal_transition(
-                    sequence=sequence,
-                    target_index=target_index,
-                    previous_state="pending",
-                    next_state="prepared",
-                    target=target,
+            def validate_first_mutation() -> None:
+                nonlocal first_mutation_validated
+                if first_mutation_validated:
+                    return
+                _validate_replayed_authority(
+                    layout, root, receipt, kinds=kinds
                 )
-                with publication_commit(commit_guard):
-                    validate_first_mutation()
-                    _append_journal_transition(
-                        log_path, transition, commit_guard=None
+                first_mutation_validated = True
+
+            migrated: list[str] = []
+            skipped: list[str] = []
+            with log_path.open("r+b") as log_handle:
+                writer = _JournalWriter(
+                    handle=log_handle,
+                    next_sequence=len(frames),
+                    end_offset=valid_size,
+                )
+                if torn:
+                    with publication_commit(commit_guard):
+                        validate_first_mutation()
+                        log_handle.truncate(valid_size)
+                        log_handle.flush()
+                        os.fsync(log_handle.fileno())
+                for target_index, target in enumerate(receipt["targets"]):
+                    path = Path(target["path"])
+                    state = target["state"]
+                    if state == "skipped":
+                        skipped.append(str(path))
+                        continue
+                    if state == "applied":
+                        migrated.append(str(path))
+                        continue
+                    if state == "pending":
+                        with publication_commit(commit_guard):
+                            validate_first_mutation()
+                            if (
+                                file_fingerprint(path)
+                                != target["source_fingerprint"]
+                            ):
+                                raise ValueError(
+                                    f"Source changed after preflight: {path}"
+                                )
+                            _prepare_receipt_target(target, receipt_path)
+                        transition = _journal_transition(
+                            sequence=writer.next_sequence,
+                            target_index=target_index,
+                            previous_state="pending",
+                            next_state="prepared",
+                            target=target,
+                        )
+                        with publication_commit(commit_guard):
+                            validate_first_mutation()
+                            _append_journal_transition(
+                                writer, transition, commit_guard=None
+                            )
+                        state = "prepared"
+                    if state != "prepared":
+                        raise ValueError(
+                            "Metadata migration target transition is invalid"
+                        )
+                    current = file_fingerprint(path)
+                    if current == target["source_fingerprint"]:
+                        temp = Path(str(target["temp_path"]))
+                        with publication_commit(commit_guard):
+                            validate_first_mutation()
+                            if (
+                                file_fingerprint(path)
+                                != target["source_fingerprint"]
+                            ):
+                                raise ValueError(
+                                    "Migration target changed before "
+                                    f"publication: {path}"
+                                )
+                            if (
+                                not temp.is_file()
+                                or file_fingerprint(temp)
+                                != target["post_fingerprint"]
+                            ):
+                                raise ValueError(
+                                    f"Prepared migration temp changed: {temp}"
+                                )
+                            _publish_temp(temp, path)
+                    elif current != target["post_fingerprint"]:
+                        raise ValueError(
+                            f"Prepared migration target changed: {path}"
+                        )
+                    if file_fingerprint(path) != target["post_fingerprint"]:
+                        raise ValueError(
+                            "Published migration target failed validation: "
+                            f"{path}"
+                        )
+                    target["state"] = "applied"
+                    target["temp_path"] = None
+                    target["rollback_fingerprint"] = None
+                    transition = _journal_transition(
+                        sequence=writer.next_sequence,
+                        target_index=target_index,
+                        previous_state="prepared",
+                        next_state="applied",
+                        target=target,
                     )
-                sequence += 1
-                state = "prepared"
-            if state != "prepared":
-                raise ValueError("Metadata migration target transition is invalid")
-            current = file_fingerprint(path)
-            if current == target["source_fingerprint"]:
-                temp = Path(str(target["temp_path"]))
-                with publication_commit(commit_guard):
-                    validate_first_mutation()
-                    if file_fingerprint(path) != target["source_fingerprint"]:
-                        raise ValueError(
-                            f"Migration target changed before publication: {path}"
+                    with publication_commit(commit_guard):
+                        validate_first_mutation()
+                        _append_journal_transition(
+                            writer, transition, commit_guard=None
                         )
-                    if (
-                        not temp.is_file()
-                        or file_fingerprint(temp) != target["post_fingerprint"]
-                    ):
-                        raise ValueError(
-                            f"Prepared migration temp changed: {temp}"
-                        )
-                    _publish_temp(temp, path)
-            elif current != target["post_fingerprint"]:
-                raise ValueError(f"Prepared migration target changed: {path}")
-            if file_fingerprint(path) != target["post_fingerprint"]:
-                raise ValueError(
-                    f"Published migration target failed validation: {path}"
+                    migrated.append(str(path))
+                terminal = _publish_journal_terminal_receipt(
+                    layout,
+                    root,
+                    receipt,
+                    receipt_path,
+                    kinds=kinds,
+                    commit_guard=commit_guard,
                 )
-            target["state"] = "applied"
-            target["temp_path"] = None
-            target["rollback_fingerprint"] = None
-            transition = _journal_transition(
-                sequence=sequence,
-                target_index=target_index,
-                previous_state="prepared",
-                next_state="applied",
-                target=target,
-            )
-            with publication_commit(commit_guard):
-                validate_first_mutation()
-                _append_journal_transition(
-                    log_path, transition, commit_guard=None
+                return MetadataMigrationResult(
+                    status="compatible" if not migrated else "applied",
+                    source=str(terminal["source"]),
+                    source_fingerprint=str(terminal["source_fingerprint"]),
+                    resulting_fingerprint=_receipt_resulting_fingerprint(
+                        terminal
+                    ),
+                    plan_fingerprint=str(terminal["plan_fingerprint"]),
+                    receipt_path=receipt_path,
+                    migrated_targets=tuple(migrated),
+                    skipped_targets=tuple(skipped),
                 )
-            sequence += 1
-            migrated.append(str(path))
-        terminal = _publish_journal_terminal_receipt(
-            layout,
-            root,
-            plan,
-            log_path,
-            receipt_path,
-            kinds=kinds,
-            commit_guard=commit_guard,
-        )
-        return MetadataMigrationResult(
-            status="compatible" if not migrated else "applied",
-            source=str(terminal["source"]),
-            source_fingerprint=str(terminal["source_fingerprint"]),
-            resulting_fingerprint=_receipt_resulting_fingerprint(terminal),
-            plan_fingerprint=str(terminal["plan_fingerprint"]),
-            receipt_path=receipt_path,
-            migrated_targets=tuple(migrated),
-            skipped_targets=tuple(skipped),
-        )
     except Exception as exc:
         return MetadataMigrationResult(
             status="failed",
@@ -3143,11 +3243,21 @@ def reconcile_metadata_migration_bundle(
     )
     try:
         candidates = _bundle_authority_candidates(root)
-        if not candidates:
-            status_path = _metadata_status_path(root)
-            if status_path.exists():
+        status_path = _metadata_status_path(root)
+        published_authority: MetadataMigrationAuthority | None = None
+        if status_path.exists():
+            try:
+                published_authority = metadata_migration_authority(layout)
+            except Exception as exc:
                 raise ValueError(
-                    "Metadata migration status exists without receipt authority"
+                    "Competing metadata migration status authority: "
+                    f"{exc}"
+                ) from exc
+        if not candidates:
+            if published_authority is not None:
+                raise ValueError(
+                    "Competing metadata migration status exists without "
+                    "receipt authority"
                 )
             return None
         if len(candidates) != 1:
@@ -3255,6 +3365,25 @@ def reconcile_metadata_migration_bundle(
                 receipt_path=result.receipt_path,
                 skipped_targets=result.skipped_targets,
             )
+        if published_authority is not None:
+            if (
+                result.receipt_path is None
+                or result.resulting_fingerprint is None
+                or published_authority.terminal_receipt_path
+                != result.receipt_path
+                or published_authority.plan_fingerprint
+                != result.plan_fingerprint
+                or published_authority.source_fingerprint
+                != result.source_fingerprint
+                or published_authority.resulting_fingerprint
+                != result.resulting_fingerprint
+                or published_authority.compatible_noop != compatible_noop
+            ):
+                raise ValueError(
+                    "Competing metadata migration status authority does not "
+                    "match the receipt authority"
+                )
+            return result
         _publish_metadata_authority(
             root,
             result,
@@ -3446,6 +3575,41 @@ def _rollback_hdf(
         raise
 
 
+def _invalidate_metadata_authority_for_rollback(
+    receipt_path: Path,
+    receipt: Mapping[str, Any],
+) -> None:
+    """Remove only the validated status that certifies this bundle receipt."""
+    if receipt.get("scope") != "bundle":
+        return
+    raw_root = receipt.get("bundle_root")
+    if not isinstance(raw_root, str):
+        raise ValueError("Bundle rollback receipt is missing its root")
+    root = _require_safe_migration_path(
+        raw_root, role="Migration rollback bundle root"
+    )
+    status_path = _require_safe_migration_path(
+        _metadata_status_path(root),
+        role="Metadata migration status",
+        root=root,
+    )
+    if not status_path.exists():
+        return
+    authority = metadata_migration_authority(root)
+    if (
+        authority.terminal_receipt_path != receipt_path
+        or authority.plan_fingerprint != receipt.get("plan_fingerprint")
+        or authority.source_fingerprint != receipt.get("source_fingerprint")
+        or authority.resulting_fingerprint
+        != _receipt_resulting_fingerprint(receipt)
+    ):
+        raise ValueError(
+            "Metadata migration status does not authorize this rollback"
+        )
+    status_path.unlink()
+    _fsync_directory(status_path.parent)
+
+
 def rollback_metadata_migration(
     receipt_path: str | Path,
 ) -> MetadataMigrationResult:
@@ -3460,6 +3624,7 @@ def rollback_metadata_migration(
     receipt = json.loads(path.read_text(encoding="utf-8"))
     try:
         _validate_receipt(path, receipt)
+        _invalidate_metadata_authority_for_rollback(path, receipt)
     except Exception as exc:
         return _receipt_validation_failure(path, receipt, exc)
     rolled_back: list[str] = []

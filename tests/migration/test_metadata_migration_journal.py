@@ -8,7 +8,9 @@ import shutil
 import struct
 from contextlib import contextmanager
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Event, Lock
 
 import pandas as pd
 import pytest
@@ -192,6 +194,110 @@ def test_each_complete_transition_is_fsynced_before_target_publication(
 
     assert result.status == "applied"
     assert events == ["frame", "publish", "frame"] * 2
+
+
+def test_many_targets_replay_log_once_and_keep_one_append_handle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Removing retained writer state must reintroduce quadratic log reads."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    output = tmp_path / "output"
+    deliverables = output / "deliverables"
+    deliverables.mkdir(parents=True)
+    measurements = output / "results" / "dataset" / "measurements"
+    measurements.mkdir(parents=True)
+    target_count = 12
+    for index in range(target_count):
+        pd.DataFrame({LEGACY_STRAIN: [f"strain-{index}"]}).to_parquet(
+            measurements / f"plate-{index}.parquet", index=False
+        )
+    bundle = BundleLayout(deliverables_base=deliverables, output_root=output)
+    report = preflight_metadata_schema(bundle, kinds=NON_IMAGE_KINDS)
+    _, log_path, _ = migration._journal_paths(
+        output, report.plan_fingerprint
+    )
+    real_read_bytes = Path.read_bytes
+    real_open = Path.open
+    decoded_sizes: list[int] = []
+    log_open_modes: list[str] = []
+
+    def count_decoded_bytes(path: Path) -> bytes:
+        data = real_read_bytes(path)
+        if path == log_path:
+            decoded_sizes.append(len(data))
+        return data
+
+    def count_log_opens(path: Path, *args: object, **kwargs: object):
+        mode = str(args[0]) if args else str(kwargs.get("mode", "r"))
+        if path == log_path:
+            log_open_modes.append(mode)
+        return real_open(path, *args, **kwargs)
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(Path, "read_bytes", count_decoded_bytes)
+        scoped.setattr(Path, "open", count_log_opens)
+        result = migrate_preflighted_metadata_bundle(
+            bundle, report=report, kinds=NON_IMAGE_KINDS
+        )
+
+    assert result.status == "applied", result.conflicts
+    assert decoded_sizes == [0]
+    assert log_open_modes.count("r+b") == 1
+    assert len(_decode_frames(log_path)) == target_count * 2
+
+
+def test_concurrent_journal_writer_is_refused(
+    migratable_bundle: BundleLayout, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Removing exclusive ownership must let both writers choose sequence 0."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    real_prepare = migration._prepare_receipt_target
+    first_prepare_entered = Event()
+    release_first_writer = Event()
+    claim_lock = Lock()
+    first_prepare_claimed = False
+
+    def block_first_writer(
+        target: dict[str, object], receipt_path: Path
+    ) -> None:
+        nonlocal first_prepare_claimed
+        with claim_lock:
+            is_first = not first_prepare_claimed
+            first_prepare_claimed = True
+        if is_first:
+            first_prepare_entered.set()
+            assert release_first_writer.wait(timeout=10)
+        real_prepare(target, receipt_path)
+
+    monkeypatch.setattr(
+        migration, "_prepare_receipt_target", block_first_writer
+    )
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        first_future = executor.submit(
+            migrate_preflighted_metadata_bundle,
+            migratable_bundle,
+            report=report,
+            kinds=NON_IMAGE_KINDS,
+        )
+        assert first_prepare_entered.wait(timeout=10)
+        try:
+            competing = migrate_preflighted_metadata_bundle(
+                migratable_bundle,
+                report=report,
+                kinds=NON_IMAGE_KINDS,
+            )
+        finally:
+            release_first_writer.set()
+        first = first_future.result(timeout=10)
+
+    assert competing.status == "failed"
+    assert "lock" in " ".join(competing.conflicts).lower()
+    assert first.status == "applied", first.conflicts
 
 
 def test_compatible_bundle_reuses_stable_noop_terminal_authority(
@@ -407,6 +513,65 @@ def test_completed_authority_is_accepted_before_fresh_semantic_preflight(
     assert second.receipt_path == first.receipt_path
 
 
+def test_status_publish_revalidates_live_targets_inside_its_commit_guard(
+    migratable_bundle: BundleLayout,
+) -> None:
+    """Removing the in-guard target check must certify raced target bytes."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    _, _, receipt_path = migration._journal_paths(
+        migratable_bundle.output_root, report.plan_fingerprint
+    )
+    status_path = migration._metadata_status_path(
+        migratable_bundle.output_root
+    )
+    raced = False
+
+    @contextmanager
+    def race_status_publication() -> Iterator[None]:
+        nonlocal raced
+        if receipt_path.is_file() and not status_path.exists() and not raced:
+            raced = True
+            pd.DataFrame({CANONICAL_STRAIN: ["raced"]}).to_parquet(
+                Path(report.targets[0].path), index=False
+            )
+        yield
+
+    with pytest.raises(ValueError, match="fingerprint"):
+        migrate_preflighted_metadata_bundle(
+            migratable_bundle,
+            report=report,
+            kinds=NON_IMAGE_KINDS,
+            commit_guard=race_status_publication,
+        )
+
+    assert raced is True
+    assert not status_path.exists()
+
+
+def test_authority_loader_revalidates_live_target_bytes(
+    migratable_bundle: BundleLayout,
+) -> None:
+    """Removing semantic receipt validation must accept changed live bytes."""
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+    assert result.status == "applied"
+    pd.DataFrame({CANONICAL_STRAIN: ["changed"]}).to_parquet(
+        Path(report.targets[0].path), index=False
+    )
+
+    with pytest.raises(ValueError, match="fingerprint"):
+        metadata_migration_authority(migratable_bundle)
+
+
 def test_competing_journals_fail_closed(
     migratable_bundle: BundleLayout, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -425,6 +590,50 @@ def test_competing_journals_fail_closed(
 
     assert result.status == "failed"
     assert "competing" in " ".join(result.conflicts).lower()
+
+
+@pytest.mark.parametrize(
+    "damage",
+    ["malformed", "receipt", "plan", "source", "resulting"],
+)
+def test_reconcile_refuses_existing_conflicting_status_authority(
+    migratable_bundle: BundleLayout,
+    damage: str,
+) -> None:
+    """Removing status reconciliation must silently overwrite this conflict."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    first = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+    assert first.status == "applied"
+    status_path = migration._metadata_status_path(
+        migratable_bundle.output_root
+    )
+    payload = json.loads(status_path.read_text(encoding="utf-8"))
+    if damage == "malformed":
+        damaged_bytes = b"{not-json"
+    else:
+        if damage == "receipt":
+            payload["terminal_receipt_path"] = str(
+                status_path.parent / "missing-receipt.json"
+            )
+        else:
+            payload[f"{damage}_fingerprint"] = "sha256:" + "0" * 64
+        damaged_bytes = json.dumps(payload, sort_keys=True).encode("utf-8")
+    status_path.write_bytes(damaged_bytes)
+
+    reconciled = reconcile_metadata_migration_bundle(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+
+    assert reconciled is not None and reconciled.status == "failed"
+    assert "competing" in " ".join(reconciled.conflicts).lower()
+    assert status_path.read_bytes() == damaged_bytes
 
 
 def test_interrupted_legacy_receipt_replays_before_fresh_semantic_preflight(
@@ -515,7 +724,9 @@ def test_authoritative_discovery_is_constant_not_per_transition(
     )
 
     assert result.status == "applied"
-    assert discoveries == 5
+    # Includes the mandatory full target validation immediately before the
+    # terminal status replace; the count remains independent of transitions.
+    assert discoveries == 6
 
 
 def test_legacy_receipt_replay_holds_commit_guard_for_every_replace(
