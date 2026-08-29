@@ -875,13 +875,13 @@ def _run_finalizer_worker(config: _WorkerConfig) -> int:
     if config.dry_run:
         seal_status = _read_worker_status(config, "seal")
         failure_category: str | None = None
-        reason: str | None = None
+        finalization_reason: str | None = None
         if metadata_result.failures:
             failure_category = "metadata"
-            reason = metadata_result.failures[0][1]
+            finalization_reason = metadata_result.failures[0][1]
         elif seal_status is None or seal_status.get("status") != "complete":
             failure_category = "image_seal"
-            reason = (
+            finalization_reason = (
                 "image seal status is missing"
                 if seal_status is None
                 else str(seal_status.get("reason") or "image seal failed")
@@ -894,7 +894,9 @@ def _run_finalizer_worker(config: _WorkerConfig) -> int:
         )
         _publish_terminal_and_close(
             config, succeeded=failure_category is None,
-            failure_category=failure_category, reason=reason, report=final_report,
+            failure_category=failure_category,
+            reason=finalization_reason,
+            report=final_report,
         )
         return 0 if failure_category is None and final_report.ok else 1
 
@@ -909,15 +911,28 @@ def _run_finalizer_worker(config: _WorkerConfig) -> int:
         if config.delete_sources
         else None
     )
-    reclaim_failures = tuple(
-        (
-            config.output_dir,
-            str(status.get("reason") or "reclaim did not complete"),
-        )
-        for index in range(config.task_count)
-        if (status := _read_worker_status(config, "reclaim", index)) is None
-        or status.get("status") != "complete"
-    ) if config.delete_sources else ()
+    reclaim_failure_rows: list[tuple[Path, str]] = []
+    if config.delete_sources:
+        for index in range(config.task_count):
+            reclaim_status = _read_worker_status(config, "reclaim", index)
+            if (
+                reclaim_status is None
+                or reclaim_status.get("status") != "complete"
+            ):
+                reclaim_failure_rows.append(
+                    (
+                        config.output_dir,
+                        (
+                            "reclaim did not complete"
+                            if reclaim_status is None
+                            else str(
+                                reclaim_status.get("reason")
+                                or "reclaim did not complete"
+                            )
+                        ),
+                    )
+                )
+    reclaim_failures = tuple(reclaim_failure_rows)
     try:
         final_report = finalize_migration_attempt(
             config.output_dir,

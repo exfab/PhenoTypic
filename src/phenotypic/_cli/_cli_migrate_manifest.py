@@ -673,7 +673,11 @@ def _read_manifest(
         or len(digest) != 64
     ):
         raise ValueError("invalid migration manifest header schema")
-    fields = ("scientific_output", "records_path", "offsets_path")
+    fields: tuple[str, ...] = (
+        "scientific_output",
+        "records_path",
+        "offsets_path",
+    )
     if schema_version == _SCHEMA_VERSION:
         fields += ("output_root", "control_root")
     if any(not isinstance(raw[name], str) or not Path(raw[name]).is_absolute() for name in fields):

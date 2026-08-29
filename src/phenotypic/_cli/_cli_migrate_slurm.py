@@ -19,6 +19,7 @@ from phenotypic.sdk_.slurm import (
     get_slurm_max_submit_jobs,
     write_slurm_array_script,
 )
+from phenotypic.sdk_.slurm._dispatcher import SlurmDependencyKind
 
 from ._cli_migrate_manifest import (
     discover_migration_tasks,
@@ -275,6 +276,9 @@ def submit_migration_slurm_plan(
         if config.get("dry_run") is True
         else Path(str(config["output_dir"])).resolve()
     )
+    dependencies: tuple[SlurmDependencyKind, ...] = (
+        "afterany",
+    ) * len(plan.flat_scripts)
     return submit_slurm_script_chain(
         flat_chunk_scripts=plan.flat_scripts,
         output_dir=lifecycle_output,
@@ -282,7 +286,7 @@ def submit_migration_slurm_plan(
         slurm_args=slurm_args,
         console=console,
         finalizer_script=plan.finalizer_script,
-        continuation_dependency_kinds=("afterany",) * len(plan.flat_scripts),
+        continuation_dependency_kinds=dependencies,
         generation=plan.generation,
     )
 

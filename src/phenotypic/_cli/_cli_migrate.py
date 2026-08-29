@@ -404,7 +404,7 @@ def _ensure_migration_processing_state(
         (path for path in provenance_candidates if path.is_file()),
         output_dir / "pipeline.pht-pipe",
     )
-    inventory = "\n".join(
+    inventory_payload = "\n".join(
         f"{dataset}/{stem}:{work_id}"
         for dataset, images in sorted(work_ids.items())
         for stem, work_id in sorted(images.items())
@@ -424,7 +424,7 @@ def _ensure_migration_processing_state(
             "success_markers_required": True,
             "work_ids": work_ids,
             "processing_generation": hashlib.sha256(
-                f"migration\n{inventory}".encode()
+                f"migration\n{inventory_payload}".encode()
             ).hexdigest(),
             "pipeline_sha256": _file_sha256(pipeline_path),
             "metadata_sha256": _file_sha256(metadata_snapshot),
@@ -1243,7 +1243,7 @@ def run_migrate(
 
     if dry_run:
         metadata_pass = run_metadata_pass(output_dir, dry_run=True)
-        results, stage_failures = _execute_migration_tasks(
+        dry_results, dry_stage_failures = _execute_migration_tasks(
             output_dir,
             tasks=tasks,
             metadata_csv=metadata_csv,
@@ -1252,7 +1252,9 @@ def run_migrate(
             njobs=njobs,
             commit_guard=None,
         )
-        report = _report_from_image_results(tasks, results, stage_failures)
+        report = _report_from_image_results(
+            tasks, dry_results, dry_stage_failures
+        )
         return replace(
             report,
             headers_migrated=metadata_pass.headers_migrated,

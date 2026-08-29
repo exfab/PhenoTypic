@@ -238,9 +238,9 @@ def test_embedded_table_migration_retries_after_marker_interruption(
     legacy_headers_run: Path, monkeypatch
 ) -> None:
     """A table committed before marker publication is authorized on retry."""
-    from phenotypic._cli import _cli_completion
+    from phenotypic._cli import _cli_migrate_image
 
-    original_publish = _cli_completion.publish_image_success
+    original_publish = _cli_migrate_image.publish_image_success
     interrupted = False
 
     def fail_first_publish(*args, **kwargs):
@@ -253,7 +253,7 @@ def test_embedded_table_migration_retries_after_marker_interruption(
         return original_publish(*args, **kwargs)
 
     monkeypatch.setattr(
-        _cli_completion, "publish_image_success", fail_first_publish
+        _cli_migrate_image, "publish_image_success", fail_first_publish
     )
     first = CliRunner().invoke(
         phenotypic_cli,
@@ -270,7 +270,7 @@ def test_embedded_table_migration_retries_after_marker_interruption(
     )
 
     monkeypatch.setattr(
-        _cli_completion, "publish_image_success", original_publish
+        _cli_migrate_image, "publish_image_success", original_publish
     )
     second = CliRunner().invoke(
         phenotypic_cli,

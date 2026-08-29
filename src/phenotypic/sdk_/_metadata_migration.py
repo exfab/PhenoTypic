@@ -1017,6 +1017,7 @@ def _discover_bundle_targets(
     discovery therefore checks only exact durable names and never lists or
     globs a dataset's ``measurements`` directory.
     """
+    candidates: tuple[Path, ...]
     if layout.output_root is None:
         deliverables_root = _require_safe_migration_path(
             layout.deliverables_base, role="Standalone bundle root"
@@ -1546,10 +1547,10 @@ def _open_anchored_journal_file(
                     f"{role} journal child is not a regular file: {safe_path}"
                 )
             identity = (opened.st_dev, opened.st_ino)
-            with os.fdopen(descriptor, mode) as handle:
+            with os.fdopen(descriptor, mode) as raw_handle:
                 descriptor = -1
                 anchored = _AnchoredJournalFile(
-                    handle=handle,
+                    handle=cast(BinaryIO, raw_handle),
                     directory=directory,
                     name=safe_path.name,
                     path=safe_path,
