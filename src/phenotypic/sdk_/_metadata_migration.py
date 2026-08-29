@@ -1652,6 +1652,32 @@ def _rollback_anchored_status_publication(
     expected_bytes: bytes,
 ) -> None:
     """Retain a failed status publication without unlinking a named child."""
+    current = os.stat(
+        status_name,
+        dir_fd=directory.fd,
+        follow_symlinks=False,
+    )
+    if not stat.S_ISREG(current.st_mode):
+        raise ValueError("Competing metadata status is not regular")
+    with _open_anchored_directory_file(
+        directory,
+        status_name,
+        role="Metadata status pending rollback",
+    ) as current_file:
+        current_bytes = current_file.handle.read()
+        _verify_anchored_journal_file(current_file)
+        if (
+            current_file.identity != expected_identity
+            or current_bytes != expected_bytes
+        ):
+            _publish_rejected_metadata_status_audit(
+                directory,
+                status_file=current_file,
+                status_bytes=current_bytes,
+            )
+            raise ValueError(
+                "Competing metadata migration status appeared during rollback"
+            )
     digest = _sha256_bytes(expected_bytes).removeprefix("sha256:")
     audit_name = (
         f"status.rejected-publisher-{digest}-{os.urandom(8).hex()}.json"
@@ -3910,6 +3936,7 @@ def _remove_exact_metadata_authority(
     expected_digest = status_digest or _sha256_bytes(
         _anchored_json_document(expected)
     )
+    expected_bytes = _anchored_json_document(expected)
     archive_name = _status_audit_name(
         _SUPERSEDED_STATUS_PREFIX, expected_digest
     )
@@ -3957,52 +3984,34 @@ def _remove_exact_metadata_authority(
                     "superseded audit"
                 )
             try:
-                os.stat(
+                live_stat = os.stat(
                     status_path.name,
                     dir_fd=directory.fd,
                     follow_symlinks=False,
                 )
             except FileNotFoundError:
-                if _recover_rejected_metadata_status(
-                    directory,
-                    status_name=status_path.name,
-                ):
-                    raise ValueError(
-                        "Competing metadata migration status recovered from "
-                        "rejected audit"
-                    )
                 raise ValueError("Metadata migration status is missing")
-            live_bytes = _read_anchored_journal_bytes(
-                status_path,
-                root=root,
-                role="Metadata migration status before supersession",
-            )
-            if live_bytes != _anchored_json_document(expected):
-                rejected_name = _status_audit_name(
-                    _REJECTED_STATUS_PREFIX, _sha256_bytes(live_bytes)
+            if not stat.S_ISREG(live_stat.st_mode):
+                raise ValueError(
+                    "Competing metadata migration status is not regular"
                 )
-                rejected_path = status_path.with_name(rejected_name)
-                try:
-                    os.stat(
-                        rejected_name,
-                        dir_fd=directory.fd,
-                        follow_symlinks=False,
+            with _open_anchored_directory_file(
+                directory,
+                status_path.name,
+                role="Metadata migration status before supersession",
+            ) as status_file:
+                live_bytes = status_file.handle.read()
+                _verify_anchored_journal_file(status_file)
+                if live_bytes != expected_bytes:
+                    _publish_rejected_metadata_status_audit(
+                        directory,
+                        status_file=status_file,
+                        status_bytes=live_bytes,
                     )
-                except FileNotFoundError:
-                    pass
-                else:
-                    rejected_bytes = _read_anchored_journal_bytes(
-                        rejected_path,
-                        root=root,
-                        role="Rejected metadata status audit",
-                    )
-                    if rejected_bytes != live_bytes:
-                        raise ValueError(
-                            "Competing rejected metadata status audit exists"
-                        )
                     raise ValueError(
-                        "Competing metadata migration status was already rejected"
+                        "Competing metadata migration status authority exists"
                     )
+                _verify_anchored_journal_file(status_file)
             _rename_anchored_noreplace(
                 directory,
                 status_path.name,
@@ -4190,91 +4199,96 @@ def _open_anchored_directory_file(
             os.close(descriptor)
 
 
-def _recover_rejected_metadata_status(
+def _publish_rejected_metadata_status_audit(
     directory: _AnchoredJournalDirectory,
     *,
-    status_name: str,
-) -> bool:
-    """Restore one crash-stranded digest-valid rejected status authority."""
-    candidates = sorted(
-        name
-        for name in os.listdir(directory.fd)
-        if name.startswith(_REJECTED_STATUS_PREFIX)
-        and not name.startswith(f"{_REJECTED_STATUS_PREFIX}publisher-")
-        and name.endswith(".json")
+    status_file: _AnchoredJournalFile,
+    status_bytes: bytes,
+) -> Path:
+    """Retain rejected bytes while their canonical status remains authoritative."""
+    rejected_name = _status_audit_name(
+        _REJECTED_STATUS_PREFIX, _sha256_bytes(status_bytes)
     )
-    _verify_anchored_journal_directory(directory)
-    if not candidates:
-        return False
-    with ExitStack() as stack:
-        held: list[tuple[_AnchoredJournalFile, bytes, str]] = []
-        for candidate in candidates:
-            digest_text = candidate.removeprefix(
-                _REJECTED_STATUS_PREFIX
-            ).removesuffix(".json")
-            raw_digest = digest_text.split("-duplicate-", maxsplit=1)[0]
-            if len(raw_digest) != 64 or any(
-                character not in "0123456789abcdef"
-                for character in raw_digest
-            ):
-                raise ValueError(
-                    "Rejected metadata status recovery audit is malformed"
-                )
-            rejected = stack.enter_context(
-                _open_anchored_directory_file(
-                    directory,
-                    candidate,
-                    role="Rejected metadata status recovery audit",
-                )
-            )
-            rejected_bytes = rejected.handle.read()
-            _verify_anchored_journal_file(rejected)
-            if hashlib.sha256(rejected_bytes).hexdigest() != raw_digest:
-                raise ValueError(
-                    "Rejected metadata status recovery audit digest changed"
-                )
-            held.append((rejected, rejected_bytes, raw_digest))
-        if len({(item[1], item[2]) for item in held}) != 1:
+    rejected_path = directory.path / rejected_name
+
+    def verify_current_status() -> None:
+        _verify_anchored_journal_file(status_file)
+        status_file.handle.seek(0)
+        if status_file.handle.read() != status_bytes:
             raise ValueError(
-                "Competing rejected metadata status recovery audits exist"
+                "Competing metadata migration status bytes changed"
             )
-        rejected = next(
-            (
-                item[0]
-                for item in held
-                if "-duplicate-" not in item[0].name
-            ),
-            held[0][0],
+
+    try:
+        os.stat(
+            rejected_name,
+            dir_fd=directory.fd,
+            follow_symlinks=False,
         )
+    except FileNotFoundError:
+        pass
+    else:
+        with _open_anchored_directory_file(
+            directory,
+            rejected_name,
+            role="Rejected metadata status audit",
+        ) as rejected:
+            if rejected.handle.read() != status_bytes:
+                raise ValueError(
+                    "Competing rejected metadata status audit exists"
+                )
+            verify_current_status()
+        return rejected_path
+
+    temp_name = f".{rejected_name}.{os.urandom(8).hex()}.tmp"
+    descriptor = os.open(
+        temp_name,
+        _journal_open_flags(os.O_WRONLY | os.O_CREAT | os.O_EXCL),
+        0o600,
+        dir_fd=directory.fd,
+    )
+    try:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError("Rejected metadata status temp is not regular")
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(status_bytes)
+            handle.flush()
+            os.fsync(handle.fileno())
+        verify_current_status()
         try:
             os.link(
-                rejected.name,
-                status_name,
+                temp_name,
+                rejected_name,
                 src_dir_fd=directory.fd,
                 dst_dir_fd=directory.fd,
                 follow_symlinks=False,
             )
-        except FileExistsError as exc:
-            raise ValueError(
-                "Competing metadata migration status appeared during retry"
-            ) from exc
+        except FileExistsError:
+            pass
         os.fsync(directory.fd)
         _verify_anchored_journal_directory(directory)
-        for opened_file, _, _ in held:
-            _verify_anchored_journal_file(opened_file)
-        restored = os.stat(
-            status_name,
-            dir_fd=directory.fd,
-            follow_symlinks=False,
-        )
-        if (
-            not stat.S_ISREG(restored.st_mode)
-            or (restored.st_dev, restored.st_ino) != rejected.identity
-        ):
-            raise ValueError(
-                "Rejected metadata status retry identity changed"
-            )
-    return True
+        verify_current_status()
+        with _open_anchored_directory_file(
+            directory,
+            rejected_name,
+            role="Rejected metadata status audit",
+        ) as rejected:
+            if rejected.handle.read() != status_bytes:
+                raise ValueError(
+                    "Competing rejected metadata status audit exists"
+                )
+            verify_current_status()
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        try:
+            os.unlink(temp_name, dir_fd=directory.fd)
+            os.fsync(directory.fd)
+        except OSError:
+            pass
+    return rejected_path
 
 
 def _metadata_migration_authority_evidence(
@@ -4877,6 +4891,11 @@ def _superseded_metadata_status_evidence(
         )
     receipt_path = _require_safe_migration_path(
         receipt_text, role="Superseded terminal migration receipt", root=root
+    )
+    _validate_superseded_historical_receipt(
+        root,
+        receipt_path,
+        expected_digest=receipt_digest,
     )
     fingerprints = {
         name: payload.get(name)

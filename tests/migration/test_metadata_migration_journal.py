@@ -2004,12 +2004,18 @@ def test_orphaned_superseded_status_refuses_unusable_historical_receipt(
     """Retained status never becomes ignorable when its v3 receipt is unusable."""
     receipt_path, archive = _archive_historical_v3_status(compatible_bundle)
     assert archive.is_file()
+    assert receipt_path.with_name("plan.json").is_file()
+    assert receipt_path.with_name("transitions.log").is_file()
     if receipt_state == "corrupt":
         receipt_path.write_bytes(b"not a historical receipt")
     else:
-        for child in tuple(receipt_path.parent.iterdir()):
-            child.unlink()
-        receipt_path.parent.rmdir()
+        receipt_path.unlink()
+    authority_root = archive.parent
+    surviving_bytes = {
+        path.relative_to(authority_root): path.read_bytes()
+        for path in authority_root.rglob("*")
+        if path.is_file()
+    }
 
     result = reconcile_metadata_migration_bundle(
         compatible_bundle,
@@ -2022,14 +2028,24 @@ def test_orphaned_superseded_status_refuses_unusable_historical_receipt(
     assert "receipt" in conflicts
     assert any(word in conflicts for word in ("missing", "malformed", "digest"))
     assert archive.is_file()
+    assert {
+        path.relative_to(authority_root): path.read_bytes()
+        for path in authority_root.rglob("*")
+        if path.is_file()
+    } == surviving_bytes
+    if receipt_state == "missing":
+        assert not receipt_path.exists()
+    else:
+        assert receipt_path.read_bytes() == b"not a historical receipt"
+    assert not archive.with_name("status.json").exists()
 
 
 @pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
-def test_rejected_status_recovery_resumes_after_crash_before_restore(
+def test_rejected_audit_creation_failure_never_vacates_current_status(
     migratable_bundle: BundleLayout,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A durable rejected audit restores its live competitor on retry."""
+    """Audit creation failures and retries preserve the canonical competitor."""
     import phenotypic.sdk_._metadata_migration as migration
 
     assert migratable_bundle.output_root is not None
@@ -2058,7 +2074,7 @@ def test_rejected_status_recovery_resumes_after_crash_before_restore(
     def crash_after_rejected_audit_fsync(directory: object) -> None:
         nonlocal crashed
         real_verify_directory(directory)
-        if rejected.exists() and not status_path.exists() and not crashed:
+        if rejected.exists() and not crashed:
             crashed = True
             raise _SimulatedProcessDeath("after rejected audit fsync")
 
@@ -2080,7 +2096,7 @@ def test_rejected_status_recovery_resumes_after_crash_before_restore(
     )
 
     assert crashed is True
-    assert not status_path.exists()
+    assert status_path.read_bytes() == competitor_bytes
     assert rejected.read_bytes() == competitor_bytes
     with pytest.raises(ValueError, match="[Cc]ompeting.*status"):
         migration._remove_exact_metadata_authority(
@@ -2091,12 +2107,32 @@ def test_rejected_status_recovery_resumes_after_crash_before_restore(
     assert status_path.read_bytes() == competitor_bytes
     assert rejected.read_bytes() == competitor_bytes
 
+    second_payload = dict(payload)
+    second_payload["competing"] = "newer"
+    second_bytes = (
+        json.dumps(second_payload, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    status_path.write_bytes(second_bytes)
+    second_rejected = status_path.with_name(
+        "status.rejected-"
+        f"{hashlib.sha256(second_bytes).hexdigest()}.json"
+    )
+    with pytest.raises(ValueError, match="[Cc]ompeting.*status"):
+        migration._remove_exact_metadata_authority(
+            migratable_bundle.output_root,
+            authority,
+            commit_guard=None,
+        )
+    assert status_path.read_bytes() == second_bytes
+    assert rejected.read_bytes() == competitor_bytes
+    assert second_rejected.read_bytes() == second_bytes
+
 
 @pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
-def test_rejected_status_recovery_accepts_truthful_duplicate_audits(
+def test_ambiguous_rejected_history_fails_without_mutation(
     migratable_bundle: BundleLayout,
 ) -> None:
-    """Equivalent durable rejected audits remain a resumable recovery state."""
+    """Legacy missing-status audit histories are never guessed or rewritten."""
     import phenotypic.sdk_._metadata_migration as migration
 
     assert migratable_bundle.output_root is not None
@@ -2130,17 +2166,20 @@ def test_rejected_status_recovery_accepts_truthful_duplicate_audits(
     )
     os.link(rejected, duplicate)
     status_path.unlink()
+    before = {
+        rejected: rejected.read_bytes(),
+        duplicate: duplicate.read_bytes(),
+    }
 
-    with pytest.raises(ValueError, match="[Cc]ompeting.*status"):
+    with pytest.raises(ValueError, match="status.*missing|rejected.*audits"):
         migration._remove_exact_metadata_authority(
             migratable_bundle.output_root,
             authority,
             commit_guard=None,
         )
 
-    assert status_path.read_bytes() == competitor_bytes
-    assert rejected.read_bytes() == competitor_bytes
-    assert duplicate.read_bytes() == competitor_bytes
+    assert not status_path.exists()
+    assert {path: path.read_bytes() for path in before} == before
 
 
 @pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
@@ -2303,7 +2342,7 @@ def test_status_publish_rechecks_receipt_after_final_status_validation(
 
 
 @pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
-def test_status_rollback_restores_competitor_without_unlinking_its_name(
+def test_status_rollback_preserves_competitor_without_unlinking_its_name(
     migratable_bundle: BundleLayout,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -2357,7 +2396,7 @@ def test_status_rollback_restores_competitor_without_unlinking_its_name(
     )
     receipt_path.write_bytes(original_receipt)
     real_verify = migration._verify_anchored_journal_file
-    real_rename = migration._rename_anchored_noreplace
+    real_rollback = migration._rollback_anchored_status_publication
     real_unlink = migration.os.unlink
     final_status_validations = 0
     swapped = False
@@ -2381,16 +2420,22 @@ def test_status_rollback_restores_competitor_without_unlinking_its_name(
         competitor_path.rename(status_path)
         swapped = True
 
-    def inject_at_verified_rollback_move(
+    def inject_before_rollback_inspection(
         directory: object,
-        source: str,
-        destination: str,
         *,
-        role: str,
+        status_name: str,
+        status_path: Path,
+        expected_identity: tuple[int, int],
+        expected_bytes: bytes,
     ) -> None:
-        if role == "rejected metadata status rollback audit":
-            substitute_status()
-        real_rename(directory, source, destination, role=role)
+        substitute_status()
+        real_rollback(
+            directory,
+            status_name=status_name,
+            status_path=status_path,
+            expected_identity=expected_identity,
+            expected_bytes=expected_bytes,
+        )
 
     def inject_at_legacy_status_unlink(
         path: object,
@@ -2409,11 +2454,13 @@ def test_status_rollback_restores_competitor_without_unlinking_its_name(
         invalidate_receipt_after_status_validation,
     )
     monkeypatch.setattr(
-        migration, "_rename_anchored_noreplace", inject_at_verified_rollback_move
+        migration,
+        "_rollback_anchored_status_publication",
+        inject_before_rollback_inspection,
     )
     monkeypatch.setattr(migration.os, "unlink", inject_at_legacy_status_unlink)
 
-    with pytest.raises(ValueError, match="Terminal migration receipt.*changed"):
+    with pytest.raises(ValueError, match="Competing metadata migration status"):
         migration._publish_metadata_authority(
             migratable_bundle.output_root,
             result,
@@ -2481,7 +2528,7 @@ def test_status_rollback_restores_symlink_and_always_cleans_ready_link(
         "receipt.json.retained-for-symlink-rollback"
     )
     real_verify = migration._verify_anchored_journal_file
-    real_rename = migration._rename_anchored_noreplace
+    real_rollback = migration._rollback_anchored_status_publication
     final_status_validations = 0
     swapped = False
 
@@ -2497,17 +2544,24 @@ def test_status_rollback_restores_symlink_and_always_cleans_ready_link(
 
     def substitute_symlink_before_rollback(
         directory: object,
-        source: str,
-        destination: str,
         *,
-        role: str,
+        status_name: str,
+        status_path: Path,
+        expected_identity: tuple[int, int],
+        expected_bytes: bytes,
     ) -> None:
         nonlocal swapped
-        if role == "rejected metadata status rollback audit" and not swapped:
+        if not swapped:
             status_path.rename(retained_status)
             substitution.rename(status_path)
             swapped = True
-        real_rename(directory, source, destination, role=role)
+        real_rollback(
+            directory,
+            status_name=status_name,
+            status_path=status_path,
+            expected_identity=expected_identity,
+            expected_bytes=expected_bytes,
+        )
 
     monkeypatch.setattr(
         migration,
@@ -2516,7 +2570,7 @@ def test_status_rollback_restores_symlink_and_always_cleans_ready_link(
     )
     monkeypatch.setattr(
         migration,
-        "_rename_anchored_noreplace",
+        "_rollback_anchored_status_publication",
         substitute_symlink_before_rollback,
     )
 
