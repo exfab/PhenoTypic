@@ -811,6 +811,42 @@ def test_local_wait_combinations_reject_before_any_artifact_write(
     assert not cache.exists()
 
 
+def test_slurm_wait_dry_run_rejects_before_scientific_or_control_writes(
+    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The parsed SLURM dry-run+wait branch creates neither plan nor cache tree."""
+    from phenotypic._cli import _cli_migrate as migrate
+
+    cache = tmp_path / "external-cache"
+    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
+    monkeypatch.setattr(
+        migrate,
+        "generate_migration_slurm_plan",
+        lambda *_a, **_k: pytest.fail("incompatible dry-run wait planned work"),
+    )
+    before_science = _tree_snapshot(legacy_run)
+    before_control = _tree_snapshot(cache)
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--slurm",
+            "slurm_partition=short",
+            "--wait",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--wait cannot be combined with --dry-run" in result.output
+    assert _tree_snapshot(legacy_run) == before_science
+    assert _tree_snapshot(cache) == before_control
+
+
 def test_public_rerun_after_waited_terminal_failure_uses_new_attempt(
     legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
