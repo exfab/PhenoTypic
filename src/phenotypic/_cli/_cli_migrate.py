@@ -30,6 +30,7 @@ so it does not justify another scheduler surface.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 import hashlib
@@ -38,9 +39,43 @@ from pathlib import Path
 import click
 
 from ._cli_migrate_image import (
+    MigrationImageResult,
+    ReclaimResult,
     _configured_work_id,
     _existing_marker_identity,
     _migration_work_id,
+    _source_artifact_state,
+    migrate_image_task,
+    reclaim_image_sources,
+)
+from ._cli_migrate_manifest import (
+    MigrationImageSeal,
+    MigrationImageTask,
+    MigrationReclaimSeal,
+    discover_migration_tasks,
+    migration_image_seal_path,
+    migration_reclaim_seal_path,
+    migration_reclaim_status_path,
+    migration_task_status_path,
+    publish_migration_reclaim_status,
+    publish_migration_task_status,
+    seal_migration_image_stage,
+    seal_migration_reclaim_stage,
+    valid_migration_image_seal,
+    valid_migration_reclaim_seal,
+    write_migration_manifest,
+)
+from ._cli_completion import (
+    publish_run_completion_evidence,
+    valid_aggregate_snapshot,
+    valid_run_completion,
+)
+from ._cli_slurm_lifecycle import (
+    deactivate_generation,
+    generation_publication_guard,
+    initialize_slurm_lifecycle,
+    mark_generation_failed,
+    new_slurm_generation,
 )
 from ._embedded_measurement_tables import embedded_measurement_table_matches
 
@@ -50,10 +85,12 @@ from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
     STORE_SUFFIX,
     aggregate_publication_marker_path,
+    atomic_write_json,
     deliverables_dir,
     image_completion_marker_path,
     load_image_from_store,
     metadata_csv_deliverable_path,
+    phenotypic_cache_dir,
     publication_commit,
     replace_embedded_measurement_table,
     run_completion_marker_path,
@@ -64,7 +101,6 @@ from phenotypic.sdk_._hdf_to_zarr import (
     MigrationReport,
     canonical_metadata_view_path,
     emit_canonical_metadata_view,
-    migrate_run_hdf_to_zarr,
     republish_aggregate,
 )
 from phenotypic.sdk_.ngff_ import valid_staged_store
@@ -83,6 +119,19 @@ class MigrateModeError(click.ClickException):
     """Raised when migration cannot proceed or did not finish cleanly."""
 
 
+_MIGRATION_FAILURE_CATEGORIES = frozenset(
+    {
+        "metadata",
+        "image",
+        "image_seal",
+        "reclaim_noop",
+        "reclaim",
+        "aggregate",
+        "completion",
+    }
+)
+
+
 @dataclass(frozen=True)
 class MetadataPassResult:
     """Outcome of pass 1, including stable authority when it wrote."""
@@ -90,6 +139,109 @@ class MetadataPassResult:
     headers_migrated: int
     failures: tuple[tuple[Path, str], ...]
     authority: MetadataMigrationAuthority | None
+
+
+def migration_terminal_status_path(
+    control_root: Path, generation: str
+) -> Path:
+    """Return the durable typed status path for one migration attempt."""
+    return migration_image_seal_path(control_root, generation).with_name(
+        "terminal_status.json"
+    )
+
+
+def _migration_report_payload(report: MigrationReport) -> dict[str, object]:
+    """Return a JSON-safe, typed summary of one migration report."""
+    failure_fields = (
+        "failed",
+        "header_failures",
+        "table_failures",
+        "overlay_failures",
+        "publication_failures",
+    )
+    payload: dict[str, object] = {
+        "converted": report.converted,
+        "skipped": report.skipped,
+        "headers_migrated": report.headers_migrated,
+        "tables_migrated": report.tables_migrated,
+        "tables_skipped": report.tables_skipped,
+        "overlays_created": report.overlays_created,
+        "overlays_skipped": report.overlays_skipped,
+    }
+    for field in failure_fields:
+        payload[field] = [
+            {"path": str(path), "reason": reason}
+            for path, reason in getattr(report, field)
+        ]
+    return payload
+
+
+def publish_migration_terminal_status(
+    output_dir: Path,
+    *,
+    generation: str,
+    succeeded: bool,
+    failure_category: str | None,
+    reason: str | None,
+    report: MigrationReport,
+    commit_guard: CommitGuard | None = None,
+) -> Path:
+    """Atomically publish typed attempt status before lifecycle closure."""
+    if succeeded:
+        if failure_category is not None or reason is not None or not report.ok:
+            raise ValueError("successful migration status cannot carry failure evidence")
+    elif not failure_category or not reason:
+        raise ValueError("failed migration status requires a category and reason")
+    elif failure_category not in _MIGRATION_FAILURE_CATEGORIES:
+        raise ValueError(f"unknown migration failure category: {failure_category}")
+    path = migration_terminal_status_path(
+        phenotypic_cache_dir(output_dir), generation
+    )
+    atomic_write_json(
+        path,
+        {
+            "schema_version": 1,
+            "generation": generation,
+            "status": "succeeded" if succeeded else "failed",
+            "failure_category": failure_category,
+            "reason": reason,
+            "report": _migration_report_payload(report),
+            "completed_at": datetime.now(timezone.utc).isoformat(
+                timespec="milliseconds"
+            ),
+        },
+        commit_guard=commit_guard,
+    )
+    return path
+
+
+def invalidate_migration_terminal_authority(
+    output_dir: Path,
+    *,
+    commit_guard: CommitGuard | None,
+) -> None:
+    """Invalidate aggregate and run completion together under one fence."""
+    with publication_commit(commit_guard):
+        aggregate_publication_marker_path(output_dir).unlink(missing_ok=True)
+        run_completion_marker_path(output_dir).unlink(missing_ok=True)
+
+
+def close_migration_generation(
+    output_dir: Path,
+    *,
+    generation: str,
+    succeeded: bool,
+    reason: str | None,
+) -> None:
+    """Close one generation only after its typed terminal status is durable."""
+    if succeeded:
+        if reason is not None:
+            raise ValueError("successful migration closure cannot carry a reason")
+        deactivate_generation(output_dir, generation)
+        return
+    if not reason:
+        raise ValueError("failed migration closure requires an exact reason")
+    mark_generation_failed(output_dir, generation, reason)
 
 
 def _bundle_layout(output_dir: Path) -> BundleLayout:
@@ -127,7 +279,12 @@ def _file_sha256(path: Path) -> str | None:
     return digest.hexdigest()
 
 
-def _ensure_migration_processing_state(output_dir: Path) -> None:
+def _ensure_migration_processing_state(
+    output_dir: Path,
+    *,
+    tasks: Sequence[MigrationImageTask] | None = None,
+    commit_guard: CommitGuard | None = None,
+) -> None:
     """Reconstruct marker authority for a state-free legacy archive.
 
     Migration fixtures intentionally omit processing state: copying stale run
@@ -155,54 +312,62 @@ def _ensure_migration_processing_state(output_dir: Path) -> None:
     datasets: dict[str, DatasetState] = (
         dict(existing.datasets) if existing is not None else {}
     )
-    results = output_dir / "results"
-    if not results.is_dir():
-        return
-    for dataset_dir in sorted(
-        path for path in results.iterdir() if path.is_dir()
-    ):
-        stores = sorted((dataset_dir / "zarr").glob(f"*{STORE_SUFFIX}"))
-        if not stores:
-            continue
-        stems = {
-            store.name[: -len(STORE_SUFFIX)]
-            for store in stores
-            if (store / "zarr.json").is_file()
-        }
+    inventory: dict[str, set[str]] = {}
+    if tasks is not None:
+        for task in tasks:
+            inventory.setdefault(task.dataset, set()).add(task.stem)
+    else:
+        results = output_dir / "results"
+        if not results.is_dir():
+            return
+        for dataset_dir in sorted(
+            path for path in results.iterdir() if path.is_dir()
+        ):
+            stores = sorted((dataset_dir / "zarr").glob(f"*{STORE_SUFFIX}"))
+            stems = {
+                store.name[: -len(STORE_SUFFIX)]
+                for store in stores
+                if (store / "zarr.json").is_file()
+            }
+            if stems:
+                inventory[dataset_dir.name] = stems
+
+    for dataset_name, stems in sorted(inventory.items()):
         if not stems:
             continue
-        existing_images = work_ids.get(dataset_dir.name, {})
+        existing_images = work_ids.get(dataset_name, {})
         if not isinstance(existing_images, dict):
             existing_images = {}
-        work_ids[dataset_dir.name] = dict(existing_images)
+        work_ids[dataset_name] = dict(existing_images)
         for stem in sorted(stems):
             if not any(
                 Path(str(image_name)).stem == stem
-                for image_name in work_ids[dataset_dir.name]
+                for image_name in work_ids[dataset_name]
             ):
-                work_ids[dataset_dir.name][stem] = _migration_work_id(
-                    dataset_dir.name, stem
+                work_ids[dataset_name][stem] = _migration_work_id(
+                    dataset_name, stem
                 )
         state_names = {
             next(
                 (
                     str(image_name)
-                    for image_name in work_ids[dataset_dir.name]
+                    for image_name in work_ids[dataset_name]
                     if Path(str(image_name)).stem == stem
                 ),
                 stem,
             )
             for stem in stems
         }
-        if dataset_dir.name in datasets:
-            dataset_state = datasets[dataset_dir.name]
-            dataset_state.completed.update(state_names)
+        if dataset_name in datasets:
+            dataset_state = datasets[dataset_name]
+            if tasks is None:
+                dataset_state.completed.update(state_names)
             dataset_state.initial_images.update(state_names)
-            datasets[dataset_dir.name] = dataset_state
+            datasets[dataset_name] = dataset_state
         else:
-            datasets[dataset_dir.name] = DatasetState(
-                completed=set(stems),
-                initial_images=set(stems),
+            datasets[dataset_name] = DatasetState(
+                completed=set(state_names) if tasks is None else set(),
+                initial_images=set(state_names),
             )
     if not work_ids:
         return
@@ -212,7 +377,8 @@ def _ensure_migration_processing_state(output_dir: Path) -> None:
         existing.config["work_ids"] = work_ids
         existing.datasets.update(datasets)
         existing.last_updated = datetime.now(timezone.utc)
-        save_processing_state(existing, output_dir)
+        with publication_commit(commit_guard):
+            save_processing_state(existing, output_dir)
         return
 
     provenance_candidates = [
@@ -252,7 +418,8 @@ def _ensure_migration_processing_state(output_dir: Path) -> None:
             "process_only_layer": None,
         },
     )
-    save_processing_state(state, output_dir)
+    with publication_commit(commit_guard):
+        save_processing_state(state, output_dir)
 
 
 def _pending_header_targets(report: MetadataMigrationReport) -> int:
@@ -260,7 +427,12 @@ def _pending_header_targets(report: MetadataMigrationReport) -> int:
     return sum(1 for target in report.targets if target.status == "migratable")
 
 
-def run_metadata_pass(output_dir: Path, *, dry_run: bool) -> MetadataPassResult:
+def run_metadata_pass(
+    output_dir: Path,
+    *,
+    dry_run: bool,
+    commit_guard: CommitGuard | None = None,
+) -> MetadataPassResult:
     """Run pass 1 -- the metadata-schema migration over non-image targets.
 
     ``preflight_metadata_schema`` writes nothing, which is what makes pass 1's
@@ -280,7 +452,9 @@ def run_metadata_pass(output_dir: Path, *, dry_run: bool) -> MetadataPassResult:
     layout = _bundle_layout(output_dir)
     if not dry_run:
         reconciled = reconcile_metadata_migration_bundle(
-            layout, kinds=NON_IMAGE_KINDS
+            layout,
+            kinds=NON_IMAGE_KINDS,
+            commit_guard=commit_guard,
         )
         if reconciled is not None:
             if reconciled.status not in {"compatible", "applied"}:
@@ -319,6 +493,7 @@ def run_metadata_pass(output_dir: Path, *, dry_run: bool) -> MetadataPassResult:
         layout,
         report=report,
         kinds=NON_IMAGE_KINDS,
+        commit_guard=commit_guard,
     )
     # The RESULT's status, not the report's (ledger C11). `_report_from_targets`
     # can only return `blocked`, `migratable` or `compatible`; `"applied"` is
@@ -342,6 +517,386 @@ def run_metadata_pass(output_dir: Path, *, dry_run: bool) -> MetadataPassResult:
         failures=(),
         authority=metadata_migration_authority(layout),
     )
+
+
+def _migrate_image_result(
+    output_dir: Path,
+    task: MigrationImageTask,
+    *,
+    metadata_csv: Path | None,
+    overlay_alpha: float,
+    dry_run: bool,
+    commit_guard: CommitGuard | None,
+) -> tuple[MigrationImageResult | None, tuple[Path, str] | None]:
+    """Run one task while preserving a typed per-image failure."""
+    try:
+        result = migrate_image_task(
+            output_dir,
+            task,
+            metadata_csv=metadata_csv,
+            overlay_alpha=overlay_alpha,
+            dry_run=dry_run,
+            commit_guard=commit_guard,
+        )
+    except Exception as exc:  # noqa: BLE001 - isolate every manifest image
+        target = task.hdf_path or task.store_path
+        return None, (target, f"{type(exc).__name__}: {exc}")
+    return result, None
+
+
+def _execute_migration_tasks(
+    output_dir: Path,
+    *,
+    tasks: Sequence[MigrationImageTask],
+    metadata_csv: Path | None,
+    overlay_alpha: float,
+    dry_run: bool,
+    njobs: int,
+    commit_guard: CommitGuard | None,
+) -> tuple[
+    tuple[MigrationImageResult, ...],
+    tuple[tuple[Path, str], ...],
+]:
+    """Execute the one canonical inventory locally, using joblib when asked."""
+    if njobs > 1 and len(tasks) > 1:
+        from joblib import Parallel, delayed
+
+        outcomes = Parallel(n_jobs=njobs)(
+            delayed(_migrate_image_result)(
+                output_dir,
+                task,
+                metadata_csv=metadata_csv,
+                overlay_alpha=overlay_alpha,
+                dry_run=dry_run,
+                commit_guard=commit_guard,
+            )
+            for task in tasks
+        )
+    else:
+        outcomes = [
+            _migrate_image_result(
+                output_dir,
+                task,
+                metadata_csv=metadata_csv,
+                overlay_alpha=overlay_alpha,
+                dry_run=dry_run,
+                commit_guard=commit_guard,
+            )
+            for task in tasks
+        ]
+    results = tuple(result for result, _ in outcomes if result is not None)
+    failures = tuple(failure for _, failure in outcomes if failure is not None)
+    return results, failures
+
+
+def _report_from_image_results(
+    tasks: Sequence[MigrationImageTask],
+    results: Sequence[MigrationImageResult],
+) -> MigrationReport:
+    """Preserve legacy summary counters from canonical task results."""
+    by_index = {result.index: result for result in results}
+    return MigrationReport(
+        converted=sum(result.converted for result in results),
+        skipped=sum(result.skipped for result in results),
+        tables_migrated=sum(result.table_installed for result in results),
+        tables_skipped=sum(
+            task.measurement_path is not None
+            and task.index in by_index
+            and not by_index[task.index].table_installed
+            for task in tasks
+        ),
+        overlays_created=sum(result.overlay_rendered for result in results),
+        overlays_skipped=sum(not result.overlay_rendered for result in results),
+    )
+
+
+def _retained_reclaim_result(
+    output_dir: Path,
+    task: MigrationImageTask,
+    result: MigrationImageResult | None,
+) -> ReclaimResult:
+    """Record an exact no-op when the image barrier forbids deletion."""
+    try:
+        marker_digest = hashlib.sha256(task.marker_path.read_bytes()).hexdigest()
+    except OSError:
+        marker_digest = ""
+    hdf_state = _source_artifact_state(task.hdf_path)
+    parquet_state = _source_artifact_state(task.measurement_path)
+    intended = tuple(
+        path for path in (task.hdf_path, task.measurement_path) if path is not None
+    )
+    retained = tuple(
+        state.path
+        for state in (hdf_state, parquet_state)
+        if state.exists and state.path is not None
+    )
+    return ReclaimResult(
+        index=task.index,
+        dataset=task.dataset,
+        stem=task.stem,
+        work_id=(
+            result.work_id
+            if result is not None
+            else _configured_work_id(output_dir, task.dataset, task.stem)
+        ),
+        marker_digest=marker_digest,
+        intended_deletions=intended,
+        hdf_prestate=hdf_state,
+        parquet_prestate=parquet_state,
+        observed_poststate=(hdf_state, parquet_state),
+        deleted_paths=(),
+        retained_paths=retained,
+        reason="image seal was not clean; sources retained",
+    )
+
+
+def _publish_migration_aggregate(
+    output_dir: Path,
+    *,
+    commit_guard: CommitGuard | None,
+) -> None:
+    """Build and validate aggregate authority through existing publishers."""
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+
+    datasets = sorted(
+        path.name
+        for path in (output_dir / "results").iterdir()
+        if path.is_dir()
+    ) if (output_dir / "results").is_dir() else []
+    snapshot = metadata_csv_deliverable_path(output_dir)
+    aggregate_path = aggregate_measurements(
+        output_dir,
+        datasets,
+        metadata_csv=snapshot if snapshot.is_file() else None,
+        no_qc=True,
+        commit_guard=commit_guard,
+    )
+    embedded_tables_exist = any(
+        (output_dir / "results").glob(
+            "*/zarr/*.ome.zarr/tables/measurements/table.parquet"
+        )
+    )
+    if aggregate_path is None and embedded_tables_exist:
+        raise RuntimeError("aggregate rebuild produced no measurements")
+    if not republish_aggregate(output_dir, commit_guard=commit_guard):
+        raise RuntimeError("aggregate marker publication returned false")
+    if valid_aggregate_snapshot(output_dir) is None:
+        raise RuntimeError("aggregate marker validation failed")
+
+
+def _append_publication_failure(
+    report: MigrationReport,
+    target: Path,
+    reason: str,
+) -> MigrationReport:
+    """Append one terminal publication failure without losing prior evidence."""
+    return replace(
+        report,
+        publication_failures=report.publication_failures + ((target, reason),),
+    )
+
+
+def finalize_migration_attempt(
+    output_dir: Path,
+    *,
+    manifest_path: Path,
+    expected_scientific_output: Path,
+    generation: str,
+    metadata_pass: MetadataPassResult,
+    image_seal: MigrationImageSeal,
+    reclaim_seal: MigrationReclaimSeal | None,
+    deletion_requested: bool,
+    dry_run: bool,
+    report: MigrationReport,
+    image_failures: tuple[tuple[Path, str], ...],
+    reclaim_failures: tuple[tuple[Path, str], ...],
+    commit_guard: CommitGuard | None,
+) -> MigrationReport:
+    """Publish terminal migration science and close one owned generation."""
+    if dry_run:
+        return replace(
+            report,
+            headers_migrated=metadata_pass.headers_migrated,
+            header_failures=metadata_pass.failures,
+            failed=report.failed + image_failures + reclaim_failures,
+        )
+
+    output_dir = Path(output_dir)
+    control_root = phenotypic_cache_dir(output_dir)
+    final_report = replace(
+        report,
+        headers_migrated=metadata_pass.headers_migrated,
+        header_failures=metadata_pass.failures,
+        failed=report.failed + image_failures + reclaim_failures,
+    )
+    failure_category: str | None = None
+    reason: str | None = None
+
+    if metadata_pass.failures or metadata_pass.authority is None:
+        failure_category = "metadata"
+        reason = (
+            metadata_pass.failures[0][1]
+            if metadata_pass.failures
+            else "metadata stage lacks terminal authority"
+        )
+    else:
+        try:
+            current_metadata = metadata_migration_authority(
+                _bundle_layout(output_dir)
+            )
+        except Exception as exc:  # noqa: BLE001 - typed terminal failure
+            failure_category = "metadata"
+            reason = f"metadata authority validation failed: {type(exc).__name__}: {exc}"
+            final_report = _append_publication_failure(
+                final_report, metadata_pass.authority.status_path, reason
+            )
+        else:
+            if (
+                current_metadata.terminal_receipt_digest
+                != metadata_pass.authority.terminal_receipt_digest
+            ):
+                failure_category = "metadata"
+                reason = "metadata authority changed before finalization"
+                final_report = _append_publication_failure(
+                    final_report, metadata_pass.authority.status_path, reason
+                )
+
+    if failure_category is None and image_failures:
+        failure_category = "image"
+        reason = image_failures[0][1]
+
+    if failure_category is None:
+        from ._cli_migrate_manifest import _read_manifest
+
+        try:
+            _, manifest = _read_manifest(
+                manifest_path, expected_scientific_output
+            )
+        except Exception as exc:  # noqa: BLE001 - typed terminal failure
+            failure_category = "image_seal"
+            reason = f"manifest validation failed: {type(exc).__name__}: {exc}"
+        else:
+            image_seal_valid = (
+                manifest.generation == generation
+                and image_seal.generation == generation
+                and image_seal.manifest_digest == manifest.inventory_digest
+                and metadata_pass.authority is not None
+                and image_seal.metadata_terminal_digest
+                == metadata_pass.authority.terminal_receipt_digest
+                and valid_migration_image_seal(
+                    control_root,
+                    image_seal,
+                    manifest_path=manifest_path,
+                    expected_scientific_output=expected_scientific_output,
+                )
+            )
+            if not image_seal.clean or not image_seal_valid:
+                failure_category = "image_seal"
+                reason = "; ".join(image_seal.failures) or (
+                    "image seal is not current for this manifest and metadata authority"
+                )
+                final_report = _append_publication_failure(
+                    final_report,
+                    migration_image_seal_path(control_root, generation),
+                    reason,
+                )
+
+    if failure_category is None and deletion_requested:
+        if reclaim_failures:
+            failure_category = "reclaim"
+            reason = reclaim_failures[0][1]
+        elif reclaim_seal is None:
+            failure_category = "reclaim"
+            reason = "source deletion requested without reclaim seal"
+        elif not reclaim_seal.clean:
+            joined = "; ".join(reclaim_seal.failures)
+            failure_category = (
+                "reclaim_noop" if "retained" in joined.lower() else "reclaim"
+            )
+            reason = joined or "reclaim seal is not clean"
+        elif not valid_migration_reclaim_seal(
+            control_root,
+            reclaim_seal,
+            manifest_path=manifest_path,
+            expected_scientific_output=expected_scientific_output,
+        ):
+            failure_category = "reclaim"
+            reason = "reclaim seal is not current for this manifest"
+        if failure_category is not None:
+            final_report = _append_publication_failure(
+                final_report,
+                migration_reclaim_seal_path(control_root, generation),
+                reason or "reclaim authority failed",
+            )
+    elif failure_category is None and reclaim_seal is not None:
+        failure_category = "reclaim"
+        reason = "reclaim seal exists although source deletion was not requested"
+        final_report = _append_publication_failure(
+            final_report, reclaim_seal.seal_path, reason
+        )
+
+    if failure_category is None:
+        try:
+            emit_canonical_metadata_view(
+                output_dir, commit_guard=commit_guard
+            )
+            _publish_migration_aggregate(
+                output_dir, commit_guard=commit_guard
+            )
+        except Exception as exc:  # noqa: BLE001 - typed terminal failure
+            failure_category = "aggregate"
+            reason = (
+                "aggregate publication failed: "
+                f"{type(exc).__name__}: {exc}"
+            )
+            final_report = _append_publication_failure(
+                final_report,
+                aggregate_publication_marker_path(output_dir),
+                reason,
+            )
+
+    if failure_category is None:
+        try:
+            publish_run_completion_evidence(
+                output_dir,
+                execution_epoch=generation,
+                commit_guard=commit_guard,
+            )
+            if valid_run_completion(output_dir) is None:
+                raise RuntimeError("run completion marker validation failed")
+        except Exception as exc:  # noqa: BLE001 - typed terminal failure
+            failure_category = "completion"
+            reason = f"completion validation failed: {type(exc).__name__}: {exc}"
+            final_report = _append_publication_failure(
+                final_report,
+                run_completion_marker_path(output_dir),
+                reason,
+            )
+
+    succeeded = failure_category is None
+    if succeeded and not final_report.ok:
+        failure_category = "aggregate"
+        reason = "migration report contains unclassified terminal failures"
+        succeeded = False
+    status_durable = False
+    publish_migration_terminal_status(
+        output_dir,
+        generation=generation,
+        succeeded=succeeded,
+        failure_category=failure_category,
+        reason=reason,
+        report=final_report,
+        commit_guard=commit_guard,
+    )
+    status_durable = True
+    if status_durable:
+        close_migration_generation(
+            output_dir,
+            generation=generation,
+            succeeded=succeeded,
+            reason=reason,
+        )
+    return final_report
 
 
 def migrate_legacy_measurement_tables(
@@ -595,157 +1150,262 @@ def run_migrate(
         MigrateModeError: Pass 1 is blocked.
     """
     output_dir = Path(output_dir)
-    if not dry_run:
-        # Invalidate prior terminal authority before any migration mutation.
-        # A failed or empty rebuild must never re-certify stale deliverables.
-        aggregate_publication_marker_path(output_dir).unlink(missing_ok=True)
-        run_completion_marker_path(output_dir).unlink(missing_ok=True)
-    metadata_pass = run_metadata_pass(output_dir, dry_run=dry_run)
-    headers_migrated = metadata_pass.headers_migrated
-    header_failures = metadata_pass.failures
-    report = migrate_run_hdf_to_zarr(
-        output_dir,
-        keep_source=True,
-        njobs=njobs,
-        dry_run=dry_run,
-        finalize_publication=False,
-    )
-    if not dry_run:
-        _ensure_migration_processing_state(output_dir)
-    tables_migrated, tables_skipped, table_failures = (
-        migrate_legacy_measurement_tables(
+    tasks = tuple(discover_migration_tasks(output_dir))
+    metadata_snapshot = metadata_csv_deliverable_path(output_dir)
+    metadata_csv = metadata_snapshot if metadata_snapshot.is_file() else None
+
+    if dry_run:
+        metadata_pass = run_metadata_pass(output_dir, dry_run=True)
+        results, image_failures = _execute_migration_tasks(
             output_dir,
-            dry_run=dry_run,
-            delete_sources=delete_sources,
-        )
-    )
-    overlays_created, overlays_skipped, overlay_failures = (
-        render_migration_overlays(
-            output_dir,
+            tasks=tasks,
+            metadata_csv=metadata_csv,
             overlay_alpha=overlay_alpha,
+            dry_run=True,
             njobs=njobs,
-            dry_run=dry_run,
+            commit_guard=None,
         )
+        report = _report_from_image_results(tasks, results)
+        return replace(
+            report,
+            headers_migrated=metadata_pass.headers_migrated,
+            header_failures=metadata_pass.failures,
+            failed=image_failures,
+        )
+
+    generation = new_slurm_generation()
+    initialize_slurm_lifecycle(
+        output_dir,
+        generation=generation,
+        mode="migrate",
     )
-    hdf_failures = list(report.failed)
-    publication_failures: list[tuple[Path, str]] = []
-    if not dry_run:
-        try:
-            # This additive metadata artifact is part of migration output, so
-            # finish it before publishing any success authority. Terminal run
-            # completion must remain the final write in a clean migration.
-            emit_canonical_metadata_view(output_dir)
-        except Exception as exc:  # noqa: BLE001 - report publication
-            publication_failures.append(
-                (
-                    canonical_metadata_view_path(output_dir),
-                    "canonical metadata view failed: "
-                    f"{type(exc).__name__}: {exc}",
-                )
+
+    def commit_guard():
+        return generation_publication_guard(output_dir, generation)
+
+    invalidate_migration_terminal_authority(
+        output_dir,
+        commit_guard=commit_guard,
+    )
+    scientific_output = deliverables_dir(output_dir)
+    manifest_path = phenotypic_cache_dir(output_dir) / "migration_manifest.json"
+    try:
+        with publication_commit(commit_guard):
+            manifest = write_migration_manifest(
+                output_dir,
+                generation=generation,
+                scientific_output=scientific_output,
+                tasks=tasks,
             )
-        artifact_failures = (
-            bool(hdf_failures)
-            or bool(header_failures)
-            or bool(table_failures)
-            or bool(overlay_failures)
+    except Exception as exc:  # noqa: BLE001 - terminalize owned setup failure
+        reason = f"manifest publication failed: {type(exc).__name__}: {exc}"
+        report = MigrationReport(
+            publication_failures=((manifest_path, reason),)
         )
-        if not artifact_failures and not publication_failures:
-            _, marker_failures = publish_migrated_image_markers(output_dir)
-            publication_failures.extend(marker_failures)
-        if (
-            delete_sources
-            and not artifact_failures
-            and not publication_failures
-        ):
-            from phenotypic.sdk_._hdf_to_zarr import _reclaim_sources
+        publish_migration_terminal_status(
+            output_dir,
+            generation=generation,
+            succeeded=False,
+            failure_category="image_seal",
+            reason=reason,
+            report=report,
+            commit_guard=commit_guard,
+        )
+        close_migration_generation(
+            output_dir,
+            generation=generation,
+            succeeded=False,
+            reason=reason,
+        )
+        return report
 
-            hdf_failures.extend(_reclaim_sources(output_dir))
-        if not artifact_failures and not publication_failures and not hdf_failures:
-            try:
-                from phenotypic._cli._cli_output_manager import (
-                    aggregate_measurements,
-                )
-
-                datasets = sorted(
-                    path.name
-                    for path in (output_dir / "results").iterdir()
-                    if path.is_dir()
-                )
-                snapshot = metadata_csv_deliverable_path(output_dir)
-                aggregate_path = aggregate_measurements(
+    try:
+        metadata_pass = run_metadata_pass(
+            output_dir,
+            dry_run=False,
+            commit_guard=commit_guard,
+        )
+    except Exception as exc:  # noqa: BLE001 - terminalize metadata failure
+        metadata_pass = MetadataPassResult(
+            headers_migrated=0,
+            failures=(
+                (
                     output_dir,
-                    datasets,
-                    metadata_csv=snapshot if snapshot.is_file() else None,
-                    no_qc=True,
-                )
-                embedded_tables_exist = any(
-                    (output_dir / "results").glob(
-                        "*/zarr/*.ome.zarr/tables/measurements/table.parquet"
-                    )
-                )
-                if aggregate_path is None and embedded_tables_exist:
-                    raise RuntimeError(
-                        "aggregate rebuild produced no measurements"
-                    )
-                if not republish_aggregate(output_dir):
-                    raise RuntimeError(
-                        "aggregate marker publication returned false"
-                    )
-            except Exception as exc:  # noqa: BLE001 - report publication
-                publication_failures.append(
-                    (
-                        aggregate_publication_marker_path(output_dir),
-                        "aggregate publication failed: "
-                        f"{type(exc).__name__}: {exc}",
-                    )
-                )
-        if (
-            not artifact_failures
-            and not hdf_failures
-            and not publication_failures
-        ):
-            try:
-                from phenotypic._cli._cli_completion import (
-                    publish_run_completion_evidence,
-                    valid_run_completion,
-                )
+                    f"{type(exc).__name__}: {exc}",
+                ),
+            ),
+            authority=None,
+        )
 
-                completion_path = publish_run_completion_evidence(
-                    output_dir, execution_epoch="local"
-                )
-                if valid_run_completion(output_dir) is None:
-                    raise RuntimeError(
-                        "run completion marker validation failed"
+    results: tuple[MigrationImageResult, ...] = ()
+    image_failures: tuple[tuple[Path, str], ...] = ()
+    if not metadata_pass.failures and metadata_pass.authority is not None:
+        try:
+            _ensure_migration_processing_state(
+                output_dir,
+                tasks=tasks,
+                commit_guard=commit_guard,
+            )
+        except Exception as exc:  # noqa: BLE001 - terminalize image setup
+            image_failures = (
+                (
+                    output_dir,
+                    f"image state preparation failed: {type(exc).__name__}: {exc}",
+                ),
+            )
+        else:
+            results, image_failures = _execute_migration_tasks(
+                output_dir,
+                tasks=tasks,
+                metadata_csv=metadata_csv,
+                overlay_alpha=overlay_alpha,
+                dry_run=False,
+                njobs=njobs,
+                commit_guard=commit_guard,
+            )
+            status_failures = list(image_failures)
+            for result in results:
+                try:
+                    publish_migration_task_status(
+                        phenotypic_cache_dir(output_dir),
+                        manifest_path=manifest_path,
+                        expected_scientific_output=scientific_output,
+                        generation=generation,
+                        metadata_terminal_digest=(
+                            metadata_pass.authority.terminal_receipt_digest
+                        ),
+                        result=result,
+                        commit_guard=commit_guard,
                     )
-            except Exception as exc:  # noqa: BLE001 - report publication
-                run_completion_marker_path(output_dir).unlink(missing_ok=True)
-                publication_failures.append(
-                    (
-                        run_completion_marker_path(output_dir),
-                        f"{type(exc).__name__}: {exc}",
-                    )
-                )
-            else:
-                if completion_path != run_completion_marker_path(output_dir):
-                    run_completion_marker_path(output_dir).unlink(missing_ok=True)
-                    publication_failures.append(
+                except Exception as exc:  # noqa: BLE001 - isolate status failure
+                    status_failures.append(
                         (
-                            completion_path,
-                            "completion publisher returned an unexpected path",
+                            migration_task_status_path(
+                                phenotypic_cache_dir(output_dir),
+                                generation,
+                                result.index,
+                            ),
+                            f"status publication failed: {type(exc).__name__}: {exc}",
                         )
                     )
-    return replace(
-        report,
-        failed=tuple(hdf_failures),
-        headers_migrated=headers_migrated,
-        header_failures=header_failures,
-        tables_migrated=tables_migrated,
-        tables_skipped=tables_skipped,
-        table_failures=table_failures,
-        overlays_created=overlays_created,
-        overlays_skipped=overlays_skipped,
-        overlay_failures=overlay_failures,
-        publication_failures=tuple(publication_failures),
+            image_failures = tuple(status_failures)
+
+    metadata_digest = (
+        metadata_pass.authority.terminal_receipt_digest
+        if metadata_pass.authority is not None
+        else "missing"
+    )
+    try:
+        image_seal = seal_migration_image_stage(
+            phenotypic_cache_dir(output_dir),
+            manifest_path=manifest_path,
+            expected_scientific_output=scientific_output,
+            generation=generation,
+            metadata_terminal_digest=metadata_digest,
+            commit_guard=commit_guard,
+        )
+    except Exception as exc:  # noqa: BLE001 - preserve terminal seal evidence
+        seal_path = migration_image_seal_path(
+            phenotypic_cache_dir(output_dir), generation
+        )
+        image_seal = MigrationImageSeal(
+            generation=generation,
+            manifest_digest=manifest.inventory_digest,
+            ordered_status_digest=hashlib.sha256(b"").hexdigest(),
+            metadata_terminal_digest=metadata_digest,
+            clean=False,
+            failures=(f"image sealing failed: {type(exc).__name__}: {exc}",),
+            seal_path=seal_path,
+        )
+
+    reclaim_failures: list[tuple[Path, str]] = []
+    reclaim_seal: MigrationReclaimSeal | None = None
+    if delete_sources:
+        result_by_index = {result.index: result for result in results}
+        for task in tasks:
+            try:
+                reclaim_result = (
+                    reclaim_image_sources(
+                        output_dir,
+                        task,
+                        metadata_csv=metadata_csv,
+                        commit_guard=commit_guard,
+                    )
+                    if image_seal.clean
+                    else _retained_reclaim_result(
+                        output_dir,
+                        task,
+                        result_by_index.get(task.index),
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001 - retain on reclaim failure
+                reclaim_failures.append(
+                    (
+                        task.hdf_path or task.store_path,
+                        f"reclaim failed: {type(exc).__name__}: {exc}",
+                    )
+                )
+                reclaim_result = _retained_reclaim_result(
+                    output_dir,
+                    task,
+                    result_by_index.get(task.index),
+                )
+            try:
+                publish_migration_reclaim_status(
+                    phenotypic_cache_dir(output_dir),
+                    manifest_path=manifest_path,
+                    expected_scientific_output=scientific_output,
+                    generation=generation,
+                    result=reclaim_result,
+                    commit_guard=commit_guard,
+                )
+            except Exception as exc:  # noqa: BLE001 - seal records missing status
+                reclaim_failures.append(
+                    (
+                        migration_reclaim_status_path(
+                            phenotypic_cache_dir(output_dir),
+                            generation,
+                            task.index,
+                        ),
+                        f"reclaim status publication failed: "
+                        f"{type(exc).__name__}: {exc}",
+                    )
+                )
+        try:
+            reclaim_seal = seal_migration_reclaim_stage(
+                phenotypic_cache_dir(output_dir),
+                manifest_path=manifest_path,
+                expected_scientific_output=scientific_output,
+                generation=generation,
+                deletion_requested=True,
+                image_seal=image_seal,
+                commit_guard=commit_guard,
+            )
+        except Exception as exc:  # noqa: BLE001 - terminalize reclaim failure
+            reclaim_failures.append(
+                (
+                    migration_reclaim_seal_path(
+                        phenotypic_cache_dir(output_dir), generation
+                    ),
+                    f"reclaim sealing failed: {type(exc).__name__}: {exc}",
+                )
+            )
+
+    report = _report_from_image_results(tasks, results)
+    return finalize_migration_attempt(
+        output_dir,
+        manifest_path=manifest_path,
+        expected_scientific_output=scientific_output,
+        generation=generation,
+        metadata_pass=metadata_pass,
+        image_seal=image_seal,
+        reclaim_seal=reclaim_seal,
+        deletion_requested=delete_sources,
+        dry_run=False,
+        report=report,
+        image_failures=image_failures,
+        reclaim_failures=tuple(reclaim_failures),
+        commit_guard=commit_guard,
     )
 
 

@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
 
-from ._atomic_io import CommitGuard, publication_commit
+from ._atomic_io import CommitGuard, atomic_write_with_writer, publication_commit
 from ._io_constants import (
     dataset_results_dir,
     deliverables_dir,
@@ -467,7 +467,11 @@ def canonical_metadata_view_path(output_dir: Path) -> Path:
     return deliverables_dir(Path(output_dir)) / CANONICAL_METADATA_CSV_NAME
 
 
-def emit_canonical_metadata_view(output_dir: Path) -> Path | None:
+def emit_canonical_metadata_view(
+    output_dir: Path,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> Path | None:
     """Derive a canonical-header view of the metadata snapshot.
 
     **``deliverables/metadata.csv`` is never touched.** It is immutable input
@@ -503,7 +507,12 @@ def emit_canonical_metadata_view(output_dir: Path) -> Path | None:
     # verbatim.
     frame = pl.read_csv(source, infer_schema_length=0)
     target = canonical_metadata_view_path(output_dir)
-    normalize_metadata_columns(frame).write_csv(target)
+    normalized = normalize_metadata_columns(frame)
+    atomic_write_with_writer(
+        target,
+        normalized.write_csv,
+        commit_guard=commit_guard,
+    )
     return target
 
 
@@ -676,7 +685,11 @@ def republish_image_markers(output_dir: Path) -> int:
     return republished
 
 
-def republish_aggregate(output_dir: Path) -> bool:
+def republish_aggregate(
+    output_dir: Path,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> bool:
     """Re-publish the aggregate marker over the migrated tree.
 
     Guarded, because a legacy tree with no markers is a **documented no-op,
@@ -710,7 +723,7 @@ def republish_aggregate(output_dir: Path) -> bool:
     if counts is None or counts[0] == 0:
         return False
     try:
-        publish_aggregate_snapshot(output_dir)
+        publish_aggregate_snapshot(output_dir, commit_guard=commit_guard)
     except (OSError, RuntimeError, ValueError):
         return False
     return True

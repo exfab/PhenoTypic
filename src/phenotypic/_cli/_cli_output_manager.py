@@ -741,7 +741,12 @@ def _apply_post_to_master(
         return master_df
 
 
-def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
+def _seed_measurements(
+    output_dir: Path,
+    master_df: "pl.DataFrame",
+    *,
+    commit_guard: "CommitGuard | None" = None,
+) -> None:
     """Atomically write ``measurements.{csv,parquet}`` as a fresh master copy.
 
     The GUI's results viewer mutates these mirrors in place when users curate
@@ -752,7 +757,9 @@ def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
     """
     try:
         atomic_write_with_writer(
-            measurements_csv_path(output_dir), master_df.write_csv
+            measurements_csv_path(output_dir),
+            master_df.write_csv,
+            commit_guard=commit_guard,
         )
     except Exception:
         logger.warning("Failed to seed measurements.csv (master was saved)")
@@ -761,6 +768,7 @@ def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
         atomic_write_with_writer(
             measurements_parquet_path(output_dir),
             lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
+            commit_guard=commit_guard,
         )
     except Exception:
         logger.warning(
@@ -933,6 +941,7 @@ def finalize_post_master_outputs(
     metadata_join_keys: tuple[str, ...] | None = None,
     no_qc: bool = False,
     study_config: Optional[dict] = None,
+    commit_guard: "CommitGuard | None" = None,
 ) -> "pl.DataFrame":
     """Run every CLI side effect that follows a freshly written master file.
 
@@ -1059,7 +1068,7 @@ def finalize_post_master_outputs(
     from phenotypic.sdk_ import order_measurement_columns
 
     post_df = post_df.select(order_measurement_columns(post_df.columns))
-    _seed_measurements(output_dir, post_df)
+    _seed_measurements(output_dir, post_df, commit_guard=commit_guard)
 
     # Always emit the REMBI run manifest (deliverables/rembi.yaml) from the
     # post-applied MIRROR — never the clean master — folding its per-colony rows
@@ -1294,6 +1303,7 @@ def _aggregate_measurements_unlocked(
     pipeline: Optional["ImagePipeline"] = None,
     no_qc: bool = False,
     study_config: Optional[dict] = None,
+    commit_guard: "CommitGuard | None" = None,
 ) -> Optional[Path]:
     """Aggregate per-image Parquet files into a master CSV via DuckDB.
 
@@ -1421,7 +1431,11 @@ def _aggregate_measurements_unlocked(
     master_pq_path = master_measurements_parquet_path(output_dir)
 
     try:
-        atomic_write_with_writer(master_csv_path, master_df.write_csv)
+        atomic_write_with_writer(
+            master_csv_path,
+            master_df.write_csv,
+            commit_guard=commit_guard,
+        )
     except Exception:
         logger.error("Failed to save master CSV")
         return None
@@ -1430,6 +1444,7 @@ def _aggregate_measurements_unlocked(
         atomic_write_with_writer(
             master_pq_path,
             lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
+            commit_guard=commit_guard,
         )
     except Exception:
         logger.warning("Failed to save master Parquet (CSV was saved)")
@@ -1454,12 +1469,13 @@ def _aggregate_measurements_unlocked(
         metadata_join_keys=metadata_join_keys,
         no_qc=no_qc,
         study_config=study_config,
+        commit_guard=commit_guard,
     )
 
     if authorized_sources is not None:
         from ._cli_completion import publish_aggregate_snapshot
 
-        publish_aggregate_snapshot(output_dir)
+        publish_aggregate_snapshot(output_dir, commit_guard=commit_guard)
 
     return master_csv_path
 
@@ -1472,6 +1488,7 @@ def aggregate_measurements(
     pipeline: Optional["ImagePipeline"] = None,
     no_qc: bool = False,
     study_config: Optional[dict] = None,
+    commit_guard: "CommitGuard | None" = None,
 ) -> Optional[Path]:
     """Serialize aggregate publication across forward and recompile finalizers."""
     from phenotypic.sdk_ import phenotypic_cache_dir
@@ -1489,6 +1506,7 @@ def aggregate_measurements(
             pipeline=pipeline,
             no_qc=no_qc,
             study_config=study_config,
+            commit_guard=commit_guard,
         )
 
 

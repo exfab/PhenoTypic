@@ -11,7 +11,9 @@ import struct
 from typing import Any, Final, Mapping, Sequence
 
 from phenotypic.sdk_ import (
+    CommitGuard,
     STORE_SUFFIX,
+    atomic_write_json,
     dataset_measurements_dir,
     dataset_overlays_dir,
     deliverables_dir,
@@ -70,6 +72,42 @@ class MigrationManifest:
     inventory_digest: str
     records_path: Path
     offsets_path: Path
+
+
+@dataclass(frozen=True)
+class MigrationImageSeal:
+    """Terminal evidence that every manifest image has current authority."""
+
+    generation: str
+    manifest_digest: str
+    ordered_status_digest: str
+    metadata_terminal_digest: str
+    clean: bool
+    failures: tuple[str, ...]
+    seal_path: Path
+
+    @property
+    def status_digest(self) -> str:
+        """Return the ordered task-status digest under its shorter name."""
+        return self.ordered_status_digest
+
+
+@dataclass(frozen=True)
+class MigrationReclaimSeal:
+    """Terminal evidence that every requested source reclaim is complete."""
+
+    generation: str
+    manifest_digest: str
+    ordered_reclaim_status_digest: str
+    deletion_requested: bool
+    clean: bool
+    failures: tuple[str, ...]
+    seal_path: Path
+
+    @property
+    def status_digest(self) -> str:
+        """Return the ordered reclaim-status digest under its shorter name."""
+        return self.ordered_reclaim_status_digest
 
 
 def _iter_hdf_candidates(dataset_dir: Path) -> tuple[Path, ...]:
@@ -135,6 +173,91 @@ def _safe_identity_component(value: object, name: str) -> str:
     ):
         raise ValueError(f"migration {name} must be a safe path component")
     return value
+
+
+def _safe_generation(value: object) -> str:
+    """Return one generation after applying the path-component contract."""
+    return _safe_identity_component(value, "generation")
+
+
+def _migration_generation_dir(control_root: Path, generation: str) -> Path:
+    """Return the private authority root for one migration generation."""
+    return Path(control_root).absolute() / "migration_generations" / _safe_generation(
+        generation
+    )
+
+
+def migration_task_status_path(
+    control_root: Path, generation: str, index: int
+) -> Path:
+    """Return the canonical image-task status path for one manifest index."""
+    if not isinstance(index, int) or isinstance(index, bool) or index < 0:
+        raise ValueError("migration status index must be a non-negative integer")
+    return (
+        _migration_generation_dir(control_root, generation)
+        / "image_status"
+        / f"{index:08d}.json"
+    )
+
+
+def migration_image_seal_path(control_root: Path, generation: str) -> Path:
+    """Return the canonical image-stage seal path for one generation."""
+    return _migration_generation_dir(control_root, generation) / "image_seal.json"
+
+
+def migration_reclaim_status_path(
+    control_root: Path, generation: str, index: int
+) -> Path:
+    """Return the canonical reclaim status path for one manifest index."""
+    if not isinstance(index, int) or isinstance(index, bool) or index < 0:
+        raise ValueError("migration reclaim index must be a non-negative integer")
+    return (
+        _migration_generation_dir(control_root, generation)
+        / "reclaim_status"
+        / f"{index:08d}.json"
+    )
+
+
+def migration_reclaim_seal_path(control_root: Path, generation: str) -> Path:
+    """Return the canonical reclaim-stage seal path for one generation."""
+    return _migration_generation_dir(control_root, generation) / "reclaim_seal.json"
+
+
+def _sha256_bytes(data: bytes) -> str:
+    """Return the lowercase hexadecimal SHA-256 digest of *data*."""
+    return hashlib.sha256(data).hexdigest()
+
+
+def _valid_hex_digest(value: object) -> bool:
+    """Return whether *value* is one exact lowercase SHA-256 hex digest."""
+    if not isinstance(value, str) or len(value) != 64:
+        return False
+    try:
+        return bytes.fromhex(value).hex() == value
+    except ValueError:
+        return False
+
+
+def _valid_metadata_terminal_digest(value: object) -> bool:
+    """Return whether *value* names a Task-2 terminal receipt digest."""
+    return (
+        isinstance(value, str)
+        and value.startswith("sha256:")
+        and _valid_hex_digest(value.removeprefix("sha256:"))
+    )
+
+
+def _ordered_file_digest(paths: Sequence[Path]) -> str:
+    """Bind ordered status filenames and exact payload bytes."""
+    digest = hashlib.sha256()
+    for path in paths:
+        name = path.name.encode("utf-8")
+        payload = path.read_bytes()
+        digest.update(struct.pack(">Q", len(name)))
+        digest.update(name)
+        digest.update(struct.pack(">Q", len(payload)))
+        digest.update(payload)
+    return digest.hexdigest()
 
 
 def _manifest_paths(output_root: Path) -> tuple[Path, Path, Path, Path]:
@@ -638,3 +761,804 @@ def read_migration_task(
         manifest=manifest,
         index=index,
     )
+
+
+def _validated_manifest_for_authority(
+    control_root: Path,
+    manifest_path: Path,
+    expected_scientific_output: Path,
+    generation: str,
+) -> tuple[Path, MigrationManifest]:
+    """Load a manifest and prove it belongs to this control generation."""
+    output_root, manifest = _read_manifest(
+        manifest_path, expected_scientific_output
+    )
+    canonical_control = phenotypic_cache_dir(output_root).resolve()
+    if Path(control_root).resolve() != canonical_control:
+        raise ValueError("migration authority has a non-canonical control root")
+    if manifest.generation != generation:
+        raise ValueError("migration authority generation does not match manifest")
+    return output_root, manifest
+
+
+def publish_migration_task_status(
+    control_root: Path,
+    *,
+    manifest_path: Path,
+    expected_scientific_output: Path,
+    generation: str,
+    metadata_terminal_digest: str,
+    result: Any,
+    commit_guard: CommitGuard | None = None,
+) -> Path:
+    """Atomically publish one completed image result under its generation fence."""
+    output_root, manifest = _validated_manifest_for_authority(
+        control_root,
+        manifest_path,
+        expected_scientific_output,
+        generation,
+    )
+    if not _valid_metadata_terminal_digest(metadata_terminal_digest):
+        raise ValueError("migration status has an invalid metadata digest")
+    if not isinstance(getattr(result, "index", None), int):
+        raise ValueError("migration result has an invalid manifest index")
+    task = read_migration_task(
+        manifest_path,
+        result.index,
+        expected_scientific_output=expected_scientific_output,
+    )
+    if (
+        result.dataset != task.dataset
+        or result.stem != task.stem
+        or result.index != task.index
+    ):
+        raise ValueError("migration result identity does not match manifest")
+
+    from ._cli_migrate_image import _configured_work_id
+
+    expected_work_id = _configured_work_id(
+        output_root, task.dataset, task.stem
+    )
+    if result.work_id != expected_work_id:
+        raise ValueError("migration result work ID does not match current state")
+    if not _valid_hex_digest(result.marker_digest):
+        raise ValueError("migration result has an invalid marker digest")
+    try:
+        current_marker_digest = _sha256_bytes(task.marker_path.read_bytes())
+    except OSError as exc:
+        raise ValueError("migration result marker is missing") from exc
+    if current_marker_digest != result.marker_digest:
+        raise ValueError("migration result marker digest does not match current bytes")
+
+    path = migration_task_status_path(control_root, generation, task.index)
+    atomic_write_json(
+        path,
+        {
+            "schema_version": 1,
+            "state": "complete",
+            "generation": manifest.generation,
+            "manifest_digest": manifest.inventory_digest,
+            "index": task.index,
+            "dataset": task.dataset,
+            "stem": task.stem,
+            "work_id": result.work_id,
+            "metadata_terminal_digest": metadata_terminal_digest,
+            "marker_payload_digest": result.marker_digest,
+        },
+        commit_guard=commit_guard,
+    )
+    return path
+
+
+_IMAGE_STATUS_FIELDS: Final = frozenset(
+    {
+        "schema_version",
+        "state",
+        "generation",
+        "manifest_digest",
+        "index",
+        "dataset",
+        "stem",
+        "work_id",
+        "metadata_terminal_digest",
+        "marker_payload_digest",
+    }
+)
+
+
+def _read_json_mapping(path: Path, role: str) -> Mapping[str, Any]:
+    """Read one exact JSON mapping or raise a role-specific value error."""
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"invalid {role}: {path.name}") from exc
+    if not isinstance(value, Mapping):
+        raise ValueError(f"invalid {role}: {path.name}")
+    return value
+
+
+def seal_migration_image_stage(
+    control_root: Path,
+    *,
+    manifest_path: Path,
+    expected_scientific_output: Path,
+    generation: str,
+    metadata_terminal_digest: str,
+    commit_guard: CommitGuard | None = None,
+) -> MigrationImageSeal:
+    """Validate all image statuses and publish a clean or diagnostic seal."""
+    output_root, manifest = _validated_manifest_for_authority(
+        control_root,
+        manifest_path,
+        expected_scientific_output,
+        generation,
+    )
+    failures: list[str] = []
+    if not _valid_metadata_terminal_digest(metadata_terminal_digest):
+        failures.append("invalid expected metadata digest")
+    status_dir = migration_task_status_path(
+        control_root, generation, 0
+    ).parent
+    status_paths = sorted(status_dir.glob("*.json")) if status_dir.is_dir() else []
+    seen: dict[int, list[tuple[Path, Mapping[str, Any]]]] = {}
+    for status_path in status_paths:
+        try:
+            status = _read_json_mapping(status_path, "migration image status")
+        except ValueError as exc:
+            failures.append(str(exc))
+            continue
+        index = status.get("index")
+        if not isinstance(index, int) or isinstance(index, bool) or index < 0:
+            failures.append(f"invalid status index in {status_path.name}")
+            continue
+        seen.setdefault(index, []).append((status_path, status))
+        if index >= manifest.task_count:
+            failures.append(f"extra status index {index}")
+            continue
+        if status_path != migration_task_status_path(control_root, generation, index):
+            failures.append(f"non-canonical status path for index {index}")
+
+    for index, entries in sorted(seen.items()):
+        if len(entries) > 1:
+            failures.append(f"duplicate status index {index}")
+
+    from ._cli_migrate_image import _configured_work_id
+
+    for index in range(manifest.task_count):
+        entries = seen.get(index, [])
+        if not entries:
+            failures.append(f"missing status index {index}")
+            continue
+        if len(entries) != 1:
+            continue
+        _, status = entries[0]
+        if set(status) != _IMAGE_STATUS_FIELDS:
+            failures.append(f"status index {index} has invalid schema")
+            continue
+        if status.get("schema_version") != 1 or status.get("state") != "complete":
+            failures.append(f"status index {index} is not complete")
+        if status.get("generation") != generation:
+            failures.append(f"status index {index} has wrong generation")
+        if status.get("manifest_digest") != manifest.inventory_digest:
+            failures.append(f"status index {index} has wrong manifest digest")
+        task = read_migration_task(
+            manifest_path,
+            index,
+            expected_scientific_output=expected_scientific_output,
+        )
+        if status.get("dataset") != task.dataset or status.get("stem") != task.stem:
+            failures.append(f"status index {index} has wrong image identity")
+        expected_work_id = _configured_work_id(
+            output_root, task.dataset, task.stem
+        )
+        if status.get("work_id") != expected_work_id:
+            failures.append(f"status index {index} has wrong work ID")
+        if status.get("metadata_terminal_digest") != metadata_terminal_digest:
+            failures.append(f"status index {index} has wrong metadata digest")
+        marker_digest = status.get("marker_payload_digest")
+        try:
+            current_marker_digest = _sha256_bytes(task.marker_path.read_bytes())
+        except OSError:
+            failures.append(f"status index {index} has missing current marker")
+        else:
+            if not _valid_hex_digest(marker_digest):
+                failures.append(f"status index {index} has invalid marker digest")
+            elif marker_digest != current_marker_digest:
+                failures.append(f"status index {index} has wrong marker digest")
+
+    try:
+        ordered_status_digest = _ordered_file_digest(status_paths)
+    except OSError as exc:
+        failures.append(f"could not digest migration image statuses: {exc}")
+        ordered_status_digest = hashlib.sha256(b"").hexdigest()
+    seal_path = migration_image_seal_path(control_root, generation)
+    payload = {
+        "schema_version": 1,
+        "generation": generation,
+        "manifest_digest": manifest.inventory_digest,
+        "ordered_status_digest": ordered_status_digest,
+        "metadata_terminal_digest": metadata_terminal_digest,
+        "clean": not failures,
+        "failures": failures,
+    }
+    atomic_write_json(seal_path, payload, commit_guard=commit_guard)
+    return MigrationImageSeal(
+        generation=generation,
+        manifest_digest=manifest.inventory_digest,
+        ordered_status_digest=ordered_status_digest,
+        metadata_terminal_digest=metadata_terminal_digest,
+        clean=not failures,
+        failures=tuple(failures),
+        seal_path=seal_path,
+    )
+
+
+def _source_state_value(state: Any) -> dict[str, Any]:
+    """Serialize one Task-3 source-state result without losing absence."""
+    return {
+        "path": None if state.path is None else str(Path(state.path)),
+        "exists": state.exists,
+        "size": state.size,
+        "sha256": state.sha256,
+    }
+
+
+def _current_source_state_value(path: Path | None) -> dict[str, Any]:
+    """Fingerprint one live source file or record its exact absence."""
+    if path is None:
+        return {"path": None, "exists": False, "size": None, "sha256": None}
+    source = Path(path)
+    try:
+        payload = source.read_bytes()
+    except OSError:
+        return {
+            "path": str(source),
+            "exists": False,
+            "size": None,
+            "sha256": None,
+        }
+    return {
+        "path": str(source),
+        "exists": True,
+        "size": len(payload),
+        "sha256": _sha256_bytes(payload),
+    }
+
+
+def _valid_source_state_value(value: object, expected_path: Path | None) -> bool:
+    """Validate one serialized source fingerprint and its manifest path."""
+    if not isinstance(value, Mapping) or set(value) != {
+        "path",
+        "exists",
+        "size",
+        "sha256",
+    }:
+        return False
+    expected = None if expected_path is None else str(expected_path)
+    if value.get("path") != expected or not isinstance(value.get("exists"), bool):
+        return False
+    if value["exists"]:
+        return (
+            isinstance(value.get("size"), int)
+            and not isinstance(value.get("size"), bool)
+            and value["size"] >= 0
+            and _valid_hex_digest(value.get("sha256"))
+        )
+    return value.get("size") is None and value.get("sha256") is None
+
+
+def _expected_reclaim_paths(task: MigrationImageTask) -> tuple[Path, ...]:
+    """Return the manifest-ordered source deletion intent for one image."""
+    return tuple(
+        path for path in (task.hdf_path, task.measurement_path) if path is not None
+    )
+
+
+def _validate_reclaim_result(
+    output_root: Path,
+    task: MigrationImageTask,
+    result: Any,
+) -> tuple[dict[str, Any], list[str]]:
+    """Return one canonical reclaim payload plus complete validation failures."""
+    failures: list[str] = []
+    if (
+        result.index != task.index
+        or result.dataset != task.dataset
+        or result.stem != task.stem
+    ):
+        failures.append("reclaim result identity does not match manifest")
+
+    from ._cli_migrate_image import _configured_work_id
+
+    expected_work_id = _configured_work_id(
+        output_root, task.dataset, task.stem
+    )
+    if result.work_id != expected_work_id:
+        failures.append("reclaim result work ID does not match current state")
+    try:
+        current_marker_digest = _sha256_bytes(task.marker_path.read_bytes())
+    except OSError:
+        current_marker_digest = ""
+    retained_after_unclean_image = (
+        current_marker_digest == ""
+        and result.marker_digest == ""
+        and result.reason == "image seal was not clean; sources retained"
+        and not result.deleted_paths
+    )
+    if current_marker_digest == "" and not retained_after_unclean_image:
+        failures.append("reclaim result marker is missing")
+    if not retained_after_unclean_image and (
+        not _valid_hex_digest(result.marker_digest)
+        or result.marker_digest != current_marker_digest
+    ):
+        failures.append("reclaim result marker digest does not match current bytes")
+
+    expected_deletions = _expected_reclaim_paths(task)
+    intended = tuple(Path(path) for path in result.intended_deletions)
+    if intended != expected_deletions:
+        failures.append("reclaim result intended deletion set does not match manifest")
+    hdf_prestate = _source_state_value(result.hdf_prestate)
+    parquet_prestate = _source_state_value(result.parquet_prestate)
+    if not _valid_source_state_value(hdf_prestate, task.hdf_path):
+        failures.append("reclaim result HDF source prestate is invalid")
+    if not _valid_source_state_value(parquet_prestate, task.measurement_path):
+        failures.append("reclaim result Parquet source prestate is invalid")
+    try:
+        observed_values = tuple(
+            _source_state_value(state) for state in result.observed_poststate
+        )
+    except TypeError:
+        observed_values = ()
+    if len(observed_values) != 2:
+        failures.append("reclaim result observed poststate is incomplete")
+        observed_values = (
+            _current_source_state_value(task.hdf_path),
+            _current_source_state_value(task.measurement_path),
+        )
+    else:
+        for name, value, path in zip(
+            ("HDF", "Parquet"),
+            observed_values,
+            (task.hdf_path, task.measurement_path),
+            strict=True,
+        ):
+            if not _valid_source_state_value(value, path):
+                failures.append(f"reclaim result {name} poststate is invalid")
+            if value != _current_source_state_value(path):
+                failures.append(
+                    f"reclaim result {name} poststate does not match current source"
+                )
+
+    deleted = tuple(Path(path) for path in result.deleted_paths)
+    retained = tuple(Path(path) for path in result.retained_paths)
+    if len(set(deleted)) != len(deleted) or any(
+        path not in expected_deletions for path in deleted
+    ):
+        failures.append("reclaim result deleted paths are invalid")
+    if len(set(retained)) != len(retained) or any(
+        path not in expected_deletions for path in retained
+    ):
+        failures.append("reclaim result retained paths are invalid")
+    if set(deleted) & set(retained):
+        failures.append("reclaim result classifies one source twice")
+
+    source_pairs = zip(
+        (task.hdf_path, task.measurement_path),
+        (hdf_prestate, parquet_prestate),
+        observed_values,
+        strict=True,
+    )
+    for path, prestate, poststate in source_pairs:
+        if path is None:
+            continue
+        if path in deleted and (
+            prestate.get("exists") is not True or poststate.get("exists") is not False
+        ):
+            failures.append(f"reclaim result source transition is invalid: {path}")
+        if path in retained and poststate.get("exists") is not True:
+            failures.append(f"reclaim result retained source is absent: {path}")
+        if prestate.get("exists") is True and path not in deleted and path not in retained:
+            failures.append(f"reclaim result omits source disposition: {path}")
+
+    reason = result.reason
+    if reason is not None and not isinstance(reason, str):
+        failures.append("reclaim result reason is invalid")
+        reason = str(reason)
+    return (
+        {
+            "schema_version": 1,
+            "state": "complete",
+            "index": task.index,
+            "dataset": task.dataset,
+            "stem": task.stem,
+            "work_id": result.work_id,
+            "marker_payload_digest": result.marker_digest,
+            "intended_deletions": [str(path) for path in intended],
+            "hdf_prestate": hdf_prestate,
+            "parquet_prestate": parquet_prestate,
+            "observed_poststate": list(observed_values),
+            "deleted_paths": [str(path) for path in deleted],
+            "retained_paths": [str(path) for path in retained],
+            "reason": reason,
+        },
+        failures,
+    )
+
+
+def publish_migration_reclaim_status(
+    control_root: Path,
+    *,
+    manifest_path: Path,
+    expected_scientific_output: Path,
+    generation: str,
+    result: Any,
+    commit_guard: CommitGuard | None = None,
+) -> Path:
+    """Atomically publish one exact source-reclamation result."""
+    output_root, manifest = _validated_manifest_for_authority(
+        control_root,
+        manifest_path,
+        expected_scientific_output,
+        generation,
+    )
+    if not isinstance(getattr(result, "index", None), int):
+        raise ValueError("reclaim result has an invalid manifest index")
+    task = read_migration_task(
+        manifest_path,
+        result.index,
+        expected_scientific_output=expected_scientific_output,
+    )
+    payload, failures = _validate_reclaim_result(output_root, task, result)
+    if failures:
+        raise ValueError("; ".join(failures))
+    payload["generation"] = manifest.generation
+    payload["manifest_digest"] = manifest.inventory_digest
+    path = migration_reclaim_status_path(control_root, generation, task.index)
+    atomic_write_json(path, payload, commit_guard=commit_guard)
+    return path
+
+
+_RECLAIM_STATUS_FIELDS: Final = frozenset(
+    {
+        "schema_version",
+        "state",
+        "generation",
+        "manifest_digest",
+        "index",
+        "dataset",
+        "stem",
+        "work_id",
+        "marker_payload_digest",
+        "intended_deletions",
+        "hdf_prestate",
+        "parquet_prestate",
+        "observed_poststate",
+        "deleted_paths",
+        "retained_paths",
+        "reason",
+    }
+)
+
+
+def _image_seal_matches(
+    image_seal: MigrationImageSeal, manifest: MigrationManifest, generation: str
+) -> bool:
+    """Return whether supplied image evidence names this clean manifest."""
+    return (
+        image_seal.clean
+        and image_seal.generation == generation
+        and image_seal.manifest_digest == manifest.inventory_digest
+        and image_seal.seal_path == migration_image_seal_path(
+            image_seal.seal_path.parents[2], generation
+        )
+    )
+
+
+def seal_migration_reclaim_stage(
+    control_root: Path,
+    *,
+    manifest_path: Path,
+    expected_scientific_output: Path,
+    generation: str,
+    deletion_requested: bool,
+    image_seal: MigrationImageSeal | None = None,
+    commit_guard: CommitGuard | None = None,
+) -> MigrationReclaimSeal | None:
+    """Validate every source transition when deletion was requested."""
+    if not deletion_requested:
+        return None
+    output_root, manifest = _validated_manifest_for_authority(
+        control_root,
+        manifest_path,
+        expected_scientific_output,
+        generation,
+    )
+    failures: list[str] = []
+    if image_seal is None:
+        failures.append("a clean image seal is required before reclaim")
+    elif not _image_seal_matches(
+        image_seal, manifest, generation
+    ) or not valid_migration_image_seal(
+        control_root,
+        image_seal,
+        manifest_path=manifest_path,
+        expected_scientific_output=expected_scientific_output,
+    ):
+        failures.append("image seal is not clean or does not match this manifest")
+
+    status_dir = migration_reclaim_status_path(
+        control_root, generation, 0
+    ).parent
+    status_paths = sorted(status_dir.glob("*.json")) if status_dir.is_dir() else []
+    seen: dict[int, list[tuple[Path, Mapping[str, Any]]]] = {}
+    for status_path in status_paths:
+        try:
+            status = _read_json_mapping(status_path, "migration reclaim status")
+        except ValueError as exc:
+            failures.append(str(exc))
+            continue
+        index = status.get("index")
+        if not isinstance(index, int) or isinstance(index, bool) or index < 0:
+            failures.append(f"invalid reclaim status index in {status_path.name}")
+            continue
+        seen.setdefault(index, []).append((status_path, status))
+        if index >= manifest.task_count:
+            failures.append(f"extra reclaim status index {index}")
+            continue
+        if status_path != migration_reclaim_status_path(
+            control_root, generation, index
+        ):
+            failures.append(f"non-canonical reclaim status path for index {index}")
+    for index, entries in sorted(seen.items()):
+        if len(entries) > 1:
+            failures.append(f"duplicate reclaim status index {index}")
+
+    from ._cli_migrate_image import _configured_work_id
+
+    for index in range(manifest.task_count):
+        entries = seen.get(index, [])
+        if not entries:
+            failures.append(f"missing reclaim status index {index}")
+            continue
+        if len(entries) != 1:
+            continue
+        _, status = entries[0]
+        if set(status) != _RECLAIM_STATUS_FIELDS:
+            failures.append(f"reclaim status index {index} has invalid schema")
+            continue
+        if status.get("schema_version") != 1 or status.get("state") != "complete":
+            failures.append(f"reclaim status index {index} is not complete")
+        if status.get("generation") != generation:
+            failures.append(f"reclaim status index {index} has wrong generation")
+        if status.get("manifest_digest") != manifest.inventory_digest:
+            failures.append(f"reclaim status index {index} has wrong manifest digest")
+        task = read_migration_task(
+            manifest_path,
+            index,
+            expected_scientific_output=expected_scientific_output,
+        )
+        if status.get("dataset") != task.dataset or status.get("stem") != task.stem:
+            failures.append(f"reclaim status index {index} has wrong image identity")
+        expected_work_id = _configured_work_id(
+            output_root, task.dataset, task.stem
+        )
+        if status.get("work_id") != expected_work_id:
+            failures.append(f"reclaim status index {index} has wrong work ID")
+        try:
+            marker_digest = _sha256_bytes(task.marker_path.read_bytes())
+        except OSError:
+            marker_digest = ""
+        if status.get("marker_payload_digest") != marker_digest:
+            failures.append(f"reclaim status index {index} has wrong marker digest")
+
+        expected_paths = _expected_reclaim_paths(task)
+        if status.get("intended_deletions") != [
+            str(path) for path in expected_paths
+        ]:
+            failures.append(
+                f"reclaim status index {index} has wrong intended deletion set"
+            )
+        prestates = (status.get("hdf_prestate"), status.get("parquet_prestate"))
+        for name, prestate, path in zip(
+            ("HDF", "Parquet"),
+            prestates,
+            (task.hdf_path, task.measurement_path),
+            strict=True,
+        ):
+            if not _valid_source_state_value(prestate, path):
+                failures.append(
+                    f"reclaim status index {index} has invalid {name} source prestate"
+                )
+        observed = status.get("observed_poststate")
+        if not isinstance(observed, list) or len(observed) != 2:
+            failures.append(f"reclaim status index {index} has incomplete poststate")
+            observed = [None, None]
+        for name, poststate, path in zip(
+            ("HDF", "Parquet"),
+            observed,
+            (task.hdf_path, task.measurement_path),
+            strict=True,
+        ):
+            if not _valid_source_state_value(poststate, path):
+                failures.append(
+                    f"reclaim status index {index} has invalid {name} poststate"
+                )
+            if poststate != _current_source_state_value(path):
+                failures.append(
+                    f"reclaim status index {index} {name} poststate does not match current source"
+                )
+        retained = status.get("retained_paths")
+        if not isinstance(retained, list):
+            failures.append(f"reclaim status index {index} has invalid retained paths")
+        elif retained:
+            failures.append(f"reclaim status index {index} retained sources: {retained}")
+        if any(
+            isinstance(poststate, Mapping) and poststate.get("exists") is True
+            for poststate in observed
+        ):
+            failures.append(f"reclaim status index {index} has sources still present")
+
+    try:
+        ordered_digest = _ordered_file_digest(status_paths)
+    except OSError as exc:
+        failures.append(f"could not digest migration reclaim statuses: {exc}")
+        ordered_digest = hashlib.sha256(b"").hexdigest()
+    seal_path = migration_reclaim_seal_path(control_root, generation)
+    payload = {
+        "schema_version": 1,
+        "generation": generation,
+        "manifest_digest": manifest.inventory_digest,
+        "ordered_reclaim_status_digest": ordered_digest,
+        "deletion_requested": True,
+        "clean": not failures,
+        "failures": failures,
+    }
+    atomic_write_json(seal_path, payload, commit_guard=commit_guard)
+    return MigrationReclaimSeal(
+        generation=generation,
+        manifest_digest=manifest.inventory_digest,
+        ordered_reclaim_status_digest=ordered_digest,
+        deletion_requested=True,
+        clean=not failures,
+        failures=tuple(failures),
+        seal_path=seal_path,
+    )
+
+
+def valid_migration_image_seal(
+    control_root: Path,
+    seal: MigrationImageSeal,
+    *,
+    manifest_path: Path | None = None,
+    expected_scientific_output: Path | None = None,
+) -> bool:
+    """Return whether an image seal and its ordered status bytes are current."""
+    expected_path = migration_image_seal_path(control_root, seal.generation)
+    if seal.seal_path != expected_path:
+        return False
+    try:
+        payload = _read_json_mapping(expected_path, "migration image seal")
+        status_dir = migration_task_status_path(
+            control_root, seal.generation, 0
+        ).parent
+        status_paths = (
+            sorted(status_dir.glob("*.json")) if status_dir.is_dir() else []
+        )
+        current_digest = _ordered_file_digest(status_paths)
+    except (OSError, ValueError):
+        return False
+    seal_is_current = dict(payload) == {
+        "schema_version": 1,
+        "generation": seal.generation,
+        "manifest_digest": seal.manifest_digest,
+        "ordered_status_digest": seal.ordered_status_digest,
+        "metadata_terminal_digest": seal.metadata_terminal_digest,
+        "clean": seal.clean,
+        "failures": list(seal.failures),
+    } and current_digest == seal.ordered_status_digest
+    if not seal_is_current:
+        return False
+    if manifest_path is None and expected_scientific_output is None:
+        return True
+    if manifest_path is None or expected_scientific_output is None:
+        return False
+    try:
+        _, manifest = _validated_manifest_for_authority(
+            control_root,
+            manifest_path,
+            expected_scientific_output,
+            seal.generation,
+        )
+        if manifest.inventory_digest != seal.manifest_digest:
+            return False
+        for index in range(manifest.task_count):
+            task = read_migration_task(
+                manifest_path,
+                index,
+                expected_scientific_output=expected_scientific_output,
+            )
+            status = _read_json_mapping(
+                migration_task_status_path(control_root, seal.generation, index),
+                "migration image status",
+            )
+            marker_digest = _sha256_bytes(task.marker_path.read_bytes())
+            if status.get("marker_payload_digest") != marker_digest:
+                return False
+    except (OSError, ValueError):
+        return False
+    return True
+
+
+def valid_migration_reclaim_seal(
+    control_root: Path,
+    seal: MigrationReclaimSeal,
+    *,
+    manifest_path: Path | None = None,
+    expected_scientific_output: Path | None = None,
+) -> bool:
+    """Return whether a reclaim seal and ordered status bytes are current."""
+    expected_path = migration_reclaim_seal_path(control_root, seal.generation)
+    if seal.seal_path != expected_path:
+        return False
+    try:
+        payload = _read_json_mapping(expected_path, "migration reclaim seal")
+        status_dir = migration_reclaim_status_path(
+            control_root, seal.generation, 0
+        ).parent
+        status_paths = (
+            sorted(status_dir.glob("*.json")) if status_dir.is_dir() else []
+        )
+        current_digest = _ordered_file_digest(status_paths)
+    except (OSError, ValueError):
+        return False
+    seal_is_current = dict(payload) == {
+        "schema_version": 1,
+        "generation": seal.generation,
+        "manifest_digest": seal.manifest_digest,
+        "ordered_reclaim_status_digest": seal.ordered_reclaim_status_digest,
+        "deletion_requested": seal.deletion_requested,
+        "clean": seal.clean,
+        "failures": list(seal.failures),
+    } and current_digest == seal.ordered_reclaim_status_digest
+    if not seal_is_current:
+        return False
+    if manifest_path is None and expected_scientific_output is None:
+        return True
+    if manifest_path is None or expected_scientific_output is None:
+        return False
+    try:
+        _, manifest = _validated_manifest_for_authority(
+            control_root,
+            manifest_path,
+            expected_scientific_output,
+            seal.generation,
+        )
+        if manifest.inventory_digest != seal.manifest_digest:
+            return False
+        for index in range(manifest.task_count):
+            task = read_migration_task(
+                manifest_path,
+                index,
+                expected_scientific_output=expected_scientific_output,
+            )
+            status = _read_json_mapping(
+                migration_reclaim_status_path(control_root, seal.generation, index),
+                "migration reclaim status",
+            )
+            try:
+                marker_digest = _sha256_bytes(task.marker_path.read_bytes())
+            except OSError:
+                marker_digest = ""
+            if status.get("marker_payload_digest") != marker_digest:
+                return False
+            observed = status.get("observed_poststate")
+            if observed != [
+                _current_source_state_value(task.hdf_path),
+                _current_source_state_value(task.measurement_path),
+            ]:
+                return False
+            if status.get("retained_paths"):
+                return False
+    except (OSError, ValueError):
+        return False
+    return True

@@ -9,6 +9,7 @@ parquets that pass 2's markers fingerprint -- is exercised by nothing else.
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 import shutil
 
@@ -20,11 +21,18 @@ from phenotypic._cli._cli_completion import (
     valid_run_completion,
     valid_image_success,
 )
+from phenotypic._cli._cli_migrate import migration_terminal_status_path
+from phenotypic._cli._cli_migrate_manifest import (
+    migration_image_seal_path,
+    migration_reclaim_seal_path,
+)
+from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.sdk_ import (
     dataset_measurements_dir,
     dataset_overlays_dir,
     datasets_needing_migration,
+    phenotypic_cache_dir,
     zarr_store_path,
 )
 from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON, valid_staged_store
@@ -65,6 +73,26 @@ def test_a_full_migrate_leaves_the_run_valid_and_idle(
     completion = valid_run_completion(tree)
     assert completion is not None
     assert completion["version"] == 2
+    lifecycle = load_slurm_lifecycle(tree)
+    assert lifecycle is not None
+    assert lifecycle["mode"] == "migrate"
+    assert lifecycle["active"] is False
+    generation = str(lifecycle["generation"])
+    image_seal = json.loads(
+        migration_image_seal_path(
+            phenotypic_cache_dir(tree), generation
+        ).read_text(encoding="utf-8")
+    )
+    terminal_status = json.loads(
+        migration_terminal_status_path(
+            phenotypic_cache_dir(tree), generation
+        ).read_text(encoding="utf-8")
+    )
+    assert image_seal["clean"] is True
+    assert terminal_status["status"] == "succeeded"
+    assert not migration_reclaim_seal_path(
+        phenotypic_cache_dir(tree), generation
+    ).exists()
 
 
 def test_fixture_shaped_run_completes_32_measured_and_four_zero_object_images(
@@ -227,3 +255,12 @@ def test_delete_sources_reclaims_only_after_the_markers_validate(
             image_stem=stem,
             work_id=finished_legacy_run.work_id_for(stem),
         ), stem
+    lifecycle = load_slurm_lifecycle(tree)
+    assert lifecycle is not None
+    reclaim_seal = json.loads(
+        migration_reclaim_seal_path(
+            phenotypic_cache_dir(tree), str(lifecycle["generation"])
+        ).read_text(encoding="utf-8")
+    )
+    assert reclaim_seal["deletion_requested"] is True
+    assert reclaim_seal["clean"] is True

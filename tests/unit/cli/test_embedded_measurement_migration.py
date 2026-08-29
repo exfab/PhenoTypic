@@ -509,7 +509,11 @@ def test_false_aggregate_publication_makes_report_not_ok(
     """A guarded false return is a publication failure, not success."""
     from phenotypic._cli import _cli_migrate
 
-    monkeypatch.setattr(_cli_migrate, "republish_aggregate", lambda _root: False)
+    monkeypatch.setattr(
+        _cli_migrate,
+        "republish_aggregate",
+        lambda _root, **_kwargs: False,
+    )
 
     report = _cli_migrate.run_migrate(legacy_headers_run)
 
@@ -525,10 +529,11 @@ def test_source_reclamation_failure_blocks_terminal_completion(
     """A failed destructive pass cannot leave terminal run authority."""
     from phenotypic.sdk_ import run_completion_marker_path
 
-    failed_source = legacy_run / "results" / DATASET / "hdf" / "img.h5"
     monkeypatch.setattr(
-        "phenotypic.sdk_._hdf_to_zarr._reclaim_sources",
-        lambda _root: [(failed_source, "simulated reclaim failure")],
+        "phenotypic._cli._cli_migrate.reclaim_image_sources",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            RuntimeError("simulated reclaim failure")
+        ),
     )
 
     result = CliRunner().invoke(

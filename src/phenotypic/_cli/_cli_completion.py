@@ -709,7 +709,11 @@ def _canonical_digest(value: object) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def publish_aggregate_snapshot(output_dir: Path) -> Path:
+def publish_aggregate_snapshot(
+    output_dir: Path,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> Path:
     """Publish marker-last integrity evidence for the canonical core snapshot."""
     from ._cli_state_management import load_processing_state
 
@@ -766,7 +770,7 @@ def publish_aggregate_snapshot(output_dir: Path) -> Path:
         ),
     }
     path = aggregate_publication_marker_path(output_dir)
-    atomic_write_json(path, marker)
+    atomic_write_json(path, marker, commit_guard=commit_guard)
     return path
 
 
@@ -805,6 +809,7 @@ def publish_run_completion_evidence(
     *,
     execution_epoch: str,
     gui_record_generation: str | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Publish all-success run evidence, idempotently for a no-op run."""
     from ._cli_state_management import load_processing_state
@@ -835,6 +840,7 @@ def publish_run_completion_evidence(
                     timespec="milliseconds"
                 ),
             },
+            commit_guard=commit_guard,
         )
         return path
     if completion is not True:
@@ -893,7 +899,7 @@ def publish_run_completion_evidence(
         existing.get(key) == payload.get(key) for key in stable_keys
     ):
         return path
-    atomic_write_json(path, payload)
+    atomic_write_json(path, payload, commit_guard=commit_guard)
     return path
 
 
