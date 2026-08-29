@@ -53,13 +53,14 @@ import json
 import os
 import pickle
 import shutil
+import stat
 import struct
 import tempfile
 from collections.abc import Iterable, Mapping
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, BinaryIO, Literal, TypeAlias, cast
+from typing import Any, BinaryIO, Iterator, Literal, TypeAlias, cast
 
 import numpy as np
 import pandas as pd
@@ -69,7 +70,7 @@ from ._atomic_io import (
     atomic_write_json,
     publication_commit,
 )
-from ._file_locking import exclusive_path_lock
+from ._file_locking import exclusive_file_lock
 from ._io_constants import (
     DATASET_AGGREGATED_PARQUET,
     BundleLayout,
@@ -1239,6 +1240,213 @@ def _journal_writer_lock_path(log_path: Path) -> Path:
     return log_path.with_name(f".{log_path.name}.writer.lock")
 
 
+@dataclass
+class _AnchoredJournalFile:
+    """A regular journal child bound to its opened directory and inode."""
+
+    handle: BinaryIO
+    directory_fd: int | None
+    name: str
+    path: Path
+    role: str
+    identity: tuple[int, int]
+
+
+def _journal_open_flags(flags: int) -> int:
+    """Add the strongest available descriptor-safety flags."""
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    return flags
+
+
+def _journal_directory_flags() -> int:
+    """Return flags for a no-follow directory descriptor."""
+    return _journal_open_flags(os.O_RDONLY) | getattr(os, "O_DIRECTORY", 0)
+
+
+_JOURNAL_DIR_FD_SUPPORTED = (
+    os.open in os.supports_dir_fd
+    and os.stat in os.supports_dir_fd
+    and os.stat in os.supports_follow_symlinks
+)
+
+
+@contextmanager
+def _open_anchored_journal_directory(
+    root: Path,
+    directory: Path,
+) -> Iterator[int | None]:
+    """Open ``directory`` one no-follow component at a time from ``root``."""
+    safe_root = _require_safe_migration_path(
+        root, role="Metadata migration journal authoritative root"
+    )
+    safe_directory = _absolute_path(directory)
+    try:
+        relative = safe_directory.relative_to(safe_root)
+    except ValueError as exc:
+        raise ValueError(
+            f"Metadata migration journal directory escapes its root: {directory}"
+        ) from exc
+    if not _JOURNAL_DIR_FD_SUPPORTED:  # pragma: win32 cover
+        safe_directory = _require_safe_migration_path(
+            safe_directory,
+            role="Metadata migration journal directory",
+            root=safe_root,
+        )
+        if not safe_directory.is_dir():
+            raise ValueError(
+                "Metadata migration journal path is not a directory: "
+                f"{safe_directory}"
+            )
+        yield None
+        return
+    descriptors: list[int] = []
+    try:
+        root_fd = os.open(safe_root, _journal_directory_flags())
+        descriptors.append(root_fd)
+        if not stat.S_ISDIR(os.fstat(root_fd).st_mode):
+            raise ValueError(
+                "Metadata migration journal authoritative root is not a directory"
+            )
+        current_fd = root_fd
+        for component in relative.parts:
+            try:
+                next_fd = os.open(
+                    component,
+                    _journal_directory_flags(),
+                    dir_fd=current_fd,
+                )
+            except OSError as exc:
+                raise ValueError(
+                    "Metadata migration journal directory changed while opening: "
+                    f"{safe_directory}"
+                ) from exc
+            descriptors.append(next_fd)
+            if not stat.S_ISDIR(os.fstat(next_fd).st_mode):
+                raise ValueError(
+                    "Metadata migration journal path is not a directory: "
+                    f"{safe_directory}"
+                )
+            current_fd = next_fd
+        yield current_fd
+    finally:
+        for descriptor in reversed(descriptors):
+            os.close(descriptor)
+
+
+def _verify_anchored_journal_file(file: _AnchoredJournalFile) -> None:
+    """Prove the child's current pathname still names the held regular file."""
+    held = os.fstat(file.handle.fileno())
+    if not stat.S_ISREG(held.st_mode):
+        raise ValueError(
+            f"{file.role} journal child changed or is not regular: {file.path}"
+        )
+    try:
+        if file.directory_fd is None:  # pragma: win32 cover
+            named = os.lstat(file.path)
+        else:
+            named = os.stat(
+                file.name,
+                dir_fd=file.directory_fd,
+                follow_symlinks=False,
+            )
+    except OSError as exc:
+        raise ValueError(
+            f"{file.role} journal child changed: {file.path}"
+        ) from exc
+    if (
+        not stat.S_ISREG(named.st_mode)
+        or (held.st_dev, held.st_ino) != file.identity
+        or (named.st_dev, named.st_ino) != file.identity
+    ):
+        raise ValueError(f"{file.role} journal child changed: {file.path}")
+
+
+@contextmanager
+def _open_anchored_journal_file(
+    path: Path,
+    *,
+    root: Path,
+    role: str,
+    flags: int,
+    mode: str,
+    create_mode: int = 0o600,
+) -> Iterator[_AnchoredJournalFile]:
+    """Open one journal child through its held parent directory descriptor."""
+    safe_path = _absolute_path(path)
+    with _open_anchored_journal_directory(root, safe_path.parent) as directory_fd:
+        try:
+            if directory_fd is None:  # pragma: win32 cover
+                descriptor = os.open(
+                    safe_path,
+                    _journal_open_flags(flags),
+                    create_mode,
+                )
+            else:
+                descriptor = os.open(
+                    safe_path.name,
+                    _journal_open_flags(flags),
+                    create_mode,
+                    dir_fd=directory_fd,
+                )
+        except OSError as exc:
+            raise ValueError(
+                f"{role} journal child changed while opening: {safe_path}"
+            ) from exc
+        try:
+            opened = os.fstat(descriptor)
+            if not stat.S_ISREG(opened.st_mode):
+                raise ValueError(
+                    f"{role} journal child is not a regular file: {safe_path}"
+                )
+            identity = (opened.st_dev, opened.st_ino)
+            with os.fdopen(descriptor, mode) as handle:
+                descriptor = -1
+                anchored = _AnchoredJournalFile(
+                    handle=handle,
+                    directory_fd=directory_fd,
+                    name=safe_path.name,
+                    path=safe_path,
+                    role=role,
+                    identity=identity,
+                )
+                _verify_anchored_journal_file(anchored)
+                yield anchored
+        finally:
+            if descriptor >= 0:
+                os.close(descriptor)
+
+
+def _read_anchored_journal_json(
+    path: Path,
+    *,
+    root: Path,
+    role: str,
+) -> Any:
+    """Read JSON through one no-follow descriptor and recheck its binding."""
+    payload = _read_anchored_journal_bytes(path, root=root, role=role)
+    return json.loads(payload.decode("utf-8"))
+
+
+def _read_anchored_journal_bytes(
+    path: Path,
+    *,
+    root: Path,
+    role: str,
+) -> bytes:
+    """Read bytes through one no-follow descriptor and recheck its binding."""
+    with _open_anchored_journal_file(
+        path,
+        root=root,
+        role=role,
+        flags=os.O_RDONLY,
+        mode="rb",
+    ) as opened:
+        payload = opened.handle.read()
+        _verify_anchored_journal_file(opened)
+    return payload
+
+
 def _require_safe_journal_children(
     root: Path,
     plan_path: Path,
@@ -1278,7 +1486,22 @@ def _decode_journal_frames(
     log_path = _require_safe_migration_path(
         log_path, role="Metadata migration transition log", root=root
     )
-    data = log_path.read_bytes() if log_path.is_file() else b""
+    with _open_anchored_journal_file(
+        log_path,
+        root=root,
+        role="Metadata migration transition log",
+        flags=os.O_RDONLY,
+        mode="rb",
+    ) as opened:
+        data = opened.handle.read()
+        _verify_anchored_journal_file(opened)
+    return _decode_journal_data(data)
+
+
+def _decode_journal_data(
+    data: bytes,
+) -> tuple[list[dict[str, Any]], int, bool]:
+    """Decode an already descriptor-bound journal byte stream."""
     frames: list[dict[str, Any]] = []
     offset = 0
     while offset < len(data):
@@ -1324,20 +1547,12 @@ def _append_journal_transition(
     if transition.get("sequence") != writer.next_sequence:
         raise ValueError("Metadata migration journal sequence is not monotonic")
     with publication_commit(commit_guard):
-        _require_safe_migration_path(
-            writer.log_path,
-            role="Metadata migration transition log",
-            root=writer.root,
-        )
-        _require_safe_migration_path(
-            writer.writer_lock_path,
-            role="Metadata migration journal writer lock",
-            root=writer.root,
-        )
-        writer.handle.seek(writer.end_offset)
-        writer.handle.write(frame)
-        writer.handle.flush()
-        os.fsync(writer.handle.fileno())
+        _verify_anchored_journal_file(writer.log_file)
+        _verify_anchored_journal_file(writer.writer_lock_file)
+        writer.log_file.handle.seek(writer.end_offset)
+        writer.log_file.handle.write(frame)
+        writer.log_file.handle.flush()
+        os.fsync(writer.log_file.handle.fileno())
     writer.end_offset += len(frame)
     writer.next_sequence += 1
 
@@ -1346,12 +1561,10 @@ def _append_journal_transition(
 class _JournalWriter:
     """Exclusive retained append state established by one journal replay."""
 
-    handle: BinaryIO
+    log_file: _AnchoredJournalFile
+    writer_lock_file: _AnchoredJournalFile
     next_sequence: int
     end_offset: int
-    log_path: Path
-    writer_lock_path: Path
-    root: Path
 
 
 def _new_journal_plan(
@@ -1395,23 +1608,44 @@ def _write_journal_plan(
         )
         _ensure_directory_durable(plan_path.parent)
         if plan_path.is_file():
-            existing = json.loads(plan_path.read_text(encoding="utf-8"))
+            existing = _read_anchored_journal_json(
+                plan_path,
+                root=root,
+                role="Metadata migration journal plan",
+            )
             if existing != plan:
                 raise ValueError("Immutable metadata migration plan has changed")
         else:
             atomic_write_json(plan_path, dict(plan), sort_keys=True)
             _fsync_directory(plan_path.parent)
         if not log_path.exists():
-            with log_path.open("xb") as handle:
-                handle.flush()
-                os.fsync(handle.fileno())
+            with _open_anchored_journal_file(
+                log_path,
+                root=root,
+                role="Metadata migration transition log",
+                flags=os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                mode="wb",
+            ) as opened:
+                opened.handle.flush()
+                os.fsync(opened.handle.fileno())
             _fsync_directory(log_path.parent)
-        elif not log_path.is_file():
-            raise ValueError("Metadata migration journal is not a regular file")
+        else:
+            with _open_anchored_journal_file(
+                log_path,
+                root=root,
+                role="Metadata migration transition log",
+                flags=os.O_RDONLY,
+                mode="rb",
+            ):
+                pass
 
 
 def _replay_journal(
-    plan: Mapping[str, Any], log_path: Path, *, root: Path
+    plan: Mapping[str, Any],
+    log_path: Path,
+    *,
+    root: Path,
+    log_file: _AnchoredJournalFile | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], int, bool]:
     """Rebuild mutable receipt state from an immutable plan and frames."""
     receipt = json.loads(json.dumps(plan))
@@ -1421,7 +1655,14 @@ def _replay_journal(
         or not isinstance(raw_targets, list)
     ):
         raise ValueError("Unsupported metadata migration journal plan")
-    frames, valid_size, torn = _decode_journal_frames(log_path, root=root)
+    if log_file is None:
+        frames, valid_size, torn = _decode_journal_frames(log_path, root=root)
+    else:
+        _verify_anchored_journal_file(log_file)
+        log_file.handle.seek(0)
+        log_data = log_file.handle.read()
+        _verify_anchored_journal_file(log_file)
+        frames, valid_size, torn = _decode_journal_data(log_data)
     last_target = -1
     runtime_fields = (
         "post_fingerprint",
@@ -3017,7 +3258,11 @@ def _validated_terminal_receipt_evidence(
     )
     if not safe_receipt_path.is_file():
         raise ValueError("Metadata migration terminal receipt is missing")
-    receipt_bytes = safe_receipt_path.read_bytes()
+    receipt_bytes = _read_anchored_journal_bytes(
+        safe_receipt_path,
+        root=root,
+        role="Terminal migration receipt",
+    )
     receipt_digest = _sha256_bytes(receipt_bytes)
     if expected_digest is not None and receipt_digest != expected_digest:
         raise ValueError("Metadata migration terminal receipt digest changed")
@@ -3325,10 +3570,16 @@ def _apply_metadata_journal(
             root, plan_path, log_path, receipt_path
         )
     )
-    plan = json.loads(plan_path.read_text(encoding="utf-8"))
-    if not isinstance(plan, dict):
-        raise ValueError("Metadata migration plan must be a JSON object")
+    plan: dict[str, Any] = {}
     try:
+        raw_plan = _read_anchored_journal_json(
+            plan_path,
+            root=root,
+            role="Metadata migration journal plan",
+        )
+        if not isinstance(raw_plan, dict):
+            raise ValueError("Metadata migration plan must be a JSON object")
+        plan = raw_plan
         with ExitStack() as writer_lock_stack:
             with publication_commit(commit_guard):
                 log_path = _require_safe_migration_path(
@@ -3341,9 +3592,21 @@ def _apply_metadata_journal(
                     role="Metadata migration journal writer lock",
                     root=root,
                 )
-                writer_lock_stack.enter_context(
-                    exclusive_path_lock(writer_lock, timeout=0.0)
+                writer_lock_file = writer_lock_stack.enter_context(
+                    _open_anchored_journal_file(
+                        writer_lock,
+                        root=root,
+                        role="Metadata migration journal writer lock",
+                        flags=os.O_RDWR | os.O_CREAT,
+                        mode="a+b",
+                    )
                 )
+                writer_lock_stack.enter_context(
+                    exclusive_file_lock(
+                        writer_lock_file.handle, timeout=0.0
+                    )
+                )
+                _verify_anchored_journal_file(writer_lock_file)
             receipt_path = _require_safe_migration_path(
                 receipt_path,
                 role="Metadata migration terminal receipt",
@@ -3355,8 +3618,10 @@ def _apply_metadata_journal(
                     role="Metadata migration terminal receipt",
                     root=root,
                 )
-                receipt = json.loads(
-                    receipt_path.read_text(encoding="utf-8")
+                receipt = _read_anchored_journal_json(
+                    receipt_path,
+                    root=root,
+                    role="Metadata migration terminal receipt",
                 )
                 if not isinstance(receipt, dict):
                     raise ValueError(
@@ -3369,8 +3634,28 @@ def _apply_metadata_journal(
                 return _result_from_terminal_receipt(
                     receipt_path, receipt, compatible=compatible
                 )
+            with publication_commit(commit_guard):
+                log_path = _require_safe_migration_path(
+                    log_path,
+                    role="Metadata migration transition log",
+                    root=root,
+                )
+                writer_lock = _require_safe_migration_path(
+                    writer_lock,
+                    role="Metadata migration journal writer lock",
+                    root=root,
+                )
+                log_file = writer_lock_stack.enter_context(
+                    _open_anchored_journal_file(
+                        log_path,
+                        root=root,
+                        role="Metadata migration transition log",
+                        flags=os.O_RDWR,
+                        mode="r+b",
+                    )
+                )
             receipt, frames, valid_size, torn = _replay_journal(
-                plan, log_path, root=root
+                plan, log_path, root=root, log_file=log_file
             )
             _validate_replayed_authority(
                 layout, root, receipt, kinds=kinds
@@ -3388,111 +3673,45 @@ def _apply_metadata_journal(
 
             migrated: list[str] = []
             skipped: list[str] = []
-            with ExitStack() as log_handle_stack:
+            writer = _JournalWriter(
+                log_file=log_file,
+                writer_lock_file=writer_lock_file,
+                next_sequence=len(frames),
+                end_offset=valid_size,
+            )
+            if torn:
                 with publication_commit(commit_guard):
-                    log_path = _require_safe_migration_path(
-                        log_path,
-                        role="Metadata migration transition log",
-                        root=root,
-                    )
-                    writer_lock = _require_safe_migration_path(
-                        writer_lock,
-                        role="Metadata migration journal writer lock",
-                        root=root,
-                    )
-                    log_handle = log_handle_stack.enter_context(
-                        log_path.open("r+b")
-                    )
-                writer = _JournalWriter(
-                    handle=log_handle,
-                    next_sequence=len(frames),
-                    end_offset=valid_size,
-                    log_path=log_path,
-                    writer_lock_path=writer_lock,
-                    root=root,
-                )
-                if torn:
+                    validate_first_mutation()
+                    _verify_anchored_journal_file(log_file)
+                    _verify_anchored_journal_file(writer_lock_file)
+                    log_file.handle.truncate(valid_size)
+                    log_file.handle.flush()
+                    os.fsync(log_file.handle.fileno())
+            for target_index, target in enumerate(receipt["targets"]):
+                path = Path(target["path"])
+                state = target["state"]
+                if state == "skipped":
+                    skipped.append(str(path))
+                    continue
+                if state == "applied":
+                    migrated.append(str(path))
+                    continue
+                if state == "pending":
                     with publication_commit(commit_guard):
                         validate_first_mutation()
-                        log_handle.truncate(valid_size)
-                        log_handle.flush()
-                        os.fsync(log_handle.fileno())
-                for target_index, target in enumerate(receipt["targets"]):
-                    path = Path(target["path"])
-                    state = target["state"]
-                    if state == "skipped":
-                        skipped.append(str(path))
-                        continue
-                    if state == "applied":
-                        migrated.append(str(path))
-                        continue
-                    if state == "pending":
-                        with publication_commit(commit_guard):
-                            validate_first_mutation()
-                            if (
-                                file_fingerprint(path)
-                                != target["source_fingerprint"]
-                            ):
-                                raise ValueError(
-                                    f"Source changed after preflight: {path}"
-                                )
-                            _prepare_receipt_target(target, receipt_path)
-                        transition = _journal_transition(
-                            sequence=writer.next_sequence,
-                            target_index=target_index,
-                            previous_state="pending",
-                            next_state="prepared",
-                            target=target,
-                        )
-                        with publication_commit(commit_guard):
-                            validate_first_mutation()
-                            _append_journal_transition(
-                                writer, transition, commit_guard=None
+                        if (
+                            file_fingerprint(path)
+                            != target["source_fingerprint"]
+                        ):
+                            raise ValueError(
+                                f"Source changed after preflight: {path}"
                             )
-                        state = "prepared"
-                    if state != "prepared":
-                        raise ValueError(
-                            "Metadata migration target transition is invalid"
-                        )
-                    current = file_fingerprint(path)
-                    if current == target["source_fingerprint"]:
-                        temp = Path(str(target["temp_path"]))
-                        with publication_commit(commit_guard):
-                            validate_first_mutation()
-                            if (
-                                file_fingerprint(path)
-                                != target["source_fingerprint"]
-                            ):
-                                raise ValueError(
-                                    "Migration target changed before "
-                                    f"publication: {path}"
-                                )
-                            if (
-                                not temp.is_file()
-                                or file_fingerprint(temp)
-                                != target["post_fingerprint"]
-                            ):
-                                raise ValueError(
-                                    f"Prepared migration temp changed: {temp}"
-                                )
-                            _publish_temp(temp, path)
-                    elif current != target["post_fingerprint"]:
-                        raise ValueError(
-                            f"Prepared migration target changed: {path}"
-                        )
-                    if file_fingerprint(path) != target["post_fingerprint"]:
-                        raise ValueError(
-                            "Published migration target failed validation: "
-                            f"{path}"
-                        )
-                    target["state"] = "applied"
-                    target["temp_path"] = None
-                    target["rollback_fingerprint"] = None
+                        _prepare_receipt_target(target, receipt_path)
                     transition = _journal_transition(
                         sequence=writer.next_sequence,
                         target_index=target_index,
-                        previous_state="prepared",
-                        next_state="applied",
+                        previous_state="pending",
+                        next_state="prepared",
                         target=target,
                     )
                     with publication_commit(commit_guard):
@@ -3500,27 +3719,78 @@ def _apply_metadata_journal(
                         _append_journal_transition(
                             writer, transition, commit_guard=None
                         )
-                    migrated.append(str(path))
-                terminal = _publish_journal_terminal_receipt(
-                    layout,
-                    root,
-                    receipt,
-                    receipt_path,
-                    kinds=kinds,
-                    commit_guard=commit_guard,
+                    state = "prepared"
+                if state != "prepared":
+                    raise ValueError(
+                        "Metadata migration target transition is invalid"
+                    )
+                current = file_fingerprint(path)
+                if current == target["source_fingerprint"]:
+                    temp = Path(str(target["temp_path"]))
+                    with publication_commit(commit_guard):
+                        validate_first_mutation()
+                        if (
+                            file_fingerprint(path)
+                            != target["source_fingerprint"]
+                        ):
+                            raise ValueError(
+                                "Migration target changed before "
+                                f"publication: {path}"
+                            )
+                        if (
+                            not temp.is_file()
+                            or file_fingerprint(temp)
+                            != target["post_fingerprint"]
+                        ):
+                            raise ValueError(
+                                f"Prepared migration temp changed: {temp}"
+                            )
+                        _publish_temp(temp, path)
+                elif current != target["post_fingerprint"]:
+                    raise ValueError(
+                        f"Prepared migration target changed: {path}"
+                    )
+                if file_fingerprint(path) != target["post_fingerprint"]:
+                    raise ValueError(
+                        "Published migration target failed validation: "
+                        f"{path}"
+                    )
+                target["state"] = "applied"
+                target["temp_path"] = None
+                target["rollback_fingerprint"] = None
+                transition = _journal_transition(
+                    sequence=writer.next_sequence,
+                    target_index=target_index,
+                    previous_state="prepared",
+                    next_state="applied",
+                    target=target,
                 )
-                return MetadataMigrationResult(
-                    status="compatible" if not migrated else "applied",
-                    source=str(terminal["source"]),
-                    source_fingerprint=str(terminal["source_fingerprint"]),
-                    resulting_fingerprint=_receipt_resulting_fingerprint(
-                        terminal
-                    ),
-                    plan_fingerprint=str(terminal["plan_fingerprint"]),
-                    receipt_path=receipt_path,
-                    migrated_targets=tuple(migrated),
-                    skipped_targets=tuple(skipped),
-                )
+                with publication_commit(commit_guard):
+                    validate_first_mutation()
+                    _append_journal_transition(
+                        writer, transition, commit_guard=None
+                    )
+                migrated.append(str(path))
+            terminal = _publish_journal_terminal_receipt(
+                layout,
+                root,
+                receipt,
+                receipt_path,
+                kinds=kinds,
+                commit_guard=commit_guard,
+            )
+            return MetadataMigrationResult(
+                status="compatible" if not migrated else "applied",
+                source=str(terminal["source"]),
+                source_fingerprint=str(terminal["source_fingerprint"]),
+                resulting_fingerprint=_receipt_resulting_fingerprint(
+                    terminal
+                ),
+                plan_fingerprint=str(terminal["plan_fingerprint"]),
+                receipt_path=receipt_path,
+                migrated_targets=tuple(migrated),
+                skipped_targets=tuple(skipped),
+            )
     except Exception as exc:
         return MetadataMigrationResult(
             status="failed",
@@ -3645,7 +3915,11 @@ def _migrate_superseding_v4_authority(
     commit_guard: CommitGuard | None,
 ) -> MetadataMigrationResult:
     """Publish durable v4 authority only after exact v3 validation."""
-    superseded = json.loads(superseded_receipt.read_text(encoding="utf-8"))
+    superseded = _read_anchored_journal_json(
+        superseded_receipt,
+        root=root,
+        role="Historical metadata migration receipt",
+    )
     if not isinstance(superseded, dict):
         raise ValueError("Historical metadata migration receipt is malformed")
     _result_from_terminal_receipt(
@@ -3674,7 +3948,11 @@ def _migrate_superseding_v4_authority(
         supersedes_digest=supersedes_digest,
     )
     if plan_path.is_file():
-        existing = json.loads(plan_path.read_text(encoding="utf-8"))
+        existing = _read_anchored_journal_json(
+            plan_path,
+            root=root,
+            role="Metadata migration journal plan",
+        )
         if existing != expected_plan:
             raise ValueError("Competing superseding metadata authority exists")
     else:
@@ -3820,7 +4098,11 @@ def reconcile_metadata_migration_bundle(
                     "Metadata migration journal has unexpected contents before "
                     "plan publication"
                 )
-            plan = json.loads(plan_path.read_text(encoding="utf-8"))
+            plan = _read_anchored_journal_json(
+                plan_path,
+                root=root,
+                role="Metadata migration journal plan",
+            )
             if not isinstance(plan, dict):
                 raise ValueError("Metadata migration journal plan is malformed")
             receipt_schema_version = plan.get("schema_version")
@@ -3860,8 +4142,10 @@ def reconcile_metadata_migration_bundle(
                 )
             terminal_payload: dict[str, Any] | None = None
             if receipt_path.is_file():
-                loaded_terminal = json.loads(
-                    receipt_path.read_text(encoding="utf-8")
+                loaded_terminal = _read_anchored_journal_json(
+                    receipt_path,
+                    root=root,
+                    role="Metadata migration terminal receipt",
                 )
                 if not isinstance(loaded_terminal, dict):
                     raise ValueError(
@@ -3909,7 +4193,11 @@ def reconcile_metadata_migration_bundle(
             compatible_noop = report.status == "compatible"
         else:
             receipt_path = authority_path
-            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt = _read_anchored_journal_json(
+                receipt_path,
+                root=root,
+                role="Legacy metadata migration receipt",
+            )
             if not isinstance(receipt, dict):
                 raise ValueError("Legacy metadata migration receipt is malformed")
             receipt_schema_version = receipt.get("schema_version")
@@ -4058,7 +4346,11 @@ def migrate_preflighted_metadata_bundle(
     )
     expected_plan = _new_journal_plan(report, root=root, kinds=kinds)
     if plan_path.is_file():
-        existing_plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        existing_plan = _read_anchored_journal_json(
+            plan_path,
+            root=root,
+            role="Metadata migration journal plan",
+        )
         if existing_plan != expected_plan:
             return _receipt_validation_failure(
                 receipt_path,

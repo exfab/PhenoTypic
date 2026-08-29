@@ -433,26 +433,36 @@ def test_many_targets_replay_log_once_and_keep_one_append_handle(
     _, log_path, _ = migration._journal_paths(
         output, report.plan_fingerprint
     )
-    real_read_bytes = Path.read_bytes
-    real_open = Path.open
+    real_replay = migration._replay_journal
+    real_open = migration._open_anchored_journal_file
     decoded_sizes: list[int] = []
     log_open_modes: list[str] = []
 
-    def count_decoded_bytes(path: Path) -> bytes:
-        data = real_read_bytes(path)
+    def count_replay(
+        plan: dict[str, object],
+        path: Path,
+        *,
+        root: Path,
+        log_file: object | None = None,
+    ) -> tuple[dict[str, object], list[dict[str, object]], int, bool]:
         if path == log_path:
-            decoded_sizes.append(len(data))
-        return data
+            assert log_file is not None
+            decoded_sizes.append(os.fstat(log_file.handle.fileno()).st_size)
+        return real_replay(plan, path, root=root, log_file=log_file)
 
-    def count_log_opens(path: Path, *args: object, **kwargs: object):
-        mode = str(args[0]) if args else str(kwargs.get("mode", "r"))
+    @contextmanager
+    def count_log_opens(
+        path: Path, **kwargs: object
+    ) -> Iterator[object]:
+        mode = str(kwargs["mode"])
         if path == log_path:
             log_open_modes.append(mode)
-        return real_open(path, *args, **kwargs)
+        with real_open(path, **kwargs) as opened:
+            yield opened
 
     with monkeypatch.context() as scoped:
-        scoped.setattr(Path, "read_bytes", count_decoded_bytes)
-        scoped.setattr(Path, "open", count_log_opens)
+        scoped.setattr(migration, "_replay_journal", count_replay)
+        scoped.setattr(migration, "_open_anchored_journal_file", count_log_opens)
         result = migrate_preflighted_metadata_bundle(
             bundle, report=report, kinds=NON_IMAGE_KINDS
         )
@@ -682,6 +692,145 @@ def test_interrupted_journal_revalidates_mutable_child_at_guarded_seam(
     assert result.status == "failed"
     assert "symlink" in " ".join(result.conflicts).lower()
     assert victim.read_bytes() == b""
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+@pytest.mark.parametrize(
+    ("journal_child", "role", "validation_number", "terminal"),
+    [
+        ("plan.json", "Metadata migration journal plan", 1, False),
+        ("transitions.log", "Metadata migration transition log", 3, False),
+        ("receipt.json", "Metadata migration terminal receipt", 3, True),
+        (
+            ".transitions.log.writer.lock",
+            "Metadata migration journal writer lock",
+            2,
+            False,
+        ),
+    ],
+)
+def test_journal_child_swap_after_validation_is_refused_without_victim_io(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+    journal_child: str,
+    role: str,
+    validation_number: int,
+    terminal: bool,
+) -> None:
+    """A no-follow descriptor closes every validator-to-open symlink window."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    if terminal:
+        report = preflight_metadata_schema(
+            migratable_bundle, kinds=NON_IMAGE_KINDS
+        )
+        finished = migrate_preflighted_metadata_bundle(
+            migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+        )
+        assert finished.status == "applied"
+        paths = migration._journal_paths(
+            migratable_bundle.output_root, report.plan_fingerprint
+        )
+    else:
+        report, paths = _interrupt_after_first_target_replace(
+            migratable_bundle, monkeypatch
+        )
+    plan_path, log_path, receipt_path = paths
+    child = plan_path.parent / journal_child
+    assert child.is_file()
+    retained = child.with_name(f"{child.name}.retained")
+    victim = migratable_bundle.output_root.parent / (
+        f"external-open-race-{journal_child.replace('.', '-')}.bin"
+    )
+    victim.write_bytes(b"")
+    real_require_safe = migration._require_safe_migration_path
+    validations = 0
+    swapped = False
+
+    def swap_after_selected_validation(
+        path: str | Path,
+        *,
+        role: str,
+        root: str | Path | None = None,
+    ) -> Path:
+        nonlocal validations, swapped
+        safe = real_require_safe(path, role=role, root=root)
+        if role == expected_role:
+            validations += 1
+            if validations == validation_number:
+                child.rename(retained)
+                child.symlink_to(victim)
+                swapped = True
+        return safe
+
+    expected_role = role
+    monkeypatch.setattr(
+        migration, "_require_safe_migration_path", swap_after_selected_validation
+    )
+    try:
+        result = migration._apply_metadata_journal(
+            migratable_bundle,
+            migratable_bundle.output_root,
+            plan_path,
+            log_path,
+            receipt_path,
+            kinds=NON_IMAGE_KINDS,
+            commit_guard=None,
+        )
+    except Exception as exc:  # noqa: BLE001 - typed boundary under test
+        failure = f"{type(exc).__name__}: {exc}"
+    else:
+        failure = " ".join(result.conflicts)
+
+    assert swapped is True
+    assert "journal child changed" in failure.lower()
+    assert victim.read_bytes() == b""
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_held_log_rejects_regular_file_replacement_before_append(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Append authority is bound to the inode opened before mutation."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    report, (plan_path, log_path, receipt_path) = (
+        _interrupt_after_first_target_replace(migratable_bundle, monkeypatch)
+    )
+    assert migratable_bundle.output_root is not None
+    retained = log_path.with_name("transitions.log.retained")
+    alternate = migratable_bundle.output_root.parent / "alternate-log.bin"
+    alternate.write_bytes(b"alternate journal bytes")
+    alternate_before = alternate.read_bytes()
+    guard_entries = 0
+    replaced = False
+
+    @contextmanager
+    def replace_log_before_append() -> Iterator[None]:
+        nonlocal guard_entries, replaced
+        guard_entries += 1
+        if guard_entries == 3:
+            log_path.rename(retained)
+            alternate.replace(log_path)
+            replaced = True
+        yield
+
+    result = migration._apply_metadata_journal(
+        migratable_bundle,
+        migratable_bundle.output_root,
+        plan_path,
+        log_path,
+        receipt_path,
+        kinds=NON_IMAGE_KINDS,
+        commit_guard=lambda: replace_log_before_append(),
+    )
+
+    assert replaced is True
+    assert result.status == "failed"
+    assert "journal child changed" in " ".join(result.conflicts).lower()
+    assert log_path.read_bytes() == alternate_before
 
 
 def test_torn_final_frame_replays_only_complete_transitions(
