@@ -141,7 +141,14 @@ def join_metadata(
         ``QC_MetadataOnly`` when ``how="left"``). Row order follows the metadata
         frame.
     """
-    metadata_df = pl.read_csv(metadata_csv)
+    # infer_schema_length=None scans the whole file for dtype inference,
+    # not just the default first 100 rows. Real metadata CSVs can have a
+    # mostly-numeric-looking column (e.g. a Strain id column) with a rare
+    # alphanumeric outlier past row 100 — the default silently infers Int64
+    # from the first rows, then read_csv raises a ComputeError once it hits
+    # the outlier, aborting the whole join. A full scan costs a few seconds
+    # even for CSVs in the tens of MB and avoids that failure mode entirely.
+    metadata_df = pl.read_csv(metadata_csv, infer_schema_length=None)
     prepared = prepare_metadata_join_keys(df, metadata_df)
     df = prepared.measurements
     metadata_df = prepared.metadata
