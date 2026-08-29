@@ -2098,6 +2098,7 @@ def test_rejected_audit_creation_failure_never_vacates_current_status(
     assert crashed is True
     assert status_path.read_bytes() == competitor_bytes
     assert rejected.read_bytes() == competitor_bytes
+    assert not tuple(status_path.parent.glob(f".{rejected.name}.*.tmp"))
     with pytest.raises(ValueError, match="[Cc]ompeting.*status"):
         migration._remove_exact_metadata_authority(
             migratable_bundle.output_root,
@@ -2126,6 +2127,205 @@ def test_rejected_audit_creation_failure_never_vacates_current_status(
     assert status_path.read_bytes() == second_bytes
     assert rejected.read_bytes() == competitor_bytes
     assert second_rejected.read_bytes() == second_bytes
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_rejected_audit_publication_never_unlinks_rebound_temp_name(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """A child rebound after publication is never deleted as publisher temp."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+    assert result.status == "applied"
+    authority = metadata_migration_authority(migratable_bundle)
+    status_path = authority.status_path
+    payload = json.loads(status_path.read_text(encoding="utf-8"))
+    payload["competing"] = "temp-rebind"
+    competitor_bytes = (
+        json.dumps(payload, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    status_path.write_bytes(competitor_bytes)
+    rejected = status_path.with_name(
+        "status.rejected-"
+        f"{hashlib.sha256(competitor_bytes).hexdigest()}.json"
+    )
+    victim = tmp_path / "outside-victim"
+    victim_bytes = b"outside victim must survive"
+    victim.write_bytes(victim_bytes)
+    real_link = migration.os.link
+    real_rename = migration._rename_anchored_noreplace
+    rebound_temp: Path | None = None
+
+    def bind_victim_to_consumed_temp(temp_name: str) -> None:
+        nonlocal rebound_temp
+        if rebound_temp is not None:
+            return
+        temp_path = status_path.parent / temp_name
+        if temp_path.exists():
+            temp_path.rename(temp_path.with_suffix(".publisher-retained"))
+        real_link(victim, temp_path)
+        rebound_temp = temp_path
+
+    def inject_after_legacy_link(
+        source: object,
+        destination: object,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        real_link(source, destination, *args, **kwargs)
+        if os.fspath(destination) == rejected.name:
+            bind_victim_to_consumed_temp(os.fspath(source))
+
+    def inject_after_noreplace_rename(
+        directory: object,
+        source_name: str,
+        destination_name: str,
+        *,
+        role: str,
+    ) -> None:
+        real_rename(
+            directory,
+            source_name,
+            destination_name,
+            role=role,
+        )
+        if destination_name == rejected.name:
+            bind_victim_to_consumed_temp(source_name)
+
+    monkeypatch.setattr(migration.os, "link", inject_after_legacy_link)
+    monkeypatch.setattr(
+        migration,
+        "_rename_anchored_noreplace",
+        inject_after_noreplace_rename,
+    )
+
+    with pytest.raises(ValueError, match="[Cc]ompeting.*status"):
+        migration._remove_exact_metadata_authority(
+            migratable_bundle.output_root,
+            authority,
+            commit_guard=None,
+        )
+
+    assert rebound_temp is not None
+    assert rebound_temp.read_bytes() == victim_bytes
+    assert victim.read_bytes() == victim_bytes
+    assert status_path.read_bytes() == competitor_bytes
+    assert rejected.read_bytes() == competitor_bytes
+    assert rejected.read_bytes() != victim_bytes
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_rejected_audit_conflict_retains_temp_ignored_by_retry(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A no-clobber conflict retains non-authority temp without blocking retry."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+    assert result.status == "applied"
+    authority = metadata_migration_authority(migratable_bundle)
+    status_path = authority.status_path
+    payload = json.loads(status_path.read_text(encoding="utf-8"))
+    payload["competing"] = "audit-conflict"
+    competitor_bytes = (
+        json.dumps(payload, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    status_path.write_bytes(competitor_bytes)
+    rejected = status_path.with_name(
+        "status.rejected-"
+        f"{hashlib.sha256(competitor_bytes).hexdigest()}.json"
+    )
+    conflict_bytes = b"competing audit authority"
+    real_link = migration.os.link
+    real_rename = migration._rename_anchored_noreplace
+    retained_temp: Path | None = None
+
+    def install_conflict(temp_name: str) -> None:
+        nonlocal retained_temp
+        if retained_temp is not None:
+            return
+        retained_temp = status_path.parent / temp_name
+        rejected.write_bytes(conflict_bytes)
+
+    def inject_before_legacy_link(
+        source: object,
+        destination: object,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        if os.fspath(destination) == rejected.name:
+            install_conflict(os.fspath(source))
+        real_link(source, destination, *args, **kwargs)
+
+    def inject_before_noreplace_rename(
+        directory: object,
+        source_name: str,
+        destination_name: str,
+        *,
+        role: str,
+    ) -> None:
+        if destination_name == rejected.name:
+            install_conflict(source_name)
+        real_rename(
+            directory,
+            source_name,
+            destination_name,
+            role=role,
+        )
+
+    monkeypatch.setattr(migration.os, "link", inject_before_legacy_link)
+    monkeypatch.setattr(
+        migration,
+        "_rename_anchored_noreplace",
+        inject_before_noreplace_rename,
+    )
+
+    with pytest.raises(ValueError, match="audit|already exists"):
+        migration._remove_exact_metadata_authority(
+            migratable_bundle.output_root,
+            authority,
+            commit_guard=None,
+        )
+
+    assert retained_temp is not None
+    assert retained_temp.read_bytes() == competitor_bytes
+    assert status_path.read_bytes() == competitor_bytes
+    assert rejected.read_bytes() == conflict_bytes
+
+    monkeypatch.setattr(migration.os, "link", real_link)
+    monkeypatch.setattr(
+        migration, "_rename_anchored_noreplace", real_rename
+    )
+    rejected.unlink()
+    with pytest.raises(ValueError, match="[Cc]ompeting.*status"):
+        migration._remove_exact_metadata_authority(
+            migratable_bundle.output_root,
+            authority,
+            commit_guard=None,
+        )
+
+    assert retained_temp.read_bytes() == competitor_bytes
+    assert status_path.read_bytes() == competitor_bytes
+    assert rejected.read_bytes() == competitor_bytes
+    assert set(status_path.parent.glob(".status.rejected-*.tmp")) == {
+        retained_temp
+    }
 
 
 @pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")

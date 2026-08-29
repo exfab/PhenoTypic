@@ -4256,38 +4256,31 @@ def _publish_rejected_metadata_status_audit(
             handle.write(status_bytes)
             handle.flush()
             os.fsync(handle.fileno())
-        verify_current_status()
-        try:
-            os.link(
-                temp_name,
-                rejected_name,
-                src_dir_fd=directory.fd,
-                dst_dir_fd=directory.fd,
-                follow_symlinks=False,
-            )
-        except FileExistsError:
-            pass
-        os.fsync(directory.fd)
-        _verify_anchored_journal_directory(directory)
-        verify_current_status()
-        with _open_anchored_directory_file(
-            directory,
-            rejected_name,
-            role="Rejected metadata status audit",
-        ) as rejected:
-            if rejected.handle.read() != status_bytes:
-                raise ValueError(
-                    "Competing rejected metadata status audit exists"
-                )
-            verify_current_status()
     finally:
         if descriptor >= 0:
             os.close(descriptor)
-        try:
-            os.unlink(temp_name, dir_fd=directory.fd)
-            os.fsync(directory.fd)
-        except OSError:
-            pass
+        os.fsync(directory.fd)
+        _verify_anchored_journal_directory(directory)
+    verify_current_status()
+    _rename_anchored_noreplace(
+        directory,
+        temp_name,
+        rejected_name,
+        role="rejected metadata status audit",
+    )
+    os.fsync(directory.fd)
+    _verify_anchored_journal_directory(directory)
+    verify_current_status()
+    with _open_anchored_directory_file(
+        directory,
+        rejected_name,
+        role="Rejected metadata status audit",
+    ) as rejected:
+        if rejected.handle.read() != status_bytes:
+            raise ValueError(
+                "Competing rejected metadata status audit exists"
+            )
+        verify_current_status()
     return rejected_path
 
 
