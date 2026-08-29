@@ -773,9 +773,10 @@ is withdrawn from the spec."
     `needs_metadata_marker` on a missing marker alone (`:604-606`) and `_target_status`
     returns `"migratable"` if *either* signal is set (`:229-239`).
 
-    So on a first migration — the only one that matters — pass 1 byte-copies and rewrites
-    **every `.h5` in the archive**, single-process, with no SLURM path and requiring free
-    space for a full second copy. Three things break at once:
+    So on a first migration — the only one that matters — the rejected earlier pass-1 design
+    byte-copied and rewrote **every `.h5` in the archive**, single-process, and required free
+    space for a full second copy. This historic rationale predates the 2026-08-29
+    dispatcher-backed migration path. Three things break at once:
 
     1. **The rollback story that justified removing copy mode is destroyed.** Spec §5.1 tells
        the user *"the `.h5` files survive the conversion, so if the stores are wrong the
@@ -821,9 +822,11 @@ is withdrawn from the spec."
   Without pass 1 those non-image targets lose their migration path entirely, because Task 5.4
   stops `recompile` from rewriting anything — a regression against flat-metadata decision #1
   that the supersession note would not have acknowledged.
-- **Local-only, parallel via `--njobs`.** No SLURM controller, no array, no chunking, no
-  `MaxArraySize` accounting. Migration is one-time, resumable, and restartable, so it does
-  not justify another scheduler surface. A test asserts no `sbatch` is invoked.
+> **Historical decision, superseded 2026-08-29.** **Local-only, parallel via `--njobs`**
+> originally meant no SLURM controller, array, chunking, or `MaxArraySize` accounting. The
+> current `--mode migrate --slurm` path is a fenced dispatcher chain; `--njobs` remains its
+> local alternative. The test below is retained only as the old local-path contract and is
+> not an assertion that migration never submits SLURM work.
 - **A run whose output contains only `.h5` results fails with a pointer to this mode**
   rather than auto-migrating. Format conversion rewrites the entire results tree; that is
   typed deliberately, not triggered as a side effect of an unrelated `--mode full`.
@@ -937,12 +940,12 @@ def test_migrate_converts_a_legacy_tree(legacy_run) -> None:
     assert valid_staged_store(zarr_store_path(legacy_run, "ds", "img"))
 
 
-def test_migrate_never_submits_a_slurm_job(legacy_run, monkeypatch) -> None:
-    """One-time, resumable work does not justify another scheduler surface."""
+def test_migrate_without_slurm_uses_the_local_runner(legacy_run, monkeypatch) -> None:
+    """The local migration spelling does not need scheduler submission."""
     import subprocess
 
     monkeypatch.setattr(
-        subprocess, "run", lambda *a, **k: pytest.fail("migrate must not shell out")
+        subprocess, "run", lambda *a, **k: pytest.fail("local migration must not shell out")
     )
     assert CliRunner().invoke(
         phenotypic_cli, ["--mode", "migrate", "--output", str(legacy_run)]
@@ -979,9 +982,9 @@ git add src/phenotypic/_cli/_cli_migrate.py src/phenotypic/phenotypicCLI.py test
 git commit -m "feat(cli): add --mode migrate
 
 Joins the existing mode choice list and reuses recompile's argument
-validation. Local-only with --njobs: migration is one-time, resumable, and
-restartable, so it does not justify another SLURM controller/array surface
-with its own chunking and MaxArraySize accounting. A legacy-only output
+validation. At this historical commit migration used the local `--njobs`
+runner because it was one-time, resumable, and restartable. The 2026-08-29
+supersession above later added the fenced SLURM dispatcher surface. A legacy-only output
 root fails with a pointer to this mode instead of auto-migrating, because
 format conversion rewrites the whole results tree."
 ```
@@ -1119,10 +1122,10 @@ Supersedes flat-metadata decision #1. Recompile stops REWRITING legacy
 headers but keeps READING them, so decision #3 (permanent stored-data
 compatibility) is untouched and no existing output directory breaks --
 recompile simply no longer mutates one as a side effect. The ~950-line
-SLURM fan-out existed only because copying large HDFs is slow; conversion
-through the promote is not, and migration was originally executed through the
-local runner, so it is deleted
-rather than ported."
+recompile-only SLURM fan-out existed only because copying large HDFs is slow;
+conversion through the promote is not. This is distinct from the later
+2026-08-29 dispatcher-backed `--mode migrate --slurm` path, so the obsolete
+fan-out is deleted rather than ported."
 ```
 
 ---

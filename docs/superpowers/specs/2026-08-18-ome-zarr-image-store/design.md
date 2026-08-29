@@ -896,10 +896,12 @@ fails.
 > change, specified against the full output contract rather than an artifact
 > allow-list.
 
-**Local-only, parallel via `--njobs`.** Migration is one-time, resumable, and
-restartable — a partially migrated tree is simply migrated again — so it does
-not justify another SLURM controller/array surface with its own chunking and
-`MaxArraySize` accounting.
+> **Historical decision, superseded 2026-08-29.** The original design was
+> **Local-only, parallel via `--njobs`**: migration was one-time, resumable,
+> and restartable, so it did not justify another SLURM controller/array surface
+> with its own chunking and `MaxArraySize` accounting. Migration now accepts
+> `--slurm` through the fenced dispatcher chain described in §9/OQ5; the local
+> `--njobs` runner remains available when no SLURM profile is supplied.
 
 **`--delete-sources`** reclaims the retained `.h5` files after conversion. It is
 opt-in because migration is otherwise non-destructive, and it must refuse unless

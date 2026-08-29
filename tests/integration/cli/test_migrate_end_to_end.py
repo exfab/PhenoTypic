@@ -13,7 +13,6 @@ import json
 from pathlib import Path
 import shlex
 import shutil
-from types import SimpleNamespace
 
 from click.testing import CliRunner
 
@@ -66,20 +65,38 @@ def _script_indices(script: Path) -> list[int]:
     return [int(entry.strip()) for entry in entries.splitlines()]
 
 
-def _run_generated_migration_worker_commands(plan: object) -> SimpleNamespace:
-    """Synchronously execute every generated migration worker command in order.
+def _run_generated_migration_worker_commands(
+    *,
+    chunk_scripts: list[Path],
+    dispatcher_scripts: list[Path],
+    finalizer_script: Path | None = None,
+    continuation_dependency_kind: str = "afterany",
+    output_dir: Path | None = None,
+    generation: str | None = None,
+) -> tuple[list[str], None]:
+    """Synchronously execute generated worker commands after real chain setup.
 
-    This is intentionally a dispatcher fake, not a replacement implementation:
-    its command and indexes come from the emitted scripts, then the real worker
-    Click entry point consumes their immutable config.  That makes the test
-    cover the actual local-vs-SLURM handoff without requiring ``sbatch``.
+    The fake replaces only the scheduler submission primitive. Production code
+    has already generated and resolved the dispatcher chain, including its
+    ``afterany`` dependencies and finalizer. Commands and indexes come from
+    the emitted worker scripts, then the real worker Click entry point consumes
+    their immutable config.
     """
-    from phenotypic._cli._cli_migrate_slurm import MigrationSlurmPlan
     from phenotypic._cli._cli_migrate_worker import migration_worker_cli
 
-    assert isinstance(plan, MigrationSlurmPlan)
+    assert finalizer_script is not None
+    assert output_dir is not None
+    assert generation is not None
+    assert continuation_dependency_kind == "afterany"
+    assert len(dispatcher_scripts) == len(chunk_scripts) - 1
+    for dispatcher in dispatcher_scripts:
+        text = dispatcher.read_text(encoding="utf-8")
+        assert f"--generation {generation}" in text
+        assert "--dependency-kind afterany" in text
+
     executed: list[tuple[str, int | None]] = []
-    for script in (*plan.flat_scripts, plan.finalizer_script):
+    task_count: int | None = None
+    for script in (*chunk_scripts, finalizer_script):
         command_line = next(
             line.strip()
             for line in script.read_text(encoding="utf-8").splitlines()
@@ -89,6 +106,7 @@ def _run_generated_migration_worker_commands(plan: object) -> SimpleNamespace:
         config_index = parts.index("--config")
         config = parts[config_index + 1]
         command = parts[config_index + 2]
+        task_count = json.loads(Path(config).read_text(encoding="utf-8"))["task_count"]
         indexed = "--index" in parts
         for index in _script_indices(script):
             args = ["--config", config, command]
@@ -99,13 +117,27 @@ def _run_generated_migration_worker_commands(plan: object) -> SimpleNamespace:
                 f"{script.name} index {index} failed:\n{result.output}"
             )
             executed.append((command, index if indexed else None))
+    assert task_count is not None
     assert [command for command, _ in executed] == [
         "metadata",
-        *("image" for _ in range(plan.task_count)),
+        *("image" for _ in range(task_count)),
         "seal",
         "finalize",
     ]
-    return SimpleNamespace(job_ids=["1"])
+    return ["1", "2"], None
+
+
+def _retained_source_snapshot(tree: Path, stems: tuple[str, ...]) -> dict[str, object]:
+    """Capture retained legacy HDF and immutable metadata input bytes."""
+    hdf_dir = tree / "results" / "ds" / "hdf"
+    hdf = {stem: hdf_dir / f"{stem}.h5" for stem in stems}
+    assert all(path.is_file() for path in hdf.values())
+    metadata = tree / "deliverables" / "metadata.csv"
+    assert metadata.is_file()
+    return {
+        "hdf": {stem: _digest(path) for stem, path in hdf.items()},
+        "metadata": metadata.read_bytes(),
+    }
 
 
 def _published_migration_snapshot(tree: Path, stems: tuple[str, ...]) -> dict[str, object]:
@@ -130,10 +162,15 @@ def _published_migration_snapshot(tree: Path, stems: tuple[str, ...]) -> dict[st
     completion = valid_run_completion(tree)
     assert aggregate is not None
     assert completion is not None
+    store_conformance = {
+        stem: valid_staged_store(store) for stem, store in stores.items()
+    }
+    assert all(store_conformance.values())
+    assert current_aggregate_is_current(tree) is True
+    success_counts = current_success_counts(tree)
+    assert success_counts == (2, 2)
     return {
-        "store_conformance": {
-            stem: valid_staged_store(store) for stem, store in stores.items()
-        },
+        "store_conformance": store_conformance,
         "store_content": {
             stem: _tree_digest(store) for stem, store in stores.items()
         },
@@ -147,7 +184,7 @@ def _published_migration_snapshot(tree: Path, stems: tuple[str, ...]) -> dict[st
         },
         "image_markers": image_markers,
         "aggregate_marker": {
-            "current": current_aggregate_is_current(tree),
+            "current": True,
             **{
                 key: aggregate[key]
                 for key in (
@@ -157,6 +194,7 @@ def _published_migration_snapshot(tree: Path, stems: tuple[str, ...]) -> dict[st
                     "scientific_config_digest",
                     "source_set_digest",
                     "source_image_count",
+                    "required_outputs",
                 )
             },
         },
@@ -173,7 +211,7 @@ def _published_migration_snapshot(tree: Path, stems: tuple[str, ...]) -> dict[st
                 "processing_generation",
             )
         },
-        "success_counts": current_success_counts(tree),
+        "success_counts": success_counts,
     }
 
 
@@ -255,13 +293,16 @@ def test_local_and_synchronous_slurm_migration_publish_equivalent_runs(
     the generation-scoped scheduler control files which must differ between
     local and SLURM execution.
     """
-    from phenotypic._cli import _cli_migrate as migrate
     from phenotypic._cli._cli_directory_scanner import scan_store_outputs
+    from phenotypic._cli import _cli_slurm_submission as slurm_submission
 
     local_tree = tmp_path / "local"
     slurm_tree = tmp_path / "slurm"
     shutil.copytree(finished_legacy_run.path, local_tree)
     shutil.copytree(finished_legacy_run.path, slurm_tree)
+    local_sources = _retained_source_snapshot(local_tree, finished_legacy_run.stems)
+    slurm_sources = _retained_source_snapshot(slurm_tree, finished_legacy_run.stems)
+    assert local_sources == slurm_sources
 
     local = CliRunner().invoke(
         phenotypic_cli, ["--mode", "migrate", "--output", str(local_tree)]
@@ -269,9 +310,9 @@ def test_local_and_synchronous_slurm_migration_publish_equivalent_runs(
     assert local.exit_code == 0, local.output
 
     monkeypatch.setattr(
-        migrate,
-        "submit_migration_slurm_plan",
-        lambda plan, **_kwargs: _run_generated_migration_worker_commands(plan),
+        slurm_submission,
+        "submit_drip_feed_start",
+        _run_generated_migration_worker_commands,
     )
     slurm = CliRunner().invoke(
         phenotypic_cli,
@@ -287,7 +328,22 @@ def test_local_and_synchronous_slurm_migration_publish_equivalent_runs(
     )
     assert slurm.exit_code == 0, slurm.output
 
-    assert _summary_counters(local.output) == _summary_counters(slurm.output)
+    expected_first_counters = (
+        "Pass 1 (metadata headers, non-image targets): migrated 0 target(s)",
+        "Pass 2 (per-image .h5 -> .ome.zarr): converted 2, skipped 0",
+        "Pass 3 (external Parquet -> embedded table): migrated 2, skipped 0",
+        "Pass 4 (store -> overlay PNG): rendered 0, preserved 2",
+    )
+    expected_noop_counters = (
+        "Pass 1 (metadata headers, non-image targets): migrated 0 target(s)",
+        "Pass 2 (per-image .h5 -> .ome.zarr): converted 0, skipped 2",
+        "Pass 3 (external Parquet -> embedded table): migrated 0, skipped 2",
+        "Pass 4 (store -> overlay PNG): rendered 0, preserved 2",
+    )
+    assert _summary_counters(local.output) == expected_first_counters
+    assert _summary_counters(slurm.output) == expected_first_counters
+    assert _retained_source_snapshot(local_tree, finished_legacy_run.stems) == local_sources
+    assert _retained_source_snapshot(slurm_tree, finished_legacy_run.stems) == slurm_sources
     local_snapshot = _published_migration_snapshot(local_tree, finished_legacy_run.stems)
     slurm_snapshot = _published_migration_snapshot(slurm_tree, finished_legacy_run.stems)
     assert local_snapshot == slurm_snapshot
@@ -318,10 +374,12 @@ def test_local_and_synchronous_slurm_migration_publish_equivalent_runs(
         ),
     ):
         before = _published_migration_snapshot(tree, finished_legacy_run.stems)
+        sources_before = _retained_source_snapshot(tree, finished_legacy_run.stems)
         rerun = CliRunner().invoke(phenotypic_cli, rerun_args)
         assert rerun.exit_code == 0, rerun.output
-        assert "converted 0" in rerun.output
+        assert _summary_counters(rerun.output) == expected_noop_counters
         assert _published_migration_snapshot(tree, finished_legacy_run.stems) == before
+        assert _retained_source_snapshot(tree, finished_legacy_run.stems) == sources_before
 
 
 def test_fixture_shaped_run_completes_32_measured_and_four_zero_object_images(
