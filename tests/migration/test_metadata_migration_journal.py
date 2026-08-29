@@ -290,19 +290,23 @@ def test_valid_plan_after_publication_crash_initializes_missing_empty_log(
     plan_path, log_path, receipt_path = migration._journal_paths(
         migratable_bundle.output_root, report.plan_fingerprint
     )
-    real_atomic_write = migration.atomic_write_json
+    real_publish = migration._publish_anchored_journal_json
     crashed = False
 
     def die_after_plan_publication(
         path: Path, payload: object, *args: object, **kwargs: object
     ) -> None:
         nonlocal crashed
-        real_atomic_write(path, payload, *args, **kwargs)
+        real_publish(path, payload, *args, **kwargs)
         if path == plan_path and not crashed:
             crashed = True
             raise _SimulatedProcessDeath("after journal plan publication")
 
-    monkeypatch.setattr(migration, "atomic_write_json", die_after_plan_publication)
+    monkeypatch.setattr(
+        migration,
+        "_publish_anchored_journal_json",
+        die_after_plan_publication,
+    )
     with pytest.raises(_SimulatedProcessDeath, match="plan publication"):
         migrate_preflighted_metadata_bundle(
             migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
@@ -310,7 +314,9 @@ def test_valid_plan_after_publication_crash_initializes_missing_empty_log(
     assert plan_path.is_file()
     assert not log_path.exists()
     assert not receipt_path.exists()
-    monkeypatch.setattr(migration, "atomic_write_json", real_atomic_write)
+    monkeypatch.setattr(
+        migration, "_publish_anchored_journal_json", real_publish
+    )
 
     retried = migrate_preflighted_metadata_bundle(
         migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
@@ -833,6 +839,219 @@ def test_held_log_rejects_regular_file_replacement_before_append(
     assert log_path.read_bytes() == alternate_before
 
 
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+@pytest.mark.parametrize("authority_child", ["plan.json", "receipt.json"])
+def test_authority_publication_survives_parent_swap_without_external_write(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+    authority_child: str,
+) -> None:
+    """Publication remains anchored when the journal pathname is redirected."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    plan_path, _, _ = migration._journal_paths(
+        migratable_bundle.output_root, report.plan_fingerprint
+    )
+    journal_dir = plan_path.parent
+    retained = journal_dir.with_name(f"{journal_dir.name}-retained")
+    external = migratable_bundle.output_root.parent / (
+        f"external-{authority_child.replace('.', '-')}"
+    )
+    external.mkdir()
+    victim = external / "victim.bin"
+    victim.write_bytes(b"outside authority")
+    victim_before = victim.read_bytes()
+    real_replace = migration.os.replace
+    real_link = migration.os.link
+    swapped = False
+
+    def swap_parent(
+        source: object,
+        destination: object,
+        kwargs: dict[str, object],
+    ) -> None:
+        nonlocal swapped
+        if Path(os.fspath(destination)).name == authority_child and not swapped:
+            journal_dir.rename(retained)
+            journal_dir.symlink_to(external, target_is_directory=True)
+            if not kwargs.get("src_dir_fd"):
+                source_name = Path(os.fspath(source)).name
+                shutil.copy2(
+                    retained / source_name, external / source_name
+                )
+            swapped = True
+
+    def swap_parent_before_authority_replace(
+        source: object,
+        destination: object,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        swap_parent(source, destination, kwargs)
+        real_replace(source, destination, *args, **kwargs)
+
+    def swap_parent_before_authority_link(
+        source: object,
+        destination: object,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        swap_parent(source, destination, kwargs)
+        real_link(source, destination, *args, **kwargs)
+
+    monkeypatch.setattr(
+        migration.os, "replace", swap_parent_before_authority_replace
+    )
+    monkeypatch.setattr(
+        migration.os, "link", swap_parent_before_authority_link
+    )
+    try:
+        result = migrate_preflighted_metadata_bundle(
+            migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+        )
+    except Exception:  # noqa: BLE001 - publication boundary under test
+        result = None
+
+    assert swapped is True
+    assert result is None or result.status == "failed"
+    assert not (external / authority_child).exists()
+    assert victim.read_bytes() == victim_before
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_plan_replacement_at_first_guard_blocks_all_remaining_mutation(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The parsed plan remains the held mutation authority through apply."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    report, (plan_path, log_path, receipt_path) = (
+        _interrupt_after_first_target_replace(migratable_bundle, monkeypatch)
+    )
+    assert migratable_bundle.output_root is not None
+    retained = plan_path.with_name("plan.json.retained")
+    competitor = plan_path.with_name("competing-plan.json")
+    competitor.write_bytes(plan_path.read_bytes() + b" ")
+    log_before = log_path.read_bytes()
+    replaced = False
+
+    @contextmanager
+    def replace_plan_on_first_guard() -> Iterator[None]:
+        nonlocal replaced
+        if not replaced:
+            plan_path.rename(retained)
+            competitor.replace(plan_path)
+            replaced = True
+        yield
+
+    result = migration._apply_metadata_journal(
+        migratable_bundle,
+        migratable_bundle.output_root,
+        plan_path,
+        log_path,
+        receipt_path,
+        kinds=NON_IMAGE_KINDS,
+        commit_guard=replace_plan_on_first_guard,
+    )
+
+    assert replaced is True
+    assert result.status == "failed"
+    assert "journal child changed" in " ".join(result.conflicts).lower()
+    assert log_path.read_bytes() == log_before
+    assert not receipt_path.exists()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+@pytest.mark.parametrize(
+    "replaced_child", ["transitions.log", ".transitions.log.writer.lock"]
+)
+def test_final_append_rechecks_log_and_lock_after_fsync(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+    replaced_child: str,
+) -> None:
+    """A final-frame race cannot be followed by terminal authority."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    report, (plan_path, log_path, receipt_path) = (
+        _interrupt_after_first_target_replace(migratable_bundle, monkeypatch)
+    )
+    assert migratable_bundle.output_root is not None
+    child = plan_path.parent / replaced_child
+    retained = child.with_name(f"{child.name}.retained")
+    alternate = child.with_name(f"{child.name}.alternate")
+    alternate.write_bytes(b"alternate authority")
+    alternate_before = alternate.read_bytes()
+    real_publish_terminal = migration._publish_journal_terminal_receipt
+    replaced = False
+
+    def replace_after_final_append(*args: object, **kwargs: object):
+        nonlocal replaced
+        child.rename(retained)
+        alternate.replace(child)
+        replaced = True
+        return real_publish_terminal(*args, **kwargs)
+
+    monkeypatch.setattr(
+        migration,
+        "_publish_journal_terminal_receipt",
+        replace_after_final_append,
+    )
+    result = migration._apply_metadata_journal(
+        migratable_bundle,
+        migratable_bundle.output_root,
+        plan_path,
+        log_path,
+        receipt_path,
+        kinds=NON_IMAGE_KINDS,
+        commit_guard=None,
+    )
+
+    assert replaced is True
+    assert result.status == "failed"
+    assert "journal child changed" in " ".join(result.conflicts).lower()
+    assert child.read_bytes() == alternate_before
+    assert not receipt_path.exists()
+
+
+def test_unsupported_descriptor_platform_fails_before_any_mutation(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unsafe full-path fallback cannot create authority or alter science."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    before = {
+        target.path: Path(target.path).read_bytes() for target in report.targets
+    }
+    authority_root = (
+        migratable_bundle.output_root
+        / ".phenotypic"
+        / "metadata_migration"
+    )
+    monkeypatch.setattr(migration, "_JOURNAL_DIR_FD_SUPPORTED", False)
+
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+
+    assert result.status == "failed"
+    assert "descriptor" in " ".join(result.conflicts).lower()
+    assert {
+        target.path: Path(target.path).read_bytes() for target in report.targets
+    } == before
+    assert not authority_root.exists()
+
+
 def test_torn_final_frame_replays_only_complete_transitions(
     migratable_bundle: BundleLayout, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1159,6 +1378,67 @@ def test_terminal_schema3_authority_is_validated_then_superseded_by_v4(
     old_receipt.write_bytes(b"{corrupt historical authority")
     with pytest.raises(ValueError, match="supersed|digest|historical"):
         metadata_migration_authority(compatible_bundle)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_schema3_adoption_rejects_regular_replacement_after_live_validation(
+    compatible_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Validation, digest, and adoption consume one held historical inode."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    old_receipt, _ = _write_historical_v3_journal(
+        compatible_bundle, terminal=True
+    )
+    assert compatible_bundle.output_root is not None
+    original = old_receipt.with_name("receipt.json.retained")
+    competitor = old_receipt.with_name("receipt.json.competitor")
+    historical_bytes = old_receipt.read_bytes()
+    payload = json.loads(historical_bytes)
+    payload["well_formed_replacement"] = True
+    competitor.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    real_digest = migration._sha256_bytes
+    replaced = False
+    historical_digests = 0
+
+    def replace_during_adoption_digest(data: bytes) -> str:
+        nonlocal historical_digests, replaced
+        digest = real_digest(data)
+        if data == historical_bytes:
+            historical_digests += 1
+            if historical_digests == 2 and not replaced:
+                old_receipt.rename(original)
+                competitor.replace(old_receipt)
+                replaced = True
+        return digest
+
+    monkeypatch.setattr(
+        migration,
+        "_sha256_bytes",
+        replace_during_adoption_digest,
+    )
+    result = reconcile_metadata_migration_bundle(
+        compatible_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+
+    assert replaced is True
+    assert result is not None and result.status == "failed"
+    authority_root = old_receipt.parent.parent
+    assert not any(
+        candidate.is_dir()
+        and (candidate / "plan.json").is_file()
+        and json.loads((candidate / "plan.json").read_text(encoding="utf-8")).get(
+            "schema_version"
+        )
+        == 4
+        for candidate in authority_root.iterdir()
+    )
 
 
 def test_v4_adoption_does_not_revalidate_obsolete_v3_live_targets(
