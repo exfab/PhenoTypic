@@ -47,6 +47,8 @@ task unnecessary.
 from __future__ import annotations
 
 import base64
+import ctypes
+import errno
 import hashlib
 import importlib
 import json
@@ -131,6 +133,33 @@ _JOURNAL_FRAME_CHECKSUM_SIZE = hashlib.sha256().digest_size
 _FLAT_METADATA_SCHEMA_VERSION = 2
 _METADATA_SCHEMA_ATTR = "metadata_schema_version"
 _HDF_SUFFIXES = frozenset({".h5", ".hdf5", ".hdf"})
+_SUPERSEDED_STATUS_PREFIX = "status.superseded-"
+_REJECTED_STATUS_PREFIX = "status.rejected-"
+_RENAME_NOREPLACE = 1
+try:
+    _RENAMEAT2: Any = getattr(
+        ctypes.CDLL(None, use_errno=True), "renameat2", None
+    )
+except OSError:
+    _RENAMEAT2 = None
+
+
+def _libc_renameat2() -> Any:
+    """Return Linux renameat2 or fail closed before an authority move."""
+    renameat2 = _RENAMEAT2
+    if renameat2 is None:
+        raise RuntimeError(
+            "Metadata migration no-clobber rename is unsupported"
+        )
+    renameat2.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    renameat2.restype = ctypes.c_int
+    return renameat2
 
 
 def _absolute_path(path: str | Path) -> Path:
@@ -235,13 +264,20 @@ class MetadataMigrationAuthority:
     """Stable terminal authority for the metadata migration stage."""
 
     status_path: Path
-    status_digest: str
     terminal_receipt_path: Path
     terminal_receipt_digest: str
     plan_fingerprint: str
     source_fingerprint: str
     resulting_fingerprint: str
     compatible_noop: bool
+
+
+@dataclass(frozen=True)
+class _MetadataMigrationAuthorityEvidence:
+    """Internal exact-byte binding for one validated status authority."""
+
+    authority: MetadataMigrationAuthority
+    status_digest: str
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -1282,6 +1318,7 @@ def _journal_directory_flags() -> int:
 
 _JOURNAL_DIR_FD_SUPPORTED = (
     os.name == "posix"
+    and _RENAMEAT2 is not None
     and hasattr(os, "O_CLOEXEC")
     and hasattr(os, "O_DIRECTORY")
     and hasattr(os, "O_NOFOLLOW")
@@ -1580,6 +1617,32 @@ def _require_absent_anchored_child(
     raise ValueError(f"Competing {role} already exists")
 
 
+def _rename_anchored_noreplace(
+    directory: _AnchoredJournalDirectory,
+    source_name: str,
+    destination_name: str,
+    *,
+    role: str,
+) -> None:
+    """Rename one held-directory child atomically without replacement."""
+    _verify_anchored_journal_directory(directory)
+    _require_absent_anchored_child(directory, destination_name, role=role)
+    renameat2 = _libc_renameat2()
+    result = renameat2(
+        directory.fd,
+        os.fsencode(source_name),
+        directory.fd,
+        os.fsencode(destination_name),
+        _RENAME_NOREPLACE,
+    )
+    if result != 0:
+        error_number = ctypes.get_errno()
+        if error_number == errno.EEXIST:
+            raise ValueError(f"Competing {role} already exists")
+        raise OSError(error_number, os.strerror(error_number))
+    _verify_anchored_journal_directory(directory)
+
+
 def _publish_anchored_journal_json(
     path: Path,
     payload: Mapping[str, Any],
@@ -1694,6 +1757,7 @@ def _publish_anchored_journal_json(
                     if final_handle.read() != document:
                         raise ValueError(f"{role} publication bytes changed")
                     _verify_anchored_journal_file(final_file)
+                    _verify_journal_mutation_authority(*authorities)
                     publication_complete = True
             finally:
                 if final_fd >= 0:
@@ -3717,7 +3781,6 @@ def _publish_metadata_authority(
                 _verify_journal_mutation_authority(receipt_file)
     return MetadataMigrationAuthority(
         status_path=status_path,
-        status_digest=_sha256_bytes(status_bytes),
         terminal_receipt_path=receipt_path,
         terminal_receipt_digest=cast(str, payload["terminal_receipt_digest"]),
         plan_fingerprint=result.plan_fingerprint,
@@ -3732,14 +3795,127 @@ def _remove_exact_metadata_authority(
     authority: MetadataMigrationAuthority,
     *,
     commit_guard: CommitGuard | None,
-) -> None:
-    """Quarantine and durably remove only one exact superseded status."""
+    status_digest: str | None = None,
+) -> Path:
+    """Move one exact legacy status to immutable superseded audit evidence."""
     status_path = _require_safe_migration_path(
         authority.status_path,
         role="Metadata migration status",
         root=root,
     )
-    expected = {
+    expected = _metadata_authority_payload(authority)
+    expected_digest = status_digest or _sha256_bytes(
+        _anchored_json_document(expected)
+    )
+    archive_name = _status_audit_name(
+        _SUPERSEDED_STATUS_PREFIX, expected_digest
+    )
+    archive_path = status_path.with_name(archive_name)
+    with publication_commit(commit_guard):
+        with _open_anchored_journal_directory(
+            root, status_path.parent
+        ) as directory:
+            _verify_anchored_journal_directory(directory)
+            try:
+                os.stat(
+                    archive_name,
+                    dir_fd=directory.fd,
+                    follow_symlinks=False,
+                )
+            except FileNotFoundError:
+                pass
+            except OSError as exc:
+                raise ValueError(
+                    "Could not inspect superseded metadata status audit"
+                ) from exc
+            else:
+                archived_bytes = _read_anchored_journal_bytes(
+                    archive_path,
+                    root=root,
+                    role="Metadata migration superseded status audit",
+                )
+                if (
+                    _sha256_bytes(archived_bytes) != expected_digest
+                    or json.loads(archived_bytes.decode("utf-8")) != expected
+                ):
+                    raise ValueError(
+                        "Competing superseded metadata status audit exists"
+                    )
+                try:
+                    os.stat(
+                        status_path.name,
+                        dir_fd=directory.fd,
+                        follow_symlinks=False,
+                    )
+                except FileNotFoundError:
+                    return archive_path
+                raise ValueError(
+                    "Competing live metadata status exists beside its exact "
+                    "superseded audit"
+                )
+            _rename_anchored_noreplace(
+                directory,
+                status_path.name,
+                archive_name,
+                role="superseded metadata status audit",
+            )
+            os.fsync(directory.fd)
+            _verify_anchored_journal_directory(directory)
+            descriptor = os.open(
+                archive_name,
+                _journal_open_flags(os.O_RDONLY),
+                dir_fd=directory.fd,
+            )
+            try:
+                opened = os.fstat(descriptor)
+                if not stat.S_ISREG(opened.st_mode):
+                    raise ValueError(
+                        "Metadata migration superseded status audit is not regular"
+                    )
+                with os.fdopen(descriptor, "rb") as handle:
+                    descriptor = -1
+                    archived = _AnchoredJournalFile(
+                        handle=handle,
+                        directory=directory,
+                        name=archive_name,
+                        path=archive_path,
+                        role="Metadata migration superseded status audit",
+                        identity=(opened.st_dev, opened.st_ino),
+                    )
+                    _verify_anchored_journal_file(archived)
+                    archived_bytes = handle.read()
+                    _verify_anchored_journal_file(archived)
+                    try:
+                        payload = json.loads(archived_bytes.decode("utf-8"))
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        payload = None
+                    if (
+                        _sha256_bytes(archived_bytes) != expected_digest
+                        or payload != expected
+                    ):
+                        _restore_competing_metadata_status(
+                            directory,
+                            archive_name=archive_name,
+                            status_name=status_path.name,
+                            archived_bytes=archived_bytes,
+                        )
+                        raise ValueError(
+                            "Competing metadata migration status authority exists"
+                        )
+                    os.fsync(directory.fd)
+                    _verify_anchored_journal_directory(directory)
+                    _verify_anchored_journal_file(archived)
+            finally:
+                if descriptor >= 0:
+                    os.close(descriptor)
+    return archive_path
+
+
+def _metadata_authority_payload(
+    authority: MetadataMigrationAuthority,
+) -> dict[str, object]:
+    """Return the exact schema-1 payload represented by public authority."""
+    return {
         "schema_version": 1,
         "state": "complete",
         "terminal_receipt_path": str(authority.terminal_receipt_path),
@@ -3749,105 +3925,37 @@ def _remove_exact_metadata_authority(
         "resulting_fingerprint": authority.resulting_fingerprint,
         "compatible_noop": authority.compatible_noop,
     }
-    with publication_commit(commit_guard):
-        with _open_anchored_journal_directory(
-            root, status_path.parent
-        ) as directory:
-            quarantine_name = (
-                f".{status_path.name}.{os.urandom(16).hex()}.quarantine"
-            )
-            _verify_anchored_journal_directory(directory)
-            _require_absent_anchored_child(
-                directory,
-                quarantine_name,
-                role="metadata migration status quarantine",
-            )
-            os.rename(
-                status_path.name,
-                quarantine_name,
-                src_dir_fd=directory.fd,
-                dst_dir_fd=directory.fd,
-            )
-            os.fsync(directory.fd)
-            _verify_anchored_journal_directory(directory)
-            quarantine_removed = False
-            try:
-                descriptor = os.open(
-                    quarantine_name,
-                    _journal_open_flags(os.O_RDONLY),
-                    dir_fd=directory.fd,
-                )
-                try:
-                    opened = os.fstat(descriptor)
-                    if not stat.S_ISREG(opened.st_mode):
-                        raise ValueError(
-                            "Metadata migration status quarantine is not regular"
-                        )
-                    with os.fdopen(descriptor, "rb") as handle:
-                        descriptor = -1
-                        quarantined = _AnchoredJournalFile(
-                            handle=handle,
-                            directory=directory,
-                            name=quarantine_name,
-                            path=status_path.parent / quarantine_name,
-                            role="Metadata migration status quarantine",
-                            identity=(opened.st_dev, opened.st_ino),
-                        )
-                        _verify_anchored_journal_file(quarantined)
-                        status_bytes = handle.read()
-                        _verify_anchored_journal_file(quarantined)
-                        payload = json.loads(status_bytes.decode("utf-8"))
-                        if (
-                            _sha256_bytes(status_bytes)
-                            != authority.status_digest
-                            or payload != expected
-                        ):
-                            raise ValueError(
-                                "Competing metadata migration status "
-                                "authority exists"
-                            )
-                        _verify_anchored_journal_file(quarantined)
-                        os.unlink(quarantine_name, dir_fd=directory.fd)
-                        quarantine_removed = True
-                        os.fsync(directory.fd)
-                        held = os.fstat(handle.fileno())
-                        if (
-                            not stat.S_ISREG(held.st_mode)
-                            or (held.st_dev, held.st_ino)
-                            != quarantined.identity
-                        ):
-                            raise ValueError(
-                                "Metadata migration status quarantine changed"
-                            )
-                        _verify_anchored_journal_directory(directory)
-                        _require_absent_anchored_child(
-                            directory,
-                            quarantine_name,
-                            role="metadata migration status quarantine",
-                        )
-                finally:
-                    if descriptor >= 0:
-                        os.close(descriptor)
-            except Exception:
-                if not quarantine_removed:
-                    _restore_quarantined_metadata_status(
-                        directory,
-                        quarantine_name=quarantine_name,
-                        status_name=status_path.name,
-                    )
-                raise
 
 
-def _restore_quarantined_metadata_status(
+def _status_audit_name(prefix: str, digest: str) -> str:
+    """Return a deterministic safe audit filename for one SHA-256 digest."""
+    raw_digest = digest.removeprefix("sha256:")
+    if len(raw_digest) != 64 or any(
+        character not in "0123456789abcdef" for character in raw_digest
+    ):
+        raise ValueError("Metadata migration status digest is invalid")
+    return f"{prefix}{raw_digest}.json"
+
+
+def _restore_competing_metadata_status(
     directory: _AnchoredJournalDirectory,
     *,
-    quarantine_name: str,
+    archive_name: str,
     status_name: str,
+    archived_bytes: bytes,
 ) -> None:
-    """Restore a displaced competing status without clobbering its pathname."""
+    """Restore a displaced competitor and retain its immutable rejection audit."""
+    rejected_name = _status_audit_name(
+        _REJECTED_STATUS_PREFIX, _sha256_bytes(archived_bytes)
+    )
+    _require_absent_anchored_child(
+        directory,
+        rejected_name,
+        role="rejected metadata status audit",
+    )
     try:
         os.link(
-            quarantine_name,
+            archive_name,
             status_name,
             src_dir_fd=directory.fd,
             dst_dir_fd=directory.fd,
@@ -3856,12 +3964,12 @@ def _restore_quarantined_metadata_status(
     except FileExistsError as exc:
         raise ValueError(
             "Competing metadata migration status appeared during recovery; "
-            f"displaced authority retained as {quarantine_name}"
+            f"displaced authority retained as {archive_name}"
         ) from exc
     os.fsync(directory.fd)
     _verify_anchored_journal_directory(directory)
-    quarantined = os.stat(
-        quarantine_name,
+    archived = os.stat(
+        archive_name,
         dir_fd=directory.fd,
         follow_symlinks=False,
     )
@@ -3871,23 +3979,46 @@ def _restore_quarantined_metadata_status(
         follow_symlinks=False,
     )
     if (
-        not stat.S_ISREG(quarantined.st_mode)
+        not stat.S_ISREG(archived.st_mode)
         or not stat.S_ISREG(restored.st_mode)
-        or (quarantined.st_dev, quarantined.st_ino)
+        or (archived.st_dev, archived.st_ino)
         != (restored.st_dev, restored.st_ino)
     ):
         raise ValueError(
             "Competing metadata migration status recovery identity changed"
         )
-    os.unlink(quarantine_name, dir_fd=directory.fd)
+    _rename_anchored_noreplace(
+        directory,
+        archive_name,
+        rejected_name,
+        role="rejected metadata status audit",
+    )
     os.fsync(directory.fd)
     _verify_anchored_journal_directory(directory)
+    rejected = os.stat(
+        rejected_name,
+        dir_fd=directory.fd,
+        follow_symlinks=False,
+    )
+    restored = os.stat(
+        status_name,
+        dir_fd=directory.fd,
+        follow_symlinks=False,
+    )
+    if (
+        not stat.S_ISREG(rejected.st_mode)
+        or (rejected.st_dev, rejected.st_ino)
+        != (restored.st_dev, restored.st_ino)
+    ):
+        raise ValueError(
+            "Rejected metadata migration status audit identity changed"
+        )
 
 
-def metadata_migration_authority(
+def _metadata_migration_authority_evidence(
     source: str | Path | BundleLayout,
-) -> MetadataMigrationAuthority:
-    """Load and validate the bundle's published metadata-stage authority."""
+) -> _MetadataMigrationAuthorityEvidence:
+    """Load public authority plus its exact internal status-byte digest."""
     _, root = _resolve_bundle(source)
     status_path = _require_safe_migration_path(
         _metadata_status_path(root), role="Metadata migration status", root=root
@@ -3940,16 +4071,27 @@ def metadata_migration_authority(
         raise ValueError(
             "Metadata migration status conflicts with terminal receipt authority"
         )
-    return MetadataMigrationAuthority(
-        status_path=status_path,
+    return _MetadataMigrationAuthorityEvidence(
+        authority=MetadataMigrationAuthority(
+            status_path=status_path,
+            terminal_receipt_path=receipt_path,
+            terminal_receipt_digest=receipt_digest,
+            plan_fingerprint=cast(str, fingerprints["plan_fingerprint"]),
+            source_fingerprint=cast(str, fingerprints["source_fingerprint"]),
+            resulting_fingerprint=cast(
+                str, fingerprints["resulting_fingerprint"]
+            ),
+            compatible_noop=compatible_noop,
+        ),
         status_digest=_sha256_bytes(status_bytes),
-        terminal_receipt_path=receipt_path,
-        terminal_receipt_digest=receipt_digest,
-        plan_fingerprint=cast(str, fingerprints["plan_fingerprint"]),
-        source_fingerprint=cast(str, fingerprints["source_fingerprint"]),
-        resulting_fingerprint=cast(str, fingerprints["resulting_fingerprint"]),
-        compatible_noop=compatible_noop,
     )
+
+
+def metadata_migration_authority(
+    source: str | Path | BundleLayout,
+) -> MetadataMigrationAuthority:
+    """Load and validate the bundle's published metadata-stage authority."""
+    return _metadata_migration_authority_evidence(source).authority
 
 
 def _receipt_resulting_fingerprint(receipt: Mapping[str, Any]) -> str:
@@ -4408,6 +4550,140 @@ def _bundle_authority_candidates(root: Path) -> tuple[tuple[str, Path], ...]:
     return tuple(candidates)
 
 
+def _superseded_metadata_status_evidence(
+    root: Path,
+) -> _MetadataMigrationAuthorityEvidence | None:
+    """Load one immutable superseded status audit without live-target replay."""
+    authority_root = _receipt_dir(root, bundle=True)
+    _require_safe_migration_path(
+        authority_root, role="Metadata migration authority root", root=root
+    )
+    if not authority_root.exists():
+        return None
+    with _open_anchored_journal_directory(
+        root, authority_root
+    ) as directory:
+        names = sorted(
+            name
+            for name in os.listdir(directory.fd)
+            if name.startswith(_SUPERSEDED_STATUS_PREFIX)
+            and name.endswith(".json")
+        )
+        _verify_anchored_journal_directory(directory)
+    if not names:
+        return None
+    if len(names) != 1:
+        raise ValueError(
+            "Competing superseded metadata status audits exist"
+        )
+    archive_name = names[0]
+    raw_digest = archive_name.removeprefix(
+        _SUPERSEDED_STATUS_PREFIX
+    ).removesuffix(".json")
+    expected_digest = f"sha256:{raw_digest}"
+    if _status_audit_name(
+        _SUPERSEDED_STATUS_PREFIX, expected_digest
+    ) != archive_name:
+        raise ValueError("Superseded metadata status audit name is invalid")
+    archive_path = authority_root / archive_name
+    status_bytes = _read_anchored_journal_bytes(
+        archive_path,
+        root=root,
+        role="Metadata migration superseded status audit",
+    )
+    if _sha256_bytes(status_bytes) != expected_digest:
+        raise ValueError("Superseded metadata status audit digest changed")
+    try:
+        payload = json.loads(status_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            "Superseded metadata status audit is malformed"
+        ) from exc
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema_version") != 1
+        or payload.get("state") != "complete"
+    ):
+        raise ValueError("Superseded metadata status audit is malformed")
+    receipt_text = payload.get("terminal_receipt_path")
+    receipt_digest = payload.get("terminal_receipt_digest")
+    if not isinstance(receipt_text, str) or not isinstance(
+        receipt_digest, str
+    ):
+        raise ValueError(
+            "Superseded metadata status audit lacks receipt authority"
+        )
+    receipt_path = _require_safe_migration_path(
+        receipt_text, role="Superseded terminal migration receipt", root=root
+    )
+    _validate_superseded_historical_receipt(
+        root,
+        receipt_path,
+        expected_digest=receipt_digest,
+    )
+    receipt_bytes = _read_anchored_journal_bytes(
+        receipt_path,
+        root=root,
+        role="Superseded terminal migration receipt",
+    )
+    receipt = json.loads(receipt_bytes.decode("utf-8"))
+    if not isinstance(receipt, dict):
+        raise ValueError("Superseded terminal migration receipt is malformed")
+    fingerprints = {
+        name: payload.get(name)
+        for name in (
+            "plan_fingerprint",
+            "source_fingerprint",
+            "resulting_fingerprint",
+        )
+    }
+    if any(
+        not isinstance(value, str) or not value.startswith("sha256:")
+        for value in fingerprints.values()
+    ):
+        raise ValueError(
+            "Superseded metadata status audit has invalid fingerprints"
+        )
+    compatible_noop = payload.get("compatible_noop")
+    raw_targets = receipt.get("targets")
+    if not isinstance(compatible_noop, bool) or not isinstance(
+        raw_targets, list
+    ):
+        raise ValueError(
+            "Superseded metadata status audit has invalid no-op authority"
+        )
+    receipt_noop = not any(
+        target.get("status") == "migratable"
+        for target in raw_targets
+        if isinstance(target, dict)
+    )
+    if (
+        fingerprints["plan_fingerprint"] != receipt.get("plan_fingerprint")
+        or fingerprints["source_fingerprint"]
+        != receipt.get("source_fingerprint")
+        or fingerprints["resulting_fingerprint"]
+        != _receipt_resulting_fingerprint(receipt)
+        or compatible_noop != receipt_noop
+    ):
+        raise ValueError(
+            "Superseded metadata status audit conflicts with its receipt"
+        )
+    return _MetadataMigrationAuthorityEvidence(
+        authority=MetadataMigrationAuthority(
+            status_path=archive_path,
+            terminal_receipt_path=receipt_path,
+            terminal_receipt_digest=receipt_digest,
+            plan_fingerprint=cast(str, fingerprints["plan_fingerprint"]),
+            source_fingerprint=cast(str, fingerprints["source_fingerprint"]),
+            resulting_fingerprint=cast(
+                str, fingerprints["resulting_fingerprint"]
+            ),
+            compatible_noop=compatible_noop,
+        ),
+        status_digest=expected_digest,
+    )
+
+
 def _report_from_authority_plan(
     plan: Mapping[str, Any],
     *,
@@ -4594,11 +4870,17 @@ def reconcile_metadata_migration_bundle(
     )
     try:
         candidates = _bundle_authority_candidates(root)
+        archived_evidence = _superseded_metadata_status_evidence(root)
         status_path = _metadata_status_path(root)
         published_authority: MetadataMigrationAuthority | None = None
+        published_status_digest: str | None = None
         if status_path.exists():
             try:
-                published_authority = metadata_migration_authority(layout)
+                published_evidence = _metadata_migration_authority_evidence(
+                    layout
+                )
+                published_authority = published_evidence.authority
+                published_status_digest = published_evidence.status_digest
             except Exception as exc:
                 raise ValueError(
                     "Competing metadata migration status authority: "
@@ -4847,6 +5129,22 @@ def reconcile_metadata_migration_bundle(
                         "Competing metadata migration status authority does not "
                         "match the historical receipt"
                     )
+            elif archived_evidence is not None:
+                archived_authority = archived_evidence.authority
+                if (
+                    archived_authority.terminal_receipt_path
+                    != result.receipt_path
+                    or archived_authority.plan_fingerprint
+                    != result.plan_fingerprint
+                    or archived_authority.source_fingerprint
+                    != result.source_fingerprint
+                    or archived_authority.resulting_fingerprint
+                    != result.resulting_fingerprint
+                ):
+                    raise ValueError(
+                        "Superseded metadata status audit does not match the "
+                        "historical receipt"
+                    )
             else:
                 published_authority = _publish_metadata_authority(
                     root,
@@ -4854,11 +5152,18 @@ def reconcile_metadata_migration_bundle(
                     compatible_noop=compatible_noop,
                     commit_guard=commit_guard,
                 )
-            _remove_exact_metadata_authority(
-                root,
-                published_authority,
-                commit_guard=commit_guard,
-            )
+                published_status_digest = _sha256_bytes(
+                    _anchored_json_document(
+                        _metadata_authority_payload(published_authority)
+                    )
+                )
+            if published_authority is not None:
+                _remove_exact_metadata_authority(
+                    root,
+                    published_authority,
+                    commit_guard=commit_guard,
+                    status_digest=published_status_digest,
+                )
             return _migrate_superseding_v4_authority(
                 layout,
                 root,
@@ -4877,6 +5182,7 @@ def reconcile_metadata_migration_bundle(
                     root,
                     published_authority,
                     commit_guard=commit_guard,
+                    status_digest=published_status_digest,
                 )
                 _publish_metadata_authority(
                     root,

@@ -19,6 +19,7 @@ import pytest
 
 from phenotypic.sdk_ import (
     BundleLayout,
+    MetadataMigrationAuthority,
     metadata_migration_authority,
     migrate_metadata_bundle,
     migrate_preflighted_metadata_bundle,
@@ -1588,7 +1589,7 @@ def test_status_removal_restores_competitor_replaced_at_mutation_seam(
     assert result.status == "applied"
     authority = metadata_migration_authority(migratable_bundle)
     status_path = authority.status_path
-    retained = status_path.with_name("status.json.retained-before-removal")
+    retained = status_path.with_name("status.json.retained-before-archive")
     competitor = status_path.with_name("status.json.competing-removal")
     competing_payload = json.loads(status_path.read_text(encoding="utf-8"))
     competing_payload["competing"] = True
@@ -1597,10 +1598,19 @@ def test_status_removal_restores_competitor_replaced_at_mutation_seam(
     ).encode("utf-8")
     competitor.write_bytes(competitor_bytes)
     original_bytes = status_path.read_bytes()
+    archive = status_path.with_name(
+        "status.superseded-"
+        f"{hashlib.sha256(original_bytes).hexdigest()}.json"
+    )
+    rejected = status_path.with_name(
+        "status.rejected-"
+        f"{hashlib.sha256(competitor_bytes).hexdigest()}.json"
+    )
     real_rename = migration.os.rename
+    real_archive_rename = migration._rename_anchored_noreplace
     real_replace = migration.os.replace
-    real_unlink = migration.os.unlink
     swapped = False
+    unlink_calls = 0
 
     def replace_named_status(
         *, parent_fd: int | None = None
@@ -1626,37 +1636,35 @@ def test_status_removal_restores_competitor_replaced_at_mutation_seam(
             )
         swapped = True
 
-    def swap_before_quarantine(
-        source: object,
-        destination: object,
-        *args: object,
-        **kwargs: object,
+    def swap_before_archive(
+        directory: object,
+        source: str,
+        destination: str,
+        *,
+        role: str,
     ) -> None:
-        if Path(os.fspath(source)).name == status_path.name:
-            raw_parent_fd = kwargs.get("src_dir_fd")
-            replace_named_status(
-                parent_fd=(
-                    raw_parent_fd if isinstance(raw_parent_fd, int) else None
-                )
-            )
-        real_rename(source, destination, *args, **kwargs)
+        if source == status_path.name:
+            replace_named_status(parent_fd=directory.fd)
+        real_archive_rename(
+            directory,
+            source,
+            destination,
+            role=role,
+        )
 
-    def swap_before_legacy_unlink(
+    def forbid_status_archive_unlink(
         path: object,
         *args: object,
         **kwargs: object,
     ) -> None:
-        if Path(os.fspath(path)).name == status_path.name:
-            raw_parent_fd = kwargs.get("dir_fd")
-            replace_named_status(
-                parent_fd=(
-                    raw_parent_fd if isinstance(raw_parent_fd, int) else None
-                )
-            )
-        real_unlink(path, *args, **kwargs)
+        nonlocal unlink_calls
+        unlink_calls += 1
+        raise AssertionError(f"status archival attempted unlink: {path}")
 
-    monkeypatch.setattr(migration.os, "rename", swap_before_quarantine)
-    monkeypatch.setattr(migration.os, "unlink", swap_before_legacy_unlink)
+    monkeypatch.setattr(
+        migration, "_rename_anchored_noreplace", swap_before_archive
+    )
+    monkeypatch.setattr(migration.os, "unlink", forbid_status_archive_unlink)
 
     with pytest.raises(ValueError, match="[Cc]ompeting.*status"):
         migration._remove_exact_metadata_authority(
@@ -1668,7 +1676,185 @@ def test_status_removal_restores_competitor_replaced_at_mutation_seam(
     assert swapped is True
     assert status_path.read_bytes() == competitor_bytes
     assert retained.read_bytes() == original_bytes
-    assert not tuple(status_path.parent.glob(".status.json.*.quarantine"))
+    assert not archive.exists()
+    assert rejected.read_bytes() == competitor_bytes
+    assert unlink_calls == 0
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_status_archive_substitution_after_validation_never_deletes_victim(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Late archive substitution fails without unlinking the replacement."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+    assert result.status == "applied"
+    authority = metadata_migration_authority(migratable_bundle)
+    status_path = authority.status_path
+    original_bytes = status_path.read_bytes()
+    archive = status_path.with_name(
+        "status.superseded-"
+        f"{hashlib.sha256(original_bytes).hexdigest()}.json"
+    )
+    retained = archive.with_name(f"{archive.name}.retained")
+    victim = archive.with_name(f"{archive.name}.victim")
+    victim_bytes = b"outside archive victim"
+    victim.write_bytes(victim_bytes)
+    real_verify = migration._verify_anchored_journal_file
+    archive_verifications = 0
+    substituted = False
+    unlink_calls = 0
+
+    def substitute_after_archive_validation(file: object) -> None:
+        nonlocal archive_verifications, substituted
+        real_verify(file)
+        if getattr(file, "role", "") != "Metadata migration superseded status audit":
+            return
+        archive_verifications += 1
+        if archive_verifications == 2:
+            archive.rename(retained)
+            victim.replace(archive)
+            substituted = True
+
+    def forbid_status_archive_unlink(
+        path: object,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        nonlocal unlink_calls
+        unlink_calls += 1
+        raise AssertionError(f"status archival attempted unlink: {path}")
+
+    monkeypatch.setattr(
+        migration,
+        "_verify_anchored_journal_file",
+        substitute_after_archive_validation,
+    )
+    monkeypatch.setattr(migration.os, "unlink", forbid_status_archive_unlink)
+
+    with pytest.raises(ValueError, match="journal child changed"):
+        migration._remove_exact_metadata_authority(
+            migratable_bundle.output_root,
+            authority,
+            commit_guard=None,
+        )
+
+    assert substituted is True
+    assert archive.read_bytes() == victim_bytes
+    assert retained.read_bytes() == original_bytes
+    assert not status_path.exists()
+    assert unlink_calls == 0
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_status_archive_publication_never_clobbers_racing_audit(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A competing audit created at publication survives byte-for-byte."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+    assert result.status == "applied"
+    authority = metadata_migration_authority(migratable_bundle)
+    status_path = authority.status_path
+    status_before = status_path.read_bytes()
+    archive = status_path.with_name(
+        "status.superseded-"
+        f"{hashlib.sha256(status_before).hexdigest()}.json"
+    )
+    victim_bytes = b"racing superseded audit"
+    real_require_absent = migration._require_absent_anchored_child
+    injected = False
+
+    def create_competing_audit_after_absence_check(
+        directory: object,
+        name: str,
+        *,
+        role: str,
+    ) -> None:
+        nonlocal injected
+        real_require_absent(directory, name, role=role)
+        if role == "superseded metadata status audit" and not injected:
+            archive.write_bytes(victim_bytes)
+            injected = True
+
+    monkeypatch.setattr(
+        migration,
+        "_require_absent_anchored_child",
+        create_competing_audit_after_absence_check,
+    )
+
+    with pytest.raises(ValueError, match="[Cc]ompeting.*audit"):
+        migration._remove_exact_metadata_authority(
+            migratable_bundle.output_root,
+            authority,
+            commit_guard=None,
+        )
+
+    assert injected is True
+    assert archive.read_bytes() == victim_bytes
+    assert status_path.read_bytes() == status_before
+
+
+def test_superseded_status_archive_is_idempotent_and_conflicts_fail(
+    compatible_bundle: BundleLayout,
+) -> None:
+    """Reruns accept one exact audit archive and reject altered archive bytes."""
+    old_receipt, _ = _write_historical_v3_journal(
+        compatible_bundle, terminal=True
+    )
+    assert old_receipt.is_file()
+
+    first = reconcile_metadata_migration_bundle(
+        compatible_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+
+    assert first is not None and first.status in {"compatible", "applied"}
+    archives = tuple(
+        old_receipt.parent.parent.glob("status.superseded-*.json")
+    )
+    assert len(archives) == 1
+    archive = archives[0]
+    archive_before = archive.read_bytes()
+
+    rerun = reconcile_metadata_migration_bundle(
+        compatible_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+
+    assert rerun is not None and rerun.status in {"compatible", "applied"}
+    assert tuple(old_receipt.parent.parent.glob("status.superseded-*.json")) == (
+        archive,
+    )
+    assert archive.read_bytes() == archive_before
+
+    archive.write_bytes(archive_before + b" ")
+    conflicted = reconcile_metadata_migration_bundle(
+        compatible_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+
+    assert conflicted is not None and conflicted.status == "failed"
+    assert "superseded" in " ".join(conflicted.conflicts).lower()
 
 
 @pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
@@ -1747,6 +1933,107 @@ def test_status_publish_retains_terminal_receipt_authority_through_link(
     assert retained.read_bytes() == original_bytes
     assert not status_path.exists()
     assert not tuple(status_path.parent.glob(".status.json.*.tmp*"))
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_status_publish_rechecks_receipt_after_final_status_validation(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A receipt swap at the final status check rolls back the owned link."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    plan_path, log_path, receipt_path = migration._journal_paths(
+        migratable_bundle.output_root, report.plan_fingerprint
+    )
+    plan = migration._new_journal_plan(
+        report,
+        root=migratable_bundle.output_root,
+        kinds=NON_IMAGE_KINDS,
+    )
+    migration._write_journal_plan(
+        migratable_bundle.output_root,
+        plan_path,
+        log_path,
+        plan,
+        commit_guard=None,
+    )
+    result = migration._apply_metadata_journal(
+        migratable_bundle,
+        migratable_bundle.output_root,
+        plan_path,
+        log_path,
+        receipt_path,
+        kinds=NON_IMAGE_KINDS,
+        commit_guard=None,
+    )
+    assert result.status == "applied"
+    status_path = migration._metadata_status_path(
+        migratable_bundle.output_root
+    )
+    original_bytes = receipt_path.read_bytes()
+    retained = receipt_path.with_name("receipt.json.retained-at-final-status")
+    competitor = receipt_path.with_name("receipt.json.competitor-at-final-status")
+    competitor_bytes = original_bytes + b" "
+    competitor.write_bytes(competitor_bytes)
+    real_verify = migration._verify_anchored_journal_file
+    final_status_validations = 0
+    replaced = False
+
+    def replace_after_final_status_validation(file: object) -> None:
+        nonlocal final_status_validations, replaced
+        real_verify(file)
+        if getattr(file, "role", "") != "Metadata migration status":
+            return
+        final_status_validations += 1
+        if final_status_validations == 2:
+            receipt_path.rename(retained)
+            competitor.replace(receipt_path)
+            replaced = True
+
+    monkeypatch.setattr(
+        migration,
+        "_verify_anchored_journal_file",
+        replace_after_final_status_validation,
+    )
+
+    with pytest.raises(ValueError, match="Terminal migration receipt.*changed"):
+        migration._publish_metadata_authority(
+            migratable_bundle.output_root,
+            result,
+            compatible_noop=False,
+            commit_guard=None,
+        )
+
+    assert replaced is True
+    assert receipt_path.read_bytes() == competitor_bytes
+    assert retained.read_bytes() == original_bytes
+    assert not status_path.exists()
+    assert not tuple(status_path.parent.glob(".status.json.*.tmp*"))
+
+
+def test_metadata_authority_constructor_preserves_previous_signature() -> None:
+    """Existing positional and keyword callers need no new status argument."""
+    fields = {
+        "status_path": Path("/bundle/status.json"),
+        "terminal_receipt_path": Path("/bundle/receipt.json"),
+        "terminal_receipt_digest": "sha256:receipt",
+        "plan_fingerprint": "sha256:plan",
+        "source_fingerprint": "sha256:source",
+        "resulting_fingerprint": "sha256:result",
+        "compatible_noop": False,
+    }
+
+    positional = MetadataMigrationAuthority(*fields.values())
+    keyword = MetadataMigrationAuthority(**fields)
+
+    assert positional == keyword
+    assert positional.status_path == Path("/bundle/status.json")
+    assert positional.terminal_receipt_path == Path("/bundle/receipt.json")
 
 
 @pytest.mark.skipif(
