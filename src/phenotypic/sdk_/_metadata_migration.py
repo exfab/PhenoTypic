@@ -60,6 +60,7 @@ import struct
 import tempfile
 from collections.abc import Iterable, Mapping
 from contextlib import ExitStack, contextmanager
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, BinaryIO, Iterator, Literal, TypeAlias, cast
@@ -72,7 +73,7 @@ from ._atomic_io import (
     atomic_write_json,
     publication_commit,
 )
-from ._file_locking import exclusive_file_lock, exclusive_path_lock
+from ._file_locking import exclusive_file_lock
 from ._io_constants import (
     DATASET_AGGREGATED_PARQUET,
     BundleLayout,
@@ -85,6 +86,11 @@ from ._metadata_helpers import (
     ensure_metadata_prefix,
     metadata_member_for_label,
     normalize_metadata_columns,
+)
+from ._windows_metadata_journal import (
+    WindowsJournalSession,
+    open_windows_journal_session,
+    windows_journal_supported,
 )
 
 MigrationStatus: TypeAlias = Literal[
@@ -1364,10 +1370,14 @@ _JOURNAL_DIR_FD_SUPPORTED = (
     and os.unlink in os.supports_dir_fd
 )
 
-# No full-path fallback is safe against an authority-parent swap. Windows must
-# remain fail-closed until a handle-relative implementation provides equivalent
-# reparse-point and file-ID binding.
-_PORTABLE_JOURNAL_SUPPORTED = False
+_WINDOWS_JOURNAL_SESSION: ContextVar[WindowsJournalSession | None] = ContextVar(
+    "phenotypic_windows_metadata_journal_session", default=None
+)
+
+
+def _windows_journal_capabilities_available() -> bool:
+    """Return whether the native handle-bound Windows backend is usable."""
+    return os.name == "nt" and windows_journal_supported()
 
 
 def _require_journal_descriptor_capabilities() -> None:
@@ -1380,10 +1390,36 @@ def _require_journal_descriptor_capabilities() -> None:
 
 def _require_portable_journal_capabilities() -> None:
     """Fail before authority creation when safe portable primitives are absent."""
-    if not _PORTABLE_JOURNAL_SUPPORTED:
+    if not _windows_journal_capabilities_available():
         raise RuntimeError(
             "Metadata migration handle-bound descriptor safety is unsupported"
         )
+
+
+@contextmanager
+def _windows_journal_session(root: Path) -> Iterator[WindowsJournalSession]:
+    """Open or reuse one handle-bound transaction for the complete operation."""
+    _require_portable_journal_capabilities()
+    existing = _WINDOWS_JOURNAL_SESSION.get()
+    if existing is not None:
+        if existing.root != _absolute_path(root):
+            raise ValueError("Windows metadata journal root changed")
+        yield existing
+        return
+    with open_windows_journal_session(root) as session:
+        token = _WINDOWS_JOURNAL_SESSION.set(session)
+        try:
+            yield session
+        finally:
+            _WINDOWS_JOURNAL_SESSION.reset(token)
+
+
+def _active_windows_journal_session(*, root: Path) -> WindowsJournalSession:
+    """Return the transaction-bound Windows session or fail closed."""
+    session = _WINDOWS_JOURNAL_SESSION.get()
+    if session is None or session.root != _absolute_path(root):
+        raise RuntimeError("Windows metadata journal session is not active")
+    return session
 
 
 def _portable_journal_lock_path(root: Path) -> Path:
@@ -1392,61 +1428,28 @@ def _portable_journal_lock_path(root: Path) -> Path:
 
 
 def _portable_read_regular_bytes(path: Path, *, root: Path, role: str) -> bytes:
-    """Read one path while proving its regular-file identity at both seams."""
-    _require_portable_journal_capabilities()
+    """Read one authority through the active Windows handle session."""
     safe_path = _require_safe_migration_path(path, role=role, root=root)
-    before = safe_path.stat(follow_symlinks=False)
-    if not stat.S_ISREG(before.st_mode):
-        raise ValueError(f"{role} is not a regular file")
-    with safe_path.open("rb") as handle:
-        opened = os.fstat(handle.fileno())
-        if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
-            raise ValueError(f"{role} changed while opening")
-        payload = handle.read()
-        after_open = os.fstat(handle.fileno())
-    after = safe_path.stat(follow_symlinks=False)
-    identities = {
-        (before.st_dev, before.st_ino),
-        (opened.st_dev, opened.st_ino),
-        (after_open.st_dev, after_open.st_ino),
-        (after.st_dev, after.st_ino),
-    }
-    if len(identities) != 1 or not stat.S_ISREG(after.st_mode):
-        raise ValueError(f"{role} changed while reading")
-    return payload
+    return _active_windows_journal_session(root=root).read_bytes(
+        safe_path, role=role
+    )
 
 
 def _portable_publish_absent_bytes(
     path: Path, payload: bytes, *, root: Path, role: str
 ) -> None:
-    """Publish immutable bytes with an atomic hard-link no-clobber commit."""
-    _require_portable_journal_capabilities()
+    """Publish immutable bytes through native handle-relative no-replace."""
     safe_path = _require_safe_migration_path(path, role=role, root=root)
-    _ensure_directory_durable(safe_path.parent)
-    safe_path = _require_safe_migration_path(safe_path, role=role, root=root)
-    temp = safe_path.with_name(
-        f".{safe_path.name}.{os.getpid()}.{os.urandom(8).hex()}.tmp"
+    _active_windows_journal_session(root=root).publish_absent_bytes(
+        safe_path, payload, role=role
     )
-    descriptor = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    try:
-        with os.fdopen(descriptor, "wb") as handle:
-            descriptor = -1
-            handle.write(payload)
-            handle.flush()
-            os.fsync(handle.fileno())
-        try:
-            os.link(temp, safe_path)
-        except FileExistsError as exc:
-            raise ValueError(f"Competing {role} already exists") from exc
-        _fsync_directory(safe_path.parent)
-        if _portable_read_regular_bytes(
-            safe_path, root=root, role=role
-        ) != payload:
-            raise ValueError(f"{role} changed during publication")
-    finally:
-        if descriptor >= 0:
-            os.close(descriptor)
-        temp.unlink(missing_ok=True)
+
+
+def _journal_regular_exists(path: Path, *, root: Path) -> bool:
+    """Check journal existence through the active platform authority handle."""
+    if _JOURNAL_DIR_FD_SUPPORTED:
+        return path.is_file()
+    return _active_windows_journal_session(root=root).exists(path)
 
 
 def _require_non_inheritable_descriptor(descriptor: int, *, role: str) -> None:
@@ -1690,7 +1693,10 @@ def _read_anchored_journal_bytes(
 ) -> bytes:
     """Read bytes through one no-follow descriptor and recheck its binding."""
     if not _JOURNAL_DIR_FD_SUPPORTED:
-        return _portable_read_regular_bytes(path, root=root, role=role)
+        if _WINDOWS_JOURNAL_SESSION.get() is not None:
+            return _portable_read_regular_bytes(path, root=root, role=role)
+        with _windows_journal_session(root):
+            return _portable_read_regular_bytes(path, root=root, role=role)
     with _open_anchored_journal_file(
         path,
         root=root,
@@ -2449,6 +2455,19 @@ def _new_receipt(
 
 def _write_receipt(path: Path, receipt: Mapping[str, Any]) -> None:
     path = _require_safe_migration_path(path, role="Migration receipt")
+    session = _WINDOWS_JOURNAL_SESSION.get()
+    if session is not None:
+        safe_path = _require_safe_migration_path(
+            path,
+            role="Migration receipt",
+            root=session.root,
+        )
+        session.replace_bytes(
+            safe_path,
+            _anchored_json_document(receipt),
+            role="Migration receipt",
+        )
+        return
     _ensure_directory_durable(path.parent)
     atomic_write_json(path, dict(receipt), sort_keys=True)
     _fsync_directory(path.parent)
@@ -3864,7 +3883,7 @@ def _validate_superseded_historical_receipt(
     safe_path = _require_safe_migration_path(
         receipt_path, role="Superseded historical receipt", root=root
     )
-    if not safe_path.is_file():
+    if not _journal_regular_exists(safe_path, root=root):
         raise ValueError("Superseded historical metadata receipt is missing")
     receipt_bytes = _read_anchored_journal_bytes(
         safe_path,
@@ -3920,7 +3939,7 @@ def _validated_terminal_receipt_evidence(
     safe_receipt_path = _require_safe_migration_path(
         receipt_path, role="Terminal migration receipt", root=root
     )
-    if not safe_receipt_path.is_file():
+    if not _journal_regular_exists(safe_receipt_path, root=root):
         raise ValueError("Metadata migration terminal receipt is missing")
     if receipt_file is None:
         receipt_bytes = _read_anchored_journal_bytes(
@@ -4122,7 +4141,8 @@ def _publish_metadata_authority_portable(
             "compatible_noop": receipt_noop,
         }
         document = _anchored_json_document(payload)
-        if status_path.exists():
+        session = _active_windows_journal_session(root=root)
+        if session.exists(status_path):
             if _portable_read_regular_bytes(
                 status_path,
                 root=root,
@@ -5250,10 +5270,13 @@ def _reconcile_portable_metadata_bundle_unlocked(
     commit_guard: CommitGuard | None,
 ) -> MetadataMigrationResult | None:
     """Resume the sole portable receipt while a cross-platform lock is held."""
+    _active_windows_journal_session(root=root).hold_directory(
+        _receipt_dir(root, bundle=True)
+    )
     candidates = _bundle_authority_candidates(root)
     status_path = _metadata_status_path(root)
     if not candidates:
-        if status_path.exists():
+        if _active_windows_journal_session(root=root).exists(status_path):
             raise ValueError(
                 "Competing metadata migration status exists without receipt authority"
             )
@@ -5331,15 +5354,16 @@ def _reconcile_portable_metadata_bundle(
         role="Portable metadata migration writer lock",
         root=root,
     )
-    with exclusive_path_lock(lock_path, timeout=0.0):
-        return _reconcile_portable_metadata_bundle_unlocked(
-            layout,
-            root,
-            kinds=kinds,
-            target_role=target_role,
-            expected_plan_fingerprint=expected_plan_fingerprint,
-            commit_guard=commit_guard,
-        )
+    with _windows_journal_session(root) as session:
+        with session.writer_lock(lock_path):
+            return _reconcile_portable_metadata_bundle_unlocked(
+                layout,
+                root,
+                kinds=kinds,
+                target_role=target_role,
+                expected_plan_fingerprint=expected_plan_fingerprint,
+                commit_guard=commit_guard,
+            )
 
 
 def reconcile_metadata_migration_bundle(
@@ -5783,43 +5807,44 @@ def _migrate_preflighted_metadata_bundle_portable(
             role="Portable metadata migration writer lock",
             root=root,
         )
-        with exclusive_path_lock(lock_path, timeout=0.0):
-            reconciled = _reconcile_portable_metadata_bundle_unlocked(
-                layout,
-                root,
-                kinds=kinds,
-                target_role=report.target_role,
-                expected_plan_fingerprint=report.plan_fingerprint,
-                commit_guard=commit_guard,
-            )
-            if reconciled is not None:
-                return reconciled
-            if report.status == "blocked":
-                return _blocked_result(report)
-            with publication_commit(commit_guard):
-                _validate_preflighted_bundle_authority(
-                    layout, root, report, kinds=kinds
-                )
-                _portable_publish_absent_bytes(
-                    receipt_path,
-                    _anchored_json_document(receipt),
-                    root=root,
-                    role="Portable metadata migration receipt",
-                )
-            result = _apply_receipt(
-                receipt_path,
-                receipt,
-                expected_plan_fingerprint=report.plan_fingerprint,
-                commit_guard=commit_guard,
-            )
-            if result.status in {"compatible", "applied"}:
-                _publish_metadata_authority_portable(
+        with _windows_journal_session(root) as session:
+            with session.writer_lock(lock_path):
+                reconciled = _reconcile_portable_metadata_bundle_unlocked(
+                    layout,
                     root,
-                    result,
-                    compatible_noop=report.status == "compatible",
+                    kinds=kinds,
+                    target_role=report.target_role,
+                    expected_plan_fingerprint=report.plan_fingerprint,
                     commit_guard=commit_guard,
                 )
-            return result
+                if reconciled is not None:
+                    return reconciled
+                if report.status == "blocked":
+                    return _blocked_result(report)
+                with publication_commit(commit_guard):
+                    _validate_preflighted_bundle_authority(
+                        layout, root, report, kinds=kinds
+                    )
+                    _portable_publish_absent_bytes(
+                        receipt_path,
+                        _anchored_json_document(receipt),
+                        root=root,
+                        role="Portable metadata migration receipt",
+                    )
+                result = _apply_receipt(
+                    receipt_path,
+                    receipt,
+                    expected_plan_fingerprint=report.plan_fingerprint,
+                    commit_guard=commit_guard,
+                )
+                if result.status in {"compatible", "applied"}:
+                    _publish_metadata_authority_portable(
+                        root,
+                        result,
+                        compatible_noop=report.status == "compatible",
+                        commit_guard=commit_guard,
+                    )
+                return result
     except Exception as exc:
         return _receipt_validation_failure(receipt_path, receipt, exc)
 

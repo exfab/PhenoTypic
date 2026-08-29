@@ -33,6 +33,9 @@ from phenotypic.sdk_._metadata_migration import (
 
 LEGACY_STRAIN = "MetadataGenetic_Strain"
 CANONICAL_STRAIN = "Metadata_Strain"
+WINDOWS_ONLY = pytest.mark.skipif(
+    os.name != "nt", reason="requires real Windows handle semantics"
+)
 
 
 @pytest.fixture
@@ -108,6 +111,221 @@ def _encode_frames(frames: list[dict[str, object]]) -> bytes:
 
 class _SimulatedProcessDeath(BaseException):
     pass
+
+
+@WINDOWS_ONLY
+def test_windows_fresh_public_local_migration_publishes_authority(
+    migratable_bundle: BundleLayout,
+) -> None:
+    """A supported Windows host completes fresh public receipt migration."""
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+
+    assert result.status == "applied"
+    authority = metadata_migration_authority(migratable_bundle)
+    assert authority is not None
+    assert authority.plan_fingerprint == report.plan_fingerprint
+
+
+@WINDOWS_ONLY
+def test_windows_competing_writer_cannot_clobber_immutable_authority(
+    tmp_path: Path,
+) -> None:
+    """Handle-relative publication preserves an already-published receipt."""
+    from phenotypic.sdk_._windows_metadata_journal import (
+        open_windows_journal_session,
+    )
+
+    root = tmp_path / "output"
+    root.mkdir()
+    receipt = root / ".phenotypic" / "metadata_migration" / "receipt.json"
+    with open_windows_journal_session(root) as session:
+        session.publish_absent_bytes(receipt, b"competitor", role="receipt")
+        with pytest.raises(ValueError, match="Competing"):
+            session.publish_absent_bytes(receipt, b"replacement", role="receipt")
+        assert session.read_bytes(receipt, role="receipt") == b"competitor"
+
+
+@WINDOWS_ONLY
+def test_windows_reparse_authority_fails_before_scientific_mutation(
+    migratable_bundle: BundleLayout,
+    tmp_path: Path,
+) -> None:
+    """A directory reparse point cannot redirect receipt publication."""
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    science = {
+        Path(target.path): Path(target.path).read_bytes()
+        for target in report.targets
+    }
+    external = tmp_path / "external-authority"
+    external.mkdir()
+    authority = migratable_bundle.output_root / ".phenotypic"
+    try:
+        authority.symlink_to(external, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"Windows test host cannot create a directory link: {exc}")
+
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+
+    assert result.status == "failed"
+    assert "reparse" in " ".join(result.conflicts).lower()
+    assert not tuple(external.iterdir())
+    assert {path: path.read_bytes() for path in science} == science
+
+
+@WINDOWS_ONLY
+@pytest.mark.parametrize(
+    "seam",
+    ["lock_open", "temp_create", "receipt_publish", "status_publish", "cleanup"],
+)
+def test_windows_held_parent_fences_swap_before_each_mutation_seam(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    seam: str,
+) -> None:
+    """Every authority mutation remains bound to the held directory handle."""
+    from phenotypic.sdk_._windows_metadata_journal import (
+        WindowsJournalSession,
+        _CtypesWindowsApi,
+    )
+
+    root = tmp_path / "output"
+    root.mkdir()
+    science = root / "science.parquet"
+    science.write_bytes(b"scientific-bytes")
+    victim = tmp_path / "external-victim.json"
+    victim.write_bytes(b"victim-bytes")
+    authority_parent = root / "authority"
+    swapped = root / "authority-swapped"
+    attempted: list[str] = []
+    api = _CtypesWindowsApi()
+
+    def attempt_parent_swap(label: str) -> None:
+        attempted.append(label)
+        with pytest.raises(OSError):
+            authority_parent.rename(swapped)
+
+    real_open_file = api.open_file
+
+    def open_file(
+        parent: int,
+        name: str,
+        *,
+        create_new: bool,
+        share_delete: bool,
+    ) -> int:
+        if seam == "lock_open" and name == "writer.lock":
+            attempt_parent_swap("lock_open")
+        elif seam == "temp_create" and name.endswith(".tmp"):
+            attempt_parent_swap("temp_create")
+        return real_open_file(
+            parent,
+            name,
+            create_new=create_new,
+            share_delete=share_delete,
+        )
+
+    real_rename = api.rename
+
+    def rename(
+        handle: int,
+        parent: int,
+        name: str,
+        *,
+        replace: bool,
+    ) -> None:
+        if seam == "receipt_publish" and name == "receipt.json":
+            attempt_parent_swap("receipt_publish")
+        elif seam == "status_publish" and name == "status.json":
+            attempt_parent_swap("status_publish")
+        if seam == "cleanup" and name == "receipt.json":
+            raise OSError("force cleanup")
+        real_rename(handle, parent, name, replace=replace)
+
+    real_delete = api.delete
+
+    def delete(handle: int) -> None:
+        if seam == "cleanup":
+            attempt_parent_swap("cleanup")
+        real_delete(handle)
+
+    monkeypatch.setattr(api, "open_file", open_file)
+    monkeypatch.setattr(api, "rename", rename)
+    monkeypatch.setattr(api, "delete", delete)
+    receipt = authority_parent / "receipt.json"
+    status = authority_parent / "status.json"
+    with WindowsJournalSession(root, api=api) as session:
+        with session.writer_lock(authority_parent / "writer.lock"):
+            if seam == "cleanup":
+                with pytest.raises(OSError, match="force cleanup"):
+                    session.publish_absent_bytes(
+                        receipt, b"receipt", role="receipt"
+                    )
+            else:
+                session.publish_absent_bytes(
+                    receipt, b"receipt", role="receipt"
+                )
+                session.publish_absent_bytes(
+                    status, b"status", role="status"
+                )
+
+    assert attempted == [seam]
+    assert not swapped.exists()
+    assert science.read_bytes() == b"scientific-bytes"
+    assert victim.read_bytes() == b"victim-bytes"
+
+
+@WINDOWS_ONLY
+def test_windows_interrupted_receipt_replays_after_process_death(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A durable prepared receipt resumes after the original handles close."""
+    report, _unused_journal_paths = _interrupt_after_first_target_replace(
+        migratable_bundle, monkeypatch
+    )
+
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+
+    assert result.status == "applied"
+    assert metadata_migration_authority(migratable_bundle) is not None
+
+
+@WINDOWS_ONLY
+def test_windows_missing_native_primitive_fails_before_science(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Capability failure happens before any scientific target is replaced."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    science = {
+        Path(target.path): Path(target.path).read_bytes()
+        for target in report.targets
+    }
+    monkeypatch.setattr(migration, "windows_journal_supported", lambda: False)
+
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+
+    assert result.status == "failed"
+    assert {path: path.read_bytes() for path in science} == science
 
 
 def _interrupt_after_first_target_replace(
