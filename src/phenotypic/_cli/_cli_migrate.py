@@ -39,7 +39,10 @@ from pathlib import Path
 import click
 
 from ._cli_migrate_image import (
+    MigrationImagePartialResult,
     MigrationImageResult,
+    MigrationImageStageError,
+    MigrationImageStageFailure,
     ReclaimResult,
     _configured_work_id,
     _existing_marker_identity,
@@ -527,7 +530,7 @@ def _migrate_image_result(
     overlay_alpha: float,
     dry_run: bool,
     commit_guard: CommitGuard | None,
-) -> tuple[MigrationImageResult | None, tuple[Path, str] | None]:
+) -> tuple[MigrationImageResult | None, MigrationImageStageFailure | None]:
     """Run one task while preserving a typed per-image failure."""
     try:
         result = migrate_image_task(
@@ -538,9 +541,24 @@ def _migrate_image_result(
             dry_run=dry_run,
             commit_guard=commit_guard,
         )
+    except MigrationImageStageError as exc:
+        return None, exc.failure
     except Exception as exc:  # noqa: BLE001 - isolate every manifest image
         target = task.hdf_path or task.store_path
-        return None, (target, f"{type(exc).__name__}: {exc}")
+        return None, MigrationImageStageFailure(
+            stage="conversion",
+            target=target,
+            reason=f"{type(exc).__name__}: {exc}",
+            partial=MigrationImagePartialResult(
+                index=task.index,
+                dataset=task.dataset,
+                stem=task.stem,
+                work_id=_migration_work_id(task.dataset, task.stem),
+                converted=False,
+                table_installed=False,
+                overlay_rendered=False,
+            ),
+        )
     return result, None
 
 
@@ -555,7 +573,7 @@ def _execute_migration_tasks(
     commit_guard: CommitGuard | None,
 ) -> tuple[
     tuple[MigrationImageResult, ...],
-    tuple[tuple[Path, str], ...],
+    tuple[MigrationImageStageFailure, ...],
 ]:
     """Execute the one canonical inventory locally, using joblib when asked."""
     if njobs > 1 and len(tasks) > 1:
@@ -592,21 +610,50 @@ def _execute_migration_tasks(
 def _report_from_image_results(
     tasks: Sequence[MigrationImageTask],
     results: Sequence[MigrationImageResult],
+    failures: Sequence[MigrationImageStageFailure] = (),
 ) -> MigrationReport:
     """Preserve legacy summary counters from canonical task results."""
     by_index = {result.index: result for result in results}
+    partials = tuple(failure.partial for failure in failures)
+    conversion_failures = tuple(
+        (failure.target, failure.reason)
+        for failure in failures
+        if failure.stage in {"conversion", "marker"}
+    )
+    table_failures = tuple(
+        (failure.target, failure.reason)
+        for failure in failures
+        if failure.stage == "table"
+    )
+    overlay_failures = tuple(
+        (failure.target, failure.reason)
+        for failure in failures
+        if failure.stage == "overlay"
+    )
     return MigrationReport(
-        converted=sum(result.converted for result in results),
+        converted=(
+            sum(result.converted for result in results)
+            + sum(result.converted for result in partials)
+        ),
         skipped=sum(result.skipped for result in results),
-        tables_migrated=sum(result.table_installed for result in results),
+        tables_migrated=(
+            sum(result.table_installed for result in results)
+            + sum(result.table_installed for result in partials)
+        ),
         tables_skipped=sum(
             task.measurement_path is not None
             and task.index in by_index
             and not by_index[task.index].table_installed
             for task in tasks
         ),
-        overlays_created=sum(result.overlay_rendered for result in results),
+        overlays_created=(
+            sum(result.overlay_rendered for result in results)
+            + sum(result.overlay_rendered for result in partials)
+        ),
         overlays_skipped=sum(not result.overlay_rendered for result in results),
+        failed=conversion_failures,
+        table_failures=table_failures,
+        overlay_failures=overlay_failures,
     )
 
 
@@ -713,12 +760,22 @@ def finalize_migration_attempt(
     commit_guard: CommitGuard | None,
 ) -> MigrationReport:
     """Publish terminal migration science and close one owned generation."""
+    categorized_image_failures = frozenset(
+        report.failed + report.table_failures + report.overlay_failures
+    )
+    unreported_image_failures = tuple(
+        failure
+        for failure in image_failures
+        if failure not in categorized_image_failures
+    )
     if dry_run:
         return replace(
             report,
             headers_migrated=metadata_pass.headers_migrated,
             header_failures=metadata_pass.failures,
-            failed=report.failed + image_failures + reclaim_failures,
+            failed=(
+                report.failed + unreported_image_failures + reclaim_failures
+            ),
         )
 
     output_dir = Path(output_dir)
@@ -727,7 +784,7 @@ def finalize_migration_attempt(
         report,
         headers_migrated=metadata_pass.headers_migrated,
         header_failures=metadata_pass.failures,
-        failed=report.failed + image_failures + reclaim_failures,
+        failed=report.failed + unreported_image_failures + reclaim_failures,
     )
     failure_category: str | None = None
     reason: str | None = None
@@ -1156,7 +1213,7 @@ def run_migrate(
 
     if dry_run:
         metadata_pass = run_metadata_pass(output_dir, dry_run=True)
-        results, image_failures = _execute_migration_tasks(
+        results, stage_failures = _execute_migration_tasks(
             output_dir,
             tasks=tasks,
             metadata_csv=metadata_csv,
@@ -1165,12 +1222,11 @@ def run_migrate(
             njobs=njobs,
             commit_guard=None,
         )
-        report = _report_from_image_results(tasks, results)
+        report = _report_from_image_results(tasks, results, stage_failures)
         return replace(
             report,
             headers_migrated=metadata_pass.headers_migrated,
             header_failures=metadata_pass.failures,
-            failed=image_failures,
         )
 
     generation = new_slurm_generation()
@@ -1183,12 +1239,39 @@ def run_migrate(
     def commit_guard():
         return generation_publication_guard(output_dir, generation)
 
-    invalidate_migration_terminal_authority(
-        output_dir,
-        commit_guard=commit_guard,
-    )
     scientific_output = deliverables_dir(output_dir)
     manifest_path = phenotypic_cache_dir(output_dir) / "migration_manifest.json"
+    try:
+        invalidate_migration_terminal_authority(
+            output_dir,
+            commit_guard=commit_guard,
+        )
+    except Exception as exc:  # noqa: BLE001 - terminalize owned setup failure
+        reason = (
+            "terminal authority invalidation failed: "
+            f"{type(exc).__name__}: {exc}"
+        )
+        report = MigrationReport(
+            publication_failures=(
+                (aggregate_publication_marker_path(output_dir), reason),
+            )
+        )
+        publish_migration_terminal_status(
+            output_dir,
+            generation=generation,
+            succeeded=False,
+            failure_category="aggregate",
+            reason=reason,
+            report=report,
+            commit_guard=commit_guard,
+        )
+        close_migration_generation(
+            output_dir,
+            generation=generation,
+            succeeded=False,
+            reason=reason,
+        )
+        return report
     try:
         with publication_commit(commit_guard):
             manifest = write_migration_manifest(
@@ -1238,6 +1321,7 @@ def run_migrate(
         )
 
     results: tuple[MigrationImageResult, ...] = ()
+    stage_failures: tuple[MigrationImageStageFailure, ...] = ()
     image_failures: tuple[tuple[Path, str], ...] = ()
     if not metadata_pass.failures and metadata_pass.authority is not None:
         try:
@@ -1254,7 +1338,7 @@ def run_migrate(
                 ),
             )
         else:
-            results, image_failures = _execute_migration_tasks(
+            results, stage_failures = _execute_migration_tasks(
                 output_dir,
                 tasks=tasks,
                 metadata_csv=metadata_csv,
@@ -1263,7 +1347,9 @@ def run_migrate(
                 njobs=njobs,
                 commit_guard=commit_guard,
             )
-            status_failures = list(image_failures)
+            status_failures = [
+                (failure.target, failure.reason) for failure in stage_failures
+            ]
             for result in results:
                 try:
                     publish_migration_task_status(
@@ -1391,7 +1477,7 @@ def run_migrate(
                 )
             )
 
-    report = _report_from_image_results(tasks, results)
+    report = _report_from_image_results(tasks, results, stage_failures)
     return finalize_migration_attempt(
         output_dir,
         manifest_path=manifest_path,

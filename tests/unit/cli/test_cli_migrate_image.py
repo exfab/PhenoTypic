@@ -21,8 +21,13 @@ from phenotypic._cli._cli_completion import (
     publish_image_success,
     valid_image_success,
 )
-from phenotypic._cli._cli_migrate_image import migrate_image_task
+from phenotypic._cli._cli_migrate_image import (
+    _existing_marker_identity,
+    _source_artifact_state,
+    migrate_image_task,
+)
 from phenotypic._cli._cli_migrate_manifest import MigrationImageTask
+from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
 from phenotypic._cli._cli_overlay_rendering import overlay_output_manager
 from phenotypic._cli._cli_overlay_rendering import valid_migration_overlay
 from phenotypic._cli._cli_state_management import save_processing_state
@@ -88,6 +93,146 @@ def _migration_task(
         overlay_path=output_dir / "deliverables" / "overlays" / "ds" / "img.png",
         marker_path=image_completion_marker_path(output_dir, "ds", "img"),
     )
+
+
+def test_source_artifact_state_refuses_directory_as_absence(
+    tmp_path: Path,
+) -> None:
+    """Only a missing source file is authoritative absence."""
+    source = tmp_path / "source.h5"
+    source.mkdir()
+
+    with pytest.raises(IsADirectoryError):
+        _source_artifact_state(source)
+
+
+def test_migration_marker_identity_uses_active_generation_on_slurm(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Local migrate inside an allocation publishes with its owned generation."""
+    output_dir = tmp_path / "out"
+    initialize_slurm_lifecycle(
+        output_dir,
+        generation="migration-generation",
+        mode="migrate",
+    )
+    monkeypatch.setenv("SLURM_JOB_ID", "12345")
+
+    identity = _existing_marker_identity(
+        output_dir,
+        "ds",
+        "img",
+        "work-id",
+    )
+
+    assert identity["lifecycle_epoch"] == "migration-generation"
+
+
+def test_table_failure_preserves_completed_conversion_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A table-stage exception retains the already-completed conversion."""
+    import phenotypic._cli._cli_migrate_image as migrate_module
+
+    output_dir, task = _migration_task(tmp_path)
+    validity = iter((False, True))
+    monkeypatch.setattr(
+        migrate_module, "valid_staged_store", lambda _path: next(validity)
+    )
+    monkeypatch.setattr(
+        migrate_module,
+        "migrate_hdf_to_zarr",
+        lambda *_args, **_kwargs: task.store_path,
+    )
+    monkeypatch.setattr(
+        migrate_module,
+        "load_image_from_store",
+        lambda _path: SimpleNamespace(num_objects=1),
+    )
+
+    def fail_table(*_args: object, **_kwargs: object) -> tuple[bool, bool]:
+        raise OSError("table write failed")
+
+    monkeypatch.setattr(migrate_module, "_table_state", fail_table)
+
+    with pytest.raises(migrate_module.MigrationImageStageError) as caught:
+        migrate_module.migrate_image_task(
+            output_dir,
+            task,
+            metadata_csv=None,
+            overlay_alpha=0.3,
+            dry_run=False,
+        )
+
+    failure = caught.value.failure
+    assert failure.stage == "table"
+    assert failure.target == task.measurement_path
+    assert failure.partial.converted is True
+    assert failure.partial.table_installed is False
+    assert failure.partial.overlay_rendered is False
+
+
+def test_overlay_failure_preserves_conversion_and_table_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An overlay exception retains completed conversion and table evidence."""
+    import phenotypic._cli._cli_migrate_image as migrate_module
+
+    output_dir, task = _migration_task(tmp_path)
+    validity = iter((False, True))
+    monkeypatch.setattr(
+        migrate_module, "valid_staged_store", lambda _path: next(validity)
+    )
+    monkeypatch.setattr(
+        migrate_module,
+        "migrate_hdf_to_zarr",
+        lambda *_args, **_kwargs: task.store_path,
+    )
+    monkeypatch.setattr(
+        migrate_module,
+        "load_image_from_store",
+        lambda _path: SimpleNamespace(num_objects=1),
+    )
+    monkeypatch.setattr(
+        migrate_module,
+        "_table_state",
+        lambda *_args, **_kwargs: (True, True),
+    )
+    monkeypatch.setattr(migrate_module, "_image_plane_shape", lambda _image: (5, 5))
+    monkeypatch.setattr(
+        migrate_module,
+        "valid_migration_overlay",
+        lambda *_args, **_kwargs: False,
+    )
+
+    class FailingOverlayManager:
+        def save_overlay(self, *_args: object, **_kwargs: object) -> Path:
+            raise OSError("overlay write failed")
+
+    monkeypatch.setattr(
+        migrate_module,
+        "overlay_output_manager",
+        lambda *_args, **_kwargs: FailingOverlayManager(),
+    )
+
+    with pytest.raises(migrate_module.MigrationImageStageError) as caught:
+        migrate_module.migrate_image_task(
+            output_dir,
+            task,
+            metadata_csv=None,
+            overlay_alpha=0.3,
+            dry_run=False,
+        )
+
+    failure = caught.value.failure
+    assert failure.stage == "overlay"
+    assert failure.target == task.overlay_path
+    assert failure.partial.converted is True
+    assert failure.partial.table_installed is True
+    assert failure.partial.overlay_rendered is False
 
 
 def _install_store(task: MigrationImageTask) -> None:

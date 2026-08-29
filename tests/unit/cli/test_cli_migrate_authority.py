@@ -11,10 +11,14 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Iterator
 
+import polars as pl
 import pytest
 
 from phenotypic._cli._cli_migrate_image import (
+    MigrationImagePartialResult,
     MigrationImageResult,
+    MigrationImageStageError,
+    MigrationImageStageFailure,
     ReclaimResult,
     SourceArtifactState,
     _migration_work_id,
@@ -22,16 +26,19 @@ from phenotypic._cli._cli_migrate_image import (
 from phenotypic._cli._cli_migrate import (
     MetadataPassResult,
     _execute_migration_tasks,
+    _report_from_image_results,
     close_migration_generation,
     finalize_migration_attempt,
     invalidate_migration_terminal_authority,
     migration_terminal_status_path,
     publish_migration_terminal_status,
     run_migrate,
+    echo_migration_summary,
 )
 from phenotypic._cli._cli_migrate_manifest import (
     MigrationImageTask,
     MigrationReclaimSeal,
+    migration_image_seal_path,
     migration_reclaim_status_path,
     migration_task_status_path,
     publish_migration_reclaim_status,
@@ -58,6 +65,7 @@ from phenotypic._cli._cli_state_management import (
 )
 from phenotypic._cli._cli_types import DatasetState, ProcessingState
 from phenotypic.sdk_ import (
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     aggregate_publication_marker_path,
     deliverables_dir,
     master_measurements_csv_path,
@@ -99,6 +107,56 @@ def _task(run: Path, index: int) -> MigrationImageTask:
     )
 
 
+@pytest.mark.parametrize(
+    ("stage", "table_installed", "expected_failure", "expected_summary"),
+    (
+        ("table", False, "table_failures", "Pass 3 FAILED"),
+        ("overlay", True, "overlay_failures", "Pass 4 FAILED"),
+    ),
+)
+def test_partial_stage_failures_keep_legacy_counts_and_cli_categories(
+    tmp_path: Path,
+    stage: str,
+    table_installed: bool,
+    expected_failure: str,
+    expected_summary: str,
+) -> None:
+    """Later-stage failures do not erase completed legacy pass evidence."""
+    from click.testing import CliRunner
+
+    task = _task(tmp_path / "run", 0)
+    partial = MigrationImagePartialResult(
+        index=task.index,
+        dataset=task.dataset,
+        stem=task.stem,
+        work_id=_migration_work_id(task.dataset, task.stem),
+        converted=True,
+        table_installed=table_installed,
+        overlay_rendered=False,
+    )
+    target = task.measurement_path if stage == "table" else task.overlay_path
+    assert target is not None
+    failure = MigrationImageStageFailure(
+        stage=stage,
+        target=target,
+        reason=f"{stage} failed",
+        partial=partial,
+    )
+
+    report = _report_from_image_results((task,), (), (failure,))
+
+    assert report.converted == 1
+    assert report.tables_migrated == int(table_installed)
+    assert getattr(report, expected_failure) == ((target, f"{stage} failed"),)
+    assert report.failed == ()
+    runner = CliRunner()
+    with runner.isolation() as streams:
+        echo_migration_summary(tmp_path / "run", report, dry_run=False)
+        summary = "".join(stream.getvalue().decode() for stream in streams[:2])
+    assert expected_summary in summary
+    assert "Pass 2 FAILED" not in summary
+
+
 def _manifest(run: Path, count: int = 2) -> tuple[Path, tuple[MigrationImageTask, ...]]:
     """Publish one immutable manifest and return its canonical header path."""
     tasks = tuple(_task(run, index) for index in range(count))
@@ -111,14 +169,34 @@ def _manifest(run: Path, count: int = 2) -> tuple[Path, tuple[MigrationImageTask
     return phenotypic_cache_dir(run) / "migration_manifest.json", tasks
 
 
-def _image_result(task: MigrationImageTask) -> MigrationImageResult:
-    """Install marker bytes and return their exact successful result."""
-    task.marker_path.parent.mkdir(parents=True, exist_ok=True)
-    task.marker_path.write_bytes(
-        json.dumps(
-            {"dataset": task.dataset, "image_stem": task.stem},
-            sort_keys=True,
-        ).encode()
+def _image_result(
+    task: MigrationImageTask,
+    *,
+    lifecycle_epoch: str = "migration",
+) -> MigrationImageResult:
+    """Install real migrated artifacts and their canonical success marker."""
+    output_dir = task.store_path.parents[3]
+    task.store_path.mkdir(parents=True, exist_ok=True)
+    (task.store_path / "zarr.json").write_bytes(b'{"zarr_format":3}')
+    embedded = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+    embedded.parent.mkdir(parents=True, exist_ok=True)
+    embedded.write_bytes(b"embedded measurements")
+    task.overlay_path.parent.mkdir(parents=True, exist_ok=True)
+    task.overlay_path.write_bytes(b"canonical overlay")
+    publish_image_success(
+        output_dir,
+        work_id=_migration_work_id(task.dataset, task.stem),
+        dataset=task.dataset,
+        relative_image_path=f"{task.dataset}/{task.stem}",
+        image_stem=task.stem,
+        mode="full",
+        attempt_id="migration",
+        lifecycle_epoch=lifecycle_epoch,
+        artifacts={
+            "store": task.store_path,
+            "overlay": task.overlay_path,
+            "measurements": embedded,
+        },
     )
     return MigrationImageResult(
         index=task.index,
@@ -152,6 +230,23 @@ class _RejectingGuard(_Guard):
     def __call__(self) -> Iterator[None]:
         self.entries += 1
         raise RuntimeError("generation guard rejected publication")
+        yield
+
+
+class _RejectOnEntry(_Guard):
+    """Reject one exact terminal publication boundary."""
+
+    def __init__(self, reject_at: int) -> None:
+        super().__init__()
+        self.reject_at = reject_at
+
+    @contextmanager
+    def __call__(self) -> Iterator[None]:
+        self.entries += 1
+        if self.entries == self.reject_at:
+            raise RuntimeError(
+                f"generation guard rejected publication {self.reject_at}"
+            )
         yield
 
 
@@ -284,6 +379,53 @@ def test_status_publication_refuses_result_marker_payload_mismatch(
             metadata_terminal_digest=_METADATA_DIGEST,
             result=result,
         )
+
+
+def test_status_publication_requires_current_semantic_marker_authority(
+    tmp_path: Path,
+) -> None:
+    """Unchanged marker bytes cannot authorize a mutated declared artifact."""
+    run = tmp_path / "run"
+    manifest_path, tasks = _manifest(run, count=1)
+    result = _image_result(tasks[0])
+    (tasks[0].store_path / "zarr.json").write_bytes(b"mutated store root")
+
+    with pytest.raises(ValueError, match="semantic marker authority"):
+        publish_migration_task_status(
+            phenotypic_cache_dir(run),
+            manifest_path=manifest_path,
+            expected_scientific_output=deliverables_dir(run),
+            generation=_GENERATION,
+            metadata_terminal_digest=_METADATA_DIGEST,
+            result=result,
+        )
+
+
+@pytest.mark.parametrize("mutation", ("store", "overlay"))
+def test_image_seal_revalidates_current_semantic_artifact_set(
+    tmp_path: Path,
+    mutation: str,
+) -> None:
+    """Artifact mutation/removal after status makes the image seal unclean."""
+    run = tmp_path / "run"
+    manifest_path, tasks = _manifest(run, count=1)
+    _publish_image_statuses(run, manifest_path, tasks)
+    task = tasks[0]
+    if mutation == "store":
+        (task.store_path / "zarr.json").write_bytes(b"mutated store root")
+    else:
+        task.overlay_path.unlink()
+
+    seal = seal_migration_image_stage(
+        phenotypic_cache_dir(run),
+        manifest_path=manifest_path,
+        expected_scientific_output=deliverables_dir(run),
+        generation=_GENERATION,
+        metadata_terminal_digest=_METADATA_DIGEST,
+    )
+
+    assert seal.clean is False
+    assert any("semantic marker authority" in failure for failure in seal.failures)
 
 
 def _state(path: Path | None, data: bytes | None) -> SourceArtifactState:
@@ -620,6 +762,129 @@ def test_reclaim_noop_records_missing_marker_without_deleting_sources(
     assert task.measurement_path.is_file()
 
 
+def test_reclaim_status_rejects_tampered_well_formed_prestate(
+    tmp_path: Path,
+) -> None:
+    """A retained source's claimed prestate must equal its current exact bytes."""
+    from phenotypic._cli._cli_migrate import _retained_reclaim_result
+
+    run = tmp_path / "run"
+    manifest_path, tasks = _manifest(run, count=1)
+    image_result = _image_result(tasks[0])
+    task = tasks[0]
+    assert task.hdf_path is not None
+    assert task.measurement_path is not None
+    task.hdf_path.parent.mkdir(parents=True, exist_ok=True)
+    task.measurement_path.parent.mkdir(parents=True, exist_ok=True)
+    task.hdf_path.write_bytes(b"retained hdf")
+    task.measurement_path.write_bytes(b"retained parquet")
+    result = _retained_reclaim_result(run, task, image_result)
+    tampered = replace(
+        result,
+        hdf_prestate=replace(
+            result.hdf_prestate,
+            size=result.hdf_prestate.size + 1,  # type: ignore[operator]
+            sha256=hashlib.sha256(b"different bytes").hexdigest(),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="prestate.*current source"):
+        publish_migration_reclaim_status(
+            phenotypic_cache_dir(run),
+            manifest_path=manifest_path,
+            expected_scientific_output=deliverables_dir(run),
+            generation=_GENERATION,
+            result=tampered,
+        )
+
+
+def test_reclaim_status_requires_manifest_ordered_deleted_paths(
+    tmp_path: Path,
+) -> None:
+    """Deleted source classification is an exact ordered transition list."""
+    run = tmp_path / "run"
+    manifest_path, tasks = _manifest(run, count=1)
+    image_result = _image_result(tasks[0])
+    result = _deleted_reclaim_result(tasks[0], image_result.marker_digest)
+    reordered = replace(result, deleted_paths=tuple(reversed(result.deleted_paths)))
+
+    with pytest.raises(ValueError, match="deleted paths"):
+        publish_migration_reclaim_status(
+            phenotypic_cache_dir(run),
+            manifest_path=manifest_path,
+            expected_scientific_output=deliverables_dir(run),
+            generation=_GENERATION,
+            result=reordered,
+        )
+
+
+def test_reclaim_seal_revalidates_exact_deleted_transition_list(
+    tmp_path: Path,
+) -> None:
+    """A well-formed edit cannot remove a source from sealed deletion evidence."""
+    run = tmp_path / "run"
+    manifest_path, tasks = _manifest(run, count=1)
+    image_result = _publish_image_statuses(run, manifest_path, tasks)[0]
+    image_seal = seal_migration_image_stage(
+        phenotypic_cache_dir(run),
+        manifest_path=manifest_path,
+        expected_scientific_output=deliverables_dir(run),
+        generation=_GENERATION,
+        metadata_terminal_digest=_METADATA_DIGEST,
+    )
+    reclaim_result = _deleted_reclaim_result(
+        tasks[0], image_result.marker_digest
+    )
+    status_path = publish_migration_reclaim_status(
+        phenotypic_cache_dir(run),
+        manifest_path=manifest_path,
+        expected_scientific_output=deliverables_dir(run),
+        generation=_GENERATION,
+        result=reclaim_result,
+    )
+    payload = json.loads(status_path.read_text(encoding="utf-8"))
+    payload["deleted_paths"] = []
+    status_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    seal = seal_migration_reclaim_stage(
+        phenotypic_cache_dir(run),
+        manifest_path=manifest_path,
+        expected_scientific_output=deliverables_dir(run),
+        generation=_GENERATION,
+        deletion_requested=True,
+        image_seal=image_seal,
+    )
+
+    assert seal is not None
+    assert seal.clean is False
+    assert any("deleted paths" in failure for failure in seal.failures)
+
+
+def test_reclaim_status_refuses_directory_replacing_claimed_absent_source(
+    tmp_path: Path,
+) -> None:
+    """A directory or unreadable source path is not equivalent to absence."""
+    run = tmp_path / "run"
+    manifest_path, tasks = _manifest(run, count=1)
+    image_result = _image_result(tasks[0])
+    result = _deleted_reclaim_result(tasks[0], image_result.marker_digest)
+    task = tasks[0]
+    assert task.hdf_path is not None
+    task.hdf_path.mkdir()
+
+    with pytest.raises((IsADirectoryError, ValueError)):
+        publish_migration_reclaim_status(
+            phenotypic_cache_dir(run),
+            manifest_path=manifest_path,
+            expected_scientific_output=deliverables_dir(run),
+            generation=_GENERATION,
+            result=result,
+        )
+    assert not migration_reclaim_status_path(
+        phenotypic_cache_dir(run), _GENERATION, 0
+    ).exists()
+
+
 def test_reclaim_seal_rejects_image_seal_stale_before_deletion_evidence(
     tmp_path: Path,
 ) -> None:
@@ -756,6 +1021,31 @@ def test_run_completion_replaces_only_inside_commit_guard(tmp_path: Path) -> Non
 
     assert guard.entries == 1
     assert not run_completion_marker_path(run).exists()
+
+
+def test_compatible_run_completion_still_validates_commit_guard(
+    tmp_path: Path,
+) -> None:
+    """An idempotent completion return cannot bypass generation revocation."""
+    run = tmp_path / "run"
+    _install_completion_fixture(run)
+    publish_aggregate_snapshot(run)
+    completion = publish_run_completion_evidence(
+        run,
+        execution_epoch="generation",
+    )
+    before = completion.read_bytes()
+    guard = _RejectingGuard()
+
+    with pytest.raises(RuntimeError, match="guard rejected"):
+        publish_run_completion_evidence(
+            run,
+            execution_epoch="generation",
+            commit_guard=guard,
+        )
+
+    assert guard.entries == 1
+    assert completion.read_bytes() == before
 
 
 def test_terminal_authority_invalidation_unlinks_both_markers_under_one_guard(
@@ -1256,17 +1546,160 @@ def test_aggregate_core_outputs_replace_only_inside_commit_guard(
     )
     guard = _RejectingGuard()
 
-    result = aggregate_measurements(
-        run,
-        ["ds"],
-        no_qc=True,
-        commit_guard=guard,
-    )
+    with pytest.raises(RuntimeError, match="guard rejected"):
+        aggregate_measurements(
+            run,
+            ["ds"],
+            no_qc=True,
+            commit_guard=guard,
+        )
 
-    assert result is None
     assert guard.entries == 1
     assert not master_measurements_csv_path(run).exists()
     assert not master_measurements_parquet_path(run).exists()
+
+
+def test_measurement_mirror_does_not_swallow_generation_rejection(
+    tmp_path: Path,
+) -> None:
+    """Mirror best-effort handling cannot convert a stale fence into success."""
+    from phenotypic._cli._cli_output_manager import _seed_measurements
+
+    run = tmp_path / "run"
+    guard = _RejectingGuard()
+
+    with pytest.raises(RuntimeError, match="guard rejected"):
+        _seed_measurements(
+            run,
+            pl.DataFrame({"Object_Label": [1], "Size_Area": [25.0]}),
+            commit_guard=guard,
+        )
+
+    assert guard.entries == 1
+    assert not measurements_csv_path(run).exists()
+    assert not measurements_parquet_path(run).exists()
+
+
+@pytest.mark.parametrize(
+    ("reject_at", "expected_events"),
+    (
+        (1, []),
+        (4, ["legacy_qc"]),
+        (6, ["legacy_qc", "rembi", "split"]),
+    ),
+)
+def test_terminal_auxiliary_writers_stop_at_early_middle_and_late_revocation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reject_at: int,
+    expected_events: list[str],
+) -> None:
+    """Every terminal writer validates the generation before its side effect."""
+    import phenotypic.sdk_ as sdk
+    from phenotypic._cli import _cli_error_outputs
+    from phenotypic._cli import _cli_output_manager as subject
+    from phenotypic.sdk_ import _rembi_manifest
+
+    run = tmp_path / f"run-{reject_at}"
+    events: list[str] = []
+    monkeypatch.setattr(
+        sdk,
+        "migrate_legacy_qc",
+        lambda *_: events.append("legacy_qc"),
+    )
+    monkeypatch.setattr(
+        _rembi_manifest,
+        "write_rembi_manifest",
+        lambda *_args, **_kwargs: events.append("rembi"),
+    )
+    monkeypatch.setattr(
+        subject,
+        "split_master_by_feature",
+        lambda *_args, **_kwargs: events.append("split") or {},
+    )
+    monkeypatch.setattr(
+        _cli_error_outputs,
+        "reemit_error_deliverables",
+        lambda *_args, **_kwargs: events.append("errors"),
+    )
+    guard = _RejectOnEntry(reject_at)
+
+    with pytest.raises(RuntimeError, match=f"publication {reject_at}"):
+        subject.finalize_post_master_outputs(
+            run,
+            pl.DataFrame({"Object_Label": [1], "Size_Area": [25.0]}),
+            pipeline=None,
+            no_qc=True,
+            commit_guard=guard,
+        )
+
+    assert events == expected_events
+    assert "errors" not in events
+
+
+def test_analysis_registry_write_is_generation_guarded(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Analysis registry mutation cannot precede its generation validation."""
+    import phenotypic.sdk_ as sdk
+    from phenotypic._cli import _cli_output_manager as subject
+    from phenotypic.plotting import _pipeline as plotting_pipeline
+    from phenotypic.sdk_ import _rembi_manifest
+
+    run = tmp_path / "run"
+    events: list[str] = []
+    monkeypatch.setattr(sdk, "migrate_legacy_qc", lambda *_: None)
+    monkeypatch.setattr(
+        _rembi_manifest, "write_rembi_manifest", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        subject, "_persist_pipeline_to_output_dir", lambda *_: None
+    )
+    monkeypatch.setattr(
+        subject,
+        "_emit_analysis_outputs",
+        lambda *_: SimpleNamespace(
+            analysis_id="analysis",
+            table=pl.DataFrame({"value": [1]}),
+            producer="test",
+            artifacts=(),
+            manifest_entry={},
+        ),
+    )
+
+    class Registry:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def register(self, *_args: object, **_kwargs: object) -> None:
+            events.append("registry")
+
+    class Coordinator:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def emit_measurements(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def emit_analyses(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+    monkeypatch.setattr(plotting_pipeline, "AnalysisRegistry", Registry)
+    monkeypatch.setattr(plotting_pipeline, "PlotCoordinator", Coordinator)
+    pipeline = SimpleNamespace(get_post=lambda: (), get_qc=lambda: None)
+    guard = _RejectOnEntry(8)
+
+    with pytest.raises(RuntimeError, match="publication 8"):
+        subject.finalize_post_master_outputs(
+            run,
+            pl.DataFrame({"Object_Label": [1], "Size_Area": [25.0]}),
+            pipeline=pipeline,
+            no_qc=True,
+            commit_guard=guard,
+        )
+
+    assert "registry" not in events
 
 
 def test_migration_state_uses_manifest_inventory_before_stores_exist(
@@ -1432,6 +1865,183 @@ def test_local_migrate_terminalizes_manifest_publication_failure(
     assert observed["failure_category"] == "image_seal"
     assert "manifest disk failure" in observed["reason"]
     assert events == ["terminal", "close"]
+
+
+def test_local_migrate_terminalizes_invalidation_failure_and_releases_generation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Authority invalidation failure publishes status, closes, then permits retry."""
+    from phenotypic._cli import _cli_migrate as subject
+
+    run = tmp_path / "run"
+    monkeypatch.setattr(subject, "new_slurm_generation", lambda: _GENERATION)
+    monkeypatch.setattr(subject, "discover_migration_tasks", lambda *_: ())
+    monkeypatch.setattr(
+        subject,
+        "invalidate_migration_terminal_authority",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            OSError("completion unlink failed")
+        ),
+    )
+    events: list[str] = []
+    original_terminal = subject.publish_migration_terminal_status
+    original_close = subject.close_migration_generation
+
+    def terminal(*args: Any, **kwargs: Any) -> Path:
+        events.append("terminal")
+        return original_terminal(*args, **kwargs)
+
+    def close(*args: Any, **kwargs: Any) -> None:
+        events.append("close")
+        original_close(*args, **kwargs)
+
+    monkeypatch.setattr(subject, "publish_migration_terminal_status", terminal)
+    monkeypatch.setattr(subject, "close_migration_generation", close)
+
+    report = run_migrate(run)
+
+    assert not report.ok
+    assert events == ["terminal", "close"]
+    terminal_status = json.loads(
+        migration_terminal_status_path(
+            phenotypic_cache_dir(run), _GENERATION
+        ).read_text(encoding="utf-8")
+    )
+    assert terminal_status["failure_category"] == "aggregate"
+    assert "completion unlink failed" in terminal_status["reason"]
+    assert generation_is_active(run, _GENERATION) is False
+    initialize_slurm_lifecycle(run, generation="retry-generation", mode="migrate")
+    assert generation_is_active(run, "retry-generation") is True
+
+
+def test_run_migrate_rerun_uses_new_generation_and_retries_incomplete_work(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An incomplete attempt closes; its rerun skips complete image work."""
+    from phenotypic._cli import _cli_migrate as subject
+
+    run = tmp_path / "run"
+    tasks = (_task(run, 0), _task(run, 1))
+    generations = iter(("attempt-1", "attempt-2"))
+    monkeypatch.setattr(subject, "new_slurm_generation", lambda: next(generations))
+    monkeypatch.setattr(subject, "discover_migration_tasks", lambda *_: tasks)
+    authority = SimpleNamespace(
+        terminal_receipt_digest=_METADATA_DIGEST,
+        status_path=run / ".phenotypic" / "metadata-status.json",
+    )
+    monkeypatch.setattr(
+        subject,
+        "run_metadata_pass",
+        lambda *_args, **_kwargs: MetadataPassResult(0, (), authority),
+    )
+    monkeypatch.setattr(subject, "metadata_migration_authority", lambda *_: authority)
+    monkeypatch.setattr(
+        subject, "_ensure_migration_processing_state", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        subject, "emit_canonical_metadata_view", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        subject, "_publish_migration_aggregate", lambda *_args, **_kwargs: None
+    )
+    completion = run_completion_marker_path(run)
+    monkeypatch.setattr(
+        subject,
+        "publish_run_completion_evidence",
+        lambda *_args, **_kwargs: completion,
+    )
+    monkeypatch.setattr(subject, "valid_run_completion", lambda *_: {"valid": True})
+    calls: list[tuple[str, int]] = []
+    mutations: list[tuple[str, int]] = []
+
+    def migrate_task(
+        _output_dir: Path,
+        task: MigrationImageTask,
+        **_kwargs: Any,
+    ) -> MigrationImageResult:
+        lifecycle = load_slurm_lifecycle(run)
+        assert lifecycle is not None
+        generation = str(lifecycle["generation"])
+        calls.append((generation, task.index))
+        if generation == "attempt-1" and task.index == 1:
+            raise MigrationImageStageError(
+                MigrationImageStageFailure(
+                    stage="conversion",
+                    target=task.hdf_path or task.store_path,
+                    reason="conversion interrupted",
+                    partial=MigrationImagePartialResult(
+                        index=task.index,
+                        dataset=task.dataset,
+                        stem=task.stem,
+                        work_id=_migration_work_id(task.dataset, task.stem),
+                        converted=False,
+                        table_installed=False,
+                        overlay_rendered=False,
+                    ),
+                )
+            )
+        if task.marker_path.is_file():
+            return MigrationImageResult(
+                index=task.index,
+                dataset=task.dataset,
+                stem=task.stem,
+                work_id=_migration_work_id(task.dataset, task.stem),
+                converted=False,
+                table_installed=False,
+                overlay_rendered=False,
+                marker_digest=hashlib.sha256(
+                    task.marker_path.read_bytes()
+                ).hexdigest(),
+                skipped=True,
+            )
+        mutations.append((generation, task.index))
+        return _image_result(task, lifecycle_epoch=generation)
+
+    monkeypatch.setattr(subject, "migrate_image_task", migrate_task)
+
+    first = run_migrate(run)
+    second = run_migrate(run)
+
+    assert not first.ok
+    assert second.ok, (second, calls, mutations)
+    assert calls == [
+        ("attempt-1", 0),
+        ("attempt-1", 1),
+        ("attempt-2", 0),
+        ("attempt-2", 1),
+    ]
+    assert mutations == [("attempt-1", 0), ("attempt-2", 1)]
+    control_root = phenotypic_cache_dir(run)
+    current_manifest = json.loads(
+        (control_root / "migration_manifest.json").read_text(encoding="utf-8")
+    )
+    assert current_manifest["generation"] == "attempt-2"
+    assert migration_terminal_status_path(
+        control_root, "attempt-1"
+    ).is_file()
+    assert migration_terminal_status_path(
+        control_root, "attempt-2"
+    ).is_file()
+    assert migration_task_status_path(control_root, "attempt-1", 0).is_file()
+    assert not migration_task_status_path(control_root, "attempt-1", 1).exists()
+    assert migration_task_status_path(control_root, "attempt-2", 0).is_file()
+    assert migration_task_status_path(control_root, "attempt-2", 1).is_file()
+    first_seal = json.loads(
+        migration_image_seal_path(control_root, "attempt-1").read_text(
+            encoding="utf-8"
+        )
+    )
+    second_seal = json.loads(
+        migration_image_seal_path(control_root, "attempt-2").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert first_seal["clean"] is False
+    assert second_seal["clean"] is True
+    assert generation_is_active(run, "attempt-1") is False
+    assert generation_is_active(run, "attempt-2") is False
 
 
 def test_local_migrate_dry_run_preserves_terminal_authority_and_control_state(

@@ -58,6 +58,37 @@ class MigrationImageResult:
 
 
 @dataclass(frozen=True)
+class MigrationImagePartialResult:
+    """Durable pass evidence accumulated before one image-stage failure."""
+
+    index: int
+    dataset: str
+    stem: str
+    work_id: str
+    converted: bool
+    table_installed: bool
+    overlay_rendered: bool
+
+
+@dataclass(frozen=True)
+class MigrationImageStageFailure:
+    """Typed image-stage failure with all completed legacy-pass evidence."""
+
+    stage: str
+    target: Path
+    reason: str
+    partial: MigrationImagePartialResult
+
+
+class MigrationImageStageError(RuntimeError):
+    """Raised when an image migration stage fails after partial progress."""
+
+    def __init__(self, failure: MigrationImageStageFailure) -> None:
+        self.failure = failure
+        super().__init__(failure.reason)
+
+
+@dataclass(frozen=True)
 class SourceArtifactState:
     """Content fingerprint or explicit absence for one migration source."""
 
@@ -108,12 +139,22 @@ def _existing_marker_identity(
     output_dir: Path, dataset: str, stem: str, work_id: str
 ) -> dict[str, str]:
     """Return preserved identity fields from an existing image marker."""
+    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
+
+    lifecycle = load_slurm_lifecycle(output_dir)
+    active_generation = (
+        str(lifecycle["generation"])
+        if lifecycle is not None
+        and lifecycle.get("active") is True
+        and lifecycle.get("mode") == "migrate"
+        else None
+    )
     defaults = {
         "work_id": work_id,
         "relative_image_path": f"{dataset}/{stem}",
         "mode": "full",
         "attempt_id": "migration",
-        "lifecycle_epoch": "migration",
+        "lifecycle_epoch": active_generation or "migration",
     }
     marker_path = image_completion_marker_path(output_dir, dataset, stem)
     try:
@@ -133,7 +174,11 @@ def _existing_marker_identity(
         "lifecycle_epoch",
     ):
         value = marker.get(field)
-        if isinstance(value, str) and value:
+        if (
+            isinstance(value, str)
+            and value
+            and not (field == "lifecycle_epoch" and active_generation is not None)
+        ):
             defaults[field] = value
     return defaults
 
@@ -292,6 +337,54 @@ def _dry_run_result(
     )
 
 
+def _partial_image_result(
+    task: MigrationImageTask,
+    work_id: str,
+    *,
+    converted: bool,
+    table_installed: bool,
+    overlay_rendered: bool,
+) -> MigrationImagePartialResult:
+    """Return typed completed-pass evidence for an unfinished image."""
+    return MigrationImagePartialResult(
+        index=task.index,
+        dataset=task.dataset,
+        stem=task.stem,
+        work_id=work_id,
+        converted=converted,
+        table_installed=table_installed,
+        overlay_rendered=overlay_rendered,
+    )
+
+
+def _stage_error(
+    task: MigrationImageTask,
+    work_id: str,
+    *,
+    stage: str,
+    target: Path,
+    cause: Exception,
+    converted: bool,
+    table_installed: bool,
+    overlay_rendered: bool,
+) -> MigrationImageStageError:
+    """Wrap one exception with its canonical pass category and partial result."""
+    return MigrationImageStageError(
+        MigrationImageStageFailure(
+            stage=stage,
+            target=Path(target),
+            reason=f"{type(cause).__name__}: {cause}",
+            partial=_partial_image_result(
+                task,
+                work_id,
+                converted=converted,
+                table_installed=table_installed,
+                overlay_rendered=overlay_rendered,
+            ),
+        )
+    )
+
+
 def migrate_image_task(
     output_dir: Path,
     task: MigrationImageTask,
@@ -315,105 +408,156 @@ def migrate_image_task(
     converted = False
     table_installed = False
     overlay_rendered = False
-    if not valid_staged_store(task.store_path):
-        if task.hdf_path is None or not task.hdf_path.is_file():
-            raise FileNotFoundError(
-                f"No legacy HDF source exists for {task.dataset}/{task.stem}"
-            )
-        migrated = migrate_hdf_to_zarr(
-            task.hdf_path,
-            task.store_path,
-            keep_source=True,
-            commit_guard=commit_guard,
-        )
-        if migrated != task.store_path or not valid_staged_store(task.store_path):
-            raise RuntimeError("migrated image store validation failed")
-        converted = True
-
-    image = load_image_from_store(task.store_path)
-    table_valid, table_installed = _table_state(
-        task,
-        metadata_csv=metadata_csv,
-        commit_guard=commit_guard,
-    )
-    if not table_valid and image.num_objects != 0:
-        raise RuntimeError("nonempty migrated image has no valid measurement table")
-
-    expected_shape = _image_plane_shape(image)
-    if not valid_migration_overlay(task.overlay_path, expected_shape):
-        manager = overlay_output_manager(output_dir, overlay_alpha=overlay_alpha)
-        overlay_path = manager.save_overlay(
-            image,
-            task.dataset,
-            task.stem,
-            commit_guard=commit_guard,
-        )
-        if overlay_path != task.overlay_path or not valid_migration_overlay(
-            task.overlay_path, expected_shape
-        ):
-            raise RuntimeError("migrated overlay validation failed")
-        overlay_rendered = True
-
-    marker_valid = _valid_migration_marker(
-        output_dir,
-        task,
-        work_id,
-        table_authoritative=table_valid,
-    )
-    if not marker_valid:
-        identity = _existing_marker_identity(
-            output_dir, task.dataset, task.stem, work_id
-        )
-        artifacts = _migration_marker_artifacts(
-            task,
-            table_authoritative=table_valid,
-        )
-        marker_path = publish_image_success(
-            output_dir,
-            work_id=identity["work_id"],
-            dataset=task.dataset,
-            relative_image_path=identity["relative_image_path"],
-            image_stem=task.stem,
-            mode=identity["mode"],
-            attempt_id=identity["attempt_id"],
-            lifecycle_epoch=identity["lifecycle_epoch"],
-            artifacts=artifacts,
-            commit_guard=commit_guard,
-        )
-        if marker_path != task.marker_path:
-            raise RuntimeError("marker publisher returned a non-canonical path")
-
-    with publication_commit(commit_guard):
+    try:
         if not valid_staged_store(task.store_path):
-            raise RuntimeError("migrated image store validation failed")
-        if table_valid != _valid_embedded_measurement_contract(task.store_path):
-            raise RuntimeError("embedded measurement table validation failed")
+            if task.hdf_path is None or not task.hdf_path.is_file():
+                raise FileNotFoundError(
+                    f"No legacy HDF source exists for {task.dataset}/{task.stem}"
+                )
+            migrated = migrate_hdf_to_zarr(
+                task.hdf_path,
+                task.store_path,
+                keep_source=True,
+                commit_guard=commit_guard,
+            )
+            if migrated != task.store_path or not valid_staged_store(task.store_path):
+                raise RuntimeError("migrated image store validation failed")
+            converted = True
+        image = load_image_from_store(task.store_path)
+    except Exception as exc:
+        raise _stage_error(
+            task,
+            work_id,
+            stage="conversion",
+            target=task.hdf_path or task.store_path,
+            cause=exc,
+            converted=converted,
+            table_installed=table_installed,
+            overlay_rendered=overlay_rendered,
+        ) from exc
+
+    try:
+        table_valid, table_installed = _table_state(
+            task,
+            metadata_csv=metadata_csv,
+            commit_guard=commit_guard,
+        )
+        if not table_valid and image.num_objects != 0:
+            raise RuntimeError("nonempty migrated image has no valid measurement table")
+    except Exception as exc:
+        raise _stage_error(
+            task,
+            work_id,
+            stage="table",
+            target=(
+                task.measurement_path
+                or task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+            ),
+            cause=exc,
+            converted=converted,
+            table_installed=table_installed,
+            overlay_rendered=overlay_rendered,
+        ) from exc
+
+    try:
+        expected_shape = _image_plane_shape(image)
         if not valid_migration_overlay(task.overlay_path, expected_shape):
-            raise RuntimeError("migrated overlay validation failed")
-        if not _valid_migration_marker(
+            manager = overlay_output_manager(output_dir, overlay_alpha=overlay_alpha)
+            overlay_path = manager.save_overlay(
+                image,
+                task.dataset,
+                task.stem,
+                commit_guard=commit_guard,
+            )
+            if overlay_path != task.overlay_path or not valid_migration_overlay(
+                task.overlay_path, expected_shape
+            ):
+                raise RuntimeError("migrated overlay validation failed")
+            overlay_rendered = True
+    except Exception as exc:
+        raise _stage_error(
+            task,
+            work_id,
+            stage="overlay",
+            target=task.overlay_path,
+            cause=exc,
+            converted=converted,
+            table_installed=table_installed,
+            overlay_rendered=overlay_rendered,
+        ) from exc
+
+    try:
+        marker_valid = _valid_migration_marker(
             output_dir,
             task,
             work_id,
             table_authoritative=table_valid,
-        ):
-            raise RuntimeError("migrated marker validation failed")
-        marker_digest = hashlib.sha256(task.marker_path.read_bytes()).hexdigest()
-        return MigrationImageResult(
-            index=task.index,
-            dataset=task.dataset,
-            stem=task.stem,
-            work_id=work_id,
+        )
+        if not marker_valid:
+            identity = _existing_marker_identity(
+                output_dir, task.dataset, task.stem, work_id
+            )
+            artifacts = _migration_marker_artifacts(
+                task,
+                table_authoritative=table_valid,
+            )
+            marker_path = publish_image_success(
+                output_dir,
+                work_id=identity["work_id"],
+                dataset=task.dataset,
+                relative_image_path=identity["relative_image_path"],
+                image_stem=task.stem,
+                mode=identity["mode"],
+                attempt_id=identity["attempt_id"],
+                lifecycle_epoch=identity["lifecycle_epoch"],
+                artifacts=artifacts,
+                commit_guard=commit_guard,
+            )
+            if marker_path != task.marker_path:
+                raise RuntimeError("marker publisher returned a non-canonical path")
+
+        with publication_commit(commit_guard):
+            if not valid_staged_store(task.store_path):
+                raise RuntimeError("migrated image store validation failed")
+            if table_valid != _valid_embedded_measurement_contract(task.store_path):
+                raise RuntimeError("embedded measurement table validation failed")
+            if not valid_migration_overlay(task.overlay_path, expected_shape):
+                raise RuntimeError("migrated overlay validation failed")
+            if not _valid_migration_marker(
+                output_dir,
+                task,
+                work_id,
+                table_authoritative=table_valid,
+            ):
+                raise RuntimeError("migrated marker validation failed")
+            marker_digest = hashlib.sha256(task.marker_path.read_bytes()).hexdigest()
+            return MigrationImageResult(
+                index=task.index,
+                dataset=task.dataset,
+                stem=task.stem,
+                work_id=work_id,
+                converted=converted,
+                table_installed=table_installed,
+                overlay_rendered=overlay_rendered,
+                marker_digest=marker_digest,
+                skipped=not (
+                    converted
+                    or table_installed
+                    or overlay_rendered
+                    or not marker_valid
+                ),
+            )
+    except Exception as exc:
+        raise _stage_error(
+            task,
+            work_id,
+            stage="marker",
+            target=task.marker_path,
+            cause=exc,
             converted=converted,
             table_installed=table_installed,
             overlay_rendered=overlay_rendered,
-            marker_digest=marker_digest,
-            skipped=not (
-                converted
-                or table_installed
-                or overlay_rendered
-                or not marker_valid
-            ),
-        )
+        ) from exc
 
 
 def _source_artifact_state(path: Path | None) -> SourceArtifactState:
@@ -426,21 +570,25 @@ def _source_artifact_state(path: Path | None) -> SourceArtifactState:
             sha256=None,
         )
     path = Path(path)
-    if not path.is_file():
+    digest = hashlib.sha256()
+    size = 0
+    try:
+        handle = path.open("rb")
+    except FileNotFoundError:
         return SourceArtifactState(
             path=path,
             exists=False,
             size=None,
             sha256=None,
         )
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
+            size += len(chunk)
     return SourceArtifactState(
         path=path,
         exists=True,
-        size=path.stat().st_size,
+        size=size,
         sha256=digest.hexdigest(),
     )
 

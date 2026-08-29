@@ -23,6 +23,7 @@ from phenotypic.sdk_ import (
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
+    publication_commit,
     progress_dir,
     run_completion_marker_path,
     validated_published_metadata_migration_targets,
@@ -898,7 +899,8 @@ def publish_run_completion_evidence(
     if isinstance(existing, dict) and all(
         existing.get(key) == payload.get(key) for key in stable_keys
     ):
-        return path
+        with publication_commit(commit_guard):
+            return path
     atomic_write_json(path, payload, commit_guard=commit_guard)
     return path
 

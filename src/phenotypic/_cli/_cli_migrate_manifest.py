@@ -814,7 +814,10 @@ def publish_migration_task_status(
     ):
         raise ValueError("migration result identity does not match manifest")
 
-    from ._cli_migrate_image import _configured_work_id
+    from ._cli_migrate_image import (
+        _configured_work_id,
+        _valid_migration_marker,
+    )
 
     expected_work_id = _configured_work_id(
         output_root, task.dataset, task.stem
@@ -829,6 +832,12 @@ def publish_migration_task_status(
         raise ValueError("migration result marker is missing") from exc
     if current_marker_digest != result.marker_digest:
         raise ValueError("migration result marker digest does not match current bytes")
+    if not _valid_migration_marker(
+        output_root,
+        task,
+        result.work_id,
+    ):
+        raise ValueError("migration result lacks current semantic marker authority")
 
     path = migration_task_status_path(control_root, generation, task.index)
     atomic_write_json(
@@ -922,7 +931,10 @@ def seal_migration_image_stage(
         if len(entries) > 1:
             failures.append(f"duplicate status index {index}")
 
-    from ._cli_migrate_image import _configured_work_id
+    from ._cli_migrate_image import (
+        _configured_work_id,
+        _valid_migration_marker,
+    )
 
     for index in range(manifest.task_count):
         entries = seen.get(index, [])
@@ -965,6 +977,14 @@ def seal_migration_image_stage(
                 failures.append(f"status index {index} has invalid marker digest")
             elif marker_digest != current_marker_digest:
                 failures.append(f"status index {index} has wrong marker digest")
+        if not _valid_migration_marker(
+            output_root,
+            task,
+            expected_work_id,
+        ):
+            failures.append(
+                f"status index {index} lacks current semantic marker authority"
+            )
 
     try:
         ordered_status_digest = _ordered_file_digest(status_paths)
@@ -1010,7 +1030,7 @@ def _current_source_state_value(path: Path | None) -> dict[str, Any]:
     source = Path(path)
     try:
         payload = source.read_bytes()
-    except OSError:
+    except FileNotFoundError:
         return {
             "path": str(source),
             "exists": False,
@@ -1142,12 +1162,12 @@ def _validate_reclaim_result(
     if set(deleted) & set(retained):
         failures.append("reclaim result classifies one source twice")
 
-    source_pairs = zip(
+    source_pairs = tuple(zip(
         (task.hdf_path, task.measurement_path),
         (hdf_prestate, parquet_prestate),
         observed_values,
         strict=True,
-    )
+    ))
     for path, prestate, poststate in source_pairs:
         if path is None:
             continue
@@ -1157,8 +1177,29 @@ def _validate_reclaim_result(
             failures.append(f"reclaim result source transition is invalid: {path}")
         if path in retained and poststate.get("exists") is not True:
             failures.append(f"reclaim result retained source is absent: {path}")
+        if path in retained and prestate != poststate:
+            failures.append(
+                f"reclaim result prestate does not match current source: {path}"
+            )
         if prestate.get("exists") is True and path not in deleted and path not in retained:
             failures.append(f"reclaim result omits source disposition: {path}")
+
+    expected_deleted = tuple(
+        path
+        for path, prestate, poststate in source_pairs
+        if path is not None
+        and prestate.get("exists") is True
+        and poststate.get("exists") is False
+    )
+    expected_retained = tuple(
+        path
+        for path, _prestate, poststate in source_pairs
+        if path is not None and poststate.get("exists") is True
+    )
+    if deleted != expected_deleted:
+        failures.append("reclaim result deleted paths do not match exact transition")
+    if retained != expected_retained:
+        failures.append("reclaim result retained paths do not match exact transition")
 
     reason = result.reason
     if reason is not None and not isinstance(reason, str):
@@ -1387,11 +1428,47 @@ def seal_migration_reclaim_stage(
                 failures.append(
                     f"reclaim status index {index} {name} poststate does not match current source"
                 )
+        source_transitions = tuple(zip(
+            (task.hdf_path, task.measurement_path),
+            prestates,
+            observed,
+            strict=True,
+        ))
+        deleted = status.get("deleted_paths")
+        expected_deleted = [
+            str(path)
+            for path, prestate, poststate in source_transitions
+            if path is not None
+            and isinstance(prestate, Mapping)
+            and prestate.get("exists") is True
+            and isinstance(poststate, Mapping)
+            and poststate.get("exists") is False
+        ]
+        if deleted != expected_deleted:
+            failures.append(
+                f"reclaim status index {index} has wrong deleted paths"
+            )
         retained = status.get("retained_paths")
-        if not isinstance(retained, list):
+        expected_retained = [
+            str(path)
+            for path, _prestate, poststate in source_transitions
+            if path is not None
+            and isinstance(poststate, Mapping)
+            and poststate.get("exists") is True
+        ]
+        if retained != expected_retained:
             failures.append(f"reclaim status index {index} has invalid retained paths")
-        elif retained:
+        elif expected_retained:
             failures.append(f"reclaim status index {index} retained sources: {retained}")
+        for path, prestate, poststate in source_transitions:
+            if (
+                path is not None
+                and str(path) in expected_retained
+                and prestate != poststate
+            ):
+                failures.append(
+                    f"reclaim status index {index} prestate does not match retained source: {path}"
+                )
         if any(
             isinstance(poststate, Mapping) and poststate.get("exists") is True
             for poststate in observed
@@ -1463,7 +1540,7 @@ def valid_migration_image_seal(
     if manifest_path is None or expected_scientific_output is None:
         return False
     try:
-        _, manifest = _validated_manifest_for_authority(
+        output_root, manifest = _validated_manifest_for_authority(
             control_root,
             manifest_path,
             expected_scientific_output,
@@ -1471,6 +1548,11 @@ def valid_migration_image_seal(
         )
         if manifest.inventory_digest != seal.manifest_digest:
             return False
+        from ._cli_migrate_image import (
+            _configured_work_id,
+            _valid_migration_marker,
+        )
+
         for index in range(manifest.task_count):
             task = read_migration_task(
                 manifest_path,
@@ -1483,6 +1565,13 @@ def valid_migration_image_seal(
             )
             marker_digest = _sha256_bytes(task.marker_path.read_bytes())
             if status.get("marker_payload_digest") != marker_digest:
+                return False
+            work_id = _configured_work_id(
+                output_root,
+                task.dataset,
+                task.stem,
+            )
+            if not _valid_migration_marker(output_root, task, work_id):
                 return False
     except (OSError, ValueError):
         return False

@@ -68,6 +68,7 @@ from phenotypic.sdk_ import (
     logs_dir,
     pipeline_json_path,
     pipeline_publication_lock,
+    publication_commit,
     qc_duckdb_path,
     resolve_pipeline_config_path,
     resolve_processing_state_path,
@@ -83,6 +84,34 @@ logger = logging.getLogger(__name__)
 #: over frame shape (callers pass frames without ``Object_Label``). Dropped
 #: before returning.
 _MEAS_PRESENT_SENTINEL: Final = "__phenotypic_measurement_present"
+
+
+def _guarded_terminal_call(
+    commit_guard: "CommitGuard | None",
+    operation: Callable[[], Any],
+) -> Any:
+    """Run one terminal side effect while generation ownership is held."""
+    with publication_commit(commit_guard):
+        return operation()
+
+
+def _guarded_terminal_best_effort(
+    commit_guard: "CommitGuard | None",
+    operation: Callable[[], Any],
+    *,
+    warning: str,
+    default: Any = None,
+) -> Any:
+    """Keep legacy best-effort I/O without swallowing fence rejection."""
+
+    def attempt() -> Any:
+        try:
+            return operation()
+        except Exception:
+            logger.warning(warning, exc_info=True)
+            return default
+
+    return _guarded_terminal_call(commit_guard, attempt)
 
 
 def _is_metadata_integrity_error(exc: ValueError) -> bool:
@@ -755,25 +784,22 @@ def _seed_measurements(
     written. Failures of either write are logged at WARNING and do not raise
     — the master output is preserved as the authoritative source.
     """
-    try:
-        atomic_write_with_writer(
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: atomic_write_with_writer(
             measurements_csv_path(output_dir),
             master_df.write_csv,
-            commit_guard=commit_guard,
-        )
-    except Exception:
-        logger.warning("Failed to seed measurements.csv (master was saved)")
-
-    try:
-        atomic_write_with_writer(
+        ),
+        warning="Failed to seed measurements.csv (master was saved)",
+    )
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: atomic_write_with_writer(
             measurements_parquet_path(output_dir),
             lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
-            commit_guard=commit_guard,
-        )
-    except Exception:
-        logger.warning(
-            "Failed to seed measurements.parquet (master was saved)"
-        )
+        ),
+        warning="Failed to seed measurements.parquet (master was saved)",
+    )
 
 
 #: Post-applied mirror columns that source the REMBI manifest's per-image
@@ -1029,7 +1055,10 @@ def finalize_post_master_outputs(
     """
     from phenotypic.sdk_ import migrate_legacy_qc
 
-    migrate_legacy_qc(output_dir)
+    _guarded_terminal_call(
+        commit_guard,
+        lambda: migrate_legacy_qc(output_dir),
+    )
 
     # Metadata join runs first so PostMeasurement ops can reference joined
     # columns through their schema member names. The
@@ -1076,21 +1105,21 @@ def finalize_post_master_outputs(
     # ``write_rembi_manifest`` is internally guarded and no-ops when deliverables/
     # is absent, and the mirror→image-metadata derivation is wrapped so a forward
     # finalize is never blocked.
-    try:
-        from phenotypic.sdk_._rembi_manifest import write_rembi_manifest
+    from phenotypic.sdk_._rembi_manifest import write_rembi_manifest
 
-        write_rembi_manifest(
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: write_rembi_manifest(
             output_dir,
             post_df.to_pandas(),
             _image_metadata_from_mirror(post_df),
             study_config=study_config,
-        )
-    except Exception:
-        logger.warning(
+        ),
+        warning=(
             "Failed to write REMBI manifest deliverables/rembi.yaml "
-            "(master/measurements still written)",
-            exc_info=True,
-        )
+            "(master/measurements still written)"
+        ),
+    )
 
     if pipeline is not None:
         from phenotypic.plotting._pipeline import (
@@ -1098,22 +1127,37 @@ def finalize_post_master_outputs(
             PlotCoordinator,
         )
 
-        _persist_pipeline_to_output_dir(output_dir, pipeline)
+        _guarded_terminal_call(
+            commit_guard,
+            lambda: _persist_pipeline_to_output_dir(output_dir, pipeline),
+        )
         measurements_pd = post_df.to_pandas()
         coordinator = PlotCoordinator(pipeline, output_dir)
         registry = AnalysisRegistry(deliverables_dir(output_dir))
-        coordinator.emit_measurements(measurements_pd)
+        _guarded_terminal_call(
+            commit_guard,
+            lambda: coordinator.emit_measurements(measurements_pd),
+        )
 
-        analysis_result = _emit_analysis_outputs(output_dir, post_df, pipeline)
+        analysis_result = _guarded_terminal_call(
+            commit_guard,
+            lambda: _emit_analysis_outputs(output_dir, post_df, pipeline),
+        )
         if analysis_result is not None:
-            registry.register(
-                analysis_result.analysis_id,
-                analysis_result.table,
-                producer=analysis_result.producer,
-                artifacts=analysis_result.artifacts,
-                manifest_entry=analysis_result.manifest_entry,
+            _guarded_terminal_call(
+                commit_guard,
+                lambda: registry.register(
+                    analysis_result.analysis_id,
+                    analysis_result.table,
+                    producer=analysis_result.producer,
+                    artifacts=analysis_result.artifacts,
+                    manifest_entry=analysis_result.manifest_entry,
+                ),
             )
-        coordinator.emit_analyses(measurements_pd, registry)
+        _guarded_terminal_call(
+            commit_guard,
+            lambda: coordinator.emit_analyses(measurements_pd, registry),
+        )
 
         # QC compute + review-progress reset. A fresh CLI run is "a different
         # run", so the GUI-owned review_state.json is cleared regardless of
@@ -1121,30 +1165,35 @@ def finalize_post_master_outputs(
         # across a rerun). The ``qc/`` artifact is rewritten by ``run_qc`` only
         # when QC is enabled and configured; failures are isolated so the
         # authoritative master files are never affected.
-        _reset_qc_review_state(output_dir)
+        _guarded_terminal_call(
+            commit_guard,
+            lambda: _reset_qc_review_state(output_dir),
+        )
         successful_qc: dict[str, Any] = {}
         if not no_qc and pipeline.get_qc():
-            try:
-                # Import the submodule directly (not ``phenotypic.qc``) so QC
-                # compute is only pulled in on the path that needs it, keeping
-                # the qc package __init__ free of an eager _runner import.
-                from phenotypic.sdk_._qc_recipe._runner import run_qc
+            # Import the submodule directly (not ``phenotypic.qc``) so QC
+            # compute is only pulled in on the path that needs it, keeping
+            # the qc package __init__ free of an eager _runner import.
+            from phenotypic.sdk_._qc_recipe._runner import run_qc
 
-                successful = run_qc(measurements_pd, pipeline, output_dir)
-                successful_qc = {
-                    module.instance_id: module for module in successful
-                }
-            except Exception:
-                logger.warning(
-                    "QC compute failed (master/measurements still written)",
-                    exc_info=True,
-                )
-        coordinator.emit_qc(
-            measurements_pd,
-            registry,
-            successful_modules=successful_qc,
-            qc_database=(
-                qc_duckdb_path(output_dir) if successful_qc else None
+            successful = _guarded_terminal_best_effort(
+                commit_guard,
+                lambda: run_qc(measurements_pd, pipeline, output_dir),
+                warning="QC compute failed (master/measurements still written)",
+                default=(),
+            )
+            successful_qc = {
+                module.instance_id: module for module in successful
+            }
+        _guarded_terminal_call(
+            commit_guard,
+            lambda: coordinator.emit_qc(
+                measurements_pd,
+                registry,
+                successful_modules=successful_qc,
+                qc_database=(
+                    qc_duckdb_path(output_dir) if successful_qc else None
+                ),
             ),
         )
     else:
@@ -1154,32 +1203,29 @@ def finalize_post_master_outputs(
             output_dir,
         )
 
-    try:
-        # Splits operate on the post-applied frame so per-feature
-        # spreadsheets match what the GUI viewer reads from
-        # measurements.{csv,parquet}. The clean master_measurements.*
-        # remains the archival source of truth.
-        split_master_by_feature(post_df, output_dir, pipeline)
-    except Exception:
-        logger.warning(
-            "Per-feature measurement split failed (master files still written)",
-            exc_info=True,
-        )
+    # Splits operate on the post-applied frame so per-feature spreadsheets
+    # match what the GUI viewer reads from measurements.{csv,parquet}. The
+    # clean master_measurements.* remains the archival source of truth.
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: split_master_by_feature(post_df, output_dir, pipeline),
+        warning=(
+            "Per-feature measurement split failed (master files still written)"
+        ),
+        default={},
+    )
 
     # Re-emit the durable error-triage deliverables (errors/* + error_analysis.*)
     # from the labels store, keyed off the CLEAN master (the same frame the GUI's
     # CurationLabels loads, so headless == live). No-op without a durable
     # qc/curation_labels.parquet. (spec §9)
-    try:
-        from phenotypic._cli._cli_error_outputs import (
-            reemit_error_deliverables,
-        )
+    from phenotypic._cli._cli_error_outputs import reemit_error_deliverables
 
-        reemit_error_deliverables(output_dir, master_df)
-    except Exception:  # defensive: a curation re-emit must never fail finalize
-        logger.warning(
-            "Failed to re-emit error-triage deliverables", exc_info=True
-        )
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: reemit_error_deliverables(output_dir, master_df),
+        warning="Failed to re-emit error-triage deliverables",
+    )
 
     return post_df
 
@@ -1430,24 +1476,33 @@ def _aggregate_measurements_unlocked(
     master_csv_path = master_measurements_csv_path(output_dir)
     master_pq_path = master_measurements_parquet_path(output_dir)
 
-    try:
+    def write_master_csv() -> bool:
         atomic_write_with_writer(
             master_csv_path,
             master_df.write_csv,
-            commit_guard=commit_guard,
         )
-    except Exception:
-        logger.error("Failed to save master CSV")
+        return True
+
+    master_csv_saved = _guarded_terminal_best_effort(
+        commit_guard,
+        write_master_csv,
+        warning="Failed to save master CSV",
+        default=False,
+    )
+    if not master_csv_saved:
         return None
 
-    try:
+    def write_master_parquet() -> None:
         atomic_write_with_writer(
             master_pq_path,
             lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
-            commit_guard=commit_guard,
         )
-    except Exception:
-        logger.warning("Failed to save master Parquet (CSV was saved)")
+
+    _guarded_terminal_best_effort(
+        commit_guard,
+        write_master_parquet,
+        warning="Failed to save master Parquet (CSV was saved)",
+    )
 
     logger.info(
         "Aggregated %d rows x %d cols into %s",
