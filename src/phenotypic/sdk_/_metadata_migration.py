@@ -1664,6 +1664,32 @@ def _rollback_anchored_status_publication(
     )
     os.fsync(directory.fd)
     _verify_anchored_journal_directory(directory)
+    moved = os.stat(
+        audit_name,
+        dir_fd=directory.fd,
+        follow_symlinks=False,
+    )
+    if not stat.S_ISREG(moved.st_mode):
+        _rename_anchored_noreplace(
+            directory,
+            audit_name,
+            status_name,
+            role="restored non-regular metadata status",
+        )
+        os.fsync(directory.fd)
+        _verify_anchored_journal_directory(directory)
+        restored = os.stat(
+            status_name,
+            dir_fd=directory.fd,
+            follow_symlinks=False,
+        )
+        if (restored.st_dev, restored.st_ino) != (moved.st_dev, moved.st_ino):
+            raise ValueError(
+                "Non-regular metadata status recovery identity changed"
+            )
+        raise ValueError(
+            "Rejected metadata status rollback audit is not regular"
+        )
     descriptor = os.open(
         audit_name,
         _journal_open_flags(os.O_RDONLY),
@@ -1826,42 +1852,49 @@ def _publish_anchored_journal_json(
         finally:
             if descriptor >= 0:
                 os.close(descriptor)
-            if final_identity is not None and not publication_complete:
-                if role == "Metadata migration status":
-                    _rollback_anchored_status_publication(
-                        directory,
-                        status_name=safe_path.name,
-                        status_path=safe_path,
-                        expected_identity=final_identity,
-                        expected_bytes=document,
-                    )
-                else:
-                    try:
-                        published = os.stat(
-                            safe_path.name,
-                            dir_fd=directory.fd,
-                            follow_symlinks=False,
+            rollback_failure: BaseException | None = None
+            try:
+                if final_identity is not None and not publication_complete:
+                    if role == "Metadata migration status":
+                        _rollback_anchored_status_publication(
+                            directory,
+                            status_name=safe_path.name,
+                            status_path=safe_path,
+                            expected_identity=final_identity,
+                            expected_bytes=document,
                         )
-                        if (
-                            stat.S_ISREG(published.st_mode)
-                            and (published.st_dev, published.st_ino)
-                            == final_identity
-                        ):
-                            os.unlink(safe_path.name, dir_fd=directory.fd)
-                            os.fsync(directory.fd)
+                    else:
+                        try:
+                            published = os.stat(
+                                safe_path.name,
+                                dir_fd=directory.fd,
+                                follow_symlinks=False,
+                            )
+                            if (
+                                stat.S_ISREG(published.st_mode)
+                                and (published.st_dev, published.st_ino)
+                                == final_identity
+                            ):
+                                os.unlink(safe_path.name, dir_fd=directory.fd)
+                                os.fsync(directory.fd)
+                        except OSError:
+                            pass
+            except BaseException as exc:
+                rollback_failure = exc
+            finally:
+                if temp_exists:
+                    try:
+                        os.unlink(temp_name, dir_fd=directory.fd)
                     except OSError:
                         pass
-            if temp_exists:
-                try:
-                    os.unlink(temp_name, dir_fd=directory.fd)
-                except OSError:
-                    pass
-            if ready_exists:
-                try:
-                    os.unlink(ready_name, dir_fd=directory.fd)
-                    os.fsync(directory.fd)
-                except OSError:
-                    pass
+                if ready_exists:
+                    try:
+                        os.unlink(ready_name, dir_fd=directory.fd)
+                        os.fsync(directory.fd)
+                    except OSError:
+                        pass
+            if rollback_failure is not None:
+                raise rollback_failure
 
 
 def _anchored_json_document(payload: Mapping[str, Any]) -> bytes:
@@ -3923,6 +3956,22 @@ def _remove_exact_metadata_authority(
                     "Competing live metadata status exists beside its exact "
                     "superseded audit"
                 )
+            try:
+                os.stat(
+                    status_path.name,
+                    dir_fd=directory.fd,
+                    follow_symlinks=False,
+                )
+            except FileNotFoundError:
+                if _recover_rejected_metadata_status(
+                    directory,
+                    status_name=status_path.name,
+                ):
+                    raise ValueError(
+                        "Competing metadata migration status recovered from "
+                        "rejected audit"
+                    )
+                raise ValueError("Metadata migration status is missing")
             live_bytes = _read_anchored_journal_bytes(
                 status_path,
                 root=root,
@@ -4104,6 +4153,128 @@ def _restore_competing_metadata_status(
         raise ValueError(
             "Competing metadata migration status recovery identity changed"
         )
+
+
+@contextmanager
+def _open_anchored_directory_file(
+    directory: _AnchoredJournalDirectory,
+    name: str,
+    *,
+    role: str,
+) -> Iterator[_AnchoredJournalFile]:
+    """Open one regular child through an already-held directory descriptor."""
+    descriptor = os.open(
+        name,
+        _journal_open_flags(os.O_RDONLY),
+        dir_fd=directory.fd,
+    )
+    try:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{role} is not regular")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            opened_file = _AnchoredJournalFile(
+                handle=handle,
+                directory=directory,
+                name=name,
+                path=directory.path / name,
+                role=role,
+                identity=(opened.st_dev, opened.st_ino),
+            )
+            _verify_anchored_journal_file(opened_file)
+            yield opened_file
+            _verify_anchored_journal_file(opened_file)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
+def _recover_rejected_metadata_status(
+    directory: _AnchoredJournalDirectory,
+    *,
+    status_name: str,
+) -> bool:
+    """Restore one crash-stranded digest-valid rejected status authority."""
+    candidates = sorted(
+        name
+        for name in os.listdir(directory.fd)
+        if name.startswith(_REJECTED_STATUS_PREFIX)
+        and not name.startswith(f"{_REJECTED_STATUS_PREFIX}publisher-")
+        and name.endswith(".json")
+    )
+    _verify_anchored_journal_directory(directory)
+    if not candidates:
+        return False
+    with ExitStack() as stack:
+        held: list[tuple[_AnchoredJournalFile, bytes, str]] = []
+        for candidate in candidates:
+            digest_text = candidate.removeprefix(
+                _REJECTED_STATUS_PREFIX
+            ).removesuffix(".json")
+            raw_digest = digest_text.split("-duplicate-", maxsplit=1)[0]
+            if len(raw_digest) != 64 or any(
+                character not in "0123456789abcdef"
+                for character in raw_digest
+            ):
+                raise ValueError(
+                    "Rejected metadata status recovery audit is malformed"
+                )
+            rejected = stack.enter_context(
+                _open_anchored_directory_file(
+                    directory,
+                    candidate,
+                    role="Rejected metadata status recovery audit",
+                )
+            )
+            rejected_bytes = rejected.handle.read()
+            _verify_anchored_journal_file(rejected)
+            if hashlib.sha256(rejected_bytes).hexdigest() != raw_digest:
+                raise ValueError(
+                    "Rejected metadata status recovery audit digest changed"
+                )
+            held.append((rejected, rejected_bytes, raw_digest))
+        if len({(item[1], item[2]) for item in held}) != 1:
+            raise ValueError(
+                "Competing rejected metadata status recovery audits exist"
+            )
+        rejected = next(
+            (
+                item[0]
+                for item in held
+                if "-duplicate-" not in item[0].name
+            ),
+            held[0][0],
+        )
+        try:
+            os.link(
+                rejected.name,
+                status_name,
+                src_dir_fd=directory.fd,
+                dst_dir_fd=directory.fd,
+                follow_symlinks=False,
+            )
+        except FileExistsError as exc:
+            raise ValueError(
+                "Competing metadata migration status appeared during retry"
+            ) from exc
+        os.fsync(directory.fd)
+        _verify_anchored_journal_directory(directory)
+        for opened_file, _, _ in held:
+            _verify_anchored_journal_file(opened_file)
+        restored = os.stat(
+            status_name,
+            dir_fd=directory.fd,
+            follow_symlinks=False,
+        )
+        if (
+            not stat.S_ISREG(restored.st_mode)
+            or (restored.st_dev, restored.st_ino) != rejected.identity
+        ):
+            raise ValueError(
+                "Rejected metadata status retry identity changed"
+            )
+    return True
 
 
 def _metadata_migration_authority_evidence(
@@ -4956,6 +5127,18 @@ def reconcile_metadata_migration_bundle(
                     "Competing metadata migration status exists without "
                     "receipt authority"
                 )
+            if archived_evidence is not None:
+                _validate_superseded_historical_receipt(
+                    root,
+                    archived_evidence.authority.terminal_receipt_path,
+                    expected_digest=(
+                        archived_evidence.authority.terminal_receipt_digest
+                    ),
+                )
+                raise ValueError(
+                    "Superseded metadata status exists without discoverable "
+                    "receipt authority"
+                )
             return None
         superseded_receipt: Path | None = None
         if len(candidates) == 2:
@@ -4974,7 +5157,14 @@ def reconcile_metadata_migration_bundle(
                         role="Metadata migration receipt",
                         root=root,
                     )
-                payload = json.loads(payload_path.read_text(encoding="utf-8"))
+                try:
+                    payload = json.loads(
+                        payload_path.read_text(encoding="utf-8")
+                    )
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise ValueError(
+                        "Metadata migration receipt authority is malformed"
+                    ) from exc
                 if not isinstance(payload, dict):
                     raise ValueError(
                         "Metadata migration authority payload is malformed"
@@ -5078,11 +5268,16 @@ def reconcile_metadata_migration_bundle(
                 )
             terminal_payload: dict[str, Any] | None = None
             if receipt_path.is_file():
-                loaded_terminal = _read_anchored_journal_json(
-                    receipt_path,
-                    root=root,
-                    role="Metadata migration terminal receipt",
-                )
+                try:
+                    loaded_terminal = _read_anchored_journal_json(
+                        receipt_path,
+                        root=root,
+                        role="Metadata migration terminal receipt",
+                    )
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise ValueError(
+                        "Metadata migration terminal receipt is malformed"
+                    ) from exc
                 if not isinstance(loaded_terminal, dict):
                     raise ValueError(
                         "Metadata migration terminal receipt is malformed"

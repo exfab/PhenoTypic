@@ -207,6 +207,35 @@ def _write_historical_v3_journal(
     return receipt_path, digest
 
 
+def _archive_historical_v3_status(bundle: BundleLayout) -> tuple[Path, Path]:
+    """Create retained schema-3 status evidence without adopting schema 4."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert bundle.output_root is not None
+    receipt_path, _ = _write_historical_v3_journal(bundle, terminal=True)
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    result = migration._result_from_terminal_receipt(
+        receipt_path,
+        receipt,
+        compatible=not any(
+            target.get("status") == "migratable"
+            for target in receipt["targets"]
+        ),
+    )
+    authority = migration._publish_metadata_authority(
+        bundle.output_root,
+        result,
+        compatible_noop=result.status == "compatible",
+        commit_guard=None,
+    )
+    archive = migration._remove_exact_metadata_authority(
+        bundle.output_root,
+        authority,
+        commit_guard=None,
+    )
+    return receipt_path, archive
+
+
 def test_journal_frames_are_ordered_and_terminal_receipt_is_compact(
     migratable_bundle: BundleLayout,
 ) -> None:
@@ -1967,6 +1996,153 @@ def test_archived_status_receipt_digest_is_held_through_v4_plan_publication(
     assert not v4_plans
 
 
+@pytest.mark.parametrize("receipt_state", ["missing", "corrupt"])
+def test_orphaned_superseded_status_refuses_unusable_historical_receipt(
+    compatible_bundle: BundleLayout,
+    receipt_state: str,
+) -> None:
+    """Retained status never becomes ignorable when its v3 receipt is unusable."""
+    receipt_path, archive = _archive_historical_v3_status(compatible_bundle)
+    assert archive.is_file()
+    if receipt_state == "corrupt":
+        receipt_path.write_bytes(b"not a historical receipt")
+    else:
+        for child in tuple(receipt_path.parent.iterdir()):
+            child.unlink()
+        receipt_path.parent.rmdir()
+
+    result = reconcile_metadata_migration_bundle(
+        compatible_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+
+    assert result is not None and result.status == "failed"
+    conflicts = " ".join(result.conflicts).lower()
+    assert "receipt" in conflicts
+    assert any(word in conflicts for word in ("missing", "malformed", "digest"))
+    assert archive.is_file()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_rejected_status_recovery_resumes_after_crash_before_restore(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A durable rejected audit restores its live competitor on retry."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+    assert result.status == "applied"
+    authority = metadata_migration_authority(migratable_bundle)
+    status_path = authority.status_path
+    payload = json.loads(status_path.read_text(encoding="utf-8"))
+    payload["competing"] = True
+    competitor_bytes = (
+        json.dumps(payload, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    status_path.write_bytes(competitor_bytes)
+    rejected = status_path.with_name(
+        "status.rejected-"
+        f"{hashlib.sha256(competitor_bytes).hexdigest()}.json"
+    )
+    real_verify_directory = migration._verify_anchored_journal_directory
+    crashed = False
+
+    def crash_after_rejected_audit_fsync(directory: object) -> None:
+        nonlocal crashed
+        real_verify_directory(directory)
+        if rejected.exists() and not status_path.exists() and not crashed:
+            crashed = True
+            raise _SimulatedProcessDeath("after rejected audit fsync")
+
+    monkeypatch.setattr(
+        migration,
+        "_verify_anchored_journal_directory",
+        crash_after_rejected_audit_fsync,
+    )
+    with pytest.raises(_SimulatedProcessDeath, match="rejected audit"):
+        migration._remove_exact_metadata_authority(
+            migratable_bundle.output_root,
+            authority,
+            commit_guard=None,
+        )
+    monkeypatch.setattr(
+        migration,
+        "_verify_anchored_journal_directory",
+        real_verify_directory,
+    )
+
+    assert crashed is True
+    assert not status_path.exists()
+    assert rejected.read_bytes() == competitor_bytes
+    with pytest.raises(ValueError, match="[Cc]ompeting.*status"):
+        migration._remove_exact_metadata_authority(
+            migratable_bundle.output_root,
+            authority,
+            commit_guard=None,
+        )
+    assert status_path.read_bytes() == competitor_bytes
+    assert rejected.read_bytes() == competitor_bytes
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_rejected_status_recovery_accepts_truthful_duplicate_audits(
+    migratable_bundle: BundleLayout,
+) -> None:
+    """Equivalent durable rejected audits remain a resumable recovery state."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+    assert result.status == "applied"
+    authority = metadata_migration_authority(migratable_bundle)
+    status_path = authority.status_path
+    payload = json.loads(status_path.read_text(encoding="utf-8"))
+    payload["competing"] = True
+    competitor_bytes = (
+        json.dumps(payload, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    status_path.write_bytes(competitor_bytes)
+    with pytest.raises(ValueError, match="[Cc]ompeting.*status"):
+        migration._remove_exact_metadata_authority(
+            migratable_bundle.output_root,
+            authority,
+            commit_guard=None,
+        )
+    rejected = status_path.with_name(
+        "status.rejected-"
+        f"{hashlib.sha256(competitor_bytes).hexdigest()}.json"
+    )
+    duplicate = rejected.with_name(
+        f"{rejected.stem}-duplicate-0123456789abcdef.json"
+    )
+    os.link(rejected, duplicate)
+    status_path.unlink()
+
+    with pytest.raises(ValueError, match="[Cc]ompeting.*status"):
+        migration._remove_exact_metadata_authority(
+            migratable_bundle.output_root,
+            authority,
+            commit_guard=None,
+        )
+
+    assert status_path.read_bytes() == competitor_bytes
+    assert rejected.read_bytes() == competitor_bytes
+    assert duplicate.read_bytes() == competitor_bytes
+
+
 @pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
 def test_status_publish_retains_terminal_receipt_authority_through_link(
     migratable_bundle: BundleLayout,
@@ -2252,6 +2428,113 @@ def test_status_rollback_restores_competitor_without_unlinking_its_name(
     assert status_path.read_bytes() != retained_status.read_bytes()
     assert prior_rejected.read_bytes() == competitor_bytes
     assert tuple(status_path.parent.glob("status.rejected-*.json"))
+
+
+@pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
+def test_status_rollback_restores_symlink_and_always_cleans_ready_link(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A substituted symlink is restored without touching its outside target."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert migratable_bundle.output_root is not None
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    plan_path, log_path, receipt_path = migration._journal_paths(
+        migratable_bundle.output_root, report.plan_fingerprint
+    )
+    plan = migration._new_journal_plan(
+        report,
+        root=migratable_bundle.output_root,
+        kinds=NON_IMAGE_KINDS,
+    )
+    migration._write_journal_plan(
+        migratable_bundle.output_root,
+        plan_path,
+        log_path,
+        plan,
+        commit_guard=None,
+    )
+    result = migration._apply_metadata_journal(
+        migratable_bundle,
+        migratable_bundle.output_root,
+        plan_path,
+        log_path,
+        receipt_path,
+        kinds=NON_IMAGE_KINDS,
+        commit_guard=None,
+    )
+    assert result.status == "applied"
+    status_path = migration._metadata_status_path(
+        migratable_bundle.output_root
+    )
+    outside = status_path.parent / "outside-status-target"
+    outside_bytes = b"outside status target"
+    outside.write_bytes(outside_bytes)
+    substitution = status_path.with_name("status.rollback-symlink")
+    substitution.symlink_to(outside)
+    retained_status = status_path.with_name("status.publisher-owned-symlink-race")
+    original_receipt = receipt_path.read_bytes()
+    retained_receipt = receipt_path.with_name(
+        "receipt.json.retained-for-symlink-rollback"
+    )
+    real_verify = migration._verify_anchored_journal_file
+    real_rename = migration._rename_anchored_noreplace
+    final_status_validations = 0
+    swapped = False
+
+    def invalidate_receipt_after_status_validation(file: object) -> None:
+        nonlocal final_status_validations
+        real_verify(file)
+        if getattr(file, "role", "") != "Metadata migration status":
+            return
+        final_status_validations += 1
+        if final_status_validations == 2:
+            receipt_path.rename(retained_receipt)
+            receipt_path.write_bytes(original_receipt + b" ")
+
+    def substitute_symlink_before_rollback(
+        directory: object,
+        source: str,
+        destination: str,
+        *,
+        role: str,
+    ) -> None:
+        nonlocal swapped
+        if role == "rejected metadata status rollback audit" and not swapped:
+            status_path.rename(retained_status)
+            substitution.rename(status_path)
+            swapped = True
+        real_rename(directory, source, destination, role=role)
+
+    monkeypatch.setattr(
+        migration,
+        "_verify_anchored_journal_file",
+        invalidate_receipt_after_status_validation,
+    )
+    monkeypatch.setattr(
+        migration,
+        "_rename_anchored_noreplace",
+        substitute_symlink_before_rollback,
+    )
+
+    with pytest.raises(ValueError, match="not regular|changed while opening"):
+        migration._publish_metadata_authority(
+            migratable_bundle.output_root,
+            result,
+            compatible_noop=False,
+            commit_guard=None,
+        )
+
+    assert swapped is True
+    assert status_path.is_symlink()
+    assert os.readlink(status_path) == os.fspath(outside)
+    assert outside.read_bytes() == outside_bytes
+    assert retained_status.is_file()
+    assert not tuple(status_path.parent.glob("status.rejected-publisher-*.json"))
+    assert not tuple(status_path.parent.glob(".status.json.*.ready"))
 
 
 @pytest.mark.skipif(os.name != "posix", reason="descriptor safety contract")
