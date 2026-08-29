@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 import hashlib
 import json
+import os
 from pathlib import Path
 import struct
 from typing import Any, Final, Mapping, Sequence
@@ -35,6 +36,7 @@ _TASK_FIELDS: Final = frozenset(
         "index",
         "marker_path",
         "measurement_path",
+        "merkle_proof",
         "overlay_path",
         "store_path",
         "stem",
@@ -101,20 +103,49 @@ def _candidate_stem(path: Path) -> str:
 
 def _checked_path(path: Path, output_root: Path) -> Path:
     """Resolve a candidate only when every component is inside the run tree."""
-    candidate = Path(path)
+    root = Path(output_root).absolute()
+    candidate = Path(path).absolute()
     try:
-        relative = candidate.relative_to(output_root)
+        relative = candidate.relative_to(root)
     except ValueError as exc:
         raise ValueError(f"migration candidate escapes output directory: {candidate}") from exc
-    current = output_root
+    if root.is_symlink():
+        raise ValueError(f"migration candidate is a symlink: {output_root}")
+    current = root
     for part in relative.parts:
         current /= part
         if current.is_symlink():
             raise ValueError(f"migration candidate is a symlink: {candidate}")
     resolved = candidate.resolve()
-    if not resolved.is_relative_to(output_root):
+    if not resolved.is_relative_to(root.resolve()):
         raise ValueError(f"migration candidate escapes output directory: {candidate}")
     return resolved
+
+
+def _safe_identity_component(value: object, name: str) -> str:
+    """Return one dataset/stem component after rejecting path syntax."""
+    if (
+        not isinstance(value, str)
+        or not value
+        or value in {".", ".."}
+        or "/" in value
+        or "\\" in value
+        or (os.sep and os.sep in value)
+        or (os.altsep is not None and os.altsep in value)
+    ):
+        raise ValueError(f"migration {name} must be a safe path component")
+    return value
+
+
+def _manifest_paths(output_root: Path) -> tuple[Path, Path, Path, Path]:
+    """Validate canonical cache publication paths before any filesystem write."""
+    state_dir = phenotypic_cache_dir(output_root)
+    records_path = state_dir / _RECORDS_FILENAME
+    offsets_path = state_dir / _OFFSETS_FILENAME
+    manifest_path = state_dir / _MANIFEST_FILENAME
+    for path in (state_dir, records_path, offsets_path, manifest_path):
+        _checked_path(path, output_root)
+    return state_dir, records_path, offsets_path, manifest_path
 
 
 def _add_candidate(
@@ -127,6 +158,8 @@ def _add_candidate(
 ) -> None:
     """Add one artifact candidate, refusing an ambiguous duplicate kind."""
     identity = (dataset, stem)
+    _safe_identity_component(dataset, "dataset")
+    _safe_identity_component(stem, "stem")
     artifacts = candidates.setdefault(identity, {})
     if kind in artifacts:
         raise ValueError(
@@ -209,13 +242,79 @@ def discover_migration_tasks(output_dir: Path) -> tuple[MigrationImageTask, ...]
     return tuple(tasks)
 
 
-def _task_payload(task: MigrationImageTask, generation: str) -> bytes:
-    """Serialize one already-validated task as a canonical JSON frame payload."""
+def _task_value(task: MigrationImageTask) -> dict[str, Any]:
+    """Return one canonical task value with absolute path strings."""
     value = asdict(task)
-    value["generation"] = generation
-    for name in ("hdf_path", "store_path", "measurement_path", "overlay_path", "marker_path"):
+    for name in (
+        "hdf_path",
+        "store_path",
+        "measurement_path",
+        "overlay_path",
+        "marker_path",
+    ):
         path = value[name]
         value[name] = None if path is None else str(path)
+    return value
+
+
+def _leaf_payload(task: MigrationImageTask) -> bytes:
+    """Serialize the index-bound canonical value covered by the Merkle root."""
+    return json.dumps(
+        _task_value(task), sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def _leaf_hash(task: MigrationImageTask) -> bytes:
+    """Return an index-bound leaf hash for one canonical migration task."""
+    return hashlib.sha256(
+        b"migration-leaf\0" + struct.pack(">Q", task.index) + _leaf_payload(task)
+    ).digest()
+
+
+def _node_hash(left: bytes, right: bytes) -> bytes:
+    """Return a domain-separated binary Merkle parent hash."""
+    return hashlib.sha256(b"migration-node\0" + left + right).digest()
+
+
+def _merkle_root_and_proofs(
+    tasks: Sequence[MigrationImageTask],
+) -> tuple[bytes, tuple[tuple[dict[str, str], ...], ...]]:
+    """Build a deterministic binary Merkle root and proof for every task."""
+    if not tasks:
+        return hashlib.sha256(b"migration-empty\0").digest(), ()
+    proofs: list[list[dict[str, str]]] = [[] for _ in tasks]
+    nodes: list[tuple[bytes, tuple[int, ...]]] = [
+        (_leaf_hash(task), (task.index,)) for task in tasks
+    ]
+    while len(nodes) > 1:
+        if len(nodes) % 2:
+            nodes.append(nodes[-1])
+        parents: list[tuple[bytes, tuple[int, ...]]] = []
+        for position in range(0, len(nodes), 2):
+            left, left_indexes = nodes[position]
+            right, right_indexes = nodes[position + 1]
+            for index in left_indexes:
+                proofs[index].append({"side": "right", "hash": right.hex()})
+            if right_indexes != left_indexes:
+                for index in right_indexes:
+                    proofs[index].append({"side": "left", "hash": left.hex()})
+            parent_indexes = (
+                left_indexes
+                if right_indexes == left_indexes
+                else left_indexes + right_indexes
+            )
+            parents.append((_node_hash(left, right), parent_indexes))
+        nodes = parents
+    return nodes[0][0], tuple(tuple(proof) for proof in proofs)
+
+
+def _task_payload(
+    task: MigrationImageTask, generation: str, proof: Sequence[Mapping[str, str]]
+) -> bytes:
+    """Serialize one task, its generation binding, and Merkle inclusion proof."""
+    value = _task_value(task)
+    value["generation"] = generation
+    value["merkle_proof"] = [dict(step) for step in proof]
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
@@ -223,10 +322,8 @@ def _normalized_task(task: MigrationImageTask, output_root: Path) -> MigrationIm
     """Validate a task's canonical identity and return absolute artifact paths."""
     if not isinstance(task.index, int) or task.index < 0:
         raise ValueError(f"migration task index must be a non-negative integer: {task.index!r}")
-    if not isinstance(task.dataset, str) or not task.dataset:
-        raise ValueError("migration task dataset must be a non-empty string")
-    if not isinstance(task.stem, str) or not task.stem:
-        raise ValueError("migration task stem must be a non-empty string")
+    _safe_identity_component(task.dataset, "dataset")
+    _safe_identity_component(task.stem, "stem")
     hdf_path = (
         None if task.hdf_path is None else _checked_path(task.hdf_path, output_root)
     )
@@ -274,8 +371,8 @@ def _normalized_task(task: MigrationImageTask, output_root: Path) -> MigrationIm
 
 def _inventory_digest(tasks: Sequence[MigrationImageTask]) -> str:
     """Return the deterministic digest of an ordered, normalized inventory."""
-    content = b"[" + b",".join(_task_payload(task, "") for task in tasks) + b"]"
-    return hashlib.sha256(content).hexdigest()
+    root, _ = _merkle_root_and_proofs(tasks)
+    return root.hex()
 
 
 def write_migration_manifest(
@@ -311,16 +408,15 @@ def write_migration_manifest(
     if scientific_path != deliverables_dir(output_root):
         raise ValueError("scientific output must be the canonical deliverables directory")
 
-    state_dir = phenotypic_cache_dir(output_root)
+    state_dir, records_path, offsets_path, manifest_path = _manifest_paths(output_root)
     state_dir.mkdir(parents=True, exist_ok=True)
-    records_path = state_dir / _RECORDS_FILENAME
-    offsets_path = state_dir / _OFFSETS_FILENAME
-    manifest_path = state_dir / _MANIFEST_FILENAME
+    state_dir, records_path, offsets_path, manifest_path = _manifest_paths(output_root)
     offsets: list[int] = []
+    root, proofs = _merkle_root_and_proofs(normalized)
     with records_path.open("wb") as records:
         records.write(_RECORDS_HEADER)
         for task in normalized:
-            payload = _task_payload(task, generation)
+            payload = _task_payload(task, generation, proofs[task.index])
             offsets.append(records.tell())
             records.write(struct.pack(">Q", len(payload)))
             records.write(payload)
@@ -334,7 +430,7 @@ def write_migration_manifest(
         generation=generation,
         scientific_output=scientific_path,
         task_count=len(normalized),
-        inventory_digest=_inventory_digest(normalized),
+        inventory_digest=root.hex(),
         records_path=records_path.resolve(),
         offsets_path=offsets_path.resolve(),
     )
@@ -357,10 +453,13 @@ def write_migration_manifest(
     return manifest
 
 
-def _read_manifest(manifest_path: Path) -> tuple[Path, MigrationManifest]:
+def _read_manifest(
+    manifest_path: Path, expected_scientific_output: Path | None
+) -> tuple[Path, MigrationManifest]:
     """Decode and validate one manifest header and all path boundaries."""
-    header_path = Path(manifest_path).resolve()
-    output_root = header_path.parent.parent
+    supplied_path = Path(manifest_path).absolute()
+    output_root = supplied_path.parent.parent.resolve()
+    header_path = _checked_path(supplied_path, output_root)
     if header_path.name != _MANIFEST_FILENAME or header_path.parent != phenotypic_cache_dir(
         output_root
     ):
@@ -408,6 +507,12 @@ def _read_manifest(manifest_path: Path) -> tuple[Path, MigrationManifest]:
     )
     if manifest.scientific_output != deliverables_dir(output_root):
         raise ValueError("migration manifest has non-canonical scientific output")
+    if expected_scientific_output is not None and manifest.scientific_output != Path(
+        expected_scientific_output
+    ).resolve():
+        raise ValueError(
+            "migration manifest scientific output does not match expected scientific output"
+        )
     return output_root, manifest
 
 
@@ -479,15 +584,46 @@ def _task_from_payload(
         overlay_path=Path(raw["overlay_path"]),
         marker_path=Path(raw["marker_path"]),
     )
-    return _normalized_task(task, output_root)
+    normalized = _normalized_task(task, output_root)
+    proof = raw["merkle_proof"]
+    if not isinstance(proof, list):
+        raise ValueError("migration record has invalid Merkle proof")
+    computed = _leaf_hash(normalized)
+    for step in proof:
+        if (
+            not isinstance(step, Mapping)
+            or set(step) != {"side", "hash"}
+            or step.get("side") not in {"left", "right"}
+            or not isinstance(step.get("hash"), str)
+            or len(step["hash"]) != 64
+        ):
+            raise ValueError("migration record has invalid Merkle proof")
+        try:
+            sibling = bytes.fromhex(step["hash"])
+        except ValueError as exc:
+            raise ValueError("migration record has invalid Merkle proof") from exc
+        computed = (
+            _node_hash(sibling, computed)
+            if step["side"] == "left"
+            else _node_hash(computed, sibling)
+        )
+    if computed.hex() != manifest.inventory_digest:
+        raise ValueError("migration record Merkle proof does not match inventory digest")
+    return normalized
 
 
-def read_migration_task(manifest_path: Path, index: int) -> MigrationImageTask:
+def read_migration_task(
+    manifest_path: Path,
+    index: int,
+    *,
+    expected_scientific_output: Path | None = None,
+) -> MigrationImageTask:
     """Read exactly one indexed migration task without parsing prior records.
 
     Args:
         manifest_path: Canonical migration manifest header path.
         index: Zero-based array index to load.
+        expected_scientific_output: Optional caller-authorized deliverables root.
 
     Returns:
         The checksum-verified task at *index*.
@@ -497,7 +633,7 @@ def read_migration_task(manifest_path: Path, index: int) -> MigrationImageTask:
             generation is invalid.
         IndexError: If *index* is outside the inventory.
     """
-    output_root, manifest = _read_manifest(manifest_path)
+    output_root, manifest = _read_manifest(manifest_path, expected_scientific_output)
     return _task_from_payload(
         _read_record_payload(manifest, index),
         output_root=output_root,

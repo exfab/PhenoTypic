@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
+import struct
 
 import pytest
 
@@ -263,3 +265,164 @@ def test_reader_refuses_out_of_range_index(run: Path) -> None:
 
     with pytest.raises(IndexError, match="out of range"):
         read_migration_task(_manifest_path(run), 3)
+
+
+def test_writer_refuses_symlinked_cache_component_before_writing(run: Path) -> None:
+    """Manifest publication cannot follow a cache-root symlink outside the run."""
+    from phenotypic._cli._cli_migrate_manifest import write_migration_manifest
+
+    outside = run.parent / "outside-state"
+    outside.mkdir()
+    run.mkdir()
+    (run / ".phenotypic").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="symlink"):
+        write_migration_manifest(
+            run,
+            generation="generation-1",
+            scientific_output=(run / "deliverables").resolve(),
+            tasks=(),
+        )
+
+
+@pytest.mark.parametrize(
+    "filename",
+    (
+        "migration_manifest.json",
+        "migration_manifest.records",
+        "migration_manifest.offsets",
+    ),
+)
+def test_writer_refuses_existing_symlinked_manifest_targets(
+    run: Path, filename: str
+) -> None:
+    """Any existing publication target is checked before it is opened for write."""
+    from phenotypic._cli._cli_migrate_manifest import write_migration_manifest
+
+    _write_fixture_manifest(run)
+    target = run / ".phenotypic" / filename
+    outside = run.parent / f"outside-{filename}"
+    outside.write_bytes(b"outside")
+    target.unlink()
+    target.symlink_to(outside)
+
+    with pytest.raises(ValueError, match="symlink"):
+        write_migration_manifest(
+            run,
+            generation="generation-2",
+            scientific_output=(run / "deliverables").resolve(),
+            tasks=_fixture_tasks(run, 1),
+        )
+
+
+def test_reader_refuses_a_symlinked_manifest_argument(run: Path) -> None:
+    """Reader validation happens on the supplied path, before resolution."""
+    from phenotypic._cli._cli_migrate_manifest import read_migration_task
+
+    _write_fixture_manifest(run)
+    alias = run / "manifest-alias.json"
+    alias.symlink_to(_manifest_path(run))
+
+    with pytest.raises(ValueError, match="symlink"):
+        read_migration_task(
+            alias,
+            0,
+            expected_scientific_output=(run / "deliverables").resolve(),
+        )
+
+
+def test_reader_binds_manifest_to_expected_scientific_output(run: Path) -> None:
+    """A valid foreign manifest cannot be used for a different public output."""
+    from phenotypic._cli._cli_migrate_manifest import read_migration_task
+
+    _write_fixture_manifest(run)
+
+    with pytest.raises(ValueError, match="scientific output"):
+        read_migration_task(
+            _manifest_path(run),
+            0,
+            expected_scientific_output=(run / "other-deliverables").resolve(),
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("dataset", "."),
+        ("dataset", ".."),
+        ("dataset", "nested/name"),
+        ("dataset", r"nested\\name"),
+        ("stem", "."),
+        ("stem", ".."),
+        ("stem", "nested/name"),
+        ("stem", r"nested\\name"),
+    ),
+)
+def test_writer_refuses_unsafe_identity_path_components(
+    run: Path, field: str, value: str
+) -> None:
+    """Dataset and stem identities are never path syntax."""
+    from phenotypic._cli._cli_migrate_manifest import MigrationImageTask
+    from phenotypic.sdk_ import (
+        dataset_overlays_dir,
+        image_completion_marker_path,
+        zarr_store_path,
+    )
+
+    dataset = value if field == "dataset" else "ds"
+    stem = value if field == "stem" else "image"
+    task = MigrationImageTask(
+        index=0,
+        dataset=dataset,
+        stem=stem,
+        hdf_path=None,
+        store_path=zarr_store_path(run, dataset, stem).resolve(),
+        measurement_path=None,
+        overlay_path=(dataset_overlays_dir(run, dataset) / f"{stem}.png").resolve(),
+        marker_path=image_completion_marker_path(run, dataset, stem).resolve(),
+    )
+
+    with pytest.raises(ValueError, match="safe path component"):
+        _write_manifest_for_tasks(run, (task,))
+
+
+def _write_manifest_for_tasks(run: Path, tasks):
+    """Write fixed-generation tasks while keeping behavior tests compact."""
+    from phenotypic._cli._cli_migrate_manifest import write_migration_manifest
+
+    return write_migration_manifest(
+        run,
+        generation="generation-1",
+        scientific_output=(run / "deliverables").resolve(),
+        tasks=tasks,
+    )
+
+
+def test_reader_validates_merkle_root_after_reframed_payload_tampering(
+    run: Path,
+) -> None:
+    """A recomputed frame checksum cannot authorize a changed indexed task."""
+    from phenotypic._cli._cli_migrate_manifest import read_migration_task
+
+    manifest = _write_fixture_manifest(run, count=5)
+    assert read_migration_task(_manifest_path(run), 0).stem == "image_0000"
+    assert read_migration_task(_manifest_path(run), 2).stem == "image_0002"
+    assert read_migration_task(_manifest_path(run), 4).stem == "image_0004"
+
+    raw = manifest.records_path.read_bytes()
+    offset = int.from_bytes(manifest.offsets_path.read_bytes()[4 * 8 : 5 * 8], "big")
+    length = int.from_bytes(raw[offset : offset + 8], "big")
+    payload = json.loads(raw[offset + 8 : offset + 8 + length])
+    payload["measurement_path"] = str(
+        (run / "results" / "ds" / "measurements" / "image_0004.parquet").resolve()
+    )
+    replacement = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    reframed = (
+        struct.pack(">Q", len(replacement))
+        + replacement
+        + hashlib.sha256(replacement).digest()
+    )
+    manifest.records_path.write_bytes(raw[:offset] + reframed)
+
+    with pytest.raises(ValueError, match="inventory digest"):
+        read_migration_task(_manifest_path(run), 4)
