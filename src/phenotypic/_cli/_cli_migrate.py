@@ -4,20 +4,18 @@ Migration runs ordered artifact passes followed by strict publication.  The
 order is load-bearing:
 
 ===== =====================================================================
-1     ``migrate_metadata_bundle`` over every **non-image** target -- the
-      per-dataset ``measurements/*.parquet`` and the pipeline JSON.
+1     ``migrate_metadata_bundle`` over bundle-durable metadata targets --
+      pipeline, named dataset aggregates, and standalone master tables.
 2     per-image ``results/*/hdf/*.h5`` -> ``results/*/zarr/*.ome.zarr``.
 3     external Parquets -> embedded tables, then missing overlay rendering.
 4     image markers, aggregate rebuild and marker, then run completion.
 ===== =====================================================================
 
-Images-first is wrong. Pass 1 rewrites ``results/<ds>/measurements/*.parquet``,
-and those are **marker-bound**: every per-image completion marker carries that
-parquet's ``size`` and ``sha256``. Rewriting them *after* the markers were
-republished invalidates every marker just written -- the exact failure the
-republication exists to prevent, on the default path. Canonicalizing first and
-publishing markers over the **final** bytes needs no bridge, no receipts, and
-no ordering hazard (ledger MIG-15, FLOW TRACE-4).
+Per-image ``results/<ds>/measurements/<stem>.parquet`` files are Task-1
+provenance, not pass-1 metadata targets and not marker-bound deliverables.
+Pass 3 reads and canonicalizes them in memory, proves exact equality with the
+embedded authoritative table when publishing a new or repaired marker, and
+leaves retained source bytes unchanged.
 
 Pass 1 excludes ``.h5`` targets **unconditionally** -- see
 :data:`~phenotypic.sdk_._metadata_migration.NON_IMAGE_KINDS` for why that is
@@ -108,6 +106,7 @@ from phenotypic.sdk_._hdf_to_zarr import (
 )
 from phenotypic.sdk_.ngff_ import valid_staged_store
 from phenotypic.sdk_._metadata_migration import (
+    BUNDLE_DURABLE_TARGET_ROLE,
     NON_IMAGE_KINDS,
     MetadataMigrationAuthority,
     MetadataMigrationReport,
@@ -457,6 +456,7 @@ def run_metadata_pass(
         reconciled = reconcile_metadata_migration_bundle(
             layout,
             kinds=NON_IMAGE_KINDS,
+            target_role=BUNDLE_DURABLE_TARGET_ROLE,
             commit_guard=commit_guard,
         )
         if reconciled is not None:
@@ -479,7 +479,11 @@ def run_metadata_pass(
                 failures=(),
                 authority=metadata_migration_authority(layout),
             )
-    report = preflight_metadata_schema(layout, kinds=NON_IMAGE_KINDS)
+    report = preflight_metadata_schema(
+        layout,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
     if report.status == "blocked":
         raise MigrateModeError(
             "Metadata-schema conflicts must be resolved before migrating: "

@@ -173,6 +173,7 @@ def publish_image_success(
     expected_artifact_descriptors: (
         Mapping[str, Mapping[str, object]] | None
     ) = None,
+    source_provenance: Mapping[str, object] | None = None,
     commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Validate artifacts and atomically publish the image marker last."""
@@ -234,6 +235,8 @@ def publish_image_success(
             timespec="milliseconds"
         ),
     }
+    if source_provenance is not None:
+        marker["source_provenance"] = dict(source_provenance)
     marker_path = image_completion_marker_path(output_dir, dataset, image_stem)
     atomic_write_json(
         marker_path,
@@ -305,11 +308,10 @@ def refresh_success_markers_after_metadata_migration(
 ) -> int:
     """Refresh marker descriptors for receipt-certified schema rewrites.
 
-    Metadata migration intentionally rewrites bundle-owned per-image files.
-    This bridge preserves their existing scientific success authority without
-    blessing any unrelated artifact change. It is idempotent and scans durable
-    receipts so a later recompile repairs a kill between artifact migration and
-    marker refresh.
+    Historical schema-3 metadata receipts could rewrite per-image files. This
+    compatibility bridge preserves their existing success authority without
+    blessing unrelated changes. Schema-4 bundle-durable receipts exclude
+    Task-1-owned external Parquets and therefore need no marker refresh.
 
     Args:
         output_dir: Existing run-output root.

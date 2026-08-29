@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import datetime
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -339,6 +340,11 @@ def _patch_fast_migrated_reads(
     )
     monkeypatch.setattr(
         _cli_migrate_image,
+        "embedded_measurement_table_matches",
+        lambda path, _prepared: path == task.store_path,
+    )
+    monkeypatch.setattr(
+        _cli_migrate_image,
         "load_image_from_store",
         lambda path: image if path == task.store_path else None,
     )
@@ -537,6 +543,91 @@ def test_complete_artifacts_republish_only_missing_or_invalid_marker(
         task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
     ).read_bytes() == table_before
     assert task.overlay_path.read_bytes() == overlay_before
+
+
+def test_retained_external_parquet_bytes_are_provenance_not_migration_targets(
+    tmp_path: Path,
+) -> None:
+    """Embedding canonicalizes in memory and never rewrites Task-1 input."""
+    output_dir, task = _migration_task(tmp_path)
+    assert task.measurement_path is not None
+    legacy = pd.DataFrame(
+        {
+            "Object_Label": [1],
+            "Size_Area": [25.0],
+            "MetadataGenetic_Strain": ["BY4741"],
+        }
+    )
+    legacy.to_parquet(task.measurement_path, index=False)
+    source_before = task.measurement_path.read_bytes()
+
+    result = _complete_image(output_dir, task)
+
+    embedded = pd.read_parquet(
+        task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    assert result.table_installed is True
+    assert task.measurement_path.read_bytes() == source_before
+    assert "Metadata_Strain" in embedded.columns
+    assert "MetadataGenetic_Strain" not in embedded.columns
+    marker = json.loads(task.marker_path.read_text(encoding="utf-8"))
+    assert marker["source_provenance"]["sha256"] == hashlib.sha256(
+        source_before
+    ).hexdigest()
+
+
+def test_marker_repair_replaces_structural_but_scientifically_wrong_table(
+    tmp_path: Path,
+) -> None:
+    """Structural readability is insufficient for a newly certified marker."""
+    from phenotypic._cli._embedded_measurement_tables import (
+        embedded_measurement_table_matches,
+    )
+
+    output_dir, task = _migration_task(tmp_path)
+    _complete_image(output_dir, task)
+    assert task.measurement_path is not None
+    wrong_source = pd.read_parquet(task.measurement_path)
+    wrong_source["Size_Area"] = [999.0]
+    wrong = prepare_embedded_measurement_table(wrong_source, None)
+    replace_embedded_measurement_table(task.store_path, wrong)
+    task.marker_path.unlink()
+
+    repaired = _complete_image(output_dir, task)
+
+    expected = prepare_embedded_measurement_table(
+        pd.read_parquet(task.measurement_path), None
+    )
+    assert repaired.table_installed is True
+    assert embedded_measurement_table_matches(task.store_path, expected)
+
+
+def test_marker_certification_rechecks_source_digest_and_exact_table_equality(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A source race after marker publication cannot certify stale science."""
+    import phenotypic._cli._cli_migrate_image as migrate_module
+
+    output_dir, task = _migration_task(tmp_path)
+    real_publish = migrate_module.publish_image_success
+
+    def publish_then_change_source(*args: object, **kwargs: object) -> Path:
+        marker_path = real_publish(*args, **kwargs)
+        assert task.measurement_path is not None
+        changed = pd.read_parquet(task.measurement_path)
+        changed["Size_Area"] = [777.0]
+        changed.to_parquet(task.measurement_path, index=False)
+        return marker_path
+
+    monkeypatch.setattr(
+        migrate_module, "publish_image_success", publish_then_change_source
+    )
+
+    with pytest.raises(migrate_module.MigrationImageStageError) as caught:
+        _complete_image(output_dir, task)
+
+    assert caught.value.failure.stage == "marker"
+    assert "source" in caught.value.failure.reason.lower()
 
 
 def test_conflicting_marker_work_id_is_repaired_with_processing_state_authority(

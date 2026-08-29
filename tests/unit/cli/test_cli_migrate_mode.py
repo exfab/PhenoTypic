@@ -344,7 +344,7 @@ def test_metadata_pass_reuses_preflight_and_revalidates_before_first_write(
     import pandas as pd
 
     pd.DataFrame({"MetadataGenetic_Strain": ["WT"]}).to_parquet(
-        measurements / "plate.parquet", index=False
+        measurements / "_dataset_aggregated.parquet", index=False
     )
     events: list[tuple[str, str | None]] = []
     real_preflight_file = migration._preflight_file
@@ -404,7 +404,7 @@ def test_dry_metadata_pass_returns_count_without_authority_or_publication(
     measurements = output / "results" / "dataset" / "measurements"
     measurements.mkdir(parents=True)
     pd.DataFrame({"MetadataGenetic_Strain": ["WT"]}).to_parquet(
-        measurements / "plate.parquet", index=False
+        measurements / "_dataset_aggregated.parquet", index=False
     )
 
     result = run_metadata_pass(output, dry_run=True)
@@ -433,6 +433,111 @@ def test_pass_one_targets_contain_no_hdf(legacy_run) -> None:
     filtered = _discover_bundle_targets(layout, kinds=NON_IMAGE_KINDS)
     assert not any(path.suffix == ".h5" for path in filtered), filtered
     assert filtered, "pass 1 must still have non-image targets"
+
+
+def test_bundle_durable_pass_never_scans_per_image_measurements(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Pass 1 owns the named aggregate, never Task-1 image Parquets."""
+    import pandas as pd
+
+    from phenotypic.sdk_ import (
+        DATASET_AGGREGATED_PARQUET,
+        BundleLayout,
+        deliverables_dir,
+    )
+    from phenotypic.sdk_._metadata_migration import (
+        BUNDLE_DURABLE_TARGET_ROLE,
+        NON_IMAGE_KINDS,
+        preflight_metadata_schema,
+    )
+
+    output = tmp_path / "output"
+    deliverables = deliverables_dir(output)
+    deliverables.mkdir(parents=True)
+    (deliverables / "pipeline.json").write_text(
+        '{"MetadataGenetic_Strain":"WT"}', encoding="utf-8"
+    )
+    measurements = output / "results" / "dataset" / "measurements"
+    measurements.mkdir(parents=True)
+    image_source = measurements / "plate.parquet"
+    aggregate = measurements / DATASET_AGGREGATED_PARQUET
+    pd.DataFrame({"MetadataGenetic_Strain": ["image"]}).to_parquet(
+        image_source, index=False
+    )
+    pd.DataFrame({"MetadataGenetic_Strain": ["aggregate"]}).to_parquet(
+        aggregate, index=False
+    )
+    real_iterdir = Path.iterdir
+    real_glob = Path.glob
+
+    def refuse_measurement_iterdir(path: Path):
+        if path == measurements:
+            raise AssertionError("per-image measurement directory was entered")
+        return real_iterdir(path)
+
+    def refuse_measurement_glob(path: Path, pattern: str):
+        if path == measurements:
+            raise AssertionError("per-image measurement directory was opened")
+        return real_glob(path, pattern)
+
+    monkeypatch.setattr(Path, "iterdir", refuse_measurement_iterdir)
+    monkeypatch.setattr(Path, "glob", refuse_measurement_glob)
+    report = preflight_metadata_schema(
+        BundleLayout(deliverables_base=deliverables, output_root=output),
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+
+    paths = {Path(target.path) for target in report.targets}
+    assert aggregate in paths
+    assert image_source not in paths
+    assert report.target_role == BUNDLE_DURABLE_TARGET_ROLE
+
+
+def test_new_receipt_persists_bundle_durable_role_and_excludes_image_sources(
+    tmp_path: Path,
+) -> None:
+    import json
+
+    import pandas as pd
+
+    from phenotypic.sdk_ import BundleLayout, deliverables_dir
+    from phenotypic.sdk_._metadata_migration import (
+        BUNDLE_DURABLE_TARGET_ROLE,
+        NON_IMAGE_KINDS,
+        migrate_preflighted_metadata_bundle,
+        preflight_metadata_schema,
+    )
+
+    output = tmp_path / "output"
+    deliverables = deliverables_dir(output)
+    deliverables.mkdir(parents=True)
+    measurements = output / "results" / "dataset" / "measurements"
+    measurements.mkdir(parents=True)
+    image_source = measurements / "plate.parquet"
+    pd.DataFrame({"MetadataGenetic_Strain": ["image"]}).to_parquet(
+        image_source, index=False
+    )
+    (deliverables / "pipeline.json").write_text(
+        '{"MetadataGenetic_Strain":"WT"}', encoding="utf-8"
+    )
+    layout = BundleLayout(deliverables_base=deliverables, output_root=output)
+    report = preflight_metadata_schema(
+        layout,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+
+    result = migrate_preflighted_metadata_bundle(
+        layout, report=report, kinds=NON_IMAGE_KINDS
+    )
+
+    assert result.receipt_path is not None
+    receipt = json.loads(result.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["schema_version"] == 4
+    assert receipt["target_role"] == BUNDLE_DURABLE_TARGET_ROLE
+    assert image_source not in {Path(item["path"]) for item in receipt["targets"]}
 
 
 def test_a_filtered_receipt_survives_validation_on_a_tree_with_hdfs(

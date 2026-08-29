@@ -11,7 +11,10 @@ import polars as pl
 
 from phenotypic.sdk_ import PreparedEmbeddedMeasurementTable
 
-from ._metadata_join import prepare_metadata_join_keys
+from ._metadata_join import (
+    normalize_measurement_metadata_columns,
+    prepare_metadata_join_keys,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +49,9 @@ def prepare_embedded_measurement_table(
     preserves every measured row, excludes metadata-only rows, and retains
     duplicate metadata-key fan-out.
     """
-    baseline = measurements.copy()
+    baseline = normalize_measurement_metadata_columns(
+        pl.from_pandas(measurements)
+    ).to_pandas()
     measurement_columns = tuple(str(column) for column in baseline.columns)
     if metadata_csv is None:
         return PreparedEmbeddedMeasurementTable(

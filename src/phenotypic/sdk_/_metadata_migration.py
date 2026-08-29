@@ -87,6 +87,13 @@ MigrationStatus: TypeAlias = Literal[
     "compatible", "migratable", "blocked", "applied", "rolled_back", "failed"
 ]
 TargetKind: TypeAlias = Literal["csv", "parquet", "json", "hdf", "frame"]
+ReceiptTargetRole: TypeAlias = Literal[
+    "bundle_durable", "bundle_all", "exact_file"
+]
+
+BUNDLE_DURABLE_TARGET_ROLE: ReceiptTargetRole = "bundle_durable"
+BUNDLE_ALL_TARGET_ROLE: ReceiptTargetRole = "bundle_all"
+EXACT_FILE_TARGET_ROLE: ReceiptTargetRole = "exact_file"
 
 #: Every target kind except ``"hdf"`` -- the scope ``--mode migrate``'s pass 1
 #: runs with.
@@ -106,13 +113,16 @@ TargetKind: TypeAlias = Literal["csv", "parquet", "json", "hdf", "frame"]
 #: both legacy loaders), so ``save2zarr`` writes canonical metadata whether or
 #: not the source ``.h5`` header was ever rewritten. Rewriting it first is dead
 #: work in every case. Ledger MIG-25 / FLOW-35.
+#: Kind filtering is not ownership: pass 1 additionally selects
+#: :data:`BUNDLE_DURABLE_TARGET_ROLE`, which excludes per-image Parquets.
 NON_IMAGE_KINDS: frozenset[str] = frozenset({"csv", "parquet", "json", "frame"})
 
-# Version 3 adds a dynamic HDF ``rollback_fingerprint``. Version-2 HDF
-# receipts cannot safely distinguish a valid semantic rollback from external
-# byte-level changes. The receipt schema is global, so all version-2 receipts
-# are explicitly rejected rather than partially or heuristically upgraded.
-_RECEIPT_SCHEMA_VERSION = 3
+# Version 4 makes bundle ownership explicit. Schema-3 receipts are validated
+# with their historical exact kind-based discovery before being superseded;
+# they are never reinterpreted under the new bundle-durable role. Version-2
+# receipts remain unsafe because they lack the dynamic HDF rollback binding.
+_RECEIPT_SCHEMA_VERSION = 4
+_HISTORICAL_RECEIPT_SCHEMA_VERSION = 3
 _JOURNAL_SCHEMA_VERSION = 1
 _JOURNAL_FRAME_HEADER = struct.Struct(">Q")
 _JOURNAL_FRAME_CHECKSUM_SIZE = hashlib.sha256().digest_size
@@ -184,6 +194,7 @@ class MetadataMigrationReport:
     plan_fingerprint: str
     targets: tuple[MetadataMigrationTarget, ...]
     conflicts: tuple[str, ...] = ()
+    target_role: ReceiptTargetRole | None = None
 
     @property
     def compatible_count(self) -> int:
@@ -778,12 +789,12 @@ def _preflight_file(
     return _preflight_hdf(path)
 
 
-def _discover_bundle_targets(
+def _discover_legacy_bundle_targets(
     layout: BundleLayout,
     *,
     kinds: frozenset[str] | None = None,
 ) -> tuple[Path, ...]:
-    """Return authoritative sources only, never external metadata copies.
+    """Return the exact historical schema-3 kind-scoped target set.
 
     Args:
         layout: The bundle to enumerate.
@@ -956,6 +967,93 @@ def _discover_bundle_targets(
     return tuple(path for path in discovered if _kind_for_file(path) in kinds)
 
 
+def _discover_bundle_targets(
+    layout: BundleLayout,
+    *,
+    kinds: frozenset[str] | None = None,
+) -> tuple[Path, ...]:
+    """Discover only bundle-durable metadata authority.
+
+    Per-image HDF and Parquet sources belong to the image manifest. This
+    discovery therefore checks only exact durable names and never lists or
+    globs a dataset's ``measurements`` directory.
+    """
+    if layout.output_root is None:
+        deliverables_root = _require_safe_migration_path(
+            layout.deliverables_base, role="Standalone bundle root"
+        )
+        candidates = (
+            layout.resolved_pipeline_config_path,
+            layout.master_parquet,
+            layout.master_csv,
+        )
+        root = deliverables_root
+    else:
+        root = _require_safe_migration_path(
+            layout.output_root, role="Bundle root"
+        )
+        deliverables_root = _require_safe_migration_path(
+            deliverables_dir(root),
+            role="Bundle deliverables",
+            root=root,
+        )
+        candidates_list: list[Path] = [layout.resolved_pipeline_config_path]
+        state_path = resolve_processing_state_path(root)
+        if state_path.is_file() and not state_path.is_symlink():
+            try:
+                payload = json.loads(state_path.read_text(encoding="utf-8"))
+                original = payload.get("pipeline_path")
+            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                original = None
+            if isinstance(original, str) and original:
+                legacy_pipeline = root / Path(original).name
+                if legacy_pipeline.exists() or legacy_pipeline.is_symlink():
+                    candidates_list.append(legacy_pipeline)
+        results_root = _require_safe_migration_path(
+            root / "results", role="Bundle results", root=root
+        )
+        if results_root.is_dir():
+            for dataset in sorted(results_root.iterdir()):
+                if dataset.is_symlink():
+                    raise ValueError(
+                        f"Bundle-owned dataset cannot be a symlink: {dataset}"
+                    )
+                if not dataset.is_dir():
+                    continue
+                safe_dataset = _require_safe_migration_path(
+                    dataset, role="Bundle-owned dataset", root=results_root
+                )
+                aggregate = (
+                    safe_dataset
+                    / "measurements"
+                    / DATASET_AGGREGATED_PARQUET
+                )
+                if aggregate.exists() or aggregate.is_symlink():
+                    candidates_list.append(aggregate)
+        candidates = tuple(candidates_list)
+
+    targets: list[Path] = []
+    for candidate in candidates:
+        if not (candidate.exists() or candidate.is_symlink()):
+            continue
+        if candidate.is_symlink():
+            raise ValueError(
+                f"Bundle-durable metadata target cannot be a symlink: {candidate}"
+            )
+        safe = _require_safe_migration_path(
+            candidate,
+            role="Bundle-durable metadata target",
+            root=root,
+        )
+        if not safe.is_file():
+            raise FileNotFoundError(safe)
+        targets.append(safe)
+    discovered = tuple(dict.fromkeys(targets))
+    if kinds is None:
+        return discovered
+    return tuple(path for path in discovered if _kind_for_file(path) in kinds)
+
+
 def _bundle_target_is_mixed_table(layout: BundleLayout, path: Path) -> bool:
     """Return whether a bundle table also carries non-metadata measurements."""
     if path.suffix.lower() not in {".csv", ".parquet"}:
@@ -971,7 +1069,10 @@ def _bundle_target_is_mixed_table(layout: BundleLayout, path: Path) -> bool:
 
 
 def _report_from_targets(
-    source: str, targets: tuple[MetadataMigrationTarget, ...]
+    source: str,
+    targets: tuple[MetadataMigrationTarget, ...],
+    *,
+    target_role: ReceiptTargetRole | None = None,
 ) -> MetadataMigrationReport:
     conflicts = tuple(
         conflict for target in targets for conflict in target.conflicts
@@ -995,8 +1096,16 @@ def _report_from_targets(
         }
         for target in targets
     ]
+    fingerprint_payload: object = plan_data
+    if target_role is not None:
+        fingerprint_payload = {
+            "target_role": target_role,
+            "targets": plan_data,
+        }
     plan_fingerprint = _sha256_bytes(
-        json.dumps(plan_data, sort_keys=True, separators=(",", ":")).encode()
+        json.dumps(
+            fingerprint_payload, sort_keys=True, separators=(",", ":")
+        ).encode()
     )
     source_fingerprint = _sha256_bytes(
         json.dumps(
@@ -1012,6 +1121,7 @@ def _report_from_targets(
         plan_fingerprint=plan_fingerprint,
         targets=targets,
         conflicts=conflicts,
+        target_role=target_role,
     )
 
 
@@ -1019,6 +1129,7 @@ def preflight_metadata_schema(
     source: Any,
     *,
     kinds: frozenset[str] | None = None,
+    target_role: ReceiptTargetRole | None = None,
 ) -> MetadataMigrationReport:
     """Inspect a frame, supported file, or bundle without changing it.
 
@@ -1032,6 +1143,10 @@ def preflight_metadata_schema(
             ``None`` means every kind, so existing callers are unchanged.
             Ignored for a frame or a single file, which are already one
             explicit target.
+        target_role: Explicit bundle ownership role. ``bundle_durable`` uses
+            exact pipeline, aggregate, and standalone-master names without
+            scanning per-image source directories. ``None`` preserves the
+            generic bundle API's complete historical target inventory.
 
     Returns:
         Immutable migration plan and compatibility status.
@@ -1039,32 +1154,54 @@ def preflight_metadata_schema(
     module = type(source).__module__.split(".", maxsplit=1)[0]
     if isinstance(source, pd.DataFrame) or module == "polars":
         target = _preflight_frame(source, source=f"<{module}-frame>")
-        return _report_from_targets(target.path, (target,))
+        return _report_from_targets(
+            target.path, (target,), target_role=EXACT_FILE_TARGET_ROLE
+        )
     if isinstance(source, BundleLayout):
         layout = source
+        bundle_role = target_role or BUNDLE_ALL_TARGET_ROLE
+        discovery = (
+            _discover_bundle_targets
+            if bundle_role == BUNDLE_DURABLE_TARGET_ROLE
+            else _discover_legacy_bundle_targets
+        )
         targets = tuple(
             _preflight_file(
                 path,
                 mixed_table=_bundle_target_is_mixed_table(layout, path),
             )
-            for path in _discover_bundle_targets(layout, kinds=kinds)
+            for path in discovery(layout, kinds=kinds)
         )
-        return _report_from_targets(str(layout.deliverables_base), targets)
+        return _report_from_targets(
+            str(layout.deliverables_base),
+            targets,
+            target_role=bundle_role,
+        )
     path = _require_safe_migration_path(
         source, role="Metadata preflight source"
     )
     if path.is_file():
         target = _preflight_file(path)
-        return _report_from_targets(str(path), (target,))
+        return _report_from_targets(
+            str(path), (target,), target_role=EXACT_FILE_TARGET_ROLE
+        )
     layout = BundleLayout.detect(path)
+    bundle_role = target_role or BUNDLE_ALL_TARGET_ROLE
+    discovery = (
+        _discover_bundle_targets
+        if bundle_role == BUNDLE_DURABLE_TARGET_ROLE
+        else _discover_legacy_bundle_targets
+    )
     targets = tuple(
         _preflight_file(
             item,
             mixed_table=_bundle_target_is_mixed_table(layout, item),
         )
-        for item in _discover_bundle_targets(layout, kinds=kinds)
+        for item in discovery(layout, kinds=kinds)
     )
-    return _report_from_targets(str(path), targets)
+    return _report_from_targets(
+        str(path), targets, target_role=bundle_role
+    )
 
 
 def _receipt_dir(source: Path, *, bundle: bool) -> Path:
@@ -1174,8 +1311,14 @@ def _new_journal_plan(
     *,
     root: Path,
     kinds: frozenset[str] | None,
+    supersedes_digest: str | None = None,
 ) -> dict[str, Any]:
-    plan = _new_receipt(report, bundle_root=root, kinds=kinds)
+    plan = _new_receipt(
+        report,
+        bundle_root=root,
+        kinds=kinds,
+        supersedes_digest=supersedes_digest,
+    )
     plan["journal_schema_version"] = _JOURNAL_SCHEMA_VERSION
     return cast(dict[str, Any], json.loads(json.dumps(plan)))
 
@@ -1294,6 +1437,7 @@ def _new_receipt(
     *,
     bundle_root: Path | None,
     kinds: frozenset[str] | None = None,
+    supersedes_digest: str | None = None,
 ) -> dict[str, Any]:
     """Build a prepared receipt, recording the SCOPE it was planned under.
 
@@ -1316,6 +1460,8 @@ def _new_receipt(
     """
     return {
         "schema_version": _RECEIPT_SCHEMA_VERSION,
+        "target_role": report.target_role,
+        "supersedes_digest": supersedes_digest,
         "kinds": sorted(kinds) if kinds is not None else None,
         "scope": "bundle" if bundle_root is not None else "file",
         "bundle_root": str(bundle_root) if bundle_root is not None else None,
@@ -1976,8 +2122,13 @@ def _validate_receipt(
     receipt's own** ``kinds`` scope. Re-deriving the unfiltered set would
     reject every deliberately scoped migration -- see :func:`_new_receipt`.
     """
-    if receipt.get("schema_version") != _RECEIPT_SCHEMA_VERSION:
+    schema_version = receipt.get("schema_version")
+    if schema_version not in {
+        _HISTORICAL_RECEIPT_SCHEMA_VERSION,
+        _RECEIPT_SCHEMA_VERSION,
+    }:
         raise ValueError("Unsupported metadata migration receipt schema")
+    historical = schema_version == _HISTORICAL_RECEIPT_SCHEMA_VERSION
     raw_kinds = receipt.get("kinds")
     if raw_kinds is None:
         receipt_kinds: frozenset[str] | None = None
@@ -1990,6 +2141,28 @@ def _validate_receipt(
     scope = receipt.get("scope")
     if scope not in {"file", "bundle"}:
         raise ValueError("Invalid metadata migration receipt scope")
+    if historical:
+        if "target_role" in receipt or "supersedes_digest" in receipt:
+            raise ValueError(
+                "Historical metadata migration receipt has v4 authority fields"
+            )
+        target_role: ReceiptTargetRole | None = None
+    else:
+        raw_role = receipt.get("target_role")
+        valid_roles = (
+            {BUNDLE_DURABLE_TARGET_ROLE, BUNDLE_ALL_TARGET_ROLE}
+            if scope == "bundle"
+            else {EXACT_FILE_TARGET_ROLE}
+        )
+        if raw_role not in valid_roles:
+            raise ValueError("Invalid metadata migration receipt target role")
+        target_role = cast(ReceiptTargetRole, raw_role)
+        supersedes_digest = receipt.get("supersedes_digest")
+        if supersedes_digest is not None and (
+            not isinstance(supersedes_digest, str)
+            or not supersedes_digest.startswith("sha256:")
+        ):
+            raise ValueError("Invalid superseded receipt digest")
     if receipt.get("state") not in {
         "prepared",
         "applied",
@@ -2055,7 +2228,10 @@ def _validate_receipt(
             raise ValueError(
                 "Bundle receipt source is not rooted in its bundle"
             )
-        expected_paths = _discover_bundle_targets(layout, kinds=receipt_kinds)
+        discovery = _discover_legacy_bundle_targets
+        if target_role == BUNDLE_DURABLE_TARGET_ROLE:
+            discovery = _discover_bundle_targets
+        expected_paths = discovery(layout, kinds=receipt_kinds)
         receipt_source = str(layout.deliverables_base)
         expected_receipts = (
             _receipt_path(root, plan_fingerprint, bundle=True),
@@ -2108,7 +2284,9 @@ def _validate_receipt(
                 "Migration receipt target kind does not match its path"
             )
 
-    rebuilt = _report_from_targets(source_text, targets)
+    rebuilt = _report_from_targets(
+        source_text, targets, target_role=target_role
+    )
     if rebuilt.plan_fingerprint != plan_fingerprint:
         raise ValueError("Migration receipt plan content has been altered")
     if rebuilt.source_fingerprint != source_fingerprint:
@@ -2679,10 +2857,19 @@ def _validate_preflighted_bundle_authority(
     expected_source = str(layout.deliverables_base)
     if report.source != expected_source:
         raise ValueError("Prepared migration report does not match the bundle")
-    rebuilt = _report_from_targets(report.source, report.targets)
+    rebuilt = _report_from_targets(
+        report.source,
+        report.targets,
+        target_role=report.target_role,
+    )
     if rebuilt != report:
         raise ValueError("Prepared migration report content has been altered")
-    authoritative_paths = _discover_bundle_targets(layout, kinds=kinds)
+    discovery = (
+        _discover_bundle_targets
+        if report.target_role == BUNDLE_DURABLE_TARGET_ROLE
+        else _discover_legacy_bundle_targets
+    )
+    authoritative_paths = discovery(layout, kinds=kinds)
     report_paths = tuple(
         _require_safe_migration_path(
             target.path, role="Prepared migration target", root=root
@@ -2739,6 +2926,55 @@ def _validated_terminal_receipt_evidence(
         receipt,
         compatible=compatible_noop,
     )
+    supersedes_digest = receipt.get("supersedes_digest")
+    if isinstance(supersedes_digest, str):
+        historical: list[Path] = []
+        for candidate_kind, candidate in _bundle_authority_candidates(root):
+            candidate_receipt = (
+                candidate / "receipt.json"
+                if candidate_kind == "journal"
+                else candidate
+            )
+            if candidate_receipt == safe_receipt_path:
+                continue
+            historical.append(candidate_receipt)
+        if len(historical) != 1:
+            raise ValueError(
+                "Superseding metadata authority lacks one historical receipt"
+            )
+        historical_path = historical[0]
+        if not historical_path.is_file():
+            raise ValueError(
+                "Superseded historical metadata receipt is missing"
+            )
+        historical_bytes = historical_path.read_bytes()
+        if _sha256_bytes(historical_bytes) != supersedes_digest:
+            raise ValueError(
+                "Superseded historical metadata receipt digest changed"
+            )
+        try:
+            historical_receipt = json.loads(historical_bytes)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError(
+                "Superseded historical metadata receipt is malformed"
+            ) from exc
+        if (
+            not isinstance(historical_receipt, dict)
+            or historical_receipt.get("schema_version")
+            != _HISTORICAL_RECEIPT_SCHEMA_VERSION
+        ):
+            raise ValueError(
+                "Superseded metadata authority is not a schema-3 receipt"
+            )
+        _result_from_terminal_receipt(
+            historical_path,
+            historical_receipt,
+            compatible=not any(
+                target.get("status") == "migratable"
+                for target in historical_receipt.get("targets", [])
+                if isinstance(target, dict)
+            ),
+        )
     return result, compatible_noop, receipt_digest
 
 
@@ -2915,7 +3151,10 @@ def _validate_replayed_authority(
     *,
     kinds: frozenset[str] | None,
 ) -> None:
-    authoritative_paths = _discover_bundle_targets(layout, kinds=kinds)
+    discovery = _discover_legacy_bundle_targets
+    if receipt.get("target_role") == BUNDLE_DURABLE_TARGET_ROLE:
+        discovery = _discover_bundle_targets
+    authoritative_paths = discovery(layout, kinds=kinds)
     raw_targets = receipt.get("targets")
     if not isinstance(raw_targets, list):
         raise ValueError("Metadata migration journal lacks targets")
@@ -3185,21 +3424,40 @@ def _report_from_authority_plan(
     root: Path,
     kinds: frozenset[str] | None,
 ) -> MetadataMigrationReport:
+    schema_version = plan.get("schema_version")
     if (
         plan.get("journal_schema_version") != _JOURNAL_SCHEMA_VERSION
-        or plan.get("schema_version") != _RECEIPT_SCHEMA_VERSION
+        or schema_version
+        not in {
+            _HISTORICAL_RECEIPT_SCHEMA_VERSION,
+            _RECEIPT_SCHEMA_VERSION,
+        }
         or plan.get("scope") != "bundle"
         or plan.get("bundle_root") != str(root)
         or plan.get("kinds")
         != (sorted(kinds) if kinds is not None else None)
     ):
         raise ValueError("Metadata migration journal scope is incompatible")
+    historical = schema_version == _HISTORICAL_RECEIPT_SCHEMA_VERSION
+    if historical:
+        if "target_role" in plan or "supersedes_digest" in plan:
+            raise ValueError("Historical metadata migration plan is malformed")
+        target_role = None
+    else:
+        if plan.get("target_role") not in {
+            BUNDLE_DURABLE_TARGET_ROLE,
+            BUNDLE_ALL_TARGET_ROLE,
+        }:
+            raise ValueError("Metadata migration journal role is incompatible")
+        target_role = cast(ReceiptTargetRole, plan.get("target_role"))
     raw_targets = plan.get("targets")
     source = plan.get("source")
     if not isinstance(raw_targets, list) or not isinstance(source, str):
         raise ValueError("Metadata migration journal plan is malformed")
     targets = tuple(_receipt_target(target) for target in raw_targets)
-    report = _report_from_targets(source, targets)
+    report = _report_from_targets(
+        source, targets, target_role=target_role
+    )
     if (
         report.plan_fingerprint != plan.get("plan_fingerprint")
         or report.source_fingerprint != plan.get("source_fingerprint")
@@ -3227,10 +3485,86 @@ def _authority_failure_result(
     )
 
 
+def _receipt_digest(path: Path) -> str:
+    """Return the canonical digest spelling used by authority bindings."""
+    return _sha256_bytes(path.read_bytes())
+
+
+def _migrate_superseding_v4_authority(
+    layout: BundleLayout,
+    root: Path,
+    *,
+    superseded_receipt: Path,
+    kinds: frozenset[str] | None,
+    target_role: ReceiptTargetRole,
+    commit_guard: CommitGuard | None,
+) -> MetadataMigrationResult:
+    """Publish durable v4 authority only after exact v3 validation."""
+    superseded = json.loads(superseded_receipt.read_text(encoding="utf-8"))
+    if not isinstance(superseded, dict):
+        raise ValueError("Historical metadata migration receipt is malformed")
+    _result_from_terminal_receipt(
+        superseded_receipt,
+        superseded,
+        compatible=not any(
+            target.get("status") == "migratable"
+            for target in superseded.get("targets", [])
+            if isinstance(target, dict)
+        ),
+    )
+    supersedes_digest = _receipt_digest(superseded_receipt)
+    report = preflight_metadata_schema(
+        layout, kinds=kinds, target_role=target_role
+    )
+    plan_path, log_path, receipt_path = _journal_paths(
+        root, report.plan_fingerprint
+    )
+    expected_plan = _new_journal_plan(
+        report,
+        root=root,
+        kinds=kinds,
+        supersedes_digest=supersedes_digest,
+    )
+    if plan_path.is_file():
+        existing = json.loads(plan_path.read_text(encoding="utf-8"))
+        if existing != expected_plan:
+            raise ValueError("Competing superseding metadata authority exists")
+    else:
+        with publication_commit(commit_guard):
+            _validate_preflighted_bundle_authority(
+                layout, root, report, kinds=kinds
+            )
+            _write_journal_plan(
+                plan_path,
+                log_path,
+                expected_plan,
+                commit_guard=None,
+            )
+    result = _apply_metadata_journal(
+        layout,
+        root,
+        plan_path,
+        log_path,
+        receipt_path,
+        kinds=kinds,
+        commit_guard=commit_guard,
+    )
+    if result.status not in {"compatible", "applied"}:
+        return result
+    _publish_metadata_authority(
+        root,
+        result,
+        compatible_noop=report.status == "compatible",
+        commit_guard=commit_guard,
+    )
+    return result
+
+
 def reconcile_metadata_migration_bundle(
     source: str | Path | BundleLayout,
     *,
     kinds: frozenset[str] | None = None,
+    target_role: ReceiptTargetRole | None = None,
     expected_plan_fingerprint: str | None = None,
     commit_guard: CommitGuard | None = None,
 ) -> MetadataMigrationResult | None:
@@ -3260,6 +3594,50 @@ def reconcile_metadata_migration_bundle(
                     "receipt authority"
                 )
             return None
+        superseded_receipt: Path | None = None
+        if len(candidates) == 2:
+            by_schema: dict[int, tuple[str, Path, dict[str, Any]]] = {}
+            for candidate_kind, candidate_path in candidates:
+                payload_path = (
+                    candidate_path / "plan.json"
+                    if candidate_kind == "journal"
+                    else candidate_path
+                )
+                payload = json.loads(payload_path.read_text(encoding="utf-8"))
+                if not isinstance(payload, dict):
+                    raise ValueError(
+                        "Metadata migration authority payload is malformed"
+                    )
+                schema = payload.get("schema_version")
+                if not isinstance(schema, int) or schema in by_schema:
+                    raise ValueError(
+                        "Competing metadata migration authorities exist"
+                    )
+                by_schema[schema] = (
+                    candidate_kind,
+                    candidate_path,
+                    payload,
+                )
+            if set(by_schema) != {
+                _HISTORICAL_RECEIPT_SCHEMA_VERSION,
+                _RECEIPT_SCHEMA_VERSION,
+            }:
+                raise ValueError("Competing metadata migration authorities exist")
+            old_kind, old_path, _ = by_schema[
+                _HISTORICAL_RECEIPT_SCHEMA_VERSION
+            ]
+            new_kind, new_path, new_plan = by_schema[_RECEIPT_SCHEMA_VERSION]
+            superseded_receipt = (
+                old_path / "receipt.json" if old_kind == "journal" else old_path
+            )
+            _, _, old_digest = _validated_terminal_receipt_evidence(
+                root, superseded_receipt
+            )
+            if new_plan.get("supersedes_digest") != old_digest:
+                raise ValueError(
+                    "Competing metadata migration supersession authority"
+                )
+            candidates = ((new_kind, new_path),)
         if len(candidates) != 1:
             raise ValueError("Competing metadata migration authorities exist")
         authority_kind, authority_path = candidates[0]
@@ -3272,9 +3650,17 @@ def reconcile_metadata_migration_bundle(
             plan = json.loads(plan_path.read_text(encoding="utf-8"))
             if not isinstance(plan, dict):
                 raise ValueError("Metadata migration journal plan is malformed")
+            receipt_schema_version = plan.get("schema_version")
             report = _report_from_authority_plan(
                 plan, root=root, kinds=kinds
             )
+            if (
+                target_role is not None
+                and report.target_role not in {None, target_role}
+            ):
+                raise ValueError(
+                    "Metadata migration journal role is incompatible"
+                )
             expected_paths = _journal_paths(root, report.plan_fingerprint)
             if (plan_path, log_path, receipt_path) != expected_paths:
                 raise ValueError("Metadata migration journal path is incompatible")
@@ -3332,6 +3718,7 @@ def reconcile_metadata_migration_bundle(
             receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
             if not isinstance(receipt, dict):
                 raise ValueError("Legacy metadata migration receipt is malformed")
+            receipt_schema_version = receipt.get("schema_version")
             plan_fingerprint = receipt.get("plan_fingerprint")
             was_terminal = receipt.get("state") == "applied"
             if (
@@ -3365,7 +3752,57 @@ def reconcile_metadata_migration_bundle(
                 receipt_path=result.receipt_path,
                 skipped_targets=result.skipped_targets,
             )
+        if (
+            receipt_schema_version
+            == _HISTORICAL_RECEIPT_SCHEMA_VERSION
+        ):
+            if result.receipt_path is None:
+                raise ValueError(
+                    "Historical metadata migration lacks terminal receipt"
+                )
+            if published_authority is not None:
+                if (
+                    published_authority.terminal_receipt_path
+                    != result.receipt_path
+                    or published_authority.plan_fingerprint
+                    != result.plan_fingerprint
+                    or published_authority.source_fingerprint
+                    != result.source_fingerprint
+                    or published_authority.resulting_fingerprint
+                    != result.resulting_fingerprint
+                ):
+                    raise ValueError(
+                        "Competing metadata migration status authority does not "
+                        "match the historical receipt"
+                    )
+            else:
+                _publish_metadata_authority(
+                    root,
+                    result,
+                    compatible_noop=compatible_noop,
+                    commit_guard=commit_guard,
+                )
+            return _migrate_superseding_v4_authority(
+                layout,
+                root,
+                superseded_receipt=result.receipt_path,
+                kinds=kinds,
+                target_role=target_role or BUNDLE_ALL_TARGET_ROLE,
+                commit_guard=commit_guard,
+            )
         if published_authority is not None:
+            if (
+                superseded_receipt is not None
+                and published_authority.terminal_receipt_path
+                == superseded_receipt
+            ):
+                _publish_metadata_authority(
+                    root,
+                    result,
+                    compatible_noop=compatible_noop,
+                    commit_guard=commit_guard,
+                )
+                return result
             if (
                 result.receipt_path is None
                 or result.resulting_fingerprint is None
@@ -3411,6 +3848,7 @@ def migrate_preflighted_metadata_bundle(
     reconciled = reconcile_metadata_migration_bundle(
         layout,
         kinds=kinds,
+        target_role=report.target_role,
         expected_plan_fingerprint=report.plan_fingerprint,
         commit_guard=commit_guard,
     )
@@ -3471,6 +3909,7 @@ def migrate_metadata_bundle(
     *,
     expected_plan_fingerprint: str,
     kinds: frozenset[str] | None = None,
+    target_role: ReceiptTargetRole | None = None,
     commit_guard: CommitGuard | None = None,
 ) -> MetadataMigrationResult:
     """Migrate authoritative sources in a full or standalone bundle.
@@ -3489,6 +3928,8 @@ def migrate_metadata_bundle(
         expected_plan_fingerprint: Fingerprint from the matching preflight.
         kinds: Restrict the migration to these :data:`TargetKind` values, and
             record that scope in the receipt. ``None`` means every kind.
+        target_role: Explicit bundle ownership role. The migrate CLI passes
+            ``bundle_durable``; ``None`` preserves the generic full-bundle API.
 
     Returns:
         The migration result.
@@ -3497,20 +3938,24 @@ def migrate_metadata_bundle(
     reconciled = reconcile_metadata_migration_bundle(
         layout,
         kinds=kinds,
+        target_role=target_role,
         expected_plan_fingerprint=expected_plan_fingerprint,
         commit_guard=commit_guard,
     )
     if reconciled is not None:
         return reconciled
-    report = preflight_metadata_schema(layout, kinds=kinds)
+    report = preflight_metadata_schema(
+        layout, kinds=kinds, target_role=target_role
+    )
     if expected_plan_fingerprint != report.plan_fingerprint:
         mismatch = MetadataMigrationReport(
             source=report.source,
             status="blocked",
             source_fingerprint=report.source_fingerprint,
             plan_fingerprint=report.plan_fingerprint,
-            targets=report.targets,
-            conflicts=("Migration plan fingerprint does not match preflight",),
+        targets=report.targets,
+        conflicts=("Migration plan fingerprint does not match preflight",),
+        target_role=report.target_role,
         )
         return _blocked_result(mismatch)
     return migrate_preflighted_metadata_bundle(

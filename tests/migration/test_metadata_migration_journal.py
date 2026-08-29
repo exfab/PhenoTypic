@@ -9,6 +9,7 @@ import struct
 from contextlib import contextmanager
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict
 from pathlib import Path
 from threading import Event, Lock
 
@@ -23,6 +24,7 @@ from phenotypic.sdk_ import (
     preflight_metadata_schema,
 )
 from phenotypic.sdk_._metadata_migration import (
+    BUNDLE_DURABLE_TARGET_ROLE,
     NON_IMAGE_KINDS,
     reconcile_metadata_migration_bundle,
 )
@@ -42,6 +44,14 @@ def migratable_bundle(tmp_path: Path) -> BundleLayout:
         pd.DataFrame({LEGACY_STRAIN: [f"strain-{index}"]}).to_parquet(
             measurements / f"plate-{index}.parquet", index=False
         )
+    pd.DataFrame({LEGACY_STRAIN: ["aggregate-a"]}).to_parquet(
+        measurements / "_dataset_aggregated.parquet", index=False
+    )
+    second = output / "results" / "dataset-2" / "measurements"
+    second.mkdir(parents=True)
+    pd.DataFrame({LEGACY_STRAIN: ["aggregate-b"]}).to_parquet(
+        second / "_dataset_aggregated.parquet", index=False
+    )
     return BundleLayout(deliverables_base=deliverables, output_root=output)
 
 
@@ -54,6 +64,14 @@ def compatible_bundle(tmp_path: Path) -> BundleLayout:
     measurements.mkdir(parents=True)
     pd.DataFrame({CANONICAL_STRAIN: ["WT"]}).to_parquet(
         measurements / "plate.parquet", index=False
+    )
+    pd.DataFrame({CANONICAL_STRAIN: ["aggregate-a"]}).to_parquet(
+        measurements / "_dataset_aggregated.parquet", index=False
+    )
+    second = output / "results" / "dataset-2" / "measurements"
+    second.mkdir(parents=True)
+    pd.DataFrame({CANONICAL_STRAIN: ["aggregate-b"]}).to_parquet(
+        second / "_dataset_aggregated.parquet", index=False
     )
     return BundleLayout(deliverables_base=deliverables, output_root=output)
 
@@ -123,6 +141,69 @@ def _forbid_semantic_reparse(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(migration, "_preflight_file", fail_semantic_parse)
 
 
+def _write_historical_v3_journal(
+    bundle: BundleLayout, *, terminal: bool
+) -> tuple[Path, str]:
+    """Write exact schema-3 authority without using the schema-4 constructor."""
+    import phenotypic.sdk_._metadata_migration as migration
+
+    assert bundle.output_root is not None
+    paths = migration._discover_legacy_bundle_targets(
+        bundle, kinds=NON_IMAGE_KINDS
+    )
+    targets = tuple(
+        migration._preflight_file(
+            path,
+            mixed_table=migration._bundle_target_is_mixed_table(bundle, path),
+        )
+        for path in paths
+    )
+    report = migration._report_from_targets(
+        str(bundle.deliverables_base), targets
+    )
+    payload = {
+        "schema_version": 3,
+        "kinds": sorted(NON_IMAGE_KINDS),
+        "scope": "bundle",
+        "bundle_root": str(bundle.output_root),
+        "state": "applied" if terminal else "prepared",
+        "source": report.source,
+        "source_fingerprint": report.source_fingerprint,
+        "plan_fingerprint": report.plan_fingerprint,
+        "targets": [
+            {
+                **asdict(target),
+                "state": (
+                    "skipped"
+                    if target.status == "compatible"
+                    else "pending"
+                ),
+                "post_fingerprint": None,
+                "rollback_fingerprint": None,
+                "temp_path": None,
+                "backup_path": None,
+                "hdf_snapshot": None,
+            }
+            for target in report.targets
+        ],
+    }
+    plan_path, log_path, receipt_path = migration._journal_paths(
+        bundle.output_root, report.plan_fingerprint
+    )
+    plan = dict(payload)
+    plan["state"] = "prepared"
+    plan["journal_schema_version"] = 1
+    migration._write_journal_plan(
+        plan_path, log_path, plan, commit_guard=None
+    )
+    if terminal:
+        migration._write_receipt(receipt_path, payload)
+    digest = "sha256:" + hashlib.sha256(
+        receipt_path.read_bytes() if terminal else plan_path.read_bytes()
+    ).hexdigest()
+    return receipt_path, digest
+
+
 def test_journal_frames_are_ordered_and_terminal_receipt_is_compact(
     migratable_bundle: BundleLayout,
 ) -> None:
@@ -143,10 +224,9 @@ def test_journal_frames_are_ordered_and_terminal_receipt_is_compact(
     frames = _decode_frames(log_path)
     assert [frame["sequence"] for frame in frames] == list(range(len(frames)))
     assert [frame["next_state"] for frame in frames] == [
-        "prepared",
-        "applied",
-        "prepared",
-        "applied",
+        state
+        for _ in range(report.migratable_count)
+        for state in ("prepared", "applied")
     ]
     receipt = json.loads(result.receipt_path.read_text(encoding="utf-8"))
     assert receipt["state"] == "applied"
@@ -193,7 +273,7 @@ def test_each_complete_transition_is_fsynced_before_target_publication(
     )
 
     assert result.status == "applied"
-    assert events == ["frame", "publish", "frame"] * 2
+    assert events == ["frame", "publish", "frame"] * report.migratable_count
 
 
 def test_many_targets_replay_log_once_and_keep_one_append_handle(
@@ -205,12 +285,14 @@ def test_many_targets_replay_log_once_and_keep_one_append_handle(
     output = tmp_path / "output"
     deliverables = output / "deliverables"
     deliverables.mkdir(parents=True)
-    measurements = output / "results" / "dataset" / "measurements"
-    measurements.mkdir(parents=True)
     target_count = 12
     for index in range(target_count):
+        measurements = (
+            output / "results" / f"dataset-{index}" / "measurements"
+        )
+        measurements.mkdir(parents=True)
         pd.DataFrame({LEGACY_STRAIN: [f"strain-{index}"]}).to_parquet(
-            measurements / f"plate-{index}.parquet", index=False
+            measurements / "_dataset_aggregated.parquet", index=False
         )
     bundle = BundleLayout(deliverables_base=deliverables, output_root=output)
     report = preflight_metadata_schema(bundle, kinds=NON_IMAGE_KINDS)
@@ -477,7 +559,15 @@ def test_changed_authoritative_set_fails_closed_before_semantic_preflight(
     report, _ = _interrupt_after_first_target_replace(
         migratable_bundle, monkeypatch
     )
-    extra = Path(report.targets[0].path).with_name("extra.parquet")
+    assert migratable_bundle.output_root is not None
+    extra = (
+        migratable_bundle.output_root
+        / "results"
+        / "extra-dataset"
+        / "measurements"
+        / "_dataset_aggregated.parquet"
+    )
+    extra.parent.mkdir(parents=True)
     pd.DataFrame({CANONICAL_STRAIN: ["extra"]}).to_parquet(extra, index=False)
     _forbid_semantic_reparse(monkeypatch)
 
@@ -669,6 +759,85 @@ def test_interrupted_legacy_receipt_replays_before_fresh_semantic_preflight(
     assert metadata_migration_authority(migratable_bundle).terminal_receipt_path == legacy_path
 
 
+def test_terminal_schema3_authority_is_validated_then_superseded_by_v4(
+    compatible_bundle: BundleLayout,
+) -> None:
+    """A historical terminal receipt is preserved and digest-bound by v4."""
+    old_receipt, old_digest = _write_historical_v3_journal(
+        compatible_bundle, terminal=True
+    )
+
+    result = reconcile_metadata_migration_bundle(
+        compatible_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+
+    assert result is not None and result.status in {"compatible", "applied"}
+    authority = metadata_migration_authority(compatible_bundle)
+    assert authority.terminal_receipt_path != old_receipt
+    superseding = json.loads(
+        authority.terminal_receipt_path.read_text(encoding="utf-8")
+    )
+    assert superseding["schema_version"] == 4
+    assert superseding["target_role"] == "bundle_durable"
+    assert superseding["supersedes_digest"] == old_digest
+    assert old_receipt.is_file()
+    rerun = reconcile_metadata_migration_bundle(
+        compatible_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+    assert rerun is not None and rerun.status == "compatible"
+
+    old_receipt.write_bytes(b"{corrupt historical authority")
+    with pytest.raises(ValueError, match="supersed|digest|historical"):
+        metadata_migration_authority(compatible_bundle)
+
+
+def test_interrupted_schema3_authority_recovers_then_is_superseded_by_v4(
+    migratable_bundle: BundleLayout,
+) -> None:
+    """Recovery completes under v3 discovery before durable v4 preflight."""
+    old_receipt, _ = _write_historical_v3_journal(
+        migratable_bundle, terminal=False
+    )
+
+    result = reconcile_metadata_migration_bundle(
+        migratable_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
+    )
+
+    assert result is not None and result.status in {"compatible", "applied"}
+    assert old_receipt.is_file()
+    old_digest = "sha256:" + hashlib.sha256(old_receipt.read_bytes()).hexdigest()
+    authority = metadata_migration_authority(migratable_bundle)
+    superseding = json.loads(
+        authority.terminal_receipt_path.read_text(encoding="utf-8")
+    )
+    assert superseding["schema_version"] == 4
+    assert superseding["supersedes_digest"] == old_digest
+
+
+def test_competing_schema3_authority_fails_before_v4_supersession(
+    compatible_bundle: BundleLayout,
+) -> None:
+    old_receipt, _ = _write_historical_v3_journal(
+        compatible_bundle, terminal=True
+    )
+    competitor = old_receipt.parent.with_name(old_receipt.parent.name + "-copy")
+    shutil.copytree(old_receipt.parent, competitor)
+
+    result = reconcile_metadata_migration_bundle(
+        compatible_bundle, kinds=NON_IMAGE_KINDS
+    )
+
+    assert result is not None and result.status == "failed"
+    assert "competing" in " ".join(result.conflicts).lower()
+    assert not (compatible_bundle.output_root / ".phenotypic" / "metadata_migration" / "status.json").exists()
+
+
 def test_resume_revalidates_authoritative_set_inside_first_commit_guard(
     migratable_bundle: BundleLayout, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -683,7 +852,15 @@ def test_resume_revalidates_authoritative_set_inside_first_commit_guard(
         nonlocal entered
         if not entered:
             entered = True
-            extra = Path(report.targets[0].path).with_name("raced.parquet")
+            assert migratable_bundle.output_root is not None
+            extra = (
+                migratable_bundle.output_root
+                / "results"
+                / "raced-dataset"
+                / "measurements"
+                / "_dataset_aggregated.parquet"
+            )
+            extra.parent.mkdir(parents=True)
             pd.DataFrame({CANONICAL_STRAIN: ["raced"]}).to_parquet(
                 extra, index=False
             )
@@ -707,7 +884,9 @@ def test_authoritative_discovery_is_constant_not_per_transition(
     import phenotypic.sdk_._metadata_migration as migration
 
     report = preflight_metadata_schema(
-        migratable_bundle, kinds=NON_IMAGE_KINDS
+        migratable_bundle,
+        kinds=NON_IMAGE_KINDS,
+        target_role=BUNDLE_DURABLE_TARGET_ROLE,
     )
     real_discover = migration._discover_bundle_targets
     discoveries = 0

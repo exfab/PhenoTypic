@@ -240,6 +240,26 @@ def _valid_migration_marker(
                 "kind"
             ) != expected_kind:
                 return False
+        provenance = marker.get("source_provenance")
+        if provenance is not None:
+            if not isinstance(provenance, dict):
+                return False
+            source = task.measurement_path
+            if source is None:
+                return False
+            expected_source = source.resolve().relative_to(output_root).as_posix()
+            if (
+                provenance.get("path") != expected_source
+                or not isinstance(provenance.get("size"), int)
+                or not isinstance(provenance.get("sha256"), str)
+            ):
+                return False
+            state = _source_artifact_state(source)
+            if state.exists and (
+                state.size != provenance["size"]
+                or state.sha256 != provenance["sha256"]
+            ):
+                return False
     except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
         return False
     return True
@@ -256,13 +276,20 @@ def _table_state(
     *,
     metadata_csv: Path | None,
     commit_guard: CommitGuard | None,
+    require_source_equality: bool = False,
 ) -> tuple[bool, bool]:
     """Repair and return ``(valid, installed)`` for one embedded table."""
     valid = _valid_embedded_measurement_contract(task.store_path)
     source = task.measurement_path
-    if not valid and source is not None and source.is_file():
+    prepared = None
+    if source is not None and source.is_file():
         baseline = pd.read_parquet(source)
         prepared = prepare_embedded_measurement_table(baseline, metadata_csv)
+    exact = (
+        prepared is not None
+        and embedded_measurement_table_matches(task.store_path, prepared)
+    )
+    if prepared is not None and (not valid or (require_source_equality and not exact)):
         replace_embedded_measurement_table(
             task.store_path,
             prepared,
@@ -276,6 +303,37 @@ def _table_state(
     if embedded.exists() and not valid:
         raise RuntimeError("embedded measurement table validation failed")
     return valid, False
+
+
+def _certified_source_provenance(
+    output_dir: Path,
+    task: MigrationImageTask,
+    *,
+    metadata_csv: Path | None,
+) -> dict[str, object] | None:
+    """Bind stable source bytes and exact prepared-table equality."""
+    source = task.measurement_path
+    if source is None:
+        return None
+    before = _source_artifact_state(source)
+    if not before.exists:
+        return None
+    baseline = pd.read_parquet(source)
+    prepared = prepare_embedded_measurement_table(baseline, metadata_csv)
+    after = _source_artifact_state(source)
+    if after != before:
+        raise RuntimeError("measurement source changed during certification")
+    if not embedded_measurement_table_matches(task.store_path, prepared):
+        raise RuntimeError(
+            "embedded table does not exactly match the prepared source"
+        )
+    assert before.size is not None and before.sha256 is not None
+    relative = source.resolve(strict=True).relative_to(output_dir.resolve())
+    return {
+        "path": relative.as_posix(),
+        "size": before.size,
+        "sha256": before.sha256,
+    }
 
 
 def _dry_run_result(
@@ -436,11 +494,22 @@ def migrate_image_task(
             overlay_rendered=overlay_rendered,
         ) from exc
 
+    table_was_authoritative = _valid_embedded_measurement_contract(
+        task.store_path
+    )
+    marker_was_valid = _valid_migration_marker(
+        output_dir,
+        task,
+        work_id,
+        table_authoritative=table_was_authoritative,
+    )
+
     try:
         table_valid, table_installed = _table_state(
             task,
             metadata_csv=metadata_csv,
             commit_guard=commit_guard,
+            require_source_equality=not marker_was_valid,
         )
         if not table_valid and image.num_objects != 0:
             raise RuntimeError("nonempty migrated image has no valid measurement table")
@@ -501,20 +570,38 @@ def migrate_image_task(
                 task,
                 table_authoritative=table_valid,
             )
-            marker_path = publish_image_success(
-                output_dir,
-                work_id=identity["work_id"],
-                dataset=task.dataset,
-                relative_image_path=identity["relative_image_path"],
-                image_stem=task.stem,
-                mode=identity["mode"],
-                attempt_id=identity["attempt_id"],
-                lifecycle_epoch=identity["lifecycle_epoch"],
-                artifacts=artifacts,
-                commit_guard=commit_guard,
-            )
-            if marker_path != task.marker_path:
-                raise RuntimeError("marker publisher returned a non-canonical path")
+            with publication_commit(commit_guard):
+                source_provenance = _certified_source_provenance(
+                    output_dir,
+                    task,
+                    metadata_csv=metadata_csv,
+                )
+                marker_path = publish_image_success(
+                    output_dir,
+                    work_id=identity["work_id"],
+                    dataset=task.dataset,
+                    relative_image_path=identity["relative_image_path"],
+                    image_stem=task.stem,
+                    mode=identity["mode"],
+                    attempt_id=identity["attempt_id"],
+                    lifecycle_epoch=identity["lifecycle_epoch"],
+                    artifacts=artifacts,
+                    source_provenance=source_provenance,
+                    commit_guard=None,
+                )
+                if marker_path != task.marker_path:
+                    raise RuntimeError(
+                        "marker publisher returned a non-canonical path"
+                    )
+                if not _valid_migration_marker(
+                    output_dir,
+                    task,
+                    work_id,
+                    table_authoritative=table_valid,
+                ):
+                    raise RuntimeError(
+                        "measurement source changed before marker certification"
+                    )
 
         with publication_commit(commit_guard):
             if not valid_staged_store(task.store_path):
@@ -523,6 +610,12 @@ def migrate_image_task(
                 raise RuntimeError("embedded measurement table validation failed")
             if not valid_migration_overlay(task.overlay_path, expected_shape):
                 raise RuntimeError("migrated overlay validation failed")
+            if not marker_valid:
+                _certified_source_provenance(
+                    output_dir,
+                    task,
+                    metadata_csv=metadata_csv,
+                )
             if not _valid_migration_marker(
                 output_dir,
                 task,
