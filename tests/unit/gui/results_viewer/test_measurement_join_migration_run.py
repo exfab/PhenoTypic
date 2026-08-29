@@ -121,9 +121,9 @@ def test_the_value_reaches_the_card_it_was_measured_for(
     """End to end: store -> source helper -> the grid's own cell key.
 
     ``measurement_values_for`` is what the Colony render callback calls, and
-    it keys on ``(image_file, label)`` -- the same key ``build_grid`` uses to
-    look a value up per cell. If the two ever disagree, this is where it
-    shows.
+    it keys on ``(dataset, image_file, label)`` -- the same key
+    ``build_grid`` uses to look a value up per cell. If the two ever
+    disagree, this is where it shows.
     """
     from phenotypic.gui.results_viewer._measurement_source import (
         measurement_values_for,
@@ -133,9 +133,10 @@ def test_the_value_reaches_the_card_it_was_measured_for(
         output_root, [(DATASET, STEM)], "Shape_Area"
     )
     assert values == {
-        (STEM, label): area for label, area in expected_areas.items()
+        (DATASET, STEM, label): area
+        for label, area in expected_areas.items()
     }
-    assert values[(STEM, 4)] == pytest.approx(770.0)
+    assert values[(DATASET, STEM, 4)] == pytest.approx(770.0)
 
 
 def test_the_picker_offers_numeric_columns_and_not_the_hex_one(

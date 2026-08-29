@@ -24,6 +24,7 @@ Plus :func:`expand_range` for resolving shift+click slices.
 from __future__ import annotations
 
 import functools
+import json
 from collections.abc import Mapping
 from typing import Any, cast
 
@@ -52,7 +53,11 @@ from phenotypic.gui._shared._measurement_tint import (
     sequential_tint,
 )
 from phenotypic.gui._shared._radial import build_radial_trigger
-from phenotypic.gui._shared.tiles import build_tile_cell, expand_range
+from phenotypic.gui._shared.tiles import (
+    StoreUnreadable,
+    build_tile_cell,
+    expand_range,
+)
 from phenotypic.gui.results_viewer._ids import (
     colony_cell_count_badge_id,
     colony_cell_popover_body_id,
@@ -66,6 +71,11 @@ from phenotypic.gui.results_viewer._filtered_state import (
     KEY_OBJECT_LABEL,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._store_source import build_source_spec
+from phenotypic.gui.results_viewer._zarr_routes import (
+    store_generation_token,
+    zarr_store_url,
+)
 from phenotypic.gui.results_viewer._metadata import (
     normalize_column_value_sets,
     normalize_metadata_reference,
@@ -133,11 +143,13 @@ _CORE_CATEGORY_TOKENS: frozenset[str] = frozenset(ErrorCategory.labels())
 #: colony_view_budget.py`` carries it beside the frame time it was chosen
 #: at, and refuses to run without both.
 #:
-#: This caps MOUNTED CELLS. It is not the texture-memory bound — cells are
-#: viewports onto the same store, so the resident tile set is their UNION and
-#: is driven by the number of distinct STORES in the grid, not the cell
-#: count. That bound is derived in the facade (``gridTileCacheBytes``).
+#: This caps MOUNTED CELLS. It is not the tile-cache bound. The facade derives
+#: that separately as the deduplicated union of active-level chunks intersecting
+#: the mounted fixed regions for each store and image/label source.
 COLONY_VIEW_CELL_CAP = 128
+
+#: Browser mount owned by the Colony grid lifecycle in ``results_viewer.js``.
+_VIV_GRID_STAGE_ID = "colony-viv-grid-stage"
 
 
 def plan_visible_cells(
@@ -350,8 +362,28 @@ def _representative_per_cell(
         pl.col(_OBJECT_LABEL_COL).alias("_members_label"),
         pl.len().alias("count"),
     ]
+    if {"Bbox_CenterRR", "Bbox_CenterCC"} <= set(df.columns):
+        aggs.extend(
+            [
+                pl.col("Bbox_CenterRR").first().alias("_centroid_rr"),
+                pl.col("Bbox_CenterCC").first().alias("_centroid_cc"),
+            ]
+        )
+    required_identity = {
+        x_axis_col,
+        y_axis_col,
+        KEY_IMAGE_FILE,
+        KEY_DATASET,
+        _OBJECT_LABEL_COL,
+    }
     return (
-        df.sort([x_axis_col, y_axis_col, _OBJECT_LABEL_COL])
+        df.filter(
+            pl.all_horizontal(
+                pl.col(column).is_not_null()
+                for column in required_identity
+            )
+        )
+        .sort([x_axis_col, y_axis_col, _OBJECT_LABEL_COL])
         .group_by([x_axis_col, y_axis_col], maintain_order=True)
         .agg(*aggs)
     )
@@ -431,6 +463,40 @@ def _colony_crop_url(
     )
 
 
+def _viv_source_spec(
+    output_root: OutputRoot,
+    dataset: str,
+    image_file: str,
+    layer: str,
+) -> dict[str, Any] | None:
+    """Resolve one Colony cell's browser source without guessing paths."""
+    store = output_root.store_path(dataset, image_file)
+    if store is None:
+        return None
+    try:
+        token = store_generation_token(store)
+        spec = build_source_spec(
+            store,
+            zarr_store_url(
+                _url_prefix(), dataset, image_file, token
+            ),
+        )
+    except (OSError, KeyError, ValueError, StoreUnreadable):
+        return None
+
+    if layer == "objmap":
+        label_path = spec.get("labelPath")
+        if not label_path:
+            return None
+        spec["seriesPath"] = label_path
+        spec["labelPath"] = None
+    elif layer in spec.get("series", ()):
+        spec["seriesPath"] = layer
+    else:
+        return None
+    return spec
+
+
 def _build_cell(
     *,
     image_file: str,
@@ -448,6 +514,10 @@ def _build_cell(
     layer: str = "rgb",
     mutations_disabled: bool = False,
     measurement: TileMeasurement | None = None,
+    grid_index: int | None = None,
+    viv_spec: Mapping[str, Any] | None = None,
+    centroid_rr: float | None = None,
+    centroid_cc: float | None = None,
 ) -> Component:
     """Render the chrome + crop for a single grid cell.
 
@@ -516,6 +586,21 @@ def _build_cell(
                 )
             )
 
+    outer_props: dict[str, Any] = {}
+    if grid_index is not None:
+        outer_props["data-colony-grid-index"] = grid_index
+    if viv_spec is not None and centroid_rr is not None and centroid_cc is not None:
+        outer_props["data-colony-viv-cell"] = json.dumps(
+            {
+                "id": f"{dataset}:{image_file}:{label}",
+                "centroidRr": float(centroid_rr),
+                "centroidCc": float(centroid_cc),
+                "spec": dict(viv_spec),
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+
     return build_tile_cell(
         image_file=image_file,
         label=label,
@@ -544,6 +629,10 @@ def _build_cell(
         # Reserve room beneath the frame for the stack tab to peek out.
         outer_height=display_size + _STACK_TAB_OFFSET,
         measurement=measurement,
+        outer_props=outer_props,
+        # Store-backed cells are rendered directly by Viv. Avoid issuing a
+        # redundant server-generated PNG crop behind the OME-Zarr canvas.
+        defer_crop_image=viv_spec is not None,
     )
 
 
@@ -641,6 +730,7 @@ def build_stack_popover_rows(
                 [
                     html.Img(
                         src=crop_url,
+                        loading="lazy",
                         style={
                             "width": f"{display_size}px",
                             "height": f"{display_size}px",
@@ -770,7 +860,8 @@ def build_grid(
     mutations_disabled: bool = False,
     focus_index: int = 0,
     measurement_column: str | None = None,
-    measurement_values: Mapping[tuple[str, int], float | None] | None = None,
+    measurement_values: Mapping[tuple[str, str, int], float | None]
+    | None = None,
 ) -> tuple[Component, list[tuple[str, int]]]:
     """Render the colony-grid component and its row-major key order.
 
@@ -918,6 +1009,8 @@ def build_grid(
             "label": members_label[0] if members_label else None,
             "count": row["count"],
             "members": members,
+            "centroid_rr": row.get("_centroid_rr"),
+            "centroid_cc": row.get("_centroid_cc"),
         }
 
     # Decide which cells MOUNT before rendering any of them. deck.gl
@@ -934,6 +1027,9 @@ def build_grid(
     mounted_cells = set(
         plan_visible_cells(populated_order, focus_index=focus_index)
     )
+    populated_indices = {
+        cell: index for index, cell in enumerate(populated_order)
+    }
 
     # Scale over the values THIS grid carries. Built from ``populated_order``
     # -- every cell the grid contains, mounted or virtualized -- so scrolling
@@ -944,6 +1040,7 @@ def build_grid(
         for y_value, x_value in populated_order:
             populated = cell_index[(x_value, y_value)]
             cell_key = (
+                str(populated["dataset"]),
                 str(populated["image_file"]),
                 int(populated["label"]),  # type: ignore[call-overload]
             )
@@ -1007,6 +1104,14 @@ def build_grid(
                             "background": "rgba(0,54,96,0.06)",
                             "borderRadius": "4px",
                         },
+                        **cast(
+                            Any,
+                            {
+                                "data-colony-grid-index": populated_indices[
+                                    (y_value, x_value)
+                                ]
+                            },
+                        ),
                     )
                 )
                 continue
@@ -1017,6 +1122,7 @@ def build_grid(
             label = int(entry["label"])  # type: ignore[call-overload]
             count = int(entry["count"])  # type: ignore[call-overload]
             key = (image_file, label)
+            measurement_key = (dataset, image_file, label)
             grid_order.append(key)
             # polars row dicts type values as ``object``; the index stored a
             # ``list[tuple[str, str, int]]`` under "members". Cast so the
@@ -1029,7 +1135,7 @@ def build_grid(
             ]
             cell_measurement: TileMeasurement | None = None
             if scale is not None and measurement_values is not None:
-                cell_value = measurement_values.get(key)
+                cell_value = measurement_values.get(measurement_key)
                 if cell_value is not None:
                     cell_measurement = scale.measurement_for(float(cell_value))
             children.append(
@@ -1051,6 +1157,20 @@ def build_grid(
                     layer=layer,
                     mutations_disabled=mutations_disabled,
                     measurement=cell_measurement,
+                    grid_index=populated_indices[(y_value, x_value)],
+                    viv_spec=_viv_source_spec(
+                        output_root, dataset, image_file, layer
+                    ),
+                    centroid_rr=(
+                        float(cast(Any, entry["centroid_rr"]))
+                        if entry.get("centroid_rr") is not None
+                        else None
+                    ),
+                    centroid_cc=(
+                        float(cast(Any, entry["centroid_cc"]))
+                        if entry.get("centroid_cc") is not None
+                        else None
+                    ),
                 )
             )
 
@@ -1079,11 +1199,31 @@ def build_grid(
             "justifySelf": "start",
         },
     )
+    grid_surface = html.Div(
+        [
+            html.Div(
+                id=_VIV_GRID_STAGE_ID,
+                className="colony-viv-grid-stage",
+                **cast(
+                    Any,
+                    {
+                        "data-colony-crop-size": str(max_size),
+                        "data-colony-display-size": str(display_size),
+                        "tabIndex": 0,
+                        "aria-label": "Linked colony image grid",
+                    },
+                ),
+            ),
+            grid,
+        ],
+        className="colony-grid-viv-surface",
+        style={"position": "relative", "width": "max-content"},
+    )
     if scale is None:
-        return grid, grid_order
+        return grid_surface, grid_order
     return (
         html.Div(
-            [build_measurement_legend(scale), grid],
+            [build_measurement_legend(scale), grid_surface],
             className="colony-grid-with-measurement",
         ),
         grid_order,

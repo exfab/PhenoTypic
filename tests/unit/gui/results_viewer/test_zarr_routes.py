@@ -37,6 +37,7 @@ import pytest
 from phenotypic import Image
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._zarr_routes import (
+    _generation_token_for,
     readable_roots_for,
     register_zarr_routes,
     store_generation_token,
@@ -348,6 +349,45 @@ def test_the_token_moves_on_a_repromote(route: RouteFixture) -> None:
     before = route.token
     route.repromote(seed=7)
     assert route.token != before
+
+
+def test_the_token_uses_inode_and_ctime_not_only_mtime(
+    route: RouteFixture,
+) -> None:
+    """Coarse filesystem timestamps still distinguish atomic replacements."""
+    root = route.store / STORE_ROOT_JSON
+    stat = root.stat()
+    original = (stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+    replacement = (
+        stat.st_ino + 1,
+        stat.st_size,
+        stat.st_mtime_ns,
+        stat.st_ctime_ns + 1,
+    )
+    assert _generation_token_for(str(root), original) != _generation_token_for(
+        str(root), replacement
+    )
+
+
+def test_a_promote_between_validation_and_open_is_rejected(
+    route: RouteFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The final token check binds the opened file to one generation."""
+    from phenotypic.gui.results_viewer import _zarr_routes as routes
+
+    current = route.token
+    url = route.url(RGB_CHUNK, token=current)
+    calls = 0
+
+    def _token_that_changes_after_validation(_store: Path) -> str:
+        nonlocal calls
+        calls += 1
+        return current if calls == 1 else "replacement-generation"
+
+    monkeypatch.setattr(
+        routes, "store_generation_token", _token_that_changes_after_validation
+    )
+    assert route.client.get(url).status_code == 409
 
 
 def test_a_rewritten_nested_chunk_is_served_fresh(route: RouteFixture) -> None:

@@ -145,17 +145,39 @@ def test_one_unmeasured_image_does_not_empty_the_picker(run: Path) -> None:
     assert "Shape_Area" in columns
 
 
+def test_a_newer_store_schema_does_not_empty_the_picker(
+    run: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One unsupported store is skipped rather than failing the callback."""
+    from phenotypic.gui.results_viewer import _measurement_source as source
+
+    monkeypatch.setattr(
+        source,
+        "_columns_for_store",
+        lambda *_args: (_ for _ in ()).throw(ValueError("newer schema")),
+    )
+    assert (
+        displayable_measurement_columns(
+            _output_root(run), [(DATASET, MEASURED)]
+        )
+        == ()
+    )
+
+
 # ---------------------------------------------------------------------------
 # What the values look like
 # ---------------------------------------------------------------------------
 
 
-def test_values_are_keyed_by_image_and_object_label(run: Path) -> None:
+def test_values_are_keyed_by_dataset_image_and_object_label(run: Path) -> None:
     output_root = _output_root(run)
     values = measurement_values_for(
         output_root, [(DATASET, MEASURED)], "Shape_Area"
     )
-    assert values == {(MEASURED, 1): 12.0, (MEASURED, 2): 512.0}
+    assert values == {
+        (DATASET, MEASURED, 1): 12.0,
+        (DATASET, MEASURED, 2): 512.0,
+    }
 
 
 def test_an_unmeasured_image_contributes_no_keys(run: Path) -> None:
@@ -163,7 +185,36 @@ def test_an_unmeasured_image_contributes_no_keys(run: Path) -> None:
     values = measurement_values_for(
         output_root, [(DATASET, MEASURED), (DATASET, UNMEASURED)], "Shape_Area"
     )
-    assert set(values) == {(MEASURED, 1), (MEASURED, 2)}
+    assert set(values) == {
+        (DATASET, MEASURED, 1),
+        (DATASET, MEASURED, 2),
+    }
+
+
+def test_duplicate_stems_in_two_datasets_keep_distinct_values(
+    run: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dataset identity prevents a later store overwriting an earlier one."""
+    from phenotypic.gui.results_viewer import _measurement_source as source
+
+    identity = (1, 2, 3, 4)
+    monkeypatch.setattr(
+        source,
+        "_store_and_identity",
+        lambda _root, dataset, _stem: (Path(dataset), identity),
+    )
+    monkeypatch.setattr(
+        source,
+        "_column_for_store",
+        lambda store, _identity, _column: ((1, 10.0 if store == "d1" else 20.0),),
+    )
+    values = measurement_values_for(
+        _output_root(run), [("d1", "same"), ("d2", "same")], "Shape_Area"
+    )
+    assert values == {
+        ("d1", "same", 1): 10.0,
+        ("d2", "same", 1): 20.0,
+    }
 
 
 def test_a_column_no_store_declares_yields_nothing_and_does_not_raise(
@@ -191,7 +242,7 @@ def test_a_rewritten_table_is_read_fresh(run: Path) -> None:
     first = measurement_values_for(
         output_root, [(DATASET, MEASURED)], "Shape_Area"
     )
-    assert first[(MEASURED, 1)] == 12.0
+    assert first[(DATASET, MEASURED, 1)] == 12.0
 
     payload = zarr_store_path(run, DATASET, MEASURED) / (
         MEASUREMENT_TABLE_RELATIVE_PATH
@@ -207,4 +258,4 @@ def test_a_rewritten_table_is_read_fresh(run: Path) -> None:
     second = measurement_values_for(
         output_root, [(DATASET, MEASURED)], "Shape_Area"
     )
-    assert second[(MEASURED, 1)] == 99.0
+    assert second[(DATASET, MEASURED, 1)] == 99.0

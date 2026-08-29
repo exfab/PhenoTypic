@@ -43,18 +43,18 @@ from pathlib import Path
 from typing import Optional
 
 import dash
-from flask import Blueprint, Response, abort, send_file
+from flask import Blueprint, Response, abort
 
 from phenotypic.gui._shared.tiles import (
     StoreUnreadable,
     is_safe_path_component,
     is_zarr_v2_metadata_probe,
     json_error,
-    resolve_within_root,
 )
 from phenotypic.gui.builder import _preview_cache as pc
 from phenotypic.gui.results_viewer._zarr_routes import (
     readable_roots_for,
+    send_generation_file,
     store_generation_token,
 )
 from phenotypic.sdk_ import ngff_
@@ -221,9 +221,11 @@ def register_preview_zarr_routes(app: dash.Dash) -> None:
         if token != expected:
             abort(409)
 
-        return send_file(
-            resolve_within_root(store, tail, allowed_roots=roots),
-            conditional=True,
+        return send_generation_file(
+            store,
+            tail,
+            token,
+            allowed_roots=roots,
         )
 
     app.server.register_blueprint(bp)

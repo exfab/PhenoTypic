@@ -12,8 +12,10 @@ writer produces, which is precisely the drift the contract exists to close.
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
+from phenotypic import GridImage
 from phenotypic.gui._shared.tiles import StoreUnreadable
 from phenotypic.gui.results_viewer._store_source import build_source_spec
 
@@ -79,8 +81,29 @@ def test_the_spec_is_a_valid_facade_source_spec(rgb_store):
         "series",
         "seriesPath",
         "labelPath",
+        "labelColorDomain",
         "pyramid",
     }
+
+
+def test_label_color_domain_has_a_safe_generic_fallback(rgb_store):
+    """Non-grid objmaps still receive a useful categorical hue domain."""
+    spec = build_source_spec(rgb_store, "/zarr/ds/plate.ome.zarr")
+    assert spec["labelColorDomain"] == [0, 255]
+
+
+def test_grid_capacity_bounds_the_label_color_domain(tmp_path):
+    """Grid labels use the declared plate capacity for stable categorical hues."""
+    image = GridImage(
+        arr=np.zeros((64, 96, 3), dtype=np.uint8),
+        nrows=8,
+        ncols=12,
+    )
+    store = image.save2zarr(tmp_path / "grid.ome.zarr")
+
+    spec = build_source_spec(store, "/zarr/ds/grid.ome.zarr")
+
+    assert spec["labelColorDomain"] == [0, 96]
 
 
 def test_the_token_identifies_this_generation_of_the_store(rgb_store):

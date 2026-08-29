@@ -31,9 +31,9 @@ Last built 2026-08-27 on UCR HPCC (Linux x86_64, `r32`):
 
 | | |
 |---|---|
-| node | v24.16.0 |
-| npm | 11.13.0 |
-| command | `npm ci && node build.mjs` |
+| node | v25.9.0 |
+| npm | 11.12.1 |
+| command | `npm ci && node build.mjs` (macOS arm64) |
 | artifact size | 2,616,449 B (2.50 MiB) |
 
 Record the node version here whenever the artifact is rebuilt. With no npm in CI,
@@ -77,7 +77,7 @@ One global, `window.__vivBundle`:
 | `numcodecs` | `{ Zstd, Blosc, Gzip }` |
 | `viv` | `loadOmeZarr`, `loadOmeZarrFromStore`, `ZarrPixelSource`, `getImageSize`, … |
 | `layers` | `MultiscaleImageLayer`, `ImageLayer`, `XRLayer`, `XR3DLayer` |
-| `extensions` | `ColorPaletteExtension`, `LensExtension` |
+| `extensions` | `AdditiveColormapExtension`, `ColorPaletteExtension`, `LensExtension` |
 | `deck` | `Deck`, `OrthographicView`, `COORDINATE_SYSTEM` |
 | `createViewer(el, opts)` | thin imperative deck.gl wrapper the façade builds on |
 

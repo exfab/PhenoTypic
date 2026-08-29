@@ -127,6 +127,7 @@ class MigrationReport:
     conversion); ``headers_migrated``/``header_failures`` describe **pass 1**
     (the metadata-schema migration over non-image targets). The table fields
     describe pass 3, which installs legacy external Parquets in image stores.
+    Overlay and publication fields describe the terminal migration passes.
 
     Attributes:
         converted: Images converted this run. Under ``dry_run`` this is what
@@ -139,6 +140,11 @@ class MigrationReport:
         tables_migrated: External Parquets embedded this invocation.
         tables_skipped: Stores whose embedded table was already valid.
         table_failures: ``(source, reason)`` per pass-3 failure.
+        overlays_created: Missing overlay PNGs rendered this invocation.
+        overlays_skipped: Overlay PNGs preserved because they already existed.
+        overlay_failures: ``(overlay, reason)`` per rendering failure.
+        publication_failures: ``(target, reason)`` per marker, aggregate, or
+            terminal-completion publication failure.
     """
 
     converted: int = 0
@@ -149,14 +155,20 @@ class MigrationReport:
     tables_migrated: int = 0
     tables_skipped: int = 0
     table_failures: tuple[tuple[Path, str], ...] = ()
+    overlays_created: int = 0
+    overlays_skipped: int = 0
+    overlay_failures: tuple[tuple[Path, str], ...] = ()
+    publication_failures: tuple[tuple[Path, str], ...] = ()
 
     @property
     def ok(self) -> bool:
-        """Whether all conversion, header, and table passes were clean."""
+        """Whether every migration and publication pass was clean."""
         return (
             not self.failed
             and not self.header_failures
             and not self.table_failures
+            and not self.overlay_failures
+            and not self.publication_failures
         )
 
 
@@ -505,6 +517,8 @@ def iter_legacy_hdfs(output_dir: Path) -> Iterator[tuple[str, Path]]:
         if not hdf_dir.is_dir():
             continue
         for hdf_path in sorted(hdf_dir.glob("*.h5")):
+            if hdf_path.name.startswith("."):
+                continue
             yield dataset_dir.name, hdf_path
 
 

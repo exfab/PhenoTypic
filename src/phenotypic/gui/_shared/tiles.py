@@ -34,7 +34,7 @@ import io
 import logging
 import os
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
@@ -1104,6 +1104,8 @@ def build_tile_cell(
     extra_children: Iterable[Component] | None = None,
     outer_height: int | None = None,
     measurement: TileMeasurement | None = None,
+    outer_props: Mapping[str, Any] | None = None,
+    defer_crop_image: bool = False,
 ) -> Component:
     """Render the chrome + crop for a single tile — shared across tabs.
 
@@ -1163,6 +1165,12 @@ def build_tile_cell(
             The value is joined on ``label``, which already IS
             ``Object_Label``; the card needs no new identity plumbing to
             know which value is its own.
+        outer_props: Optional HTML properties applied to the outer cell.
+            Intended for ``data-*`` lifecycle metadata; visual state remains
+            owned by the named arguments above.
+        defer_crop_image: Render only a sized host element instead of issuing
+            the PNG crop request. Use this when an OME-Zarr renderer owns the
+            tile pixels; the host preserves tile geometry and shared chrome.
 
     Returns:
         A component ready to drop into a tile grid or gallery container.
@@ -1173,7 +1181,16 @@ def build_tile_cell(
     if is_removed:
         classes.append("is-removed")
 
-    if has_image_source:
+    if has_image_source and defer_crop_image:
+        crop_node = html.Div(
+            className="colony-cell-img colony-cell-zarr-host",
+            style={
+                "width": f"{display_size}px",
+                "height": f"{display_size}px",
+                "display": "block",
+            },
+        )
+    elif has_image_source:
         crop_url = url_builder(dataset, image_file, label, crop_size)
         crop_node: Component = html.Img(
             src=crop_url,
@@ -1294,6 +1311,7 @@ def build_tile_cell(
             "height": f"{outer_height}px",
             "overflow": "visible",
         },
+        **dict(outer_props or {}),
     )
 
 

@@ -148,7 +148,7 @@ def displayable_measurement_columns(
         store, identity = resolved
         try:
             candidates.update(_columns_for_store(str(store), identity))
-        except (OSError, KeyError, RuntimeError):
+        except (OSError, KeyError, ValueError, RuntimeError):
             # No root, no ``phenotypic`` block, no descriptor, or a store
             # this build cannot decode. One unreadable image must not empty
             # the picker for the rest of the run.
@@ -168,12 +168,13 @@ def measurement_values_for(
     output_root: OutputRoot,
     pairs: Iterable[tuple[str, str]],
     column: str,
-) -> dict[tuple[str, int], float | None]:
+) -> dict[tuple[str, str, int], float | None]:
     """Read one column across several images, keyed for the Colony grid.
 
-    The grid identifies a colony by ``(image_file, label)`` and the store
-    joins on the ``Object_Label`` its descriptor names, so this returns the
-    grid's key directly and no call site re-derives the join.
+    The grid identifies a measurement by ``(dataset, image_file, label)``.
+    Dataset is load-bearing because two datasets routinely reuse image stems
+    and object labels; dropping it would let the later store overwrite the
+    earlier store's scientific values.
 
     Args:
         output_root: Validated handle on the CLI output directory.
@@ -181,12 +182,12 @@ def measurement_values_for(
         column: The measurement column to project.
 
     Returns:
-        ``{(image_file, label): value}``. An image whose store is absent,
+        ``{(dataset, image_file, label): value}``. An image whose store is absent,
         undecodable, table-less, or which does not declare *column*
         contributes no keys -- its cards render untinted, which is the
         correct rendering for "no value here".
     """
-    values: dict[tuple[str, int], float | None] = {}
+    values: dict[tuple[str, str, int], float | None] = {}
     for dataset, stem in pairs:
         resolved = _store_and_identity(output_root, dataset, stem)
         if resolved is None:
@@ -203,5 +204,5 @@ def measurement_values_for(
             )
             continue
         for label, value in projected:
-            values[(stem, int(label))] = value
+            values[(dataset, stem, int(label))] = value
     return values

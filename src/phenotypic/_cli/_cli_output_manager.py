@@ -1742,7 +1742,12 @@ class OutputManager:
         atomic_write_with_writer(
             output_path,
             lambda temporary: accessor.save_overlay(
-                filepath=Path(temporary), overlay_alpha=self.overlay_alpha
+                filepath=Path(temporary),
+                overlay_alpha=self.overlay_alpha,
+                # A zero-object GridImage has no section boxes to draw. Its
+                # RGB/gray pixels are still a valid overlay deliverable, but
+                # the grid annotation path correctly refuses object access.
+                show_grid=image.num_objects > 0,
             ),
             commit_guard=commit_guard,
             temp_suffix=f".tmp{output_path.suffix}",

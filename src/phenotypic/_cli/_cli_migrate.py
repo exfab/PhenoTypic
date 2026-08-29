@@ -1,12 +1,14 @@
 """``--mode migrate``: convert a legacy output tree, in place.
 
-Two passes, in this order, and **the order is load-bearing**:
+Migration runs ordered artifact passes followed by strict publication.  The
+order is load-bearing:
 
 ===== =====================================================================
 1     ``migrate_metadata_bundle`` over every **non-image** target -- the
       per-dataset ``measurements/*.parquet`` and the pipeline JSON.
-2     per-image ``results/*/hdf/*.h5`` -> ``results/*/zarr/*.ome.zarr``, then
-      the marker republication, then the aggregate republish **last**.
+2     per-image ``results/*/hdf/*.h5`` -> ``results/*/zarr/*.ome.zarr``.
+3     external Parquets -> embedded tables, then missing overlay rendering.
+4     image markers, aggregate rebuild and marker, then run completion.
 ===== =====================================================================
 
 Images-first is wrong. Pass 1 rewrites ``results/<ds>/measurements/*.parquet``,
@@ -31,6 +33,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime, timezone
 import hashlib
+import json
 from pathlib import Path
 
 import click
@@ -41,8 +44,12 @@ from phenotypic.sdk_ import (
     STORE_SUFFIX,
     aggregate_publication_marker_path,
     deliverables_dir,
+    image_completion_marker_path,
+    load_image_from_store,
     metadata_csv_deliverable_path,
     replace_embedded_measurement_table,
+    run_completion_marker_path,
+    store_stem,
     zarr_store_path,
 )
 from phenotypic.sdk_._hdf_to_zarr import (
@@ -51,8 +58,8 @@ from phenotypic.sdk_._hdf_to_zarr import (
     emit_canonical_metadata_view,
     migrate_run_hdf_to_zarr,
     republish_aggregate,
-    republish_image_markers,
 )
+from phenotypic.sdk_.ngff_ import valid_staged_store
 from phenotypic.sdk_._metadata_migration import (
     NON_IMAGE_KINDS,
     MetadataMigrationReport,
@@ -121,11 +128,18 @@ def _ensure_migration_processing_state(output_dir: Path) -> None:
     from phenotypic._cli._cli_types import DatasetState, ProcessingState
 
     output_dir = Path(output_dir)
-    if load_processing_state(output_dir) is not None:
-        return
-
-    work_ids: dict[str, dict[str, str]] = {}
-    datasets: dict[str, DatasetState] = {}
+    existing = load_processing_state(output_dir)
+    raw_existing_work_ids = (
+        existing.config.get("work_ids", {}) if existing is not None else {}
+    )
+    work_ids: dict[str, dict[str, str]] = {
+        str(dataset): dict(images)
+        for dataset, images in raw_existing_work_ids.items()
+        if isinstance(images, dict)
+    } if isinstance(raw_existing_work_ids, dict) else {}
+    datasets: dict[str, DatasetState] = (
+        dict(existing.datasets) if existing is not None else {}
+    )
     results = output_dir / "results"
     if not results.is_dir():
         return
@@ -142,15 +156,48 @@ def _ensure_migration_processing_state(output_dir: Path) -> None:
         }
         if not stems:
             continue
-        work_ids[dataset_dir.name] = {
-            stem: _migration_work_id(dataset_dir.name, stem)
-            for stem in sorted(stems)
+        existing_images = work_ids.get(dataset_dir.name, {})
+        if not isinstance(existing_images, dict):
+            existing_images = {}
+        work_ids[dataset_dir.name] = dict(existing_images)
+        for stem in sorted(stems):
+            if not any(
+                Path(str(image_name)).stem == stem
+                for image_name in work_ids[dataset_dir.name]
+            ):
+                work_ids[dataset_dir.name][stem] = _migration_work_id(
+                    dataset_dir.name, stem
+                )
+        state_names = {
+            next(
+                (
+                    str(image_name)
+                    for image_name in work_ids[dataset_dir.name]
+                    if Path(str(image_name)).stem == stem
+                ),
+                stem,
+            )
+            for stem in stems
         }
-        datasets[dataset_dir.name] = DatasetState(
-            completed=set(stems),
-            initial_images=set(stems),
-        )
+        if dataset_dir.name in datasets:
+            dataset_state = datasets[dataset_dir.name]
+            dataset_state.completed.update(state_names)
+            dataset_state.initial_images.update(state_names)
+            datasets[dataset_dir.name] = dataset_state
+        else:
+            datasets[dataset_dir.name] = DatasetState(
+                completed=set(stems),
+                initial_images=set(stems),
+            )
     if not work_ids:
+        return
+
+    if existing is not None:
+        existing.config["success_markers_required"] = True
+        existing.config["work_ids"] = work_ids
+        existing.datasets.update(datasets)
+        existing.last_updated = datetime.now(timezone.utc)
+        save_processing_state(existing, output_dir)
         return
 
     provenance_candidates = [
@@ -254,24 +301,11 @@ def migrate_legacy_measurement_tables(
     """Install legacy per-image Parquets into corresponding image stores."""
     import pandas as pd
 
-    from phenotypic._cli._cli_completion import (
-        publish_image_success,
-        valid_image_success,
-    )
     from phenotypic._cli._embedded_measurement_tables import (
         prepare_embedded_measurement_table,
     )
 
     output_dir = Path(output_dir)
-    from phenotypic._cli._cli_state_management import load_processing_state
-
-    try:
-        state = load_processing_state(output_dir)
-    except (KeyError, TypeError, ValueError):
-        state = None
-    configured_work_ids = (
-        state.config.get("work_ids", {}) if state is not None else {}
-    )
     metadata_snapshot = metadata_csv_deliverable_path(output_dir)
     metadata_csv = metadata_snapshot if metadata_snapshot.is_file() else None
     sources = sorted(
@@ -316,37 +350,6 @@ def migrate_legacy_measurement_tables(
                     )
                 migrated += 1
 
-            dataset_work_ids = (
-                configured_work_ids.get(dataset, {})
-                if isinstance(configured_work_ids, dict)
-                else {}
-            )
-            work_id = next(
-                (
-                    str(value)
-                    for image_name, value in dataset_work_ids.items()
-                    if Path(str(image_name)).stem == stem
-                ),
-                _migration_work_id(dataset, stem),
-            )
-            marker = publish_image_success(
-                output_dir,
-                work_id=work_id,
-                dataset=dataset,
-                relative_image_path=f"{dataset}/{stem}",
-                image_stem=stem,
-                mode="full",
-                attempt_id="migration",
-                lifecycle_epoch="migration",
-                artifacts={"measurements": embedded, "store": store},
-            )
-            if not marker.is_file() or not valid_image_success(
-                output_dir,
-                dataset=dataset,
-                image_stem=stem,
-                work_id=work_id,
-            ):
-                raise RuntimeError("migrated marker validation failed")
             if delete_sources:
                 source.unlink()
         except Exception as exc:
@@ -354,10 +357,207 @@ def migrate_legacy_measurement_tables(
     return migrated, skipped, tuple(failures)
 
 
+def _configured_work_id(output_dir: Path, dataset: str, stem: str) -> str:
+    """Return the state-authorized work id for a migrated store."""
+    from phenotypic._cli._cli_state_management import load_processing_state
+
+    state = load_processing_state(output_dir)
+    work_ids = state.config.get("work_ids", {}) if state is not None else {}
+    images = work_ids.get(dataset, {}) if isinstance(work_ids, dict) else {}
+    if isinstance(images, dict):
+        for image_name, value in images.items():
+            if Path(str(image_name)).stem == stem and isinstance(value, str):
+                return value
+    return _migration_work_id(dataset, stem)
+
+
+def _existing_marker_identity(
+    output_dir: Path, dataset: str, stem: str, work_id: str
+) -> dict[str, str]:
+    """Return preserved identity fields from an existing image marker."""
+    defaults = {
+        "work_id": work_id,
+        "relative_image_path": f"{dataset}/{stem}",
+        "mode": "full",
+        "attempt_id": "migration",
+        "lifecycle_epoch": "migration",
+    }
+    marker_path = image_completion_marker_path(output_dir, dataset, stem)
+    try:
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        return defaults
+    if not isinstance(marker, dict):
+        return defaults
+    marker_dataset = marker.get("dataset")
+    marker_stem = marker.get("image_stem")
+    if marker_dataset not in {None, dataset} or marker_stem not in {None, stem}:
+        return defaults
+    existing_work_id = marker.get("work_id")
+    if isinstance(existing_work_id, str) and existing_work_id != work_id:
+        raise RuntimeError(
+            "existing marker work_id conflicts with processing state"
+        )
+    for field in (
+        "work_id",
+        "relative_image_path",
+        "mode",
+        "attempt_id",
+        "lifecycle_epoch",
+    ):
+        value = marker.get(field)
+        if isinstance(value, str) and value:
+            defaults[field] = value
+    return defaults
+
+
+def publish_migrated_image_markers(
+    output_dir: Path,
+) -> tuple[int, tuple[tuple[Path, str], ...]]:
+    """Publish one complete marker per valid migrated store.
+
+    A missing measurement table is accepted only when the stored object map
+    contains no objects.  Every marker binds the store and overlay, plus the
+    embedded table when one exists.
+    """
+    from phenotypic._cli._cli_completion import (
+        publish_image_success,
+        valid_image_success,
+    )
+    from phenotypic._cli._cli_overlay_rendering import overlay_output_manager
+    from phenotypic.sdk_._measurement_tables import (
+        _valid_embedded_measurement_contract,
+    )
+
+    output_dir = Path(output_dir)
+    manager = overlay_output_manager(output_dir, overlay_alpha=0.3)
+    published = 0
+    failures: list[tuple[Path, str]] = []
+    for dataset_dir in sorted(
+        path
+        for path in (output_dir / "results").iterdir()
+        if path.is_dir()
+    ):
+        zarr_dir = dataset_dir / "zarr"
+        if not zarr_dir.is_dir():
+            continue
+        for store in sorted(zarr_dir.glob(f"*{STORE_SUFFIX}")):
+            if store.name.startswith(".") or not valid_staged_store(store):
+                continue
+            stem = store_stem(store)
+            marker_path = image_completion_marker_path(
+                output_dir, dataset_dir.name, stem
+            )
+            try:
+                overlay = manager.get_output_path(
+                    dataset_dir.name, "overlays", stem
+                )
+                if not overlay.is_file():
+                    raise FileNotFoundError(
+                        f"Missing migrated overlay: {overlay}"
+                    )
+                embedded = store / MEASUREMENT_TABLE_RELATIVE_PATH
+                table_valid = _valid_embedded_measurement_contract(store)
+                if embedded.exists() and not table_valid:
+                    raise RuntimeError(
+                        "embedded measurement table validation failed"
+                    )
+                if not table_valid:
+                    image = load_image_from_store(store)
+                    if image.num_objects != 0:
+                        raise RuntimeError(
+                            "nonempty migrated image has no valid measurement table"
+                        )
+                work_id = _configured_work_id(
+                    output_dir, dataset_dir.name, stem
+                )
+                identity = _existing_marker_identity(
+                    output_dir, dataset_dir.name, stem, work_id
+                )
+                artifacts = {"store": store, "overlay": overlay}
+                if table_valid:
+                    artifacts["measurements"] = embedded
+                marker = publish_image_success(
+                    output_dir,
+                    work_id=identity["work_id"],
+                    dataset=dataset_dir.name,
+                    relative_image_path=identity["relative_image_path"],
+                    image_stem=stem,
+                    mode=identity["mode"],
+                    attempt_id=identity["attempt_id"],
+                    lifecycle_epoch=identity["lifecycle_epoch"],
+                    artifacts=artifacts,
+                )
+                if not marker.is_file() or not valid_image_success(
+                    output_dir,
+                    dataset=dataset_dir.name,
+                    image_stem=stem,
+                    work_id=work_id,
+                ):
+                    raise RuntimeError("migrated marker validation failed")
+            except Exception as exc:  # noqa: BLE001 - report every image
+                failures.append(
+                    (marker_path, f"{type(exc).__name__}: {exc}")
+                )
+            else:
+                published += 1
+    return published, tuple(failures)
+
+
+def render_migration_overlays(
+    output_dir: Path,
+    *,
+    overlay_alpha: float,
+    njobs: int,
+    dry_run: bool,
+) -> tuple[int, int, tuple[tuple[Path, str], ...]]:
+    """Render only missing store-backed overlays for migration."""
+    from phenotypic._cli._cli_overlay_rendering import (
+        discover_missing_overlays,
+        overlay_output_manager,
+        render_overlay_work,
+    )
+
+    manager = overlay_output_manager(
+        Path(output_dir), overlay_alpha=overlay_alpha
+    )
+    if dry_run:
+        from phenotypic.sdk_._hdf_to_zarr import iter_legacy_hdfs
+
+        candidates = {
+            (dataset, hdf_path.stem)
+            for dataset, hdf_path in iter_legacy_hdfs(output_dir)
+        }
+        results = Path(output_dir) / "results"
+        if results.is_dir():
+            for store in results.glob(f"*/zarr/*{STORE_SUFFIX}"):
+                if store.name.startswith(".") or not store.is_dir():
+                    continue
+                candidates.add((store.parent.parent.name, store_stem(store)))
+        missing = 0
+        skipped = 0
+        for dataset, stem in sorted(candidates):
+            overlay = manager.get_output_path(dataset, "overlays", stem)
+            if overlay.is_file():
+                skipped += 1
+            else:
+                missing += 1
+        return missing, skipped, ()
+    try:
+        work, skipped = discover_missing_overlays(output_dir, manager)
+    except ValueError as exc:
+        return 0, 0, ((Path(output_dir), f"ValueError: {exc}"),)
+    report = render_overlay_work(
+        work, output_manager=manager, n_jobs=njobs
+    )
+    return report.rendered, skipped, report.failures
+
+
 def run_migrate(
     output_dir: Path,
     *,
     njobs: int = 1,
+    overlay_alpha: float = 0.3,
     dry_run: bool = False,
     delete_sources: bool = False,
 ) -> MigrationReport:
@@ -366,6 +566,7 @@ def run_migrate(
     Args:
         output_dir: Run output root, converted in place.
         njobs: Worker processes for the per-image conversion pass.
+        overlay_alpha: Alpha used for newly rendered overlay PNGs.
         dry_run: Report both passes and write nothing.
         delete_sources: Reclaim space by deleting each ``.h5`` whose
             conversion is provably faithful. The only irreversible step here.
@@ -378,9 +579,10 @@ def run_migrate(
     """
     output_dir = Path(output_dir)
     if not dry_run:
-        # Invalidate prior aggregate authority before any migration mutation.
+        # Invalidate prior terminal authority before any migration mutation.
         # A failed or empty rebuild must never re-certify stale deliverables.
         aggregate_publication_marker_path(output_dir).unlink(missing_ok=True)
+        run_completion_marker_path(output_dir).unlink(missing_ok=True)
     headers_migrated, header_failures = run_metadata_pass(
         output_dir, dry_run=dry_run
     )
@@ -400,49 +602,121 @@ def run_migrate(
             delete_sources=delete_sources,
         )
     )
+    overlays_created, overlays_skipped, overlay_failures = (
+        render_migration_overlays(
+            output_dir,
+            overlay_alpha=overlay_alpha,
+            njobs=njobs,
+            dry_run=dry_run,
+        )
+    )
     hdf_failures = list(report.failed)
+    publication_failures: list[tuple[Path, str]] = []
     if not dry_run:
-        republish_image_markers(output_dir)
         try:
-            from phenotypic._cli._cli_output_manager import (
-                aggregate_measurements,
-            )
-
-            datasets = sorted(
-                path.name
-                for path in (output_dir / "results").iterdir()
-                if path.is_dir()
-            )
-            snapshot = metadata_csv_deliverable_path(output_dir)
-            aggregate_path = aggregate_measurements(
-                output_dir,
-                datasets,
-                metadata_csv=snapshot if snapshot.is_file() else None,
-                no_qc=True,
-            )
-            embedded_tables_exist = any(
-                (output_dir / "results").glob(
-                    "*/zarr/*.ome.zarr/tables/measurements/table.parquet"
+            # This additive metadata artifact is part of migration output, so
+            # finish it before publishing any success authority. Terminal run
+            # completion must remain the final write in a clean migration.
+            emit_canonical_metadata_view(output_dir)
+        except Exception as exc:  # noqa: BLE001 - report publication
+            publication_failures.append(
+                (
+                    canonical_metadata_view_path(output_dir),
+                    "canonical metadata view failed: "
+                    f"{type(exc).__name__}: {exc}",
                 )
             )
-            if aggregate_path is None and embedded_tables_exist:
-                raise RuntimeError(
-                    "aggregate rebuild produced no measurements"
-                )
-        except Exception as exc:
-            table_failures = (
-                *table_failures,
-                (output_dir, f"aggregate publication failed: {exc}"),
-            )
-        else:
-            if aggregate_path is not None:
-                republish_aggregate(output_dir)
-        emit_canonical_metadata_view(output_dir)
-        if delete_sources:
+        artifact_failures = (
+            bool(hdf_failures)
+            or bool(header_failures)
+            or bool(table_failures)
+            or bool(overlay_failures)
+        )
+        if not artifact_failures and not publication_failures:
+            _, marker_failures = publish_migrated_image_markers(output_dir)
+            publication_failures.extend(marker_failures)
+        if (
+            delete_sources
+            and not artifact_failures
+            and not publication_failures
+        ):
             from phenotypic.sdk_._hdf_to_zarr import _reclaim_sources
 
             hdf_failures.extend(_reclaim_sources(output_dir))
+        if not artifact_failures and not publication_failures and not hdf_failures:
+            try:
+                from phenotypic._cli._cli_output_manager import (
+                    aggregate_measurements,
+                )
 
+                datasets = sorted(
+                    path.name
+                    for path in (output_dir / "results").iterdir()
+                    if path.is_dir()
+                )
+                snapshot = metadata_csv_deliverable_path(output_dir)
+                aggregate_path = aggregate_measurements(
+                    output_dir,
+                    datasets,
+                    metadata_csv=snapshot if snapshot.is_file() else None,
+                    no_qc=True,
+                )
+                embedded_tables_exist = any(
+                    (output_dir / "results").glob(
+                        "*/zarr/*.ome.zarr/tables/measurements/table.parquet"
+                    )
+                )
+                if aggregate_path is None and embedded_tables_exist:
+                    raise RuntimeError(
+                        "aggregate rebuild produced no measurements"
+                    )
+                if not republish_aggregate(output_dir):
+                    raise RuntimeError(
+                        "aggregate marker publication returned false"
+                    )
+            except Exception as exc:  # noqa: BLE001 - report publication
+                publication_failures.append(
+                    (
+                        aggregate_publication_marker_path(output_dir),
+                        "aggregate publication failed: "
+                        f"{type(exc).__name__}: {exc}",
+                    )
+                )
+        if (
+            not artifact_failures
+            and not hdf_failures
+            and not publication_failures
+        ):
+            try:
+                from phenotypic._cli._cli_completion import (
+                    publish_run_completion_evidence,
+                    valid_run_completion,
+                )
+
+                completion_path = publish_run_completion_evidence(
+                    output_dir, execution_epoch="local"
+                )
+                if valid_run_completion(output_dir) is None:
+                    raise RuntimeError(
+                        "run completion marker validation failed"
+                    )
+            except Exception as exc:  # noqa: BLE001 - report publication
+                run_completion_marker_path(output_dir).unlink(missing_ok=True)
+                publication_failures.append(
+                    (
+                        run_completion_marker_path(output_dir),
+                        f"{type(exc).__name__}: {exc}",
+                    )
+                )
+            else:
+                if completion_path != run_completion_marker_path(output_dir):
+                    run_completion_marker_path(output_dir).unlink(missing_ok=True)
+                    publication_failures.append(
+                        (
+                            completion_path,
+                            "completion publisher returned an unexpected path",
+                        )
+                    )
     return replace(
         report,
         failed=tuple(hdf_failures),
@@ -451,6 +725,10 @@ def run_migrate(
         tables_migrated=tables_migrated,
         tables_skipped=tables_skipped,
         table_failures=table_failures,
+        overlays_created=overlays_created,
+        overlays_skipped=overlays_skipped,
+        overlay_failures=overlay_failures,
+        publication_failures=tuple(publication_failures),
     )
 
 
@@ -478,6 +756,11 @@ def echo_migration_summary(
         "  Pass 3 (external Parquet -> embedded table): "
         f"{verb} {report.tables_migrated}, skipped {report.tables_skipped}"
     )
+    click.echo(
+        "  Pass 4 (store -> overlay PNG): "
+        f"{'would render' if dry_run else 'rendered'} "
+        f"{report.overlays_created}, preserved {report.overlays_skipped}"
+    )
     view = canonical_metadata_view_path(output_dir)
     if view.is_file():
         click.echo(f"  Canonical metadata view: {view}")
@@ -487,12 +770,17 @@ def echo_migration_summary(
         click.echo(f"  Pass 2 FAILED {source}: {reason}", err=True)
     for source, reason in report.table_failures:
         click.echo(f"  Pass 3 FAILED {source}: {reason}", err=True)
+    for overlay, reason in report.overlay_failures:
+        click.echo(f"  Pass 4 FAILED {overlay}: {reason}", err=True)
+    for target, reason in report.publication_failures:
+        click.echo(f"  Publication FAILED {target}: {reason}", err=True)
 
 
 def handle_migrate_mode(
     output_dir: Path,
     *,
     njobs: int = 1,
+    overlay_alpha: float = 0.3,
     dry_run: bool = False,
     delete_sources: bool = False,
 ) -> int:
@@ -501,6 +789,7 @@ def handle_migrate_mode(
     Args:
         output_dir: Run output root, converted in place.
         njobs: Worker processes for the per-image conversion pass.
+        overlay_alpha: Alpha used for newly rendered overlay PNGs.
         dry_run: Report both passes and write nothing.
         delete_sources: Delete each provably-faithful source after conversion.
 
@@ -510,6 +799,7 @@ def handle_migrate_mode(
     report = run_migrate(
         output_dir,
         njobs=njobs,
+        overlay_alpha=overlay_alpha,
         dry_run=dry_run,
         delete_sources=delete_sources,
     )

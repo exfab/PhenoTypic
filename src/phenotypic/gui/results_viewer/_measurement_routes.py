@@ -140,7 +140,14 @@ def register_measurement_routes(
             # JSON object keys are strings; the client re-parses them as the
             # integer ``Object_Label`` the store joined on.
             "values": {
-                str(label): value for label, value in values.items()
+                str(label): (
+                    value
+                    if value is not None
+                    and not math.isnan(value)
+                    and not math.isinf(value)
+                    else None
+                )
+                for label, value in values.items()
             },
             "min": min(finite) if finite else None,
             "max": max(finite) if finite else None,

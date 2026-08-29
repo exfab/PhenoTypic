@@ -313,3 +313,16 @@ def test_an_echoed_slider_value_does_not_re_render_the_panel(output_root):
     assert echoed["response"] == {} or all(
         props == {} for props in echoed["response"].values()
     ), echoed
+
+
+def test_an_inactive_series_slider_echo_cannot_blank_the_image(output_root):
+    """Disabled series controls are lifecycle echoes, not opacity edits."""
+    app = create_app(output_root)
+    resolved = _resolve(app, DATASET, STEM)
+    spec = resolved["card-source-spec"]["data"]
+    display = resolved["card-display-state"]["data"]
+
+    echoed = _move_slider(app, "gray", 0.0, display, spec)
+    assert echoed["response"] == {} or all(
+        props == {} for props in echoed["response"].values()
+    ), echoed

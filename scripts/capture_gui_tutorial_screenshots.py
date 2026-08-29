@@ -1786,6 +1786,30 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
                 except Exception as exc:  # pragma: no cover - best-effort
                     print(f"[shot]   filter-offcanvas shot skipped: {exc!r}")
 
+                # Capture the Colony tab's linked fixed-ROI camera controls.
+                # Wait for the live percentage rather than merely the
+                # toolbar element: the latter exists before Viv has measured
+                # the real cell frames and installed its viewports.
+                try:
+                    page.locator("a.nav-link", has_text="Colony").first.click()
+                    page.wait_for_selector(
+                            "#colony-camera-toolbar",
+                            state="visible",
+                            timeout=10_000,
+                    )
+                    page.wait_for_function(
+                            "() => {const el = document.querySelector("
+                            "'#colony-camera-zoom-readout');"
+                            " return !!el && /%$/.test(el.textContent.trim());}",
+                            timeout=20_000,
+                    )
+                    page.wait_for_timeout(800)
+                    _save(page, "view_results", "06_colony_camera.png")
+                    page.locator("a.nav-link", has_text="Plate").first.click()
+                    page.wait_for_timeout(500)
+                except Exception as exc:  # pragma: no cover - best-effort
+                    print(f"[shot]   colony-camera shot skipped: {exc!r}")
+
                 # Open the per-object table and scroll IT into view.
                 # `page.mouse.wheel` cannot do this any more: the Plate is
                 # a full-canvas deck.gl stage that consumes the wheel as a

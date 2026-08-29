@@ -57,8 +57,8 @@ def build_source_spec(store: Path, base_url: str) -> dict:
     ``window.phenotypicViv.setSource`` validates and consumes
     (``_assets/viv_viewer.js``), so a caller hands the dict over unmodified;
     ``series``, ``pyramid`` and ``token`` are read by the surface's own
-    chrome -- the Layers panel and the pyramid readout -- and ignored by the
-    facade.
+    chrome -- the Layers panel and the pyramid readout. ``labelColorDomain``
+    bounds the categorical hue cycle used by the facade for the objmap.
 
     Args:
         store: Path to a promoted ``*.ome.zarr`` directory.
@@ -70,7 +70,8 @@ def build_source_spec(store: Path, base_url: str) -> dict:
     Returns:
         A JSON-serialisable mapping with keys ``storeUrl``, ``token``,
         ``series`` (ordered, primary first), ``seriesPath`` (the primary),
-        ``labelPath`` (**may be** ``None``) and ``pyramid``.
+        ``labelPath`` (**may be** ``None``), ``labelColorDomain`` and
+        ``pyramid``.
 
     Raises:
         OSError: If the store's root ``zarr.json`` does not exist -- the
@@ -107,6 +108,19 @@ def build_source_spec(store: Path, base_url: str) -> dict:
     label_path = block.get(ngff_.PhenotypicAttr.LABELS, {}).get(
         ngff_.OBJMAP_LABEL
     )
+    grid = block.get(ngff_.PhenotypicAttr.GRID, {})
+    nrows = grid.get("nrows") if isinstance(grid, dict) else None
+    ncols = grid.get("ncols") if isinstance(grid, dict) else None
+    grid_capacity = (
+        nrows * ncols
+        if isinstance(nrows, int)
+        and not isinstance(nrows, bool)
+        and isinstance(ncols, int)
+        and not isinstance(ncols, bool)
+        and nrows > 0
+        and ncols > 0
+        else None
+    )
 
     return {
         "storeUrl": base_url,
@@ -114,5 +128,10 @@ def build_source_spec(store: Path, base_url: str) -> dict:
         "series": ordered,
         "seriesPath": primary,
         "labelPath": label_path,  # may be None -- the facade copes
+        # Grid labels are bounded by the declared plate capacity. Generic
+        # images lack a cheap store-level object count, so one byte remains
+        # the conservative categorical display domain until the schema grows
+        # an explicit label maximum.
+        "labelColorDomain": [0, grid_capacity or 255],
         "pyramid": block[ngff_.PhenotypicAttr.PYRAMID],
     }

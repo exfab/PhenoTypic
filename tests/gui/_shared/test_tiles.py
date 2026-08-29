@@ -800,6 +800,29 @@ def test_build_tile_cell_renders_img_with_url_builder_src() -> None:
     assert imgs[0].src == "/seg/d1/img-1/7.png?size=128"
 
 
+def test_build_tile_cell_defers_png_when_ome_zarr_owns_pixels() -> None:
+    """A Viv-backed tile preserves geometry without requesting a PNG crop."""
+    cell = build_tile_cell(
+        image_file="img-1",
+        label=7,
+        dataset="d1",
+        crop_size=128,
+        display_size=96,
+        has_image_source=True,
+        is_removed=False,
+        is_selected=False,
+        url_builder=_url_builder,
+        remove_button=_remove_button("img-1", 7, False),
+        defer_crop_image=True,
+    )
+
+    assert not [n for n in _walk(cell) if isinstance(n, html.Img)]
+    hosts = _find_by_class(cell, "colony-cell-zarr-host")
+    assert len(hosts) == 1
+    assert hosts[0].style["width"] == "96px"
+    assert hosts[0].style["height"] == "96px"
+
+
 def test_build_tile_cell_placeholder_when_no_image_source() -> None:
     """A missing image source renders the striped placeholder and no <img>."""
     cell = build_tile_cell(

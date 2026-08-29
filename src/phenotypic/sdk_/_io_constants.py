@@ -1498,6 +1498,8 @@ def datasets_needing_migration(output_dir: Path) -> list[str]:
         if not hdf_dir.is_dir():
             continue
         for hdf_path in sorted(hdf_dir.glob("*.h5")):
+            if hdf_path.name.startswith("."):
+                continue
             store = zarr_store_path(output_dir, dataset_dir.name, hdf_path.stem)
             if not valid_staged_store(store):
                 needing.append(dataset_dir.name)

@@ -221,7 +221,6 @@ from phenotypic.sdk_ import (
     DIR_RESULTS,
     GUI_LAUNCH_OWNER_JSON,
     GUI_LOG_FILENAMES,
-    dataset_overlays_dir,
     JOB_METADATA_JSON,
     RECOMPILE_TASK_MANIFEST_JSON,
     JobMetadataKey,
@@ -1472,6 +1471,7 @@ def phenotypic_cli(
                 handle_migrate_mode(
                     output_dir,
                     njobs=max(1, n_jobs) if n_jobs > 0 else 1,
+                    overlay_alpha=overlay_alpha,
                     dry_run=dry_run,
                     delete_sources=delete_sources,
                 )
@@ -2657,34 +2657,26 @@ def _regenerate_missing_overlays(
             under SLURM, otherwise host CPUs.  ``1`` runs in-thread.
             Mirrors the ``--njobs`` flag used by forward runs.
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
     from rich.console import Console
-    from rich.progress import (
-        BarColumn,
-        MofNCompleteColumn,
-        Progress,
-        TextColumn,
-        TimeElapsedColumn,
+    from phenotypic._cli._cli_overlay_rendering import (
+        OverlayWork,
+        discover_missing_overlays,
+        overlay_output_manager,
+        render_overlay_work,
     )
 
     console = Console()
+    output_manager = overlay_output_manager(
+        output_dir, overlay_alpha=overlay_alpha
+    )
     try:
-        datasets = scan_store_outputs(output_dir)
+        work, _ = discover_missing_overlays(output_dir, output_manager)
     except ValueError:
         console.print(
             "[yellow]No image stores found under results/; skipping "
             "overlay regeneration"
         )
         return
-
-    output_manager = OutputManager.from_config(
-        base_dir=output_dir,
-        ext=".png",
-        include_dataset_column=False,
-        overlay_alpha=overlay_alpha,
-        save_overlays=True,
-    )
 
     from phenotypic._cli._cli_recompile_recovery import (
         marker_claims_measurement_authority,
@@ -2698,73 +2690,49 @@ def _regenerate_missing_overlays(
         image_completion_marker_path,
     )
 
-    work: list[tuple[str, Path, bool]] = []
-    for dataset in datasets:
-        for store_path in dataset.images:
-            # ``store_stem``, never ``Path.stem``: `.ome.zarr` is a double
-            # suffix, so `.stem` would probe for `<stem>.ome.png`, never
-            # find it, and regenerate every overlay on every run.
-            overlay_path = output_manager.get_output_path(
-                dataset.name, "overlays", store_stem(store_path)
-            )
-            if not overlay_path.exists():
-                stem = store_stem(store_path)
-                table_path = store_path / MEASUREMENT_TABLE_RELATIVE_PATH
-                requires_marker_restore = _marker_binds_overlay_and_table(
-                    output_dir,
-                    dataset.name,
-                    stem,
-                    overlay_path,
-                    table_path,
-                )
-                marker_path = image_completion_marker_path(
-                    output_dir, dataset.name, stem
-                )
-                if not requires_marker_restore and (
-                    table_path.exists()
-                    or marker_claims_measurement_authority(marker_path)
-                ):
-                    raise RuntimeError(
-                        "Cannot safely restore marker authority for "
-                        f"{dataset.name}/{stem}"
-                    )
-                work.append(
-                    (dataset.name, store_path, requires_marker_restore)
-                )
-
     if not work:
         console.print("[green]All overlays present; nothing to regenerate")
         return
-
-    for dataset_name in {ds for ds, _, _ in work}:
-        dataset_overlays_dir(output_dir, dataset_name).mkdir(
-            parents=True, exist_ok=True
+    restore_required: dict[Path, bool] = {}
+    for item in work:
+        table_path = item.store / MEASUREMENT_TABLE_RELATIVE_PATH
+        requires_marker_restore = _marker_binds_overlay_and_table(
+            output_dir,
+            item.dataset,
+            item.stem,
+            item.overlay,
+            table_path,
         )
+        marker_path = image_completion_marker_path(
+            output_dir, item.dataset, item.stem
+        )
+        if not requires_marker_restore and (
+            table_path.exists()
+            or marker_claims_measurement_authority(marker_path)
+        ):
+            raise RuntimeError(
+                "Cannot safely restore marker authority for "
+                f"{item.dataset}/{item.stem}"
+            )
+        restore_required[item.overlay] = requires_marker_restore
 
-    workers = resolve_local_worker_count(n_jobs, len(work))
-
-    def _render_one(
-        dataset_name: str,
-        store_path: Path,
-        requires_marker_restore: bool,
-    ) -> None:
-        image = load_image_from_store(store_path)
-        stem = store_stem(store_path)
+    def _render_one(item: OverlayWork, manager: OutputManager) -> None:
+        image = load_image_from_store(item.store)
 
         def _render(render_guard: Any) -> object:
-            return output_manager.save_overlay(
+            return manager.save_overlay(
                 image,
-                dataset_name,
-                stem,
+                item.dataset,
+                item.stem,
                 commit_guard=render_guard,
             )
 
-        if requires_marker_restore:
+        if restore_required[item.overlay]:
             restored = repair_overlay_marker_authority(
                 output_dir,
-                dataset_name,
-                stem,
-                store_path,
+                item.dataset,
+                item.stem,
+                item.store,
                 _render,
             )
             if not restored:
@@ -2776,53 +2744,29 @@ def _regenerate_missing_overlays(
 
     console.print(
         f"[cyan]Regenerating {len(work)} missing overlay(s) "
-        f"with {workers} thread(s)..."
+        f"with {resolve_local_worker_count(n_jobs, len(work))} thread(s)..."
     )
-    failures = 0
-    authority_failures = 0
-    with Progress(
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        MofNCompleteColumn(),
-        TimeElapsedColumn(),
-        console=console,
-    ) as progress:
-        task_id = progress.add_task("overlays", total=len(work))
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = {
-                pool.submit(
-                    _render_one,
-                    ds_name,
-                    store_path,
-                    requires_marker_restore,
-                ): (ds_name, store_path, requires_marker_restore)
-                for ds_name, store_path, requires_marker_restore in work
-            }
-            for future in as_completed(futures):
-                ds_name, store_path, requires_marker_restore = futures[future]
-                try:
-                    future.result()
-                except Exception:
-                    failures += 1
-                    if requires_marker_restore:
-                        authority_failures += 1
-                    logger.warning(
-                        "Failed to regenerate overlay for %s/%s",
-                        ds_name,
-                        store_stem(store_path),
-                        exc_info=True,
-                    )
-                finally:
-                    progress.advance(task_id)
+    result = render_overlay_work(
+        work,
+        output_manager=output_manager,
+        n_jobs=n_jobs,
+        render_one=_render_one,
+    )
+    for overlay, reason in result.failures:
+        logger.warning("Failed to regenerate overlay %s: %s", overlay, reason)
+    authority_failures = sum(
+        restore_required.get(overlay, False) for overlay, _ in result.failures
+    )
 
     if authority_failures:
         raise RuntimeError(
             "Failed to restore marker authority for "
             f"{authority_failures} required overlay repair(s)"
         )
-    if failures:
+    if result.failures:
         console.print(
-            f"[yellow]Overlay regeneration finished with {failures} failure(s); "
+            "[yellow]Overlay regeneration finished with "
+            f"{len(result.failures)} failure(s); "
             f"see logs for details"
         )
     else:

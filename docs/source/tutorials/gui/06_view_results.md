@@ -62,7 +62,7 @@ over it:
 | **Top-right**, over the stage | The **Layers** panel. It lists the series the store *actually* holds --- `rgb`, `gray`, `detect_mat` and, when the image carries one, `original` --- plus `objmap` tagged as a *label image*. A series row selects what is displayed; the objmap row toggles the overlay. Each row has an opacity slider and a colour swatch. |
 | **Bottom-left**, over the stage | The current zoom. |
 | **Bottom-right**, over the stage | The served-level readout, e.g. `pyramid level 0 of 3 · 1536×1024 · 1024² chunks`. This names the level deck.gl is *actually* drawing, so it is the fastest way to tell whether a slow pan is fetching full-resolution chunks. |
-| **Colony tab** | Per-colony crops aligned to the grid layout, each one its own camera on the same store, all sharing one zoom. |
+| **Colony tab** | Uniform object-centred regions aligned to the grid layout. One bounded camera controls every mounted tile at the same zoom and source-pixel offset. |
 
 To render a plate, step to a filename with `›` or pick one from the
 `Select image…` dropdown; both are populated from the master measurements.
@@ -82,6 +82,17 @@ post-applied mirror; it falls back to
 filter` adds a clause (column / operator / value) with the dropdown
 populated from the parquet's columns, and filtering narrows both Plate and
 Colony.
+
+The **Colony** tab opens each object inside the same square source region,
+whose side is sized from the largest padded object in the current grid. The
+initial percentage fits that region inside the actual tile frame. The sticky
+**Image controls** strip moves every tile together: use the D-pad to pan
+within the fixed region, **Center** to clear the offset, **Fit** to restore
+the comparison view, `−` / `+` to zoom, and **1:1** for one source pixel per
+screen pixel. Arrow keys, `0`, `F`, `−` / `+`, and `1` provide the same
+actions while the toolbar or image grid has keyboard focus.
+
+![Linked fixed-region controls in the Colony view.](../../_static/gui_images/view_results/06_colony_camera.png)
 
 ![Measurement table view.](../../_static/gui_images/view_results/03_measurement_table.png)
 

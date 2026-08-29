@@ -74,7 +74,7 @@ import os
 from pathlib import Path, PurePosixPath
 
 import dash
-from flask import Blueprint, Response, abort, send_file
+from flask import Blueprint, Response, abort, request, send_file
 
 from phenotypic.gui._config import VIEWER_ZARR_PREFIX
 from phenotypic.gui._shared.tiles import (
@@ -130,7 +130,8 @@ def _generation_token_for(
 ) -> str:
     """Digest one generation of a root ``zarr.json``. Memoized on *identity*."""
     digest = paths_fingerprint([Path(root_json)]).removeprefix("sha256:")[:16]
-    return f"{digest}-{identity[2]}"
+    identity_token = "-".join(f"{value:x}" for value in identity)
+    return f"{digest}-{identity_token}"
 
 
 def store_generation_token(store: Path) -> str:
@@ -209,6 +210,56 @@ def readable_roots_for(store: Path) -> frozenset[str]:
     """
     root_json = store / ngff_.STORE_ROOT_JSON
     return _readable_roots_for(str(store), _root_identity(root_json))
+
+
+def send_generation_file(
+    store: Path,
+    tail: str,
+    token: str,
+    *,
+    allowed_roots: frozenset[str],
+) -> Response:
+    """Open and serve one file only if it belongs to ``token``'s generation.
+
+    The file handle is opened before the final token check. If an atomic
+    promotion lands before the open, that check rejects the new file; if it
+    lands after the check, the already-open handle remains pinned to the old
+    inode. This closes the validation-to-open race without holding a lock
+    across response streaming.
+
+    Args:
+        store: Canonical store path.
+        tail: Store-relative file requested by the client.
+        token: Generation token carried by the request URL.
+        allowed_roots: Store-derived readable root names.
+
+    Returns:
+        A conditional response with byte-range support.
+    """
+    resolved = resolve_within_root(
+        store, tail, allowed_roots=allowed_roots
+    )
+    handle = resolved.open("rb")
+    try:
+        if store_generation_token(store) != token:
+            abort(409)
+        size = os.fstat(handle.fileno()).st_size
+        response = send_file(
+            handle,
+            conditional=False,
+            download_name=resolved.name,
+        )
+        response.content_length = size
+        response.make_conditional(
+            request,
+            accept_ranges=True,
+            complete_length=size,
+        )
+        response.call_on_close(handle.close)
+        return response
+    except BaseException:
+        handle.close()
+        raise
 
 
 def zarr_store_url(
@@ -298,9 +349,11 @@ def register_zarr_routes(app: dash.Dash, output_root: OutputRoot) -> None:
         if token != expected:
             abort(409)
 
-        return send_file(
-            resolve_within_root(store, tail, allowed_roots=roots),
-            conditional=True,
+        return send_generation_file(
+            store,
+            tail,
+            token,
+            allowed_roots=roots,
         )
 
     app.server.register_blueprint(bp)

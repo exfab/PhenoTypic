@@ -162,6 +162,7 @@ def register_callbacks(
         Input(ids.STORE_COLONY_TILE_SIZE, "data"),
         Input(ids.STORE_TILE_DIM_ALPHA, "data"),
         Input(ids.STORE_ACTIVE_LAYER, "data"),
+        Input(ids.STORE_COLONY_GRID_FOCUS, "data"),
         Input(ids.TABS_ID, "active_tab"),
     )
     def _render_colony_grid(
@@ -174,6 +175,7 @@ def register_callbacks(
         tile_size: int | None,
         dim_alpha: float | None,
         active_layer: Any,
+        focus_index: int | None,
         active_tab: str | None,
     ) -> tuple[Any, Any, Any]:
         """Rebuild the grid whenever any of its data inputs change.
@@ -233,7 +235,9 @@ def register_callbacks(
         # memoized on the payload's generation, so the repeat renders a tile
         # -size or dim step causes cost nothing. A column the picker offers
         # but an image does not declare simply yields no keys for that image.
-        measurement_values: dict[tuple[str, int], float | None] | None = None
+        measurement_values: dict[
+            tuple[str, str, int], float | None
+        ] | None = None
         if measurement_column:
             measurement_values = measurement_values_for(
                 output_root,
@@ -259,6 +263,7 @@ def register_callbacks(
             mutations_disabled=mutations_disabled,
             measurement_column=measurement_column or None,
             measurement_values=measurement_values,
+            focus_index=int(focus_index or 0),
         )
         info = (
             f"crop {max_size}px → {display_size}px "

@@ -857,9 +857,19 @@ reusing `recompile`'s argument validation: no `--pipeline`, no `--input`,
 operates on an existing output root.
 
 **Migration is in place.** The tree at `--output` is converted where it sits:
-`results/<ds>/zarr/` appears beside `results/<ds>/hdf/`, and everything else —
-`measurements/`, `overlays/`, `deliverables/`, machine state — is left exactly
-where it is.
+`results/<ds>/zarr/` appears beside `results/<ds>/hdf/`. Existing measurement
+tables, overlay PNGs, deliverables, and machine state remain in place. Missing
+overlay PNGs are regenerated from the promoted stores with the forward-run
+`OutputManager.save_overlay()` renderer and the requested `--overlay-alpha`
+(default `0.3`); existing PNG bytes are never rewritten.
+
+Publication is terminal and ordered. After every store, embedded measurement
+table, and overlay validates, migration publishes one image-success marker per
+store (a measurement artifact is omitted only for a zero-object store), rebuilds
+and publishes the aggregate snapshot, and finally publishes version-2
+`run_completion.json`. Stale aggregate and completion markers are removed before
+the first mutation, and no terminal marker is published when any preceding pass
+fails.
 
 > **Copy mode was specified and then removed (2026-08-19, user ruling).** An
 > intermediate draft added `--input <src> --output <dst>` to write a converted
@@ -1080,8 +1090,12 @@ material.
   a store directory where `file_fingerprint` raises.
 - **Migration.** Golden fixtures in v1-flat and v2-grouped layouts, **including
   one with an `enh_gray` layer**, migrate to stores equal to freshly written
-  ones. Assert `deliverables/metadata.csv` is **byte-identical before and after**
-  migration, that `metadata.canonical.csv` is emitted beside it, and that no
+  ones. Assert missing overlays are rendered while existing overlays remain
+  byte-identical; zero-object images without legacy Parquets receive store-plus-
+  overlay success markers; nonempty images without measurements fail closed;
+  the aggregate is current; and version-2 run completion validates. Also assert
+  `deliverables/metadata.csv` is **byte-identical before and after** migration,
+  that `metadata.canonical.csv` is emitted beside it, and that no
   `metadata.original.csv` exists (ledger **MIG-18** — the previous wording
   asserted the opposite, and Task 6.4's `grep -rn "metadata.original.csv"` gate
   would have failed against this line).

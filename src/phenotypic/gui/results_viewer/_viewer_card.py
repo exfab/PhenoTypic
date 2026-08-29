@@ -522,7 +522,11 @@ def build_layer_rows(
                 kind="series",
                 swatch=OKABE_ITO[position % len(OKABE_ITO)],
                 shown=shown,
-                opacity=opacity[_FACADE_IMAGE_LAYER] if shown else 0.0,
+                # Every series slider addresses the same facade image layer.
+                # Preserve that shared value even while the inactive control
+                # is disabled so a Dash rebuild echo cannot blank the newly
+                # selected series with an artificial zero.
+                opacity=opacity[_FACADE_IMAGE_LAYER],
                 opacity_enabled=shown,
             )
         )
@@ -608,15 +612,14 @@ def _build_picker_options(
 ) -> list[dict[str, Any]]:
     """Translate a ``[(ds, stem), ...]`` list into Dash dropdown options.
 
-    Pairs whose overlay PNG is missing are kept (so the user still sees
-    them) but rendered as ``disabled`` with a leading warning marker so
-    the missing-overlay state is visually obvious.
+    Pairs with neither an OME-Zarr store nor an overlay PNG are kept (so the
+    user still sees them) but rendered as ``disabled`` with a warning label.
 
     Args:
         pairs: Iterable of ``(dataset, stem)`` tuples (or 2-element
             lists, since Dash stores round-trip tuples as lists).
-        output_root: Validated handle on the output root, used to
-            answer :meth:`OutputRoot.has_overlay`.
+        output_root: Validated handle on the output root, used to answer
+            :meth:`OutputRoot.has_image_source`.
 
     Returns:
         A list of dicts shaped
@@ -641,14 +644,14 @@ def _build_picker_options(
             except (IndexError, TypeError):
                 logger.debug("Skipping malformed image pair entry: %r", raw)
                 continue
-        present = output_root.has_overlay(dataset, stem)
+        present = output_root.has_image_source(dataset, stem)
         if present:
             label = f"{dataset} / {stem}"
             tooltip = f"{dataset} / {stem}"
         else:
-            label = f"(no overlay) {dataset} / {stem}"
+            label = f"(no image source) {dataset} / {stem}"
             tooltip = (
-                f"{dataset} / {stem} -- overlay PNG missing on disk; "
+                f"{dataset} / {stem} -- no image source exists on disk; "
                 "the viewer cannot render this image."
             )
         options.append(
@@ -1403,6 +1406,11 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         else:
             value = ctx.triggered[0]["value"]
             if value is None:
+                return no_update, no_update
+            if layer != _OBJMAP_LAYER and layer != state["seriesPath"]:
+                # Rebuilding the panel recreates disabled sliders too. Their
+                # echoed values are not user edits and must not mutate the
+                # one shared image-layer opacity.
                 return no_update, no_update
             facade_layer = (
                 _FACADE_LABEL_LAYER

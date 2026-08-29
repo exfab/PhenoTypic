@@ -720,14 +720,31 @@ COLONY_DIM_PLUS = "colony-dim-plus"
 #: Synced from :data:`STORE_TILE_DIM_ALPHA` by the shared readout callback.
 COLONY_DIM_READOUT = "colony-dim-readout"
 
-#: "Shared camera" lock in the colony toolbar. Locked ON and disabled: every
-#: cell is a viewport over ONE shared ``zoom`` (``setGridViews`` in
-#: ``_assets/viv_viewer.js``), so today there is nothing to unlock. It is a
-#: VISIBLE affordance rather than hidden behaviour on purpose — the
-#: eventual unlock-one-cell mode needs somewhere to live, and retrofitting
-#: an affordance onto a mode that already shipped as invisible behaviour is
-#: the expensive order.
-COLONY_SHARED_CAMERA_TOGGLE_ID = "colony-shared-camera-toggle"
+#: Microscope-stage camera strip controlling every mounted colony tile.
+COLONY_CAMERA_TOOLBAR_ID = "colony-camera-toolbar"
+
+#: Directional buttons apply one bounded shared source-pixel offset.
+COLONY_CAMERA_PAN_UP = "colony-camera-pan-up"
+COLONY_CAMERA_PAN_DOWN = "colony-camera-pan-down"
+COLONY_CAMERA_PAN_LEFT = "colony-camera-pan-left"
+COLONY_CAMERA_PAN_RIGHT = "colony-camera-pan-right"
+
+#: Clear the shared pan offset while retaining the current zoom.
+COLONY_CAMERA_CENTER = "colony-camera-center"
+
+#: Restore the object-centred crop and its fit-derived zoom.
+COLONY_CAMERA_FIT = "colony-camera-fit"
+
+#: Shared zoom controls and actual-pixel shortcut.
+COLONY_CAMERA_ZOOM_OUT = "colony-camera-zoom-out"
+COLONY_CAMERA_ZOOM_IN = "colony-camera-zoom-in"
+COLONY_CAMERA_ONE_TO_ONE = "colony-camera-one-to-one"
+
+#: Live display scale (``21%``, ``100%``) written by the client lifecycle.
+COLONY_CAMERA_ZOOM_READOUT = "colony-camera-zoom-readout"
+
+#: Read-only statement of the grid's one-camera comparison contract.
+COLONY_CAMERA_LINKED_STATUS = "colony-camera-linked-status"
 
 #: Segmented control (``dbc.RadioItems``, button-group style) choosing which
 #: image layer the colony crops source — ``rgb`` / ``detect_mat`` / ``objmap``
@@ -822,6 +839,11 @@ STORE_COLONY_SELECTION_DELTA = "store-colony-selection-delta"
 #: list of ``"<image_file>::<label>"`` keys, so range-selection (shift-click)
 #: in JS can resolve "everything between A and B" without re-querying Dash.
 STORE_COLONY_GRID_ORDER = "store-colony-grid-order"
+
+#: Row-major colony index nearest the browser viewport center. The
+#: client-side scroll observer updates it so server virtualization follows
+#: the user's actual position in grids larger than the mount cap.
+STORE_COLONY_GRID_FOCUS = "store-colony-grid-focus"
 
 
 # ---------------------------------------------------------------------------
@@ -1040,7 +1062,18 @@ __all__ = [
     "COLONY_DIM_MINUS",
     "COLONY_DIM_PLUS",
     "COLONY_DIM_READOUT",
-    "COLONY_SHARED_CAMERA_TOGGLE_ID",
+    "COLONY_CAMERA_TOOLBAR_ID",
+    "COLONY_CAMERA_PAN_UP",
+    "COLONY_CAMERA_PAN_DOWN",
+    "COLONY_CAMERA_PAN_LEFT",
+    "COLONY_CAMERA_PAN_RIGHT",
+    "COLONY_CAMERA_CENTER",
+    "COLONY_CAMERA_FIT",
+    "COLONY_CAMERA_ZOOM_OUT",
+    "COLONY_CAMERA_ZOOM_IN",
+    "COLONY_CAMERA_ONE_TO_ONE",
+    "COLONY_CAMERA_ZOOM_READOUT",
+    "COLONY_CAMERA_LINKED_STATUS",
     "LAYER_TOGGLE",
     "STORE_ACTIVE_LAYER",
     "COLONY_BULK_BAR_ID",
@@ -1056,6 +1089,7 @@ __all__ = [
     "STORE_COLONY_SELECTION",
     "STORE_COLONY_SELECTION_DELTA",
     "STORE_COLONY_GRID_ORDER",
+    "STORE_COLONY_GRID_FOCUS",
     "colony_cell_id",
     "colony_cell_remove_btn_id",
     "colony_cell_count_badge_id",

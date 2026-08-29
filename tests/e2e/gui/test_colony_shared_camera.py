@@ -1,8 +1,7 @@
-"""One shared viewState drives every colony view.
+"""One bounded toolbar camera drives every passive Colony view.
 
-The assertion is that all views report the SAME zoom after one is changed --
-not that they converge. A sync protocol would pass a convergence test and
-still show tearing mid-gesture; a shared value cannot.
+The assertions cover the fixed crop's fit zoom, linked zoom and pan commands,
+and the absence of direct per-cell mouse controllers.
 
 Both halves are asserted, and the second is the one that matters. Asserting
 only ``len(set(zooms)) == 1`` is satisfied PERFECTLY by the bug this module
@@ -138,8 +137,8 @@ def camera_page(playwright, xvfb_display: str, camera_hub: str, camera_store_url
                         labelPath: 'rgb/labels/objmap',
                     });
                     const n = await window.phenotypicViv.setGridViews(
-                        id, cells, {zoom: 0},
-                        {cellSize: size, gap: gap});
+                        id, cells, {zoomOffset: 0, offsetX: 0, offsetY: 0},
+                        {cellSize: size, gap: gap, cropSize: 256});
                     return {ok: true, views: n};
                 } catch (e) {
                     return {ok: false, err: String(e && e.message)};
@@ -167,52 +166,56 @@ def _view_states(page) -> list[dict]:
     return states
 
 
-def test_zooming_one_cell_moves_every_cell(camera_page) -> None:
-    """One programmatic zoom lands on every view, and targets stay apart."""
+def test_toolbar_zoom_and_pan_move_every_tile_together(camera_page) -> None:
+    """One toolbar command changes every zoom and target by the same amount."""
+    before = _view_states(camera_page)
     camera_page.evaluate(
-        """([id]) => window.phenotypicViv.setViewState(
-               id, {zoom: 3, target: [0, 0, 0]})""",
+        "([id]) => window.phenotypicViv.setGridCamera("
+        "id, {action: 'zoom', delta: 0.5})",
         [CONTAINER],
     )
     camera_page.wait_for_timeout(1_000)
-    states = _view_states(camera_page)
+    zoomed = _view_states(camera_page)
 
-    # `page.evaluate` marshals JS objects into Python DICTS -- attribute
-    # access raises AttributeError and the test ERRORS rather than failing
-    # informatively, which is the worst outcome for a test whose job is to
-    # fail informatively.
-    zooms = [s["zoom"] for s in states]
-    targets = [tuple(s["target"][:2]) for s in states]
+    before_zooms = [s["zoom"] for s in before]
+    zooms = [s["zoom"] for s in zoomed]
+    assert len(set(before_zooms)) == 1
+    assert len(set(zooms)) == 1
+    assert zooms[0] == pytest.approx(before_zooms[0] + 0.5)
 
-    assert len(zooms) > 1
-    assert set(zooms) == {3}, f"zoom drifted apart: {sorted(set(zooms))}"
+    camera_page.evaluate(
+        "([id]) => window.phenotypicViv.setGridCamera("
+        "id, {action: 'pan', dx: 1, dy: 0})",
+        [CONTAINER],
+    )
+    camera_page.wait_for_timeout(1_000)
+    panned = _view_states(camera_page)
+    deltas = {
+        (
+            after["target"][0] - prior["target"][0],
+            after["target"][1] - prior["target"][1],
+        )
+        for prior, after in zip(zoomed, panned, strict=True)
+    }
+    assert len(deltas) == 1, f"linked pan drifted: {sorted(deltas)}"
+    dx, dy = next(iter(deltas))
+    assert dx > 0
+    assert dy == pytest.approx(0)
 
-    # The complementary half, and the one that matters. A single shared
-    # viewState gives every cell the same target, so the grid renders one
-    # colony N times -- with identical zooms, passing the assertion above.
+    targets = [tuple(s["target"][:2]) for s in panned]
     assert len(set(targets)) == len(targets), (
         f"every cell is showing the same region: {targets[:4]}"
     )
 
-    # And each target is the centroid it was handed, not merely distinct:
-    # a layout bug that assigned targets in the wrong order would still
-    # produce N distinct values. `target` is [x, y, z] = [cc, rr, 0].
     expected = {
-        (float(cell["centroidCc"]), float(cell["centroidRr"]))
+        (float(cell["centroidCc"]) + dx, float(cell["centroidRr"]))
         for cell in _cells()
     }
-    assert set(targets) == expected, (targets, sorted(expected))
+    assert sorted(targets) == pytest.approx(sorted(expected))
 
 
-def test_a_wheel_gesture_over_one_cell_moves_every_cell(camera_page) -> None:
-    """The half a programmatic test cannot reach.
-
-    The rejected keyed-viewState design fails HERE and nowhere else:
-    ``onViewStateChange`` fires with the ONE view a gesture touched, so a
-    keyed map keeps N zooms and only the gestured cell moves. Driving
-    ``setViewState`` never exercises that path. This dispatches a real wheel
-    event over the first cell and asserts every cell followed.
-    """
+def test_a_wheel_gesture_cannot_start_a_per_cell_camera(camera_page) -> None:
+    """Direct wheel input is inert because comparison tiles are passive."""
     before = {s["id"]: s["zoom"] for s in _view_states(camera_page)}
     assert len(set(before.values())) == 1, before
 
@@ -223,25 +226,11 @@ def test_a_wheel_gesture_over_one_cell_moves_every_cell(camera_page) -> None:
 
     after = {s["id"]: s["zoom"] for s in _view_states(camera_page)}
     assert set(after) == set(before), (sorted(after), sorted(before))
-    assert len(set(after.values())) == 1, (
-        f"the wheel moved some cells and not others: {sorted(set(after.values()))}"
-        " -- the camera is a per-view sync protocol, not one shared value"
-    )
-    moved = next(iter(after.values())) != next(iter(before.values()))
-    assert moved, (
-        f"zoom did not move at all ({before} -> {after}) -- the views carry "
-        "no controller, so the 'Shared camera' lock constrains nothing"
-    )
+    assert after == before
 
 
-def test_a_pan_gesture_cannot_move_a_cell_off_its_colony(camera_page) -> None:
-    """`target` is per-view and re-applied every render, so pan is discarded.
-
-    Not a nicety: the colony grid's whole contract is that cell *i* shows
-    colony *i*. A controller that let a drag write `target` back into the
-    shared state would slide every cell off its colony together, which is
-    worse than the per-cell drift the shared value prevents.
-    """
+def test_a_drag_gesture_cannot_move_one_cell_independently(camera_page) -> None:
+    """Direct dragging cannot bypass the toolbar's bounded shared offset."""
     before = [tuple(s["target"][:2]) for s in _view_states(camera_page)]
 
     camera_page.mouse.move(CELL_PX / 2, CELL_PX / 2)

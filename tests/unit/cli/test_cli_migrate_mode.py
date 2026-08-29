@@ -100,6 +100,43 @@ def test_migration_is_in_place(legacy_run) -> None:
     assert valid_staged_store(zarr_store_path(legacy_run, "ds", "img"))
 
 
+def test_dot_prefixed_hdfs_are_ignored_and_never_deleted(legacy_run) -> None:
+    """AppleDouble and other dotfiles are not image migration inputs."""
+    from phenotypic.sdk_ import datasets_needing_migration
+    from phenotypic.sdk_._hdf_to_zarr import iter_legacy_hdfs
+
+    hdf_dir = legacy_run / "results" / "ds" / "hdf"
+    sidecar = hdf_dir / "._img.h5"
+    sidecar.write_bytes(b"AppleDouble metadata, not HDF5")
+    hidden = hdf_dir / ".hidden.h5"
+    hidden.write_bytes(b"hidden metadata, not HDF5")
+
+    dry_run = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run), "--dry-run"],
+    )
+    assert dry_run.exit_code == 0, dry_run.output
+    assert "would convert 1, skipped 0" in dry_run.output
+    assert [path.name for _, path in iter_legacy_hdfs(legacy_run)] == [
+        "img.h5"
+    ]
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--delete-sources",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert sidecar.read_bytes() == b"AppleDouble metadata, not HDF5"
+    assert hidden.read_bytes() == b"hidden metadata, not HDF5"
+    assert datasets_needing_migration(legacy_run) == []
+
+
 def test_migration_leaves_the_rest_of_the_tree_where_it_was(legacy_run) -> None:
     """In place means in place: only ``zarr/`` and the derived view appear."""
     before = {

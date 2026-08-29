@@ -40,7 +40,11 @@ import {
   XRLayer,
   XR3DLayer,
 } from "@vivjs/layers";
-import { ColorPaletteExtension, LensExtension } from "@vivjs/extensions";
+import {
+  AdditiveColormapExtension,
+  ColorPaletteExtension,
+  LensExtension,
+} from "@vivjs/extensions";
 import { Deck, OrthographicView, COORDINATE_SYSTEM } from "@deck.gl/core";
 
 // --- C1: register before anything can open a store -------------------------
@@ -128,7 +132,11 @@ const bundle = {
     isInterleaved,
   },
   layers: { ImageLayer, MultiscaleImageLayer, XRLayer, XR3DLayer },
-  extensions: { ColorPaletteExtension, LensExtension },
+  extensions: {
+    AdditiveColormapExtension,
+    ColorPaletteExtension,
+    LensExtension,
+  },
   deck: { Deck, OrthographicView, COORDINATE_SYSTEM },
   createViewer,
 };

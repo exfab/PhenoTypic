@@ -459,6 +459,11 @@ def _build_stores(filtered_state: "CurationLabels") -> Component:
                 data=[],
                 storage_type="memory",
             ),
+            dcc.Store(
+                id=ids.STORE_COLONY_GRID_FOCUS,
+                data=0,
+                storage_type="memory",
+            ),
             # Category-vocabulary revision ticker — bumped whenever a custom
             # category is registered (Task 7) so the bulk-mark dropdowns and
             # open radial wheels refresh their options/body. Memory storage:

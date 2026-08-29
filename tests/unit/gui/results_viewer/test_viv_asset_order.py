@@ -104,6 +104,126 @@ def test_the_committed_bundle_matches_its_recorded_version() -> None:
     )
 
 
+def test_objmap_uses_a_transparent_rgb_colormap_overlay() -> None:
+    """Label ids must not be rendered as a second grayscale intensity image."""
+    facade = (ASSETS / "viv_viewer.js").read_text(encoding="utf-8")
+    recipe = (REPO_ROOT / "tools" / "viv-bundle" / "entry.mjs").read_text(
+        encoding="utf-8"
+    )
+
+    assert "new bundle.extensions.AdditiveColormapExtension()" in facade
+    assert 'colormap: "hsv"' in facade
+    assert "useTransparentColor: true" in facade
+    assert 'interpolation: "nearest"' in facade
+    assert "AdditiveColormapExtension" in recipe
+
+
+def test_colony_grid_uses_a_passive_bounded_linked_camera() -> None:
+    """Grid cells cannot start independent drag controllers or escape the ROI."""
+    facade = (ASSETS / "viv_viewer.js").read_text(encoding="utf-8")
+
+    assert "controller: false" in facade
+    assert "function clampGridCamera(grid)" in facade
+    assert "function setGridCamera(containerId, command)" in facade
+    assert "setGridCamera," in facade
+    assert "getGridCameraState," in facade
+
+
+def test_colony_cache_is_the_mounted_active_level_chunk_union() -> None:
+    """Cache limits follow intersecting ROI chunks, not largest-object bytes."""
+    facade = (ASSETS / "viv_viewer.js").read_text(encoding="utf-8")
+
+    assert "function roiChunkKeys(level, baseLevel, cells, cropSize)" in facade
+    assert "const keys = new Set();" in facade
+    assert "Math.round(-Number(grid.shared.zoom || 0))" in facade
+    assert "source.data[0]" in facade
+    assert "group.cells" in facade
+    assert "budgets.label : budgets.image" in facade
+
+
+def test_colony_source_filter_routes_viv_generated_sublayers() -> None:
+    """Drawable tile sublayers inherit the owning store from their parent id."""
+    facade = (ASSETS / "viv_viewer.js").read_text(encoding="utf-8")
+
+    assert "const sourceKeyForLayer = (layer) =>" in facade
+    assert "layer.id.startsWith(`${parentId}-`)" in facade
+    assert "sourceKeyForLayer(layer) === sourceForView.get(viewport.id)" in facade
+    assert "viewportId: viewId" in facade
+
+
+def test_colony_refresh_preserves_camera_and_syncs_position_mutations() -> None:
+    """Virtualized-window refreshes retain camera state and remeasure positions."""
+    lifecycle = (ASSETS / "results_viewer.js").read_text(encoding="utf-8")
+
+    assert "let cameraState = null;" in lifecycle
+    assert "zoomOffset: cameraState.zoomOffset" in lifecycle
+    assert "cameraState = state;" in lifecycle
+    assert "function mutationChangesGridGeometry(mutations)" in lifecycle
+    assert 'attributeFilter: ["style", "data-colony-viv-cell"]' in lifecycle
+    assert "}).sort();" in lifecycle
+
+
+def test_colony_geometry_sync_uses_resize_observer_without_resourcing() -> None:
+    """A layout change remeasures viewports and retains already loaded stores."""
+    lifecycle = (ASSETS / "results_viewer.js").read_text(encoding="utf-8")
+
+    assert "new ResizeObserver(scheduleGeometrySync)" in lifecycle
+    assert "async function syncColonyViewports()" in lifecycle
+    assert "await viv.setGridViews(" in lifecycle
+    assert "window.requestAnimationFrame(syncColonyViewports)" in lifecycle
+    resize_handler = lifecycle.split(
+        'window.addEventListener("resize", function () {', 1
+    )[1].split("});", 1)[0]
+    assert "scheduleGeometrySync();" in resize_handler
+    assert "scheduleMount();" not in resize_handler
+
+
+def test_colony_grid_uses_viewport_sized_stage_and_syncs_scroll_geometry() -> None:
+    """The shared canvas must not grow to the full virtualized grid extent."""
+    css = (ASSETS / "results_viewer.css").read_text(encoding="utf-8")
+    lifecycle = (ASSETS / "results_viewer.js").read_text(encoding="utf-8")
+
+    stage_rule = css.split(".colony-viv-grid-stage {", 1)[1].split("}", 1)[0]
+    assert "position: fixed" in stage_rule
+    assert "pointer-events: none" in stage_rule
+    scroll_handler = lifecycle.split(
+        'window.addEventListener("scroll", function () {', 1
+    )[1].split("}, true);", 1)[0]
+    assert "scheduleGeometrySync();" in scroll_handler
+    assert "function syncStageClip(stage)" in lifecycle
+    assert "stage.style.clipPath" in lifecycle
+    assert 'stage.closest(".colony-view-root")' in lifecycle
+    assert "top: Math.max(containerRect.top, rootRect.top)" in lifecycle
+    assert "bottom: Math.min(containerRect.bottom, rootRect.bottom)" in lifecycle
+
+
+def test_colony_grid_initially_centres_a_populated_column() -> None:
+    """Sparse axis combinations must not open on an entirely empty region."""
+    lifecycle = (ASSETS / "results_viewer.js").read_text(encoding="utf-8")
+
+    assert "function focusFirstPopulatedColumn()" in lifecycle
+    assert 'container.querySelector("[data-colony-viv-cell]")' in lifecycle
+    assert "container.scrollLeft = Math.max(0, target);" in lifecycle
+
+
+def test_colony_png_crops_hide_after_viv_activation() -> None:
+    """Store-backed cells use the OME-Zarr renderer after activation."""
+    css = (ASSETS / "results_viewer.css").read_text(encoding="utf-8")
+
+    assert ".colony-grid-viv-active .colony-cell-img" in css
+    assert "visibility: hidden" in css
+
+
+def test_colony_stack_tab_sits_behind_ome_zarr_crop() -> None:
+    """Only the portion below the Viv tile viewport may remain visible."""
+    css = (ASSETS / "results_viewer.css").read_text(encoding="utf-8")
+
+    rule = css.split(".colony-cell-stack-tab {", 1)[1].split("}", 1)[0]
+    assert "bottom: 0" in rule
+    assert "height: 22px" in rule
+    assert "z-index: 0" in rule
+
+
 def test_the_runtime_reader_agrees_with_the_recipe() -> None:
     """``viv_bundle_version()`` reports what the recipe recorded.
 

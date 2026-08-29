@@ -10,15 +10,23 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+import shutil
 
 from click.testing import CliRunner
 
 from phenotypic._cli._cli_completion import (
     current_aggregate_is_current,
+    current_success_counts,
+    valid_run_completion,
     valid_image_success,
 )
 from phenotypic.phenotypicCLI import phenotypic_cli
-from phenotypic.sdk_ import dataset_measurements_dir, zarr_store_path
+from phenotypic.sdk_ import (
+    dataset_measurements_dir,
+    dataset_overlays_dir,
+    datasets_needing_migration,
+    zarr_store_path,
+)
 from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON, valid_staged_store
 
 from tests.unit.sdk_._migration_fixtures import LegacyRun
@@ -54,6 +62,53 @@ def test_a_full_migrate_leaves_the_run_valid_and_idle(
             work_id=finished_legacy_run.work_id_for(stem),
         ), stem
     assert current_aggregate_is_current(tree) is True
+    completion = valid_run_completion(tree)
+    assert completion is not None
+    assert completion["version"] == 2
+
+
+def test_fixture_shaped_run_completes_32_measured_and_four_zero_object_images(
+    finished_legacy_run: LegacyRun,
+) -> None:
+    """The reported field failure shape completes all 36 legitimate images."""
+    import h5py
+
+    legacy_run = finished_legacy_run.path
+    hdf_dir = legacy_run / "results" / "ds" / "hdf"
+    measurements = dataset_measurements_dir(legacy_run, "ds")
+    source_stem = finished_legacy_run.stems[0]
+    source_hdf = hdf_dir / f"{source_stem}.h5"
+    source_table = measurements / f"{source_stem}.parquet"
+
+    for index in range(30):
+        stem = f"measured-{index:02d}"
+        shutil.copy2(source_hdf, hdf_dir / f"{stem}.h5")
+        shutil.copy2(source_table, measurements / f"{stem}.parquet")
+    for index in range(4):
+        stem = f"zero-{index:02d}"
+        target = hdf_dir / f"{stem}.h5"
+        shutil.copy2(source_hdf, target)
+        with h5py.File(target, mode="a") as handle:
+            handle["layers/objmap"][:] = 0
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--njobs",
+            "2",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert current_success_counts(legacy_run) == (36, 36)
+    assert len(list(dataset_overlays_dir(legacy_run, "ds").glob("*.png"))) == 36
+    assert current_aggregate_is_current(legacy_run) is True
+    assert valid_run_completion(legacy_run) is not None
+    assert datasets_needing_migration(legacy_run) == []
 
 
 def test_the_migrated_tree_does_no_work_on_the_next_full_run(

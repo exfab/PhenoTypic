@@ -6,7 +6,6 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
-from unittest.mock import patch
 
 from click.testing import CliRunner
 import polars as pl
@@ -25,6 +24,7 @@ from phenotypic.sdk_ import (
 from tests.unit.sdk_._migration_fixtures import (
     DATASET,
     LEGACY_MEASUREMENT_COLUMN,
+    LegacyRun,
     run_stems,
     run_work_id,
 )
@@ -276,27 +276,153 @@ def test_migration_reconstructs_authority_without_machine_state(
 
 
 def test_hdf_only_migration_keeps_store_measurement_free(
-    legacy_run: Path,
+    finished_legacy_run: LegacyRun,
 ) -> None:
-    """An image without a legacy table converts safely without inventing one."""
-    source = legacy_run / "results" / DATASET / "measurements" / "img.parquet"
-    source.unlink()
+    """A zero-object HDF needs no invented table and still completes."""
+    import h5py
 
-    with patch(
-        "phenotypic._cli._cli_migrate.republish_aggregate"
-    ) as republish:
-        result = CliRunner().invoke(
-            phenotypic_cli,
-            ["--mode", "migrate", "--output", str(legacy_run)],
-        )
+    from phenotypic._cli._cli_completion import (
+        current_aggregate_is_current,
+        valid_run_completion,
+    )
+    from phenotypic.sdk_ import dataset_overlays_dir
+    from phenotypic.sdk_._hdf_to_zarr import _dataset_hdf_dir
+
+    legacy_run = finished_legacy_run.path
+    stem = finished_legacy_run.stems[0]
+    source = (
+        legacy_run
+        / "results"
+        / DATASET
+        / "measurements"
+        / f"{stem}.parquet"
+    )
+    source.unlink()
+    hdf = _dataset_hdf_dir(legacy_run, DATASET) / f"{stem}.h5"
+    with h5py.File(hdf, mode="a") as handle:
+        handle["layers/objmap"][:] = 0
+    (dataset_overlays_dir(legacy_run, DATASET) / f"{stem}.png").unlink()
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run)],
+    )
 
     assert result.exit_code == 0, result.output
-    republish.assert_not_called()
-    store = zarr_store_path(legacy_run, DATASET, "img")
+    store = zarr_store_path(legacy_run, DATASET, stem)
     assert store.is_dir()
     assert not (store / MEASUREMENT_TABLE_RELATIVE_PATH).exists()
     assert PhenotypicAttr.TABLES not in read_phenotypic_attributes(store)
-    assert not aggregate_publication_marker_path(legacy_run).exists()
+    marker = json.loads(
+        image_completion_marker_path(legacy_run, DATASET, stem).read_text(
+            encoding="utf-8"
+        )
+    )
+    assert set(marker["artifacts"]) == {"overlay", "store"}
+    assert valid_image_success(
+        legacy_run,
+        dataset=DATASET,
+        image_stem=stem,
+        work_id=finished_legacy_run.work_id_for(stem),
+    )
+    assert current_aggregate_is_current(legacy_run) is True
+    completion = valid_run_completion(legacy_run)
+    assert completion is not None
+    assert completion["version"] == 2
+
+
+def test_nonempty_hdf_without_table_fails_closed(legacy_run: Path) -> None:
+    """A detected image cannot be certified without measurements."""
+    from phenotypic.sdk_ import run_completion_marker_path
+
+    source = legacy_run / "results" / DATASET / "measurements" / "img.parquet"
+    source.unlink()
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run)],
+    )
+
+    assert result.exit_code != 0
+    assert "nonempty migrated image has no valid measurement table" in result.output
+    assert not run_completion_marker_path(legacy_run).exists()
+
+
+def test_migration_renders_missing_overlay_with_configured_alpha(
+    legacy_run: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Migration uses the forward renderer and the CLI alpha value."""
+    from phenotypic._cli._cli_output_manager import OutputManager
+    from phenotypic.sdk_ import dataset_overlays_dir
+
+    overlay = dataset_overlays_dir(legacy_run, DATASET) / "img.png"
+    overlay.unlink()
+    observed: list[float] = []
+    original = OutputManager.save_overlay
+
+    def capture_alpha(self, *args, **kwargs):
+        observed.append(self.overlay_alpha)
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(OutputManager, "save_overlay", capture_alpha)
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--overlay-alpha",
+            "0.65",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert observed == [0.65]
+    assert overlay.is_file()
+
+
+def test_migration_preserves_existing_overlay_bytes(legacy_run: Path) -> None:
+    """An existing PNG is authoritative and is never rendered again."""
+    from phenotypic.sdk_ import dataset_overlays_dir
+
+    overlay = dataset_overlays_dir(legacy_run, DATASET) / "img.png"
+    before = overlay.read_bytes()
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run)],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert overlay.read_bytes() == before
+
+
+def test_overlay_render_failure_is_fatal_and_leaves_no_completion(
+    legacy_run: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing required PNG cannot degrade into terminal success."""
+    from phenotypic._cli._cli_output_manager import OutputManager
+    from phenotypic.sdk_ import dataset_overlays_dir, run_completion_marker_path
+
+    overlay = dataset_overlays_dir(legacy_run, DATASET) / "img.png"
+    overlay.unlink()
+
+    def fail_render(*_args, **_kwargs):
+        raise RuntimeError("simulated overlay failure")
+
+    monkeypatch.setattr(OutputManager, "save_overlay", fail_render)
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run)],
+    )
+
+    assert result.exit_code != 0
+    assert "simulated overlay failure" in result.output
+    assert not overlay.exists()
+    assert not run_completion_marker_path(legacy_run).exists()
 
 
 @pytest.mark.parametrize("aggregate_outcome", ["raise", "none"])
@@ -333,3 +459,48 @@ def test_migration_does_not_certify_stale_outputs_after_aggregate_failure(
     assert not marker.exists(), (
         "stale aggregate outputs retained fresh authority"
     )
+
+
+def test_false_aggregate_publication_makes_report_not_ok(
+    legacy_headers_run: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A guarded false return is a publication failure, not success."""
+    from phenotypic._cli import _cli_migrate
+
+    monkeypatch.setattr(_cli_migrate, "republish_aggregate", lambda _root: False)
+
+    report = _cli_migrate.run_migrate(legacy_headers_run)
+
+    assert report.ok is False
+    assert report.publication_failures
+    assert "returned false" in report.publication_failures[0][1]
+
+
+def test_source_reclamation_failure_blocks_terminal_completion(
+    legacy_run: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed destructive pass cannot leave terminal run authority."""
+    from phenotypic.sdk_ import run_completion_marker_path
+
+    failed_source = legacy_run / "results" / DATASET / "hdf" / "img.h5"
+    monkeypatch.setattr(
+        "phenotypic.sdk_._hdf_to_zarr._reclaim_sources",
+        lambda _root: [(failed_source, "simulated reclaim failure")],
+    )
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--delete-sources",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "simulated reclaim failure" in result.output
+    assert not run_completion_marker_path(legacy_run).exists()

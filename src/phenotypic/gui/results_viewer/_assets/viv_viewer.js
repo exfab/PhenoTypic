@@ -69,6 +69,12 @@
   /** Gap, in CSS px, between grid cells when the caller names none. */
   const GRID_GAP_PX = 8;
 
+  /** Half-stop microscope zoom step: two clicks double display scale. */
+  const GRID_ZOOM_STEP = 0.5;
+
+  /** One D-pad press moves one tenth of the currently visible source span. */
+  const GRID_PAN_FRACTION = 0.1;
+
   // `ready()` is a FUNCTION, not a promise, and that is load-bearing.
   //
   // Dash walks `_assets/` with
@@ -265,10 +271,11 @@
   /**
    * Default layers for one loaded source pair.
    *
-   * Deliberately plain: full-range contrast from the dtype, one primary
-   * colour per channel, and the label layer at half opacity above the
-   * image. Phase 3 owns real contrast and colour policy and replaces this
-   * wholesale by passing `opts.buildLayers`.
+   * Image series use one primary colour per channel. The objmap is not an
+   * intensity image: it uses a saturated cyclic hue map with label 0 fully
+   * transparent, nearest-neighbour sampling, and the configured opacity over
+   * the image. Treating label ids as one tinted channel makes the objmap look
+   * like a second grayscale image and visually merges adjacent objects.
    */
   function defaultLayers(bundle, loaded, spec, overrides) {
     const { image, label } = loaded;
@@ -314,8 +321,16 @@
       })
     );
     if (label) {
-      const labelSource = label.data[0];
       const labelMultiscale = label.data.length > 1;
+      const requestedDomain = spec && spec.labelColorDomain;
+      const labelDomain =
+        Array.isArray(requestedDomain) &&
+        requestedDomain.length === 2 &&
+        Number.isFinite(Number(requestedDomain[0])) &&
+        Number.isFinite(Number(requestedDomain[1])) &&
+        Number(requestedDomain[1]) > Number(requestedDomain[0])
+          ? requestedDomain.map(Number)
+          : [0, 255];
       const LabelClass = labelMultiscale
         ? bundle.layers.MultiscaleImageLayer
         : bundle.layers.ImageLayer;
@@ -324,9 +339,12 @@
           id: LABEL_LAYER_ID,
           loader: labelMultiscale ? label.data : label.data[0],
           selections: [{}],
-          contrastLimits: [dtypeDomain(labelSource.dtype)],
-          colors: [[255, 255, 0]],
+          contrastLimits: [labelDomain],
           channelsVisible: [true],
+          colormap: "hsv",
+          extensions: [new bundle.extensions.AdditiveColormapExtension()],
+          useTransparentColor: true,
+          interpolation: "nearest",
           opacity: opacityFor(LABEL_LAYER_ID, 0.5),
         })
       );
@@ -336,56 +354,83 @@
 
   // ---- public surface -------------------------------------------------
 
-  /**
-   * Bytes one store's whole pyramid occupies in a `TileLayer` cache.
-   *
-   * Derived, not guessed. `level_tiles x per_tile_bytes x visible_layers`
-   * over every level, which is the CEILING the resident set cannot exceed:
-   * in grid mode every cell is a viewport onto the SAME store, so tiles are
-   * SHARED between cells and the resident set is their UNION, not the sum.
-   * A 4000x3000 plate at level 0 is `ceil(4000/1024) x ceil(3000/1024)` =
-   * 12 chunks, ~38 MB; the coarser levels add about a third again.
-   * `logic_validation_scripts/2026-08-26-viewer-viv-rebuild/
-   * colony_view_budget.py` re-derives it.
-   *
-   * The quantity that drives this is the number of distinct STORES in the
-   * grid, NOT the cell count: 1536 cells over one plate is ~50 MB; 1536
-   * cells over 1536 different images is 1536x that. One instance holds one
-   * store, so this is the per-instance bound.
-   *
-   * It is not only a leak guard. `Tileset2D._resizeCache` defaults to
-   * `5 x selectedTiles.length` entries, and `TileLayer.renderLayers` draws
-   * `tileset.tiles` -- the CACHE, not the selection. With N views over one
-   * layer instance the tileset re-selects for whichever viewport updated
-   * last, so cells whose tiles have been evicted paint nothing. Sizing the
-   * cache to hold the union is what makes multi-view render at all.
-   */
-  function gridTileCacheBytes(loaded, layerCount) {
-    let bytes = 0;
-    for (const source of [loaded.image, loaded.label]) {
-      if (!source) continue;
-      for (const level of source.data) {
-        const tile = level.tileSize || 1024;
-        const shape = level.shape;
-        const height = shape[shape.length - 2];
-        const width = shape[shape.length - 1];
-        const channelAxis = level.labels.indexOf("c");
-        const channels = channelAxis === -1 ? 1 : shape[channelAxis];
-        const itemsize = /(8)$/.test(level.dtype)
-          ? 1
-          : /(16)$/.test(level.dtype)
-            ? 2
-            : 4;
-        bytes +=
-          Math.ceil(height / tile) *
-          Math.ceil(width / tile) *
-          tile *
-          tile *
-          channels *
-          itemsize;
+  /** Spatial chunk keys intersecting fixed object-centred ROIs at one level. */
+  function roiChunkKeys(level, baseLevel, cells, cropSize) {
+    const keys = new Set();
+    const shape = level.shape;
+    const height = Number(shape[shape.length - 2]);
+    const width = Number(shape[shape.length - 1]);
+    const baseShape = baseLevel.shape;
+    const baseHeight = Number(baseShape[baseShape.length - 2]);
+    const baseWidth = Number(baseShape[baseShape.length - 1]);
+    const tileValue = level.tileSize || 1024;
+    const tileHeight = Array.isArray(tileValue)
+      ? Number(tileValue[tileValue.length - 2])
+      : Number(tileValue);
+    const tileWidth = Array.isArray(tileValue)
+      ? Number(tileValue[tileValue.length - 1])
+      : Number(tileValue);
+    const scaleY = baseHeight / height;
+    const scaleX = baseWidth / width;
+    const halfHeight = Number(cropSize) / (2 * scaleY);
+    const halfWidth = Number(cropSize) / (2 * scaleX);
+    if (
+      !(height > 0 && width > 0 && tileHeight > 0 && tileWidth > 0) ||
+      !(halfHeight > 0 && halfWidth > 0)
+    ) return keys;
+
+    cells.forEach((cell) => {
+      const cx = Number(cell.centroidCc) / scaleX;
+      const cy = Number(cell.centroidRr) / scaleY;
+      if (!Number.isFinite(cx) || !Number.isFinite(cy)) return;
+      const left = Math.max(0, cx - halfWidth);
+      const right = Math.min(width, cx + halfWidth);
+      const top = Math.max(0, cy - halfHeight);
+      const bottom = Math.min(height, cy + halfHeight);
+      if (!(right > left && bottom > top)) return;
+      const x0 = Math.floor(left / tileWidth);
+      const x1 = Math.floor((right - Number.EPSILON) / tileWidth);
+      const y0 = Math.floor(top / tileHeight);
+      const y1 = Math.floor((bottom - Number.EPSILON) / tileHeight);
+      for (let yy = y0; yy <= y1; yy += 1) {
+        for (let xx = x0; xx <= x1; xx += 1) {
+          keys.add(`${yy}:${xx}`);
+        }
       }
+    });
+    return keys;
+  }
+
+  /**
+   * Deduplicated mounted-ROI working set at the active pyramid level.
+   *
+   * Crop size determines the common comparison window; it does NOT by
+   * itself determine I/O. A crop crossing a chunk corner needs four chunks,
+   * while overlapping crops from the same store share entries. Count the
+   * union for this source group, separately for image and label layers.
+   */
+  function gridTileCacheEntries(loaded, cells, grid) {
+    const entries = { image: 1, label: 1 };
+    for (const [name, source] of [
+      ["image", loaded.image],
+      ["label", loaded.label],
+    ]) {
+      if (!source || !source.data.length) continue;
+      const levelIndex = Math.max(
+        0,
+        Math.min(
+          source.data.length - 1,
+          Math.round(-Number(grid.shared.zoom || 0))
+        )
+      );
+      entries[name] = Math.max(1, roiChunkKeys(
+        source.data[levelIndex],
+        source.data[0],
+        cells,
+        grid.cropSize
+      ).size);
     }
-    return bytes * Math.max(1, layerCount);
+    return entries;
   }
 
   /** Rebuild and install this instance's layers from its loaded sources. */
@@ -396,9 +441,16 @@
       // Cloned rather than passed into the builder, so a caller-supplied
       // `buildLayers` (the Plate's) gets the bound too without knowing
       // about grid mode.
-      const budget = gridTileCacheBytes(record.loaded, layers.length);
+      const budgets = gridTileCacheEntries(
+        record.loaded,
+        record.grid.cells,
+        record.grid
+      );
       layers = layers.map((layer) =>
-        layer.clone({ maxCacheByteSize: budget })
+        layer.clone({
+          maxCacheSize:
+            layer.id === LABEL_LAYER_ID ? budgets.label : budgets.image,
+        })
       );
     }
     record.viewer.setLayers(layers);
@@ -414,6 +466,20 @@
    * would make the packing depend on iteration order.
    */
   function gridLayout(cells, el, options) {
+    if (
+      cells.length &&
+      cells.every((cell) =>
+        Number.isFinite(cell.x) && Number.isFinite(cell.y) &&
+        Number.isFinite(cell.width) && Number.isFinite(cell.height)
+      )
+    ) {
+      return cells.map((cell) => ({
+        x: Number(cell.x),
+        y: Number(cell.y),
+        w: Number(cell.width),
+        h: Number(cell.height),
+      }));
+    }
     const first = cells.length ? cells[0] : null;
     const size = Math.max(
       1,
@@ -434,11 +500,183 @@
     }));
   }
 
-  /** Push this instance's single shared viewState at deck.gl. */
+  /** Clamp the shared camera to its fixed object-centred crop region. */
+  function clampGridCamera(grid) {
+    const shared = grid.shared;
+    const fitZoom = Number(grid.fitZoom);
+    const zoomOffset = Math.max(
+      0,
+      Math.min(-fitZoom, Number(shared.zoomOffset || 0))
+    );
+    shared.zoomOffset = zoomOffset;
+    shared.zoom = fitZoom + zoomOffset;
+    const scale = 2 ** shared.zoom;
+    const viewportWidth = Math.min(...grid.layout.map((box) => box.w));
+    const viewportHeight = Math.min(...grid.layout.map((box) => box.h));
+    const visibleWidth = viewportWidth / scale;
+    const visibleHeight = viewportHeight / scale;
+    const maxX = Math.max(0, (grid.cropSize - visibleWidth) / 2);
+    const maxY = Math.max(0, (grid.cropSize - visibleHeight) / 2);
+    shared.offsetX = Math.max(
+      -maxX,
+      Math.min(maxX, Number(shared.offsetX || 0))
+    );
+    shared.offsetY = Math.max(
+      -maxY,
+      Math.min(maxY, Number(shared.offsetY || 0))
+    );
+    grid.bounds = { maxX, maxY, visibleWidth, visibleHeight };
+  }
+
+  /** Push only the dynamic zoom into the one shared deck.gl viewState. */
   function applyGridViewState(record) {
     record.viewer.setViewState({
-      [GRID_VIEW_STATE_ID]: { ...record.grid.shared },
+      [GRID_VIEW_STATE_ID]: { zoom: record.grid.shared.zoom },
     });
+  }
+
+  /** Rebuild passive cell views from DOM geometry and shared camera offset. */
+  function installGridViews(bundle, record) {
+    const grid = record.grid;
+    clampGridCamera(grid);
+    grid.views = grid.cells.map(
+      (cell, index) =>
+        new bundle.deck.OrthographicView({
+          id: `${GRID_CELL_VIEW_PREFIX}${cell.id}`,
+          x: grid.layout[index].x,
+          y: grid.layout[index].y,
+          width: grid.layout[index].w,
+          height: grid.layout[index].h,
+          // Comparison tiles are passive. The microscope-stage toolbar owns
+          // one bounded camera, so hundreds of competing drag controllers do
+          // not run only to have their pan targets discarded.
+          controller: false,
+          viewState: {
+            id: GRID_VIEW_STATE_ID,
+            target: [
+              Number(cell.centroidCc) + grid.shared.offsetX,
+              Number(cell.centroidRr) + grid.shared.offsetY,
+              0,
+            ],
+          },
+        })
+    );
+    record.viewer.setViews(grid.views);
+    applyGridViewState(record);
+  }
+
+  /** Install source-specific grid layers using the mounted ROI cache union. */
+  function installGridSourceLayers(bundle, record) {
+    if (!record.grid || !record.grid.sources) return;
+    const sourceForView = new Map();
+    record.grid.cells.forEach((cell) => {
+      const viewId = `${GRID_CELL_VIEW_PREFIX}${cell.id}`;
+      sourceForView.set(viewId, viewId);
+    });
+    const sourceForLayer = new Map();
+    const layers = [];
+    let groupIndex = 0;
+    record.grid.sources.forEach((group) => {
+      const built = defaultLayers(bundle, group.loaded, group.spec, null);
+      const budgets = gridTileCacheEntries(
+        group.loaded,
+        group.cells,
+        record.grid
+      );
+      group.cells.forEach((cell, cellIndex) => {
+        const viewId = `${GRID_CELL_VIEW_PREFIX}${cell.id}`;
+        built.forEach((layer) => {
+          const clone = layer.clone({
+            id: `colony-source-${groupIndex}-cell-${cellIndex}-${layer.id}`,
+            viewportId: viewId,
+            maxCacheSize:
+              layer.id === LABEL_LAYER_ID ? budgets.label : budgets.image,
+          });
+          sourceForLayer.set(clone.id, viewId);
+          layers.push(clone);
+        });
+      });
+      groupIndex += 1;
+    });
+    const sourceKeyForLayer = (layer) => {
+      const direct = sourceForLayer.get(layer.id);
+      if (direct !== undefined) return direct;
+      // deck.gl applies layerFilter to generated sublayers too. Viv prefixes
+      // each tiled/background sublayer id with its parent composite id; an
+      // exact-only lookup rejects the pixels after accepting the descriptor.
+      for (const [parentId, key] of sourceForLayer.entries()) {
+        if (layer.id.startsWith(`${parentId}-`)) return key;
+      }
+      return null;
+    };
+    record.viewer.deck.setProps({
+      layerFilter: ({ layer, viewport }) =>
+        sourceKeyForLayer(layer) === sourceForView.get(viewport.id),
+    });
+    record.viewer.setLayers(layers);
+  }
+
+  /** Public state used by the toolbar to render limits and scale. */
+  function getGridCameraState(containerId) {
+    const record = requireInstance(containerId);
+    if (!record.grid) return null;
+    const grid = record.grid;
+    clampGridCamera(grid);
+    const epsilon = 1e-9;
+    return {
+      zoom: grid.shared.zoom,
+      fitZoom: grid.fitZoom,
+      zoomOffset: grid.shared.zoomOffset,
+      zoomPercent: Math.round(100 * (2 ** grid.shared.zoom)),
+      offsetX: grid.shared.offsetX,
+      offsetY: grid.shared.offsetY,
+      canPan: grid.bounds.maxX > epsilon || grid.bounds.maxY > epsilon,
+      canZoomOut: grid.shared.zoomOffset > epsilon,
+      canZoomIn: grid.shared.zoom < -epsilon,
+      cropSize: grid.cropSize,
+      activeLevel: grid.sources
+        ? Math.max(0, Math.round(-grid.shared.zoom))
+        : 0,
+    };
+  }
+
+  /** Apply one linked, bounded microscope-stage command to every tile. */
+  async function setGridCamera(containerId, command) {
+    const bundle = await ready();
+    const record = requireInstance(containerId);
+    if (!record.grid) return null;
+    const grid = record.grid;
+    const previousLevel = Math.max(0, Math.round(-grid.shared.zoom));
+    const action = command || {};
+    const kind = String(action.action || "");
+
+    if (kind === "fit") {
+      grid.shared.zoomOffset = 0;
+      grid.shared.offsetX = 0;
+      grid.shared.offsetY = 0;
+    } else if (kind === "center") {
+      grid.shared.offsetX = 0;
+      grid.shared.offsetY = 0;
+    } else if (kind === "oneToOne") {
+      grid.shared.zoomOffset = -grid.fitZoom;
+      grid.shared.offsetX = 0;
+      grid.shared.offsetY = 0;
+    } else if (kind === "zoom") {
+      grid.shared.zoomOffset += Number(action.delta || 0);
+    } else if (kind === "pan") {
+      clampGridCamera(grid);
+      const stepX = grid.bounds.visibleWidth * GRID_PAN_FRACTION;
+      const stepY = grid.bounds.visibleHeight * GRID_PAN_FRACTION;
+      grid.shared.offsetX += Number(action.dx || 0) * stepX;
+      grid.shared.offsetY += Number(action.dy || 0) * stepY;
+    }
+
+    installGridViews(bundle, record);
+    const nextLevel = Math.max(0, Math.round(-grid.shared.zoom));
+    if (grid.sources && nextLevel !== previousLevel) {
+      installGridSourceLayers(bundle, record);
+    }
+    return getGridCameraState(containerId);
   }
 
   /**
@@ -450,26 +688,11 @@
    *   the grid's own reading order. `centroidRr`/`centroidCc` are STORE
    *   pixel coordinates; the view's `target` is `[cc, rr, 0]` because
    *   deck.gl's target is `[x, y, z]`.
-   * @param {{zoom?: number}} [sharedViewState] The one dynamic view state.
-   *   Only `zoom` is meaningful -- every cell's `target` overrides.
-   * @param {{cellSize?: number, gap?: number, columns?: number}} [opts]
-   *   Packing. `columns` defaults to what fits the container's width.
-   *
-   * CONTROLLER DECISION, stated rather than implied: every cell view
-   * carries `controller: true`. Two reasons. (1) The vendored bundle passes
-   * `controller: true` at the DECK level, and deck.gl's backward-compat
-   * path force-assigns that onto `views[0]` alone
-   * (`core/src/lib/deck.ts:1240-1242`) -- so leaving the views without one
-   * makes exactly one cell behave differently from the other N-1, which is
-   * worse than either uniform choice. (2) Without a controller the "Shared
-   * camera" lock would have nothing to constrain: zoom would be
-   * programmatic-only and no gesture could ever move it.
-   *
-   * What the gesture is allowed to change is `zoom` and ONLY `zoom` -- the
-   * facade's `onViewStateChange` projects the controller's output down to
-   * that one number. Pan is discarded by construction, because each view's
-   * `target` override wins on every render, so a cell cannot be dragged off
-   * its colony.
+   * @param {{zoomOffset?: number, offsetX?: number, offsetY?: number}}
+   *   [sharedViewState] Optional shared camera override.
+   * @param {{cellSize?: number, gap?: number, columns?: number,
+   *   cropSize?: number}} [opts] DOM packing fallback plus the uniform
+   *   source-pixel crop side.
    */
   async function setGridViews(containerId, cells, sharedViewState, opts) {
     const bundle = await ready();
@@ -484,36 +707,58 @@
       if (record.loaded) rebuildLayers(record, bundle);
       return 0;
     }
-    const layout = gridLayout(list, document.getElementById(containerId), options);
-    const views = list.map(
-      (cell, index) =>
-        new bundle.deck.OrthographicView({
-          id: `${GRID_CELL_VIEW_PREFIX}${cell.id}`,
-          x: layout[index].x,
-          y: layout[index].y,
-          width: layout[index].w,
-          height: layout[index].h,
-          controller: true,
-          // Overrides ONLY `target`, merging over the shared zoom. A `View`
-          // carries no target of its own -- `target` and `zoom` both live
-          // in the viewState -- so building this literally as "one View per
-          // cell plus one shared viewState" without the merge renders the
-          // SAME colony N times.
-          viewState: {
-            id: GRID_VIEW_STATE_ID,
-            target: [Number(cell.centroidCc), Number(cell.centroidRr), 0],
-          },
-        })
+    const layout = gridLayout(
+      list,
+      document.getElementById(containerId),
+      options
     );
+    const previous = record.grid;
+    const previousLevel = previous
+      ? Math.max(0, Math.round(-Number(previous.shared.zoom || 0)))
+      : null;
+    const cropCandidate = Number(
+      options.cropSize || (previous && previous.cropSize) || 64
+    );
+    const cropSize = cropCandidate > 0 ? cropCandidate : 64;
+    const viewportSide = Math.min(
+      ...layout.map((box) => Math.min(box.w, box.h))
+    );
+    const fitZoom = Math.min(0, Math.log2(viewportSide / cropSize));
+    const preserve = previous && sharedViewState == null;
+    const shared = preserve
+      ? { ...previous.shared }
+      : {
+          zoomOffset: 0,
+          offsetX: 0,
+          offsetY: 0,
+          ...(sharedViewState || {}),
+        };
+    if (
+      Number.isFinite(Number(shared.zoom)) &&
+      !Number.isFinite(Number(shared.zoomOffset))
+    ) {
+      shared.zoomOffset = Number(shared.zoom) - fitZoom;
+    }
     record.grid = {
       cells: list,
-      views,
-      shared: { zoom: 0, ...(sharedViewState || {}) },
+      layout,
+      views: [],
+      shared,
+      fitZoom,
+      cropSize,
+      sources: previous && previous.sources,
     };
-    record.viewer.setViews(views);
-    applyGridViewState(record);
-    if (record.loaded) rebuildLayers(record, bundle);
-    return views.length;
+    installGridViews(bundle, record);
+    const nextLevel = Math.max(
+      0,
+      Math.round(-Number(record.grid.shared.zoom || 0))
+    );
+    if (record.grid.sources && nextLevel !== previousLevel) {
+      installGridSourceLayers(bundle, record);
+    } else if (record.loaded) {
+      rebuildLayers(record, bundle);
+    }
+    return record.grid.views.length;
   }
 
   /**
@@ -661,6 +906,7 @@
   async function setSource(containerId, spec) {
     const bundle = await ready();
     const record = requireInstance(containerId);
+    record.viewer.deck.setProps({ layerFilter: null });
     if (!spec || !spec.storeUrl || !spec.seriesPath) {
       throw new Error(
         "viv: source spec needs storeUrl and seriesPath (both resolved " +
@@ -687,6 +933,64 @@
     // re-promote stays hidden after one.
     rebuildLayers(record, bundle);
     return loaded;
+  }
+
+  /**
+   * Load and render a Colony grid whose cells may come from different stores.
+   *
+   * Sources are loaded once per unique store. Each cell receives a lightweight
+   * layer descriptor bound through Viv's `viewportId`, because one TileLayer
+   * tileset cannot be updated from several deck.gl viewports. The descriptors
+   * share the loaded sources and use the store's mounted-ROI union as their
+   * cache bound; `layerFilter` routes each descriptor to exactly one view.
+   */
+  async function setGridSources(containerId, cells, sharedViewState, opts) {
+    const bundle = await ready();
+    const record = requireInstance(containerId);
+    const epoch = (record.gridSourceEpoch || 0) + 1;
+    record.gridSourceEpoch = epoch;
+    record.loaded = null;
+    record.spec = null;
+
+    const list = Array.from(cells || []).filter(
+      (cell) => cell && cell.spec && cell.spec.storeUrl && cell.spec.seriesPath
+    );
+    const groups = new Map();
+    list.forEach((cell) => {
+      const spec = cell.spec;
+      const key = [spec.storeUrl, spec.seriesPath, spec.labelPath || ""].join(" ");
+      cell.sourceKey = key;
+      if (!groups.has(key)) groups.set(key, { spec, cells: [], loaded: null });
+      groups.get(key).cells.push(cell);
+    });
+
+    await Promise.all(Array.from(groups.values()).map(async (group) => {
+      const hooks = { onStale: () => null };
+      const image = await bundle.viv.loadOmeZarrFromStore(
+        createByteRouteStore(
+          joinUrl(group.spec.storeUrl, group.spec.seriesPath), hooks
+        )
+      );
+      let label = null;
+      if (group.spec.labelPath) {
+        label = await bundle.viv.loadOmeZarrFromStore(
+          createByteRouteStore(
+            joinUrl(group.spec.storeUrl, group.spec.labelPath), hooks
+          )
+        );
+      }
+      group.loaded = { image, label };
+    }));
+
+    if (instances.get(containerId) !== record || record.gridSourceEpoch !== epoch) {
+      return 0;
+    }
+    if (record.grid) record.grid.sources = null;
+    await setGridViews(containerId, list, sharedViewState, opts);
+
+    record.grid.sources = groups;
+    installGridSourceLayers(bundle, record);
+    return list.length;
   }
 
   /**
@@ -719,8 +1023,9 @@
    *
    * In GRID mode this updates the single `colony-shared` entry -- there is
    * exactly one, so nothing is fanned across views and nothing can drift.
-   * A `target` passed here is stored but has no visible effect: every
-   * cell's own `target` override wins the merge.
+   * The Colony toolbar should use `setGridCamera`, which owns the bounded
+   * offset model as well as zoom. This compatibility entry point retains
+   * direct zoom updates for existing callers.
    */
   function setViewState(containerId, viewState) {
     const record = instances.get(containerId);
@@ -821,6 +1126,9 @@
     setSource,
     setViewState,
     setGridViews,
+    setGridSources,
+    setGridCamera,
+    getGridCameraState,
     setLayerVisibility,
     setLayerOpacity,
     destroy,

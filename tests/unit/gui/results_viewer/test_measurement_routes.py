@@ -159,6 +159,28 @@ def test_serves_only_the_requested_column(route: RouteFixture) -> None:
     assert "ColorLab_MedoidColorHex" not in json.dumps(payload)
 
 
+def test_non_finite_values_are_valid_json_nulls(
+    route: RouteFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """NaN and infinities never leak as non-standard JSON tokens."""
+    from phenotypic.gui.results_viewer import _measurement_routes as routes
+
+    monkeypatch.setattr(
+        routes,
+        "read_embedded_measurement_column",
+        lambda *_args: {1: float("nan"), 2: float("inf"), 3: float("-inf")},
+    )
+    response = route.get(column="Shape_Area")
+    assert response.status_code == 200
+    assert b"NaN" not in response.data
+    assert b"Infinity" not in response.data
+    assert json.loads(response.data)["values"] == {
+        "1": None,
+        "2": None,
+        "3": None,
+    }
+
+
 # ---------------------------------------------------------------------------
 # The allow-list
 # ---------------------------------------------------------------------------

@@ -34,20 +34,20 @@ from tests._output_layout import write_master
 COLUMN = "Shape_Area"
 
 #: The four colonies the grid renders, and the areas they carry.
-IN_VIEW: dict[tuple[str, int], float] = {
-    ("img-001", 1): 100.0,
-    ("img-001", 2): 200.0,
-    ("img-002", 1): 300.0,
-    ("img-002", 2): 400.0,
+IN_VIEW: dict[tuple[str, str, int], float] = {
+    ("plate1", "img-001", 1): 100.0,
+    ("plate1", "img-001", 2): 200.0,
+    ("plate1", "img-002", 1): 300.0,
+    ("plate1", "img-002", 2): 400.0,
 }
 
 #: Colonies the store measured that this grid does NOT show -- filtered out,
 #: or belonging to another image. Their values dwarf the visible ones, so a
 #: scale built over the whole mapping instead of the visible subset squashes
 #: every rendered card into the ramp's bottom 4%.
-OUT_OF_VIEW: dict[tuple[str, int], float] = {
-    ("img-009", 1): 0.0,
-    ("img-009", 2): 10_000.0,
+OUT_OF_VIEW: dict[tuple[str, str, int], float] = {
+    ("plate1", "img-009", 1): 0.0,
+    ("plate1", "img-009", 2): 10_000.0,
 }
 
 
@@ -102,7 +102,7 @@ def _measurement_labels(component: Component) -> list[tuple[str, str]]:
 def _render(
     tmp_path: Path,
     *,
-    values: dict[tuple[str, int], float] | None,
+    values: dict[tuple[str, str, int], float] | None,
     column: str | None = COLUMN,
 ):
     root = _make_output_root(tmp_path)
@@ -148,7 +148,7 @@ def test_each_card_wears_its_own_value(tmp_path: Path) -> None:
     component, order = _render(tmp_path, values=IN_VIEW)
     labels = _measurement_labels(component)
     assert [text for text, _tint in labels] == [
-        str(int(IN_VIEW[key])) for key in order
+        str(int(IN_VIEW[("plate1", *key)])) for key in order
     ]
 
 
@@ -173,7 +173,7 @@ def test_a_colony_with_no_row_renders_untinted_with_no_text(
     partial = {
         key: value
         for key, value in IN_VIEW.items()
-        if key != ("img-002", 2)
+        if key != ("plate1", "img-002", 2)
     }
     component, order = _render(tmp_path, values=partial)
     assert len(order) == len(IN_VIEW)
