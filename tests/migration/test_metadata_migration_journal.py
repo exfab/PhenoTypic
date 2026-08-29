@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import struct
 from contextlib import contextmanager
@@ -194,6 +195,7 @@ def _write_historical_v3_journal(
     plan["state"] = "prepared"
     plan["journal_schema_version"] = 1
     migration._write_journal_plan(
+        bundle.output_root,
         plan_path, log_path, plan, commit_guard=None
     )
     if terminal:
@@ -597,6 +599,89 @@ def test_process_interruption_resumes_before_fresh_semantic_preflight(
 
     assert result.status == "applied"
     assert result.receipt_path is not None and result.receipt_path.is_file()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="symlink safety contract")
+@pytest.mark.parametrize(
+    "journal_child",
+    ["plan.json", "transitions.log", "receipt.json", ".transitions.log.writer.lock"],
+)
+def test_interrupted_journal_rejects_child_symlinks_without_touching_victim(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+    journal_child: str,
+) -> None:
+    """Journal children cannot redirect authority I/O outside the bundle."""
+    report, (plan_path, _, _) = _interrupt_after_first_target_replace(
+        migratable_bundle, monkeypatch
+    )
+    child = plan_path.parent / journal_child
+    if child.exists():
+        child.unlink()
+    assert migratable_bundle.output_root is not None
+    victim = migratable_bundle.output_root.parent / (
+        f"external-{journal_child.replace('.', '-')}.bin"
+    )
+    victim.write_bytes(b"")
+    child.symlink_to(victim)
+    _forbid_semantic_reparse(monkeypatch)
+
+    result = migrate_metadata_bundle(
+        migratable_bundle,
+        expected_plan_fingerprint=report.plan_fingerprint,
+        kinds=NON_IMAGE_KINDS,
+    )
+
+    assert result.status == "failed"
+    assert "symlink" in " ".join(result.conflicts).lower()
+    assert victim.read_bytes() == b""
+
+
+@pytest.mark.skipif(os.name != "posix", reason="symlink safety contract")
+@pytest.mark.parametrize(
+    "mutable_child",
+    ["transitions.log", ".transitions.log.writer.lock"],
+)
+def test_interrupted_journal_revalidates_mutable_child_at_guarded_seam(
+    migratable_bundle: BundleLayout,
+    monkeypatch: pytest.MonkeyPatch,
+    mutable_child: str,
+) -> None:
+    """A guarded open or append refuses a journal child swapped to a link."""
+    report, (plan_path, _, _) = _interrupt_after_first_target_replace(
+        migratable_bundle, monkeypatch
+    )
+    child = plan_path.parent / mutable_child
+    assert child.is_file()
+    retained = plan_path.parent / f"{mutable_child}.retained"
+    assert migratable_bundle.output_root is not None
+    victim = migratable_bundle.output_root.parent / (
+        f"external-raced-{mutable_child.replace('.', '-')}.bin"
+    )
+    victim.write_bytes(b"")
+    swapped = False
+
+    @contextmanager
+    def swap_child_on_guard_entry() -> Iterator[None]:
+        nonlocal swapped
+        if not swapped:
+            swapped = True
+            child.rename(retained)
+            child.symlink_to(victim)
+        yield
+
+    _forbid_semantic_reparse(monkeypatch)
+    result = migrate_metadata_bundle(
+        migratable_bundle,
+        expected_plan_fingerprint=report.plan_fingerprint,
+        kinds=NON_IMAGE_KINDS,
+        commit_guard=lambda: swap_child_on_guard_entry(),
+    )
+
+    assert swapped is True
+    assert result.status == "failed"
+    assert "symlink" in " ".join(result.conflicts).lower()
+    assert victim.read_bytes() == b""
 
 
 def test_torn_final_frame_replays_only_complete_transitions(

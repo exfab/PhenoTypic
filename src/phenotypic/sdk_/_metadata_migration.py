@@ -56,6 +56,7 @@ import shutil
 import struct
 import tempfile
 from collections.abc import Iterable, Mapping
+from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, BinaryIO, Literal, TypeAlias, cast
@@ -1233,6 +1234,35 @@ def _journal_paths(root: Path, plan_fingerprint: str) -> tuple[Path, Path, Path]
     )
 
 
+def _journal_writer_lock_path(log_path: Path) -> Path:
+    """Return the canonical exclusive-writer lock beside one journal log."""
+    return log_path.with_name(f".{log_path.name}.writer.lock")
+
+
+def _require_safe_journal_children(
+    root: Path,
+    plan_path: Path,
+    log_path: Path,
+    receipt_path: Path,
+) -> tuple[Path, Path, Path, Path]:
+    """Validate every journal child before any authority I/O."""
+    safe_plan = _require_safe_migration_path(
+        plan_path, role="Metadata migration journal plan", root=root
+    )
+    safe_log = _require_safe_migration_path(
+        log_path, role="Metadata migration transition log", root=root
+    )
+    safe_receipt = _require_safe_migration_path(
+        receipt_path, role="Metadata migration terminal receipt", root=root
+    )
+    safe_writer_lock = _require_safe_migration_path(
+        _journal_writer_lock_path(safe_log),
+        role="Metadata migration journal writer lock",
+        root=root,
+    )
+    return safe_plan, safe_log, safe_receipt, safe_writer_lock
+
+
 def _canonical_json_payload(payload: Mapping[str, Any]) -> bytes:
     return json.dumps(
         dict(payload), sort_keys=True, separators=(",", ":")
@@ -1241,8 +1271,13 @@ def _canonical_json_payload(payload: Mapping[str, Any]) -> bytes:
 
 def _decode_journal_frames(
     log_path: Path,
+    *,
+    root: Path,
 ) -> tuple[list[dict[str, Any]], int, bool]:
     """Decode complete frames, accepting only a torn final frame."""
+    log_path = _require_safe_migration_path(
+        log_path, role="Metadata migration transition log", root=root
+    )
     data = log_path.read_bytes() if log_path.is_file() else b""
     frames: list[dict[str, Any]] = []
     offset = 0
@@ -1289,6 +1324,16 @@ def _append_journal_transition(
     if transition.get("sequence") != writer.next_sequence:
         raise ValueError("Metadata migration journal sequence is not monotonic")
     with publication_commit(commit_guard):
+        _require_safe_migration_path(
+            writer.log_path,
+            role="Metadata migration transition log",
+            root=writer.root,
+        )
+        _require_safe_migration_path(
+            writer.writer_lock_path,
+            role="Metadata migration journal writer lock",
+            root=writer.root,
+        )
         writer.handle.seek(writer.end_offset)
         writer.handle.write(frame)
         writer.handle.flush()
@@ -1304,6 +1349,9 @@ class _JournalWriter:
     handle: BinaryIO
     next_sequence: int
     end_offset: int
+    log_path: Path
+    writer_lock_path: Path
+    root: Path
 
 
 def _new_journal_plan(
@@ -1324,6 +1372,7 @@ def _new_journal_plan(
 
 
 def _write_journal_plan(
+    root: Path,
     plan_path: Path,
     log_path: Path,
     plan: Mapping[str, Any],
@@ -1331,7 +1380,19 @@ def _write_journal_plan(
     commit_guard: CommitGuard | None,
 ) -> None:
     """Publish one immutable plan and initialize its append-only log."""
+    plan_path = _require_safe_migration_path(
+        plan_path, role="Metadata migration journal plan", root=root
+    )
+    log_path = _require_safe_migration_path(
+        log_path, role="Metadata migration transition log", root=root
+    )
     with publication_commit(commit_guard):
+        plan_path = _require_safe_migration_path(
+            plan_path, role="Metadata migration journal plan", root=root
+        )
+        log_path = _require_safe_migration_path(
+            log_path, role="Metadata migration transition log", root=root
+        )
         _ensure_directory_durable(plan_path.parent)
         if plan_path.is_file():
             existing = json.loads(plan_path.read_text(encoding="utf-8"))
@@ -1350,7 +1411,7 @@ def _write_journal_plan(
 
 
 def _replay_journal(
-    plan: Mapping[str, Any], log_path: Path
+    plan: Mapping[str, Any], log_path: Path, *, root: Path
 ) -> tuple[dict[str, Any], list[dict[str, Any]], int, bool]:
     """Rebuild mutable receipt state from an immutable plan and frames."""
     receipt = json.loads(json.dumps(plan))
@@ -1360,7 +1421,7 @@ def _replay_journal(
         or not isinstance(raw_targets, list)
     ):
         raise ValueError("Unsupported metadata migration journal plan")
-    frames, valid_size, torn = _decode_journal_frames(log_path)
+    frames, valid_size, torn = _decode_journal_frames(log_path, root=root)
     last_target = -1
     runtime_fields = (
         "post_fingerprint",
@@ -3222,7 +3283,17 @@ def _publish_journal_terminal_receipt(
     commit_guard: CommitGuard | None,
 ) -> dict[str, Any]:
     """Validate retained replay state and atomically compact one receipt."""
+    receipt_path = _require_safe_migration_path(
+        receipt_path,
+        role="Metadata migration terminal receipt",
+        root=root,
+    )
     with publication_commit(commit_guard):
+        receipt_path = _require_safe_migration_path(
+            receipt_path,
+            role="Metadata migration terminal receipt",
+            root=root,
+        )
         _validate_replayed_authority(
             layout, root, receipt, kinds=kinds
         )
@@ -3249,13 +3320,41 @@ def _apply_metadata_journal(
     commit_guard: CommitGuard | None,
 ) -> MetadataMigrationResult:
     """Replay and advance one prepared bundle journal to terminal state."""
+    plan_path, log_path, receipt_path, writer_lock = (
+        _require_safe_journal_children(
+            root, plan_path, log_path, receipt_path
+        )
+    )
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     if not isinstance(plan, dict):
         raise ValueError("Metadata migration plan must be a JSON object")
     try:
-        writer_lock = log_path.with_name(f".{log_path.name}.writer.lock")
-        with exclusive_path_lock(writer_lock, timeout=0.0):
+        with ExitStack() as writer_lock_stack:
+            with publication_commit(commit_guard):
+                log_path = _require_safe_migration_path(
+                    log_path,
+                    role="Metadata migration transition log",
+                    root=root,
+                )
+                writer_lock = _require_safe_migration_path(
+                    writer_lock,
+                    role="Metadata migration journal writer lock",
+                    root=root,
+                )
+                writer_lock_stack.enter_context(
+                    exclusive_path_lock(writer_lock, timeout=0.0)
+                )
+            receipt_path = _require_safe_migration_path(
+                receipt_path,
+                role="Metadata migration terminal receipt",
+                root=root,
+            )
             if receipt_path.is_file():
+                receipt_path = _require_safe_migration_path(
+                    receipt_path,
+                    role="Metadata migration terminal receipt",
+                    root=root,
+                )
                 receipt = json.loads(
                     receipt_path.read_text(encoding="utf-8")
                 )
@@ -3271,7 +3370,7 @@ def _apply_metadata_journal(
                     receipt_path, receipt, compatible=compatible
                 )
             receipt, frames, valid_size, torn = _replay_journal(
-                plan, log_path
+                plan, log_path, root=root
             )
             _validate_replayed_authority(
                 layout, root, receipt, kinds=kinds
@@ -3289,11 +3388,28 @@ def _apply_metadata_journal(
 
             migrated: list[str] = []
             skipped: list[str] = []
-            with log_path.open("r+b") as log_handle:
+            with ExitStack() as log_handle_stack:
+                with publication_commit(commit_guard):
+                    log_path = _require_safe_migration_path(
+                        log_path,
+                        role="Metadata migration transition log",
+                        root=root,
+                    )
+                    writer_lock = _require_safe_migration_path(
+                        writer_lock,
+                        role="Metadata migration journal writer lock",
+                        root=root,
+                    )
+                    log_handle = log_handle_stack.enter_context(
+                        log_path.open("r+b")
+                    )
                 writer = _JournalWriter(
                     handle=log_handle,
                     next_sequence=len(frames),
                     end_offset=valid_size,
+                    log_path=log_path,
+                    writer_lock_path=writer_lock,
+                    root=root,
                 )
                 if torn:
                     with publication_commit(commit_guard):
@@ -3548,6 +3664,9 @@ def _migrate_superseding_v4_authority(
     plan_path, log_path, receipt_path = _journal_paths(
         root, report.plan_fingerprint
     )
+    plan_path, log_path, receipt_path, _ = _require_safe_journal_children(
+        root, plan_path, log_path, receipt_path
+    )
     expected_plan = _new_journal_plan(
         report,
         root=root,
@@ -3564,6 +3683,7 @@ def _migrate_superseding_v4_authority(
                 layout, root, report, kinds=kinds
             )
             _write_journal_plan(
+                root,
                 plan_path,
                 log_path,
                 expected_plan,
@@ -3627,11 +3747,19 @@ def reconcile_metadata_migration_bundle(
         if len(candidates) == 2:
             by_schema: dict[int, tuple[str, Path, dict[str, Any]]] = {}
             for candidate_kind, candidate_path in candidates:
-                payload_path = (
-                    candidate_path / "plan.json"
-                    if candidate_kind == "journal"
-                    else candidate_path
-                )
+                if candidate_kind == "journal":
+                    payload_path, _, _, _ = _require_safe_journal_children(
+                        root,
+                        candidate_path / "plan.json",
+                        candidate_path / "transitions.log",
+                        candidate_path / "receipt.json",
+                    )
+                else:
+                    payload_path = _require_safe_migration_path(
+                        candidate_path,
+                        role="Metadata migration receipt",
+                        root=root,
+                    )
                 payload = json.loads(payload_path.read_text(encoding="utf-8"))
                 if not isinstance(payload, dict):
                     raise ValueError(
@@ -3681,6 +3809,11 @@ def reconcile_metadata_migration_bundle(
             plan_path = authority_path / "plan.json"
             log_path = authority_path / "transitions.log"
             receipt_path = authority_path / "receipt.json"
+            plan_path, log_path, receipt_path, _ = (
+                _require_safe_journal_children(
+                    root, plan_path, log_path, receipt_path
+                )
+            )
             journal_entries = {entry.name for entry in authority_path.iterdir()}
             if not plan_path.is_file():
                 raise ValueError(
@@ -3715,6 +3848,7 @@ def reconcile_metadata_migration_bundle(
                         "its transition log"
                     )
                 _write_journal_plan(
+                    root,
                     plan_path,
                     log_path,
                     plan,
@@ -3919,12 +4053,9 @@ def migrate_preflighted_metadata_bundle(
     plan_path, log_path, receipt_path = _journal_paths(
         root, report.plan_fingerprint
     )
-    for role, path in (
-        ("Migration journal plan", plan_path),
-        ("Migration transition log", log_path),
-        ("Migration terminal receipt", receipt_path),
-    ):
-        _require_safe_migration_path(path, role=role, root=root)
+    plan_path, log_path, receipt_path, _ = _require_safe_journal_children(
+        root, plan_path, log_path, receipt_path
+    )
     expected_plan = _new_journal_plan(report, root=root, kinds=kinds)
     if plan_path.is_file():
         existing_plan = json.loads(plan_path.read_text(encoding="utf-8"))
@@ -3940,6 +4071,7 @@ def migrate_preflighted_metadata_bundle(
                 layout, root, report, kinds=kinds
             )
             _write_journal_plan(
+                root,
                 plan_path,
                 log_path,
                 expected_plan,
