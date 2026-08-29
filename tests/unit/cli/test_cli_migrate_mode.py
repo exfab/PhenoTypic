@@ -845,6 +845,7 @@ def test_slurm_wait_dry_run_rejects_before_scientific_or_control_writes(
     assert "--wait cannot be combined with --dry-run" in result.output
     assert _tree_snapshot(legacy_run) == before_science
     assert _tree_snapshot(cache) == before_control
+    assert not cache.exists()
 
 
 def test_public_rerun_after_waited_terminal_failure_uses_new_attempt(
