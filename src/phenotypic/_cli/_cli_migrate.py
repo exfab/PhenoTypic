@@ -1630,9 +1630,8 @@ def _read_migration_terminal_status(
         raw["schema_version"] != 1
         or raw["generation"] != generation
         or raw["status"] not in {"succeeded", "failed"}
-        or not isinstance(raw["report"], dict)
-        or not isinstance(raw["completed_at"], str)
-        or not raw["completed_at"]
+        or not _valid_migration_terminal_report(raw["report"])
+        or not _valid_terminal_timestamp(raw["completed_at"])
     ):
         return None
     if raw["status"] == "succeeded":
@@ -1641,11 +1640,69 @@ def _read_migration_terminal_status(
     elif (
         not isinstance(raw["failure_category"], str)
         or not raw["failure_category"]
+        or raw["failure_category"] not in _MIGRATION_FAILURE_CATEGORIES
         or not isinstance(raw["reason"], str)
         or not raw["reason"]
     ):
         return None
     return raw
+
+
+def _valid_migration_terminal_report(value: object) -> bool:
+    """Return whether a terminal report has the exact migration summary shape."""
+    if not isinstance(value, Mapping):
+        return False
+    count_fields = {
+        "converted",
+        "skipped",
+        "headers_migrated",
+        "tables_migrated",
+        "tables_skipped",
+        "overlays_created",
+        "overlays_skipped",
+    }
+    failure_fields = {
+        "failed",
+        "header_failures",
+        "table_failures",
+        "overlay_failures",
+        "publication_failures",
+    }
+    if set(value) != count_fields | failure_fields:
+        return False
+    if any(
+        not isinstance(value[field], int)
+        or isinstance(value[field], bool)
+        or value[field] < 0
+        for field in count_fields
+    ):
+        return False
+    for field in failure_fields:
+        failures = value[field]
+        if not isinstance(failures, list):
+            return False
+        for failure in failures:
+            if (
+                not isinstance(failure, Mapping)
+                or set(failure) != {"path", "reason"}
+                or not isinstance(failure["path"], str)
+                or not failure["path"]
+                or not isinstance(failure["reason"], str)
+                or not failure["reason"]
+            ):
+                return False
+    return True
+
+
+def _valid_terminal_timestamp(value: object) -> bool:
+    """Return whether a terminal status timestamp is an aware ISO-8601 instant."""
+    if not isinstance(value, str) or not value:
+        return False
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return parsed.tzinfo is not None and parsed.utcoffset() is not None
 
 
 def _wait_for_migration_terminal_status(
@@ -1660,7 +1717,9 @@ def _wait_for_migration_terminal_status(
     status_path = migration_terminal_status_path(control_root, generation)
     deadline = time.monotonic() + timeout if timeout is not None else None
     while True:
-        status = _read_migration_terminal_status(status_path, generation=generation)
+        status = _read_migration_terminal_status(
+            status_path, generation=generation
+        )
         lifecycle = load_slurm_lifecycle(output_dir)
         if lifecycle is None:
             raise click.ClickException(
@@ -1673,6 +1732,13 @@ def _wait_for_migration_terminal_status(
                 f"authority was observed: {generation}"
             )
         if lifecycle.get("active") is False:
+            # The finalizer publishes terminal authority before closing the
+            # lifecycle. Re-read it *after* observing closure so a publication
+            # between the first probe and this lifecycle read cannot be
+            # mistaken for a missing status.
+            status = _read_migration_terminal_status(
+                status_path, generation=generation
+            )
             if status is not None:
                 return status
             raise click.ClickException(
@@ -1702,6 +1768,47 @@ def _echo_migration_slurm_submission(
     click.echo(f"  Control root: {plan.control_root}")
     click.echo(f"  Manifest: {plan.manifest_path}")
     click.echo(f"  Finalizer script: {plan.finalizer_script}")
+
+
+def _echo_migration_terminal_summary(
+    terminal: Mapping[str, Any], *, terminal_path: Path
+) -> None:
+    """Print the validated terminal counts and failure details for a waiter."""
+    report = terminal["report"]
+    assert isinstance(report, Mapping)
+    click.echo("SLURM migration complete")
+    click.echo(f"  Terminal status: {terminal_path}")
+    click.echo(
+        "  Pass 1 (metadata headers, non-image targets): "
+        f"migrated {report['headers_migrated']} target(s)"
+    )
+    click.echo(
+        "  Pass 2 (per-image .h5 -> .ome.zarr): "
+        f"converted {report['converted']}, skipped {report['skipped']}"
+    )
+    click.echo(
+        "  Pass 3 (external Parquet -> embedded table): "
+        f"migrated {report['tables_migrated']}, skipped {report['tables_skipped']}"
+    )
+    click.echo(
+        "  Pass 4 (store -> overlay PNG): "
+        f"rendered {report['overlays_created']}, preserved {report['overlays_skipped']}"
+    )
+    for field, label in (
+        ("header_failures", "Pass 1"),
+        ("failed", "Pass 2"),
+        ("table_failures", "Pass 3"),
+        ("overlay_failures", "Pass 4"),
+        ("publication_failures", "Publication"),
+    ):
+        failures = report[field]
+        assert isinstance(failures, list)
+        for failure in failures:
+            assert isinstance(failure, Mapping)
+            click.echo(
+                f"  {label} FAILED {failure['path']}: {failure['reason']}",
+                err=True,
+            )
 
 
 def handle_migrate_mode(
@@ -1754,14 +1861,19 @@ def handle_migrate_mode(
         return 0 if report.ok else 1
 
     generation = new_slurm_generation()
-    plan = generate_migration_slurm_plan(
-        output_dir,
-        slurm_args=dict(slurm_args),
-        overlay_alpha=overlay_alpha,
-        delete_sources=delete_sources,
-        dry_run=dry_run,
-        generation=generation,
-    )
+    try:
+        plan = generate_migration_slurm_plan(
+            output_dir,
+            slurm_args=dict(slurm_args),
+            overlay_alpha=overlay_alpha,
+            delete_sources=delete_sources,
+            dry_run=dry_run,
+            generation=generation,
+        )
+    except (OSError, ValueError) as exc:
+        raise click.ClickException(
+            f"Could not plan SLURM migration attempt: {exc}"
+        ) from exc
     if dry_run:
         _echo_migration_slurm_submission(plan, job_ids=None, dry_run=True)
         return 0
@@ -1774,13 +1886,17 @@ def handle_migrate_mode(
             plan, slurm_args=dict(slurm_args), console=Console()
         )
         job_ids = _validated_submission_job_ids(submission)
-    except Exception as exc:
+    except (OSError, RuntimeError, ValueError) as exc:
         mark_generation_failed(output_dir, generation, str(exc))
-        if isinstance(exc, click.ClickException):
-            raise
         raise click.ClickException(
             f"Could not submit SLURM migration attempt: {exc}"
         ) from exc
+    except click.ClickException:
+        mark_generation_failed(output_dir, generation, "invalid submission response")
+        raise
+    except Exception as exc:
+        mark_generation_failed(output_dir, generation, str(exc))
+        raise
     _echo_migration_slurm_submission(plan, job_ids=job_ids, dry_run=False)
     if not wait:
         return 0
@@ -1795,8 +1911,10 @@ def handle_migrate_mode(
             "SLURM migration failed after lifecycle closure "
             f"({terminal['failure_category']}): {terminal['reason']}"
         )
-    click.echo("SLURM migration complete")
-    click.echo(f"  Terminal status: {migration_terminal_status_path(plan.control_root, generation)}")
+    _echo_migration_terminal_summary(
+        terminal,
+        terminal_path=migration_terminal_status_path(plan.control_root, generation),
+    )
     return 0
 
 

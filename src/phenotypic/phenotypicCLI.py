@@ -1030,9 +1030,10 @@ def _print_process_only_dry_run_plan(
     "--delete-sources",
     is_flag=True,
     help=(
-        "With --mode migrate: delete each legacy .h5 after verifying that its "
-        "store carries the same pixels, metadata and work id. The only "
-        "irreversible step; sources are retained without it."
+        "With --mode migrate: delete each legacy HDF (.h5) and external "
+        "measurement Parquet source after value-level re-read verifies the "
+        "published store. The only irreversible step; sources are retained "
+        "without it."
     ),
 )
 @click.option(
@@ -1042,7 +1043,7 @@ def _print_process_only_dry_run_plan(
     help=(
         "fsync each image store before promoting it. Unset auto-detects: on "
         "under SLURM, off locally. The resolved mode is logged at run start. "
-        "Not accepted with --mode recompile."
+        "Not accepted with --mode recompile or migrate."
     ),
 )
 @click.option(

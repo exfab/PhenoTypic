@@ -49,6 +49,18 @@ def test_the_mode_help_states_both_passes() -> None:
     assert "two passes" in help_text or "two-pass" in help_text, help_text
 
 
+def test_migration_help_names_all_reclaimed_sources_and_durability_rejection() -> None:
+    """Destructive and inapplicable option help must match migration behavior."""
+    from phenotypic.phenotypicCLI import phenotypic_cli as command
+
+    delete_sources = next(param for param in command.params if param.name == "delete_sources")
+    durable_writes = next(param for param in command.params if param.name == "durable_writes")
+
+    assert "hdf" in (delete_sources.help or "").lower()
+    assert "parquet" in (delete_sources.help or "").lower()
+    assert "migrate" in (durable_writes.help or "").lower()
+
+
 def test_migrate_rejects_pipeline_and_input(tmp_path: Path, legacy_run) -> None:
     """Same validation as recompile: the tree is named by --output alone.
 
@@ -456,42 +468,33 @@ def test_waited_slurm_failure_is_reported_as_a_click_error_after_closure(
 ) -> None:
     """A durable failed terminal status must not be hidden as an unexpected error."""
     from phenotypic._cli import _cli_migrate as migrate
-    from phenotypic._cli._cli_migrate_slurm import MigrationSlurmPlan
+    from phenotypic.sdk_._hdf_to_zarr import MigrationReport
 
-    control = tmp_path / "control"
-    control.mkdir()
-    manifest = control / "migration_manifest.json"
-    manifest.write_text("{}", encoding="utf-8")
-    script = control / "metadata.sh"
-    script.write_text("#!/bin/bash\n", encoding="utf-8")
-    finalizer = control / "finalize.sh"
-    finalizer.write_text("#!/bin/bash\n", encoding="utf-8")
-    plan = MigrationSlurmPlan(
-        generation="attempt-1",
-        control_root=control,
-        manifest_path=manifest,
-        flat_scripts=(script,),
-        finalizer_script=finalizer,
-        task_count=1,
-    )
+    plan = _migration_plan(tmp_path, "attempt-1")
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
     monkeypatch.setattr(
         migrate, "generate_migration_slurm_plan", lambda *_a, **_k: plan
     )
-    monkeypatch.setattr(
-        migrate,
-        "submit_migration_slurm_plan",
-        lambda *_a, **_k: SimpleNamespace(job_ids=["101"]),
-    )
-    monkeypatch.setattr(
-        migrate,
-        "_wait_for_migration_terminal_status",
-        lambda *_a, **_k: {
-            "status": "failed",
-            "failure_category": "image",
-            "reason": "conversion failed",
-        },
-    )
+
+    def _submit(*_args, **_kwargs):
+        report = MigrationReport(
+            failed=((Path("/source.h5"), "conversion failed"),)
+        )
+        migrate.publish_migration_terminal_status(
+            legacy_run,
+            generation="attempt-1",
+            succeeded=False,
+            failure_category="image",
+            reason="conversion failed",
+            report=report,
+            control_root=plan.control_root,
+        )
+        assert migrate.mark_generation_failed(
+            legacy_run, "attempt-1", "conversion failed"
+        ) is True
+        return SimpleNamespace(job_ids=["101"])
+
+    monkeypatch.setattr(migrate, "submit_migration_slurm_plan", _submit)
 
     result = CliRunner().invoke(
         phenotypic_cli,
@@ -529,12 +532,419 @@ def test_wait_rejects_missing_lifecycle_authority_without_polling(
         )
 
 
-def _tree_snapshot(root: Path) -> dict[str, str]:
-    """Return a byte-sensitive snapshot independent of migration helpers."""
+def test_wait_rereads_terminal_status_after_observing_lifecycle_closure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A finalizer publish between the two probes cannot become false absence."""
+    from phenotypic._cli import _cli_migrate as migrate
+
+    terminal = _terminal_status_payload(generation="attempt-1")
+    reads = iter((None, terminal))
+    monkeypatch.setattr(migrate, "_read_migration_terminal_status", lambda *_a, **_k: next(reads))
+    monkeypatch.setattr(
+        migrate,
+        "load_slurm_lifecycle",
+        lambda *_a: {"generation": "attempt-1", "active": False},
+    )
+
+    assert migrate._wait_for_migration_terminal_status(
+        tmp_path / "output",
+        control_root=tmp_path / "control",
+        generation="attempt-1",
+        poll_interval=0.0,
+    ) == terminal
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("report", {"converted": "one"}),
+        ("failure_category", "unknown"),
+        ("completed_at", "not-a-timestamp"),
+    ],
+)
+def test_terminal_authority_rejects_malformed_typed_fields(
+    tmp_path: Path, field: str, value: object
+) -> None:
+    """Wait authority must reject malformed reports, categories, and timestamps."""
+    import json
+
+    from phenotypic._cli._cli_migrate import _read_migration_terminal_status
+
+    status = _terminal_status_payload(generation="attempt-1", failed=True)
+    status[field] = value
+    path = tmp_path / "terminal_status.json"
+    path.write_text(json.dumps(status), encoding="utf-8")
+
+    assert _read_migration_terminal_status(path, generation="attempt-1") is None
+
+
+def test_waited_success_prints_typed_migration_summary(
+    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A real waiter reports final pass counts only after lifecycle closure."""
+    from phenotypic._cli import _cli_migrate as migrate
+
+    plan = _migration_plan(tmp_path, "attempt-1")
+    terminal = _terminal_status_payload(generation="attempt-1")
+    terminal_report = terminal["report"]
+    assert isinstance(terminal_report, dict)
+    terminal_report["failed"] = []
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
+    monkeypatch.setattr(migrate, "generate_migration_slurm_plan", lambda *_a, **_k: plan)
+
+    def _submit(*_args, **_kwargs):
+        migrate.publish_migration_terminal_status(
+            legacy_run,
+            generation="attempt-1",
+            succeeded=True,
+            failure_category=None,
+            reason=None,
+            report=_migration_report_from_payload(terminal_report),
+            control_root=plan.control_root,
+        )
+        migrate.deactivate_generation(legacy_run, "attempt-1")
+        return SimpleNamespace(job_ids=["101"])
+
+    monkeypatch.setattr(migrate, "submit_migration_slurm_plan", _submit)
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--slurm",
+            "slurm_partition=short",
+            "--wait",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Pass 1" in result.output
+    assert "converted 2, skipped 1" in result.output
+
+
+def test_no_wait_reports_job_ids_without_scientific_publication(
+    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Submission output names durable IDs while scientific files stay untouched."""
+    from phenotypic._cli import _cli_migrate as migrate
+
+    plan = _migration_plan(tmp_path, "attempt-1")
+    before = _scientific_tree_snapshot(legacy_run)
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
+    monkeypatch.setattr(migrate, "generate_migration_slurm_plan", lambda *_a, **_k: plan)
+    monkeypatch.setattr(
+        migrate,
+        "submit_migration_slurm_plan",
+        lambda *_a, **_k: SimpleNamespace(job_ids=["101", "102"]),
+    )
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--slurm",
+            "slurm_partition=short",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Initial job IDs: 101, 102" in result.output
+    assert _scientific_tree_snapshot(legacy_run) == before
+
+
+@pytest.mark.parametrize("job_ids", [None, [], ["not-a-slurm-id"]])
+def test_public_submission_rejects_missing_or_invalid_job_ids(
+    legacy_run,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    job_ids: object,
+) -> None:
+    """No-wait success is permitted only after durable numeric scheduler IDs."""
+    from phenotypic._cli import _cli_migrate as migrate
+
+    plan = _migration_plan(tmp_path, "attempt-1")
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
+    monkeypatch.setattr(migrate, "generate_migration_slurm_plan", lambda *_a, **_k: plan)
+    monkeypatch.setattr(
+        migrate,
+        "submit_migration_slurm_plan",
+        lambda *_a, **_k: SimpleNamespace(job_ids=job_ids),
+    )
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--slurm",
+            "slurm_partition=short",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "invalid job IDs" in result.output or "no job IDs" in result.output
+
+
+def test_local_migration_dry_run_preserves_every_directory_and_file_byte(
+    legacy_run,
+) -> None:
+    """The local preview cannot add, remove, or rewrite even empty directories."""
+    before = _tree_snapshot(legacy_run)
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run), "--dry-run"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert _tree_snapshot(legacy_run) == before
+
+
+def test_mocked_slurm_dry_run_preserves_every_directory_and_file_byte(
+    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Public dry SLURM dispatch cannot alter science when planner is mocked."""
+    from phenotypic._cli import _cli_migrate as migrate
+
+    plan = _migration_plan(tmp_path, "attempt-1")
+    before = _tree_snapshot(legacy_run)
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
+    monkeypatch.setattr(migrate, "generate_migration_slurm_plan", lambda *_a, **_k: plan)
+    monkeypatch.setattr(
+        migrate,
+        "submit_migration_slurm_plan",
+        lambda *_a, **_k: pytest.fail("dry-run submitted work"),
+    )
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(legacy_run),
+            "--slurm",
+            "slurm_partition=short",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert _tree_snapshot(legacy_run) == before
+
+
+def test_wait_rejects_closed_lifecycle_without_terminal_status(
+    tmp_path: Path,
+) -> None:
+    """Closure without terminal authority is reported immediately, not polled."""
+    import click
+
+    from phenotypic._cli._cli_migrate import _wait_for_migration_terminal_status
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        deactivate_generation,
+        initialize_slurm_lifecycle,
+    )
+
+    initialize_slurm_lifecycle(tmp_path, generation="attempt-1", mode="migrate")
+    assert deactivate_generation(tmp_path, "attempt-1") is True
+
+    with pytest.raises(click.ClickException, match="closed without a valid terminal"):
+        _wait_for_migration_terminal_status(
+            tmp_path,
+            control_root=tmp_path / "control",
+            generation="attempt-1",
+            poll_interval=0.0,
+        )
+
+
+def test_public_rerun_after_failed_submission_uses_a_fresh_attempt(
+    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed attempt cannot strand the public CLI on its old generation."""
+    from phenotypic._cli import _cli_migrate as migrate
+
+    generations = iter(("attempt-1", "attempt-2"))
+    submitted = iter((SimpleNamespace(job_ids=[]), SimpleNamespace(job_ids=["102"])))
+    planned: list[str] = []
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: next(generations))
+    monkeypatch.setattr(
+        migrate,
+        "generate_migration_slurm_plan",
+        lambda _output, **kwargs: (
+            planned.append(kwargs["generation"])
+            or _migration_plan(tmp_path, kwargs["generation"])
+        ),
+    )
+    monkeypatch.setattr(migrate, "submit_migration_slurm_plan", lambda *_a, **_k: next(submitted))
+
+    first = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run), "--slurm", "slurm_partition=short"],
+    )
+    second = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run), "--slurm", "slurm_partition=short"],
+    )
+
+    assert first.exit_code == 1
+    assert second.exit_code == 0, second.output
+    assert planned == ["attempt-1", "attempt-2"]
+    assert "attempt-2" in second.output
+
+
+@pytest.mark.parametrize("error", [ValueError("bad plan"), AssertionError("bug")])
+def test_planner_only_normalizes_expected_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    """Configuration errors become Click errors; programming defects remain visible."""
+    import click
+
+    from phenotypic._cli import _cli_migrate as migrate
+
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
+    monkeypatch.setattr(
+        migrate,
+        "generate_migration_slurm_plan",
+        lambda *_a, **_k: (_ for _ in ()).throw(error),
+    )
+
+    if isinstance(error, ValueError):
+        with pytest.raises(click.ClickException, match="Could not plan"):
+            migrate.handle_migrate_mode(
+                tmp_path, slurm_args={"slurm_partition": "short"}
+            )
+    else:
+        with pytest.raises(AssertionError, match="bug"):
+            migrate.handle_migrate_mode(
+                tmp_path, slurm_args={"slurm_partition": "short"}
+            )
+
+
+@pytest.mark.parametrize("error", [RuntimeError("sbatch unavailable"), AssertionError("bug")])
+def test_submitter_only_normalizes_expected_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    """Expected scheduler failure closes an attempt; an assertion does not hide."""
+    import click
+
+    from phenotypic._cli import _cli_migrate as migrate
+
+    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
+    monkeypatch.setattr(
+        migrate,
+        "generate_migration_slurm_plan",
+        lambda *_a, **_k: _migration_plan(tmp_path, "attempt-1"),
+    )
+    monkeypatch.setattr(
+        migrate,
+        "submit_migration_slurm_plan",
+        lambda *_a, **_k: (_ for _ in ()).throw(error),
+    )
+
+    if isinstance(error, RuntimeError):
+        with pytest.raises(click.ClickException, match="Could not submit"):
+            migrate.handle_migrate_mode(
+                tmp_path, slurm_args={"slurm_partition": "short"}
+            )
+    else:
+        with pytest.raises(AssertionError, match="bug"):
+            migrate.handle_migrate_mode(
+                tmp_path, slurm_args={"slurm_partition": "short"}
+            )
+
+
+def _migration_plan(tmp_path: Path, generation: str):
+    """Build the smallest durable control-plan fixture for public CLI tests."""
+    from phenotypic._cli._cli_migrate_slurm import MigrationSlurmPlan
+
+    control = tmp_path / generation
+    control.mkdir(exist_ok=True)
+    manifest = control / "migration_manifest.json"
+    manifest.write_text("{}", encoding="utf-8")
+    script = control / "metadata.sh"
+    script.write_text("#!/bin/bash\n", encoding="utf-8")
+    finalizer = control / "finalize.sh"
+    finalizer.write_text("#!/bin/bash\n", encoding="utf-8")
+    return MigrationSlurmPlan(
+        generation=generation,
+        control_root=control,
+        manifest_path=manifest,
+        flat_scripts=(script,),
+        finalizer_script=finalizer,
+        task_count=1,
+    )
+
+
+def _terminal_status_payload(*, generation: str, failed: bool = False) -> dict[str, object]:
+    """Return a literal terminal document matching the worker's public schema."""
     return {
-        path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        "schema_version": 1,
+        "generation": generation,
+        "status": "failed" if failed else "succeeded",
+        "failure_category": "image" if failed else None,
+        "reason": "conversion failed" if failed else None,
+        "report": {
+            "converted": 2,
+            "skipped": 1,
+            "headers_migrated": 3,
+            "tables_migrated": 4,
+            "tables_skipped": 5,
+            "overlays_created": 6,
+            "overlays_skipped": 7,
+            "failed": [{"path": "/source.h5", "reason": "conversion failed"}],
+            "header_failures": [],
+            "table_failures": [],
+            "overlay_failures": [],
+            "publication_failures": [],
+        },
+        "completed_at": "2026-08-29T12:34:56.789+00:00",
+    }
+
+
+def _migration_report_from_payload(payload: object):
+    """Use a hand-authored payload to construct the worker's report type."""
+    from phenotypic.sdk_._hdf_to_zarr import MigrationReport
+
+    assert isinstance(payload, dict)
+    return MigrationReport(
+        converted=payload["converted"],
+        skipped=payload["skipped"],
+        headers_migrated=payload["headers_migrated"],
+        tables_migrated=payload["tables_migrated"],
+        tables_skipped=payload["tables_skipped"],
+        overlays_created=payload["overlays_created"],
+        overlays_skipped=payload["overlays_skipped"],
+        failed=tuple((Path(item["path"]), item["reason"]) for item in payload["failed"]),
+    )
+
+
+def _scientific_tree_snapshot(root: Path) -> dict[str, str]:
+    """Snapshot scientific directory topology plus file bytes, excluding control state."""
+    return {
+        path.relative_to(root).as_posix() + ("/" if path.is_dir() else ""): (
+            "directory" if path.is_dir() else hashlib.sha256(path.read_bytes()).hexdigest()
+        )
         for path in sorted(root.rglob("*"))
-        if path.is_file()
+        if ".phenotypic" not in path.relative_to(root).parts
+    }
+
+
+def _tree_snapshot(root: Path) -> dict[str, str]:
+    """Return a directory- and byte-sensitive snapshot without migration helpers."""
+    return {
+        path.relative_to(root).as_posix() + ("/" if path.is_dir() else ""): (
+            "directory" if path.is_dir() else hashlib.sha256(path.read_bytes()).hexdigest()
+        )
+        for path in sorted(root.rglob("*"))
+        if path.is_dir() or path.is_file()
     }
 
 
