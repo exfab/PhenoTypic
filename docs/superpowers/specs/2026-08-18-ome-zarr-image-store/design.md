@@ -1139,12 +1139,19 @@ Recorded rather than deleted, so the reasoning survives.
 | OQ2 | Cost of dropping Python 3.10 | **None.** Floor moves to 3.11. |
 | OQ3 | Inode count acceptable? | **Yes.** The cost is linear at 8 files/level; auto is 40 files/image at 4000×3000. ~~with a knob~~ — the `--pyramid-levels` knob is descoped (decision #8, superseded 2026-08-19). |
 | OQ4 | Path layout | **Confirmed** as `results/<dataset>/zarr/<stem>.ome.zarr/`. |
-| OQ5 | Migration ergonomics | **`--mode migrate`**, local-only with `--njobs`, absorbing the metadata-schema migration; a legacy-only output root fails with a pointer rather than auto-migrating. |
+| OQ5 | Migration ergonomics | **`--mode migrate`**, originally executed through the local `--njobs` runner, absorbing the metadata-schema migration; a legacy-only output root fails with a pointer rather than auto-migrating. |
 | OQ6 | Move the `<3.13` ceiling? | **No.** Keep `mahotas`; the cap stays and its cause is now documented (§6). |
 | OQ7 | Windows support level | **Supported for staged runs.** Six consequences specified in §3.8. |
 | OQ8 | `fsync` before promote | **On under SLURM, off locally**, with explicit logging and a `--durable-writes` override (§3.7). |
 | OQ9 | `image-label.colors` at scale | **Acceptable.** ~60 KB for a 1536-colony plate; always emitted (§2.3). |
 | OQ10 | Shard buffer vs `--njobs` | **Not a constraint.** Per-worker processing peaks at ~24 GB; the shard buffer is ~0.5% of that. `--njobs` sizing is unchanged by this design (§1.4). |
+
+> **Supersession (2026-08-29).** OQ5 records the original local-runner
+> decision. Migration now also accepts `--slurm`: it creates a fenced,
+> dispatcher-fed metadata → image → seal → optional reclaim → finalizer chain,
+> whose workers consume one immutable manifest. `--wait` accepts only the
+> finalizer's typed terminal authority. The local `--njobs` path remains the
+> non-SLURM execution mode; it is no longer the only migration mode.
 
 ## 10. Open questions
 

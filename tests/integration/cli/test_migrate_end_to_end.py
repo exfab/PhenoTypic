@@ -11,13 +11,16 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import shlex
 import shutil
+from types import SimpleNamespace
 
 from click.testing import CliRunner
 
 from phenotypic._cli._cli_completion import (
     current_aggregate_is_current,
     current_success_counts,
+    valid_aggregate_snapshot,
     valid_run_completion,
     valid_image_success,
 )
@@ -29,9 +32,12 @@ from phenotypic._cli._cli_migrate_manifest import (
 from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.sdk_ import (
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     dataset_measurements_dir,
     dataset_overlays_dir,
     datasets_needing_migration,
+    image_completion_marker_path,
+    load_image_from_store,
     phenotypic_cache_dir,
     zarr_store_path,
 )
@@ -42,6 +48,147 @@ from tests.unit.sdk_._migration_fixtures import LegacyRun
 
 def _digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _tree_digest(root: Path) -> str:
+    """Return a path-and-content digest for one published artifact tree."""
+    digest = hashlib.sha256()
+    for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file()):
+        digest.update(path.relative_to(root).as_posix().encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def _script_indices(script: Path) -> list[int]:
+    """Read the concrete work indexes emitted into one array script."""
+    text = script.read_text(encoding="utf-8")
+    entries = text.split("TASK_INDICES=(\n", 1)[1].split("\n)", 1)[0]
+    return [int(entry.strip()) for entry in entries.splitlines()]
+
+
+def _run_generated_migration_worker_commands(plan: object) -> SimpleNamespace:
+    """Synchronously execute every generated migration worker command in order.
+
+    This is intentionally a dispatcher fake, not a replacement implementation:
+    its command and indexes come from the emitted scripts, then the real worker
+    Click entry point consumes their immutable config.  That makes the test
+    cover the actual local-vs-SLURM handoff without requiring ``sbatch``.
+    """
+    from phenotypic._cli._cli_migrate_slurm import MigrationSlurmPlan
+    from phenotypic._cli._cli_migrate_worker import migration_worker_cli
+
+    assert isinstance(plan, MigrationSlurmPlan)
+    executed: list[tuple[str, int | None]] = []
+    for script in (*plan.flat_scripts, plan.finalizer_script):
+        command_line = next(
+            line.strip()
+            for line in script.read_text(encoding="utf-8").splitlines()
+            if "-m phenotypic._cli._cli_migrate_worker" in line
+        )
+        parts = shlex.split(command_line)
+        config_index = parts.index("--config")
+        config = parts[config_index + 1]
+        command = parts[config_index + 2]
+        indexed = "--index" in parts
+        for index in _script_indices(script):
+            args = ["--config", config, command]
+            if indexed:
+                args.extend(["--index", str(index)])
+            result = CliRunner().invoke(migration_worker_cli, args)
+            assert result.exit_code == 0, (
+                f"{script.name} index {index} failed:\n{result.output}"
+            )
+            executed.append((command, index if indexed else None))
+    assert [command for command, _ in executed] == [
+        "metadata",
+        *("image" for _ in range(plan.task_count)),
+        "seal",
+        "finalize",
+    ]
+    return SimpleNamespace(job_ids=["1"])
+
+
+def _published_migration_snapshot(tree: Path, stems: tuple[str, ...]) -> dict[str, object]:
+    """Capture the migrated scientific/publication state, excluding scheduler control."""
+    image_markers: dict[str, object] = {}
+    for stem in stems:
+        marker = json.loads(
+            image_completion_marker_path(tree, "ds", stem).read_text(encoding="utf-8")
+        )
+        assert valid_image_success(
+            tree,
+            dataset="ds",
+            image_stem=stem,
+            work_id=str(marker["work_id"]),
+        )
+        image_markers[stem] = {
+            key: marker[key]
+            for key in ("version", "dataset", "image_stem", "work_id", "artifacts")
+        }
+    stores = {stem: zarr_store_path(tree, "ds", stem) for stem in stems}
+    aggregate = valid_aggregate_snapshot(tree)
+    completion = valid_run_completion(tree)
+    assert aggregate is not None
+    assert completion is not None
+    return {
+        "store_conformance": {
+            stem: valid_staged_store(store) for stem, store in stores.items()
+        },
+        "store_content": {
+            stem: _tree_digest(store) for stem, store in stores.items()
+        },
+        "embedded_tables": {
+            stem: _digest(store / MEASUREMENT_TABLE_RELATIVE_PATH)
+            for stem, store in stores.items()
+        },
+        "overlays": {
+            stem: _digest(dataset_overlays_dir(tree, "ds") / f"{stem}.png")
+            for stem in stems
+        },
+        "image_markers": image_markers,
+        "aggregate_marker": {
+            "current": current_aggregate_is_current(tree),
+            **{
+                key: aggregate[key]
+                for key in (
+                    "version",
+                    "inventory_digest",
+                    "finalization_input_digest",
+                    "scientific_config_digest",
+                    "source_set_digest",
+                    "source_image_count",
+                )
+            },
+        },
+        "run_completion_marker": {
+            key: completion[key]
+            for key in (
+                "version",
+                "mode",
+                "status",
+                "finalizer_succeeded",
+                "inventory_digest",
+                "finalization_input_digest",
+                "scientific_config_digest",
+                "processing_generation",
+            )
+        },
+        "success_counts": current_success_counts(tree),
+    }
+
+
+def _summary_counters(output: str) -> tuple[str, ...]:
+    """Keep only the four durable pass-counter lines from a CLI summary."""
+    return tuple(
+        line.strip()
+        for line in output.splitlines()
+        if line.lstrip().startswith((
+            "Pass 1 (metadata headers, non-image targets):",
+            "Pass 2 (per-image .h5 -> .ome.zarr):",
+            "Pass 3 (external Parquet -> embedded table):",
+            "Pass 4 (store -> overlay PNG):",
+        ))
+    )
 
 
 def test_a_full_migrate_leaves_the_run_valid_and_idle(
@@ -93,6 +240,88 @@ def test_a_full_migrate_leaves_the_run_valid_and_idle(
     assert not migration_reclaim_seal_path(
         phenotypic_cache_dir(tree), generation
     ).exists()
+
+
+def test_local_and_synchronous_slurm_migration_publish_equivalent_runs(
+    finished_legacy_run: LegacyRun,
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """The generated worker chain reaches the same science as local migration.
+
+    A synchronous dispatcher fake runs each emitted worker command in the
+    generated metadata -> image -> seal -> finalizer order.  The comparison
+    deliberately covers publication authority and user-facing artifacts, not
+    the generation-scoped scheduler control files which must differ between
+    local and SLURM execution.
+    """
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli._cli_directory_scanner import scan_store_outputs
+
+    local_tree = tmp_path / "local"
+    slurm_tree = tmp_path / "slurm"
+    shutil.copytree(finished_legacy_run.path, local_tree)
+    shutil.copytree(finished_legacy_run.path, slurm_tree)
+
+    local = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(local_tree)]
+    )
+    assert local.exit_code == 0, local.output
+
+    monkeypatch.setattr(
+        migrate,
+        "submit_migration_slurm_plan",
+        lambda plan, **_kwargs: _run_generated_migration_worker_commands(plan),
+    )
+    slurm = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(slurm_tree),
+            "--slurm",
+            "slurm_partition=short",
+            "--wait",
+        ],
+    )
+    assert slurm.exit_code == 0, slurm.output
+
+    assert _summary_counters(local.output) == _summary_counters(slurm.output)
+    local_snapshot = _published_migration_snapshot(local_tree, finished_legacy_run.stems)
+    slurm_snapshot = _published_migration_snapshot(slurm_tree, finished_legacy_run.stems)
+    assert local_snapshot == slurm_snapshot
+
+    # This is the post-migration CLI consumption seam.  Browse has its own
+    # atomic listing and URL-resolution contract on the process branch.
+    scanned = scan_store_outputs(slurm_tree)
+    assert [dataset.name for dataset in scanned] == ["ds"]
+    assert [store.name for store in scanned[0].images] == [
+        f"{stem}.ome.zarr" for stem in finished_legacy_run.stems
+    ]
+    for store in scanned[0].images:
+        assert load_image_from_store(store).shape == (128, 128, 3)
+
+    for tree, rerun_args in (
+        (local_tree, ["--mode", "migrate", "--output", str(local_tree)]),
+        (
+            slurm_tree,
+            [
+                "--mode",
+                "migrate",
+                "--output",
+                str(slurm_tree),
+                "--slurm",
+                "slurm_partition=short",
+                "--wait",
+            ],
+        ),
+    ):
+        before = _published_migration_snapshot(tree, finished_legacy_run.stems)
+        rerun = CliRunner().invoke(phenotypic_cli, rerun_args)
+        assert rerun.exit_code == 0, rerun.output
+        assert "converted 0" in rerun.output
+        assert _published_migration_snapshot(tree, finished_legacy_run.stems) == before
 
 
 def test_fixture_shaped_run_completes_32_measured_and_four_zero_object_images(

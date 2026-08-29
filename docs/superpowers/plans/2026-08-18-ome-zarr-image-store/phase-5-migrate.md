@@ -1034,8 +1034,14 @@ format conversion rewrites the whole results tree."
   untouched, so no existing output directory breaks. Recompile simply no longer mutates one
   as a side effect.
 - The SLURM fan-out existed only because copying large HDFs is slow. Conversion through the
-  promote is not, and migration is local-only (Task 5.3), so the fan-out has no remaining
-  justification. Delete it; do not port it.
+  promote is not, and the original Task 5.3 decision was local-runner-only, so the fan-out
+  has no remaining justification. Delete it; do not port it.
+- **Supersession (2026-08-29):** this deletion concerned recompile's old
+  metadata-specific fan-out, not migration dispatch in general. `--mode migrate --slurm`
+  now uses the shared dispatcher as one fenced flat chain: metadata, image chunks, image
+  seal, optional reclaim chunks and seal, then the terminal finalizer. Generated workers
+  consume the immutable migration manifest; `--wait` reads only terminal authority; local
+  migration remains available without `--slurm`.
 - Record the supersession in the flat-metadata spec in Task 6.4.
 
 - [ ] **Step 1: Write the failing test**
@@ -1114,7 +1120,8 @@ headers but keeps READING them, so decision #3 (permanent stored-data
 compatibility) is untouched and no existing output directory breaks --
 recompile simply no longer mutates one as a side effect. The ~950-line
 SLURM fan-out existed only because copying large HDFs is slow; conversion
-through the promote is not, and migration is local-only, so it is deleted
+through the promote is not, and migration was originally executed through the
+local runner, so it is deleted
 rather than ported."
 ```
 
