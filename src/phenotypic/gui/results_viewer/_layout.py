@@ -35,14 +35,11 @@ from dash import Input, Output, dcc, html
 from dash.development.base_component import Component
 
 from phenotypic.gui._config import (
-    CFG_QC_RECIPE,
     COLONY_TILE_SIZE_DEFAULT,
     MOUNT_HOME,
     SSH_TUNNEL_HINT,
     TILE_DIM_DEFAULT,
 )
-from phenotypic.gui._schema_cache import MeasurementSchema
-from phenotypic.sdk_._qc_recipe import QcRecipe
 from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui._design import (
     COLOR_BG,
@@ -50,7 +47,6 @@ from phenotypic.gui._design import (
     COLOR_GOLD,
     COLOR_MUTED,
     COLOR_NAVY,
-    COLOR_RULE,
     COLOR_SURFACE,
     FONT_SIZE_CAPTION,
     FONT_SIZE_LABEL,
@@ -62,18 +58,12 @@ from phenotypic.gui.results_viewer import (
     _ids as ids,
     colony_view,
 )
-from phenotypic.gui.results_viewer._error_tab import build_error_tab_body
-from phenotypic.gui.results_viewer._heatmap_tab import build_heatmap_tab_body
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._mutation_guard import (
     output_mutations_disabled,
     output_read_only_diagnostic,
 )
-from phenotypic.gui.results_viewer._qc_tab import build_qc_tab_body
 from phenotypic.gui.results_viewer.colony_view import _layout as _colony_layout  # noqa: F401
-from phenotypic.gui.results_viewer.timeline_view import (
-    _layout as _timeline_layout,
-)
 
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
@@ -337,17 +327,20 @@ def _build_cards_column() -> Component:
     return html.Div(
         [cards_container, add_card_button],
         className="results-viewer-cards-col",
-        style={
-            "padding": "1rem",
-            "overflowY": "auto",
-            "maxHeight": "calc(100vh - 8rem)",
-        },
+        style={"padding": "1rem"},
     )
 
 
 def _build_startup_banner(output_root: OutputRoot) -> Component:
-    """Build the dismissable startup banner (SSH-forward + cache nuke hint)."""
-    cache_dir = output_root.cache_dir
+    """Build the dismissable startup banner (SSH-forward hint).
+
+    The "nuke the DZI cache" half is gone with the cache. The Plate surface
+    reads store chunks in the browser over the byte route, which holds no
+    cache and resolves fresh per request, so there is nothing on disk to
+    delete when a store is republished -- and telling a user to ``rm -rf`` a
+    directory that no longer explains their symptom is worse than silence.
+    """
+    del output_root  # Kept for the shared builder signature.
     return dbc.Alert(
         [
             html.Span(
@@ -357,17 +350,7 @@ def _build_startup_banner(output_root: OutputRoot) -> Component:
             ),
             html.Span(
                 f"Forward this port over SSH with `{SSH_TUNNEL_HINT}` and "
-                "open the URL in a local browser. Stale tiles? Nuke the "
-                "DZI cache with: ",
-            ),
-            html.Code(
-                f"rm -rf {cache_dir}",
-                style={
-                    "background": COLOR_RULE,
-                    "color": _NAVY,
-                    "padding": "1px 5px",
-                    "borderRadius": "var(--radius-sm)",
-                },
+                "open the URL in a local browser.",
             ),
         ],
         id="results-viewer-startup-banner",
@@ -400,9 +383,9 @@ def _build_stores(filtered_state: "CurationLabels") -> Component:
 
     In addition to the four session-storage stores backing the filter spec,
     image pair list, card list, and lock-views toggle, this also mounts two
-    hidden trigger stores (:data:`ids.OSD_MOUNT_TRIGGER_ID` and
+    hidden trigger stores (:data:`ids.VIV_MOUNT_TRIGGER_ID` and
     :data:`ids.LOCK_VIEWS_EFFECT_ID`) used by the clientside callbacks
-    to bridge Dash state changes into the OpenSeadragon JS lifecycle, plus
+    to bridge Dash state changes into the Viv stage lifecycle, plus
     four memory-storage stores backing the colony-view curation and
     multi-select state (removed keys, current selection, selection delta,
     and visual grid order).
@@ -443,7 +426,7 @@ def _build_stores(filtered_state: "CurationLabels") -> Component:
             # Clientside-callback effect targets — the data itself is a
             # millisecond timestamp used purely as a change-trigger; the
             # Python side never reads it.
-            dcc.Store(id=ids.OSD_MOUNT_TRIGGER_ID, data=0),
+            dcc.Store(id=ids.VIV_MOUNT_TRIGGER_ID, data=0),
             dcc.Store(id=ids.LOCK_VIEWS_EFFECT_ID, data=0),
             dcc.Store(id=ids.COLONY_SELECTION_EFFECT_ID, data=0),
             # Colony-view curation + selection stores. Memory-storage so
@@ -474,6 +457,11 @@ def _build_stores(filtered_state: "CurationLabels") -> Component:
             dcc.Store(
                 id=ids.STORE_COLONY_GRID_ORDER,
                 data=[],
+                storage_type="memory",
+            ),
+            dcc.Store(
+                id=ids.STORE_COLONY_GRID_FOCUS,
+                data=0,
                 storage_type="memory",
             ),
             # Category-vocabulary revision ticker — bumped whenever a custom
@@ -515,38 +503,6 @@ def _build_stores(filtered_state: "CurationLabels") -> Component:
             ),
         ]
     )
-
-
-def _resolve_measurement_schema(output_root: OutputRoot) -> MeasurementSchema:
-    """Return the measurement-schema cache for the active output root.
-
-    Created at layout build time and intentionally NOT stashed on
-    ``app.server.config`` here - the schema is read by callbacks that
-    pull it from the config directly (see
-    :func:`._heatmap_tab._callbacks._refresh_heatmap_controls`); the
-    Dash app factory in :mod:`._app` is responsible for the stash so
-    construction stays a layout-time concern.
-    """
-    return MeasurementSchema.from_layout(output_root.layout)
-
-
-def _resolve_qc_recipe(output_root: OutputRoot) -> QcRecipe:
-    """Return the QC recipe for the active output root.
-
-    Prefer the app-config-stashed instance (set by :func:`._app.create_app`)
-    so layout and callbacks share the same in-memory object. Falls back
-    to a fresh :meth:`QcRecipe.load` for tests or standalone callers that
-    invoke :func:`build_app_layout` without the app factory.
-    """
-    try:
-        from flask import current_app
-
-        recipe = current_app.config.get(CFG_QC_RECIPE)
-        if isinstance(recipe, QcRecipe):
-            return recipe
-    except RuntimeError:
-        pass  # No application context (test harness, etc.).
-    return QcRecipe.from_layout(output_root.layout)
 
 
 # ---------------------------------------------------------------------------
@@ -600,23 +556,6 @@ def build_app_layout(
         output_root,
         mutations_disabled=mutations_disabled,
     )
-
-    # Heatmap tab uses the measurement-schema cache; lazily attach it to
-    # ``app.server.config`` here if ``create_app`` did not. The
-    # analysis sub-app already stashes one when mounted; reusing it
-    # keeps the cache hits warm across tabs.
-    schema = _resolve_measurement_schema(output_root)
-    heatmap_tab_body = build_heatmap_tab_body(output_root, schema)
-    error_tab_body = build_error_tab_body(
-        output_root,
-        schema,
-        mutations_disabled=mutations_disabled,
-    )
-    qc_tab_body = build_qc_tab_body(
-        _resolve_qc_recipe(output_root),
-        mutations_disabled=mutations_disabled,
-    )
-    timeline_tab_body = _timeline_layout.layout(output_root)
     stores = _build_stores(filtered_state)
 
     tabs = dbc.Tabs(
@@ -630,26 +569,6 @@ def build_app_layout(
                 colony_tab_body,
                 label="Colony",
                 tab_id=ids.TAB_COLONY_ID,
-            ),
-            dbc.Tab(
-                qc_tab_body,
-                label="QC",
-                tab_id=ids.TAB_QC_ID,
-            ),
-            dbc.Tab(
-                heatmap_tab_body,
-                label="Heatmap",
-                tab_id=ids.TAB_HEATMAP_ID,
-            ),
-            dbc.Tab(
-                error_tab_body,
-                label="Error",
-                tab_id=ids.TAB_ERROR_ID,
-            ),
-            dbc.Tab(
-                timeline_tab_body,
-                label="Timeline",
-                tab_id=ids.TAB_TIMELINE_ID,
             ),
         ],
         id=ids.TABS_ID,

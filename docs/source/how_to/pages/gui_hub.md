@@ -12,9 +12,10 @@ single server:
 | Path | Tool |
 |------|------|
 | `/` | Home: sandbox tree, capability badges, tab navigation |
-| `/browse/` | Browse source images as deep-zoom single, timeline, or compare views |
+| `/browse/` | Browse source images as a deep-zoom single view |
 | `/builder/` | Pipeline builder (node-graph editor) |
-| `/results/` | Results viewer (OpenSeadragon overlays, measurement tables) |
+| `/results/` | Results viewer (deep-zoom OME-Zarr plate + colony views, measurement tables) |
+| `/analysis/` | Analysis runner (standalone analyzers over a loaded output) |
 | `/run/` | Run console (submit local or SLURM jobs, tail logs, view dashboard) |
 
 All pages share a top-bar tab strip and a sidebar showing the sandbox
@@ -80,8 +81,14 @@ export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix vips)/lib${DYLD_FALLBACK_LIBR
 ```
 
 PhenoTypic automatically uses its Pillow tiler when libvips cannot be loaded.
-This preserves Browse and Results functionality, but preparation of large DZI
-pyramids can be slower and use more memory.
+This preserves Browse functionality, but preparation of large DZI pyramids can
+be slower and use more memory.
+
+libvips is **not** involved in the Results viewer. Its Plate and Colony
+surfaces read the per-image OME-Zarr store the CLI already wrote and do the
+tiling in the browser, so they build no pyramid, need no tiler, and keep no
+tile cache to go stale. The same is true of the pipeline builder's node
+preview. DZI is Browse's path, and the builder's point picker's.
 
 ### Browse preparation and cache
 
@@ -160,9 +167,8 @@ directory.
 
 ### Browse (`/browse/`)
 
-Browse source-image directories in a deep-zoom single view, acquisition-time
-timeline, or synchronized compare view. Image access remains constrained to the
-hub sandbox root.
+Browse source-image directories in a deep-zoom single view. Image access
+remains constrained to the hub sandbox root.
 
 ### Builder (`/builder/`)
 

@@ -18,7 +18,7 @@
     margin-right: var(--sp-3, 0.75rem);
 }
 
-/* ---------- Cards container & OSD canvases ---------- */
+/* ---------- Cards container & the full-canvas Plate stage ---------- */
 /* Vertical stack of viewer cards; padding leaves room for sticky footers. */
 .cards-container {
     display: flex;
@@ -27,18 +27,219 @@
     padding-bottom: 4rem;
 }
 
-/* Each card hosts a single OpenSeadragon viewer. */
-.osd-canvas {
-    width: 100%;
-    height: 600px;
-    background: var(--color-image-stage-dark);  /* deep neutral so tiling artefacts blend in */
-    border-radius: var(--radius);
-    position: relative;
+/* One card is one image stage. There is no card chrome around it any more:
+   the header row it used to carry cost ~50px of the frame and pushed the
+   controls away from the pixels they act on, so every control now floats
+   over the canvas instead. */
+.plate-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
-/* Hook for an optional spinner overlay (cards may toggle a sibling class). */
-.osd-canvas::before {
-    content: "";
+/* The stage. `--color-image-stage-dark` is the one permitted dark surface
+   in this light-theme system (DESIGN.md "09 -- Image Display"); everything
+   floating above it derives its own colours from the same token so a
+   palette swap carries through. */
+.plate-stage {
+    position: relative;
+    width: 100%;
+    height: min(72vh, 720px);
+    min-height: 22rem;
+    border-radius: var(--radius);
+    background: var(--color-image-stage-dark);
+    overflow: hidden;
+}
+
+/* The Viv mount point. Nothing but deck.gl's canvas lives inside it. */
+.plate-stage__canvas {
+    position: absolute;
+    inset: 0;
+}
+
+/* Floating control clusters, anchored to the stage's four corners. */
+.plate-float {
+    position: absolute;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.plate-float--top-left {
+    top: 14px;
+    left: 14px;
+    right: 300px;
+    max-width: 34rem;
+}
+
+.plate-float--top-right {
+    top: 14px;
+    right: 14px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+}
+
+.plate-float--bottom-left {
+    left: 14px;
+    bottom: 14px;
+}
+
+.plate-float--bottom-right {
+    right: 14px;
+    bottom: 14px;
+}
+
+/* Scrim shared by every on-stage readout and chip. Same construction as
+   `browse.css`'s loading overlay: a colour-mix of the stage token rather
+   than a fresh rgba() literal, so the scrim tracks the stage it sits on. */
+.plate-readout,
+.plate-float__chip .badge,
+.plate-picker-scrim {
+    background: color-mix(in srgb, var(--color-image-stage-dark) 72%, transparent);
+    color: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    padding: 5px 10px;
+    border-radius: var(--radius);
+    backdrop-filter: blur(4px);
+}
+
+.plate-float__chip {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.plate-float__chip .badge {
+    font-weight: 400;
+}
+
+/* The image stepper + picker, floated top-left. */
+.plate-float--top-left .card-picker-nav-btn {
+    background: color-mix(in srgb, var(--color-image-stage-dark) 72%, transparent);
+    color: var(--color-surface);
+    border-color: color-mix(in srgb, var(--color-surface) 24%, transparent);
+    backdrop-filter: blur(4px);
+}
+
+.plate-float--top-left .Select-control,
+.plate-float--top-left .Select-menu-outer {
+    font-size: var(--font-size-body-sm);
+}
+
+/* ---------- Layers panel ---------- */
+/* A light surface deliberately: it is UI chrome, not part of the image,
+   and the mockup floats it as a card over the stage. */
+.plate-layers {
+    width: 250px;
+    background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(6px);
+    overflow: hidden;
+}
+
+.plate-layers__title {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-rule);
+    font-family: var(--font-body);
+    font-size: var(--font-size-body-sm);
+    font-weight: 600;
+    color: var(--color-navy);
+}
+
+.plate-layers__rows:empty::after {
+    content: "no image";
+    display: block;
+    padding: 8px 12px;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-micro);
+    color: var(--color-muted);
+}
+
+.plate-layer {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-rule);
+}
+
+.plate-layer:last-child {
+    border-bottom: none;
+}
+
+.plate-layer__eye {
+    border: none;
+    background: transparent;
+    padding: 0;
+    line-height: 1;
+    font-size: var(--font-size-body-sm);
+    color: var(--color-navy);
+    cursor: pointer;
+}
+
+.plate-layer__eye--off {
+    color: var(--color-muted);
+}
+
+.plate-layer__body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.plate-layer__head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.plate-layer__swatch {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.plate-layer__name {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-body-sm);
+    color: var(--color-navy);
+}
+
+/* "series" / "label image" / "measurement pending". The last one is not
+   decoration: an all-zero objmap between Stage 1 and Stage 3 is a CORRECT
+   store, and without the tag it is indistinguishable from a finished image
+   whose detector found nothing. */
+.plate-layer__kind {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-micro);
+    color: var(--color-muted);
+    margin-left: auto;
+}
+
+.plate-layer__opacity {
+    padding: 0;
+}
+
+/* ---------- Under-stage strip ---------- */
+.plate-underbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.plate-source-note {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
 }
 
 /* ---------- Filter sidebar ---------- */
@@ -120,12 +321,206 @@
 }
 
 /* ---------- Colony view ---------- */
+.colony-toolbar-stack {
+    background: var(--color-surface);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-blue) 14%, transparent);
+}
+
+.colony-data-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
+}
+
+.colony-camera-toolbar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    min-height: 3.25rem;
+    padding: 0.45rem 1rem;
+    color: var(--color-navy);
+    background:
+        linear-gradient(90deg,
+            color-mix(in srgb, var(--color-blue) 8%, var(--color-surface)),
+            var(--color-surface) 42%);
+    border-top: 1px solid color-mix(in srgb, var(--color-blue) 10%, transparent);
+    box-shadow: var(--shadow-sm);
+    font-family: var(--font-body);
+}
+
+.colony-camera-toolbar:focus-visible {
+    outline: 2px solid var(--color-blue);
+    outline-offset: -2px;
+}
+
+.colony-camera-title {
+    margin-right: 0.15rem;
+    color: var(--color-navy);
+    font-size: var(--font-size-label);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.colony-camera-pad {
+    display: grid;
+    grid-template-areas:
+        ". up ."
+        "left center right"
+        ". down .";
+    grid-template-columns: repeat(3, 1.7rem);
+    grid-template-rows: repeat(3, 1.35rem);
+    place-items: stretch;
+    padding: 0.15rem;
+    background: color-mix(in srgb, var(--color-navy) 6%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-navy) 14%, transparent);
+    border-radius: var(--radius);
+}
+
+.colony-camera-button--up { grid-area: up; }
+.colony-camera-button--left { grid-area: left; }
+.colony-camera-button--center { grid-area: center; }
+.colony-camera-button--right { grid-area: right; }
+.colony-camera-button--down { grid-area: down; }
+
+.colony-camera-button {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.7rem;
+    min-height: 1.35rem;
+    padding: 0.08rem 0.38rem;
+    color: var(--color-navy);
+    background: var(--color-surface);
+    border: 1px solid color-mix(in srgb, var(--color-navy) 20%, transparent);
+    border-radius: calc(var(--radius) * 0.65);
+    font: 600 var(--font-size-label) / 1 var(--font-body);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.colony-camera-button:hover:not(:disabled) {
+    color: var(--color-surface);
+    background: var(--color-blue);
+    border-color: var(--color-blue);
+}
+
+.colony-camera-button:focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 1px;
+}
+
+.colony-camera-button:disabled {
+    cursor: default;
+    opacity: 0.34;
+}
+
+.colony-camera-button--wide {
+    min-height: 2rem;
+    padding-inline: 0.65rem;
+}
+
+.colony-camera-zoom-group {
+    display: grid;
+    grid-template-columns: 2rem minmax(3.4rem, auto) 2rem;
+    align-items: stretch;
+}
+
+.colony-camera-zoom-group .colony-camera-button {
+    min-height: 2rem;
+    border-radius: 0;
+}
+
+.colony-camera-zoom-group .colony-camera-button:first-child {
+    border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.colony-camera-zoom-group .colony-camera-button:last-child {
+    border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.colony-camera-zoom-readout {
+    display: inline-grid;
+    place-items: center;
+    min-height: 2rem;
+    padding-inline: 0.45rem;
+    color: var(--color-navy);
+    background: color-mix(in srgb, var(--color-blue) 8%, var(--color-surface));
+    border-block: 1px solid color-mix(in srgb, var(--color-navy) 20%, transparent);
+    font: 600 var(--font-size-label) / 1 var(--font-mono);
+    white-space: nowrap;
+}
+
+.colony-camera-linked-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: auto;
+    color: var(--color-muted);
+    font-size: var(--font-size-label);
+    white-space: nowrap;
+}
+
+.colony-camera-linked-dot {
+    width: 0.52rem;
+    height: 0.52rem;
+    background: var(--oi-green);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--oi-green) 18%, transparent);
+}
+
+@media (max-width: 720px) {
+    .colony-camera-toolbar {
+        padding-inline: 0.6rem;
+    }
+
+    .colony-camera-linked-status {
+        margin-left: 0;
+        flex-basis: 100%;
+    }
+}
+
 /* Outer grid container — sized by inline style from build_grid */
 .colony-grid-container {
     /* Keep the grid flush left even when the parent flex-/block- box is
      * wider than the rendered tracks. */
     display: flex;
     justify-content: flex-start;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.colony-viv-grid-stage {
+    /* The grid can be thousands of CSS pixels wide and tall. A stage sized
+     * to that entire surface creates a device-pixel WebGL canvas large enough
+     * to exhaust the browser's graphics limits. Keep one viewport-sized,
+     * passive canvas instead; results_viewer.js continually maps mounted cell
+     * rectangles into this fixed coordinate system. */
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+/* Keep the existing PNG crops beneath Viv as both the immediate image and a
+ * fail-safe if WebGL or an individual Zarr source cannot render. The Viv
+ * canvas is transparent outside rendered pixels, so hiding these eagerly can
+ * turn a recoverable renderer problem into an entirely blank Colony view. */
+.colony-grid-viv-active .colony-cell-frame {
+    background: transparent;
+    pointer-events: none;
+}
+.colony-grid-viv-active .colony-cell-img {
+    visibility: hidden;
+}
+.colony-grid-viv-active .colony-cell-frame > :not(.colony-cell-img) {
+    pointer-events: auto;
 }
 
 /* Per-cell wrapper — outer positioning context. Background, border, and
@@ -256,17 +651,17 @@
     color: var(--color-white);
 }
 
-/* Multi-colony stack tab — peeks out from beneath .colony-cell-frame
- * (z-index 1 vs frame's 2). The top of the tab is hidden behind the
- * frame; only the bottom ~14px is visible, giving the tile a
- * "manila folder tab" feel without covering the image. */
+/* Multi-colony stack tab — peeks out from beneath .colony-cell-frame and
+ * the shared Viv canvas. The canvas is a fixed z-index:1 surface, so the tab
+ * must remain at z-index:0: its overlapping top 8px are covered by the
+ * OME-Zarr crop while the lower 14px, beyond the crop viewport, stays visible. */
 .colony-cell-stack-tab {
     position: absolute;
     bottom: 0;
     left: 14px;
     right: 14px;
     height: 22px;          /* total height (8px hidden behind frame, 14px visible) */
-    z-index: 1;
+    z-index: 0;
     padding: 0;
     margin: 0;
     background: rgba(254, 188, 17, 0.55);

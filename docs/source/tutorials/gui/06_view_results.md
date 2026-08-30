@@ -1,9 +1,11 @@
 # View Results
 
 The Results viewer pairs the master measurements parquet with each plate's
-overlay tiles. You filter the measurements pane on the left, pick an image
-from the dropdown, and the OpenSeadragon canvas renders the colony map
-with detection overlays.
+per-image OME-Zarr store. You pick an image from the dropdown, and the
+**Plate** stage reads that store's chunks directly in your browser and
+paints the colony map with its objmap overlaid. There is no server-rendered
+tile pyramid and no tile cache to go stale --- the deep-zoom levels are the
+ones the CLI already wrote into the store.
 
 ## Hub viewer (empty state)
 
@@ -48,30 +50,61 @@ sidebar) so the page header reads "Results Viewer" instead of "PhenoTypic
 GUI". The body is identical to a bound hub snapshot.
 ```
 
-![Loaded viewer with filter pane and image selector.](../../_static/gui_images/view_results/02_viewer_loaded.png)
+![Loaded viewer: the Viv Plate stage with its Layers panel and served-level readout.](../../_static/gui_images/view_results/02_viewer_loaded.png)
 
-The viewer is split into three regions:
+The **Plate** tab is one full-canvas image stage with every control floating
+over it:
 
-| Region | Contents |
-|--------|----------|
-| **Header** | The output's pipeline name (here `gui_tutorial`) and an SSH-tunnel reminder. Use the cache-nuke command if you ever see stale tile thumbnails. |
-| **Filter pane** (left) | A query builder over `deliverables/measurements.parquet` (the post-applied mirror; falls back to `deliverables/master_measurements.parquet` on legacy outputs). The header shows how many images currently match. `+ Add filter` adds a clause (column / operator / value); the dropdown is populated from the parquet's columns. |
-| **Plate / Colony tabs** (right) | `Plate` shows the full-plate overlay with OpenSeadragon. `Colony` shows per-colony crops aligned to the grid layout. |
+| Where | Control |
+|-------|---------|
+| **Header** (above the tabs) | The output's pipeline name (here `gui_tutorial`), the snapshot identity, and an SSH-tunnel reminder. |
+| **Top-left**, over the stage | The `‹` / `›` image stepper, the `Select image…` dropdown, and the dataset / image / object-count chips. |
+| **Top-right**, over the stage | The **Layers** panel. It lists the series the store *actually* holds --- `rgb`, `gray`, `detect_mat` and, when the image carries one, `original` --- plus `objmap` tagged as a *label image*. A series row selects what is displayed; the objmap row toggles the overlay. Each row has an opacity slider and a colour swatch. |
+| **Bottom-left**, over the stage | The current zoom. |
+| **Bottom-right**, over the stage | The served-level readout, e.g. `pyramid level 0 of 3 · 1536×1024 · 1024² chunks`. This names the level deck.gl is *actually* drawing, so it is the fastest way to tell whether a slow pan is fetching full-resolution chunks. |
+| **Colony tab** | Uniform object-centred regions aligned to the grid layout. One bounded camera controls every mounted tile at the same zoom and source-pixel offset. |
 
-To render a plate, pick a filename from the `Select image…` dropdown. The
-dropdown is populated from the master measurements; once you pick one,
-the OpenSeadragon canvas tiles the overlay and the `> Details` link
-reveals per-image stats. Clicking individual colonies in the canvas
-highlights the matching row in the measurements.
+To render a plate, step to a filename with `›` or pick one from the
+`Select image…` dropdown; both are populated from the master measurements.
+The stage opens the store and begins painting, and the note under the
+stage confirms the source (`served directly from plate_001.ome.zarr —
+no tile cache`).
+
+Filters live in a right-docked slide-in rather than a left pane. The
+**Filters** button on the tab row opens it, and the badge on the button
+counts the active clauses:
+
+![The right-docked filter offcanvas.](../../_static/gui_images/view_results/04_filter_offcanvas.png)
+
+It is a query builder over `deliverables/measurements.parquet` (the
+post-applied mirror; it falls back to
+`deliverables/master_measurements.parquet` on legacy outputs). `+ Add
+filter` adds a clause (column / operator / value) with the dropdown
+populated from the parquet's columns, and filtering narrows both Plate and
+Colony.
+
+The **Colony** tab opens each object inside the same square source region,
+whose side is sized from the largest padded object in the current grid. The
+initial percentage fits that region inside the actual tile frame. The sticky
+**Image controls** strip moves every tile together: use the D-pad to pan
+within the fixed region, **Center** to clear the offset, **Fit** to restore
+the comparison view, `−` / `+` to zoom, and **1:1** for one source pixel per
+screen pixel. Arrow keys, `0`, `F`, `−` / `+`, and `1` provide the same
+actions while the toolbar or image grid has keyboard focus.
+
+![Linked fixed-region controls in the Colony view.](../../_static/gui_images/view_results/06_colony_camera.png)
 
 ![Measurement table view.](../../_static/gui_images/view_results/03_measurement_table.png)
 
-Scrolling further shows the full measurements table.
+The `> Details` link under the stage opens the per-object table for the
+displayed image --- one row per colony, sortable and filterable in place,
+with a Status column carrying each colony's curation state.
 
 ## Memory note
 
-The viewer loads the master measurements parquet and per-image overlays
-into memory on first access. If the parquet is large (tens of MB+),
+The viewer loads the master measurements parquet into memory on first
+access; pixels are not part of that --- they are streamed from the store
+to the browser a chunk at a time. If the parquet is large (tens of MB+),
 expect the first navigation to take a moment. Subsequent navigation
 between plates reuses the in-memory state. When the viewer is mounted
 inside the hub, the hub chrome's `Release` control (not visible in the

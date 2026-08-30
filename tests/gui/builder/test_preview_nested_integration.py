@@ -1,6 +1,9 @@
 """Nested previews: faithful threaded input + scope coexistence + route serves."""
 from phenotypic.gui.builder import _preview_cache as pc
 from phenotypic.gui.builder._app import create_app
+from phenotypic.gui.builder._preview_zarr_routes import preview_zarr_url
+from phenotypic.gui.results_viewer._zarr_routes import store_generation_token
+from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
 from phenotypic.gui.builder._state import (
     BlockNode,
     Edge,
@@ -49,14 +52,20 @@ def test_nested_scopes_coexist_and_serve(tmp_path, monkeypatch):
     assert pc.read_manifest(sid, []) is not None
     assert pc.read_manifest(sid, scope_path) is not None
 
-    # the inner detector's objmap tile serves through the blueprint
+    # the inner detector's node store serves through the byte blueprint
     client = app.server.test_client()
     shash = pc.scope_hash(scope_path)
-    resp = client.get(
-        f"/preview-tiles/{sid}/{shash}/{inner_op.block_id}/detect_mat.dzi"
+    store = (
+        pc._scope_path_by_hash(sid, shash)
+        / manifest["nodes"][inner_op.block_id]["store"]
     )
-    assert resp.status_code == 200
-    assert "deepzoom" in resp.get_data(as_text=True).lower()
+    base = preview_zarr_url(
+        "/", sid, shash, inner_op.block_id, store_generation_token(store)
+    )
+    assert client.get(f"{base}/{STORE_ROOT_JSON}").status_code == 200
+    # A real level-0 chunk, not only the metadata: 2-D ``gray`` uses the
+    # two-index v3 key ``c.0.0``, where 3-D ``rgb`` uses ``c.0.0.0``.
+    assert client.get(f"{base}/gray/0/c.0.0").status_code == 200
 
 
 def test_parent_edit_invalidates_inner(tmp_path, monkeypatch):

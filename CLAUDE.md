@@ -144,6 +144,14 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
   `python -m phenotypic.gui.results_viewer`, `python -m phenotypic.gui.run_console`.
 - Note: `phenotypic gui` (no hyphen, as a subcommand of the existing CLI) is NOT
   supported. Use `phenotypic-gui` or `python -m phenotypic.gui`.
+- **Two pixel paths, not one.** The results viewer's Plate and Colony surfaces
+  and the builder's node preview read per-image OME-Zarr chunks in the browser
+  through Viv/deck.gl (`/zarr/...`, `/preview-zarr/...`); Browse and the
+  builder's point picker keep libvips → DZI → OpenSeadragon. The results viewer
+  renders no server-side pyramid and caches no rendered PNG. Which surface uses
+  which, and the two rules that go with it (never hard-code the series or label
+  path, never recompute the pyramid), are in
+  [gui/CLAUDE.md](src/phenotypic/gui/CLAUDE.md).
 
 #### Adding GUI features
 

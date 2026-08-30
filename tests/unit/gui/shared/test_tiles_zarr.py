@@ -1,15 +1,21 @@
-"""Tile reads select a pyramid level instead of decoding the whole layer.
+"""Colony crops are windowed level-0 reads of the store.
 
-``select_pyramid_level`` returns the **coarsest** level that still covers the
-request. Reading finer wastes the pyramid; reading coarser renders visibly
-soft. The level count comes from ``phenotypic.pyramid.levels`` plus each
-level's own array metadata -- never from a directory listing, which a ``.part``
-sweep or a partially written store would make lie.
+`select_pyramid_level` and the `_load_zarr_*` full-layer loaders that used
+to be exercised here are gone: their only caller chain was the results
+Plate's DZI path, and the Plate now reads store chunks in the browser, where
+deck.gl picks the level per frame. What the writer RECORDED is still pinned,
+in ``tests/unit/gui/results_viewer/test_level_selection.py``; what the
+browser CHOOSES is phase 5's check. A test pinning a function no path calls
+reads as maintained, so those went with the function.
+
+What survives here is the crop path, which never selected a level:
+``crop_store_rgb`` is a windowed read of level 0, and it is the one place
+``StoreUnreadable`` still has to escape rather than degrade to plausible
+pixels.
 """
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 import numpy as np
@@ -17,11 +23,7 @@ import pytest
 
 from phenotypic import Image
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.gui._shared.tiles import (
-    StoreUnreadable,
-    crop_store_rgb,
-    select_pyramid_level,
-)
+from phenotypic.gui._shared.tiles import StoreUnreadable, crop_store_rgb
 
 
 @pytest.fixture(scope="module")
@@ -31,81 +33,14 @@ def store(tmp_path_factory) -> Path:
     return Image(load_synth_yeast_plate()).save2zarr(tmp_path / "p.ome.zarr")
 
 
-def test_full_size_request_selects_level_zero(store: Path) -> None:
-    level0 = Image.load_layer_zarr(store, "gray", level=0)
-    assert select_pyramid_level(store, "gray", max(level0.shape)) == 0
-
-
-def test_small_request_selects_a_coarse_level(store: Path) -> None:
-    assert select_pyramid_level(store, "gray", 64) > 0
-
-
-def test_a_coarse_level_really_is_fewer_bytes(store: Path) -> None:
-    """The point of the exercise, asserted on bytes rather than on an index.
-
-    A level index is only a proxy. This reads both arrays and compares their
-    materialised sizes, so a selection that returned a coarse index while the
-    read still pulled level 0 would not pass.
-    """
-    level = select_pyramid_level(store, "gray", 64)
-    coarse = Image.load_layer_zarr(store, "gray", level=level)
-    full = Image.load_layer_zarr(store, "gray", level=0)
-    assert coarse.nbytes < full.nbytes
-
-
-def test_selected_level_still_covers_the_request(store: Path) -> None:
-    """Coarser than the request would render visibly soft."""
-    for target in (64, 128, 256, 512, 1024):
-        level = select_pyramid_level(store, "gray", target)
-        shape = Image.load_layer_zarr(store, "gray", level=level).shape
-        assert max(shape) >= target or level == 0
-
-
-def test_selection_never_reads_finer_than_necessary(store: Path) -> None:
-    level = select_pyramid_level(store, "gray", 256)
-    if level > 0:
-        finer = Image.load_layer_zarr(store, "gray", level=level - 1).shape
-        assert max(finer) > 256
-
-
-def test_level_count_comes_from_metadata_not_directory_listing(
-    store: Path, tmp_path: Path
-) -> None:
-    """A ``.part`` sweep or a partial write would make a listing lie.
-
-    ``levels`` is read from ``phenotypic.pyramid``, so a store missing a
-    level it declares is an ERROR. A listing-derived count would silently
-    report the truncated pyramid as the whole pyramid and serve a level-0
-    tile for every request.
-    """
-    truncated = tmp_path / "truncated.ome.zarr"
-    shutil.copytree(store, truncated)
-    shutil.rmtree(truncated / "gray" / "1")
-    with pytest.raises(FileNotFoundError):
-        select_pyramid_level(truncated, "gray", 64)
-
-
-def test_single_level_store_always_selects_zero(tmp_path: Path) -> None:
-    """The ``levels=1`` path: builder node previews."""
-    flat = Image(load_synth_yeast_plate()).save_intermediate_zarr(
-        tmp_path / "f.ome.zarr", layers=("gray",)
-    )
-    assert select_pyramid_level(flat, "gray", 32) == 0
-
-
-def test_unknown_layer_raises_key_error(store: Path) -> None:
-    with pytest.raises(KeyError):
-        select_pyramid_level(store, "not-a-layer", 64)
-
-
 def test_a_future_store_is_refused_rather_than_decoded(tmp_path: Path) -> None:
     """``store_schema_version`` is gated by VALUE, and the GUI must say so.
 
     ``require_readable_store`` raises a bare ``ValueError`` per read. Left
     bare it reaches the crop route's blanket handler and the user is told
     "internal error", with the real, actionable message only in a log. It is
-    re-raised as ``StoreUnreadable`` so both routes can answer 422 and pass
-    the message through.
+    re-raised as ``StoreUnreadable`` so both the crop route and the byte
+    route answer 422 and pass the message through.
     """
     import json
 
@@ -120,7 +55,7 @@ def test_a_future_store_is_refused_rather_than_decoded(tmp_path: Path) -> None:
     root.write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(StoreUnreadable) as excinfo:
-        select_pyramid_level(store, "gray", 64)
+        crop_store_rgb(store, "gray", 20, 20, 16, 0)
     assert "999" in str(excinfo.value)
     assert "upgrade" in str(excinfo.value)
 
@@ -205,61 +140,3 @@ def test_rgb_crop_returns_channel_last_pixels(store: Path) -> None:
     rgb = Image.load_layer_zarr(store, "rgb", level=0)
     png = crop_store_rgb(store, "rgb", 42, 42, 64, 0)
     np.testing.assert_array_equal(_decode_rgb(png), rgb[10:74, 10:74, :3])
-
-
-# ---------------------------------------------------------------------------
-# _load_zarr_layer_rgb — level resolution and the cache-key contract
-# ---------------------------------------------------------------------------
-
-
-def test_layer_loader_actually_resolves_the_level_from_target_px(
-    store: Path,
-) -> None:
-    """The resolver must USE ``target_px``, not merely accept it.
-
-    Every production caller today asks for the level-0 edge, so a loader that
-    ignored ``target_px`` and always read level 0 would give every existing
-    test the right answer -- while the pyramid did nothing at all. This is
-    the only assertion that separates the two.
-    """
-    from phenotypic.gui._shared.tiles import _load_zarr_layer_rgb
-
-    coarse = _load_zarr_layer_rgb(str(store), "tok", "detect_mat", 64)
-    finest = _load_zarr_layer_rgb(str(store), "tok", "detect_mat", 10**6)
-    assert max(coarse.size) < max(finest.size)
-
-
-def test_two_targets_selecting_one_level_share_a_cache_entry(
-    store: Path,
-) -> None:
-    """Ledger FLOW-10: the LRU key is the resolved LEVEL, not the request size.
-
-    Keyed on ``target_px``, a handful of distinct request sizes thrash the
-    cache on exactly the path the pyramid exists to accelerate. Keyed on the
-    level, the key space is bounded by the data.
-    """
-    from phenotypic.gui._shared.tiles import (
-        _load_zarr_layer_rgb,
-        _load_zarr_level_rgb,
-    )
-
-    _load_zarr_level_rgb.cache_clear()
-    assert select_pyramid_level(store, "detect_mat", 700) == select_pyramid_level(
-        store, "detect_mat", 799
-    )
-    _load_zarr_layer_rgb(str(store), "tok", "detect_mat", 700)
-    _load_zarr_layer_rgb(str(store), "tok", "detect_mat", 799)
-    assert _load_zarr_level_rgb.cache_info().hits == 1
-
-
-def test_a_changed_content_token_busts_the_cache(store: Path) -> None:
-    """The token is what invalidates a republished store under a live viewer."""
-    from phenotypic.gui._shared.tiles import (
-        _load_zarr_layer_rgb,
-        _load_zarr_level_rgb,
-    )
-
-    _load_zarr_level_rgb.cache_clear()
-    _load_zarr_layer_rgb(str(store), "tok-a", "detect_mat", 700)
-    _load_zarr_layer_rgb(str(store), "tok-b", "detect_mat", 700)
-    assert _load_zarr_level_rgb.cache_info().hits == 0

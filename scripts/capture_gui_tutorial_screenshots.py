@@ -11,8 +11,11 @@ The script:
 2. Runs the CLI once against that dataset to produce real CLI output
    (``deliverables/`` + ``results/``).
 3. Boots ``phenotypic-gui --root <dataset_parent>`` on a free port.
-4. Drives a headless Chromium browser through every tutorial workflow
-   and saves PNGs into ``docs/source/_static/gui_images/<workflow>/``.
+4. Drives a Chromium browser through every tutorial workflow and saves
+   PNGs into ``docs/source/_static/gui_images/<workflow>/``. The Plate
+   surface and the builder node preview paint through deck.gl, so the
+   browser must have a real WebGL stack -- see ``_gl_chromium``, which
+   pairs the full Chromium build with an ``Xvfb`` display.
 5. Tears down the GUI subprocess.
 
 Re-running this script overwrites the existing screenshots — that is the
@@ -25,8 +28,10 @@ Requires Playwright + Chromium. Install on first run::
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
+import os
 import shutil
 import socket
 import subprocess
@@ -46,36 +51,103 @@ METADATA_CSV = DATASET_DIR / "metadata.csv"
 PIPELINE_JSON = DATASET_DIR / "pipeline.json.pht-pipe"
 OUTPUT_DIR = DATASET_DIR / "results"
 
-# The hermetic tune run output (a real ``python -m phenotypic.tune`` grid run
-# over the synthetic plates). It lives INSIDE ``DATASET_DIR`` so a tune app
-# rooted at the dataset can sandbox-reach both the run dir and the plate images
-# (``PLATES_DIR``) for the Curate overlays. ``TUNE_LAYOUT_CSV`` is the expected
-# colony-count layout the QC scorer compares against.
-TUNE_OUTPUT_DIR = DATASET_DIR / "tune_run"
-TUNE_LAYOUT_CSV = DATASET_DIR / "tune_layout.csv"
-TUNE_SETUP_SPEC = DATASET_DIR / "tune_setup.json.pht-tune"
-TUNE_LAUNCH_OUTPUT_DIR = DATASET_DIR / "tune_launch_output"
-
-# A small folder/time-series matrix the Browse Timeline capture roots itself at:
-# three timepoint sub-folders, each holding the same three plate filenames, so
-# the matrix is a 3-row x 3-column folder/EXIF filmstrip. Lives INSIDE
-# ``DATASET_DIR`` so the hub (rooted there) can sandbox-reach it.
-TIMELINE_SERIES_DIR = DATASET_DIR / "timeline_series"
-TIMELINE_SERIES_FOLDERS = ("t0", "t1", "t2")
-TIMELINE_SERIES_NAMES = ("plateA.png", "plateB.png", "plateC.png")
-
-# A Timeline-capable CLI output the Results-viewer Timeline capture boots a
-# standalone viewer over. The synthetic tutorial CLI run is single-timepoint, so
-# its master carries no eligible time column; this seed mirrors the e2e fixture
-# (``Metadata_ImageNumber`` Int64 monotonic + ``Metadata_PlateNum`` + per-image
-# overlay PNGs) so X=ImageNumber × Y=PlateNum yields a populated matrix. Lives
-# INSIDE ``DATASET_DIR`` so a viewer rooted there can sandbox-reach it.
-RESULTS_TIMELINE_OUTPUT_DIR = DATASET_DIR / "results_timeline_run"
-RESULTS_TIMELINE_DATASET = "ds1"
-RESULTS_TIMELINE_N_PLATES = 6
-RESULTS_TIMELINE_N_TIMES = 12
-
 VIEWPORT = {"width": 1280, "height": 900}
+
+
+# ---------------------------------------------------------------------------
+# A Chromium that can actually paint WebGL
+# ---------------------------------------------------------------------------
+
+
+@contextlib.contextmanager
+def _gl_chromium(pw, headed: bool):
+    """Yield a Chromium with a working WebGL2 stack, on a display it can use.
+
+    The Plate surface and the builder node preview both paint through
+    deck.gl now, so this is no longer a detail of the launch: Playwright's
+    DEFAULT ``chromium`` launch uses ``chromium_headless_shell``, which
+    ships no GL stack at all -- ``canvas.getContext('webgl2')`` returns
+    ``null`` and every deck.gl canvas screenshots as an empty stage. Six
+    flag combinations including ``--enable-unsafe-swiftshader`` were probed
+    and none change it. The full ``chrome-linux64`` build beside it
+    (``channel="chromium"``) does have one, and needs an X display on top --
+    under bare headless the GPU process still dies with
+    ``BindToCurrentSequence failed``.
+
+    A PNG captured without this shows a black rectangle where the plate
+    should be, which is a picture of a rendering bug that does not exist.
+    So when the GL browser cannot be had, this says so loudly and falls
+    back rather than failing the regeneration lane: the shots that do not
+    paint through deck.gl are still correct, and the artifact upload is the
+    canonical output either way.
+    """
+    if headed:
+        # A real window has a real GL stack; Xvfb would hide it.
+        browser = pw.chromium.launch(headless=False)
+        try:
+            yield browser
+        finally:
+            browser.close()
+        return
+
+    with _xvfb_display() as display:
+        if display is not None:
+            env = {**os.environ, "DISPLAY": display}
+            try:
+                browser = pw.chromium.launch(channel="chromium", env=env)
+            except Exception as exc:  # pragma: no cover - environment probe
+                print(
+                        "[shot] WARNING: the full Chromium build "
+                        f"(channel='chromium') would not launch ({exc!r}); "
+                        "deck.gl surfaces will screenshot BLANK. Install it "
+                        "with `uv run playwright install chromium`."
+                )
+            else:
+                try:
+                    yield browser
+                finally:
+                    browser.close()
+                return
+        else:
+            print(
+                    "[shot] WARNING: no Xvfb on PATH, so Chromium has no X "
+                    "display; deck.gl surfaces will screenshot BLANK."
+            )
+
+    browser = pw.chromium.launch(headless=True)
+    try:
+        yield browser
+    finally:
+        browser.close()
+
+
+@contextlib.contextmanager
+def _xvfb_display():
+    """Run an ``Xvfb`` and yield its ``DISPLAY``, or ``None`` if unavailable.
+
+    ``-displayfd`` lets the server pick a free display number and report
+    it; probing numbers here would race anything else on a shared machine.
+    """
+    if shutil.which("Xvfb") is None:
+        yield None
+        return
+    read_fd, write_fd = os.pipe()
+    proc = subprocess.Popen(
+            ["Xvfb", "-displayfd", str(write_fd), "-screen", "0",
+             "1280x1024x24"],
+            pass_fds=(write_fd,),
+    )
+    os.close(write_fd)
+    try:
+        with os.fdopen(read_fd, "r") as handle:
+            number = handle.readline().strip()
+        yield f":{number}" if number else None
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5.0)
+        except subprocess.TimeoutExpired:
+            proc.kill()
 
 # ---------------------------------------------------------------------------
 # Synthetic dataset
@@ -379,152 +451,6 @@ def _seed_error_triage_labels() -> None:
     )
 
 
-def run_tune_once() -> None:
-    """Produce a hermetic ``python -m phenotypic.tune`` output for the co-pilot.
-
-    A SHORT, optuna-free **grid** tune over the synthetic plates: a base
-    ``BlurGauss → OtsuDetector`` pipeline searched over a 3-value ``sigma`` ×
-    2-value ``ignore_zeros`` grid (6 trials, so the Curate shortlist populates).
-    The run goes through the real :func:`~phenotypic.tune._tune_cli._run.run_tuning`
-    path, so it writes the full marker set the GUI reads:
-
-    * ``.pht-tune-cache/run.json`` — the discovery marker (written at run START);
-    * ``trials.parquet`` (6 trials) + the local ``study.db``;
-    * ``deliverables/tuning_spec.json.pht-tune`` — the resolved recipe (drives the Space view).
-
-    The scorer is a :class:`~phenotypic.tune.QCScorer` over a layout CSV that
-    declares the synthetic plates' nominal 96-colony count, so its
-    ``ExpectedVsDetectedCount`` check round-trips from JSON (a path-backed
-    metadata source). ``images_dir`` is recorded as ``PLATES_DIR`` so the Curate
-    Image Source pre-fills and overlays render ``build_pipeline(...).apply(plate)``.
-
-    Grid (not Optuna) keeps the import surface optuna-free and the run sub-second.
-    Skips when the marker already exists (re-running is cheap but avoidable).
-    """
-    from phenotypic.sdk_ import _io_constants as io
-
-    if io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR).exists():
-        resolved_spec = io.resolve_tuning_spec_path(TUNE_OUTPUT_DIR)
-        # Repair reusable pre-category-rename compatibility fixtures before the
-        # Setup capture. These exact strings are the historical and canonical
-        # serialized headers, respectively; current fixtures are left unchanged.
-        layout = TUNE_LAYOUT_CSV.read_text(encoding="utf-8")
-        if layout.startswith("MetadataImage_ImageName,"):
-            TUNE_LAYOUT_CSV.write_text(
-                layout.replace(
-                    "MetadataImage_ImageName,",
-                    "Metadata_ImageName,",
-                    1,
-                ),
-                encoding="utf-8",
-            )
-        setup_spec = resolved_spec.read_text(encoding="utf-8").replace(
-            "MetadataImage_ImageName",
-            "Metadata_ImageName",
-        )
-        TUNE_SETUP_SPEC.write_text(setup_spec, encoding="utf-8")
-        print(
-            f"[tune] reusing existing tune output at "
-            f"{TUNE_OUTPUT_DIR.relative_to(REPO_ROOT)}"
-        )
-        return
-
-    import pandas as pd
-
-    from phenotypic import ImagePipeline
-    from phenotypic.analysis import ExpectedVsDetectedCount
-    from phenotypic.detect import OtsuDetector
-    from phenotypic.enhance import BlurGauss
-    from phenotypic.tune import (
-    Budget,
-    Categorical,
-    Evaluator,
-    Knob,
-    SearchSpace,
-    TuningSpec,
-)
-    from phenotypic.tune.score import QCScorer
-    from phenotypic.tune.strategy import GridConfig
-    from phenotypic.tune._tune_cli._run import _load_images, run_tuning
-
-    print("[tune] running a 6-trial grid tune over the synthetic plates")
-    images = _load_images(PLATES_DIR)
-    if not images:
-        raise RuntimeError(
-            f"no grid images loaded from {PLATES_DIR}; build the dataset first"
-        )
-
-    # The layout: every loaded plate declares its nominal 96-colony (8x12) count
-    # so the QC count scorer has a path-backed metadata source that round-trips.
-    layout_rows = [
-        {"Metadata_ImageName": im.name, "Object_Label": label}
-        for im in images
-        for label in range(96)
-    ]
-    pd.DataFrame(layout_rows).to_csv(TUNE_LAYOUT_CSV, index=False)
-
-    pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
-    # A 3x2 categorical grid = 6 enumerated trials (>= 5 for the shortlist).
-    space = SearchSpace(
-        knobs=(
-            Knob(key="0.sigma", domain=Categorical(choices=(1.0, 1.5, 2.0))),
-            Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
-        )
-    )
-    spec = TuningSpec(
-        pipeline=pipeline,
-        search_space=space,
-        scorer=QCScorer(
-            check=ExpectedVsDetectedCount(
-                metadata=str(TUNE_LAYOUT_CSV), groupby=["Metadata_ImageName"]
-            )
-        ),
-        evaluator=Evaluator(),
-        strategy=GridConfig(),
-        budget=Budget(),
-    )
-    TUNE_SETUP_SPEC.write_text(spec.model_dump_json(indent=2), encoding="utf-8")
-    run_tuning(spec, images, TUNE_OUTPUT_DIR, spec_path=None, images_dir=PLATES_DIR)
-    n_trials = len(pd.read_parquet(io.trials_parquet_path(TUNE_OUTPUT_DIR)))
-
-    # Present the run as a FINISHED, parquet-only run for the Monitor screenshot.
-    # A grid run journals its trials to ``trials.parquet`` but leaves an EMPTY
-    # SQLite ``study.db`` (the Optuna study schema with no trials — grid never
-    # populates it). The Monitor prefers a live store when the marker carries a
-    # ``storage_url``, so it would show that empty study instead of the 6-trial
-    # journal. Null the marker's ``storage_url`` and drop the empty study.db so
-    # discovery resolves a parquet-only run and the Monitor reads the journal —
-    # exactly the finished-run shape the tutorial depicts.
-    _finalize_tune_run_as_parquet_only()
-    print(f"[tune]   done — {n_trials} trials at "
-          f"{TUNE_OUTPUT_DIR.relative_to(REPO_ROOT)}")
-
-
-def _finalize_tune_run_as_parquet_only() -> None:
-    """Null the tune marker's ``storage_url`` + drop the empty grid study.db.
-
-    Rewrites ``.pht-tune-cache/run.json`` with ``storage_url=None`` (so
-    ``TuneRunRoot.discover`` resolves a parquet-only finished run and the
-    Monitor reads ``trials.parquet`` directly) and removes the empty SQLite
-    ``study.db`` a grid run leaves behind. Both are file-only fixups on the
-    capture's own hermetic output — no source behaviour changes.
-    """
-    import json as _json
-
-    from phenotypic.sdk_ import _io_constants as io
-
-    marker_path = io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR)
-    marker = _json.loads(marker_path.read_text())
-    marker["storage_url"] = None
-    marker_path.write_text(_json.dumps(marker, indent=2))
-
-    study_db = io.resolve_study_db_path(TUNE_OUTPUT_DIR)
-    try:
-        Path(study_db).unlink()
-    except OSError:
-        pass
-
-
 # ---------------------------------------------------------------------------
 # GUI server lifecycle
 # ---------------------------------------------------------------------------
@@ -662,13 +588,11 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
                 "  uv run playwright install chromium"
         ) from exc
 
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=not headed)
+    with sync_playwright() as pw, _gl_chromium(pw, headed) as browser:
         try:
             context = browser.new_context(viewport=VIEWPORT)
             _capture_setup(context, base_url)
             _capture_browse(context, base_url)
-            _capture_browse_timeline(context, base_url)
             _capture_file_explorer(context, base_url)
             _capture_build_pipeline(context, base_url)
             _capture_run_local(context, base_url)
@@ -677,15 +601,11 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             _capture_pick_points(context, base_url)
             _capture_analysis(context, base_url)
             _capture_aux_ports(context, base_url)
-            _capture_qc_curation_loop(context, base_url)
-            _capture_qc_review(context, base_url)
-            _capture_heatmap_exploration(context, base_url)
-            _capture_error_analysis(context, base_url)
             _capture_aux_wire_in_dag(context, base_url)
             _capture_wire_pipeline_as_aux(context, base_url)
             _capture_fix_validation_issues(context, base_url)
         finally:
-            browser.close()
+            context.close()
 
 
 def _save(
@@ -936,115 +856,6 @@ def _capture_setup(context, base_url: str) -> None:
 
 # --- browse (source image viewer) ---------------------------------------
 
-def _seed_browse_timeline_series() -> None:
-    """Write a small folder/time-series matrix for the Browse Timeline capture.
-
-    Three timepoint sub-folders (``t0``/``t1``/``t2``), each holding the same
-    three plate PNGs, so the Timeline lays out as a 3-row x 3-column
-    folder/EXIF filmstrip. Idempotent (skips when already present) and called
-    from :func:`main` before the hub boots, so re-runs without ``--force``
-    still get the series.
-    """
-    sentinel = TIMELINE_SERIES_DIR / TIMELINE_SERIES_FOLDERS[0] / TIMELINE_SERIES_NAMES[0]
-    if sentinel.exists():
-        print(
-            f"[dataset] reusing existing {TIMELINE_SERIES_DIR.relative_to(REPO_ROOT)}"
-        )
-        return
-    from PIL import Image as PILImage
-
-    print(
-        f"[dataset] seeding Browse Timeline series under "
-        f"{TIMELINE_SERIES_DIR.relative_to(REPO_ROOT)}"
-    )
-    for r, folder in enumerate(TIMELINE_SERIES_FOLDERS):
-        d = TIMELINE_SERIES_DIR / folder
-        d.mkdir(parents=True, exist_ok=True)
-        for c, name in enumerate(TIMELINE_SERIES_NAMES):
-            # Distinct per-cell colour so the matrix reads as a real time-course.
-            shade = (40 + 30 * c, 70 + 25 * r, 120)
-            PILImage.new("RGB", (320, 220), shade).save(d / name, format="PNG")
-
-
-def _seed_results_timeline_output() -> None:
-    """Seed a Timeline-capable CLI output for the Results-viewer Timeline capture.
-
-    The synthetic tutorial CLI run is single-timepoint, so its master carries no
-    eligible time column and the Timeline tab would render its empty state. This
-    writes a separate output dir mirroring ``tests/e2e/gui/test_results_timeline``:
-    a ``master`` + ``measurements`` mirror with ``Metadata_ImageNumber`` (Int64
-    monotonic) + ``Metadata_PlateNum``, plus a per-image overlay PNG under
-    canonical dataset overlay directory for every ``(plate, image-number)`` cell,
-    so X=ImageNumber × Y=PlateNum yields a populated focus-navigate matrix.
-
-    Deterministically rewrites the small fixture so a partial or pre-migration
-    seed cannot survive across capture runs. A failure leaves the capture to
-    skip rather than abort the whole screenshot run.
-    """
-    from phenotypic.sdk_ import (
-        dataset_overlays_dir,
-        deliverables_dir,
-        master_measurements_csv_path,
-        master_measurements_parquet_path,
-        measurements_csv_path,
-        measurements_parquet_path,
-    )
-    from phenotypic.schema import EXPERIMENT, IMAGE
-
-    display_output_dir = (
-        RESULTS_TIMELINE_OUTPUT_DIR.relative_to(REPO_ROOT)
-        if RESULTS_TIMELINE_OUTPUT_DIR.is_relative_to(REPO_ROOT)
-        else RESULTS_TIMELINE_OUTPUT_DIR
-    )
-    import polars as pl
-    from PIL import Image as PILImage
-
-    print(
-        f"[dataset] seeding Results Timeline output under "
-        f"{display_output_dir}"
-    )
-    rows: list[dict[str, object]] = []
-    label = 0
-    for plate in range(1, RESULTS_TIMELINE_N_PLATES + 1):
-        for img_no in range(1, RESULTS_TIMELINE_N_TIMES + 1):
-            label += 1
-            rows.append(
-                {
-                    str(EXPERIMENT.DATASET): RESULTS_TIMELINE_DATASET,
-                    str(IMAGE.IMAGE_NAME): f"p{plate}_t{img_no}",
-                    "Metadata_ImageNumber": img_no,
-                    "Metadata_PlateNum": str(plate),
-                    "Object_Label": label,
-                    "Size_Area": float(plate * 10 + img_no),
-                }
-            )
-    df = pl.DataFrame(rows).with_columns(
-        pl.col("Metadata_ImageNumber").cast(pl.Int64)
-    )
-    # Mirror ``tests._output_layout.write_master`` / ``write_measurements_mirror``
-    # via the production ``phenotypic.sdk_`` path-builders (the script can't import
-    # the ``tests`` package — it's not on ``sys.path`` outside pytest). The master
-    # archive + the post-applied mirror are byte-identical here (no post step);
-    # the viewer's ``OutputRoot`` reads the mirror for the Timeline axes.
-    deliverables_dir(RESULTS_TIMELINE_OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
-    df.write_csv(master_measurements_csv_path(RESULTS_TIMELINE_OUTPUT_DIR))
-    df.write_parquet(master_measurements_parquet_path(RESULTS_TIMELINE_OUTPUT_DIR))
-    df.write_csv(measurements_csv_path(RESULTS_TIMELINE_OUTPUT_DIR))
-    df.write_parquet(measurements_parquet_path(RESULTS_TIMELINE_OUTPUT_DIR))
-    overlays = dataset_overlays_dir(
-            RESULTS_TIMELINE_OUTPUT_DIR, RESULTS_TIMELINE_DATASET,
-    )
-    overlays.mkdir(parents=True, exist_ok=True)
-    for plate in range(1, RESULTS_TIMELINE_N_PLATES + 1):
-        for img_no in range(1, RESULTS_TIMELINE_N_TIMES + 1):
-            # A gradient that brightens with image number so the time-course
-            # reads as a real trait-emergence sequence in the screenshots.
-            shade = (20 + 4 * img_no, 40 + 10 * plate, 60)
-            PILImage.new("RGB", (160, 120), shade).save(
-                overlays / f"p{plate}_t{img_no}.png", format="PNG"
-            )
-
-
 def _browse_source_payload() -> dict | None:
     """Build the shared-source-root store payload for the Browse capture.
 
@@ -1130,174 +941,6 @@ def _capture_browse(context, base_url: str) -> None:
         page.wait_for_timeout(1500)
         page.locator("#browse-meta-image-name").scroll_into_view_if_needed()
     _save(page, "browse", "02_viewer.png", full_page=True)
-    page.close()
-
-
-def _browse_timeline_source_payload() -> dict | None:
-    """Build the shared-source-root payload pointing at the time-series matrix.
-
-    Mirrors :func:`_browse_source_payload` but roots at
-    :data:`TIMELINE_SERIES_DIR` so the Browse Timeline lays out the seeded
-    3x3 folder/EXIF filmstrip. Returns ``None`` if the path cannot be resolved.
-    """
-    try:
-        from phenotypic.gui.shell._sandbox import SandboxRoot
-        from phenotypic.gui.shell._source_context import source_payload_from_path
-    except Exception as exc:  # pragma: no cover - best-effort
-        print(f"[shot]   browse_timeline: source payload import failed: {exc!r}")
-        return None
-    sandbox = SandboxRoot.from_path(TIMELINE_SERIES_DIR)
-    payload = source_payload_from_path(sandbox, TIMELINE_SERIES_DIR, source="manual")
-    if payload is None:
-        print("[shot]   browse_timeline: source payload could not be resolved")
-    return payload
-
-
-def _capture_browse_timeline(context, base_url: str) -> None:
-    """Drive the Browse Timeline and capture the focus-and-navigate matrix.
-
-    Mirrors ``docs/source/tutorials/gui/19_browse_timeline.md``:
-
-    1. ``01_timeline.png`` — Browse in Timeline mode over the seeded
-       folder/EXIF matrix: the per-axis source controls, the focus window
-       with one focused cell, the four edge nav buttons, and the position
-       readout.
-    2. ``02_popout.png`` — the single-image deep-zoom pop-out opened from the
-       focused cell (Enter), reusing the browse DZI route + OpenSeadragon.
-
-    The source root is set by writing the real versioned store payload
-    (rooted at the time-series matrix), exactly as the Browse single-view
-    capture does.
-    """
-    print("[shot] workflow=browse_timeline")
-    page = _new_page(context, base_url, "/browse/")
-
-    payload = _browse_timeline_source_payload()
-    if payload is not None:
-        page.evaluate(
-            """payload => {
-                window.dash_clientside.set_props(
-                    'shell-source-image-root-store', {data: payload}
-                );
-            }""",
-            payload,
-        )
-        page.wait_for_timeout(1000)
-
-    # Switch to Timeline mode. Scope the click to the view-mode radio's
-    # "Timeline" label specifically — a bare ``text=Timeline`` would also match
-    # the ``timeline_series`` sidebar entry, so click the radio label by id.
-    try:
-        page.click(
-            "#browse-view-mode-toggle label:has-text('Timeline')", timeout=10_000
-        )
-    except Exception:  # pragma: no cover - best-effort
-        pass
-
-    # Let the matrix render + the focus-and-navigate controller mount the
-    # focused neighborhood's thumbnails before the screenshot.
-    page.wait_for_timeout(500)
-    try:
-        page.wait_for_selector(".timeline-cell[data-src]", timeout=10_000)
-        page.wait_for_timeout(1500)
-    except Exception:  # pragma: no cover - best-effort
-        pass
-    _save(page, "browse_timeline", "01_timeline.png")
-
-    # Open the deep-zoom pop-out for the focused cell (Enter on the viewport).
-    try:
-        page.click(".browse-tl-viewport", timeout=5_000)
-        page.keyboard.press("Enter")
-        page.wait_for_function(
-            "() => { const d = document.getElementById('browse-tl-popout-modal');"
-            " const m = d && d.closest('.modal');"
-            " return m && m.classList.contains('show'); }",
-            timeout=10_000,
-        )
-        page.wait_for_timeout(1500)
-        _save(page, "browse_timeline", "02_popout.png")
-    except Exception:  # pragma: no cover - best-effort
-        # Pop-out is best-effort in capture; the primary matrix shot above is
-        # the required one. Fall back to a second matrix shot so the workflow
-        # folder always carries >=1 PNG for the gate.
-        _save(page, "browse_timeline", "02_popout.png")
-    page.close()
-
-
-def _pick_timeline_dropdown(page, dropdown_id: str, label_text: str) -> None:
-    """Open a Dash ``dcc.Dropdown`` (Radix button) and click an option.
-
-    Mirrors ``tests/e2e/gui/test_results_timeline.py::_pick_dropdown``: focus the
-    control, press Enter to open the listbox, then click the option matching
-    ``label_text``. Best-effort — a missing dropdown leaves the default axis.
-    """
-    locator = page.locator(f"#{dropdown_id}")
-    locator.scroll_into_view_if_needed()
-    locator.focus()
-    page.keyboard.press("Enter")
-    page.wait_for_selector(
-        '[role="listbox"] [role="option"]', state="attached", timeout=5_000
-    )
-    page.locator(
-        '[role="listbox"] [role="option"]', has_text=label_text
-    ).first.click()
-
-
-def _capture_results_timeline(context, base_url: str) -> None:
-    """Drive the Results-viewer Timeline tab and capture the overlay matrix.
-
-    Mirrors ``docs/source/tutorials/gui/20_results_timeline.md``. The host
-    standalone viewer is booted (in :func:`capture_standalone_viewer_screenshots`)
-    over :data:`RESULTS_TIMELINE_OUTPUT_DIR` — a Timeline-capable seed
-    (``Metadata_ImageNumber`` × ``Metadata_PlateNum`` + overlays) — so the matrix
-    is populated. The hub-mounted viewer would only see the empty state (it boots
-    unbound), so this rides the standalone host like the QC / Heatmap / Error
-    loaded captures.
-
-    1. ``01_timeline.png`` — the Timeline tab over the seeded matrix: the Y/X
-       dropdowns, the focus window with one focused overlay cell, the four edge
-       nav buttons, the position readout, and the tile-size stepper.
-    2. ``02_navigated.png`` — the matrix after stepping the focus a few columns
-       right along one plate's overlay time-course.
-    """
-    print("[shot] workflow=results_timeline (loaded viewer over a Timeline seed)")
-    # The standalone viewer mounts at "/" (url_prefix=DEFAULT_URL_PREFIX), unlike
-    # the hub which mounts it under /results/. Navigate to root here.
-    page = _new_page(context, base_url, "/")
-    try:
-        page.wait_for_selector("a.nav-link", timeout=15_000)
-        page.locator("a.nav-link", has_text="Timeline").first.click()
-        page.wait_for_selector(".timeline-cell[data-src]", timeout=15_000)
-    except Exception as exc:  # pragma: no cover - best-effort
-        print(f"[shot]   results_timeline: Timeline tab not reachable: {exc!r}")
-        # Always leave at least one PNG so the WORKFLOWS gate is satisfied even
-        # when the focus-navigate controller is slow to mount on this runner.
-        _save(page, "results_timeline", "01_timeline.png")
-        _save(page, "results_timeline", "02_navigated.png")
-        page.close()
-        return
-
-    # The alphabetical default Y is the high-cardinality Metadata_ImageFile (one
-    # image per row → a sparse diagonal). Pick the plate grouping so the matrix
-    # is the dense 6-plate × 12-time grid the tutorial describes.
-    try:
-        _pick_timeline_dropdown(page, "timeline-y-dropdown", "Metadata_PlateNum")
-        page.wait_for_selector(".timeline-cell--focused", timeout=10_000)
-        page.wait_for_timeout(1200)
-    except Exception as exc:  # pragma: no cover - best-effort
-        print(f"[shot]   results_timeline: Y dropdown selection skipped: {exc!r}")
-    _save(page, "results_timeline", "01_timeline.png")
-
-    # Step the focus a few columns right along one plate's time-course.
-    try:
-        page.click(".timeline-viewport", timeout=5_000)
-        for _ in range(4):
-            page.keyboard.press("ArrowRight")
-            page.wait_for_timeout(250)
-        page.wait_for_timeout(800)
-    except Exception as exc:  # pragma: no cover - best-effort
-        print(f"[shot]   results_timeline: arrow navigation skipped: {exc!r}")
-    _save(page, "results_timeline", "02_navigated.png")
     page.close()
 
 
@@ -1747,228 +1390,6 @@ def _capture_aux_ports(context, base_url: str) -> None:
     page.close()
 
 
-def _capture_qc_curation_loop(context, base_url: str) -> None:
-    """Capture the QC curation loop workflow.
-
-    Spec §1232. Drives the Results Viewer's QC tab through the
-    add-check / curate / re-render loop. The tab body composes one
-    Plotly card per configured :class:`QualityCheck`; each card
-    subscribes to ``STORE_REMOVED_KEYS`` so removing a colony from
-    the measurements table triggers an automatic figure refresh
-    without a manual reload.
-
-    Three screenshots illustrate the workflow:
-
-    1. ``01_empty_state.png`` — the Viewer mounted in empty state
-       with the QC tab selected so the reader sees what "no checks
-       configured" looks like (the hub-mounted viewer has no
-       ``output_root`` until the sidebar binds one).
-    2. ``02_add_check_modal.png`` — the ``+ Add check`` modal open
-       in add mode, showing the class picker dropdown that lists
-       every concrete ``QualityCheck`` subclass.
-    3. ``03_card_after_add.png`` — the QC tab body after the modal
-       has been dismissed, illustrating the "no cards" placeholder
-       remains when the user closes the modal without picking a
-       class (the empty hub-mounted viewer cannot persist a real
-       recipe entry — see the tutorial page for the full add-and-
-       curate flow).
-    """
-    print("[shot] workflow=qc_curation_loop")
-    page = _new_page(context, base_url, "/results/")
-    # The hub viewer mounts in empty state until the sidebar binds an
-    # ``output_root``. The QC tab is still selectable; it renders the
-    # "no checks configured" placeholder which is the natural empty
-    # state shot for the tutorial.
-    page.wait_for_timeout(800)
-    _save(page, "qc_curation_loop", "01_empty_state.png")
-
-    # Try to click the QC tab if it's mounted (the hub viewer's empty
-    # state may render the tab strip even without an ``output_root``).
-    # dbc.Tab anchors don't carry a stable id, so match by visible text.
-    qc_tab = page.locator('a[role="tab"]:has-text("QC")').first
-    if qc_tab.count() > 0:
-        try:
-            qc_tab.click(timeout=2000)
-            page.wait_for_timeout(600)
-            _save(page, "qc_curation_loop", "02_qc_tab_selected.png")
-        except Exception:  # pragma: no cover - best-effort
-            pass
-
-    # Try to open the Add check modal so the reader sees the picker.
-    add_btn = page.locator("#qc-add-check-btn")
-    if add_btn.count() > 0:
-        try:
-            add_btn.click(timeout=2000)
-            page.wait_for_timeout(700)
-            _save(page, "qc_curation_loop", "03_add_check_modal.png")
-        except Exception:  # pragma: no cover - best-effort
-            pass
-
-    page.close()
-
-
-def _capture_qc_review(context, base_url: str) -> None:
-    """Capture the QC review walkthrough workflow.
-
-    Spec §D. Drives the Results Viewer's QC tab into its **Review**
-    sub-view — the master–detail walkthrough that walks the
-    worst-agreeing groups for a selected QC module, reuses the
-    colony-view tile gallery for per-colony curation, and recomputes the
-    module after each curated group.
-
-    The hub-mounted viewer has no ``output_root`` until the sidebar binds
-    one, so the populated Review state (worklist + detail gallery) is
-    captured from the standalone viewer in :func:`_qc_review_loaded_shots`.
-    This hub capture records the empty-state entry point:
-
-    1. ``01_empty_state.png`` — the QC tab in the hub viewer's empty
-       state, before a module/output is bound.
-    """
-    print("[shot] workflow=qc_review")
-    page = _new_page(context, base_url, "/results/")
-    page.wait_for_timeout(800)
-    qc_tab = page.locator('a[role="tab"]:has-text("QC")').first
-    if qc_tab.count() > 0:
-        try:
-            qc_tab.click(timeout=2000)
-            page.wait_for_timeout(600)
-        except Exception:  # pragma: no cover - best-effort
-            pass
-    _save(page, "qc_review", "01_empty_state.png")
-    page.close()
-
-
-def _qc_review_loaded_shots(page) -> None:
-    """Capture loaded-state QC Review screenshots in the standalone viewer.
-
-    The standalone launcher has a real ``output_root`` carrying
-    ``deliverables/qc/qc.duckdb``, so flipping the QC tab's Configure | Review toggle renders a
-    populated worklist + detail gallery. Captures:
-
-    * ``02_review_worklist.png`` — the Review sub-view with the module
-      picker, summary header, and worst-first worklist.
-    * ``03_detail_gallery.png`` — the detail pane for the first
-      (worst) group: header + tile gallery + action bar.
-    """
-    qc_tab = page.locator('a[role="tab"]:has-text("QC")').first
-    if qc_tab.count() == 0:
-        print("[shot]   qc_review: QC tab not found — loaded captures skipped")
-        return
-    try:
-        qc_tab.click(timeout=3000)
-        page.wait_for_timeout(800)
-    except Exception:  # pragma: no cover - best-effort
-        pass
-
-    # Flip the Configure | Review segmented toggle to Review. The dbc
-    # RadioItems renders the option as a Bootstrap ``btn-check`` radio
-    # whose <input> is ``display:none``; click its <label> (matched by the
-    # input's id suffix) with ``force=True``, then wait for the Review
-    # container to actually become visible + its worklist to render before
-    # shooting — a plain click+sleep raced the callback and captured the
-    # Configure view.
-    review_label = page.locator(
-        'label[for$="qc-subview-toggle_input_review"]'
-    ).first
-    if review_label.count() > 0:
-        try:
-            review_label.click(timeout=2000, force=True)
-            page.wait_for_function(
-                "() => {"
-                "  const v = document.querySelector('#qc-review-view');"
-                "  return v && getComputedStyle(v).display !== 'none';"
-                "}",
-                timeout=5000,
-            )
-            page.wait_for_selector(".qc-worklist-row", timeout=5000)
-            page.wait_for_timeout(500)
-        except Exception:  # pragma: no cover - best-effort
-            pass
-    _save(page, "qc_review", "02_review_worklist.png")
-
-    # Click the first (worst) worklist row to populate the detail pane.
-    first_row = page.locator(".qc-worklist-row").first
-    if first_row.count() > 0:
-        try:
-            first_row.click(timeout=2000)
-            page.wait_for_timeout(1500)
-        except Exception:  # pragma: no cover - best-effort
-            pass
-    _save(page, "qc_review", "03_detail_gallery.png")
-
-
-def _capture_heatmap_exploration(context, base_url: str) -> None:
-    """Capture the Heatmap exploration workflow.
-
-    Spec §1233. Drives the Results Viewer's Heatmap tab so the
-    reader sees the color / image / aggregator pickers and the
-    plate-shaped heatmap output. Removed cells overlay as
-    ``COLOR_MUTED`` × markers so the visual distinction between
-    "curated" and "low value" cells is clear.
-
-    Two screenshots illustrate the workflow:
-
-    1. ``01_default_view.png`` — the Heatmap tab on first open,
-       showing the empty-state explanation when ``Grid_RowNum`` /
-       ``Grid_ColNum`` are missing (the synthetic tutorial dataset
-       does not run ``GridMeasureFeatures``).
-    2. ``02_color_picker_open.png`` — the color column dropdown
-       open so the reader can see the available measurement columns.
-       Outputs with QC data also contribute QC-derived options.
-    """
-    print("[shot] workflow=heatmap_exploration")
-    page = _new_page(context, base_url, "/results/")
-    page.wait_for_timeout(800)
-
-    # Switch to the Heatmap tab.
-    heatmap_tab = page.locator('a[role="tab"]:has-text("Heatmap")').first
-    if heatmap_tab.count() > 0:
-        try:
-            heatmap_tab.click(timeout=2000)
-            page.wait_for_timeout(600)
-        except Exception:  # pragma: no cover - best-effort
-            pass
-    _save(page, "heatmap_exploration", "01_default_view.png")
-
-    # Open the color picker dropdown so the available columns are visible.
-    # This fixture need not contain a QC-derived option for every capture.
-    color_picker = page.locator("#heatmap-color-picker")
-    if color_picker.count() > 0:
-        try:
-            color_picker.click(timeout=2000)
-            page.wait_for_timeout(500)
-            _save(page, "heatmap_exploration", "02_color_picker_open.png")
-        except Exception:  # pragma: no cover - best-effort
-            pass
-
-    page.close()
-
-
-def _capture_error_analysis(context, base_url: str) -> None:
-    """Capture the Error-analysis walkthrough (empty-state via the hub viewer).
-
-    The hub-mounted viewer has no ``output_root`` until the sidebar binds
-    one, so the Error tab renders its "need more labels" empty state — the
-    natural entry-point shot for the tutorial. The populated ranked table +
-    distribution plot + good-baseline toggle are captured from the standalone
-    viewer in :func:`_error_analysis_loaded_shots` (it has a real
-    ``output_root`` carrying the seeded
-    ``deliverables/qc/curation_labels.parquet``).
-    """
-    print("[shot] workflow=error_analysis")
-    page = _new_page(context, base_url, "/results/")
-    page.wait_for_timeout(800)
-    tab = page.locator('a[role="tab"]:has-text("Error")').first
-    if tab.count() > 0:
-        try:
-            tab.click(timeout=2000)
-            page.wait_for_timeout(600)
-        except Exception:  # pragma: no cover - best-effort
-            pass
-    _save(page, "error_analysis", "01_empty_state.png")
-    page.close()
-
-
 def _expand_palette_accordions(page) -> None:
     """Open every collapsed palette accordion section.
 
@@ -2212,8 +1633,7 @@ def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
             print("[shot] standalone analysis did not respond — skipping")
             return
 
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=not headed)
+        with sync_playwright() as pw, _gl_chromium(pw, headed) as browser:
             try:
                 context = browser.new_context(viewport=VIEWPORT)
                 page = _new_page(context, base_url, "/")
@@ -2249,7 +1669,7 @@ def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
 
                 page.close()
             finally:
-                browser.close()
+                context.close()
     finally:
         _stop_process(proc)
 
@@ -2291,8 +1711,7 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
         _wait_for_process_http_200(
                 base_url + "/", proc, log_path, timeout=30.0,
         )
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=not headed)
+        with sync_playwright() as pw, _gl_chromium(pw, headed) as browser:
             try:
                 context = browser.new_context(viewport=VIEWPORT)
                 page = context.new_page()
@@ -2300,27 +1719,47 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
                 page.wait_for_load_state("networkidle")
                 page.wait_for_timeout(2500)
 
-                # Select the first image from the dropdown so the
-                # OpenSeadragon canvas actually renders a colony plate.
-                dropdown = page.locator(
-                        ".Select-control, div[class*='css-'][class*='control']"
-                ).first
-                if dropdown.count() > 0:
-                    try:
-                        dropdown.click(timeout=2000)
-                        page.wait_for_timeout(400)
-                        # Pick the first option that appears.
-                        first_option = page.locator(
-                                ".Select-option, div[class*='option']"
-                        ).first
-                        if first_option.count() > 0:
-                            first_option.click(timeout=2000)
-                            page.wait_for_timeout(2500)
-                    except Exception as exc:  # pragma: no cover - best-effort
-                        print(
-                                f"[shot]   image-dropdown selection skipped: {exc!r}"
-                        )
+                # Step to the first image so the Viv stage actually
+                # paints a colony plate. Driven through the card's `>`
+                # stepper button rather than the react-select dropdown:
+                # the dropdown is a `dcc.Dropdown` whose menu portal and
+                # option classes are library internals, and clicking them
+                # has been failing silently -- the committed
+                # `02_viewer_loaded.png` it produced showed an unselected
+                # picker over an empty stage. The stepper is a plain
+                # button with a stable pattern-matching id, and it is the
+                # affordance the tutorial page describes anyway.
+                try:
+                    page.click(
+                            '[id*="card-picker-next"]',
+                            timeout=5_000,
+                    )
+                    page.wait_for_timeout(1_500)
+                except Exception as exc:  # pragma: no cover - best-effort
+                    print(f"[shot]   image stepper click skipped: {exc!r}")
 
+                # deck.gl paints on its own schedule after the source
+                # resolves; a shot taken before the first frame is a black
+                # stage. Waiting on the canvas ELEMENT is not enough -- it
+                # exists from the first render -- so wait for the facade to
+                # report a served level, which only happens once
+                # ``MultiscaleImageLayer`` has actually asked a loader for a
+                # tile.
+                try:
+                    page.wait_for_function(
+                            "() => {const el = document.querySelector("
+                            "'[id*=\"card-pyramid-readout\"]');"
+                            " return !!el && el.textContent.indexOf("
+                            "'pyramid level') === 0;}",
+                            timeout=20_000,
+                    )
+                except Exception as exc:  # pragma: no cover - best-effort
+                    print(
+                            "[shot]   WARNING: the Plate stage never reported "
+                            f"a served level ({exc!r}); 02_viewer_loaded.png "
+                            "may show an unpainted canvas."
+                    )
+                page.wait_for_timeout(800)
                 _save(page, "view_results", "02_viewer_loaded.png")
 
                 # Open the right-docked filter offcanvas from the top-bar
@@ -2347,564 +1786,61 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
                 except Exception as exc:  # pragma: no cover - best-effort
                     print(f"[shot]   filter-offcanvas shot skipped: {exc!r}")
 
-                page.mouse.wheel(0, 800)
-                page.wait_for_timeout(500)
+                # Capture the Colony tab's linked fixed-ROI camera controls.
+                # Wait for the live percentage rather than merely the
+                # toolbar element: the latter exists before Viv has measured
+                # the real cell frames and installed its viewports.
+                try:
+                    page.locator("a.nav-link", has_text="Colony").first.click()
+                    page.wait_for_selector(
+                            "#colony-camera-toolbar",
+                            state="visible",
+                            timeout=10_000,
+                    )
+                    page.wait_for_function(
+                            "() => {const el = document.querySelector("
+                            "'#colony-camera-zoom-readout');"
+                            " return !!el && /%$/.test(el.textContent.trim());}",
+                            timeout=20_000,
+                    )
+                    page.wait_for_timeout(800)
+                    _save(page, "view_results", "06_colony_camera.png")
+                    page.locator("a.nav-link", has_text="Plate").first.click()
+                    page.wait_for_timeout(500)
+                except Exception as exc:  # pragma: no cover - best-effort
+                    print(f"[shot]   colony-camera shot skipped: {exc!r}")
+
+                # Open the per-object table and scroll IT into view.
+                # `page.mouse.wheel` cannot do this any more: the Plate is
+                # a full-canvas deck.gl stage that consumes the wheel as a
+                # zoom gesture, so the page never scrolled and the shot
+                # named "measurement table" showed a zoomed plate. Scroll
+                # the document instead, and open the collapse the table
+                # lives in -- it is closed on load.
+                try:
+                    toggle = page.locator(
+                            '[id*="card-details-toggle"]'
+                    ).first
+                    toggle.scroll_into_view_if_needed(timeout=5_000)
+                    toggle.click(timeout=5_000)
+                    table = page.locator('[id*="card-details-table"]').first
+                    table.wait_for(state="visible", timeout=10_000)
+                    table.scroll_into_view_if_needed(timeout=5_000)
+                    page.wait_for_timeout(700)
+                except Exception as exc:  # pragma: no cover - best-effort
+                    print(
+                            "[shot]   WARNING: the per-object table never "
+                            f"opened ({exc!r}); 03_measurement_table.png "
+                            "will not show one."
+                    )
                 _save(page, "view_results", "03_measurement_table.png")
-
-                # While the standalone viewer is still up and the page is
-                # populated, capture the loaded-state versions of the QC
-                # and Heatmap tab tutorials. The hub-mounted captures
-                # above only see the empty state because the hub viewer
-                # is unbound at startup; the standalone launcher has a
-                # real ``output_root`` and renders the tab strip, so QC
-                # / Heatmap controls are reachable from here.
-                page.mouse.wheel(0, -800)
-                page.wait_for_timeout(400)
-
-                _qc_curation_loop_loaded_shots(page)
-                _qc_review_loaded_shots(page)
-                _heatmap_exploration_loaded_shots(page)
-                _error_analysis_loaded_shots(page)
 
                 page.close()
             finally:
-                browser.close()
+                context.close()
     finally:
         _stop_process(proc)
 
-    # The loaded Results Timeline tab rides on this standalone-capture pass too,
-    # but it needs a Timeline-CAPABLE output (the synthetic tutorial CLI run is
-    # single-timepoint → no eligible time column → the Timeline empty state). So
-    # it boots its OWN standalone viewer over the seeded
-    # ``RESULTS_TIMELINE_OUTPUT_DIR`` (mirroring the tune-copilot pattern below).
-    # Dispatched from this function (one of the two WORKFLOWS.md dispatch entry
-    # points) so the round-trip gate sees ``_capture_results_timeline`` wired in.
-    # A missing seed skips it rather than aborting the run.
-    from phenotypic.sdk_ import master_measurements_parquet_path
-
-    if master_measurements_parquet_path(RESULTS_TIMELINE_OUTPUT_DIR).exists():
-        print(
-            "[shot] workflow=results_timeline "
-            "(loaded viewer over a Timeline-capable seed)"
-        )
-        rt_port = _free_port()
-        rt_cmd = [
-            sys.executable,
-            "-m",
-            "phenotypic.gui.results_viewer",
-            "--output-root",
-            str(RESULTS_TIMELINE_OUTPUT_DIR),
-            "--port",
-            str(rt_port),
-            "--host",
-            "127.0.0.1",
-        ]
-        rt_log_path = _gui_log_sink(rt_port)
-        print(f"[shot]   results_timeline viewer logs -> {rt_log_path}")
-        with rt_log_path.open("w", encoding="utf-8") as rt_log:
-            rt_proc = subprocess.Popen(
-                rt_cmd, stdout=rt_log, stderr=subprocess.STDOUT, text=True
-            )
-        rt_url = f"http://127.0.0.1:{rt_port}"
-        try:
-            _wait_for_process_http_200(
-                    rt_url + "/", rt_proc, rt_log_path, timeout=30.0,
-            )
-            with sync_playwright() as pw:
-                browser = pw.chromium.launch(headless=not headed)
-                try:
-                    context = browser.new_context(viewport=VIEWPORT)
-                    _capture_results_timeline(context, rt_url)
-                finally:
-                    browser.close()
-        finally:
-            _stop_process(rt_proc)
-    else:
-        print(
-            "[shot]   results_timeline: no Timeline seed master — capture skipped"
-        )
-
-    # The loaded Tune co-pilot rides on this standalone-capture pass too: the
-    # hub mounts ``/tune/`` run-unbound (sidebar binding is a later chunk), so a
-    # LOADED co-pilot needs its own run-bound + sandbox-bound app — booted here
-    # over the hermetic ``TUNE_OUTPUT_DIR``. Dispatched from this function (one
-    # of the two WORKFLOWS.md dispatch entry points) so the round-trip gate sees
-    # ``_capture_tune_copilot`` wired in. A missing tune marker skips it.
-    from phenotypic.sdk_ import _io_constants as io
-
-    if not io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR).exists():
-        print("[shot]   tune_copilot: no tune output marker — capture skipped")
-        return
-
-    print("[shot] workflow=tune_copilot (loaded co-pilot over a real tune run)")
-    tune_port = _free_port()
-    tune_proc = _boot_standalone_tune(tune_port)
-    tune_url = f"http://127.0.0.1:{tune_port}"
-    try:
-        _wait_for_process_http_200(
-                tune_url + "/",
-                tune_proc,
-                _gui_log_sink(tune_port),
-                timeout=30.0,
-        )
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=not headed)
-            try:
-                context = browser.new_context(viewport=VIEWPORT)
-                _capture_tune_copilot(context, tune_url)
-            finally:
-                browser.close()
-    finally:
-        _stop_process(tune_proc)
-
-
-def _qc_curation_loop_loaded_shots(page) -> None:
-    """Capture loaded-state QC tab screenshots inside the standalone viewer.
-
-    The hub-mounted ``_capture_qc_curation_loop`` only sees the empty
-    state because the hub viewer is unbound at startup. The standalone
-    viewer has a real ``output_root``, so the tab strip mounts and the
-    QC top-strip controls (``+ Add check`` / ``Rebuild QC database``) are
-    reachable. Two additional screenshots cover the loaded state:
-
-    * ``02_qc_tab_selected.png`` — empty cards container with the top
-      strip visible.
-    * ``03_add_check_modal.png`` — the add-check modal open in add
-      mode showing the class picker.
-    """
-    qc_tab = page.locator('a[role="tab"]:has-text("QC")').first
-    if qc_tab.count() == 0:
-        print("[shot]   qc_curation_loop: QC tab not found — loaded captures skipped")
-        return
-    try:
-        qc_tab.click(timeout=3000)
-        page.wait_for_timeout(800)
-    except Exception:  # pragma: no cover - best-effort
-        pass
-    _save(page, "qc_curation_loop", "02_qc_tab_selected.png")
-
-    add_btn = page.locator("#qc-add-check-btn")
-    if add_btn.count() > 0:
-        try:
-            add_btn.click(timeout=2000)
-            # Wait for the modal to mount.
-            page.wait_for_selector("#qc-add-check-modal", timeout=4000)
-            page.wait_for_timeout(500)
-        except Exception:  # pragma: no cover - best-effort
-            pass
-    _save(page, "qc_curation_loop", "03_add_check_modal.png")
-
-    # Close the modal so the next workflow's screenshots aren't polluted.
-    cancel = page.locator("#qc-add-check-cancel")
-    if cancel.count() > 0:
-        try:
-            cancel.click(timeout=2000)
-            page.wait_for_timeout(400)
-        except Exception:  # pragma: no cover - best-effort
-            pass
-
-
-def _heatmap_exploration_loaded_shots(page) -> None:
-    """Capture loaded-state Heatmap tab screenshots inside the standalone viewer.
-
-    Mirrors :func:`_qc_curation_loop_loaded_shots`: switches to the
-    Heatmap tab in the standalone viewer (where the tab strip is
-    mounted) and captures the controls + figure. The synthetic
-    tutorial dataset does not run ``GridMeasureFeatures``, so the
-    populated state still renders the empty-state explanation card
-    rather than a real heatmap — but the captures reach more of the
-    real DOM than the empty-hub fallback.
-    """
-    heatmap_tab = page.locator('a[role="tab"]:has-text("Heatmap")').first
-    if heatmap_tab.count() == 0:
-        print(
-                "[shot]   heatmap_exploration: Heatmap tab not found — loaded captures skipped"
-        )
-        return
-    try:
-        heatmap_tab.click(timeout=3000)
-        page.wait_for_timeout(800)
-    except Exception:  # pragma: no cover - best-effort
-        pass
-    _save(page, "heatmap_exploration", "02_heatmap_tab_loaded.png")
-
-    # Try opening the color picker so the dropdown options are visible.
-    color_picker = page.locator("#heatmap-color-picker")
-    if color_picker.count() > 0:
-        try:
-            color_picker.click(timeout=2000)
-            page.wait_for_timeout(500)
-            _save(page, "heatmap_exploration", "03_color_picker_open.png")
-        except Exception:  # pragma: no cover - best-effort
-            pass
-
-
-def _error_analysis_loaded_shots(page) -> None:
-    """Capture the populated Error-analysis tab in the standalone viewer.
-
-    The standalone launcher has a real ``output_root`` carrying the seeded
-    ``deliverables/qc/curation_labels.parquet`` (12 ``background_noise`` labels written by
-    :func:`_seed_error_triage_labels`), so flipping to the Error tab ranks the
-    measurements that separate that error category from the all-unlabeled good
-    baseline. The recompute only fires when the tab is active (off-tab
-    ``PreventUpdate``), so click the tab and wait for the ranked
-    ``dash_table.DataTable`` cells before shooting. Captures:
-
-    * ``02_ranked_table.png`` — category chips + ranked cutoff table
-      (measurement, AUC, suggested cutoff, recall/specificity, BH-p).
-    * ``03_distribution_cutoff.png`` — the good-vs-error distribution figure
-      with the draggable cutoff line + recall/specificity readout.
-    * ``04_good_baseline_toggle.png`` — the All-unlabeled / Verified-only
-      good-baseline toggle + the verified-good count badge.
-    """
-    tab = page.locator('a[role="tab"]:has-text("Error")').first
-    tab.wait_for(state="visible", timeout=8_000)
-    tab.click(timeout=3_000)
-    # Fatal assertion: never save the empty/fallback view as a ranked-table
-    # tutorial stage.
-    page.wait_for_selector(
-        "#error-cutoff-table .dash-cell",
-        state="visible",
-        timeout=12_000,
-    )
-    if page.locator("#error-empty-state").is_visible():
-        raise RuntimeError("Error analysis remained in Need more labels state")
-    page.wait_for_timeout(800)
-    _save(page, "error_analysis", "02_ranked_table.png")
-
-    # The good-vs-error distribution figure (dcc.Graph) with the cutoff line.
-    figure = page.locator("#error-distribution-figure")
-    figure.wait_for(state="visible", timeout=8_000)
-    page.wait_for_selector(
-        "#error-distribution-figure .js-plotly-plot",
-        state="visible",
-        timeout=8_000,
-    )
-    readout = page.locator("#error-readout")
-    readout.wait_for(state="visible", timeout=8_000)
-    readout.evaluate(
-        "(el) => el.scrollIntoView({block: 'center', inline: 'nearest'})"
-    )
-    page.wait_for_timeout(400)
-    _save(page, "error_analysis", "03_distribution_cutoff.png")
-
-    # Good-baseline toggle (All unlabeled / Verified only) + verified count.
-    verified = page.locator(
-        'label[for$="error-good-mode-toggle_input_verified"]'
-    ).first
-    verified.wait_for(state="visible", timeout=8_000)
-    verified.click(timeout=3_000, force=True)
-    badge = page.locator("#error-verified-count")
-    badge.wait_for(state="visible", timeout=8_000)
-    page.wait_for_function(
-        "() => {"
-        " const b = document.querySelector('#error-verified-count');"
-        " return b && /verified good:\\s*[1-9]/.test(b.textContent || '');"
-        "}",
-        timeout=8_000,
-    )
-    if page.locator("#error-empty-state").is_visible():
-        raise RuntimeError("Verified-only Error preview lacks a seeded good baseline")
-    page.locator("#error-good-mode-toggle").scroll_into_view_if_needed(timeout=2_000)
-    page.wait_for_timeout(400)
-    _save(page, "error_analysis", "04_good_baseline_toggle.png")
-
-
-# ---------------------------------------------------------------------------
-# Tune co-pilot (standalone EMPTY-STATE app — bound at runtime via the picker)
-# ---------------------------------------------------------------------------
-#
-# The hub mounts ``/tune/`` in its empty (run-unbound) state; the user binds a
-# tune output at runtime with the sandbox-bounded run picker (Chunk C). The
-# tutorial captures that real flow: a standalone tune app is booted EMPTY-STATE
-# (``create_app(root=None, sandbox=...)``) against the dataset sandbox (so the
-# picker tree can reach the hermetic ``TUNE_OUTPUT_DIR`` AND the Curate Image
-# Source can reach ``PLATES_DIR``), and the capture drives the picker to bind the
-# run before screenshotting the loaded views. The app is constructed in a child
-# process via an inline snippet (there is no ``python -m phenotypic.gui.tune``
-# launcher) that serves ``create_app`` on a port.
-
-#: The inline child-process program that boots the EMPTY-STATE tune app. Reads
-#: the sandbox root / port from argv and serves ``create_app(root=None)`` so the
-#: capture exercises the runtime run-binding path (the picker → bind → loaded
-#: views). ``TUNE_OUTPUT_DIR`` lives under the sandbox root, so it is reachable
-#: in the picker's folder tree.
-_TUNE_STANDALONE_BOOT = """\
-import sys
-from pathlib import Path
-from dash import dcc
-from phenotypic.gui.shell import SandboxRoot
-from phenotypic.gui.shell._ids import TUNE_PIPELINE_PATH_STORE
-from phenotypic.gui.tune import create_app
-
-sandbox_root, port = sys.argv[1], int(sys.argv[2])
-sandbox = SandboxRoot.from_path(sandbox_root)
-app = create_app(root=None, url_prefix="/", sandbox=sandbox)
-# The Setup pipeline handoff reads the shell-provided ``tune-pipeline-path``
-# store, which lives in the SHELL layout, not the tune app. In the hub the shell
-# supplies it; for this standalone capture app we append the same store id so the
-# Setup -> Run authoring callbacks fire exactly as they do in production (a typed
-# pipeline path unlocks Continue, which authors the spec and reveals Run).
-app.layout.children = list(app.layout.children) + [
-    dcc.Store(id=TUNE_PIPELINE_PATH_STORE, data=None)
-]
-app.run(host="127.0.0.1", port=port, debug=False)
-"""
-
-
-def _boot_standalone_tune(port: int) -> subprocess.Popen[str]:
-    """Spawn the EMPTY-STATE tune co-pilot child process on ``port``.
-
-    The child runs :data:`_TUNE_STANDALONE_BOOT` with the dataset sandbox so the
-    run picker's folder tree can reach ``TUNE_OUTPUT_DIR`` and, once bound, the
-    Curate Image Source can reach ``PLATES_DIR``. The caller owns the returned
-    process's teardown. The capture (:func:`_capture_tune_copilot`) drives the
-    picker to bind the run at runtime.
-    """
-    cmd = [
-        sys.executable,
-        "-c",
-        _TUNE_STANDALONE_BOOT,
-        str(DATASET_DIR),
-        str(port),
-    ]
-    log_path = _gui_log_sink(port)
-    print(f"[shot]   standalone tune logs -> {log_path}")
-    with log_path.open("w", encoding="utf-8") as gui_log:
-        return subprocess.Popen(
-                cmd, stdout=gui_log, stderr=subprocess.STDOUT, text=True,
-        )
-
-
-def _show_tune_subtab(page, name: str) -> None:
-    """Click the ``tune-subtab-<name>`` button and let the view swap settle."""
-    button = page.locator(f"#tune-subtab-{name}")
-    button.wait_for(state="visible", timeout=8_000)
-    button.click(timeout=4_000)
-    page.wait_for_timeout(800)
-
-
-def _show_tune_destination(page, name: str) -> None:
-    """Click the ``tune-dest-<name>`` destination button and let it settle."""
-    button = page.locator(f"#tune-dest-{name}")
-    button.wait_for(state="visible", timeout=8_000)
-    button.click(timeout=4_000)
-    page.wait_for_timeout(700)
-
-
-def _author_tune_setup(page) -> None:
-    """Fill the Setup pipeline + metadata inputs (debounced → blur to commit).
-
-    The standalone tune app's sandbox is :data:`DATASET_DIR`, so the
-    sandbox-relative ``tune_setup.json.pht-tune`` and ``tune_layout.csv`` paths resolve to
-    the dataset's valid tuning spec and the QC scorer's count layout. Both inputs
-    are ``dcc.Input(debounce=True)``, so each fill is followed by a blur to
-    commit the value into the setup stores. Missing/invalid state is fatal so
-    the capture cannot save a Setup fallback under a valid-state filename.
-    """
-    pipeline_input = page.locator("#tune-setup-pipeline-input")
-    metadata_input = page.locator("#tune-setup-metadata-input")
-    pipeline_input.wait_for(state="visible", timeout=8_000)
-    metadata_input.wait_for(state="visible", timeout=8_000)
-    pipeline_input.fill(TUNE_SETUP_SPEC.name, timeout=3_000)
-    pipeline_input.press("Enter")
-    page.wait_for_timeout(600)
-    metadata_input.fill(TUNE_LAYOUT_CSV.name, timeout=3_000)
-    metadata_input.press("Enter")
-    page.wait_for_selector("#tune-setup-continue:not([disabled])", timeout=8_000)
-    gate_text = page.locator("#tune-setup-gate").inner_text(timeout=3_000)
-    if "value error" in gate_text.lower() or "unavailable" in gate_text.lower():
-        raise RuntimeError(f"Tune Setup is invalid: {gate_text}")
-
-
-def _continue_tune_setup(page) -> None:
-    """Press Setup's Continue to author the spec and switch to the Run view.
-
-    Continue (:data:`ids.TUNE_SETUP_CONTINUE`) authors a path-backed spec and
-    flips the active destination to ``run`` — which is what unlocks the Run
-    destination button (it is disabled until an authored spec exists). Waits for
-    the Run view's Deploy button to render so the caller's ``01_run.png`` lands
-    on the real Run form, not the Setup view. Failure is fatal.
-    """
-    button = page.locator("#tune-setup-continue")
-    button.wait_for(state="visible", timeout=8_000)
-    if not button.is_enabled():
-        raise RuntimeError("Tune Setup Continue remained disabled")
-    button.click(timeout=4_000)
-    page.wait_for_selector("#tune-run-deploy", state="visible", timeout=8_000)
-    page.wait_for_timeout(700)
-
-
-def _prepare_valid_tune_run(page) -> None:
-    """Populate Run inputs and require one fully deploy-eligible command plan."""
-    images = page.locator("#tune-run-images-override")
-    output = page.locator("#tune-run-output-dir")
-    images.wait_for(state="visible", timeout=8_000)
-    output.wait_for(state="visible", timeout=8_000)
-    images.fill(PLATES_DIR.name, timeout=3_000)
-    images.press("Enter")
-    output.fill(TUNE_LAUNCH_OUTPUT_DIR.name, timeout=3_000)
-    output.press("Enter")
-
-    deploy = page.locator("#tune-run-deploy")
-    page.wait_for_selector("#tune-run-deploy:not([disabled])", timeout=8_000)
-    page.wait_for_function(
-        """([imagesName, outputName]) => {
-            const gui = document.querySelector('#tune-run-command');
-            const portable = document.querySelector('#tune-run-portable-command');
-            const preflight = document.querySelector('#tune-run-preflight');
-            const deploy = document.querySelector('#tune-run-deploy');
-            const guiText = (gui?.textContent || '').trim();
-            const portableText = (portable?.textContent || '').trim();
-            return guiText.includes('phenotypic.tune')
-                && guiText.includes(imagesName)
-                && guiText.includes(outputName)
-                && portableText.includes('phenotypic.tune')
-                && portableText.includes(imagesName)
-                && portableText.includes(outputName)
-                && (preflight?.textContent || '').trim() === 'Ready to deploy.'
-                && deploy
-                && !deploy.disabled;
-        }""",
-        arg=[PLATES_DIR.name, TUNE_LAUNCH_OUTPUT_DIR.name],
-        timeout=8_000,
-    )
-    if images.input_value() != PLATES_DIR.name:
-        raise RuntimeError("Tune Run image source did not retain the selected path")
-    if output.input_value() != TUNE_LAUNCH_OUTPUT_DIR.name:
-        raise RuntimeError("Tune Run output did not retain the selected path")
-    if not deploy.is_enabled():
-        raise RuntimeError("Tune Run Deploy remained disabled")
-
-
-def _bind_tune_run_via_picker(page, *, run_dir_name: str) -> None:
-    """Drive the runtime run picker to bind ``run_dir_name`` (Chunk C).
-
-    Opens the sandbox-bounded run picker, screenshots the modal, navigates into
-    the run directory (clicking its folder entry sets the browse-dir into it),
-    and clicks "Bind this run" — exercising the real runtime binding path that
-    populates ``tune-run-root-store`` and swaps in the loaded views. Every
-    required transition is asserted so a fallback page is never saved as a
-    bound Monitor shot.
-    """
-    browse = page.locator("#tune-btn-pick-run")
-    browse.wait_for(state="visible", timeout=8_000)
-    browse.click(timeout=4_000)
-    page.wait_for_selector("#tune-run-picker-modal", state="visible", timeout=8_000)
-    page.wait_for_timeout(500)
-    _save(page, "tune_copilot", "02b_run_picker_modal.png")
-
-    # Navigate INTO the run directory: clicking its folder entry sets the
-    # browse-dir to that folder, which is what "Bind this run" then binds.
-    folder = page.locator(
-        f"#tune-run-picker-modal-body >> text={run_dir_name}/"
-    ).first
-    folder.wait_for(state="visible", timeout=8_000)
-    folder.click(timeout=3_000)
-    page.wait_for_timeout(600)
-
-    confirm = page.locator("#tune-btn-run-picker-confirm")
-    confirm.wait_for(state="visible", timeout=8_000)
-    confirm.click(timeout=3_000)
-    page.wait_for_selector("#tune-objective-figure", state="visible", timeout=8_000)
-    page.wait_for_timeout(500)
-
-
-def _capture_tune_copilot(context, base_url: str) -> None:
-    """Drive the tune co-pilot through Setup → Run → Monitor and its sub-tabs.
-
-    The page lands on the **Setup** destination. :func:`_author_tune_setup` fills
-    the tuning spec + metadata inputs (sandbox-relative ``tune_setup.json.pht-tune`` /
-    ``tune_layout.csv``), which unlocks the **Run** destination; Run is captured
-    with its launch form + live command card + Deploy. Then **Monitor**:
-    :func:`_bind_tune_run_via_picker` opens the sandbox-bounded picker, navigates
-    into the pre-built run directory, and clicks "Bind this run" — the real
-    runtime binding path — which swaps in the loaded views. Monitor is the
-    default sub-tab (its 3-second poll fills the objective + importance figures +
-    the trials table); Curate pins the first two shortlist cards into A / B and
-    picks a plate so the overlays render; Space and Launch are captured
-    as-mounted (their forms render from the bound run's spec).
-    """
-    page = context.new_page()
-    page.goto(base_url + "/")
-    page.wait_for_load_state("networkidle")
-
-    # --- Setup: author from the valid tuning spec + count layout --------------
-    _author_tune_setup(page)
-    _save(page, "tune_copilot", "00_setup.png")
-
-    # --- Run: Continue authors the spec + switches to the Run destination -----
-    _continue_tune_setup(page)
-    _prepare_valid_tune_run(page)
-    # Scroll the live command card + Deploy into view — the novel launch
-    # affordances sit below the form fold in the capture viewport.
-    page.set_viewport_size({"width": VIEWPORT["width"], "height": 1400})
-    page.evaluate(
-        """() => {
-            window.scrollTo(0, 0);
-            for (const element of document.querySelectorAll('*')) {
-                if (element.scrollTop) element.scrollTop = 0;
-            }
-        }"""
-    )
-    page.wait_for_timeout(500)
-    _save(page, "tune_copilot", "01_run.png", full_page=True)
-
-    # --- Monitor: bind the pre-built run via the picker (read-only path) ------
-    page.set_viewport_size(VIEWPORT)
-    _show_tune_destination(page, "monitor")
-    page.wait_for_timeout(400)
-    # Bind the run at runtime via the picker (Browse → pick run dir → Bind).
-    _bind_tune_run_via_picker(page, run_dir_name=TUNE_OUTPUT_DIR.name)
-
-    # The Monitor poll fires every 3s, and its first ticks spend ~3s each
-    # timing out the live SQLite study open before degrading to the finished
-    # ``trials.parquet`` journal. Wait several cycles so a journal-backed tick
-    # has rendered the objective scatter + trials table before the screenshot.
-    page.wait_for_timeout(10_000)
-    _save(page, "tune_copilot", "02_monitor.png")
-
-    # --- Curate: pin two shortlist cards (A then B) + pick a plate ------------
-    _show_tune_subtab(page, "curate")
-    cards = page.locator("[id*='tune-shortlist-card']")
-    try:
-        n_cards = cards.count()
-        for index in range(min(2, n_cards)):
-            cards.nth(index).click(timeout=3000)
-            page.wait_for_timeout(700)
-    except Exception as exc:  # pragma: no cover - best-effort
-        print(f"[shot]   tune_copilot: shortlist pin skipped: {exc!r}")
-
-    # Pick the first plate so the overlay render futures are submitted.
-    plate_picker = page.locator("#tune-plate-picker")
-    if plate_picker.count() > 0:
-        try:
-            plate_picker.click(timeout=3000)
-            page.wait_for_timeout(400)
-            option = page.locator("[role='option']:visible").first
-            if option.count() > 0:
-                option.click(timeout=3000)
-        except Exception as exc:  # pragma: no cover - best-effort
-            print(f"[shot]   tune_copilot: plate pick skipped: {exc!r}")
-    # The overlays render on a background pool and a poll swaps the figure in;
-    # wait a couple of poll cycles so the colony overlay is visible.
-    page.wait_for_timeout(3500)
-    _save(page, "tune_copilot", "03_curate.png")
-
-    # --- Space: the inferred search-space knob rows --------------------------
-    _show_tune_subtab(page, "space")
-    _save(page, "tune_copilot", "04_space.png")
-
-    # --- Launch: the strategy form + the live command card -------------------
-    _show_tune_subtab(page, "launch")
-    _save(page, "tune_copilot", "05_launch.png")
-
-    page.close()
-
-
-# ---------------------------------------------------------------------------
-# Entrypoint
-# ---------------------------------------------------------------------------
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -2931,38 +1867,11 @@ def main(argv: list[str] | None = None) -> int:
     if not args.skip_cli:
         run_cli_once()
 
-    # Seed synthetic error-category labels so the Error-analysis tab renders a
-    # populated ranked table in the standalone-viewer capture. Runs after the
-    # CLI master exists (or after a ``--skip-cli`` reuse of a prior master) and
-    # before any GUI boots. This is required evidence and therefore fatal.
+    # Seed synthetic error-category labels so the viewer captures show a
+    # curated plate (per-tile category badges in the colony grid). Runs after
+    # the CLI master exists (or after a ``--skip-cli`` reuse of a prior master)
+    # and before any GUI boots. This is required evidence and therefore fatal.
     _seed_error_triage_labels()
-
-    # Build the hermetic tune output the loaded co-pilot capture reads. A
-    # valid Setup and Run states are required evidence, so failure is fatal.
-    run_tune_once()
-
-    # Seed the small folder/time-series matrix the Browse Timeline capture
-    # roots itself at. Idempotent + non-fatal.
-    try:
-        _seed_browse_timeline_series()
-    except Exception as exc:  # noqa: BLE001 - capture run must not abort here
-        print(
-                f"[seed] FAILED ({exc!r}); continuing — the Browse Timeline "
-                "screenshots may be empty.",
-                file=sys.stderr,
-        )
-
-    # Seed the Timeline-capable CLI output the Results Timeline capture boots a
-    # standalone viewer over (the synthetic CLI run is single-timepoint).
-    # Idempotent + non-fatal.
-    try:
-        _seed_results_timeline_output()
-    except Exception as exc:  # noqa: BLE001 - capture run must not abort here
-        print(
-                f"[seed] FAILED ({exc!r}); continuing — the Results Timeline "
-                "screenshots will be skipped.",
-                file=sys.stderr,
-        )
 
     proc, base_url = boot_gui(DATASET_DIR)
     try:
@@ -2972,19 +1881,6 @@ def main(argv: list[str] | None = None) -> int:
 
     capture_standalone_viewer_screenshots(headed=args.headed)
     capture_standalone_analysis_screenshots(headed=args.headed)
-    _assert_distinct_stage_images(
-        "tune_copilot",
-        ("00_setup.png", "01_run.png"),
-    )
-    _assert_distinct_stage_images(
-        "error_analysis",
-        (
-            "02_ranked_table.png",
-            "03_distribution_cutoff.png",
-            "04_good_baseline_toggle.png",
-        ),
-    )
-
     print("[done] all screenshots written to docs/source/_static/gui_images/")
     return 0
 

@@ -51,11 +51,14 @@ from phenotypic.gui._shared._triage_callbacks import (
     register_custom_category_safe,
 )
 from phenotypic.gui.results_viewer import _ids as ids
-from phenotypic.gui.results_viewer._qc_tab.review import _ids as qc_review_ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._filtered_state import (
     decode_removed_keys_payload,
+)
+from phenotypic.gui.results_viewer._measurement_source import (
+    displayable_measurement_columns,
+    measurement_values_for,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._mutation_guard import (
@@ -154,10 +157,12 @@ def register_callbacks(
         Input(ids.STORE_REMOVED_KEYS, "data"),
         Input(ids.COLONY_X_AXIS_DROPDOWN_ID, "value"),
         Input(ids.COLONY_Y_AXIS_DROPDOWN_ID, "value"),
+        Input(ids.COLONY_MEASUREMENT_DROPDOWN_ID, "value"),
         Input(ids.COLONY_BTN_REFRESH_ID, "n_clicks"),
         Input(ids.STORE_COLONY_TILE_SIZE, "data"),
         Input(ids.STORE_TILE_DIM_ALPHA, "data"),
         Input(ids.STORE_ACTIVE_LAYER, "data"),
+        Input(ids.STORE_COLONY_GRID_FOCUS, "data"),
         Input(ids.TABS_ID, "active_tab"),
     )
     def _render_colony_grid(
@@ -165,10 +170,12 @@ def register_callbacks(
         removed_payload: Any,
         x_axis: str | None,
         y_axis: str | None,
+        measurement_column: str | None,
         refresh_clicks: int | None,
         tile_size: int | None,
         dim_alpha: float | None,
         active_layer: Any,
+        focus_index: int | None,
         active_tab: str | None,
     ) -> tuple[Any, Any, Any]:
         """Rebuild the grid whenever any of its data inputs change.
@@ -223,6 +230,21 @@ def register_callbacks(
         with filtered_state._lock:
             category_of = dict(filtered_state.labels)
 
+        # Values come from each in-view image's OWN embedded table, joined on
+        # the ``Object_Label`` the store's descriptor names. Reads are
+        # memoized on the payload's generation, so the repeat renders a tile
+        # -size or dim step causes cost nothing. A column the picker offers
+        # but an image does not declare simply yields no keys for that image.
+        measurement_values: dict[
+            tuple[str, str, int], float | None
+        ] | None = None
+        if measurement_column:
+            measurement_values = measurement_values_for(
+                output_root,
+                output_root.image_pairs(filtered_df),
+                measurement_column,
+            )
+
         # Selection styling is applied by the JS lifecycle layer, so we
         # always render the grid as if nothing were selected. This
         # keeps the click hot path off the server.
@@ -239,6 +261,9 @@ def register_callbacks(
             category_of=category_of,
             layer=layer,
             mutations_disabled=mutations_disabled,
+            measurement_column=measurement_column or None,
+            measurement_values=measurement_values,
+            focus_index=int(focus_index or 0),
         )
         info = (
             f"crop {max_size}px → {display_size}px "
@@ -302,6 +327,49 @@ def register_callbacks(
             y_value = None
 
         return options, options, x_value, y_value
+
+    # ----------------------------------------------------------------------
+    # 2b. Measurement picker population
+    # ----------------------------------------------------------------------
+
+    @app.callback(
+        Output(ids.COLONY_MEASUREMENT_DROPDOWN_ID, "options"),
+        Output(ids.COLONY_MEASUREMENT_DROPDOWN_ID, "value"),
+        Input(ids.STORE_FILTER_SPEC, "data"),
+        State(ids.COLONY_MEASUREMENT_DROPDOWN_ID, "value"),
+    )
+    def _populate_measurement_dropdown(
+        filter_payload: Any,
+        current_column: str | None,
+    ) -> tuple[list[dict[str, str]], str | None]:
+        """Offer the columns the in-view stores declare, and keep the choice.
+
+        Options come from each store's own descriptor, so no Parquet is
+        opened to build them. **An empty list is a normal answer**, not a
+        pending one: a ``--mode process`` run never measures and a
+        standalone bundle ships no per-image stores. The cards then render
+        exactly as they did before this feature existed.
+
+        The current choice survives a filter change whenever it is still
+        offered -- narrowing the grid rescales the tint, and losing the
+        column as well would be a second surprise the user did not ask for.
+        """
+        try:
+            spec = FilterSpec.from_store(filter_payload)
+            filtered_df = spec.apply_to(df)
+        except Exception:
+            logger.exception(
+                "FilterSpec.apply_to failed while populating the colony "
+                "measurement picker."
+            )
+            filtered_df = df
+
+        columns = displayable_measurement_columns(
+            output_root, output_root.image_pairs(filtered_df)
+        )
+        options = [{"label": column, "value": column} for column in columns]
+        value = current_column if current_column in columns else None
+        return options, value
 
     # ----------------------------------------------------------------------
     # 3. Radial category mark / restore (pattern-matching ALL)
@@ -971,22 +1039,27 @@ def register_callbacks(
         )
 
     # ----------------------------------------------------------------------
-    # 10. Shared readout sync — keep BOTH toolbars' ``dim`` readouts in step
-    #    with the shared store. Registered here (once) because the colony
-    #    surface always mounts with the viewer; the QC readout id is present
-    #    too (suppress_callback_exceptions guards the rare absent case).
+    # 10. Readout sync — keep the colony toolbar's ``dim`` readout in step
+    #    with the shared store. Registered here because the colony surface
+    #    always mounts with the viewer.
+    #
+    #    A second Output drove the QC Review toolbar's readout until the QC
+    #    tab was unmounted (spec §3). That was not a harmless leftover:
+    #    ``suppress_callback_exceptions`` relaxes SERVER-side validation
+    #    only, so the renderer kept throwing on the absent id and discarding
+    #    the whole response — freezing the colony readout this callback
+    #    exists to drive. When QC returns it registers its own readout sync
+    #    rather than being written to from here.
     # ----------------------------------------------------------------------
 
     @app.callback(
         Output(ids.COLONY_DIM_READOUT, "children"),
-        Output(qc_review_ids.QC_REVIEW_DIM_READOUT, "children"),
         Input(ids.STORE_TILE_DIM_ALPHA, "data"),
     )
-    def _sync_dim_readouts(dim_alpha: float | None) -> tuple[str, str]:
-        """Render ``dim 0.60`` into both galleries' readouts from the store."""
+    def _sync_dim_readouts(dim_alpha: float | None) -> str:
+        """Render ``dim 0.60`` into the colony gallery's readout from the store."""
         alpha = TILE_DIM_DEFAULT if dim_alpha is None else float(dim_alpha)
-        text = f"dim {alpha:.2f}"
-        return text, text
+        return f"dim {alpha:.2f}"
 
     # ----------------------------------------------------------------------
     # 11. Pixel-layer toggle → active-layer store

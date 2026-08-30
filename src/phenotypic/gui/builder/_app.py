@@ -27,7 +27,11 @@ from phenotypic.gui._config import (
 )
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._operation_registry import OperationRegistry
-from phenotypic.gui._shared import register_shared_static
+from phenotypic.gui._shared import (
+    register_shared_static,
+    register_viv_assets,
+    viv_script_urls,
+)
 from phenotypic.gui.builder._callbacks import register_callbacks
 from phenotypic.gui.builder._layout import build_app_layout
 from phenotypic.gui.builder._point_picker import (
@@ -35,7 +39,9 @@ from phenotypic.gui.builder._point_picker import (
     register_point_picker_routes,
 )
 from phenotypic.gui.builder._preview_cache import init_cache as init_preview_cache
-from phenotypic.gui.builder._preview_tiles import register_node_preview_routes
+from phenotypic.gui.builder._preview_zarr_routes import (
+    register_preview_zarr_routes,
+)
 from phenotypic.gui.builder._state import BuilderState
 from phenotypic.gui._url_prefix import (
     configure_url_prefix_routing,
@@ -89,6 +95,14 @@ def create_app(
     app = dash.Dash(
         __name__,
         external_stylesheets=[dbc.themes.BOOTSTRAP],
+        # The vendored Viv bundle + facade the node-preview pane renders
+        # through. They are NOT copied into ``builder/assets/``: Dash takes
+        # one ``assets_folder`` per app and this one already holds eight
+        # files, so the two artifacts are served from the results viewer's
+        # package directory by a small blueprint instead (spec section 10,
+        # OQ4). Load order is irrelevant -- the facade reads the bundle's
+        # global inside ``ready()``, never at module scope.
+        external_scripts=viv_script_urls(url_prefix),
         suppress_callback_exceptions=True,
         title=TITLE_BUILDER,
         requests_pathname_prefix=url_prefix,
@@ -104,6 +118,7 @@ def create_app(
 
     inject_design_tokens(app)
     register_shared_static(app.server)
+    register_viv_assets(app.server)
 
     app.layout = build_app_layout(state, registry, image_root, url_prefix=url_prefix)
 
@@ -113,7 +128,7 @@ def create_app(
 
     register_callbacks(app)
     register_point_picker_routes(app, image_root)
-    register_node_preview_routes(app)
+    register_preview_zarr_routes(app)
     init_preview_cache()
     register_point_picker_callbacks(app)
 

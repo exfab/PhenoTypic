@@ -396,11 +396,10 @@ class TestRegenerateMissingOverlays:
             def submit(
                 self,
                 _fn: object,
-                dataset_name: str,
-                store_path: Path,
-                _requires_marker_restore: bool,
+                item: object,
+                _manager: object,
             ) -> FakeFuture:
-                submitted.append((dataset_name, store_path))
+                submitted.append((item.dataset, item.store))
                 return FakeFuture()
 
         class FakeOutputManager:
@@ -418,11 +417,11 @@ class TestRegenerateMissingOverlays:
         monkeypatch.setenv("SLURM_CPUS_PER_TASK", "8")
         with (
             patch(
-                "phenotypic.phenotypicCLI.scan_store_outputs",
+                "phenotypic._cli._cli_overlay_rendering.scan_store_outputs",
                 return_value=datasets,
             ),
             patch(
-                "phenotypic.phenotypicCLI.OutputManager.from_config",
+                "phenotypic._cli._cli_overlay_rendering.OutputManager.from_config",
                 return_value=FakeOutputManager(),
             ),
             patch(

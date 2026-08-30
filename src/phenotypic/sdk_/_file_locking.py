@@ -46,6 +46,36 @@ def exclusive_path_lock(
             _release(handle)
 
 
+@contextmanager
+def exclusive_file_lock(
+    handle: BinaryIO,
+    *,
+    timeout: float = 30.0,
+) -> Iterator[None]:
+    """Lock an already-open file without reopening its pathname.
+
+    Callers that establish stronger pathname guarantees (for example with an
+    anchored ``openat`` and ``O_NOFOLLOW``) can retain those guarantees while
+    using the same cross-platform locking implementation as
+    :func:`exclusive_path_lock`.
+
+    Args:
+        handle: Open binary handle whose descriptor is the lock authority.
+        timeout: Maximum number of seconds to wait.
+
+    Yields:
+        ``None`` while the exclusive lock is held.
+
+    Raises:
+        ArtifactLockTimeout: If acquisition exceeds ``timeout``.
+    """
+    _acquire(handle, timeout=timeout)
+    try:
+        yield
+    finally:
+        _release(handle)
+
+
 def _acquire(handle: BinaryIO, *, timeout: float) -> None:
     started = time.monotonic()
     if sys.platform == "win32":  # pragma: win32 cover
@@ -86,4 +116,8 @@ def _release(handle: BinaryIO) -> None:
         fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
-__all__ = ["ArtifactLockTimeout", "exclusive_path_lock"]
+__all__ = [
+    "ArtifactLockTimeout",
+    "exclusive_file_lock",
+    "exclusive_path_lock",
+]

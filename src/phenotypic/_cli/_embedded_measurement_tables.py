@@ -11,7 +11,10 @@ import polars as pl
 
 from phenotypic.sdk_ import PreparedEmbeddedMeasurementTable
 
-from ._metadata_join import prepare_metadata_join_keys
+from ._metadata_join import (
+    normalize_measurement_metadata_columns,
+    prepare_metadata_join_keys,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +49,9 @@ def prepare_embedded_measurement_table(
     preserves every measured row, excludes metadata-only rows, and retains
     duplicate metadata-key fan-out.
     """
-    baseline = measurements.copy()
+    baseline = normalize_measurement_metadata_columns(
+        pl.from_pandas(measurements)
+    ).to_pandas()
     measurement_columns = tuple(str(column) for column in baseline.columns)
     if metadata_csv is None:
         return PreparedEmbeddedMeasurementTable(
@@ -96,3 +101,31 @@ def prepare_embedded_measurement_table(
         join_keys=common,
         metadata_snapshot_sha256=digest,
     )
+
+
+def embedded_measurement_table_matches(
+    store_path: Path,
+    prepared: PreparedEmbeddedMeasurementTable,
+) -> bool:
+    """Return whether the embedded Arrow table exactly equals *prepared*.
+
+    Equality includes column order and types, schema metadata, row order,
+    values, null placement, and row count. The latter is what makes duplicate
+    metadata-key fan-out part of reclaim authority rather than an incidental
+    property of a readable Parquet payload.
+    """
+    import pyarrow as pa  # type: ignore[import-untyped]
+    import pyarrow.parquet as pq  # type: ignore[import-untyped]
+
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+
+    try:
+        expected = pa.Table.from_pandas(
+            prepared.frame, preserve_index=False
+        ).replace_schema_metadata(prepared.parquet_metadata())
+        actual = pq.read_table(
+            Path(store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
+        )
+    except Exception:  # noqa: BLE001 - inability to compare refuses deletion
+        return False
+    return actual.equals(expected, check_metadata=True)

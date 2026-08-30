@@ -2068,20 +2068,20 @@ def build_node_preview_modal() -> dbc.Modal:
                     ),
                     dcc.Loading(
                         html.Div(
-                            id=ids.PREVIEW_OSD_DIV,
-                            className="node-preview-osd",
+                            id=ids.PREVIEW_STAGE_DIV,
+                            className="node-preview-stage",
                             style={
                                 "height": "70vh",
                                 "width": "100%",
                                 "background": COLOR_IMAGE_STAGE_DARK,
                             },
-                            **{"data-testid": "node-preview-osd-canvas"},  # type: ignore[arg-type]
+                            **{"data-testid": "node-preview-stage-canvas"},  # type: ignore[arg-type]
                         ),
                     ),
                     html.Small(id=ids.PREVIEW_CAPTION, className="text-muted d-block mt-2"),
-                    dcc.Store(id=ids.PREVIEW_DZI_URL_STORE, data=None),
+                    dcc.Store(id=ids.PREVIEW_SOURCE_SPEC_STORE, data=None),
                     dcc.Store(id=ids.STORE_PREVIEW_TARGET, data=None),
-                    dcc.Store(id=ids.PREVIEW_OSD_MOUNT_TRIGGER, data=None),
+                    dcc.Store(id=ids.PREVIEW_VIV_MOUNT_TRIGGER, data=None),
                 ]
             ),
             dbc.ModalFooter(

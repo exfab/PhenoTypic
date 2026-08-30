@@ -857,9 +857,19 @@ reusing `recompile`'s argument validation: no `--pipeline`, no `--input`,
 operates on an existing output root.
 
 **Migration is in place.** The tree at `--output` is converted where it sits:
-`results/<ds>/zarr/` appears beside `results/<ds>/hdf/`, and everything else —
-`measurements/`, `overlays/`, `deliverables/`, machine state — is left exactly
-where it is.
+`results/<ds>/zarr/` appears beside `results/<ds>/hdf/`. Existing measurement
+tables, overlay PNGs, deliverables, and machine state remain in place. Missing
+overlay PNGs are regenerated from the promoted stores with the forward-run
+`OutputManager.save_overlay()` renderer and the requested `--overlay-alpha`
+(default `0.3`); existing PNG bytes are never rewritten.
+
+Publication is terminal and ordered. After every store, embedded measurement
+table, and overlay validates, migration publishes one image-success marker per
+store (a measurement artifact is omitted only for a zero-object store), rebuilds
+and publishes the aggregate snapshot, and finally publishes version-2
+`run_completion.json`. Stale aggregate and completion markers are removed before
+the first mutation, and no terminal marker is published when any preceding pass
+fails.
 
 > **Copy mode was specified and then removed (2026-08-19, user ruling).** An
 > intermediate draft added `--input <src> --output <dst>` to write a converted
@@ -886,10 +896,12 @@ where it is.
 > change, specified against the full output contract rather than an artifact
 > allow-list.
 
-**Local-only, parallel via `--njobs`.** Migration is one-time, resumable, and
-restartable — a partially migrated tree is simply migrated again — so it does
-not justify another SLURM controller/array surface with its own chunking and
-`MaxArraySize` accounting.
+> **Historical decision, superseded 2026-08-29.** The original design was
+> **Local-only, parallel via `--njobs`**: migration was one-time, resumable,
+> and restartable, so it did not justify another SLURM controller/array surface
+> with its own chunking and `MaxArraySize` accounting. Migration now accepts
+> `--slurm` through the fenced dispatcher chain described in §9/OQ5; the local
+> `--njobs` runner remains available when no SLURM profile is supplied.
 
 **`--delete-sources`** reclaims the retained `.h5` files after conversion. It is
 opt-in because migration is otherwise non-destructive, and it must refuse unless
@@ -1080,8 +1092,12 @@ material.
   a store directory where `file_fingerprint` raises.
 - **Migration.** Golden fixtures in v1-flat and v2-grouped layouts, **including
   one with an `enh_gray` layer**, migrate to stores equal to freshly written
-  ones. Assert `deliverables/metadata.csv` is **byte-identical before and after**
-  migration, that `metadata.canonical.csv` is emitted beside it, and that no
+  ones. Assert missing overlays are rendered while existing overlays remain
+  byte-identical; zero-object images without legacy Parquets receive store-plus-
+  overlay success markers; nonempty images without measurements fail closed;
+  the aggregate is current; and version-2 run completion validates. Also assert
+  `deliverables/metadata.csv` is **byte-identical before and after** migration,
+  that `metadata.canonical.csv` is emitted beside it, and that no
   `metadata.original.csv` exists (ledger **MIG-18** — the previous wording
   asserted the opposite, and Task 6.4's `grep -rn "metadata.original.csv"` gate
   would have failed against this line).
@@ -1125,12 +1141,19 @@ Recorded rather than deleted, so the reasoning survives.
 | OQ2 | Cost of dropping Python 3.10 | **None.** Floor moves to 3.11. |
 | OQ3 | Inode count acceptable? | **Yes.** The cost is linear at 8 files/level; auto is 40 files/image at 4000×3000. ~~with a knob~~ — the `--pyramid-levels` knob is descoped (decision #8, superseded 2026-08-19). |
 | OQ4 | Path layout | **Confirmed** as `results/<dataset>/zarr/<stem>.ome.zarr/`. |
-| OQ5 | Migration ergonomics | **`--mode migrate`**, local-only with `--njobs`, absorbing the metadata-schema migration; a legacy-only output root fails with a pointer rather than auto-migrating. |
+| OQ5 | Migration ergonomics | **`--mode migrate`**, originally executed through the local `--njobs` runner, absorbing the metadata-schema migration; a legacy-only output root fails with a pointer rather than auto-migrating. |
 | OQ6 | Move the `<3.13` ceiling? | **No.** Keep `mahotas`; the cap stays and its cause is now documented (§6). |
 | OQ7 | Windows support level | **Supported for staged runs.** Six consequences specified in §3.8. |
 | OQ8 | `fsync` before promote | **On under SLURM, off locally**, with explicit logging and a `--durable-writes` override (§3.7). |
 | OQ9 | `image-label.colors` at scale | **Acceptable.** ~60 KB for a 1536-colony plate; always emitted (§2.3). |
 | OQ10 | Shard buffer vs `--njobs` | **Not a constraint.** Per-worker processing peaks at ~24 GB; the shard buffer is ~0.5% of that. `--njobs` sizing is unchanged by this design (§1.4). |
+
+> **Supersession (2026-08-29).** OQ5 records the original local-runner
+> decision. Migration now also accepts `--slurm`: it creates a fenced,
+> dispatcher-fed metadata → image → seal → optional reclaim → finalizer chain,
+> whose workers consume one immutable manifest. `--wait` accepts only the
+> finalizer's typed terminal authority. The local `--njobs` path remains the
+> non-SLURM execution mode; it is no longer the only migration mode.
 
 ## 10. Open questions
 

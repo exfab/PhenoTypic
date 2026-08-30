@@ -34,7 +34,7 @@ import io
 import logging
 import os
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
@@ -44,13 +44,50 @@ from dash import html
 from dash.development.base_component import Component
 from flask import Blueprint, Response
 from PIL import Image as PILImage
+from werkzeug.exceptions import BadRequest, NotFound
 
-from phenotypic.gui._design import TILE_DIM_RGB
+from phenotypic.gui._design import (
+    FONT_FAMILY_MONO,
+    FONT_SIZE_MICRO,
+    TILE_DIM_RGB,
+)
+from phenotypic.gui._shared._measurement_tint import TileMeasurement
 
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Shared route primitives
+# ---------------------------------------------------------------------------
+
+#: DZI tile filenames are ``<col>_<row>.png`` per the OpenSeadragon spec.
+#: Re-homed here from ``results_viewer/_tile_routes.py``: that module's own
+#: routes went when the results Plate stopped rendering server-built DZI
+#: pyramids, but the BUILDER's preview and point-picker routes still tile
+#: with libvips and still need the name guard. Deleting the module without
+#: moving this would have broken the builder at import, from a different
+#: sub-app than the one being edited.
+TILE_NAME_RE = re.compile(r"^\d+_\d+\.png$")
+
+
+def json_error(message: str, status: int) -> Response:
+    """Build a small JSON error ``Response`` with the given status code.
+
+    Args:
+        message: Human-readable error string surfaced to the caller.
+        status: HTTP status code to attach.
+
+    Returns:
+        A Flask :class:`~flask.Response` with ``application/json`` body.
+    """
+    from flask import jsonify
+
+    response = jsonify({"error": message})
+    response.status_code = status
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -281,14 +318,6 @@ LayerName = Literal["rgb", "detect_mat", "objmap"]
 #: route default can never drift apart.
 DEFAULT_LAYER: LayerName = "rgb"
 
-#: Number of decoded store layers to keep in memory. Sized by the DATA, not by
-#: request variety: the cache key carries the RESOLVED pyramid level rather
-#: than the caller's ``target_px``, so distinct targets selecting the same
-#: level share one entry (ledger FLOW-10). Bound is level-count x layer-count;
-#: a 4000x6000 plate has 5 levels and there are 4 layers.
-_STORE_LAYER_CACHE_SIZE = 24
-
-
 class StoreUnreadable(RuntimeError):
     """A store exists but this build of PhenoTypic cannot decode it.
 
@@ -373,105 +402,6 @@ def _level_shape(
 
     meta = Path(store_path) / member / str(level) / ngff_.STORE_ROOT_JSON
     return tuple(json.loads(meta.read_text(encoding="utf-8"))["shape"])
-
-
-def select_pyramid_level(
-    store_path: Path | str, layer: str, target_px: int
-) -> int:
-    """Return the coarsest pyramid level that still covers ``target_px``.
-
-    "Covers" means the level's longest spatial edge is at least *target_px*.
-    Reading a finer level than that is the pre-pyramid behaviour and wastes
-    the whole point of the change; reading a coarser one renders a visibly
-    soft tile. When even level 0 is smaller than the request, level 0 is
-    returned -- there is nothing better to offer.
-
-    The level count comes from ``phenotypic.pyramid.levels`` and each level's
-    shape from that level's own array metadata. **Never from a directory
-    listing:** a ``.part`` sweep or a partially written store would make a
-    listing report a truncated pyramid as the whole pyramid, and every request
-    would then silently resolve to level 0. A declared level that is missing
-    on disk raises instead.
-
-    Args:
-        store_path: Path to a ``*.ome.zarr`` directory.
-        layer: ``"rgb"``, ``"gray"``, ``"detect_mat"``, or ``"objmap"``.
-        target_px: Longest edge, in pixels, the caller intends to render.
-
-    Returns:
-        A pyramid level index; ``0`` is full resolution.
-
-    Raises:
-        KeyError: If *layer* is not present in the store.
-        FileNotFoundError: If the store declares a level it does not hold.
-        StoreUnreadable: If this build cannot decode the store.
-    """
-    from phenotypic.sdk_ import ngff_
-
-    block = _readable_block(store_path)
-    member = _store_member_path(block, store_path, layer)
-    levels = int(block[ngff_.PhenotypicAttr.PYRAMID]["levels"])
-    chosen = 0
-    for level in range(levels):
-        shape = _level_shape(store_path, member, level)
-        if max(shape[-2:]) >= target_px:
-            chosen = level
-    return chosen
-
-
-@functools.lru_cache(maxsize=_STORE_LAYER_CACHE_SIZE)
-def _load_zarr_level_rgb(
-    path: str, content_token: str, layer: LayerName, level: int
-) -> PILImage.Image:
-    """Decode ONE pyramid level of one store layer to an RGB PIL image.
-
-    Memory discipline: reads only the requested layer's level array -- never
-    ``load_image_from_store`` / ``Image.load_zarr``, which materialise every
-    layer (hundreds of MB for a plate) to discard all but one.
-
-    Args:
-        path: Absolute store path, as a string so the cache key is hashable.
-        content_token: Identity of the store's published content. Including
-            it in the key invalidates the cached frame when the store is
-            republished under a running viewer.
-        layer: Layer to decode.
-        level: Pyramid level index, already resolved by the caller. The key
-            carries the LEVEL rather than the requested pixel size so the
-            key space is bounded by the data, not by request variety.
-
-    Returns:
-        The decoded level as an RGB :class:`PIL.Image.Image`.
-
-    Raises:
-        KeyError: If *layer* is absent from the store.
-        StoreUnreadable: If this build cannot decode the store.
-    """
-    del content_token  # Cache-key only.
-    arr = _read_store_level(path, layer, level)
-    return PILImage.fromarray(_store_layer_array_to_rgb(arr, layer), mode="RGB")
-
-
-def _load_zarr_layer_rgb(
-    path: str, content_token: str, layer: LayerName, target_px: int
-) -> PILImage.Image:
-    """Decode the coarsest store level covering ``target_px``, cached by level.
-
-    Thin resolver over :func:`_load_zarr_level_rgb`. The split is what keeps
-    the LRU useful: several distinct ``target_px`` values routinely select the
-    same level, and keying the cache on the request size instead would thrash
-    a 4-entry cache on exactly the path the pyramid exists to accelerate.
-
-    Args:
-        path: Absolute store path, as a string.
-        content_token: Identity of the store's published content.
-        layer: Layer to decode.
-        target_px: Longest edge, in pixels, the caller intends to render.
-
-    Returns:
-        The decoded level as an RGB :class:`PIL.Image.Image`.
-    """
-    level = select_pyramid_level(path, layer, target_px)
-    return _load_zarr_level_rgb(path, content_token, layer, level)
 
 
 def _read_store_level(
@@ -773,6 +703,117 @@ def is_safe_path_component(name: str) -> bool:
     return bool(_NAME_RE.match(name))
 
 
+#: Zarr **v2** metadata filenames. A v3 store never contains one, but
+#: zarrita probes all four beside every ``zarr.json`` before concluding a
+#: node is v3-only -- 17 of them on a first open of a series, 3 on a warm
+#: one (measured in the phase-0 spike).
+#:
+#: They matter because of how zarrita reads a response: its fetch store
+#: returns ``undefined`` on **404** and *throws* on every other non-2xx
+#: status (``Unexpected response status ...``). Each of these names starts
+#: with a dot, so :func:`is_safe_path_component` rejects it and
+#: :func:`resolve_within_root` raises ``BadRequest`` -- a **400**, which
+#: aborts the store open instead of reading as "absent". Every byte route
+#: that a zarr client opens must answer these 404.
+ZARR_V2_METADATA_NAMES: frozenset[str] = frozenset(
+    {".zarray", ".zattrs", ".zgroup", ".zmetadata"}
+)
+
+
+def is_zarr_v2_metadata_probe(tail: str) -> bool:
+    """Return ``True`` if ``tail`` names a Zarr v2 metadata file.
+
+    Shared by every byte route a zarr client opens, for the reason recorded
+    on :data:`ZARR_V2_METADATA_NAMES`: these probes must answer ``404``, not
+    the ``400`` the leading-dot rule would otherwise produce.
+
+    Args:
+        tail: Client-controlled store-relative path, ``/``-separated.
+
+    Returns:
+        ``True`` when the final segment is a Zarr v2 metadata filename.
+    """
+    return tail.rsplit("/", 1)[-1] in ZARR_V2_METADATA_NAMES
+
+
+def resolve_within_root(
+    root: Path,
+    tail: str,
+    *,
+    allowed_roots: frozenset[str],
+) -> Path:
+    """Resolve a client-controlled ``tail`` to a file inside ``root``.
+
+    The single path-escape guard for every route that serves bytes out of a
+    store directory. Two properties are load-bearing and easy to get wrong:
+
+    * Segments are validated INDIVIDUALLY by
+      :func:`is_safe_path_component`. The traversal surface here is wider
+      than a two-component route's because the tail is arbitrary depth.
+    * ``allowed_roots`` is tested on the RESOLVED path, not on the URL
+      segments. Testing the unresolved head lets a symlink inside a readable
+      root (``<root>/rgb/x -> ../tables/measurements/table.parquet``) satisfy
+      both the head check and containment, and the file is served.
+
+    Only the FIRST resolved component is restricted. Restricting every
+    component would reject ``labels``, ``objmap`` and every level index,
+    which would kill the label layer. The store's own root ``zarr.json`` is
+    exempt at depth 1 only -- a pixel client bootstraps from it, and it is
+    the one file that belongs to no series.
+
+    Args:
+        root: Directory the result must live inside.
+        tail: Client-controlled path, ``/``-separated.
+        allowed_roots: First-component allow-list. **Required, and there is
+            no permissive value.** A security primitive whose default is "no
+            restriction" is one forgotten keyword from serving
+            ``tables/measurements/table.parquet``, and the omission would
+            read as ordinary code at review. An empty ``frozenset()`` rejects
+            everything, which is the correct fail-closed shape.
+
+    Returns:
+        The resolved file path.
+
+    Raises:
+        BadRequest: A segment is unsafe, or the resolved path escapes
+            ``root``.
+        NotFound: The path does not exist, is not a file, or its first
+            resolved component is not in ``allowed_roots``.
+    """
+    from phenotypic.sdk_ import ngff_
+
+    segments = [segment for segment in tail.split("/") if segment]
+    if not segments:
+        raise NotFound()
+    for segment in segments:
+        if not is_safe_path_component(segment):
+            raise BadRequest()
+
+    # BOTH resolves inside the try. ``root`` itself can vanish mid-request:
+    # ``promote_store`` republishes by renaming the whole store directory
+    # (``sdk_/ngff_.py``), so this is the routine path, not an exotic race --
+    # it is the very event the generation token exists to handle. Left
+    # outside, a promote during a pan raises ``FileNotFoundError`` and the
+    # client gets a 500 where 404 is meant.
+    try:
+        root_resolved = root.resolve(strict=True)
+        resolved = root.joinpath(*segments).resolve(strict=True)
+    except (OSError, RuntimeError):
+        raise NotFound() from None
+    if not resolved.is_relative_to(root_resolved):
+        raise BadRequest()
+    if not resolved.is_file():
+        raise NotFound()
+
+    rel = resolved.relative_to(root_resolved)
+    head = rel.parts[0]
+    if head not in allowed_roots and not (
+        len(rel.parts) == 1 and head == ngff_.STORE_ROOT_JSON
+    ):
+        raise NotFound()
+    return resolved
+
+
 # ---------------------------------------------------------------------------
 # Crop-serving Flask route factory
 # ---------------------------------------------------------------------------
@@ -1062,6 +1103,9 @@ def build_tile_cell(
     remove_button: Component | list[Component],
     extra_children: Iterable[Component] | None = None,
     outer_height: int | None = None,
+    measurement: TileMeasurement | None = None,
+    outer_props: Mapping[str, Any] | None = None,
+    defer_crop_image: bool = False,
 ) -> Component:
     """Render the chrome + crop for a single tile — shared across tabs.
 
@@ -1109,6 +1153,24 @@ def build_tile_cell(
         outer_height: Outer cell height, in pixels. Defaults to
             ``display_size`` (no extra vertical room). Pass a larger value
             to reserve space for a sibling that peeks out below the frame.
+        measurement: The colony's value for the currently-displayed
+            measurement column, already formatted and coloured by
+            :meth:`~phenotypic.gui._shared._measurement_tint.MeasurementScale.measurement_for`.
+            ``None`` -- the default, and the state of every card when no
+            column is chosen -- renders exactly today's card. ``None`` is
+            also the correct rendering for a colony the table has **no row
+            for**: post-measurement operations can drop objects, and a card
+            with no value is a fact about the data, not an error.
+
+            The value is joined on ``label``, which already IS
+            ``Object_Label``; the card needs no new identity plumbing to
+            know which value is its own.
+        outer_props: Optional HTML properties applied to the outer cell.
+            Intended for ``data-*`` lifecycle metadata; visual state remains
+            owned by the named arguments above.
+        defer_crop_image: Render only a sized host element instead of issuing
+            the PNG crop request. Use this when an OME-Zarr renderer owns the
+            tile pixels; the host preserves tile geometry and shared chrome.
 
     Returns:
         A component ready to drop into a tile grid or gallery container.
@@ -1119,7 +1181,16 @@ def build_tile_cell(
     if is_removed:
         classes.append("is-removed")
 
-    if has_image_source:
+    if has_image_source and defer_crop_image:
+        crop_node = html.Div(
+            className="colony-cell-img colony-cell-zarr-host",
+            style={
+                "width": f"{display_size}px",
+                "height": f"{display_size}px",
+                "display": "block",
+            },
+        )
+    elif has_image_source:
         crop_url = url_builder(dataset, image_file, label, crop_size)
         crop_node: Component = html.Img(
             src=crop_url,
@@ -1182,9 +1253,46 @@ def build_tile_cell(
         if isinstance(remove_button, list)
         else [remove_button]
     )
+    # The value ribbon. It carries BOTH halves of the display -- the number
+    # and the tint -- so the colour a card wears is attached to the number
+    # it encodes rather than floating behind an opaque crop. The frame also
+    # takes an inset ring in the same tint, which is what stays legible when
+    # the tile stepper is at its smallest size and the ribbon is a sliver.
+    #
+    # Curation chrome is untouched: the checkbox keeps the top-left corner
+    # and the radial trigger keeps its own, so the ribbon takes the bottom
+    # edge and nothing moves.
+    frame_children: list[Component] = [crop_node, checkbox, *remove_children]
+    frame_style: dict[str, str] = {}
+    if measurement is not None:
+        frame_style["boxShadow"] = f"inset 0 0 0 3px {measurement.tint}"
+        frame_children.append(
+            html.Span(
+                measurement.text,
+                className="colony-cell-measurement",
+                style={
+                    "position": "absolute",
+                    "bottom": "0",
+                    "left": "0",
+                    "right": "0",
+                    "background": measurement.tint,
+                    "color": measurement.ink,
+                    "fontFamily": FONT_FAMILY_MONO,
+                    "fontSize": FONT_SIZE_MICRO,
+                    "lineHeight": "1.5",
+                    "textAlign": "center",
+                    "letterSpacing": "0.01em",
+                    "pointerEvents": "none",
+                    "zIndex": "3",
+                },
+            )
+        )
     frame = html.Div(
-        [crop_node, checkbox, *remove_children],
+        frame_children,
         className="colony-cell-frame",
+        # ``None`` rather than an empty dict so an untinted card's DOM is
+        # byte-identical to what it was before this feature existed.
+        style=frame_style or None,
     )
 
     children: list[Component] = [frame]
@@ -1203,6 +1311,7 @@ def build_tile_cell(
             "height": f"{outer_height}px",
             "overflow": "visible",
         },
+        **dict(outer_props or {}),
     )
 
 
@@ -1356,7 +1465,6 @@ __all__ = [
     "DEFAULT_LAYER",
     "crop_overlay",
     "crop_store_rgb",
-    "select_pyramid_level",
     "StoreUnreadable",
     "crop_colony",
     "is_safe_path_component",

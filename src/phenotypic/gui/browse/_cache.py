@@ -157,12 +157,10 @@ class BrowseCache:
         self.entries_root = self.root / "entries"
         self.staging_root = self.root / "staging"
         self.locks_root = self.root / "locks"
-        self.timeline_thumbs_root = self.root / "timeline_thumbs"
         for path in (
             self.entries_root,
             self.staging_root,
             self.locks_root,
-            self.timeline_thumbs_root,
         ):
             path.mkdir(parents=True, exist_ok=True)
         self.cleanup_incomplete()
@@ -274,8 +272,7 @@ class BrowseCache:
         """Return recursive bytes and completed/preview entry count."""
         entries = list(self._iter_entries())
         return CacheUsage(
-            sum(_tree_size(entry.root) for entry in entries)
-            + _tree_size(self.timeline_thumbs_root),
+            sum(_tree_size(entry.root) for entry in entries),
             len(entries),
         )
 
@@ -288,10 +285,6 @@ class BrowseCache:
             return usage
         candidates = self._prune_candidates(protected)
         total = usage.bytes
-        if self.timeline_thumbs_root.exists():
-            shutil.rmtree(self.timeline_thumbs_root, ignore_errors=True)
-            self.timeline_thumbs_root.mkdir(parents=True, exist_ok=True)
-            total = self.usage().bytes
         for entry in candidates:
             if total <= self.low_water_bytes:
                 break
@@ -308,8 +301,6 @@ class BrowseCache:
         self, *, protected: set[str] | frozenset[str] = frozenset()
     ) -> CacheUsage:
         """Remove all unlocked entries except explicitly protected revisions."""
-        shutil.rmtree(self.timeline_thumbs_root, ignore_errors=True)
-        self.timeline_thumbs_root.mkdir(parents=True, exist_ok=True)
         for entry in self._iter_entries():
             if entry.key in protected:
                 continue

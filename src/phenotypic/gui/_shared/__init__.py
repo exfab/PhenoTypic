@@ -11,15 +11,32 @@ Layouts reference the URL via
 ``f"{url_prefix}{SHARED_LOGO_PATH}"`` so the URL resolves correctly under
 both standalone (``url_prefix="/"``) and dispatcher-mounted launches
 (``url_prefix="/builder/"`` etc.).
+
+The same one-artifact-many-mounts rule covers the vendored Viv bundle and
+its facade -- see :mod:`phenotypic.gui._shared._viv_assets`, which serves the
+results viewer's two files to any other sub-app that renders through
+``window.phenotypicViv``.
 """
 from phenotypic.gui._shared._blueprint import (
     SHARED_BLUEPRINT_PREFIX,
     SHARED_LOGO_PATH,
     register_shared_static,
 )
+from phenotypic.gui._shared._viv_assets import (
+    VIV_ASSETS_PREFIX,
+    VIV_BUNDLE_PATH,
+    VIV_FACADE_PATH,
+    register_viv_assets,
+    viv_script_urls,
+)
 
 __all__ = [
     "SHARED_BLUEPRINT_PREFIX",
     "SHARED_LOGO_PATH",
+    "VIV_ASSETS_PREFIX",
+    "VIV_BUNDLE_PATH",
+    "VIV_FACADE_PATH",
     "register_shared_static",
+    "register_viv_assets",
+    "viv_script_urls",
 ]

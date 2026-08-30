@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
 
+from ._atomic_io import CommitGuard, atomic_write_with_writer, publication_commit
 from ._io_constants import (
     dataset_results_dir,
     deliverables_dir,
@@ -127,6 +128,7 @@ class MigrationReport:
     conversion); ``headers_migrated``/``header_failures`` describe **pass 1**
     (the metadata-schema migration over non-image targets). The table fields
     describe pass 3, which installs legacy external Parquets in image stores.
+    Overlay and publication fields describe the terminal migration passes.
 
     Attributes:
         converted: Images converted this run. Under ``dry_run`` this is what
@@ -139,6 +141,11 @@ class MigrationReport:
         tables_migrated: External Parquets embedded this invocation.
         tables_skipped: Stores whose embedded table was already valid.
         table_failures: ``(source, reason)`` per pass-3 failure.
+        overlays_created: Missing overlay PNGs rendered this invocation.
+        overlays_skipped: Overlay PNGs preserved because they already existed.
+        overlay_failures: ``(overlay, reason)`` per rendering failure.
+        publication_failures: ``(target, reason)`` per marker, aggregate, or
+            terminal-completion publication failure.
     """
 
     converted: int = 0
@@ -149,14 +156,20 @@ class MigrationReport:
     tables_migrated: int = 0
     tables_skipped: int = 0
     table_failures: tuple[tuple[Path, str], ...] = ()
+    overlays_created: int = 0
+    overlays_skipped: int = 0
+    overlay_failures: tuple[tuple[Path, str], ...] = ()
+    publication_failures: tuple[tuple[Path, str], ...] = ()
 
     @property
     def ok(self) -> bool:
-        """Whether all conversion, header, and table passes were clean."""
+        """Whether every migration and publication pass was clean."""
         return (
             not self.failed
             and not self.header_failures
             and not self.table_failures
+            and not self.overlay_failures
+            and not self.publication_failures
         )
 
 
@@ -289,6 +302,7 @@ def migrate_hdf_to_zarr(
     dst: Path | None = None,
     *,
     keep_source: bool = True,
+    commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Convert one legacy per-image HDF5 into an OME-Zarr store.
 
@@ -304,6 +318,7 @@ def migrate_hdf_to_zarr(
         src: Path to the per-image ``.h5``.
         dst: Target ``*.ome.zarr`` directory. Defaults to a sibling of *src*.
         keep_source: Retain the ``.h5``. Deletion is opt-in.
+        commit_guard: Optional lifecycle guard around promotion or unlink.
 
     Returns:
         The promoted store path.
@@ -311,9 +326,18 @@ def migrate_hdf_to_zarr(
     src = Path(src)
     target = default_store_path_for(src) if dst is None else Path(dst)
     image = _load_for_migration(src)
-    store = image.save2zarr(target, work_id=_stored_work_id(src))
+    store = image.save2zarr(
+        target,
+        work_id=_stored_work_id(src),
+        commit_guard=commit_guard,
+    )
     if not keep_source:
-        src.unlink()
+        if not _conversion_is_faithful(src, store):
+            raise RuntimeError(
+                "Converted store does not faithfully match the HDF source"
+            )
+        with publication_commit(commit_guard):
+            src.unlink()
     return store
 
 
@@ -443,7 +467,11 @@ def canonical_metadata_view_path(output_dir: Path) -> Path:
     return deliverables_dir(Path(output_dir)) / CANONICAL_METADATA_CSV_NAME
 
 
-def emit_canonical_metadata_view(output_dir: Path) -> Path | None:
+def emit_canonical_metadata_view(
+    output_dir: Path,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> Path | None:
     """Derive a canonical-header view of the metadata snapshot.
 
     **``deliverables/metadata.csv`` is never touched.** It is immutable input
@@ -479,7 +507,12 @@ def emit_canonical_metadata_view(output_dir: Path) -> Path | None:
     # verbatim.
     frame = pl.read_csv(source, infer_schema_length=0)
     target = canonical_metadata_view_path(output_dir)
-    normalize_metadata_columns(frame).write_csv(target)
+    normalized = normalize_metadata_columns(frame)
+    atomic_write_with_writer(
+        target,
+        normalized.write_csv,
+        commit_guard=commit_guard,
+    )
     return target
 
 
@@ -505,6 +538,8 @@ def iter_legacy_hdfs(output_dir: Path) -> Iterator[tuple[str, Path]]:
         if not hdf_dir.is_dir():
             continue
         for hdf_path in sorted(hdf_dir.glob("*.h5")):
+            if hdf_path.name.startswith("."):
+                continue
             yield dataset_dir.name, hdf_path
 
 
@@ -650,7 +685,11 @@ def republish_image_markers(output_dir: Path) -> int:
     return republished
 
 
-def republish_aggregate(output_dir: Path) -> bool:
+def republish_aggregate(
+    output_dir: Path,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> bool:
     """Re-publish the aggregate marker over the migrated tree.
 
     Guarded, because a legacy tree with no markers is a **documented no-op,
@@ -684,7 +723,7 @@ def republish_aggregate(output_dir: Path) -> bool:
     if counts is None or counts[0] == 0:
         return False
     try:
-        publish_aggregate_snapshot(output_dir)
+        publish_aggregate_snapshot(output_dir, commit_guard=commit_guard)
     except (OSError, RuntimeError, ValueError):
         return False
     return True
@@ -747,7 +786,11 @@ def _marker_authority_permits_unlink(
     )
 
 
-def _reclaim_sources(output_dir: Path) -> list[tuple[Path, str]]:
+def _reclaim_sources(
+    output_dir: Path,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> list[tuple[Path, str]]:
     """Delete every source whose conversion is provably faithful.
 
     Per image, immediately before that image's unlink -- so a single
@@ -789,7 +832,19 @@ def _reclaim_sources(output_dir: Path) -> list[tuple[Path, str]]:
                 )
             )
             continue
-        hdf_path.unlink()
+        with publication_commit(commit_guard):
+            if not _marker_authority_permits_unlink(
+                output_dir, dataset, hdf_path.stem
+            ):
+                refusals.append(
+                    (
+                        hdf_path,
+                        "the image marker changed before source unlink; "
+                        "source retained",
+                    )
+                )
+                continue
+            hdf_path.unlink()
     return refusals
 
 

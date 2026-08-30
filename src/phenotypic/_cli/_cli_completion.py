@@ -23,6 +23,7 @@ from phenotypic.sdk_ import (
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
+    publication_commit,
     progress_dir,
     run_completion_marker_path,
     validated_published_metadata_migration_targets,
@@ -172,6 +173,7 @@ def publish_image_success(
     expected_artifact_descriptors: (
         Mapping[str, Mapping[str, object]] | None
     ) = None,
+    source_provenance: Mapping[str, object] | None = None,
     commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Validate artifacts and atomically publish the image marker last."""
@@ -233,6 +235,8 @@ def publish_image_success(
             timespec="milliseconds"
         ),
     }
+    if source_provenance is not None:
+        marker["source_provenance"] = dict(source_provenance)
     marker_path = image_completion_marker_path(output_dir, dataset, image_stem)
     atomic_write_json(
         marker_path,
@@ -304,11 +308,10 @@ def refresh_success_markers_after_metadata_migration(
 ) -> int:
     """Refresh marker descriptors for receipt-certified schema rewrites.
 
-    Metadata migration intentionally rewrites bundle-owned per-image files.
-    This bridge preserves their existing scientific success authority without
-    blessing any unrelated artifact change. It is idempotent and scans durable
-    receipts so a later recompile repairs a kill between artifact migration and
-    marker refresh.
+    Historical schema-3 metadata receipts could rewrite per-image files. This
+    compatibility bridge preserves their existing success authority without
+    blessing unrelated changes. Schema-4 bundle-durable receipts exclude
+    Task-1-owned external Parquets and therefore need no marker refresh.
 
     Args:
         output_dir: Existing run-output root.
@@ -709,7 +712,11 @@ def _canonical_digest(value: object) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def publish_aggregate_snapshot(output_dir: Path) -> Path:
+def publish_aggregate_snapshot(
+    output_dir: Path,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> Path:
     """Publish marker-last integrity evidence for the canonical core snapshot."""
     from ._cli_state_management import load_processing_state
 
@@ -766,7 +773,7 @@ def publish_aggregate_snapshot(output_dir: Path) -> Path:
         ),
     }
     path = aggregate_publication_marker_path(output_dir)
-    atomic_write_json(path, marker)
+    atomic_write_json(path, marker, commit_guard=commit_guard)
     return path
 
 
@@ -805,6 +812,7 @@ def publish_run_completion_evidence(
     *,
     execution_epoch: str,
     gui_record_generation: str | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Publish all-success run evidence, idempotently for a no-op run."""
     from ._cli_state_management import load_processing_state
@@ -835,6 +843,7 @@ def publish_run_completion_evidence(
                     timespec="milliseconds"
                 ),
             },
+            commit_guard=commit_guard,
         )
         return path
     if completion is not True:
@@ -892,8 +901,9 @@ def publish_run_completion_evidence(
     if isinstance(existing, dict) and all(
         existing.get(key) == payload.get(key) for key in stable_keys
     ):
-        return path
-    atomic_write_json(path, payload)
+        with publication_commit(commit_guard):
+            return path
+    atomic_write_json(path, payload, commit_guard=commit_guard)
     return path
 
 

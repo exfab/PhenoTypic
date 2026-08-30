@@ -631,7 +631,12 @@ class BrowsePreparationManager:
                 if not revision.matches_disk():
                     raise SourceChangedError
                 entry = self.cache.publish_dzi(revision, staged)
-                self._mark_ready(record, entry)
+        # Signal completion only after the publication lock is released.
+        # ``complete_event`` is the caller's "this entry is published and
+        # actionable" signal, and a caller that acts on it immediately (e.g.
+        # ``BrowseCache.clear``, which takes the same lock with ``timeout=0``)
+        # would otherwise be refused and silently skip the entry.
+        self._mark_ready(record, entry)
         self.cache.prune(protected=set(self.protected_keys()))
 
     def _cancelled(self, key: str) -> bool:

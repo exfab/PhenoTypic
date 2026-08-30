@@ -16,11 +16,13 @@ silently rather than loudly (OPEN-QUESTIONS D4 / D5):
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import polars as pl
 
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._viewer_card import _build_picker_options
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import zarr_store_path
 
@@ -90,6 +92,44 @@ def test_has_image_source_follows_the_store(tmp_path: Path) -> None:
     root = _discover(tmp_path)
     assert root.has_image_source("ds", "a") is True
     assert root.has_image_source("ds", "missing") is False
+
+
+def test_picker_enables_store_backed_image_without_overlay(tmp_path: Path) -> None:
+    """Plate selection follows the OME-Zarr source, not an optional PNG."""
+    _seed(tmp_path, ["a"])
+    root = _discover(tmp_path)
+
+    [option] = _build_picker_options([("ds", "a")], root)
+
+    assert option["disabled"] is False
+    assert option["label"] == "ds / a"
+
+
+def test_picker_names_a_missing_image_source(tmp_path: Path) -> None:
+    """The disabled label no longer misdiagnoses a missing overlay alone."""
+    _seed(tmp_path, ["a"])
+    root = _discover(tmp_path)
+
+    [option] = _build_picker_options([("ds", "missing")], root)
+
+    assert option["disabled"] is True
+    assert option["label"] == "(no image source) ds / missing"
+
+
+def test_missing_overlay_warning_preserves_store_picker_claim(
+    tmp_path: Path, caplog
+) -> None:
+    """Discovery must not claim that absent baked overlays disable stores."""
+    _seed(tmp_path, ["a"])
+
+    with caplog.at_level(
+        logging.WARNING, logger="phenotypic.gui.results_viewer._output_root"
+    ):
+        _discover(tmp_path)
+
+    messages = [record.getMessage() for record in caplog.records]
+    assert any("OME-Zarr-backed images remain available" in msg for msg in messages)
+    assert all("Image picker entries will be disabled" not in msg for msg in messages)
 
 
 def test_discovery_never_lists_a_directory_inside_a_store(

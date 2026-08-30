@@ -315,3 +315,177 @@ def replace_embedded_measurement_table(
             shutil.rmtree(part, ignore_errors=True)
         raise
     return store_path / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
+
+
+def read_embedded_measurement_descriptor(
+    store_path: Path,
+) -> dict[str, object]:
+    """Return one store's ``tables.measurements`` descriptor.
+
+    The descriptor is the store's own account of its embedded table: the
+    payload path, the ``measurement_columns`` list, and the ``target``
+    naming the join column and the label image it indexes. Reading it costs
+    one small JSON parse and **never** opens the Parquet payload, so a
+    caller that only needs the column list -- a column picker, say -- pays
+    nothing for the ~130 columns it does not want.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+
+    Returns:
+        The descriptor mapping, exactly as
+        :func:`build_measurement_table_descriptor` wrote it.
+
+    Raises:
+        OSError: If the store's root ``zarr.json`` does not exist.
+        KeyError: If the root carries no ``phenotypic`` block, or the block
+            declares no ``tables.measurements`` descriptor. **An absent
+            descriptor is a normal state**, not a fault: a ``--mode
+            process`` run never measures, and a store written before
+            embedded tables has none.
+        ValueError: If the store's ``store_schema_version`` is not this
+            build's -- the same refusal every other content reader makes.
+
+    Examples:
+        >>> import tempfile
+        >>> from pathlib import Path
+        >>> from phenotypic import GridImage
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> img = GridImage(load_synth_yeast_plate())
+        >>> with tempfile.TemporaryDirectory() as tmp:
+        ...     store = img.save2zarr(Path(tmp) / 'plate.ome.zarr')
+        ...     try:
+        ...         read_embedded_measurement_descriptor(store)
+        ...     except KeyError:
+        ...         print('no embedded table')
+        no embedded table
+    """
+    from . import ngff_
+
+    store_path = Path(store_path)
+    # Gated by VALUE, not read raw: a store written by a newer build must be
+    # refused here exactly as it is on every other path that decodes store
+    # content, or this reader becomes the one place a future schema slips
+    # through under today's semantics.
+    block = ngff_.require_readable_store(store_path)
+    descriptor = block.get(ngff_.PhenotypicAttr.TABLES, {}).get(
+        ngff_.MEASUREMENT_TABLE_GROUP
+    )
+    if not isinstance(descriptor, dict):
+        raise KeyError(
+            f"OME-Zarr store declares no embedded measurement table: "
+            f"{store_path}"
+        )
+    return descriptor
+
+
+def embedded_measurement_columns(store_path: Path) -> tuple[str, ...]:
+    """Return the column names one store's embedded table carries.
+
+    The store enumerates its own columns in the descriptor, so this is the
+    authoritative allow-list for anything that projects a single column --
+    and it is what makes a column name a *closed* value set rather than a
+    free-text parameter that reaches the filesystem.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+
+    Returns:
+        The declared column names, in the order the writer recorded them.
+
+    Raises:
+        OSError: If the store's root ``zarr.json`` does not exist.
+        KeyError: If the store declares no measurement-table descriptor.
+    """
+    descriptor = read_embedded_measurement_descriptor(store_path)
+    columns = descriptor.get("measurement_columns")
+    if not isinstance(columns, list):
+        raise KeyError(
+            f"Measurement-table descriptor carries no column list: "
+            f"{Path(store_path)}"
+        )
+    return tuple(str(column) for column in columns)
+
+
+def read_embedded_measurement_column(
+    store_path: Path, column: str
+) -> dict[int, float | None]:
+    """Project one measurement column out of a store's embedded table.
+
+    Returns the column keyed by the descriptor's own ``target.column`` --
+    ``Object_Label`` -- rather than by a positional index or an assumed key
+    name, so the value a caller paints onto a colony is the value measured
+    for *that* object. The join key is read from the store; it is never
+    assumed.
+
+    ``column`` is checked against
+    :func:`embedded_measurement_columns` **before** the Parquet is opened.
+    A name the store does not declare therefore never reaches the
+    filesystem, which is what lets a request-facing caller pass a
+    user-supplied name through without it becoming a probe.
+
+    Only two of the table's ~130 columns are read. Parquet is columnar, so
+    the other 128 are never decoded -- that is what makes a per-request
+    projection affordable.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+        column: Name of the column to project. Must appear in the store's
+            declared ``measurement_columns``.
+
+    Returns:
+        A mapping ``{object_label: value}``. A null cell maps to ``None``.
+
+    Raises:
+        OSError: If the store's root ``zarr.json`` does not exist.
+        KeyError: If the store declares no measurement-table descriptor.
+        ValueError: If *column* is not one the store declares.
+        TypeError: If *column* holds values that are not numbers -- a
+            colour hex string, say. Measurement display scales them, and a
+            silent ``None`` would hide the mismatch.
+    """
+    import pyarrow.parquet as pq  # type: ignore[import-untyped]
+
+    from . import ngff_
+
+    store_path = Path(store_path)
+    descriptor = read_embedded_measurement_descriptor(store_path)
+    declared = descriptor.get("measurement_columns")
+    if not isinstance(declared, list) or column not in declared:
+        raise ValueError(
+            f"Column {column!r} is not declared by the embedded measurement "
+            f"table at {store_path}"
+        )
+    target = descriptor.get("target")
+    if not isinstance(target, dict) or not isinstance(
+        target.get("column"), str
+    ):
+        raise KeyError(
+            f"Measurement-table descriptor names no target column: "
+            f"{store_path}"
+        )
+    join_column = str(target["column"])
+
+    payload = store_path / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
+    projection = [join_column]
+    if column != join_column:
+        projection.append(column)
+    table = pq.read_table(payload, columns=projection)
+
+    labels = table.column(join_column).to_pylist()
+    values = table.column(column).to_pylist()
+    projected: dict[int, float | None] = {}
+    for label, value in zip(labels, values, strict=True):
+        if label is None:
+            continue
+        if value is None:
+            projected[int(label)] = None
+            continue
+        try:
+            projected[int(label)] = float(value)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(
+                f"Column {column!r} of {store_path} is not numeric "
+                f"(value {value!r} for label {label!r})"
+            ) from exc
+    return projected

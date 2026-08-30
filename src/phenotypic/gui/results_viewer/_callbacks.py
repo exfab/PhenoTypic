@@ -9,17 +9,21 @@ This module wires three pieces together:
    orchestrator imports them and dispatches in a fixed order so the
    registration is idempotent and obvious to future maintainers.
 
-2. **Clientside bridge: image selection -> OSD mount.** Each card
-   stores its ``(dataset, stem)`` selection in a per-card
-   :data:`~phenotypic.gui.results_viewer._ids.card_state_store_id`
-   ``dcc.Store``. A clientside callback subscribes to **every** such
-   store via pattern-matching ``ALL`` (reading both ``data`` and
-   ``id``) and forwards a homogeneous list of
-   ``{id, dataset, stem}`` records to
-   ``window.__phenotypicResultsViewer.applyImageSelection``. The JS
-   layer then mounts/disposes OpenSeadragon viewers as needed.
+2. **Clientside bridge: source spec -> Viv mount.** Each card's
+   :data:`~phenotypic.gui.results_viewer._ids.card_source_store_id`
+   ``dcc.Store`` holds ``build_source_spec``'s dict for the selected
+   image's OME-Zarr store, and its
+   :data:`~phenotypic.gui.results_viewer._ids.card_display_state_id`
+   store holds what the Layers panel has been set to. A clientside
+   callback subscribes to **every** such store via pattern-matching
+   ``ALL`` (reading both ``data`` and ``id``) and forwards a
+   homogeneous list of records to
+   ``window.__phenotypicResultsViewer.applyPlateSources``, which drives
+   ``window.phenotypicViv``. **The spec crosses unmodified** -- it is
+   built at the facade's own key names server-side, so nothing here
+   re-packs it and no second vocabulary exists to drift.
 
-3. **Clientside bridge: lock-views toggle -> OSD broadcast.** A
+3. **Clientside bridge: lock-views toggle -> viewport broadcast.** A
    second clientside callback subscribes to
    :data:`~phenotypic.gui.results_viewer._ids.STORE_LOCK_VIEWS` and
    forwards changes to
@@ -28,7 +32,7 @@ This module wires three pieces together:
 
 Both clientside callbacks write into hidden trigger ``dcc.Store``
 instances (:data:`~phenotypic.gui.results_viewer._ids
-.OSD_MOUNT_TRIGGER_ID`,
+.VIV_MOUNT_TRIGGER_ID`,
 :data:`~phenotypic.gui.results_viewer._ids.LOCK_VIEWS_EFFECT_ID`)
 mounted by :mod:`._layout`. The trigger-store payload is a
 millisecond timestamp solely used to satisfy Dash's "every callback
@@ -39,9 +43,9 @@ Pattern-matching id serialization
 ---------------------------------
 Dash renders pattern-matching component ids into the DOM ``id``
 attribute as a JSON string with **alphabetically sorted keys**.
-Concretely, a Python dict ``{"type": "card-osd-div", "index":
+Concretely, a Python dict ``{"type": "card-viv-stage", "index":
 "abc"}`` becomes the DOM id string
-``'{"index":"abc","type":"card-osd-div"}'``. The clientside
+``'{"index":"abc","type":"card-viv-stage"}'``. The clientside
 callback below mirrors that ordering so the JS-side
 ``document.getElementById`` lookups succeed.
 """
@@ -67,21 +71,13 @@ from phenotypic.gui.results_viewer import (
 )
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._filtered_state import get_curated_frame
-from phenotypic.gui.results_viewer._error_tab import register_error_callbacks
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._mutation_guard import (
     OutputMutationBlocked,
     require_output_mutation,
 )
-from phenotypic.gui.results_viewer._heatmap_tab import (
-    register_heatmap_callbacks,
-)
-from phenotypic.gui.results_viewer._qc_tab import register_qc_callbacks
 from phenotypic.gui.results_viewer.colony_view import (
     _callbacks as _colony_callbacks,
-)
-from phenotypic.gui.results_viewer.timeline_view import (
-    _callbacks as _timeline_callbacks,
 )
 
 logger = logging.getLogger(__name__)
@@ -110,10 +106,6 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     _filter_offcanvas.register_filter_offcanvas_callbacks(app)
     _viewer_card.register_callbacks(app, output_root)
     _colony_callbacks.register_callbacks(app, output_root, filtered_state)
-    register_heatmap_callbacks(app)
-    register_qc_callbacks(app)
-    register_error_callbacks(app, output_root, filtered_state)
-    _timeline_callbacks.register_callbacks(app, output_root)
     _register_plot_refresh_callback(app, output_root, filtered_state)
     _register_clientside_callbacks(app)
 
@@ -176,68 +168,69 @@ def _output_publication_is_safe(action: str) -> bool:
 
 
 def _register_clientside_callbacks(app: dash.Dash) -> None:
-    """Wire the two clientside callbacks bridging Dash to OpenSeadragon.
+    """Wire the two clientside callbacks bridging Dash to the Viv facade.
 
     Args:
         app: The Dash application that will own the clientside callbacks.
     """
     # ----------------------------------------------------------------------
-    # Card-state -> OSD mount/dispose
+    # Source spec + display state -> Viv mount / setSource / layer controls
     # ----------------------------------------------------------------------
-    # Subscribes to every card's ``card-state`` store (pattern-matching
-    # ALL) and reads both the ``data`` payload and the matching ``id``
-    # objects so the JS handler can map state -> the corresponding
-    # ``card-osd-div`` element id.
+    # Subscribes to every card's source-spec and display-state stores
+    # (pattern-matching ALL) and reads the matching ``id`` objects so the JS
+    # handler can address the card's stage, pyramid readout and zoom readout
+    # elements.
     #
-    # The DOM id string is built using the same JSON serialization Dash
-    # uses internally for pattern-matching ids, namely
-    # ``JSON.stringify({"index": idx, "type": "card-osd-div"})`` (keys
-    # sorted alphabetically).
+    # The DOM id strings are built using the same JSON serialization Dash
+    # uses internally for pattern-matching ids -- keys sorted alphabetically.
     app.clientside_callback(
         """
-        function(stateList, idList, _cardList) {
+        function(specList, displayList, idList, _cardList) {
             const ns = window.__phenotypicResultsViewer;
-            if (!ns || !ns.applyImageSelection) {
+            if (!ns || !ns.applyPlateSources) {
                 return window.dash_clientside.no_update;
             }
-            // Defer one frame so the DOM has finished re-rendering after
-            // a cards-container update; otherwise a fresh osd-canvas div
-            // can be missed by getElementById.
-            const states = (stateList || []).map(function (s, i) {
-                const idObj = (idList && idList[i]) || {};
+            const domId = function (type, index) {
                 // Dash renders pattern-matching ids as JSON strings with
                 // keys sorted alphabetically. Mirror that exactly.
-                const divId = JSON.stringify({
-                    index: idObj.index,
-                    type: "card-osd-div"
-                });
-                if (!s) {
-                    return {id: divId, dataset: null, stem: null};
-                }
+                return JSON.stringify({index: index, type: type});
+            };
+            const states = (specList || []).map(function (spec, i) {
+                const idObj = (idList && idList[i]) || {};
                 return {
-                    id: divId,
-                    dataset: s.dataset || null,
-                    stem: s.stem || null
+                    id: domId("card-viv-stage", idObj.index),
+                    levelReadoutId: domId(
+                        "card-pyramid-readout", idObj.index
+                    ),
+                    zoomReadoutId: domId("card-zoom-readout", idObj.index),
+                    // Crosses UNMODIFIED: `build_source_spec` already
+                    // returns the facade's own key names.
+                    spec: spec || null,
+                    display: (displayList && displayList[i]) || null
                 };
             });
+            // Defer one frame so the DOM has finished re-rendering after a
+            // cards-container update; otherwise a fresh stage div can be
+            // missed by getElementById.
             requestAnimationFrame(function () {
-                ns.applyImageSelection(states);
+                ns.applyPlateSources(states);
             });
             return Date.now();
         }
         """,
-        Output(ids.OSD_MOUNT_TRIGGER_ID, "data"),
-        Input({"type": "card-state", "index": ALL}, "data"),
-        Input({"type": "card-state", "index": ALL}, "id"),
+        Output(ids.VIV_MOUNT_TRIGGER_ID, "data"),
+        Input({"type": "card-source-spec", "index": ALL}, "data"),
+        Input({"type": "card-display-state", "index": ALL}, "data"),
+        Input({"type": "card-source-spec", "index": ALL}, "id"),
         Input(ids.STORE_CARD_LIST, "data"),
     )
 
     # ----------------------------------------------------------------------
-    # Lock-views toggle -> JS broadcast attach/detach
+    # Lock-views toggle -> viewport broadcast attach/detach
     # ----------------------------------------------------------------------
     # Reads the boolean STORE_LOCK_VIEWS and pokes
-    # ``window.__phenotypicResultsViewer.setLockViews`` so the JS viewer
-    # registry attaches/detaches its cross-viewer pan/zoom handlers.
+    # ``window.__phenotypicResultsViewer.setLockViews`` so the plate registry
+    # starts or stops mirroring one stage's view state onto its peers.
     app.clientside_callback(
         """
         function(active) {

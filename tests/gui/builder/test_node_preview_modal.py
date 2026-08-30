@@ -22,10 +22,10 @@ def test_modal_has_blocking_props_and_children():
     assert modal.backdrop == "static"
     assert modal.is_open is False
     found = {getattr(n, "id", None) for n in _walk(modal)}
-    assert ids.PREVIEW_OSD_DIV in found
+    assert ids.PREVIEW_STAGE_DIV in found
     assert ids.PREVIEW_LAYER_RADIO in found
     assert ids.PREVIEW_CAPTION in found
-    assert ids.PREVIEW_DZI_URL_STORE in found
+    assert ids.PREVIEW_SOURCE_SPEC_STORE in found
 
 
 def test_preview_js_asset_exists():
@@ -34,3 +34,21 @@ def test_preview_js_asset_exists():
     text = js.read_text()
     assert "__phenotypicNodePreview" in text
     assert "mountViewer" in text and "disposeViewer" in text
+
+
+def test_preview_js_drives_the_shared_facade_not_openseadragon():
+    """The render swap, asserted on the file that does the rendering.
+
+    ``mountViewer`` keeping its name is what makes this worth pinning: the
+    entry point is unchanged, so only its BODY says whether the pane still
+    builds an OpenSeadragon viewer over a server-rendered pyramid.
+
+    Matched on the CONSTRUCTOR and its options rather than the bare word
+    "OpenSeadragon", which the file still names in prose -- to say the point
+    picker keeps it.
+    """
+    text = Path("src/phenotypic/gui/builder/assets/preview.js").read_text()
+    assert "window.phenotypicViv" in text
+    assert "setSource" in text
+    assert "window.OpenSeadragon" not in text
+    assert "tileSources" not in text

@@ -382,8 +382,9 @@ class OutputRoot:
         else:
             logger.warning(
                 "Discovered datasets: %s — none have a deliverables/overlays/<dataset>/ "
-                "directory. Image picker entries will be disabled. Re-run with "
-                "`--save-overlays` to enable pixel-level viewing.",
+                "directory. OME-Zarr-backed images remain available in the image "
+                "picker; baked PNG fallback is unavailable until overlays are "
+                "regenerated.",
                 datasets,
             )
 

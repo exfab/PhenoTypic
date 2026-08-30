@@ -153,6 +153,7 @@ def generate_dispatcher_chain(
     finalizer_script: Path | None = None,
     continuation_dependency_kinds: Sequence[SlurmDependencyKind] | None = None,
     generation: str | None = None,
+    lifecycle_output_dir: Path | None = None,
 ) -> List[Path]:
     """Generate dispatcher scripts for a chain of chunk scripts.
 
@@ -173,6 +174,8 @@ def generate_dispatcher_chain(
             ``afterany`` for every edge.
         generation: Optional explicit lifecycle generation. When supplied,
             dispatcher scripts are isolated under that generation.
+        lifecycle_output_dir: Optional lifecycle fence root when dispatcher
+            scripts themselves are written beneath a separate control root.
 
     Returns:
         List of dispatcher script paths (one fewer than ``chunk_scripts``,
@@ -187,7 +190,8 @@ def generate_dispatcher_chain(
     if len(chunk_scripts) <= 1:
         return []
 
-    lifecycle_generation = generation or _ensure_generation(output_dir)
+    lifecycle_output = lifecycle_output_dir or output_dir
+    lifecycle_generation = generation or _ensure_generation(lifecycle_output)
     log_dir.mkdir(parents=True, exist_ok=True)
     script_dir = slurm_scripts_dir(output_dir)
     if generation is not None:
@@ -217,7 +221,7 @@ def generate_dispatcher_chain(
             output_path=dispatcher_path,
             slurm_args=slurm_args,
             log_dir=log_dir,
-            output_dir=output_dir,
+            output_dir=lifecycle_output,
             generation=lifecycle_generation,
             chunk_index=i + 1,
             finalizer_script=(

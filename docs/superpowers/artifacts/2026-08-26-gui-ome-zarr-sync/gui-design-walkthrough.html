@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zarr Viewer Decisions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style id="app-css">
+/* ============================================================================
+   PAPER/INK ARTIFACT DESIGN SYSTEM   (~/.claude/assets/paper-ink-artifact.css)
+   ----------------------------------------------------------------------------
+   Reusable "field-notebook / scientific paper" styling for SELF-CONTAINED HTML
+   EXPLAINER ARTIFACTS: visual-explainer output, diagrams, plan/diff reviews,
+   project recaps, comparison pages, slide decks. Warm paper ground, ink text,
+   fine rules, colour-blind-safe Okabe-Ito accents.
+
+   USE FOR : one-off / throwaway visual explainers NOT part of a shipped product.
+   NOT FOR : production HTML — docs sites (Sphinx/MkDocs/Docusaurus), app/GUI UI
+             (React/Vue/Dash/Flask/Django templates, component libraries, shipped
+             .html/.css/.js), email templates, or any file inheriting a project
+             theme. Match project conventions for those.
+
+   HOW TO USE: inline this whole file inside a <style> in the artifact <head> and
+   add the fonts:
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+   COMPONENTS: .topbar/.brand · .hero/.family-badge/.hero-title/.lede · .chip
+   · .badge (.b-a/.b-b/.b-dyn/.b-phys/.b-fit-green/.b-fit-amber/.b-fit-red)
+   · .legend · .band/.section-title · .card-grid/.card/.card-head/.metric-name/.definition
+   · figure.illo (inline <svg> viewBox "0 0 360 220", labels .lbl/.lbl-strong) · .meta/.prov
+   · .callout(.green/.blue) · .footer
+   Regime accents: A=blue B=green Dyn=sky Phys=purple. Fit: green/amber/red.
+   ============================================================================ */
+
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+
+  /* ---------- walkthrough chrome (built on the paper/ink tokens above) ---------- */
+  .shellgrid{display:grid;grid-template-columns:264px minmax(0,1fr);gap:30px;align-items:start;padding-bottom:40px}
+  @media (max-width:900px){.shellgrid{grid-template-columns:1fr}.rail{position:static !important}}
+
+  .rail{position:sticky;top:74px;display:flex;flex-direction:column;gap:3px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:12px;box-shadow:var(--shadow)}
+  .rail h4{margin:2px 4px 8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--faint)}
+  .railitem{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+    background:none;border:1px solid transparent;border-radius:8px;padding:7px 9px;
+    font-family:var(--sans);font-size:13.5px;color:var(--text-dim);transition:var(--transition)}
+  .railitem:hover{background:var(--surface-2);color:var(--text)}
+  .railitem:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+  .railitem.is-current{background:var(--inset);border-color:var(--rule);color:var(--ink);font-weight:500}
+  .railnum{font-family:var(--mono);font-size:10.5px;color:var(--faint);width:16px;flex:none}
+  .railitem.is-current .railnum{color:var(--ink)}
+  .raildot{width:9px;height:9px;border-radius:50%;flex:none;margin-left:auto;
+    background:transparent;border:1.5px solid var(--rule)}
+  .railitem.is-done .raildot{background:var(--green);border-color:var(--green)}
+  .railitem.is-locked .raildot{background:var(--rule);border-color:var(--rule)}
+  .railtitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+
+  .stage{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:clamp(20px,3vw,32px);box-shadow:var(--shadow)}
+  .stagehead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .stagekicker{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+  .stage h2{font-family:var(--serif);font-weight:600;font-size:clamp(22px,3.2vw,30px);
+    line-height:1.1;color:var(--ink);margin:0 0 10px;letter-spacing:-.01em;text-wrap:balance}
+  .stage .frame{font-size:15.5px;color:var(--text);max-width:66ch;margin:0 0 4px}
+  .stage .frame + .frame{margin-top:10px}
+  .stage .frame code, .inlinecode{font-family:var(--mono);font-size:.88em;background:var(--inset);
+    padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  .opts{display:grid;gap:14px;margin-top:22px}
+  .optcard{position:relative;text-align:left;width:100%;cursor:pointer;font-family:var(--sans);
+    background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--rule);
+    border-radius:10px;padding:15px 18px;transition:var(--transition);display:flex;flex-direction:column;gap:8px}
+  .optcard:hover{background:var(--surface);border-color:var(--rule)}
+  .optcard:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .optcard.rec{border-left-color:var(--green)}
+  .optcard.warn{border-left-color:var(--orange)}
+  .optcard.bad{border-left-color:var(--vermillion)}
+  .optcard.is-sel{background:var(--surface);border-color:var(--blue);box-shadow:0 0 0 2px rgba(0,114,178,.16)}
+  .opttop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .optmark{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--rule);flex:none;
+    display:grid;place-items:center;background:var(--surface)}
+  .optcard.is-sel .optmark{border-color:var(--blue);background:var(--blue);box-shadow:inset 0 0 0 3px var(--surface)}
+  .optid{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--faint)}
+  .optcard.is-sel .optid{color:var(--blue)}
+  .opttitle{font-family:var(--serif);font-weight:600;font-size:17px;color:var(--ink);line-height:1.2}
+  .optblurb{font-size:14px;color:var(--text);margin:0}
+  .optpoints{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+  .optpoints li{font-size:13px;color:var(--text-dim);padding-left:18px;position:relative;line-height:1.45}
+  .optpoints li::before{position:absolute;left:0;font-family:var(--mono);font-size:12px}
+  .optpoints li.p::before{content:"+";color:var(--green)}
+  .optpoints li.c::before{content:"\2212";color:var(--vermillion)}
+  .optpoints li b{color:var(--text);font-weight:600}
+
+  .notewrap{margin-top:20px;display:flex;flex-direction:column;gap:6px}
+  .notewrap label{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)}
+  .notewrap textarea{font-family:var(--sans);font-size:14px;color:var(--text);background:var(--inset);
+    border:1px solid var(--border);border-radius:8px;padding:10px 12px;resize:vertical;min-height:62px;width:100%}
+  .notewrap textarea:focus{outline:2px solid var(--blue);outline-offset:-1px;background:var(--surface)}
+
+  .navrow{display:flex;align-items:center;gap:10px;margin-top:26px;padding-top:18px;
+    border-top:1px dashed var(--border);flex-wrap:wrap}
+  .btn{font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;border-radius:8px;
+    padding:9px 16px;border:1px solid var(--rule);background:var(--surface);color:var(--text);
+    transition:var(--transition)}
+  .btn:hover{background:var(--surface-2);color:var(--ink)}
+  .btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .btn[disabled]{opacity:.4;cursor:not-allowed}
+  .btn.primary{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+  .btn.primary:hover{background:#000;color:#fff}
+  .btn.ghost{border-color:transparent;color:var(--text-dim)}
+  .navspacer{margin-left:auto}
+  .savestate{font-family:var(--mono);font-size:12px;color:var(--text-dim)}
+  .savestate.ok{color:var(--green)}
+  .savestate.err{color:var(--vermillion)}
+
+  .progwrap{display:flex;align-items:center;gap:12px;margin:0 0 18px}
+  .progbar{flex:1;height:5px;background:var(--inset);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+  .progfill{height:100%;background:var(--green);border-radius:99px;transition:width .35s var(--ease,ease)}
+  .progtext{font-family:var(--mono);font-size:11.5px;color:var(--text-dim);white-space:nowrap;
+    font-variant-numeric:tabular-nums}
+
+  .sumtable{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+  .sumtable th{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--faint);text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule)}
+  .sumtable td{padding:11px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  .sumtable tr:last-child td{border-bottom:none}
+  .sumtable .q{color:var(--text-dim);width:38%}
+  .sumtable .a{color:var(--ink);font-weight:500}
+  .sumtable .a.none{color:var(--faint);font-weight:400;font-style:italic}
+  .sumnote{display:block;font-size:12.5px;color:var(--text-dim);margin-top:4px;font-style:normal;font-weight:400}
+
+  .factgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:18px}
+  .fact{background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:12px 14px}
+  .fact .fk{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--faint);display:block;margin-bottom:5px}
+  .fact .fv{font-size:13.5px;color:var(--text);line-height:1.45}
+  .flag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+    padding:2px 7px;border-radius:5px;margin-right:6px;vertical-align:1px}
+  .flag.g{background:rgba(11,155,118,.14);color:#077054}
+  .flag.a{background:rgba(217,138,0,.16);color:#8a5c00}
+  .flag.r{background:rgba(213,94,0,.15);color:#a1450a}
+  .flag.b{background:rgba(0,114,178,.13);color:#005b8f}
+
+  .readonly{background:var(--inset);border:1px dashed var(--rule);border-radius:9px;
+    padding:12px 15px;font-size:13.5px;color:var(--text-dim);margin-top:16px}
+  .noscriptmsg{max-width:60ch;margin:60px auto;font-family:var(--sans);color:var(--text)}
+</style>
+</head>
+<body>
+<script id="app-state" type="application/json">{"choices":{"a":"A1","b":"B1","c1":"C1","c2":"KEEP","d":"D3_D1","e":"E1","curation":"READ_ONLY","scope":"THREE","amend":"MAY_AMEND"},"notes":{},"rev":2}</script>
+<div id="app"></div>
+<noscript><div class="noscriptmsg"><h1>Zarr Viewer Decisions</h1>
+<p>This walkthrough needs JavaScript to record choices. The static version of the same
+material is at <code>docs/superpowers/artifacts/2026-08-26-gui-ome-zarr-sync/gui-design-options.html</code>.</p></div></noscript>
+<script id="app-script">
+(function () {
+  "use strict";
+
+  /* ------------------------------------------------------------------ content */
+  var STEPS = [
+    {
+      id: "recap", kind: "review", eyebrow: "Context", title: "What is already settled",
+      frames: [
+        "Three surfaces come off the GUI, and one survives on the old stack. Nothing here is a question — it is the ground the rest of the walkthrough stands on.",
+        "The hinge: with Viv the browser reads zarr chunks directly over HTTP range requests. The results viewer stops <em>producing</em> pyramids and starts <em>consuming</em> them. That is a deletion, not an optimization."
+      ],
+      facts: [
+        ["Deleted outright", "<b>Results Timeline tab</b>, <b>Browse Timeline mode</b>, and <code>gui/_shared/timeline/</code> — which dies with both of its consumers."],
+        ["Unmounted, code kept", "<b>Tune</b> (<code>/tune/</code>, ~6k lines) and the <b>Heatmap / Error / QC</b> tabs. Off the public surface, still importable, waiting to be spliced into the simplified tool."],
+        ["Survives unchanged", "<b>Browse</b>'s libvips→DZI→<code>BrowseCache</code>→OSD path. Browse reads arbitrary source images with no run behind them, so it has no zarr to read."],
+        ["Ships as", "Results viewer with <b>Plate + Colony only</b>."]
+      ]
+    },
+    {
+      id: "facts", kind: "review", eyebrow: "Evidence", title: "What I checked, and what I did not",
+      frames: [
+        "Two of these are verified against sources; two are not. The unverified ones are marked so they cannot quietly become facts in a spec."
+      ],
+      facts: [
+        ["<span class='flag g'>VERIFIED</span> Sharding in the browser", "zarrita.js supports Zarr v3 with ZEP2 sharding, natively, zero dependencies. Your <code>(C,4096,4096)</code> shards are readable client-side."],
+        ["<span class='flag a'>CONDITIONAL</span> zstd in the browser", "Not in zarrita's built-in registry. Needs the <code>numcodecs.js</code> wasm codec registered <em>before the first read</em>. Workable, but it fails only in production."],
+        ["<span class='flag g'>VERIFIED</span> Licensing", "Viv and vizarr are both MIT, compatible with Apache-2.0. Needs <code>NOTICE</code> + <code>licenses/</code> entries, matching the SAM2 / micro-sam pattern."],
+        ["<span class='flag a'>UNVERIFIED</span> Series resolution", "Whether vizarr resolves <em>our</em> <code>bioformats2raw.layout</code> series list and <code>labels/objmap</code> child without patching. Half-day spike. Likeliest source of friction."],
+        ["<span class='flag r'>BLOCKING</span> No JS toolchain", "There is no <code>package.json</code> anywhere in this repo. All GUI JS is hand-written vanilla or a vendored <code>.min.js</code>. Viv is React + deck.gl; vizarr is Preact + Vite. Neither drops in as a file."],
+        ["<span class='flag b'>SEQUENCING</span> Backend is spec-only", "<code>worktree-ome-zarr-image-store</code> is three doc commits, no zarr code in <code>src/</code>. This spec is written against a contract."]
+      ]
+    },
+    {
+      id: "a", kind: "choice", eyebrow: "Decision A", title: "How does Viv get into a Dash app?",
+      frames: [
+        "The hinge decision — everything downstream inherits it. Dash <em>is</em> React, so a real component is possible, but it means owning a JS build in a repo that has never had one."
+      ],
+      options: [
+        { id: "A1", tone: "rec", title: "Vendored pre-built bundle + imperative façade",
+          blurb: "Build Viv + deck.gl into one IIFE outside the repo, commit the artifact beside <code>openseadragon.min.js</code>, drive it from a hand-written <code>viv_viewer.js</code> exposing mount/setSource/setViewState/destroy.",
+          points: [["p","<b>Zero new toolchain</b> in CI, in the wheel, in contributor setup."],["p","The pattern this repo already uses twice — reviewers know how to read it."],["c","Bundle provenance lives outside the repo; needs a committed build recipe or it rots."],["c","Upgrading Viv is a manual ceremony, not <code>npm update</code>."]] },
+        { id: "A2", tone: "warn", title: "Real JS build in-repo (npm + Vite)",
+          blurb: "Add <code>package.json</code>, build at package time, ship the output in the wheel.",
+          points: [["p","Honest dependency graph; upgrades and audits become ordinary."],["p","Makes future component work cheap instead of one-off."],["c","New CI job, new contributor prerequisite, new wheel step — in a project whose whole toolchain is <code>uv</code>."],["c","Biggest cost of the four, and buys nothing the first release needs."]] },
+        { id: "A3", tone: "warn", title: "iframe a stock vizarr + postMessage",
+          blurb: "Ship vizarr's published build untouched, bridge selection and viewport over <code>postMessage</code>.",
+          points: [["p","Fastest thing that puts a plate on screen — days, not weeks."],["p","Upstream stays upstream; no fork to maintain."],["c","<b>Kills Decision D.</b> The colony grid needs custom deck.gl views; an iframe gives you vizarr's UI, not yours."],["c","Curation overlays and tile chrome cannot live inside someone else's canvas."]] },
+        { id: "A4", tone: "bad", title: "Proper Dash custom React component",
+          blurb: "The <code>dash-component-boilerplate</code> route: a published component package wrapping Viv.",
+          points: [["p","The “correct” answer in the abstract; cleanest prop/state story."],["c","A2's toolchain cost <b>plus</b> a second distributable to version and pin."],["c","Brittle to React-version drift — Viv pins its own."],["c","Out of proportion to one viewer in one internal tool."]] }
+      ],
+      rec: "A1, with the build recipe committed under <code>tools/viv-bundle/</code> so the artifact is reproducible even though the build never runs in CI. You still adapt Viv's <em>layers</em>, which is where the value is. Take A2 instead if you expect more custom JS surfaces within a year."
+    },
+    {
+      id: "b", kind: "choice", eyebrow: "Decision B", title: "How do zarr bytes reach the browser?",
+      frames: ["Sharding <em>needs</em> HTTP Range — a shard read is an index fetch plus a byte-range fetch. That constrains this more than it first looks."],
+      options: [
+        { id: "B1", tone: "rec", title: "Range-capable static route",
+          blurb: "A <code>/zarr/&lt;ds&gt;/&lt;stem&gt;.ome.zarr/&lt;path&gt;</code> Flask route using <code>send_file(..., conditional=True)</code>, reusing the existing <code>is_safe_path_component</code> guard.",
+          points: [["p","<code>conditional=True</code> gives Range, which sharding requires."],["p","Server does no decode; memory per request is a sendfile buffer."],["c","Traversal surface is wider than today's route — the guard must be per-segment, not per-URL."]] },
+        { id: "B2", tone: "warn", title: "Chunk API that reads through zarr-python",
+          blurb: "Server opens the store, slices, returns typed-array responses the client assembles.",
+          points: [["p","Codec problems vanish — the server decodes, so Decision C stops mattering."],["c","Reintroduces per-request decode: <b>the exact cost this change exists to delete</b>."],["c","Needs a custom zarrita store adapter — fighting the library."]] },
+        { id: "B3", tone: "bad", title: "Keep serving PNG tiles, sourced from zarr levels",
+          blurb: "Read the right pyramid level server-side, emit PNG tiles, keep OpenSeadragon.",
+          points: [["p","Smallest diff, no JS decisions at all. A real fallback if A and C both go badly."],["c","No Viv, no deck.gl, so <b>no Decision D</b>."],["c","Still decodes and re-encodes every request — relocates the redundancy rather than removing it."]] }
+      ],
+      rec: "B1. It is the only option that actually collects the prize, and the guard work is bounded and testable."
+    },
+    {
+      id: "c1", kind: "choice", eyebrow: "Decision C · part 1", title: "Codec: does zstd survive contact with a browser?",
+      frames: ["The backend spec <b>locks</b> zstd in §1.4, chosen for write throughput on Lustre with no browser reader in the picture. A client-side viewer changes the constraints that decision was made under."],
+      options: [
+        { id: "C1", tone: "rec", title: "Keep zstd, ship the wasm codec",
+          blurb: "Register <code>numcodecs.js</code> zstd in the bundle's startup path before any store opens.",
+          points: [["p","Backend spec untouched — no amendment, no re-review of a decision with good write-side reasons."],["p","zstd is genuinely the better stored format: smaller and faster to decompress than gzip-4."],["c","Adds a wasm payload and a hard ordering rule: <b>register before first read or every read fails</b>."],["c","Needs a test that a CLI-written store opens in a real browser — not just that the codec registers."]] },
+        { id: "C2", tone: "warn", title: "Amend §1.4 back to gzip",
+          blurb: "Trade stored size and write speed for a codec every JS reader has built in.",
+          points: [["p","Removes the wasm dependency and the ordering hazard entirely."],["c","Reverses a locked decision to make the <em>client</em> simpler, penalizing every CLI write forever."],["c","The spec deliberately moved <em>off</em> gzip-4. Undoing that needs a better reason than “less JS setup”."]] }
+      ],
+      rec: "C1. The wasm registration is a one-time ordering rule you can pin with a test; the codec choice is permanent."
+    },
+    {
+      id: "c2", kind: "choice", eyebrow: "Decision C · part 2", title: "Chunk size: 1024² stays, or shrinks for panning?",
+      frames: [
+        "Independent of codec. A deck.gl tile fetch pulls a whole inner chunk; at 1024²×3×u8 that is roughly 3 MB per tile.",
+        "I have <b>not measured this</b>, and the only deployment is localhost or an SSH tunnel, where it may be a non-issue. This is the one decision I would refuse to write into a spec on a guess."
+      ],
+      options: [
+        { id: "MEASURE", tone: "rec", title: "Measure first, decide after",
+          blurb: "Spike panning latency over a real SSH tunnel at 1024² before touching a locked spec clause.",
+          points: [["p","Guessing this in is how a plausible number becomes load-bearing and nobody rechecks it."],["p","Cheap: one store, one tunnel, one afternoon."],["c","Adds a gate before the spec can close."]] },
+        { id: "KEEP", tone: "warn", title: "Keep 1024² regardless",
+          blurb: "Accept ~3 MB tiles; the spec's file-count table stays exactly as published.",
+          points: [["p","No amendment, no churn to the verified 16/40/132 file-count figures."],["c","If panning does drag, you find out after the viewer ships."]] },
+        { id: "SHRINK", tone: "warn", title: "Move to 512² now",
+          blurb: "Quarter the bytes per tile for smoother panning.",
+          points: [["p","Materially smoother interaction if bandwidth is the binding constraint."],["c","Quadruples chunk count; every file-count figure in §1.4 shifts."],["c","Optimizing against an unmeasured bottleneck."]] }
+      ],
+      rec: "Measure first. This is the decision most likely to be wrong if made from the armchair."
+    },
+    {
+      id: "d", kind: "choice", eyebrow: "Decision D", title: "The colony grid, as a port of _smart_grid",
+      frames: [
+        "What <code>gui/_smart_grid/</code> actually does: patch napari's <code>viewer.grid</code> so only <em>visible</em> layers get cells, then <code>create_overlay_clones</code> duplicates every Labels/Points/Shapes visual into <em>each</em> viewbox — every cell shows a different base image under the same annotation, sharing one camera.",
+        "Three ways to say that in deck.gl."
+      ],
+      options: [
+        { id: "D1", tone: "rec", title: "N deck.gl views, one shared view state",
+          blurb: "One <code>OrthographicView</code> per colony, each centred on its centroid; the Viv layer stack renders into all of them. Zoom edits one shared value applied to every view.",
+          points: [["p","Direct analogue of the vispy clone trick — one layer instance rendered N times, not N copies of state."],["p","Shared camera is free: it is one <code>viewState</code>, not a sync protocol."],["p","Per-cell chrome lives in that view's own coordinates."],["c","deck.gl re-renders every view each frame — hundreds of cells needs a virtualization cap."]] },
+        { id: "D2", tone: "warn", title: "One view, colonies montaged by offset",
+          blurb: "A single camera over a synthetic layout where each colony is drawn at an offset. The grid is a coordinate transform, not a set of viewports.",
+          points: [["p","Cheapest to render — one viewport, one draw pass; scales to thousands of cells."],["p","Box-drag selection across cells is trivial in one coordinate space."],["c","Per-cell independent zoom is impossible by construction."],["c","Multiscale level selection gets muddy: one camera zoom, many source regions."]] },
+        { id: "D3", tone: "warn", title: "Keep the DOM tile grid, re-source it",
+          blurb: "Today's <code>build_tile_grid</code> chrome stays; only the crop route changes from overlay-PNG slicing to a zarr L0 chunk read.",
+          points: [["p","Curation radial, multi-select, shift-click ranges, bulk-mark all keep working <b>unchanged</b>."],["p","Smallest risk by a wide margin, and it still deletes the full-overlay decode."],["c","Not a Viv port at all — no shared camera, no live layer toggling."],["c","Server stays in the pixel path for colony tiles."]] },
+        { id: "D3_D1", tone: "rec", title: "D3 first, then D1",
+          blurb: "Ship the re-sourced DOM grid, then replace the rendering layer with deck.gl views once the zarr crop reader is proven.",
+          points: [["p","<b>Wastes nothing</b> — they differ in the rendering layer, not the data path; both need the same crop reader."],["p","Something usable lands much sooner, and the risky half is de-risked by the safe half."],["c","Two rounds of GUI churn on the same tab, and <code>FEATURES.md</code> pays for both."]] }
+      ],
+      rec: "D3 then D1, unless you want the deck.gl grid to be the thing that proves the whole approach. The staging is genuinely free here, which is rare."
+    },
+    {
+      id: "e", kind: "choice", eyebrow: "Decision E", title: "Builder preview has no store to read",
+      frames: ["Easy to miss: the builder previews a pipeline against an <em>input image</em>. There is no run, so there is no <code>.ome.zarr</code> and no pyramid. “Optimize preview with zarr” needs a source of zarr first."],
+      options: [
+        { id: "E1", tone: "rec", title: "Preview writes an ephemeral store",
+          blurb: "Each preview node writes its layer to a scratch <code>.ome.zarr</code> in the builder-tiles sandbox, reusing the CLI writer. The viewer reads it like a real run.",
+          points: [["p","<b>One reader, one code path</b> for every viewing surface in the GUI."],["p","Exercises the writer constantly in development — bugs surface in the builder, not on a cluster."],["c","Preview gains a write cost it does not have today, plus a scratch dir to garbage-collect."],["c","Pyramiding a preview is mostly wasted work at preview resolutions."]] },
+        { id: "E2", tone: "warn", title: "Leave the builder on PNG→DZI",
+          blurb: "Scope the change to the results viewer; the builder keeps <code>_dzi_tiler</code>.",
+          points: [["p","Smallest scope. The preview cache's PNG-bytes design (~10–15 MB vs 1–2 GB) is deliberate and works."],["c","<code>_dzi_tiler</code> survives for one consumer — the redundancy shrinks but does not die."],["c","Two viewer stacks in one app."]] },
+        { id: "E3", tone: "warn", title: "In-memory store served from the process",
+          blurb: "Keep the preview array in RAM behind a store-shaped route; never touch disk.",
+          points: [["p","No scratch files, no GC, no cleanup on crash. Preview images are small."],["c","A hand-written store endpoint is a <b>third</b> pixel path, not a unification."],["c","Does not survive the multi-worker deployment the run console already assumes."]] }
+      ],
+      rec: "E1 if the builder is in scope at all; E2 if you want this release to be the results viewer and nothing else."
+    },
+    {
+      id: "curation", kind: "choice", eyebrow: "Consequence", title: "Curation is about to go dark",
+      frames: [
+        "Unmounting QC and Error takes the <b>error-category radial menu</b> with them. That is the only thing in the viewer that <em>writes</em>: <code>deliverables/errors/&lt;category&gt;.parquet</code> and the durable <code>qc/curation_labels.parquet</code>.",
+        "If it goes, the GUI is read-only and the CLI's <code>reemit_error_deliverables</code> round-trip has no producer."
+      ],
+      options: [
+        { id: "KEEP_RADIAL", tone: "rec", title: "Move the radial onto the Colony tab, keep it live",
+          blurb: "Curation survives the simplification; the shared <code>gui/_shared/_radial.py</code> component already serves two surfaces, so a third is cheap.",
+          points: [["p","The GUI keeps a write path; no capability regression for users mid-overhaul."],["p","The component is already tab-agnostic by design."],["c","Carries <code>CurationLabels</code> and its durable store through the simplification you were trying to shrink."]] },
+        { id: "READ_ONLY", tone: "warn", title: "Viewer goes read-only until the new QC tool lands",
+          blurb: "Accept the regression; curation returns with the overhauled QC surface.",
+          points: [["p","Genuinely simplifies — the whole durable-curation stack goes quiet at once."],["p","Avoids building curation twice, once now and once in the new tool."],["c","<b>A real capability regression</b> for anyone using the GUI to triage today."],["c","Leaves on-disk error partitions with no in-GUI producer for the gap."]] }
+      ],
+      rec: "This is the one I most need your call on. It trades user capability against scope, and I cannot pick that for you."
+    },
+    {
+      id: "scope", kind: "choice", eyebrow: "Process", title: "One spec, or three?",
+      frames: ["Removals, viewer rebuild, and builder preview are three efforts with different risk profiles and different blockers. Only one of them can start today."],
+      options: [
+        { id: "THREE", tone: "rec", title: "Three spec→plan cycles",
+          blurb: "Removals ship first as their own spec and plan; then the viewer rebuild; then the builder.",
+          points: [["p","Removals are <b>pure deletion</b> and depend on nothing — they can execute immediately, before the backend exists."],["p","Shrinks the surface the viewer rebuild has to reason about."],["c","Three review gates instead of one."]] },
+        { id: "ONE", tone: "warn", title: "One spec covering everything",
+          blurb: "A single document for the whole GUI×zarr change.",
+          points: [["p","One coherent narrative; cross-cutting decisions stay visible in one place."],["c","Blocks the deletable work behind decisions that need a spike and a backend that does not exist."],["c","A spec this wide is hard to review and easy to let drift."]] }
+      ],
+      rec: "Three. The removals are unblocked right now and everything else is not — that asymmetry is the argument."
+    },
+    {
+      id: "amend", kind: "choice", eyebrow: "Governance", title: "May this work amend the backend spec?",
+      frames: ["Decision C touches a <b>locked</b> §1.4. The OME-Zarr design has a supersessions section precisely because locked decisions do sometimes move — but they move on the record, in that document, not by a workaround here."],
+      options: [
+        { id: "MAY_AMEND", tone: "rec", title: "Yes — file amendments against the backend spec",
+          blurb: "If a measurement justifies it, this work opens a recorded amendment to <code>2026-08-18-ome-zarr-image-store</code>.",
+          points: [["p","Keeps one source of truth for the store format."],["p","Follows the precedent already set by that spec's own supersessions section."],["c","Reopens a reviewed document and needs its author's sign-off."]] },
+        { id: "NO_AMEND", tone: "warn", title: "No — the GUI lives with what the CLI stores",
+          blurb: "The backend format is fixed; the viewer adapts around it.",
+          points: [["p","Backend review stays closed; no re-litigation."],["c","If a format choice genuinely hurts the viewer, the workaround lands in the GUI and the reason gets lost."]] }
+      ],
+      rec: "Yes, gated on evidence. An amendment backed by a measurement is how the format stays right; an amendment backed by convenience is how it drifts."
+    },
+    { id: "summary", kind: "summary", eyebrow: "Result", title: "Your decisions" }
+  ];
+
+  var CHOICE_STEPS = STEPS.filter(function (s) { return s.kind === "choice"; });
+
+  /* ------------------------------------------------------------------- state */
+  function readState() {
+    try {
+      var raw = document.getElementById("app-state").textContent;
+      var s = JSON.parse(raw);
+      return { choices: s.choices || {}, notes: s.notes || {}, rev: s.rev || 0 };
+    } catch (e) { return { choices: {}, notes: {}, rev: 0 }; }
+  }
+
+  var state = readState();
+  var cursor = 0;
+  var dirty = false;
+  var saveMsg = "";
+  var saveTone = "";
+  var artifactApi = null;
+  var artifactResolved = false;
+
+  /* ------------------------------------------------------------------ helpers */
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function decidedCount() {
+    return CHOICE_STEPS.filter(function (s) { return !!state.choices[s.id]; }).length;
+  }
+  function optionOf(step, id) {
+    var found = null;
+    (step.options || []).forEach(function (o) { if (o.id === id) found = o; });
+    return found;
+  }
+
+  /* ----------------------------------------------------------------- rendering */
+  function railHtml() {
+    var items = STEPS.map(function (s, i) {
+      var cls = "railitem";
+      if (i === cursor) cls += " is-current";
+      if (s.kind === "choice" && state.choices[s.id]) cls += " is-done";
+      if (s.kind !== "choice") cls += " is-locked";
+      var num = s.kind === "choice" ? String(CHOICE_STEPS.indexOf(s) + 1) : "·";
+      return '<button class="' + cls + '" data-goto="' + i + '" type="button">' +
+        '<span class="railnum">' + num + "</span>" +
+        '<span class="railtitle">' + esc(s.eyebrow) + "</span>" +
+        '<span class="raildot"></span></button>';
+    }).join("");
+    return '<nav class="rail"><h4>Walkthrough</h4>' + items + "</nav>";
+  }
+
+  function progressHtml() {
+    var n = decidedCount(), total = CHOICE_STEPS.length;
+    var pct = total ? Math.round((n / total) * 100) : 0;
+    return '<div class="progwrap"><div class="progbar"><div class="progfill" style="width:' + pct + '%"></div></div>' +
+      '<span class="progtext">' + n + " of " + total + " decided</span></div>";
+  }
+
+  function factsHtml(step) {
+    if (!step.facts) return "";
+    return '<div class="factgrid">' + step.facts.map(function (f) {
+      return '<div class="fact"><span class="fk">' + f[0] + '</span><span class="fv">' + f[1] + "</span></div>";
+    }).join("") + "</div>";
+  }
+
+  function optionsHtml(step) {
+    var sel = state.choices[step.id];
+    return '<div class="opts" role="radiogroup" aria-label="' + esc(step.title) + '">' +
+      step.options.map(function (o) {
+        var cls = "optcard " + o.tone + (sel === o.id ? " is-sel" : "");
+        var pts = o.points.map(function (p) {
+          return '<li class="' + p[0] + '">' + p[1] + "</li>";
+        }).join("");
+        return '<button type="button" class="' + cls + '" role="radio" aria-checked="' + (sel === o.id) +
+          '" data-pick="' + o.id + '">' +
+          '<span class="opttop"><span class="optmark"></span><span class="optid">' + o.id + "</span>" +
+          '<span class="opttitle">' + o.title + "</span></span>" +
+          '<p class="optblurb">' + o.blurb + "</p>" +
+          '<ul class="optpoints">' + pts + "</ul></button>";
+      }).join("") + "</div>";
+  }
+
+  function summaryHtml() {
+    var rows = CHOICE_STEPS.map(function (s) {
+      var picked = state.choices[s.id];
+      var o = picked ? optionOf(s, picked) : null;
+      var note = state.notes[s.id];
+      var answer = o
+        ? '<span class="a">' + o.id + " — " + o.title + "</span>"
+        : '<span class="a none">not decided</span>';
+      if (note) answer += '<span class="sumnote">“' + esc(note) + "”</span>";
+      return "<tr><td class='q'>" + esc(s.eyebrow) + ": " + s.title + "</td><td>" + answer + "</td></tr>";
+    }).join("");
+    var n = decidedCount(), total = CHOICE_STEPS.length;
+    var lead = n === total
+      ? "Every decision has an answer. Save it to the page, then tell me to write the spec."
+      : (n === 0
+        ? "Nothing decided yet. Work back through the rail on the left — or tell me to just take the recommendations."
+        : n + " of " + total + " decided. The rest can wait, but the blocking ones (Decision A, curation) gate the spec.");
+    return '<p class="frame">' + lead + "</p>" +
+      '<table class="sumtable"><tr><th>Question</th><th>Your call</th></tr>' + rows + "</table>";
+  }
+
+  function navHtml() {
+    var atStart = cursor === 0, atEnd = cursor === STEPS.length - 1;
+    var saveLabel = dirty ? "Save choices to this page" : "Saved";
+    var msg = saveMsg ? '<span class="savestate ' + saveTone + '">' + esc(saveMsg) + "</span>" : "";
+    return '<div class="navrow">' +
+      '<button class="btn" type="button" data-nav="prev"' + (atStart ? " disabled" : "") + ">← Back</button>" +
+      '<button class="btn" type="button" data-nav="next"' + (atEnd ? " disabled" : "") + ">Next →</button>" +
+      '<span class="navspacer"></span>' + msg +
+      '<button class="btn ghost" type="button" data-nav="copy">Copy summary</button>' +
+      '<button class="btn primary" type="button" data-nav="save"' + (dirty ? "" : " disabled") + ">" + saveLabel + "</button>" +
+      "</div>";
+  }
+
+  function stageHtml() {
+    var step = STEPS[cursor];
+    var h = '<section class="stage">';
+    h += progressHtml();
+    h += '<div class="stagehead"><span class="stagekicker">' + esc(step.eyebrow) + "</span></div>";
+    h += "<h2>" + step.title + "</h2>";
+    (step.frames || []).forEach(function (f) { h += '<p class="frame">' + f + "</p>"; });
+    h += factsHtml(step);
+    if (step.kind === "choice") {
+      h += optionsHtml(step);
+      if (step.rec) h += '<div class="callout green" style="margin-top:20px"><h3>My read</h3><p>' + step.rec + "</p></div>";
+      h += '<div class="notewrap"><label for="note-' + step.id + '">Note (optional — saved with your choice)</label>' +
+        '<textarea id="note-' + step.id + '" data-note="' + step.id + '" placeholder="Anything I should carry into the spec…">' +
+        esc(state.notes[step.id] || "") + "</textarea></div>";
+    }
+    if (step.kind === "summary") {
+      h += summaryHtml();
+      if (artifactResolved && !artifactApi) {
+        h += '<div class="readonly">This view cannot save into the page — use <b>Copy summary</b> and paste it back into the conversation instead.</div>';
+      }
+    }
+    h += navHtml();
+    h += "</section>";
+    return h;
+  }
+
+  function render() {
+    document.getElementById("app").innerHTML =
+      '<div class="topbar"><div class="wrap">' +
+      '<div class="brand"><b>PhenoTypic GUI</b> · feat/gui-ome-zarr-sync · viewer rebuild</div>' +
+      "</div></div>" +
+      '<div class="wrap"><div class="hero" style="padding-bottom:12px">' +
+      '<div class="family-badge">GUI</div><div>' +
+      '<div class="hero-kicker">Brainstorm · architectural · 2026-08-26</div>' +
+      '<h1 class="hero-title">Cut three surfaces, then rebuild the viewer on Viv</h1>' +
+      '<p class="lede">Nine decisions stand between here and a spec. Pick your way through — the page remembers, ' +
+      "and I read your answers back when you are done.</p></div></div>" +
+      '<div class="shellgrid">' + railHtml() + "<div>" + stageHtml() + "</div></div></div>";
+  }
+
+  /* -------------------------------------------------------------------- events */
+  document.addEventListener("click", function (ev) {
+    var el = ev.target.closest("[data-pick],[data-nav],[data-goto]");
+    if (!el) return;
+
+    if (el.hasAttribute("data-goto")) {
+      cursor = parseInt(el.getAttribute("data-goto"), 10);
+      saveMsg = ""; render(); window.scrollTo({ top: 0, behavior: "smooth" }); return;
+    }
+    if (el.hasAttribute("data-pick")) {
+      var step = STEPS[cursor];
+      var id = el.getAttribute("data-pick");
+      state.choices[step.id] = (state.choices[step.id] === id) ? undefined : id;
+      if (!state.choices[step.id]) delete state.choices[step.id];
+      dirty = true; saveMsg = ""; render(); return;
+    }
+    var nav = el.getAttribute("data-nav");
+    if (nav === "prev" && cursor > 0) { cursor--; saveMsg = ""; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    else if (nav === "next" && cursor < STEPS.length - 1) { cursor++; saveMsg = ""; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    else if (nav === "copy") { copySummary(); }
+    else if (nav === "save") { save(); }
+  });
+
+  document.addEventListener("input", function (ev) {
+    var t = ev.target;
+    if (!t || !t.hasAttribute || !t.hasAttribute("data-note")) return;
+    var id = t.getAttribute("data-note");
+    if (t.value.trim()) state.notes[id] = t.value; else delete state.notes[id];
+    dirty = true;
+    var btn = document.querySelector('[data-nav="save"]');
+    if (btn) { btn.disabled = false; btn.textContent = "Save choices to this page"; }
+  });
+
+  function summaryText() {
+    var lines = ["PhenoTypic GUI x OME-Zarr - decisions", ""];
+    CHOICE_STEPS.forEach(function (s) {
+      var picked = state.choices[s.id];
+      var o = picked ? optionOf(s, picked) : null;
+      lines.push("- " + s.eyebrow + ": " + (o ? o.id + " (" + o.title + ")" : "NOT DECIDED"));
+      if (state.notes[s.id]) lines.push("    note: " + state.notes[s.id]);
+    });
+    return lines.join("\n");
+  }
+
+  function copySummary() {
+    var text = summaryText();
+    var done = function (ok) {
+      saveMsg = ok ? "Summary copied" : "Copy blocked — select the summary table instead";
+      saveTone = ok ? "ok" : "err"; render();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+    } else { done(false); }
+  }
+
+  /* ------------------------------------------------------------- document build */
+  function buildDoc(next) {
+    var css = document.getElementById("app-css").textContent;
+    var js = document.getElementById("app-script").textContent;
+    var json = JSON.stringify(next).replace(/</g, "\\u003c");
+    return '<!doctype html>\n<html lang="en">\n<head>\n' +
+      '<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+      "<title>Zarr Viewer Decisions</title>\n" +
+      '<link rel="preconnect" href="https://fonts.googleapis.com">\n' +
+      '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
+      '<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">\n' +
+      '<style id="app-css">' + css + "</style>\n</head>\n<body>\n" +
+      '<script id="app-state" type="application/json">' + json + "<\/script>\n" +
+      '<div id="app"></div>\n' +
+      '<noscript><div class="noscriptmsg"><h1>Zarr Viewer Decisions</h1><p>This walkthrough needs JavaScript to record choices.</p></div></noscript>\n' +
+      '<script id="app-script">' + js + "<\/script>\n</body>\n</html>";
+  }
+
+  function save() {
+    if (!artifactApi) {
+      saveMsg = "Cannot save from this view — use Copy summary"; saveTone = "err"; render(); return;
+    }
+    var next = { choices: state.choices, notes: state.notes, rev: (state.rev || 0) + 1 };
+    saveMsg = "Saving…"; saveTone = ""; render();
+    artifactApi.publish(buildDoc(next)).then(function () {
+      state.rev = next.rev; dirty = false; saveMsg = "Saved to the page"; saveTone = "ok"; render();
+    }, function (err) {
+      var code = err && err.code ? err.code : "";
+      if (code === "conflict") saveMsg = "Someone else saved first — reloading";
+      else if (code === "not_granted" || code === "not_writer") saveMsg = "Read-only view — use Copy summary";
+      else saveMsg = "Save failed — use Copy summary";
+      saveTone = "err"; render();
+    });
+  }
+
+  /* ---------------------------------------------------------------------- boot */
+  render();
+
+  if (window.claude && typeof window.claude.use === "function") {
+    window.claude.use("artifact").then(function (api) {
+      artifactApi = api; artifactResolved = true; render();
+    }, function () { artifactResolved = true; render(); });
+  } else {
+    artifactResolved = true;
+  }
+})();
+</script>
+</body>
+</html>

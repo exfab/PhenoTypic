@@ -29,6 +29,7 @@ Phase 5 additions:
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -77,11 +78,8 @@ from phenotypic.gui._url_prefix import (
     configure_url_prefix_routing,
     dash_index_string_with_app_prefix,
 )
-from phenotypic.gui.results_viewer import _ids as ids, _tile_routes
+from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
-from phenotypic.gui.results_viewer.timeline_view import (
-    _thumb_routes as timeline_thumb_routes,
-)
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._layout import (
     build_active_snapshot_layout,
@@ -92,7 +90,13 @@ from phenotypic.gui.results_viewer._mutation_guard import (
     OutputMutationBlocked,
     OutputMutationGuard,
 )
+from phenotypic.gui.results_viewer._measurement_routes import (
+    register_measurement_routes,
+)
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._zarr_routes import (
+    register_zarr_routes,
+)
 from phenotypic.gui.results_viewer.colony_view import (
     _crop_routes as colony_crop_routes,
 )
@@ -102,6 +106,43 @@ from phenotypic.gui.shell._ids import SHELL_RESULTS_BINDING_JOB_STORE
 from phenotypic.sdk_._qc_recipe import QcRecipe
 
 logger = logging.getLogger(__name__)
+
+#: Banner prefix ``tools/viv-bundle/build.mjs`` stamps into the artifact.
+_VIV_BANNER_MARK = "PhenoTypic vendored Viv bundle -- "
+
+#: Only the banner is read; the artifact itself is ~2.5 MiB.
+_VIV_BANNER_BYTES = 512
+
+
+@lru_cache(maxsize=1)
+def viv_bundle_version() -> str:
+    """The version string stamped into the vendored Viv bundle.
+
+    There is no npm in CI by design (spec section 3), so nothing rebuilds
+    the committed artifact to prove it still matches
+    ``tools/viv-bundle/package-lock.json``. Logging what shipped is the
+    mitigation, not a fix: it tells a reader which bundle a browser is
+    running when a render misbehaves, and it is the only such signal.
+
+    ``tools/viv-bundle/VERSION`` is *not* read here -- it lives in the repo,
+    not in the installed package, so an installed PhenoTypic has no copy.
+    The banner travels with the artifact.
+    ``tests/unit/gui/results_viewer/test_viv_asset_order.py`` pins the two
+    to each other.
+
+    Returns:
+        The recorded version, or ``"unknown"`` when the banner is missing
+        or unreadable -- a viewer must still start without it.
+    """
+    bundle = Path(__file__).parent / "_assets" / "viv" / "viv-bundle.min.js"
+    try:
+        with bundle.open("r", encoding="utf-8", errors="replace") as handle:
+            banner = handle.read(_VIV_BANNER_BYTES)
+    except OSError:
+        return "unknown"
+    head = banner.split("\n", 1)[0]
+    _, mark, version = head.partition(_VIV_BANNER_MARK)
+    return version.strip() if mark else "unknown"
 
 
 def create_app(
@@ -155,11 +196,13 @@ def create_app(
     )
 
     # Inject window.__phenotypicAppPrefix so results_viewer.js can build
-    # mount-aware URLs for DZI tiles and OSD assets.
+    # mount-aware URLs for its assets and byte routes.
     app.index_string = dash_index_string_with_app_prefix(
         url_prefix,
         binding_generation=binding_generation,
     )
+
+    logger.info("viv bundle: %s", viv_bundle_version())
 
     inject_design_tokens(app)
     register_shared_static(app.server)
@@ -229,8 +272,17 @@ def create_app(
         )
         return configure_url_prefix_routing(app, url_prefix)
 
-    _tile_routes.register(app, output_root)
-    timeline_thumb_routes.register(app, output_root)
+    # Raw store bytes with HTTP Range: the ONLY pixel source the Plate
+    # surface has. The `/tiles/<ds>/<stem>.dzi` routes that used to sit
+    # beside this are gone -- Plate reads store chunks in the browser, and
+    # the Timeline surfaces that were the only other consumer were
+    # unmounted. Browse and the builder keep their own libvips -> DZI ->
+    # OpenSeadragon path in their own blueprints.
+    register_zarr_routes(app, output_root)
+    # One column of one image's embedded table, as JSON. Deliberately NOT
+    # served through the byte route above, whose readable-root allow-list
+    # keeps ``tables/`` off the wire.
+    register_measurement_routes(app, output_root)
 
     filtered_state = CurationLabels.load(
         output_root.layout, output_root.master_df

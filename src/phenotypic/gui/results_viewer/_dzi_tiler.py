@@ -15,6 +15,23 @@ Tile filenames use the OpenSeadragon convention ``<col>_<row>.png``
 (column first, then row). Per-image :class:`threading.Lock` instances
 serialise duplicate concurrent requests for the same source image so two
 in-flight requests don't double-tile.
+
+**NOT DEAD CODE.** Two specs each say the tiler is "removed from this path" --
+the results Plate path (`2026-08-26-viewer-viv-rebuild` section 6.1) and the
+builder node-preview path (the same spec, section 7). Read together they
+suggest a module that can now be deleted. It cannot. Live consumers:
+
+    browse/_app.py:39                  DZI_BACKEND_INFO
+    browse/_preparation.py:716         tile()
+    browse/_preparation_routes.py:95   DZI_BACKEND_INFO
+    builder/_point_picker.py:418       tile()
+
+Browse keeps libvips -> DZI -> ``BrowseCache`` -> OpenSeadragon as its ONLY
+pixel path (viewer-viv-rebuild spec section 9) because it reads arbitrary
+source images with no run behind them, and so has no store to read. The point
+picker picks points on a source image before any pipeline node has run, for
+the same reason. Neither has an OME-Zarr store to hand a browser-side reader,
+which is what the two "removed" paths replaced the tiler WITH.
 """
 
 from __future__ import annotations

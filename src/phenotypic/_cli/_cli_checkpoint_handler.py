@@ -176,8 +176,13 @@ def _run_manifest(output_dir: Path, progress_dir: Path) -> None:
             if state is not None
             else None
         )
-        if process_only_layer:
-            _publish_run_completion_marker(output_dir, slurm_generation)
+        if process_only_layer and not _publish_run_completion_marker(
+            output_dir, slurm_generation
+        ):
+            raise RuntimeError(
+                "Process/export run is terminal-incomplete; no completion "
+                "marker was published"
+            )
 
 
 # ---------------------------------------------------------------------------
