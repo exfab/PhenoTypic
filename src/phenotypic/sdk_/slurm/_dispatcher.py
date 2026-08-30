@@ -22,6 +22,13 @@ logger = logging.getLogger(__name__)
 
 SlurmDependencyKind = Literal["afterany", "afterok"]
 
+# Importing the lifecycle CLI loads the package and its scheduler contracts.
+# 100M is below that process's observed Linux RSS (~99 MiB before allocator
+# and interpreter headroom) and was OOM-killed on the first real migration
+# dispatcher. Keep this much smaller than an image worker while leaving safe
+# room for the control-plane Python process.
+_DISPATCHER_MEMORY = "512M"
+
 
 def _validate_dependency_kind(value: str) -> SlurmDependencyKind:
     """Validate one continuation dependency before any side effects."""
@@ -60,7 +67,7 @@ def generate_dispatcher_script(
 ) -> Path:
     """Generate a dispatcher script that submits the next chunk and dispatcher.
 
-    The dispatcher requests minimal resources (1 CPU, 100M, 5 min) and
+    The dispatcher requests control-plane resources (1 CPU, 512M, 5 min) and
     invokes the Python lifecycle entry point. That entry point durably submits
     the next processing chunk and optional dependent dispatcher.
 
@@ -117,7 +124,7 @@ def generate_dispatcher_script(
 #SBATCH --job-name=dispatch
 #SBATCH --partition={partition}
 #SBATCH --time=00:05:00
-#SBATCH --mem=100M
+#SBATCH --mem={_DISPATCHER_MEMORY}
 #SBATCH --cpus-per-task=1
 #SBATCH --output={log_dir}/dispatch_%j.log
 #SBATCH --error={log_dir}/dispatch_%j.log
