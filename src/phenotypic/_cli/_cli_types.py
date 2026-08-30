@@ -168,6 +168,9 @@ class ExecutionConfig:
     # Optional approved subset inside ``input_path``. The input root remains
     # the work-ID anchor, so a manifest never replaces it.
     image_manifest: Optional[Path] = None
+    # The CLI-bound snapshot's byte fingerprint is persisted in run state;
+    # the entries themselves stay local to the scan that consumes them.
+    image_manifest_digest: Optional[str] = None
 
     # Skip QC during final aggregation, including staged SLURM finalization.
     no_qc: bool = False

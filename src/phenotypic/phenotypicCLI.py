@@ -157,7 +157,9 @@ from click.core import ParameterSource
 from phenotypic import ImagePipeline
 from phenotypic._core._image_parts.detection_modes import available_modes
 from phenotypic._cli._cli_directory_scanner import (
+    ImageManifestError,
     apply_image_manifest,
+    load_image_manifest,
     organize_by_dataset,
     scan_directory_structure,
     scan_store_outputs,
@@ -1796,6 +1798,13 @@ def phenotypic_cli(
             gpu_shards=gpu_shards,
             gpu_slurm_args=_parse_slurm_args(gpu_slurm_args),
         )
+        manifest_snapshot = None
+        if image_manifest is not None:
+            try:
+                manifest_snapshot = load_image_manifest(image_manifest)
+            except ImageManifestError as exc:
+                raise click.UsageError(str(exc)) from exc
+            config.image_manifest_digest = manifest_snapshot.digest
 
         if output_dir.exists():
             from phenotypic._cli._cli_staged_orchestration import (
@@ -1937,7 +1946,10 @@ def phenotypic_cli(
                         len(paths) for paths in image_paths_by_dataset.values()
                     )
                     image_paths_by_dataset = apply_image_manifest(
-                        image_paths_by_dataset, image_manifest, input_path
+                        image_paths_by_dataset,
+                        image_manifest,
+                        input_path,
+                        snapshot=manifest_snapshot,
                     )
                     selected_total = sum(
                         len(paths) for paths in image_paths_by_dataset.values()
@@ -2404,6 +2416,7 @@ def phenotypic_cli(
                     "pipeline_sha256": pipeline_content_digest(
                         config.pipeline_json
                     ),
+                    "image_manifest_digest": config.image_manifest_digest,
                     "staged_stage3_markers": config.staged_stage3_markers,
                     "success_markers_required": bool(
                         resume_state.config.get(

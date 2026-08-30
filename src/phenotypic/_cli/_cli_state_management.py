@@ -33,6 +33,9 @@ logger = logging.getLogger(__name__)
 
 def _image_manifest_digest_for(config: ExecutionConfig) -> Optional[str]:
     """Return the current manifest fingerprint, or ``None`` without one."""
+    cached_digest = getattr(config, "image_manifest_digest", None)
+    if cached_digest is not None:
+        return cached_digest
     manifest = getattr(config, "image_manifest", None)
     if manifest is None:
         return None

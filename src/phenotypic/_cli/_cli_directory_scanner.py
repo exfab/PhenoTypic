@@ -7,6 +7,7 @@ file collection, and organization into datasets.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -18,7 +19,7 @@ from phenotypic.sdk_ import (
     default_output_dir_name,
     is_zarr_store_name,
 )
-from phenotypic.sdk_._io_constants import file_fingerprint
+from phenotypic.sdk_._io_constants import bytes_fingerprint, file_fingerprint
 from ._cli_types import Dataset
 
 
@@ -225,6 +226,14 @@ class ImageManifestError(ValueError):
     """Raised when an image manifest is unreadable or outside ``--input``."""
 
 
+@dataclass(frozen=True)
+class ImageManifestSnapshot:
+    """Exact bytes-derived manifest entries and their content fingerprint."""
+
+    entries: tuple[str, ...]
+    digest: str
+
+
 def image_manifest_digest(manifest_path: Path) -> str:
     """Return the content fingerprint for an image-manifest file.
 
@@ -237,25 +246,27 @@ def image_manifest_digest(manifest_path: Path) -> str:
     return file_fingerprint(Path(manifest_path))
 
 
-def read_image_manifest(manifest_path: Path) -> List[str]:
-    """Read non-empty, non-comment image-manifest entries in file order.
+def load_image_manifest(manifest_path: Path) -> ImageManifestSnapshot:
+    """Take one byte snapshot of an image manifest and parse its entries.
 
     Args:
         manifest_path: UTF-8 image-manifest path.
 
     Returns:
-        Stripped image paths, without comments or blank lines.
+        Parsed entries and the fingerprint of the exact bytes they came from.
 
     Raises:
         ImageManifestError: If the manifest is unreadable, invalid, or empty.
     """
     manifest_path = Path(manifest_path)
     try:
-        text = manifest_path.read_text(encoding="utf-8-sig")
+        content = manifest_path.read_bytes()
     except OSError as exc:
         raise ImageManifestError(
             f"Cannot read image manifest {manifest_path}: {exc}"
         ) from exc
+    try:
+        text = content.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
         raise ImageManifestError(
             f"Image manifest {manifest_path} is not valid UTF-8 text: {exc}"
@@ -271,13 +282,30 @@ def read_image_manifest(manifest_path: Path) -> List[str]:
             f"Image manifest {manifest_path} lists no images. An empty "
             "manifest is refused rather than treated as all images."
         )
-    return entries
+    return ImageManifestSnapshot(tuple(entries), bytes_fingerprint(content))
+
+
+def read_image_manifest(manifest_path: Path) -> List[str]:
+    """Read non-empty, non-comment image-manifest entries in file order.
+
+    Args:
+        manifest_path: UTF-8 image-manifest path.
+
+    Returns:
+        Stripped image paths, without comments or blank lines.
+
+    Raises:
+        ImageManifestError: If the manifest is unreadable, invalid, or empty.
+    """
+    return list(load_image_manifest(manifest_path).entries)
 
 
 def apply_image_manifest(
     image_paths_by_dataset: Dict[str, List[Path]],
     manifest_path: Path,
     input_path: Path,
+    *,
+    snapshot: ImageManifestSnapshot | None = None,
 ) -> Dict[str, List[Path]]:
     """Select exactly the manifest paths from an existing input-tree scan.
 
@@ -286,6 +314,8 @@ def apply_image_manifest(
             :func:`scan_directory_structure`.
         manifest_path: Plain-text manifest path.
         input_path: The ``--input`` root for relative manifest entries.
+        snapshot: Optional already-read manifest snapshot. When supplied, its
+            entries are selected without rereading ``manifest_path``.
 
     Returns:
         Dataset mapping filtered to the approved images, in scan order.
@@ -294,7 +324,11 @@ def apply_image_manifest(
         ImageManifestError: If an entry is absent from the scan, duplicated,
             or does not select exactly one scanned image.
     """
-    entries = read_image_manifest(manifest_path)
+    entries = (
+        snapshot.entries
+        if snapshot is not None
+        else read_image_manifest(manifest_path)
+    )
     input_path = Path(input_path)
 
     by_resolved: Dict[Path, tuple[str, Path]] = {}
