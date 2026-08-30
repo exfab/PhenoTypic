@@ -1,8 +1,7 @@
 /*
- * browse.js — Browse interaction and OpenSeadragon lifecycle.
- * Loads OSD from the vendored copy (no CDN; offline-safe over a tunnel) and
- * exposes window.__phenotypicBrowse.applyImage({token,label}), invoked by a
- * Dash clientside callback when the current-image store changes.
+ * browse.js — Browse interaction and renderer lifecycle.
+ * Flat images use the vendored OpenSeadragon copy; OME-Zarr image stores use
+ * the shared Results/Viv facade against their generation-addressed byte URL.
  */
 (function () {
     "use strict";
@@ -30,6 +29,10 @@
 
     const ns = window.__phenotypicBrowse = window.__phenotypicBrowse || {};
     ns.singleViewer = ns.singleViewer || null;
+    ns.singleVivMounted = ns.singleVivMounted || false;
+    ns.vivMountPromise = ns.vivMountPromise || null;
+    ns.vivSourceChain = ns.vivSourceChain || Promise.resolve();
+    ns.singleRenderKind = ns.singleRenderKind || null;
     ns.singleGeneration = ns.singleGeneration || 0;
     ns.navigationSequence = ns.navigationSequence || 0;
     ns.lastRepeatAt = ns.lastRepeatAt || 0;
@@ -278,6 +281,18 @@
         ns.singleViewer = null;
     }
 
+    async function destroyViv() {
+        const facade = window.phenotypicViv;
+        if (ns.vivMountPromise) {
+            try { await ns.vivMountPromise; } catch (e) {}
+        }
+        if (ns.singleVivMounted && facade && typeof facade.destroy === "function") {
+            try { facade.destroy(OSD_DIV_ID); } catch (e) {}
+        }
+        ns.singleVivMounted = false;
+        ns.vivMountPromise = null;
+    }
+
     function ensureViewer() {
         const el = document.getElementById(OSD_DIV_ID);
         if (!el) { return null; }
@@ -300,17 +315,13 @@
         return viewer;
     }
 
-    async function mountOSD(payload) {
+    async function mountOSD(payload, generation) {
         await ns.osdReady;
+        if (generation !== ns.singleGeneration) { return; }
+        await destroyViv();
+        if (generation !== ns.singleGeneration) { return; }
         const el = document.getElementById(OSD_DIV_ID);
         if (!el) { return; }
-        if (!payload || !payload.token) {
-            destroyViewer();
-            setLoading("hidden");
-            return;
-        }
-        ns.singleGeneration += 1;
-        const generation = ns.singleGeneration;
         const url = dziUrl(payload, generation);
         const viewer = ensureViewer();
         if (!viewer) { return; }
@@ -368,10 +379,76 @@
         }
     }
 
+    function ensureVivMounted() {
+        const facade = window.phenotypicViv;
+        if (!facade || typeof facade.ready !== "function"
+            || typeof facade.mount !== "function"
+            || typeof facade.setSource !== "function") {
+            return Promise.reject(new Error("Viv renderer is unavailable"));
+        }
+        if (ns.singleVivMounted) { return Promise.resolve(facade); }
+        if (!ns.vivMountPromise) {
+            ns.vivMountPromise = (async function () {
+                await facade.ready();
+                await facade.mount(OSD_DIV_ID, {});
+                ns.singleVivMounted = true;
+                return facade;
+            })().catch(function (error) {
+                ns.singleVivMounted = false;
+                ns.vivMountPromise = null;
+                throw error;
+            });
+        }
+        return ns.vivMountPromise;
+    }
+
+    async function mountViv(payload, generation) {
+        const name = basename(payload.label || payload.token);
+        const spec = payload.source_spec || payload.sourceSpec;
+        destroyViewer();
+        showPreview(payload, generation);
+        setLoading("loading", name ? ("Loading " + name + "…") : "Loading image…");
+        try {
+            const facade = await ensureVivMounted();
+            if (generation !== ns.singleGeneration) {
+                if (ns.singleRenderKind !== "ome-zarr") { await destroyViv(); }
+                return;
+            }
+            ns.vivSourceChain = ns.vivSourceChain.catch(function () {}).then(
+                async function () {
+                    if (generation !== ns.singleGeneration) { return; }
+                    await facade.setSource(OSD_DIV_ID, spec);
+                    if (generation !== ns.singleGeneration) { return; }
+                    setLoading("hidden");
+                    hidePreview(generation);
+                }
+            );
+            await ns.vivSourceChain;
+        } catch (error) {
+            if (generation !== ns.singleGeneration) { return; }
+            const detail = error && error.message ? error.message : "Could not load image";
+            setLoading("error", name ? ("Could not load " + name + ": " + detail) : detail);
+        }
+    }
+
     ns.applyImage = function (payload) {
         renderPosition(payload && payload.position);
         renderFilmstrip(payload && payload.filmstrip, payload);
-        return mountOSD(payload);
+        ns.singleGeneration += 1;
+        const generation = ns.singleGeneration;
+        if (!payload || !payload.token) {
+            ns.singleRenderKind = null;
+            return (async function () {
+                destroyViewer();
+                await destroyViv();
+                if (generation === ns.singleGeneration) { setLoading("hidden"); }
+            })();
+        }
+        ns.singleRenderKind = payload.render_kind === "ome-zarr"
+            ? "ome-zarr" : "dzi";
+        return ns.singleRenderKind === "ome-zarr"
+            ? mountViv(payload, generation)
+            : mountOSD(payload, generation);
     };
 
     function renderPosition(position) {

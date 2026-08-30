@@ -23,7 +23,11 @@ from phenotypic.gui._config import (
     TITLE_BROWSE,
 )
 from phenotypic.gui._design import inject_design_tokens
-from phenotypic.gui._shared import register_shared_static
+from phenotypic.gui._shared import (
+    register_shared_static,
+    register_viv_assets,
+    viv_script_urls,
+)
 from phenotypic.gui._url_prefix import (
     configure_url_prefix_routing,
     dash_index_string_with_app_prefix,
@@ -56,6 +60,7 @@ def create_app(
     app = dash.Dash(
         __name__,
         external_stylesheets=[dbc.themes.BOOTSTRAP],
+        external_scripts=viv_script_urls(url_prefix),
         suppress_callback_exceptions=True,
         assets_folder=str(Path(__file__).parent / "_assets"),
         title=TITLE_BROWSE,
@@ -65,6 +70,7 @@ def create_app(
     app.index_string = dash_index_string_with_app_prefix(url_prefix)
     inject_design_tokens(app)
     register_shared_static(app.server)
+    register_viv_assets(app.server)
     app.server.config[CFG_URL_PREFIX] = url_prefix
 
     cache = BrowseCache.for_sandbox(sandbox.root)

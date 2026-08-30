@@ -95,6 +95,37 @@ def test_store_asset_payload_selects_generation_addressed_zarr_not_dzi():
     }
 
 
+def test_real_store_asset_payload_is_the_canonical_viv_source_spec(tmp_path):
+    import numpy as np
+
+    from phenotypic import Image
+    from phenotypic.gui.results_viewer._store_source import build_source_spec
+
+    rgb = np.zeros((96, 128, 3), dtype=np.uint8)
+    rgb[:, :, 0] = 64
+    rgb[:48, :64, 1] = 192
+    image = Image(arr=rgb)
+    store = image.save2zarr(tmp_path / "process-output.ome.zarr")
+
+    payload = cb.source_asset_payload(
+        "/browse/",
+        "opaque-token",
+        "b" * 64,
+        is_store=True,
+        store=store,
+    )
+    store_url = f"/browse/assets/opaque-token/{'b' * 64}/zarr/"
+
+    assert payload["render_kind"] == "ome-zarr"
+    assert payload["store_url"] == store_url
+    assert payload["preview_url"] is None
+    assert payload["dzi_url"] is None
+    assert payload["source_spec"] == build_source_spec(store, store_url)
+    assert payload["source_spec"]["seriesPath"] == "rgb"
+    assert payload["source_spec"]["labelPath"] == "rgb/labels/objmap"
+    assert payload["source_spec"]["pyramid"]["levels"] >= 1
+
+
 def test_neighbor_filenames_three_each_side_clamped():
     files = ["a", "b", "c", "d", "e", "f", "g", "h", "i"]
     # Interior: 3 before + 3 after, current excluded, nav order preserved.

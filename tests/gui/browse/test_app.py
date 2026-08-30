@@ -4,6 +4,7 @@ from PIL import Image as PILImage
 
 from phenotypic.gui.browse import _source_render as sr
 from phenotypic.gui.browse._app import create_app
+from phenotypic.gui._shared import viv_script_urls
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
 
@@ -30,3 +31,16 @@ def test_create_app_injects_app_prefix(sandbox):
     app = create_app(sandbox, url_prefix="/browse/")
     assert "window.__phenotypicAppPrefix" in app.index_string
     assert "/browse/" in app.index_string
+
+
+def test_create_app_serves_the_shared_viv_facade_after_its_bundle(sandbox):
+    app = create_app(sandbox, url_prefix="/browse/")
+
+    assert app.config.external_scripts == viv_script_urls("/browse/")
+    assert app.config.external_scripts == [
+        "/browse/_viv/viv-bundle.min.js",
+        "/browse/_viv/viv_viewer.js",
+    ]
+    client = app.server.test_client()
+    assert client.get("/_viv/viv-bundle.min.js").status_code == 200
+    assert client.get("/_viv/viv_viewer.js").status_code == 200

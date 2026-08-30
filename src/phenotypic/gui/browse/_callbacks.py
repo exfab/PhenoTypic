@@ -34,6 +34,7 @@ from phenotypic.gui.browse._preparation_routes import BrowsePreparationApi
 from phenotypic.gui.browse._source_item import source_item_relative_path
 from phenotypic.gui.browse._source_probe import SourceRevision, probe_source
 from phenotypic.gui.browse._layout import DATASET_ROW_STYLE
+from phenotypic.gui.results_viewer._store_source import build_source_spec
 from phenotypic.gui.shell._ids import (
     SHELL_CLASSIFIER_CACHE_STORE,
     SHELL_METADATA_CSV_STORE,
@@ -199,7 +200,8 @@ def source_asset_payload(
     revision: str,
     *,
     is_store: bool,
-) -> dict[str, str | None]:
+    store: Path | None = None,
+) -> dict[str, Any]:
     """Return the renderer-specific, generation-addressed asset URLs.
 
     Flat images keep Browse's normalized DZI path. A Zarr store exposes its
@@ -209,12 +211,16 @@ def source_asset_payload(
     base = prefix if prefix.endswith("/") else f"{prefix}/"
     asset = f"{base}assets/{token}/{revision}"
     if is_store:
-        return {
+        store_url = f"{asset}/zarr/"
+        payload: dict[str, Any] = {
             "render_kind": "ome-zarr",
             "preview_url": None,
             "dzi_url": None,
-            "store_url": f"{asset}/zarr/",
+            "store_url": store_url,
         }
+        if store is not None:
+            payload["source_spec"] = build_source_spec(store, store_url)
+        return payload
     return {
         "render_kind": "dzi",
         "preview_url": f"{asset}/preview.png",
@@ -537,6 +543,11 @@ def register_callbacks(
             token,
             selected_revision.cache_key,
             is_store=selected_revision.store_revision is not None,
+            store=(
+                selected_revision.source_path
+                if selected_revision.store_revision is not None
+                else None
+            ),
         )
         return {
             "token": token,

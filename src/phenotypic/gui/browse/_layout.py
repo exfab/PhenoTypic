@@ -145,9 +145,9 @@ def build_browse_layout() -> Any:
         **cast(Any, {"aria-hidden": "true"}),
     )
 
-    # Spinner + caption overlay, hidden until browse.js shows it while the
-    # source image is normalized + tiled into DZI, then hides it on OSD's
-    # ``open`` event (or swaps to an error caption on ``open-failed``). It is
+    # Spinner + caption overlay, hidden until browse.js shows it while a flat
+    # image is normalized + tiled into DZI or a store is loaded through Viv,
+    # then hides on the active renderer's ready signal (or shows its error). It is
     # a sibling of the OSD div inside a position:relative stage so OSD never
     # clobbers it when it mounts its canvas into BROWSE_OSD_DIV.
     loading_overlay = html.Div(

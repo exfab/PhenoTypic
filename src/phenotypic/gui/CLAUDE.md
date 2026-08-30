@@ -39,7 +39,8 @@ is the expensive mistake in this package. They are not interchangeable.
 | Results **Plate** | store chunks → `/zarr/<ds>/<stem>.ome.zarr/<token>/…` → Viv / deck.gl |
 | Results **Colony** | same route, one `OrthographicView` per colony on one shared `zoom` |
 | Builder **node preview** | same client, its own route: `/preview-zarr/…` |
-| **Browse** | libvips → DZI → `BrowseCache` → OpenSeadragon |
+| **Browse**, flat image | libvips → DZI → `BrowseCache` → OpenSeadragon |
+| **Browse**, OME-Zarr image store | generation-addressed `/assets/.../zarr/` → shared Results Viv facade |
 | Builder **point picker** | libvips → DZI → OpenSeadragon |
 
 **The results viewer renders no server-side pyramid and caches no rendered
@@ -58,7 +59,7 @@ does the tiling. Two rules follow, and both have already been got wrong once:
   `phenotypic.pyramid`; the client picks a level per frame and the façade
   *observes* which one, it does not compute it.
 
-**`_dzi_tiler` stays.** It has **four** consumers — `browse/_preparation.py`,
+**`_dzi_tiler` stays.** Flat Browse images still need it, and it has **four** consumers — `browse/_preparation.py`,
 `browse/_preparation_routes.py`, `browse/_app.py` and
 `builder/_point_picker.py` — and spec §9 keeps Browse on libvips → DZI →
 `BrowseCache` → OSD deliberately. The node preview left that path in the Viv
