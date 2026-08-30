@@ -26,7 +26,11 @@ import pytest
 from click.testing import CliRunner
 
 from phenotypic.phenotypicCLI import phenotypic_cli
-from phenotypic.sdk_ import dataset_measurements_dir
+from phenotypic.sdk_ import (
+    MEASUREMENT_TABLE_RELATIVE_PATH,
+    dataset_measurements_dir,
+    zarr_store_path,
+)
 
 
 def _read_headers(output_dir: Path) -> set[str]:
@@ -96,14 +100,36 @@ def test_the_slurm_fanout_modules_are_gone() -> None:
             importlib.import_module(name)
 
 
-def test_migrate_performs_the_header_migration(legacy_headers_run) -> None:
+def test_migrate_canonicalizes_embedded_headers_without_rewriting_sources(
+    legacy_headers_run,
+) -> None:
+    """Migration avoids GPFS source rewrites while canonicalizing authority."""
     before = _read_headers(legacy_headers_run)
+    source_bytes = {
+        source: source.read_bytes()
+        for source in legacy_headers_run.glob(
+            "results/*/measurements/*.parquet"
+        )
+        if not source.name.startswith(("_", "."))
+    }
     result = CliRunner().invoke(
         phenotypic_cli,
         ["--mode", "migrate", "--output", str(legacy_headers_run)],
     )
     assert result.exit_code == 0, result.output
     after = _read_headers(legacy_headers_run)
-    assert after != before
-    assert "MetadataGenetic_Strain" not in after
-    assert "Metadata_Strain" in after
+    assert after == before
+    assert "MetadataGenetic_Strain" in after
+    assert {source: source.read_bytes() for source in source_bytes} == source_bytes
+    for source in source_bytes:
+        embedded = (
+            zarr_store_path(
+                legacy_headers_run,
+                source.parent.parent.name,
+                source.stem,
+            )
+            / MEASUREMENT_TABLE_RELATIVE_PATH
+        )
+        columns = set(pl.read_parquet(embedded).columns)
+        assert "MetadataGenetic_Strain" not in columns
+        assert "Metadata_Strain" in columns

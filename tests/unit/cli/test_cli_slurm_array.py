@@ -589,6 +589,7 @@ class TestSLURMScriptChainSubmission:
             slurm_args=slurm_args,
             log_dir=logs_dir(output_dir) / "slurm",
             continuation_dependency_kinds=("afterany",),
+            lifecycle_output_dir=output_dir,
         )
         mock_submit_drip_feed_start.assert_called_once_with(
             chunk_scripts=chunk_scripts,

@@ -1600,9 +1600,11 @@ def source_image_suffix(path: Path) -> str:
     Returns:
         ``.ome.zarr`` for a store source, otherwise the standard final suffix.
     """
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
     source = Path(path)
-    if source.name.endswith(".ome.zarr"):
-        return ".ome.zarr"
+    if source.name.endswith(STORE_SUFFIX):
+        return STORE_SUFFIX
     return ".zarr" if is_zarr_store_name(source) else source.suffix
 
 

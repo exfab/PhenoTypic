@@ -597,6 +597,8 @@ def test_finalizer_publishes_when_only_overlay_task_failed(
         / generation
         / "task_manifest.json"
     )
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(json.dumps({"tasks": []}), encoding="utf-8")
     task = {"expected_non_finalizer_tasks": 1}
     with (
         patch.object(
