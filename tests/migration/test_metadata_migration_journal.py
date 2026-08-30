@@ -195,6 +195,7 @@ def _windows_crash_native_migration(root_text: str, seam: str) -> None:
         replace: bool,
     ) -> None:
         if seam == "rename":
+            original_rename(api, handle, parent, name, replace=replace)
             os._exit(_WINDOWS_CRASH_EXIT)
         if seam == "cleanup":
             raise OSError("force native cleanup")
@@ -353,6 +354,18 @@ def test_windows_native_crash_seams_replay_to_terminal_authority(
     report = preflight_metadata_schema(
         migratable_bundle, kinds=NON_IMAGE_KINDS
     )
+    if seam == "rename":
+        import phenotypic.sdk_._metadata_migration as migration
+
+        canonical_receipt = migration._receipt_path(
+            migratable_bundle.output_root,
+            report.plan_fingerprint,
+            bundle=True,
+        )
+        assert canonical_receipt.is_file()
+        assert not migration._metadata_status_path(
+            migratable_bundle.output_root
+        ).exists()
     result = migrate_preflighted_metadata_bundle(
         migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
     )
