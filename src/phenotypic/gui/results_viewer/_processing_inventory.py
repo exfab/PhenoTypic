@@ -8,6 +8,7 @@ import logging
 import os
 import stat as stat_module
 import tempfile
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal
@@ -27,6 +28,7 @@ from phenotypic.sdk_ import (
     BundleLayout,
     source_cache_key,
 )
+from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON, STORE_SUFFIX
 
 _CACHE_SCHEMA_VERSION = 2
 _PROGRESS_INTERVAL = 256
@@ -217,9 +219,9 @@ def _scan_processing_inventory(
     if results_root is not None:
         _add(results_root)
     if results_root is not None and results_root.is_dir():
-        for path in results_root.rglob("*"):
-            cancellation.raise_if_cancelled()
-            _add(path)
+        _walk_results_without_descending_into_stores(
+            results_root, add=_add, cancellation=cancellation
+        )
 
     entries: list[ProcessingInventoryEntry] = []
     for index, (relative_path, path) in enumerate(
@@ -270,6 +272,75 @@ def _scan_processing_inventory(
         total=len(entries),
     )
     return tuple(entries)
+
+
+def _walk_results_without_descending_into_stores(
+    results_root: Path,
+    *,
+    add: "Callable[[Path], None]",
+    cancellation: OutputDiscoveryCancellation,
+) -> None:
+    """Walk ``results/``, recording each store by its root rather than entering it.
+
+    A per-image OME-Zarr store is enumerated as exactly two entries -- the
+    store directory and its root ``zarr.json`` -- and is never descended
+    into. Everything else under ``results/`` (dataset dirs, ``measurements/``
+    parquets, anything a future writer adds) is walked exhaustively as
+    before.
+
+    **User ruling, 2026-08-20.** What this detects and what it does not:
+
+    * It detects **every** write PhenoTypic makes to a store. The commit
+      protocol writes the root ``zarr.json`` LAST and promotes by directory
+      rename, and nothing anywhere opens a promoted store for writing -- so
+      a store's contents change only via a promote, and a promote always
+      moves both entries recorded here.
+    * It does **not** detect out-of-contract external modification: a
+      hand-edited chunk, or a store rsynced while its chunks were still in
+      flight. Those leave the root untouched. That is the accepted cost.
+
+    The cost it buys back is the reason. A 4000x3000 plate's store holds 58
+    entries (36 files, 22 directories) where the per-image ``.h5`` it
+    replaced was 1, so an exhaustive walk goes from ~10,000 to ~580,000
+    stat calls at 10k images -- on a shared HPC filesystem, on every viewer
+    open and every revalidation.
+
+    This matches the decision already locked in for per-image completion
+    markers (Task 3.8), which fingerprint a store by its root ``zarr.json``
+    alone for the same reason. Two subsystems now answer "did this store
+    change?" identically, which is the point.
+
+    **Do not "fix" this back to a recursive walk.** It reads like an
+    oversight and is not one.
+
+    Args:
+        results_root: The ``results/`` directory.
+        add: Callback recording one path as an inventory candidate.
+        cancellation: Cooperative cancellation handle, polled per directory.
+    """
+    # ``os.walk`` rather than ``rglob`` because pruning is the whole point:
+    # trimming ``dirnames`` in place is what stops the descent, and there is
+    # no equivalent for a glob. ``followlinks`` stays False, matching
+    # ``rglob``'s default.
+    for dirpath, dirnames, filenames in os.walk(results_root):
+        cancellation.raise_if_cancelled()
+        current = Path(dirpath)
+        store_names = [
+            name for name in dirnames if name.endswith(STORE_SUFFIX)
+        ]
+        if store_names:
+            # In place, so os.walk itself never scandirs the store.
+            dirnames[:] = [
+                name for name in dirnames if not name.endswith(STORE_SUFFIX)
+            ]
+            for name in store_names:
+                store = current / name
+                add(store)
+                add(store / STORE_ROOT_JSON)
+        for name in dirnames:
+            add(current / name)
+        for name in filenames:
+            add(current / name)
 
 
 def _scan_read_only_inventory(

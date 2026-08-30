@@ -11,7 +11,12 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from phenotypic.sdk_.constants_ import IO
-from phenotypic.sdk_ import default_output_dir_name, DIR_RESULTS, DIR_HDF
+from phenotypic.sdk_ import (
+    DIR_RESULTS,
+    DIR_ZARR,
+    STORE_SUFFIX,
+    default_output_dir_name,
+)
 from ._cli_types import Dataset
 
 
@@ -170,31 +175,37 @@ def organize_by_dataset(
     return datasets
 
 
-def scan_hdf_outputs(output_dir: Path) -> List[Dataset]:
+def scan_store_outputs(output_dir: Path) -> List[Dataset]:
     """
-    Discover datasets already written as HDF by a previous forward run.
+    Discover datasets already written as OME-Zarr stores by a previous run.
 
     Walks ``<output_dir>/results/``; for each subdirectory containing a
-    non-empty ``hdf/`` directory, constructs a :class:`Dataset` whose
-    ``images`` are the sorted ``*.h5`` files in that ``hdf/``,
-    ``input_dir`` is the ``hdf/`` directory itself, ``output_dir`` is the
-    supplied root output directory, and ``name`` is the subdirectory name.
+    non-empty ``zarr/`` directory, constructs a :class:`Dataset` whose
+    ``images`` are the sorted ``*.ome.zarr`` **store directories** in that
+    ``zarr/``, ``input_dir`` is the ``zarr/`` directory itself, ``output_dir``
+    is the supplied root output directory, and ``name`` is the subdirectory
+    name.
 
-    Intended for measure mode, which skips detection and reloads
-    HDFs emitted by a prior forward run.
+    Intended for measure mode and overlay recompile, which skip detection and
+    reload the stores emitted by a prior forward run.
+
+    The glob is deliberately **non-recursive** and matches **directories**. A
+    store *is* a directory full of files, so ``rglob`` would descend into every
+    one of them — roughly forty stat calls per store, 400k at 10k images — and
+    an ``is_file()`` filter would find nothing at all.
 
     Args:
         output_dir: Root output directory from a previous forward run.
-            Expected to contain ``<output_dir>/results/<dataset>/hdf/``.
+            Expected to contain ``<output_dir>/results/<dataset>/zarr/``.
 
     Returns:
         List of :class:`Dataset` objects, one per subdirectory with a
-        non-empty ``hdf/``.  Empty ``results/`` and missing ``results/``
-        both raise ``ValueError``; per-dataset empty ``hdf/`` folders are
+        non-empty ``zarr/``.  Empty ``results/`` and missing ``results/``
+        both raise ``ValueError``; per-dataset empty ``zarr/`` folders are
         skipped silently.
 
     Raises:
-        ValueError: If no HDFs are found under ``<output_dir>/results``.
+        ValueError: If no stores are found under ``<output_dir>/results``.
     """
     output_dir = Path(output_dir)
     results_dir = output_dir / DIR_RESULTS
@@ -206,34 +217,39 @@ def scan_hdf_outputs(output_dir: Path) -> List[Dataset]:
             if not subdir.is_dir():
                 continue
 
-            hdf_dir = subdir / DIR_HDF
-            if not hdf_dir.is_dir():
+            zarr_dir = subdir / DIR_ZARR
+            if not zarr_dir.is_dir():
                 continue
 
-            # Skip dotfiles: on an exFAT/FAT volume macOS leaves an
-            # AppleDouble `._<name>.h5` beside every HDF, and it is binary
-            # junk, not an HDF — `--mode measure` on such a tree would try to
-            # load it.
-            hdf_files = sorted(
-                p for p in hdf_dir.glob("*.h5") if not p.name.startswith(".")
+            # Skip dotted entries. This is the AppleDouble guard the HDF scan
+            # carried (macOS leaves a `._<name>` beside every entry on
+            # exFAT/FAT), and it now also excludes the in-flight
+            # `.<stem>.ome.zarr.<uuid>.part` / `.trash` siblings that
+            # `promote_store` creates — which is exactly right, since neither
+            # is a readable store.
+            stores = sorted(
+                p
+                for p in zarr_dir.glob(f"*{STORE_SUFFIX}")
+                if p.is_dir() and not p.name.startswith(".")
             )
-            if not hdf_files:
+            if not stores:
                 continue
 
             datasets.append(
                 Dataset(
                     name=subdir.name,
-                    images=hdf_files,
-                    input_dir=hdf_dir,
+                    images=stores,
+                    input_dir=zarr_dir,
                     output_dir=output_dir,
                 )
             )
 
     if not datasets:
         raise ValueError(
-            f"No HDF outputs found under {results_dir}. "
+            f"No OME-Zarr outputs found under {results_dir}. "
             f"--mode measure expects a previous forward run to have written "
-            f"HDF files under <output-dir>/results/<dataset>/hdf/*.h5."
+            f"image stores under "
+            f"<output-dir>/results/<dataset>/zarr/*{STORE_SUFFIX}."
         )
 
     return datasets

@@ -1,9 +1,10 @@
-"""HDF-layer -> PNG staging + DZI tile blueprint for the node-preview modal.
+"""Store-layer -> PNG staging + DZI tile blueprint for the node-preview modal.
 
 The renderer (`_image_renderer`) and the DZI tiler stay unchanged: for a
-requested (scope, node, channel) we read the layer from the node's HDF,
-project it to an 8-bit PNG, and hand the PNG path to ``_dzi_tiler.tile``.
-With pyvips installed the tiler streams; resident RAM stays near zero.
+requested (scope, node, channel) we read the layer from the node's OME-Zarr
+store, project it to an 8-bit PNG, and hand the PNG path to
+``_dzi_tiler.tile``. With pyvips installed the tiler streams; resident RAM
+stays near zero.
 """
 from __future__ import annotations
 
@@ -28,6 +29,7 @@ from phenotypic.gui.builder._image_renderer import (
 )
 from phenotypic.gui.results_viewer import _dzi_tiler
 from phenotypic.gui.results_viewer._tile_routes import _TILE_NAME_RE, _json_error
+from phenotypic.sdk_ import ngff_
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +49,10 @@ def _src_png_path(scope_dir: Path, block_id: str, channel: str) -> Path:
     return scope_dir / "tiles_src" / f"{block_id}__{channel}.png"
 
 
-def _channel_to_rgb_uint8(hdf_path: Path, channel: str) -> np.ndarray:
+def _channel_to_rgb_uint8(store_path: Path, channel: str) -> np.ndarray:
     if channel == "overlay":
-        detect = Image.load_layer_hdf5(hdf_path, "detect_mat")
-        objmap = Image.load_layer_hdf5(hdf_path, "objmap")
+        detect = Image.load_layer_zarr(store_path, "detect_mat")
+        objmap = Image.load_layer_zarr(store_path, "objmap")
         base = _normalize_to_uint8(detect)
         base = base[..., :3] if base.ndim == 3 else np.stack([base] * 3, -1)
         try:
@@ -60,7 +62,7 @@ def _channel_to_rgb_uint8(hdf_path: Path, channel: str) -> np.ndarray:
             return np.clip(rgb * 255.0, 0, 255).astype(np.uint8)
         except Exception:  # noqa: BLE001
             return _label_map_to_rgb(objmap)
-    arr = Image.load_layer_hdf5(hdf_path, channel)
+    arr = Image.load_layer_zarr(store_path, channel)
     if channel == "objmap":
         return _label_map_to_rgb(arr)
     u8 = _normalize_to_uint8(arr)
@@ -70,12 +72,21 @@ def _channel_to_rgb_uint8(hdf_path: Path, channel: str) -> np.ndarray:
 
 
 def stage_channel_png(scope_dir: Path, block_id: str, channel: str,
-                      hdf_path: Path) -> Path:
-    """Render a channel from a node HDF to a cached PNG (idempotent)."""
+                      store_path: Path) -> Path:
+    """Render a channel from a node store to a cached PNG (idempotent).
+
+    Freshness is measured against the store's root ``zarr.json``, never
+    against the store DIRECTORY. A directory's ``st_mtime_ns`` does not move
+    when a nested chunk is rewritten (verified), so the directory is not a
+    sound staleness key even where it happens to work; the root is the file
+    the promote writes last on every publish, so it moves exactly when the
+    store's contents do.
+    """
     png_path = _src_png_path(scope_dir, block_id, channel)
-    if png_path.exists() and png_path.stat().st_mtime >= hdf_path.stat().st_mtime:
+    root_mtime_ns = (store_path / ngff_.STORE_ROOT_JSON).stat().st_mtime_ns
+    if png_path.exists() and png_path.stat().st_mtime_ns >= root_mtime_ns:
         return png_path
-    rgb = _channel_to_rgb_uint8(hdf_path, channel)
+    rgb = _channel_to_rgb_uint8(store_path, channel)
     png_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = png_path.with_name(f".{png_path.name}.{uuid.uuid4().hex}.tmp")
     try:
@@ -121,14 +132,18 @@ def register_node_preview_routes(app: dash.Dash) -> None:
         node = nodes.get(block_id)
         if node is None:
             return _json_error("node not cached", 404)
-        hdf_path = sdir / node["hdf"]
-        if not hdf_path.exists():
-            return _json_error("node hdf missing", 404)
+        store_path = sdir / node["store"]
+        # The ROOT, not the directory: the promote writes it last, so an
+        # interrupted write leaves a directory with no root and the store
+        # reads as ABSENT rather than as partial -- the same disposition
+        # ``_preview_cache`` gives it when building the manifest.
+        if not (store_path / ngff_.STORE_ROOT_JSON).is_file():
+            return _json_error("node store missing", 404)
         try:
-            png_path = stage_channel_png(sdir, block_id, channel, hdf_path)
+            png_path = stage_channel_png(sdir, block_id, channel, store_path)
             _dzi_tiler.tile(png_path, sdir / "dzi")
         except KeyError:
-            logger.debug("layer not available in HDF for %s/%s", block_id, channel)
+            logger.debug("layer not available in store for %s/%s", block_id, channel)
             return _json_error("layer not available", 404)
         except Exception:  # noqa: BLE001
             logger.exception("preview tile generation failed")

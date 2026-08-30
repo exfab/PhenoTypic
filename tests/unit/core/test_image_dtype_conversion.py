@@ -584,12 +584,12 @@ class TestFloat32LuminanceLayerContract:
         assert img.detect_mat[:].dtype == np.float32
 
     @timeit
-    def test_float32_layers_survive_hdf5_roundtrip(self, uint8_rgb_array, tmp_path):
-        """Saving then loading an HDF5 image preserves the float32 layer contract."""
+    def test_float32_layers_survive_store_roundtrip(self, uint8_rgb_array, tmp_path):
+        """Saving then loading a store preserves the float32 layer contract."""
         img = Image(arr=uint8_rgb_array)
-        path = tmp_path / "f32_layers.h5"
-        img.save2hdf5(path)
-        loaded = Image.load_hdf5(path)
+        path = tmp_path / "f32_layers.ome.zarr"
+        img.save2zarr(path)
+        loaded = Image.load_zarr(path)
         assert loaded.gray[:].dtype == np.float32
         assert loaded.detect_mat[:].dtype == np.float32
         assert np.allclose(loaded.gray[:], img.gray[:], atol=1e-6)

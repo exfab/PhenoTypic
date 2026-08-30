@@ -47,7 +47,7 @@ Module layout
 * **Reader helpers** — `read_run_manifest`, `load_master_measurements`,
   `resolve_execution_mode` consolidate three high-frequency duplicates.
 * **JSON contract keys** (`JobMetadataKey`, `DashboardManifestKey`,
-  `ChunkStateKey`, `ChunkManifestKey`, `HdfAttr`) — namespace classes
+  `ChunkStateKey`, `ChunkManifestKey`) — namespace classes
   whose class-level ``Final[str]`` attributes are the keys writers and
   readers must reference instead of bare strings. Keeps the contract
   on-disk format mechanically discoverable.
@@ -652,8 +652,16 @@ DIR_MEASUREMENTS_BY_FEATURE: Final[str] = "measurements_by_feature"
 #: SLURM stdout/stderr subdirectory inside the hidden machine-state cache.
 DIR_LOGS: Final[str] = "logs"
 
-#: HDF5 image-state subdirectory: ``<output>/results/<ds>/hdf/``.
-DIR_HDF: Final[str] = "hdf"
+#: HDF5 image-state subdirectory of a LEGACY run: ``<output>/results/<ds>/hdf/``.
+#: Module-private since Phase 6. The only thing here that still needs it is
+#: :func:`datasets_needing_migration`, the predicate that refuses an
+#: unconverted tree; ``--mode migrate`` carries its own copy in
+#: :mod:`phenotypic.sdk_._hdf_to_zarr`, which is the module allowed to know
+#: the legacy layout.
+_DIR_HDF: Final[str] = "hdf"
+
+#: OME-Zarr image-state subdirectory: ``<output>/results/<ds>/zarr/``.
+DIR_ZARR: Final[str] = "zarr"
 
 #: Overlay PNG subdirectory: ``<output>/deliverables/overlays/<ds>/``.
 DIR_OVERLAYS: Final[str] = "overlays"
@@ -1444,9 +1452,108 @@ def dataset_measurements_dir(output_dir: Path, dataset: str) -> Path:
     return dataset_results_dir(output_dir, dataset) / DIR_MEASUREMENTS
 
 
-def dataset_hdf_dir(output_dir: Path, dataset: str) -> Path:
-    """Return ``<output>/results/<dataset>/hdf/``."""
-    return dataset_results_dir(output_dir, dataset) / DIR_HDF
+def dataset_zarr_dir(output_dir: Path, dataset: str) -> Path:
+    """Return ``<output>/results/<dataset>/zarr/``."""
+    return dataset_results_dir(output_dir, dataset) / DIR_ZARR
+
+
+#: The remedy named in every "this output needs migrating" message. One
+#: string, so the CLI's refusal and the viewer's banner cannot drift apart.
+MIGRATION_REMEDY: Final[str] = "--mode migrate"
+
+
+def datasets_needing_migration(output_dir: Path) -> list[str]:
+    """Datasets holding at least one `.h5` result without a VALID store.
+
+    One predicate, so the CLI and the GUI cannot disagree about what
+    "needs migrating" means.
+
+    Per-IMAGE, not per-dataset: the half-migrated tree this exists to catch
+    has converted and unconverted images in the SAME dataset, so a
+    dataset-level "has .h5 and has no zarr/ dir" test misses it entirely.
+    That tree is the expected state after any interruption, because migration
+    is resumable -- and it is neither "only .h5" nor fully converted, so the
+    older "only .h5" guard let it through and `--mode full` silently
+    reprocessed every unconverted image from source.
+
+    Validity, not existence: `valid_staged_store`, not `path.exists()`. A
+    store written at an older `store_schema_version` is present but the
+    loader refuses it, so an existence test reads that tree as clean while
+    every image fails to open.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        Dataset names needing migration, sorted. Empty for a modern tree.
+    """
+    from phenotypic.sdk_.ngff_ import valid_staged_store
+
+    root = results_dir(Path(output_dir))
+    if not root.is_dir():
+        return []
+    needing: list[str] = []
+    for dataset_dir in sorted(path for path in root.iterdir() if path.is_dir()):
+        hdf_dir = dataset_dir / _DIR_HDF
+        if not hdf_dir.is_dir():
+            continue
+        for hdf_path in sorted(hdf_dir.glob("*.h5")):
+            store = zarr_store_path(output_dir, dataset_dir.name, hdf_path.stem)
+            if not valid_staged_store(store):
+                needing.append(dataset_dir.name)
+                break
+    return needing
+
+
+def zarr_store_path(output_dir: Path, dataset: str, stem: str) -> Path:
+    """Return ``<output>/results/<dataset>/zarr/<stem>.ome.zarr/``.
+
+    The single place ``.ome.zarr`` is joined to an image stem. Callers must
+    never hand-join the suffix, and must take the stem back off a store with
+    :func:`store_stem` rather than ``Path.stem``. Both rules are enforced by
+    ``tests/unit/test_ome_zarr_invariants.py``
+    (``test_store_suffix_is_joined_in_exactly_one_place`` and
+    ``test_path_stem_is_never_taken_of_a_store_directory``).
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        stem: Image filename without extension.
+
+    Returns:
+        The per-image store path. Existence is not checked.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
+    return dataset_zarr_dir(output_dir, dataset) / f"{stem}{STORE_SUFFIX}"
+
+
+def store_stem(store_path: Path) -> str:
+    """Return the image stem of an ``*.ome.zarr`` store directory.
+
+    ``Path.stem`` is WRONG here — it strips one suffix and leaves ``img.ome``,
+    which is a plausible-looking wrong name rather than an error: it propagates
+    into parquet filenames and completion markers, and
+    ``zarr_store_path(out, ds, "img.ome")`` then resolves to a store that does
+    not exist, so every image reprocesses forever.
+
+    Args:
+        store_path: A ``<stem>.ome.zarr`` directory.
+
+    Returns:
+        The bare stem, e.g. ``"img"`` for ``img.ome.zarr``.
+
+    Raises:
+        ValueError: If *store_path* does not end in ``.ome.zarr``. It raises
+            rather than falling back to ``.stem``, because a silent fallback is
+            exactly the failure being prevented.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
+    name = Path(store_path).name
+    if not name.endswith(STORE_SUFFIX):
+        raise ValueError(f"not an OME-Zarr store directory: {store_path}")
+    return name[: -len(STORE_SUFFIX)]
 
 
 def overlays_dir(output_dir: Path) -> Path:
@@ -1883,12 +1990,6 @@ class ChunkManifestKey:
     NAME: Final[str] = "name"
 
 
-class HdfAttr:
-    """Top-level attribute keys on per-image HDF5 files."""
-
-    PHENOTYPIC_CLASS: Final[str] = "phenotypic_class"
-
-
 # ---------------------------------------------------------------------------
 # Module-path constants for importlib dispatch
 # ---------------------------------------------------------------------------
@@ -1929,47 +2030,43 @@ class EnvVar:
 
 
 # ---------------------------------------------------------------------------
-# HDF image-class reader (eliminates 3-site duplication)
+# Store image-class reader
 # ---------------------------------------------------------------------------
 
 
-def load_image_from_hdf(
-    hdf_path: Path,
+def load_image_from_store(
+    store_path: Path,
     *,
     fallback: ImageTypeName = "Image",
 ) -> "_Image | _GridImage":
-    """Open an HDF5, read its ``phenotypic_class`` attr, dispatch to the right Image class.
+    """Read ``phenotypic.image_class`` from a store root and dispatch the loader.
 
-    Replaces the 3 ad-hoc ``h5py.File(...) → fh.attrs.get('phenotypic_class', 'Image')
-    → GridImage if cls_attr == 'GridImage' else Image`` patterns in
-    :mod:`_cli_recompile_worker`, :mod:`_cli_execution_strategies`, and
-    :mod:`phenotypicCLI`.
+    Dispatches on ``image_class`` (``Image`` / ``GridImage``), which is the
+    loader-dispatch field. It is **not** ``Metadata_ImageType``, which is
+    user-visible schema metadata and may be ``GridSection`` on a plain
+    :class:`Image`.
 
     Args:
-        hdf_path: Path to a per-image HDF5 file.
-        fallback: Image class name to use when the HDF lacks the
-            ``phenotypic_class`` attribute (legacy files). Type-checked
-            (statically) against :data:`ImageTypeName` — there is no
-            runtime validation; the only effect of an unrecognized
-            string is that the dispatch falls through to :class:`Image`.
+        store_path: Path to a ``*.ome.zarr`` directory.
+        fallback: Class name used when the block carries no ``image_class``.
 
     Returns:
-        An :class:`Image` or :class:`GridImage` instance loaded from the HDF.
+        An :class:`Image` or :class:`GridImage` loaded from the store.
     """
-    import h5py  # type: ignore[import-untyped]
-
     from phenotypic import (
         GridImage,
         Image,
     )  # lazy: avoids circular import at module load
-    from phenotypic.sdk_.constants_ import IMAGE_TYPES
+    from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
 
-    with h5py.File(hdf_path, "r") as fh:
-        cls_attr = fh.attrs.get(HdfAttr.PHENOTYPIC_CLASS, fallback)
-    if isinstance(cls_attr, bytes):
-        cls_attr = cls_attr.decode("utf-8", errors="replace")
-    image_cls = GridImage if cls_attr == IMAGE_TYPES.GRID.value else Image
-    return image_cls.load_hdf5(hdf_path)
+    block = read_phenotypic_attributes(store_path)
+    class_name = block.get(PhenotypicAttr.IMAGE_CLASS, fallback)
+    # See ``_hdf_to_zarr._load_image_from_hdf``: the comparison is against
+    # the class name the writer recorded, not against ``IMAGE_TYPES.GRID`` -- that enum is the
+    # ``Metadata_ImageType`` vocabulary, a different field that spec 2.1 keeps
+    # deliberately independent of ``image_class``.
+    image_cls = GridImage if class_name == GridImage.__name__ else Image
+    return image_cls.load_zarr(store_path)
 
 
 # ---------------------------------------------------------------------------
@@ -2060,20 +2157,23 @@ class BundleLayout:
         results = self.output_root / DIR_RESULTS
         return results if results.is_dir() else None
 
-    def hdf_path(self, dataset: str, stem: str) -> Optional[Path]:
-        """Full-res per-image HDF for ``(dataset, stem)``, or ``None`` if unavailable.
+    def store_path(self, dataset: str, stem: str) -> Optional[Path]:
+        """Full-res per-image OME-Zarr store for ``(dataset, stem)``, or ``None``.
 
         Args:
             dataset: Dataset name (subdirectory under ``results/``).
             stem: Image stem (filename without extension).
 
         Returns:
-            Resolved ``.h5`` path if the file exists, otherwise ``None``.
+            Resolved store path if the **directory** exists, otherwise ``None``.
+            Note the ``is_dir`` check: a store is a directory, so the
+            ``is_file`` test the removed ``hdf_path`` used (it resolved a single
+            per-image HDF file) would always return ``None`` here.
         """
         if self.output_root is None:
             return None
-        candidate = dataset_hdf_dir(self.output_root, dataset) / f"{stem}.h5"
-        return candidate if candidate.is_file() else None
+        candidate = zarr_store_path(self.output_root, dataset, stem)
+        return candidate if candidate.is_dir() else None
 
     # -- deliverables-anchored artefacts ------------------------------------
 

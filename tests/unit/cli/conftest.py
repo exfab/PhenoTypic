@@ -12,13 +12,35 @@ import tempfile
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
+import h5py
+import numpy as np
 import pytest
 from PIL import Image as PILImage
 
+from phenotypic import Image
+from phenotypic._cli._cli_completion import (
+    SUCCESS_MARKER_VERSION,
+    publish_image_success,
+)
 from phenotypic._cli._cli_output_manager import OutputManager
+from phenotypic._cli._cli_stage2_token import (
+    write_stage2_raw,
+    write_stage2_token,
+)
+from phenotypic._cli._cli_staged_resume import write_stage3_completion_marker
 from phenotypic._cli._cli_types import ExecutionConfig
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.prefab import RoundPeaksPipeline
+from phenotypic.sdk_ import (
+    atomic_write_json,
+    dataset_measurements_dir,
+    image_completion_marker_path,
+    zarr_store_path,
+)
+from tests._legacy_staged_resume import (
+    classify_staged_image as legacy_classify_staged_image,
+)
+from tests._legacy_staged_resume import legacy_hdf_path, legacy_sidecar_path
 
 
 @pytest.fixture
@@ -127,3 +149,282 @@ def make_output_manager() -> Callable[..., OutputManager]:
         )
 
     return _build
+
+
+# ---------------------------------------------------------------------------
+# Differential resume-parity worlds (Phase 3 Task 3.4)
+# ---------------------------------------------------------------------------
+
+
+class ArtifactWorld:
+    """Build one image's durable artifacts, in one of the two storage formats.
+
+    The five booleans are, in order,
+    ``(image_state, stage2_signal, parquet, stage3_marker, image_success)`` --
+    the axes ``classify_staged_image`` actually distinguishes. Everything
+    format-neutral (parquet, Stage-3 marker, success marker) is built
+    identically by both worlds, so any divergence the parity test reports is a
+    divergence in the ported artifact probes and nothing else.
+    """
+
+    DATASET = "ds"
+    STEM = "img"
+
+    def __init__(self, base: Path, kind: str) -> None:
+        self.base = base
+        self.kind = kind
+        self.root = base
+        self._calls = 0
+
+    def __call__(self, artifacts, *, work_id: str | None) -> Path:
+        # A FRESH root per call: artifacts are only ever created, never
+        # removed, so reusing one root would let an earlier combination's
+        # files leak into a later one and silently turn the enumeration into a
+        # monotonically growing superset.
+        self.root = self.base / str(self._calls)
+        self._calls += 1
+        self.root.mkdir(parents=True)
+        image_state, stage2_signal, parquet, stage3_marker, success = artifacts
+        if image_state:
+            self._write_image_state(work_id)
+        if stage2_signal:
+            self._write_stage2_signal()
+        parquet_path = self._parquet_path()
+        if parquet:
+            parquet_path.parent.mkdir(parents=True, exist_ok=True)
+            parquet_path.write_bytes(b"measurements")
+        if stage3_marker:
+            write_stage3_completion_marker(
+                self.root, self.DATASET, f"{self.STEM}.tif", self.STEM
+            )
+        if success:
+            self._write_success_marker(work_id, parquet_path)
+        return self.root
+
+    # -- format-specific halves --------------------------------------------
+
+    def _write_image_state(self, work_id: str | None) -> None:
+        if self.kind == "hdf":
+            path = legacy_hdf_path(self.root, self.DATASET, self.STEM)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with h5py.File(path, "w") as handle:
+                handle.attrs["schema_version"] = 2
+                if work_id is not None:
+                    handle.attrs["phenotypic_work_id"] = work_id
+                layers = handle.create_group("layers")
+                for name in ("gray", "detect_mat", "objmap"):
+                    layers.create_dataset(name, data=np.zeros((4, 4)))
+            return
+        store = zarr_store_path(self.root, self.DATASET, self.STEM)
+        store.parent.mkdir(parents=True, exist_ok=True)
+        Image(np.zeros((4, 4, 3), dtype=np.uint8)).save2zarr(
+            store, work_id=work_id
+        )
+
+    def _write_stage2_signal(self) -> None:
+        """The sidecar was BOTH the flag and Stage 3's input.
+
+        Its store-world equivalent is therefore the token **and** the retained
+        raw array, not the token alone: a token with no raw array is a state
+        the HDF world cannot express, so it has no parity counterpart and is
+        covered by a dedicated test in ``test_staged_resume.py`` instead.
+        """
+        if self.kind == "hdf":
+            path = legacy_sidecar_path(self.root, self.DATASET, self.STEM)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            np.save(path, np.zeros((4, 4), dtype=np.uint16))
+            return
+        write_stage2_raw(
+            self.root,
+            self.DATASET,
+            self.STEM,
+            np.zeros((4, 4), dtype=np.uint16),
+        )
+        write_stage2_token(
+            self.root, self.DATASET, self.STEM, objmap_shape=(4, 4)
+        )
+
+    # -- format-neutral halves ---------------------------------------------
+
+    def _image_artifact_path(self) -> Path:
+        """The per-image image-state artifact in this world's format."""
+        if self.kind == "hdf":
+            return legacy_hdf_path(self.root, self.DATASET, self.STEM)
+        return zarr_store_path(self.root, self.DATASET, self.STEM)
+
+    def _parquet_path(self) -> Path:
+        if self.kind == "zarr":
+            from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+
+            return (
+                zarr_store_path(self.root, self.DATASET, self.STEM)
+                / MEASUREMENT_TABLE_RELATIVE_PATH
+            )
+        return (
+            dataset_measurements_dir(self.root, self.DATASET)
+            / f"{self.STEM}.parquet"
+        )
+
+    def _write_success_marker(
+        self, work_id: str | None, parquet_path: Path
+    ) -> None:
+        """Publish the per-image completion marker branch 1 consults.
+
+        It describes the parquet **and**, when it exists, the per-image image
+        artifact -- the ``.h5`` in the HDF world and the store *directory* in
+        the zarr world. Task 3.8 gave descriptors a ``kind`` tag, so the two
+        are now certifiable in the same marker shape and the comparison stays
+        an honest one: if ``valid_image_success`` could not describe a store,
+        the two worlds would disagree here and the parity test would fail.
+        Before that tag existed this had to describe the parquet alone.
+        """
+        if parquet_path.is_file():
+            artifacts = {"measurements": parquet_path}
+            image_artifact = self._image_artifact_path()
+            image_artifact_exists = (
+                image_artifact.is_file()
+                if self.kind == "hdf"
+                else (image_artifact / "zarr.json").is_file()
+            )
+            if image_artifact_exists:
+                artifacts["image_state"] = image_artifact
+            publish_image_success(
+                self.root,
+                work_id=work_id or "unused",
+                dataset=self.DATASET,
+                relative_image_path=f"{self.STEM}.tif",
+                image_stem=self.STEM,
+                mode="full",
+                attempt_id="a-1",
+                lifecycle_epoch="e-1",
+                artifacts=artifacts,
+            )
+            return
+        # No artifact to describe: write the marker anyway, pointing at the
+        # parquet that is not there. valid_image_success then returns False --
+        # identically in both worlds -- which is the "stale marker" case.
+        atomic_write_json(
+            image_completion_marker_path(self.root, self.DATASET, self.STEM),
+            {
+                "version": SUCCESS_MARKER_VERSION,
+                "work_id": work_id or "unused",
+                "dataset": self.DATASET,
+                "relative_image_path": f"{self.STEM}.tif",
+                "image_stem": self.STEM,
+                "mode": "full",
+                "attempt_id": "a-1",
+                "lifecycle_epoch": "e-1",
+                "artifacts": {
+                    "measurements": {
+                        "path": parquet_path.relative_to(self.root).as_posix(),
+                        "size": 12,
+                        "sha256": "0" * 64,
+                    }
+                },
+                "completed_at": "2026-08-19T00:00:00.000+00:00",
+            },
+        )
+
+    @staticmethod
+    def classify(**kwargs) -> str:
+        """Classify with the FROZEN pre-port HDF classifier."""
+        return legacy_classify_staged_image(**kwargs)
+
+
+@pytest.fixture
+def hdf_world(tmp_path: Path) -> ArtifactWorld:
+    """Builds the pre-port artifact set: staged ``.h5`` + ``.npy`` sidecar."""
+    return ArtifactWorld(tmp_path / "hdf_out", "hdf")
+
+
+@pytest.fixture
+def zarr_world(tmp_path: Path) -> ArtifactWorld:
+    """Builds the ported artifact set: OME-Zarr store + token + raw array."""
+    return ArtifactWorld(tmp_path / "zarr_out", "zarr")
+
+
+# ---------------------------------------------------------------------------
+# ``--mode migrate`` fixtures (Phase 5)
+# ---------------------------------------------------------------------------
+#
+# The builders and the session-scoped real run live beside the sdk_ suite that
+# defines them; importing the fixtures here makes them visible to the CLI
+# tests without promoting six migration-specific fixtures to the repo-root
+# conftest, where they would be global to the whole suite.
+from tests.unit.sdk_.conftest import (  # noqa: E402,F401
+    _completed_run_one,
+    _completed_run_two,
+    finished_legacy_run,
+    half_migrated_run,
+    legacy_run,
+    markerless_legacy_run,
+    migrated_run,
+)
+from tests.unit.sdk_._migration_fixtures import (  # noqa: E402
+    DATASET as _MIGRATION_DATASET,
+)
+
+
+@pytest.fixture
+def legacy_format_run(legacy_run: Path) -> Path:  # noqa: F811
+    """An output tree whose results are ``.h5`` and whose ``zarr/`` is absent.
+
+    Distinct from ``legacy_headers_run`` below, and the distinction is the
+    point (OPEN-QUESTIONS D16): ``recompile`` must **fail** on this one with a
+    pointer to ``--mode migrate``, because the forward path cannot read its
+    images at all.
+    """
+    return legacy_run
+
+
+@pytest.fixture
+def legacy_headers_run(
+    _completed_run_two: Path,  # noqa: F811
+    tmp_path: Path,
+) -> Path:
+    """Stores plus legacy external tables, requiring explicit migration.
+
+    This is the only legitimate source of legacy headers after embedded tables
+    became the current schema: a store without a table descriptor beside the
+    external Parquet authority written by older releases.
+    """
+    import json
+    import shutil
+
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from tests.unit.sdk_._migration_fixtures import (
+        make_measurement_headers_legacy,
+        refresh_marker_descriptors,
+        run_stems,
+    )
+
+    output_dir = tmp_path / "legacy_headers"
+    shutil.copytree(_completed_run_two, output_dir)
+    for stem in run_stems(output_dir):
+        store = zarr_store_path(output_dir, _MIGRATION_DATASET, stem)
+        embedded = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        external = (
+            dataset_measurements_dir(output_dir, _MIGRATION_DATASET)
+            / f"{stem}.parquet"
+        )
+        external.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(embedded, external)
+        shutil.rmtree(store / "tables")
+        root_path = store / "zarr.json"
+        root = json.loads(root_path.read_text(encoding="utf-8"))
+        root["attributes"]["phenotypic"].pop("tables", None)
+        atomic_write_json(root_path, root)
+
+        marker_path = image_completion_marker_path(
+            output_dir, _MIGRATION_DATASET, stem
+        )
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        marker["artifacts"]["measurements"]["path"] = external.relative_to(
+            output_dir
+        ).as_posix()
+        atomic_write_json(marker_path, marker)
+
+    make_measurement_headers_legacy(output_dir, _MIGRATION_DATASET)
+    for stem in run_stems(output_dir):
+        refresh_marker_descriptors(output_dir, _MIGRATION_DATASET, stem)
+    return output_dir

@@ -444,26 +444,34 @@ image is streamed through it — far more efficient than the notebook per-image
 path when processing a directory:
 
 1. **Stage 1 — CPU preprocess.** Every prior `ImageOperation` (enhancers,
-   corrections) is applied per image and the result is saved to the normal
-   per-image HDF (`results/<dataset>/hdf/<stem>.h5`).
+   corrections) is applied per image and the result is published as the
+   per-image OME-Zarr store
+   (`results/<dataset>/zarr/<stem>.ome.zarr/`).
 2. **Stage 2 — resident-model GPU detect.** The detector's model is built once
-   and kept resident while each staged HDF is streamed through
-   `preprocess → infer_batch`. The labelled object map is written to a per-image
-   `.npy` **sidecar** at `results/<dataset>/objmap/<stem>.npy`; the HDF is opened
-   read-only here, so an interrupted run never corrupts it.
-3. **Stage 3 — CPU merge + measure.** The sidecar is merged back into the image
-   through the object-map accessor, the post-detector refiners and the
-   measurement queue run, the HDF is re-saved atomically, and the sidecar is
-   **deleted**.
+   and kept resident while each staged store is streamed through
+   `preprocess → infer_batch`. The store is opened **read-only** and is never
+   written to here, so an interrupted run never corrupts it. Instead Stage 2
+   drops its result as machine state under `.phenotypic/progress/`: the
+   **raw** labelled object map at `stage2_raw/<dataset>/<stem>.npy`, followed by
+   a consumable **token** at `stage2_done/<dataset>/<stem>.json`.
+3. **Stage 3 — CPU replay + measure.** The **raw** array is merged back into the
+   image through the object-map accessor, the post-detector refiners and the
+   measurement queue run, the store is re-promoted atomically, and the token and
+   then the raw array are **consumed**. Stage 3 always replays from the retained
+   raw array rather than from the store's own object map, so a retried Stage 3
+   cannot re-refine already-refined labels.
 
 The output folder is identical to a single-pass run — staging is an internal
 optimization, not a different output contract.
 
 **Continuation is content-defined.** Re-running the same command classifies each image:
-a missing or invalid HDF selects Stage 1, a valid HDF without a sidecar selects
-Stage 2, and a valid HDF with a sidecar selects Stage 3. Stage 3 writes an atomic
-completion marker after publishing the parquet, HDF, and plot, then deletes the
-sidecar. Exact terminal scientific failures are retried only when
+a missing or invalid store selects Stage 1, a valid store without a complete
+Stage-2 signal selects Stage 2, and a valid store with one selects Stage 3. Every
+such check tests **both** halves of the signal — the token is only a flag, and
+the raw `.npy` is what Stage 3 actually reads — so an image whose token survived
+its raw array is sent back to Stage 2 rather than into a Stage 3 that cannot
+run. Stage 3 writes an atomic completion marker after publishing the parquet,
+store, and plot, then consumes the signal. Exact terminal scientific failures are retried only when
 `--retry-failures` is supplied; interrupted infrastructure work remains pending.
 Progress is **stage-tagged** in the event log, so the run dashboard can show how
 far each image has moved through the three stages. If Stage 1 fails for an image
@@ -512,18 +520,19 @@ A forward GPU run on SLURM (`--slurm ...` with a `GpuDetector` pipeline) runs as
 the staged engine above, coordinated by an **epoch-fenced dependent controller**
 with **per-stage resources**:
 
-- **Stage 1** — a CPU array over images (preprocess → staged HDF), on the
+- **Stage 1** — a CPU array over images (preprocess → staged store), on the
   `--slurm` profile.
 - **Stage 2** — a GPU array over **shards** (`--gpu-shards N`): each task is one
-  whole GPU running a resident model that streams its shard of HDFs to objmap
-  sidecars, on the `--gpu-slurm` profile.
-- **Stage 3** — a CPU array over images (merge sidecar → measure), on the
+  whole GPU running a resident model that streams its shard of stores to
+  `stage2_raw/` `.npy` arrays plus their tokens, on the `--gpu-slurm` profile.
+- **Stage 3** — a CPU array over images (replay raw → measure), on the
   `--slurm` profile.
 
 Controllers wait with `afterany`, so a handful of per-image failures never block
-the next decision. Because Stage 2 writes a `.npy` sidecar with the HDF opened
-read-only, there is **no HDF5 write-locking on the GPU nodes**; Stages 1 & 3
-write the HDF atomically (temp + rename) on CPU nodes.
+the next decision. Because Stage 2 writes only `.phenotypic/progress/` state
+with the store opened read-only, there is **no store writer on the GPU nodes**;
+Stages 1 & 3 promote the store atomically (build a sibling `.part/`, then
+rename) on CPU nodes.
 
 ```bash
 # CPU partition for Stages 1 & 3 (--slurm); GPU partition + 2 concurrent GPUs for Stage 2
@@ -540,7 +549,7 @@ restating; one GPU is requested automatically.
 
 **Walltime survival.** Before a controller decides what comes next, it has a
 dependent recovery controller in the queue. After a Stage-2 array terminates,
-the controller checks valid HDFs, atomic sidecars, Stage-3 markers,
+the controller checks valid stores, complete Stage-2 signals, Stage-3 markers,
 and the current epoch's terminal-failure journal. If retryable images remain,
 it submits another Stage-2 array and moves the recovery controller behind that
 array master. Workers do not install a walltime signal handler and do not call

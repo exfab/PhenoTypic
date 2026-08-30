@@ -19,6 +19,7 @@ class StagePlan:
     """Result of splitting a pipeline at its (single) GpuDetector."""
 
     pre_pipeline: ImagePipeline      # ops before the detector (Stage 1)
+    gpu_key: str                     # configured detector key (provenance path)
     gpu_detector: GpuDetector        # the detector itself (Stage 2)
     post_pipeline: ImagePipeline     # ops after + meas/post/filters/model/qc (Stage 3)
 
@@ -76,6 +77,7 @@ def split_pipeline_at_gpu(pipeline: ImagePipeline) -> StagePlan:
     )
     return StagePlan(
         pre_pipeline=pre_pipeline,
+        gpu_key=gpu_key,
         gpu_detector=gpu_detector,
         post_pipeline=post_pipeline,
     )

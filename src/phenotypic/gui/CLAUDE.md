@@ -216,7 +216,7 @@ QC module plus a `qc_modules` catalog); the QC tabs read it through the
 `resolve_qc_dir(output)` / `BundleLayout.qc_dir` still read the legacy
 output-root `qc/` of pre-relocation runs, and `migrate_legacy_qc` MOVES a
 legacy `qc/` into `deliverables/qc/` on discovery. The root-level
-`RESULTS_DIRNAME` (`results/`, per-image HDF/measurements) is **not** a
+`RESULTS_DIRNAME` (`results/`, per-image stores/measurements) is **not** a
 deliverable. Machine state resolves under `.phenotypic/`: use
 `progress_dir(output)` for `.phenotypic/progress/` and
 `processing_state_path(output)` for `.phenotypic/processing_state.json`.
@@ -413,7 +413,8 @@ travels with the field annotation.
 - **Pixel-layer toggle is gated on `results/`** — `build_layer_toggle`
   (colony view) returns `None` for a standalone bundle (`has_results is
   False`) because the RGB/Enhanced/Labels layers source per-image
-  `results/<ds>/.../<stem>.h5` HDFs that a bundle does not ship. Curation, QC
+  `results/<ds>/zarr/<stem>.ome.zarr` stores that a bundle does not ship.
+  Curation, QC
   review, overlays, and DZI deep-zoom (overlay-tiled) all still work; only the
   per-image full-res layer switch is absent. The `STORE_ACTIVE_LAYER` store
   stays mounted regardless so the colony render callback's Input is resolvable

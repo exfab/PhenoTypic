@@ -44,5 +44,5 @@ Task-oriented recipes that solve a specific problem. Each guide is standalone
    pages/tune_distributed_hpcc
    pages/gui_hub
    pages/serialize_pipelines
-   pages/hdf5_storage
+   pages/zarr_storage
    pages/generate_reports

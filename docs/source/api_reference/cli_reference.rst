@@ -53,20 +53,22 @@ Image Options
    ``LabB``. Default: ``gray``.
 
 ``--ext EXT``
-   Deprecated for HDF output. Forward runs write a single ``.h5`` per image;
-   only overlay PNG rendering still consults this value. Default: ``tiff``.
+   Deprecated for per-image output. Forward runs write a single OME-Zarr store
+   per image; only overlay PNG rendering still consults this value. Default:
+   ``tiff``.
 
 Execution Options
 -----------------
 
-``-m, --mode {full,measure,recompile,process}``
+``-m, --mode {full,measure,recompile,process,migrate}``
    Select the execution mode. Default: ``full``.
 
    ``full``
       Apply the pipeline, measure, and emit all deliverables.
 
    ``measure``
-      Re-run measurements from HDF files in an existing output root. Requires
+      Re-run measurements from the per-image OME-Zarr stores in an existing
+      output root. Requires
       ``--pipeline`` and ``--output``. Rejects ``--input``, ``--dry-run``,
       ``--restart``, ``--retry-failures``, ``--overwrite``, and
       ``--sample``.
@@ -74,6 +76,15 @@ Execution Options
    ``recompile``
       Rebuild aggregate deliverables from an existing output root. Requires
       ``--output``. Rejects ``--pipeline``, ``--input``, and ``--dry-run``.
+
+   ``migrate``
+      Convert a legacy ``.h5`` output tree to OME-Zarr stores **in place**, in
+      two passes: the non-image metadata targets first, then each per-image
+      ``results/<ds>/hdf/<stem>.h5`` to
+      ``results/<ds>/zarr/<stem>.ome.zarr`` with its marker re-published.
+      Requires ``--output``. Sources are kept unless ``--delete-sources`` is
+      passed. Every other writing mode refuses an unconverted tree and points
+      here.
 
    ``process``
       Apply the pipeline and export one image layer per input, mirroring the
@@ -106,8 +117,8 @@ Continuation and Recovery
 -------------------------
 
 Compatible full and process invocations continue automatically when run again.
-Staged GPU runs select Stage 1, 2, or 3 from valid HDF, sidecar, and completion
-artifacts.
+Staged GPU runs select Stage 1, 2, or 3 from the per-image store, the Stage-2
+signal under ``.phenotypic/progress/``, and the Stage-3 completion marker.
 
 ``--retry-failures``
    Include exact terminal scientific failures for the current computation in
@@ -147,7 +158,7 @@ A pipeline containing a ``GpuDetector`` runs as three stages (CPU preprocess →
 resident-model GPU detect → CPU measure). These flags tune Stage 2.
 
 On SLURM, an epoch-fenced dependent controller submits additional Stage-2
-arrays while sidecar-less retryable images remain. It replaces worker
+arrays while retryable images lack a complete Stage-2 signal. It replaces worker
 signal/self-requeue behavior. Dynamic controller, array, Stage-3, and finalizer
 job IDs are recorded in the run ledger for monitoring and cancellation.
 

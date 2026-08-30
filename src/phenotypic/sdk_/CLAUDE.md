@@ -88,8 +88,12 @@ ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
   `preflight_metadata_schema`, `migrate_metadata_file`,
   `migrate_metadata_bundle`, and `rollback_metadata_migration`. Migration uses
   fingerprints, prepared/applied receipts, atomic replacement, and copy-on-write
-  HDF updates. HDF layout `schema_version` is independent from the metadata
-  namespace marker. Bundle migration owns authoritative sources only; an
+  HDF updates. The `"hdf"` target kind is **retained** — it stays reachable
+  from `rollback_metadata_migration` and the standalone-bundle path for legacy
+  trees, and `--mode migrate`'s pass 1 excludes `.h5` targets rather than the
+  arm being dead; the module docstring carries the decision of record. Legacy
+  HDF layout `schema_version` is independent from the metadata namespace
+  marker. Bundle migration owns authoritative sources only; an
   external `--metadata` CSV and its byte-exact
   `deliverables/metadata.csv` startup snapshot are normalized in memory and
   never rewritten by recompile.
@@ -104,7 +108,34 @@ ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
   `ImageTypeName`, `ProcessingStatus`, `RecompileTaskType`,
   `CheckpointType`, `FailureSource`, `NormOut`, `InputLayer`).
 - `funcs_.py` — timing decorators, mask validation.
-- `hdf_.py` — HDF5 storage utilities.
+- `hdf_.py` — the surviving HDF5 **read** surface (~516 lines). Phase 6 of the
+  OME-Zarr change deleted the DataFrame half (`save_series_*`, `load_series`,
+  `save_frame_*`, `load_frame`, `preallocate_*`, the fixed-length-string codecs)
+  plus three unrelated dead statics (`assert_swmr_on`,
+  `get_uncompressed_sizes_for_group`, `close_handle`) as unreferenced.
+  What remains is the keeper list, pinned by
+  `tests/unit/sdk_/test_hdf_surface.py`: `_open_hdf_with_recovery` /
+  `_clear_hdf_consistency_flags` (the migration read path, and the
+  retry-with-backoff shape `promote_store` reuses), the writer/reader
+  properties, the group accessors, and `save_array2hdf5` (what
+  `tests/fixtures/legacy_hdf/_generate.py` rebuilds the migration goldens with).
+  Nothing here is on a forward write path.
+- `_hdf_to_zarr.py` — the `--mode migrate` engine, and **the only module
+  allowed to know the legacy tree layout**: `_DIR_HDF`, `_dataset_hdf_dir`,
+  `_PHENOTYPIC_CLASS`, and `_load_image_from_hdf` live here since Phase 6,
+  having left `_io_constants.py` and the public `phenotypic.sdk_` surface.
+- `ngff_.py` — OME-Zarr (NGFF 0.5 / Zarr v3) layout constants, pyramid
+  geometry, the `attributes.phenotypic` contract, the write-only OME
+  projection, `promote_store`, and `valid_staged_store`.
+  Published surface: `docs/source/api_reference/core/store_layout.rst`
+  (grouped by task — layout, geometry, reading, the commit protocol,
+  durability); user-facing view, including the on-disk tree and how to open a
+  store in napari/QuPath/Vizarr: `docs/source/how_to/pages/zarr_storage.md`.
+  **Nothing writes into a promoted store**, and the root `zarr.json` is written
+  **last** — the completion marker and the viewer's staleness scan both key on
+  that root alone, so violating either makes both report stale data as fresh
+  with nothing failing. Guard:
+  `tests/unit/sdk_/test_ngff_promote.py::test_nothing_writes_into_a_promoted_store`.
 - `slurm_.py` / `submitit_.py` / `monitor_slurm_jobs.py` — SLURM integration.
 - `generate_report.py` — report generation.
 - `viz/` — shared visualization layer: the centralized Plotly theme

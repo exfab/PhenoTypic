@@ -113,6 +113,14 @@ def publish_local_gui_completion(output_dir: Path) -> bool:
                 f"canonical manifest at {path}"
             ) from exc
 
+        # ``generation`` is ``str | None`` on the way in; the guard above
+        # has already raised for an unreadable manifest, and the predicate
+        # requires a concrete generation to compare against.
+        if generation is None:
+            raise RuntimeError(
+                "Cannot publish legacy GUI local completion without a "
+                "processing generation"
+            )
         if local_manifest_completion_problem(payload, generation) is not None:
             raise RuntimeError(
                 "Cannot publish legacy GUI local completion for a "

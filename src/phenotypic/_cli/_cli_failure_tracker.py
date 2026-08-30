@@ -20,7 +20,9 @@ from typing import Any, Dict, List, Mapping, TYPE_CHECKING
 
 from ._cli_file_locking import atomic_append, atomic_read, FileLockTimeout
 from phenotypic.sdk_ import (
+    CommitGuard,
     FAILURES_JSONL,
+    publication_commit,
     terminal_failures_jsonl_path,
 )
 from phenotypic.sdk_.typing_ import FailureSource
@@ -108,6 +110,7 @@ def processing_configuration_digest_from_values(
     include_dataset_column: bool,
     overlay_alpha: float,
     save_overlays: bool,
+    drop_originals: bool = False,
 ) -> str:
     """Hash explicit settings that affect one image's scientific outputs."""
     payload: dict[str, object] = {
@@ -116,6 +119,7 @@ def processing_configuration_digest_from_values(
         "ncols": ncols,
         "bit_depth": bit_depth,
         "detect_mode": detect_mode,
+        "drop_originals": drop_originals,
     }
     if process_only_layer is not None:
         payload.update(
@@ -148,6 +152,7 @@ def processing_configuration_digest(config: "ExecutionConfig") -> str:
         include_dataset_column=config.include_dataset_column,
         overlay_alpha=config.overlay_alpha,
         save_overlays=config.save_overlays,
+        drop_originals=config.drop_originals,
     )
 
 
@@ -218,6 +223,7 @@ def append_terminal_failure(
     lifecycle_epoch: str,
     traceback: str = "",
     slurm_job_id: str = "",
+    commit_guard: CommitGuard | None = None,
 ) -> bool:
     """Durably append one terminal failure without an unlocked fallback.
 
@@ -260,6 +266,7 @@ def append_terminal_failure(
             timeout=60.0,
             durable=True,
             repair_incomplete_line=True,
+            commit_guard=commit_guard,
         )
     except (FileLockTimeout, OSError, ValueError):
         logger.error("Failed to commit terminal failure", exc_info=True)
@@ -450,6 +457,7 @@ def append_failure(
     traceback: str = "",
     slurm_job_id: str = "",
     failure_source: FailureSource = "python",
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """
     Atomically append a structured failure record to ``failures.jsonl``.
@@ -485,13 +493,17 @@ def append_failure(
     # Use file-locked atomic append for thread/process safety, consistent
     # with how append_event() works for the event log.
     try:
-        atomic_append(failures_path, line, timeout=10.0)
+        atomic_append(
+            failures_path, line, timeout=10.0, commit_guard=commit_guard
+        )
     except FileLockTimeout:
         # Fallback: best-effort direct append (still safe for single writes
         # on most POSIX systems).
         try:
-            with open(failures_path, "a", encoding="utf-8") as f:
-                f.write(line)
+            with publication_commit(commit_guard):
+                with open(failures_path, "a", encoding="utf-8") as f:
+                    f.write(line)
+                    f.flush()
         except OSError as exc:
             logger.error("Failed to write failure record: %s", exc)
 

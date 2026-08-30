@@ -43,6 +43,23 @@ class SlurmGenerationInactiveError(RuntimeError):
     """Raised when a worker no longer owns the output lifecycle fence."""
 
 
+def slurm_generation_inactive_cause(
+    exception: BaseException,
+) -> SlurmGenerationInactiveError | None:
+    """Find a lifecycle rejection hidden by scientific exception translation."""
+    current: BaseException | None = exception
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, SlurmGenerationInactiveError):
+            return current
+        if current.__cause__ is not None:
+            current = current.__cause__
+        else:
+            current = current.__context__
+    return None
+
+
 @dataclass(frozen=True)
 class CancellationResult:
     """Result of fencing and cancelling one launch generation."""

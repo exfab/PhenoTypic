@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import wraps
 from typing import TYPE_CHECKING, Any, overload
 
 if TYPE_CHECKING:
@@ -215,8 +216,11 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     Instance methods work perfectly with parallel execution because the entire
     operation object (with all parameters) is serialized together.
 
-    Attributes:
-        None (all operation state is stored in subclass instances as fields).
+    This class declares no attributes of its own; all operation state lives in
+    subclass instances as pydantic fields. (Written as prose, NOT as
+    ``Attributes:`` / ``None``: napoleon reads that as an attribute *named*
+    ``None`` and registers a ``.None`` cross-reference target, which makes every
+    autodoc'd docstring returning ``None`` ambiguous.)
 
     Methods:
         apply(image, inplace=False): User-facing method that applies the operation.
@@ -388,6 +392,28 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     _update_button: Any = PrivateAttr(default=None)
     _output_widget: Any = PrivateAttr(default=None)
     _image_ref: Any = PrivateAttr(default=None)
+
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """Instrument each subclass's resolved public apply success boundary."""
+        super().__pydantic_init_subclass__(**kwargs)
+        resolved_apply = cls.apply
+        wrapped_apply: Any = None
+
+        @wraps(resolved_apply)
+        def _deferred_provenance_apply(
+            self: Any, *args: Any, **apply_kwargs: Any
+        ) -> Any:
+            nonlocal wrapped_apply
+            # Import only after package initialization; importing ``_core`` while
+            # the ABC hierarchy is being constructed creates a circular import.
+            if wrapped_apply is None:
+                from phenotypic._core._provenance import wrap_image_operation_apply
+
+                wrapped_apply = wrap_image_operation_apply(resolved_apply, cls)
+            return wrapped_apply(self, *args, **apply_kwargs)
+
+        cls.apply = _deferred_provenance_apply  # type: ignore[method-assign]
 
     @overload
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage:

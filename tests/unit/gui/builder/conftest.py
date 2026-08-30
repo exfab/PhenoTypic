@@ -146,3 +146,60 @@ def empty_registry(monkeypatch):
         "phenotypic.gui.builder._validation.get_registry", lambda: reg
     )
     return reg
+
+
+# ---------------------------------------------------------------------------
+# builder_preview — node-store staging for the preview tile routes
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class BuilderPreview:
+    """One builder scope directory holding republishable node stores.
+
+    Drives ``stage_channel_png`` directly rather than through the Flask
+    blueprint: the blueprint adds only path validation and a manifest lookup,
+    and the staleness contract under test lives entirely in the staging
+    function.
+    """
+
+    scope_dir: Any
+
+    def store_for(self, block_id: str):
+        """Return the node store path for one block."""
+        return self.scope_dir / f"{block_id}.ome.zarr"
+
+    def publish_node_store(self, block_id: str, *, level: int):
+        """Publish a node store whose pixels are a function of *level*."""
+        import numpy as np
+
+        from phenotypic import Image
+
+        image = Image(
+            arr=np.full((32, 32, 3), level * 40, dtype=np.uint8)
+        )
+        return image.save_intermediate_zarr(
+            self.store_for(block_id), layers=("gray",)
+        )
+
+    def rewrite_node_store(self, block_id: str, *, level: int = 5):
+        """Republish a node store with different pixels (a promote)."""
+        return self.publish_node_store(block_id, level=level)
+
+    def png_bytes(self, block_id: str, channel: str) -> bytes:
+        """Stage (or reuse) the channel PNG and return its bytes."""
+        from phenotypic.gui.builder._preview_tiles import stage_channel_png
+
+        return stage_channel_png(
+            self.scope_dir, block_id, channel, self.store_for(block_id)
+        ).read_bytes()
+
+
+@pytest.fixture()
+def builder_preview(tmp_path) -> BuilderPreview:
+    """A scope dir with one published node store for ``block-1``."""
+    scope_dir = tmp_path / "scope"
+    scope_dir.mkdir()
+    preview = BuilderPreview(scope_dir=scope_dir)
+    preview.publish_node_store("block-1", level=1)
+    return preview

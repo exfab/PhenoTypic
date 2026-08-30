@@ -228,6 +228,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     _measurement_memory: Dict[str, float] = PrivateAttr(default_factory=dict)
     _operation_rss: Dict[str, float] = PrivateAttr(default_factory=dict)
     _measurement_rss: Dict[str, float] = PrivateAttr(default_factory=dict)
+    _provenance_pipeline: dict[str, str] | None = PrivateAttr(default=None)
 
     # Lazily-populated ipywidget UI handles used by ``LazyWidgetMixin``.
     # Mirrors the declaration on ``ImageOperation``: both classes mix in
@@ -893,8 +894,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     nested_was_benchmarking = operation._benchmark
                     operation._benchmark = True
 
-                # Apply actual operation
-                operation.apply(img, **apply_params)
+                # Apply actual operation under its configured, nestable key path.
+                from phenotypic._core._provenance import pipeline_step
+
+                with pipeline_step(key):
+                    operation.apply(img, **apply_params)
 
                 # Restore nested pipeline benchmark flag
                 if nested_was_benchmarking is not None and isinstance(
@@ -961,6 +965,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         """
         effective_reset = reset if reset is not None else self._reset
         img = image if inplace else image.copy()
+        if (
+            self._provenance_pipeline is not None
+            and img._metadata.provenance_journal.get("pipeline") is None
+        ):
+            img._metadata.provenance_journal["pipeline"] = dict(
+                self._provenance_pipeline
+            )
         if effective_reset:
             img.reset()
         self._run_operations(img)
@@ -988,16 +999,18 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             reset: Whether to reset the image before applying operations.
                 ``None`` (default) uses the pipeline-level setting.
             output_dir: Optional directory path.  When provided, each
-                intermediate image is persisted to an HDF5 file inside this
-                directory (created automatically) and the corresponding dict
-                value is set to ``None`` to conserve memory.  When ``None``,
-                intermediates are kept in memory as ``Image`` copies.
+                intermediate image is persisted to a ``*.ome.zarr`` store
+                inside this directory (created automatically) and the
+                corresponding dict value is set to ``None`` to conserve memory.
+                When ``None``, intermediates are kept in memory as ``Image``
+                copies.
             full_layers: When ``True`` and *output_dir* is set, each
                 non-read-only operation's full image state is written as a
-                complete schema-v2 snapshot via ``save2hdf5`` (all layers +
-                class/grid metadata) instead of the delta layout. Used by the
-                builder's node-preview cache so any node's HDF reconstructs a
-                faithful ``Image``/``GridImage``. Defaults to ``False``.
+                complete snapshot via ``save2zarr`` (every series + the objmap
+                label + class/grid metadata) instead of the delta layout. Used
+                by the builder's node-preview cache so any node's store
+                reconstructs a faithful ``Image``/``GridImage``. Defaults to
+                ``False``.
 
         Returns:
             IntermediateResult: A named tuple containing the final image and a
@@ -1018,11 +1031,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if output_dir is not None:
             # Save initial base (pre-pipeline state)
             if full_layers:
-                img.copy().save2hdf5(output_dir / "base_00.h5")
+                img.copy().save2zarr(output_dir / "base_00.ome.zarr")
             else:
                 _all_layers = ("rgb", "gray", "detect_mat", "objmap")
-                img.copy().save_intermediate_layers(
-                        output_dir / "base_00.h5", layers=_all_layers,
+                img.copy().save_intermediate_zarr(
+                        output_dir / "base_00.ome.zarr", layers=_all_layers,
                 )
 
         def _capture(
@@ -1038,19 +1051,24 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     # Read-only op (MeasureFeatures): no file
                     intermediates[key] = None
                 elif full_layers:
-                    # Faithful full v2 snapshot (all layers + class/grid attrs)
-                    current.copy().save2hdf5(output_dir / f"{i:02d}_{key}.h5")
+                    # Faithful full snapshot (every series + the label + class
+                    # and grid state), so any node's store reconstructs an
+                    # Image/GridImage on its own.
+                    current.copy().save2zarr(output_dir / f"{i:02d}_{key}.ome.zarr")
                     intermediates[key] = None
                 elif len(layers) == 4:
                     # Corrector: emit a new base with all layers
-                    current.copy().save_intermediate_layers(
-                            output_dir / f"base_{i:02d}.h5", layers=layers,
+                    current.copy().save_intermediate_zarr(
+                            output_dir / f"base_{i:02d}.ome.zarr", layers=layers,
                     )
                     intermediates[key] = None
                 else:
-                    # Delta: save only modified layers
-                    current.copy().save_intermediate_layers(
-                            output_dir / f"{i:02d}_{key}.h5", layers=layers,
+                    # Delta: only the modified layers, plus the `gray` primary
+                    # series `save_intermediate_zarr` always co-writes -- a
+                    # store without one has no anchor for its label group or
+                    # its OME projection.
+                    current.copy().save_intermediate_zarr(
+                            output_dir / f"{i:02d}_{key}.ome.zarr", layers=layers,
                     )
                     intermediates[key] = None
             else:

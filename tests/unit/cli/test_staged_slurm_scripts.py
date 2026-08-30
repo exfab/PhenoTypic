@@ -312,6 +312,8 @@ def test_strategy_reserves_two_max_submit_slots_for_controllers(
 
     def _fake_generate(**kwargs):
         captured["array_limit"] = kwargs["array_limit"]
+        captured["drop_originals"] = kwargs.get("drop_originals")
+        captured["pipeline_identity"] = kwargs.get("pipeline_identity")
         return {
             "stage1": [tmp_path / "s1.sh"],
             "stage2": tmp_path / "s2.sh",
@@ -360,6 +362,15 @@ def test_strategy_reserves_two_max_submit_slots_for_controllers(
             "full_dataset_inventory": {},
             "nrows": None,
             "ncols": None,
+            # Read directly (not via getattr), as ExecutionConfig always
+            # carries it: the staged submitter must transport the tri-state
+            # down to the workers. See test_cli_durable_writes_transport.py.
+            "durable_writes": None,
+            "drop_originals": True,
+            "pipeline_identity": {
+                "source_path": str((tmp_path / "source.json").resolve()),
+                "sha256": "c" * 64,
+            },
         },
     )()
     strategy = object.__new__(StagedSlurmStrategy)
@@ -367,6 +378,8 @@ def test_strategy_reserves_two_max_submit_slots_for_controllers(
     strategy.execute([], tmp_path)
 
     assert captured["array_limit"] == 3
+    assert captured["drop_originals"] is True
+    assert captured["pipeline_identity"] == config.pipeline_identity
     assert submitted_roles == ["controller-initial"]
     state = load_orchestration_state(tmp_path)
     assert state is not None

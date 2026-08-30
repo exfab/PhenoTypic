@@ -14,6 +14,8 @@ from ._cli_recompile_slurm_scripts import (
     TASK_FINALIZE,
     TASK_MEASUREMENTS,
     TASK_OVERLAY,
+    refresh_overlay_marker_authority,
+    repair_overlay_marker_authority,
     recompile_task_status_path,
     recompile_attempt_dir,
 )
@@ -32,7 +34,8 @@ from phenotypic.sdk_ import (
     RECOMPILE_TASK_MANIFEST_JSON,
     atomic_write_json,
     atomic_write_with_writer,
-    load_image_from_hdf,
+    load_image_from_store,
+    store_stem,
     master_measurements_csv_path,
     master_measurements_parquet_path,
     task_status_filename,
@@ -269,11 +272,51 @@ def _run_measurement_task(
     slurm_generation: str,
 ) -> None:
     """Aggregate one measurement shard and write it under progress."""
-    import polars as pl
 
     from ._cli_parquet_agg import aggregate_parquet_files
 
     files = [Path(path) for path in task.get("files", [])]
+    metadata_csv_raw = task.get(JobMetadataKey.METADATA_CSV)
+    metadata_csv = Path(str(metadata_csv_raw)) if metadata_csv_raw else None
+    from ._cli_recompile_tables import recompile_embedded_measurement_table
+
+    raw_repairs = task.get("overlay_repairs", [])
+    if not isinstance(raw_repairs, list):
+        raise ValueError("Measurement task overlay_repairs must be a list")
+    repairs_by_table: dict[Path, dict[str, Any]] = {}
+    for raw_repair in raw_repairs:
+        if not isinstance(raw_repair, dict):
+            raise ValueError("Measurement task has invalid overlay repair")
+        repair_table = Path(str(raw_repair["table_path"]))
+        repairs_by_table[repair_table] = raw_repair
+
+    for table_path in files:
+        if tuple(table_path.parts[-3:]) == (
+            "tables",
+            "measurements",
+            "table.parquet",
+        ):
+            repair = repairs_by_table.get(table_path)
+            if repair is not None:
+                _repair_measurement_overlay(
+                    output_dir,
+                    repair,
+                    slurm_generation=slurm_generation,
+                )
+            dataset = _dataset_name_from_measurement_path(
+                output_dir, table_path
+            )
+            recompile_embedded_measurement_table(
+                output_dir,
+                table_path,
+                dataset,
+                metadata_csv,
+                commit_guard=lambda: generation_publication_guard(
+                    output_dir, slurm_generation
+                ),
+                lifecycle_epoch=slurm_generation,
+            )
+
     path_to_dataset = {
         path: _dataset_name_from_measurement_path(output_dir, path)
         for path in files
@@ -287,17 +330,11 @@ def _run_measurement_task(
     if shard_df is None:
         raise RuntimeError("No valid measurements found for shard")
 
-    if (
-        str(IMAGE.IMAGE_NAME) not in shard_df.columns
-        and "filename" in shard_df.columns
-    ):
-        shard_df = shard_df.with_columns(
-            pl.col("filename")
-            .str.extract(r"([^/\\]+)\.[^.]+$", 1)
-            .alias(str(IMAGE.IMAGE_NAME))
-        )
-    if "filename" in shard_df.columns:
-        shard_df = shard_df.drop("filename")
+    from ._measurement_sources import (
+        add_metadata_image_name_from_filename,
+    )
+
+    shard_df = add_metadata_image_name_from_filename(shard_df)
     shard_df = _sort_measurement_shard(shard_df)
 
     shard_id = int(task["shard_id"])
@@ -310,6 +347,54 @@ def _run_measurement_task(
         atomic_write_with_writer(
             shard_path,
             lambda p: shard_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
+        )
+
+
+def _repair_measurement_overlay(
+    output_dir: Path,
+    repair: dict[str, Any],
+    *,
+    slurm_generation: str,
+) -> None:
+    """Repair a marker-bound overlay before the same task rewrites its table."""
+    from ._cli_output_manager import OutputManager
+
+    dataset_name = str(repair["dataset_name"])
+    store_path = Path(str(repair["store_path"]))
+    expected_table = store_path / "tables" / "measurements" / "table.parquet"
+    if Path(str(repair["table_path"])) != expected_table:
+        raise ValueError("Overlay repair table does not belong to its store")
+    image = load_image_from_store(store_path)
+    stem = store_stem(store_path)
+    output_manager = OutputManager.from_config(
+        base_dir=output_dir,
+        ext=".png",
+        include_dataset_column=False,
+        overlay_alpha=float(repair.get("overlay_alpha", 0.3)),
+        save_overlays=True,
+    )
+
+    def _render(render_guard: Any) -> object:
+        return output_manager.save_overlay(
+            image,
+            dataset_name,
+            stem,
+            commit_guard=render_guard,
+        )
+
+    if not repair_overlay_marker_authority(
+        output_dir,
+        dataset_name,
+        stem,
+        store_path,
+        _render,
+        lifecycle_epoch=slurm_generation,
+        commit_guard=lambda: generation_publication_guard(
+            output_dir, slurm_generation
+        ),
+    ):
+        raise RuntimeError(
+            "Could not restore marker authority after overlay repair"
         )
 
 
@@ -343,6 +428,13 @@ def _dataset_name_from_measurement_path(output_dir: Path, path: Path) -> str:
         and parts[2] == DIR_MEASUREMENTS
     ):
         return parts[1]
+    if (
+        len(parts) >= 7
+        and parts[0] == DIR_RESULTS
+        and parts[2] == "zarr"
+        and tuple(parts[-3:]) == ("tables", "measurements", "table.parquet")
+    ):
+        return parts[1]
     if path.parent.name == DIR_MEASUREMENTS:
         return path.parent.parent.name
     raise ValueError(
@@ -356,14 +448,14 @@ def _run_overlay_task(
     *,
     slurm_generation: str,
 ) -> dict[str, Any]:
-    """Regenerate one overlay, treating per-image failures as nonfatal."""
+    """Regenerate one overlay, treating non-authoritative failures as nonfatal."""
     try:
         from ._cli_output_manager import OutputManager
 
         dataset_name = str(task["dataset_name"])
-        hdf_path = Path(str(task["hdf_path"]))
-        image = load_image_from_hdf(hdf_path)
-
+        store_path = Path(str(task["store_path"]))
+        image = load_image_from_store(store_path)
+        stem = store_stem(store_path)
         output_manager = OutputManager.from_config(
             base_dir=output_dir,
             ext=".png",
@@ -371,19 +463,105 @@ def _run_overlay_task(
             overlay_alpha=float(task.get("overlay_alpha", 0.3)),
             save_overlays=True,
         )
-        with generation_publication_guard(output_dir, slurm_generation):
-            output_manager.save_overlay(image, dataset_name, hdf_path.stem)
+
+        def _render(render_guard: Any) -> object:
+            return output_manager.save_overlay(
+                image,
+                dataset_name,
+                stem,
+                commit_guard=render_guard,
+            )
+
+        if task.get("restore_marker_authority"):
+            if not repair_overlay_marker_authority(
+                output_dir,
+                dataset_name,
+                stem,
+                store_path,
+                _render,
+                lifecycle_epoch=slurm_generation,
+                commit_guard=lambda: generation_publication_guard(
+                    output_dir, slurm_generation
+                ),
+            ):
+                raise RuntimeError(
+                    "Could not restore marker authority after overlay repair"
+                )
+        else:
+            _render(
+                lambda: generation_publication_guard(
+                    output_dir, slurm_generation
+                )
+            )
     except SlurmGenerationInactiveError:
         raise
     except Exception as exc:
         logger.warning("Overlay regeneration failed", exc_info=True)
         return {
-            "status": "completed",
+            "status": (
+                "failed"
+                if task.get("restore_marker_authority")
+                else "completed"
+            ),
             "overlay_failed": True,
             "error": f"{type(exc).__name__}: {exc}",
         }
 
     return {"status": "completed", "overlay_failed": False}
+
+
+def _restore_overlay_marker_authority(
+    output_dir: Path,
+    task_manifest: Path,
+    *,
+    slurm_generation: str | None = None,
+) -> None:
+    """Compare and refresh every repaired overlay marker after array work."""
+
+    manifest = json.loads(task_manifest.read_text(encoding="utf-8"))
+    tasks = manifest.get("tasks")
+    if not isinstance(tasks, list):
+        raise ValueError("Task manifest does not contain a tasks list")
+    repairs: list[dict[str, Any]] = []
+    for item in tasks:
+        if not isinstance(item, dict):
+            continue
+        if item.get("restore_marker_authority"):
+            repairs.append(item)
+        nested = item.get("overlay_repairs", [])
+        if not isinstance(nested, list):
+            raise ValueError("Task overlay_repairs must be a list")
+        if not all(isinstance(repair, dict) for repair in nested):
+            raise ValueError("Task overlay_repairs contains an invalid repair")
+        repairs.extend(nested)
+
+    restored: set[tuple[str, Path]] = set()
+    for repair in repairs:
+        store_path = Path(str(repair["store_path"]))
+        dataset_name = str(repair["dataset_name"])
+        identity = (dataset_name, store_path.resolve())
+        if identity in restored:
+            continue
+        restored.add(identity)
+        if not refresh_overlay_marker_authority(
+            output_dir,
+            dataset_name,
+            store_stem(store_path),
+            store_path,
+            lifecycle_epoch=slurm_generation,
+            commit_guard=(
+                (
+                    lambda: generation_publication_guard(
+                        output_dir, slurm_generation
+                    )
+                )
+                if slurm_generation is not None
+                else None
+            ),
+        ):
+            raise RuntimeError(
+                "Could not restore marker authority after overlay repair"
+            )
 
 
 def _run_finalizer_task(
@@ -435,6 +613,14 @@ def _run_finalizer_task(
         phenotypic_cache_dir(output_dir) / ".aggregate_publication.lock"
     )
     with exclusive_path_lock(publication_lock, timeout=60.0):
+        # Re-fingerprint co-located overlay repairs once more after every task
+        # is terminal so the marker describes the final embedded-table bytes.
+        # Each repair holds its store lock before entering the lifecycle fence.
+        _restore_overlay_marker_authority(
+            output_dir,
+            task_manifest,
+            slurm_generation=slurm_generation,
+        )
         # The aggregate lock excludes competing finalizers. Each canonical
         # mutation also acquires the lifecycle guard independently, allowing a
         # newer generation to fence this worker between publication phases.
@@ -537,10 +723,9 @@ def _write_master_outputs_from_shards(
     frames = [pl.read_parquet(path) for path in shard_files]
     master_df = pl.concat(frames, how="diagonal_relaxed")
 
-    # External metadata join is applied to the mirror in
-    # ``finalize_post_master_outputs`` (via ``_run_post_master_steps``), not
-    # to the master archive. The master stays a clean, op-free record of
-    # what the per-image workers measured.
+    # Recompiled embedded tables already carry their publication-time metadata.
+    # The master stays their exact, pre-post concatenation; finalization appends
+    # only metadata identities absent from all measured tables to the mirror.
 
     def publish_master_outputs() -> None:
         try:
@@ -550,16 +735,10 @@ def _write_master_outputs_from_shards(
         except Exception:
             logger.error("Failed to save master CSV during recompile finalize")
             raise
-        try:
-            atomic_write_with_writer(
-                master_measurements_parquet_path(output_dir),
-                lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
-            )
-        except Exception:
-            logger.warning(
-                "Failed to save master Parquet during recompile finalize "
-                "(CSV was saved)"
-            )
+        atomic_write_with_writer(
+            master_measurements_parquet_path(output_dir),
+            lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
+        )
 
     if slurm_generation is None:
         publish_master_outputs()
@@ -591,14 +770,26 @@ def _run_post_master_steps(
 ) -> None:
     """Run canonical post-master outputs before marker publication."""
     from ._cli_output_manager import (
+        _consistent_embedded_join_keys,
         _load_pipeline_from_output_dir,
         finalize_post_master_outputs,
     )
 
+    measurement_sources = task.get("measurement_sources")
+    metadata_join_keys: tuple[str, ...] | None
+    if measurement_sources is None:
+        metadata_join_keys = tuple(
+            str(key) for key in task.get("metadata_join_keys", [])
+        )
+    else:
+        metadata_join_keys = _consistent_embedded_join_keys(
+            [Path(str(path)) for path in measurement_sources]
+        )
+
     if merged_df is not None:
-        # Single canonical post-master finalize: applies post to a copy of
-        # the clean master, joins the external metadata CSV (when given)
-        # onto the post-applied frame, seeds ``measurements.{csv,parquet}``,
+        # Single canonical post-master finalize: appends metadata-only
+        # identities once, applies post to the joined measured + phantom
+        # frame, seeds ``measurements.{csv,parquet}``,
         # persists ``pipeline.json``, emits configured analysis outputs, and
         # writes per-feature splits, matching the forward CLI path.
         pipeline = _load_pipeline_from_output_dir(output_dir)
@@ -613,6 +804,7 @@ def _run_post_master_steps(
                 merged_df,
                 pipeline,
                 metadata_csv=metadata_csv,
+                metadata_join_keys=metadata_join_keys,
                 no_qc=no_qc,
             )
         else:
@@ -622,6 +814,7 @@ def _run_post_master_steps(
                     merged_df,
                     pipeline,
                     metadata_csv=metadata_csv,
+                    metadata_join_keys=metadata_join_keys,
                     no_qc=no_qc,
                 )
 
@@ -653,6 +846,17 @@ def _dataset_totals(
     output_dir: Path, dataset_names: list[str]
 ) -> dict[str, int]:
     """Count per-image measurement Parquets for manifest totals."""
+    from ._cli_completion import authorized_measurement_sources
+
+    authorized = authorized_measurement_sources(output_dir)
+    if authorized is not None:
+        return {
+            dataset_name: sum(
+                dataset == dataset_name for dataset in authorized.values()
+            )
+            for dataset_name in dataset_names
+        }
+
     totals: dict[str, int] = {}
     for dataset_name in dataset_names:
         meas_dir = output_dir / DIR_RESULTS / dataset_name / DIR_MEASUREMENTS

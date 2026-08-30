@@ -273,6 +273,30 @@ def generate_array_job_script(
     if not config.include_dataset_column:
         cmd_parts.append("--no-dataset-column")
 
+    # Durability is tri-state. Emit ONLY an explicit choice: an unset flag has
+    # to stay unset so the worker re-detects SLURM on its own node, while
+    # --no-durable-writes exists only here and would otherwise be lost, leaving
+    # every array task silently fsyncing (spec §3.7).
+    if config.durable_writes is not None:
+        cmd_parts.append(
+            "--durable-writes"
+            if config.durable_writes
+            else "--no-durable-writes"
+        )
+
+    if config.pipeline_identity is not None:
+        cmd_parts.extend(
+            [
+                "--provenance-pipeline-source-path",
+                shlex.quote(config.pipeline_identity["source_path"]),
+                "--provenance-pipeline-sha256",
+                shlex.quote(config.pipeline_identity["sha256"]),
+            ]
+        )
+
+    if config.drop_originals:
+        cmd_parts.append("--drop-originals")
+
     # Process-only (apply-only) mode: export a single layer, mirror the input
     # tree, and skip overlays/measurement entirely. Mutually exclusive with the
     # measure / forward overlay flags.

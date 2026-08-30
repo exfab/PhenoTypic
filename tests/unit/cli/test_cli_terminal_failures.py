@@ -254,6 +254,7 @@ def test_matching_failure_is_skipped_and_explicit_retry_selects_it(
         include_dataset_column=True,
         overlay_alpha=0.3,
         save_overlays=True,
+        drop_originals=False,
         measure_only=False,
     )
     dataset = Dataset("plate", [image], image.parent, tmp_path / "out")
@@ -319,6 +320,7 @@ def test_changed_input_does_not_match_historical_failure(tmp_path: Path) -> None
         include_dataset_column=True,
         overlay_alpha=0.3,
         save_overlays=True,
+        drop_originals=False,
         measure_only=False,
     )
     old_work_id, relative_path = work_id_for_image(config, "plate", image)

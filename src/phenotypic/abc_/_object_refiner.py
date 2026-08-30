@@ -356,9 +356,9 @@ class ObjectRefiner(ImageOperation, ABC):
 
     **Methods and Attributes**
 
-    Attributes:
-        None at the ObjectRefiner level; subclasses define refinement parameters
-        as instance attributes (e.g., min_size, cutoff, width).
+    No attributes are declared at the ObjectRefiner level; subclasses define
+    refinement parameters as instance attributes (e.g. ``min_size``, ``cutoff``,
+    ``width``).
 
     Methods:
         apply(image, inplace=False): Applies the refinement to an image. Returns a modified

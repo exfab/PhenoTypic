@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from phenotypic import GridImage, Image, ImagePipeline
+from phenotypic.sdk_ import CommitGuard, atomic_write_with_writer
 from phenotypic.sdk_.typing_ import ImageTypeName, ProcessOnlyLayer
 from ._cli_failure_tracker import PerImageScientificError
 
@@ -36,7 +37,11 @@ def process_only_output_path(
 
 
 def write_process_only_layer(
-    image: Any, layer: ProcessOnlyLayer, out_path: Path
+    image: Any,
+    layer: ProcessOnlyLayer,
+    out_path: Path,
+    *,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """Write one image layer by delegating to the accessor's ``imsave``.
 
@@ -57,7 +62,12 @@ def write_process_only_layer(
         warnings.warn(
             f"pipeline produced no objects; writing empty object map to {out_path}"
         )
-    accessor.imsave(filepath=out_path)  # native dtype + embedded metadata
+    atomic_write_with_writer(
+        out_path,
+        lambda temporary: accessor.imsave(filepath=Path(temporary)),
+        commit_guard=commit_guard,
+        temp_suffix=f".tmp{out_path.suffix}",
+    )
 
 
 def process_single_apply_only_core(
@@ -70,6 +80,7 @@ def process_single_apply_only_core(
     read_kwargs: Dict[str, Any],
     cli_nrows: Optional[int] = None,
     cli_ncols: Optional[int] = None,
+    commit_guard: CommitGuard | None = None,
 ) -> bool:
     """Apply the pipeline to one image and export ``layer``. No measurement.
 
@@ -105,5 +116,5 @@ def process_single_apply_only_core(
         raise PerImageScientificError("process", exc) from exc
 
     out_path = process_only_output_path(output_dir, image_path, input_root, layer)
-    write_process_only_layer(image, layer, out_path)
+    write_process_only_layer(image, layer, out_path, commit_guard=commit_guard)
     return True

@@ -1,8 +1,8 @@
 # Choosing the polars CPU build (lts-cpu vs stock)
 
 `phenotypic` uses [polars](https://pola.rs) for measurement compilation
-(aggregating per-image Parquet files into the master tables, writing the
-CSV/Parquet deliverables, and the per-feature splits). Polars ships in **two
+(aggregating marker-authorized embedded Parquet tables into the master tables,
+writing the CSV/Parquet deliverables, and the per-feature splits). Polars ships in **two
 interchangeable PyPI distributions** that both provide the same `import polars`
 API and differ only in the CPU instruction set they target:
 

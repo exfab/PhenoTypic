@@ -7,7 +7,6 @@ from typing import Union, Tuple, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     import napari
 
-import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -459,53 +458,89 @@ class ImageGridHandler(Image):
         return arr
 
     # ------------------------------------------------------------------
-    # HDF5 round-trip — schema_version=2 /grid/ subgroup
+    # OME-Zarr round-trip — attributes.phenotypic.grid
     # ------------------------------------------------------------------
-    def _save_image2hdfgroup(
-            self,
-            grp,
-            compression="gzip",
-            compression_opts=4,
-    ):
-        """Save GridImage data + grid state into an HDF5 group.
+    def _store_grid_attributes(self) -> dict:
+        """Build ``attributes.phenotypic.grid``.
 
-        Defers base layers/metadata/root-attr writing to
-        :meth:`Image._save_image2hdfgroup`, then persists grid-specific state
-        under ``/grid/``:
-          - attrs: ``nrows``, ``ncols``
-          - ``grid_finder_json`` dataset: JSON blob of the serialised
-            ``grid_finder`` (class + params).
+        Overrides the base seam so the grid travels as
+        ``build_phenotypic_attributes(grid=...)``. An earlier draft overrode
+        ``_build_store_attributes`` and wrote the key into the returned block
+        instead, which left the declared ``grid`` parameter with no caller at
+        all -- two mechanisms for one key, one of them dead.
+
+        ``nrows``/``ncols`` are deliberately **not** projected as NGFF ``plate``
+        metadata: HCS requires each well to be a separate image group, while
+        PhenoTypic's grid is a virtual partition of one array, so a 16x24 plate
+        would gain 384 groups for no reader benefit.
+
+        Returns:
+            ``{"nrows": …, "ncols": …}``, plus ``"grid_finder"`` when one is set.
         """
-        super()._save_image2hdfgroup(
-                grp,
-                compression=compression,
-                compression_opts=compression_opts,
-        )
-
-        grid = grp.require_group("grid")
-        grid.attrs["nrows"] = int(self.nrows)
-        grid.attrs["ncols"] = int(self.ncols)
-
+        grid: dict = {"nrows": int(self.nrows), "ncols": int(self.ncols)}
         if self.grid_finder is not None:
             # Lazy import to avoid import cycles.
             from phenotypic._core._pipeline_parts._serializable_pipeline import (
                 SerializablePipeline,
             )
 
-            payload = {
+            grid["grid_finder"] = {
                 "class" : type(self.grid_finder).__name__,
                 "params": SerializablePipeline._serialize_single_operation(
                         self.grid_finder
                 ),
             }
-            # Overwrite any pre-existing payload for idempotent re-saves.
-            if "grid_finder_json" in grid:
-                del grid["grid_finder_json"]
-            grid.create_dataset(
-                    "grid_finder_json",
-                    data=json.dumps(payload),
-                    dtype=h5py.string_dtype(encoding="utf-8"),
+        return grid
+
+    @classmethod
+    def _load_from_store(cls, path, block, **kwargs):
+        """Restore ``nrows``/``ncols``/``grid_finder`` before the base loader.
+
+        Uses ``setdefault`` so explicit caller kwargs take priority, mirroring
+        the HDF path. A deserialization failure warns and falls back to the
+        default finder rather than raising: grid state is recoverable, the
+        image is not worth losing over it.
+
+        Args:
+            path: Store root.
+            block: The ``attributes.phenotypic`` mapping.
+            **kwargs: Constructor overrides; these win over stored grid state.
+
+        Returns:
+            A GridImage.
+        """
+        from phenotypic.sdk_.ngff_ import PhenotypicAttr
+
+        grid = block.get(PhenotypicAttr.GRID) or {}
+        for key in ("nrows", "ncols"):
+            if key in grid:
+                try:
+                    kwargs.setdefault(key, int(grid[key]))
+                except (TypeError, ValueError):
+                    pass
+        payload = grid.get("grid_finder")
+        if payload:
+            from phenotypic._core._pipeline_parts._serializable_pipeline import (
+                SerializablePipeline,
             )
+
+            try:
+                kwargs.setdefault(
+                        "grid_finder",
+                        SerializablePipeline._deserialize_operations(
+                                {"__gf__": payload}
+                        )["__gf__"],
+                )
+            except (KeyError, AttributeError, TypeError, ValueError) as exc:
+                warnings.warn(
+                        f"GridFinder deserialization failed "
+                        f"({type(exc).__name__}: {exc}); falling back to the "
+                        f"default AutoGridFinder. Grid configuration may be "
+                        f"incorrect.",
+                        UserWarning,
+                        stacklevel=2,
+                )
+        return super()._load_from_store(path, block, **kwargs)
 
     @classmethod
     def _load_from_hdf5_group(cls, group, **kwargs):

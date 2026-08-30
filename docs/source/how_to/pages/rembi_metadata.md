@@ -163,11 +163,12 @@ inputs.
 
 ## Refreshing a pre-migration run
 
-Old output folders remain readable. Exact historical per-topic headers are
-normalized in memory and retain their schema ownership. To rewrite
-bundle-owned authoritative sources to flat headers and rebuild derived output,
-run `--mode recompile`. Local and SLURM recompiles migrate before aggregation;
-a conflict stops publication. External `--metadata` files are never modified,
-while the regenerated bundle-owned metadata copy uses canonical headers.
-Background, standalone migration, receipts, and rollback are described in the
-{doc}`metadata namespace explanation </explanation/metadata_namespace>`.
+Old output folders remain readable where their storage and measurement
+authority are supported. Exact historical per-topic headers are normalized in
+memory and retain their schema ownership. To rewrite bundle-owned authoritative
+sources to flat headers, run `--mode migrate` explicitly; use `--mode recompile`
+afterward when derived output also needs rebuilding. Recompile performs no
+metadata preflight or migration. External `--metadata` files and the immutable
+bundle-owned metadata snapshot are never rewritten. Background, standalone
+migration, receipts, and rollback are described in the {doc}`metadata namespace
+explanation </explanation/metadata_namespace>`.

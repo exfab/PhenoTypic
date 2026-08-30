@@ -50,11 +50,12 @@ from phenotypic.gui.shell._runs_registry import run_status_is_nonterminal
 from phenotypic.sdk_ import (
     DIR_OVERLAYS,
     BundleLayout,
-    dataset_hdf_dir,
     gui_launch_owner_path,
     is_metadata_header,
     source_cache_key,
+    zarr_store_path,
 )
+from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
 
 logger = logging.getLogger(__name__)
 
@@ -491,9 +492,23 @@ class OutputRoot:
         """Whether per-image ``results/`` are available (full run, not a bundle)."""
         return self.layout.has_results
 
-    def hdf_path(self, dataset: str, stem: str) -> Path | None:
-        """Full-res per-image HDF path, or ``None`` for a standalone bundle."""
-        return self.layout.hdf_path(dataset, stem)
+    def store_path(self, dataset: str, stem: str) -> Path | None:
+        """Full-res per-image OME-Zarr store, or ``None`` when unavailable.
+
+        A store is a **directory**, so this resolves with ``is_dir`` rather
+        than the ``is_file`` test the retired per-image HDF lookup used.
+        Nothing is scanned: the path is composed by ``zarr_store_path`` and
+        probed once.
+
+        Args:
+            dataset: Dataset name (matches ``Metadata_Dataset``).
+            stem: Image stem (matches ``Metadata_ImageName`` minus extension).
+
+        Returns:
+            The store directory, or ``None`` for a standalone bundle or an
+            image with no per-image store.
+        """
+        return self.layout.store_path(dataset, stem)
 
     @property
     def results_dir(self) -> Path | None:
@@ -627,7 +642,7 @@ class OutputRoot:
 
     def has_image_source(self, dataset: str, stem: str) -> bool:
         """Return ``True`` when a crop/DZI source exists for this image."""
-        return self.hdf_path(dataset, stem) is not None or self.has_overlay(
+        return self.store_path(dataset, stem) is not None or self.has_overlay(
             dataset, stem
         )
 
@@ -861,41 +876,6 @@ def _active_run_snapshot(layout: BundleLayout) -> bool:
     if not isinstance(payload, dict):
         return False
     return run_status_is_nonterminal(payload.get("status"))
-
-
-def _processing_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
-    """Return stable processing products that define image read binding."""
-    paths: list[Path] = [
-        layout.master_parquet,
-    ]
-    overlays_root = layout.deliverables_base / DIR_OVERLAYS
-    if overlays_root.is_dir():
-        paths.append(overlays_root)
-        paths.extend(
-            path
-            for path in overlays_root.rglob("*")
-            if path.is_file() or path.is_dir()
-        )
-    if layout.results_dir is not None:
-        paths.append(layout.results_dir)
-        paths.extend(
-            path
-            for path in layout.results_dir.iterdir()
-            if path.is_dir()
-        )
-        paths.extend(
-            path
-            for path in layout.results_dir.rglob("*.h5")
-            if path.is_file()
-        )
-        paths.extend(
-            path
-            for path in layout.results_dir.glob(
-                f"*/{DIR_MEASUREMENTS}/*.parquet"
-            )
-            if path.is_file()
-        )
-    return tuple(paths)
 
 
 def _consumed_state_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
@@ -1143,13 +1123,20 @@ def _image_source_token(
     has_overlay: bool,
 ) -> str:
     """Fingerprint the HDF and overlay metadata identity for one image."""
-    hdf_path = (
-        dataset_hdf_dir(layout.output_root, dataset) / f"{stem}.h5"
+    # The store's ROOT ``zarr.json``, NOT the store directory. This token is
+    # a staleness fingerprint over st_dev/st_ino/st_size/st_mtime_ns/
+    # st_ctime_ns -- and not one of those five moves when a nested chunk is
+    # rewritten, so a directory here would silently bind the viewer to a
+    # pixel source it can no longer tell has changed (D4). The promote
+    # writes the root last on every publish, so its stat moves exactly when
+    # the store's contents do.
+    store_root_json = (
+        zarr_store_path(layout.output_root, dataset, stem) / STORE_ROOT_JSON
         if layout.output_root is not None
         else None
     )
     sources: tuple[tuple[str, Path | None], ...] = (
-        ("hdf", hdf_path),
+        ("store", store_root_json),
         (
             "overlay",
             layout.overlay_path(dataset, stem) if has_overlay else None,
