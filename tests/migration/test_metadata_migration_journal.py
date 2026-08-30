@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import multiprocessing
 import os
 import shutil
 import struct
@@ -13,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
 from threading import Event, Lock
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -113,6 +115,104 @@ class _SimulatedProcessDeath(BaseException):
     pass
 
 
+_WINDOWS_CRASH_EXIT = 86
+
+
+def _windows_hold_writer_lock(
+    root_text: str,
+    ready: Any,
+    release: Any,
+    outcomes: Any,
+) -> None:
+    """Publish once and retain the native writer lock in a spawned process."""
+    from phenotypic.sdk_._windows_metadata_journal import (
+        open_windows_journal_session,
+    )
+
+    root = Path(root_text)
+    lock_path = root / ".phenotypic" / ".metadata-migration.portable.lock"
+    receipt = root / ".phenotypic" / "metadata_migration" / "receipt.json"
+    with open_windows_journal_session(root) as session:
+        with session.writer_lock(lock_path):
+            session.publish_absent_bytes(receipt, b"first", role="receipt")
+            ready.set()
+            if not release.wait(20):
+                outcomes.put(("holder", "release-timeout"))
+                return
+    outcomes.put(("holder", "published"))
+
+
+def _windows_try_writer_lock(root_text: str, outcomes: Any) -> None:
+    """Attempt the same native writer lock from an independent process."""
+    from phenotypic.sdk_._windows_metadata_journal import (
+        open_windows_journal_session,
+    )
+
+    root = Path(root_text)
+    lock_path = root / ".phenotypic" / ".metadata-migration.portable.lock"
+    try:
+        with open_windows_journal_session(root) as session:
+            with session.writer_lock(lock_path):
+                outcomes.put(("contender", "acquired"))
+    except (OSError, TimeoutError):
+        outcomes.put(("contender", "blocked"))
+
+
+def _windows_crash_native_migration(root_text: str, seam: str) -> None:
+    """Terminate a spawned migration at one native journal mutation seam."""
+    import phenotypic.sdk_._windows_metadata_journal as journal
+    from phenotypic.sdk_ import (
+        BundleLayout,
+        migrate_preflighted_metadata_bundle,
+        preflight_metadata_schema,
+    )
+    from phenotypic.sdk_._metadata_migration import NON_IMAGE_KINDS
+
+    root = Path(root_text)
+    layout = BundleLayout(
+        deliverables_base=root / "deliverables", output_root=root
+    )
+    report = preflight_metadata_schema(layout, kinds=NON_IMAGE_KINDS)
+    flush_count = 0
+    original_flush = journal._CtypesWindowsApi.flush
+    original_rename = journal._CtypesWindowsApi.rename
+
+    def crashing_flush(api: Any, handle: int) -> None:
+        nonlocal flush_count
+        original_flush(api, handle)
+        flush_count += 1
+        if seam == "temp_flush" and flush_count == 1:
+            os._exit(_WINDOWS_CRASH_EXIT)
+        if seam == "post_rename_flush" and flush_count == 2:
+            os._exit(_WINDOWS_CRASH_EXIT)
+
+    def crashing_rename(
+        api: Any,
+        handle: int,
+        parent: int,
+        name: str,
+        *,
+        replace: bool,
+    ) -> None:
+        if seam == "rename":
+            os._exit(_WINDOWS_CRASH_EXIT)
+        if seam == "cleanup":
+            raise OSError("force native cleanup")
+        original_rename(api, handle, parent, name, replace=replace)
+
+    def crashing_delete(_api: Any, _handle: int) -> None:
+        os._exit(_WINDOWS_CRASH_EXIT)
+
+    journal._CtypesWindowsApi.flush = crashing_flush
+    journal._CtypesWindowsApi.rename = crashing_rename
+    if seam == "cleanup":
+        journal._CtypesWindowsApi.delete = crashing_delete
+    migrate_preflighted_metadata_bundle(
+        layout, report=report, kinds=NON_IMAGE_KINDS
+    )
+    os._exit(97)
+
+
 @WINDOWS_ONLY
 def test_windows_fresh_public_local_migration_publishes_authority(
     migratable_bundle: BundleLayout,
@@ -171,7 +271,7 @@ def test_windows_reparse_authority_fails_before_scientific_mutation(
     try:
         authority.symlink_to(external, target_is_directory=True)
     except OSError as exc:
-        pytest.skip(f"Windows test host cannot create a directory link: {exc}")
+        pytest.fail(f"Windows fixture could not create a directory link: {exc}")
 
     result = migrate_preflighted_metadata_bundle(
         migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
@@ -181,6 +281,84 @@ def test_windows_reparse_authority_fails_before_scientific_mutation(
     assert "reparse" in " ".join(result.conflicts).lower()
     assert not tuple(external.iterdir())
     assert {path: path.read_bytes() for path in science} == science
+
+
+@WINDOWS_ONLY
+def test_windows_independent_process_lock_and_no_clobber(
+    tmp_path: Path,
+) -> None:
+    """A remote process cannot acquire the held lock or replace its receipt."""
+    from phenotypic.sdk_._windows_metadata_journal import (
+        open_windows_journal_session,
+    )
+
+    root = tmp_path / "output"
+    root.mkdir()
+    context = multiprocessing.get_context("spawn")
+    ready = context.Event()
+    release = context.Event()
+    outcomes = context.Queue()
+    holder = context.Process(
+        target=_windows_hold_writer_lock,
+        args=(str(root), ready, release, outcomes),
+    )
+    holder.start()
+    assert ready.wait(20), "holder did not acquire the native writer lock"
+    contender = context.Process(
+        target=_windows_try_writer_lock,
+        args=(str(root), outcomes),
+    )
+    contender.start()
+    contender.join(20)
+    assert not contender.is_alive(), "contender did not terminate"
+    assert contender.exitcode == 0
+    assert outcomes.get(timeout=5) == ("contender", "blocked")
+    release.set()
+    holder.join(20)
+    assert not holder.is_alive(), "holder did not terminate"
+    assert holder.exitcode == 0
+    assert outcomes.get(timeout=5) == ("holder", "published")
+
+    receipt = root / ".phenotypic" / "metadata_migration" / "receipt.json"
+    lock_path = root / ".phenotypic" / ".metadata-migration.portable.lock"
+    with open_windows_journal_session(root) as session:
+        with session.writer_lock(lock_path):
+            with pytest.raises(ValueError, match="Competing"):
+                session.publish_absent_bytes(
+                    receipt, b"replacement", role="receipt"
+                )
+            assert session.read_bytes(receipt, role="receipt") == b"first"
+
+
+@WINDOWS_ONLY
+@pytest.mark.parametrize(
+    "seam", ["temp_flush", "rename", "post_rename_flush", "cleanup"]
+)
+def test_windows_native_crash_seams_replay_to_terminal_authority(
+    migratable_bundle: BundleLayout,
+    seam: str,
+) -> None:
+    """A spawned process death at each native publish seam remains replayable."""
+    assert migratable_bundle.output_root is not None
+    context = multiprocessing.get_context("spawn")
+    process = context.Process(
+        target=_windows_crash_native_migration,
+        args=(str(migratable_bundle.output_root), seam),
+    )
+    process.start()
+    process.join(30)
+    assert not process.is_alive(), f"crash worker hung at {seam}"
+    assert process.exitcode == _WINDOWS_CRASH_EXIT
+
+    report = preflight_metadata_schema(
+        migratable_bundle, kinds=NON_IMAGE_KINDS
+    )
+    result = migrate_preflighted_metadata_bundle(
+        migratable_bundle, report=report, kinds=NON_IMAGE_KINDS
+    )
+
+    assert result.status == "applied"
+    assert metadata_migration_authority(migratable_bundle) is not None
 
 
 @WINDOWS_ONLY

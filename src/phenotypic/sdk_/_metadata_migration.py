@@ -4449,6 +4449,16 @@ def _metadata_migration_authority_evidence(
 ) -> _MetadataMigrationAuthorityEvidence:
     """Load public authority plus its exact internal status-byte digest."""
     _, root = _resolve_bundle(source)
+    if not _JOURNAL_DIR_FD_SUPPORTED:
+        with _windows_journal_session(root):
+            return _metadata_migration_authority_evidence_held(root)
+    return _metadata_migration_authority_evidence_held(root)
+
+
+def _metadata_migration_authority_evidence_held(
+    root: Path,
+) -> _MetadataMigrationAuthorityEvidence:
+    """Validate status and receipt within one platform authority transaction."""
     status_path = _require_safe_migration_path(
         _metadata_status_path(root), role="Metadata migration status", root=root
     )

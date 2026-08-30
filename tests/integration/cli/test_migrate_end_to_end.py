@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import shlex
 import shutil
 
 from click.testing import CliRunner
+import pytest
 
 from phenotypic._cli._cli_completion import (
     current_aggregate_is_current,
@@ -37,12 +39,18 @@ from phenotypic.sdk_ import (
     datasets_needing_migration,
     image_completion_marker_path,
     load_image_from_store,
+    metadata_migration_authority,
     phenotypic_cache_dir,
     zarr_store_path,
 )
 from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON, valid_staged_store
 
 from tests.unit.sdk_._migration_fixtures import LegacyRun
+
+
+WINDOWS_ONLY = pytest.mark.skipif(
+    os.name != "nt", reason="requires real Windows handle semantics"
+)
 
 
 def _digest(path: Path) -> str:
@@ -227,6 +235,30 @@ def _summary_counters(output: str) -> tuple[str, ...]:
             "Pass 4 (store -> overlay PNG):",
         ))
     )
+
+
+@WINDOWS_ONLY
+def test_windows_click_fresh_local_migrate_reaches_terminal_success(
+    finished_legacy_run: LegacyRun,
+) -> None:
+    """The real Click entry point completes and publishes Windows authority."""
+    tree = finished_legacy_run.path
+
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree)]
+    )
+
+    assert result.exit_code == 0, result.output
+    lifecycle = load_slurm_lifecycle(tree)
+    assert lifecycle is not None
+    generation = str(lifecycle["generation"])
+    terminal = json.loads(
+        migration_terminal_status_path(
+            phenotypic_cache_dir(tree), generation
+        ).read_text(encoding="utf-8")
+    )
+    assert terminal["status"] == "succeeded"
+    assert metadata_migration_authority(tree).status_path.is_file()
 
 
 def test_a_full_migrate_leaves_the_run_valid_and_idle(

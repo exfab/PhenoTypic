@@ -437,7 +437,7 @@ class _FileAttributeTagInfo(ctypes.Structure):
 
 
 class _FileDispositionInfo(ctypes.Structure):
-    _fields_ = [("DeleteFile", ctypes.c_int32)]
+    _fields_ = [("DeleteFile", ctypes.c_ubyte)]
 
 
 class _FileRenameInfoHeader(ctypes.Structure):
@@ -547,6 +547,7 @@ class _CtypesWindowsApi:
         self.LockFileEx = self.kernel32.LockFileEx
         self.LockFileEx.argtypes = [
             handle,
+            dword,
             dword,
             dword,
             dword,

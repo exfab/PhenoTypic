@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ctypes
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
@@ -19,7 +20,11 @@ class _FakeCFunction:
 
 def test_ctypes_binding_declares_pointer_width_safe_signatures() -> None:
     """Missing argtypes can truncate HANDLE and pointer arguments on 64-bit Windows."""
-    from phenotypic.sdk_._windows_metadata_journal import _CtypesWindowsApi
+    from phenotypic.sdk_._windows_metadata_journal import (
+        _CtypesWindowsApi,
+        _FileDispositionInfo,
+        _Overlapped,
+    )
 
     api = _CtypesWindowsApi.__new__(_CtypesWindowsApi)
     kernel_names = (
@@ -47,6 +52,17 @@ def test_ctypes_binding_declares_pointer_width_safe_signatures() -> None:
 
     for name in (*kernel_names, "NtCreateFile", "RtlNtStatusToDosError"):
         assert getattr(getattr(api, name), "argtypes", None), name
+    assert api.LockFileEx.argtypes == [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_uint32,
+        ctypes.c_uint32,
+        ctypes.c_uint32,
+        ctypes.POINTER(_Overlapped),
+    ]
+    assert _FileDispositionInfo._fields_ == [("DeleteFile", ctypes.c_ubyte)]
+    assert _FileDispositionInfo.DeleteFile.offset == 0
+    assert ctypes.sizeof(_FileDispositionInfo) == 1
 
 
 class _MemoryWindowsApi:
@@ -233,6 +249,7 @@ def test_public_migration_routes_receipt_replay_through_windows_session(
     import phenotypic.sdk_._metadata_migration as migration
     from phenotypic.sdk_ import (
         BundleLayout,
+        metadata_migration_authority,
         migrate_preflighted_metadata_bundle,
         preflight_metadata_schema,
     )
@@ -251,9 +268,12 @@ def test_public_migration_routes_receipt_replay_through_windows_session(
     layout = BundleLayout(deliverables_base=deliverables, output_root=output)
     report = preflight_metadata_schema(layout, kinds=NON_IMAGE_KINDS)
     api = _MemoryWindowsApi(output)
+    session_opens = 0
 
     @contextmanager
     def open_fake_session(_root: Path):
+        nonlocal session_opens
+        session_opens += 1
         with WindowsJournalSession(output, api=api) as session:
             yield session
 
@@ -279,3 +299,9 @@ def test_public_migration_routes_receipt_replay_through_windows_session(
     migrated = pd.read_parquet(target)
     assert list(migrated.columns) == ["Metadata_Strain"]
     assert any(b'"state": "complete"' in payload for payload in api.files.values())
+    session_opens = 0
+
+    authority = metadata_migration_authority(layout)
+
+    assert authority.plan_fingerprint == report.plan_fingerprint
+    assert session_opens == 1
