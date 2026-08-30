@@ -32,6 +32,7 @@ from ._cli_output_manager import OutputManager
 from ._cli_process_only import (
     process_only_output_path,
     process_single_apply_only_core,
+    resolve_process_format,
 )
 from ._cli_completion import image_data_artifact, publish_image_success
 from ._cli_update_state import (
@@ -42,6 +43,7 @@ from ._cli_update_state import (
 )
 from ._cli_failure_tracker import (
     PerImageScientificError,
+    _normalized_input_relative_path,
     append_failure,
     append_terminal_failure,
     compute_work_id,
@@ -61,10 +63,16 @@ from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
     load_image_from_store,
     progress_dir,
+    source_image_stem,
     store_stem,
     zarr_store_path,
 )
-from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
+from phenotypic.sdk_.typing_ import (
+    CliMode,
+    ImageTypeName,
+    ProcessFormat,
+    ProcessOnlyLayer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +128,7 @@ def _worker_work_identity(
     detect_mode: str,
     layer: str | None,
     ext: str,
+    process_format: str,
     include_dataset_column: bool,
     overlay_alpha: float,
     save_overlays: bool,
@@ -127,13 +136,9 @@ def _worker_work_identity(
     mode: str,
 ) -> tuple[str, str]:
     """Calculate the same work identity used by top-level selection."""
-    if input_root is None or input_root.is_file():
-        relative_path = image.name
-    else:
-        try:
-            relative_path = image.relative_to(input_root).as_posix()
-        except ValueError:
-            relative_path = image.name
+    relative_path = _normalized_input_relative_path(
+        input_root, image
+    ).as_posix()
     return (
         compute_work_id(
             dataset=dataset_name,
@@ -148,6 +153,12 @@ def _worker_work_identity(
                 detect_mode=detect_mode,
                 process_only_layer=layer if mode == "process" else None,
                 ext=normalize_extension(ext, ".tiff"),
+                # Mirrors the `process_only_layer` line directly above, so
+                # the two stay consistent: outside process mode the digest
+                # drops both, and a stray format can never reach it.
+                process_format=(
+                    process_format if mode == "process" else "tiff"
+                ),
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
@@ -205,7 +216,7 @@ def process_single_image_core(
             will propagate to the caller. The caller is responsible for catching
             exceptions and handling failures appropriately.
     """
-    image_stem = image_path.stem
+    image_stem = source_image_stem(image_path)
     store = zarr_store_path(output_dir, dataset_name, image_stem)
     image: Image | GridImage | None = None
     checkpoint_ready = False
@@ -514,6 +525,17 @@ def process_single_store_measure_core(
     help="Layer exported by --mode process.",
 )
 @click.option(
+    "--process-format",
+    "process_format",
+    type=click.Choice(["tiff", "zarr"]),
+    default=None,
+    help=(
+        "Output format for --mode process. Default: zarr for rgb/gray (a "
+        "single-series OME-Zarr store), tiff for detect_mat (float TIFF) and "
+        "objmap (a 16-bit raw-label PNG)."
+    ),
+)
+@click.option(
     "--input-root",
     type=click.Path(path_type=Path),
     default=None,
@@ -558,6 +580,7 @@ def main(
     mode: str,
     save_overlays: bool,
     layer: Optional[str],
+    process_format: Optional[str],
     input_root: Optional[Path],
     durable_writes: Optional[bool],
     drop_originals: bool,
@@ -585,14 +608,24 @@ def main(
             )
         measure_only = cli_mode == "measure"
         process_only_layer: Optional[ProcessOnlyLayer] = None
+        resolved_process_format: ProcessFormat = "tiff"
         if cli_mode == "process":
             if layer is None:
                 raise click.UsageError("--mode process requires --layer")
             process_only_layer = cast(ProcessOnlyLayer, layer)
-        elif layer is not None:
-            raise click.UsageError(
-                "--layer can only be used with --mode process"
+            resolved_process_format = resolve_process_format(
+                process_only_layer,
+                cast("ProcessFormat | None", process_format),
             )
+        else:
+            if layer is not None:
+                raise click.UsageError(
+                    "--layer can only be used with --mode process"
+                )
+            if process_format is not None:
+                raise click.UsageError(
+                    "--process-format can only be used with --mode process"
+                )
 
         provenance_identity_values = (
             provenance_pipeline_source_path,
@@ -640,6 +673,7 @@ def main(
                 detect_mode=detect_mode,
                 layer=layer,
                 ext=ext,
+                process_format=resolved_process_format,
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
@@ -691,6 +725,7 @@ def main(
                 cli_nrows=nrows,
                 cli_ncols=ncols,
                 commit_guard=commit_guard,
+                process_format=resolved_process_format,
             )
             work_id, relative_path = _worker_work_identity(
                 pipeline=pipeline,
@@ -704,6 +739,7 @@ def main(
                 detect_mode=detect_mode,
                 layer=layer,
                 ext=ext,
+                process_format=resolved_process_format,
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
@@ -715,7 +751,7 @@ def main(
                 work_id=work_id,
                 dataset=dataset_name,
                 relative_image_path=relative_path,
-                image_stem=image.stem,
+                image_stem=source_image_stem(image),
                 mode="process",
                 attempt_id=attempt_id,
                 lifecycle_epoch=_authoritative_lifecycle_epoch(),
@@ -725,6 +761,7 @@ def main(
                         image,
                         input_root,
                         process_only_layer,
+                        fmt=resolved_process_format,
                     )
                 },
                 commit_guard=commit_guard,
@@ -836,6 +873,7 @@ def main(
                 detect_mode=detect_mode,
                 layer=None,
                 ext=ext,
+                process_format=resolved_process_format,
                 include_dataset_column=include_dataset_column,
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
@@ -848,7 +886,10 @@ def main(
             # `publish_image_success` resolves every artifact strict=True, so
             # naming a dead file is a FileNotFoundError, not a stale marker.
             data_key, data_path = image_data_artifact(
-                output_dir, output_manager, dataset_name, image.stem
+                output_dir,
+                output_manager,
+                dataset_name,
+                source_image_stem(image),
             )
             artifacts = {
                 "measurements": data_path / MEASUREMENT_TABLE_RELATIVE_PATH,
@@ -856,14 +897,14 @@ def main(
             }
             if save_overlays:
                 artifacts["overlay"] = output_manager.get_output_path(
-                    dataset_name, "overlays", image.stem
+                    dataset_name, "overlays", source_image_stem(image)
                 )
             publish_image_success(
                 output_dir,
                 work_id=work_id,
                 dataset=dataset_name,
                 relative_image_path=relative_path,
-                image_stem=image.stem,
+                image_stem=source_image_stem(image),
                 mode="full",
                 attempt_id=attempt_id,
                 lifecycle_epoch=_authoritative_lifecycle_epoch(),
@@ -906,6 +947,7 @@ def main(
                     detect_mode=detect_mode,
                     layer=layer,
                     ext=ext,
+                    process_format=resolved_process_format,
                     include_dataset_column=include_dataset_column,
                     overlay_alpha=overlay_alpha,
                     save_overlays=save_overlays,

@@ -16,12 +16,33 @@ from phenotypic.sdk_ import (
     DIR_ZARR,
     STORE_SUFFIX,
     default_output_dir_name,
+    is_zarr_store_name,
 )
 from ._cli_types import Dataset
 
 
-def _is_image_file(path: Path, valid_exts: set[str]) -> bool:
-    """True if ``path`` is a real input image.
+def _is_store_dir(path: Path) -> bool:
+    """True if ``path`` is an OME-Zarr store directory.
+
+    Tested by **name**, not by opening the store: the scanner runs over every
+    entry of every candidate directory, and reading a root ``zarr.json`` per
+    entry would cost an open per file at 10k-image scale. A directory named
+    ``*.ome.zarr`` that is not a store fails later, loudly, in ``imread``.
+
+    This is the same shape as :func:`scan_store_outputs`'s glob, which matches
+    directories non-recursively for the same reason its docstring gives: a
+    store is a directory full of files, so anything recursive costs roughly
+    forty stat calls per store.
+    """
+    return (
+        path.is_dir()
+        and not path.name.startswith(".")
+        and is_zarr_store_name(path)
+    )
+
+
+def _is_image_input(path: Path, valid_exts: set[str]) -> bool:
+    """True if ``path`` is a real input image -- a flat file or a store.
 
     Dotfiles are excluded, which an extension-only test does not do. macOS
     writes an AppleDouble ``._<name>`` sidecar beside every file on exFAT/FAT
@@ -30,7 +51,16 @@ def _is_image_file(path: Path, valid_exts: set[str]) -> bool:
     twice. Observed on a real run: ``manifest.json`` reported
     ``total_images: 60`` for 30 images and ``is_complete: false`` on a run that
     had finished, which anything gating on completion reads as still running.
+
+    The same dot test also excludes ``promote_store``'s in-flight
+    ``.<stem>.ome.zarr.<uuid>.part`` and ``.trash`` siblings, which is exactly
+    right: neither is a readable store.
+
+    A ``*.ome.zarr`` store counts as one input even though it is a directory.
+    Its contents are never enumerated: see :func:`_is_store_dir`.
     """
+    if _is_store_dir(path):
+        return True
     return (
         path.is_file()
         and not path.name.startswith(".")
@@ -80,15 +110,16 @@ def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
 
     datasets = {}
 
-    # Case 1: Single file
-    if input_path.is_file():
-        if input_path.suffix.lower() in valid_exts:
+    # Case 1: Single file, or a single store
+    if input_path.is_file() or _is_store_dir(input_path):
+        if _is_image_input(input_path, valid_exts):
             datasets["single_image"] = [input_path]
             return datasets
         else:
             raise ValueError(
                     f"File {input_path.name} is not a supported image format. "
-                    f"Supported: {', '.join(sorted(valid_exts))}"
+                    f"Supported: {', '.join(sorted(valid_exts))}, "
+                    f"or an *.ome.zarr store"
             )
 
     # Case 2 & 3: Directory (flat or recursive)
@@ -98,19 +129,33 @@ def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
     # Collect images directly in root directory
     root_images = [
         p for p in input_path.iterdir()
-        if _is_image_file(p, valid_exts)
+        if _is_image_input(p, valid_exts)
     ]
 
     # Scan one level of subdirectories
     subdatasets = {}
     for subdir in input_path.iterdir():
-        if not subdir.is_dir():
+        # A store IS a directory, and this skip is a COST guard, not a
+        # correctness one. Unguarded, a store is read once, yields no image
+        # input at its top level, and is dropped by the `if sub_images:`
+        # below -- and it was already collected by `root_images` above, so
+        # nothing disappears and no dataset is named after it. (An earlier
+        # comment here claimed both "contributes nothing" AND "the images
+        # disappear from the run"; those cannot both be true, and the second
+        # is false -- verified by deleting the guard and watching
+        # `test_a_flat_tree_of_stores_scans_as_one_dataset` stay green.)
+        #
+        # What it buys is one directory read per store avoided -- the same
+        # argument `_is_store_dir` makes for matching by name instead of
+        # opening the store. That cost is what
+        # `test_scanning_does_not_descend_into_stores` measures.
+        if not subdir.is_dir() or _is_store_dir(subdir):
             continue
 
         # Collect images in this subdirectory
         sub_images = [
             p for p in subdir.iterdir()
-            if _is_image_file(p, valid_exts)
+            if _is_image_input(p, valid_exts)
         ]
 
         if sub_images:
@@ -304,9 +349,9 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, Any]:
     valid_exts = set(IO.ACCEPTED_FILE_EXTENSIONS + IO.RAW_FILE_EXTENSIONS)
     valid_exts = {ext.lower() for ext in valid_exts}
 
-    # Single file case
-    if input_path.is_file():
-        if input_path.suffix.lower() not in valid_exts:
+    # Single file case, or a single store
+    if input_path.is_file() or _is_store_dir(input_path):
+        if not _is_image_input(input_path, valid_exts):
             raise ValueError(f"File {input_path.name} is not a supported image format")
         return {
             "type"        : "single_file",
@@ -320,18 +365,28 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, Any]:
     # Count root images
     root_count = sum(
             1 for p in input_path.iterdir()
-            if _is_image_file(p, valid_exts)
+            if _is_image_input(p, valid_exts)
     )
 
     # Count subdirectory images
     subdir_counts = {}
     for subdir in input_path.iterdir():
-        if not subdir.is_dir():
+        # The same cost guard as `scan_directory_structure`, for the same
+        # reason: a store's top level holds no image input, so `sub_count` is
+        # 0 and it never becomes a dataset either way. The skip is what stops
+        # the summary reading every store in the tree.
+        #
+        # This function has no production caller -- `--dry-run` routes through
+        # `scan_directory_structure` (`phenotypicCLI.py:1803`) -- so a
+        # divergence here is not user-visible today. It is kept in step
+        # because the duplicate predicates exist and the next reader will
+        # assume they agree.
+        if not subdir.is_dir() or _is_store_dir(subdir):
             continue
 
         sub_count = sum(
                 1 for p in subdir.iterdir()
-                if _is_image_file(p, valid_exts)
+                if _is_image_input(p, valid_exts)
         )
 
         if sub_count > 0:

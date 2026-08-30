@@ -106,3 +106,30 @@ def test_preparation_routes_reject_malformed_json(tmp_path):
         )
     finally:
         manager.close()
+
+
+def test_preparation_route_accepts_a_store_directory(tmp_path):
+    sandbox_path = tmp_path / "sandbox"
+    store = sandbox_path / "plate.zarr"
+    store.mkdir(parents=True)
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+    sandbox = SandboxRoot.from_path(sandbox_path)
+    cache = BrowseCache(CacheLocation(tmp_path / "cache", "sandbox", True))
+    manager = BrowsePreparationManager(cache, start_worker=False)
+    api = BrowsePreparationApi(sandbox, cache, manager)
+    app = dash.Dash(__name__)
+    app.layout = dash.html.Div()
+    register(app, api)
+    revision = probe_source(store, sandbox_root=sandbox_path)
+    item = {
+        "token": _source_render.encode_token("plate.zarr"),
+        "revision": revision.cache_key,
+    }
+    try:
+        response = app.server.test_client().post(
+            "/api/browse/nearby",
+            json={"client_id": "tab-a", "generation": 1, "items": [item]},
+        )
+        assert response.status_code == 200
+    finally:
+        manager.close()

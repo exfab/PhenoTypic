@@ -74,6 +74,7 @@ from phenotypic.sdk_ import (
     atomic_write_json,
     job_metadata_path,
     progress_dir,
+    source_image_stem,
 )
 from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 
@@ -161,12 +162,16 @@ def _publish_local_image_success(
                 image_path,
                 config.input_path,
                 config.process_only_layer,
+                fmt=config.process_format,
             )
         }
         mode = "process"
     else:
         data_key, data_path = image_data_artifact(
-            output_dir, output_manager, dataset, image_path.stem
+            output_dir,
+            output_manager,
+            dataset,
+            source_image_stem(image_path),
         )
         artifacts = {
             "measurements": data_path / MEASUREMENT_TABLE_RELATIVE_PATH,
@@ -174,7 +179,7 @@ def _publish_local_image_success(
         }
         if output_manager.save_overlays:
             artifacts["overlay"] = output_manager.get_output_path(
-                dataset, "overlays", image_path.stem
+                dataset, "overlays", source_image_stem(image_path)
             )
         mode = "full"
     lifecycle_epoch = config.processing_generation
@@ -185,7 +190,7 @@ def _publish_local_image_success(
             work_id=work_id,
             dataset=dataset,
             relative_image_path=relative_path,
-            image_stem=image_path.stem,
+            image_stem=source_image_stem(image_path),
             mode=mode,
             attempt_id=attempt_id,
             lifecycle_epoch=lifecycle_epoch,
@@ -389,7 +394,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                     datasets=datasets_totals,
                     execution_mode="local",
                     start_time=start_iso,
-                    input_path=self.config.input_path.stem,
+                    input_path=source_image_stem(self.config.input_path),
                     gui_record_generation=os.environ.get(
                         GUI_RECORD_GENERATION_ENV_VAR
                     ),
@@ -399,7 +404,9 @@ class LocalParallelStrategy(ExecutionStrategy):
             else:
                 local_job_meta: dict = {
                     JobMetadataKey.START_TIME: start_iso,
-                    JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
+                    JobMetadataKey.INPUT_PATH: source_image_stem(
+                        self.config.input_path
+                    ),
                     JobMetadataKey.EXECUTION_MODE: "local",
                     JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
                         GUI_RECORD_GENERATION_ENV_VAR
@@ -585,6 +592,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 read_kwargs=read_kwargs,
                 cli_nrows=self.config.nrows,
                 cli_ncols=self.config.ncols,
+                process_format=self.config.process_format,
             )
             _publish_local_image_success(
                 self.config,
@@ -1024,7 +1032,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
                 if self.config.metadata_csv
                 else None
             ),
-            JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
+            JobMetadataKey.INPUT_PATH: source_image_stem(self.config.input_path),
             JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
                 "PHENOTYPIC_GUI_RECORD_GENERATION"
             ),

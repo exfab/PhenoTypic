@@ -39,6 +39,7 @@ from ._io_constants import (
     deliverables_dir,
     metadata_csv_deliverable_path,
     results_dir,
+    source_image_stem,
     zarr_store_path,
 )
 from .ngff_ import STORE_SUFFIX, valid_staged_store
@@ -775,7 +776,7 @@ def _marker_authority_permits_unlink(
         (
             value
             for name, value in images.items()
-            if isinstance(name, str) and Path(name).stem == stem
+            if isinstance(name, str) and source_image_stem(Path(name)) == stem
         ),
         None,
     )

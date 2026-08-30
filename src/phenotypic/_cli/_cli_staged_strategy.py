@@ -21,7 +21,12 @@ from uuid import uuid4
 from joblib import Parallel, delayed
 
 from phenotypic import ImagePipeline
-from phenotypic.sdk_ import event_log_path, progress_dir, zarr_store_path
+from phenotypic.sdk_ import (
+    event_log_path,
+    progress_dir,
+    source_image_stem,
+    zarr_store_path,
+)
 from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 
 from ._cli_execution_strategies import (
@@ -93,21 +98,27 @@ class StagedGpuStrategy(ExecutionStrategy):
             if valid_image_success(
                 output_dir,
                 dataset=ds_name,
-                image_stem=img.stem,
+                image_stem=source_image_stem(img),
                 work_id=work_id,
             ):
                 return True
-            store = zarr_store_path(output_dir, ds_name, img.stem)
+            store = zarr_store_path(
+                output_dir, ds_name, source_image_stem(img)
+            )
             if (
                 cfg.resume
-                and stage3_completion_exists(output_dir, ds_name, img.stem)
+                and stage3_completion_exists(
+                    output_dir, ds_name, source_image_stem(img)
+                )
                 and staged_store_matches_work_id(store, work_id)
-                and _measurement_table_path(ds_name, img.stem).is_file()
+                and _measurement_table_path(
+                    ds_name, source_image_stem(img)
+                ).is_file()
             ):
                 ensure_staged_overlay(
                     output_dir,
                     ds_name,
-                    img.stem,
+                    source_image_stem(img),
                     self.output_manager,
                     cfg.image_type,
                 )
@@ -126,20 +137,22 @@ class StagedGpuStrategy(ExecutionStrategy):
                 from ._cli_process_only import process_only_output_path
 
                 return process_only_output_path(
-                    output_dir, img, cfg.input_path, "objmap"
+                    output_dir, img, cfg.input_path, "objmap", fmt="tiff"
                 ).is_file()
             terminal = stage3_completion_exists(
-                output_dir, ds_name, img.stem
+                output_dir, ds_name, source_image_stem(img)
             ) or bool(
                 cfg.resume
                 and not cfg.staged_stage3_markers
-                and _measurement_table_path(ds_name, img.stem).is_file()
+                and _measurement_table_path(
+                    ds_name, source_image_stem(img)
+                ).is_file()
             )
             if terminal:
                 ensure_staged_overlay(
                     output_dir,
                     ds_name,
-                    img.stem,
+                    source_image_stem(img),
                     self.output_manager,
                     cfg.image_type,
                 )
@@ -148,13 +161,15 @@ class StagedGpuStrategy(ExecutionStrategy):
 
         # ---- Stage 1: CPU preprocess -> staged store (parallel, resumable) --
         def _stage1(ds: Dataset, img: Path) -> None:
-            store = zarr_store_path(output_dir, ds.name, img.stem)
+            store = zarr_store_path(
+                output_dir, ds.name, source_image_stem(img)
+            )
             work_id, _ = work_id_for_image(cfg, ds.name, img)
             if cfg.resume and staged_store_matches_work_id(store, work_id):
                 return
             if cfg.resume:
                 clear_downstream_artifacts_for_stage1(
-                    output_dir, ds.name, img.stem
+                    output_dir, ds.name, source_image_stem(img)
                 )
             attempt_id = uuid4().hex
             try:  # isolate one bad image from the batch (failed event logged)
@@ -165,7 +180,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                         plan,
                         img,
                         ds.name,
-                        img.stem,
+                        source_image_stem(img),
                         output_dir,
                         self.output_manager,
                         cfg.image_type,
@@ -198,13 +213,17 @@ class StagedGpuStrategy(ExecutionStrategy):
             for ds, img in tasks
             # BOTH halves: a token whose raw array is gone is not a Stage-2
             # result, and re-running Stage 2 is the only thing that recovers it.
-            if not stage2_result_replayable(output_dir, ds.name, img.stem)
+            if not stage2_result_replayable(
+                output_dir, ds.name, source_image_stem(img)
+            )
             and not _terminal_output_exists(ds.name, img)
         ]
         if stage2_pending:
             plan.gpu_detector._ensure_model_loaded()  # load ONCE
         for ds, img in stage2_pending:
-            store = zarr_store_path(output_dir, ds.name, img.stem)
+            store = zarr_store_path(
+                output_dir, ds.name, source_image_stem(img)
+            )
             if not valid_stage1_store(store):
                 # Stage 1 failed/absent for this image (S6): skip + record. A
                 # cascade (stage1 failed -> stage2/stage3 prereq missing)
@@ -228,7 +247,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                         plan.gpu_detector,
                         output_dir,
                         ds.name,
-                        img.stem,
+                        source_image_stem(img),
                         cfg.image_type,
                     )
             except Exception as exc:
@@ -251,7 +270,9 @@ class StagedGpuStrategy(ExecutionStrategy):
         def _stage3(ds: Dataset, img: Path) -> tuple[str, bool]:
             if cfg.resume and _terminal_output_exists(ds.name, img):
                 return ds.name, True
-            if not stage2_result_replayable(output_dir, ds.name, img.stem):
+            if not stage2_result_replayable(
+                output_dir, ds.name, source_image_stem(img)
+            ):
                 # Stage 2 failed/absent for this image (S6): skip + record.
                 emit_missing_prereq(
                     event_log,
@@ -269,7 +290,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                         plan,
                         output_dir,
                         ds.name,
-                        img.stem,
+                        source_image_stem(img),
                         self.output_manager,
                         cfg.image_type,
                         image_name=img.name,
@@ -284,13 +305,20 @@ class StagedGpuStrategy(ExecutionStrategy):
                         attempt_id,
                     )
                     write_stage3_completion_marker(
-                        output_dir, ds.name, img.name, img.stem
+                        output_dir,
+                        ds.name,
+                        img.name,
+                        source_image_stem(img),
                     )
                     # Token FIRST: the reachable intermediate state must be
                     # "no token, orphan raw" (inert), never "token present,
                     # raw missing" (Stage 3 replays into FileNotFoundError).
-                    delete_stage2_token(output_dir, ds.name, img.stem)
-                    delete_stage2_raw(output_dir, ds.name, img.stem)
+                    delete_stage2_token(
+                        output_dir, ds.name, source_image_stem(img)
+                    )
+                    delete_stage2_raw(
+                        output_dir, ds.name, source_image_stem(img)
+                    )
                 return ds.name, True
             except Exception as exc:
                 _record_local_terminal_failure(
@@ -341,7 +369,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                 },
                 execution_mode="local",
                 start_time=start.isoformat(timespec="milliseconds"),
-                input_path=cfg.input_path.stem,
+                input_path=source_image_stem(cfg.input_path),
                 gui_record_generation=os.environ.get(
                     GUI_RECORD_GENERATION_ENV_VAR
                 ),
@@ -400,18 +428,20 @@ class StagedGpuStrategy(ExecutionStrategy):
         image_cls = _image_class(cfg.image_type)
         for ds, img in tasks:
             out_path = process_only_output_path(
-                output_dir, img, cfg.input_path, "objmap"
+                output_dir, img, cfg.input_path, "objmap", fmt="tiff"
             )
             work_id, _ = work_id_for_image(cfg, ds.name, img)
             if cfg.resume and valid_image_success(
                 output_dir,
                 dataset=ds.name,
-                image_stem=img.stem,
+                image_stem=source_image_stem(img),
                 work_id=work_id,
             ):
                 results[ds.name]["completed"] += 1
                 continue
-            if not stage2_result_replayable(output_dir, ds.name, img.stem):
+            if not stage2_result_replayable(
+                output_dir, ds.name, source_image_stem(img)
+            ):
                 emit_missing_prereq(
                     event_log,
                     ds.name,
@@ -424,9 +454,13 @@ class StagedGpuStrategy(ExecutionStrategy):
             attempt_id = uuid4().hex
             try:
                 with stage_event(event_log, ds.name, img.name, STAGE_MEASURE):
-                    store = zarr_store_path(output_dir, ds.name, img.stem)
+                    store = zarr_store_path(
+                        output_dir, ds.name, source_image_stem(img)
+                    )
                     image = image_cls.load_zarr(store)
-                    raw = load_stage2_raw(output_dir, ds.name, img.stem)
+                    raw = load_stage2_raw(
+                        output_dir, ds.name, source_image_stem(img)
+                    )
                     try:
                         plan.gpu_detector._write_object_output(image, raw)
                     except MemoryError:
@@ -445,8 +479,12 @@ class StagedGpuStrategy(ExecutionStrategy):
                         attempt_id,
                     )
                     # Ordering (ledger FLOW-6): publish, then token, then raw.
-                    delete_stage2_token(output_dir, ds.name, img.stem)
-                    delete_stage2_raw(output_dir, ds.name, img.stem)
+                    delete_stage2_token(
+                        output_dir, ds.name, source_image_stem(img)
+                    )
+                    delete_stage2_raw(
+                        output_dir, ds.name, source_image_stem(img)
+                    )
                 results[ds.name]["completed"] += 1
             except Exception as exc:
                 _record_local_terminal_failure(

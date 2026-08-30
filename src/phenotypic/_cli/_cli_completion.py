@@ -26,6 +26,7 @@ from phenotypic.sdk_ import (
     publication_commit,
     progress_dir,
     run_completion_marker_path,
+    source_image_stem,
     validated_published_metadata_migration_targets,
 )
 
@@ -387,7 +388,7 @@ def refresh_success_markers_after_metadata_migration(
         for image_name, work_id in raw_images.items():
             if not isinstance(image_name, str) or not isinstance(work_id, str):
                 continue
-            stem = Path(image_name).stem
+            stem = source_image_stem(Path(image_name))
             marker_path = image_completion_marker_path(
                 output_root, dataset, stem
             )
@@ -519,7 +520,7 @@ def current_success_counts(output_dir: Path) -> tuple[int, int] | None:
             if valid_image_success(
                 output_dir,
                 dataset=dataset,
-                image_stem=Path(image_name).stem,
+                image_stem=source_image_stem(Path(image_name)),
                 work_id=work_id,
             ):
                 successful += 1
@@ -541,7 +542,7 @@ def _current_success_work_ids(output_dir: Path, work_ids: object) -> list[str]:
                 and valid_image_success(
                     output_dir,
                     dataset=dataset,
-                    image_stem=Path(image_name).stem,
+                    image_stem=source_image_stem(Path(image_name)),
                     work_id=work_id,
                 )
             ):
@@ -673,7 +674,7 @@ def authorized_measurement_sources(
         for image_name, work_id in raw_images.items():
             if not isinstance(image_name, str) or not isinstance(work_id, str):
                 continue
-            stem = Path(image_name).stem
+            stem = source_image_stem(Path(image_name))
             if not valid_image_success(
                 output_dir,
                 dataset=dataset,

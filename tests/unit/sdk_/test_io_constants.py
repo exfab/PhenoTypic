@@ -1,6 +1,7 @@
 """Tests for the shared CLI ↔ GUI artifact-layout constants module."""
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -1519,6 +1520,153 @@ def test_store_stem_strips_the_whole_double_suffix(tmp_path) -> None:
     assert store_stem(store) == "img"
 
 
+def test_source_image_stem_normalizes_only_ome_zarr_sources() -> None:
+    """A generic multi-dot file must keep pathlib's one-suffix behavior."""
+    import phenotypic.sdk_ as sdk
+
+    assert sdk.source_image_stem(Path("p01.ome.zarr")) == "p01"
+    assert sdk.source_image_stem(Path("p01.channel.tiff")) == "p01.channel"
+    assert sdk.source_image_stem(Path("p01.tiff")) == "p01"
+    assert sdk.source_image_suffix(Path("p01.ome.zarr")) == ".ome.zarr"
+    assert sdk.source_image_suffix(Path("p01.channel.tiff")) == ".tiff"
+
+
+def test_store_revision_identity_changes_for_nested_member(tmp_path) -> None:
+    from phenotypic.sdk_ import store_revision_identity
+
+    store = tmp_path / "p01.ome.zarr"
+    chunk = store / "rgb" / "c" / "0"
+    chunk.parent.mkdir(parents=True)
+    chunk.write_bytes(b"first")
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+    first = store_revision_identity(store)
+
+    chunk.write_bytes(b"second-version")
+
+    assert store_revision_identity(store) != first
+
+
+def test_phenotypic_store_revision_uses_only_root_last_publication_token(
+    tmp_path, monkeypatch
+) -> None:
+    """Published process stores must not recursively stat every chunk."""
+    from phenotypic.sdk_ import _io_constants as io
+
+    store = tmp_path / "plate.zarr"
+    chunk = store / "rgb" / "0" / "c" / "0"
+    chunk.parent.mkdir(parents=True)
+    chunk.write_bytes(b"pixels")
+    root = store / "zarr.json"
+    root.write_text(
+        '{"attributes":{"phenotypic":{'
+        '"publication_protocol":"root-last-immutable-v1"}}}',
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        io,
+        "_store_revision_snapshot",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("published store was recursively traversed")
+        ),
+    )
+
+    first = io.store_revision_identity(store)
+    chunk.write_bytes(b"different pixels")
+    assert io.store_revision_identity(store) == first
+    root.write_text(
+        '{"attributes":{"phenotypic":{'
+        '"publication_protocol":"root-last-immutable-v1","changed":true}}}',
+        encoding="utf-8",
+    )
+    assert io.store_revision_identity(store) != first
+
+
+def test_publication_token_detects_same_bytes_same_mtime_root_replacement(
+    tmp_path,
+) -> None:
+    """Root identity closes the same-tick, byte-identical replacement gap."""
+    from phenotypic.sdk_ import store_publication_token
+
+    store = tmp_path / "plate.zarr"
+    store.mkdir()
+    root = store / "zarr.json"
+    payload = (
+        '{"attributes":{"phenotypic":{'
+        '"publication_protocol":"root-last-immutable-v1"}}}'
+    )
+    root.write_text(payload, encoding="utf-8")
+    initial_stat = root.stat()
+    first = store_publication_token(store)
+    replacement = store / "replacement.json"
+    replacement.write_text(payload, encoding="utf-8")
+    os.utime(
+        replacement,
+        ns=(initial_stat.st_atime_ns, initial_stat.st_mtime_ns),
+    )
+    replacement.replace(root)
+
+    assert store_publication_token(store) != first
+
+
+def test_phenotypic_named_block_without_publication_protocol_is_not_trusted(
+    tmp_path,
+) -> None:
+    from phenotypic.sdk_ import store_publication_token
+
+    store = tmp_path / "third-party.zarr"
+    store.mkdir()
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{"store_schema_version":3}}}',
+        encoding="utf-8",
+    )
+
+    assert store_publication_token(store) is None
+
+
+def test_store_revision_identity_rejects_nested_symlink(tmp_path) -> None:
+    from phenotypic.sdk_ import store_revision_identity
+
+    store = tmp_path / "p01.ome.zarr"
+    store.mkdir()
+    outside = tmp_path / "outside"
+    outside.write_bytes(b"secret")
+    link = store / "chunk"
+    try:
+        link.symlink_to(outside)
+    except (OSError, NotImplementedError):  # pragma: no cover - platform guard
+        pytest.skip("symlinks not supported on this platform/filesystem")
+
+    with pytest.raises(OSError, match="symlink"):
+        store_revision_identity(store)
+
+
+def test_store_revision_identity_rejects_mutating_snapshot(
+    tmp_path, monkeypatch
+) -> None:
+    from phenotypic.sdk_ import _io_constants as io
+
+    store = tmp_path / "p01.ome.zarr"
+    store.mkdir()
+    chunk = store / "chunk"
+    chunk.write_bytes(b"first")
+    original = io._store_revision_snapshot
+    calls = 0
+
+    def mutating_snapshot(*args, **kwargs):
+        nonlocal calls
+        snapshot = original(*args, **kwargs)
+        calls += 1
+        if calls == 1:
+            chunk.write_bytes(b"second-version")
+        return snapshot
+
+    monkeypatch.setattr(io, "_store_revision_snapshot", mutating_snapshot)
+
+    with pytest.raises(OSError, match="changed during revision"):
+        io.store_revision_identity(store)
+
+
 def test_store_stem_round_trips_through_zarr_store_path(tmp_path) -> None:
     """The composition must be the identity, or resume reprocesses forever."""
     from phenotypic.sdk_ import store_stem, zarr_store_path
@@ -1536,9 +1684,20 @@ def test_store_stem_raises_on_a_path_that_is_not_a_store(tmp_path) -> None:
     with pytest.raises(ValueError, match="not an OME-Zarr store"):
         store_stem(tmp_path / "img.h5")
     with pytest.raises(ValueError, match="not an OME-Zarr store"):
-        store_stem(tmp_path / "img.zarr")
-    with pytest.raises(ValueError, match="not an OME-Zarr store"):
         store_stem(tmp_path / "img.ome")
+
+
+def test_plain_zarr_source_identity_strips_one_store_suffix(tmp_path) -> None:
+    from phenotypic.sdk_ import (
+        source_image_stem,
+        source_image_suffix,
+        store_stem,
+    )
+
+    store = tmp_path / "img.zarr"
+    assert store_stem(store) == "img"
+    assert source_image_stem(store) == "img"
+    assert source_image_suffix(store) == ".zarr"
 
 
 def test_dir_zarr_is_the_directory_name_zarr_store_path_uses(tmp_path) -> None:

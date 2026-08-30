@@ -201,6 +201,7 @@ from phenotypic._cli._cli_utils import (
     parse_slurm_args,
     resolve_local_worker_count,
 )
+from phenotypic._cli._cli_process_only import resolve_process_format
 from phenotypic._cli._cli_recompile_slurm_scripts import (
     TASK_FINALIZE,
     TASK_MEASUREMENTS,
@@ -228,6 +229,7 @@ from phenotypic.sdk_ import (
     dashboard_html_path,
     dataset_measurements_dir,
     load_image_from_store,
+    source_image_stem,
     store_stem,
     clear_machine_state,
     atomic_write_bytes,
@@ -240,7 +242,12 @@ from phenotypic.sdk_ import (
     file_fingerprint,
 )
 from phenotypic.sdk_.slurm import parse_slurm_time
-from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
+from phenotypic.sdk_.typing_ import (
+    CliMode,
+    ImageTypeName,
+    ProcessFormat,
+    ProcessOnlyLayer,
+)
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -391,7 +398,7 @@ def _repair_incremental_manifest(
             datasets={name: len(images) for name, images in inventory.items()},
             execution_mode=("slurm" if config.is_slurm_mode() else "local"),
             start_time=state.timestamp.isoformat(timespec="milliseconds"),
-            input_path=config.input_path.stem,
+            input_path=source_image_stem(config.input_path),
             dataset_inventory=inventory,
             processing_generation=state.config.get("processing_generation"),
             gui_record_generation=os.environ.get(
@@ -457,7 +464,7 @@ def _migrate_legacy_success_evidence(
             legacy_complete = image.name in ds_state.completed
             if staged:
                 legacy_complete = legacy_complete or stage3_completion_exists(
-                    output_dir, dataset.name, image.stem
+                    output_dir, dataset.name, source_image_stem(image)
                 )
             if not legacy_complete:
                 continue
@@ -468,6 +475,7 @@ def _migrate_legacy_success_evidence(
                         image,
                         config.input_path,
                         config.process_only_layer,
+                        fmt=config.process_format,
                     )
                 }
                 mode = "process"
@@ -480,17 +488,22 @@ def _migrate_legacy_success_evidence(
                 # FileNotFoundError, so the symptom was not a crash but a
                 # silent refusal to promote and a full reprocess.
                 data_key, data_path = image_data_artifact(
-                    output_dir, output_manager, dataset.name, image.stem
+                    output_dir,
+                    output_manager,
+                    dataset.name,
+                    source_image_stem(image),
                 )
                 artifacts = {
                     "measurements": output_manager.get_output_path(
-                        dataset.name, "measurements", image.stem
+                        dataset.name,
+                        "measurements",
+                        source_image_stem(image),
                     ),
                     data_key: data_path,
                 }
                 if config.save_overlays:
                     artifacts["overlay"] = output_manager.get_output_path(
-                        dataset.name, "overlays", image.stem
+                        dataset.name, "overlays", source_image_stem(image)
                     )
                 mode = "full"
             try:
@@ -499,7 +512,7 @@ def _migrate_legacy_success_evidence(
                     work_id=work_id,
                     dataset=dataset.name,
                     relative_image_path=relative_path,
-                    image_stem=image.stem,
+                    image_stem=source_image_stem(image),
                     mode=mode,
                     attempt_id="legacy-migration",
                     lifecycle_epoch=str(
@@ -982,6 +995,7 @@ def _print_process_only_dry_run_plan(
                     img,
                     config.input_path,
                     layer,  # type: ignore[arg-type]
+                    fmt=config.process_format,
                 )
             )
 
@@ -1265,8 +1279,21 @@ def _print_process_only_dry_run_plan(
     type=click.Choice(["rgb", "gray", "detect_mat", "objmap"]),
     default=None,
     help=(
-        "Layer exported by --mode process. TIFF for rgb/gray/detect_mat; "
-        "16-bit raw-label PNG for objmap."
+        "Layer exported by --mode process. See --process-format for the "
+        "output format and its per-layer default."
+    ),
+)
+@click.option(
+    "--process-format",
+    "process_format",
+    type=click.Choice(["tiff", "zarr"]),
+    default=None,
+    help=(
+        "Output format for --mode process. Default: zarr for rgb/gray (a "
+        "single-series OME-Zarr store carrying the pipeline that produced "
+        "it), tiff for detect_mat (float TIFF) and objmap (a 16-bit "
+        "raw-label PNG). --layer objmap and --layer detect_mat have no "
+        "OME-Zarr form and refuse an explicit zarr."
     ),
 )
 @click.pass_context
@@ -1305,6 +1332,7 @@ def phenotypic_cli(
     skip_validation: bool,
     no_qc: bool,
     layer: Optional[str],
+    process_format: Optional[str],
     delete_sources: bool,
 ):
     """
@@ -1332,10 +1360,12 @@ def phenotypic_cli(
                  with --layer), mirroring the input tree under --output.
                  Skips measurement, deliverables, QC, and the dashboard.
 
-    Process-mode export writes each layer via the layer accessor's imsave:
-    rgb integer TIFF at the source bit depth; gray/detect_mat float TIFF
-    preserving full precision; objmap 16-bit raw-label PNG (PhenoTypic
-    metadata embedded). Machine-state (progress manifest, event log, pipeline
+    Process-mode export defaults to a single-series OME-Zarr store for rgb
+    and gray, and to the layer accessor's imsave for the rest: detect_mat a
+    float TIFF preserving full precision, objmap a 16-bit raw-label PNG
+    (PhenoTypic metadata embedded). --process-format selects between the two
+    and states its per-layer default; objmap and detect_mat have no OME-Zarr
+    form. Machine-state (progress manifest, event log, pipeline
     copy) lives under <output>/.phenotypic/. All modes support local + SLURM
     execution and content-defined continuation. Example:
 
@@ -1358,14 +1388,24 @@ def phenotypic_cli(
         recompile_only = cli_mode == "recompile"
         migrate_only = cli_mode == "migrate"
         process_only_layer: Optional[ProcessOnlyLayer] = None
+        resolved_process_format: ProcessFormat = "tiff"
         if cli_mode == "process":
             if layer is None:
                 raise click.UsageError("--mode process requires --layer.")
             process_only_layer = cast(ProcessOnlyLayer, layer)
-        elif layer is not None:
-            raise click.UsageError(
-                "--layer can only be used with --mode process."
+            resolved_process_format = resolve_process_format(
+                process_only_layer,
+                cast("ProcessFormat | None", process_format),
             )
+        else:
+            if layer is not None:
+                raise click.UsageError(
+                    "--layer can only be used with --mode process."
+                )
+            if process_format is not None:
+                raise click.UsageError(
+                    "--process-format can only be used with --mode process."
+                )
 
         if measure_only or recompile_only or migrate_only:
             if input_path is not None:
@@ -1386,6 +1426,26 @@ def phenotypic_cli(
             raise click.UsageError(
                 "--delete-sources is only accepted with --mode migrate."
             )
+
+        # Process mirrors source-relative names into its output tree. The two
+        # roots therefore must be disjoint in BOTH directions: an output below
+        # the input mutates the source tree during publication, while an input
+        # below the output can be deleted by ``--overwrite``. Resolve aliases
+        # before any output inspection or mutation so symlinked spellings do
+        # not bypass the boundary.
+        if cli_mode == "process" and input_path is not None:
+            canonical_input = Path(input_path).resolve(strict=False)
+            canonical_output = Path(output_dir).resolve(strict=False)
+            if (
+                canonical_input == canonical_output
+                or canonical_input.is_relative_to(canonical_output)
+                or canonical_output.is_relative_to(canonical_input)
+            ):
+                raise click.UsageError(
+                    "--mode process input and output roots must not overlap "
+                    "or contain one another. Choose a disjoint --output so "
+                    "the source can never be modified or deleted."
+                )
 
         # Every mode that writes or reprocesses refuses an unconverted tree;
         # `migrate` is exempt because it is the remedy (ledger MIG-19). Placed
@@ -1701,6 +1761,7 @@ def phenotypic_cli(
             checkpoint_interval=checkpoint_interval,
             measure_only=measure_only,
             process_only_layer=process_only_layer,  # type: ignore[arg-type]
+            process_format=resolved_process_format,
             gpu_workers_per_gpu=gpu_workers_per_gpu,
             gpu_shards=gpu_shards,
             gpu_slurm_args=_parse_slurm_args(gpu_slurm_args),
@@ -2135,7 +2196,7 @@ def phenotypic_cli(
                             ensure_staged_overlay(
                                 output_dir,
                                 resume_item.dataset,
-                                resume_item.image.stem,
+                                source_image_stem(resume_item.image),
                                 resume_output_manager,
                                 config.image_type,
                             )
@@ -2547,7 +2608,7 @@ def phenotypic_cli(
                         start_time=results.start_time.isoformat(
                             timespec="milliseconds"
                         ),
-                        input_path=config.input_path.stem,
+                        input_path=source_image_stem(config.input_path),
                         dataset_inventory=inventory,
                         processing_generation=config.processing_generation,
                     )
@@ -2597,7 +2658,9 @@ def phenotypic_cli(
             )
 
             full_stage3_complete = all(
-                stage3_completion_exists(output_dir, dataset, Path(image).stem)
+                stage3_completion_exists(
+                    output_dir, dataset, source_image_stem(Path(image))
+                )
                 for dataset, images in config.full_dataset_inventory.items()
                 for image in images
             )

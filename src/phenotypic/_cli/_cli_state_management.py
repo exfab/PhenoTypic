@@ -22,6 +22,7 @@ from phenotypic.sdk_ import (
     processing_state_path,
     resolve_event_log_path,
     resolve_processing_state_path,
+    source_image_stem,
 )
 
 from ._cli_staged_resume import pipeline_content_digest
@@ -208,6 +209,7 @@ def create_initial_state(
             "slurm_args": config.slurm_args,
             "ext": config.ext,
             "process_only_layer": config.process_only_layer,
+            "process_format": config.process_format,
             "include_dataset_column": config.include_dataset_column,
             "overlay_alpha": config.overlay_alpha,
             "save_overlays": config.save_overlays,
@@ -313,6 +315,7 @@ def validate_resume_compatibility(
         "overlay_alpha",
         "drop_originals",
         "save_overlays",
+        "process_format",
     ):
         if key not in state.config:
             continue
@@ -408,7 +411,7 @@ def get_remaining_images_for_datasets(
                     if valid_image_success(
                         output_dir,
                         dataset=dataset.name,
-                        image_stem=image.stem,
+                        image_stem=source_image_stem(image),
                         work_id=work_id,
                     ):
                         continue

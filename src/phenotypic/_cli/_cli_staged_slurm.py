@@ -19,6 +19,7 @@ from phenotypic.sdk_ import (
     logs_dir,
     progress_dir,
     slurm_scripts_dir,
+    source_image_stem,
 )
 from phenotypic.sdk_.slurm import (
     SlurmArrayScriptSpec,
@@ -485,7 +486,7 @@ def _write_staged_job_metadata(
             str(config.metadata_csv) if config.metadata_csv else None
         ),
         JobMetadataKey.NO_QC: config.no_qc,
-        JobMetadataKey.INPUT_PATH: config.input_path.stem,
+        JobMetadataKey.INPUT_PATH: source_image_stem(config.input_path),
         JobMetadataKey.ORCHESTRATION_EPOCH: epoch,
         JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
             "PHENOTYPIC_GUI_RECORD_GENERATION"
@@ -535,7 +536,7 @@ class StagedSlurmStrategy(ExecutionStrategy):
                     StagedManifestEntry(
                         dataset=dataset.name,
                         image_name=image.name,
-                        stem=image.stem,
+                        stem=source_image_stem(image),
                         input_path=str(Path(image).absolute()),
                         work_id=work_id,
                         relative_image_path=relative_path,

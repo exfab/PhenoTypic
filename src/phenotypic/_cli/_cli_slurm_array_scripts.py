@@ -306,6 +306,8 @@ def generate_array_job_script(
             [
                 "--layer",
                 config.process_only_layer,
+                "--process-format",
+                config.process_format,
             ]
         )
     elif config.measure_only:

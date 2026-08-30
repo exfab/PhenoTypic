@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Set
 from phenotypic.sdk_.typing_ import (
     ExecutionMode,
     ImageTypeName,
+    ProcessFormat,
     ProcessOnlyLayer,
 )
 
@@ -183,6 +184,12 @@ class ExecutionConfig:
     # Process-only mode: run pipeline.apply() and export a single image layer
     # (no measurement / analysis output). None = normal forward/measure run.
     process_only_layer: Optional[ProcessOnlyLayer] = None
+
+    # Resolved --process-format for a process run. Always the ANSWER, never
+    # the raw option: `resolve_process_format` runs once at the CLI boundary,
+    # so nothing downstream re-derives a default and drifts from it. Ignored
+    # outside process mode, where the CLI rejects the option outright.
+    process_format: ProcessFormat = "tiff"
 
     # --- Staged GPU detection (Spec 1 §7/§10) ---------------------------------
     # Model replicas packed per physical GPU (Stage 2 fill for small models).

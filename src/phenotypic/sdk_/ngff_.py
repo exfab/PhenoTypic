@@ -24,8 +24,9 @@ import os
 import re as _re
 import shutil
 import time
-from pathlib import Path
-from typing import Final, Literal, NamedTuple, Sequence
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Final, Literal, Mapping, NamedTuple, Sequence
 from uuid import uuid4
 
 import numpy as np
@@ -128,6 +129,11 @@ DOWNSAMPLE_METHODS: Final[dict[str, tuple[str, str]]] = {
 DOWNSAMPLE_KINDS: Final[dict[str, str]] = {
     kind: method for kind, (method, _) in DOWNSAMPLE_METHODS.items()
 }
+
+#: Store generations are published by moving a complete part tree into place
+#: and replacing the root ``zarr.json`` last. Consumers may use that root as
+#: the O(1) generation token only when the writer declares this protocol.
+ROOT_LAST_PUBLICATION_PROTOCOL: Final[str] = "root-last-immutable-v1"
 
 
 def axes_for(series: str) -> tuple[str, ...]:
@@ -441,6 +447,7 @@ class PhenotypicAttr:
     PHENOTYPIC_VERSION: Final[str] = "phenotypic_version"
     IMAGE_CLASS: Final[str] = "image_class"
     WORK_ID: Final[str] = "work_id"
+    PUBLICATION_PROTOCOL: Final[str] = "publication_protocol"
     PROVENANCE: Final[str] = "provenance"
     TABLES: Final[str] = "tables"
     SERIES: Final[str] = "series"
@@ -486,7 +493,7 @@ def objmap_path(primary: str) -> str:
 
 def build_phenotypic_attributes(
     *,
-    image_class: str,
+    image_class: str | None,
     series_names: Sequence[str],
     pyramid_levels: int,
     metadata_sections: dict[str, dict],
@@ -504,7 +511,10 @@ def build_phenotypic_attributes(
     Args:
         image_class: ``"Image"`` or ``"GridImage"`` -- drives loader dispatch.
             Distinct from ``Metadata_ImageType``, which is user-visible schema
-            metadata and lives in *metadata_sections*.
+            metadata and lives in *metadata_sections*. ``None`` omits the key
+            entirely, which is what marks a store as **not** a run bundle:
+            :meth:`Image.load_zarr` refuses a store without it. Only the
+            ``--mode process`` writer passes ``None``.
         series_names: Series actually written, in canonical order.
         pyramid_levels: Resolved level count, uniform across the store.
         metadata_sections: ``{"protected": …, "public": …, "imported": …}``
@@ -542,7 +552,7 @@ def build_phenotypic_attributes(
         PhenotypicAttr.PHENOTYPIC_VERSION: (
             phenotypic_version or phenotypic.__version__
         ),
-        PhenotypicAttr.IMAGE_CLASS: image_class,
+        PhenotypicAttr.PUBLICATION_PROTOCOL: ROOT_LAST_PUBLICATION_PROTOCOL,
         PhenotypicAttr.SERIES: {name: name for name in series_names},
         PhenotypicAttr.PYRAMID: {
             "levels": int(pyramid_levels),
@@ -568,6 +578,12 @@ def build_phenotypic_attributes(
             ),
         },
     }
+    # Absence, not a null: `load_zarr`'s guard tests key membership, so
+    # writing `image_class: None` would defeat it. Key insertion order puts
+    # `image_class` after `metadata` rather than between `phenotypic_version`
+    # and `series`; nothing reads the block positionally -- it is JSON.
+    if image_class is not None:
+        block[PhenotypicAttr.IMAGE_CLASS] = image_class
     if provenance is not None:
         block[PhenotypicAttr.PROVENANCE] = provenance
     # Omitted entirely when the store carries no label image. An earlier draft
@@ -658,6 +674,484 @@ def require_readable_store(store_path: Path) -> dict:
             f"package to read it."
         )
     return block
+
+
+# ---------------------------------------------------------------------------
+# Reading an arbitrary NGFF store as plain pixels (spec 4)
+# ---------------------------------------------------------------------------
+
+
+def project_ngff_axes(
+    axes: Sequence[Mapping[str, object]],
+    shape: Sequence[int],
+    *,
+    t: int | None = None,
+    z: int | None = None,
+    c: int | None = None,
+) -> tuple[tuple[int | slice, ...], bool]:
+    """Map an NGFF array's axes onto PhenoTypic's 2-D image model.
+
+    ``Image`` is 2-D, optionally with three colour channels. NGFF permits 2 to
+    5 axes. This is the total mapping between them, and it **refuses rather
+    than guesses**: silently reading ``t=0`` of a timelapse, or channel 0 of a
+    five-channel acquisition, yields a plausible image and a wrong result that
+    nothing downstream can detect.
+
+    Args:
+        axes: The ``multiscales[].axes`` list.
+        shape: The level's array shape; same length and order as *axes*.
+        t: Index to take on a ``time`` axis of size > 1. ``None`` refuses.
+        z: Index to take on the third ``space`` axis when its size is > 1.
+            ``None`` refuses.
+        c: Index to take on a ``channel`` axis whose size is neither 1 nor 3.
+            ``None`` refuses.
+
+    Returns:
+        ``(index, is_rgb)`` -- an index tuple to apply to the array, and whether
+        the result carries three colour channels. When *is_rgb* is ``True`` the
+        caller must still move the channel axis last; NGFF stores it first.
+
+    Raises:
+        ValueError: If *axes* and *shape* disagree in length, if an axis of
+            size > 1 has no override, if a ``channel`` axis is neither 1 nor 3
+            without an explicit *c*, or if an override is out of range.
+
+    Examples:
+        A plain 2-D plate image passes through untouched:
+
+        >>> from phenotypic.sdk_ import ngff_
+        >>> axes = [{'name': 'y', 'type': 'space'}, {'name': 'x', 'type': 'space'}]
+        >>> ngff_.project_ngff_axes(axes, (40, 30))
+        ((slice(None, None, None), slice(None, None, None)), False)
+    """
+    if len(axes) != len(shape):
+        raise ValueError(
+            f"axes/shape mismatch: {len(axes)} axes for a {len(shape)}-D array"
+        )
+
+    def _pick(
+        kind: str, name: str, override: int | None, size: int, flag: str
+    ) -> int:
+        # Both the TYPE and the name are in the message. NGFF constrains
+        # `axes[].type` but leaves `axes[].name` free, so a store may call its
+        # time axis anything; the type is the half a reader can act on, and
+        # naming only the name would make the error unreadable on any store
+        # that does not use the conventional single letters.
+        #
+        # The range check comes FIRST, before the size-1 shortcut. An
+        # out-of-range override is a caller error at any size, and a size-1
+        # axis is where it is least visible: `c=7` on a 1-channel store
+        # silently returned channel 0, contradicting the comment below on
+        # the explicit-c branch -- "an explicit c= wins ... quietly returning
+        # RGB instead would ignore an instruction rather than honour it".
+        if override is not None and not 0 <= override < size:
+            raise ValueError(
+                f"{flag}={override} is out of range for the {kind} axis "
+                f"{name!r} of size {size}"
+            )
+        if size == 1:
+            return 0
+        if override is None:
+            raise ValueError(
+                f"this store's {kind} axis {name!r} has size {size}; "
+                f"PhenoTypic's Image is 2-D. Pass {flag}=<index> to choose "
+                f"one, or use zarr directly to read the whole array."
+            )
+        return override
+
+    index: list[int | slice] = []
+    is_rgb = False
+    seen_space = 0
+    n_space = sum(1 for a in axes if a.get("type") == "space")
+    # The docstring above claims this is the TOTAL mapping from NGFF axes onto
+    # a 2-D image. That claim only holds for the 2 or 3 space axes NGFF itself
+    # requires: with 0 or 1 there is no plane to read, and with 4+ the
+    # "first of three is z" rule below has no meaning.
+    if not 2 <= n_space <= 3:
+        raise ValueError(
+            f"this store declares {n_space} space axes; PhenoTypic reads 2 "
+            f"(yx) or 3 (zyx, choosing one z). It is not a 2-D image."
+        )
+
+    for axis, size in zip(axes, shape):
+        raw_kind = axis.get("type")
+        kind = str(raw_kind) if raw_kind else "untyped"
+        name = str(axis.get("name", kind))
+        if raw_kind == "time":
+            index.append(_pick(kind, name, t, size, "t"))
+        elif raw_kind == "channel":
+            if size == 3 and c is None:
+                is_rgb = True
+                index.append(slice(None))
+            elif size == 1 and c is None:
+                index.append(0)
+            elif c is None:
+                raise ValueError(
+                    f"this store's channel axis {name!r} has size {size}; "
+                    f"PhenoTypic reads 1 (grayscale) or 3 (RGB). Pass "
+                    f"c=<index> to choose one channel."
+                )
+            else:
+                # An explicit c= wins even at size 3: the caller has said
+                # "this one channel", and quietly returning RGB instead would
+                # ignore an instruction rather than honour it.
+                index.append(_pick(kind, name, c, size, "c"))
+        elif raw_kind == "space":
+            seen_space += 1
+            # Three space axes means the first is the stacking (z) axis.
+            if n_space == 3 and seen_space == 1:
+                index.append(_pick(kind, name, z, size, "z"))
+            else:
+                index.append(slice(None))
+        else:
+            # A custom or null axis type. NGFF permits it; we cannot map it.
+            # Size 1 squeezes; anything larger refuses. Its own message, NOT
+            # `_pick`: there is no override to name here, and _pick's
+            # "Pass (no override)=<index>" reads as a flag that does not exist.
+            if size != 1:
+                raise ValueError(
+                    f"this store's axis {name!r} has type {raw_kind!r}, "
+                    f"which PhenoTypic cannot map onto a 2-D image, and "
+                    f"size {size}. Only a size-1 axis of an unrecognised "
+                    f"type can be squeezed; use zarr directly to read it."
+                )
+            index.append(0)
+
+    return tuple(index), is_rgb
+
+
+@dataclass(frozen=True)
+class NgffImageSpec:
+    """One NGFF image, projected onto PhenoTypic's 2-D image model.
+
+    Attributes:
+        array: Level pixels as ``(H, W)`` or ``(H, W, 3)``.
+        series: Resolved series path, relative to the store root.
+        level: Pyramid level actually read.
+        bit_depth: From ``phenotypic.metadata.protected[Metadata_BitDepth]``
+            when present, else inferred from an integer dtype, else ``None``.
+            There is no ``phenotypic.bit_depth`` key and never has been.
+        phenotypic: The ``attributes.phenotypic`` block; ``{}`` when absent.
+    """
+
+    array: np.ndarray
+    series: str
+    level: int
+    bit_depth: int | None
+    phenotypic: dict
+
+
+def _zarr_v2_marker(store_path: Path) -> str | None:
+    """Return the Zarr v2 group marker present at *store_path*, or ``None``.
+
+    A v2 group is spelled ``.zgroup``/``.zattrs`` where v3 writes
+    ``zarr.json``, so a v2 store has no root by :func:`read_root_attributes`'s
+    reckoning and surfaces as ``FileNotFoundError`` -- which is this
+    codebase's established signal for "interrupted write, store absent". The
+    two must not be confused: ``bioformats2raw``'s default output and QuPath's
+    export are NGFF 0.4 / Zarr v2 today (spec 3.1 case C).
+
+    Args:
+        store_path: Directory to inspect.
+
+    Returns:
+        The marker filename found, or ``None`` if the directory is not a
+        Zarr v2 group.
+    """
+    for marker in (".zgroup", ".zattrs"):
+        if (Path(store_path) / marker).is_file():
+            return marker
+    return None
+
+
+def _ome_series_list(store_path: Path) -> list[str]:
+    """Read ``OME/zarr.json``'s ``ome.series``, or ``[]`` if it declares none.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+
+    Returns:
+        The declared series paths, in declaration order.
+    """
+    ome_json = Path(store_path) / OME_GROUP / STORE_ROOT_JSON
+    if not ome_json.is_file():
+        return []
+    payload = json.loads(ome_json.read_text(encoding="utf-8"))
+    declared = payload.get("attributes", {}).get("ome", {}).get("series") or []
+    return [str(entry) for entry in declared]
+
+
+def _declared_series(store_path: Path, attributes: dict) -> list[str]:
+    """List the series paths a store declares, for an error message.
+
+    Falls back to ``phenotypic.series`` for a PhenoTypic-written store, which
+    the resolver deliberately does not consult -- this is a message, not a
+    resolution.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+        attributes: The root ``attributes`` mapping.
+
+    Returns:
+        Declared series paths; ``[]`` when the store declares none.
+    """
+    declared = _ome_series_list(store_path)
+    if declared:
+        return declared
+    series = attributes.get(PhenotypicAttr.ROOT, {}).get(PhenotypicAttr.SERIES)
+    if isinstance(series, dict):
+        return [str(value) for value in series.values()]
+    return []
+
+
+def _resolve_ngff_relative_path(
+    boundary: Path, declared_path: str, *, role: str
+) -> Path:
+    """Resolve one non-empty NGFF POSIX path beneath its owning boundary.
+
+    Args:
+        boundary: Store or selected-series root that owns the declaration.
+        declared_path: Non-empty POSIX relative path from NGFF metadata.
+        role: Human-readable declaration role for refusal messages.
+
+    Returns:
+        The resolved path, proven to remain within *boundary*.
+
+    Raises:
+        ValueError: If the declaration is empty, absolute, uses traversal or
+            backslashes, escapes through a symlink, or contains a dangling
+            symlink.
+    """
+    raw = str(declared_path)
+    if not raw or "\\" in raw:
+        raise ValueError(f"Invalid NGFF {role} {raw!r}: expected a non-empty POSIX path")
+    posix_path = PurePosixPath(raw)
+    if posix_path.is_absolute() or any(
+        part in {".", ".."} for part in posix_path.parts
+    ):
+        raise ValueError(
+            f"Invalid NGFF {role} {raw!r}: path must remain relative to its boundary"
+        )
+
+    owner = Path(boundary)
+    try:
+        resolved_owner = owner.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise ValueError(f"Invalid NGFF {role} boundary: {owner}") from exc
+
+    candidate = owner.joinpath(*posix_path.parts)
+    cursor = owner
+    for part in posix_path.parts:
+        cursor /= part
+        if not cursor.is_symlink():
+            continue
+        try:
+            cursor.resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            raise ValueError(
+                f"Invalid NGFF {role} {raw!r}: dangling symlink"
+            ) from exc
+
+    try:
+        resolved_candidate = candidate.resolve(strict=False)
+        resolved_candidate.relative_to(resolved_owner)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(
+            f"Invalid NGFF {role} {raw!r}: path escapes its boundary"
+        ) from exc
+    return resolved_candidate
+
+
+def _resolve_series_path(store_path: Path, attributes: dict) -> str:
+    """Pick the series a generic reader should open. See spec 4.1.
+
+    The ``ome.plate`` check is FIRST, and deliberately so -- see the comment
+    at that branch and spec 4.1 step 1.
+    """
+    ome = attributes.get("ome", {})
+    # STEP 1, before the declared-series list. A `bioformats2raw` plate
+    # carries BOTH a root `ome.plate` and an `OME/zarr.json` series list, so
+    # checking the series list first would return a well field from a store
+    # that must be refused.
+    if "plate" in ome:
+        raise ValueError(
+            f"{store_path} is an HCS plate, which is a collection of wells "
+            f"rather than one image. Pass series=<row>/<col>/<field> to read "
+            f"a single field."
+        )
+
+    declared = _ome_series_list(store_path)
+    if declared:
+        return declared[0]
+
+    if "multiscales" in ome:
+        return ""  # the root group is itself the image
+
+    if (Path(store_path) / "0" / STORE_ROOT_JSON).is_file():
+        if "bioformats2raw.layout" not in ome:
+            raise ValueError(
+                f"{store_path} has a group '0' but no root "
+                "ome['bioformats2raw.layout'] marker"
+            )
+        return "0"  # bioformats2raw consecutive-integer image collection
+
+    raise ValueError(
+        f"{store_path} declares no OME series, no multiscales at its root, "
+        f"and no group '0'. It is not an OME-Zarr image."
+    )
+
+
+def read_ngff_image_spec(
+    store_path: Path,
+    *,
+    series: str | None = None,
+    level: int = 0,
+    t: int | None = None,
+    z: int | None = None,
+    c: int | None = None,
+) -> NgffImageSpec:
+    """Read any OME-Zarr store as plain pixels.
+
+    The read path behind :meth:`phenotypic.Image.imread` for a store. It reads
+    NGFF **structure** only and treats ``attributes.phenotypic`` as optional
+    enrichment, so a napari, QuPath, or ``bioformats2raw`` export works.
+
+    It deliberately does **not** call :func:`require_readable_store`: that
+    raises ``KeyError`` when the ``phenotypic`` block is absent, which is the
+    normal condition for every third-party store -- the exact case this
+    function exists to serve. A store written by a newer PhenoTypic is readable
+    here, and correctly so: its NGFF geometry is still NGFF.
+
+    Args:
+        store_path: A ``*.ome.zarr`` directory.
+        series: Series to read. ``None`` resolves it per spec 4.1.
+        level: Pyramid level. ``0`` is the highest resolution; NGFF requires
+            ``datasets`` to be ordered largest first.
+        t: Index on a ``time`` axis of size > 1.
+        z: Index on the stacking ``space`` axis when its size is > 1.
+        c: Index on a ``channel`` axis that is neither 1 nor 3.
+
+    Returns:
+        An :class:`NgffImageSpec`.
+
+    Raises:
+        FileNotFoundError: If the store has no root ``zarr.json`` and is not
+            a Zarr v2 group either -- an interrupted write reads as absent.
+        ValueError: If the store is Zarr v2 (NGFF 0.4), is an HCS plate,
+            declares no readable image, has no series named by *series*, has
+            no such pyramid *level*, or cannot be projected onto a 2-D image
+            (see :func:`project_ngff_axes`).
+
+    Examples:
+        Read back the colony plate a run wrote, as plain pixels:
+
+        >>> import tempfile
+        >>> from pathlib import Path
+        >>> from phenotypic import Image
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.sdk_ import ngff_
+        >>> plate = Image(load_synth_yeast_plate())
+        >>> with tempfile.TemporaryDirectory() as tmp:
+        ...     store = plate.save2zarr(Path(tmp) / 'plate.ome.zarr')
+        ...     spec = ngff_.read_ngff_image_spec(store)
+        ...     spec.array.shape == plate.rgb[:].shape
+        True
+    """
+    import zarr
+
+    from phenotypic.schema import IMAGE
+
+    store_path = Path(store_path)
+    try:
+        attributes = read_root_attributes(store_path)
+    except FileNotFoundError:
+        # NOT in `_resolve_series_path`, which never runs for a v2 store:
+        # `read_root_attributes` reads `zarr.json` and raises first. This is
+        # the only place the v2 case is reachable.
+        marker = _zarr_v2_marker(store_path)
+        if marker is None:
+            raise
+        raise ValueError(
+            f"{store_path} carries {marker} and no {STORE_ROOT_JSON}, so it "
+            f"is a Zarr v2 store (NGFF 0.4 or earlier). PhenoTypic reads "
+            f"NGFF 0.5 / Zarr v3. Convert the store to Zarr v3 before "
+            f"reading it."
+        ) from None
+    phenotypic = attributes.get(PhenotypicAttr.ROOT, {})
+
+    resolved = (
+        _resolve_series_path(store_path, attributes) if series is None else series
+    )
+
+    group_path = (
+        _resolve_ngff_relative_path(
+            store_path, resolved, role="series path"
+        )
+        if resolved
+        else store_path
+    )
+    group_json = group_path / STORE_ROOT_JSON
+    if not group_json.is_file():
+        # A bad `series=` is a caller error, not a missing store. Letting
+        # `read_text` raise reported `FileNotFoundError` on an internal path,
+        # which reads as "the store is gone".
+        declared = _declared_series(store_path, attributes)
+        available = (
+            "It declares: " + ", ".join(repr(name) for name in declared)
+            if declared
+            else "It declares no series."
+        )
+        raise ValueError(
+            f"{store_path} has no series {resolved!r}. {available}"
+        )
+    payload = json.loads(group_json.read_text(encoding="utf-8"))
+    multiscales = payload["attributes"]["ome"]["multiscales"][0]
+    axes = multiscales["axes"]
+    datasets = multiscales["datasets"]
+    if not 0 <= level < len(datasets):
+        raise ValueError(
+            f"level {level} is out of range; {store_path} has "
+            f"{len(datasets)} pyramid level(s)"
+        )
+
+    # `long_path`, matching `load_layer_zarr`: a store path plus a series plus
+    # a level segment is long enough to hit Windows' MAX_PATH, and every other
+    # array open in the codebase goes through this helper.
+    dataset_path = _resolve_ngff_relative_path(
+        group_path, str(datasets[level]["path"]), role="dataset path"
+    )
+    array = zarr.open_array(store=long_path(dataset_path), mode="r")
+    index, is_rgb = project_ngff_axes(axes, array.shape, t=t, z=z, c=c)
+    data = np.asarray(array[index])
+    if is_rgb:
+        data = np.moveaxis(data, 0, -1)  # NGFF stores channels first
+
+    # `metadata.protected`, NOT `phenotypic.bit_depth` -- no writer emits the
+    # latter and none ever has. This is the key `_load_from_store` reads, and
+    # it is the ONLY source for a float series, where dtype inference has no
+    # answer at all.
+    bit_depth = (
+        phenotypic.get(PhenotypicAttr.METADATA, {})
+        .get(PhenotypicAttr.PROTECTED, {})
+        .get(IMAGE.BIT_DEPTH)
+    )
+    if bit_depth is None:
+        bit_depth = {np.uint8: 8, np.uint16: 16}.get(data.dtype.type)
+    try:
+        resolved_bit_depth = int(bit_depth) if bit_depth is not None else None
+    except (TypeError, ValueError):
+        # A third-party store may put anything in that key. An unparseable
+        # value is "unknown", which the Image constructor's default handles --
+        # not a read failure.
+        resolved_bit_depth = None
+
+    return NgffImageSpec(
+        array=data,
+        series=resolved,
+        level=level,
+        bit_depth=resolved_bit_depth,
+        phenotypic=dict(phenotypic),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -764,6 +1258,11 @@ def build_omero(
     if the deferred integer conversion ever lands, the affected series get their
     block back automatically.
 
+    ``rdefs.model`` is the only field in NGFF that states the rendering model
+    outright (§2.5: exactly ``"color"`` or ``"greyscale"``), and OMERO and
+    Vizarr read it. It is emitted only where ``omero`` itself is emitted, so
+    the whole-or-nothing rule per group is unaffected.
+
     Args:
         series: ``"rgb"``, ``"gray"``, or ``"detect_mat"``.
         dtype: Level-0 dtype. Float dtypes get no block.
@@ -789,7 +1288,10 @@ def build_omero(
         }
         for label, color in palette
     ]
-    block: dict = {"channels": channels}
+    block: dict = {
+        "channels": channels,
+        "rdefs": {"model": "color" if series == "rgb" else "greyscale"},
+    }
     if name is not None:
         block["name"] = name
     return {"omero": block}

@@ -64,6 +64,43 @@ def test_single_pass_writes_only_the_embedded_measurement_table(
     assert not list(output.rglob("plate.parquet"))
 
 
+def test_direct_store_source_uses_canonical_store_and_overlay_keys(
+    tmp_path: Path,
+) -> None:
+    """Source ``p01.ome.zarr`` must not publish ``p01.ome`` artifacts."""
+    from phenotypic import ImagePipeline
+    from phenotypic._cli._cli_process_single import process_single_image_core
+    from phenotypic.data import load_synth_yeast_plate
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.measure import MeasureSize
+
+    source = tmp_path / "p01.ome.zarr"
+    load_synth_yeast_plate().save2zarr(source)
+    pipeline_path = tmp_path / "pipeline.json"
+    pipeline_path.write_text(
+        ImagePipeline(ops=[OtsuDetector()], meas=[MeasureSize()]).to_json(),
+        encoding="utf-8",
+    )
+    output = tmp_path / "out"
+    process_single_image_core(
+        pipeline_path,
+        source,
+        output,
+        "ds",
+        "Image",
+        {},
+        OutputManager.from_config(output, ".tiff", save_overlays=True),
+    )
+
+    canonical_store = zarr_store_path(output, "ds", "p01")
+    assert (canonical_store / MEASUREMENT_TABLE_RELATIVE_PATH).is_file()
+    assert (output / "deliverables" / "overlays" / "ds" / "p01.png").is_file()
+    assert not zarr_store_path(output, "ds", "p01.ome").exists()
+    assert not (
+        output / "deliverables" / "overlays" / "ds" / "p01.ome.png"
+    ).exists()
+
+
 def test_marker_binds_the_embedded_table_hash(tmp_path: Path) -> None:
     """A marker that hashes only root zarr.json accepts a corrupted table."""
     from click.testing import CliRunner

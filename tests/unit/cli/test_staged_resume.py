@@ -8,6 +8,7 @@ import numpy as np
 from phenotypic import Image
 from phenotypic._cli._cli_stage2_token import (
     delete_stage2_raw,
+    stage2_raw_path,
     stage2_token_path,
     write_stage2_raw,
     write_stage2_token,
@@ -84,6 +85,31 @@ def test_resume_plan_classifies_each_durable_stage(tmp_path: Path) -> None:
         "stage2.tif",
         "stage3.tif",
     ]
+
+
+def test_direct_store_source_resumes_from_canonical_stage2_signal(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "p01.ome.zarr"
+    Image(np.zeros((4, 4, 3), dtype=np.uint8)).save2zarr(source)
+    output_dir = tmp_path / "out"
+    _valid_store(output_dir, "p01")
+    _write_stage2_signal(output_dir, "p01")
+    dataset = Dataset("plate", [source], tmp_path, output_dir)
+
+    plan = build_staged_resume_plan(
+        datasets=[dataset],
+        output_dir=output_dir,
+        input_root=source,
+        process_only_layer=None,
+        markers_required=True,
+    )
+
+    assert plan.initial_stage == "stage3"
+    assert stage2_token_path(output_dir, "plate", "p01").is_file()
+    assert stage2_raw_path(output_dir, "plate", "p01").is_file()
+    assert not stage2_token_path(output_dir, "plate", "p01.ome").exists()
+    assert not stage2_raw_path(output_dir, "plate", "p01.ome").exists()
 
 
 def test_invalid_store_requires_stage1(tmp_path: Path) -> None:

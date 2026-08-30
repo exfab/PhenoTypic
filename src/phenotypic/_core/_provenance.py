@@ -273,11 +273,26 @@ def _installed_phenotypic_version() -> str:
     return phenotypic.__version__
 
 
-def pipeline_source_identity(path: str | Path) -> dict[str, str]:
-    """Return resolved source path and SHA-256 content identity for a pipeline."""
+def pipeline_source_identity(
+    path: str | Path, *, basename_only: bool = False
+) -> dict[str, str]:
+    """Return the pipeline's recorded source and SHA-256 content identity.
+
+    Args:
+        path: The pipeline file.
+        basename_only: Record only the file's name rather than its resolved
+            absolute path. ``True`` for artifacts that leave the run directory
+            -- a ``--mode process`` store is published to a NAS and then to
+            object storage, and an absolute path there would carry cluster
+            filesystem layout, the username, and project directory names.
+            ``sha256`` is unchanged, so identity is not weakened.
+
+    Returns:
+        ``{"source_path": …, "sha256": …}``.
+    """
     source = Path(path).resolve()
     return {
-        "source_path": str(source),
+        "source_path": source.name if basename_only else str(source),
         "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
     }
 
@@ -289,14 +304,29 @@ def initialize_cli_provenance(
     pipeline_identity: Mapping[str, str] | None = None,
     status: str = "in_progress",
     retry_base_length: int = 0,
+    basename_only: bool = False,
 ) -> None:
-    """Reset a decoded image to a fresh CLI journal for this pipeline attempt."""
+    """Reset a decoded image to a fresh CLI journal for this pipeline attempt.
+
+    Args:
+        image: The image whose provenance journal is reset.
+        pipeline_path: The pipeline file this attempt is running.
+        pipeline_identity: Precomputed identity to record instead of deriving
+            one from *pipeline_path*.
+        status: Initial journal status.
+        retry_base_length: Durable Stage-1 operation-count prefix to seed.
+        basename_only: Forwarded to :func:`pipeline_source_identity`. Ignored
+            when *pipeline_identity* is supplied, since the caller has then
+            already decided what to record.
+    """
     journal = new_provenance_journal()
     journal.update(
         {
             "status": status,
             "pipeline": (
-                pipeline_source_identity(pipeline_path)
+                pipeline_source_identity(
+                    pipeline_path, basename_only=basename_only
+                )
                 if pipeline_identity is None
                 else deepcopy(dict(pipeline_identity))
             ),
@@ -351,6 +381,50 @@ def append_operation_provenance(
             "pipeline_step_path": pipeline_step_path,
         }
     )
+
+
+#: The operation-entry fields that are readings of the wall clock rather than
+#: functions of the inputs, and therefore the entire source of
+#: non-reproducibility in a store. Both are written by
+#: :func:`append_operation_provenance`; keep this tuple beside it.
+NON_REPRODUCIBLE_OPERATION_FIELDS: tuple[str, ...] = (
+    "applied_at_utc",
+    "duration_seconds",
+)
+
+
+def strip_non_reproducible_operation_fields(
+    journal: dict[str, Any],
+) -> dict[str, Any]:
+    """Drop the wall-clock fields from every entry in ``operations[]``, in place.
+
+    Measured across two runs of one image through one pipeline, these two
+    fields are the only bytes that move: everything else in the journal --
+    ``operation_name``, ``operation_class``, ``phenotypic_version``, the
+    resolved ``parameters``, ``pipeline_step_path``, and the ``pipeline``
+    digest -- is a pure function of the inputs. Removing them makes a
+    published ``--mode process`` store byte-identical across identical runs,
+    which is what content-addressed storage, server-side dedup, and the
+    whole-tree ``file_sha256`` of spec 7.3 all require (spec 2.3.3).
+
+    Only ``operations[]`` entries are touched. The surrounding
+    ``schema_version``, ``status``, ``pipeline`` and ``retry_base_length`` are
+    the store's provenance and stay; an artifact made reproducible by saying
+    nothing is not the goal.
+
+    Call this on a *copy*. The image's own journal keeps both fields, and so
+    does the bundle store, which never leaves the run directory.
+
+    Args:
+        journal: A mutable journal copy.
+
+    Returns:
+        The same mapping, for call-site chaining.
+    """
+    for entry in journal.get("operations", ()):
+        for name in NON_REPRODUCIBLE_OPERATION_FIELDS:
+            entry.pop(name, None)
+    return journal
 
 
 def write_provenance_checkpoint(

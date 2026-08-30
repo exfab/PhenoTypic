@@ -27,7 +27,13 @@ from phenotypic.schema import (
     EXPERIMENT,
     IMAGE,
 )
-from phenotypic.sdk_ import metadata_member_for_header
+from phenotypic.sdk_ import (
+    STORE_SUFFIX,
+    metadata_member_for_header,
+    source_image_stem,
+    source_image_suffix,
+    store_revision_identity,
+)
 
 __all__ = [
     "MetadataPreflight",
@@ -322,12 +328,18 @@ def _source_snapshot(
         digest = hashlib.sha256()
         digest.update(str(resolved).encode("utf-8", errors="surrogateescape"))
         for dataset_name, image in images:
-            stat = image.stat()
-            relative = str(image.relative_to(resolved))
+            if image.name.endswith(STORE_SUFFIX):
+                revision = store_revision_identity(image)
+            else:
+                stat = image.stat()
+                revision = f"{stat.st_size}:{stat.st_mtime_ns}"
+            relative_path = image.relative_to(resolved)
+            relative = (
+                image.name if relative_path == Path(".") else str(relative_path)
+            )
             digest.update(dataset_name.encode("utf-8", errors="surrogateescape"))
             digest.update(relative.encode("utf-8", errors="surrogateescape"))
-            digest.update(str(stat.st_size).encode("ascii"))
-            digest.update(str(stat.st_mtime_ns).encode("ascii"))
+            digest.update(revision.encode("ascii"))
     except (OSError, RuntimeError, ValueError):
         return "unavailable", resolved, None, ()
     return "resolved", resolved, f"sha256:{digest.hexdigest()}", images
@@ -340,10 +352,10 @@ def _source_join_key_frame(
     return pl.DataFrame(
         {
             str(IMAGE.IMAGE_NAME): [
-                image.stem for _dataset, image in images
+                source_image_stem(image) for _dataset, image in images
             ],
             str(IMAGE.SUFFIX): [
-                image.suffix for _dataset, image in images
+                source_image_suffix(image) for _dataset, image in images
             ],
             str(EXPERIMENT.DATASET): [
                 dataset for dataset, _image in images

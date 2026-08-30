@@ -193,6 +193,46 @@ def _normalize_stored_metadata_items(
     return normalized
 
 
+def _consolidate_store_part(part: Path) -> None:
+    """Collapse a written part's per-node metadata into its root ``zarr.json``.
+
+    Opening a store costs one GET per metadata file -- 8 of a single-series
+    store's 12 -- which is the latency that matters once the destination is
+    object storage and a viewer enumerates many stores. Consolidation collapses
+    that to one and **adds no files**: every per-node ``zarr.json`` remains, so
+    a reader that ignores the key still walks the tree.
+
+    Called on the ``.part``, never on the promoted path. Consolidating a
+    promoted store rewrites its root ``zarr.json`` in place, which is the one
+    write this whole design exists to avoid -- a store must either have its
+    root or not exist -- and it would land after ``promote_store``'s ``fsync``,
+    leaving the consolidated root non-durable under SLURM.
+
+    Legal under the Zarr v3 extension mechanism rather than in spite of it: the
+    core specification requires a reader to fail on an unrecognised metadata
+    field *unless* it carries ``"must_understand": false``, and zarr-python
+    writes exactly that (verified against zarr 3.1.5).
+
+    Two ``ZarrUserWarning``s are suppressed here rather than by a global
+    filter: the consolidated-metadata notice, and ``"Object at
+    METADATA.ome.xml is not recognized as a component of a Zarr hierarchy"``,
+    which fires once per image. Both are instances of the same class -- a
+    ``UserWarning`` subclass -- so filtering on the class covers both, where a
+    ``message=`` regex naming only consolidation would let the second through.
+
+    Args:
+        part: The allocated ``.part`` directory, fully written.
+    """
+    import zarr
+    from zarr.errors import ZarrUserWarning
+
+    from phenotypic.sdk_ import ngff_
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ZarrUserWarning)
+        zarr.consolidate_metadata(ngff_.long_path(part))
+
+
 class _BackCompatUnpickler(pickle.Unpickler):
     """Unpickler that resolves classes which moved since older pickles were written.
 
@@ -600,7 +640,16 @@ class ImageIOHandler(ImageColorSpace):
 
     @classmethod
     def imread(
-        cls, filepath: PathLike, rawpy_params: dict | None = None, **kwargs
+        cls,
+        filepath: PathLike,
+        rawpy_params: dict | None = None,
+        *,
+        series: str | None = None,
+        level: int = 0,
+        t: int | None = None,
+        z: int | None = None,
+        c: int | None = None,
+        **kwargs,
     ) -> Image:
         """
         imread is a class method responsible for reading an image file from the specified
@@ -617,6 +666,19 @@ class ImageIOHandler(ImageColorSpace):
             rawpy_params (dict | None): Optional dictionary of parameters for processing raw image
                 files when using rawpy. Supports options like white balance settings, demosaic
                 algorithm, gamma correction, and others. Defaults to None.
+            series (str | None): OME-Zarr store only. Series to read; ``None``
+                resolves it from the store's own OME metadata. Ignored for a
+                flat image file.
+            level (int): OME-Zarr store only. Pyramid level to read; ``0`` is
+                the highest resolution. Ignored for a flat image file.
+            t (int | None): OME-Zarr store only. Index to take on a ``time``
+                axis of size > 1. ``None`` refuses such a store rather than
+                silently reading its first frame.
+            z (int | None): OME-Zarr store only. Index to take on the stacking
+                ``space`` axis when its size is > 1. ``None`` refuses.
+            c (int | None): OME-Zarr store only. Index to take on a ``channel``
+                axis whose size is neither 1 (grayscale) nor 3 (RGB). ``None``
+                refuses.
             **kwargs: Arbitrary keyword arguments to be passed for additional configurations
                 specific to the Image instantiation.
 
@@ -628,7 +690,40 @@ class ImageIOHandler(ImageColorSpace):
             UnsupportedFileTypeError: If the file type of the provided filepath is not supported
                 by the method, either due to its extension not being recognized or due to the
                 absence of required libraries like rawpy.
+            ValueError: If *filepath* is an OME-Zarr store that cannot be mapped
+                onto the 2-D image model -- an HCS plate, a timelapse, a z-stack,
+                or a channel count that is neither 1 nor 3.
+
+        Examples:
+            Read a process-mode store as plain pixels:
+
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from phenotypic import Image
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> img = Image(load_synth_yeast_plate())
+            >>> with tempfile.TemporaryDirectory() as tmp:
+            ...     store = img.save2zarr(Path(tmp) / 'plate.ome.zarr')
+            ...     Image.imread(store).rgb[:].shape == img.rgb[:].shape
+            True
         """
+        from phenotypic.sdk_ import is_zarr_store_name
+
+        # A store is a directory, so this is checked before the suffix
+        # dispatch below -- and on its own local, because `filepath` is
+        # annotated `PathLike` and only re-annotated `Path` further down.
+        store_candidate = Path(filepath)
+        if store_candidate.is_dir() and is_zarr_store_name(store_candidate):
+            return cls._imread_store(
+                store_candidate,
+                series=series,
+                level=level,
+                t=t,
+                z=z,
+                c=c,
+                **kwargs,
+            )
+
         # Convert to a Path object
         filepath: Path = Path(filepath)
         rawpy_params = rawpy_params or {}
@@ -729,6 +824,81 @@ class ImageIOHandler(ImageColorSpace):
 
         return image
 
+    @classmethod
+    def _imread_store(
+        cls,
+        store_path: Path,
+        *,
+        series: str | None = None,
+        level: int = 0,
+        t: int | None = None,
+        z: int | None = None,
+        c: int | None = None,
+        **kwargs,
+    ) -> Image:
+        """Read an OME-Zarr store as plain pixels.
+
+        The store analogue of the TIFF branch: pixels in, a fresh image out. It
+        never restores PhenoTypic run state -- that is
+        :meth:`load_zarr`'s job, and it refuses a store that is not a run
+        bundle.
+
+        Only what the file says about itself is carried across: the provenance
+        journal and the ``imported`` metadata section. The ``protected`` and
+        ``public`` sections are run state and are deliberately dropped; that is
+        the line that keeps this from becoming a partial ``load_zarr``.
+
+        Args:
+            store_path: A ``*.ome.zarr`` directory.
+            series: Series to read; ``None`` resolves it from the store.
+            level: Pyramid level to read.
+            t: Index on a ``time`` axis of size > 1.
+            z: Index on the stacking ``space`` axis when its size is > 1.
+            c: Index on a ``channel`` axis that is neither 1 nor 3.
+            **kwargs: Forwarded to the ``Image`` constructor.
+
+        Returns:
+            Image: A fresh image carrying the store's pixels.
+
+        Raises:
+            ValueError: If the store cannot be mapped onto the 2-D image model.
+        """
+        from phenotypic.sdk_ import ngff_, source_image_suffix, store_stem
+
+        spec = ngff_.read_ngff_image_spec(
+            store_path, series=series, level=level, t=t, z=z, c=c
+        )
+        name = store_stem(store_path)
+        # `is None`, not `or`: an explicit `bit_depth=0` is a caller
+        # instruction, and `or` would silently swap the store's value in.
+        explicit = kwargs.pop("bit_depth", None)
+        bit_depth = spec.bit_depth if explicit is None else explicit
+        image = cls(arr=spec.array, name=name, bit_depth=bit_depth, **kwargs)
+        image.name = name
+        image.metadata[IMAGE.SUFFIX] = source_image_suffix(store_path)
+
+        journal = spec.phenotypic.get(ngff_.PhenotypicAttr.PROVENANCE)
+        if journal:
+            image._metadata.provenance_journal = deepcopy(journal)
+
+        # Through `_metadata.imported`, NEVER `image.metadata[key] = value`.
+        # `MetadataAccessor.__setitem__` routes an unrecognised key into
+        # `_public_metadata` and raises ValueError on any non-scalar value, so
+        # the obvious loop would land imported tags in the `public` section --
+        # contradicting the paragraph above -- and raise on a structured TIFF
+        # tag. This is what the TIFF branch already does, normalised through
+        # the same helper `_load_from_store` uses.
+        imported = spec.phenotypic.get(ngff_.PhenotypicAttr.METADATA, {}).get(
+            ngff_.PhenotypicAttr.IMPORTED, {}
+        )
+        if imported:
+            image._metadata.imported.update(
+                _normalize_stored_metadata_items(
+                    imported.items(), section=ngff_.PhenotypicAttr.IMPORTED
+                )
+            )
+        return cast("Image", image)
+
     def _series_names(self) -> list[str]:
         """Series this image will write, in canonical order.
 
@@ -827,7 +997,15 @@ class ImageIOHandler(ImageColorSpace):
         return None
 
     def _build_store_attributes(
-        self, *, series_names, levels, sections, work_id, has_labels=True
+        self,
+        *,
+        series_names,
+        levels,
+        sections,
+        work_id,
+        has_labels=True,
+        write_image_class: bool = True,
+        reproducible_provenance: bool = False,
     ) -> dict:
         """Assemble ``attributes.phenotypic``.
 
@@ -840,14 +1018,31 @@ class ImageIOHandler(ImageColorSpace):
                 omits the ``labels`` key **entirely** rather than emitting an
                 empty mapping, so a preview store never declares a group it
                 does not have.
+            write_image_class: Write ``image_class``. ``False`` omits it, which
+                is what makes ``load_zarr`` refuse the store. Only the
+                ``--mode process`` writer passes ``False``.
+            reproducible_provenance: Omit ``applied_at_utc`` and
+                ``duration_seconds`` from the journal written into the store,
+                making it byte-identical across identical runs (spec 2.3.3).
+                The image's own journal is untouched -- the fields are dropped
+                from a copy on the way in. Only the ``--mode process`` writer
+                passes ``True``; the bundle store never leaves the run
+                directory and keeps its telemetry.
 
         Returns:
             The ``phenotypic`` attributes block.
         """
+        from phenotypic._core._provenance import (
+            strip_non_reproducible_operation_fields,
+        )
         from phenotypic.sdk_ import ngff_
 
+        provenance = deepcopy(self._metadata.provenance_journal)
+        if reproducible_provenance:
+            strip_non_reproducible_operation_fields(provenance)
+
         return ngff_.build_phenotypic_attributes(
-            image_class=type(self).__name__,
+            image_class=type(self).__name__ if write_image_class else None,
             series_names=series_names,
             pyramid_levels=levels,
             metadata_sections=sections,
@@ -865,7 +1060,7 @@ class ImageIOHandler(ImageColorSpace):
             has_labels=has_labels,
             grid=self._store_grid_attributes(),
             work_id=work_id,
-            provenance=deepcopy(self._metadata.provenance_journal),
+            provenance=provenance,
         )
 
     def save2zarr(
@@ -939,6 +1134,9 @@ class ImageIOHandler(ImageColorSpace):
         durable: bool | None,
         commit_guard: CommitGuard | None = None,
         measurement_table: PreparedEmbeddedMeasurementTable | None = None,
+        write_image_class: bool = True,
+        consolidate: bool = False,
+        reproducible_provenance: bool = False,
     ) -> Path:
         """Write one OME-Zarr store into a ``.part`` sibling and promote it.
 
@@ -965,6 +1163,19 @@ class ImageIOHandler(ImageColorSpace):
             levels: Pyramid level count, uniform across the store.
             work_id: CLI work id, written into the block at build time.
             durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
+            write_image_class: Write ``image_class``. ``False`` omits it, which
+                is what makes ``load_zarr`` refuse the store. Only the
+                ``--mode process`` writer passes ``False``.
+            consolidate: Consolidate the part's metadata into its root
+                ``zarr.json`` immediately before the promote. It is a
+                parameter rather than a step applied to the returned path
+                because consolidating a promoted store rewrites its root in
+                place, which is the non-atomic write the rename-commit exists
+                to prevent, and lands after the ``fsync``.
+            reproducible_provenance: Omit the journal's ``applied_at_utc`` and
+                ``duration_seconds`` from the store, making it byte-identical
+                across identical runs (spec 2.3.3). Only the ``--mode
+                process`` writer passes ``True``.
 
         Returns:
             The promoted store path.
@@ -988,6 +1199,9 @@ class ImageIOHandler(ImageColorSpace):
                 durable=durable,
                 commit_guard=commit_guard,
                 measurement_table=measurement_table,
+                write_image_class=write_image_class,
+                consolidate=consolidate,
+                reproducible_provenance=reproducible_provenance,
             )
         except Exception:
             shutil.rmtree(ngff_.long_path(part), ignore_errors=True)
@@ -1005,8 +1219,25 @@ class ImageIOHandler(ImageColorSpace):
         durable: bool | None,
         commit_guard: CommitGuard | None = None,
         measurement_table: PreparedEmbeddedMeasurementTable | None = None,
+        write_image_class: bool = True,
+        consolidate: bool = False,
+        reproducible_provenance: bool = False,
     ) -> Path:
-        """Populate one allocated part and promote it to its final path."""
+        """Populate one allocated part and promote it to its final path.
+
+        Args:
+            write_image_class: Write ``image_class``. ``False`` omits it, which
+                is what makes ``load_zarr`` refuse the store. Only the
+                ``--mode process`` writer passes ``False``.
+            consolidate: Consolidate the part's metadata into its root
+                ``zarr.json`` immediately before the promote -- never on the
+                promoted path, which would rewrite a live root in place and
+                land after ``promote_store``'s ``fsync``.
+            reproducible_provenance: Omit the journal's ``applied_at_utc`` and
+                ``duration_seconds`` from the store, making it byte-identical
+                across identical runs (spec 2.3.3). Only the ``--mode
+                process`` writer passes ``True``.
+        """
         from phenotypic.sdk_ import ngff_
 
         series_names = list(series)
@@ -1160,6 +1391,8 @@ class ImageIOHandler(ImageColorSpace):
             sections=sections,
             work_id=work_id,
             has_labels=write_objmap,
+            write_image_class=write_image_class,
+            reproducible_provenance=reproducible_provenance,
         )
         if tables_descriptor is not None:
             phenotypic_attributes[ngff_.PhenotypicAttr.TABLES] = {
@@ -1175,6 +1408,8 @@ class ImageIOHandler(ImageColorSpace):
                 ngff_.PhenotypicAttr.ROOT: phenotypic_attributes,
             },
         )
+        if consolidate:
+            _consolidate_store_part(part)
         return ngff_.promote_store(
             part,
             final,
@@ -1650,7 +1885,10 @@ class ImageIOHandler(ImageColorSpace):
         Raises:
             FileNotFoundError: If the store has no root ``zarr.json`` -- an
                 interrupted write reads as absent, not as partial.
-            ValueError: If ``store_schema_version`` is not this build's. The
+            ValueError: If the store carries no ``phenotypic.image_class`` --
+                it was written by ``--mode process`` or by another tool and is
+                not a run bundle; use :meth:`imread` to read its pixels. Also
+                if ``store_schema_version`` is not this build's. The
                 gate is by VALUE, not presence: opening a future store under
                 today's semantics is exactly what it exists to prevent.
 
@@ -1668,6 +1906,21 @@ class ImageIOHandler(ImageColorSpace):
             True
         """
         from phenotypic.sdk_ import ngff_
+
+        # BEFORE require_readable_store, deliberately. That call ends in
+        # `attributes[PhenotypicAttr.ROOT]` (ngff_.py:631), a bare subscript,
+        # so a third-party store raises KeyError there and a guard placed
+        # after it would never fire on the case it most needs to serve.
+        # FileNotFoundError from read_root_attributes still propagates: an
+        # interrupted write reads as absent, not as "not a bundle".
+        attributes = ngff_.read_root_attributes(path)
+        phenotypic_block = attributes.get(ngff_.PhenotypicAttr.ROOT, {})
+        if ngff_.PhenotypicAttr.IMAGE_CLASS not in phenotypic_block:
+            raise ValueError(
+                f"{path} carries no phenotypic.image_class and is not a "
+                f"PhenoTypic run bundle. It was written by --mode process or "
+                f"by another tool. Use Image.imread() to read its pixels."
+            )
 
         block = ngff_.require_readable_store(path)
         saved_class = block.get(ngff_.PhenotypicAttr.IMAGE_CLASS)

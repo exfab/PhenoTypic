@@ -350,3 +350,37 @@ def test_xml_text_still_strips_what_xml_10_forbids_outright() -> None:
 # the OME content model permits BinData/TiffData (only NGFF 2.2.3 forbids them),
 # and the XSD validates `Type` against its enum, not against the array's actual
 # dtype -- so a float32 -> "uint8" mapping bug passes XSD cleanly.
+
+
+def test_rgb_declares_the_color_rendering_model() -> None:
+    block = ngff_.build_omero(
+        series="rgb", dtype=np.dtype("uint16"), bit_depth=16, name="p01"
+    )
+    assert block["omero"]["rdefs"] == {"model": "color"}
+
+
+def test_single_channel_integer_declares_greyscale() -> None:
+    block = ngff_.build_omero(
+        series="gray", dtype=np.dtype("uint8"), bit_depth=8, name="p01"
+    )
+    assert block["omero"]["rdefs"] == {"model": "greyscale"}
+
+
+def test_float_series_still_emit_nothing_at_all() -> None:
+    """The 2026-08-19 float ruling is untouched: no block means no rdefs."""
+    assert ngff_.build_omero(
+        series="gray", dtype=np.dtype("float32"), bit_depth=8
+    ) == {}
+    assert ngff_.build_omero(
+        series="detect_mat", dtype=np.dtype("float64"), bit_depth=16
+    ) == {}
+
+
+def test_rdefs_does_not_disturb_the_channel_contract() -> None:
+    """NGFF makes omero conditionally strict; rdefs must not weaken it."""
+    channels = ngff_.build_omero(
+        series="rgb", dtype=np.dtype("uint8"), bit_depth=8
+    )["omero"]["channels"]
+    assert [c["color"] for c in channels] == ["FF0000", "00FF00", "0000FF"]
+    for channel in channels:
+        assert set(channel["window"]) == {"min", "max", "start", "end"}
