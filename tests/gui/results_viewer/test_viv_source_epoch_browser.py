@@ -129,3 +129,77 @@ def test_destroyed_instance_cannot_commit_a_deferred_source(facade_page):
 
     assert page.evaluate("window.__vivPaints") == []
     assert page.evaluate("window.__vivFinalizedUses") == 0
+
+
+def test_stale_recovery_is_owned_by_the_source_epoch(facade_page):
+    page = facade_page
+    page.evaluate(
+        """() => {
+            window.phenotypicViv.destroy("viv-probe");
+            window.__refetches = [];
+            window.fetch = async () => ({
+                status: 409,
+                statusText: "Conflict",
+                arrayBuffer: async () => new ArrayBuffer(0),
+                text: async () => "stale",
+            });
+            const original = window.__vivBundle.viv.loadOmeZarrFromStore;
+            window.__vivBundle.viv.loadOmeZarrFromStore = (store) => {
+                if (store.url.includes("/stale")) return store.get("probe");
+                return original(store);
+            };
+            return window.phenotypicViv.mount("viv-probe", {
+                refetchSource: () => new Promise((resolve) => {
+                    window.__refetches.push(resolve);
+                }),
+            });
+        }"""
+    )
+    page.evaluate(
+        """() => {
+            const launch = (name) => {
+                window[name] = window.phenotypicViv.setSource("viv-probe", {
+                    storeUrl: `http://store/${name}`,
+                    seriesPath: "rgb",
+                    labelPath: null,
+                }).catch(() => null).then(() => { window[name + "Done"] = true; });
+            };
+            launch("staleA");
+        }"""
+    )
+    page.wait_for_function("window.__refetches.length === 1")
+    page.evaluate("() => window.launchB = window.phenotypicViv.setSource('viv-probe', {storeUrl: 'http://store/staleB', seriesPath: 'rgb', labelPath: null}).catch(() => null).then(() => { window.staleBDone = true; })")
+    page.wait_for_function("window.staleBDone === true")
+
+    # B owns a distinct epoch and therefore a distinct recovery request.
+    assert page.evaluate("window.__refetches.length") == 2
+
+    page.evaluate(
+        """() => window.__refetches[0]({
+            storeUrl: "http://store/freshA",
+            seriesPath: "rgb",
+            labelPath: null,
+        })"""
+    )
+    page.wait_for_timeout(20)
+    assert not page.evaluate(
+        "window.__vivLoads.has('http://store/freshA/rgb')"
+    )
+
+    page.evaluate(
+        """() => window.__refetches[1]({
+            storeUrl: "http://store/freshB",
+            seriesPath: "rgb",
+            labelPath: null,
+        })"""
+    )
+    page.wait_for_function(
+        "window.__vivLoads.has('http://store/freshB/rgb')"
+    )
+    _resolve(page, "http://store/freshB/rgb")
+    page.wait_for_function(
+        "window.__vivPaints.includes('http://store/freshB/rgb')"
+    )
+    assert page.evaluate("window.__vivPaints") == [
+        "http://store/freshB/rgb"
+    ]

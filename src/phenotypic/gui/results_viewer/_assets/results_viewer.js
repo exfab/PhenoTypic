@@ -103,13 +103,16 @@
      * @param {{id: string, levelReadoutId: string, zoomReadoutId: string,
      *          spec: object|null, display: object|null}} record
      */
-    async function mountStageNow(record) {
+    async function mountStageNow(record, epoch) {
         const viv = facade();
         if (!viv) {
             console.error("[results_viewer] window.phenotypicViv is missing");
             return null;
         }
         const divId = record.id;
+        const isCurrent = function () {
+            return ns.stageLoadEpochs.get(divId) === epoch;
+        };
         const el = document.getElementById(divId);
         if (!el) {
             console.warn("[results_viewer] mountStage: no element", divId);
@@ -133,10 +136,11 @@
                 // `StaleGenerationError`, which is visible in the console.
                 refetchSource: null
             });
+            if (!isCurrent()) return null;
             entry = {signature: null, opacity: {}, labelVisible: true};
             ns.stages.set(divId, entry);
         }
-        entry.record = record;
+        if (!isCurrent()) return null;
 
         const display = record.display || {};
         const signature = sourceSignature(record.spec, display);
@@ -145,8 +149,10 @@
             if (display.seriesPath) spec.seriesPath = display.seriesPath;
             renderLevel(record.levelReadoutId, null);
             try {
-                await viv.setSource(divId, spec);
+                const loaded = await viv.setSource(divId, spec);
+                if (loaded === undefined || !isCurrent()) return null;
             } catch (err) {
+                if (!isCurrent()) return null;
                 console.error("[results_viewer] setSource failed", divId, err);
                 writeText(record.levelReadoutId, String(err.message || err));
                 return null;
@@ -157,6 +163,8 @@
             entry.opacity = {};
             entry.labelVisible = true;
         }
+        if (!isCurrent()) return null;
+        entry.record = record;
 
         const opacity = display.opacity || {};
         [IMAGE_LAYER, LABEL_LAYER].forEach(function (layer) {
@@ -178,17 +186,7 @@
         const divId = record.id;
         const epoch = (ns.stageLoadEpochs.get(divId) || 0) + 1;
         ns.stageLoadEpochs.set(divId, epoch);
-        const previous = ns.stageLoadQueues.get(divId) || Promise.resolve();
-        const queued = previous.catch(function () { return null; }).then(function () {
-            if (ns.stageLoadEpochs.get(divId) !== epoch) return null;
-            return mountStageNow(record);
-        });
-        ns.stageLoadQueues.set(divId, queued);
-        return queued.finally(function () {
-            if (ns.stageLoadQueues.get(divId) === queued) {
-                ns.stageLoadQueues.delete(divId);
-            }
-        });
+        return mountStageNow(record, epoch);
     };
 
     /** Destroy the stage (if any) registered under the given div id. */

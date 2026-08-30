@@ -883,6 +883,7 @@
       spec: null,
       loaded: null,
       resourcing: null,
+      resourcingEpoch: null,
       // Every setSource claims a new epoch before its first await. Deferred
       // reads from an older source may still finish, but cannot commit into
       // this record after a newer source or destroy has invalidated them.
@@ -925,7 +926,7 @@
     record.viewer.deck.setProps({ layerFilter: null });
     const hooks = {
       onStale: () => {
-        if (isCurrent()) resourceAfterPromote(containerId);
+        if (isCurrent()) resourceAfterPromote(containerId, record, epoch);
       },
     };
     const image = await bundle.viv.loadOmeZarrFromStore(
@@ -1017,22 +1018,37 @@
    * them reports the same stale token. Without the in-flight guard a single
    * promote would trigger dozens of duplicate re-sources.
    */
-  function resourceAfterPromote(containerId) {
-    const record = instances.get(containerId);
-    if (!record) return null;
-    if (record.resourcing) return record.resourcing;
+  function resourceAfterPromote(containerId, record, sourceEpoch) {
+    if (
+      instances.get(containerId) !== record ||
+      record.sourceEpoch !== sourceEpoch
+    ) return null;
+    if (
+      record.resourcing && record.resourcingEpoch === sourceEpoch
+    ) return record.resourcing;
     const refetch = record.options.refetchSource;
     if (!refetch) {
       // No recovery path was wired. The read still throws
       // `StaleGenerationError` -- it is simply not repaired here.
       return null;
     }
-    record.resourcing = Promise.resolve(refetch(containerId))
-      .then((fresh) => setSource(containerId, fresh))
+    const recovery = Promise.resolve(refetch(containerId))
+      .then((fresh) => {
+        if (
+          instances.get(containerId) !== record ||
+          record.sourceEpoch !== sourceEpoch
+        ) return undefined;
+        return setSource(containerId, fresh);
+      })
       .finally(() => {
-        record.resourcing = null;
+        if (record.resourcing === recovery) {
+          record.resourcing = null;
+          record.resourcingEpoch = null;
+        }
       });
-    return record.resourcing;
+    record.resourcing = recovery;
+    record.resourcingEpoch = sourceEpoch;
+    return recovery;
   }
 
   /**

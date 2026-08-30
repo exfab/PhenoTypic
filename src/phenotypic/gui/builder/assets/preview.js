@@ -35,6 +35,7 @@
     // only when the store generation or the displayed series actually moved.
     let mountedId = null;
     let signature = null;
+    let loadEpoch = 0;
 
     function facade() {
         return window.phenotypicViv || null;
@@ -65,20 +66,27 @@
         const el = document.getElementById(divId);
         if (!el || !spec) { return null; }
         if (mountedId && mountedId !== divId) { ns.disposeViewer(); }
+        const epoch = ++loadEpoch;
+        const isCurrent = function () {
+            return loadEpoch === epoch && mountedId === divId;
+        };
         if (!mountedId) {
             // `refetchSource: null` -- recovery after a re-promote needs a
             // server round-trip Dash owns (the token is minted Python-side),
             // so a stale read throws `StaleGenerationError` into the console
             // and the next layer switch or reopen re-resolves it.
             await viv.mount(divId, { refetchSource: null });
+            if (loadEpoch !== epoch) return null;
             mountedId = divId;
             signature = null;
         }
         const next = sourceSignature(spec);
         if (next === signature) { return null; }
         try {
-            await viv.setSource(divId, spec);
+            const loaded = await viv.setSource(divId, spec);
+            if (loaded === undefined || !isCurrent()) return null;
         } catch (err) {
+            if (!isCurrent()) return null;
             console.error("[node_preview] setSource failed", divId, err);
             signature = null;
             return null;
@@ -91,14 +99,17 @@
         await viv.setLayerVisibility(
             divId, IMAGE_LAYER, spec.imageVisible !== false
         );
+        if (!isCurrent()) return null;
         if (spec.labelPath) {
             await viv.setLayerVisibility(divId, LABEL_LAYER, true);
+            if (!isCurrent()) return null;
         }
         return divId;
     };
 
     /** Tear the stage down, freeing its WebGL context. */
     ns.disposeViewer = function () {
+        loadEpoch += 1;
         if (!mountedId) { return; }
         const viv = facade();
         try { if (viv) viv.destroy(mountedId); }
