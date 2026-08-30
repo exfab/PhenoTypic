@@ -18,6 +18,7 @@ from phenotypic.sdk_ import (
     default_output_dir_name,
     is_zarr_store_name,
 )
+from phenotypic.sdk_._io_constants import file_fingerprint
 from ._cli_types import Dataset
 
 
@@ -218,6 +219,133 @@ def organize_by_dataset(
         datasets.append(dataset)
 
     return datasets
+
+
+class ImageManifestError(ValueError):
+    """Raised when an image manifest is unreadable or outside ``--input``."""
+
+
+def image_manifest_digest(manifest_path: Path) -> str:
+    """Return the content fingerprint for an image-manifest file.
+
+    Args:
+        manifest_path: Plain-text manifest path.
+
+    Returns:
+        A ``"sha256:<hex>"`` fingerprint of the manifest's exact bytes.
+    """
+    return file_fingerprint(Path(manifest_path))
+
+
+def read_image_manifest(manifest_path: Path) -> List[str]:
+    """Read non-empty, non-comment image-manifest entries in file order.
+
+    Args:
+        manifest_path: UTF-8 image-manifest path.
+
+    Returns:
+        Stripped image paths, without comments or blank lines.
+
+    Raises:
+        ImageManifestError: If the manifest is unreadable, invalid, or empty.
+    """
+    manifest_path = Path(manifest_path)
+    try:
+        text = manifest_path.read_text(encoding="utf-8-sig")
+    except OSError as exc:
+        raise ImageManifestError(
+            f"Cannot read image manifest {manifest_path}: {exc}"
+        ) from exc
+    except UnicodeDecodeError as exc:
+        raise ImageManifestError(
+            f"Image manifest {manifest_path} is not valid UTF-8 text: {exc}"
+        ) from exc
+
+    entries = [
+        stripped
+        for line in text.splitlines()
+        if (stripped := line.strip()) and not stripped.startswith("#")
+    ]
+    if not entries:
+        raise ImageManifestError(
+            f"Image manifest {manifest_path} lists no images. An empty "
+            "manifest is refused rather than treated as all images."
+        )
+    return entries
+
+
+def apply_image_manifest(
+    image_paths_by_dataset: Dict[str, List[Path]],
+    manifest_path: Path,
+    input_path: Path,
+) -> Dict[str, List[Path]]:
+    """Select exactly the manifest paths from an existing input-tree scan.
+
+    Args:
+        image_paths_by_dataset: Mapping returned by
+            :func:`scan_directory_structure`.
+        manifest_path: Plain-text manifest path.
+        input_path: The ``--input`` root for relative manifest entries.
+
+    Returns:
+        Dataset mapping filtered to the approved images, in scan order.
+
+    Raises:
+        ImageManifestError: If an entry is absent from the scan, duplicated,
+            or does not select exactly one scanned image.
+    """
+    entries = read_image_manifest(manifest_path)
+    input_path = Path(input_path)
+
+    by_resolved: Dict[Path, tuple[str, Path]] = {}
+    by_spelling: Dict[Path, tuple[str, Path]] = {}
+    for dataset_name, image_paths in image_paths_by_dataset.items():
+        for image_path in image_paths:
+            by_resolved.setdefault(
+                _resolved_manifest_path(image_path), (dataset_name, image_path)
+            )
+            by_spelling.setdefault(Path(image_path), (dataset_name, image_path))
+
+    selected_resolved: set[Path] = set()
+    selected_by_dataset: Dict[str, set[Path]] = {}
+    for entry in entries:
+        candidate = Path(entry)
+        if not candidate.is_absolute():
+            candidate = input_path / candidate
+        resolved = _resolved_manifest_path(candidate)
+        match = by_spelling.get(candidate) or by_resolved.get(resolved)
+        if match is None:
+            raise ImageManifestError(
+                f"Image manifest {manifest_path} names {entry!r}, which is "
+                f"not one of the images found under --input {input_path}."
+            )
+        if resolved in selected_resolved:
+            raise ImageManifestError(
+                f"Image manifest {manifest_path} names {entry!r} more than "
+                "once. Duplicates are refused rather than deduplicated."
+            )
+        selected_resolved.add(resolved)
+        dataset_name, image_path = match
+        selected_by_dataset.setdefault(dataset_name, set()).add(image_path)
+
+    filtered: Dict[str, List[Path]] = {}
+    for dataset_name, image_paths in image_paths_by_dataset.items():
+        selected = selected_by_dataset.get(dataset_name)
+        if selected:
+            filtered[dataset_name] = [path for path in image_paths if path in selected]
+
+    selected_count = sum(len(image_paths) for image_paths in filtered.values())
+    if selected_count != len(entries):
+        raise ImageManifestError(
+            f"Image manifest {manifest_path} names {len(entries)} image(s) "
+            f"but selects {selected_count}; every entry must select one image."
+        )
+    return filtered
+
+
+def _resolved_manifest_path(path: Path) -> Path:
+    """Normalize a path for manifest membership checks without requiring it."""
+    return Path(path).resolve(strict=False)
 
 
 def scan_store_outputs(output_dir: Path) -> List[Dataset]:

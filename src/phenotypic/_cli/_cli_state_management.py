@@ -25,9 +25,18 @@ from phenotypic.sdk_ import (
     source_image_stem,
 )
 
+from ._cli_directory_scanner import image_manifest_digest
 from ._cli_staged_resume import pipeline_content_digest
 
 logger = logging.getLogger(__name__)
+
+
+def _image_manifest_digest_for(config: ExecutionConfig) -> Optional[str]:
+    """Return the current manifest fingerprint, or ``None`` without one."""
+    manifest = getattr(config, "image_manifest", None)
+    if manifest is None:
+        return None
+    return image_manifest_digest(manifest)
 
 
 def save_processing_state(
@@ -219,6 +228,7 @@ def create_initial_state(
                 if config.pipeline_json.is_file()
                 else None
             ),
+            "image_manifest_digest": _image_manifest_digest_for(config),
             "staged_stage3_markers": config.staged_stage3_markers,
             "success_markers_required": True,
             "processing_generation": uuid4().hex,
@@ -303,6 +313,21 @@ def validate_resume_compatibility(
     # Check input path
     if not getattr(config, "measure_only", False) and state.input_path != config.input_path:
         return False, f"Input path mismatch: saved={state.input_path}, current={config.input_path}"
+
+    if not getattr(config, "measure_only", False):
+        saved_manifest_digest = state.config.get("image_manifest_digest")
+        try:
+            current_manifest_digest = _image_manifest_digest_for(config)
+        except OSError as exc:
+            return False, (
+                f"Image manifest {getattr(config, 'image_manifest', None)} cannot be read, so "
+                f"the approved image set cannot be re-derived: {exc}"
+            )
+        if saved_manifest_digest != current_manifest_digest:
+            return False, (
+                "Image manifest mismatch: "
+                f"saved={saved_manifest_digest}, current={current_manifest_digest}"
+            )
     
     # Check image type
     if state.config.get("image_type") != config.image_type:

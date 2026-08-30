@@ -157,6 +157,7 @@ from click.core import ParameterSource
 from phenotypic import ImagePipeline
 from phenotypic._core._image_parts.detection_modes import available_modes
 from phenotypic._cli._cli_directory_scanner import (
+    apply_image_manifest,
     organize_by_dataset,
     scan_directory_structure,
     scan_store_outputs,
@@ -1041,6 +1042,16 @@ def _print_process_only_dry_run_plan(
     help="Input image file or directory to process.",
 )
 @click.option(
+    "--image-manifest",
+    "image_manifest",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help=(
+        "Exact subset of --input to process: one absolute or --input-relative "
+        "image path per line; blank lines and # comments are ignored."
+    ),
+)
+@click.option(
     "-o",
     "--output",
     "output_dir",
@@ -1301,6 +1312,7 @@ def phenotypic_cli(
     ctx: click.Context,
     pipeline_json: Optional[Path],
     input_path: Optional[Path],
+    image_manifest: Optional[Path],
     output_dir: Path,
     mode: str,
     durable_writes: Optional[bool],
@@ -1489,6 +1501,23 @@ def phenotypic_cli(
                         "(no measurement/aggregation output).",
                         err=True,
                     )
+
+        if image_manifest is not None:
+            if mode not in {"full", "process"}:
+                raise click.UsageError(
+                    "--image-manifest is only supported with --mode full or "
+                    "--mode process."
+                )
+            if input_path is None:
+                raise click.UsageError(
+                    "--image-manifest requires --input: manifest entries are "
+                    "resolved relative to the input tree."
+                )
+            if sample is not None:
+                raise click.UsageError(
+                    "sample_excludes_manifest: --sample cannot be combined "
+                    "with --image-manifest. Narrow the manifest instead."
+                )
 
         # Parse SLURM args before the recompile branch so --mode recompile can
         # explicitly choose between local and SLURM recompile dispatch.
@@ -1757,6 +1786,7 @@ def phenotypic_cli(
             skip_validation=skip_validation,
             restart=restart,
             metadata_csv=metadata_csv,
+            image_manifest=image_manifest,
             no_qc=no_qc,
             checkpoint_interval=checkpoint_interval,
             measure_only=measure_only,
@@ -1902,6 +1932,20 @@ def phenotypic_cli(
             click.echo(f"Scanning {input_path}...")
             try:
                 image_paths_by_dataset = scan_directory_structure(input_path)
+                if image_manifest is not None:
+                    scanned_total = sum(
+                        len(paths) for paths in image_paths_by_dataset.values()
+                    )
+                    image_paths_by_dataset = apply_image_manifest(
+                        image_paths_by_dataset, image_manifest, input_path
+                    )
+                    selected_total = sum(
+                        len(paths) for paths in image_paths_by_dataset.values()
+                    )
+                    click.echo(
+                        f"Image manifest {image_manifest} selected "
+                        f"{selected_total} of {scanned_total} image(s)"
+                    )
                 datasets = organize_by_dataset(
                     image_paths_by_dataset, output_dir
                 )

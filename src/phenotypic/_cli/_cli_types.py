@@ -165,6 +165,10 @@ class ExecutionConfig:
     # Metadata join
     metadata_csv: Optional[Path] = None
 
+    # Optional approved subset inside ``input_path``. The input root remains
+    # the work-ID anchor, so a manifest never replaces it.
+    image_manifest: Optional[Path] = None
+
     # Skip QC during final aggregation, including staged SLURM finalization.
     no_qc: bool = False
 
