@@ -15,6 +15,7 @@ from phenotypic._cli._cli_state_management import (
     validate_resume_compatibility,
 )
 from phenotypic._cli._cli_types import ExecutionConfig
+from phenotypic.sdk_ import resolve_processing_state_path
 
 
 @pytest.fixture
@@ -166,6 +167,40 @@ def test_manifest_selection_accepts_absolute_paths_and_rejects_alias_duplicates(
     assert [path.name for path in selected["plate1"]] == ["img001.tiff"]
     with pytest.raises(error_type, match="more than once"):
         apply(scanned, alias_duplicate, image_tree)
+
+
+def test_manifest_alias_refuses_two_scanned_dataset_identities(
+    tmp_path: Path,
+) -> None:
+    """A resolved alias cannot select whichever dataset happened to scan first."""
+    apply = directory_scanner.apply_image_manifest
+    input_root = tmp_path / "input"
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    image = shared / "img001.tiff"
+    image.write_bytes(b"same image")
+    input_root.mkdir()
+    (input_root / "a").symlink_to(shared, target_is_directory=True)
+    (input_root / "b").symlink_to(shared, target_is_directory=True)
+    scanned = {
+        "a": [input_root / "a" / image.name],
+        "b": [input_root / "b" / image.name],
+    }
+    alias_manifest = _manifest(tmp_path / "alias.images", [str(image)])
+
+    for order in (scanned, dict(reversed(tuple(scanned.items())))):
+        with pytest.raises(
+            directory_scanner.ImageManifestError,
+            match="does not uniquely identify one scanned image",
+        ):
+            apply(order, alias_manifest, input_root)
+
+    exact_manifest = _manifest(
+        tmp_path / "exact.images", ["a/img001.tiff"]
+    )
+    assert apply(scanned, exact_manifest, input_root) == {
+        "a": [input_root / "a" / image.name]
+    }
 
 
 def test_manifest_digest_is_saved_and_resume_refuses_an_edited_manifest(
@@ -396,3 +431,82 @@ def test_cli_continuations_preserve_the_manifest_digest(
     edited = runner.invoke(cli.phenotypic_cli, command)
     assert edited.exit_code != 0
     assert "Image manifest mismatch" in edited.output
+
+
+def test_manifest_restart_refuses_a_root_with_prior_scientific_artifacts(
+    monkeypatch: pytest.MonkeyPatch,
+    image_tree: Path,
+    pipeline_stub: Path,
+    tmp_path: Path,
+) -> None:
+    """Restart cannot exchange the approved subset while preserving old results."""
+    from click.testing import CliRunner
+
+    import phenotypic.phenotypicCLI as cli
+
+    class StopAfterStateSave:
+        def execute(self, datasets, output_dir):
+            raise SystemExit(0)
+
+    monkeypatch.setattr(
+        cli,
+        "create_execution_strategy",
+        lambda config, output_manager: StopAfterStateSave(),
+    )
+    manifest_a = _manifest(tmp_path / "a.images", ["plate1/img001.tiff"])
+    manifest_b = _manifest(tmp_path / "b.images", ["plate2/img001.tiff"])
+    output_dir = tmp_path / "out"
+    base = [
+        "--pipeline",
+        str(pipeline_stub),
+        "--input",
+        str(image_tree),
+        "--output",
+        str(output_dir),
+        "--skip-validation",
+    ]
+    runner = CliRunner()
+    first = runner.invoke(
+        cli.phenotypic_cli,
+        [*base, "--image-manifest", str(manifest_a)],
+    )
+    assert first.exit_code == 0, first.output
+    artifact = output_dir / "results" / "plate1" / "zarr" / "a.ome.zarr"
+    artifact.mkdir(parents=True)
+    payload = artifact / "zarr.json"
+    payload.write_bytes(b"scientific-A")
+    state_path = resolve_processing_state_path(output_dir)
+    state_before = state_path.read_bytes()
+
+    restarted = runner.invoke(
+        cli.phenotypic_cli,
+        [
+            *base,
+            "--image-manifest",
+            str(manifest_b),
+            "--restart",
+        ],
+    )
+
+    assert restarted.exit_code != 0
+    assert "fresh output directory" in restarted.output
+    assert "Choose a new --output" in restarted.output
+    assert payload.read_bytes() == b"scientific-A"
+    assert state_path.read_bytes() == state_before
+
+    fresh = runner.invoke(
+        cli.phenotypic_cli,
+        [
+            "--pipeline",
+            str(pipeline_stub),
+            "--input",
+            str(image_tree),
+            "--output",
+            str(tmp_path / "fresh"),
+            "--image-manifest",
+            str(manifest_b),
+            "--restart",
+            "--skip-validation",
+        ],
+    )
+    assert fresh.exit_code == 0, fresh.output

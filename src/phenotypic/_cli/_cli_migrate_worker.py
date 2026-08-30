@@ -16,6 +16,7 @@ from phenotypic.sdk_._metadata_migration import MetadataMigrationAuthority
 
 from ._cli_migrate import (
     MetadataPassResult,
+    _ensure_migration_processing_state,
     _report_from_image_results,
     _retained_reclaim_result,
     close_migration_generation,
@@ -376,6 +377,21 @@ def _run_metadata_worker(config: _WorkerConfig) -> int:
                 extra={"headers_migrated": result.headers_migrated},
             )
             return 1
+        if not config.dry_run:
+            tasks = tuple(
+                read_migration_task(
+                    config.manifest_path,
+                    index,
+                    expected_scientific_output=config.scientific_output,
+                    expected_control_root=config.control_root,
+                )
+                for index in range(config.task_count)
+            )
+            _ensure_migration_processing_state(
+                config.output_dir,
+                tasks=tasks,
+                commit_guard=_commit_guard(config),
+            )
         extra: dict[str, Any] = {
             "headers_migrated": result.headers_migrated,
             "authority": (

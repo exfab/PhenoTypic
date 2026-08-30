@@ -273,6 +273,173 @@ def _worker_plan(
     return output_dir, plan
 
 
+def test_state_free_archive_completes_the_real_slurm_worker_chain(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Metadata establishes marker authority before distributed image work."""
+    from phenotypic._cli import _cli_migrate as migrate
+    from phenotypic._cli import _cli_migrate_image as migrate_image
+    from phenotypic._cli import _cli_migrate_slurm as slurm
+    from phenotypic._cli import _cli_migrate_worker as worker
+    from phenotypic._cli._cli_completion import (
+        current_success_counts,
+        publish_image_success,
+        valid_aggregate_snapshot,
+    )
+    from phenotypic._cli._cli_migrate_image import MigrationImageResult
+    from phenotypic._cli._embedded_measurement_tables import (
+        prepare_embedded_measurement_table,
+    )
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        processing_state_path,
+        replace_embedded_measurement_table,
+    )
+
+    legacy_run = tmp_path / "run"
+    hdf = legacy_run / "results" / "ds" / "hdf" / "img.h5"
+    hdf.parent.mkdir(parents=True)
+    shutil.copy2(
+        Path(__file__).resolve().parents[2]
+        / "fixtures"
+        / "legacy_hdf"
+        / "v2_grouped"
+        / "img.h5",
+        hdf,
+    )
+    measurements = (
+        legacy_run / "results" / "ds" / "measurements" / "img.parquet"
+    )
+    measurements.parent.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "Object_Label": [1],
+            "Size_Area": [25.0],
+            "Metadata_ImageName": ["img"],
+        }
+    ).to_parquet(measurements, index=False)
+
+    assert not processing_state_path(legacy_run).exists()
+    monkeypatch.setattr(slurm, "get_slurm_array_limit", lambda: 100)
+    monkeypatch.setattr(slurm, "get_slurm_max_submit_jobs", lambda: 100)
+    plan = slurm.generate_migration_slurm_plan(
+        legacy_run,
+        slurm_args={"slurm_partition": "short"},
+        generation="state-free-generation",
+    )
+    initialize_slurm_lifecycle(
+        legacy_run, generation=plan.generation, mode="migrate"
+    )
+
+    def install_image_artifacts(
+        output_dir: Path,
+        task,
+        **_: object,
+    ) -> MigrationImageResult:
+        """Substitute only for Zarr conversion, which hangs in this sandbox."""
+        work_id = migrate_image._configured_work_id(
+            output_dir, task.dataset, task.stem
+        )
+        task.store_path.mkdir(parents=True)
+        (task.store_path / "zarr.json").write_text(
+            json.dumps(
+                {
+                    "zarr_format": 3,
+                    "node_type": "group",
+                    "attributes": {
+                        "ome": {"version": "0.5"},
+                        "phenotypic": {
+                            "store_schema_version": 3,
+                            "series": {"gray": "gray"},
+                            "labels": {"objmap": "gray/labels/objmap"},
+                        },
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        embedded = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+        replace_embedded_measurement_table(
+            task.store_path,
+            prepare_embedded_measurement_table(
+                pd.DataFrame(
+                    {
+                        "Object_Label": [1],
+                        "Size_Area": [25.0],
+                        "Metadata_ImageName": [task.stem],
+                    }
+                ),
+                None,
+            ),
+        )
+        task.overlay_path.parent.mkdir(parents=True)
+        task.overlay_path.write_bytes(b"canonical overlay")
+        marker = publish_image_success(
+            output_dir,
+            work_id=work_id,
+            dataset=task.dataset,
+            relative_image_path=f"{task.dataset}/{task.stem}",
+            image_stem=task.stem,
+            mode="full",
+            attempt_id="migration",
+            lifecycle_epoch=plan.generation,
+            artifacts={
+                "store": task.store_path,
+                "overlay": task.overlay_path,
+                "measurements": embedded,
+            },
+        )
+        return MigrationImageResult(
+            index=task.index,
+            dataset=task.dataset,
+            stem=task.stem,
+            work_id=work_id,
+            converted=True,
+            table_installed=True,
+            overlay_rendered=True,
+            marker_digest=hashlib.sha256(marker.read_bytes()).hexdigest(),
+            skipped=False,
+        )
+
+    monkeypatch.setattr(worker, "migrate_image_task", install_image_artifacts)
+    config_path = plan.control_root / "migration_config.json"
+    runner = CliRunner()
+
+    metadata = runner.invoke(
+        worker.migration_worker_cli,
+        ["--config", str(config_path), "metadata"],
+    )
+    assert metadata.exit_code == 0, metadata.output
+    for index in range(plan.task_count):
+        image = runner.invoke(
+            worker.migration_worker_cli,
+            ["--config", str(config_path), "image", "--index", str(index)],
+        )
+        assert image.exit_code == 0, image.output
+    seal = runner.invoke(
+        worker.migration_worker_cli,
+        ["--config", str(config_path), "seal"],
+    )
+    assert seal.exit_code == 0, seal.output
+    finalizer = runner.invoke(
+        worker.migration_worker_cli,
+        ["--config", str(config_path), "finalize"],
+    )
+
+    assert finalizer.exit_code == 0, finalizer.output
+    terminal = migrate._read_migration_terminal_status(
+        migrate.migration_terminal_status_path(
+            plan.control_root, plan.generation
+        ),
+        generation=plan.generation,
+    )
+    assert terminal is not None and terminal["status"] == "succeeded"
+    assert current_success_counts(legacy_run) == (plan.task_count, plan.task_count)
+    assert valid_aggregate_snapshot(legacy_run) is not None
+
+
 def test_failed_metadata_blocks_images_with_typed_status(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

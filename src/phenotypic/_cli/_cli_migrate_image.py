@@ -31,6 +31,7 @@ from phenotypic.sdk_ import (
     load_image_from_store,
     publication_commit,
     replace_embedded_measurement_table,
+    source_image_stem,
 )
 from phenotypic.sdk_._hdf_to_zarr import (
     _load_for_migration,
@@ -130,7 +131,10 @@ def _configured_work_id(output_dir: Path, dataset: str, stem: str) -> str:
     images = work_ids.get(dataset, {}) if isinstance(work_ids, dict) else {}
     if isinstance(images, dict):
         for image_name, value in images.items():
-            if Path(str(image_name)).stem == stem and isinstance(value, str):
+            if (
+                source_image_stem(Path(str(image_name))) == stem
+                and isinstance(value, str)
+            ):
                 return value
     return _migration_work_id(dataset, stem)
 

@@ -116,6 +116,7 @@ from phenotypic.sdk_ import (
     publication_commit,
     replace_embedded_measurement_table,
     run_completion_marker_path,
+    source_image_stem,
     store_stem,
     zarr_store_path,
 )
@@ -615,7 +616,7 @@ def _ensure_migration_processing_state(
         work_ids[dataset_name] = dict(existing_images)
         for stem in sorted(stems):
             if not any(
-                Path(str(image_name)).stem == stem
+                source_image_stem(Path(str(image_name))) == stem
                 for image_name in work_ids[dataset_name]
             ):
                 work_ids[dataset_name][stem] = _migration_work_id(
@@ -626,7 +627,7 @@ def _ensure_migration_processing_state(
                 (
                     str(image_name)
                     for image_name in work_ids[dataset_name]
-                    if Path(str(image_name)).stem == stem
+                    if source_image_stem(Path(str(image_name))) == stem
                 ),
                 stem,
             )

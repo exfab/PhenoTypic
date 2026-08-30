@@ -1730,6 +1730,62 @@ def test_migration_state_uses_manifest_inventory_before_stores_exist(
     assert guard.entries == 1
 
 
+def test_migration_preserves_ome_zarr_source_identity_from_full_run_state(
+    tmp_path: Path,
+) -> None:
+    """A process-store source stays the same completed image during migration."""
+    from phenotypic._cli._cli_migrate import _ensure_migration_processing_state
+    from phenotypic._cli._cli_migrate_image import _configured_work_id
+
+    run = tmp_path / "run"
+    now = datetime.now()
+    save_processing_state(
+        ProcessingState(
+            version="3.0.0",
+            pipeline_path=run / "pipeline.json",
+            input_path=run / "input",
+            output_dir=run,
+            timestamp=now,
+            execution_mode="local",
+            last_updated=now,
+            datasets={
+                "ds": DatasetState(
+                    initial_images={"plate.ome.zarr"},
+                    completed={"plate.ome.zarr"},
+                )
+            },
+            config={
+                "success_markers_required": True,
+                "work_ids": {
+                    "ds": {"plate.ome.zarr": "process-store-work-id"}
+                },
+            },
+        ),
+        run,
+    )
+    base = _task(run, 0)
+    task = replace(
+        base,
+        stem="plate",
+        hdf_path=None,
+        store_path=base.store_path.with_name("plate.ome.zarr"),
+        measurement_path=None,
+        overlay_path=base.overlay_path.with_name("plate.png"),
+        marker_path=base.marker_path.with_name("plate.json"),
+    )
+
+    _ensure_migration_processing_state(run, tasks=(task,))
+
+    state = load_processing_state(run)
+    assert state is not None
+    assert state.datasets["ds"].initial_images == {"plate.ome.zarr"}
+    assert state.datasets["ds"].completed == {"plate.ome.zarr"}
+    assert state.config["work_ids"] == {
+        "ds": {"plate.ome.zarr": "process-store-work-id"}
+    }
+    assert _configured_work_id(run, "ds", "plate") == "process-store-work-id"
+
+
 def test_local_migrate_uses_one_inventory_after_guarded_invalidation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

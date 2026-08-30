@@ -268,6 +268,96 @@ def test_the_measurements_table_is_never_served(route: RouteFixture) -> None:
     assert route.get("tables/measurements/table.parquet").status_code == 404
 
 
+def test_a_reserved_series_alias_cannot_expose_the_measurements_table(
+    tmp_path: Path,
+) -> None:
+    """Only validated declared image paths may enter the route allow-list."""
+    root = tmp_path / "run"
+    write_master(
+        root,
+        pl.DataFrame(
+            {
+                "Metadata_Dataset": [DATASET],
+                str(IMAGE.IMAGE_NAME): [STEM],
+                "Object_Label": [1],
+                "Bbox_CenterRR": [16.0],
+                "Bbox_CenterCC": [16.0],
+            }
+        ),
+    )
+    store = zarr_store_path(root, DATASET, STEM)
+    series = {name: name for name in ("rgb", "gray", "detect_mat")}
+    labels = {"objmap": "rgb/labels/objmap"}
+    store.mkdir(parents=True)
+    (store / STORE_ROOT_JSON).write_text(
+        json.dumps(
+            {
+                "zarr_format": 3,
+                "node_type": "group",
+                "attributes": {
+                    "ome": {"version": "0.5"},
+                    PhenotypicAttr.ROOT: {
+                        PhenotypicAttr.STORE_SCHEMA_VERSION: 3,
+                        PhenotypicAttr.SERIES: series,
+                        PhenotypicAttr.LABELS: labels,
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    for member, image_label in (
+        ("rgb", False),
+        ("gray", False),
+        ("detect_mat", False),
+        ("rgb/labels/objmap", True),
+    ):
+        group = store / member
+        (group / "0").mkdir(parents=True)
+        ome = {
+            "version": "0.5",
+            "multiscales": [{"datasets": [{"path": "0"}]}],
+        }
+        if image_label:
+            ome["image-label"] = {}
+        (group / STORE_ROOT_JSON).write_text(
+            json.dumps(
+                {
+                    "zarr_format": 3,
+                    "node_type": "group",
+                    "attributes": {"ome": ome},
+                }
+            ),
+            encoding="utf-8",
+        )
+        (group / "0" / STORE_ROOT_JSON).write_text(
+            json.dumps({"zarr_format": 3, "node_type": "array"}),
+            encoding="utf-8",
+        )
+    route = RouteFixture(root)
+    table = route.store / "tables" / "measurements" / "table.parquet"
+    table.parent.mkdir(parents=True)
+    table.write_bytes(b"secret parquet")
+    root_json = route.store / STORE_ROOT_JSON
+    payload = json.loads(root_json.read_text(encoding="utf-8"))
+    payload["attributes"][PhenotypicAttr.ROOT][PhenotypicAttr.SERIES][
+        "tables"
+    ] = "rgb"
+    root_json.write_text(json.dumps(payload), encoding="utf-8")
+
+    response = route.get("tables/measurements/table.parquet")
+    assert response.status_code == 404
+    assert b"secret parquet" not in response.data
+    for asset in (
+        STORE_ROOT_JSON,
+        "rgb/zarr.json",
+        "gray/zarr.json",
+        "detect_mat/zarr.json",
+        "rgb/labels/objmap/zarr.json",
+    ):
+        assert route.get(asset).status_code == 200
+
+
 def test_a_symlink_from_a_series_into_the_table_is_not_served(
     route: RouteFixture,
 ) -> None:

@@ -155,6 +155,3 @@ def test_an_all_zero_objmap_is_a_valid_source_not_an_error(stage1_store):
     spec = build_source_spec(stage1_store, "/zarr/ds/stage1plate.ome.zarr")
     assert spec["labelPath"]
     assert "error" not in spec
-
-
-

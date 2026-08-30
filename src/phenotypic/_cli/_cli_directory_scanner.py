@@ -331,14 +331,15 @@ def apply_image_manifest(
     )
     input_path = Path(input_path)
 
-    by_resolved: Dict[Path, tuple[str, Path]] = {}
-    by_spelling: Dict[Path, tuple[str, Path]] = {}
+    by_resolved: Dict[Path, List[tuple[str, Path]]] = {}
+    by_spelling: Dict[Path, List[tuple[str, Path]]] = {}
     for dataset_name, image_paths in image_paths_by_dataset.items():
         for image_path in image_paths:
+            identity = (dataset_name, image_path)
             by_resolved.setdefault(
-                _resolved_manifest_path(image_path), (dataset_name, image_path)
-            )
-            by_spelling.setdefault(Path(image_path), (dataset_name, image_path))
+                _resolved_manifest_path(image_path), []
+            ).append(identity)
+            by_spelling.setdefault(Path(image_path), []).append(identity)
 
     selected_resolved: set[Path] = set()
     selected_by_dataset: Dict[str, set[Path]] = {}
@@ -347,11 +348,17 @@ def apply_image_manifest(
         if not candidate.is_absolute():
             candidate = input_path / candidate
         resolved = _resolved_manifest_path(candidate)
-        match = by_spelling.get(candidate) or by_resolved.get(resolved)
-        if match is None:
+        matches = by_spelling.get(candidate) or by_resolved.get(resolved, [])
+        if not matches:
             raise ImageManifestError(
                 f"Image manifest {manifest_path} names {entry!r}, which is "
                 f"not one of the images found under --input {input_path}."
+            )
+        if len(matches) != 1:
+            raise ImageManifestError(
+                f"Image manifest {manifest_path} names {entry!r}, which does "
+                "not uniquely identify one scanned image. Use an exact "
+                "--input-relative spelling for the intended dataset."
             )
         if resolved in selected_resolved:
             raise ImageManifestError(
@@ -359,7 +366,7 @@ def apply_image_manifest(
                 "once. Duplicates are refused rather than deduplicated."
             )
         selected_resolved.add(resolved)
-        dataset_name, image_path = match
+        dataset_name, image_path = matches[0]
         selected_by_dataset.setdefault(dataset_name, set()).add(image_path)
 
     filtered: Dict[str, List[Path]] = {}

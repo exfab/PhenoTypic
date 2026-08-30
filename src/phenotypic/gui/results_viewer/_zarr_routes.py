@@ -68,10 +68,12 @@ returns ``undefined`` on **404** and *throws* on every other non-2xx status:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import functools
+import json
 import logging
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 import dash
 from flask import Blueprint, Response, abort, request, send_file
@@ -89,11 +91,6 @@ from phenotypic.sdk_ import paths_fingerprint
 from phenotypic.sdk_ import ngff_
 
 logger = logging.getLogger(__name__)
-
-#: The OME metadata group. Present in every store, named by no
-#: ``attributes.phenotypic`` key, and readable: the client resolves the
-#: series list through it when it prefers the NGFF projection.
-_OME_GROUP = "OME"
 
 #: How many (store, generation) pairs to keep resolved. Both
 #: :func:`store_generation_token` and :func:`readable_roots_for` run on every
@@ -171,12 +168,98 @@ def _readable_roots_for(
     store: str, identity: tuple[int, int, int, int]
 ) -> frozenset[str]:
     """Derive the readable first-path-components. Memoized on *identity*."""
-    block = _readable_block(Path(store))
-    roots = set(block.get(ngff_.PhenotypicAttr.SERIES, {}))
-    for label_path in block.get(ngff_.PhenotypicAttr.LABELS, {}).values():
-        roots.add(PurePosixPath(label_path).parts[0])
-    roots.add(_OME_GROUP)
+    store_path = Path(store)
+    block = _readable_block(store_path)
+    series = block.get(ngff_.PhenotypicAttr.SERIES)
+    labels = block.get(ngff_.PhenotypicAttr.LABELS, {})
+    if not isinstance(series, Mapping) or not isinstance(labels, Mapping):
+        raise KeyError("image-series maps are malformed")
+
+    reserved = {
+        ngff_.OME_GROUP,
+        ngff_.STORE_ROOT_JSON,
+        ngff_.TABLES_GROUP,
+    }
+    roots: set[str] = set()
+    for declarations, require_image_label in (
+        (series, False),
+        (labels, True),
+    ):
+        for member in declarations.values():
+            parts = _declared_store_parts(member)
+            if (
+                not parts
+                or any(part in reserved or part.startswith(".") for part in parts)
+                or not _is_ngff_image_group(
+                    store_path,
+                    parts,
+                    require_image_label=require_image_label,
+                )
+            ):
+                continue
+            roots.add(parts[0])
+    roots.add(ngff_.OME_GROUP)
     return frozenset(roots)
+
+
+def _declared_store_parts(member: object) -> tuple[str, ...]:
+    """Return safe POSIX components for one store-declared image path."""
+    if (
+        not isinstance(member, str)
+        or not member
+        or member.startswith("/")
+        or "\\" in member
+        or "\x00" in member
+    ):
+        return ()
+    parts = tuple(member.split("/"))
+    if any(part in {"", ".", ".."} for part in parts):
+        return ()
+    return parts
+
+
+def _is_ngff_image_group(
+    store: Path,
+    parts: tuple[str, ...],
+    *,
+    require_image_label: bool,
+) -> bool:
+    """Return whether a declared path is a Zarr-v3 NGFF image group."""
+    try:
+        group = json.loads(
+            (store.joinpath(*parts) / ngff_.STORE_ROOT_JSON).read_text(
+                encoding="utf-8"
+            )
+        )
+        if group.get("zarr_format") != 3 or group.get("node_type") != "group":
+            return False
+        attributes = group.get("attributes")
+        ome = attributes.get("ome") if isinstance(attributes, Mapping) else None
+        if not isinstance(ome, Mapping) or ome.get("version") != ngff_.NGFF_VERSION:
+            return False
+        if require_image_label and not isinstance(ome.get("image-label"), Mapping):
+            return False
+        multiscales = ome.get("multiscales")
+        if not isinstance(multiscales, list) or not multiscales:
+            return False
+        first = multiscales[0]
+        datasets = first.get("datasets") if isinstance(first, Mapping) else None
+        if not isinstance(datasets, list) or not datasets:
+            return False
+        first_dataset = datasets[0]
+        level = first_dataset.get("path") if isinstance(first_dataset, Mapping) else None
+        level_parts = _declared_store_parts(level)
+        if not level_parts:
+            return False
+        array = json.loads(
+            (
+                store.joinpath(*parts, *level_parts)
+                / ngff_.STORE_ROOT_JSON
+            ).read_text(encoding="utf-8")
+        )
+        return array.get("zarr_format") == 3 and array.get("node_type") == "array"
+    except (AttributeError, json.JSONDecodeError, OSError, TypeError, ValueError):
+        return False
 
 
 def readable_roots_for(store: Path) -> frozenset[str]:
