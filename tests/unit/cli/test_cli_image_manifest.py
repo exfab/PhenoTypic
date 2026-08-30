@@ -510,3 +510,95 @@ def test_manifest_restart_refuses_a_root_with_prior_scientific_artifacts(
         ],
     )
     assert fresh.exit_code == 0, fresh.output
+
+
+@pytest.mark.parametrize(
+    ("nested", "layer", "artifact_relative"),
+    (
+        (True, "gray", Path("plate1/img001.ome.zarr/zarr.json")),
+        (False, "detect_mat", Path("img001.tiff")),
+    ),
+)
+def test_process_manifest_restart_refuses_direct_mirrored_outputs(
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline_stub: Path,
+    tmp_path: Path,
+    nested: bool,
+    layer: str,
+    artifact_relative: Path,
+) -> None:
+    """Process stores and files are prior science even without results/."""
+    from click.testing import CliRunner
+
+    import phenotypic.phenotypicCLI as cli
+    from phenotypic._cli._cli_process_only import process_only_output_path
+
+    input_root = tmp_path / "images"
+    if nested:
+        source_names = ("plate1/img001.tiff", "plate2/img001.tiff")
+    else:
+        source_names = ("img001.tiff", "img002.tiff")
+    for source_name in source_names:
+        source = input_root / source_name
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_bytes(source_name.encode())
+
+    class PublishSelectedProcessOutput:
+        def __init__(self, config: ExecutionConfig) -> None:
+            self.config = config
+
+        def execute(self, datasets, output_dir):
+            for dataset in datasets:
+                for image in dataset.images:
+                    target = process_only_output_path(
+                        output_dir,
+                        image,
+                        self.config.input_path,
+                        self.config.process_only_layer,
+                        fmt=self.config.process_format,
+                    )
+                    if self.config.process_format == "zarr":
+                        target.mkdir(parents=True)
+                        (target / "zarr.json").write_bytes(b"scientific-A")
+                    else:
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        target.write_bytes(b"scientific-A")
+            raise SystemExit(0)
+
+    monkeypatch.setattr(
+        cli,
+        "create_execution_strategy",
+        lambda config, output_manager: PublishSelectedProcessOutput(config),
+    )
+    manifest = _manifest(tmp_path / "approved.images", [source_names[0]])
+    output_dir = tmp_path / "out"
+    command = [
+        "--mode",
+        "process",
+        "--layer",
+        layer,
+        "--pipeline",
+        str(pipeline_stub),
+        "--input",
+        str(input_root),
+        "--output",
+        str(output_dir),
+        "--image-manifest",
+        str(manifest),
+        "--skip-validation",
+    ]
+    runner = CliRunner()
+    first = runner.invoke(cli.phenotypic_cli, command)
+    assert first.exit_code == 0, first.output
+    artifact = output_dir / artifact_relative
+    assert artifact.read_bytes() == b"scientific-A"
+    state_path = resolve_processing_state_path(output_dir)
+    state_before = state_path.read_bytes()
+    _manifest(manifest, [source_names[1]])
+
+    restarted = runner.invoke(cli.phenotypic_cli, [*command, "--restart"])
+
+    assert restarted.exit_code != 0
+    assert "fresh output directory" in restarted.output
+    assert artifact.read_bytes() == b"scientific-A"
+    assert state_path.read_bytes() == state_before

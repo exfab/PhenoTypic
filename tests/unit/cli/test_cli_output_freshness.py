@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from phenotypic.phenotypicCLI import (
+    _has_prior_scientific_artifacts,
     is_safe_gui_launch_state_entry,
     is_safe_gui_log_entry,
 )
@@ -34,6 +35,46 @@ def test_empty_real_gui_log_directory_is_safe(tmp_path: Path) -> None:
     log_dir.mkdir()
 
     assert is_safe_gui_log_entry(log_dir)
+
+
+def test_restart_artifact_scan_ignores_only_machine_and_safe_gui_entries(
+    tmp_path: Path,
+) -> None:
+    """Top-level process outputs are science; machine-only roots are fresh."""
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert not _has_prior_scientific_artifacts(empty)
+
+    machine_only = tmp_path / "machine-only"
+    (machine_only / ".phenotypic" / "progress").mkdir(parents=True)
+    (machine_only / ".phenotypic" / "progress" / "state.json").write_bytes(
+        b"machine state"
+    )
+    assert not _has_prior_scientific_artifacts(machine_only)
+
+    launch_only = tmp_path / "launch-only"
+    _write_launch_owner(launch_only)
+    assert not _has_prior_scientific_artifacts(launch_only)
+
+    fake_machine_state = tmp_path / "fake-machine-state"
+    fake_machine_state.mkdir()
+    (fake_machine_state / ".phenotypic").write_bytes(b"not a directory")
+    assert _has_prior_scientific_artifacts(fake_machine_state)
+
+    gui_only = tmp_path / "gui-only"
+    gui_log = gui_only / RUN_LOG_DIRNAME
+    gui_log.mkdir(parents=True)
+    (gui_log / STDOUT_LOG).write_bytes(b"log")
+    assert not _has_prior_scientific_artifacts(gui_only)
+
+    process_store = tmp_path / "process-store"
+    (process_store / "plate.ome.zarr").mkdir(parents=True)
+    assert _has_prior_scientific_artifacts(process_store)
+
+    process_file = tmp_path / "process-file"
+    process_file.mkdir()
+    (process_file / "plate.tiff").write_bytes(b"pixels")
+    assert _has_prior_scientific_artifacts(process_file)
 
 
 @pytest.mark.parametrize("child_name", ["stderr.log", "notes.txt"])

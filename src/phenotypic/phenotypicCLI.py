@@ -222,9 +222,7 @@ from phenotypic._cli._cli_validation import (
 from phenotypic._cli._cli_constants import MAX_SLURM_TIME_MINUTES
 from phenotypic.schema import EXPERIMENT
 from phenotypic.sdk_ import (
-    DIR_DELIVERABLES,
     DIR_PHENOTYPIC,
-    DIR_QC,
     DIR_RESULTS,
     GUI_LAUNCH_OWNER_JSON,
     GUI_LOG_FILENAMES,
@@ -275,10 +273,23 @@ DURABLE_WRITES_REJECTED_MODES: frozenset[str] = frozenset(
 
 def _has_prior_scientific_artifacts(output_dir: Path) -> bool:
     """Return whether restart would preserve artifacts from an earlier run."""
-    for name in (DIR_RESULTS, DIR_DELIVERABLES, DIR_QC):
-        root = Path(output_dir) / name
-        if root.is_file() or (root.is_dir() and next(root.iterdir(), None) is not None):
+    root = Path(output_dir)
+    if not root.exists():
+        return False
+    if not root.is_dir():
+        return True
+    try:
+        for entry in root.iterdir():
+            machine_state = (
+                entry.name == DIR_PHENOTYPIC
+                and not entry.is_symlink()
+                and entry.is_dir()
+            )
+            if machine_state or is_safe_gui_log_entry(entry):
+                continue
             return True
+    except OSError:
+        return True
     return False
 
 
