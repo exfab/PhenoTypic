@@ -1383,7 +1383,8 @@ def test_public_active_attempt_conflict_is_a_click_error(
     )
 
     assert result.exit_code == 1
-    assert "Error: Could not initialize SLURM migration attempt" in result.output
+    assert "Error: Could not reconcile prior SLURM migration attempt" in result.output
+    assert "Active migration lacks recoverable control-root authority" in result.output
     assert "Unexpected error" not in result.output
 
 
