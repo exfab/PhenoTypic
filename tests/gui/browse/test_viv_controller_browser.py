@@ -197,3 +197,49 @@ def test_stale_viv_failure_cannot_replace_new_selection_loading(controller_page)
     page.wait_for_function(
         "!document.getElementById('browse-osd-loading').classList.contains('is-visible')"
     )
+
+
+def test_new_viv_source_starts_before_older_deferred_success_finishes(
+    controller_page,
+):
+    page = controller_page
+    old = _store_payload(
+        "/browse/assets/deferred-old-success/rev/zarr/",
+        "old.ome.zarr",
+    )
+    new = _store_payload(
+        "/browse/assets/deferred-new-success/rev/zarr/",
+        "new.ome.zarr",
+    )
+
+    page.evaluate(
+        "payload => { window.__oldApply = "
+        "window.__phenotypicBrowse.applyImage(payload); }",
+        old,
+    )
+    page.wait_for_function("window.__vivPending.size === 1")
+    page.evaluate(
+        "payload => { window.__newApply = "
+        "window.__phenotypicBrowse.applyImage(payload); }",
+        new,
+    )
+
+    page.wait_for_function("window.__vivPending.size === 2")
+    page.evaluate(
+        "url => window.__vivPending.get(url).resolve({})",
+        old["store_url"],
+    )
+    page.evaluate("() => window.__oldApply")
+
+    overlay = page.locator("#browse-osd-loading")
+    assert "is-visible" in (overlay.get_attribute("class") or "")
+    assert page.locator("#browse-loading-text").inner_text() == (
+        "Loading new.ome.zarr…"
+    )
+
+    page.evaluate(
+        "url => window.__vivPending.get(url).resolve({})",
+        new["store_url"],
+    )
+    page.evaluate("() => window.__newApply")
+    assert "is-visible" not in (overlay.get_attribute("class") or "")

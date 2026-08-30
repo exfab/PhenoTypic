@@ -31,7 +31,6 @@
     ns.singleViewer = ns.singleViewer || null;
     ns.singleVivMounted = ns.singleVivMounted || false;
     ns.vivMountPromise = ns.vivMountPromise || null;
-    ns.vivSourceChain = ns.vivSourceChain || Promise.resolve();
     ns.singleRenderKind = ns.singleRenderKind || null;
     ns.singleGeneration = ns.singleGeneration || 0;
     ns.navigationSequence = ns.navigationSequence || 0;
@@ -414,16 +413,10 @@
                 if (ns.singleRenderKind !== "ome-zarr") { await destroyViv(); }
                 return;
             }
-            ns.vivSourceChain = ns.vivSourceChain.catch(function () {}).then(
-                async function () {
-                    if (generation !== ns.singleGeneration) { return; }
-                    await facade.setSource(OSD_DIV_ID, spec);
-                    if (generation !== ns.singleGeneration) { return; }
-                    setLoading("hidden");
-                    hidePreview(generation);
-                }
-            );
-            await ns.vivSourceChain;
+            await facade.setSource(OSD_DIV_ID, spec);
+            if (generation !== ns.singleGeneration) { return; }
+            setLoading("hidden");
+            hidePreview(generation);
         } catch (error) {
             if (generation !== ns.singleGeneration) { return; }
             const detail = error && error.message ? error.message : "Could not load image";

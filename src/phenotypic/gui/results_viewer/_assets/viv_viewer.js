@@ -883,6 +883,10 @@
       spec: null,
       loaded: null,
       resourcing: null,
+      // Every setSource claims a new epoch before its first await. Deferred
+      // reads from an older source may still finish, but cannot commit into
+      // this record after a newer source or destroy has invalidated them.
+      sourceEpoch: 0,
       // Per-layer opacity, addressed by the same ids `setLayerVisibility`
       // uses. Kept on the RECORD rather than on the layer descriptors so it
       // survives the wholesale rebuild every `setSource` performs.
@@ -904,26 +908,39 @@
    * hard-coding it, and a `gray`-primary store has no `rgb` group at all.
    */
   async function setSource(containerId, spec) {
-    const bundle = await ready();
     const record = requireInstance(containerId);
-    record.viewer.deck.setProps({ layerFilter: null });
+    const epoch = record.sourceEpoch + 1;
+    record.sourceEpoch = epoch;
+    const isCurrent = () => (
+      instances.get(containerId) === record && record.sourceEpoch === epoch
+    );
     if (!spec || !spec.storeUrl || !spec.seriesPath) {
       throw new Error(
         "viv: source spec needs storeUrl and seriesPath (both resolved " +
           "server-side)"
       );
     }
-    const hooks = { onStale: () => resourceAfterPromote(containerId) };
+    const bundle = await ready();
+    if (!isCurrent()) return undefined;
+    record.viewer.deck.setProps({ layerFilter: null });
+    const hooks = {
+      onStale: () => {
+        if (isCurrent()) resourceAfterPromote(containerId);
+      },
+    };
     const image = await bundle.viv.loadOmeZarrFromStore(
       createByteRouteStore(joinUrl(spec.storeUrl, spec.seriesPath), hooks)
     );
+    if (!isCurrent()) return undefined;
     let label = null;
     if (spec.labelPath) {
       label = await bundle.viv.loadOmeZarrFromStore(
         createByteRouteStore(joinUrl(spec.storeUrl, spec.labelPath), hooks)
       );
+      if (!isCurrent()) return undefined;
     }
     const loaded = { image, label };
+    if (!isCurrent()) return undefined;
     record.spec = spec;
     record.loaded = loaded;
     record.level = null;
@@ -1084,6 +1101,7 @@
   function destroy(containerId) {
     const record = instances.get(containerId);
     if (!record) return;
+    record.sourceEpoch += 1;
     record.viewer.finalize();
     instances.delete(containerId);
   }
