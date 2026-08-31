@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference-free segmentation metrics — algorithm cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+  --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+  --border:#e2dac9; --rule:#cdc1a9;
+  --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+  --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+  --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+  --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+  --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+  --radius:14px; --maxw:1180px;
+  --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+  --serif:"Fraunces", Georgia, "Times New Roman", serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+  font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+    radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+.topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+.topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+.brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand b{color:var(--ink);font-weight:600}
+.topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+.topbar nav a{color:var(--text-dim)}
+.hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+.family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+  width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+  color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+.hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+.lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.chip .dot{width:8px;height:8px;border-radius:50%}
+.badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+  display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+.b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+.b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+.b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+.b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+.b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+.b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+.b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+.b-built{background:var(--green);color:#fff;border-color:var(--green)}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+.legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+.legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+.legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+.band{padding:30px 0 6px}
+.section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+.section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+.rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+.badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.definition{margin:0;color:var(--text);font-size:14.5px;overflow-wrap:break-word}
+.definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+figure.illo svg{display:block;width:100%;height:auto}
+figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+figure.illo figcaption b{color:var(--ink);font-weight:600}
+.meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+.meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+.meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+.meta .mv{min-width:0;overflow-wrap:break-word}
+.prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+  border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+.cite{font-style:italic;color:var(--text-dim)}
+.varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+.varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+.varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+.varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+.varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+.outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+.outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+.outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+.outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+.outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+.outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+.callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+  border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+.callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+.callout.red{border-left-color:var(--vermillion)}
+.callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+.callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+.callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+.footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+.footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+.footer .note{max-width:75ch}
+code{font-family:var(--mono);font-size:.9em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+@media(max-width:560px){
+  .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+  .meta .mk{width:64px}
+}
+@media print{
+  body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+  .card{break-inside:avoid}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Reference-free metrics</b> &middot; algorithm cards</span>
+  <nav>
+    <a href="unsupervised-segmentation-metrics.html">Overview</a>
+    <a href="#built">Built</a><a href="#fam-a">A</a><a href="#fam-b">B</a><a href="#fam-c">C</a><a href="#fam-d">D</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="family-badge" style="background:linear-gradient(145deg,var(--blue),var(--green))">&sum;</div>
+    <div>
+      <div class="hero-kicker">One card per algorithm &middot; 2026-08-28</div>
+      <h1 class="hero-title">How each reference-free segmentation metric actually works</h1>
+      <p class="lede">Twenty-two algorithms, each with its definition, a mechanism diagram, the
+      formula's variables, and what the output number <i>reads as</i>. Ordered by family: what is
+      built today, then the classic region statistics, the object/spatial family, the bio-imaging
+      family, and the learned predictors.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>4 built</span>
+        <span class="chip"><span class="dot" style="background:var(--blue)"></span>6 classic (A)</span>
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>5 spatial (B)</span>
+        <span class="chip"><span class="dot" style="background:var(--sky)"></span>4 bio-image (C)</span>
+        <span class="chip"><span class="dot" style="background:var(--purple)"></span>3 learned (D)</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Family</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--green)"></span>Built &middot; in <code>ReferenceFreeScorer</code></span>
+        <span class="item"><span class="sw" style="background:var(--blue)"></span>A &middot; region statistics</span>
+        <span class="item"><span class="sw" style="background:var(--green)"></span>B &middot; object / spatial</span>
+        <span class="item"><span class="sw" style="background:var(--sky)"></span>C &middot; bio-imaging</span>
+        <span class="item"><span class="sw" style="background:var(--purple)"></span>D &middot; learned predictor</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to arrayed colonies on agar</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>&#128994; transfers directly</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>&#128993; needs redefinition</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>&#128308; blocked / avoid</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= BAND 1 : BUILT ================= -->
+  <section class="band" id="built">
+    <h2 class="section-title">Built today &mdash; the four <code>ReferenceFreeScorer</code> terms</h2>
+    <p class="section-sub">Each is fixed-normalized to <code>[0,1]</code> higher-is-better with hard external
+    bounds; the base scorer complements each into cost. Fixed bounds &mdash; not min&ndash;max over the swept
+    grid &mdash; is the deliberate defence against the B&ouml;ck instability (card 11).</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 1. ShapeRegularity -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">ShapeRegularity</h3>
+          <div class="badges"><span class="badge b-built">BUILT</span><span class="badge b-fit-green">&#128994; direct</span></div>
+        </div>
+        <p class="definition">Averages the shape priors a correctly-segmented colony should satisfy. Reads the
+        public <span class="term">Shape_*</span> schema columns only &mdash; it never recomputes geometry from
+        the mask, so it costs nothing beyond frame arithmetic.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A colony blob with its convex hull dashed around it and an equal-area circle overlaid, showing solidity and circularity">
+            <path id="blobS" d="M150,52 C122,54 106,76 114,98 C92,112 96,146 122,152
+                 C134,176 172,180 186,160 C214,164 232,140 220,118
+                 C234,96 216,66 192,70 C182,54 166,50 150,52 Z"
+                 fill="rgba(11,155,118,.20)" stroke="none"/>
+            <!-- convex hull -->
+            <path d="M150,52 C176,46 216,62 222,90 C238,110 234,144 208,160
+                 C188,182 138,180 120,156 C92,146 88,108 112,96 C104,72 124,52 150,52 Z"
+                 fill="none" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="5 4"/>
+            <use href="#blobS" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linejoin="round"/>
+            <!-- concavity callouts -->
+            <circle cx="112" cy="97" r="4" fill="none" stroke="var(--vermillion)" stroke-width="1.8"/>
+            <circle cx="221" cy="117" r="4" fill="none" stroke="var(--vermillion)" stroke-width="1.8"/>
+            <text class="lbl" x="243" y="66" fill="var(--blue)">convex hull</text>
+            <text class="lbl" x="243" y="122" fill="var(--vermillion)">concavity</text>
+            <text class="lbl-strong" x="140" y="112" fill="var(--green)">A</text>
+            <line class="axis" x1="241" y1="62" x2="224" y2="80"/>
+            <line class="axis" x1="241" y1="118" x2="228" y2="117"/>
+            <text class="lbl-strong" x="20" y="196">solidity = A / A_hull</text>
+            <text class="lbl-strong" x="196" y="196">circ = 4&#960;A / P&#178;</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> solidity is the blob's area over its <b>convex hull</b> area &mdash;
+          two merged colonies leave a deep waist and drop it hard. Circularity compares area to perimeter
+          squared, so a ragged or split mask falls. Eccentricity is flipped to <code>1&minus;e</code> so all
+          three point the same way, then averaged.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">measurement frame only</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">very low &mdash; no image access</span></div>
+          <div class="mrow"><span class="mk">Family</span><span class="mv"><span class="prov">C.2 morphology prior</span></span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>mean(Solidity, Circularity, 1&minus;Eccentricity)</b>, each clamped to [0,1]</dd>
+            <dt>Range</dt><dd>[0, 1] &mdash; higher is better</dd>
+            <dt>Reads as</dt><dd>near 1 = round, convex, compact colonies; falling = merged pairs (solidity),
+            shattered fragments (circularity), or smeared/elongated blobs (eccentricity)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables &amp; guards</span>
+          <dl>
+            <dt>A, A_hull</dt><dd>colony area and its convex-hull area</dd>
+            <dt>P</dt><dd>perimeter of the colony contour</dd>
+            <dt>min_area</dt><dd>drops tiny colonies &mdash; perimeter metrics are unreliable at a few pixels</dd>
+            <dt>_clamp01</dt><dd>defends against solidity &gt; 1 on the synthetic plate</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 2. Contrast -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Contrast &mdash; Otsu separation &#951;</h3>
+          <div class="badges"><span class="badge b-built">BUILT</span><span class="badge b-fit-green">&#128994; direct</span></div>
+        </div>
+        <p class="definition">The one built term that scores the mask <i>against the image it came from</i>:
+        it reads <span class="term">image.gray</span> and <span class="term">image.objmask</span>, splits the
+        grayscale into foreground and background, and asks what fraction of total variance the split explains.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A bimodal grayscale histogram split by the mask into a background mode and a foreground mode, with the distance between class means marked">
+            <line class="axis" x1="26" y1="164" x2="336" y2="164"/>
+            <line class="axis" x1="26" y1="164" x2="26" y2="34"/>
+            <!-- background mode -->
+            <path d="M40,164 C64,164 66,74 96,74 C126,74 128,164 152,164 Z" fill="rgba(0,114,178,.18)" stroke="var(--blue)" stroke-width="2"/>
+            <!-- foreground mode -->
+            <path d="M212,164 C232,164 236,98 258,98 C280,98 284,164 306,164 Z" fill="rgba(11,155,118,.20)" stroke="var(--green)" stroke-width="2"/>
+            <!-- means -->
+            <line x1="96" y1="164" x2="96" y2="60" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="4 3"/>
+            <line x1="258" y1="164" x2="258" y2="84" stroke="var(--green)" stroke-width="1.6" stroke-dasharray="4 3"/>
+            <!-- separation arrow -->
+            <line x1="96" y1="50" x2="258" y2="50" stroke="var(--vermillion)" stroke-width="2"/>
+            <path d="M96,50 l9,-4 v8 z" fill="var(--vermillion)"/>
+            <path d="M258,50 l-9,-4 v8 z" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="132" y="42" fill="var(--vermillion)">&#956;_fg &#8722; &#956;_bg</text>
+            <text class="lbl" x="74" y="182" fill="var(--blue)">agar</text>
+            <text class="lbl" x="232" y="182" fill="var(--green)">colonies</text>
+            <text class="lbl" x="300" y="182">gray</text>
+            <text class="lbl" x="34" y="46">count</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> the mask &mdash; not a threshold search &mdash; defines the two classes.
+          A good mask puts the two modes far apart, so between-class variance captures nearly all the total; a
+          bad mask mixes agar into the colony class and the modes collapse toward each other.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale image + binary objmask</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">very low &mdash; one pass</span></div>
+          <div class="mrow"><span class="mk">Family</span><span class="mv"><span class="prov">A.3 Otsu criterion</span></span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>&#951; = &#963;&#178;_B / &#963;&#178;_T</b>, with
+            &#963;&#178;_B = w(1&minus;w)(&#956;_fg &minus; &#956;_bg)&#178;</dd>
+            <dt>Range</dt><dd>[0, 1] &mdash; higher is better; already normalized, no grid dependence</dd>
+            <dt>Reads as</dt><dd>fraction of grayscale variance the mask explains. Returns 0 for a degenerate
+            all-foreground or all-background mask, and for a zero-variance image</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>w</dt><dd>foreground fraction, <code>mask.mean()</code></dd>
+            <dt>&#963;&#178;_T</dt><dd>total grayscale variance (constant for the image)</dd>
+            <dt>&#963;&#178;_B</dt><dd>between-class variance; maximizing it &equiv; minimizing within-class</dd>
+          </dl>
+        </div>
+        <div class="callout red" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Blind spot:</b> histogram-only. A salt-and-pepper mask ties a
+          clean one at the same gray split &mdash; it must be paired with a spatially aware term (busyness,
+          Zeboudj, or Q).</p>
+        </div>
+      </article>
+
+      <!-- 3. SizeCV -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">SizeCV</h3>
+          <div class="badges"><span class="badge b-built">BUILT</span><span class="badge b-fit-green">&#128994; direct</span></div>
+        </div>
+        <p class="definition">Replicate colonies of one strain should be about the same size. Computes the
+        coefficient of variation of <span class="term">Size_Area</span> <i>inside</i> each replicate group,
+        averages across groups, then folds the result into a bounded score.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two replicate groups of colony circles: a tight group with low size spread scoring high, and a scattered group with high spread scoring low">
+            <!-- group 1 tight -->
+            <text class="lbl-strong" x="24" y="34">tight replicates</text>
+            <circle cx="44" cy="72" r="17" fill="rgba(11,155,118,.22)" stroke="var(--green)" stroke-width="2"/>
+            <circle cx="88" cy="72" r="18" fill="rgba(11,155,118,.22)" stroke="var(--green)" stroke-width="2"/>
+            <circle cx="133" cy="72" r="16" fill="rgba(11,155,118,.22)" stroke="var(--green)" stroke-width="2"/>
+            <line class="axis" x1="24" y1="100" x2="153" y2="100"/>
+            <text class="lbl" x="40" y="116" fill="var(--green)">&#963;/&#956; &#8776; 0.05</text>
+            <text class="lbl-strong" x="40" y="134" fill="var(--green)">score &#8776; 0.95</text>
+            <!-- divider -->
+            <line x1="180" y1="24" x2="180" y2="150" stroke="var(--rule)" stroke-width="1" stroke-dasharray="4 4"/>
+            <!-- group 2 scattered -->
+            <text class="lbl-strong" x="204" y="34">mis-segmented</text>
+            <circle cx="220" cy="76" r="8" fill="rgba(213,94,0,.18)" stroke="var(--vermillion)" stroke-width="2"/>
+            <circle cx="264" cy="70" r="24" fill="rgba(213,94,0,.18)" stroke="var(--vermillion)" stroke-width="2"/>
+            <circle cx="316" cy="78" r="11" fill="rgba(213,94,0,.18)" stroke="var(--vermillion)" stroke-width="2"/>
+            <line class="axis" x1="204" y1="100" x2="336" y2="100"/>
+            <text class="lbl" x="220" y="116" fill="var(--vermillion)">&#963;/&#956; &#8776; 0.6</text>
+            <text class="lbl-strong" x="220" y="134" fill="var(--vermillion)">score &#8776; 0.62</text>
+            <!-- fold curve -->
+            <text class="lbl-strong" x="90" y="178">fold: 1 / (1 + CV)</text>
+            <path d="M204,196 C232,168 268,160 336,158" fill="none" stroke="var(--ink)" stroke-width="2"/>
+            <line class="axis" x1="204" y1="196" x2="336" y2="196"/>
+          </svg>
+          <figcaption><b>Mechanism:</b> a split colony and a merged pair both inflate within-group spread, so
+          the CV rises and the folded score falls. The <code>1/(1+CV)</code> fold is Chen &amp; Murphy's
+          bounded-score trick: zero dispersion maps to 1, infinite dispersion to 0, monotone throughout.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">measurement frame + a grouping key</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">very low</span></div>
+          <div class="mrow"><span class="mk">Family</span><span class="mv"><span class="prov">C.3 replicate homogeneity</span></span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>1 / (1 + mean_groups(&#963;/&#956;))</b> over <code>Size_Area</code></dd>
+            <dt>Range</dt><dd>(0, 1] &mdash; higher is better</dd>
+            <dt>Reads as</dt><dd>near 1 = replicates agree on size; falling = the segmenter is splitting or
+            merging inconsistently within a group that should be uniform</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables &amp; choices</span>
+          <dl>
+            <dt>&#963;</dt><dd><b>sample</b> sd (<code>ddof=1</code>) &mdash; a replicate group is a sample, not a population</dd>
+            <dt>groups</dt><dd><code>replicate_groupby</code>; unset treats the whole frame as one group</dd>
+            <dt>n = 1</dt><dd>single-colony group contributes CV = 0 (perfectly uniform)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 4. Count -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Count &mdash; expected vs detected</h3>
+          <div class="badges"><span class="badge b-built">BUILT</span><span class="badge b-fit-green">&#128994; direct</span></div>
+        </div>
+        <p class="definition">The most colony-specific signal available, and nearly supervised for free: the
+        plate layout already declares how many colonies each group should have. Optional &mdash; the term only
+        appears when a <span class="term">count_check</span> is configured from a metadata path.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A four by four expected colony grid where two cells are empty and one holds a split doublet, giving fourteen detected against sixteen expected">
+            <g stroke="var(--rule)" stroke-width="1" fill="none">
+              <rect x="30" y="30" width="180" height="140" rx="6"/>
+              <line x1="75" y1="30" x2="75" y2="170"/><line x1="120" y1="30" x2="120" y2="170"/><line x1="165" y1="30" x2="165" y2="170"/>
+              <line x1="30" y1="65" x2="210" y2="65"/><line x1="30" y1="100" x2="210" y2="100"/><line x1="30" y1="135" x2="210" y2="135"/>
+            </g>
+            <g fill="rgba(11,155,118,.30)" stroke="var(--green)" stroke-width="1.6">
+              <circle cx="52" cy="47" r="10"/><circle cx="97" cy="47" r="10"/><circle cx="142" cy="47" r="10"/><circle cx="187" cy="47" r="10"/>
+              <circle cx="52" cy="82" r="10"/><circle cx="142" cy="82" r="10"/><circle cx="187" cy="82" r="10"/>
+              <circle cx="52" cy="117" r="10"/><circle cx="97" cy="117" r="10"/><circle cx="142" cy="117" r="10"/>
+              <circle cx="52" cy="152" r="10"/><circle cx="97" cy="152" r="10"/><circle cx="142" cy="152" r="10"/><circle cx="187" cy="152" r="10"/>
+            </g>
+            <!-- missing cells -->
+            <g stroke="var(--vermillion)" stroke-width="2" fill="none">
+              <path d="M91,76 l12,12 M103,76 l-12,12"/>
+              <path d="M181,111 l12,12 M193,111 l-12,12"/>
+            </g>
+            <text class="lbl-strong" x="234" y="52">expected 16</text>
+            <text class="lbl-strong" x="234" y="74" fill="var(--vermillion)">detected 14</text>
+            <text class="lbl" x="234" y="98">m = 2/16 = 0.125</text>
+            <line class="axis" x1="234" y1="112" x2="336" y2="112"/>
+            <text class="lbl-strong" x="234" y="132">t = 0.5 at m = fail</text>
+            <text class="lbl" x="234" y="152" fill="var(--vermillion)">&#10007; misses</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> per <code>groupby</code> unit, compare detected rows against the layout
+          CSV's expected count, then anchor the divergence on the check's own <code>fail_threshold</code> so
+          that hitting the failure bar scores exactly 0.5. Averaged across groups.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">measurement frame + layout CSV</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">very low</span></div>
+          <div class="mrow"><span class="mk">Shared with</span><span class="mv"><code>QCScorer</code>, <code>SupervisedScorer</code> count tier</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>t = exp(&minus;ln2 &middot; m / fail_threshold)</b>,
+            m = |detected &minus; expected| / expected</dd>
+            <dt>Range</dt><dd>[0, 1] &mdash; higher is better</dd>
+            <dt>Reads as</dt><dd>1 = exact count match; 0.5 = exactly at the configured failure bar;
+            &rarr; 0 as the count diverges. An unmatched group gives m = &#8734; &rarr; 0</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>m</dt><dd>relative count divergence, in [0, &#8734;)</dd>
+            <dt>fail_threshold</dt><dd>the check's own hard-fail value; the half-score anchor</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ================= BAND 2 : FAMILY A ================= -->
+  <section class="band" id="fam-a">
+    <h2 class="section-title">Family A &mdash; classic region statistics</h2>
+    <p class="section-sub">The 1980s&ndash;90s standalone evaluation functions. Every one is the same trade:
+    <b>interior homogeneity</b> against <b>control of over-segmentation</b>. None is implemented here.
+    <b>Provenance note:</b> the catalogue flags these formulas as mechanism-verified but
+    <i>not symbol-verified</i> &mdash; re-derive from the primary source before coding one.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 5. Levine & Nazif -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Levine &amp; Nazif U + contrast</h3>
+          <div class="badges"><span class="badge b-a">A.1</span><span class="badge b-fit-amber">&#128993; redefine</span></div>
+        </div>
+        <p class="definition">The conceptual template every later metric descends from: score a segmentation by
+        a <b>performance vector</b> of gray-level uniformity inside regions and disparity across adjacent ones.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two adjacent regions, each with uniform interior shading, and a contrast arrow spanning the shared boundary between their mean levels">
+            <rect x="30" y="40" width="140" height="112" rx="8" fill="rgba(0,114,178,.14)" stroke="var(--blue)" stroke-width="2"/>
+            <rect x="190" y="40" width="140" height="112" rx="8" fill="rgba(11,155,118,.20)" stroke="var(--green)" stroke-width="2"/>
+            <g stroke="rgba(0,114,178,.30)" stroke-width="1"><path d="M42,62 H158 M42,80 H158 M42,98 H158 M42,116 H158 M42,134 H158"/></g>
+            <g stroke="rgba(11,155,118,.30)" stroke-width="1"><path d="M202,62 H318 M202,80 H318 M202,98 H318 M202,116 H318 M202,134 H318"/></g>
+            <text class="lbl-strong" x="66" y="100" fill="var(--blue)">e&#178;(R&#8321;) low</text>
+            <text class="lbl-strong" x="228" y="100" fill="var(--green)">e&#178;(R&#8322;) low</text>
+            <!-- adjacency -->
+            <line x1="170" y1="30" x2="190" y2="30" stroke="var(--vermillion)" stroke-width="2"/>
+            <line x1="170" y1="96" x2="190" y2="96" stroke="var(--vermillion)" stroke-width="3"/>
+            <text class="lbl-strong" x="126" y="24" fill="var(--vermillion)">shared boundary p&#7522;&#11388;</text>
+            <text class="lbl-strong" x="42" y="180">U = 1 &#8722; (1/Z) &#8721; e&#178;(R&#11388;)&#183;W&#11388;</text>
+            <text class="lbl" x="42" y="200" fill="var(--vermillion)">c&#7522; = &#8721; p&#7522;&#11388;&#183;|&#264;&#7522; &#8722; &#264;&#11388;| / (&#264;&#7522; + &#264;&#11388;)</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> squared gray error per region, area-weighted and normalized so
+          <code>U &isin; [0,1]</code>, plus a contrast term summed over <b>adjacent</b> region pairs &mdash; which
+          is why it needs an adjacency graph that Otsu-style histogram metrics do not.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">labelled regions + adjacency graph</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">low, plus adjacency construction</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Levine &amp; Nazif 1985</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>U</b> (uniformity) and <b>c&#7522;</b> (contrast) &mdash; a vector, not one scalar</dd>
+            <dt>Range</dt><dd>U &isin; [0,1], higher = more uniform; contrast higher = better separated</dd>
+            <dt>Reads as</dt><dd>colony interiors should be flat (high U) and stand off the agar (high contrast);
+            area weighting suppresses specks</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>e&#178;(R&#11388;)</dt><dd>squared gray-level error of region j</dd>
+            <dt>W&#11388;, Z</dt><dd>per-region weight and normalizer &mdash; <b>both unspecified/heuristic</b></dd>
+            <dt>p&#7522;&#11388;</dt><dd>shared boundary length between adjacent regions</dd>
+          </dl>
+        </div>
+        <div class="callout red" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Failure mode:</b> free weights are undefined; textured regions
+          read as non-uniform; and there is <b>no over-segmentation penalty at all</b>.</p>
+        </div>
+      </article>
+
+      <!-- 6. Busyness -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Weszka&ndash;Rosenfeld busyness</h3>
+          <div class="badges"><span class="badge b-a">A.2</span><span class="badge b-fit-green">&#128994; direct</span></div>
+        </div>
+        <p class="definition">Counts how often the image crosses between object and background. A clean mask
+        crosses rarely; a speckled or ragged one crosses constantly. <b>Lower is better.</b></p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A smooth colony boundary with few object-background transitions beside a ragged speckled boundary with many transitions">
+            <text class="lbl-strong" x="26" y="30" fill="var(--green)">smooth</text>
+            <circle cx="90" cy="88" r="42" fill="rgba(11,155,118,.20)" stroke="var(--green)" stroke-width="2.5"/>
+            <line class="axis" x1="26" y1="88" x2="156" y2="88" stroke-dasharray="3 3"/>
+            <g fill="var(--green)"><circle cx="48" cy="88" r="3.4"/><circle cx="132" cy="88" r="3.4"/></g>
+            <text class="lbl-strong" x="60" y="152" fill="var(--green)">2 crossings</text>
+
+            <line x1="180" y1="20" x2="180" y2="164" stroke="var(--rule)" stroke-dasharray="4 4"/>
+
+            <text class="lbl-strong" x="206" y="30" fill="var(--vermillion)">ragged</text>
+            <path d="M270,46 l7,10 l12,-5 l3,13 l13,1 l-5,12 l10,8 l-9,9 l6,12 l-13,3 l-1,13 l-12,-5 l-8,10 l-8,-10 l-12,5 l-1,-13 l-13,-3 l6,-12 l-9,-9 l10,-8 l-5,-12 l13,-1 l3,-13 l12,5 z"
+                  fill="rgba(213,94,0,.18)" stroke="var(--vermillion)" stroke-width="2" stroke-linejoin="round"/>
+            <line class="axis" x1="206" y1="88" x2="336" y2="88" stroke-dasharray="3 3"/>
+            <g fill="var(--vermillion)"><circle cx="228" cy="88" r="3.4"/><circle cx="236" cy="88" r="3.4"/><circle cx="243" cy="88" r="3.4"/><circle cx="300" cy="88" r="3.4"/><circle cx="308" cy="88" r="3.4"/><circle cx="316" cy="88" r="3.4"/></g>
+            <text class="lbl-strong" x="234" y="152" fill="var(--vermillion)">many crossings</text>
+            <text class="lbl-strong" x="52" y="192">busyness = &#8721; off-diagonal GLCM entries</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> sum the off-diagonal entries of the gray-level co-occurrence matrix
+          &mdash; the object&harr;background transitions &mdash; in one cheap pass. Equivalently, the summed
+          absolute neighbour Laplacian response.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale + a threshold value</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">very low &mdash; one co-occurrence pass</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Weszka &amp; Rosenfeld 1978</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>busyness</b> &mdash; fraction of object&harr;background adjacencies</dd>
+            <dt>Range</dt><dd>[0, 1] &mdash; <b>lower is better</b> (invert before use as goodness)</dd>
+            <dt>Reads as</dt><dd>low = smooth compact blobs; high = ragged, speckled, noise-shattered masks</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>C_gl(i,j)</dt><dd>original gray level at pixel (i,j)</dd>
+            <dt>L(i,j)</dt><dd>the thresholded/segmented level; discrepancy = &#8721;(C_gl &minus; L)</dd>
+          </dl>
+        </div>
+        <div class="callout" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Why it fits colonies:</b> arrayed colonies <i>are</i> compact,
+          weakly-textured blobs on smooth agar &mdash; the exact regime busyness was built for. But it only
+          evaluates <b>threshold-type</b> algorithms, and it is global, not per-region.</p>
+        </div>
+      </article>
+
+      <!-- 7. Liu & Yang F -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Liu &amp; Yang F</h3>
+          <div class="badges"><span class="badge b-a">A.4</span><span class="badge b-fit-red">&#128308; weak</span></div>
+        </div>
+        <p class="definition">The original goodness function: region colour error penalized by a region-count
+        term. Historically important as the baseline F&prime; and Q were built to fix. <b>Smaller is better.</b></p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="One colony shattered into many fragments while the square-root of N penalty grows only slowly, illustrating the weak over-segmentation penalty">
+            <text class="lbl-strong" x="26" y="30">one colony &#8594; shattered</text>
+            <circle cx="82" cy="86" r="36" fill="rgba(11,155,118,.16)" stroke="var(--green)" stroke-width="2" stroke-dasharray="4 4"/>
+            <g fill="rgba(213,94,0,.22)" stroke="var(--vermillion)" stroke-width="1.5">
+              <circle cx="66" cy="70" r="11"/><circle cx="96" cy="66" r="10"/><circle cx="60" cy="98" r="10"/>
+              <circle cx="90" cy="98" r="12"/><circle cx="108" cy="88" r="8"/><circle cx="76" cy="112" r="8"/>
+            </g>
+            <text class="lbl" x="34" y="146" fill="var(--vermillion)">N = 6 fragments</text>
+            <!-- penalty curve -->
+            <line class="axis" x1="196" y1="146" x2="336" y2="146"/>
+            <line class="axis" x1="196" y1="146" x2="196" y2="40"/>
+            <path d="M196,146 C226,110 262,92 336,76" fill="none" stroke="var(--ink)" stroke-width="2.4"/>
+            <path d="M196,146 C220,86 240,60 268,44" fill="none" stroke="var(--vermillion)" stroke-width="2" stroke-dasharray="5 4"/>
+            <text class="lbl-strong" x="278" y="70">&#8730;N</text>
+            <text class="lbl" x="212" y="56" fill="var(--vermillion)">what you</text>
+            <text class="lbl" x="212" y="70" fill="var(--vermillion)">actually need</text>
+            <text class="lbl" x="300" y="162">N</text>
+            <text class="lbl-strong" x="30" y="196">F = &#8730;N &#183; &#8721; ( e&#178;&#11388; / &#8730;S&#11388; )</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> squared colour error per region, divided by &radic;area, summed, then
+          scaled by &radic;N so that more regions cost more. The problem is visible in the curve: &radic;N grows
+          far too slowly to punish shattering.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">labelled regions + colour image</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">very low</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Liu &amp; Yang 1994</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>F(I)</b> = &#8730;N &#183; &#8721;&#11388;( e&#178;&#11388; / &#8730;S&#11388; )</dd>
+            <dt>Range</dt><dd>[0, &#8734;) &mdash; <b>smaller is better</b>; the published /1000&#183;S_I form does not change ranking</dd>
+            <dt>Reads as</dt><dd>region error traded against a count penalty &mdash; but the trade is mis-tuned</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>N</dt><dd>number of regions</dd>
+            <dt>S&#11388;</dt><dd>area of region j</dd>
+            <dt>e&#178;&#11388;</dt><dd>squared colour error of region j</dd>
+          </dl>
+        </div>
+        <div class="callout red" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Documented bias toward over-segmentation.</b> And for arrayed
+          plates it is doubly wasteful: the region count is <i>already known</i> (rows &times; cols), so the
+          built <code>Count</code> term exploits it far better than a blind &radic;N.</p>
+        </div>
+      </article>
+
+      <!-- 8. Borsotti Q -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Borsotti F&prime; and Q</h3>
+          <div class="badges"><span class="badge b-a">A.5</span><span class="badge b-fit-green">&#128994; direct</span></div>
+        </div>
+        <p class="definition">The consensus best of the F-family, and the catalogue's pick for <b>the single
+        most directly reusable classic metric</b>. Q is the only one here that penalizes <i>both</i> failure
+        directions at once. <b>Smaller is better.</b></p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Left: a split colony producing many regions of identical small area. Right: two merged colonies forming one large heterogeneous region. Q penalizes both.">
+            <text class="lbl-strong" x="26" y="28" fill="var(--vermillion)">over-seg</text>
+            <g fill="rgba(213,94,0,.22)" stroke="var(--vermillion)" stroke-width="1.5">
+              <circle cx="48" cy="60" r="10"/><circle cx="76" cy="56" r="10"/><circle cx="104" cy="60" r="10"/>
+              <circle cx="52" cy="88" r="10"/><circle cx="80" cy="92" r="10"/><circle cx="108" cy="88" r="10"/>
+            </g>
+            <text class="lbl" x="26" y="122">many regions,</text>
+            <text class="lbl" x="26" y="136">same area a</text>
+            <text class="lbl-strong" x="26" y="158" fill="var(--vermillion)">(N(S&#11388;)/S&#11388;)&#178; &#8593;</text>
+
+            <line x1="176" y1="18" x2="176" y2="170" stroke="var(--rule)" stroke-dasharray="4 4"/>
+
+            <text class="lbl-strong" x="204" y="28" fill="var(--blue)">under-seg</text>
+            <path d="M226,52 C258,40 296,48 306,72 C320,96 302,118 274,120 C244,124 216,110 214,86 C212,66 216,56 226,52 Z"
+                  fill="rgba(0,114,178,.16)" stroke="var(--blue)" stroke-width="2"/>
+            <circle cx="252" cy="80" r="15" fill="none" stroke="var(--blue)" stroke-width="1.4" stroke-dasharray="3 3"/>
+            <circle cx="288" cy="88" r="15" fill="none" stroke="var(--blue)" stroke-width="1.4" stroke-dasharray="3 3"/>
+            <text class="lbl" x="204" y="146">one big region,</text>
+            <text class="lbl" x="204" y="160">high internal error</text>
+            <text class="lbl-strong" x="204" y="180" fill="var(--blue)">e&#178;&#11388;/(1+log S&#11388;) &#8593;</text>
+            <text class="lbl-strong" x="26" y="204">Q = (&#8730;N / 1000&#183;S_I) &#183; &#8721; [ both terms ]</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> Q's first term charges for large heterogeneous regions (merged colonies);
+          its second, <code>(N(S&#11388;)/S&#11388;)&#178;</code>, charges when many regions <i>share the same area</i>
+          &mdash; the signature of noise shattering. F&prime; uses a related same-area blow-up factor.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">labelled regions + image</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">low; needs an area histogram</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Borsotti, Campadelli &amp; Schettini 1998</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Q(I)</b> = (&#8730;N / 1000&#183;S_I) &#183; &#8721;&#11388;[ e&#178;&#11388;/(1+log S&#11388;) + (N(S&#11388;)/S&#11388;)&#178; ]</dd>
+            <dt>Range</dt><dd>[0, &#8734;) &mdash; <b>smaller is better</b></dd>
+            <dt>Reads as</dt><dd>rises when colonies merge <i>and</i> when they shatter &mdash; the two colony
+            failure modes, scored by one number</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>N(S&#11388;)</dt><dd>how many regions share region j's exact area</dd>
+            <dt>S_I</dt><dd>total image area; 1000 is arbitrary scaling</dd>
+            <dt>e&#178;&#11388;</dt><dd>squared colour error of region j</dd>
+          </dl>
+        </div>
+        <div class="callout red" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Brittleness:</b> the same-area terms depend on <i>exact</i> area
+          coincidences, so they are sensitive to quantization. And Q can misrank when correct colonies genuinely
+          vary in size &mdash; which they do across a growth timecourse.</p>
+        </div>
+      </article>
+
+      <!-- 9. Zeboudj -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Zeboudj contrast C(I)</h3>
+          <div class="badges"><span class="badge b-a">A.6</span><span class="badge b-fit-green">&#128994; direct</span></div>
+        </div>
+        <p class="definition">The best-balanced classic single score for colonies: it couples interior
+        uniformity <i>and</i> boundary separation into one normalized number, and unlike Otsu it is
+        <b>spatially aware</b>. <b>Higher is better.</b></p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A colony with small internal contrast arrows inside it and large contrast arrows crossing its rim to the agar background">
+            <circle cx="150" cy="98" r="62" fill="rgba(11,155,118,.18)" stroke="var(--green)" stroke-width="2.5"/>
+            <!-- inner small contrasts -->
+            <g stroke="var(--blue)" stroke-width="1.6">
+              <path d="M124,80 h14"/><path d="M158,72 h14"/><path d="M132,112 h14"/><path d="M162,120 h14"/><path d="M146,96 h14"/>
+            </g>
+            <text class="lbl-strong" x="112" y="60" fill="var(--blue)">I&#7522; small</text>
+            <!-- outer big contrasts across rim -->
+            <g stroke="var(--vermillion)" stroke-width="2.4">
+              <path d="M150,20 v22"/><path d="M212,98 h30"/><path d="M150,176 v-22"/><path d="M58,98 h30"/>
+            </g>
+            <text class="lbl-strong" x="250" y="94" fill="var(--vermillion)">E&#7522; large</text>
+            <text class="lbl" x="250" y="112">(rim &#8594; agar)</text>
+            <text class="lbl-strong" x="52" y="204">C(R&#7522;) = 1 &#8722; I&#7522; / E&#7522;&nbsp;&nbsp;&nbsp;C(I) = (1/A) &#8721; A&#7522;&#183;C(R&#7522;)</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> for every pixel take the <b>max</b> contrast to its neighbours &mdash;
+          inside the region for I&#7522;, across the boundary for E&#7522;. A uniform colony with a crisp rim gives
+          small I&#7522; over large E&#7522;, so C &rarr; 1. Regions are area-weighted, so big real colonies dominate.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">regions + boundary extraction</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">low, plus boundary tracing</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Zeboudj 1988 &mdash; <b>untraceable PhD thesis</b></span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>C(I)</b>, area-weighted mean of per-region C(R&#7522;)</dd>
+            <dt>Range</dt><dd>[0, 1] &mdash; higher is better</dd>
+            <dt>Reads as</dt><dd>near 1 = flat colony interiors with sharp agar contrast at the rim;
+            falling = smeared boundaries or internally noisy masks</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables &amp; cases</span>
+          <dl>
+            <dt>c(s,t)</dt><dd>|I(s)&minus;I(t)| / (L&minus;1) pixel contrast</dd>
+            <dt>I&#7522; / E&#7522;</dt><dd>mean max-neighbour contrast inside / across the boundary</dd>
+            <dt>edge case</dt><dd>C = E&#7522; when I&#7522; = 0; C = 0 otherwise &mdash; a <b>discontinuity</b></dd>
+          </dl>
+        </div>
+        <div class="callout red" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Provenance flag:</b> the primary source is an untraceable 1988
+          PhD thesis &mdash; every published form is second-hand. The <code>max</code>-of-neighbours is also
+          noise-sensitive, and texture reads as non-uniform (barely bites on low-texture plates).</p>
+        </div>
+      </article>
+
+      <!-- 10. Entropy E -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Entropy metric E</h3>
+          <div class="badges"><span class="badge b-a">A.7</span><span class="badge b-fit-amber">&#128993; redefine</span></div>
+        </div>
+        <p class="definition">The one genuinely parameter-free classic: no magic 1000, no free weights. An
+        MDL/coding-theory argument balances region uniformity against region count.
+        <b>Smaller is better.</b></p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two opposing curves against region count: region entropy falling and layout entropy rising, summing to a U-shaped total with a minimum">
+            <line class="axis" x1="36" y1="164" x2="336" y2="164"/>
+            <line class="axis" x1="36" y1="164" x2="36" y2="30"/>
+            <!-- H_r falling -->
+            <path d="M50,54 C110,96 170,130 322,150" fill="none" stroke="var(--blue)" stroke-width="2.2"/>
+            <!-- H_l rising -->
+            <path d="M50,152 C120,138 190,104 322,44" fill="none" stroke="var(--green)" stroke-width="2.2"/>
+            <!-- sum U shape -->
+            <path d="M50,60 C110,104 150,112 186,110 C240,106 286,74 322,40" fill="none" stroke="var(--ink)" stroke-width="2.6" stroke-dasharray="6 4"/>
+            <circle cx="186" cy="110" r="5" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="150" y="132" fill="var(--vermillion)">min E</text>
+            <text class="lbl-strong" x="252" y="150" fill="var(--blue)">H_r (uniformity)</text>
+            <text class="lbl-strong" x="228" y="34" fill="var(--green)">H_&#8467; (layout)</text>
+            <text class="lbl" x="270" y="182">region count N</text>
+            <text class="lbl-strong" x="44" y="200">E = H_&#8467;(I) + H_r(I)</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> region entropy H_r falls toward zero as you over-segment (each tiny
+          region is trivially uniform), while layout entropy H_&#8467; rises with region count. Their sum is
+          U-shaped and its minimum is the balanced segmentation &mdash; no tuning constant required.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">labelled regions + luminance</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">very low</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Zhang, Fritts &amp; Goldman (CVIU survey)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>E</b> = H_&#8467;(I) + H_r(I)</dd>
+            <dt>Range</dt><dd>[0, &#8734;) &mdash; <b>smaller is better</b></dd>
+            <dt>Reads as</dt><dd>low = each colony mask is intensity-uniform without the plate being shattered
+            into fragments</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>H(R&#11388;)</dt><dd>luminance entropy within region j</dd>
+            <dt>H_r</dt><dd>&#8721; (S&#11388;/S_I)&#183;H(R&#11388;) &mdash; expected region entropy</dd>
+            <dt>H_&#8467;</dt><dd>&minus;&#8721; (S&#11388;/S_I)&#183;log(S&#11388;/S_I) &mdash; layout entropy</dd>
+          </dl>
+        </div>
+        <div class="callout red" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Blind spot:</b> layout entropy depends only on the <i>size
+          distribution</i>, not spatial arrangement &mdash; two segmentations with identical size histograms but
+          totally different layouts <b>tie</b>. Pair it with a contrast term.</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ================= BAND 3 : FAMILY B ================= -->
+  <section class="band" id="fam-b">
+    <h2 class="section-title">Family B &mdash; object &amp; spatial statistics</h2>
+    <p class="section-sub">The GEOBIA/remote-sensing lineage. These operate on <b>objects</b> rather than pixels
+    and bring spatial autocorrelation into the score. One of them carries the most important transfer caveat in
+    the whole survey.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 11. Global Score / Böck -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Global Score &mdash; and why not to use it</h3>
+          <div class="badges"><span class="badge b-b">B.1&ndash;B.3</span><span class="badge b-fit-red">&#128308; avoid</span></div>
+        </div>
+        <p class="definition">Area-weighted variance (intra) plus Moran's I (inter), each min&ndash;max normalized
+        <i>over the tested set</i> and summed. The normalization is the flaw, and it is
+        <b>specifically fatal for a tuning engine that is a grid sweep</b>.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A scored curve over a parameter grid whose minimum moves to a different parameter when one extra candidate is added at the coarse end">
+            <line class="axis" x1="34" y1="150" x2="336" y2="150"/>
+            <text class="lbl" x="250" y="170">scale parameter</text>
+            <!-- grid A -->
+            <path d="M52,66 C88,112 116,124 148,120 C186,116 212,92 244,62" fill="none" stroke="var(--blue)" stroke-width="2.4"/>
+            <circle cx="148" cy="120" r="5" fill="var(--blue)"/>
+            <text class="lbl-strong" x="118" y="140" fill="var(--blue)">argmin</text>
+            <!-- grid B extended -->
+            <path d="M52,86 C88,120 116,128 148,132 C196,138 236,116 300,52" fill="none" stroke="var(--vermillion)" stroke-width="2.4" stroke-dasharray="6 4"/>
+            <circle cx="176" cy="134" r="5" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="186" y="152" fill="var(--vermillion)">argmin moved</text>
+            <!-- ticks -->
+            <g stroke="var(--rule)" stroke-width="1">
+              <path d="M52,150 v6 M100,150 v6 M148,150 v6 M196,150 v6 M244,150 v6 M300,150 v6"/>
+            </g>
+            <circle cx="300" cy="156" r="4" fill="none" stroke="var(--vermillion)" stroke-width="2"/>
+            <text class="lbl" x="272" y="36" fill="var(--vermillion)">+1 candidate</text>
+            <line class="axis" x1="296" y1="40" x2="300" y2="50"/>
+            <text class="lbl-strong" x="40" y="200">X_norm = (X &#8722; X_min)/(X_max &#8722; X_min)</text>
+          </svg>
+          <figcaption><b>Mechanism of the failure:</b> v rises and I falls monotonically with scale, so
+          X_min and X_max are always the <i>finest and coarsest tested members</i>. Add or remove one candidate
+          and the whole normalization rescales &mdash; the argmin moves, and the "best" parameters become an
+          artefact of where you happened to end the grid.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">segments + source bands + RAG</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">medium &mdash; adjacency graph</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Esp&iacute;ndola 2006; Johnson &amp; Xie 2011; <b>B&ouml;ck 2017</b></span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>GS = v_norm + I_norm</b>, v = &#8721;a&#7522;&#963;&#7522;&#178; / &#8721;a&#7522;</dd>
+            <dt>Range</dt><dd>[0, 2] &mdash; lower is better, <b>but the scale is grid-dependent</b></dd>
+            <dt>Reads as</dt><dd>uninterpretable in isolation; only comparable within one fixed candidate set</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">The remedy</span>
+          <dl>
+            <dt>fixed bounds</dt><dd>normalize against theoretical / single-pixel / whole-image extremes</dd>
+            <dt>natural range</dt><dd>Moran's I &isin; [&minus;1,1]; q &isin; [0,1] &mdash; no rescaling needed</dd>
+            <dt>rank fusion</dt><dd>Mahalanobis or rank-based combination instead of min&ndash;max</dd>
+          </dl>
+        </div>
+        <div class="callout red" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Already defended against.</b> Every built
+          <code>ReferenceFreeScorer</code> term is fixed-normalized for exactly this reason. The caveat also
+          reaches fANOVA: importances computed over grid-dependent scores inherit the same instability.</p>
+        </div>
+      </article>
+
+      <!-- 12. q-statistic -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">q-statistic</h3>
+          <div class="badges"><span class="badge b-b">B.5 / B.9</span><span class="badge b-fit-green">&#128994; direct</span></div>
+        </div>
+        <p class="definition">The catalogue's pick for the <b>cleanest single reference-free "is this partition
+        good?" score</b> for colonies: the fraction of total pixel-intensity variance the segmentation explains.
+        Bounded by construction, so no normalization gymnastics.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A total variance bar decomposed into a large explained-between-strata portion and a small residual within-strata portion">
+            <text class="lbl-strong" x="30" y="38">total variance &#8721;(Y&#7522; &#8722; &#256;)&#178;</text>
+            <rect x="30" y="50" width="300" height="34" rx="5" fill="var(--inset)" stroke="var(--rule)"/>
+            <text class="lbl-strong" x="30" y="118">good partition</text>
+            <rect x="30" y="128" width="228" height="30" rx="5" fill="rgba(11,155,118,.28)" stroke="var(--green)" stroke-width="1.8"/>
+            <rect x="258" y="128" width="72" height="30" rx="5" fill="rgba(213,94,0,.16)" stroke="var(--vermillion)" stroke-width="1.8"/>
+            <text class="lbl-strong" x="88" y="148" fill="var(--green)">explained</text>
+            <text class="lbl" x="266" y="148" fill="var(--vermillion)">within</text>
+            <!-- brace -->
+            <line x1="30" y1="168" x2="258" y2="168" stroke="var(--green)" stroke-width="2"/>
+            <text class="lbl-strong" x="104" y="186" fill="var(--green)">q &#8776; 0.76</text>
+            <text class="lbl" x="30" y="208">q = 1 &#8722; &#8721;&#8341;&#8721;&#8342;(Y&#8341;&#8342; &#8722; &#256;&#8341;)&#178; / &#8721;&#7522;(Y&#7522; &#8722; &#256;)&#178;</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> treat each colony mask as a stratum. If the strata really capture the
+          image's structure, almost all intensity variance lies <i>between</i> strata and little remains within
+          &mdash; so q approaches 1. A mask that cuts through uniform agar leaves large within-stratum variance.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">labelled strata + intensity</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">low &mdash; no adjacency graph</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Gao et al. (geographical detector)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>q</b> = 1 &minus; (within-strata SS / total SS)</dd>
+            <dt>Range</dt><dd>[0, 1] &mdash; higher is better; <b>naturally bounded, grid-independent</b></dd>
+            <dt>Reads as</dt><dd>fraction of variance explained by the colony partition &mdash; the same
+            reading as R&#178; in a one-way ANOVA</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>h, k</dt><dd>stratum index and pixel index within it</dd>
+            <dt>&#256;&#8341;</dt><dd>mean intensity of stratum h</dd>
+            <dt>d_M</dt><dd>Gao fuses q with |Moran's I| by Mahalanobis distance to the worst-case point (1,0)</dd>
+          </dl>
+        </div>
+        <div class="callout" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Caveat on Gao's fusion:</b> the covariance &#931; is
+          <i>still estimated from the tested set</i>, so the Mahalanobis combination only partly escapes
+          the B&ouml;ck problem. q alone does escape it.</p>
+        </div>
+      </article>
+
+      <!-- 13. FGS / DTNP -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">FGS &mdash; WV + DTNP</h3>
+          <div class="badges"><span class="badge b-b">B.7</span><span class="badge b-fit-green">&#128994; direct</span></div>
+        </div>
+        <p class="definition">Replaces Moran's-I-over-a-region-adjacency-graph with a far cheaper trick: compare
+        each object to the <b>ring around its own bounding box</b>. No adjacency graph at all.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A colony inside its bounding box, with a surrounding ring of agar pixels enlarged by d, and a second panel where dense packing makes the ring leak onto a neighbour">
+            <!-- sparse case -->
+            <rect x="36" y="52" width="104" height="96" fill="rgba(217,138,0,.14)" stroke="var(--orange)" stroke-width="1.6" stroke-dasharray="4 3"/>
+            <rect x="52" y="68" width="72" height="64" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1.2"/>
+            <circle cx="88" cy="100" r="28" fill="rgba(11,155,118,.24)" stroke="var(--green)" stroke-width="2"/>
+            <text class="lbl-strong" x="42" y="42" fill="var(--orange)">ring B&#7522;(d)</text>
+            <text class="lbl-strong" x="48" y="172" fill="var(--green)">clean contrast</text>
+
+            <line x1="176" y1="26" x2="176" y2="186" stroke="var(--rule)" stroke-dasharray="4 4"/>
+
+            <!-- dense case -->
+            <rect x="200" y="52" width="90" height="96" fill="rgba(213,94,0,.14)" stroke="var(--vermillion)" stroke-width="1.6" stroke-dasharray="4 3"/>
+            <circle cx="245" cy="100" r="26" fill="rgba(11,155,118,.24)" stroke="var(--green)" stroke-width="2"/>
+            <circle cx="308" cy="100" r="26" fill="rgba(11,155,118,.24)" stroke="var(--green)" stroke-width="2"/>
+            <text class="lbl-strong" x="206" y="42" fill="var(--vermillion)">ring leaks</text>
+            <text class="lbl" x="218" y="172" fill="var(--vermillion)">neighbour inside ring</text>
+            <text class="lbl-strong" x="36" y="204">WV = &#8721;a&#7522;v&#7522; / &#8721;a&#7522;&nbsp;&nbsp;&nbsp;FGS = WV_norm + DTNP_norm</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> enlarge each object's bounding box by d (=1 px), then measure the mean
+          spectral difference between the object's pixels and the surrounding ring. Sparse colonies on agar are
+          the ideal case &mdash; but in a dense grid the ring catches the <i>neighbouring colony</i>, so size d
+          to the colony gap.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">objects + image; no RAG</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">low &mdash; the point of the method</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Zhao et al.</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>FGS</b> = normalized homogeneity (WV) + normalized heterogeneity (DTNP)</dd>
+            <dt>Range</dt><dd>lower is better &mdash; but inherits GS-style normalization, so <b>fix the bounds</b></dd>
+            <dt>Reads as</dt><dd>uniform colony interiors that also differ strongly from the agar immediately
+            around them</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>a&#7522;, v&#7522;</dt><dd>object area and mean per-band variance</dd>
+            <dt>d</dt><dd>bounding-box enlargement, 1 px in the paper &mdash; <b>tune to the colony gap</b></dd>
+          </dl>
+        </div>
+        <div class="callout" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Transcription flag:</b> the catalogue records that the DTNP
+          closed form (Eqs. 4&ndash;5) was <b>not fully transcribed</b> &mdash; only the bounding-box-ring
+          mechanism was verified from full text.</p>
+        </div>
+      </article>
+
+      <!-- 14. UOA -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">UOA &mdash; under/over-segmentation aware</h3>
+          <div class="badges"><span class="badge b-b">B.6</span><span class="badge b-fit-green">&#128994; direct</span></div>
+        </div>
+        <p class="definition">The only metric here that tells you <b>which way</b> a segmentation is wrong, and
+        <b>where</b>. Local and per-segment rather than one global scalar &mdash; arguably more useful for
+        colonies than any single number.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two diagnosed segments: one internally heterogeneous flagged as under-segmented, and a pair that would merge below threshold flagged as over-segmented">
+            <!-- under-seg -->
+            <text class="lbl-strong" x="26" y="32" fill="var(--blue)">H(R&#7522;) &gt; &#948;</text>
+            <path d="M40,58 C74,44 116,54 126,80 C138,106 118,130 88,132 C56,136 30,120 30,94 C30,74 32,62 40,58 Z"
+                  fill="rgba(0,114,178,.16)" stroke="var(--blue)" stroke-width="2"/>
+            <g stroke="rgba(0,114,178,.5)" stroke-width="1.4"><path d="M44,72 h60 M38,90 h72 M42,108 h64"/></g>
+            <text class="lbl-strong" x="34" y="158" fill="var(--blue)">UNDER</text>
+            <text class="lbl" x="34" y="176">two colonies merged</text>
+
+            <line x1="176" y1="24" x2="176" y2="190" stroke="var(--rule)" stroke-dasharray="4 4"/>
+
+            <!-- over-seg -->
+            <text class="lbl-strong" x="204" y="32" fill="var(--vermillion)">H(R&#7522; &#8746; R&#11388;) &#8804; &#948;</text>
+            <circle cx="238" cy="92" r="26" fill="rgba(213,94,0,.20)" stroke="var(--vermillion)" stroke-width="2"/>
+            <circle cx="292" cy="92" r="26" fill="rgba(213,94,0,.20)" stroke="var(--vermillion)" stroke-width="2"/>
+            <path d="M264,92 h2" stroke="var(--vermillion)" stroke-width="3"/>
+            <ellipse cx="265" cy="92" rx="56" ry="30" fill="none" stroke="var(--vermillion)" stroke-width="1.6" stroke-dasharray="5 4"/>
+            <text class="lbl-strong" x="210" y="158" fill="var(--vermillion)">OVER</text>
+            <text class="lbl" x="210" y="176">one colony split</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> for each segment, test two things against a homogeneity threshold
+          &delta;. If merging with a neighbour would <i>still</i> be homogeneous, the pair is over-segmented. If
+          the segment is internally heterogeneous on its own, it is under-segmented. The two directions never
+          get conflated into one number.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">segments + neighbourhood + a &#948;</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">high &mdash; per-segment neighbourhood analysis</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Troya-Galvis et al.</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>UOA_&#8721;</b> (weighted sum) or <b>UOA_L2</b> (L2 of the two components)</dd>
+            <dt>Range</dt><dd>lower is better; the <i>per-segment</i> scores are the useful output</dd>
+            <dt>Reads as</dt><dd>a per-colony diagnosis: this one is a merged doublet, that one is a split
+            fragment &mdash; directly actionable for refinement</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>H</dt><dd><b>pluggable</b> homogeneity: variance, entropy, contrast, Lab contrast, GLCM texture</dd>
+            <dt>&#948;</dt><dd>homogeneity threshold &mdash; the one tuned meta-parameter</dd>
+          </dl>
+        </div>
+        <div class="callout" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Why colonies suit it:</b> "merged doublet" and "split colony"
+          <i>are</i> the two colony failure modes, and the grid supplies an expected colony size to set &delta;
+          from. The authors' own caveat: all six tested H indices correlate with segment size.</p>
+        </div>
+      </article>
+
+      <!-- 15. EVI -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">EVI &mdash; edge validity index</h3>
+          <div class="badges"><span class="badge b-b">B.8</span><span class="badge b-fit-amber">&#128993; redefine</span></div>
+        </div>
+        <p class="definition">Asks a question no other family here asks: <b>does the mask boundary actually sit
+        on a real intensity edge?</b> Missing from the whole GS/FGS lineage, and cheap to add.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Left: a mask contour lying exactly on the image intensity edge. Right: the contour offset inside the true edge, scoring low edge validity.">
+            <!-- aligned -->
+            <text class="lbl-strong" x="26" y="32" fill="var(--green)">aligned</text>
+            <circle cx="88" cy="98" r="46" fill="rgba(11,155,118,.12)" stroke="none"/>
+            <circle cx="88" cy="98" r="46" fill="none" stroke="var(--ink)" stroke-width="3" stroke-dasharray="7 5"/>
+            <circle cx="88" cy="98" r="46" fill="none" stroke="var(--green)" stroke-width="2"/>
+            <text class="lbl" x="26" y="164" fill="var(--green)">EVI &#8594; 1</text>
+
+            <line x1="176" y1="24" x2="176" y2="190" stroke="var(--rule)" stroke-dasharray="4 4"/>
+
+            <!-- misaligned -->
+            <text class="lbl-strong" x="206" y="32" fill="var(--vermillion)">offset</text>
+            <circle cx="268" cy="98" r="46" fill="rgba(213,94,0,.10)" stroke="none"/>
+            <circle cx="268" cy="98" r="46" fill="none" stroke="var(--ink)" stroke-width="3" stroke-dasharray="7 5"/>
+            <circle cx="268" cy="98" r="32" fill="none" stroke="var(--vermillion)" stroke-width="2"/>
+            <g stroke="var(--vermillion)" stroke-width="1.4">
+              <path d="M268,52 v14 M268,144 v-14 M222,98 h14 M314,98 h-14"/>
+            </g>
+            <text class="lbl" x="206" y="164" fill="var(--vermillion)">EVI &#8594; 0</text>
+            <text class="lbl-strong" x="30" y="196">&#8212;&#8212; mask contour&nbsp;&nbsp;&nbsp;- - - true intensity edge</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> compute a multi-scale edge map (Prewitt in the original) and measure the
+          agreement between segment boundaries and that map. A mask eroded or dilated away from the true rim
+          scores low even when its area and shape look perfectly plausible.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask contours + an edge map</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">low <i>if</i> the edge map already exists</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Yu et al. (SAR), one of three terms in G</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>EVI</b> &mdash; boundary/edge-map agreement, one of GHO + GHE + EVI &rarr; G</dd>
+            <dt>Range</dt><dd>higher is better</dd>
+            <dt>Reads as</dt><dd>high = the mask rim coincides with a genuine intensity transition; low = the
+            boundary was placed by morphology, not by evidence</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Local hook</span>
+          <dl>
+            <dt>edge map</dt><dd>PhenoTypic already computes Sobel/Laplace/Frangi/Sato/Meijering/phase responses
+            in <code>enhance/_focus_edge_*</code> &mdash; an EVI term could reuse one directly</dd>
+          </dl>
+        </div>
+        <div class="callout" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Take the idea, not the pipeline.</b> Yu's Gamma/speckle
+          machinery is SAR-specific and overkill here, but its three-term design &mdash; homogeneity +
+          heterogeneity + <i>explicit edge validity</i> &mdash; is the most complete template in family B.</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ================= BAND 4 : FAMILY C ================= -->
+  <section class="band" id="fam-c">
+    <h2 class="section-title">Family C &mdash; bio-imaging</h2>
+    <p class="section-sub">Metrics built for cells rather than natural images. These are the closest to the
+    domain &mdash; and the place where an assumption mismatch does the most damage, because two of them fail
+    <i>quietly</i> rather than loudly.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 16. CSE coverage -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">CSE coverage metrics</h3>
+          <div class="badges"><span class="badge b-dyn">C.1</span><span class="badge b-fit-green">&#128994; direct</span></div>
+        </div>
+        <p class="definition">The transferable half of Chen &amp; Murphy's suite &mdash; the only peer-reviewed,
+        fully reference-free cell-segmentation quality package. These ask whether the masks <b>cover the right
+        amount of the right stuff</b>, using no marker channels at all.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A plate region showing image foreground, the subset of it covered by cell masks, and the leftover uncovered foreground that lowers the fraction score">
+            <rect x="30" y="34" width="300" height="128" rx="10" fill="var(--surface-2)" stroke="var(--rule)"/>
+            <!-- foreground blob region -->
+            <path d="M56,64 C120,44 232,50 302,72 C312,104 280,142 208,146 C136,150 62,136 52,108 Z"
+                  fill="rgba(0,114,178,.13)" stroke="var(--blue)" stroke-width="1.8" stroke-dasharray="5 4"/>
+            <!-- covered masks -->
+            <g fill="rgba(11,155,118,.30)" stroke="var(--green)" stroke-width="1.6">
+              <circle cx="92" cy="98" r="17"/><circle cx="140" cy="88" r="18"/><circle cx="190" cy="100" r="16"/>
+              <circle cx="238" cy="90" r="17"/><circle cx="284" cy="102" r="15"/>
+            </g>
+            <!-- uncovered foreground -->
+            <circle cx="116" cy="130" r="9" fill="rgba(213,94,0,.20)" stroke="var(--vermillion)" stroke-width="1.6"/>
+            <circle cx="214" cy="132" r="8" fill="rgba(213,94,0,.20)" stroke="var(--vermillion)" stroke-width="1.6"/>
+            <text class="lbl-strong" x="36" y="26" fill="var(--blue)">image foreground</text>
+            <text class="lbl-strong" x="212" y="26" fill="var(--green)">covered by masks</text>
+            <text class="lbl-strong" x="36" y="184" fill="var(--vermillion)">missed foreground &#8594; FFC &#8595;</text>
+            <text class="lbl-strong" x="36" y="204">FFC = |masks &#8745; fg| / |fg|</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> FFC is the share of image foreground the masks actually claim &mdash;
+          missed colonies drop it, and masks spilling onto agar do not raise it. NC is object density; CSSD is
+          the size spread, folded by the same <code>1/(ln x + 1)</code> bounded trick.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">image + instance masks</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">medium</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Chen &amp; Murphy, MBoC 34(6):ar50, 2023</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metrics that transfer</span>
+          <dl>
+            <dt>FFC</dt><dd><b>fraction of image foreground occupied by cells</b> &mdash; transfers almost verbatim</dd>
+            <dt>NC</dt><dd>objects per 100 &micro;m&#178; &mdash; needs a physical pixel size, and the &micro;m&#178;
+            scale is wrong for mm-scale colonies</dd>
+            <dt>Others</dt><dd>1&minus;FBC, FCF, and 1/(ln CSSD + 1) &mdash; the last already approximated by
+            the built <code>SizeCV</code></dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Validation</span>
+          <dl>
+            <dt>vs F1</dt><dd>mean Pearson r = <b>0.83</b></dd>
+            <dt>vs Avg F1</dt><dd>r = <b>0.81</b></dd>
+            <dt>vs SEG&prime;</dt><dd>r = <b>0.72</b></dd>
+          </dl>
+        </div>
+        <div class="callout green" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>The recommended addition.</b> FFC is cheap, peer-reviewed,
+          fully reference-free, and orthogonal to all four built terms &mdash; none of which notices a colony
+          that was missed entirely.</p>
+        </div>
+      </article>
+
+      <!-- 17. CSE uniformity -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">CSE uniformity family</h3>
+          <div class="badges"><span class="badge b-dyn">C.1</span><span class="badge b-fit-red">&#128308; blocked</span></div>
+        </div>
+        <p class="definition">The other half of the suite &mdash; and the trap. These measure marker-expression
+        uniformity within inferred cell types. On a single-channel plate they do not error; they
+        <b>return numbers that mean nothing</b>.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A cells-by-channels matrix feeding k-means clustering and silhouette scoring, beside a single-column version whose first principal component ratio collapses trivially to one">
+            <text class="lbl-strong" x="26" y="30" fill="var(--green)">multiplexed</text>
+            <g stroke="var(--green)" stroke-width="1.3" fill="rgba(11,155,118,.16)">
+              <rect x="26" y="42" width="18" height="72"/><rect x="46" y="42" width="18" height="72"/>
+              <rect x="66" y="42" width="18" height="72"/><rect x="86" y="42" width="18" height="72"/>
+              <rect x="106" y="42" width="18" height="72"/>
+            </g>
+            <text class="lbl" x="26" y="130">n_cells &#215; n_channels</text>
+            <path d="M70,140 v14" stroke="var(--ink)" stroke-width="1.6"/>
+            <path d="M70,158 l-5,-7 h10 z" fill="var(--ink)"/>
+            <text class="lbl-strong" x="26" y="176">k-means, k = 2..10</text>
+            <text class="lbl" x="26" y="194" fill="var(--green)">silhouette meaningful</text>
+
+            <line x1="176" y1="20" x2="176" y2="200" stroke="var(--rule)" stroke-dasharray="4 4"/>
+
+            <text class="lbl-strong" x="206" y="30" fill="var(--vermillion)">plate (1 channel)</text>
+            <rect x="206" y="42" width="18" height="72" fill="rgba(213,94,0,.16)" stroke="var(--vermillion)" stroke-width="1.3"/>
+            <text class="lbl" x="230" y="82">n_cells &#215; 1</text>
+            <path d="M215,140 v14" stroke="var(--vermillion)" stroke-width="1.6"/>
+            <path d="M215,158 l-5,-7 h10 z" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="206" y="176" fill="var(--vermillion)">PCA evr[0] = 1.0</text>
+            <text class="lbl" x="206" y="194" fill="var(--vermillion)">no error raised</text>
+          </svg>
+          <figcaption><b>Mechanism of the silent failure:</b> <code>functions.py::cell_type()</code> builds an
+          (n_cells &times; n_channels) mean-intensity matrix and runs k-means for k = 2..10, then silhouette,
+          per-cluster CV, and a first-PC ratio. With one channel the first PC trivially explains <b>100%</b> of
+          the variance &mdash; a perfect-looking score from no information.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Blocked by</span><span class="mv">no marker panel on an RGB/gray plate</span></div>
+          <div class="mrow"><span class="mk">Also needs</span><span class="mv">a paired nucleus-mask channel (FMCN)</span></div>
+          <div class="mrow"><span class="mk">Metrics</span><span class="mv">ACVF, FPCF, ACVC, FPCC, AS</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">The shipped overall score</span>
+          <dl>
+            <dt>Not closed-form</dt><dd><b>exp(PC1&#183;evr&#8321; + PC2&#183;evr&#8322;)</b> over a hardcoded
+            StandardScaler and 2-component PCA</dd>
+            <dt>Fit on</dt><dd>637 multichannel tissue images (CODEX / Cell DIVE / MIBI / IMC), evr
+            [0.573, 0.143] for <code>2Dv1.5</code></dd>
+            <dt>Refit path</dt><dd>sanctioned &mdash; both entry points accept a user-supplied
+            <code>PCA_model</code>; the authors ship a separate cultured-cell refit</dd>
+          </dl>
+        </div>
+        <div class="callout red" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>Do not pip-install and point it at a plate.</b> Port the coverage
+          subset deliberately and refit the PCA; running the packaged score wholesale produces plausible,
+          meaningless output with nothing failing to tell you.</p>
+        </div>
+      </article>
+
+      <!-- 18. Cellpose flow error -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Cellpose flow error</h3>
+          <div class="badges"><span class="badge b-dyn">C.7</span><span class="badge b-fit-amber">&#128993; redefine</span></div>
+        </div>
+        <p class="definition">The most conceptually transferable <b>per-instance</b> confidence in the survey:
+        a model checking its own output for self-consistency. Genuinely reference-free &mdash; the function
+        signature takes no ground-truth argument at all.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A network-predicted flow field and a flow field recomputed from the predicted mask, agreeing on a good mask and diverging on a bad one">
+            <text class="lbl-strong" x="26" y="28" fill="var(--green)">consistent</text>
+            <circle cx="86" cy="88" r="40" fill="rgba(11,155,118,.14)" stroke="var(--green)" stroke-width="2"/>
+            <g stroke="var(--ink)" stroke-width="1.7" fill="none">
+              <path d="M62,66 l14,14"/><path d="M110,66 l-14,14"/><path d="M62,110 l14,-14"/><path d="M110,110 l-14,-14"/>
+            </g>
+            <g fill="var(--ink)">
+              <path d="M76,80 l-1,-7 l7,4 z"/><path d="M96,80 l1,-7 l-7,4 z"/>
+              <path d="M76,96 l-1,7 l7,-4 z"/><path d="M96,96 l1,7 l-7,-4 z"/>
+            </g>
+            <text class="lbl" x="42" y="152" fill="var(--green)">err &#8776; 0.1</text>
+            <text class="lbl-strong" x="34" y="170" fill="var(--green)">keep</text>
+
+            <line x1="176" y1="20" x2="176" y2="190" stroke="var(--rule)" stroke-dasharray="4 4"/>
+
+            <text class="lbl-strong" x="206" y="28" fill="var(--vermillion)">inconsistent</text>
+            <path d="M234,58 C272,44 306,62 310,88 C314,116 288,132 256,128 C226,124 210,104 214,82 C216,66 222,62 234,58 Z"
+                  fill="rgba(213,94,0,.14)" stroke="var(--vermillion)" stroke-width="2"/>
+            <g stroke="var(--ink)" stroke-width="1.7" fill="none">
+              <path d="M238,72 l16,6"/><path d="M292,70 l-10,16"/><path d="M240,110 l18,-6"/><path d="M296,108 l-14,-8"/>
+            </g>
+            <g stroke="var(--vermillion)" stroke-width="1.7" fill="none" stroke-dasharray="3 2">
+              <path d="M238,80 l16,-8"/><path d="M292,78 l-14,-6"/><path d="M240,102 l20,10"/><path d="M296,100 l-16,12"/>
+            </g>
+            <text class="lbl" x="212" y="152" fill="var(--vermillion)">err &gt; 0.4</text>
+            <text class="lbl-strong" x="212" y="170" fill="var(--vermillion)">mask discarded</text>
+            <text class="lbl-strong" x="30" y="204">err = &#8721;( dP_masks &#8722; dP_net/5 )&#178;, per label</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> recompute the flow gradients that the <i>predicted labels</i> imply, then
+          take the per-mask MSE against the flows the <i>network</i> predicted. Where the two disagree, the mask
+          is not something the model actually believes in &mdash; and it is dropped outright.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Where</span><span class="mv"><code>dynamics.py:292</code>, current main (Cellpose 4.x)</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">low &mdash; runs at inference</span></div>
+          <div class="mrow"><span class="mk">Scope</span><span class="mv">2D only; skipped in 3D</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>flow error</b>, per-label mean squared error &mdash; inverse polarity,
+            <b>not</b> a probability</dd>
+            <dt>Gate</dt><dd><code>flow_threshold = 0.4</code> &mdash; a hard upper bound;
+            <code>remove_bad_flow_masks</code> deletes anything above it</dd>
+            <dt>Reads as</dt><dd>low = the mask agrees with the model's own dense prediction; high = an
+            artefact the model would not have drawn</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Transfer blocker</span>
+          <dl>
+            <dt>needs</dt><dd>a model emitting a <b>dense per-pixel field</b> to disagree with</dd>
+            <dt>excludes</dt><dd>Otsu, watershed, hysteresis &mdash; no field, no self-consistency check</dd>
+            <dt>separate</dt><dd><code>cellprob_threshold</code> (default 0.0) is the probability-like gate</dd>
+          </dl>
+        </div>
+        <div class="callout green" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>The local analogue already exists.</b>
+          <code>detect/nn/_dinosam2_detector.py</code> computes cosine-to-prototype proposal scores, uses them
+          as an accept/reject gate, then discards them. Persisting those <i>is</i> this idea, for the detector
+          you actually have.</p>
+        </div>
+      </article>
+
+      <!-- 19. CellProfiler -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">CellProfiler image QC</h3>
+          <div class="badges"><span class="badge b-dyn">acquisition</span><span class="badge b-fit-amber">&#128993; upstream</span></div>
+        </div>
+        <p class="definition">Reference-free quality &mdash; but of the <b>acquisition</b>, not the segmentation.
+        Worth knowing precisely because it is often assumed to do more than it does.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A log-log power spectrum with a fitted slope line, steeper for a sharp image and shallower for a blurred one">
+            <line class="axis" x1="40" y1="156" x2="336" y2="156"/>
+            <line class="axis" x1="40" y1="156" x2="40" y2="34"/>
+            <text class="lbl" x="250" y="176">log spatial freq</text>
+            <text class="lbl" x="46" y="46">log power</text>
+            <!-- sharp -->
+            <path d="M56,52 L316,132" stroke="var(--green)" stroke-width="2.4"/>
+            <g fill="var(--green)"><circle cx="90" cy="63" r="2.6"/><circle cx="150" cy="82" r="2.6"/><circle cx="220" cy="103" r="2.6"/><circle cx="290" cy="125" r="2.6"/></g>
+            <text class="lbl-strong" x="256" y="122" fill="var(--green)">in focus</text>
+            <!-- blurred -->
+            <path d="M56,84 L316,146" stroke="var(--vermillion)" stroke-width="2.4" stroke-dasharray="6 4"/>
+            <text class="lbl-strong" x="240" y="152" fill="var(--vermillion)">blurred</text>
+            <text class="lbl-strong" x="46" y="196">FocusScore = normalized image variance</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> <code>PowerLogLogSlope</code> fits a line to the log-log power spectrum;
+          <code>FocusScore</code> is normalized image variance; <code>LocalFocusScore</code> is the same computed
+          over non-overlapping blocks and averaged; plus Haralick correlation and saturation stats.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv"><b>raw</b> images &mdash; docs advise before illumination correction</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">low</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bray &amp; Carpenter, Methods Mol Biol 1683:89&ndash;112 (2018)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Decisive negative check</span>
+          <dl>
+            <dt>Structure</dt><dd>zero <code>LabelSubscriber</code> / <code>ObjectNameSubscriber</code> /
+            <code>get_objects(</code> hits; every emission is
+            <code>add_measurement("Image", &hellip;)</code></dd>
+            <dt>Meaning</dt><dd>the module <b>structurally cannot</b> score a mask &mdash; any colony-mask
+            quality score must be built on top of it</dd>
+            <dt>Decision layer</dt><dd>CellProfiler Analyst Classifier is <b>supervised</b> &mdash; &ge;10
+            human-labeled examples per bin</dd>
+          </dl>
+        </div>
+        <div class="callout red" style="margin:10px 0 0;padding:11px 13px">
+          <p style="font-size:13px;margin:0"><b>&#9888; Polarity is contradictory across sources.</b> The MiMB
+          chapter says a <i>lower</i> power-spectrum slope means more blur; CellProfiler's own docs say a
+          <i>higher</i> slope does. The two focus scores are also given opposite directions. Re-derive every
+          sign from <code>measureimagequality.py</code> before wiring a threshold. <i>(Medium confidence &mdash;
+          2&ndash;1 verification vote.)</i></p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ================= BAND 5 : FAMILY D ================= -->
+  <section class="band" id="fam-d">
+    <h2 class="section-title">Family D &mdash; learned quality predictors</h2>
+    <p class="section-sub">Instead of hand-designing a proxy, <b>learn</b> the map from (image, mask) to quality.
+    All three are reference-free at inference; they differ entirely in what they need at build time.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 20. RCA -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Reverse Classification Accuracy</h3>
+          <div class="badges"><span class="badge b-phys">D.1&ndash;D.2</span><span class="badge b-fit-red">&#128308; reject</span></div>
+        </div>
+        <p class="definition">A genuinely clever trick: treat the <i>prediction</i> as if it were ground truth,
+        train a segmenter on it, and see how well that segmenter does on images you <i>do</i> have labels for.
+        Reference-free at test time &mdash; but not annotation-free overall.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A test image and its prediction used as pseudo ground truth to train a reverse classifier, which is then evaluated against an annotated reference database, taking the best score">
+            <rect x="24" y="46" width="72" height="52" rx="7" fill="rgba(0,114,178,.12)" stroke="var(--blue)" stroke-width="1.8"/>
+            <text class="lbl-strong" x="30" y="70">test img</text>
+            <text class="lbl" x="30" y="88">+ prediction</text>
+            <path d="M100,72 h30" stroke="var(--ink)" stroke-width="1.8"/><path d="M134,72 l-8,-5 v10 z" fill="var(--ink)"/>
+            <rect x="138" y="42" width="76" height="60" rx="7" fill="rgba(184,99,143,.14)" stroke="var(--purple)" stroke-width="1.8"/>
+            <text class="lbl-strong" x="144" y="66" fill="var(--purple)">reverse</text>
+            <text class="lbl-strong" x="144" y="84" fill="var(--purple)">classifier</text>
+            <path d="M218,72 h30" stroke="var(--ink)" stroke-width="1.8"/><path d="M252,72 l-8,-5 v10 z" fill="var(--ink)"/>
+            <g fill="rgba(11,155,118,.18)" stroke="var(--green)" stroke-width="1.6">
+              <rect x="256" y="36" width="72" height="24" rx="5"/><rect x="256" y="64" width="72" height="24" rx="5"/><rect x="256" y="92" width="72" height="24" rx="5"/>
+            </g>
+            <text class="lbl-strong" x="262" y="52" fill="var(--green)">ref + GT</text>
+            <text class="lbl" x="262" y="80" fill="var(--green)">ref + GT</text>
+            <text class="lbl" x="262" y="108" fill="var(--green)">ref + GT</text>
+            <text class="lbl-strong" x="256" y="136">take max &#8594; predicted DSC</text>
+            <text class="lbl-strong" x="24" y="170" fill="var(--vermillion)">~11 min / case</text>
+            <text class="lbl" x="24" y="190" fill="var(--vermillion)">100 registrations + 100 warps</text>
+            <line class="axis" x1="24" y1="150" x2="200" y2="150"/>
+          </svg>
+          <figcaption><b>Mechanism:</b> if the prediction was good, a classifier trained on it will also segment
+          the reference images well; if it was garbage, that classifier fails everywhere. The <b>max</b> over the
+          reference database is the predicted quality.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Needs</span><span class="mv">an annotated <b>reference database</b></span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv"><b>~11 min/case</b> (8-core i7 3.6 GHz)</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Valindria et al., IEEE TMI 36(8):1597&ndash;1606, 2017</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Why it is rejected here</span>
+          <dl>
+            <dt>Aggregate</dt><dd>looks excellent &mdash; 99% binary accuracy on 400 degraded segmentations;
+            95% on 4,805 UKBB scans; r &isin; [0.95, 0.99]</dd>
+            <dt>But</dt><dd>on <b>complex-shaped and already-high-quality</b> masks it systematically
+            under-predicts DSC: threshold accuracy collapses to <b>0.454</b> (RF) and <b>0.051</b> (CNN) for LV
+            myocardium</dd>
+            <dt>Fatal because</dt><dd>well-imaged agar plates <i>are</i> the near-perfect-mask regime &mdash;
+            it would be blind exactly where the data lives</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variants &amp; residual use</span>
+          <dl>
+            <dt>Conformal RCA</dt><dd>adds 1&minus;&alpha; coverage intervals, but needs a <b>second</b>
+            annotated calibration set and under-covers under domain shift</dd>
+            <dt>Still useful as</dt><dd>an offline <b>label generator</b> to bootstrap a regressor</dd>
+            <dt>&#10007; refuted</dt><dd>In-Context RCA speedups (0.70 s / 0.37 s) &mdash; killed 1&ndash;2,
+            do not cite</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 21. Learned regression -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Learned Dice regression</h3>
+          <div class="badges"><span class="badge b-phys">D.3</span><span class="badge b-fit-amber">&#128993; med&ndash;high</span></div>
+        </div>
+        <p class="definition">Skip the reverse classifier entirely and regress quality directly: feed the image
+        and its candidate masks to a CNN and have it output the predicted Dice. Four orders of magnitude faster
+        than RCA.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A stacked image and one-hot mask tensor entering a residual network and emerging as a single predicted Dice scalar">
+            <g fill="rgba(0,114,178,.12)" stroke="var(--blue)" stroke-width="1.5">
+              <rect x="26" y="58" width="52" height="52" rx="5"/><rect x="34" y="50" width="52" height="52" rx="5"/>
+              <rect x="42" y="42" width="52" height="52" rx="5"/><rect x="50" y="34" width="52" height="52" rx="5"/>
+            </g>
+            <text class="lbl-strong" x="24" y="130">img + 4 masks</text>
+            <text class="lbl" x="24" y="148">[224,224,8,5]</text>
+            <path d="M108,66 h24" stroke="var(--ink)" stroke-width="1.8"/><path d="M136,66 l-8,-5 v10 z" fill="var(--ink)"/>
+            <rect x="140" y="36" width="86" height="62" rx="8" fill="rgba(184,99,143,.14)" stroke="var(--purple)" stroke-width="1.8"/>
+            <text class="lbl-strong" x="148" y="60" fill="var(--purple)">50-layer</text>
+            <text class="lbl-strong" x="148" y="78" fill="var(--purple)">3D ResNet</text>
+            <path d="M230,66 h24" stroke="var(--ink)" stroke-width="1.8"/><path d="M258,66 l-8,-5 v10 z" fill="var(--ink)"/>
+            <rect x="262" y="46" width="72" height="42" rx="8" fill="rgba(11,155,118,.18)" stroke="var(--green)" stroke-width="2"/>
+            <text class="lbl-strong" x="276" y="72" fill="var(--green)">DSC&#770;</text>
+            <text class="lbl-strong" x="150" y="130" fill="var(--green)">40 ms GPU</text>
+            <text class="lbl" x="150" y="148">600 ms CPU</text>
+            <line class="axis" x1="24" y1="162" x2="336" y2="162"/>
+            <text class="lbl-strong" x="24" y="186">MAE 0.031 &#183; acc 0.965</text>
+            <text class="lbl-strong" x="200" y="186" fill="var(--vermillion)">RCA labels: 0.139 / 0.906</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> supervised regression on (image, candidate masks) &rarr; overlap. The
+          labels can come from manual annotation or, more cheaply, from RCA &mdash; but that substitution costs a
+          4&ndash;5&times; increase in error.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Needs</span><span class="mv">a large annotated corpus at train time</span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">40 ms GPU &mdash; &gt;10,000&times; faster than RCA</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Robinson et al., MICCAI 2018 (LNCS 11073)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>predicted DSC</b>, a scalar per case</dd>
+            <dt>Accuracy</dt><dd>MAE 0.031 (SD 0.035), TPR 0.975, FPR 0.060, acc 0.965 at a DSC threshold of 0.7</dd>
+            <dt>Reads as</dt><dd>a direct stand-in for the overlap you cannot measure &mdash; usable as a
+            pass/fail gate or a continuous objective</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Authors' own limits</span>
+          <dl>
+            <dt>learns</dt><dd>features specific to the segmenter it was trained on</dd>
+            <dt>blind to</dt><dd>&ldquo;small regional or boundary differences&rdquo; &mdash; cannot assess
+            fine-scale quality</dd>
+            <dt>watch</dt><dd>the split is at segmentation-sample level over 16,100 segmentations from 4,882
+            subjects &mdash; <b>subject leakage likely</b></dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 22. Galdran -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Degrade-and-train</h3>
+          <div class="badges"><span class="badge b-phys">D.4</span><span class="badge b-fit-green">&#128994; direct</span></div>
+        </div>
+        <p class="definition">The route that fits PhenoTypic best, because it manufactures its own labels.
+        Take clean masks, corrupt them in known ways, and you have a supervised training set whose true overlap
+        is known exactly &mdash; with no annotation at all.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A clean synthetic colony mask corrupted by erosion, splitting and dropping, each corruption carrying its exactly known Dice, feeding a trained quality regressor">
+            <text class="lbl-strong" x="24" y="30" fill="var(--green)">synthetic plate</text>
+            <circle cx="60" cy="70" r="24" fill="rgba(11,155,118,.26)" stroke="var(--green)" stroke-width="2"/>
+            <text class="lbl" x="34" y="108">Dice = 1.00</text>
+            <path d="M96,70 h22" stroke="var(--ink)" stroke-width="1.6"/><path d="M122,70 l-8,-5 v10 z" fill="var(--ink)"/>
+            <!-- degradations -->
+            <circle cx="152" cy="46" r="16" fill="rgba(217,138,0,.22)" stroke="var(--orange)" stroke-width="1.8"/>
+            <text class="lbl" x="174" y="50">erode &#8594; .82</text>
+            <g fill="rgba(217,138,0,.22)" stroke="var(--orange)" stroke-width="1.8">
+              <circle cx="144" cy="92" r="12"/><circle cx="166" cy="96" r="11"/>
+            </g>
+            <text class="lbl" x="186" y="96">split &#8594; .61</text>
+            <circle cx="152" cy="136" r="20" fill="none" stroke="var(--vermillion)" stroke-width="1.8" stroke-dasharray="4 3"/>
+            <text class="lbl" x="180" y="140" fill="var(--vermillion)">drop &#8594; .00</text>
+            <line class="axis" x1="24" y1="160" x2="336" y2="160"/>
+            <rect x="96" y="174" width="168" height="30" rx="7" fill="rgba(184,99,143,.14)" stroke="var(--purple)" stroke-width="1.8"/>
+            <text class="lbl-strong" x="112" y="194" fill="var(--purple)">train regressor on known overlap</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> because you produced the corruption, you know the exact Dice for free.
+          The regressor learns to recognize what a degraded mask <i>looks like</i> without a single human
+          annotation &mdash; and at inference it needs no reference at all.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Needs</span><span class="mv">clean masks to corrupt &mdash; <code>load_synth_yeast_plate()</code></span></div>
+          <div class="mrow"><span class="mk">Cost</span><span class="mv">low at inference; build cost is the corruption set</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Galdran et al. (vessel segmentation)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Why this is the recommended learned route</span>
+          <dl>
+            <dt>No annotation</dt><dd>the label is a by-product of the corruption, not a human</dd>
+            <dt>Dual use</dt><dd>the same corpus <b>unblocks the meta-validation gate</b> &mdash; known Dice is
+            exactly what <code>_proxy_gt_spearman</code> needs to correlate against</dd>
+            <dt>Colony-specific</dt><dd>corruptions must be colony error modes: erode, dilate, merge, split,
+            drop, edge halos, debris &mdash; not generic noise</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Risks</span>
+          <dl>
+            <dt>realism</dt><dd>synthetic corruptions must resemble real detector failures, or the regressor
+            learns the wrong manifold</dd>
+            <dt>topology</dt><dd>transfer from synthetic to real plate topology is unproven</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <div class="footer">
+    <div class="flinks">
+      <span>src/phenotypic/tune/score/_reference_free_scorer.py</span>
+      <span>docs/superpowers/specs/param-sweep-redesign/reference-free-segmentation-metrics.md</span>
+      <span><a href="unsupervised-segmentation-metrics.html">&larr; overview page</a></span>
+    </div>
+    <p class="note">Formulas for families A and B are transcribed from the in-repo catalogue (commit
+    <code>ef10d2694</code>), which flags them as <b>mechanism-verified but not symbol-verified</b> &mdash;
+    re-derive from the primary source before implementing, and note that Zeboudj's primary source is an
+    untraceable 1988 PhD thesis and that DTNP's closed form was never fully transcribed. Families C and D
+    carry claims from a 2026-08-28 research pass (25 adversarially verified claims, 24 confirmed / 1 killed);
+    the CellProfiler polarity claim passed only 2&ndash;1. <b>No claim on this page has been evaluated on
+    agar-plate colony masks</b> &mdash; every quantitative figure comes from cardiac MR, multiplexed tissue
+    microscopy, or fluorescence cell imaging, and must be re-derived locally before it is trusted.</p>
+  </div>
+
+</main>
+</body>
+</html>
