@@ -223,11 +223,15 @@ from phenotypic._cli._cli_constants import MAX_SLURM_TIME_MINUTES
 from phenotypic.schema import EXPERIMENT
 from phenotypic.sdk_ import (
     DIR_PHENOTYPIC,
+    DIR_PROGRESS,
     DIR_RESULTS,
     GUI_LAUNCH_OWNER_JSON,
     GUI_LOG_FILENAMES,
     JOB_METADATA_JSON,
+    PROCESSING_EVENTS_LOG,
+    PROCESSING_STATE_JSON,
     RECOMPILE_TASK_MANIFEST_JSON,
+    STORE_SUFFIX,
     JobMetadataKey,
     dashboard_html_path,
     dataset_measurements_dir,
@@ -271,26 +275,128 @@ DURABLE_WRITES_REJECTED_MODES: frozenset[str] = frozenset(
 )
 
 
-def _has_prior_scientific_artifacts(output_dir: Path) -> bool:
-    """Return whether restart would preserve artifacts from an earlier run."""
-    root = Path(output_dir)
-    if not root.exists():
-        return False
-    if not root.is_dir():
+#: Stand-ins reported by :func:`_prior_scientific_artifact_names` when the
+#: output root cannot be enumerated at all. They are not entry names, so they
+#: are wrapped in angle brackets to read as a condition rather than a file.
+_OUTPUT_ROOT_NOT_A_DIRECTORY = "<not a directory>"
+_OUTPUT_ROOT_UNREADABLE = "<unreadable>"
+
+
+def _holds_run_output(directory: Path) -> bool:
+    """Return whether ``directory`` actually holds an earlier run's output.
+
+    Every run scaffolds its output tree up front -- ``results/<ds>/zarr/`` and
+    ``deliverables/overlays/<ds>/`` exist from the first moment, empty, before
+    a single image is written. Treating those as science would fire the restart
+    guard on every run that ever started, so emptiness is what separates
+    scaffolding from output. This is the non-empty test the pre-inversion
+    allowlist applied to ``results``/``deliverables``/``qc``, kept now that the
+    set of interesting locations is open (``--mode process`` mirrors to the
+    output *root*).
+
+    A ``*.ome.zarr`` directory counts even when empty: the path itself is a
+    published store identity, not scaffolding. A symlink counts too -- its
+    target is outside this tree and cannot be vouched for.
+
+    Args:
+        directory: A real, non-symlink directory under the output root.
+
+    Returns:
+        ``True`` on the first real file, store directory, or symlink found.
+
+    Raises:
+        OSError: If any level cannot be listed; the caller fails closed.
+    """
+    if directory.name.endswith(STORE_SUFFIX):
         return True
-    try:
-        for entry in root.iterdir():
-            machine_state = (
-                entry.name == DIR_PHENOTYPIC
-                and not entry.is_symlink()
-                and entry.is_dir()
-            )
-            if machine_state or is_safe_gui_log_entry(entry):
-                continue
-            return True
-    except OSError:
-        return True
+    stack = [directory]
+    while stack:
+        for child in stack.pop().iterdir():
+            if child.name.endswith(STORE_SUFFIX) or child.is_symlink():
+                return True
+            if child.is_dir():
+                stack.append(child)
+            else:
+                return True
     return False
+
+
+def _prior_scientific_artifact_names(
+    output_dir: Path,
+    *,
+    pipeline_snapshot_name: str | None = None,
+) -> list[str]:
+    """Name every top-level entry a ``--restart`` would *not* clear.
+
+    ``--restart`` re-runs the orchestration against clean machine-state while
+    preserving output artifacts, so anything :func:`clear_machine_state` does
+    not delete survives into the new run. Exchanging the approved image subset
+    across such a directory would silently mix two runs' science, which is what
+    the caller refuses.
+
+    Three kinds of entry are *not* an earlier run's science: machine-state the
+    restart clears itself, empty scaffolding (see :func:`_holds_run_output`),
+    and the run's own pipeline copy, which ``_copy_pipeline_to_output`` places
+    at the root under the source file's basename.
+
+    Fails closed: a path that is not a directory, or a root that cannot be
+    enumerated, is reported as holding artifacts rather than assumed fresh.
+    ``Path.exists()`` and ``Path.is_dir()`` swallow ``OSError`` internally and
+    answer ``False``, so both probes run inside the ``try`` -- outside it, an
+    unreadable root would report "fresh" while the identical error one line
+    later is treated as "assume artifacts present".
+
+    Args:
+        output_dir: Prospective run output root.
+        pipeline_snapshot_name: Basename of this run's ``--pipeline`` file, so
+            the copy of it at the output root is not mistaken for science.
+            ``None`` classifies every file at the root as science.
+
+    Returns:
+        Sorted names of the blocking entries, or one of the
+        ``<...>`` stand-ins above when the root itself is the problem. Empty
+        when a restart would preserve nothing from an earlier run.
+    """
+    root = Path(output_dir)
+    blocking: list[str] = []
+    try:
+        if not root.exists():
+            return []
+        if not root.is_dir():
+            return [_OUTPUT_ROOT_NOT_A_DIRECTORY]
+        for entry in root.iterdir():
+            if _is_ignorable_output_entry(entry, allow_machine_state=True):
+                continue
+            if entry.is_symlink():
+                blocking.append(entry.name)
+                continue
+            if (
+                pipeline_snapshot_name is not None
+                and entry.name == pipeline_snapshot_name
+                and entry.is_file()
+            ):
+                continue
+            if entry.is_dir() and not _holds_run_output(entry):
+                continue
+            blocking.append(entry.name)
+    except OSError:
+        return [_OUTPUT_ROOT_UNREADABLE]
+    return sorted(blocking)
+
+
+def _has_prior_scientific_artifacts(output_dir: Path) -> bool:
+    """Return whether restart would preserve artifacts from an earlier run.
+
+    Thin boolean view of :func:`_prior_scientific_artifact_names`; see there for
+    the classification rules and the fail-closed exits.
+
+    Args:
+        output_dir: Prospective run output root.
+
+    Returns:
+        ``True`` when at least one top-level entry would survive a restart.
+    """
+    return bool(_prior_scientific_artifact_names(output_dir))
 
 
 def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
@@ -803,6 +909,69 @@ def _is_safe_gui_submitter_log_tree(
         child.name in allowed and not child.is_symlink() and child.is_file()
         for child in gui_logs.iterdir()
     )
+
+
+def _is_clearable_machine_state(entry: Path) -> bool:
+    """Return whether ``entry`` is state a ``--restart`` deletes outright.
+
+    Mirrors what :func:`phenotypic.sdk_.clear_machine_state` removes, so the
+    freshness guard and the clearing it authorizes cannot hold two different
+    definitions of "machine state": the ``.phenotypic`` cache, plus the
+    pre-migration root-level layout (``progress/``, ``processing_state.json``,
+    ``processing_events.log``) kept working for a legacy run restarted in place.
+
+    The ``.phenotypic`` arm additionally refuses a cache holding an OME-Zarr
+    store. ``scan_directory_structure`` does not skip dot-directories, so
+    ``--input tree`` where ``tree/.phenotypic/`` holds images yields a dataset
+    literally named ``.phenotypic`` and ``--mode process`` mirrors its exports
+    to ``<output>/.phenotypic/<stem>.ome.zarr``. Calling that machine-state
+    would hand published science to ``shutil.rmtree`` -- the one direction of
+    this predicate that loses data, so it fails closed.
+
+    Args:
+        entry: Direct child of a prospective output directory.
+
+    Returns:
+        ``True`` only for real, non-symlink machine-state entries.
+    """
+    if entry.is_symlink():
+        return False
+    try:
+        if entry.name == DIR_PHENOTYPIC:
+            return entry.is_dir() and not any(
+                child.name.endswith(STORE_SUFFIX) for child in entry.iterdir()
+            )
+        if entry.name == DIR_PROGRESS:
+            return entry.is_dir()
+        if entry.name in {PROCESSING_STATE_JSON, PROCESSING_EVENTS_LOG}:
+            return entry.is_file()
+    except OSError:
+        return False
+    return False
+
+
+def _is_ignorable_output_entry(
+    entry: Path, *, allow_machine_state: bool
+) -> bool:
+    """Return whether a top-level output entry is not an earlier run's science.
+
+    Single definition shared by the two freshness checks that would otherwise
+    drift apart -- the ``--restart --image-manifest`` guard and the
+    already-contains-files check for a genuinely fresh run. They differ only in
+    how they treat machine-state, which is exactly what the keyword selects.
+
+    Args:
+        entry: Direct child of a prospective output directory.
+        allow_machine_state: ``True`` for a restart, which clears machine-state
+            itself and so may ignore it; ``False`` for a fresh run, where a
+            previous run's state means the directory is not fresh.
+
+    Returns:
+        ``True`` when the entry may be ignored by the calling check.
+    """
+    if is_safe_gui_log_entry(entry) or is_safe_gui_launch_state_entry(entry):
+        return True
+    return allow_machine_state and _is_clearable_machine_state(entry)
 
 
 def _format_slurm_key(key: str) -> str:
@@ -1601,16 +1770,6 @@ def phenotypic_cli(
             raise click.UsageError(
                 "--restart and --overwrite are mutually exclusive"
             )
-        if (
-            restart
-            and image_manifest is not None
-            and _has_prior_scientific_artifacts(output_dir)
-        ):
-            raise click.UsageError(
-                "--restart with --image-manifest requires a fresh output "
-                f"directory; {output_dir} contains prior scientific artifacts. "
-                "Choose a new --output directory."
-            )
 
         if migrate_only:
             from phenotypic._cli._cli_migrate import handle_migrate_mode
@@ -1900,6 +2059,49 @@ def phenotypic_cli(
 
             click.echo(f"✓ Continuing from {output_dir}")
 
+        # Refuse a restart that would exchange the approved image subset while
+        # preserving an earlier subset's outputs. Gated on the recorded digest,
+        # not on `--image-manifest` being present at all: re-running the *same*
+        # approved subset is ordinary restart usage, and a proxy check made
+        # `--mode process --image-manifest --restart` permanently unusable the
+        # moment its first image was exported. No recorded digest means the
+        # subset cannot be proven unchanged, so that direction refuses too.
+        #
+        # Placed here, after `config.image_manifest_digest` is resolved and
+        # before `clear_machine_state` runs, because it is a check on run state
+        # rather than on argument spelling.
+        manifest_subset_changed = False
+        if restart and image_manifest is not None:
+            prior_state = (
+                load_processing_state(output_dir)
+                if output_dir.exists()
+                else None
+            )
+            recorded_manifest_digest = (
+                prior_state.config.get("image_manifest_digest")
+                if prior_state is not None
+                else None
+            )
+            manifest_subset_changed = (
+                recorded_manifest_digest != config.image_manifest_digest
+            )
+            if manifest_subset_changed:
+                blocking = _prior_scientific_artifact_names(
+                    output_dir,
+                    pipeline_snapshot_name=Path(config.pipeline_json).name,
+                )
+                if blocking:
+                    shown = ", ".join(blocking[:10])
+                    if len(blocking) > 10:
+                        shown += f", … and {len(blocking) - 10} more"
+                    raise click.UsageError(
+                        "--restart with --image-manifest requires a fresh "
+                        f"output directory; {output_dir} contains prior "
+                        f"scientific artifacts: {shown}. Remove those entries "
+                        "if they are not results you need. Choose a new "
+                        "--output directory to keep them."
+                    )
+
         # Handle restart mode - clear ALL previous machine-state so the
         # orchestration re-runs cleanly (fresh state + event log + progress),
         # while preserving any output artifacts (results/, deliverables/, qc/)
@@ -1932,9 +2134,8 @@ def phenotypic_cli(
         # Check existing contents only for a genuinely fresh run.
         if not config.resume and not restart and not measure_only:
             if output_dir.exists() and any(
-                not (
-                    is_safe_gui_log_entry(entry)
-                    or is_safe_gui_launch_state_entry(entry)
+                not _is_ignorable_output_entry(
+                    entry, allow_machine_state=False
                 )
                 for entry in output_dir.iterdir()
             ):
@@ -2404,7 +2605,14 @@ def phenotypic_cli(
                     click.echo("  - Including previously failed images")
 
         elif restart:
-            if config.retry_failures:
+            # `clear_machine_state` preserves `terminal_failures.jsonl` by
+            # design, and `work_id_for_image` hashes dataset / relative path /
+            # input sha / pipeline / config digest / mode -- never the manifest
+            # digest. So an earlier subset's terminal failures would match, and
+            # silently drop, images in a newly approved subset. When the subset
+            # changed, the journal describes different work: keep it on disk,
+            # but do not apply it to this run.
+            if config.retry_failures or manifest_subset_changed:
                 terminal_skipped = 0
             else:
                 datasets, terminal_skipped = (
