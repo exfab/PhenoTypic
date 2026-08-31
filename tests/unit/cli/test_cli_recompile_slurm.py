@@ -1896,10 +1896,14 @@ def test_retry_rejects_noncanonical_transition_staging_path(
             output_dir
         ).as_posix()
     elif prepared_path_case == "outside-root":
-        outside = tmp_path / "outside.parquet"
+        # Canonical basename on purpose: `<stem>.<32 hex>.parquet` satisfies the
+        # name check, so containment is the only guard left that can reject
+        # this receipt. Named "outside.parquet" the case merely re-tested the
+        # name check and stayed green when containment was deleted.
+        outside = tmp_path / staged.name
         shutil.copy2(staged, outside)
-        transition["prepared_path"] = outside.relative_to(
-            output_dir, walk_up=True
+        transition["prepared_path"] = Path(
+            os.path.relpath(outside, output_dir)
         ).as_posix()
     elif prepared_path_case == "symlink":
         outside = tmp_path / "outside.parquet"
