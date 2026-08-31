@@ -1,0 +1,13 @@
+dataset,group_label,variant_key,variant_label,labeled_crops,successful_detections,median_qualitative_recall,minimum_qualitative_recall,median_q95_enclosure_ratio,minimum_q95_enclosure_ratio,median_containment
+GanodermaSubsetEven,"Ganoderma | 1% glucose + 1.2% yeast extract, pH 4",current_subtraction,Current subtraction,8,8,0.549659368187,0.531854666231,0.751738028737,0.7299731436,1.0
+GanodermaSubsetEven,"Ganoderma | 1% glucose + 1.2% yeast extract, pH 4",raw,Raw,8,8,0.818868586978,0.0140677456532,0.901516626512,0.15510929813,0.999984925911
+GanodermaSubsetEven,"Ganoderma | 1% glucose + 1.2% yeast extract, pH 4",local_contrast,Local contrast,8,8,0.792917557704,0.00269083138776,0.941510015991,0.21390056571,0.996267217142
+GanodermaSubsetEven,"Ganoderma | 1% glucose + 1.2% yeast extract, pH 4",stretch_unsharp,Stretch + unsharp,8,8,0.662088346036,0.605839709406,0.845284277844,0.788309352417,1.0
+NeurosporaMenadione,Neurospora crassa | menadione,current,Current,4,4,0.981377679878,0.965966827065,1.07486642503,1.04644214732,0.858448538667
+NeurosporaMenadione,Neurospora crassa | menadione,unsharp,+ Unsharp,4,4,0.956826559246,0.924567864728,1.03513894024,1.01278302529,0.915679091036
+NeurosporaMenadione,Neurospora crassa | menadione,local_contrast,+ Local contrast,4,3,0.951130392381,0.0,1.07266675682,1.05514087759,0.864015699236
+NeurosporaMenadione,Neurospora crassa | menadione,monogenic_pc,+ Monogenic PC,4,4,0.887965313689,0.864624011215,1.06221384527,1.04589377777,0.900408133161
+NeurosporaXylan,Neurospora crassa | xylan,current,Current,4,4,0.264114503329,0.16804852814,0.910765491776,0.826818558818,0.987220520435
+NeurosporaXylan,Neurospora crassa | xylan,unsharp,+ Unsharp,4,4,0.216086494426,0.0648437416127,0.891409912277,0.357574488282,0.992649676415
+NeurosporaXylan,Neurospora crassa | xylan,local_contrast,+ Local contrast,4,4,0.365084873151,0.213472795045,0.915780080551,0.783275619151,0.993282667758
+NeurosporaXylan,Neurospora crassa | xylan,monogenic_pc,+ Monogenic PC,4,4,0.448487206452,0.232365321655,1.04696623474,0.930330554549,0.954253454278

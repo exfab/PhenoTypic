@@ -1,0 +1,95 @@
+dataset,crop,family,variant_key,variant_label,success,error,cache_hit,seconds,detected_pixels,containment,qualitative_recall,q95_enclosure_ratio,short_crop
+GanodermaSubsetEven,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,ganoderma,current_subtraction,Current subtraction,True,,True,0.00436895797611,47128,1.0,0.553489846971,0.763706265613,Image99_obj1
+GanodermaSubsetEven,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,ganoderma,raw,Raw,True,,True,0.00613941700431,22897,1.0,0.268911412029,0.569825949216,Image99_obj1
+GanodermaSubsetEven,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,ganoderma,local_contrast,Local contrast,True,,True,0.00600879100966,62347,0.996118498083,0.729385650698,0.946625438829,Image99_obj1
+GanodermaSubsetEven,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,ganoderma,stretch_unsharp,Stretch + unsharp,True,,True,0.00601362498128,56348,1.0,0.661773168755,0.840159864745,Image99_obj1
+GanodermaSubsetEven,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,ganoderma,current_subtraction,Current subtraction,True,,True,0.0115403330128,221599,1.0,0.535650143461,0.7299731436,Image99_obj2
+GanodermaSubsetEven,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,ganoderma,raw,Raw,True,,True,0.0138352079957,514708,0.744612479309,0.926413037435,1.28881075652,Image99_obj2
+GanodermaSubsetEven,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,ganoderma,local_contrast,Local contrast,True,,True,0.01392579198,354814,0.99859081096,0.85644946471,0.917193712857,Image99_obj2
+GanodermaSubsetEven,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,ganoderma,stretch_unsharp,Stretch + unsharp,True,,True,0.0130472499877,274037,1.0,0.662403523318,0.815685365001,Image99_obj2
+GanodermaSubsetEven,image167_obj1_d000441_300_050_2026-06-15_21-41-45,ganoderma,current_subtraction,Current subtraction,True,,True,0.00547441700473,104342,1.0,0.653542616626,0.807722504415,image167_obj1
+GanodermaSubsetEven,image167_obj1_d000441_300_050_2026-06-15_21-41-45,ganoderma,raw,Raw,True,,True,0.00766608401318,2246,1.0,0.0140677456532,0.168478139827,image167_obj1
+GanodermaSubsetEven,image167_obj1_d000441_300_050_2026-06-15_21-41-45,ganoderma,local_contrast,Local contrast,True,,True,0.00761762500042,145888,0.983055494626,0.898281304805,0.958146301916,image167_obj1
+GanodermaSubsetEven,image167_obj1_d000441_300_050_2026-06-15_21-41-45,ganoderma,stretch_unsharp,Stretch + unsharp,True,,True,0.00731229101075,103027,0.999922350452,0.645256050509,0.850408690944,image167_obj1
+GanodermaSubsetEven,image167_obj2_d000441_300_050_2026-06-15_21-41-45,ganoderma,current_subtraction,Current subtraction,True,,True,0.00511641599587,101627,1.0,0.601816814416,0.783396663009,image167_obj2
+GanodermaSubsetEven,image167_obj2_d000441_300_050_2026-06-15_21-41-45,ganoderma,raw,Raw,True,,True,0.00707620798494,141694,0.999498920208,0.838665932361,0.935278107296,image167_obj2
+GanodermaSubsetEven,image167_obj2_d000441_300_050_2026-06-15_21-41-45,ganoderma,local_contrast,Local contrast,True,,True,0.0069892500178,9681,1.0,0.0573291406847,0.257791048776,image167_obj2
+GanodermaSubsetEven,image167_obj2_d000441_300_050_2026-06-15_21-41-45,ganoderma,stretch_unsharp,Stretch + unsharp,True,,True,0.00656587502453,108267,1.0,0.641137700083,0.830029409396,image167_obj2
+GanodermaSubsetEven,image167_obj3_d000441_300_050_2026-06-15_21-41-45,ganoderma,current_subtraction,Current subtraction,True,,True,0.00566033300129,115563,1.0,0.643077744946,0.81653638181,image167_obj3
+GanodermaSubsetEven,image167_obj3_d000441_300_050_2026-06-15_21-41-45,ganoderma,raw,Raw,True,,True,0.00726949999807,3468,1.0,0.0192985092069,0.15510929813,image167_obj3
+GanodermaSubsetEven,image167_obj3_d000441_300_050_2026-06-15_21-41-45,ganoderma,local_contrast,Local contrast,True,,True,0.00714058298036,6129,1.0,0.0341062753543,0.21390056571,image167_obj3
+GanodermaSubsetEven,image167_obj3_d000441_300_050_2026-06-15_21-41-45,ganoderma,stretch_unsharp,Stretch + unsharp,True,,True,0.0071560840006,129936,0.997221709149,0.721050845005,0.885682879072,image167_obj3
+GanodermaSubsetEven,image211_obj1_d000442_300_063_2026-06-16_01-53-04,ganoderma,current_subtraction,Current subtraction,True,,True,0.0180832089973,353124,1.0,0.545828889404,0.739769791862,image211_obj1
+GanodermaSubsetEven,image211_obj1_d000442_300_063_2026-06-16_01-53-04,ganoderma,raw,Raw,True,,True,0.0210920420068,519606,1.0,0.80316253188,0.894334363433,image211_obj1
+GanodermaSubsetEven,image211_obj1_d000442_300_063_2026-06-16_01-53-04,ganoderma,local_contrast,Local contrast,True,,True,0.0210255419952,562769,0.996415936201,0.866762500966,0.936394593153,image211_obj1
+GanodermaSubsetEven,image211_obj1_d000442_300_063_2026-06-16_01-53-04,ganoderma,stretch_unsharp,Stretch + unsharp,True,,True,0.020291791996,391948,1.0,0.605839709406,0.788309352417,image211_obj1
+GanodermaSubsetEven,image211_obj2_d000442_300_063_2026-06-16_01-53-04,ganoderma,current_subtraction,Current subtraction,True,,True,0.00306945800548,42275,1.0,0.531854666231,0.731398196009,image211_obj2
+GanodermaSubsetEven,image211_obj2_d000442_300_063_2026-06-16_01-53-04,ganoderma,raw,Raw,True,,True,0.00416275000316,66339,0.999969851822,0.834574642075,0.90869888959,image211_obj2
+GanodermaSubsetEven,image211_obj2_d000442_300_063_2026-06-16_01-53-04,ganoderma,local_contrast,Local contrast,True,,True,0.00387708298513,77363,0.987797784471,0.961414588733,0.988206583767,image211_obj2
+GanodermaSubsetEven,image211_obj2_d000442_300_063_2026-06-16_01-53-04,ganoderma,stretch_unsharp,Stretch + unsharp,True,,True,0.00378745800117,59407,1.0,0.747389477392,0.863226971698,image211_obj2
+GanodermaSubsetEven,image211_obj3_d000442_300_063_2026-06-16_01-53-04,ganoderma,current_subtraction,Current subtraction,True,,True,0.00252599999658,40322,1.0,0.53186129028,0.731168272422,image211_obj3
+GanodermaSubsetEven,image211_obj3_d000442_300_063_2026-06-16_01-53-04,ganoderma,raw,Raw,True,,True,0.00313841598108,65884,0.999590188817,0.868676875998,0.927605373958,image211_obj3
+GanodermaSubsetEven,image211_obj3_d000442_300_063_2026-06-16_01-53-04,ganoderma,local_contrast,Local contrast,True,,True,0.00313729202026,229,0.890829694323,0.00269083138776,1.08293763408,image211_obj3
+GanodermaSubsetEven,image211_obj3_d000442_300_063_2026-06-16_01-53-04,ganoderma,stretch_unsharp,Stretch + unsharp,True,,True,0.00328270799946,61033,1.0,0.805046627887,0.894483794261,image211_obj3
+NeurosporaMenadione,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,current,Current,True,,True,0.00435162498616,39231,0.91593382784,0.965966827065,1.04644214732,Image29_obj1
+NeurosporaMenadione,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,unsharp,+ Unsharp,True,,True,0.00426583300577,36077,0.953322061147,0.924567864728,1.01278302529,Image29_obj1
+NeurosporaMenadione,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,local_contrast,+ Local contrast,False,"RuntimeError: [EnhanceLocalContrast] (step 3/3, key='EnhanceLocalContrast'): EnhanceLocalContrast failed on image Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb:local_contrast:
+Traceback (most recent call last):
+  File ""/Users/alex/Projects/PhenoTypic/src/phenotypic/abc_/_image_operation.py"", line 490, in _apply_to_single_image
+    return operation(image)
+           ^^^^^^^^^^^^^^^^
+  File ""/Users/alex/Projects/PhenoTypic/src/phenotypic/enhance/_enhance_local_contrast.py"", line 75, in _operate
+    image.detect_mat[:] = equalize_adapthist(
+                          ^^^^^^^^^^^^^^^^^^^
+  File ""/Users/alex/Projects/PhenoTypic/.venv/lib/python3.12/site-packages/skimage/color/adapt_rgb.py"", line 41, in image_filter_adapted
+    return image_filter(image, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""/Users/alex/Projects/PhenoTypic/.venv/lib/python3.12/site-packages/skimage/exposure/_adapthist.py"", line 75, in equalize_adapthist
+    image = img_as_uint(image)
+            ^^^^^^^^^^^^^^^^^^
+  File ""/Users/alex/Projects/PhenoTypic/.venv/lib/python3.12/site-packages/skimage/util/dtype.py"", line 527, in img_as_uint
+    return _convert(image, np.uint16, force_copy)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""/Users/alex/Projects/PhenoTypic/.venv/lib/python3.12/site-packages/skimage/util/dtype.py"", line 312, in _convert
+    raise ValueError(""Images of type float must be between -1 and 1."")
+ValueError: Images of type float must be between -1 and 1.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File ""/Users/alex/Projects/PhenoTypic/src/phenotypic/abc_/_image_operation.py"", line 439, in apply
+    image = self._apply_to_single_image(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""/Users/alex/Projects/PhenoTypic/src/phenotypic/abc_/_image_operation.py"", line 496, in _apply_to_single_image
+    raise Exception(f""{cls_name} failed on image {image.name}: {e}"") from e
+Exception: EnhanceLocalContrast failed on image Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb:local_contrast: Images of type float must be between -1 and 1.
+",True,0.00218545799726,0,,0.0,,Image29_obj1
+NeurosporaMenadione,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,monogenic_pc,+ Monogenic PC,True,,True,0.0031026659999,36784,0.91874184428,0.908492163768,1.04589377777,Image29_obj1
+NeurosporaMenadione,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,current,Current,True,,True,0.00367195799481,23201,0.841170639197,0.977070191249,1.0811436874,Image29_obj2
+NeurosporaMenadione,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,unsharp,+ Unsharp,True,,True,0.00366158300312,20438,0.921078383403,0.942475217783,1.02552134754,Image29_obj2
+NeurosporaMenadione,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,local_contrast,+ Local contrast,True,,True,0.00274304198683,20936,0.886081390906,0.9287573846,1.05514087759,Image29_obj2
+NeurosporaMenadione,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,monogenic_pc,+ Monogenic PC,True,,True,0.00251095800195,19541,0.883782815618,0.864624011215,1.07491111025,Image29_obj2
+NeurosporaMenadione,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,current,Current,True,,True,0.0046552499989,34045,0.824614480834,0.989182904056,1.1175335002,Image29_obj3
+NeurosporaMenadione,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,unsharp,+ Unsharp,True,,True,0.00451920801424,30563,0.901842096653,0.971177900708,1.06557286855,Image29_obj3
+NeurosporaMenadione,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,local_contrast,+ Local contrast,True,,True,0.00319995798054,38930,0.709709735423,0.973503400162,1.93055232127,Image29_obj3
+NeurosporaMenadione,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,monogenic_pc,+ Monogenic PC,True,,True,0.00287291698623,32640,0.771354166667,0.887107571967,1.85340613049,Image29_obj3
+NeurosporaMenadione,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,current,Current,True,,True,0.00339687499218,47492,0.875726438137,0.985685168507,1.06858916266,Image29_obj4
+NeurosporaMenadione,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,unsharp,+ Unsharp,True,,True,0.00304179199156,45497,0.910279798668,0.981537659383,1.04475653293,Image29_obj4
+NeurosporaMenadione,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,local_contrast,+ Local contrast,True,,True,0.0025385839981,48410,0.864015699236,0.991302080865,1.07266675682,Image29_obj4
+NeurosporaMenadione,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,neuro_branch,monogenic_pc,+ Monogenic PC,True,,True,0.00253187498311,40896,0.917033450704,0.888823055411,1.0495165803,Image29_obj4
+NeurosporaXylan,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,current,Current,True,,True,0.00369983399287,18271,0.986864429971,0.193575745864,0.826818558818,Image29_obj1
+NeurosporaXylan,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,unsharp,+ Unsharp,True,,True,0.00353104199166,6040,1.0,0.0648437416127,0.357574488282,Image29_obj1
+NeurosporaXylan,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,local_contrast,+ Local contrast,True,,True,0.00297941701137,27971,0.994851810804,0.298742847327,0.783275619151,Image29_obj1
+NeurosporaXylan,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,monogenic_pc,+ Monogenic PC,True,,True,0.00269762499374,44964,0.951227648786,0.459177429225,1.07956154149,Image29_obj1
+NeurosporaXylan,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,current,Current,True,,True,0.00406899998779,19857,0.978899128771,0.334653260795,0.952129712911,Image29_obj2
+NeurosporaXylan,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,unsharp,+ Unsharp,True,,True,0.0038990409812,13723,0.990818334183,0.234092004683,0.909063969252,Image29_obj2
+NeurosporaXylan,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,local_contrast,+ Local contrast,True,,True,0.00296883299598,25467,0.983979267287,0.431426898974,0.936361660057,Image29_obj2
+NeurosporaXylan,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,monogenic_pc,+ Monogenic PC,True,,True,0.00272616598522,27212,0.934477436425,0.437796983679,1.0627032529,Image29_obj2
+NeurosporaXylan,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,current,Current,True,,True,0.00460233300691,42259,0.987576610899,0.429362139918,0.980570233103,Image29_obj3
+NeurosporaXylan,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,unsharp,+ Unsharp,True,,True,0.00439466701937,25367,0.994481018646,0.259537037037,0.873755855302,Image29_obj3
+NeurosporaXylan,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,local_contrast,+ Local contrast,True,,True,0.00328833298408,50685,0.991713524711,0.51712962963,0.944650476245,Image29_obj3
+NeurosporaXylan,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,monogenic_pc,+ Monogenic PC,True,,True,0.00300291701569,50795,0.95727925977,0.500257201646,1.03122921659,Image29_obj3
+NeurosporaXylan,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,current,Current,True,,True,0.00328570901183,11882,0.997895977108,0.16804852814,0.869401270641,Image29_obj4
+NeurosporaXylan,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,unsharp,+ Unsharp,True,,True,0.0032528329757,14261,0.980015426688,0.198080984169,0.932630974438,Image29_obj4
+NeurosporaXylan,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,local_contrast,+ Local contrast,True,,True,0.00265641699662,15092,0.99801219189,0.213472795045,0.895198501045,Image29_obj4
+NeurosporaXylan,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,neuro_branch,monogenic_pc,+ Monogenic PC,True,,True,0.00255612502224,16995,0.964695498676,0.232365321655,0.930330554549,Image29_obj4
