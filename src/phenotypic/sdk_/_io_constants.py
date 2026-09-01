@@ -511,7 +511,7 @@ PARETO_FRONT_PARQUET: Final[str] = "pareto_front.parquet"
 
 #: Per-objective best-pipeline filename template written into :data:`DIR_PARETO`:
 #: ``best_<objective>`` with the pipeline config suffix. One per
-#: objective axis — the pipeline maximizing that single objective on the front.
+#: objective axis — the pipeline with the lowest cost on that axis of the front.
 #: Rendered by :func:`pareto_best_pipeline_path`; kept private (a parameterized
 #: string is not an enumeration — see the code-style note on render functions).
 _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE: Final[str] = (
@@ -526,6 +526,21 @@ _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE: Final[str] = (
 _PARETO_IMPORTANCE_FILENAME_TEMPLATE: Final[str] = (
     "param_importance_{objective}.json"
 )
+
+_WINDOWS_INVALID_FILENAME_CHARS: Final[frozenset[str]] = frozenset('<>:"/\\|?*')
+_WINDOWS_RESERVED_DEVICE_NAMES: Final[frozenset[str]] = frozenset(
+    {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        "CONIN$",
+        "CONOUT$",
+        *(f"COM{suffix}" for suffix in (*range(1, 10), "¹", "²", "³")),
+        *(f"LPT{suffix}" for suffix in (*range(1, 10), "¹", "²", "³")),
+    }
+)
+
 
 # ---------------------------------------------------------------------------
 # QC artifact filenames (live inside DIR_QC)
@@ -1401,10 +1416,33 @@ def pareto_front_parquet_path(output_dir: Path) -> Path:
     return pareto_dir(output_dir) / PARETO_FRONT_PARQUET
 
 
+def _safe_pareto_objective_component(objective: str) -> str:
+    """Require one contained human-readable Pareto filename component."""
+    from pathlib import PurePosixPath, PureWindowsPath
+    import unicodedata
+
+    if (
+        not isinstance(objective, str)
+        or not objective
+        or objective in {".", ".."}
+        or any(char in _WINDOWS_INVALID_FILENAME_CHARS for char in objective)
+        or PurePosixPath(objective).is_absolute()
+        or PureWindowsPath(objective).is_absolute()
+        or bool(PureWindowsPath(objective).drive)
+        or any(unicodedata.category(char) == "Cc" for char in objective)
+        or objective.endswith((".", " "))
+        or objective.split(".", 1)[0].upper() in _WINDOWS_RESERVED_DEVICE_NAMES
+    ):
+        raise ValueError(
+            f"Pareto objective {objective!r} is not a safe filename component"
+        )
+    return objective
+
+
 def pareto_best_pipeline_path(output_dir: Path, objective: str) -> Path:
     """Return ``deliverables/pareto/best_<objective>.json`` (a per-axis winner).
 
-    The pipeline maximizing the single ``objective`` axis on the Pareto front.
+    The pipeline minimizing cost on the single ``objective`` axis of the Pareto front.
     ``objective`` is the objective name as it appears in ``objectives_json`` (a
     scorer-defined label, e.g. ``"Dice"`` or a composite child handle ``"s0"``).
 
@@ -1415,9 +1453,13 @@ def pareto_best_pipeline_path(output_dir: Path, objective: str) -> Path:
     Returns:
         The per-objective best-pipeline path under :func:`pareto_dir`.
     """
-    return pareto_dir(
-        output_dir
-    ) / _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE.format(objective=objective)
+    safe_objective = _safe_pareto_objective_component(objective)
+    path = pareto_dir(output_dir) / _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE.format(
+        objective=safe_objective
+    )
+    if path.parent != pareto_dir(output_dir):
+        raise ValueError("Pareto output path escaped its containing directory")
+    return path
 
 
 def pareto_importance_path(output_dir: Path, objective: str) -> Path:
@@ -1435,9 +1477,13 @@ def pareto_importance_path(output_dir: Path, objective: str) -> Path:
     Returns:
         The per-objective importance-report path under :func:`pareto_dir`.
     """
-    return pareto_dir(
-        output_dir
-    ) / _PARETO_IMPORTANCE_FILENAME_TEMPLATE.format(objective=objective)
+    safe_objective = _safe_pareto_objective_component(objective)
+    path = pareto_dir(output_dir) / _PARETO_IMPORTANCE_FILENAME_TEMPLATE.format(
+        objective=safe_objective
+    )
+    if path.parent != pareto_dir(output_dir):
+        raise ValueError("Pareto output path escaped its containing directory")
+    return path
 
 
 def phenotypic_cache_pipeline_json_path(output_dir: Path) -> Path:

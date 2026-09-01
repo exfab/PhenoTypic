@@ -11,8 +11,9 @@ from typing import Optional
 from phenotypic import ImagePipeline
 
 from ._evaluation import build_pipeline
-from ._multi_objective import objective_directions
+from ._multi_objective import is_multi_objective, objective_directions, objective_names
 from .score import CompositeScorer
+from .strategy._config import build_strategy_with_objectives
 from ._spec import TuningSpec
 from ._study._protocol import StudyStore
 from ._study_store import JournalStudyStore, Trial
@@ -60,6 +61,11 @@ class TuningEngine:
         # scorer yields per-objective ``directions`` the Optuna backend turns into
         # an NSGA-II Pareto study; ``None`` keeps the scalar single-objective path.
         directions = objective_directions(spec.scorer)
+        objective_axes = (
+            tuple(objective_names(spec.scorer))
+            if is_multi_objective(spec.scorer)
+            else None
+        )
 
         # Pin the study-global active set for the augmented Tchebycheff composite
         # (§6.3): the children available study-wide form the fixed roster for both
@@ -84,8 +90,12 @@ class TuningEngine:
             )
             scorer.set_active_set(active)
 
-        strategy = spec.strategy.build(
-            spec.search_space, self._store, directions=directions
+        strategy = build_strategy_with_objectives(
+            spec.strategy,
+            spec.search_space,
+            self._store,
+            directions=directions,
+            objective_axes=objective_axes,
         )
 
         # Resume: a deterministic journal is fast-forwarded by replaying the

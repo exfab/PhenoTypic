@@ -37,6 +37,7 @@ from phenotypic.tune.strategy import (
     OptunaConfig,
 )
 from phenotypic.tune._spec import Budget, TuningSpec
+from phenotypic.tune._study._storage import journal_url_for_path
 from phenotypic.tune._tune_cli._run import _STUDY_NAME, run_tuning
 
 _OPTUNA = importlib.util.find_spec("optuna") is not None
@@ -108,7 +109,7 @@ def test_slurm_fleet_workers_reload_the_resolved_spec(tmp_path, monkeypatch):
         slurm=True,
         spec_path=spec_path,
         images_dir=tmp_path / "imgs",
-        storage_url=f"sqlite:///{tmp_path / 'study.db'}",
+        storage_url=journal_url_for_path(tmp_path / "study.log"),
     )
 
     # The worker --spec points at the RESOLVED deliverables/tuning_spec.json…
@@ -177,7 +178,7 @@ def test_slurm_rejects_non_positive_worker_count(tmp_path, monkeypatch):
             slurm=True,
             spec_path=spec_path,
             images_dir=tmp_path / "imgs",
-            storage_url=f"sqlite:///{tmp_path / 'study.db'}",
+            storage_url=journal_url_for_path(tmp_path / "study.log"),
             n_workers=0,
         )
 
@@ -246,7 +247,7 @@ def test_slurm_fleet_pre_creates_the_shared_study(tmp_path, monkeypatch):
     # starts, so cold-DB workers don't race to CREATE the Optuna schema (the live
     # UniqueViolation on studydirection). After submission the study must already
     # exist in the storage.
-    import optuna
+    from phenotypic.tune._study._optuna_store import OptunaStudyStore
 
     class _FakeExecutor:
         def __init__(self, **kw):
@@ -263,7 +264,7 @@ def test_slurm_fleet_pre_creates_the_shared_study(tmp_path, monkeypatch):
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(spec.model_dump_json())
     out = tmp_path / "out"
-    url = f"sqlite:///{tmp_path / 'study.db'}"
+    url = journal_url_for_path(tmp_path / "study.log")
 
     run_tuning(
         spec,
@@ -279,5 +280,9 @@ def test_slurm_fleet_pre_creates_the_shared_study(tmp_path, monkeypatch):
 
     # The study exists in the storage (pre-created) — load_study does not raise.
     # Study name bumped for the minimize-cost cutover (Phase 2, OQ7).
-    study = optuna.load_study(study_name=_STUDY_NAME, storage=url)
+    study = OptunaStudyStore(
+        storage_url=url,
+        study_name=_STUDY_NAME,
+        create=False,
+    )
     assert study.study_name == _STUDY_NAME

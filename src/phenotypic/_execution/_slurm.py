@@ -22,13 +22,17 @@ re-enqueued **once** (a single bounded retry, never an unbounded resubmit loop).
 from __future__ import annotations
 
 import re
+import shlex
 from pathlib import Path
 from typing import Any, Callable, Optional, Sequence, TypeVar, cast
 
 from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
 from phenotypic.sdk_.slurm import (
+    SLURM_PYTHONPATH_BOOTSTRAP_BASH,
     SlurmArrayScriptSpec,
+    format_sbatch_directives,
     generate_dispatcher_chain,
+    generation_script_key,
     submit_drip_feed_start,
     submit_script,
     write_slurm_array_script,
@@ -64,8 +68,10 @@ def _sanitize_job_name(study_name: str) -> str:
 #: worker — a fresh body with no image-chunk sentinels).
 _WORKER_MODULE = "phenotypic.tune._tune_cli._worker"
 
-#: The array worker script filename written under ``.phenotypic/slurm_scripts/``.
+#: Script filenames written under the generation-scoped Tune script directory
+#: for lifecycle-owned runs, or the legacy scripts directory otherwise.
 _WORKER_SCRIPT_NAME = "tune_workers.sh"
+_FINALIZER_SCRIPT_NAME = "tune_finalizer.sh"
 
 
 class SlurmExecutor:
@@ -109,6 +115,7 @@ class SlurmExecutor:
         python_command: Optional[Sequence[str]] = None,
         nrows: Optional[int] = None,
         ncols: Optional[int] = None,
+        lifecycle_generation: Optional[str] = None,
     ) -> None:
         self.output_dir = Path(output_dir)
         self.spec_path = Path(spec_path)
@@ -126,17 +133,23 @@ class SlurmExecutor:
         #: scoring sees a known uniform grid instead of a per-image fitted one.
         self.nrows = nrows
         self.ncols = ncols
+        self.lifecycle_generation = lifecycle_generation
 
         #: Worker indices already re-enqueued once (bounds the retry to a single
         #: resubmit per worker — no unbounded loop).
         self._reenqueued: set[int] = set()
 
+    def _script_dir(self) -> Path:
+        """Return the generation-scoped Tune script directory."""
+        root = slurm_scripts_dir(self.output_dir)
+        if self.lifecycle_generation is None:
+            return root
+        return root / "tune" / generation_script_key(self.lifecycle_generation)
+
     # -- script generation ----------------------------------------------------
 
     def _worker_command(self) -> str:
         """The ``python -m …_worker`` command line bound to the shared study."""
-        import shlex
-
         parts = [
             *self.python_command,
             "-m",
@@ -167,7 +180,7 @@ class SlurmExecutor:
         Returns:
             The path to the generated, executable script.
         """
-        script_dir = slurm_scripts_dir(self.output_dir)
+        script_dir = self._script_dir()
         script_dir.mkdir(parents=True, exist_ok=True)
         log_dir = logs_dir(self.output_dir) / "slurm"
         log_dir.mkdir(parents=True, exist_ok=True)
@@ -200,6 +213,50 @@ class SlurmExecutor:
             ),
         )
 
+    def generate_finalizer_script(self) -> Path:
+        """Generate the one-task publisher with the worker compute profile."""
+        if self.lifecycle_generation is None:
+            raise ValueError("a terminal finalizer requires a lifecycle generation")
+        script_dir = self._script_dir()
+        script_dir.mkdir(parents=True, exist_ok=True)
+        log_dir = logs_dir(self.output_dir) / "slurm"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / "tune_finalizer_%j.log"
+        directives = format_sbatch_directives(
+            job_name=f"pht-tune-finalize-{_sanitize_job_name(self.study_name)}",
+            slurm_args=self.slurm_args,
+            output_log=log_path,
+            error_log=log_path,
+        )
+        command = " ".join(
+            [
+                *(shlex.quote(part) for part in self.python_command),
+                "-m",
+                "phenotypic.tune._tune_cli._finalize",
+                "--output",
+                shlex.quote(str(self.output_dir.absolute())),
+                "--generation",
+                shlex.quote(self.lifecycle_generation),
+            ]
+        )
+        script_path = script_dir / _FINALIZER_SCRIPT_NAME
+        script_path.write_text(
+            f"""#!/bin/bash
+{directives}
+
+# Standalone Tune terminal finalizer; intentionally not a SLURM array.
+set -e
+set -u
+
+{SLURM_PYTHONPATH_BOOTSTRAP_BASH}
+
+{command}
+""",
+            encoding="utf-8",
+        )
+        script_path.chmod(0o755)
+        return script_path
+
     # -- Executor protocol ----------------------------------------------------
 
     def run(self, work: Callable[[T], R], items: Sequence[T]) -> list[R]:
@@ -221,6 +278,11 @@ class SlurmExecutor:
             The submitted SLURM job IDs (cast to the Protocol's ``list[R]``).
         """
         script = self.generate_worker_array_script()
+        finalizer = (
+            self.generate_finalizer_script()
+            if self.lifecycle_generation is not None
+            else None
+        )
         log_dir = logs_dir(self.output_dir) / "slurm"
         # A single array job → the chain is empty; submit_drip_feed_start still
         # submits the one array script (and no dispatcher).
@@ -229,10 +291,22 @@ class SlurmExecutor:
             output_dir=self.output_dir,
             slurm_args=self.slurm_args,
             log_dir=log_dir,
+            finalizer_script=finalizer,
+            generation=self.lifecycle_generation,
+            lifecycle_output_dir=self.output_dir,
         )
+        submission_kwargs: dict[str, Any] = {}
+        if finalizer is not None:
+            submission_kwargs = {
+                "finalizer_script": finalizer,
+                "continuation_dependency_kind": "afterany",
+                "output_dir": self.output_dir,
+                "generation": self.lifecycle_generation,
+            }
         job_ids, _warning = submit_drip_feed_start(
             chunk_scripts=[script],
             dispatcher_scripts=dispatchers,
+            **submission_kwargs,
         )
         # The job-id strings ARE the results; cast satisfies the generic Protocol.
         return cast("list[R]", list(job_ids))
@@ -262,7 +336,7 @@ class SlurmExecutor:
         if worker_index in self._reenqueued:
             return None
         self._reenqueued.add(worker_index)
-        script_path = slurm_scripts_dir(self.output_dir) / _WORKER_SCRIPT_NAME
+        script_path = self._script_dir() / _WORKER_SCRIPT_NAME
         if not script_path.exists():
             script_path = self.generate_worker_array_script()
         return submit_script(script_path, array_index=worker_index)

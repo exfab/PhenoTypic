@@ -631,6 +631,100 @@ class TestParetoPaths:
             pareto_dir(output) / "best_s0.json.pht-pipe"
         )
 
+    def test_validated_axes_keep_human_names_in_direct_path_helpers(
+        self, output: Path
+    ) -> None:
+        """Central identity validation precedes direct artifact-path rendering."""
+        from phenotypic.sdk_ import (
+            pareto_best_pipeline_path,
+            pareto_importance_path,
+        )
+        from phenotypic.tune._multi_objective import validate_objective_axes
+
+        axes = validate_objective_axes(("Dice", "IoU"))
+        paths = [
+            *(pareto_best_pipeline_path(output, axis) for axis in axes),
+            *(pareto_importance_path(output, axis) for axis in axes),
+        ]
+
+        assert [path.name for path in paths] == [
+            "best_Dice.json.pht-pipe",
+            "best_IoU.json.pht-pipe",
+            "param_importance_Dice.json",
+            "param_importance_IoU.json",
+        ]
+        assert len({path.name.casefold() for path in paths}) == len(paths)
+
+        with pytest.raises(ValueError, match="case-insensitive|casefold|unique"):
+            validate_objective_axes(("Dice", "dice"))
+
+
+    @pytest.mark.parametrize(
+        "objective",
+        ["", ".", "..", "../escape", r"..\escape", "/absolute", r"C:\escape"],
+    )
+    def test_pareto_axis_paths_reject_unsafe_components(
+        self, output: Path, objective: str
+    ) -> None:
+        """Both Pareto path helpers must remain contained under their directory."""
+        from phenotypic.sdk_ import (
+            pareto_best_pipeline_path,
+            pareto_importance_path,
+        )
+
+        with pytest.raises(ValueError, match="safe filename"):
+            pareto_best_pipeline_path(output, objective)
+        with pytest.raises(ValueError, match="safe filename"):
+            pareto_importance_path(output, objective)
+
+    @pytest.mark.parametrize(
+        "objective",
+        [
+            r"\\server\share",
+            "bad<axis",
+            "bad>axis",
+            'bad"axis',
+            "bad:axis",
+            "bad|axis",
+            "bad?axis",
+            "bad*axis",
+            "bad\x00axis",
+            "bad\x01axis",
+            "bad\x1faxis",
+            "bad\x7faxis",
+            "bad\x80axis",
+            "bad\x9faxis",
+            "trailing.",
+            "trailing ",
+            "CON",
+            "con.txt",
+            "PRN",
+            "AUX",
+            "NUL",
+            "COM1",
+            "com9.csv",
+            "LPT1",
+            "lpt9.json",
+            "CONIN$",
+            "CONOUT$",
+            "COM¹",
+            "LPT³.txt",
+        ],
+    )
+    def test_pareto_axis_paths_reject_cross_platform_unsafe_components(
+        self, output: Path, objective: str
+    ) -> None:
+        """Windows-invalid and control names cannot reach either path helper."""
+        from phenotypic.sdk_ import (
+            pareto_best_pipeline_path,
+            pareto_importance_path,
+        )
+
+        with pytest.raises(ValueError, match="safe filename"):
+            pareto_best_pipeline_path(output, objective)
+        with pytest.raises(ValueError, match="safe filename"):
+            pareto_importance_path(output, objective)
+
     def test_pareto_importance_path_per_objective(self, output: Path) -> None:
         from phenotypic.sdk_._io_constants import (
             pareto_dir,

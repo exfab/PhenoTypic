@@ -116,15 +116,38 @@ def test_resolve_strategy_tpe_builds_optuna_config():
 
 def test_resolve_strategy_optuna_without_extra_raises_actionable(monkeypatch):
     # Without the tune extra, requesting an Optuna sampler raises an actionable
-    # error pointing at `uv sync --extras tune` — never a bare KeyError.
+    # error pointing at `uv sync --extra tune` — never a bare KeyError.
     import phenotypic.tune.strategy._optuna_support as support
 
     def _boom():
-        raise ImportError("Optuna is required ... uv sync --extras tune")
+        raise ImportError("Optuna is required ... uv sync --extra tune")
 
     monkeypatch.setattr(support, "_require_optuna", _boom)
     with pytest.raises(ImportError, match="tune"):
         resolve_strategy("nsga2", n_trials=5, storage_url=None)
+
+
+def test_missing_optuna_message_uses_the_valid_uv_extra_flag(monkeypatch):
+    """The obsolete plural flag turns the actionable install command into an error."""
+    import builtins
+
+    import phenotypic.tune.strategy._optuna_support as support
+
+    real_import = builtins.__import__
+
+    def _without_optuna(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "optuna":
+            raise ImportError("optuna intentionally unavailable")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", _without_optuna)
+
+    with pytest.raises(ImportError) as caught:
+        support._require_optuna()
+
+    message = str(caught.value)
+    assert "uv sync --extra tune" in message
+    assert "uv sync --extras tune" not in message
 
 
 @pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")

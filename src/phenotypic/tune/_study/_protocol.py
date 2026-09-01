@@ -9,6 +9,7 @@ engine's ``store`` against this Protocol keeps both backends swappable
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Optional, Protocol, runtime_checkable
 
 if TYPE_CHECKING:  # avoid a runtime import cycle with _study_store
@@ -43,7 +44,7 @@ class StudyStore(Protocol):
         ...
 
     def best(self) -> Optional["Trial"]:
-        """The non-failed trial with the highest score, or ``None``."""
+        """The finite COMPLETE trial with the lowest cost, or ``None``."""
         ...
 
     def is_resumable_in_place(self) -> bool:
@@ -77,25 +78,27 @@ class StudyStore(Protocol):
         """
         ...
 
-    def pareto_front(self) -> list["Trial"]:
-        """The non-dominated trials by their ``objectives`` sidecar (plan §0a).
+    def pareto_front(
+        self, objective_axes: Sequence[str] | None = None
+    ) -> list["Trial"]:
+        """Return finite non-dominated COMPLETE trials (plan §0a).
 
-        A multi-objective trial carries an ``objectives`` dict (set when the
-        scorer's ``finalize`` returns a dict — e.g. a
-        ``CompositeScorer(multi_objective=True)``); a trial is on the front when
-        no other scored trial beats it on *every* objective. Failed trials and
-        single-objective (``objectives is None``) trials are excluded, so a
-        single-objective study returns ``[]`` here while scalar :meth:`best`
-        still works (the multi-objective back-compat lock).
+        When ``objective_axes`` is supplied, only exact full finite vectors on
+        those scorer-required axes are eligible. ``None`` preserves legacy
+        sidecar inference for direct callers. Failed, PRUNED, non-finite, and
+        single-objective trials remain excluded.
         """
         ...
 
-    def knee_point(self, front: list["Trial"]) -> Optional["Trial"]:
-        """The front trial at max perpendicular distance to the extremes' chord.
+    def knee_point(
+        self,
+        front: list["Trial"],
+        objective_axes: Sequence[str] | None = None,
+    ) -> Optional["Trial"]:
+        """Return the maximum-distance knee on the supplied objective axes.
 
-        The canonical multi-objective compromise pick (plan §0b): the
-        max-curvature elbow of the Pareto ``front``, found by maximizing each
-        front point's perpendicular distance to the chord between the two extreme
-        objective points. ``None`` for an empty front.
+        The canonical multi-objective compromise pick (plan §0b) uses the same
+        scorer-required axis order as front selection. ``None`` preserves
+        legacy first-sidecar inference; an empty front returns ``None``.
         """
         ...

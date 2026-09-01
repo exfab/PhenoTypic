@@ -307,6 +307,53 @@ def test_genuinely_focused_best_is_lowest_cost():
     assert best is not None and best.number == 2 and best.score == 0.10
 
 
+def test_screening_winner_excludes_better_finite_pruned_trial():
+    """The two-round publication path must compare only COMPLETE trials."""
+    spec = _spec(GridConfig())
+    controller = ScreeningController(spec, config=ScreeningConfig())
+    explore_complete = Trial(
+        number=0,
+        params={"round": "explore"},
+        score=0.40,
+        terms={},
+        n_images=2,
+    )
+    controller.explore_store = JournalStudyStore([explore_complete])
+    controller.focused_store = JournalStudyStore(
+        [
+            Trial(
+                number=1,
+                params={"round": "partial"},
+                score=0.01,
+                terms={},
+                n_images=1,
+                pruned=True,
+            ),
+            Trial(
+                number=2,
+                params={"round": "focused"},
+                score=0.50,
+                terms={},
+                n_images=2,
+            ),
+        ]
+    )
+
+    result = controller._resolve_winner(
+        explore_complete,
+        {},
+        ImportanceReport(
+            importances={},
+            method="rf-permutation",
+            interactions_estimated=False,
+        ),
+        spec.search_space,
+    )
+
+    assert result.winner is not None
+    assert result.winner.number == 0
+
+
 # --- G3: wrong-freeze recovery ------------------------------------------------
 
 

@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -38,7 +39,9 @@ from .._evaluation import (
 from .._multi_objective import (
     is_multi_objective,
     objective_directions,
+    objective_names,
     reject_grid_random_multi_objective,
+    validate_objective_axes,
 )
 from .._screening import compute_param_importance
 from .._screening_freeze import ScreeningConfig, ScreeningController
@@ -68,7 +71,7 @@ _DEFAULT_N_TRIALS: Final[int] = 50
 
 #: Schema version of the ``.pht-tune-cache/run.json`` marker (bump on any key
 #: change so a reader can branch on the contract).
-_RUN_MARKER_VERSION: Final[int] = 1
+_RUN_MARKER_VERSION: Final[int] = 3
 
 #: The study name every tune run uses (the Optuna ``study_name`` + the marker's
 #: ``study_name`` field). A single constant keeps the store, the SLURM fleet, and
@@ -197,6 +200,17 @@ def _strategy_marker_name(strategy: StrategyConfig) -> str:
     return str(getattr(strategy, "kind", ""))
 
 
+def _effective_terminal_budget(spec: TuningSpec) -> Optional[int]:
+    """Return the first terminal-trial cap the engine can reach."""
+    budget = getattr(spec, "budget", None)
+    caps = (
+        getattr(spec.strategy, "n_trials", None),
+        getattr(budget, "n_trials", None),
+    )
+    defined = [int(cap) for cap in caps if cap is not None]
+    return min(defined) if defined else None
+
+
 def _write_run_marker(
     output_dir: Path,
     spec: TuningSpec,
@@ -204,14 +218,18 @@ def _write_run_marker(
     storage_url: Optional[str],
     images_dir: Optional[Path],
     slurm: bool,
+    nrows: Optional[int] = None,
+    ncols: Optional[int] = None,
+    generation: Optional[str] = None,
+    required: bool = False,
 ) -> None:
     """Write the ``.pht-tune-cache/run.json`` marker at run START.
 
-    Emitted right after the ``deliverables/`` mkdir and BEFORE the engine/SLURM
-    branch, so a live run is marked before any deliverable lands and the GUI
-    shell classifier can recognise the output. The caller passes the already
-    resolved Optuna URL for Optuna runs and ``None`` for grid/random runs, so the
-    marker matches the backend the run actually uses.
+    Local runs emit after creating ``deliverables/`` and before optimization.
+    Slurm runs emit only after lifecycle ownership and shared-study preparation,
+    inside the generation publication guard. The caller passes the already
+    resolved Optuna URL for Optuna runs and ``None`` for grid/random runs, so a
+    live run remains GUI-discoverable and its marker names the actual backend.
 
     Args:
         output_dir: The run output directory.
@@ -221,18 +239,28 @@ def _write_run_marker(
             non-Optuna strategies.
         images_dir: The calibration image directory (the ``-i`` arg), or ``None``.
         slurm: Whether this run submits a distributed worker fleet.
+        nrows: Fixed calibration grid row count, or ``None``.
+        ncols: Fixed calibration grid column count, or ``None``.
+        generation: Exact Slurm lifecycle generation owning this marker.
+        required: Re-raise write failures for a load-bearing Slurm marker.
     """
     marker = {
         "version": _RUN_MARKER_VERSION,
         "study_name": _STUDY_NAME,
         "storage_url": storage_url,
-        "images_dir": str(images_dir) if images_dir is not None else None,
+        "images_dir": (
+            str(Path(images_dir).resolve()) if images_dir is not None else None
+        ),
+        "nrows": nrows,
+        "ncols": ncols,
         "strategy": _strategy_marker_name(spec.strategy),
-        "n_trials": getattr(spec.strategy, "n_trials", None),
+        "n_trials": _effective_terminal_budget(spec),
         "is_multi_objective": is_multi_objective(spec.scorer),
         "slurm": slurm,
         "start_time": datetime.now(timezone.utc).isoformat(),
     }
+    if generation is not None:
+        marker["generation"] = generation
     marker_path = io.tune_cache_run_marker_path(output_dir)
     # The marker is a GUI-discovery SIDECAR, not a deliverable: a read-only /
     # over-quota output FS (the HPCC reality) raising OSError here must NOT abort
@@ -242,6 +270,8 @@ def _write_run_marker(
         marker_path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_text(marker_path, json.dumps(marker, indent=2))
     except OSError:
+        if required:
+            raise
         logging.getLogger(__name__).warning(
             "could not write the tune run.json marker at %s; the run proceeds "
             "but the GUI may not auto-discover it",
@@ -328,7 +358,7 @@ def resolve_strategy(
     an Optuna sampler (``tpe`` / ``cmaes`` / ``gp`` / ``nsga2``) builds an
     :class:`OptunaConfig`, first calling ``_require_optuna`` so a missing ``tune``
     extra raises an **actionable** ``ImportError`` (pointing at
-    ``uv sync --extras tune``) rather than a bare ``KeyError`` deep in ``build``.
+    ``uv sync --extra tune``) rather than a bare ``KeyError`` deep in ``build``.
 
     Args:
         name: The strategy name (a closed set; validated by the CLI choices).
@@ -481,6 +511,8 @@ def _open_store(
     storage_url: Optional[str],
     resume_path: Path,
     directions: Optional[list[str]] = None,
+    objective_axes: Optional[Sequence[str]] = None,
+    study_name: str = _STUDY_NAME,
     create: bool = True,
 ) -> StudyStore:
     """Select + open the study backend matching ``strategy``.
@@ -489,8 +521,9 @@ def _open_store(
     ``study.db`` (or the explicit ``storage_url``); any other strategy gets the
     homegrown :class:`JournalStudyStore` (resumed from ``trials.parquet`` when one
     already exists). A multi-objective run passes ``directions`` so the Optuna
-    store opens a multi-objective study (its ``append`` records the per-objective
-    vector and ``pareto_front`` reads the study's native ``best_trials``).
+    store opens a multi-objective study. Its ``append`` records the per-objective
+    vector, and ``pareto_front`` applies the shared COMPLETE-only selector over
+    terminal trials.
 
     Args:
         strategy: The resolved strategy config.
@@ -519,9 +552,11 @@ def _open_store(
         )
         store_kwargs: dict[str, Any] = {
             "storage_url": url,
-            "study_name": _STUDY_NAME,
+            "study_name": study_name,
             "directions": directions,
         }
+        if objective_axes is not None:
+            store_kwargs["objective_axes"] = tuple(objective_axes)
         if not create:
             store_kwargs["create"] = False
         return OptunaStudyStore(**store_kwargs)
@@ -620,6 +655,76 @@ def run_tuning(
             screen=screen,
         )
 
+    if slurm:
+        from phenotypic._cli._cli_slurm_lifecycle import (
+            generation_publication_guard,
+            initialize_slurm_lifecycle,
+            mark_generation_failed,
+            new_slurm_generation,
+        )
+
+        assert effective_storage_url is not None
+        generation = new_slurm_generation()
+        # The ownership claim must be the first shared mutation. A conflicting
+        # rerun therefore cannot rewrite the incumbent split/spec/marker or open
+        # the incumbent study through a potentially mutating constructor.
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=generation,
+            mode="tune",
+        )
+        try:
+            with generation_publication_guard(output_dir, generation):
+                split, images_by_name, cal_images = _resolve_calibration_images(
+                    resolved_spec, images, output_dir
+                )
+                io.deliverables_dir(output_dir).mkdir(parents=True, exist_ok=True)
+                atomic_write_text(
+                    io.tuning_spec_path(output_dir),
+                    resolved_spec.model_dump_json(indent=2),
+                )
+                _precreate_shared_optuna_study(
+                    resolved_spec, effective_storage_url
+                )
+                _write_run_marker(
+                    output_dir,
+                    resolved_spec,
+                    storage_url=effective_storage_url,
+                    images_dir=images_dir,
+                    slurm=True,
+                    nrows=nrows,
+                    ncols=ncols,
+                    generation=generation,
+                    required=True,
+                )
+        except Exception as exc:
+            mark_generation_failed(output_dir, generation, str(exc))
+            raise
+        try:
+            return _submit_slurm_fleet(
+                resolved_spec,
+                output_dir,
+                storage_url=effective_storage_url,
+                spec_path=spec_path,
+                images_dir=images_dir,
+                split_path=io.tune_cache_split_assignment_path(output_dir),
+                n_workers=n_workers,
+                slurm_args=merge_slurm_args(
+                    slurm_args,
+                    partition=slurm_partition,
+                    mem=slurm_mem,
+                    time=slurm_time,
+                    constraint=slurm_constraint,
+                ),
+                nrows=nrows,
+                ncols=ncols,
+                generation=generation,
+                shared_state_prepared=True,
+            )
+        except Exception as exc:
+            mark_generation_failed(output_dir, generation, str(exc))
+            raise
+
     split, images_by_name, cal_images = _resolve_calibration_images(
         resolved_spec, images, output_dir
     )
@@ -631,49 +736,34 @@ def run_tuning(
         io.tuning_spec_path(output_dir), resolved_spec.model_dump_json(indent=2)
     )
 
-    # Mark the run as a tune output at START — before the engine/SLURM branch, so
-    # a live run (and a fire-and-forget SLURM submission) is GUI-discoverable
-    # before any deliverable lands. The resolved (non-null) storage URL keeps the
-    # GUI Monitor off parquet-only mode for an env-driven distributed-Postgres run.
+    # Mark the run as a tune output at START so a live local run is
+    # GUI-discoverable before any deliverable lands.
     _write_run_marker(
         output_dir,
         resolved_spec,
         storage_url=effective_storage_url,
         images_dir=images_dir,
-        slurm=slurm,
+        slurm=False,
+        nrows=nrows,
+        ncols=ncols,
     )
-
-    if slurm:
-        assert effective_storage_url is not None
-        return _submit_slurm_fleet(
-            resolved_spec,
-            output_dir,
-            storage_url=effective_storage_url,
-            spec_path=spec_path,
-            images_dir=images_dir,
-            split_path=io.tune_cache_split_assignment_path(output_dir),
-            n_workers=n_workers,
-            slurm_args=merge_slurm_args(
-                slurm_args,
-                partition=slurm_partition,
-                mem=slurm_mem,
-                time=slurm_time,
-                constraint=slurm_constraint,
-            ),
-            nrows=nrows,
-            ncols=ncols,
-        )
 
     trials_path = io.trials_parquet_path(output_dir)
     # Multi-objective is inferred from the scorer (plan §0b): the directions feed
     # both the Optuna store (Pareto front) and, via the engine, the NSGA-II study.
     directions = objective_directions(resolved_spec.scorer)
+    store_axes = (
+        tuple(objective_names(resolved_spec.scorer))
+        if is_multi_objective(resolved_spec.scorer)
+        else None
+    )
     store = _open_store(
         resolved_spec.strategy,
         output_dir,
         storage_url=effective_storage_url,
         resume_path=trials_path,
         directions=directions,
+        objective_axes=store_axes,
     )
 
     if screen:
@@ -681,7 +771,21 @@ def run_tuning(
     else:
         engine = TuningEngine(resolved_spec, store=store)
         best = engine.optimize(cal_images)
-    headline = _headline_winner(store)
+    multi_objective_run = is_multi_objective(resolved_spec.scorer)
+    objective_axes = (
+        tuple(objective_names(resolved_spec.scorer))
+        if multi_objective_run
+        else None
+    )
+    headline = _headline_winner(
+        store,
+        multi_objective=multi_objective_run,
+        objective_axes=objective_axes,
+    )
+    if multi_objective_run and headline is None:
+        raise RuntimeError(
+            "the terminal study has no valid winner; refusing publication"
+        )
     winner_pipeline = _pipeline_for_trial(resolved_spec, headline)
 
     _finalize_outputs(store, trials_path, output_dir, winner_pipeline)
@@ -689,13 +793,21 @@ def run_tuning(
     # per-objective best pipelines) and overwrite best_pipeline.json with the
     # knee; a single-objective run's empty front makes this a no-op (no pareto/
     # dir — the back-compat lock, plan §0b).
-    _finalize_pareto_outputs(store, resolved_spec, output_dir)
-    _finalize_best_params(headline, output_dir, selection=_selection_label(store))
+    _finalize_pareto_outputs(store, resolved_spec, output_dir, objective_axes)
+    _finalize_best_params(
+        headline,
+        output_dir,
+        selection=_selection_label(
+            store,
+            multi_objective=multi_objective_run,
+            objective_axes=objective_axes,
+        ),
+    )
     # Report-only held-out generalization verdict → deliverables/generalization.json.
     _finalize_generalization(
         headline, resolved_spec, output_dir, split, images, images_by_name
     )
-    return headline if headline is not None else best
+    return headline if multi_objective_run else best
 
 
 def _run_screened(
@@ -774,17 +886,63 @@ def merge_slurm_args(
     return merged
 
 
-def _headline_winner(store: StudyStore) -> Optional[Trial]:
-    """Return the run's single headline winner across scalar and Pareto runs."""
-    front = store.pareto_front()
-    if front:
-        return store.knee_point(front)
+def _store_has_multi_objective_history(store: StudyStore) -> bool:
+    """Infer multi-objective identity from sidecars for direct private callers."""
+    return any(
+        getattr(trial, "objectives", None) is not None for trial in store.trials
+    )
+
+
+def _headline_winner(
+    store: StudyStore,
+    *,
+    multi_objective: Optional[bool] = None,
+    objective_axes: Sequence[str] | None = None,
+) -> Optional[Trial]:
+    """Return a headline winner without scalar or partial-vector fallback."""
+    if objective_axes is not None:
+        objective_axes = validate_objective_axes(objective_axes)
+    resolved_multi_objective = (
+        True
+        if objective_axes is not None
+        else (
+            _store_has_multi_objective_history(store)
+            if multi_objective is None
+            else multi_objective
+        )
+    )
+    if resolved_multi_objective:
+        if objective_axes is None:
+            front = store.pareto_front()
+            return store.knee_point(front) if front else None
+        front = store.pareto_front(objective_axes=objective_axes)
+        return (
+            store.knee_point(front, objective_axes=objective_axes)
+            if front
+            else None
+        )
     return store.best()
 
 
-def _selection_label(store: StudyStore) -> str:
-    """Return the best-params selection label for ``store``."""
-    return "pareto_knee" if store.pareto_front() else "single_best"
+def _selection_label(
+    store: StudyStore,
+    *,
+    multi_objective: Optional[bool] = None,
+    objective_axes: Sequence[str] | None = None,
+) -> str:
+    """Return the selection label from identity, not front cardinality."""
+    if objective_axes is not None:
+        objective_axes = validate_objective_axes(objective_axes)
+    resolved_multi_objective = (
+        True
+        if objective_axes is not None
+        else (
+            _store_has_multi_objective_history(store)
+            if multi_objective is None
+            else multi_objective
+        )
+    )
+    return "pareto_knee" if resolved_multi_objective else "single_best"
 
 
 def _pipeline_for_trial(spec: TuningSpec, trial: Optional[Trial]):
@@ -815,6 +973,27 @@ def _finalize_best_params(
     atomic_write_text(io.best_params_path(output_dir), json.dumps(payload, indent=2))
 
 
+def _precreate_shared_optuna_study(spec: TuningSpec, storage_url: str) -> None:
+    """Create the shared Optuna study once after lifecycle ownership is held.
+
+    A cold Postgres database cannot safely be initialized concurrently by every
+    worker. The submitter materializes its schema and study under the generation
+    publication guard, so workers only open and append to an existing study.
+    """
+    from .._study._optuna_store import OptunaStudyStore
+
+    OptunaStudyStore(
+        storage_url=storage_url,
+        study_name=_STUDY_NAME,
+        directions=objective_directions(spec.scorer),
+        objective_axes=(
+            tuple(objective_names(spec.scorer))
+            if is_multi_objective(spec.scorer)
+            else None
+        ),
+    )
+
+
 def _submit_slurm_fleet(
     spec: TuningSpec,
     output_dir: Path,
@@ -827,6 +1006,8 @@ def _submit_slurm_fleet(
     slurm_args: Optional[dict[str, Any]] = None,
     nrows: Optional[int] = None,
     ncols: Optional[int] = None,
+    generation: Optional[str] = None,
+    shared_state_prepared: bool = False,
 ) -> Optional[Trial]:
     """Submit a distributed worker fleet via :class:`SlurmExecutor`.
 
@@ -849,61 +1030,78 @@ def _submit_slurm_fleet(
         slurm_time: The per-worker ``--time`` limit (e.g. ``"04:00:00"``);
             ``None`` omits it.
     """
-    if spec_path is None or images_dir is None:
-        raise ValueError(
-            "--slurm requires the on-disk spec path and image directory "
-            "(each worker reloads them)"
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        generation_publication_guard,
+        initialize_slurm_lifecycle,
+        mark_generation_failed,
+        new_slurm_generation,
+    )
+
+    try:
+        if spec_path is None or images_dir is None:
+            raise ValueError(
+                "--slurm requires the on-disk spec path and image directory "
+                "(each worker reloads them)"
+            )
+        url = storage_url
+        n_trials = getattr(spec.strategy, "n_trials", None)
+        default_workers = (
+            min(8, n_trials) if isinstance(n_trials, int) and n_trials > 0 else 4
         )
-    url = storage_url
-    n_trials = getattr(spec.strategy, "n_trials", None)
-    default_workers = (
-        min(8, n_trials) if isinstance(n_trials, int) and n_trials > 0 else 4
-    )
-    resolved_workers = n_workers if n_workers is not None else default_workers
-    if resolved_workers <= 0:
-        raise ValueError("--n-workers must be a positive integer")
-    # Pre-create the shared study (and its RDB schema) in THIS process BEFORE the
-    # fleet starts. A cold Postgres DB has no Optuna schema, so N workers opening
-    # it simultaneously race to CREATE TYPE studydirection / the trial tables and
-    # all but one crash with a duplicate-key UniqueViolation. Materializing the
-    # study once here (Optuna's documented distributed pattern) means every worker
-    # finds an existing study and only reads/appends trials. The directions match
-    # what each worker's engine infers from the scorer, so the load_if_exists open
-    # never conflicts.
-    from .._study._optuna_store import OptunaStudyStore
+        resolved_workers = n_workers if n_workers is not None else default_workers
+        if resolved_workers <= 0:
+            raise ValueError("--n-workers must be a positive integer")
+        # Each worker launches with the submitting process's own venv interpreter
+        # (the absolute sys.executable, shared across the cluster filesystem) —
+        # bare ``python`` on a fresh compute node would not resolve
+        # phenotypic/optuna. This reuses the forward CLI's SLURM interpreter
+        # resolution for parity.
+        from phenotypic._cli._cli_utils import get_python_command
 
-    directions = objective_directions(spec.scorer)
-    OptunaStudyStore(storage_url=url, study_name=_STUDY_NAME, directions=directions)
-    # Each worker launches with the submitting process's own venv interpreter
-    # (the absolute sys.executable, shared across the cluster filesystem) — bare
-    # ``python`` on a fresh compute node would not resolve phenotypic/optuna. This
-    # reuses the forward CLI's SLURM interpreter resolution for parity.
-    from phenotypic._cli._cli_utils import get_python_command
-
-    python_command, _ = get_python_command(for_slurm=True)
-    # Build the #SBATCH passthrough from the explicit flags only — an unset flag
-    # is OMITTED so format_sbatch_directives emits no directive for it (the
-    # cluster default applies). Notably ``slurm_partition`` is no longer hardcoded
-    # to "batch": a cluster without a "batch" partition would reject every job.
-    # Workers reload the RESOLVED spec persisted to deliverables/tuning_spec.json
-    # (written above), NOT the raw input ``spec_path``: the --strategy / --n-trials
-    # / --held-out overrides live only in the resolved spec, so handing the workers
-    # the input file would silently run the original (e.g. grid) strategy on every
-    # node and the distributed Optuna study would never form.
-    executor = SlurmExecutor(
-        output_dir=output_dir,
-        spec_path=io.tuning_spec_path(output_dir),
-        images_dir=Path(images_dir),
-        split_path=Path(split_path),
-        study_name=_STUDY_NAME,
-        n_workers=resolved_workers,
-        slurm_args=dict(slurm_args or {}),
-        storage_url=url,
-        python_command=python_command,
-        nrows=nrows,
-        ncols=ncols,
-    )
-    executor.run(lambda w: w, list(range(resolved_workers)))
+        python_command, _ = get_python_command(for_slurm=True)
+        # Workers reload the RESOLVED spec persisted to
+        # deliverables/tuning_spec.json (written above), NOT the raw input
+        # ``spec_path``: CLI overrides live only in the resolved spec.
+        if generation is None:
+            generation = new_slurm_generation()
+            initialize_slurm_lifecycle(
+                output_dir,
+                generation=generation,
+                mode="tune",
+            )
+        if not shared_state_prepared:
+            with generation_publication_guard(output_dir, generation):
+                _precreate_shared_optuna_study(spec, url)
+                _write_run_marker(
+                    output_dir,
+                    spec,
+                    storage_url=url,
+                    images_dir=Path(images_dir),
+                    slurm=True,
+                    nrows=nrows,
+                    ncols=ncols,
+                    generation=generation,
+                    required=True,
+                )
+        executor = SlurmExecutor(
+            output_dir=output_dir,
+            spec_path=io.tuning_spec_path(output_dir),
+            images_dir=Path(images_dir),
+            split_path=Path(split_path),
+            study_name=_STUDY_NAME,
+            n_workers=resolved_workers,
+            slurm_args=dict(slurm_args or {}),
+            storage_url=url,
+            python_command=python_command,
+            nrows=nrows,
+            ncols=ncols,
+            lifecycle_generation=generation,
+        )
+        executor.run(lambda w: w, list(range(resolved_workers)))
+    except Exception as exc:
+        if generation is not None:
+            mark_generation_failed(output_dir, generation, str(exc))
+        raise
     return None
 
 
@@ -1062,15 +1260,19 @@ def _export_trials_parquet(store: StudyStore, trials_path: Path) -> None:
 
 
 def _finalize_pareto_outputs(
-    store: StudyStore, spec: TuningSpec, output_dir: Path
+    store: StudyStore,
+    spec: TuningSpec,
+    output_dir: Path,
+    objective_axes: Sequence[str] | None = None,
 ) -> None:
     """Publish ``deliverables/pareto/`` when the run was multi-objective.
 
     A multi-objective run (a scorer whose ``finalize`` returns a dict, so trials
-    carry ``Trial.objectives``) has a non-empty :meth:`StudyStore.pareto_front`;
-    a single-objective run's front is empty and this is a **no-op** — no
-    ``pareto/`` directory is created (the back-compat lock, plan §0b). When the
-    front is non-empty it writes, under :func:`pareto_dir`:
+    carry ``Trial.objectives``) can have a non-empty
+    :meth:`StudyStore.pareto_front`. An empty front is a **no-op** here; callers
+    use scorer identity to distinguish a scalar run from an invalid
+    multi-objective run and refuse the latter before invoking publishers. When
+    the front is non-empty this writes, under :func:`pareto_dir`:
 
     * ``pareto_front.parquet`` — the front's trials (same schema as
       ``trials.parquet``, ``objectives_json`` populated);
@@ -1084,12 +1286,29 @@ def _finalize_pareto_outputs(
         store: The finished study store (any backend).
         spec: The resolved tuning spec (its ``pipeline`` is the build base).
         output_dir: The run directory.
+        objective_axes: The authoritative scorer-required objective names.
+            Direct legacy callers may omit them only when the spec has no
+            multi-objective scorer contract.
     """
     from .._evaluation import build_pipeline
 
-    front = store.pareto_front()
+    if objective_axes is None and is_multi_objective(spec.scorer):
+        resolved_axes: tuple[str, ...] | None = tuple(
+            objective_names(spec.scorer)
+        )
+    else:
+        resolved_axes = (
+            validate_objective_axes(objective_axes)
+            if objective_axes is not None
+            else None
+        )
+    front = (
+        store.pareto_front()
+        if resolved_axes is None
+        else store.pareto_front(objective_axes=resolved_axes)
+    )
     if not front:
-        return  # single-objective run — no pareto/ dir (back-compat lock)
+        return  # No eligible front; the caller owns scalar-vs-multi identity.
 
     pareto_dir = io.pareto_dir(output_dir)
     pareto_dir.mkdir(parents=True, exist_ok=True)
@@ -1099,15 +1318,9 @@ def _finalize_pareto_outputs(
 
     # One best pipeline + importance per objective axis (stable name order).
     # Source the axis order from the scorer (authoritative — every axis the
-    # study optimized) rather than an arbitrary front member, so each axis gets
-    # a best_<axis>.json even when the front's first trial floored one to 0.0;
-    # fall back to the first trial's keys for a scorer exposing no names.
-    from .._multi_objective import objective_names as _scorer_objective_axes
-
-    objective_axes = _scorer_objective_axes(spec.scorer) or list(
-        front[0].objectives or {}
-    )
-    for name in objective_axes:
+    # study optimized); only legacy scalar-spec helpers infer sidecar names.
+    axes = resolved_axes or tuple(front[0].objectives or {})
+    for name in axes:
         winner = min(
             (t for t in front if t.objectives and name in t.objectives),
             key=lambda t: t.objectives[name],  # type: ignore[index]
@@ -1121,11 +1334,22 @@ def _finalize_pareto_outputs(
             )
         atomic_write_text(
             io.pareto_importance_path(output_dir, name),
-            json.dumps(compute_param_importance(store, objective=name), indent=2),
+            json.dumps(
+                compute_param_importance(
+                    store,
+                    objective=name,
+                    objective_axes=resolved_axes,
+                ),
+                indent=2,
+            ),
         )
 
     # The knee is the run's headline winner: overwrite best_pipeline.json.
-    knee = store.knee_point(front)
+    knee = (
+        store.knee_point(front)
+        if resolved_axes is None
+        else store.knee_point(front, objective_axes=resolved_axes)
+    )
     if knee is not None:
         knee_pipeline = build_pipeline(spec.pipeline, knee.params)
         atomic_write_text(

@@ -1,7 +1,7 @@
 """The trial journal — Phase-1 homegrown persistence (Optuna SQLite is Phase 2).
 
 A ``JournalStudyStore`` accumulates ``Trial`` records, reports the ``best``
-(**min** cost among non-failed trials), and round-trips through ``trials.parquet``
+(**min** cost among COMPLETE trials), and round-trips through ``trials.parquet``
 (params and terms persisted as JSON columns — lossless across heterogeneous/
 conditional param sets). Reloading a store powers CLI resume (``_engine``
 fast-forwards a deterministic strategy past the recorded trials). It is the
@@ -13,6 +13,8 @@ for the concrete journal.
 from __future__ import annotations
 
 import json
+import math
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Optional
 
@@ -39,8 +41,9 @@ class Trial(BaseModel):
             journal column. ``None`` for every legacy (pre-sidecar) trial.
         failed: ``True`` when the candidate raised and scored the failure floor.
         pruned: ``True`` when the rung ladder early-stopped this candidate.
-            Distinct from ``failed``: pruned trials ran cleanly on a partial set
-            and still count against the budget (failed trials do not).
+            Distinct from ``failed``: pruned trials ran cleanly on a partial
+            set, remain exported terminal history, and still count against the
+            budget (failed trials do not), but cannot be published as winners.
         gap: The trial's relative across-plate dispersion of the primary term —
             a cheap instability / overfit-risk flag carried from
             ``EvaluationResult.gap``, persisted as the nullable-float ``gap``
@@ -101,11 +104,15 @@ class JournalStudyStore:
         return list(self._trials)
 
     def best(self) -> Optional[Trial]:
-        """The non-failed trial with the lowest cost score, or ``None``."""
-        valid = [t for t in self._trials if not t.failed]
+        """The finite COMPLETE trial with the lowest cost, or ``None``."""
+        valid = [
+            trial
+            for trial in self._trials
+            if not trial.failed and not trial.pruned and math.isfinite(trial.score)
+        ]
         if not valid:
             return None
-        return min(valid, key=lambda t: t.score)
+        return min(valid, key=lambda trial: trial.score)
 
     def is_resumable_in_place(self) -> bool:
         """Always ``False``: the journal resumes by deterministic replay."""
@@ -123,26 +130,25 @@ class JournalStudyStore:
         """
         return None
 
-    def pareto_front(self) -> list[Trial]:
-        """The non-dominated trials by their ``objectives`` sidecar (plan §0a).
-
-        Delegates to the store-agnostic :func:`pareto_front_of` over the
-        journaled trials. A single-objective journal (no trial carries
-        ``objectives``) returns ``[]`` while scalar :meth:`best` still works.
-        """
+    def pareto_front(
+        self, objective_axes: Sequence[str] | None = None
+    ) -> list[Trial]:
+        """Return finite non-dominated COMPLETE trials on optional fixed axes."""
         from ._study._pareto import pareto_front_of
 
-        return pareto_front_of(self._trials)
+        return pareto_front_of(
+            self._trials, objective_axes=objective_axes
+        )
 
-    def knee_point(self, front: list[Trial]) -> Optional[Trial]:
-        """The ``front`` trial at max perpendicular distance to the chord.
-
-        Delegates to the store-agnostic :func:`knee_point_of`; ``None`` for an
-        empty front.
-        """
+    def knee_point(
+        self,
+        front: list[Trial],
+        objective_axes: Sequence[str] | None = None,
+    ) -> Optional[Trial]:
+        """Return the ``front`` knee using optional fixed scorer axes."""
         from ._study._pareto import knee_point_of
 
-        return knee_point_of(front)
+        return knee_point_of(front, objective_axes=objective_axes)
 
     #: Stable column order for the trials frame (explicit so an empty store
     #: still writes a valid parquet schema rather than a zero-column frame).

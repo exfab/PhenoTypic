@@ -18,10 +18,10 @@ runnable two-round flow:
 Guards: screening is **off below** ``free_param_floor`` free params; a **warm-up
 floor** ``W = max(warmup_floor, warmup_c · n_params)`` blocks a premature freeze;
 the RF-permutation path freezes **fewer** params and flags interactions
-unverified (§6). The **winner is the best held-out trial across both rounds**, so
-freezing can never make the result worse than the explore best; if the focused
-round underperforms the explore best on held-out, the freeze is **flagged** and
-the explore best is returned with a re-run recommendation (G3, §6).
+unverified (§6). The **winner is the best COMPLETE held-out trial across both
+rounds**, so freezing can never make the result worse than the explore best; if
+the focused round underperforms the explore best on held-out, the freeze is
+**flagged** and the explore best is returned with a re-run recommendation (G3, §6).
 """
 from __future__ import annotations
 
@@ -65,8 +65,8 @@ class ScreeningResult:
     """The outcome of a (possibly two-round) screening run.
 
     Args:
-        winner: The best held-out :class:`Trial` across both rounds (``None`` only
-            if nothing succeeded).
+        winner: The best COMPLETE held-out :class:`Trial` across both rounds
+            (``None`` only if nothing completed).
         frozen: ``{frozen_key: pinned_value}`` — empty when no freeze occurred.
         method: The importance method used (fANOVA vs RF-permutation).
         interactions_estimated: Whether ``method`` accounts for interactions.
@@ -428,24 +428,19 @@ class ScreeningController:
         search.
         """
         assert self.focused_store is not None
-        fresh = [
-            t
-            for t in self.focused_store.trials[self._warm_count :]
-            if not t.failed
-        ]
-        if not fresh:
-            return None
-        return min(fresh, key=lambda t: t.score)
+        fresh = self.focused_store.trials[self._warm_count :]
+        return JournalStudyStore(fresh).best()
 
     def _resolve_winner(
         self,
-        explore_best: Optional[Trial],
+        _explore_best: Optional[Trial],
         frozen_values: dict[str, Any],
         report: ImportanceReport,
         reduced: SearchSpace,
     ) -> ScreeningResult:
         """Pick the winner across both rounds + the wrong-freeze recovery (G3)."""
         assert self.focused_store is not None
+        explore_best = self.explore_store.best()
 
         explore_score = (
             explore_best.score if explore_best is not None else float("inf")
@@ -477,11 +472,7 @@ class ScreeningController:
         # Winner = best held-out across both rounds (the full union, including
         # warm-start seeds), so freezing never beats the explore best by accident.
         union = self.explore_store.trials + self.focused_store.trials
-        winner = min(
-            (t for t in union if not t.failed),
-            key=lambda t: t.score,
-            default=explore_best,
-        )
+        winner = JournalStudyStore(union).best()
         return ScreeningResult(
             winner=winner,
             frozen=frozen_values,

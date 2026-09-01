@@ -11,6 +11,7 @@ from ._config import (
     get_slurm_max_submit_jobs,
     validate_array_chunk,
 )
+from ._generation import generation_script_key
 from ._sbatch import (
     format_sbatch_directives,
     parse_job_id,
@@ -38,6 +39,7 @@ __all__ = [
     "format_sbatch_directives",
     "generate_dispatcher_chain",
     "generate_dispatcher_script",
+    "generation_script_key",
     "get_slurm_array_limit",
     "get_slurm_max_submit_jobs",
     "parse_job_id",

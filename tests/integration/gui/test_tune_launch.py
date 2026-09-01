@@ -4,10 +4,11 @@ The Launch view exposes the strategy / trials / storage-URL / screen / slurm for
 plus a live command card whose initial server-side render comes from the pure
 :func:`~phenotypic.gui.tune._command.render_launch_command`. The clientside mirror
 keeps the card in sync, but the server-rendered initial command must already be a
-valid ``python -m phenotypic.tune run …`` invocation for the bound run.
+valid ``uv run phenotypic-tune run …`` invocation for the bound run.
 """
 from __future__ import annotations
 
+import shlex
 from pathlib import Path
 
 
@@ -65,8 +66,6 @@ def _find_component(component, target_id):  # type: ignore[no-untyped-def]
 
 
 def test_launch_initial_command_is_a_valid_run_invocation(tmp_path: Path) -> None:
-    import shlex
-
     from phenotypic.gui.tune._command import render_launch_command
     from phenotypic.sdk_ import tuning_spec_path
 
@@ -90,6 +89,6 @@ def test_launch_initial_command_is_a_valid_run_invocation(tmp_path: Path) -> Non
     assert rendered == expected
     # The server-side initial render is a valid, re-parseable run invocation.
     tokens = shlex.split(rendered)
-    assert tokens[:4] == ["python", "-m", "phenotypic.tune", "run"]
+    assert tokens[:4] == ["uv", "run", "phenotypic-tune", "run"]
     assert "--strategy" in tokens and "tpe" in tokens
     assert "--n-trials" in tokens and "50" in tokens

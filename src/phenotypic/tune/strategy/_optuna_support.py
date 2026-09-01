@@ -5,7 +5,7 @@ package import (optuna-integration.md §10). The umbrella ``import phenotypic``
 and every Grid/Random tuning path must stay Optuna-free; only an
 explicitly-requested Optuna strategy (a later chunk) calls
 :func:`_require_optuna`. Requesting it without the extra raises a clear,
-actionable :class:`ImportError` pointing at ``uv sync --extras tune``.
+actionable :class:`ImportError` pointing at ``uv sync --extra tune``.
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ _RETRY_BASE_DELAY_S: Final[float] = 0.1
 #: The actionable message shown when the ``tune`` extra is not installed.
 _MISSING_OPTUNA_MSG = (
     "Optuna is required for this strategy. Install the 'tune' extra: "
-    "uv sync --extras tune"
+    "uv sync --extra tune"
 )
 
 #: ``user_attrs`` keys carrying the non-native :class:`Trial` fields on each
@@ -204,7 +204,7 @@ def _require_optuna() -> ModuleType:
 
     Raises:
         ImportError: If Optuna is not installed, with a message pointing at
-            ``uv sync --extras tune``.
+            ``uv sync --extra tune``.
     """
     try:
         import optuna  # type: ignore[import-not-found]

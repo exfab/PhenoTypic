@@ -1,9 +1,9 @@
 """``OptunaStudyStore`` — the StudyStore Protocol backed by a live Optuna study.
 
-The Phase-2 alternative to the Phase-1 ``JournalStudyStore``: it persists trials
-in an Optuna study (``RDBStorage``, SQLite-WAL by default) that **resumes in
-place** — re-opening the study by name + storage URL restores every trial *and*
-the sampler state, so the engine skips the deterministic fast-forward replay
+The Phase-2 alternative to the Phase-1 ``JournalStudyStore`` persists trials in
+an Optuna Journal, SQLite-WAL, or external RDB study that **resumes in place** —
+re-opening by study name + storage URL restores every trial *and* the sampler
+state, so the engine skips the deterministic fast-forward replay
 (``is_resumable_in_place() → True``).
 
 ``import optuna`` stays lazy inside the bodies here, preserving the package-wide
@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Optional
 
+from .._multi_objective import ordered_objective_values, validate_objective_axes
 from ..strategy._optuna_support import (
     PHENO_GAP as _ATTR_GAP,
     PHENO_N_IMAGES as _ATTR_N_IMAGES,
@@ -33,7 +35,11 @@ from ..strategy._optuna_support import (
     study_objective_kwargs,
 )
 from .._study_store import Trial
-from ._storage import build_optuna_storage, is_journal_url, is_sqlite_url, journal_path_from_url
+from ._storage import (
+    build_optuna_storage,
+    is_sqlite_url,
+    require_existing_optuna_storage,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only; never imports optuna at runtime
     import optuna  # type: ignore[import-not-found]
@@ -53,18 +59,17 @@ _CONVENTION_VALUE: str = "minimize-cost-v1"
 
 
 def _require_existing_backing_store(storage_url: str) -> None:
-    """Refuse a read-only journal open when its backing log is absent."""
-    if is_journal_url(storage_url) and not journal_path_from_url(storage_url).exists():
-        raise FileNotFoundError(journal_path_from_url(storage_url))
+    """Refuse a non-creating open unless its backing Optuna storage exists."""
+    require_existing_optuna_storage(storage_url)
 
 
 class OptunaStudyStore:
     """A :class:`StudyStore` over a persistent, resumable Optuna study.
 
     Args:
-        storage_url: The Optuna storage URL (``sqlite:///path/study.db`` or a
-            ``postgresql+psycopg://...`` URL). SQLite URLs are switched to WAL
-            journal mode for concurrent readers/writers.
+        storage_url: The Optuna storage URL (``journal://``, SQLite, or an
+            external RDB URL). SQLite URLs are switched to WAL for local
+            concurrency; the distributed CLI rejects SQLite.
         study_name: The study name; re-opening with the same name + URL restores
             the persisted trials and sampler state.
         directions: Per-objective directions for a multi-objective study; ``None``
@@ -80,6 +85,7 @@ class OptunaStudyStore:
         storage_url: str,
         study_name: str,
         directions: Optional[list[str]] = None,
+        objective_axes: Optional[Sequence[str]] = None,
         create: bool = True,
     ) -> None:
         import optuna
@@ -87,6 +93,17 @@ class OptunaStudyStore:
         self._storage_url = storage_url
         self._study_name = study_name
         self._multi_objective = is_multi_objective_directions(directions)
+        self._directions = tuple(directions or ())
+        self._objective_axes = (
+            validate_objective_axes(objective_axes) if objective_axes is not None else None
+        )
+        if self._objective_axes is not None and (
+            not self._multi_objective
+            or len(self._objective_axes) != len(directions or ())
+        ):
+            raise ValueError(
+                "objective_axes must match the multi-objective study directions"
+            )
 
         if create:
             storage = build_optuna_storage(
@@ -112,9 +129,8 @@ class OptunaStudyStore:
             self._study = optuna.create_study(**create_kwargs)
             self._study.set_user_attr(_CONVENTION_ATTR, _CONVENTION_VALUE)
         else:
-            _require_existing_backing_store(storage_url)
             self._study = optuna.load_study(
-                storage=build_optuna_storage(storage_url),
+                storage=build_optuna_storage(storage_url, create=False),
                 study_name=study_name,
             )
 
@@ -193,11 +209,32 @@ class OptunaStudyStore:
         ``params`` /
         ``distributions`` are left empty — the search dimensions live in
         ``user_attrs`` so ``add_trial`` needs no distribution metadata. On a
-        multi-objective study the trial's ``values`` are the objective vector (in
-        the study's ``directions`` order) so ``study.best_trials`` computes the
-        Pareto front natively; a single-objective study tells the scalar ``value``.
+        multi-objective study the trial's ``values`` are the objective vector in
+        the study's ``directions`` order; publication applies the shared
+        COMPLETE-only selector to the persisted sidecar. A single-objective study
+        stores the scalar ``value``.
         """
         import optuna
+
+        values: Optional[list[float]] = None
+        if self._multi_objective:
+            if trial.objectives is None:
+                if not trial.failed and not trial.pruned:
+                    raise ValueError(
+                        "complete multi-objective trials must contain exactly "
+                        "the declared objective axes"
+                    )
+            elif self._objective_axes is None:
+                if len(trial.objectives) != len(self._directions):
+                    raise ValueError(
+                        "multi-objective trials must contain exactly one value "
+                        "per study direction"
+                    )
+                values = [float(value) for value in trial.objectives.values()]
+            else:
+                values = ordered_objective_values(
+                    trial.objectives, self._objective_axes
+                )
 
         if trial.failed:
             state = optuna.trial.TrialState.FAIL
@@ -230,10 +267,8 @@ class OptunaStudyStore:
         }
         if trial.failed:
             create_kwargs["values" if self._multi_objective else "value"] = None
-        elif self._multi_objective and trial.objectives is not None:
-            create_kwargs["values"] = [
-                float(v) for v in trial.objectives.values()
-            ]
+        elif self._multi_objective:
+            create_kwargs["values"] = values
         else:
             create_kwargs["value"] = float(trial.score)
         frozen = optuna.trial.create_trial(**create_kwargs)
@@ -317,9 +352,13 @@ class OptunaStudyStore:
         return len(self._study.get_trials(deepcopy=False))
 
     def best(self) -> Optional[Trial]:
-        """The non-failed trial with the lowest cost score, or ``None``."""
+        """The finite COMPLETE trial with the lowest cost, or ``None``."""
         valid = [
-            t for t in self.terminal_trials() if not t.failed and math.isfinite(t.score)
+            trial
+            for trial in self.terminal_trials()
+            if not trial.failed
+            and not trial.pruned
+            and math.isfinite(trial.score)
         ]
         if not valid:
             return None
@@ -358,26 +397,29 @@ class OptunaStudyStore:
             return None
         return {key: float(value) for key, value in importances.items()}
 
-    def pareto_front(self) -> list[Trial]:
-        """The non-dominated trials by their ``objectives`` sidecar (plan §0a).
-
-        A multi-objective study exposes its native Pareto front via
-        ``study.best_trials`` (Optuna's own non-domination over the per-objective
-        ``values``); each is reconstructed into our :class:`Trial` (objectives
-        restored from ``user_attrs``). A single-objective study has no
-        multi-objective front, so this returns ``[]`` (the back-compat lock).
-        """
+    def pareto_front(
+        self, objective_axes: Sequence[str] | None = None
+    ) -> list[Trial]:
+        """Return finite non-dominated COMPLETE trials on optional fixed axes."""
+        validated_axes = (
+            validate_objective_axes(objective_axes)
+            if objective_axes is not None
+            else None
+        )
         if not self._multi_objective:
             return []
-        return [self._to_trial(f) for f in self._study.best_trials]
+        from ._pareto import pareto_front_of
 
-    def knee_point(self, front: list[Trial]) -> Optional[Trial]:
-        """The ``front`` trial at max perpendicular distance to the chord.
+        return pareto_front_of(
+            self.terminal_trials(), objective_axes=validated_axes
+        )
 
-        Delegates to the store-agnostic :func:`knee_point_of` so the Optuna and
-        journal backends pick the same knee from the same front; ``None`` for an
-        empty front.
-        """
+    def knee_point(
+        self,
+        front: list[Trial],
+        objective_axes: Sequence[str] | None = None,
+    ) -> Optional[Trial]:
+        """Return the ``front`` knee using optional fixed scorer axes."""
         from ._pareto import knee_point_of
 
-        return knee_point_of(front)
+        return knee_point_of(front, objective_axes=objective_axes)

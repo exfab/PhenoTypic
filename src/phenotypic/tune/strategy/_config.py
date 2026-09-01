@@ -3,12 +3,15 @@
 These are a closed set in Phase 1 (grid/random) → a discriminated union.
 Phase 2 adds ``OptunaConfig``; the polymorphic-field path (engine-architecture
 §6) lets the open Scorer/Strategy sets extend, but the in-spec config field uses
-this union for the built-in kinds.
+this union for the built-in kinds. Distributed Optuna workers share Journal or
+PostgreSQL storage; SQLite remains local-only and is rejected by distributed
+CLI validation.
 """
 from __future__ import annotations
 
 import os
 from abc import abstractmethod
+from collections.abc import Sequence
 from typing import Annotated, Any, Literal, Optional, TypeAlias, Union, get_args
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -40,8 +43,8 @@ STRATEGY_CHOICES: tuple[str, ...] = ("grid", "random", *get_args(SamplerKind))
 
 #: Environment variable naming the Optuna storage URL when ``OptunaConfig`` is
 #: built with ``storage_url=None`` (e.g. a SLURM array exporting a shared
-#: Postgres/SQLite URL to every worker). Resolved inside ``build`` only — never
-#: at construction — so the lazy-import boundary holds.
+#: Journal or PostgreSQL URL to every worker). Distributed SQLite is rejected.
+#: Resolution stays inside ``build`` so the lazy-import boundary holds.
 PHENOTYPIC_TUNE_STORAGE_URL_ENV: str = "PHENOTYPIC_TUNE_STORAGE_URL"
 
 
@@ -81,6 +84,19 @@ class StrategyConfig(BaseModel):
                 multi-objective scorer at validation, so they never receive it).
         """
         ...
+
+    def build_with_objectives(
+        self,
+        space: SearchSpace,
+        store: Optional[Any],
+        *,
+        directions: Optional[list[str]] = None,
+        objective_axes: Optional[Sequence[str]] = None,
+    ) -> SearchStrategy:
+        """Build with scorer axes without widening third-party ``build`` APIs."""
+        del objective_axes
+        return self.build(space, store, directions=directions)
+
 
 
 class GridConfig(StrategyConfig):
@@ -145,9 +161,10 @@ class OptunaConfig(StrategyConfig):
         prune: Whether to enable ASHA pruning (opt-in; the explore round runs
             unpruned). Defaults to ``False``.
         seed: The sampler seed for reproducibility; defaults to ``0``.
-        storage_url: The Optuna storage URL (SQLite/Postgres). ``None`` resolves
-            from ``$PHENOTYPIC_TUNE_STORAGE_URL`` at build time; if that is also
-            unset the strategy uses an in-memory study.
+        storage_url: The Optuna storage URL (Journal, SQLite, or PostgreSQL).
+            ``None`` resolves from ``$PHENOTYPIC_TUNE_STORAGE_URL`` at build
+            time; if that is also unset the strategy uses an in-memory study.
+            Distributed runs reject SQLite; use Journal or PostgreSQL instead.
     """
 
     kind: Literal["optuna"] = "optuna"
@@ -162,6 +179,18 @@ class OptunaConfig(StrategyConfig):
         store: Optional[Any],
         *,
         directions: Optional[list[str]] = None,
+    ) -> SearchStrategy:
+        """Build without axes for backward-compatible direct callers."""
+        return self.build_with_objectives(space, store, directions=directions)
+
+
+    def build_with_objectives(
+        self,
+        space: SearchSpace,
+        store: Optional[Any],
+        *,
+        directions: Optional[list[str]] = None,
+        objective_axes: Optional[Sequence[str]] = None,
     ) -> SearchStrategy:
         """Construct the live ``OptunaStrategy`` (resolves the ``tune`` extra).
 
@@ -204,7 +233,39 @@ class OptunaConfig(StrategyConfig):
             store=store,
             study_name=study_name,
             directions=directions,
+            objective_axes=objective_axes,
         )
+
+
+def build_strategy_with_objectives(
+    config: StrategyConfig,
+    space: SearchSpace,
+    store: Optional[Any],
+    *,
+    directions: Optional[list[str]] = None,
+    objective_axes: Optional[Sequence[str]] = None,
+) -> SearchStrategy:
+    """Build through modern hooks while preserving historic Optuna overrides."""
+    legacy_optuna_override = (
+        isinstance(config, OptunaConfig)
+        and type(config).build_with_objectives is OptunaConfig.build_with_objectives
+        and type(config).build is not OptunaConfig.build
+    )
+    if not legacy_optuna_override:
+        return config.build_with_objectives(
+            space,
+            store,
+            directions=directions,
+            objective_axes=objective_axes,
+        )
+
+    strategy = config.build(space, store, directions=directions)
+    if objective_axes is not None:
+        from ._optuna import OptunaStrategy
+
+        if isinstance(strategy, OptunaStrategy):
+            strategy.bind_objective_axes(objective_axes)
+    return strategy
 
 
 #: Discriminated union of the built-in (Phase 1) strategy configs. ``OptunaConfig``

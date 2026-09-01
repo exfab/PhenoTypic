@@ -30,15 +30,20 @@ from __future__ import annotations
 import json
 import logging
 import os
-from pathlib import Path
+from pathlib import Path, PurePath, PureWindowsPath
 from typing import Any, Optional
-from urllib.parse import urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
 _logger = logging.getLogger(__name__)
 
 #: The pseudo-scheme naming a file-backed Optuna ``JournalStorage``. Not a
 #: SQLAlchemy dialect — :func:`build_optuna_storage` is what gives it meaning.
 JOURNAL_SCHEME: str = "journal"
+
+#: Exact query marker for the canonical percent-encoded URL grammar. Queries
+#: were invalid in the legacy grammar, so this marker cannot collide with any
+#: previously valid journal path identity.
+_JOURNAL_CANONICAL_QUERY: str = "v=1"
 
 #: Bytes read per step when scanning the log's tail backwards for the last
 #: newline. A journal record is a few hundred bytes, so one chunk finds it in
@@ -99,12 +104,17 @@ def is_sqlite_url(storage_url: Optional[str]) -> bool:
     return _base_scheme(storage_url) == "sqlite"
 
 
-def journal_url_for_path(journal_path: Path) -> str:
+def journal_url_for_path(journal_path: PurePath) -> str:
     """Return the ``journal://`` URL addressing an **absolute** ``journal_path``.
 
     Mirrors the ``sqlite:///<path>`` spelling used for the local study DB, so a
     resolved storage URL is a single string that round-trips through
-    :func:`journal_path_from_url`.
+    :func:`journal_path_from_url`. Filesystem path data is percent-encoded; the
+    inverse decodes it exactly once. The exact ``?v=1`` query marks this canonical
+    grammar; unmarked legacy URLs preserve percent text literally. Windows path
+    objects normalize their separators to ``/`` before encoding. A literal
+    backslash filename component under POSIX is rejected because its decoded
+    identity would become a separator when another worker runs Windows.
 
     A relative path is **rejected**, not silently rooted. The URL grammar has
     nowhere to put "relative to the caller's cwd", and a fleet resolves this URL
@@ -120,14 +130,14 @@ def journal_url_for_path(journal_path: Path) -> str:
         journal_path: The absolute append-only log path.
 
     Returns:
-        ``journal:///<absolute path>``.
+        ``journal:///<percent-encoded absolute path>?v=1``.
 
     Raises:
-        ValueError: When ``journal_path`` is relative.
+        ValueError: When the path is relative or contains a literal backslash.
 
     Examples:
         >>> journal_url_for_path(Path("/runs/out/.pht-tune-cache/journal.log"))
-        'journal:///runs/out/.pht-tune-cache/journal.log'
+        'journal:///runs/out/.pht-tune-cache/journal.log?v=1'
         >>> journal_url_for_path(Path("out/journal.log"))
         Traceback (most recent call last):
         ...
@@ -137,27 +147,60 @@ def journal_url_for_path(journal_path: Path) -> str:
     # authority separator only for a non-empty netloc, so it would render the
     # single-slash ``journal:/abs/path``. The triple-slash spelling is what
     # ``sqlite:///`` uses and what an operator will type.
-    raw = Path(journal_path).as_posix()
-    if not raw.startswith("/"):
-        # ``Path.is_absolute()`` is platform-dependent — a Windows drive path is
-        # relative to a POSIX interpreter — so classify on the drive letter,
-        # which is what :func:`journal_path_from_url` reverses.
-        if len(raw) > 1 and raw[1] == ":":
-            raw = f"/{raw}"  # a Windows drive path: C:/x -> journal:///C:/x
-        else:
+    path = journal_path if isinstance(journal_path, PurePath) else Path(journal_path)
+    raw = path.as_posix()
+    if not path.is_absolute():
+        # ``Path.is_absolute()`` is platform-dependent. Interpret a drive-rooted
+        # spelling with Windows semantics without making the host's concrete
+        # ``Path`` pretend to have a different filesystem flavor.
+        windows_path = PureWindowsPath(raw)
+        if not windows_path.is_absolute():
             raise ValueError(
                 f"{JOURNAL_SCHEME}:// storage path must be absolute: {raw!r}"
             )
-    return f"{JOURNAL_SCHEME}://{raw}"
+        raw = windows_path.as_posix()
+    if "\\" in raw:
+        raise ValueError(
+            f"{JOURNAL_SCHEME}:// canonical storage path cannot contain a literal"
+            f" backslash: {raw!r}"
+        )
+    if len(raw) > 1 and raw[1] == ":":
+        raw = f"/{raw}"  # a Windows drive path: C:/x -> journal:///C:/x
+    return f"{JOURNAL_SCHEME}://{quote(raw, safe='/:')}?{_JOURNAL_CANONICAL_QUERY}"
+
+
+def _decode_canonical_journal_path(encoded_path: str, storage_url: str) -> str:
+    """Decode a versioned path only when it has one canonical URL spelling."""
+    encoded_path_casefold = encoded_path.casefold()
+    if "%2f" in encoded_path_casefold or "%5c" in encoded_path_casefold:
+        raise ValueError(
+            f"{JOURNAL_SCHEME}:// URL path is not canonical: {storage_url!r}"
+        )
+
+    try:
+        decoded_path = unquote(encoded_path, encoding="utf-8", errors="strict")
+    except UnicodeDecodeError as exc:
+        raise ValueError(
+            f"{JOURNAL_SCHEME}:// URL path is not canonical: {storage_url!r}"
+        ) from exc
+
+    if quote(decoded_path, safe="/:") != encoded_path:
+        raise ValueError(
+            f"{JOURNAL_SCHEME}:// URL path is not canonical: {storage_url!r}"
+        )
+    return decoded_path
 
 
 def journal_path_from_url(storage_url: str) -> Path:
     """Return the log path a ``journal://`` URL addresses.
 
-    The inverse of :func:`journal_url_for_path`. A Windows drive path survives
-    the round trip: ``urlsplit`` leaves ``journal:///C:/runs/journal.log`` with a
-    path of ``/C:/runs/journal.log``, and the leading separator is dropped when
-    the next segment is a drive letter.
+    The inverse of :func:`journal_url_for_path`. Versioned ``?v=1`` URLs use a
+    strict canonical percent grammar and decode once. Unmarked legacy URLs
+    preserve percent text literally, including malformed escapes. Encoded
+    forward slashes and backslashes are always noncanonical separators. A Windows
+    drive path survives the round trip: ``urlsplit`` leaves
+    ``journal:///C:/runs/journal.log`` with a path of ``/C:/runs/journal.log``;
+    the leading separator is dropped when the next segment is a drive letter.
 
     A non-empty authority is **refused** rather than dropped. ``urlsplit`` reads
     ``journal://mydir/journal.log`` as netloc ``mydir`` + path
@@ -172,8 +215,8 @@ def journal_path_from_url(storage_url: str) -> Path:
         The append-only log path.
 
     Raises:
-        ValueError: When ``storage_url`` is not a ``journal://`` URL, carries a
-            non-empty authority, or carries no path.
+        ValueError: When the URL has the wrong scheme, authority, metadata,
+            path, version marker, or canonical encoding.
 
     Examples:
         >>> journal_path_from_url("journal:///runs/out/journal.log").as_posix()
@@ -193,12 +236,116 @@ def journal_path_from_url(storage_url: str) -> Path:
             f"{JOURNAL_SCHEME}:// URL must be {JOURNAL_SCHEME}:///<abs path>"
             f", got {storage_url!r}"
         )
-    raw = split.path
+    if "#" in storage_url:
+        raise ValueError(
+            f"{JOURNAL_SCHEME}:// URL must not carry a query or fragment"
+            f", got {storage_url!r}"
+        )
+    has_query_delimiter = "?" in storage_url
+    if has_query_delimiter and split.query != _JOURNAL_CANONICAL_QUERY:
+        raise ValueError(
+            f"{JOURNAL_SCHEME}:// URL has an unknown version marker or forbidden"
+            " query or fragment"
+            f", got {storage_url!r}"
+        )
+    if has_query_delimiter:
+        canonical_url = (
+            f"{JOURNAL_SCHEME}://{split.path}?{_JOURNAL_CANONICAL_QUERY}"
+        )
+        if storage_url != canonical_url:
+            raise ValueError(
+                f"{JOURNAL_SCHEME}:// URL has a noncanonical version marker"
+                f", got {storage_url!r}"
+            )
+        raw = _decode_canonical_journal_path(split.path, storage_url)
+    else:
+        raw = split.path
     if len(raw) > 2 and raw[0] == "/" and raw[2] == ":":
         raw = raw[1:]  # journal:///C:/... -> C:/...
     if not raw:
         raise ValueError(f"{JOURNAL_SCHEME}:// storage URL carries no path: {storage_url!r}")
     return Path(raw)
+
+
+def _required_optuna_rdb_tables() -> frozenset[str]:
+    """Return Optuna's complete current RDB catalog plus Alembic authority."""
+    from optuna.storages._rdb import models
+
+    return frozenset((*models.BaseModel.metadata.tables, "alembic_version"))
+
+
+def _sqlite_database_path(storage_url: str) -> Path:
+    """Return the filesystem database named by a non-memory SQLite URL."""
+    from sqlalchemy.engine import make_url
+
+    database = make_url(storage_url).database
+    if not database or database == ":memory:":
+        raise FileNotFoundError(
+            "create=False requires an existing file-backed SQLite database"
+        )
+    return Path(database)
+
+
+def require_existing_optuna_storage(storage_url: str) -> None:
+    """Validate backing storage without invoking Optuna's creating constructor.
+
+    Journal and SQLite paths are checked before opening them. RDB catalogs must
+    contain Optuna's complete model metadata plus populated version-info and
+    Alembic authority. Only then may callers construct ``RDBStorage`` with
+    table creation disabled.
+
+    Args:
+        storage_url: The resolved tune storage URL.
+
+    Raises:
+        FileNotFoundError: If a journal or SQLite backing file is absent.
+        RuntimeError: If an RDB catalog lacks a complete initialized Optuna schema.
+    """
+    if is_journal_url(storage_url):
+        journal_path = journal_path_from_url(storage_url)
+        if not journal_path.is_file():
+            raise FileNotFoundError(journal_path)
+        return
+
+    if is_sqlite_url(storage_url):
+        database_path = _sqlite_database_path(storage_url)
+        if not database_path.is_file():
+            raise FileNotFoundError(database_path)
+
+    from sqlalchemy import create_engine, inspect
+    from sqlalchemy.exc import SQLAlchemyError
+
+    engine = create_engine(storage_url)
+    try:
+        tables = set(inspect(engine).get_table_names())
+        missing = _required_optuna_rdb_tables() - tables
+        if missing:
+            raise RuntimeError(
+                "Optuna RDB schema is not initialized; missing tables: "
+                + ", ".join(sorted(missing))
+            )
+        with engine.connect() as connection:
+            version_info = connection.exec_driver_sql(
+                "SELECT schema_version, library_version FROM version_info"
+            ).first()
+            alembic_version = connection.exec_driver_sql(
+                "SELECT version_num FROM alembic_version"
+            ).first()
+    except SQLAlchemyError as exc:
+        raise RuntimeError("Optuna RDB schema version authority is invalid") from exc
+    finally:
+        engine.dispose()
+
+    missing_authority = []
+    if version_info is None:
+        missing_authority.append("version_info row")
+    if alembic_version is None:
+        missing_authority.append("alembic_version row")
+    if missing_authority:
+        raise RuntimeError(
+            "Optuna RDB schema is not initialized; missing authority: "
+            + ", ".join(missing_authority)
+        )
 
 
 def truncate_torn_journal_tail(journal_path: Path) -> int:
@@ -279,9 +426,10 @@ def _repairing_journal_backend() -> type:
     The repair belongs **inside** ``append_logs``' own lock acquisition, so it
     must override the method rather than wrap it: the symlink lock is not
     reentrant, and re-acquiring it would block for the 30 s grace period and then
-    forcibly steal the lock from itself. The append itself is therefore mirrored
-    from upstream rather than delegated to; the mirror is pinned against the
-    installed optuna by ``test_the_mirrored_append_still_matches_optunas``.
+    forcibly steal the lock from itself. The append itself is therefore the
+    minimal upstream write sequence rather than a delegated call; its required
+    compatibility behavior is pinned by
+    ``test_repairing_backend_appends_a_readable_record_after_a_torn_tail``.
 
     Placing it here, rather than in the retry wrapper, covers every writer of the
     log with one edit — the retried ``ask``/``tell``, the pruning channel's
@@ -332,6 +480,7 @@ def build_optuna_storage(
     *,
     heartbeat_interval: Optional[int] = None,
     grace_period: Optional[int] = None,
+    create: bool = True,
 ) -> Any:
     """Build the Optuna storage object ``storage_url`` names.
 
@@ -374,6 +523,8 @@ def build_optuna_storage(
         storage_url: The resolved tune storage URL.
         heartbeat_interval: Seconds between worker heartbeats (RDB only).
         grace_period: Seconds before an unheard-from trial is stale (RDB only).
+        create: Whether constructing a missing backing file or RDB schema is
+            permitted.
 
     Returns:
         A live Optuna storage object.
@@ -390,13 +541,17 @@ def build_optuna_storage(
     """
     import optuna
 
+    if not create:
+        require_existing_optuna_storage(storage_url)
+
     if is_journal_url(storage_url):
         from optuna.storages.journal import JournalFileSymlinkLock
 
         journal_path = journal_path_from_url(storage_url)
         # The backend does not create parent directories; a `--slurm` submission
         # resolves this URL under `.pht-tune-cache/`, which may not exist yet.
-        journal_path.parent.mkdir(parents=True, exist_ok=True)
+        if create:
+            journal_path.parent.mkdir(parents=True, exist_ok=True)
         text_path = str(journal_path)
         # `_repairing_journal_backend`, not the stock `JournalFileBackend`: a
         # partially-landed append must be truncated back to the last newline
@@ -411,4 +566,5 @@ def build_optuna_storage(
         url=storage_url,
         heartbeat_interval=heartbeat_interval,
         grace_period=grace_period,
+        skip_table_creation=not create,
     )
