@@ -86,8 +86,8 @@ def test_rescale_sigma_untouched():
     assert VisuShrinkEnhancer.model_fields["rescale_sigma"].annotation is bool
 
 
-def test_version_is_0_18_1():
-    assert phenotypic.__version__ == "0.18.1"
+def test_version_is_0_19_0():
+    assert phenotypic.__version__ == "0.19.0"
 
 
 #: The only two fixtures that ever serialized a ``clip`` param. Both were
