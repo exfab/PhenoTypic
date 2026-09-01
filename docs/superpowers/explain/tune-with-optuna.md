@@ -33,8 +33,48 @@ strategy.register_result(...)  →  bump budget counters (n_trials, max_failures
 ```
 
 Resume is handled by either fast-forwarding a deterministic strategy
-(replay `suggest()` N times) or by Optuna's own RDB storage restoring the
-sampler state.
+(replay `suggest()` N times) or by reopening the recorded Optuna backend and
+restoring sampler state.
+
+### Distributed journal and publication flow
+
+`uv run phenotypic-tune run … --slurm` resolves one storage URL before it writes
+run state: CLI URL, tuning-spec URL, `$PHENOTYPIC_TUNE_STORAGE_URL`, then the
+mode default. The Slurm default is an absolute
+`<output>/.pht-tune-cache/journal.log` `journal://` URL; the local default is
+run-local SQLite. The journal resolver uses Optuna's symlink lock, so every
+array worker serializes appends through the same GPFS-visible log. A multi-node
+run rejects explicit SQLite before it creates output state.
+
+The submitter first claims an active lifecycle generation, then persists the
+resolved spec, split, storage URL, and run marker. It submits one worker array
+and one non-array terminal finalizer with an `afterany` dependency. Worker,
+finalizer, and dispatcher script directories map that raw generation to the
+same 64-hex SHA-256 key; hostile path syntax stays contained, and distinct
+generation strings cannot normalize onto the same artifact path. Workers only
+perform the task/evaluate/tell loop. The finalizer holds the
+exact-generation publication
+guard, validates the existing journal/SQLite file or external RDB schema before
+opening without create semantics, counts only terminal trials, and requires the
+recorded COMPLETE+PRUNED budget plus a finite COMPLETE winner. It then
+publishes `trials.parquet`, the selected pipeline/params, screening/Pareto
+artifacts, and generalization. `best_params.json` is written last as the
+completion signal. A missing, corrupt, incomplete, or winnerless backend fails
+closed; a stale finalizer cannot alter a newer generation.
+
+Manual `uv run phenotypic-tune finalize OUTPUT` first reads the run marker and
+requires its `study_name` to equal the current supported study constant. A
+missing marker, missing or legacy study name, or mismatched name fails before
+cancellation, lifecycle deactivation/failure, lifecycle-lock creation/open,
+storage open, or publication output mutation. Only after that read-only
+identity preflight does the command use the same lifecycle lock for its full
+read-to-publish critical section and refuse an active generation. `--force`
+first requires matching lifecycle authority and scheduler cancellation to be
+quiescent with no unresolved tokens, then rechecks ownership before writing.
+Missing, corrupt, or mismatched lifecycle authority for a generation-bearing
+marker cannot be forced. A generation-less marker with the current study name
+retains its compatibility path. Repeating a successful finalization is
+byte-identical.
 
 ---
 
@@ -205,6 +245,25 @@ third). A clearly-losing config dies after 6 plates instead of wasting the
 full set. Pruning is **disabled during explore rounds** (keeps the importance
 sample unbiased) and **disabled for multi-objective** (Optuna pruners are
 single-objective only). Grid/Random use a `NoOpChannel` that never prunes.
+PRUNED trials remain in exported terminal history and consume terminal budget,
+but their partial-fidelity scores are not comparable with full evaluations.
+Only finite scalar COMPLETE trials, and multi-objective COMPLETE trials whose
+keys exactly match the authoritative
+`objective_names(spec.scorer)` vector and whose every value is finite, can
+become a published winner or
+participate in a Pareto front, knee point, or per-axis importance model. If a
+multi-objective study has no eligible Pareto candidate, finalization refuses
+publication rather than falling back to its scalar projection.
+Objective axes pass one ordered validator whether they came from the scorer or
+from direct `OptunaStrategy` / `OptunaStudyStore` construction. The validator
+requires at least two safe components unique by exact spelling and Unicode
+casefold, and rejects absolute, drive, UNC, dot, traversal,
+Windows-reserved-character/device-name, trailing-dot/space,
+NUL, and C0/C1-control forms. A COMPLETE multi-objective result with missing or
+non-exact keys fails before native trial attributes/state or persistent storage
+can change. The engine supplies axes through `build_with_objectives`, whose
+default preserves third-party subclasses using the historic `build` signature.
+
 
 ### Failure taxonomy (`_evaluator.py:283`)
 - Candidate won't **build** → hard `failed=True`, score floored to `1.0`.
@@ -371,6 +430,11 @@ values are randomly shuffled**. A big drop ⇒ an important parameter.
 Categoricals are one-hot encoded and summed back to their original key; this is
 **main-effect only** (`interactions_estimated=False`). Returns `{}` with < 2
 usable trials.
+For a named multi-objective axis, "usable" means a terminal COMPLETE trial whose
+objective keys exactly match the scorer-declared
+`objective_names(spec.scorer)` set and whose every coordinate is finite.
+FAILED, PRUNED, missing-coordinate, and cross-axis-nonfinite rows remain
+history and budget evidence but cannot train a published per-axis model.
 
 So a knob is "important" if changing it moves the objective a lot — measured
 either by variance decomposition (fANOVA, with interactions) or by accuracy
@@ -385,7 +449,13 @@ When the scorer is multi-objective, directions become `["minimize"] * n`
 
 **Dominance** (`_study/_pareto.py:54`): `a` dominates `b` iff `a` is **≤** `b` on
 **every** axis AND strictly **<** on **at least one**. The **Pareto front** is
-all non-dominated trials (ties deduplicated).
+all non-dominated COMPLETE trials whose keys exactly match the scorer's
+authoritative objective names and whose full vectors are finite
+(ties deduplicated). PRUNED partial-fidelity and non-finite COMPLETE points
+remain history and budget events but never participate in the front, per-axis,
+or knee selections. A multi-objective scorer still defines multi-objective
+identity when that eligible front is empty: headline selection returns none and
+finalization fails closed, never as `single_best` or a scalar fallback.
 
 **Picking one config — the knee point** (`_study/_pareto.py:115`): draw the
 chord between the lexicographic extremes `lo = min(vectors)` and
@@ -489,9 +559,10 @@ the winner never changes.
    └─────────────────────────────────────────────┬───────────────────────────────────────────────────┘
                                                   │ yes
                                                   ▼
-              store.best()  ──▶  param-importance (fANOVA | RF-permutation)
-                                  multi-objective: Pareto front → knee point
-                                  held-out re-eval → generalization gap (report-only)
+              finite COMPLETE store.best() ──▶ param-importance (fANOVA | RF-permutation)
+                         multi-objective: full finite COMPLETE Pareto front → knee point
+                                          empty eligible front → refuse publication
+                                          held-out re-eval → generalization gap (report-only)
 ```
 
 ---
@@ -508,8 +579,9 @@ the winner never changes.
   reference-free, QC, composite).
 - **Important**: read out post-hoc via fANOVA (variance decomposition, with
   interactions) or RF-permutation (accuracy drop, main effects only).
-- **Trusted**: multi-objective runs surface a Pareto knee point, and a held-out
-  generalization gap flags overfit before you trust the winner.
+- **Trusted**: eligible multi-objective runs surface a finite COMPLETE Pareto
+  knee; winnerless studies fail closed, and a held-out generalization gap flags
+  overfit before you trust the winner.
 - **Combined**: the single-objective `CompositeScorer` uses an **augmented
   Tchebycheff** scalarization (conjunctive, worst-axis-dominant) over the
   study-global active set, replacing the old geometric mean — it can reach

@@ -5,6 +5,16 @@ flowchart TD
     SPACE[/"SearchSpace (Knobs)"/]
     PIPE --> INFER --> SPACE
 
+    %% ---- distributed ownership ----
+    SUBMIT["uv run phenotypic-tune run --slurm\nclaim lifecycle first; then persist artifacts/storage"]
+    JOURNAL[("journal:// GPFS log\nsymlink-locked Optuna storage")]
+    ARRAY["worker array\nask → evaluate → tell"]
+    FINALIZER["one non-array afterany finalizer\nstudy identity preflight; COMPLETE+PRUNED budget\nfinite COMPLETE winner; empty multi front refuses"]
+    PUBLISH[/"trials.parquet + deliverables\nbest_params.json written last"/]
+    SUBMIT --> JOURNAL --> ARRAY
+    ARRAY --> JOURNAL
+    ARRAY --> FINALIZER --> PUBLISH
+
     %% ---- ask-and-tell loop ----
     SPACE --> STRAT
     STRAT("Strategy.suggest()<br/>TPE: max EI ∝ l(x)/g(x)<br/>CMA-ES / GP / NSGA-II / random / grid")
@@ -22,13 +32,15 @@ flowchart TD
     PRUNE{"between rungs:<br/>should_prune()?"}
 
     RUNG --> SCORE --> AGG --> FINAL --> PRUNE
-    PRUNE -- "yes (not final rung)" --> PARTIAL[/"EvaluationResult<br/>pruned=True (partial)"/]
+    PRUNE -- "yes (not final rung)" --> PARTIAL[/"PRUNED partial<br/>history + budget only"/]
     PRUNE -- "no / final rung" --> RESULT[/"EvaluationResult<br/>score, terms, objectives?, gap, suspicious"/]
 
     RESULT --> STORE
     PARTIAL --> STORE
     FAIL --> STORE
-    STORE[("StudyStore<br/>append Trial; budget number+=1, failures+=failed")]
+    STORE[("StudyStore<br/>exact COMPLETE-axis preflight before attrs/append<br/>budget number+=1, failures+=failed")]
+
+    ARRAY -. shared storage .-> STORE
 
     STORE -. "tell: register_result(params, result)" .-> STRAT
     STORE --> EXH{"exhausted? / n_trials / max_failures"}
@@ -36,9 +48,9 @@ flowchart TD
     EXH -- yes --> BEST
 
     %% ---- one-time finalize ----
-    BEST("store.best()")
-    IMP("param importance<br/>fANOVA (interactions) | RF-permutation (main effects)")
-    PARETO("multi-objective:<br/>Pareto front → knee point")
+    BEST("finite COMPLETE store.best()")
+    IMP("param importance<br/>per-axis: scorer-required full finite COMPLETE vectors")
+    PARETO("multi-objective:<br/>scorer-required full finite COMPLETE Pareto front → knee<br/>empty eligible front → refuse")
     GEN("held-out re-eval →<br/>generalization gap (report-only)")
     BEST --> IMP
     BEST --> PARETO

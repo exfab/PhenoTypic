@@ -1254,9 +1254,10 @@ Taha & Hanbury, 2015; Pont-Tuset & Marqués, 2013).
 
 ## 1. Default composite by GT modality
 
-The scorer adapts to whatever GT exists, cheapest modality first. Every term normalized to a
-common **higher-is-better** scale per master §4's `higher_is_better` / normalizer contract
-(negate VI and the distance metrics; bound the unbounded ones).
+The scorer adapts to whatever GT exists, cheapest modality first. It declares each
+natural term's sense and fixed normalizer; the shared scorer boundary converts every
+term to a bounded **lower-is-better cost** (complement goodness metrics such as Dice;
+bound losses such as VI and distance metrics).
 
 **(a) Count-only GT (per-plate count, or per-grid-cell present/absent):**
 - **Per-grid-cell present/absent F1 + specificity** against the curated empty/grown map
@@ -1307,8 +1308,9 @@ common **higher-is-better** scale per master §4's `higher_is_better` / normaliz
   `min(Boundary IoU, Mask IoU)` or pair NSD with an interior/overlap check to cover the
   hole-in-the-middle blind spot (Cheng et al., 2021).
 
-**Composition.** Combine terms into one scalar (`CompositeScorer`, master §4) or return a dict
-for true multi-objective Pareto. **Do not** put both Dice and IoU in the panel — they rank
+**Composition.** `CompositeScorer` combines child costs with augmented Tchebycheff by
+default; `blend="weighted_mean"` is the compensatory option, or return a dict for true
+multi-objective Pareto. **Do not** put both Dice and IoU in the panel — they rank
 identically and add no ranking information (Eelbode et al., 2020; Taha & Reinke et al., 2021).
 Pick complementary axes (overlap × instance × partition × boundary × count), per the consensus
 "use multiple complementary metrics" recommendation (Maier-Hein et al., 2024).
@@ -1352,8 +1354,9 @@ correlates against (master §4, D1; reference-free §E.1, §E.4). Concretely:
   role Vinet's measure plays in Chabrier et al. (2006), and is the "GT side" of the correlation
   the reference-free doc's §E names (Jozdani & Chen, 2020 informs *which* reference metric).
 - **Acceptance test:** the gate requires **rank agreement (Spearman ρ)** between the
-  reference-free proxy and this supervised score **plus an argmax test** (the proxy's chosen
-  params land near the true best-by-supervised-score params), stratified by quality regime and
+  reference-free proxy and this supervised objective **plus a cost-argmin agreement test**
+  (the proxy's chosen params land near the supervised-cost minimum, equivalently the
+  maximum of the raw supervised goodness metric), stratified by quality regime and
   plate region — a single global ρ is insufficient (reference-free §E.4; Pont-Tuset & Marqués,
   2013; Kazakevičiūtė-Januškevičienė 2020 via the reference-free doc). The master §4 floor of
   "≥3–5 annotated plates" and "warns/abstains if the correlation is weak" is the same gate.

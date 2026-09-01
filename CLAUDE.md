@@ -125,7 +125,7 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
     - `--gpu-shards N` (default 1) — parallel whole-GPU Stage-2 tasks (SLURM-only).
     - `--gpu-workers-per-gpu W` (default 1) — reserved for future replica packing;
       the current staged worker runs one resident model per GPU shard.
-- `uv run python -m phenotypic.tune run spec.json -i <images> -o <out>` —
+- `uv run phenotypic-tune run spec.json -i <images> -o <out>` —
   hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/
   `--storage-url`
 

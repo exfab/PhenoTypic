@@ -1,5 +1,6 @@
 # Worktrees
 .worktrees/
+.verification/
 .claude/worktrees
 
 # Claude Code: track shared team skills; keep the rest of .claude/ per-developer.
