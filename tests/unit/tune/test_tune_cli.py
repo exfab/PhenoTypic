@@ -174,7 +174,51 @@ def test_cli_storage_url_env_fallback(tmp_path, monkeypatch):
               "--strategy", "tpe", "--n-trials", "3"])
 
     assert captured["strategy"] == "tpe"
-    assert captured["storage_url"] == "sqlite:///env.db"
+    assert captured["storage_url"] is None
+
+
+def test_cli_keeps_env_separate_so_spec_storage_url_wins(tmp_path, monkeypatch):
+    """Folding env into the CLI value reverses documented spec-over-env precedence."""
+    from phenotypic.tune import __main__ as cli
+    from phenotypic.tune.strategy import OptunaConfig
+    from phenotypic.tune.strategy._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
+    from phenotypic.tune._tune_cli._run import _resolve_run_config
+
+    spec_url = f"sqlite:///{tmp_path / 'spec.db'}"
+    env_url = f"sqlite:///{tmp_path / 'env.db'}"
+    spec = _spec(tmp_path).model_copy(
+        update={"strategy": OptunaConfig(sampler="tpe", n_trials=2, storage_url=spec_url)}
+    )
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(spec.model_dump_json())
+    monkeypatch.setenv(PHENOTYPIC_TUNE_STORAGE_URL_ENV, env_url)
+    monkeypatch.setattr(
+        cli,
+        "_load_images",
+        lambda _p, *, nrows=None, ncols=None: [load_synth_yeast_plate()],
+    )
+    captured = {}
+
+    def _capture_resolved_storage(spec, images, output_dir, **kwargs):
+        captured["cli_storage_url"] = kwargs["storage_url"]
+        captured["resolved_storage_url"] = _resolve_run_config(
+            spec,
+            output_dir,
+            strategy=kwargs["strategy"],
+            n_trials=kwargs["n_trials"],
+            storage_url=kwargs["storage_url"],
+            held_out_fraction=kwargs["held_out_fraction"],
+            cv_group=kwargs["cv_group"],
+            slurm=kwargs["slurm"],
+        ).storage_url
+
+    monkeypatch.setattr(cli, "run_tuning", _capture_resolved_storage)
+    cli.main([str(spec_path), "-i", str(tmp_path), "-o", str(tmp_path / "out")])
+
+    assert captured == {
+        "cli_storage_url": None,
+        "resolved_storage_url": spec_url,
+    }
 
 
 def test_open_store_uses_env_url_for_local_run(tmp_path, monkeypatch):
@@ -242,6 +286,9 @@ def test_spec_storage_url_wins_over_env_without_cli_url(tmp_path, monkeypatch):
         def param_importances(self):
             return None
 
+        def terminal_trials(self):
+            return []
+
         def to_parquet(self, _path):
             pass
 
@@ -295,6 +342,9 @@ def test_cli_storage_url_wins_over_spec_url(tmp_path, monkeypatch):
 
         def param_importances(self):
             return None
+
+        def terminal_trials(self):
+            return []
 
     class _FakeEngine:
         def __init__(self, spec, store):
@@ -438,7 +488,7 @@ def test_cli_slurm_flag_uses_slurm_executor(tmp_path, monkeypatch):
         out,
         strategy="tpe",
         n_trials=4,
-        storage_url=f"sqlite:///{out / 'study.db'}",
+        storage_url=f"journal://{out.absolute() / 'journal.log'}",
         slurm=True,
         spec_path=spec_path,
         images_dir=tmp_path,

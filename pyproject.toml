@@ -142,6 +142,7 @@ topology = [
 [project.scripts]
 phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
 phenotypic-gui = "phenotypic.gui.shell._launcher:main"
+phenotypic-tune = "phenotypic.tune.__main__:main"
 
 [dependency-groups]
 dev = [

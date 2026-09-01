@@ -17,6 +17,7 @@ early-stopped one, ``FAIL`` for a failed candidate.
 from __future__ import annotations
 
 import logging
+import math
 from typing import TYPE_CHECKING, Any, Optional
 
 from ..strategy._optuna_support import (
@@ -25,12 +26,14 @@ from ..strategy._optuna_support import (
     PHENO_NUMBER as _ATTR_NUMBER,
     PHENO_OBJECTIVES as _ATTR_OBJECTIVES,
     PHENO_PARAMS as _ATTR_PARAMS,
+    PHENO_SCORE as _ATTR_SCORE,
     PHENO_SUSPICIOUS as _ATTR_SUSPICIOUS,
     PHENO_TERMS as _ATTR_TERMS,
     is_multi_objective_directions,
     study_objective_kwargs,
 )
 from .._study_store import Trial
+from ._storage import build_optuna_storage, is_journal_url, is_sqlite_url, journal_path_from_url
 
 if TYPE_CHECKING:  # pragma: no cover - typing only; never imports optuna at runtime
     import optuna  # type: ignore[import-not-found]
@@ -47,6 +50,12 @@ _CONVENTION_VALUE: str = "minimize-cost-v1"
 # `_LEGACY_STUDY_NAME` ("tune") and the two legacy-study helpers live in the
 # shared `strategy/_optuna_support.py` so the CLI store guard and the GUI
 # monitor (Phase 4) agree — import them, do not re-spell "tune" here.
+
+
+def _require_existing_backing_store(storage_url: str) -> None:
+    """Refuse a read-only journal open when its backing log is absent."""
+    if is_journal_url(storage_url) and not journal_path_from_url(storage_url).exists():
+        raise FileNotFoundError(journal_path_from_url(storage_url))
 
 
 class OptunaStudyStore:
@@ -80,12 +89,12 @@ class OptunaStudyStore:
         self._multi_objective = is_multi_objective_directions(directions)
 
         if create:
-            storage = optuna.storages.RDBStorage(
-                url=storage_url,
+            storage = build_optuna_storage(
+                storage_url,
                 heartbeat_interval=_HEARTBEAT_INTERVAL_S,
                 grace_period=_GRACE_PERIOD_S,
             )
-            if storage_url.startswith("sqlite"):
+            if is_sqlite_url(storage_url):
                 self._enable_sqlite_wal(storage)
 
             # UX-only (correctness is the _STUDY_NAME bump): if a pre-cutover
@@ -103,8 +112,9 @@ class OptunaStudyStore:
             self._study = optuna.create_study(**create_kwargs)
             self._study.set_user_attr(_CONVENTION_ATTR, _CONVENTION_VALUE)
         else:
+            _require_existing_backing_store(storage_url)
             self._study = optuna.load_study(
-                storage=storage_url,
+                storage=build_optuna_storage(storage_url),
                 study_name=study_name,
             )
 
@@ -255,16 +265,19 @@ class OptunaStudyStore:
         # ``frozen.value`` raises on a multi-objective study (read ``values``);
         # the scalar ``score`` is then the mean of the objectives (the same
         # projection the Evaluator applies).
-        if self._multi_objective:
+        raw_score = attrs.get(_ATTR_SCORE)
+        if self._multi_objective and objectives:
             score = (
                 float(sum(objectives.values()) / len(objectives))
                 if objectives
-                else 0.0
+                else math.inf
             )
         elif frozen.value is not None:
             score = float(frozen.value)
+        elif raw_score is not None:
+            score = float(raw_score)
         else:
-            score = 0.0
+            score = math.inf
         raw_gap = attrs.get(_ATTR_GAP)
         gap = float(raw_gap) if raw_gap is not None else None
         return Trial(
@@ -286,12 +299,28 @@ class OptunaStudyStore:
         frozen = self._study.get_trials(deepcopy=False)
         return [self._to_trial(f) for f in frozen]
 
+    def terminal_trials(self) -> list[Trial]:
+        """Return completed, pruned, and failed trials, excluding in-flight work."""
+        import optuna
+
+        frozen = self._study.get_trials(
+            deepcopy=False,
+            states=(
+                optuna.trial.TrialState.COMPLETE,
+                optuna.trial.TrialState.PRUNED,
+                optuna.trial.TrialState.FAIL,
+            ),
+        )
+        return [self._to_trial(f) for f in frozen]
+
     def __len__(self) -> int:
         return len(self._study.get_trials(deepcopy=False))
 
     def best(self) -> Optional[Trial]:
         """The non-failed trial with the lowest cost score, or ``None``."""
-        valid = [t for t in self.trials if not t.failed]
+        valid = [
+            t for t in self.terminal_trials() if not t.failed and math.isfinite(t.score)
+        ]
         if not valid:
             return None
         return min(valid, key=lambda t: t.score)
@@ -302,7 +331,7 @@ class OptunaStudyStore:
 
     def completed_count(self) -> int:
         """The number of completed (non-failed) trials; pruned counts as done."""
-        return sum(1 for t in self.trials if not t.failed)
+        return sum(1 for t in self.terminal_trials() if not t.failed)
 
     def param_importances(self) -> Optional[dict[str, float]]:
         """The study's fANOVA importances, or ``None`` when unavailable.

@@ -96,6 +96,10 @@ class JournalStudyStore:
     def __len__(self) -> int:
         return len(self._trials)
 
+    def terminal_trials(self) -> list[Trial]:
+        """Return every journal entry; this backend has no in-flight records."""
+        return list(self._trials)
+
     def best(self) -> Optional[Trial]:
         """The non-failed trial with the lowest cost score, or ``None``."""
         valid = [t for t in self._trials if not t.failed]

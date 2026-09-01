@@ -482,6 +482,9 @@ TRIALS_PARQUET: Final[str] = "trials.parquet"
 #: either location (no migration).
 STUDY_DB: Final[str] = "study.db"
 
+#: Append-only Optuna JournalStorage log for a distributed tuning run.
+STUDY_JOURNAL_LOG: Final[str] = "journal.log"
+
 #: The robust-eval held-out split assignment ``split.json`` written inside
 #: :data:`DIR_SPLITS`. A machine-state sidecar — it must survive a
 #: fresh-master rewrite and gate resume — so it lives in the hidden tune cache
@@ -1269,6 +1272,11 @@ def tune_cache_study_db_path(output_dir: Path) -> Path:
         ``<output_dir>/.pht-tune-cache/study.db``.
     """
     return tune_cache_dir(output_dir) / STUDY_DB
+
+
+def tune_cache_journal_path(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/journal.log`` for a tune fleet."""
+    return tune_cache_dir(output_dir) / STUDY_JOURNAL_LOG
 
 
 def tune_cache_splits_dir(output_dir: Path) -> Path:

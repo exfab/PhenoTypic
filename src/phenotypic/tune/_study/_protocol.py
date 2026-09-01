@@ -38,6 +38,10 @@ class StudyStore(Protocol):
         """The number of recorded trials."""
         ...
 
+    def terminal_trials(self) -> list["Trial"]:
+        """The subset of trials in a terminal state."""
+        ...
+
     def best(self) -> Optional["Trial"]:
         """The non-failed trial with the highest score, or ``None``."""
         ...

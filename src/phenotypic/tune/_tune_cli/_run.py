@@ -52,6 +52,7 @@ from ..strategy._config import (
     StrategyConfig,
 )
 from .._study._protocol import StudyStore
+from .._study._storage import is_sqlite_url as _is_sqlite_url, journal_url_for_path
 from .._study_store import JournalStudyStore, Trial
 
 #: Ordinary image files ``GridImage.imread`` decodes. ``.h5`` used to be
@@ -77,6 +78,10 @@ _RUN_MARKER_VERSION: Final[int] = 1
 #: impossible by construction, not contingent on a runtime guard.
 _STUDY_NAME: Final[str] = "tune_cost_v1"
 
+_SLURM_SUGAR_KEYS: Final[frozenset[str]] = frozenset(
+    {"partition", "mem", "time", "constraint"}
+)
+
 
 def _default_study_db_url(output_dir: Path) -> str:
     """SQLite URL for the run's ``study.db``, resuming a legacy-root copy.
@@ -87,6 +92,13 @@ def _default_study_db_url(output_dir: Path) -> str:
     location (the resolver's no-file default).
     """
     return f"sqlite:///{io.resolve_study_db_path(output_dir)}"
+
+
+def _default_journal_url(output_dir: Path) -> str:
+    """Return the absolute run-local journal URL for a Slurm fleet."""
+    return journal_url_for_path(
+        io.tune_cache_journal_path(Path(output_dir).absolute())
+    )
 
 
 @dataclass(frozen=True)
@@ -103,6 +115,7 @@ def _resolve_storage_url(
     output_dir: Path,
     *,
     spec_storage_url: Optional[str] = None,
+    slurm: bool = False,
 ) -> str:
     """Resolve the Optuna storage URL with the canonical 4-way fallback.
 
@@ -138,7 +151,7 @@ def _resolve_storage_url(
         storage_url
         or spec_storage_url
         or os.environ.get(PHENOTYPIC_TUNE_STORAGE_URL_ENV)
-        or _default_study_db_url(output_dir)
+        or (_default_journal_url(output_dir) if slurm else _default_study_db_url(output_dir))
     )
     _reject_password_in_url(url)
     return url
@@ -392,6 +405,7 @@ def _resolve_run_config(
     storage_url: Optional[str],
     held_out_fraction: Optional[float],
     cv_group: Optional[str],
+    slurm: bool = False,
 ) -> _ResolvedRunConfig:
     """Resolve CLI overrides and storage policy before any run side effects."""
     # Reject explicit secrets before an Optuna strategy override imports optuna.
@@ -426,7 +440,10 @@ def _resolve_run_config(
     if is_optuna:
         spec_storage_url = getattr(resolved_spec.strategy, "storage_url", None)
         effective_storage_url = _resolve_storage_url(
-            storage_url, output_dir, spec_storage_url=spec_storage_url
+            storage_url,
+            output_dir,
+            spec_storage_url=spec_storage_url,
+            slurm=slurm,
         )
         resolved_spec = resolved_spec.model_copy(
             update={
@@ -464,6 +481,7 @@ def _open_store(
     storage_url: Optional[str],
     resume_path: Path,
     directions: Optional[list[str]] = None,
+    create: bool = True,
 ) -> StudyStore:
     """Select + open the study backend matching ``strategy``.
 
@@ -499,9 +517,14 @@ def _open_store(
             output_dir,
             spec_storage_url=getattr(strategy, "storage_url", None),
         )
-        return OptunaStudyStore(
-            storage_url=url, study_name=_STUDY_NAME, directions=directions
-        )
+        store_kwargs: dict[str, Any] = {
+            "storage_url": url,
+            "study_name": _STUDY_NAME,
+            "directions": directions,
+        }
+        if not create:
+            store_kwargs["create"] = False
+        return OptunaStudyStore(**store_kwargs)
     if resume_path.exists():
         return JournalStudyStore.from_parquet(resume_path)
     return JournalStudyStore()
@@ -526,6 +549,7 @@ def run_tuning(
     slurm_mem: Optional[str] = None,
     slurm_time: Optional[str] = None,
     slurm_constraint: Optional[str] = None,
+    slurm_args: Optional[dict[str, Any]] = None,
     nrows: Optional[int] = None,
     ncols: Optional[int] = None,
 ) -> Optional[Trial]:
@@ -581,6 +605,7 @@ def run_tuning(
         storage_url=storage_url,
         held_out_fraction=held_out_fraction,
         cv_group=cv_group,
+        slurm=slurm,
     )
     resolved_spec = resolved.spec
     effective_storage_url = resolved.storage_url
@@ -592,6 +617,7 @@ def run_tuning(
             spec_path=spec_path,
             images_dir=images_dir,
             n_workers=n_workers,
+            screen=screen,
         )
 
     split, images_by_name, cal_images = _resolve_calibration_images(
@@ -627,10 +653,13 @@ def run_tuning(
             images_dir=images_dir,
             split_path=io.tune_cache_split_assignment_path(output_dir),
             n_workers=n_workers,
-            slurm_partition=slurm_partition,
-            slurm_mem=slurm_mem,
-            slurm_time=slurm_time,
-            slurm_constraint=slurm_constraint,
+            slurm_args=merge_slurm_args(
+                slurm_args,
+                partition=slurm_partition,
+                mem=slurm_mem,
+                time=slurm_time,
+                constraint=slurm_constraint,
+            ),
             nrows=nrows,
             ncols=ncols,
         )
@@ -694,10 +723,15 @@ def _validate_slurm_request(
     spec_path: Optional[Path],
     images_dir: Optional[Path],
     n_workers: Optional[int],
+    screen: bool = False,
 ) -> None:
     """Reject unsupported SLURM combinations before any run artifact is written."""
+    if screen:
+        raise ValueError("--screen is not supported with --slurm")
     if not resolved.is_optuna:
         raise ValueError("--slurm requires an Optuna strategy")
+    if _is_sqlite_url(resolved.storage_url):
+        raise ValueError("--slurm cannot use a SQLite storage URL")
     if spec_path is None or images_dir is None:
         raise ValueError(
             "--slurm requires the on-disk spec path and image directory "
@@ -705,6 +739,39 @@ def _validate_slurm_request(
         )
     if n_workers is not None and n_workers <= 0:
         raise ValueError("--n-workers must be a positive integer")
+
+
+def _canonical_slurm_argument(key: str, value: Any) -> tuple[str, Any]:
+    """Collapse aliases onto the same key used by SBATCH directive rendering."""
+    if key == "mem_gb":
+        return "slurm_mem", f"{value}G"
+    if key.startswith("slurm_"):
+        return key, value
+    return f"slurm_{key}", value
+
+
+def merge_slurm_args(
+    explicit: Optional[dict[str, Any]],
+    *,
+    partition: Optional[str],
+    mem: Optional[str],
+    time: Optional[str],
+    constraint: Optional[str],
+) -> dict[str, Any]:
+    """Merge legacy Slurm flags with explicit pairs; explicit values win."""
+    merged: dict[str, Any] = {}
+    for name, value in (
+        ("partition", partition),
+        ("mem", mem),
+        ("time", time),
+        ("constraint", constraint),
+    ):
+        if value is not None:
+            merged[f"slurm_{name}"] = value
+    for key, value in (explicit or {}).items():
+        canonical_key, canonical_value = _canonical_slurm_argument(str(key), value)
+        merged[canonical_key] = canonical_value
+    return merged
 
 
 def _headline_winner(store: StudyStore) -> Optional[Trial]:
@@ -757,10 +824,7 @@ def _submit_slurm_fleet(
     images_dir: Optional[Path],
     split_path: Path,
     n_workers: Optional[int] = None,
-    slurm_partition: Optional[str] = None,
-    slurm_mem: Optional[str] = None,
-    slurm_time: Optional[str] = None,
-    slurm_constraint: Optional[str] = None,
+    slurm_args: Optional[dict[str, Any]] = None,
     nrows: Optional[int] = None,
     ncols: Optional[int] = None,
 ) -> Optional[Trial]:
@@ -821,15 +885,6 @@ def _submit_slurm_fleet(
     # is OMITTED so format_sbatch_directives emits no directive for it (the
     # cluster default applies). Notably ``slurm_partition`` is no longer hardcoded
     # to "batch": a cluster without a "batch" partition would reject every job.
-    slurm_args: dict[str, Any] = {}
-    if slurm_partition is not None:
-        slurm_args["slurm_partition"] = slurm_partition
-    if slurm_mem is not None:
-        slurm_args["slurm_mem"] = slurm_mem
-    if slurm_time is not None:
-        slurm_args["slurm_time"] = slurm_time
-    if slurm_constraint is not None:
-        slurm_args["slurm_constraint"] = slurm_constraint
     # Workers reload the RESOLVED spec persisted to deliverables/tuning_spec.json
     # (written above), NOT the raw input ``spec_path``: the --strategy / --n-trials
     # / --held-out overrides live only in the resolved spec, so handing the workers
@@ -842,7 +897,7 @@ def _submit_slurm_fleet(
         split_path=Path(split_path),
         study_name=_STUDY_NAME,
         n_workers=resolved_workers,
-        slurm_args=slurm_args,
+        slurm_args=dict(slurm_args or {}),
         storage_url=url,
         python_command=python_command,
         nrows=nrows,
@@ -1002,7 +1057,7 @@ def _export_trials_parquet(store: StudyStore, trials_path: Path) -> None:
     if isinstance(store, JournalStudyStore):
         store.to_parquet(trials_path)
         return
-    mirror = JournalStudyStore(list(store.trials))
+    mirror = JournalStudyStore(store.terminal_trials())
     mirror.to_parquet(trials_path)
 
 

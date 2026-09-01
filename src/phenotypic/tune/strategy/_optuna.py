@@ -233,10 +233,12 @@ class OptunaStrategy:
             shared_study.pruner = pruner
             self._study = shared_study
         else:
+            from .._study._storage import build_optuna_storage
+
             create_kwargs: dict[str, Any] = {
                 "sampler": sampler_obj,
                 "pruner": pruner,
-                "storage": storage_url,
+                "storage": build_optuna_storage(storage_url) if storage_url is not None else None,
                 "study_name": study_name,
                 "load_if_exists": study_name is not None,
                 **study_objective_kwargs(self._directions),
