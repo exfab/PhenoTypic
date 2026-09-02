@@ -852,16 +852,20 @@ def plottable(df: pl.DataFrame) -> pl.DataFrame:
     """
     if CURATION_PHANTOM_COL not in df.columns:
         return df
-    # strict=False: a string-typed flag raises InvalidOperationError on a
-    # strict cast (Utf8View to Boolean), which 500s the tab rather than
-    # mis-filtering. Non-castable values become null and fill_null(False)
-    # keeps the row, so a malformed flag shows too many points rather than
-    # silently hiding real colonies.
-    return df.filter(
-        ~pl.col(CURATION_PHANTOM_COL)
-        .cast(pl.Boolean, strict=False)
-        .fill_null(False)
-    )
+    # DO NOT reach for `strict=False` here. Measured on polars 1.41:
+    # Utf8 -> Boolean is unsupported outright, and BOTH strict=True and
+    # strict=False raise InvalidOperationError -- even on clean values like
+    # ["false", "true"] or ["0", "1"]. So `strict=False` is not a lenient
+    # cast that yields nulls; it is the same unsupported operation, and a
+    # string-typed flag still 500s the tab.
+    #
+    # Branch on the dtype instead. Whatever shape is chosen, keep the
+    # failure DIRECTION: a malformed flag must show too many points, never
+    # silently hide real colonies.
+    col = df[CURATION_PHANTOM_COL]
+    if col.dtype != pl.Boolean:
+        return df
+    return df.filter(~pl.col(CURATION_PHANTOM_COL).fill_null(False))
 ```
 
 - [ ] **Step 4: Run the tests**
@@ -2750,7 +2754,7 @@ would have been invisible until runtime.
 | D1 | `_read_store_level` takes a **layer**, not a member path | `rgb` works by accident; `objmap` raises; `detect_mat`/`gray` return `(0, 0)` silently |
 | C1 | Shared-axes test asserted `<= 1`; `share_axes=False` yields **0** | Cannot detect its own regression |
 | C2 | `showlegend=first_cell` drops any series absent from cell (0,0) | On a sparse frame, points drawn with no legend entry |
-| C3 | `plottable` strict-casts the curation flag | A string-typed flag 500s the tab |
+| C3 | `plottable` casts the curation flag to Boolean | A string-typed flag 500s the tab. **The Gate 0 fix (`strict=False`) was itself wrong** — polars 1.41 rejects `Utf8 -> Boolean` under both strict modes, so the cast must be avoided rather than softened. Found by cluster C spiking rather than assuming |
 | E1 | `gui/_assets/results_viewer.js` does not exist | Wrong path; the file is under `gui/results_viewer/_assets/` |
 | B6 | Export tests had no Chrome guard | Hard-fail with kaleido's RuntimeError, reading as a broken export rather than a missing prerequisite |
 | B7 | The ink assertion was `@pytest.mark.slow` **and** needed an absent `pymupdf` | `addopts` carries `-m 'not slow'`, so §15's "only defence" against a blank PDF ran nowhere |
