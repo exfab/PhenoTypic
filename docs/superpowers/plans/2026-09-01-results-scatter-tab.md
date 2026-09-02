@@ -1029,9 +1029,21 @@ MEAS = {
 
 
 def test_exact_headers_group_by_measurer() -> None:
+    """Also asserts the NEGATIVE, or a total-failure bug passes.
+
+    If the implementation calls ``get_measurement_infoclasses`` on the class
+    rather than an instance it raises, every measurer is skipped, and every
+    column lands in Unattributed. Asserting only "Shape_Area is in
+    MeasureShape" would KeyError, but asserting membership without
+    asserting absence let three sibling tests pass against exactly that bug.
+    """
     groups = group_columns(["Shape_Area", "Intensity_MeanIntensity"], MEAS)
     assert "Shape_Area" in groups["MeasureShape"]
     assert "Intensity_MeanIntensity" in groups["MeasureIntensity"]
+    assert "Unattributed" not in groups, (
+        "no column here is unclaimed; an Unattributed group means the "
+        "measurers were never successfully constructed"
+    )
 
 
 def test_parameterized_schemas_fall_back_to_category() -> None:
@@ -1045,10 +1057,27 @@ def test_parameterized_schemas_fall_back_to_category() -> None:
 
 
 def test_measurer_params_change_the_claimed_headers() -> None:
-    """MeasureColor with XYZ off must not claim ColorXYZ columns."""
-    groups = group_columns(["ColorXYZ_X"], MEAS)
-    assert "ColorXYZ_X" not in groups.get("MeasureColor", [])
-    assert "ColorXYZ_X" in groups["Unattributed"]
+    """The same column must flip groups when the run's params change.
+
+    Asserting only the "off" case passes against an implementation that
+    claims NOTHING -- everything is Unattributed, so the column is
+    correctly absent from MeasureColor for entirely the wrong reason. The
+    "on" case is what makes this discriminate.
+    """
+    off = group_columns(["ColorXYZ_X"], MEAS)
+    assert "ColorXYZ_X" not in off.get("MeasureColor", [])
+    assert "ColorXYZ_X" in off["Unattributed"]
+
+    on_cfg = dict(MEAS)
+    on_cfg["MeasureColor"] = {
+        "class": "MeasureColor",
+        "params": {"include_XYZ": True, "include_xy": True},
+    }
+    on = group_columns(["ColorXYZ_X"], on_cfg)
+    assert "ColorXYZ_X" in on["MeasureColor"], (
+        "with include_XYZ=True the column must be claimed -- if it is still "
+        "Unattributed the measurer is not being constructed from its params"
+    )
 
 
 def test_metadata_is_one_flat_group_and_curation_is_its_own() -> None:
@@ -1060,10 +1089,14 @@ def test_metadata_is_one_flat_group_and_curation_is_its_own() -> None:
 
 
 def test_unclaimed_columns_land_in_unattributed() -> None:
-    groups = group_columns(["Object_Label", "Bbox_CenterRR", "Grid_RowNum"], MEAS)
+    """Mixes claimed and unclaimed, so "everything is unattributed" fails."""
+    groups = group_columns(
+        ["Object_Label", "Bbox_CenterRR", "Grid_RowNum", "Shape_Area"], MEAS
+    )
     assert set(groups["Unattributed"]) == {
         "Object_Label", "Bbox_CenterRR", "Grid_RowNum"
     }
+    assert groups["MeasureShape"] == ["Shape_Area"]
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
@@ -1687,6 +1720,8 @@ guard that is skipped by default is not a guard.
 """Export must produce a PDF with visible ink, not merely a valid file."""
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import polars as pl
 import pytest
@@ -1695,6 +1730,25 @@ from phenotypic.gui.results_viewer._scatter_tab._pdf import export_sections_pdf
 from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec
 
 pytest.importorskip("pypdf")
+
+
+@pytest.fixture(scope="module")
+def chrome_or_skip() -> None:
+    """Skip, loudly, when kaleido has no browser to drive.
+
+    Both export tests need Chrome. Without this they do not skip -- they
+    hard-fail with kaleido's RuntimeError, which reads as a broken export
+    rather than a missing prerequisite.
+    """
+    import shutil
+    from pathlib import Path
+
+    if not (
+        any(shutil.which(b) for b in ("google-chrome", "chromium", "chrome"))
+        or Path.home().joinpath(".cache/kaleido").exists()
+        or os.environ.get("BROWSER_PATH")
+    ):
+        pytest.skip("no Chrome for kaleido; run `uv run plotly_get_chrome`")
 
 
 def _frame(n: int = 60) -> pl.DataFrame:
@@ -1707,7 +1761,7 @@ def _frame(n: int = 60) -> pl.DataFrame:
     })
 
 
-def test_one_page_is_written_per_section() -> None:
+def test_one_page_is_written_per_section(chrome_or_skip) -> None:
     import io
     from pypdf import PdfReader
 
@@ -1717,9 +1771,12 @@ def test_one_page_is_written_per_section() -> None:
     assert PdfReader(io.BytesIO(out)).get_num_pages() == 2
 
 
-@pytest.mark.slow
-def test_the_exported_page_contains_ink_not_just_axes() -> None:
+def test_the_exported_page_contains_ink_not_just_axes(chrome_or_skip) -> None:
     """The regression pin for the silent-blank-export failure.
+
+    NOT marked ``slow``. ``addopts`` carries ``-m 'not slow'``, so a slow
+    marker here would deselect the only defence against a blank export on
+    every default run -- a green suite over 23 empty pages.
 
     kaleido renders Scattergl as blank axes with exit code 0 and no
     warning, so a test that checks the file exists passes against an empty
@@ -1926,6 +1983,20 @@ def test_a_stale_fingerprint_is_refused_not_resolved() -> None:
     assert resolve_click(_master(), 1, "old", "new") is None
 
 
+def test_a_phantom_row_is_refused_not_crashed_on() -> None:
+    """master_df is the mirror, so it carries metadata-only phantoms.
+
+    ``int(None)`` raises TypeError and 500s the callback; the point is that
+    a phantom has no colony to open, so the answer is None.
+    """
+    master = pl.DataFrame({
+        "Metadata_Dataset": ["ds"],
+        "Metadata_ImageName": ["a"],
+        "Object_Label": [None],
+    })
+    assert resolve_click(master, 0, "fp", "fp") is None
+
+
 def test_an_out_of_range_index_is_refused() -> None:
     assert resolve_click(_master(), 99, "fp", "fp") is None
     assert resolve_click(_master(), -1, "fp", "fp") is None
@@ -2051,10 +2122,16 @@ def resolve_click(
     if index < 0 or index >= master_df.height:
         return None
     row = master_df.row(index, named=True)
+    label = row[KEY_OBJECT_LABEL]
+    if label is None:
+        # master_df is the mirror, which carries metadata-only phantoms --
+        # 117,415 of them in the full run. A phantom has no colony to open,
+        # and int(None) would 500 the callback.
+        return None
     return ColonyRef(
         dataset=str(row[KEY_DATASET]),
         stem=str(row[KEY_IMAGE_FILE]),
-        label=int(row[KEY_OBJECT_LABEL]),
+        label=int(label),
     )
 ```
 
@@ -2524,6 +2601,10 @@ would have been invisible until runtime.
 | C2 | `showlegend=first_cell` drops any series absent from cell (0,0) | On a sparse frame, points drawn with no legend entry |
 | C3 | `plottable` strict-casts the curation flag | A string-typed flag 500s the tab |
 | E1 | `gui/_assets/results_viewer.js` does not exist | Wrong path; the file is under `gui/results_viewer/_assets/` |
+| B6 | Export tests had no Chrome guard | Hard-fail with kaleido's RuntimeError, reading as a broken export rather than a missing prerequisite |
+| B7 | The ink assertion was `@pytest.mark.slow` **and** needed an absent `pymupdf` | `addopts` carries `-m 'not slow'`, so §15's "only defence" against a blank PDF ran nowhere |
+| F1 | Four of Task 7's five tests passed against a class-not-instance bug | Reported coverage that did not exist — found by mutation, not by reading |
+| F2 | `resolve_click` did `int(None)` on a phantom row | `master_df` is the mirror; a phantom click 500s the callback |
 
 Two spec figures were also corrected by the spikes: level-0's true `rgb`
 range is **(17290, 47898)**, not the (17912, 45344) §2.3(c) quotes, so the
