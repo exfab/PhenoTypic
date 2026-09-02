@@ -50,7 +50,7 @@
 - `src/phenotypic/gui/results_viewer/_ids.py` — add `TAB_SCATTER_ID`.
 - `src/phenotypic/gui/results_viewer/_layout.py` — mount the tab.
 - `src/phenotypic/gui/results_viewer/_app.py` — register callbacks and the crop route.
-- `src/phenotypic/gui/_assets/results_viewer.js` — generalize the splitter.
+- `src/phenotypic/gui/results_viewer/_assets/results_viewer.js` — generalize the splitter.
 - Tests under `tests/unit/gui/results_viewer/`.
 
 ---
@@ -108,6 +108,25 @@ def test_uint8_stores_are_passed_through_unchanged() -> None:
 
     arr = np.array([0, 7, 128, 255], dtype=np.uint8)
     assert np.array_equal(scale_to_uint8(arr, 0, 255), arr)
+
+
+def test_the_display_range_works_for_every_layer_not_just_rgb() -> None:
+    """``objmap``'s member is ``rgb/labels/objmap``, not ``objmap``.
+
+    Passing a member path where the reader wants a layer name appears to
+    work for ``rgb`` -- the series map is the identity -- and raises
+    KeyError for ``objmap`` while returning a silent ``(0, 0)`` for
+    ``detect_mat`` and ``gray``. That asymmetry is why this asserts on
+    every layer the store carries.
+    """
+    from phenotypic.gui._shared.tiles import image_display_range
+
+    if not FIXTURE_STORE.exists():
+        pytest.skip("migration-test fixture absent")
+
+    for layer in ("rgb", "objmap", "detect_mat", "gray"):
+        lo, hi = image_display_range(FIXTURE_STORE, layer)
+        assert hi > lo, f"{layer} produced a degenerate range ({lo}, {hi})"
 
 
 def test_a_brighter_window_renders_brighter_than_a_dim_one(store: Path) -> None:
@@ -205,8 +224,15 @@ def image_display_range(store_path: Path, layer: LayerName) -> tuple[int, int]:
 
     Returns:
         ``(lo, hi)`` as ints. Falls back to ``(0, 255)`` when the layer has
-        no pyramid levels to read.
+        no pyramid levels to read, and when the level is degenerate
+        (``lo == hi``), so a constant layer cannot produce a zero-width
+        range that divides to infinity.
     """
+    # _read_store_level takes a LAYER and resolves the member itself --
+    # passing a member path here "works" for rgb only because the fixture's
+    # series map is the identity, and raises KeyError for objmap, whose
+    # member is rgb/labels/objmap. Verified against the real signature:
+    # _read_store_level(store_path, layer, level, window=None).
     block = _readable_block(store_path)
     member = _store_member_path(block, store_path, layer)
     levels = sorted(
@@ -215,11 +241,12 @@ def image_display_range(store_path: Path, layer: LayerName) -> tuple[int, int]:
     )
     if not levels:
         return (0, 255)
-    smallest = _read_store_level(store_path, member, levels[-1])
+    smallest = _read_store_level(store_path, layer, int(levels[-1]))
     finite = smallest[np.isfinite(smallest)] if smallest.dtype.kind == "f" else smallest
     if finite.size == 0:
         return (0, 255)
-    return (int(finite.min()), int(finite.max()))
+    lo, hi = int(finite.min()), int(finite.max())
+    return (lo, hi) if hi > lo else (0, 255)
 ```
 
 - [ ] **Step 4: Run the tests to verify they pass**
@@ -730,7 +757,16 @@ def plottable(df: pl.DataFrame) -> pl.DataFrame:
     """
     if CURATION_PHANTOM_COL not in df.columns:
         return df
-    return df.filter(~pl.col(CURATION_PHANTOM_COL).cast(pl.Boolean).fill_null(False))
+    # strict=False: a string-typed flag raises InvalidOperationError on a
+    # strict cast (Utf8View to Boolean), which 500s the tab rather than
+    # mis-filtering. Non-castable values become null and fill_null(False)
+    # keeps the row, so a malformed flag shows too many points rather than
+    # silently hiding real colonies.
+    return df.filter(
+        ~pl.col(CURATION_PHANTOM_COL)
+        .cast(pl.Boolean, strict=False)
+        .fill_null(False)
+    )
 ```
 
 - [ ] **Step 4: Run the tests**
@@ -1349,6 +1385,30 @@ def test_the_export_figure_uses_svg_traces() -> None:
     assert all(t.type == "scatter" for t in fig.data)
 
 
+def test_a_series_absent_from_the_first_cell_still_reaches_the_legend() -> None:
+    """``showlegend=first_cell`` drops any series missing from cell 1.
+
+    On a sparse frame -- 23 strains over 36 images in the fixture -- that
+    is the common case, not a corner: a hue that happens not to appear in
+    the top-left facet vanishes from the legend while its points are drawn.
+    Track which series have been given a legend entry instead.
+    """
+    df = pl.DataFrame({
+        "x": [1, 2, 3, 4],
+        "y": [1.0, 2.0, 3.0, 4.0],
+        "r": ["0", "0", "1", "1"],
+        "c": ["0", "0", "0", "0"],
+        "hue": ["a", "a", "b", "b"],      # 'b' never appears in cell (0,0)
+        "_scatter_row_index": [0, 1, 2, 3],
+    })
+    spec = FigureSpec(x_col="x", y_col="y", row_col="r", col_col="c", hue_col="hue")
+    fig = build_scatter_figure(df, spec, plan_facets(df, spec))
+
+    drawn = {t.name for t in fig.data}
+    in_legend = {t.name for t in fig.data if t.showlegend}
+    assert drawn == in_legend, f"drawn {drawn} but only {in_legend} in the legend"
+
+
 def test_every_point_carries_its_row_index_as_customdata() -> None:
     df, spec = _frame(), _spec()
     fig = build_scatter_figure(df, spec, plan_facets(df, spec))
@@ -1390,7 +1450,24 @@ def test_shared_axes_give_every_facet_one_range() -> None:
         tuple(v["range"]) for k, v in fig.layout.to_plotly_json().items()
         if k.startswith("yaxis") and isinstance(v, dict) and v.get("range")
     }
-    assert len(ranges) <= 1
+    # `<= 1` would pass on ZERO ranges too, which is exactly what
+    # share_axes=False produces -- so the assertion must be `== 1` or it
+    # cannot detect the regression it is named for.
+    assert len(ranges) == 1, f"expected one shared y range, got {ranges}"
+
+
+def test_unshared_axes_do_not_set_one_range() -> None:
+    """The negative half. Without this, the test above proves nothing."""
+    df = _frame()
+    spec = FigureSpec(
+        x_col="x", y_col="y", row_col="r", col_col="c", share_axes=False
+    )
+    fig = build_scatter_figure(df, spec, plan_facets(df, spec))
+    ranges = {
+        tuple(v["range"]) for k, v in fig.layout.to_plotly_json().items()
+        if k.startswith("yaxis") and isinstance(v, dict) and v.get("range")
+    }
+    assert len(ranges) != 1
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
@@ -1484,7 +1561,10 @@ def build_scatter_figure(
         if spec.shape_col and spec.shape_col in df.columns else [None]
     )
 
-    first_cell = True
+    # Track which series already have a legend entry. Keying on the series
+    # rather than on "is this the first cell" is what stops a hue absent
+    # from cell (0,0) from vanishing out of the legend on a sparse frame.
+    legended: set[str] = set()
     for r_i, r_val in enumerate(plan.rows or [""], start=1):
         for c_i, c_val in enumerate(plan.cols or [""], start=1):
             cell = df
@@ -1519,7 +1599,7 @@ def build_scatter_figure(
                             mode="markers",
                             name=label,
                             legendgroup=label,
-                            showlegend=first_cell,
+                            showlegend=label not in legended,
                             customdata=[[i] for i in part[CUSTOMDATA_COL].to_list()],
                             marker=dict(
                                 size=spec.marker_size,
@@ -1532,7 +1612,7 @@ def build_scatter_figure(
                         row=r_i,
                         col=c_i,
                     )
-            first_cell = False
+                    legended.add(label)
 
     if spec.share_axes:
         x_rng, y_rng = _axis_range(df, spec.x_col), _axis_range(df, spec.y_col)
@@ -1585,11 +1665,21 @@ Spec §11.
 - Consumes: `build_scatter_figure` (Task 9).
 - Produces: `export_sections_pdf(df, spec, sections, *, width_in=16, height_in=12) -> bytes`
 
-- [ ] **Step 1: Add the dependency**
+- [ ] **Step 1: Add both dependencies**
 
 ```bash
 uv add pypdf
+uv add --group dev pymupdf
 ```
+
+`pymupdf` is not optional here, and this is the one place the plan insists
+on a test dependency. The ink assertion is the **only** defence against
+kaleido's silent blank export — a valid, well-formed, entirely empty PDF
+produced with exit code 0 and no warning. Behind a bare
+`pytest.importorskip("fitz")` on a machine without pymupdf (this one: fitz,
+pymupdf and pypdf are all absent) that assertion never runs anywhere, and
+the suite reports green over an export that produces 23 blank pages. A
+guard that is skipped by default is not a guard.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -1638,8 +1728,7 @@ def test_the_exported_page_contains_ink_not_just_axes() -> None:
     """
     import io
 
-    pytest.importorskip("pypdf")
-    fitz = pytest.importorskip("fitz", reason="pymupdf needed to rasterize")
+    import fitz  # pymupdf, a dev dependency -- NOT importorskip, see Step 1
 
     df = _frame()
     spec = FigureSpec(x_col="x", y_col="y", section_col="s")
@@ -1652,6 +1741,20 @@ def test_the_exported_page_contains_ink_not_just_axes() -> None:
 
     assert (gray < 128).sum() > 2000, "exported page has no ink beyond axes"
 ```
+
+- [ ] **Step 2b: Install Chrome for kaleido, once**
+
+```bash
+uv run plotly_get_chrome
+```
+
+Verified absent on this machine: no `google-chrome`, `chromium` or
+`chromium-browser` on `PATH`, no `~/.cache/kaleido`, `BROWSER_PATH` unset.
+Without it every kaleido call raises `RuntimeError: Kaleido requires Google
+Chrome`. Ask the orchestrator to run this — it is a ~150 MB download and
+may need approval. If HPCC egress refuses it, stop and report rather than
+falling back to the Playwright-vendored browser: that couples PDF export to
+the e2e browser cache, which was considered and rejected in spec §16.1.
 
 - [ ] **Step 3: Run it to verify it fails**
 
@@ -1981,7 +2084,7 @@ stale index rather than mis-resolving it."
 Spec §7.
 
 **Files:**
-- Modify: `src/phenotypic/gui/_assets/results_viewer.js` — section F
+- Modify: `src/phenotypic/gui/results_viewer/_assets/results_viewer.js` — section F
 - Create: `src/phenotypic/gui/results_viewer/_scatter_tab/_ids.py`, `_layout.py`
 - Modify: `src/phenotypic/gui/results_viewer/_ids.py`, `_layout.py`
 - Test: `tests/unit/gui/results_viewer/test_layout_tab_shape.py`
@@ -2389,9 +2492,41 @@ raising. Splitting a contract across two clusters is how that survived a careful
 read, so E now owns both halves — `index_frame` and `resolve_click` live in one
 module, and G is briefed that calling `with_row_index` itself is a defect.
 
+### Gate 0 findings (resolved 2026-09-02)
+
+Ten defects, five from reading and five from spikes the reviewer wrote and
+the orchestrator ran. All are fixed above; recorded here because several
+would have been invisible until runtime.
+
+| # | Defect | How it would have shown up |
+|---|---|---|
+| B1 | Click index built on the filtered frame, resolved against `master_df` | Every click opens a real but **wrong** colony. Nothing raises |
+| B2 | `apply_filters` and `STORE_FILTER_STATE` invented | ImportError at first run |
+| B3 | `callback_map` inputs are dicts, not objects | Test raises before *and* after — gates nothing |
+| B4 | "Empty facet" test planned a 1x1 grid with no empty facet | Vacuous |
+| B5 | Display-range test asserted `f(x) == f(x)` | Vacuous; the signature cannot express the property |
+| D1 | `_read_store_level` takes a **layer**, not a member path | `rgb` works by accident; `objmap` raises; `detect_mat`/`gray` return `(0, 0)` silently |
+| C1 | Shared-axes test asserted `<= 1`; `share_axes=False` yields **0** | Cannot detect its own regression |
+| C2 | `showlegend=first_cell` drops any series absent from cell (0,0) | On a sparse frame, points drawn with no legend entry |
+| C3 | `plottable` strict-casts the curation flag | A string-typed flag 500s the tab |
+| E1 | `gui/_assets/results_viewer.js` does not exist | Wrong path; the file is under `gui/results_viewer/_assets/` |
+
+Two spec figures were also corrected by the spikes: level-0's true `rgb`
+range is **(17290, 47898)**, not the (17912, 45344) §2.3(c) quotes, so the
+`rgb/4` under-coverage is worse than stated — about 11% low and 8% high.
+And `image_display_range` now falls back on a degenerate level rather than
+returning a zero-width range.
+
+Confirmed sound and needing no change: the schema-prefix derivation (no
+`category()` raises; not import-order dependent), `derive_frame_index` (all
+three tests pass; left-join preserves order at n=2000), and Task 7's
+grouping, which reproduces 17/15/12/8/65/16/1/15 = 149 of 149 against the
+real fixture.
+
 ### Gates
 
 - **Gate 0 — before any implementation:** `plan-reviewer` over this plan.
+  **Run 2026-09-02; ten defects found and fixed. See the table above.**
 - **After each cluster (light):** orchestrator reads the diff, runs tests and
   lint, and pauses to surface any design question the review raises.
 - **After D and after G (deep):** `implementation-test-reviewer` over the
