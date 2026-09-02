@@ -2097,16 +2097,30 @@ Spec §7.
 
 Extend `tests/unit/gui/results_viewer/test_layout_tab_shape.py`:
 
+The module already has a `_tab_ids(layout)` helper (`:13`) and a
+`built_results_layout` fixture — use them, do not invent a helper.
+
+Note there is an **existing** test, `test_results_tabs_expose_exactly_the
+_mounted_surfaces` (`:33`), asserting the tab set is *exactly* Plate and
+Colony. Mounting a third tab must make that test fail first — that is the
+red step — then update its expected list. Do not delete it: it is what stops
+Heatmap or QC being remounted by accident.
+
 ```python
-def test_the_tab_bar_carries_plate_colony_and_scatter() -> None:
-    """Heatmap and QC are deprecated and must not be mounted."""
+def test_scatter_is_mounted_and_the_deprecated_tabs_are_not(
+    built_results_layout,
+) -> None:
+    """Scatter joins Plate and Colony; Heatmap and QC stay unmounted."""
     from phenotypic.gui.results_viewer import _ids as ids
 
-    tab_ids = _tab_ids_in_layout()   # existing helper in this module
+    tab_ids = _tab_ids(built_results_layout)
     assert ids.TAB_SCATTER_ID in tab_ids
     assert ids.TAB_HEATMAP_ID not in tab_ids
     assert ids.TAB_QC_ID not in tab_ids
 ```
+
+Then extend the existing exact-match test's expected list to
+`(TAB_PLATE_ID, TAB_COLONY_ID, TAB_SCATTER_ID)`.
 
 - [ ] **Step 2: Run it to verify it fails**
 
