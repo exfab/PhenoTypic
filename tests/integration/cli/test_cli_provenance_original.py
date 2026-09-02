@@ -54,22 +54,27 @@ def test_full_local_cli_publishes_complete_provenance_and_original_policy(
     root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
     journal = root["attributes"]["phenotypic"]["provenance"]
     expected_ops = ImagePipeline.from_json(simple_pipeline_json).get_ops()
-    assert journal["schema_version"] == 1
+    application = journal["applications"][-1]
+    assert journal["schema_version"] == 2
     assert journal["status"] == "complete"
-    assert journal["pipeline"] == {
-        "source_path": str(simple_pipeline_json.resolve()),
+    assert journal["original_filename"] == "plate_001.png"
+    assert application["status"] == "complete"
+    assert application["kind"] == "full"
+    assert application["input_filename"] == "plate_001.png"
+    assert application["pipeline"] == {
+        "source_path": simple_pipeline_json.name,
         "sha256": hashlib.sha256(simple_pipeline_json.read_bytes()).hexdigest(),
     }
-    assert journal["retry_base_length"] == 0
-    assert [entry["sequence"] for entry in journal["operations"]] == [1, 2]
-    assert [entry["operation_name"] for entry in journal["operations"]] == [
+    assert application["retry_base_length"] == 0
+    assert [entry["sequence"] for entry in application["operations"]] == [1, 2]
+    assert [entry["operation_name"] for entry in application["operations"]] == [
         type(operation).__name__ for operation in expected_ops.values()
     ]
     assert [
-        entry["pipeline_step_path"] for entry in journal["operations"]
+        entry["pipeline_step_path"] for entry in application["operations"]
     ] == [[key] for key in expected_ops]
     assert all(
-        entry["duration_seconds"] >= 0 for entry in journal["operations"]
+        entry["duration_seconds"] >= 0 for entry in application["operations"]
     )
     assert "provenance" not in root["attributes"].get("ome", {})
 
@@ -166,6 +171,10 @@ def test_ordinary_worker_preserves_explicit_user_pipeline_identity(
     store = zarr_store_path(output_dir, "ds", image.stem)
     root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
     journal = root["attributes"]["phenotypic"]["provenance"]
+    application = journal["applications"][-1]
     assert journal["status"] == "complete"
-    assert journal["pipeline"] == explicit_identity
-    assert journal["pipeline"]["source_path"] != str(snapshot.resolve())
+    assert application["pipeline"] == {
+        **explicit_identity,
+        "source_path": simple_pipeline_json.name,
+    }
+    assert application["pipeline"]["source_path"] != snapshot.name

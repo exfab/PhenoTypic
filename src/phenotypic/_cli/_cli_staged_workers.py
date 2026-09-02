@@ -28,8 +28,9 @@ from typing import Any, Callable, Dict, Iterator, Mapping, Optional
 from phenotypic import GridImage, Image
 from phenotypic._core._provenance import (
     append_operation_provenance,
+    current_application_operations,
     initialize_cli_provenance,
-    new_provenance_journal,
+    start_provenance_application,
     provenance_success_sink,
     set_provenance_status,
     set_retry_base_length,
@@ -88,12 +89,17 @@ def _initialize_stage1_provenance(
         initialize_cli_provenance(
             image,
             pipeline_path,
+            kind="full",
+            input_filename=None,
             pipeline_identity=pipeline_identity,
         )
         return
-    journal = new_provenance_journal()
-    journal["status"] = "in_progress"
-    image._metadata.provenance_journal = journal
+    start_provenance_application(
+        image,
+        kind="full",
+        input_filename=None,
+        status="in_progress",
+    )
 
 
 def _write_provenance_checkpoint_fenced(
@@ -139,7 +145,7 @@ def _checkpoint_successful_operation(
     commit_guard: CommitGuard | None = None,
 ) -> None:
     """Publish an appended staged operation or roll it back on sink failure."""
-    operations = image._metadata.provenance_journal["operations"]
+    operations = current_application_operations(image)
     prior_length = len(operations) - 1
     try:
         _check_active(active_check)
@@ -288,7 +294,7 @@ def stage1_preprocess_core(
             )
         ):
             plan.pre_pipeline.apply(image, inplace=True)
-        operation_count = len(image._metadata.provenance_journal["operations"])
+        operation_count = len(current_application_operations(image))
         _check_active(active_check)
         set_retry_base_length(image, operation_count)
         set_provenance_status(image, "staged")

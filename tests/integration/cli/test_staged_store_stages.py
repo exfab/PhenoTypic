@@ -28,6 +28,10 @@ def _journal(store):
     return root["attributes"]["phenotypic"]["provenance"]
 
 
+def _application(journal):
+    return journal["applications"][-1]
+
+
 def test_stage1_publishes_a_store_with_a_zeros_objmap(staged_run) -> None:
     """valid_staged_store requires objmap; Stage 1 must emit it, zeros and all."""
     staged_run.run_stage1()
@@ -80,15 +84,15 @@ def test_staged_provenance_original_and_retry_are_durable(
     store = run.store()
     staged = _journal(store)
     assert staged["status"] == "staged"
-    assert staged["retry_base_length"] == 1
-    assert staged["pipeline"] == {
-        "source_path": str(run.pipeline_path.resolve()),
+    assert _application(staged)["retry_base_length"] == 1
+    assert _application(staged)["pipeline"] == {
+        "source_path": run.pipeline_path.name,
         "sha256": hashlib.sha256(run.pipeline_path.read_bytes()).hexdigest(),
     }
-    assert [entry["operation_name"] for entry in staged["operations"]] == [
+    assert [entry["operation_name"] for entry in _application(staged)["operations"]] == [
         "CropImage"
     ]
-    assert [entry["pipeline_step_path"] for entry in staged["operations"]] == [
+    assert [entry["pipeline_step_path"] for entry in _application(staged)["operations"]] == [
         ["pre-crop"]
     ]
     staged_image = Image.load_zarr(store)
@@ -111,29 +115,29 @@ def test_staged_provenance_original_and_retry_are_durable(
     expected_names = ["CropImage", "_FixedBlobDetector", "SmallObjectRemover"]
     expected_paths = [["pre-crop"], ["gpu-detect"], ["post-filter"]]
     assert completed["status"] == "complete"
-    assert completed["retry_base_length"] == 1
-    assert [entry["operation_name"] for entry in completed["operations"]] == (
+    assert _application(completed)["retry_base_length"] == 1
+    assert [entry["operation_name"] for entry in _application(completed)["operations"]] == (
         expected_names
     )
-    assert [entry["pipeline_step_path"] for entry in completed["operations"]] == (
+    assert [entry["pipeline_step_path"] for entry in _application(completed)["operations"]] == (
         expected_paths
     )
-    assert [entry["sequence"] for entry in completed["operations"]] == [1, 2, 3]
-    assert completed["operations"][1]["duration_seconds"] >= compute_duration
+    assert [entry["sequence"] for entry in _application(completed)["operations"]] == [1, 2, 3]
+    assert _application(completed)["operations"][1]["duration_seconds"] >= compute_duration
     np.testing.assert_array_equal(Image.load_zarr(store)._original, original)
 
     run.simulate_timeout_after_promote()
     run.run_stage3()
     retried = _journal(store)
     assert retried["status"] == "complete"
-    assert retried["retry_base_length"] == 1
-    assert [entry["operation_name"] for entry in retried["operations"]] == (
+    assert _application(retried)["retry_base_length"] == 1
+    assert [entry["operation_name"] for entry in _application(retried)["operations"]] == (
         expected_names
     )
-    assert [entry["pipeline_step_path"] for entry in retried["operations"]] == (
+    assert [entry["pipeline_step_path"] for entry in _application(retried)["operations"]] == (
         expected_paths
     )
-    assert [entry["sequence"] for entry in retried["operations"]] == [1, 2, 3]
+    assert [entry["sequence"] for entry in _application(retried)["operations"]] == [1, 2, 3]
     np.testing.assert_array_equal(Image.load_zarr(store)._original, original)
 
 
@@ -160,7 +164,7 @@ def test_stage1_hard_interruption_is_retried_from_the_decoded_checkpoint(
 
     interrupted = _journal(run.store())
     assert interrupted["status"] == "in_progress"
-    assert interrupted["operations"] == []
+    assert _application(interrupted)["operations"] == []
     assert classify_staged_image(
         output_dir=run.output_dir,
         dataset="ds",
@@ -174,8 +178,8 @@ def test_stage1_hard_interruption_is_retried_from_the_decoded_checkpoint(
     run.run_stage1()
     retried = _journal(run.store())
     assert retried["status"] == "staged"
-    assert retried["retry_base_length"] == 1
-    assert [entry["operation_name"] for entry in retried["operations"]] == [
+    assert _application(retried)["retry_base_length"] == 1
+    assert [entry["operation_name"] for entry in _application(retried)["operations"]] == [
         "CropImage"
     ]
 
@@ -202,7 +206,7 @@ def test_staged_drop_originals_uses_journal_only_checkpoint_and_omits_series(
     store = run.store()
     interrupted = _journal(store)
     assert interrupted["status"] == "in_progress"
-    assert interrupted["operations"] == []
+    assert _application(interrupted)["operations"] == []
     assert not (store / "OME").exists()
     assert not (store / "original").exists()
 
@@ -210,7 +214,7 @@ def test_staged_drop_originals_uses_journal_only_checkpoint_and_omits_series(
     run.run_stage1(drop_originals=True)
     staged = _journal(store)
     assert staged["status"] == "staged"
-    assert staged["retry_base_length"] == 1
+    assert _application(staged)["retry_base_length"] == 1
     assert Image.load_zarr(store)._original is None
     ome = json.loads((store / "OME" / "zarr.json").read_text(encoding="utf-8"))
     assert "original" not in ome["attributes"]["ome"]["series"]
@@ -219,7 +223,7 @@ def test_staged_drop_originals_uses_journal_only_checkpoint_and_omits_series(
     run.run_stage3()
     completed = _journal(store)
     assert completed["status"] == "complete"
-    assert [entry["operation_name"] for entry in completed["operations"]] == [
+    assert [entry["operation_name"] for entry in _application(completed)["operations"]] == [
         "CropImage",
         "_FixedBlobDetector",
         "SmallObjectRemover",

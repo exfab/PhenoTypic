@@ -8,6 +8,7 @@ designed to be called by SLURM batch scripts for autonomous execution.
 from __future__ import annotations
 
 from contextlib import AbstractContextManager
+import json
 import os
 import sys
 import logging
@@ -24,7 +25,9 @@ matplotlib.use("Agg")  # Non-interactive backend
 from phenotypic import Image, GridImage, ImagePipeline
 from phenotypic._core._provenance import (
     initialize_cli_provenance,
+    pipeline_source_identity,
     provenance_success_sink,
+    resume_provenance_application,
     set_provenance_status,
     write_provenance_checkpoint,
 )
@@ -269,9 +272,38 @@ def process_single_image_core(
 
         detect_mode = read_kwargs.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **read_kwargs)
-        initialize_cli_provenance(
-            image, pipeline_path, pipeline_identity=pipeline_identity
+        resolved_pipeline_identity = (
+            pipeline_source_identity(pipeline_path)
+            if pipeline_identity is None
+            else pipeline_identity
         )
+        resumed = False
+        checkpoint_root = store / "zarr.json"
+        if checkpoint_root.is_file():
+            checkpoint_payload = json.loads(
+                checkpoint_root.read_text(encoding="utf-8")
+            )
+            checkpoint_journal = (
+                checkpoint_payload.get("attributes", {})
+                .get("phenotypic", {})
+                .get("provenance")
+            )
+            if isinstance(checkpoint_journal, dict):
+                resumed = resume_provenance_application(
+                    image,
+                    checkpoint_journal,
+                    kind="full",
+                    input_filename=image_path.name,
+                    pipeline_identity=resolved_pipeline_identity,
+                )
+        if not resumed:
+            initialize_cli_provenance(
+                image,
+                pipeline_path,
+                kind="full",
+                input_filename=image_path.name,
+                pipeline_identity=resolved_pipeline_identity,
+            )
         if drop_originals:
             _write_checkpoint(image, journal_only=True)
         else:

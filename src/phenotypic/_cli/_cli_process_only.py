@@ -305,7 +305,13 @@ def process_single_apply_only_core(
         # filesystem layout: a process-mode store goes to a NAS and then to
         # object storage, where an absolute path would carry the username and
         # project directory names. sha256 still pins the pipeline exactly.
-        initialize_cli_provenance(image, pipeline_path, basename_only=True)
+        initialize_cli_provenance(
+            image,
+            pipeline_path,
+            kind="process",
+            input_filename=image_path.name,
+            basename_only=True,
+        )
         pipeline.apply(image, inplace=True)
         # BEFORE the write below, or the store records the stale default.
         # `initialize_cli_provenance` opens at `"in_progress"`

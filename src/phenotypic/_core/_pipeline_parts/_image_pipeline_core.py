@@ -965,16 +965,12 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         """
         effective_reset = reset if reset is not None else self._reset
         img = image if inplace else image.copy()
-        if (
-            self._provenance_pipeline is not None
-            and img._metadata.provenance_journal.get("pipeline") is None
-        ):
-            img._metadata.provenance_journal["pipeline"] = dict(
-                self._provenance_pipeline
-            )
-        if effective_reset:
-            img.reset()
-        self._run_operations(img)
+        from phenotypic._core._provenance import provenance_application
+
+        with provenance_application(img, pipeline=self._provenance_pipeline):
+            if effective_reset:
+                img.reset()
+            self._run_operations(img)
         return img
 
     def apply_with_intermediates(
@@ -1074,7 +1070,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             else:
                 intermediates[key] = current.copy()
 
-        self._run_operations(img, on_op_complete=_capture)
+        from phenotypic._core._provenance import provenance_application
+
+        with provenance_application(img, pipeline=self._provenance_pipeline):
+            self._run_operations(img, on_op_complete=_capture)
         return IntermediateResult(image=img, intermediates=intermediates)
 
     def measure(

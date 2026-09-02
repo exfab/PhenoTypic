@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import phenotypic
 import pytest
 import zarr
 from PIL import Image as PILImage
@@ -88,11 +89,16 @@ def test_full_forward_default_retains_preoperation_pixels_and_completes(
     _run_worker(image_path, pipeline_path, manager)
 
     journal = _journal(store)
+    application = journal["applications"][-1]
     assert journal["status"] == "complete"
-    assert [entry["pipeline_step_path"] for entry in journal["operations"]] == [
+    assert application["status"] == "complete"
+    assert application["kind"] == "full"
+    assert application["input_filename"] == image_path.name
+    assert journal["original_filename"] == image_path.name
+    assert [entry["pipeline_step_path"] for entry in application["operations"]] == [
         ["crop"], ["detect"]
     ]
-    assert journal["pipeline"]["source_path"] == str(pipeline_path.resolve())
+    assert application["pipeline"]["source_path"] == pipeline_path.name
     original = np.asarray(
         zarr.open_array(store=str(store / "original" / "0"), mode="r")
     )
@@ -130,14 +136,15 @@ def test_drop_originals_uses_journal_only_checkpoint_then_final_store(
         },
     }
     assert _journal(store)["status"] == "in_progress"
-    assert _journal(store)["operations"] == []
+    assert _journal(store)["applications"][-1]["operations"] == []
     assert not (store / "original").exists()
     assert not (store / "OME").exists()
 
     monkeypatch.setattr(MedianFilter, "_operate", real_operate)
     _run_worker(image_path, pipeline_path, manager, drop_originals=True)
     assert _journal(store)["status"] == "complete"
-    assert len(_journal(store)["operations"]) == 2
+    assert len(_journal(store)["applications"]) == 1
+    assert len(_journal(store)["applications"][-1]["operations"]) == 2
     assert not (store / "original").exists()
     assert_store_conforms(store)
 
@@ -160,8 +167,11 @@ def test_normal_failure_marks_prefix_failed_and_retry_replaces_it(
         _run_worker(image_path, pipeline_path, manager)
 
     failed = _journal(store)
+    failed_application = failed["applications"][-1]
+    failed_version = failed_application["phenotypic_version"]
     assert failed["status"] == "failed"
-    assert [entry["operation_name"] for entry in failed["operations"]] == [
+    assert failed_application["status"] == "failed"
+    assert [entry["operation_name"] for entry in failed_application["operations"]] == [
         "BlurGauss"
     ]
     retained = np.asarray(
@@ -170,16 +180,20 @@ def test_normal_failure_marks_prefix_failed_and_retry_replaces_it(
     np.testing.assert_array_equal(np.moveaxis(retained, 0, -1), pixels)
 
     monkeypatch.setattr(MedianFilter, "_operate", real_operate)
+    monkeypatch.setattr(phenotypic, "__version__", "retry-build-sentinel")
     _run_worker(image_path, pipeline_path, manager)
 
     complete = _journal(store)
+    complete_application = complete["applications"][-1]
     assert complete["status"] == "complete"
-    assert [entry["operation_name"] for entry in complete["operations"]] == [
+    assert len(complete["applications"]) == 1
+    assert complete_application["phenotypic_version"] == failed_version
+    assert [entry["operation_name"] for entry in complete_application["operations"]] == [
         "BlurGauss",
         "MedianFilter",
         "OtsuDetector",
     ]
-    assert [entry["sequence"] for entry in complete["operations"]] == [1, 2, 3]
+    assert [entry["sequence"] for entry in complete_application["operations"]] == [1, 2, 3]
 
 
 def test_hard_interruption_leaves_valid_original_checkpoint_in_progress(
@@ -198,7 +212,7 @@ def test_hard_interruption_leaves_valid_original_checkpoint_in_progress(
         _run_worker(image_path, pipeline_path, manager)
 
     assert _journal(store)["status"] == "in_progress"
-    assert _journal(store)["operations"] == []
+    assert _journal(store)["applications"][-1]["operations"] == []
     retained = np.asarray(
         zarr.open_array(store=str(store / "original" / "0"), mode="r")
     )

@@ -13,6 +13,7 @@ from phenotypic.enhance import BlurGauss
 from phenotypic._core._provenance import (
     provenance_success_sink,
     set_provenance_status,
+    start_provenance_application,
     write_provenance_checkpoint,
 )
 
@@ -35,11 +36,13 @@ def test_pipeline_loaded_from_file_sets_resolved_source_identity(tmp_path: Path)
     loaded = ImagePipeline.from_json(source.parent / ".." / "nested" / "pipeline.json")
     result = loaded.apply(Image(_pixels()))
 
-    identity = result._metadata.provenance_journal["pipeline"]
+    application = result._metadata.provenance_journal["applications"][-1]
+    identity = application["pipeline"]
     assert identity == {
-        "source_path": str(source.resolve()),
+        "source_path": source.name,
         "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
     }
+    assert application["kind"] == "programmatic"
     assert result.provenance[0]["pipeline_step_path"] == ["smooth"]
 
 
@@ -47,7 +50,12 @@ def test_journal_only_checkpoint_and_success_sink_publish_ordered_prefix(
     tmp_path: Path,
 ) -> None:
     image = Image(_pixels())
-    image._metadata.provenance_journal["status"] = "in_progress"
+    start_provenance_application(
+        image,
+        kind="programmatic",
+        input_filename="checkpoint.tiff",
+        pipeline_identity=None,
+    )
     store = tmp_path / "checkpoint.ome.zarr"
 
     write_provenance_checkpoint(store, image, journal_only=True)
@@ -67,21 +75,26 @@ def test_journal_only_checkpoint_and_success_sink_publish_ordered_prefix(
     ):
         BlurGauss(sigma=1.0).apply(image, inplace=True)
 
-    assert [entry["operation_name"] for entry in _journal(store)["operations"]] == [
+    application = _journal(store)["applications"][-1]
+    assert [entry["operation_name"] for entry in application["operations"]] == [
         "BlurGauss"
     ]
     assert _journal(store)["status"] == "in_progress"
+    assert application["status"] == "in_progress"
 
     set_provenance_status(image, "failed")
     write_provenance_checkpoint(store, image)
     assert _journal(store)["status"] == "failed"
+    assert _journal(store)["applications"][-1]["status"] == "failed"
 
 
 def test_success_sink_updates_only_root_attributes_on_a_full_store(
     tmp_path: Path,
 ) -> None:
     image = Image(_pixels())
-    image._metadata.provenance_journal["status"] = "in_progress"
+    start_provenance_application(
+        image, kind="programmatic", input_filename="full.tiff"
+    )
     store = image.save2zarr(tmp_path / "full.ome.zarr")
     ome_before = (store / "OME" / "zarr.json").read_bytes()
 
@@ -90,5 +103,5 @@ def test_success_sink_updates_only_root_attributes_on_a_full_store(
     ):
         BlurGauss(sigma=1.0).apply(image, inplace=True)
 
-    assert len(_journal(store)["operations"]) == 1
+    assert len(_journal(store)["applications"][-1]["operations"]) == 1
     assert (store / "OME" / "zarr.json").read_bytes() == ome_before

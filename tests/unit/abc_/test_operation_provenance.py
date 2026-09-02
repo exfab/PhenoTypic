@@ -146,16 +146,15 @@ def test_image_copy_inherits_existing_provenance_without_sharing_it() -> None:
 
 def test_replacement_operation_carries_prior_journal_and_retained_original() -> None:
     source = BlurGauss(sigma=1.0).apply(_plate())
-    source._metadata.provenance_journal.update(
-        {
-            "status": "in_progress",
-            "pipeline": {
-                "source_path": "/resolved/pipeline.json",
-                "sha256": "a" * 64,
-            },
-            "retry_base_length": 1,
-        }
-    )
+    source_journal = source._metadata.provenance_journal
+    application = source_journal["applications"][-1]
+    source_journal["status"] = "in_progress"
+    application["status"] = "in_progress"
+    application["pipeline"] = {
+        "source_path": "pipeline.json",
+        "sha256": "a" * 64,
+    }
+    application["retry_base_length"] = 1
     source._retain_original()
     retained = source._original.copy()
 
@@ -163,8 +162,10 @@ def test_replacement_operation_carries_prior_journal_and_retained_original() -> 
 
     journal = result._metadata.provenance_journal
     assert journal["status"] == "in_progress"
-    assert journal["pipeline"]["source_path"] == "/resolved/pipeline.json"
-    assert journal["retry_base_length"] == 1
+    assert len(journal["applications"]) == 1
+    current = journal["applications"][-1]
+    assert current["pipeline"]["source_path"] == "pipeline.json"
+    assert current["retry_base_length"] == 1
     assert [entry["operation_name"] for entry in result.provenance] == [
         "BlurGauss",
         "_ReplacementCorrector",
