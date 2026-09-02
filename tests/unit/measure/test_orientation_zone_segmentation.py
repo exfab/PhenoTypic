@@ -19,6 +19,10 @@ from phenotypic.measure._orientation_zone_segmentation import (
     fit_orientation_zones,
     selected_outer_radius,
 )
+from phenotypic.measure._measure_orientation_zones import (
+    radial_ring_orientation_profile,
+    zone_selector,
+)
 from phenotypic.sdk_.typing_ import OperationField
 
 
@@ -75,6 +79,106 @@ def test_unsupported_object_returns_missing_without_legacy_boundaries():
     assert np.isfinite(fitted.result.outer_radius)
 
 
+def test_canonical_tensor_and_boundaries_are_positive_affine_scale_invariant():
+    image = _radial_spoke_image()
+    mask = image.objmap[:] == 1
+    source = image.detect_mat[:].astype(np.float64)
+    params = OrientationChangePointParams(
+        ring_width=4.0,
+        minimum_segment=2,
+        min_crossings=1,
+    )
+    reference = fit_orientation_zones(mask, source, (90.0, 90.0), params)
+    assert reference.context is not None
+    assert reference.result.method_used == "exact"
+
+    transformed_signals = (
+        source * 1e-9 + 7e-10,
+        source * 1e9 - 3e8,
+        source + 1e6,
+    )
+    for transformed in transformed_signals:
+        fitted = fit_orientation_zones(mask, transformed, (90.0, 90.0), params)
+        assert fitted.context is not None
+        assert fitted.result.method_used == reference.result.method_used
+        np.testing.assert_allclose(
+            [
+                fitted.result.core_zone_radius,
+                fitted.result.dense_radius,
+                fitted.result.outer_radius,
+                fitted.result.objective,
+            ],
+            [
+                reference.result.core_zone_radius,
+                reference.result.dense_radius,
+                reference.result.outer_radius,
+                reference.result.objective,
+            ],
+            rtol=1e-7,
+            atol=1e-9,
+        )
+        np.testing.assert_allclose(
+            fitted.context.coherence,
+            reference.context.coherence,
+            rtol=1e-6,
+            atol=1e-8,
+        )
+
+
+def test_canonical_outer_boundary_is_included_but_internal_boundary_is_half_open():
+    distances = np.array([[1.0, 2.0, 3.0]])
+    mask = np.ones_like(distances, dtype=bool)
+
+    dense = zone_selector(distances, 1.0, 2.0, mask, "Mask")
+    sparse = zone_selector(
+        distances,
+        2.0,
+        3.0,
+        mask,
+        "Mask",
+        include_upper=True,
+    )
+
+    assert dense.tolist() == [[True, False, False]]
+    assert sparse.tolist() == [[False, True, True]]
+
+
+def test_long_range_profile_includes_exact_global_outer_boundary():
+    shape = (1, 4)
+    tilt = np.zeros(shape, dtype=float)
+    polar = np.zeros(shape, dtype=float)
+    coherence = np.ones(shape, dtype=float)
+    distance = np.array([[0.5, 1.5, 2.0, 2.0]])
+    selector = np.ones(shape, dtype=bool)
+
+    _radii, excluded, _resultant = radial_ring_orientation_profile(
+        tilt,
+        polar,
+        coherence,
+        distance,
+        selector,
+        0.0,
+        2.0,
+        2.0,
+        1,
+    )
+    _radii, included, _resultant = radial_ring_orientation_profile(
+        tilt,
+        polar,
+        coherence,
+        distance,
+        selector,
+        0.0,
+        2.0,
+        2.0,
+        1,
+        include_outer=True,
+    )
+
+    assert np.isnan(excluded[0, 0])
+    assert included[0, 0] == 0.0
+
+
 def _radial_spoke_image() -> Image:
     size = 181
     center = (90, 90)
@@ -89,8 +193,8 @@ def _radial_spoke_image() -> Image:
         )
         mask |= (radius <= 75.0) & (np.abs(axial_delta) <= 0.018)
     signal = np.zeros((size, size), dtype=np.float32)
-    signal[mask] = 1.0
-    rgb = np.repeat(signal[..., None], 3, axis=2)
+    signal[mask] = 1.0 + radius[mask] / 75.0
+    rgb = np.repeat((signal / signal.max())[..., None], 3, axis=2)
     image = Image(rgb)
     image.detect_mat[:] = signal
     image.objmap[:] = mask.astype(np.int32)
@@ -146,6 +250,22 @@ def test_collapsed_canonical_fit_has_zero_dense_area_and_missing_dense_metrics()
         include_diagnostics=True, **params
     ).measure(image)
 
+    np.testing.assert_allclose(
+        symmetric[
+            [
+                "SymZones_CoreEndRadius",
+                "SymZones_DenseEndRadius",
+                "SymZones_SparseEndRadius",
+            ]
+        ].iloc[0].to_numpy(dtype=float),
+        orientation[
+            [
+                "OrientZones_CoreZoneEndRadius",
+                "OrientZones_DenseRadius",
+                "OrientZones_OuterRadius",
+            ]
+        ].iloc[0].to_numpy(dtype=float),
+    )
     assert symmetric["SymZones_CoreEndRadius"].iloc[0] == symmetric[
         "SymZones_DenseEndRadius"
     ].iloc[0]
@@ -172,6 +292,70 @@ def test_canonical_measurement_failure_never_exposes_legacy_zone_radii():
             "SymZones_SparseEndRadius",
         ]
     ].isna().all()
+    orientation_op = MeasureOrientationZones(
+        zone_minimum_segment=20,
+        include_diagnostics=True,
+    )
+    orientation = orientation_op.measure(image).iloc[0]
+    assert orientation["OrientZones_ZoneSegmentationMethodCode"] == 4.0
+    cached = orientation_op._cache[1]["radii"]
+    assert np.isnan(
+        [cached["core_end"], cached["dense_end"], cached["sparse_end"]]
+    ).all()
+
+
+def test_tiny_canonical_object_is_missing_for_both_measurers_and_code_four():
+    signal = np.zeros((9, 9), dtype=np.float32)
+    signal[4, 3:6] = 1.0
+    image = Image(np.repeat(signal[..., None], 3, axis=2))
+    image.detect_mat[:] = signal
+    image.objmap[:] = (signal > 0).astype(np.int32)
+
+    symmetric = MeasureSymZones().measure(image).iloc[0]
+    orientation_op = MeasureOrientationZones(include_diagnostics=True)
+    orientation = orientation_op.measure(image).iloc[0]
+
+    assert symmetric.drop(labels="Object_Label").isna().all()
+    assert orientation.filter(like="OrientZones_").drop(
+        labels="OrientZones_ZoneSegmentationMethodCode"
+    ).isna().all()
+    assert orientation["OrientZones_ZoneSegmentationMethodCode"] == 4.0
+    cached = orientation_op._cache[1]["radii"]
+    assert np.isnan(
+        [cached["core_end"], cached["dense_end"], cached["sparse_end"]]
+    ).all()
+
+    legacy = MeasureSymZones(legacy_mode=True).measure(image).iloc[0]
+    legacy_zone_columns = [
+        "SymZones_CoreEndRadius",
+        "SymZones_DenseEndRadius",
+        "SymZones_SparseEndRadius",
+        "SymZones_CoreArea",
+        "SymZones_DenseArea",
+        "SymZones_SparseArea",
+    ]
+    assert (legacy[legacy_zone_columns] == 0.0).all()
+
+
+def test_canonical_mode_does_not_execute_legacy_colony_ness(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from phenotypic.measure import _zone_segmentation
+
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("legacy colony-ness executed in canonical mode")
+
+    monkeypatch.setattr(
+        _zone_segmentation,
+        "compute_colony_ness_profile",
+        fail_if_called,
+    )
+    result = MeasureSymZones(
+        radial_ring_width=4.0,
+        zone_minimum_segment=2,
+        zone_min_crossings=1,
+    ).measure(_radial_spoke_image())
+    assert np.isfinite(result["SymZones_SparseEndRadius"].iloc[0])
 
 
 @pytest.mark.parametrize("operation", [MeasureSymZones, MeasureOrientationZones])

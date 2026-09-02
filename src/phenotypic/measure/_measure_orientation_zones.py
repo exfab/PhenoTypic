@@ -151,16 +151,27 @@ def _circle_xy(
     return cx + r * np.cos(_CIRCLE_THETA), cy + r * np.sin(_CIRCLE_THETA)
 
 
-def zone_selector(dist_map, r_lo, r_hi, obj_mask, variant):
+def zone_selector(
+    dist_map,
+    r_lo,
+    r_hi,
+    obj_mask,
+    variant,
+    *,
+    include_upper=False,
+):
     """Boolean selector for a radial zone on a tile; ``Mask`` also ∩ obj_mask.
 
     Args:
         dist_map: Per-pixel distance-from-centre map (tile shape).
         r_lo: Inner radius (inclusive) of the zone in pixels.
-        r_hi: Outer radius (exclusive) of the zone in pixels.
+        r_hi: Outer radius of the zone in pixels.
         obj_mask: Boolean object mask (tile shape) used by the ``Mask`` variant.
         variant: ``"Radial"`` (all tile pixels in the ring) or ``"Mask"``
             (the ring intersected with ``obj_mask``).
+        include_upper: Include pixels exactly on ``r_hi``. Internal zone
+            boundaries remain half-open; canonical global outer boundaries
+            use this option.
 
     Returns:
         Boolean array (tile shape). All-False when the radius range is invalid
@@ -168,7 +179,8 @@ def zone_selector(dist_map, r_lo, r_hi, obj_mask, variant):
     """
     if not np.isfinite(r_lo) or not np.isfinite(r_hi) or r_hi <= r_lo:
         return np.zeros(dist_map.shape, dtype=bool)
-    radial = (dist_map >= r_lo) & (dist_map < r_hi)
+    upper = np.nextafter(r_hi, np.inf) if include_upper else r_hi
+    radial = (dist_map >= r_lo) & (dist_map < upper)
     if variant == "Mask":
         return radial & obj_mask
     return radial
@@ -483,6 +495,8 @@ def radial_ring_orientation_profile(
         outer_radius: float,
         ring_width: float,
         n_angular_bins: int = _RADIAL_RELATIVE_N_SECTORS,
+        *,
+        include_outer: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Calculate a sectorized Sholl-style orientation profile.
 
@@ -502,6 +516,8 @@ def radial_ring_orientation_profile(
         outer_radius: Exclusive outer profile radius in pixels.
         ring_width: Radial averaging width in pixels.
         n_angular_bins: Number of fixed polar sectors.
+        include_outer: Include pixels exactly on ``outer_radius`` when the
+            final complete ring ends on that global boundary.
 
     Returns:
         ``(ring_centres, sector_tilt, sector_resultant)``. The two matrices have
@@ -537,10 +553,19 @@ def radial_ring_orientation_profile(
     sector_tilt = np.full((n_rings, n_angular_bins), np.nan, dtype=np.float64)
     sector_resultant = np.full_like(sector_tilt, np.nan)
     for ring_index, start in enumerate(starts):
+        ring_upper = start + ring_width
+        if (
+                include_outer
+                and ring_index == n_rings - 1
+                and np.isclose(
+                    ring_upper, outer_radius, rtol=0.0, atol=_EPS
+                )
+        ):
+            ring_upper = np.nextafter(outer_radius, np.inf)
         ring_selector = (
                 structure_selector
                 & (dist_map >= start)
-                & (dist_map < start + ring_width)
+                & (dist_map < ring_upper)
         )
         means, resultants = _axial_sector_means(
                 signed_tilt,
@@ -919,11 +944,12 @@ def _resultant_direction(phi, coherence, selector):
 class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
     """Measure absolute and radial-relative hyphal orientation by growth zone.
 
-    Computes the structure-tensor orientation field over a mask-free tile (grid
-    section when the image is a GridImage, else an expanded crop) and aggregates
-    coherence-weighted metrics over radially-defined zones bounded by the
-    symmetric radius. Absolute concentration, turning, and coherence retain both
-    ``Radial`` and raw ``Mask`` variants. Radial-relative tilt and outward
+    Canonical mode computes one P2/P98-scaled structure-tensor field over the
+    final detector signal and aggregates coherence-weighted metrics over the
+    shared Method B zones. Overall begins at the operational CoreZone boundary
+    and ends at the configured target-mask radial percentile; it is independent
+    of ``SymmetricRadius``. Absolute concentration, turning, and coherence retain
+    both ``Radial`` and raw ``Mask`` variants. Radial-relative tilt and outward
     turning use detected structure and equal-weight reliable angular sectors.
     Their point estimates are count-scale-invariant while reliable-sector
     membership is unchanged; a separate support diagnostic exposes threshold
@@ -1224,10 +1250,11 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
         _operate() (which keeps only compact summaries) and by report()'s
         coherence panel (which recomputes on demand). The full-resolution arrays
         yielded here are consumed and discarded by each caller; nothing full-res
-        is retained on the instance. Tiny objects (area<10) are skipped.
+        is retained on the instance. Legacy mode skips tiny objects; canonical
+        mode yields their shared missing resolution so diagnostics report code 4.
         """
         for prop in props:
-            if prop.area < 10:
+            if prop.area < 10 and self.legacy_mode:
                 continue
             resolution = resolve_zone_segmentation(
                     image,
@@ -1239,13 +1266,21 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
             seg = resolution.segmentation
             context = resolution.orientation_context
             if context is None:
-                tile, obj_mask, centre = self._resolve_tile(
-                        image, seg, prop, label2section
-                )
-                phi, coh, grad = orientation_field(
-                        tile, self.sigma_d, self.sigma_i
-                )
-                dist_map = distance_from_point(tile.shape, centre)
+                if not self.legacy_mode and not seg.zones_computed:
+                    obj_mask = np.asarray(seg.obj_mask, dtype=bool)
+                    centre = tuple(seg.centroid_rc)
+                    dist_map = np.asarray(seg.dist_map, dtype=np.float64)
+                    phi = np.zeros(obj_mask.shape, dtype=np.float64)
+                    coh = np.zeros(obj_mask.shape, dtype=np.float64)
+                    grad = np.zeros(obj_mask.shape, dtype=np.float64)
+                else:
+                    tile, obj_mask, centre = self._resolve_tile(
+                            image, seg, prop, label2section
+                    )
+                    phi, coh, grad = orientation_field(
+                            tile, self.sigma_d, self.sigma_i
+                    )
+                    dist_map = distance_from_point(tile.shape, centre)
             else:
                 obj_mask = context.object_mask
                 centre = context.center
@@ -1446,10 +1481,11 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
         if context is not None:
             outer_radius = float(seg.sparse_end_radius)
             profile = context.measurement_profile
+            inclusive_outer = np.nextafter(outer_radius, np.inf)
             bounds = {
-                "Overall": (inner_radius, outer_radius),
+                "Overall": (inner_radius, inclusive_outer),
                 "Dense"  : (inner_radius, float(seg.dense_end_radius)),
-                "Sparse" : (float(seg.dense_end_radius), outer_radius),
+                "Sparse" : (float(seg.dense_end_radius), inclusive_outer),
             }
         else:
             outside_core = (
@@ -1476,6 +1512,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                     outer_radius,
                     obj_mask,
                     "Mask",
+                    include_upper=not self.legacy_mode,
             )
             transform = literal_skeleton_ring_crossings(
                     obj_mask,
@@ -1588,18 +1625,33 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                 centre,
                 resolution=resolution,
         )
-        signed_tilt, _signed_turning, outward_turning, polar_angle = (
-            signed_radial_relative_field(phi, centre, dist_map)
-        )
+        if seg.zones_computed or self.legacy_mode:
+            signed_tilt, _signed_turning, outward_turning, polar_angle = (
+                signed_radial_relative_field(phi, centre, dist_map)
+            )
+        else:
+            signed_tilt = np.full(phi.shape, np.nan, dtype=np.float64)
+            outward_turning = np.full(phi.shape, np.nan, dtype=np.float64)
+            polar_angle = np.full(phi.shape, np.nan, dtype=np.float64)
         absolute_tilt = np.abs(signed_tilt)
         for zone, (r_lo, r_hi) in self._zone_bounds(seg).items():
-            zone_ok = seg.zones_computed or zone == "Overall"
+            zone_ok = seg.zones_computed or (
+                self.legacy_mode and zone == "Overall"
+            )
             for variant in _VARIANTS:
                 if not zone_ok:
                     R = t = cm = direction = np.nan
                 else:
                     sel = zone_selector(
-                            dist_map, r_lo, r_hi, obj_mask, variant
+                            dist_map,
+                            r_lo,
+                            r_hi,
+                            obj_mask,
+                            variant,
+                            include_upper=(
+                                not self.legacy_mode
+                                and zone in {"Overall", "Sparse"}
+                            ),
                     )
                     R, t, cm = aggregate_orientation(phi, coh, grad, sel)
                     direction = _resultant_direction(phi, coh, sel)
@@ -1637,6 +1689,10 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                         r_hi,
                         obj_mask,
                         "Mask",
+                        include_upper=(
+                            not self.legacy_mode
+                            and zone in {"Overall", "Sparse"}
+                        ),
                 )
                 radial_tilt, radial_turning, radial_support = (
                     aggregate_radial_relative(
@@ -1757,6 +1813,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                 outer_radius,
                 obj_mask,
                 "Mask",
+                include_upper=not self.legacy_mode,
         )
         ring_centres, ring_sector_tilt, _ring_resultant = (
             radial_ring_orientation_profile(
@@ -1769,6 +1826,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                     outer_radius,
                     self.radial_ring_width,
                     _RADIAL_RELATIVE_N_SECTORS,
+                    include_outer=not self.legacy_mode,
             )
         )
         pair_midpoints, signed_rotation = long_range_ring_rotation_profile(
@@ -1777,14 +1835,21 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                 self.long_range_lag,
         )
         long_range_bounds = {
-            "Overall": (inner_radius, outer_radius),
+            "Overall": (
+                inner_radius,
+                np.nextafter(outer_radius, np.inf)
+                if not self.legacy_mode
+                else outer_radius,
+            ),
             "Dense"  : (
                 float(seg.core_end_radius),
                 min(float(seg.dense_end_radius), outer_radius),
             ),
             "Sparse" : (
                 float(seg.dense_end_radius),
-                outer_radius,
+                np.nextafter(outer_radius, np.inf)
+                if not self.legacy_mode
+                else outer_radius,
             ),
         }
         for zone, (lower, upper) in long_range_bounds.items():
@@ -1809,6 +1874,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                 outer_radius,
                 obj_mask,
                 "Mask",
+                include_upper=not self.legacy_mode,
         )
         dense_sector_tilt, _dense_resultant = _axial_sector_means(
                 signed_tilt,
@@ -2525,6 +2591,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                     outer_radius,
                     obj_mask,
                     "Mask",
+                    include_upper=not self.legacy_mode,
             )
             origin_row = int(round(seg.centroid_global[0] - centre[0]))
             origin_col = int(round(seg.centroid_global[1] - centre[1]))
@@ -2783,6 +2850,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                     outer_radius,
                     obj_mask,
                     "Mask",
+                    include_upper=not self.legacy_mode,
             )
             valid = (
                     selector
@@ -2914,6 +2982,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                     outer_radius,
                     obj_mask,
                     "Mask",
+                    include_upper=not self.legacy_mode,
             )
             _radii, sector_tilt, _resultant = radial_ring_orientation_profile(
                     signed_tilt,
@@ -2925,6 +2994,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                     outer_radius,
                     self.radial_ring_width,
                     _RADIAL_RELATIVE_N_SECTORS,
+                    include_outer=not self.legacy_mode,
             )
             cumulative = cumulative_ring_rotation_profile(sector_tilt)
             reliable_structure = (
@@ -3065,6 +3135,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                     outer_radius,
                     obj_mask,
                     "Mask",
+                    include_upper=not self.legacy_mode,
             )
             radii, sector_orientation, sector_resultant = (
                 radial_ring_orientation_profile(
@@ -3077,6 +3148,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                         outer_radius,
                         self.radial_ring_width,
                         _RADIAL_RELATIVE_N_SECTORS,
+                        include_outer=not self.legacy_mode,
                 )
             )
             cumulative, path_sectors = (
@@ -3310,11 +3382,12 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
         """Draw confidence-coded local fiber axes inside the overall selector.
 
         Reads only the pre-downsampled block quiver ``(rows, cols, phi_block,
-        coh_block)`` from each cached record. Blocks outside
-        ``symmetric_radius`` are excluded because those pixels do not contribute
-        to the Overall metric. The stored gradient-normal axis is rotated 90°
-        to show the local fiber axis. Segment half-length scales with coherence;
-        three traces provide low/medium/high confidence opacity levels.
+        coh_block)`` from each cached record. Canonical blocks are clipped to
+        ``[CoreEndRadius, SparseEndRadius]``, including the exact global outer
+        boundary. Legacy blocks retain their historical symmetric-radius domain.
+        The stored gradient-normal axis is rotated 90° to show the local fiber
+        axis. Segment half-length scales with coherence; three traces provide
+        low/medium/high confidence opacity levels.
         """
         import plotly.graph_objects as go
 
@@ -3350,7 +3423,12 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                         rows[i, j] - centre_r,
                         cols[i, j] - centre_c,
                     )
-                    if radius < inner_radius or radius >= outer_radius:
+                    selector_outer = (
+                        np.nextafter(outer_radius, np.inf)
+                        if not self.legacy_mode
+                        else outer_radius
+                    )
+                    if radius < inner_radius or radius >= selector_outer:
                         continue
                     bin_idx = next(
                             (

@@ -283,6 +283,109 @@ def _missing_result(
     )
 
 
+def _resolve_radial_profile(
+    profile: OrientationRadialProfile,
+    params: OrientationChangePointParams,
+    *,
+    outer_radius: float,
+    full_extent_radius: float,
+    retained_mask_fraction: float,
+) -> tuple[OrientationZoneResult, OrientationRadialProfile]:
+    """Resolve boundaries from precomputed radial evidence.
+
+    The image-derived profile is independent of the support thresholds and
+    change-point penalties. Keeping this partition step separate lets
+    evaluation reuse one expensive tensor/skeleton profile across a declared
+    parameter grid while production follows the identical solver path.
+    """
+    crossing_resultant = np.nan_to_num(
+        profile.crossing_resultant, nan=-np.inf
+    )
+    raw_support = (
+        (profile.crossing_count >= params.min_crossings)
+        & (crossing_resultant >= params.min_resultant)
+        & (
+            np.nan_to_num(profile.ring_coherence, nan=-np.inf)
+            >= params.min_ring_coherence
+        )
+    )
+    support = bridge_short_gaps(raw_support, params.maximum_gap)
+    matrix = np.column_stack(
+        (
+            robust_standardize(profile.continuous_features),
+            support * params.support_weight,
+        )
+    )
+    resolved_profile = OrientationRadialProfile(
+        radii=profile.radii.copy(),
+        continuous_features=profile.continuous_features.copy(),
+        crossing_count=profile.crossing_count.copy(),
+        crossing_resultant=profile.crossing_resultant.copy(),
+        ring_coherence=profile.ring_coherence.copy(),
+        raw_support=raw_support.copy(),
+        bridged_support=support.copy(),
+    )
+    supported_fraction = float(np.mean(support)) if support.size else 0.0
+    exact = exact_two_change_points(
+        matrix,
+        support,
+        params.minimum_segment,
+        params.outer_support_margin,
+    )
+    if exact is not None:
+        objective, first, second = exact
+        core_zone_radius = float(
+            profile.radii[first] - params.ring_width / 2.0
+        )
+        dense_radius = float(
+            profile.radii[second] - params.ring_width / 2.0
+        )
+        method: Literal["exact", "collapsed"] = "exact"
+        reason = "none"
+    else:
+        collapsed = collapsed_one_change_point(support, params.minimum_segment)
+        if collapsed is None:
+            return (
+                _missing_result(
+                    params,
+                    reason="no_supported_change_point",
+                    outer_radius=outer_radius,
+                    full_extent_radius=full_extent_radius,
+                    retained_mask_fraction=retained_mask_fraction,
+                    supported_fraction=supported_fraction,
+                    ring_count=int(profile.radii.size),
+                ),
+                resolved_profile,
+            )
+        objective, boundary = collapsed
+        core_zone_radius = dense_radius = float(
+            profile.radii[boundary] - params.ring_width / 2.0
+        )
+        method = "collapsed"
+        reason = "no_valid_two_change_candidate"
+
+    core_zone_radius = float(np.clip(core_zone_radius, 0.0, outer_radius))
+    dense_radius = float(
+        np.clip(dense_radius, core_zone_radius, outer_radius)
+    )
+    return (
+        OrientationZoneResult(
+            core_zone_radius=core_zone_radius,
+            dense_radius=dense_radius,
+            outer_radius=outer_radius,
+            full_extent_radius=full_extent_radius,
+            requested_percentile=params.outer_zone_percentile,
+            retained_mask_fraction=retained_mask_fraction,
+            supported_fraction=supported_fraction,
+            objective=float(objective),
+            ring_count=int(profile.radii.size),
+            method_used=method,
+            failure_reason=reason,
+        ),
+        resolved_profile,
+    )
+
+
 def fit_orientation_zones(
     object_mask: BoolArray,
     signal: FloatArray,
@@ -320,13 +423,8 @@ def fit_orientation_zones(
     scaled, derivative_scaled, source_validity = robust_scale_signal(source, mask)
     gradient_y, gradient_x = np.gradient(derivative_scaled)
     edge_energy = np.hypot(gradient_x, gradient_y)
-    source_population = source[source_validity]
-    source_fill = (
-        float(np.median(source_population)) if source_population.size else 0.0
-    )
-    orientation_input = np.where(np.isfinite(source), source, source_fill)
     phi, coherence, gradient = orientation_field(
-        orientation_input, params.sigma_d, params.sigma_i
+        derivative_scaled, params.sigma_d, params.sigma_i
     )
     fiber_axis = (phi + np.pi / 2.0 + np.pi / 2.0) % np.pi - np.pi / 2.0
     rows, cols = np.indices(mask.shape, dtype=np.float64)
@@ -400,30 +498,22 @@ def fit_orientation_zones(
         )
 
     feature_array = np.asarray(features, dtype=np.float64)
-    crossing_resultant = np.nan_to_num(
-        zoning_profile.resultant, nan=-np.inf
-    )
     ring_coherence = feature_array[:, 3]
-    raw_support = (
-        (zoning_profile.crossing_count >= params.min_crossings)
-        & (crossing_resultant >= params.min_resultant)
-        & (
-            np.nan_to_num(ring_coherence, nan=-np.inf)
-            >= params.min_ring_coherence
-        )
-    )
-    support = bridge_short_gaps(raw_support, params.maximum_gap)
-    matrix = np.column_stack(
-        (robust_standardize(feature_array), support * params.support_weight)
-    )
     radial_profile = OrientationRadialProfile(
         radii=radii.copy(),
         continuous_features=feature_array,
         crossing_count=zoning_profile.crossing_count.copy(),
         crossing_resultant=zoning_profile.resultant.copy(),
         ring_coherence=ring_coherence.copy(),
-        raw_support=raw_support.copy(),
-        bridged_support=support.copy(),
+        raw_support=np.zeros(ring_count, dtype=bool),
+        bridged_support=np.zeros(ring_count, dtype=bool),
+    )
+    result, radial_profile = _resolve_radial_profile(
+        radial_profile,
+        params,
+        outer_radius=outer,
+        full_extent_radius=full_extent,
+        retained_mask_fraction=retained,
     )
     context = OrientationAnalysisContext(
         signal=source,
@@ -437,56 +527,5 @@ def fit_orientation_zones(
         zoning_profile=zoning_profile,
         measurement_profile=measurement_profile,
         radial_profile=radial_profile,
-    )
-    supported_fraction = float(np.mean(support)) if support.size else 0.0
-
-    exact = exact_two_change_points(
-        matrix,
-        support,
-        params.minimum_segment,
-        params.outer_support_margin,
-    )
-    if exact is not None:
-        objective, first, second = exact
-        core_zone_radius = float(radii[first] - params.ring_width / 2.0)
-        dense_radius = float(radii[second] - params.ring_width / 2.0)
-        method: Literal["exact", "collapsed"] = "exact"
-        reason = "none"
-    else:
-        collapsed = collapsed_one_change_point(support, params.minimum_segment)
-        if collapsed is None:
-            return OrientationZoneFit(
-                _missing_result(
-                    params,
-                    reason="no_supported_change_point",
-                    outer_radius=outer,
-                    full_extent_radius=full_extent,
-                    retained_mask_fraction=retained,
-                    supported_fraction=supported_fraction,
-                    ring_count=ring_count,
-                ),
-                context,
-            )
-        objective, boundary = collapsed
-        core_zone_radius = dense_radius = float(
-            radii[boundary] - params.ring_width / 2.0
-        )
-        method = "collapsed"
-        reason = "no_valid_two_change_candidate"
-
-    core_zone_radius = float(np.clip(core_zone_radius, 0.0, outer))
-    dense_radius = float(np.clip(dense_radius, core_zone_radius, outer))
-    result = OrientationZoneResult(
-        core_zone_radius=core_zone_radius,
-        dense_radius=dense_radius,
-        outer_radius=outer,
-        full_extent_radius=full_extent,
-        requested_percentile=params.outer_zone_percentile,
-        retained_mask_fraction=retained,
-        supported_fraction=supported_fraction,
-        objective=float(objective),
-        ring_count=ring_count,
-        method_used=method,
-        failure_reason=reason,
     )
     return OrientationZoneFit(result=result, context=context)

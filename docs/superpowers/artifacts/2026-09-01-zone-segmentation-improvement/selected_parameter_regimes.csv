@@ -1,0 +1,4 @@
+dataset,group,selected_parameter_json,failures,collapsed_fits,median_normalized_core_drift,median_normalized_all_boundary_drift
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,"{""maximum_gap"":0,""min_crossings"":5,""min_resultant"":0.15,""min_ring_coherence"":0.15,""minimum_segment"":6,""outer_support_margin"":0.0,""support_weight"":0.5}",0,0,0.61347200555,0.118785379897
+NeurosporaMenadione,Neurospora crassa × menadione,"{""maximum_gap"":0,""min_crossings"":5,""min_resultant"":0.15,""min_ring_coherence"":0.15,""minimum_segment"":4,""outer_support_margin"":0.0,""support_weight"":4.0}",0,0,0.0121313629497,0.217461195332
+NeurosporaXylan,Neurospora crassa × xylan,"{""maximum_gap"":0,""min_crossings"":3,""min_resultant"":0.3,""min_ring_coherence"":0.15,""minimum_segment"":6,""outer_support_margin"":0.1,""support_weight"":0.5}",0,0,0.0308576502037,0.152150754416

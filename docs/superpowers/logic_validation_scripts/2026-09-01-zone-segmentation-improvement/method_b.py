@@ -39,6 +39,14 @@ def validate_method_b_invariants() -> None:
     distances = np.array([0.0, 1.0, 2.0, 3.0])
     assert np.max(distances) == 3.0
     assert np.percentile(distances, 50.0, method="linear") == 1.5
+    outer = 3.0
+    internal = 2.0
+    dense = (distances >= 1.0) & (distances < internal)
+    sparse = (distances >= internal) & (
+        distances < np.nextafter(outer, np.inf)
+    )
+    assert dense.tolist() == [False, True, False, False]
+    assert sparse.tolist() == [False, False, True, True]
 
     support = np.array([False, True, False, True, False])
     bridged = support.copy()

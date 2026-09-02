@@ -1,6 +1,6 @@
 # Canonical Method B shared zone resolver
 
-Status: accepted for implementation, 2026-09-01.
+Status: implemented with corrective revalidation, 2026-09-01.
 
 ## 1. Decision
 
@@ -68,7 +68,7 @@ For every non-tiny object, the shared resolver performs:
 ```text
 final target object mask
   -> distance-transform center
-  -> preserved PELT/symmetry/expansion measurements
+  -> shared mask-only PELT/symmetry/expansion primitive
   -> one detect_mat crop
   -> one structure-tensor field
   -> one reliable object skeleton
@@ -84,10 +84,12 @@ literal-crossing and field measurements, then keeps only compact plot records.
 No full image, tensor field, skeleton, or distance map is retained in an
 operation cache.
 
-The existing `compute_zone_segmentation()` remains the legacy primitive and the
-source of `CoreRadius`, `SymmetricRadius`, `MeanExpansion`, and `MaxExpansion`.
-Canonical resolution replaces only `CoreEndRadius`, `DenseEndRadius`,
-`SparseEndRadius`, and their concentric areas.
+One private morphology primitive is the source of `CoreRadius`,
+`SymmetricRadius`, `MeanExpansion`, `MaxExpansion`, and the distance-transform
+center in both modes. Canonical mode passes that geometry directly to Method B
+and never calculates colony-ness profiles or thresholds. The existing
+`compute_zone_segmentation()` extends the morphology result only for explicit
+legacy mode.
 
 ## 4. Method B profile
 
@@ -167,10 +169,16 @@ Successful exact and collapsed canonical fits use one geometry for every
 orientation consumer:
 
 ```text
-Overall: [CoreEndRadius, SparseEndRadius)
+Overall: [CoreEndRadius, nextafter(SparseEndRadius, +inf))
 Dense:   [CoreEndRadius, DenseEndRadius)
-Sparse:  [DenseEndRadius, SparseEndRadius)
+Sparse:  [DenseEndRadius, nextafter(SparseEndRadius, +inf))
 ```
+
+Overall uses `nextafter(SparseEndRadius, +inf)` as its exclusive upper bound as
+well. Thus the internal Core/Dense and Dense/Sparse boundaries remain half-open,
+while a pixel exactly on the global P95/P100 outer circle is included. Field,
+literal-crossing, long-range, quiver, and inspection-figure selectors apply the
+same rule.
 
 This geometry applies to field aggregation, radial-relative measurements,
 literal crossings, long-range rotation, bend, signed turning, cumulative and
@@ -214,41 +222,72 @@ Because Ganoderma has eight crops from three scenes and each Neurospora cohort
 has four crops from one scene, Ganoderma scene-held-out results are stronger
 evidence. Neurospora leave-one-crop-out results remain sensitivity analyses.
 
-### Executed 16-crop diagnostic
+### Corrected executed 16-crop diagnostic
 
-The executed scratch notebook is
-`scratch/orientation_zone_method_b_p95_p100_evaluation.ipynb`. Its committed
-manifest, boundary rows, aggregate scores, montage, and 16 per-crop overlays
-are under
-`docs/superpowers/artifacts/2026-09-01-zone-segmentation-improvement/`.
-The notebook uses the established detector feature caches and the following
-fixed strata: Ganoderma × glucose/yeast extract, Neurospora × menadione, and
-Neurospora × xylan.
+The earlier scores from
+`scratch/orientation_zone_method_b_p95_p100_evaluation.ipynb` are superseded.
+That historical notebook used the pre-correction tensor input, reported finite
+boundaries as zone availability, reused cached centers, and did not carry enough
+provenance to prove the detector mask, signal, and center for every crop.
 
-Across 48 crop-boundary comparisons, the descriptive results are:
+The replacement is the fully executed
+`scratch/orientation_zone_method_b_corrected_evaluation.ipynb`. Its committed
+manifest, boundary rows, orientation-availability rows, selected regimes,
+cross-validation rows, montage, and 16 per-crop overlays are under
+`docs/superpowers/artifacts/2026-09-01-zone-segmentation-improvement/`. Every
+center is recomputed as the deterministic EDT argmax of the final detector mask.
+Both production measurers are run for every reported method, and summary values
+are asserted against the boundary-level rows.
 
-| Method | Availability | One-ring agreement | Median absolute drift |
-|---|---:|---:|---:|
-| Legacy control | 100% | 31.25% | 15.49 px |
-| Method B P95 | 100% | 29.17% | 13.19 px |
-| Method B P100 | 100% | 14.58% | 29.13 px |
+The exact detector/signal provenance is:
 
-P95 retained 95.01% of detector-mask pixels on average. P100 intentionally
-uses the full mask extent and therefore does not optimize agreement with a
-human-drawn sparse-zone circle. In this small evaluation it had lower circular
-agreement, particularly for Neurospora xylan. These values are observations
-about agreement with one qualitative annotation set, not estimates of
-biological accuracy. They do not override the accepted P100 default; they make
-the extent-policy trade-off visible and preserve P95 as a configurable
-sensitivity setting.
+- Neurospora menadione: current TwoK mask and TwoK `detect_mat`.
+- Neurospora xylan: monogenic-branch TwoK final mask and the TwoK `detect_mat`
+  used by the cache producer. The EDT center is recomputed from the final
+  monogenic mask rather than the legacy TwoK mask.
+- Ganoderma: SAM2 mask and feature signal from
+  `max(stretched_gray, oriented_PCT)` without background subtraction. The SAM2
+  proposal selection used human label 1, so these rows isolate zone segmentation
+  only and cannot support end-to-end detector-performance claims.
+
+The predeclared P100 grid selected one regime per species × medium by failures,
+collapsed fits, median normalized CoreZone drift, median normalized all-boundary
+drift, then deterministic parameter JSON. The selected regime was applied
+unchanged at P95. Across 48 crop-boundary comparisons per method:
+
+| Method | Boundary availability | Zone-geometry availability | One-ring agreement | Median absolute drift | Collapsed crops |
+|---|---:|---:|---:|---:|---:|
+| Legacy control | 100% | 87.50% | 22.92% | 21.97 px | n/a |
+| Corrected fixed P95 | 100% | 93.75% | 31.25% | 25.09 px | 3 |
+| Corrected fixed P100 | 100% | 93.75% | 14.58% | 29.03 px | 3 |
+| Retuned P95 | 100% | 100% | 33.33% | 14.11 px | 0 |
+| Retuned P100 | 100% | 100% | 18.75% | 26.79 px | 0 |
+
+P95 retained 95.01% of final detector-mask pixels on average. The corrected
+notebook reports finite primary orientation metrics separately for Overall,
+Dense, and Sparse; a collapsed DenseZone is unavailable rather than counted as
+100% available. Ganoderma leave-one-scene-out validation produced no missing
+fits and two collapsed held-out fits. Neurospora leave-one-crop-out values are
+reported only as single-scene sensitivity analyses.
+
+These results describe agreement with one qualitative annotation set, not
+biological accuracy. P100 remains the full-mask default; P95 is an explicit
+extent sensitivity setting.
 
 ## 9. Acceptance tests
 
 - Exact, collapsed, missing, gap-bridging, percentile, and tie-breaking unit
   tests pin the pure solver.
+- Positive affine scale-invariance tests cover very small, very large, and
+  offset signals after the finite-filled P2/P98 tensor correction.
+- Exact outer-circle pixels are included while internal boundaries remain
+  half-open.
 - Both measurers must return identical canonical radii for the same object and
   parameters.
+- Canonical tiny objects emit missing morphology, zone, and orientation values
+  with method code 4; legacy mode retains its historical zero-valued zones.
 - Canonical failure must not expose legacy zone boundaries.
+- Canonical mode must not execute the legacy colony-ness extension.
 - `legacy_mode=True` must preserve the historical measurement goldens.
 - Old standalone, pipeline, legacy-nested, and `OperationField` payloads must
   migrate to legacy mode; new payloads must serialize the canonical default.

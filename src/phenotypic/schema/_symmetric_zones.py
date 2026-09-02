@@ -30,8 +30,8 @@ class SYMMETRIC_ZONES(DescriptiveTrait):
         "SymmetricRadius",
         "Radial distance from the inoculum centroid at which colony growth "
         "ceases to be angularly uniform. Computed as the first radius past "
-        "the core where the smoothed per-annulus circular mean resultant "
-        "length of mask-boundary pixels exceeds the symmetry threshold. "
+        "the core where the smoothed fraction of occupied angular sectors "
+        "drops below the symmetry threshold. "
         "Equals the colony outer envelope when growth remains symmetric "
         "throughout.",
     )

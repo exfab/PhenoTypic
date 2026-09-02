@@ -1,4 +1,4 @@
-"""Render an independently refit P95 versus P100 Method B comparison.
+"""Render a corrected, independently refit P95 versus P100 comparison.
 
 The input crop is an illustrative extreme case chosen to make the extent-policy
 difference visible. It is not presented as representative.
@@ -193,12 +193,7 @@ def fit_method_b(
     )
     gradient_y, gradient_x = np.gradient(derivative_scaled)
     edge_energy = np.hypot(gradient_x, gradient_y)
-    source_population = signal[signal_validity]
-    source_fill = (
-        float(np.median(source_population)) if source_population.size else 0.0
-    )
-    orientation_input = np.where(np.isfinite(signal), signal, source_fill)
-    phi, coherence, _ = orientation_field(orientation_input)
+    phi, coherence, _ = orientation_field(derivative_scaled)
     fiber_axis = (phi + np.pi / 2.0 + np.pi / 2.0) % np.pi - np.pi / 2.0
     rows, cols = np.indices(mask.shape, dtype=float)
     azimuth = np.arctan2(rows - center[0], cols - center[1])

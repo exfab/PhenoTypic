@@ -88,8 +88,8 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
     Quantifies each colony by four mask-derived expansion and symmetry scalars
     plus a shared CoreZone / DenseZone / SparseZone partition. The headline is
     ``SymmetricRadius``, the first radius past the inoculum core at which the
-    per-annulus circular mean resultant length of mask-boundary pixels drops
-    below a tunable symmetry threshold. ``CoreRadius`` (PELT changepoint on
+    smoothed fraction of occupied angular sectors drops below a tunable
+    symmetry threshold. ``CoreRadius`` (PELT changepoint on
     the radial density profile) anchors the measurement; ``MeanExpansion``
     and ``MaxExpansion`` summarise how far growth reached past that core.
 
@@ -171,20 +171,20 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
             - Object_Label: unique object identifier.
             - SymZones_CoreRadius: inoculum core radius (pixels).
             - SymZones_SymmetricRadius: first radius past the core
-              where R̄ exceeds the symmetry threshold (pixels).
+              where smoothed angular-sector coverage drops below the
+              symmetry threshold (pixels).
             - SymZones_MeanExpansion: mean boundary-pixel distance
               beyond the core (pixels, clamped at 0).
             - SymZones_MaxExpansion: maximum mask-pixel distance
               beyond the core (pixels, clamped at 0).
-            - SymZones_CoreEndRadius: mean per-angle core boundary
-              radius from the bright-fraction outward walk (pixels).
-            - SymZones_DenseEndRadius: mean per-angle outer radius
-              of the dense branching zone (pixels).
-            - SymZones_SparseEndRadius: mean per-angle outer radius
-              of the sparse branching zone, capped at the symmetric
-              envelope (pixels).
-            - SymZones_CoreArea: pixel^2 area of the inoculum core
-              zone integrated across the 360-sector polar polygon.
+            - SymZones_CoreEndRadius: canonical operational CoreZone
+              boundary from Method B (pixels).
+            - SymZones_DenseEndRadius: canonical DenseZone outer
+              boundary from Method B (pixels).
+            - SymZones_SparseEndRadius: configured target-mask radial
+              percentile used as the canonical outer boundary (pixels).
+            - SymZones_CoreArea: pixel^2 area of the concentric
+              operational CoreZone.
             - SymZones_DenseArea: pixel^2 area of the dense
               branching zone (annular region between core and dense
               boundaries).
@@ -316,9 +316,9 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
         self.__cache_image_ref = weakref.ref(image)
         self.__cache_intermediates = {}
 
-        # Zone columns get 0.0 for tiny objects (no zones to resolve);
-        # the original four columns stay NaN to disambiguate "not measurable"
-        # from legitimately-zero values.
+        # Legacy zone columns retain their historical 0.0 tiny-object values.
+        # Canonical mode routes tiny objects through the shared resolver, which
+        # emits missing morphology and zone geometry consistently.
         _zero_for_tiny = (
             SYMMETRIC_ZONES.CORE_END_RADIUS,
             SYMMETRIC_ZONES.DENSE_END_RADIUS,
@@ -329,7 +329,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
         )
 
         for idx, prop in enumerate(props):
-            if prop.area < 10:
+            if prop.area < 10 and self.legacy_mode:
                 for feat in _zero_for_tiny:
                     measurements[str(feat)][idx] = 0.0
                 continue
@@ -788,7 +788,8 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
 
         # ── Zone polygons — nested annuli + core disk ───────────────
         # Core: solid disk 0..r_core. Dense: annulus r_core..r_dense_end.
-        # Sparse: annulus r_dense_end..r_outer (capped at symmetric radius).
+        # Sparse: annulus r_dense_end..r_outer. Canonical r_outer is the
+        # configured target-mask radial percentile; legacy retains its cap.
         # Drawn sparse → dense → core so narrower zones render on top of
         # wider ones and the legend-group toggle handles all three at once.
         sparse_xs: list[float] = []
