@@ -521,7 +521,7 @@ SCATTER_CROPS_URL_SEGMENT: str = "scatter-crops"
 - [ ] **Step 7: Run the full crop suite and commit**
 
 ```bash
-uv run pytest tests/unit/gui/shared/ tests/gui/_shared/ -v
+sbatch --export=ALL,SCOPE=gui docs/superpowers/plans/2026-09-01-results-scatter-tab/run_scatter_tests.sbatch
 uv run ruff check --fix src/phenotypic/gui/_shared/tiles.py src/phenotypic/gui/_config.py tests/unit/gui/shared/test_tiles_zarr.py
 git add -A src/phenotypic/gui tests/unit/gui/shared
 git commit -m "feat(gui): composite objmap contours into store crops

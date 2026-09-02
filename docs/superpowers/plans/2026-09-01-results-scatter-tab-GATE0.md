@@ -307,10 +307,161 @@ ink assertion in §13 — the only defence, since nothing else signals". A defen
 that is deselected by default and skipped when selected is not mitigation. As
 the plan stands, §15's live risk is unmitigated and the risk table is wrong.
 
-**Fix:** add `pymupdf` to the dev group and drop the `slow` marker. The
-measured separation is 289 dark pixels against 36,608, so the assertion is fast
-and not delicate; the cost is one kaleido render, which the page-count test in
-the same file already pays.
+`spike_e` confirms all of it on this node: `pypdf`, `fitz` and `pymupdf` all
+absent; kaleido imports; no `chrome`/`chromium`/`chromium-browser` on `PATH`; no
+`~/.cache/kaleido`; `BROWSER_PATH` unset. **[MEASURED]**
+
+**Fix — and it needs no new dependency.** See *Answer 1* below: assert on a PNG
+kaleido renders directly (PIL + numpy, both already present), or on the pypdf
+content-stream size. Drop the `slow` marker either way.
+
+## B8 — The shared-axes test cannot detect the regression it is named for [MEASURED]
+
+Promoted from SHOULD-FIX after measurement. plan:1354-1361 ends:
+
+```python
+assert len(ranges) <= 1
+```
+
+I expected the walk to find four identical ranges, making the assertion weak but
+functional. `spike_c` shows it is worse: rebuilding the same figure with
+`share_axes=False` yields **0 distinct ranges**, not 4 — with no shared range
+set, no `yaxis*` entry carries a `range` key at all, the set comprehension
+matches nothing, and `len(ranges) <= 1` passes.
+
+So the test passes in both the correct and the broken configuration. It is a
+third test that cannot fail, alongside B4 and B5, and it is the one guarding
+the spec's §5 shared-axis-range requirement.
+
+**Fix:** `assert len(ranges) == 1`. That flips correctly in both directions —
+`spike_c` confirms the `share_axes=False` build then fails.
+
+## B9 — A hue absent from the first facet never reaches the legend [MEASURED]
+
+Promoted from SHOULD-FIX; measured, not predicted.
+
+plan:1490 sets `showlegend=first_cell` and plan:1503 clears `first_cell` after
+the first `(row, col)` cell. Any series with no rows in cell 1 hits
+`if part.height == 0: continue` (plan:1475-1476) and is thereafter drawn with
+`showlegend=False` everywhere.
+
+`spike_c` on a 2×2 sparse frame:
+
+```
+series drawn      = ['hue=a', 'hue=b']
+series IN LEGEND  = ['hue=a']
+```
+
+Half the plot is unlabelled. This is blocking rather than cosmetic because of
+what the data looks like: spec §1.3 keeps the verification fixture sparse *on
+purpose* — 23 strains across 36 images, median 32 plottable rows per strain,
+"good for exercising empty facets, sparse grids and the 'no data' cell". A gap
+in the first facet is the normal case here, so the legend is wrong on the very
+run Task 14 smoke-tests, and a legend that silently omits series misattributes
+colour on a comparison surface.
+
+**Fix:** key on the label, not the cell.
+
+```python
+seen_legend: set[str] = set()
+...
+showlegend = label not in seen_legend
+seen_legend.add(label)
+```
+
+---
+
+# ANSWERS TO THE TWO ORCHESTRATOR QUESTIONS
+
+## Answer 1 — No, do not add `pymupdf`. Nothing new is needed. [SRC, SPIKE-pending for the numbers]
+
+There is no PDF rasterizer in the tree — `fitz`, `pymupdf`, `pypdfium2` and
+`pdf2image` are all absent, and while `wand` 0.6.13 is in `uv.lock` and
+installed, it binds ImageMagick and `magick` is not on `PATH` (only the legacy
+`/usr/bin/convert`), so it is not a dependency you can rely on either.
+
+But the ink assertion does not need to rasterize a PDF at all, and **pypdf
+cannot help by the route the question suggests**: a kaleido chart is vector, so
+`page.images` is empty (nothing to extract) and `extract_text()` returns the
+axis labels — which are *identical* on a blank page and a rendered one, because
+§11.1's failure mode is precisely that the axes render and the markers do not.
+Text extraction would pass against the broken export.
+
+Two routes that work with what is already installed:
+
+**Preferred — assert on a PNG, not a PDF.** The failure is in the kaleido
+render, not the pypdf merge, so test it where it happens. `kaleido.write_fig_sync`
+takes the format from the path extension, so the same call writes a PNG; Pillow
+12.0.0 and numpy are both dependencies already.
+
+```python
+def test_the_exported_figure_contains_ink_not_just_axes(tmp_path) -> None:
+    """kaleido renders Scattergl as blank axes, exit 0, no warning."""
+    png = tmp_path / "page.png"
+    kaleido.write_fig_sync(build_scatter_figure(_frame(), _spec(),
+                                                plan_facets(...), for_export=True), png)
+    arr = np.asarray(PILImage.open(png).convert("RGB"))
+    assert (arr.mean(axis=2) < 128).sum() > 2000
+```
+
+This mirrors §11.1's own methodology exactly — the spec's evidence is
+`gl.png non-white 624` against `svg.png non-white 46886`, i.e. it was measured
+on PNGs, not PDFs. Reproducing the spec's measurement as the regression test is
+the right shape.
+
+**Fallback, if it must be the merged PDF bytes** — pypdf (which Task 10 adds
+anyway) exposes the page content stream via `page.get_contents().get_data()`.
+A drawn page's stream is orders of magnitude longer than a blank one's, since
+5,000 markers are 5,000 path operators. `spike_g` measures the ratio on a
+matplotlib-generated blank-vs-drawn pair to confirm the separation is wide
+enough to threshold safely.
+
+Either way the marker must go: an assertion behind `-m 'not slow'` is not a
+defence, and this one is cheap.
+
+## Answer 2 — Drop `_store_member_path` *and* the directory scan. [SRC, SPIKE-pending for confirmation]
+
+`_read_store_level(store_path, layer, level)` resolves the member itself
+(`tiles.py:436-437`), so the only remaining job for `_store_member_path` in
+`image_display_range` is locating a directory to scan for level names. That scan
+is itself avoidable: the level count is recorded in the store.
+
+`gui/CLAUDE.md` states the rule directly — "**Never recompute the pyramid.** The
+level count is recorded in `phenotypic.pyramid`". The plan's `iterdir()` +
+`isdigit()` scan is a recomputation of exactly that.
+
+**Simplest correct form:**
+
+```python
+def image_display_range(store_path: Path, layer: LayerName) -> tuple[int, int]:
+    block = _readable_block(store_path)
+    levels = int(block[ngff_.PhenotypicAttr.PYRAMID]["levels"])
+    smallest = _read_store_level(store_path, layer, levels - 1)
+    finite = smallest[np.isfinite(smallest)] if smallest.dtype.kind == "f" else smallest
+    if finite.size == 0:
+        return (0, 255)
+    return (int(finite.min()), int(finite.max()))
+```
+
+`PhenotypicAttr.PYRAMID` is `"pyramid"` (`sdk_/ngff_.py:455`). I verified the
+depth is uniform across layers on the fixture — `rgb`, `gray`, `detect_mat` and
+`rgb/labels/objmap` each hold levels `0..4`, matching the block's
+`"levels": 5` — so `levels - 1` is the smallest index for every layer, and the
+image/label downsample split (`{"image": "mean", "label": "nearest"}`) does not
+imply differing depths.
+
+This drops one helper call, one directory scan, and the `str`-vs-`int` type
+error in one edit. Two caveats worth a line of code:
+
+- `_level_shape`'s docstring warns it raises `FileNotFoundError` "If the level
+  the store DECLARES is not on disk", so a declared count *can* exceed reality.
+  Catching that and falling back to `(0, 255)` costs nothing.
+- **The fallback must not be `(0, 0)`.** `spike_d` found that the as-written
+  version returns `(0, 0)` silently for `detect_mat` and `gray`; fed to
+  `scale_to_uint8`, `span <= 0` takes the `np.zeros` branch (plan:160-161) and
+  the crop renders **entirely black** with no error. The render path only calls
+  this for `rgb` today, so it is not live — but it is a loaded gun on a public
+  helper, and a guard against `hi <= lo` returning `(0, 255)` instead removes it.
 
 ---
 
