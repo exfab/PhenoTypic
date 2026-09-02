@@ -110,18 +110,38 @@ def test_uint8_stores_are_passed_through_unchanged() -> None:
     assert np.array_equal(scale_to_uint8(arr, 0, 255), arr)
 
 
-def test_the_display_range_does_not_depend_on_the_crop_window(store: Path) -> None:
-    """Two windows of one image must map an identical value identically.
+def test_a_brighter_window_renders_brighter_than_a_dim_one(store: Path) -> None:
+    """The pin against a PER-CROP stretch, which is the naive fix.
 
-    A per-crop min-max stretch (the naive fix) fails this: the same
-    physical brightness renders differently depending on what else is in
-    the window.
+    Under a per-crop min-max stretch every window is expanded to fill
+    0-255, so a bright region and a dim region render with the SAME mean
+    and the ordering is destroyed. Under one per-image range the ordering
+    survives. ``f(x) == f(x)`` would prove nothing; this asserts a property
+    only the correct implementation has.
     """
-    from phenotypic.gui._shared.tiles import image_display_range
+    import os
 
-    assert image_display_range(store, "rgb") == image_display_range(store, "rgb")
-    lo, hi = image_display_range(store, "rgb")
-    assert lo < hi
+    from phenotypic import Image
+    from phenotypic.gui._shared.tiles import crop_store_rgb
+
+    full = Image.load_layer_zarr(store, "rgb", level=0)
+    plane = full.mean(axis=0) if full.ndim == 3 else full
+    row_means = plane.mean(axis=1)
+    brightest, dimmest = int(np.argmax(row_means)), int(np.argmin(row_means))
+    centre_col = float(plane.shape[1] // 2)
+
+    mtime = os.stat(store).st_mtime_ns
+    bright = _decode_rgb(
+        crop_store_rgb(store, "rgb", float(brightest), centre_col, 64, mtime)
+    ).mean()
+    dim = _decode_rgb(
+        crop_store_rgb(store, "rgb", float(dimmest), centre_col, 64, mtime)
+    ).mean()
+
+    assert bright > dim, (
+        f"a brighter region rendered no brighter ({bright:.1f} vs {dim:.1f}) "
+        "-- the range is being taken from the crop, not the image"
+    )
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -1340,15 +1360,27 @@ def test_every_point_carries_its_row_index_as_customdata() -> None:
 
 
 def test_an_empty_facet_still_occupies_its_cell() -> None:
-    """A missing combination must not collapse the grid's geometry."""
+    """A missing (row, col) combination must not collapse the geometry.
+
+    Four cells are planned, three carry data. The grid must still be 2x2 --
+    a facet that silently disappears shifts every panel after it and
+    misreads as data rather than as absence.
+    """
     df = pl.DataFrame({
-        "x": [1, 2], "y": [1.0, 2.0], "r": ["0", "0"], "c": ["0", "0"],
-        "_scatter_row_index": [0, 1],
+        "x": [1, 2, 3],
+        "y": [1.0, 2.0, 3.0],
+        "r": ["0", "0", "1"],
+        "c": ["0", "1", "0"],      # (r=1, c=1) is absent
+        "_scatter_row_index": [0, 1, 2],
     })
     spec = FigureSpec(x_col="x", y_col="y", row_col="r", col_col="c")
     plan = plan_facets(df, spec)
+    assert len(plan.rows) == 2 and len(plan.cols) == 2
+
     fig = build_scatter_figure(df, spec, plan)
-    assert isinstance(fig, go.Figure)
+    axes = {k for k in fig.layout.to_plotly_json() if k.startswith("xaxis")}
+    assert len(axes) == 4, f"expected a 2x2 grid of axes, got {len(axes)}"
+    assert len(fig.data) == 3, "one trace per non-empty cell"
 
 
 def test_shared_axes_give_every_facet_one_range() -> None:
@@ -1747,7 +1779,16 @@ Spec §6, §6.1.
 - Consumes: `CUSTOMDATA_COL` (Task 9).
 - Produces:
   - `ColonyRef` — frozen dataclass `dataset: str`, `stem: str`, `label: int`
-  - `resolve_click(master_df, index, fingerprint, expected_fingerprint) -> ColonyRef | None`
+  - `index_frame(master_df: pl.DataFrame) -> pl.DataFrame` — **the producer**
+  - `resolve_click(master_df, index, fingerprint, expected_fingerprint) -> ColonyRef | None` — **the consumer**
+
+Both sides of the index contract live in this one module on purpose. Gate 0
+found the plan building the index against the *filtered* frame in Task 13 while
+resolving it against `master_df` here — every click would have opened a real but
+wrong colony, silently. The producer and the consumer were in different tasks in
+different clusters, which is exactly how that survived review. Co-locating them
+removes the bug class rather than this instance: Task 13 must call
+`index_frame`, never `with_row_index` itself.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1785,6 +1826,35 @@ def test_a_stale_fingerprint_is_refused_not_resolved() -> None:
 def test_an_out_of_range_index_is_refused() -> None:
     assert resolve_click(_master(), 99, "fp", "fp") is None
     assert resolve_click(_master(), -1, "fp", "fp") is None
+
+
+def test_an_index_survives_filtering_and_sorting() -> None:
+    """The round-trip Gate 0 found missing, and the bug it would have caught.
+
+    The index must be assigned to master_df BEFORE any filtering, so that a
+    point drawn from a filtered, re-sorted frame still addresses the right
+    row of the unfiltered one. Indexing the filtered frame instead passes
+    every other test in this module -- none of them exercise the producer --
+    and opens the wrong colony in production.
+    """
+    from phenotypic.gui.results_viewer._scatter_tab._inspector import index_frame
+    from phenotypic.gui.results_viewer._scatter_tab._figure import CUSTOMDATA_COL
+
+    master = _master()
+    indexed = index_frame(master)
+
+    # Whatever the figure does downstream -- filter, sort, drop rows --
+    # the carried index must still resolve to the same colony.
+    scrambled = (
+        indexed.filter(pl.col("Metadata_ImageName") != "a")
+        .sort("Object_Label", descending=True)
+    )
+    for row in scrambled.iter_rows(named=True):
+        idx = int(row[CUSTOMDATA_COL])
+        assert resolve_click(master, idx, "fp", "fp") == ColonyRef(
+            row["Metadata_Dataset"], row["Metadata_ImageName"],
+            int(row["Object_Label"]),
+        )
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
@@ -1819,6 +1889,31 @@ class ColonyRef:
     dataset: str
     stem: str
     label: int
+
+
+def index_frame(master_df: pl.DataFrame) -> pl.DataFrame:
+    """Stamp each row with its positional index into ``master_df``.
+
+    **Call this before filtering, never after.** The index this writes is
+    positional into the frame passed in, and :func:`resolve_click` reads it
+    positionally out of the same frame. Indexing a filtered frame instead
+    produces indices that address the wrong rows of ``master_df`` -- and
+    because every one of them is a real colony with a real crop, nothing
+    errors and the inspector simply shows the wrong colony.
+
+    ``FilterSpec.apply_to`` is a ``.filter()``, which preserves both added
+    columns and their values, so an index stamped here survives every
+    downstream filter, sort and row-drop.
+
+    Args:
+        master_df: The frozen run frame from ``OutputRoot``.
+
+    Returns:
+        ``master_df`` with a ``CUSTOMDATA_COL`` index column prepended.
+    """
+    from phenotypic.gui.results_viewer._scatter_tab._figure import CUSTOMDATA_COL
+
+    return master_df.with_row_index(CUSTOMDATA_COL)
 
 
 def resolve_click(
@@ -1979,12 +2074,19 @@ def test_scatter_subscribes_to_the_shared_refresh_revision(dash_app_and_root) ->
     app, output_root = dash_app_and_root
     register_callbacks(app, output_root)
 
+    # Dash 4.1 stores inputs as plain dicts keyed "id"/"property", not as
+    # objects -- the repo's working example is test_filter_panel.py:216-219.
     inputs = {
-        dep.component_id
-        for cb in app.callback_map.values()
-        for dep in cb["inputs"]
+        spec["id"]
+        for entry in app.callback_map.values()
+        for spec in entry["inputs"]
     }
     assert ids.STORE_PLOT_REFRESH_REVISION in inputs
+    assert ids.STORE_FILTER_SPEC in inputs, (
+        "the filter store must be an Input, not a State -- decision Q4 is "
+        "that Scatter shares filters, so the figure must rebuild on a filter "
+        "edit rather than going stale"
+    )
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
@@ -2019,12 +2121,18 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         Input(ids.SCATTER_SHOW_REMOVED, "value"),
         Input(ids.STORE_SCATTER_SECTION_INDEX, "data"),
         Input(rv_ids.STORE_PLOT_REFRESH_REVISION, "data"),
-        State(rv_ids.STORE_FILTER_STATE, "data"),
+        # Input, NOT State: decision Q4 shares filters, so a filter edit must
+        # rebuild the figure rather than leave it stale.
+        Input(rv_ids.STORE_FILTER_SPEC, "data"),
     )
     def _render(section_col, row_col, col_col, x_col, y_col, hue, shape,
-                show_removed, section_index, _revision, filter_state):
-        frame = plottable(apply_filters(output_root.master_df, filter_state))
-        frame = frame.with_row_index(CUSTOMDATA_COL)
+                show_removed, section_index, _revision, filter_payload):
+        # Index BEFORE filtering. resolve_click reads this positionally out
+        # of master_df, so an index stamped on the filtered frame would
+        # address the wrong row -- and every wrong row is a real colony, so
+        # nothing would error. index_frame is the only sanctioned producer.
+        base = index_frame(output_root.master_df)
+        frame = plottable(FilterSpec.from_store(filter_payload).apply_to(base))
         if x_col == COMPUTED_FRAME_INDEX:
             frame = derive_frame_index(frame)
         frame = frame.drop_nulls(subset=[c for c in (x_col, y_col) if c])
@@ -2257,7 +2365,7 @@ batch 3–6 commands per request to keep the trade cheap.
 | B | 4 | Sweep — mechanical, but changes Colony's axis options | Opus / medium | parallel with A |
 | C | 5, 6, 7, 8 | Keystone — the pure, Dash-free data layer | Opus / high | after A |
 | D | 9, 10 | Keystone — the render pipeline | Opus / high | after C |
-| E | 11 | Seam — the silent-wrong-colony hazard | Opus / high | after D |
+| E | 11 | Seam — the silent-wrong-colony hazard; owns BOTH sides of the index contract | Opus / high | after D |
 | F | 12 | Seam — shared JS + layout mount | Opus / high | after E |
 | G | 13 | Seam — the largest integration point | Opus / high | after F |
 | H | 14 | Sweep — CI-gated ledgers | Sonnet / medium | after G |
@@ -2272,6 +2380,14 @@ in one cluster.
 point. Risk is not size. E resolves a click to a colony and a mistake opens the
 *wrong* colony plausibly and silently; F edits JS two other surfaces depend on;
 G is where every prior cluster meets.
+
+**Gate 0 changed E's boundary.** The plan originally put the index *producer* in
+Task 13 (cluster G) and the *consumer* in Task 11 (cluster E), and they disagreed:
+the producer indexed the filtered frame, the consumer read `master_df`
+positionally. Every click would have opened a real but wrong colony, with nothing
+raising. Splitting a contract across two clusters is how that survived a careful
+read, so E now owns both halves — `index_frame` and `resolve_click` live in one
+module, and G is briefed that calling `with_row_index` itself is a defect.
 
 ### Gates
 
