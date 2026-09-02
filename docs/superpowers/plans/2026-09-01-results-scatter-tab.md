@@ -16,6 +16,20 @@
 
 - **`uv` is the sole runner.** Never bare `python` or `pip`. Tests: `uv run pytest`.
 - **Lint with explicit paths only:** `uv run ruff check --fix <paths you changed>`. A bare `ruff check --fix` rewrites the whole repo.
+- **Escalate any plan defect that changes an API surface — do not decide it
+  yourself.** Correcting the plan's *internals* is expected and encouraged;
+  changing what other code sees is the user's call. Escalate when a fix would:
+  add, remove or rename a parameter, or change one from optional to required
+  (or back); add, remove or rename a module-level function, class, constant or
+  URL segment; change a return type, raised exception, or default value;
+  change what an existing surface *renders or offers* to a user, even with no
+  signature change; or add a dependency.
+  Fixing a wrong `file:line`, a vacuous test, a mis-typed variable or a wrong
+  argument *value* is not an API change — just do it and say so.
+  Two already landed under this bar and are recorded here rather than hidden:
+  `_store_layer_array_to_rgb`'s `store_path` went from optional to **required**
+  (Task 1), and `register_crop_route` gained `default_contours` (Task 3).
+  Both were right; both should have been raised rather than settled in-flight.
 - **Never `git add -A`, and never stage a directory.** Stage exactly the paths
   your task's **Files:** block names. Clusters share one worktree, so a
   directory-wide add sweeps another agent's half-finished work into your
