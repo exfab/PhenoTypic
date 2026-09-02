@@ -84,4 +84,3 @@ migration.
 - [ ] Submit full grouped unit verification through the Slurm workflow, inspect
   terminal evidence, request independent whole-branch review, fix findings,
   and rerun affected verification.
-

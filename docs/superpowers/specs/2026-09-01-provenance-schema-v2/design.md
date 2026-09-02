@@ -1,7 +1,7 @@
 # Provenance schema v2
 
-**Date:** 2026-09-01  
-**Status:** Approved for implementation  
+**Date:** 2026-09-01
+**Status:** Approved for implementation
 **Scope:** Image provenance journals, process/full/programmatic application
 boundaries, and explicit migration of schema-v1 journals.
 
@@ -87,4 +87,3 @@ store. Provenance-only migration rejects `--delete-sources` and active outputs.
 normalized readers retain application boundaries for the CLI and GUI. The
 process -> full CLI -> exported store path must retain two separately typed
 applications and both pipeline identities.
-
