@@ -144,7 +144,7 @@ def test_the_display_range_works_for_every_layer_not_just_rgb() -> None:
         assert hi > lo, f"{layer} produced a degenerate range ({lo}, {hi})"
 
 
-def test_a_brighter_window_renders_brighter_than_a_dim_one(store: Path) -> None:
+def test_a_brighter_window_renders_brighter_than_a_dim_one() -> None:
     """The pin against a PER-CROP stretch, which is the naive fix.
 
     Under a per-crop min-max stretch every window is expanded to fill
@@ -158,8 +158,17 @@ def test_a_brighter_window_renders_brighter_than_a_dim_one(store: Path) -> None:
     from phenotypic import Image
     from phenotypic.gui._shared.tiles import crop_store_rgb
 
+    # FIXTURE_STORE, not the synthetic `store`: that one is uint8 (max 250),
+    # so scale_to_uint8 returns early and this test would exercise nothing.
+    # It passed before the implementation existed -- that is the proof.
+    if not FIXTURE_STORE.exists():
+        pytest.skip("migration-test fixture absent")
+    store = FIXTURE_STORE
+
     full = Image.load_layer_zarr(store, "rgb", level=0)
-    plane = full.mean(axis=0) if full.ndim == 3 else full
+    # axis=-1: load_layer_zarr returns rgb CHANNEL-LAST (H, W, 3), pinned by
+    # test_rgb_crop_returns_channel_last_pixels. axis=0 would average rows.
+    plane = full.mean(axis=-1) if full.ndim == 3 else full
     row_means = plane.mean(axis=1)
     brightest, dimmest = int(np.argmax(row_means)), int(np.argmin(row_means))
     centre_col = float(plane.shape[1] // 2)
@@ -281,12 +290,17 @@ Expected: 4 passed. If `image_display_range` raises, check `_read_store_level`'s
 
 - [ ] **Step 5: Wire the fix into the render path**
 
-Replace the `rgb` branch of `_store_layer_array_to_rgb` (line 466). The function needs the store path, so change its signature and both call sites:
+Replace the `rgb` branch of `_store_layer_array_to_rgb` (line 466). The function needs the store path, so change its signature and its **one**
+call site (`tiles.py:571` — the plan originally said two; there is one):
 
 ```python
 def _store_layer_array_to_rgb(
-    arr: np.ndarray, layer: str, store_path: Path | None = None
+    arr: np.ndarray, layer: str, store_path: Path
 ) -> np.ndarray:
+    # store_path is REQUIRED, not defaulted. A None default falls back to a
+    # per-window stretch -- exactly the "brightness ordering destroyed
+    # between crops" bug this fix exists to prevent. One call site, so
+    # requiring it costs nothing and closes the trap.
     """Convert a decoded store layer array to an RGB uint8 array."""
     from phenotypic.gui.builder._image_renderer import (
         _label_map_to_rgb,
@@ -294,8 +308,15 @@ def _store_layer_array_to_rgb(
     )
 
     if layer == "rgb":
-        if store_path is None:
-            return _normalize_to_uint8(arr)
+        # Check the dtype BEFORE asking for a range. scale_to_uint8 returns
+        # uint8 arrays untouched, so computing a range for one is waste --
+        # and on a store small enough to have a single pyramid level, "the
+        # smallest level" IS the full layer, which trips
+        # test_store_crop_reads_window_without_full_layer_loader. Every
+        # store written before the migration is uint8, so this is also the
+        # common path.
+        if arr.dtype == np.uint8:
+            return arr
         lo, hi = image_display_range(store_path, "rgb")
         return scale_to_uint8(arr, lo, hi)
     if layer == "objmap":
@@ -594,7 +615,8 @@ Expected: FAIL on `Texture_` (the tuple has `TextureGray_`).
 #: Families excluded from axis pickers: continuous per-object measurements.
 #: DERIVED from schema ownership rather than hand-maintained -- the previous
 #: literal listed ``TextureGray_``, which no schema declares (so ``Texture_``
-#: was never excluded), and omitted 31 real categories including ``Size_``.
+#: was never excluded), and omitted 26 real categories including ``Size_`` (31 is the
+#: size of the derived set; 5 of the old 6 entries survive it).
 #: The grouping families below stay selectable because they are what an axis
 #: IS, not what it measures.
 _AXIS_ELIGIBLE_CATEGORIES: frozenset[str] = frozenset(
@@ -613,11 +635,17 @@ def _derive_measurement_prefixes() -> tuple[str, ...]:
         for sub in subs:
             yield from leaves(sub)
 
-    cats = {
-        c.category()
-        for c in leaves(MeasurementInfo)
-        if hasattr(c, "category")
-    }
+    # NOT `if hasattr(c, "category")` -- that guard is always true, because
+    # category() is defined on the MeasurementInfo base and RAISES rather
+    # than being absent. This runs at module scope, so a leaf without an
+    # override would fail the import of _grid.py and take the Colony tab
+    # with it. Implement the guard's actual intent.
+    cats = set()
+    for c in leaves(MeasurementInfo):
+        try:
+            cats.add(c.category())
+        except NotImplementedError:
+            continue
     return tuple(sorted(f"{c}_" for c in cats - _AXIS_ELIGIBLE_CATEGORIES))
 
 
@@ -643,7 +671,7 @@ git add -A src/phenotypic/gui tests/unit/gui/results_viewer
 git commit -m "fix(gui): derive _MEASUREMENT_PREFIXES from schema categories
 
 The literal listed TextureGray_, which no schema declares, so Texture_
-columns were never excluded from axis pickers; and it omitted 31 real
+columns were never excluded from axis pickers; and it omitted 26 real
 categories including Size_. Derives from MeasurementInfo categories minus
 the metadata/identity/grouping families, which must stay selectable."
 ```
