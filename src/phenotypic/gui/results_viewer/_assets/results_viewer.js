@@ -12,7 +12,8 @@
  *      viewState onto its peers.
  *   4. Watch the cards container for DOM removals and destroy orphaned
  *      stages automatically (cards come and go via Dash callbacks).
- *   5. Bridge shift-click tile selection into a Dash store (section E).
+ *   5. Bridge shift-click tile selection into a Dash store (section G).
+ *   6. Drive data-attribute-declared drag-splitters (section H).
  *
  * OpenSeadragon is gone from this file. The Plate surface reads OME-Zarr
  * chunks directly in the browser over the `/zarr/...` byte route, so there
@@ -28,6 +29,9 @@
  *   - disposeStage(divId)        : tear down and forget a stage.
  *   - setLockViews(active)       : toggle mirrored pan/zoom.
  *   - applyPlateSources(records) : helper invoked from clientside callbacks.
+ *   - onElementsMounted(sel, fn) : attach to matching elements now and as
+ *                                  Dash mounts more of them (section F).
+ *   - clampSidebarWidth(px)      : the splitter's width clamp (section H).
  * -------------------------------------------------------------------------
  */
 
@@ -660,7 +664,73 @@
 })();
 
 /* ============================================================
- * (F) Tile multi-select shift-click bridge (colony grid + QC gallery).
+ * (F) Shared mount observer.
+ *
+ * Dash mounts tabs lazily and replaces whole subtrees on re-render, so
+ * every delegated listener below has to attach to nodes that do not
+ * exist yet AND re-attach to nodes that are swapped out later.
+ *
+ * The shape that used to serve that was `setInterval(tryAttach, 100)`
+ * beside a <body> MutationObserver. It only ever cleared once EVERY
+ * target existed, so a surface that is never mounted -- the QC gallery
+ * and the QC worklist splitter both are -- left a 100 ms timer running
+ * for the life of the session while the observer was already doing the
+ * same work. Attachment is observer-only now, so it terminates by
+ * construction rather than by a poll that happens to succeed.
+ *
+ * `ns.onElementsMounted(selector, attach)` calls `attach(element)` for
+ * every current match and for every match added afterwards. Two
+ * requirements on callers:
+ *
+ *   - `attach` MUST be idempotent (all callers guard on a dataset flag).
+ *     A re-render inside an already-attached subtree re-reports nodes
+ *     that are already wired.
+ *   - Read per-element configuration inside the handler, not at attach
+ *     time, so Dash rewriting an attribute on a node it keeps is seen.
+ *
+ * Only ADDED nodes are inspected, never the whole document per
+ * mutation: this page runs Viv rendering and a virtualized colony grid,
+ * both of which mutate the DOM continuously.
+ * ============================================================ */
+(function () {
+    "use strict";
+    const ns = window.__phenotypicResultsViewer =
+        window.__phenotypicResultsViewer || {};
+
+    function attachWithin(node, selector, attach) {
+        if (!node || node.nodeType !== 1) return;   // 1 === ELEMENT_NODE
+        if (typeof node.matches === "function" && node.matches(selector)) {
+            attach(node);
+        }
+        if (typeof node.querySelectorAll === "function") {
+            node.querySelectorAll(selector).forEach(attach);
+        }
+    }
+
+    ns.onElementsMounted = function (selector, attach) {
+        function start() {
+            attachWithin(document.body, selector, attach);
+            const obs = new MutationObserver(function (mutations) {
+                mutations.forEach(function (m) {
+                    m.addedNodes.forEach(function (node) {
+                        attachWithin(node, selector, attach);
+                    });
+                });
+            });
+            obs.observe(document.body, { childList: true, subtree: true });
+        }
+        if (document.body) {
+            start();
+        } else {
+            // One-shot, not a poll: the only reason body can be missing is
+            // that this file was loaded from <head>.
+            document.addEventListener("DOMContentLoaded", start, { once: true });
+        }
+    };
+})();
+
+/* ============================================================
+ * (G) Tile multi-select shift-click bridge (colony grid + QC gallery).
  *
  * Bridges native checkbox click events on a tile container into a
  * Dash dcc.Store so the Python side can apply selection logic (single
@@ -681,11 +751,12 @@
  * ============================================================ */
 (function () {
     "use strict";
+    const ns = window.__phenotypicResultsViewer;
 
     // (containerId, deltaStoreId, datasetFlag) per surface. The dataset
     // flag is the single source of truth for "this container already has
-    // our listener", so the polling path and the body MutationObserver
-    // agree even if they race on the same fresh container.
+    // our listener", so a container reported twice by the mount observer
+    // is wired once.
     const BRIDGES = [
         {
             containerId: "colony-grid-container",
@@ -743,66 +814,49 @@
         );
     }
 
-    function tryAttach() {
-        // Returns true only once EVERY surface's container is present, so
-        // the initial poll keeps running until both have mounted (QC mounts
-        // later than the colony grid).
-        let allPresent = true;
-        BRIDGES.forEach(function (b) {
-            const container = document.getElementById(b.containerId);
-            if (container) {
-                attachListener(container, b.deltaStoreId, b.flag);
-            } else {
-                allPresent = false;
-            }
-        });
-        return allPresent;
-    }
+    const BRIDGE_BY_ID = new Map(
+        BRIDGES.map(function (b) { return [b.containerId, b]; })
+    );
+    const CONTAINER_SELECTOR = BRIDGES.map(function (b) {
+        return "#" + b.containerId;
+    }).join(", ");
 
-    // Dash mounts the tabs lazily; poll until every container exists, then
-    // attach the delegated listeners and stop polling.
-    if (!tryAttach()) {
-        const interval = setInterval(function () {
-            if (tryAttach()) clearInterval(interval);
-        }, 100);
-    }
-
-    // If Dash later replaces a container (tab switch / re-render), the
-    // dataset flag goes away with the old node. Watch <body> for re-mounts
-    // and re-attach to whichever fresh container appears.
-    function startReattachObserver() {
-        if (!document.body) return false;
-        const obs = new MutationObserver(function () {
-            BRIDGES.forEach(function (b) {
-                const container = document.getElementById(b.containerId);
-                if (!container) return;
-                // attachListener is idempotent — its dataset-flag guard
-                // makes a no-op cheap, so we can fire on every mutation.
-                attachListener(container, b.deltaStoreId, b.flag);
-            });
-        });
-        obs.observe(document.body, { childList: true, subtree: true });
-        return true;
-    }
-
-    if (!startReattachObserver()) {
-        const bodyInterval = setInterval(function () {
-            if (startReattachObserver()) clearInterval(bodyInterval);
-        }, 100);
-    }
+    // Both surfaces mount lazily and either can be re-rendered later, so
+    // section (F) drives attachment for whichever container appears. It
+    // used to be a poll that waited for BOTH: the QC gallery is unmounted,
+    // so that poll never terminated.
+    ns.onElementsMounted(CONTAINER_SELECTOR, function (container) {
+        const bridge = BRIDGE_BY_ID.get(container.id);
+        if (bridge) {
+            attachListener(container, bridge.deltaStoreId, bridge.flag);
+        }
+    });
 })();
 
 /* ============================================================
- * (F) QC Review worklist drag-splitter.
+ * (H) Generic drag-splitter.
  *
- * A thin handle (#qc-review-splitter) between the worklist sidebar and
- * the detail/gallery pane. Dragging it widens/narrows the worklist
- * (#qc-review-worklist) live, clamped to [MIN, MAX] px; on mouse-up the
- * final width is persisted to the Dash store `store-qc-sidebar-width`
- * via window.dash_clientside.set_props, so a Python callback can re-apply
- * it across re-renders + collapse. Mirrors the colony shift-click bridge:
- * poll-to-attach + a <body> MutationObserver re-attach, both idempotent
- * via a dataset flag.
+ * A thin handle between a sizeable side pane and the rest of a surface.
+ * Dragging it sets the pane's width live, clamped to [MIN_W, MAX_W] px;
+ * on mouse-up the final width is persisted to a Dash store via
+ * window.dash_clientside.set_props, so a Python callback can re-apply it
+ * across re-renders and collapse.
+ *
+ * Every identifier is DATA-DRIVEN, because more than one surface needs
+ * this. The handle declares its own wiring:
+ *
+ *   data-splitter-target : id of the pane whose width the drag sets
+ *   data-splitter-store  : id of the dcc.Store the final width goes to
+ *
+ * Carrying `data-splitter-target` is what MAKES an element a handle --
+ * this module names no surface and no id of its own. Python owns both
+ * ids, which is where they belong: they are the same ids its callbacks
+ * already bind.
+ *
+ * Attachment goes through section (F)'s mount observer, so a handle that
+ * mounts with a lazily-rendered tab is picked up, a handle Dash replaces
+ * on re-render is re-wired, and a surface that never mounts costs
+ * nothing. It used to be a poll that never terminated.
  *
  * `clampSidebarWidth` is exposed on the namespace so a test can drive the
  * exact clamp the drag uses without a real pointer drag.
@@ -814,38 +868,50 @@
 
     const MIN_W = 140;
     const MAX_W = 380;
+    const DEFAULT_W = 180;
+
+    //: An element carrying this attribute IS a splitter handle.
+    const HANDLE_SELECTOR = "[data-splitter-target]";
+    //: dataset key for the idempotence flag -> `data-splitter-attached`.
+    const ATTACHED_FLAG = "splitterAttached";
 
     ns.clampSidebarWidth = function (px) {
         const n = Math.round(Number(px));
-        if (!Number.isFinite(n)) return 180;  // default
+        if (!Number.isFinite(n)) return DEFAULT_W;
         return Math.max(MIN_W, Math.min(MAX_W, n));
     };
 
-    function persistWidth(px) {
+    function persistWidth(storeId, px) {
+        // A handle with no store is legal: the drag still resizes, the
+        // width just does not survive a re-render.
+        if (!storeId) return;
         const dc = window.dash_clientside;
         if (!dc || typeof dc.set_props !== "function") {
             console.warn("[results_viewer] dash_clientside.set_props unavailable");
             return;
         }
-        dc.set_props("store-qc-sidebar-width", { data: px });
+        dc.set_props(storeId, { data: px });
     }
 
     function attachSplitter(handle) {
-        if (handle.dataset._qcSplitter === "1") return;
-        handle.dataset._qcSplitter = "1";
+        if (handle.dataset[ATTACHED_FLAG] === "1") return;
+        handle.dataset[ATTACHED_FLAG] = "1";
         handle.addEventListener("mousedown", function (downEvt) {
-            const worklist = document.getElementById("qc-review-worklist");
-            if (!worklist) return;
+            // Resolved per drag, not per attach: Dash can rewrite a
+            // node's attributes without replacing the node.
+            const targetId = handle.dataset.splitterTarget;
+            const pane = targetId ? document.getElementById(targetId) : null;
+            if (!pane) return;
             downEvt.preventDefault();  // don't text-select while dragging
             const startX = downEvt.clientX;
-            const startW = worklist.getBoundingClientRect().width;
+            const startW = pane.getBoundingClientRect().width;
             // Visual feedback during the drag.
             document.body.style.userSelect = "none";
             document.body.style.cursor = "col-resize";
 
             function onMove(moveEvt) {
                 const next = ns.clampSidebarWidth(startW + (moveEvt.clientX - startX));
-                worklist.style.width = next + "px";
+                pane.style.width = next + "px";
             }
             function onUp() {
                 document.removeEventListener("mousemove", onMove);
@@ -853,43 +919,17 @@
                 document.body.style.userSelect = "";
                 document.body.style.cursor = "";
                 const finalW = ns.clampSidebarWidth(
-                    worklist.getBoundingClientRect().width
+                    pane.getBoundingClientRect().width
                 );
-                worklist.style.width = finalW + "px";
-                persistWidth(finalW);  // survives re-renders + collapse
+                pane.style.width = finalW + "px";
+                // survives re-renders + collapse
+                persistWidth(handle.dataset.splitterStore, finalW);
             }
             document.addEventListener("mousemove", onMove);
             document.addEventListener("mouseup", onUp);
         });
-        console.info("[results_viewer] QC review splitter attached");
+        console.info("[results_viewer] splitter attached:", handle.id);
     }
 
-    function tryAttach() {
-        const handle = document.getElementById("qc-review-splitter");
-        if (!handle) return false;
-        attachSplitter(handle);
-        return true;
-    }
-
-    if (!tryAttach()) {
-        const interval = setInterval(function () {
-            if (tryAttach()) clearInterval(interval);
-        }, 100);
-    }
-
-    // Re-attach if Dash re-mounts the Review subtree (tab/sub-view switch).
-    function startReattachObserver() {
-        if (!document.body) return false;
-        const obs = new MutationObserver(function () {
-            const handle = document.getElementById("qc-review-splitter");
-            if (handle) attachSplitter(handle);  // idempotent
-        });
-        obs.observe(document.body, { childList: true, subtree: true });
-        return true;
-    }
-    if (!startReattachObserver()) {
-        const bodyInterval = setInterval(function () {
-            if (startReattachObserver()) clearInterval(bodyInterval);
-        }, 100);
-    }
+    ns.onElementsMounted(HANDLE_SELECTOR, attachSplitter);
 })();

@@ -229,6 +229,22 @@ def test_review_mounts_drag_splitter_and_width_store() -> None:
     assert store.data == SIDEBAR_DEFAULT_WIDTH_PX
 
 
+def test_splitter_handle_declares_its_target_and_store() -> None:
+    """The handle carries the ids the generalized JS splitter reads.
+
+    ``results_viewer.js`` no longer spells ``qc-review-worklist`` or
+    ``store-qc-sidebar-width``: any element carrying
+    ``data-splitter-target`` is a drag handle, and the two attributes name
+    the pane to resize and the store to persist to. Python is now the only
+    place those ids appear, so this is where the wiring is pinned.
+    """
+    splitter = _find_by_id(build_review_view(), rids.QC_REVIEW_SPLITTER_ID)
+    assert splitter is not None
+    props = splitter.to_plotly_json()["props"]
+    assert props["data-splitter-target"] == rids.QC_REVIEW_WORKLIST_ID
+    assert props["data-splitter-store"] == rids.STORE_QC_SIDEBAR_WIDTH
+
+
 def test_clamp_sidebar_width_bounds_and_fallback() -> None:
     """``clamp_sidebar_width`` mirrors the JS clamp: bound + default-on-garbage.
 

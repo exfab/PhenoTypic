@@ -278,15 +278,25 @@ def _build_splitter() -> Component:
     """Build the thin draggable splitter between the sidebar and the gallery.
 
     A visible 6px grab handle; the clientside drag logic in
-    ``results_viewer.js`` widens/narrows the worklist live as the user
-    drags and persists the final width (clamped) to
+    ``results_viewer.js`` (section H) widens/narrows the worklist live as
+    the user drags and persists the final width (clamped) to
     :data:`STORE_QC_SIDEBAR_WIDTH` on mouse-up. ``flex: 0 0 auto`` keeps
     it from stretching; ``cursor: col-resize`` signals the affordance.
+
+    That splitter is shared, so it names no surface of its own: carrying
+    ``data-splitter-target`` is what makes an element a handle, and the
+    two attributes tell it which pane to resize and which store to write.
+    Both ids therefore live here, beside the callbacks that already bind
+    them, rather than being spelled a second time in JavaScript.
     """
     return html.Div(
         id=rids.QC_REVIEW_SPLITTER_ID,
         children=[],
         title="Drag to resize the worklist",
+        **{
+            "data-splitter-target": rids.QC_REVIEW_WORKLIST_ID,
+            "data-splitter-store": rids.STORE_QC_SIDEBAR_WIDTH,
+        },
         style={
             "flex": "0 0 auto",
             "alignSelf": "stretch",
