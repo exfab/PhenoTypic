@@ -8,6 +8,7 @@ import polars as pl
 
 from phenotypic.gui._config import SCATTER_FACET_CAP
 from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec
+from phenotypic.schema import PLATE
 
 #: The column name the derived frame index is written to.
 COMPUTED_FRAME_INDEX = "Computed_FrameIndex"
@@ -102,7 +103,12 @@ def plan_facets(
 
 def derive_frame_index(
     df: pl.DataFrame,
-    plate_col: str = "Metadata_PlateID",
+    plate_col: str = str(PLATE.PLATE_ID),
+    # `Metadata_ImageDatetime` is spelled because the schema does not own
+    # it: it is a user metadata column supplied by the run's --metadata
+    # CSV, with no `MetadataInfo` member to ask. Same case as
+    # `_cli_recompile_worker.py`'s `Metadata_Well`, and allowlisted the
+    # same way. `plate_col` above IS schema-owned, so it asks.
     time_col: str = "Metadata_ImageDatetime",
 ) -> pl.DataFrame:
     """Rank each image chronologically within its plate, zero-based.

@@ -40,6 +40,8 @@ _ALLOWED = {
         "Metadata_ImageFileName",
     },
     "_cli/_cli_recompile_worker.py": {"Metadata_Well"},             # no WELL schema member
+    # user metadata column from the --metadata CSV; no MetadataInfo member
+    "gui/results_viewer/_scatter_tab/_facets.py": {"Metadata_ImageDatetime"},
     # arbitrary-column doctest examples (demonstrate non-vocabulary columns)
     "abc_/_post_measurement.py": {"Metadata_Flag"},                # AddConstant(column="Metadata_Flag")
     "post/_merge_metadata.py": {"Metadata_Condition"},             # doctest "Metadata_Condition"
