@@ -154,7 +154,7 @@
   `QT_QPA_PLATFORM=offscreen` aborts the interpreter with no summary.
   **Submission is not execution** — always report `StartTime` and `Reason` from
   `scontrol show job <id>`, never "submitted" as if it were "passed".
-- **Verification fixture:** `/rhome/anguy344/bigdata_exfab/projects/ucr_029_e_d_Maresca/data/results/2026-08-11-migration-test/` — 36 migrated stores, 844 mirror rows, 723 plottable, 121 phantoms, 23 strains, 28 plates, 36 images. Never write to it.
+- **Verification fixture:** `/rhome/anguy344/bigdata_exfab/projects/ucr_029_e_d_Maresca/data/results/2026-08-11-migration-test/` — 36 migrated stores, 844 mirror rows, 723 plottable, 121 phantoms, **22 strains** (23 distinct `Metadata_Strain` values only if the 82 nulls are counted as one -- the null-drop rule below means the pager shows 22), 28 plates, 36 images. Never write to it.
 - **Never use `startswith("Metadata_")`** as a semantic metadata check. Use `is_metadata_header()` (`sdk_/_metadata_helpers.py:281`).
 - **Never hard-code a store's series or label path.** Resolve from `attributes.phenotypic` (`labels` → `{"objmap": "rgb/labels/objmap"}`, `series`, `pyramid`).
 - **Resolve deliverables paths via `phenotypic.sdk_` helpers**, never hand-joined names. The pipeline config is `pipeline.json.pht-pipe`, reached through `layout.pipeline_config_path`.
@@ -1600,7 +1600,7 @@ def test_the_export_figure_uses_svg_traces() -> None:
 def test_a_series_absent_from_the_first_cell_still_reaches_the_legend() -> None:
     """``showlegend=first_cell`` drops any series missing from cell 1.
 
-    On a sparse frame -- 23 strains over 36 images in the fixture -- that
+    On a sparse frame -- 22 strains over 36 images in the fixture -- that
     is the common case, not a corner: a hue that happens not to appear in
     the top-left facet vanishes from the legend while its points are drawn.
     Track which series have been given a legend entry instead.
@@ -2751,12 +2751,17 @@ Expected: both pass. If the script paths differ, find them with `ls scripts/ | g
 uv run phenotypic-gui --root /rhome/anguy344/bigdata_exfab/projects/ucr_029_e_d_Maresca/data/results/2026-08-11-migration-test --port 8051
 ```
 
-Open the Scatter tab. Confirm: 723 of 844 rows reported plottable; the section pager shows 23 strains; a facet grid renders; clicking a point opens the inspector with a crop that looks like a colony, not noise; Contours/Raw toggles; the splitter drags; Export PDF produces a file whose pages are not blank.
+Open the Scatter tab. Confirm: 723 of 844 rows reported plottable; the section pager shows **22** strains (NOT 23 -- 82 rows have a null `Metadata_Strain`, and a null is dropped rather than becoming its own page; if you see 23, the null-drop regressed); a facet grid renders; clicking a point opens the inspector with a crop that looks like a colony, not noise; Contours/Raw toggles; the splitter drags; Export PDF produces a file whose pages are not blank.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add -A
+# Explicit paths only -- this worktree is shared and other clusters have
+# files in flight. `git add -A` would sweep them into your commit.
+git add FEATURES.md WORKFLOWS.md \
+        docs/source/tutorials/19_scatter.md \
+        <the capture script you edited> \
+        docs/source/_static/gui_images/scatter/
 git commit -m "docs(gui): add Scatter to the feature ledgers and tutorial"
 ```
 
