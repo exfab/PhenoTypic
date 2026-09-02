@@ -44,78 +44,94 @@ figure from run data without editing code, (b) exports it as a multi-page PDF, a
 | Q5 | Design for > 500,000 points | `Scattergl` unconditionally; see §5 |
 | Q6 | External metadata join out of scope | Fix upstream with `--metadata` |
 
-## 1. Measured facts
+## 1. Verification fixture and measured facts
 
-All read from the migrated subset at
-`projects/ucr_029_e_d_Maresca/data/results/2026-08-11-migration-test/`
-(36 stores) and from `deliverables/measurements.parquet` of the full 2026-08-11 run.
-These are measurements, not estimates; anything derived from them is marked.
+**The fixture is
+`projects/ucr_029_e_d_Maresca/data/results/2026-08-11-migration-test/`** — 36
+migrated OME-Zarr stores sampled from the 2026-08-11 run, with its own
+`deliverables/`. Every number below is read from it. The full run is referenced
+only where scale is the point; it is not a test target.
 
-| Fact | Value |
+| Fact | Fixture |
 |---|---|
-| Rows in `measurements.parquet` (the mirror) | 231,229 |
-| **Plottable colony rows** | **113,814** |
-| Metadata-only phantoms (`QC_MetadataOnly`) | 117,415 |
-| Rows in `master_measurements.parquet` | 128,598 |
-| Master keys absent from the mirror | 14,784 |
-| Columns | 149 (148 in a per-store table) |
-| Strains (section groups) | 23 |
-| Plates | 111 |
-| Images | 6,657 |
+| Rows in `measurements.parquet` (the mirror) | 844 |
+| Plottable colony rows | 723 |
+| Metadata-only phantoms (`QC_MetadataOnly`) | 121 |
+| Rows in `master_measurements.parquet` | 723 |
+| Master keys absent from the mirror | **0** |
+| Columns | 149 (148 in a per-store table, which has no `QC_MetadataOnly`) |
+| Stores | 36 |
+| Strains | 23 |
+| Plates | 28 |
+| Images | 36 |
+| `Metadata_ImageDatetime` | 32 unique, **81 null** |
 | Measurers in `pipeline.json["meas"]` | `MeasureNeighborDist`, `MeasureShape`, `MeasureIntensity`, `MeasureColor`, `MeasureTexture` |
 | `rgb/0` | `[3, 3132, 5086]` uint16, sharded, inner chunk `[1, 1024, 1024]` |
 | `rgb/0` on disk | 79.8 MB over 60 inner chunks (~1.33 MB each) |
 | `rgb/labels/objmap/0` on disk | 0.0 MB |
-| Pyramid | 5 levels, `stop_px: 512`; `rgb/4` is `[3, 196, 318]`, 374 KB, reads in 39 ms |
+| Pyramid | 5 levels, `stop_px: 512`; `rgb/4` is `[3, 196, 318]`, `rgb/3` is `[3, 392, 636]` |
 | Label path | `attributes.phenotypic.labels` = `{"objmap": "rgb/labels/objmap"}` |
 
-### 1.1 Half the mirror is not plottable
+Scale reference, from the full run only: 231,229 mirror rows, 113,814 plottable,
+6,657 images, 111 plates. Q5's ">500k points" is a stated design target above both.
 
-The headline 231,229 is not a point count. Derived and independently reproduced:
+### 1.1 Phantoms are the fixture's own behaviour
 
-```
-  128,598  master_measurements.parquet
- - 14,784  master keys with no mirror row
- =113,814  real colony rows in the mirror
- +117,415  metadata-only phantoms
- =231,229  measurements.parquet
-```
+`QC_MetadataOnly` partitions the mirror exactly — true for precisely the rows with
+a null `Object_Label` (verified as an identical partition in the fixture and in
+the full run).
 
-Mirror-only keys: **0** — mirror-real rows are a strict subset of master.
-`QC_MetadataOnly` partitions the mirror exactly: it is true for precisely the
-117,415 rows with a null `Object_Label` (verified as an identical partition).
+**The tab plots only rows where `QC_MetadataOnly` is false.** A phantom has no
+colony, no coordinates and no crop, so it cannot become a point. The filter is
+applied at plot time, not at ingest, so the shared filter offcanvas keeps
+reporting the same totals as Plate and Colony; the pager chip row reports
+"723 of 844 rows plottable".
 
-**The tab plots only rows where `QC_MetadataOnly` is false.** This is a v1
-requirement, not an optimisation: a phantom has no colony, no coordinates and no
-crop, so 51% of the frame cannot become a point. The filter is applied at plot
-time, not at ingest, so the shared filter offcanvas keeps reporting the same
-totals as Plate and Colony; the pager chip row reports
-"113,814 of 231,229 rows plottable".
+The proportion is what varies, not the rule: 14% of the fixture, 51% of the full
+run.
 
-Per section group: 113,814 / 23 strains ≈ **4,948 points per page**. This number
-governs the export path — see §11.
+### 1.2 The master/mirror row gap does not occur in the fixture
 
-The 14,784 master rows missing from the mirror are **unexplained by
-configuration**: this run's `pipeline.json.pht-pipe` has `"post": {}` and
-`"filters": {}`. The likely cause is GUI curation, which rewrites the mirror.
-That matters beyond bookkeeping — it means the mirror is session-mutable, which
-is why §6 carries a snapshot fingerprint. Open question, §16.
+Master-only keys in the fixture: **0**. Master and mirror agree exactly on 723
+plottable rows.
 
-### 1.2 Consequences the data forces
+The full run has a 14,784-row gap that is *not* explained by curation
+(`deliverables/qc/` is 512 bytes, one lock file), duplicates (0), relabeling
+(label sets match where counts match) or `KeepSectionLargest` (14,549 of the
+missing rows are the only object in their grid cell). The dropped rows are ~5.5x
+smaller by area and no surviving row sits in grid row 0 or 7.
 
-- **`Metadata_FrameIndex` is absent** and `Metadata_Timepoint` is 1 for 230,329 rows and
-  null for 900 — unusable as an axis. The derived frame index is required, not optional.
-- **`Metadata_ImageDatetime` is 1:1 with image name** (6,657 unique). The derived frame
-  index ranks on that within `Metadata_PlateID`, which is cleaner than the reference
-  script's regex over filenames.
-- **`Size_*` does not exist** in this run; the pipeline runs `MeasureShape`, so area is
-  `Shape_Area`. Axis defaults must resolve from the run, never from a hard-coded name.
+**That is a full-run phenomenon and is out of scope here.** It is recorded because
+Scatter plots the mirror, so any run with the gap inherits it — but it is a
+question about that run's mirror-write path, not about this tab, and the fixture
+does not exhibit it.
 
-**This run cannot reproduce the reference figure**, and that is correct behaviour under
-Q6: it carries no pH, salinity, biological-replicate or configuration column. Those live
-only in `UCR_029_E_D-Metadata.csv`. On this data the tab can facet on strain, plate, day
-and session. Re-running with those conditions passed through `--metadata` makes the exact
-reference figure available with no change to the tab.
+### 1.3 What the fixture forces
+
+- **`Metadata_FrameIndex` is absent** and `Metadata_Timepoint` is unusable, so the
+  derived frame index is required. `Metadata_ImageDatetime` is 1:1 with image and
+  is what the ranking uses.
+- **81 of 844 rows have a null `Metadata_ImageDatetime`**, so §10's null guard is
+  *exercised* by the fixture rather than merely defensive. `Metadata_Strain` is
+  null for 82 rows.
+- **`Grid_RowNum` and `Grid_ColNum` are `String`, not integers.** So are most
+  metadata columns. Facet and section ordering must sort numeric-looking
+  categorical values **numerically when every value parses, lexically otherwise** —
+  a plain string sort puts `Grid_ColNum` in the order 0, 1, 10, 11, 2, 3, which is
+  wrong and would look like a rendering bug rather than a sort bug.
+- **`Size_*` does not exist**; the pipeline runs `MeasureShape`, so area is
+  `Shape_Area`. Axis defaults resolve from the run, never from a hard-coded name.
+- **The fixture is sparse by construction**: 23 strains across 36 images, median 32
+  plottable rows per strain. Good for exercising empty facets, sparse grids and
+  the "no data" cell; it will not look like the reference figure, and should not
+  be expected to.
+
+**Neither this fixture nor the full run can reproduce the reference figure**, and
+that is correct under Q6: there is no pH, salinity, biological-replicate or
+configuration column: those live only in `UCR_029_E_D-Metadata.csv`. Faceting here
+is on strain, plate, day and session. Re-running with those conditions passed
+through `--metadata` makes the reference figure available with no change to the
+tab.
 
 ## 2. Prerequisite P0 — the crop path is broken on migrated stores
 
@@ -364,8 +380,9 @@ route, the Viv stage and the curation lookup already take.
 
 This is a design requirement, not an optimisation — but the magnitude argument in
 revision 1 was wrong and is corrected here. Q1 puts one section on screen, so a
-render carries a section, not the run: 113,814 / 23 ≈ 4,948 rows, and at roughly
-100 bytes of strings per point that is ~0.5 MB, not tens of megabytes.
+render carries a section, not the run. Even at full-run scale that is
+113,814 / 23 ≈ 4,948 rows, and at roughly 100 bytes of strings per point ~0.5 MB
+— not tens of megabytes. In the fixture it is 723 rows total.
 
 The index still wins, for reasons that do not depend on the size: the resolve step
 needs an index into a stable frame regardless (§6.1), and an int32 column avoids
@@ -548,8 +565,8 @@ bottom of every page, matching the reference script's `fig.legend(loc="lower cen
 When the X-axis selects "frame index from capture order": rank distinct
 `Metadata_ImageDatetime` within `Metadata_PlateID`, ascending, zero-based. Images
 with a null datetime are excluded from the ranking and from the plot, with the
-count surfaced in the pager chip row. (This run has 0 such nulls — the guard is
-defensive and unexercised by the verification data.)
+count surfaced in the pager chip row. (The fixture has 81 such rows, so this
+path is exercised rather than merely defensive.)
 
 The improvement over the reference script is that `Metadata_ImageDatetime` exists
 as a column; the ranking logic is identical. The script parses the datetime out of
@@ -559,10 +576,9 @@ revision 1 said otherwise.
 
 **Null grouping values** follow one rule everywhere: a null section-group, facet-row
 or facet-column value is **dropped**, with the row count surfaced in the pager chip
-row — never a silent omission and never a "(none)" page. On this run the question
-is moot: `Metadata_Strain` is null for 900 rows and **all 900 are phantoms**, so
-§1.1's predicate removes them first. (The review stated these were real measured
-colonies; independently, 0 of the 900 carry an `Object_Label`.)
+row — never a silent omission and never a "(none)" page. In the fixture `Metadata_Strain` is null for 82
+rows, so this path is exercised. (In the full run the equivalent 900 rows are all
+phantoms — 0 carry an `Object_Label` — and §1.1's predicate removes them first.)
 
 ## 11. Export
 
@@ -602,8 +618,8 @@ export pass only.** One trace-type swap at the PDF boundary; the `FigureSpec` an
 the figure construction are unchanged, so the PDF is still the same figure.
 
 This does not reopen Q2. Q5's ">500k points" governs the **screen**, where a
-section is drawn from a live frame; the export path draws one section per page,
-which for this run is ~4,948 points. Measured with `go.Scatter` in a 4x4
+section is drawn from a live frame; the export path draws one section per page —
+723 rows in the fixture, ~4,948 at full-run scale. Measured with `go.Scatter` in a 4x4
 `make_subplots` at 1600x1200: **2.8 s and 0.10 MB per page** at 5,000 points. No
 downsampling, so the PDF is not a quiet lie about the figure.
 
@@ -702,7 +718,7 @@ polish.
 | `rgb/4` under-covers the true range | Stated limitation (§2.3c); widen or read level 0 strided |
 | Per-image scale shifts brightness across prev/next | Accepted for v1 (§14); run-level scale is v2 |
 | The verification run cannot draw the reference figure | Re-run with `--metadata`; no tab change needed |
-| 14,784 master rows missing from the mirror | **Open, and not a Scatter bug** (§16.2). Not curation, not duplicates, not relabeling, not keep-largest. Dropped rows are ~5.5x smaller and no kept row sits in grid row 0 or 7. Needs tracing through the mirror-write path; every Scatter figure inherits it meanwhile |
+| A run whose mirror drops measured rows | Not present in the fixture (§1.2); a full-run phenomenon, out of scope. Scatter plots whatever the mirror holds |
 | `_MEASUREMENT_PREFIXES` is wrong in both directions | `TextureGray` is not a real category; 31 real ones are missing (§16.3). Fix by derivation; changes Colony axis options |
 
 ## 16. Answers (2026-09-01) — all four resolved
