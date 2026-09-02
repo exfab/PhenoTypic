@@ -2187,3 +2187,79 @@ uv run python docs/superpowers/logic_validation_scripts/2026-09-01-results-scatt
 ```
 
 Expected: exit 0, all claims reproduced.
+
+---
+
+## Execution Orchestration
+
+Derived from each task's `Files` / `Interfaces` blocks. Version-controlled beside
+the plan because it is a view of the plan, not a separate artefact.
+
+### Command protocol (applies to every agent)
+
+Subagents in this session **must not run shell commands themselves**. Approval
+prompts raised by a subagent do not surface in the user's Remote Control app, so
+a command that auto-mode declines to auto-approve stalls invisibly; the
+orchestrator's prompts do surface. Every agent is briefed to:
+
+- do its own file reading and editing (Read / Edit / Write / Grep / Glob);
+- send **batched** shell commands to the orchestrator via
+  `SendMessage({to: "main", ...})` and wait for the output;
+- never `git commit` itself — hand the orchestrator the exact message;
+- stop and ask rather than run anything directly.
+
+This trades round-trips for the user's ability to approve from a phone. Agents
+batch 3–6 commands per request to keep the trade cheap.
+
+### Dependency DAG
+
+```
+1 ─→ 2                     (tiles.py, then its fixture pin)
+1 ─→ 3                     (contours build on the scaled rgb path)
+4                          (independent — shared helper)
+5 ─→ 6 ─→ 8                (spec → facets → frame index; 6 and 8 share _facets.py)
+5 ─→ 9                     
+6 ─→ 9 ─→ 10               (figure → pdf)
+     9 ─→ 11               (figure → click index)
+7                          (independent — grouping)
+12 ─→ 13 ─→ 14 ─→ 15       (mount → wire → ledgers → suite)
+5,6,7,8,9,10,11 ─→ 13
+```
+
+**Shared files** (the parallelism constraint): `tiles.py` (1, 3);
+`test_tiles_zarr.py` (1, 2, 3); `_config.py` (3, 6); `_facets.py` (6, 8);
+`_scatter_tab/_ids.py` + `_layout.py` (12, 13).
+
+### Clusters
+
+| # | Tasks | Shape | Model / effort | Runs |
+|---|---|---|---|---|
+| A | 1, 2, 3 | Keystone — one intent (fix the crop path), one file pair | Opus / high | parallel with B |
+| B | 4 | Sweep — mechanical, but changes Colony's axis options | Opus / medium | parallel with A |
+| C | 5, 6, 7, 8 | Keystone — the pure, Dash-free data layer | Opus / high | after A |
+| D | 9, 10 | Keystone — the render pipeline | Opus / high | after C |
+| E | 11 | Seam — the silent-wrong-colony hazard | Opus / high | after D |
+| F | 12 | Seam — shared JS + layout mount | Opus / high | after E |
+| G | 13 | Seam — the largest integration point | Opus / high | after F |
+| H | 14 | Sweep — CI-gated ledgers | Sonnet / medium | after G |
+| — | 15 | Verification — orchestrator runs it (Slurm) | — | last |
+
+**Why A and B parallelise:** disjoint file sets (`tiles.py` + its test versus
+`colony_view/_grid.py` + a new test). A owns *all three* `_config.py` constants,
+including the two Task 6 needs, so C never touches that file and the seam stays
+in one cluster.
+
+**Why E, F and G are alone despite being small:** each is a single risky wiring
+point. Risk is not size. E resolves a click to a colony and a mistake opens the
+*wrong* colony plausibly and silently; F edits JS two other surfaces depend on;
+G is where every prior cluster meets.
+
+### Gates
+
+- **Gate 0 — before any implementation:** `plan-reviewer` over this plan.
+- **After each cluster (light):** orchestrator reads the diff, runs tests and
+  lint, and pauses to surface any design question the review raises.
+- **After D and after G (deep):** `implementation-test-reviewer` over the
+  combined diff — it checks the new tests can actually *fail*, which matters most
+  for the export ink assertion and the monotonic-ramp pin.
+- **After H (simplify):** one quality-only pass, then re-run affected tests.
