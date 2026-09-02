@@ -11,7 +11,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import wraps
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from time import perf_counter
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Mapping, TypeVar, cast
@@ -104,14 +104,19 @@ class _ReadOnlyList(list[Any]):
     sort = _immutable
 
 
-def _basename(value: str | Path | None) -> str | None:
-    """Return the exact final path component without normalizing its spelling."""
+def provenance_basename(value: str | Path | None) -> str | None:
+    """Return a portable final component for POSIX or Windows path syntax."""
     if value is None:
         return None
     text = str(value)
     if not text:
         return None
-    return Path(text).name
+    return PureWindowsPath(text).name or None
+
+
+def _basename(value: str | Path | None) -> str | None:
+    """Return the exact final path component without normalizing its spelling."""
+    return provenance_basename(value)
 
 
 def new_provenance_journal(
@@ -129,7 +134,11 @@ def new_provenance_journal(
 def _validate_filename(value: Any, *, field_name: str, nullable: bool) -> None:
     if value is None and nullable:
         return
-    if not isinstance(value, str) or not value or Path(value).name != value:
+    if (
+        not isinstance(value, str)
+        or not value
+        or provenance_basename(value) != value
+    ):
         raise ValueError(
             f"malformed provenance schema v2: {field_name} must be a basename"
         )
@@ -144,7 +153,7 @@ def _validate_pipeline(value: Any) -> None:
     if (
         not isinstance(source_path, str)
         or not source_path
-        or Path(source_path).name != source_path
+        or provenance_basename(source_path) != source_path
     ):
         raise ValueError(
             "malformed provenance schema v2 pipeline source_path must be a basename"
@@ -355,9 +364,9 @@ def _append_application(
         raise ValueError("cannot start a new provenance application before the last ends")
     normalized_pipeline = deepcopy(dict(pipeline)) if pipeline is not None else None
     if normalized_pipeline is not None:
-        normalized_pipeline["source_path"] = Path(
+        normalized_pipeline["source_path"] = provenance_basename(
             normalized_pipeline["source_path"]
-        ).name
+        )
     application = {
         "sequence": len(applications) + 1,
         "kind": kind,

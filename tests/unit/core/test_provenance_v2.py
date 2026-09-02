@@ -318,6 +318,9 @@ def test_programmatic_apply_refuses_unowned_unfinished_cli_application(
         lambda application: application["pipeline"].update(
             source_path="/private/pipeline.json"
         ),
+        lambda application: application["pipeline"].update(
+            source_path=r"C:\private\pipeline.json"
+        ),
         lambda application: application["operations"].append({"sequence": 1}),
     ],
 )

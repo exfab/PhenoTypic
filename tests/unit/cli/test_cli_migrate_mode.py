@@ -1522,6 +1522,7 @@ def _terminal_status_payload(*, generation: str, failed: bool = False) -> dict[s
             "tables_skipped": 5,
             "overlays_created": 6,
             "overlays_skipped": 7,
+            "provenance_upgraded": 8,
             "failed": (
                 [{"path": "/source.h5", "reason": "conversion failed"}]
                 if failed
@@ -1530,6 +1531,7 @@ def _terminal_status_payload(*, generation: str, failed: bool = False) -> dict[s
             "header_failures": [],
             "table_failures": [],
             "overlay_failures": [],
+            "provenance_failures": [],
             "publication_failures": [],
         },
         "completed_at": "2026-08-29T12:34:56.789+00:00",
@@ -1549,7 +1551,12 @@ def _migration_report_from_payload(payload: object):
         tables_skipped=payload["tables_skipped"],
         overlays_created=payload["overlays_created"],
         overlays_skipped=payload["overlays_skipped"],
+        provenance_upgraded=payload["provenance_upgraded"],
         failed=tuple((Path(item["path"]), item["reason"]) for item in payload["failed"]),
+        provenance_failures=tuple(
+            (Path(item["path"]), item["reason"])
+            for item in payload["provenance_failures"]
+        ),
     )
 
 
