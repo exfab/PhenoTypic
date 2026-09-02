@@ -35,6 +35,7 @@ import logging
 import os
 import re
 from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
@@ -223,6 +224,99 @@ def crop_overlay(
     )
 
 
+@dataclass(frozen=True)
+class _CropWindow:
+    """The geometry both croppers derive from one centroid and size.
+
+    Extracted because :func:`_crop_pil_source` and
+    :func:`_crop_store_layer_window` each held a verbatim copy of it, and
+    :func:`crop_store_rgb`'s docstring asserted the two produce identical
+    geometry *because they share a function* -- which was not true of the
+    call path. The claim held only while two copies happened to agree.
+
+    ``*_unclamped`` is the window the caller asked for and may be negative
+    or past the edge; ``left``/``top``/``right``/``bottom`` are it clamped
+    to the source. Both are kept because the dim pass and the paste offset
+    are computed against the UNCLAMPED origin -- that is what keeps the
+    keep-rectangle aligned with the bbox for a colony near an image edge.
+    """
+
+    size: int
+    left_unclamped: int
+    top_unclamped: int
+    left: int
+    top: int
+    right: int
+    bottom: int
+
+    @property
+    def has_area(self) -> bool:
+        """Does the clamped window contain any source pixels at all?"""
+        return self.right > self.left and self.bottom > self.top
+
+    @property
+    def paste_offset(self) -> tuple[int, int]:
+        """``(x, y)`` placing the clamped region back at its true position."""
+        return (max(0, -self.left_unclamped), max(0, -self.top_unclamped))
+
+
+def _crop_window(
+    center_rr: float,
+    center_cc: float,
+    size: int,
+    src_width: int,
+    src_height: int,
+) -> _CropWindow:
+    """Centre a ``size`` x ``size`` window and clamp it to the source."""
+    half = size // 2
+    left_unclamped = round(center_cc) - half
+    top_unclamped = round(center_rr) - half
+    return _CropWindow(
+        size=size,
+        left_unclamped=left_unclamped,
+        top_unclamped=top_unclamped,
+        left=max(0, left_unclamped),
+        top=max(0, top_unclamped),
+        right=min(src_width, left_unclamped + size),
+        bottom=min(src_height, top_unclamped + size),
+    )
+
+
+def _finish_crop(
+    result: PILImage.Image,
+    window: _CropWindow,
+    *,
+    dim_alpha: float,
+    bbox: tuple[float, float, float, float] | None,
+) -> bytes:
+    """Apply the tile-spotlight dim pass, then PNG-encode.
+
+    Skipped entirely -- no PIL<->ndarray round trip -- when the spotlight
+    is off, so the disabled path stays byte-for-byte what it was before
+    that feature existed.
+    """
+    if dim_alpha > 0.0 and bbox is not None:
+        min_rr, max_rr, min_cc, max_cc = bbox
+        size = window.size
+        # Keep-rectangle in canvas pixels, from the SAME unclamped origin
+        # that drives the paste, so it tracks the bbox even when the colony
+        # sits near an edge and the origin is negative.
+        keep_top = _clamp(round(min_rr) - window.top_unclamped, 0, size)
+        keep_bottom = _clamp(round(max_rr) - window.top_unclamped, 0, size)
+        keep_left = _clamp(round(min_cc) - window.left_unclamped, 0, size)
+        keep_right = _clamp(round(max_cc) - window.left_unclamped, 0, size)
+        dimmed = _dim_outside_bbox(
+            np.asarray(result),
+            (keep_top, keep_left, keep_bottom, keep_right),
+            alpha=dim_alpha,
+        )
+        result = PILImage.fromarray(dimmed)
+
+    buf = io.BytesIO()
+    result.save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def _crop_pil_source(
     source: PILImage.Image,
     center_rr: float,
@@ -257,52 +351,19 @@ def _crop_pil_source(
         PNG-encoded bytes of the ``size`` x ``size`` crop in RGB mode.
     """
     src_width, src_height = source.size
-
-    half = size // 2
-    left_unclamped = round(center_cc) - half
-    top_unclamped = round(center_rr) - half
-    right_unclamped = left_unclamped + size
-    bottom_unclamped = top_unclamped + size
-
-    left_clamped = max(0, left_unclamped)
-    top_clamped = max(0, top_unclamped)
-    right_clamped = min(src_width, right_unclamped)
-    bottom_clamped = min(src_height, bottom_unclamped)
+    window = _crop_window(center_rr, center_cc, size, src_width, src_height)
 
     result = PILImage.new("RGB", (size, size), pad_value)
 
     # If the clamped window has positive area, paste it onto the padded
     # canvas at the offset that re-aligns it with the unclamped origin.
-    if right_clamped > left_clamped and bottom_clamped > top_clamped:
+    if window.has_area:
         region = source.crop(
-            (left_clamped, top_clamped, right_clamped, bottom_clamped)
+            (window.left, window.top, window.right, window.bottom)
         )
-        paste_x = max(0, -left_unclamped)
-        paste_y = max(0, -top_unclamped)
-        result.paste(region, (paste_x, paste_y))
+        result.paste(region, window.paste_offset)
 
-    # Tile-spotlight dim pass. Skipped entirely (no PIL<->ndarray round
-    # trip) when disabled, so the disabled path is byte-for-byte identical
-    # to the pre-feature output.
-    if dim_alpha > 0.0 and bbox is not None:
-        min_rr, max_rr, min_cc, max_cc = bbox
-        # Keep-rectangle in canvas pixels, computed from the SAME unclamped
-        # origin that drives the paste so it tracks the bbox even when the
-        # colony sits near an image edge (negative unclamped origin).
-        keep_top = _clamp(round(min_rr) - top_unclamped, 0, size)
-        keep_bottom = _clamp(round(max_rr) - top_unclamped, 0, size)
-        keep_left = _clamp(round(min_cc) - left_unclamped, 0, size)
-        keep_right = _clamp(round(max_cc) - left_unclamped, 0, size)
-        dimmed = _dim_outside_bbox(
-            np.asarray(result),
-            (keep_top, keep_left, keep_bottom, keep_right),
-            alpha=dim_alpha,
-        )
-        result = PILImage.fromarray(dimmed)
-
-    buf = io.BytesIO()
-    result.save(buf, format="PNG")
-    return buf.getvalue()
+    return _finish_crop(result, window, dim_alpha=dim_alpha, bbox=bbox)
 
 
 # ---------------------------------------------------------------------------
@@ -676,7 +737,8 @@ def crop_store_rgb(
     Same centering / padding / dimming contract as :func:`crop_overlay`; the
     only difference is the pixel source (a windowed read of one layer's
     level-0 array, decoded to RGB, instead of a baked overlay PNG). Geometry
-    is byte-identical because both croppers share :func:`_crop_pil_source`.
+    is byte-identical because both croppers derive it from the same
+    :func:`_crop_window` and finish through the same :func:`_finish_crop`.
 
     Level 0 always: a crop is a full-resolution inspection view, so there is
     no pyramid level to select.
@@ -734,12 +796,6 @@ def _crop_store_layer_window(
     contours: int | None = None,
 ) -> bytes:
     """Crop by reading only the requested level-0 window out of the store."""
-    half = size // 2
-    left_unclamped = round(center_cc) - half
-    top_unclamped = round(center_rr) - half
-    right_unclamped = left_unclamped + size
-    bottom_unclamped = top_unclamped + size
-
     block = _readable_block(store_path)
     member = _store_member_path(block, store_path, layer)
     # ``rgb`` is stored (C, Y, X), so the spatial extent is the LAST two axes
@@ -747,16 +803,13 @@ def _crop_store_layer_window(
     # to three columns.
     level0 = _level_shape(store_path, member, 0)
     src_height, src_width = level0[-2:]
-    left_clamped = max(0, left_unclamped)
-    top_clamped = max(0, top_unclamped)
-    right_clamped = min(src_width, right_unclamped)
-    bottom_clamped = min(src_height, bottom_unclamped)
+    window = _crop_window(center_rr, center_cc, size, src_width, src_height)
 
     arr: np.ndarray | None = None
-    window: tuple[int, int, int, int] | None = None
-    if right_clamped > left_clamped and bottom_clamped > top_clamped:
-        window = (top_clamped, bottom_clamped, left_clamped, right_clamped)
-        arr = _read_store_level(store_path, layer, 0, window=window)
+    read_window: tuple[int, int, int, int] | None = None
+    if window.has_area:
+        read_window = (window.top, window.bottom, window.left, window.right)
+        arr = _read_store_level(store_path, layer, 0, window=read_window)
 
     result = PILImage.new("RGB", (size, size), pad_value)
     if arr is not None:
@@ -764,31 +817,14 @@ def _crop_store_layer_window(
         # Contours only make sense over the pixel layer: ``objmap`` is
         # already a colourised label map, and outlining a boundary on top of
         # the region it bounds says nothing.
-        if contours is not None and layer == "rgb" and window is not None:
-            labels = _read_objmap_window(store_path, window)
+        if contours is not None and layer == "rgb" and read_window is not None:
+            labels = _read_objmap_window(store_path, read_window)
             if labels is not None:
                 pixels = composite_contours(pixels, labels, contours)
         region = PILImage.fromarray(pixels, mode="RGB")
-        paste_x = max(0, -left_unclamped)
-        paste_y = max(0, -top_unclamped)
-        result.paste(region, (paste_x, paste_y))
+        result.paste(region, window.paste_offset)
 
-    if dim_alpha > 0.0 and bbox is not None:
-        min_rr, max_rr, min_cc, max_cc = bbox
-        keep_top = _clamp(round(min_rr) - top_unclamped, 0, size)
-        keep_bottom = _clamp(round(max_rr) - top_unclamped, 0, size)
-        keep_left = _clamp(round(min_cc) - left_unclamped, 0, size)
-        keep_right = _clamp(round(max_cc) - left_unclamped, 0, size)
-        dimmed = _dim_outside_bbox(
-            np.asarray(result),
-            (keep_top, keep_left, keep_bottom, keep_right),
-            alpha=dim_alpha,
-        )
-        result = PILImage.fromarray(dimmed)
-
-    buf = io.BytesIO()
-    result.save(buf, format="PNG")
-    return buf.getvalue()
+    return _finish_crop(result, window, dim_alpha=dim_alpha, bbox=bbox)
 
 
 def crop_colony(
