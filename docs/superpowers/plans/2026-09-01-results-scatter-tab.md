@@ -2973,3 +2973,43 @@ real fixture.
   combined diff — it checks the new tests can actually *fail*, which matters most
   for the export ink assertion and the monotonic-ramp pin.
 - **After H (simplify):** one quality-only pass, then re-run affected tests.
+
+---
+
+## Follow-ups — found by this change, deliberately NOT done in it
+
+All four are in `src/phenotypic/gui/_shared/tiles.py` unless noted, all
+pre-existing rather than introduced here, and none is a behaviour bug. They are
+listed in the order worth doing, not the order found.
+
+1. **A docstring guarantees a mechanism that is not in its call path.**
+   `crop_store_rgb` says *"Geometry is byte-identical because both croppers share
+   `_crop_pil_source`."* It does not share it — `crop_store_rgb` reaches
+   `_crop_store_layer_window`, which re-implements the geometry. The outcome is
+   true today only because the two copies happen to agree, while the sentence
+   tells the next reader they *cannot* diverge. That is worse than silence, and
+   it is why (2) is worth fixing rather than tolerating.
+
+2. **The spotlight-dim block is duplicated verbatim** between `_crop_pil_source`
+   and `_crop_store_layer_window` — 11 lines each (unpack `bbox`, four `_clamp`
+   calls against the same unclamped origin, `_dim_outside_bbox`,
+   `PILImage.fromarray`), plus a ~10-line unclamped/clamped geometry preamble.
+   Change the padding in one cropper and the crops silently diverge.
+
+3. **A hex→RGB parser exists twice, decoding the same two tokens.**
+   `composite_contours`'s nested `_rgb(hex_)` (`tiles.py:572`) and
+   `_hex_to_rgb` (`gui/tune/_overlays.py:53`) both decode `OI_SKY` and
+   `OI_ORANGE`. `_design.py` owns the tokens and is the natural home. Crosses
+   into `gui/tune/`, which this branch does not touch.
+
+4. **A dead parameter costing a syscall per crop.** `crop_store_rgb(..., mtime_ns,
+   ...)` opens with `del mtime_ns` ("accepted for caller/API compatibility"), and
+   its only in-repo caller `crop_colony` runs `os.stat(store).st_mtime_ns` on
+   every crop to supply it. `crop_store_rgb` is in `__all__`, so removing it is a
+   public API change and needs its own commit.
+
+Also open, from the spec rather than the code: §7's Viv plate-context stage and
+the inspector's prev/next point walking appear in no task and were left out
+whole rather than half-built; and §16.1 still specifies `plotly_get_chrome`,
+which the Playwright browser under `BROWSER_PATH` has made unnecessary —
+`verify_scatter_fixture.py` now discovers it unaided.
