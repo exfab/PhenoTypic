@@ -61,7 +61,7 @@ only where scale is the point; it is not a test target.
 | Master keys absent from the mirror | **0** |
 | Columns | 149 (148 in a per-store table, which has no `QC_MetadataOnly`) |
 | Stores | 36 |
-| Strains | 23 |
+| Strains | **22** (23 distinct `Metadata_Strain` values counting the 82 nulls as one; a null is dropped rather than becoming a section, so 22 is the number the pager shows) |
 | Plates | 28 |
 | Images | 36 |
 | `Metadata_ImageDatetime` | 32 unique, **81 null** |
@@ -73,7 +73,8 @@ only where scale is the point; it is not a test target.
 | Label path | `attributes.phenotypic.labels` = `{"objmap": "rgb/labels/objmap"}` |
 
 Scale reference, from the full run only: 231,229 mirror rows, 113,814 plottable,
-6,657 images, 111 plates. Q5's ">500k points" is a stated design target above both.
+6,657 images, 111 plates, **22 strains** (900 null, 23 counting the null --
+measured on the full run, not carried across from the fixture; the two agree). Q5's ">500k points" is a stated design target above both.
 
 ### 1.1 Phantoms are the fixture's own behaviour
 
@@ -121,7 +122,7 @@ does not exhibit it.
   wrong and would look like a rendering bug rather than a sort bug.
 - **`Size_*` does not exist**; the pipeline runs `MeasureShape`, so area is
   `Shape_Area`. Axis defaults resolve from the run, never from a hard-coded name.
-- **The fixture is sparse by construction**: 23 strains across 36 images, median 32
+- **The fixture is sparse by construction**: 22 strains across 36 images, median 32
   plottable rows per strain. Good for exercising empty facets, sparse grids and
   the "no data" cell; it will not look like the reference figure, and should not
   be expected to.
@@ -398,7 +399,7 @@ route, the Viv stage and the curation lookup already take.
 This is a design requirement, not an optimisation — but the magnitude argument in
 revision 1 was wrong and is corrected here. Q1 puts one section on screen, so a
 render carries a section, not the run. Even at full-run scale that is
-113,814 / 23 ≈ 4,948 rows, and at roughly 100 bytes of strings per point ~0.5 MB
+113,814 / 22 ≈ 5,173 rows, and at roughly 100 bytes of strings per point ~0.5 MB
 — not tens of megabytes. In the fixture it is 723 rows total.
 
 The index still wins, for reasons that do not depend on the size: the resolve step
@@ -570,7 +571,7 @@ columns are not excluded by name — only incidentally, by the default
 choosing one asks for up to 113,814 sections: that many PDF pages and pager steps.
 
 `SECTION_GROUP_CAP` bounds it, with a confirm-before-export threshold above a
-smaller number (23 pages is fine; 500 is not). Whether `Texture_` should also join
+smaller number (22 pages is fine; 500 is not). Whether `Texture_` should also join
 `_MEASUREMENT_PREFIXES` is §16 — it would fix every consumer but changes the
 Colony grid's axis options too.
 
@@ -620,7 +621,7 @@ independently: that headless chromium reports `webglAvailable: false` even with
 swiftshader flags, so plotly.js's regl backend has no context and **fails soft**.
 
 **It fails silently.** No warning (`catch_warnings(record=True)` is empty), exit
-code 0, a valid well-formed PDF. A green CI job and a clean 23-page PDF of empty
+code 0, a valid well-formed PDF. A green CI job and a clean 22-page PDF of empty
 axes. This shapes §13.
 
 Six mitigations were tested and rejected: `fig.write_image` is the same path
@@ -637,7 +638,7 @@ the figure construction are unchanged, so the PDF is still the same figure.
 
 This does not reopen Q2. Q5's ">500k points" governs the **screen**, where a
 section is drawn from a live frame; the export path draws one section per page —
-723 rows in the fixture, ~4,948 at full-run scale. Measured with `go.Scatter` in a 4x4
+723 rows in the fixture, ~5,173 at full-run scale. Measured with `go.Scatter` in a 4x4
 `make_subplots` at 1600x1200: **2.8 s and 0.10 MB per page** at 5,000 points. No
 downsampling, so the PDF is not a quiet lie about the figure.
 
