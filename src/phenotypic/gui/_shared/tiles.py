@@ -456,15 +456,202 @@ def _read_store_level(
     return np.moveaxis(data, 0, -1) if layer == "rgb" else data
 
 
-def _store_layer_array_to_rgb(arr: np.ndarray, layer: str) -> np.ndarray:
-    """Convert a decoded store layer array to an RGB uint8 array."""
+def scale_to_uint8(arr: np.ndarray, lo: float, hi: float) -> np.ndarray:
+    """Scale an integer array to uint8 against a fixed range, then clip.
+
+    A narrowing ``astype`` is a modular reduction (``value & 0xFF``) and is
+    therefore non-monotonic: a +1 step across a 256 boundary becomes -255.
+    This scales instead, so the mapping is monotonic non-decreasing, and
+    clips rather than wrapping when a value falls outside ``[lo, hi]``.
+
+    Args:
+        arr: Source array. ``uint8`` input is returned unchanged, so an
+            8-bit store is never contrast-stretched.
+        lo: Value mapped to 0.
+        hi: Value mapped to 255. Must exceed ``lo``.
+
+    Returns:
+        A ``uint8`` array of the same shape.
+    """
+    if arr.dtype == np.uint8:
+        return arr
+    span = float(hi) - float(lo)
+    if span <= 0:
+        return np.zeros(arr.shape, dtype=np.uint8)
+    scaled = (arr.astype(np.float32) - float(lo)) / span * 255.0
+    return np.clip(scaled, 0, 255).astype(np.uint8)
+
+
+def image_display_range(store_path: Path, layer: LayerName) -> tuple[int, int]:
+    """Return the ``(lo, hi)`` display range for one image's layer.
+
+    Read from the SMALLEST pyramid level, whole. Deliberately **not
+    cached**: the computation costs ~4 ms against the ~165 ms level-0 crop
+    read the same request already performs, and no available key
+    (``st_mtime_ns`` on the store directory, or ``store_generation_token``)
+    moves when a nested chunk is rewritten in place -- so a cache here would
+    invalidate on a full re-publish but not on a chunk rewrite, and serve a
+    silently wrong brightness.
+
+    Uses min/max, not a percentile: on a real store a 0.5/99.5 percentile
+    gives 21,644-25,993 against a true range of 17,290-47,898, clipping the
+    colonies -- the brightest thing in the frame and the subject of the
+    picture.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` store directory.
+        layer: The layer whose range is wanted (normally ``"rgb"``).
+
+    Returns:
+        ``(lo, hi)`` as ints. Falls back to ``(0, 255)`` when the layer has
+        no pyramid levels to read, and when the level is degenerate
+        (``lo == hi``), so a constant layer cannot produce a zero-width
+        range that divides to infinity.
+
+    Raises:
+        KeyError: If *layer* is absent from the store.
+        StoreUnreadable: If this build cannot decode the store.
+    """
+    # Two things this must NOT do.
+    #
+    # 1. Pass a member path where a layer is wanted. _read_store_level takes
+    #    a LAYER and resolves the member itself; a member path "works" for
+    #    rgb only because the series map is the identity, raises KeyError
+    #    for objmap (member rgb/labels/objmap), and returns (0, 0) silently
+    #    for detect_mat and gray.
+    # 2. Scan the directory for level names. gui/CLAUDE.md:58 -- "Never
+    #    recompute the pyramid. The level count is recorded in
+    #    phenotypic.pyramid." An iterdir()/isdigit() scan is that
+    #    recomputation. Depth is uniform across layers (verified on the
+    #    fixture: rgb, gray, detect_mat and rgb/labels/objmap each hold
+    #    levels 0..4 against the block's "levels": 5).
+    from phenotypic.sdk_ import ngff_
+
+    block = _readable_block(store_path)
+    levels = int(block[ngff_.PhenotypicAttr.PYRAMID]["levels"])
+    if levels < 1:
+        return (0, 255)
+    smallest = _read_store_level(store_path, layer, levels - 1)
+    finite = (
+        smallest[np.isfinite(smallest)]
+        if smallest.dtype.kind == "f"
+        else smallest
+    )
+    if finite.size == 0:
+        return (0, 255)
+    lo, hi = int(finite.min()), int(finite.max())
+    # (0, 255) on a degenerate level, never (0, 0): scale_to_uint8's
+    # span <= 0 branch returns np.zeros, so a zero-width range renders an
+    # entirely black crop with no error anywhere.
+    return (lo, hi) if hi > lo else (0, 255)
+
+
+def composite_contours(
+    rgb: np.ndarray, labels: np.ndarray, focal: int
+) -> np.ndarray:
+    """Draw object boundaries from a label map onto an RGB crop.
+
+    The focal object is tinted distinctly from its neighbours so a crowded
+    crop still says which colony the point refers to. Cheap: a store's
+    ``objmap`` level costs effectively nothing on disk, and the boundary of
+    a typical colony is ~0.5% of the crop's pixels.
+
+    Args:
+        rgb: ``(H, W, 3)`` uint8 image to draw on. Not mutated.
+        labels: ``(H, W)`` integer label map, same shape as ``rgb``.
+        focal: The ``Object_Label`` to emphasise.
+
+    Returns:
+        A new ``(H, W, 3)`` uint8 array with boundaries drawn.
+    """
+    from skimage.segmentation import find_boundaries
+
+    from phenotypic.gui._design import OI_ORANGE, OI_SKY
+
+    def _rgb(hex_: str) -> tuple[int, int, int]:
+        h = hex_.lstrip("#")
+        return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+
+    out: np.ndarray = rgb.copy()
+    if labels.shape != rgb.shape[:2]:
+        return out
+
+    # Neighbours first, focal second: where the two boundaries touch, the
+    # focal tint is what survives, which is the half that carries meaning.
+    others = (labels > 0) & (labels != focal)
+    if others.any():
+        out[find_boundaries(others, mode="outer")] = _rgb(OI_SKY)
+    focal_mask = labels == focal
+    if focal_mask.any():
+        out[find_boundaries(focal_mask, mode="outer")] = _rgb(OI_ORANGE)
+    return out
+
+
+def _read_objmap_window(
+    store_path: Path, window: tuple[int, int, int, int]
+) -> np.ndarray | None:
+    """Read the same crop window from the store's label image, if it has one.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` store directory.
+        window: ``(top, bottom, left, right)`` in level-0 pixels -- the SAME
+            window the pixel layer was read with, so the two arrays align.
+
+    Returns:
+        The ``(H, W)`` label window, or ``None`` when the store carries no
+        label image. ``None`` rather than a raised ``KeyError``: the caller
+        has already produced a correct pixel crop, and letting the error
+        escape would reach :func:`crop_colony`'s missing-layer handler and
+        silently swap the pixel SOURCE to the baked overlay.
+    """
+    try:
+        return _read_store_level(store_path, "objmap", 0, window=window)
+    except (KeyError, FileNotFoundError, OSError):
+        logger.debug(
+            "Store %s has no objmap; serving the crop without contours",
+            store_path,
+        )
+        return None
+
+
+def _store_layer_array_to_rgb(
+    arr: np.ndarray, layer: str, store_path: Path
+) -> np.ndarray:
+    """Convert a decoded store layer array to an RGB uint8 array.
+
+    Args:
+        arr: The decoded layer window, channel-last for ``rgb``.
+        layer: Which layer *arr* came from.
+        store_path: Store the window was read from. **Required**, with no
+            default: the ``rgb`` display range is a property of the whole
+            IMAGE and cannot be derived from *arr*, so a caller that omits
+            it can only fall back to a per-WINDOW stretch -- which destroys
+            brightness ordering between crops and is precisely the class of
+            bug this function was changed to fix. An optional parameter
+            would let that be reintroduced by omission, silently.
+
+    Returns:
+        An ``(H, W, 3)`` uint8 array.
+    """
     from phenotypic.gui.builder._image_renderer import (
         _label_map_to_rgb,
         _normalize_to_uint8,
     )
 
     if layer == "rgb":
-        return arr.astype(np.uint8)
+        # An 8-bit window is already display-ready: ``scale_to_uint8``
+        # returns it untouched whatever range it is handed, so resolving a
+        # range first is pure waste. Testing the dtype HERE rather than
+        # relying on that early return also skips the pyramid READ -- and
+        # the level it would read is the SMALLEST one, which on a
+        # single-level store (any image under ``PYRAMID_STOP_PX``, and
+        # every ``save_intermediate_zarr`` preview) IS level 0. Without
+        # this branch an 8-bit crop pulls its whole layer to compute a
+        # range it then ignores.
+        if arr.dtype == np.uint8:
+            return arr
+        lo, hi = image_display_range(store_path, "rgb")
+        return scale_to_uint8(arr, lo, hi)
     if layer == "objmap":
         return _label_map_to_rgb(arr)
     # detect_mat / gray-like float layer
@@ -482,6 +669,7 @@ def crop_store_rgb(
     *,
     dim_alpha: float = 0.0,
     bbox: tuple[float, float, float, float] | None = None,
+    contours: int | None = None,
 ) -> bytes:
     """Full-resolution sibling of :func:`crop_overlay`, sourcing a store layer.
 
@@ -506,6 +694,12 @@ def crop_store_rgb(
         dim_alpha: Tile-spotlight strength; see :func:`crop_overlay`.
         bbox: ``(min_rr, max_rr, min_cc, max_cc)`` keep-rectangle; see
             :func:`crop_overlay`.
+        contours: ``Object_Label`` of the colony to outline, or ``None``
+            (the default) to draw no boundaries at all. When given — and
+            only on the ``rgb`` layer — the same window is read from the
+            store's label image and :func:`composite_contours` outlines the
+            focal object and its neighbours in different tints. A store
+            with no label image serves the plain crop rather than failing.
 
     Returns:
         PNG-encoded bytes of the ``size`` x ``size`` crop in RGB mode.
@@ -523,6 +717,7 @@ def crop_store_rgb(
         size,
         dim_alpha=dim_alpha,
         bbox=bbox,
+        contours=contours,
     )
 
 
@@ -536,6 +731,7 @@ def _crop_store_layer_window(
     *,
     dim_alpha: float = 0.0,
     bbox: tuple[float, float, float, float] | None = None,
+    contours: int | None = None,
 ) -> bytes:
     """Crop by reading only the requested level-0 window out of the store."""
     half = size // 2
@@ -557,19 +753,22 @@ def _crop_store_layer_window(
     bottom_clamped = min(src_height, bottom_unclamped)
 
     arr: np.ndarray | None = None
+    window: tuple[int, int, int, int] | None = None
     if right_clamped > left_clamped and bottom_clamped > top_clamped:
-        arr = _read_store_level(
-            store_path,
-            layer,
-            0,
-            window=(top_clamped, bottom_clamped, left_clamped, right_clamped),
-        )
+        window = (top_clamped, bottom_clamped, left_clamped, right_clamped)
+        arr = _read_store_level(store_path, layer, 0, window=window)
 
     result = PILImage.new("RGB", (size, size), pad_value)
     if arr is not None:
-        region = PILImage.fromarray(
-            _store_layer_array_to_rgb(arr, layer), mode="RGB"
-        )
+        pixels = _store_layer_array_to_rgb(arr, layer, store_path)
+        # Contours only make sense over the pixel layer: ``objmap`` is
+        # already a colourised label map, and outlining a boundary on top of
+        # the region it bounds says nothing.
+        if contours is not None and layer == "rgb" and window is not None:
+            labels = _read_objmap_window(store_path, window)
+            if labels is not None:
+                pixels = composite_contours(pixels, labels, contours)
+        region = PILImage.fromarray(pixels, mode="RGB")
         paste_x = max(0, -left_unclamped)
         paste_y = max(0, -top_unclamped)
         result.paste(region, (paste_x, paste_y))
@@ -603,6 +802,7 @@ def crop_colony(
     *,
     dim_alpha: float = 0.0,
     bbox: tuple[float, float, float, float] | None = None,
+    contours: int | None = None,
 ) -> bytes | None:
     """Tier the crop source per-image: the store layer when available, else overlay.
 
@@ -631,6 +831,9 @@ def crop_colony(
         dim_alpha: Tile-spotlight strength; see :func:`crop_overlay`.
         bbox: ``(min_rr, max_rr, min_cc, max_cc)`` keep-rectangle; see
             :func:`crop_overlay`.
+        contours: ``Object_Label`` to outline; see :func:`crop_store_rgb`.
+            Ignored on the overlay fallback — a baked overlay already
+            carries the CLI's own drawn boundaries.
 
     Returns:
         PNG-encoded bytes of the ``size`` x ``size`` crop, or ``None`` when
@@ -651,6 +854,7 @@ def crop_colony(
                 os.stat(store).st_mtime_ns,
                 dim_alpha=dim_alpha,
                 bbox=bbox,
+                contours=contours,
             )
         except KeyError:
             # The store exists but carries no such layer (e.g. a grayscale
@@ -836,7 +1040,11 @@ _MAX_OBJECT_LABEL = 10**9
 
 
 def register_crop_route(
-    app: dash.Dash, output_root: OutputRoot, segment: str
+    app: dash.Dash,
+    output_root: OutputRoot,
+    segment: str,
+    *,
+    default_contours: int = 0,
 ) -> None:
     """Mount a per-colony centered-crop route under ``/<segment>`` on ``app.server``.
 
@@ -863,6 +1071,12 @@ def register_crop_route(
         segment: URL path segment the route mounts under (e.g. ``crops``).
             Also seeds the blueprint name so multiple segments can coexist
             on one server.
+        default_contours: Value of ``?contours=`` when the query string
+            omits it. ``0`` (the default) draws no object boundaries, so the
+            colony and QC segments render exactly as they did before this
+            parameter existed; the Scatter segment mounts with ``1``. It is
+            a per-segment default rather than one shared flag precisely so
+            the three surfaces can disagree without any of them changing.
     """
     # Imported here rather than at module scope:
     #  * ``flask.request`` is a Werkzeug ``LocalProxy``; exposing it as a
@@ -965,6 +1179,15 @@ def register_crop_route(
             return (f"not found: unsupported layer {layer_raw!r}", 404)
         layer = cast(LayerName, layer_raw)
 
+        # --- 3d. Contour compositing -------------------------------------
+        # Opt-in per segment. Like ``dim``, a stray value must not break the
+        # tile, so this is a truthiness test rather than a validation: any
+        # non-zero int turns boundaries on, an unparseable one falls back to
+        # the segment's default.
+        contours_on = request.args.get(
+            "contours", type=int, default=default_contours
+        )
+
         # --- 4. Lookup ----------------------------------------------------
         # Cast key columns explicitly so the comparison still matches when
         # the master frame stores Metadata_ImageName as Categorical or
@@ -1039,6 +1262,7 @@ def register_crop_route(
                 size,
                 dim_alpha=dim,
                 bbox=bbox,
+                contours=label_int if contours_on else None,
             )
         except Exception:
             logger.exception(
@@ -1181,6 +1405,7 @@ def build_tile_cell(
     if is_removed:
         classes.append("is-removed")
 
+    crop_node: Component
     if has_image_source and defer_crop_image:
         crop_node = html.Div(
             className="colony-cell-img colony-cell-zarr-host",
@@ -1192,7 +1417,7 @@ def build_tile_cell(
         )
     elif has_image_source:
         crop_url = url_builder(dataset, image_file, label, crop_size)
-        crop_node: Component = html.Img(
+        crop_node = html.Img(
             src=crop_url,
             className="colony-cell-img",
             style={
@@ -1465,6 +1690,9 @@ __all__ = [
     "DEFAULT_LAYER",
     "crop_overlay",
     "crop_store_rgb",
+    "composite_contours",
+    "image_display_range",
+    "scale_to_uint8",
     "StoreUnreadable",
     "crop_colony",
     "is_safe_path_component",

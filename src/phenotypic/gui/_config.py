@@ -160,6 +160,7 @@ __all__ = [
     "BROWSE_TILES_PREFIX",
     "COLONY_CROPS_URL_SEGMENT",
     "QC_CROPS_URL_SEGMENT",
+    "SCATTER_CROPS_URL_SEGMENT",
     # Closed value-set aliases
     "ChannelName",
     # Tile-spotlight dim strength (shared by both toolbars + the crop route)
@@ -560,6 +561,11 @@ COLONY_CROPS_URL_SEGMENT: str = "crops"
 #: serve identical centered PNGs; the namespaces are kept apart only so
 #: the blueprint registrations never collide.
 QC_CROPS_URL_SEGMENT: str = "qc-crops"
+
+#: URL segment for the Scatter inspector's crop route. Distinct from the
+#: colony and QC segments so the three can differ in their contour default
+#: without a shared flag.
+SCATTER_CROPS_URL_SEGMENT: str = "scatter-crops"
 
 # ---------------------------------------------------------------------------
 # Closed value-set aliases
