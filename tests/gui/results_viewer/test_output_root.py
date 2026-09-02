@@ -522,6 +522,63 @@ def test_column_value_sets_are_sorted_unique_str(tmp_path: Path) -> None:
         assert column in cvs
 
 
+def test_column_value_sets_are_empty_for_a_list_valued_column(
+    tmp_path: Path,
+) -> None:
+    """A column polars cannot stringify has no value set -- it does not raise.
+
+    ``_compute`` casts to ``pl.String`` to build a filter value set.
+    ``List`` and ``Array`` dtypes reject that cast outright (a type-level
+    refusal, so ``strict=False`` does not help). A master carrying one is
+    unusual but legal -- nothing stops a post step or a user-added column
+    from being list-valued -- and every surface that asks "is this column
+    offerable?" reaches this method. Raising here fails **app boot**, not
+    just that one column, because building the layout asks every column
+    for its value set.
+
+    The empty list is the answer callers already know how to read: it is
+    falsy for the axis menus' non-empty guard, and
+    ``_all_parse_as_float([])`` is ``False``, so ``is_numeric_column``
+    reports the column non-numeric rather than offering a range filter
+    over values it cannot render.
+    """
+
+    _make_minimal_output(tmp_path)
+    df = pl.read_parquet(master_measurements_parquet_path(tmp_path))
+    _write_master_parquet(
+        tmp_path,
+        df.with_columns(pl.Series("Centroid", [[5.0, 5.0], [6.0, 6.0]])),
+    )
+    out = _discover(tmp_path)
+
+    assert out.master_df.schema["Centroid"] == pl.List(pl.Float64)
+    assert out.column_value_sets["Centroid"] == []
+    assert out.is_numeric_column("Centroid") is False
+    # The stringifiable columns beside it are unaffected.
+    assert out.column_value_sets["Size_Area"] == sorted({"100.0", "200.0"})
+
+
+def test_column_value_sets_still_serve_a_struct_column(tmp_path: Path) -> None:
+    """``Struct`` is nested but casts to ``String`` fine -- it keeps its set.
+
+    Guards the fix above against being written as a nested-dtype check.
+    ``DataType.is_nested()`` is ``True`` for ``Struct`` as well as for
+    ``List``/``Array``, so excluding on nestedness would silently drop a
+    column that has a perfectly good value set.
+    """
+
+    _make_minimal_output(tmp_path)
+    df = pl.read_parquet(master_measurements_parquet_path(tmp_path))
+    _write_master_parquet(
+        tmp_path,
+        df.with_columns(pl.Series("Bounds", [{"a": 1}, {"a": 2}])),
+    )
+    out = _discover(tmp_path)
+
+    assert out.master_df.schema["Bounds"] == pl.Struct({"a": pl.Int64})
+    assert out.column_value_sets["Bounds"] == ["{1}", "{2}"]
+
+
 def test_column_value_sets_outer_mapping_is_immutable(tmp_path: Path) -> None:
     """The mapping itself rejects ``__setitem__`` (``MappingProxyType``)."""
 

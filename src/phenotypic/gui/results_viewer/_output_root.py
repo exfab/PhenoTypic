@@ -1202,13 +1202,30 @@ class _LazyColumnValueSets(Mapping[str, list[str]]):
                 self._cache[column] = self._compute(column)
 
     def _compute(self, column: str) -> list[str]:
-        values = (
-            self._df.get_column(column)
-            .cast(pl.String)
-            .drop_nulls()
-            .unique()
-            .to_list()
-        )
+        try:
+            values = (
+                self._df.get_column(column)
+                .cast(pl.String)
+                .drop_nulls()
+                .unique()
+                .to_list()
+            )
+        except pl.exceptions.InvalidOperationError:
+            # A dtype polars refuses to stringify -- ``List`` and
+            # ``Array`` are the ones that reach here -- has no filter
+            # value set. The refusal is type-level, so ``strict=False``
+            # does not help, and the exception is what distinguishes
+            # these from the nested dtype that casts fine: ``Struct``.
+            #
+            # Empty is the answer callers already read as "not
+            # offerable": it is falsy for the axis menus' non-empty
+            # guard, and ``_all_parse_as_float([])`` is False, so
+            # ``is_numeric_column`` reports the column non-numeric
+            # instead of offering a range filter over values it cannot
+            # render. Raising would fail app boot rather than one
+            # column, because building the layout asks every column for
+            # its value set.
+            return []
         if _all_parse_as_float(values):
             return sorted(values, key=float)
         return sorted(values)
