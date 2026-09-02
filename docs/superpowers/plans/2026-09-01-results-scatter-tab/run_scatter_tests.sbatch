@@ -50,7 +50,17 @@ echo "Group: ${SLURM_ARRAY_TASK_ID}/${PYTEST_GROUP_COUNT}   Scope: ${SCOPE}"
 echo
 
 cd "$WORKTREE"
-echo "Commit under test: $(git rev-parse --short HEAD) $(git log -1 --format=%s)"
+# The array runs against the WORKING TREE, not against a checkout of HEAD.
+# Printing only the sha would assert a provenance the run does not have:
+# with uncommitted changes present, the results belong to no commit at all.
+_DIRTY="$(git status --porcelain | wc -l)"
+echo "HEAD: $(git rev-parse --short HEAD) $(git log -1 --format=%s)"
+if ((_DIRTY > 0)); then
+    echo "TREE: DIRTY -- ${_DIRTY} uncommitted path(s); these results are NOT HEAD's"
+    git status --porcelain | sed 's/^/      /'
+else
+    echo "TREE: clean -- results are HEAD's"
+fi
 echo
 
 case "$SCOPE" in
