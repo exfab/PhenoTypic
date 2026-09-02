@@ -23,7 +23,12 @@ from __future__ import annotations
 SCATTER_GRAPH = "scatter-graph"
 
 #: Read-only chip naming the section on screen and its position in the
-#: section list (``"BY4741  (3 / 23)"``), plus any facet-cap notice.
+#: section list, plus any facet-cap notice. Shape: ``"<name>  (i / n)"``.
+#: The example is deliberately not drawn from the verification fixture --
+#: ``BY4741`` is not one of its strains, and its section count is 22, not
+#: the 23 an earlier draft of this line used. A worked example here would
+#: be a fixture claim maintained in a docstring, which is how a number
+#: outlives the thing it measured.
 SCATTER_PAGER_LABEL = "scatter-pager-label"
 
 #: Step to the previous / next section group.
