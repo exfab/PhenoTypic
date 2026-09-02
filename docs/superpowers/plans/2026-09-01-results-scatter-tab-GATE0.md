@@ -8,6 +8,15 @@
 > during close-out. Notably `spike_a` did **not** escalate S5 — no
 > `MeasurementInfo` leaf's `category()` raises, in either import order.
 >
+>
+> **One correction inside this file.** The vacuity sweep's Task 7 rows are a
+> hand-trace and mark those tests sound. `spike_f`'s mutation run disagrees:
+> **four of Task 7's five tests pass against a class-not-instance bug**, and
+> all four have been rewritten in the plan. Where this file's mutation column
+> and `spike_f` disagree, `spike_f` wins — as this file's own preamble says.
+> Hand-tracing shows what a correct implementation produces; only mutation
+> shows what a wrong one produces, and that is the half that decides whether a
+> test discriminates.
 > Kept as the record of what the gate caught and why.
 
 # Gate 0 review — Results Viewer Scatter Tab implementation plan

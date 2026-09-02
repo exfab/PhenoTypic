@@ -2685,6 +2685,11 @@ would have been invisible until runtime.
 | B7 | The ink assertion was `@pytest.mark.slow` **and** needed an absent `pymupdf` | `addopts` carries `-m 'not slow'`, so §15's "only defence" against a blank PDF ran nowhere |
 | F1 | Four of Task 7's five tests passed against a class-not-instance bug | Reported coverage that did not exist — found by mutation, not by reading |
 | F2 | `resolve_click` did `int(None)` on a phantom row | `master_df` is the mirror; a phantom click 500s the callback |
+| F3 | Task 9's index test asserted membership in a range, not correspondence to a row | **This is why B1 survived.** A filtered-frame index satisfies it perfectly while pointing at the wrong row |
+| F4 | `image_display_range` scanned the store directory for level names | Violates `gui/CLAUDE.md:58`, "never recompute the pyramid" |
+
+`GATE0.md`'s vacuity table marks Task 7's tests sound — that column is a
+hand-trace, and `spike_f`'s mutation run overrides it. Read the outcomes here.
 
 Two spec figures were also corrected by the spikes: level-0's true `rgb`
 range is **(17290, 47898)**, not the (17912, 45344) §2.3(c) quotes, so the
