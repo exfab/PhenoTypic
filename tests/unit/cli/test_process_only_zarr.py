@@ -585,3 +585,81 @@ def test_a_failed_apply_leaves_the_journal_marked_failed(
 
     assert decoded, "the core must have decoded an image before applying"
     assert decoded[-1]._metadata.provenance_journal["status"] == "failed"
+
+
+def test_provenance_initialization_failure_is_not_masked_by_cleanup(
+    tmp_path: Path,
+    source_image: Path,
+    pipeline_file: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A decoded image does not imply that a CLI application was opened."""
+    from phenotypic._cli import _cli_process_only
+    from phenotypic._cli._cli_failure_tracker import PerImageScientificError
+
+    original = RuntimeError("provenance initialization failed")
+
+    def _fail_initialization(*args, **kwargs):
+        del args, kwargs
+        raise original
+
+    monkeypatch.setattr(
+        _cli_process_only, "initialize_cli_provenance", _fail_initialization
+    )
+
+    with pytest.raises(PerImageScientificError) as caught:
+        process_single_apply_only_core(
+            pipeline_path=pipeline_file,
+            image_path=source_image,
+            input_root=source_image.parent,
+            output_dir=tmp_path / "out",
+            image_type="Image",
+            layer="rgb",
+            read_kwargs={},
+            process_format="zarr",
+        )
+
+    assert caught.value.stage == "process"
+    assert caught.value.cause is original
+    assert caught.value.__cause__ is original
+
+
+def test_failed_status_cleanup_does_not_mask_apply_failure(
+    tmp_path: Path,
+    source_image: Path,
+    pipeline_file: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Failure-status publication is secondary to the scientific exception."""
+    from phenotypic._cli import _cli_process_only
+    from phenotypic._cli._cli_failure_tracker import PerImageScientificError
+
+    original = RuntimeError("detector exploded")
+
+    def _fail_apply(self, image, inplace=False):
+        del self, image, inplace
+        raise original
+
+    def _fail_cleanup(image, status):
+        del image
+        assert status == "failed"
+        raise ValueError("failure-status cleanup failed")
+
+    monkeypatch.setattr(ImagePipeline, "apply", _fail_apply)
+    monkeypatch.setattr(_cli_process_only, "set_provenance_status", _fail_cleanup)
+
+    with pytest.raises(PerImageScientificError) as caught:
+        process_single_apply_only_core(
+            pipeline_path=pipeline_file,
+            image_path=source_image,
+            input_root=source_image.parent,
+            output_dir=tmp_path / "out",
+            image_type="Image",
+            layer="rgb",
+            read_kwargs={},
+            process_format="zarr",
+        )
+
+    assert caught.value.stage == "process"
+    assert caught.value.cause is original
+    assert caught.value.__cause__ is original
