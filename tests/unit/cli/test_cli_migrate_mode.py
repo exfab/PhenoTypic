@@ -397,6 +397,7 @@ def test_direct_slurm_dry_run_submits_from_external_control_root(
 
     output = tmp_path / "run"
     output.mkdir()
+    (output / "results").mkdir()
     science = output / "retained.bin"
     science.write_bytes(b"immutable science")
     plan = _migration_plan(tmp_path, "attempt-1")
@@ -440,6 +441,7 @@ def test_direct_waited_slurm_dry_run_reads_external_typed_terminal(
     output = tmp_path / "run"
     output.mkdir()
     science = output / "retained.bin"
+    (output / "results").mkdir()
     science.write_bytes(b"immutable science")
     plan = _migration_plan(tmp_path, "attempt-1")
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
@@ -1350,6 +1352,7 @@ def test_initialization_only_normalizes_active_lifecycle_conflicts(
 
     from phenotypic._cli import _cli_migrate as migrate
 
+    (tmp_path / "results").mkdir()
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
     monkeypatch.setattr(
         migrate,
@@ -1456,6 +1459,7 @@ def test_planner_only_normalizes_expected_errors(
 
     from phenotypic._cli import _cli_migrate as migrate
 
+    (tmp_path / "results").mkdir()
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
     monkeypatch.setattr(
         migrate,
@@ -1484,6 +1488,7 @@ def test_submitter_only_normalizes_expected_errors(
 
     from phenotypic._cli import _cli_migrate as migrate
 
+    (tmp_path / "results").mkdir()
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
     monkeypatch.setattr(
         migrate,

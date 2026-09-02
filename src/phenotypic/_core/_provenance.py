@@ -364,9 +364,12 @@ def _append_application(
         raise ValueError("cannot start a new provenance application before the last ends")
     normalized_pipeline = deepcopy(dict(pipeline)) if pipeline is not None else None
     if normalized_pipeline is not None:
-        normalized_pipeline["source_path"] = provenance_basename(
+        source_path = provenance_basename(
             normalized_pipeline["source_path"]
         )
+        if source_path is None:
+            raise ValueError("pipeline source_path must be a non-empty basename")
+        normalized_pipeline["source_path"] = source_path
     application = {
         "sequence": len(applications) + 1,
         "kind": kind,

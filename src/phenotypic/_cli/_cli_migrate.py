@@ -103,6 +103,7 @@ from ._cli_slurm_lifecycle import (
 from ._cli_migrate_slurm import (
     MigrationSlurmPlan,
     generate_migration_slurm_plan,
+    generate_provenance_migration_slurm_plan,
     submit_migration_slurm_plan,
 )
 from ._embedded_measurement_tables import embedded_measurement_table_matches
@@ -2325,16 +2326,34 @@ def handle_migrate_mode(
         echo_migration_summary(output_dir, report, dry_run=dry_run)
         return 0 if report.ok else 1
 
+    try:
+        target = classify_provenance_migration_target(Path(output_dir))
+    except ValueError as exc:
+        raise click.ClickException(
+            f"Could not classify migration target: {exc}"
+        ) from exc
+    provenance_only = target.kind != "full_run"
+    if provenance_only and delete_sources:
+        raise click.ClickException(
+            "--delete-sources is not supported for direct-store or "
+            "process-tree provenance migration"
+        )
+    lifecycle_owner = (
+        provenance_migration_lifecycle_root(target)
+        if provenance_only
+        else target.root
+    )
+
     generation = new_slurm_generation()
     try:
         with ExitStack() as attempt_lease:
             if not dry_run:
                 attempt_lease.enter_context(
-                    _migration_attempt_lease(Path(output_dir))
+                    _migration_attempt_lease(lifecycle_owner)
                 )
                 try:
                     reconcile_interrupted_migration_attempt(
-                        output_dir, _lease_held=True
+                        lifecycle_owner, _lease_held=True
                     )
                 except (
                     RuntimeError,
@@ -2345,7 +2364,7 @@ def handle_migrate_mode(
                         "Could not reconcile prior SLURM migration attempt: "
                         f"{exc}"
                     ) from exc
-                active = load_slurm_lifecycle(output_dir)
+                active = load_slurm_lifecycle(lifecycle_owner)
                 if active is not None and active.get("active") is True:
                     raise click.ClickException(
                         "Could not initialize SLURM migration attempt: Output "
@@ -2353,19 +2372,29 @@ def handle_migrate_mode(
                         f"{active.get('generation')!r}"
                     )
             try:
-                plan = generate_migration_slurm_plan(
-                    output_dir,
-                    slurm_args=dict(slurm_args),
-                    overlay_alpha=overlay_alpha,
-                    delete_sources=delete_sources,
-                    dry_run=dry_run,
-                    generation=generation,
-                )
+                if provenance_only:
+                    plan = generate_provenance_migration_slurm_plan(
+                        target,
+                        slurm_args=dict(slurm_args),
+                        dry_run=dry_run,
+                        generation=generation,
+                    )
+                else:
+                    plan = generate_migration_slurm_plan(
+                        target.root,
+                        slurm_args=dict(slurm_args),
+                        overlay_alpha=overlay_alpha,
+                        delete_sources=delete_sources,
+                        dry_run=dry_run,
+                        generation=generation,
+                    )
             except (OSError, ValueError) as exc:
                 raise click.ClickException(
                     f"Could not plan SLURM migration attempt: {exc}"
                 ) from exc
-            lifecycle_root = plan.control_root if dry_run else Path(output_dir)
+            lifecycle_root = plan.lifecycle_root or (
+                plan.control_root if dry_run else lifecycle_owner
+            )
             if dry_run:
                 attempt_lease.enter_context(
                     _migration_attempt_lease(lifecycle_root)

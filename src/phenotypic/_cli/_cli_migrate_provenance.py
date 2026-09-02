@@ -121,7 +121,7 @@ def upgrade_store_provenance(
     if not isinstance(attributes, Mapping):
         return ProvenanceUpgradeResult(store_path, None, False)
     phenotypic_block = attributes.get(PhenotypicAttr.ROOT)
-    if not isinstance(phenotypic_block, Mapping):
+    if not isinstance(phenotypic_block, dict):
         return ProvenanceUpgradeResult(store_path, None, False)
     if PhenotypicAttr.PROVENANCE not in phenotypic_block:
         return ProvenanceUpgradeResult(store_path, None, False)

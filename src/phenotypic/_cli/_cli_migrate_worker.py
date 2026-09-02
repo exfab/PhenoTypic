@@ -44,6 +44,7 @@ from ._cli_migrate_manifest import (
     validate_migration_generation,
     valid_migration_image_seal,
 )
+from ._cli_migrate_provenance import upgrade_store_provenance
 from ._cli_slurm_lifecycle import (
     assert_generation_active,
     generation_publication_guard,
@@ -433,6 +434,8 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
         )
         return 0
     task = None
+    provenance_started = False
+    provenance_result = None
     try:
         task = read_migration_task(
             config.manifest_path,
@@ -440,6 +443,14 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
             expected_scientific_output=config.scientific_output,
             expected_control_root=config.control_root,
         )
+        if (task.store_path / "zarr.json").is_file():
+            provenance_started = True
+            provenance_result = upgrade_store_provenance(
+                task.store_path,
+                dry_run=config.dry_run,
+                commit_guard=_commit_guard(config),
+            )
+            provenance_started = False
         result = migrate_image_task(
             config.output_dir,
             task,
@@ -468,7 +479,18 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
             "image",
             index=index,
             status="complete",
-            extra={"result": asdict(result)},
+            extra={
+                "result": asdict(result),
+                "provenance": (
+                    None
+                    if provenance_result is None
+                    else {
+                        "store_path": str(provenance_result.store_path),
+                        "schema_before": provenance_result.schema_before,
+                        "upgraded": provenance_result.upgraded,
+                    }
+                ),
+            },
         )
         return 0
     except Exception as exc:  # noqa: BLE001 - isolate each array index
@@ -477,7 +499,7 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
             "image",
             index=index,
             status="failed",
-            failure_category="image",
+            failure_category="provenance" if provenance_started else "image",
             reason=f"{type(exc).__name__}: {exc}",
             extra={
                 "target": (
@@ -767,18 +789,44 @@ def _image_report(config: _WorkerConfig) -> tuple[MigrationReport, tuple[tuple[P
     )
     results: list[MigrationImageResult] = []
     failures: list[tuple[Path, str]] = []
+    provenance_upgraded = 0
+    provenance_failures: list[tuple[Path, str]] = []
     for task in tasks:
         status = _read_worker_status(config, "image", task.index)
         if status is None or status.get("status") != "complete":
-            failures.append(
-                (
-                    task.hdf_path or task.store_path,
-                    "image status is missing"
-                    if status is None
-                    else str(status.get("reason") or "image did not complete"),
+            reason = (
+                "image status is missing"
+                if status is None
+                else str(status.get("reason") or "image did not complete")
+            )
+            target = task.hdf_path or task.store_path
+            if status is not None and status.get("failure_category") == "provenance":
+                provenance_failures.append((task.store_path, reason))
+            else:
+                failures.append((target, reason))
+            continue
+        provenance = status.get("provenance")
+        if provenance is not None:
+            valid_provenance = (
+                isinstance(provenance, Mapping)
+                and set(provenance)
+                == {"store_path", "schema_before", "upgraded"}
+                and provenance.get("store_path") == str(task.store_path)
+                and isinstance(provenance.get("upgraded"), bool)
+                and (
+                    provenance.get("schema_before") is None
+                    or (
+                        isinstance(provenance.get("schema_before"), int)
+                        and not isinstance(provenance.get("schema_before"), bool)
+                    )
                 )
             )
-            continue
+            if not valid_provenance:
+                provenance_failures.append(
+                    (task.store_path, "provenance result evidence is invalid")
+                )
+            else:
+                provenance_upgraded += int(provenance["upgraded"])
         raw = status.get("result")
         expected_result_fields = {
             "index", "dataset", "stem", "work_id", "converted",
@@ -815,7 +863,12 @@ def _image_report(config: _WorkerConfig) -> tuple[MigrationReport, tuple[tuple[P
                 skipped=raw["skipped"],
             )
         )
-    return _report_from_image_results(tasks, results), tuple(failures)
+    report = replace(
+        _report_from_image_results(tasks, results),
+        provenance_upgraded=provenance_upgraded,
+        provenance_failures=tuple(provenance_failures),
+    )
+    return report, tuple(failures)
 
 
 def _placeholder_image_seal(config: _WorkerConfig, reason: str) -> MigrationImageSeal:
