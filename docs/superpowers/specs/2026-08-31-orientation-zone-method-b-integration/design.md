@@ -1,5 +1,10 @@
 # Method B branch-orientation zone integration
 
+> **Superseded on 2026-09-01.** This document preserves the evidence and the
+> original orientation-only proposal. The accepted shared canonical design is
+> [canonical-shared-resolver.md](canonical-shared-resolver.md). Where the two
+> documents conflict, the shared-resolver specification is authoritative.
+
 **Date:** 2026-08-31, revised 2026-09-01
 
 **Status:** Proposed; implementation-ready after evidence Gate 0

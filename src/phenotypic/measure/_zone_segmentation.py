@@ -13,7 +13,7 @@ geometry. Behaviour is byte-identical to the pre-extraction
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -22,6 +22,13 @@ if TYPE_CHECKING:
 import numpy as np
 from scipy.ndimage import convolve, distance_transform_edt
 from skimage.measure import regionprops
+
+from phenotypic.measure._orientation_zone_segmentation import (
+    OrientationAnalysisContext,
+    OrientationChangePointParams,
+    OrientationZoneResult,
+    fit_orientation_zones,
+)
 
 # Zone-segmentation constants
 _N_ANGULAR_SECTORS = 360
@@ -92,6 +99,18 @@ class ZoneSegmentationParams:
     tau_dense: float = 0.5
     tau_sparse: float = 0.1
     intensity_source: str = "gray"
+
+
+@dataclass(frozen=True)
+class ZoneResolution:
+    """Shared zone segmentation plus optional reusable orientation arrays."""
+
+    segmentation: ZoneSegmentation
+    method_code: int
+    method_used: str
+    failure_reason: str
+    canonical_result: OrientationZoneResult | None = None
+    orientation_context: OrientationAnalysisContext | None = None
 
 
 # ── shared pipeline for one object ───────────────────────────────
@@ -432,6 +451,133 @@ def compute_zone_segmentation(
             I_agar=I_agar_val,
             zones_computed=True,
             centroid_global=center_global,
+    )
+
+
+def resolve_zone_segmentation(
+    image: Image,
+    prop,
+    *,
+    legacy_params: ZoneSegmentationParams,
+    canonical_params: OrientationChangePointParams,
+    legacy_mode: bool,
+) -> ZoneResolution:
+    """Resolve one canonical zone geometry for all zone-aware measurers.
+
+    The existing colony-ness pipeline remains the source of the independent
+    PELT core, symmetry, and expansion measurements. Canonical mode replaces
+    only the CoreZone/DenseZone/SparseZone boundaries and areas with Method B.
+
+    Args:
+        image: Detected image containing the final object map and signal.
+        prop: RegionProperties record for the target object.
+        legacy_params: Parameters for the preserved mask and colony-ness path.
+        canonical_params: Parameters for Method B.
+        legacy_mode: Whether to return the colony-ness zone partition unchanged.
+
+    Returns:
+        Shared segmentation, provenance, and reusable orientation context.
+    """
+    base = compute_zone_segmentation(image, prop, params=legacy_params)
+    if legacy_mode:
+        return ZoneResolution(
+            segmentation=base,
+            method_code=0,
+            method_used="legacy_colony_ness",
+            failure_reason="none",
+        )
+
+    # Use one full-image crop for both public measurers. The target mask alone
+    # determines the radius; adjacent objects remain excluded from every ring.
+    coords = np.asarray(prop.coords, dtype=np.float64)
+    if coords.size == 0:
+        return ZoneResolution(
+            segmentation=replace(
+                base,
+                core_end_radius=float("nan"),
+                dense_end_radius=float("nan"),
+                sparse_end_radius=float("nan"),
+                core_area=float("nan"),
+                dense_area=float("nan"),
+                sparse_area=float("nan"),
+                zones_computed=False,
+            ),
+            method_code=4,
+            method_used="missing",
+            failure_reason="invalid_object_mask",
+        )
+    radial_extent = float(
+        np.max(
+            np.hypot(
+                coords[:, 0] - base.centroid_global[0],
+                coords[:, 1] - base.centroid_global[1],
+            )
+        )
+    )
+    analysis_radius = radial_extent + canonical_params.ring_width
+    analysis_slice = expand_slice_around_center(
+        base.centroid_global,
+        analysis_radius,
+        image.gray[:].shape[:2],
+    )
+    signal = np.asarray(image.detect_mat[analysis_slice], dtype=np.float64)
+    object_mask = np.asarray(
+        image.objmap[:][analysis_slice] == base.label, dtype=bool
+    )
+    center = (
+        base.centroid_global[0] - float(analysis_slice[0].start),
+        base.centroid_global[1] - float(analysis_slice[1].start),
+    )
+    fitted = fit_orientation_zones(
+        object_mask,
+        signal,
+        center,
+        canonical_params,
+    )
+    result = fitted.result
+    if result.zones_computed:
+        core_area, dense_area, sparse_area = compute_zone_areas(
+            result.core_zone_radius,
+            result.dense_radius,
+            result.outer_radius,
+        )
+        core_end_radius = result.core_zone_radius
+        dense_end_radius = result.dense_radius
+        sparse_end_radius = result.outer_radius
+    else:
+        core_area = dense_area = sparse_area = float("nan")
+        core_end_radius = dense_end_radius = sparse_end_radius = float("nan")
+    context = fitted.context
+    distance_map = (
+        context.distance_map
+        if context is not None
+        else distance_from_point(object_mask.shape, center)
+    )
+    updated = replace(
+        base,
+        bbox_slice=analysis_slice,
+        centroid_rc=(float(center[0]), float(center[1])),
+        obj_mask=object_mask,
+        dist_map=distance_map,
+        gray_crop=np.asarray(image.gray[analysis_slice], dtype=np.float64),
+        core_end_radius=core_end_radius,
+        dense_end_radius=dense_end_radius,
+        sparse_end_radius=sparse_end_radius,
+        r_outer_full_per_angle=per_angle_mask_envelope(
+            object_mask, distance_map, center
+        ),
+        core_area=core_area,
+        dense_area=dense_area,
+        sparse_area=sparse_area,
+        zones_computed=result.zones_computed,
+    )
+    return ZoneResolution(
+        segmentation=updated,
+        method_code=result.method_code,
+        method_used=result.method_used,
+        failure_reason=result.failure_reason,
+        canonical_result=result,
+        orientation_context=context,
     )
 
 

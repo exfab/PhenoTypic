@@ -65,6 +65,16 @@ class LiteralSkeletonRingCrossingTransform:
 
 
 @dataclass(frozen=True)
+class _PreparedLiteralSkeleton:
+    """Validated reliable skeleton reused across radial samplings."""
+
+    reliable_skeleton: NDArray[np.bool_]
+    fiber_axis: NDArray[np.float64]
+    coherence: NDArray[np.float64]
+    distance_map: NDArray[np.float64]
+
+
+@dataclass(frozen=True)
 class LiteralCrossingRingProfile:
     """Equal-crossing outward orientation profile.
 
@@ -133,6 +143,156 @@ def _validated_field(
     return array
 
 
+def _prepare_literal_skeleton(
+    object_mask: NDArray[np.bool_],
+    fiber_axis: NDArray[np.floating],
+    coherence: NDArray[np.floating],
+    distance_map: NDArray[np.floating],
+    *,
+    selector: NDArray[np.bool_] | None,
+    minimum_coherence: float,
+) -> _PreparedLiteralSkeleton:
+    """Skeletonize and validate one object without sampling radial rings."""
+    mask = _validated_field(object_mask, name="object_mask", boolean=True)
+    shape = mask.shape
+    axes = np.asarray(
+        _validated_field(fiber_axis, name="fiber_axis", shape=shape),
+        dtype=np.float64,
+    )
+    coherence_field = np.asarray(
+        _validated_field(coherence, name="coherence", shape=shape),
+        dtype=np.float64,
+    )
+    distances = np.asarray(
+        _validated_field(distance_map, name="distance_map", shape=shape),
+        dtype=np.float64,
+    )
+    eligible = (
+        mask
+        if selector is None
+        else _validated_field(selector, name="selector", shape=shape, boolean=True)
+    )
+    finite_coherence = coherence_field[np.isfinite(coherence_field)]
+    if finite_coherence.size and (
+        np.min(finite_coherence) < 0.0 or np.max(finite_coherence) > 1.0
+    ):
+        raise ValueError("finite coherence values must be in [0, 1]")
+    if not np.isfinite(minimum_coherence) or not 0.0 <= minimum_coherence <= 1.0:
+        raise ValueError("minimum_coherence must be finite and in [0, 1]")
+    full_skeleton = np.asarray(skeletonize(mask), dtype=bool)
+    reliable_skeleton = (
+        full_skeleton
+        & eligible
+        & np.isfinite(axes)
+        & np.isfinite(coherence_field)
+        & (coherence_field >= minimum_coherence)
+        & np.isfinite(distances)
+    )
+    return _PreparedLiteralSkeleton(
+        reliable_skeleton=reliable_skeleton,
+        fiber_axis=axes,
+        coherence=coherence_field,
+        distance_map=distances,
+    )
+
+
+def _sample_literal_skeleton_ring_crossings(
+    prepared: _PreparedLiteralSkeleton,
+    center: tuple[float, float],
+    radii: NDArray[np.floating],
+    *,
+    crossing_half_width: float,
+    minimum_crossing_resultant: float,
+) -> LiteralSkeletonRingCrossingTransform:
+    """Sample one prepared skeleton at strictly increasing radial rings."""
+    center_array = np.asarray(center, dtype=float)
+    if center_array.shape != (2,) or not np.isfinite(center_array).all():
+        raise ValueError("center must contain two finite coordinates")
+    sampled_radii = np.asarray(radii, dtype=float)
+    if sampled_radii.ndim != 1 or sampled_radii.size < 1:
+        raise ValueError("radii must be a non-empty 1-D array")
+    if not np.isfinite(sampled_radii).all() or np.any(sampled_radii < 0.0):
+        raise ValueError("radii must contain finite nonnegative values")
+    if np.any(np.diff(sampled_radii) <= 0.0):
+        raise ValueError("radii must be strictly increasing")
+    if (
+        not np.isfinite(minimum_crossing_resultant)
+        or not 0.0 <= minimum_crossing_resultant <= 1.0
+    ):
+        raise ValueError(
+            "minimum_crossing_resultant must be finite and in [0, 1]"
+        )
+    if not np.isfinite(crossing_half_width) or crossing_half_width <= 0.0:
+        raise ValueError("crossing_half_width must be finite and > 0")
+
+    center_row, center_col = (float(value) for value in center_array)
+    structure: NDArray[np.uint8] = np.ones((3, 3), dtype=np.uint8)
+    crossings: list[LiteralSkeletonRingCrossing] = []
+    for ring_index, radius in enumerate(sampled_radii):
+        ring_pixels = prepared.reliable_skeleton & (
+            np.abs(prepared.distance_map - radius) <= crossing_half_width
+        )
+        components = np.zeros(ring_pixels.shape, dtype=np.int32)
+        count = cast(
+            int,
+            connected_components(
+                ring_pixels,
+                structure=structure,
+                output=components,
+            ),
+        )
+        for component in range(1, count + 1):
+            rows, cols = np.nonzero(components == component)
+            if rows.size == 0:
+                continue
+            weights = np.asarray(prepared.coherence[rows, cols], dtype=float)
+            weight_sum = float(weights.sum())
+            if weight_sum <= 0.0:
+                continue
+            component_axes = np.asarray(
+                prepared.fiber_axis[rows, cols], dtype=float
+            )
+            mean_cosine = float(
+                np.sum(weights * np.cos(2.0 * component_axes)) / weight_sum
+            )
+            mean_sine = float(
+                np.sum(weights * np.sin(2.0 * component_axes)) / weight_sum
+            )
+            resultant = float(np.hypot(mean_cosine, mean_sine))
+            if resultant < minimum_crossing_resultant:
+                continue
+            crossing_axis = 0.5 * np.arctan2(mean_sine, mean_cosine)
+            row = float(np.sum(weights * rows) / weight_sum)
+            col = float(np.sum(weights * cols) / weight_sum)
+            anchor_index = int(
+                np.argmin(np.square(rows - row) + np.square(cols - col))
+            )
+            polar_angle = float(np.arctan2(row - center_row, col - center_col))
+            crossings.append(
+                LiteralSkeletonRingCrossing(
+                    point_id=len(crossings),
+                    ring_index=ring_index,
+                    radius=float(radius),
+                    row=row,
+                    col=col,
+                    anchor_row=int(rows[anchor_index]),
+                    anchor_col=int(cols[anchor_index]),
+                    fiber_axis=float(crossing_axis),
+                    radial_tilt=_axial_difference(crossing_axis, polar_angle),
+                    coherence=float(np.mean(weights)),
+                    resultant=resultant,
+                    pixel_count=int(rows.size),
+                )
+            )
+    return LiteralSkeletonRingCrossingTransform(
+        crossings=tuple(crossings),
+        reliable_skeleton=prepared.reliable_skeleton,
+        radii=sampled_radii.copy(),
+        center=(center_row, center_col),
+        crossing_half_width=float(crossing_half_width),
+    )
+
+
 def literal_skeleton_ring_crossings(
     object_mask: NDArray[np.bool_],
     fiber_axis: NDArray[np.floating],
@@ -175,119 +335,20 @@ def literal_skeleton_ring_crossings(
     Raises:
         ValueError: If arrays, center, radii, or thresholds are invalid.
     """
-    mask = _validated_field(object_mask, name="object_mask", boolean=True)
-    shape = mask.shape
-    axes = _validated_field(fiber_axis, name="fiber_axis", shape=shape)
-    coherence_field = _validated_field(
-        coherence, name="coherence", shape=shape
+    prepared = _prepare_literal_skeleton(
+        object_mask,
+        fiber_axis,
+        coherence,
+        distance_map,
+        selector=selector,
+        minimum_coherence=minimum_coherence,
     )
-    distances = _validated_field(
-        distance_map, name="distance_map", shape=shape
-    )
-    eligible = (
-        mask
-        if selector is None
-        else _validated_field(
-            selector, name="selector", shape=shape, boolean=True
-        )
-    )
-    center_array = np.asarray(center, dtype=float)
-    if center_array.shape != (2,) or not np.isfinite(center_array).all():
-        raise ValueError("center must contain two finite coordinates")
-    sampled_radii = np.asarray(radii, dtype=float)
-    if sampled_radii.ndim != 1 or sampled_radii.size < 1:
-        raise ValueError("radii must be a non-empty 1-D array")
-    if not np.isfinite(sampled_radii).all() or np.any(sampled_radii < 0.0):
-        raise ValueError("radii must contain finite nonnegative values")
-    if np.any(np.diff(sampled_radii) <= 0.0):
-        raise ValueError("radii must be strictly increasing")
-    finite_coherence = coherence_field[np.isfinite(coherence_field)]
-    if finite_coherence.size and (
-        np.min(finite_coherence) < 0.0 or np.max(finite_coherence) > 1.0
-    ):
-        raise ValueError("finite coherence values must be in [0, 1]")
-    for name, value in (
-        ("minimum_coherence", minimum_coherence),
-        ("minimum_crossing_resultant", minimum_crossing_resultant),
-    ):
-        if not np.isfinite(value) or not 0.0 <= value <= 1.0:
-            raise ValueError(f"{name} must be finite and in [0, 1]")
-    if not np.isfinite(crossing_half_width) or crossing_half_width <= 0.0:
-        raise ValueError("crossing_half_width must be finite and > 0")
-
-    full_skeleton = np.asarray(skeletonize(mask), dtype=bool)
-    reliable_skeleton = (
-        full_skeleton
-        & eligible
-        & np.isfinite(axes)
-        & np.isfinite(coherence_field)
-        & (coherence_field >= minimum_coherence)
-        & np.isfinite(distances)
-    )
-    center_row, center_col = (float(value) for value in center_array)
-    structure: NDArray[np.uint8] = np.ones((3, 3), dtype=np.uint8)
-    crossings: list[LiteralSkeletonRingCrossing] = []
-    for ring_index, radius in enumerate(sampled_radii):
-        ring_pixels = reliable_skeleton & (
-            np.abs(distances - radius) <= crossing_half_width
-        )
-        components = np.zeros(ring_pixels.shape, dtype=np.int32)
-        count = cast(
-            int,
-            connected_components(
-                ring_pixels,
-                structure=structure,
-                output=components,
-            ),
-        )
-        for component in range(1, count + 1):
-            rows, cols = np.nonzero(components == component)
-            if rows.size == 0:
-                continue
-            weights = np.asarray(coherence_field[rows, cols], dtype=float)
-            weight_sum = float(weights.sum())
-            if weight_sum <= 0.0:
-                continue
-            component_axes = np.asarray(axes[rows, cols], dtype=float)
-            mean_cosine = float(
-                np.sum(weights * np.cos(2.0 * component_axes)) / weight_sum
-            )
-            mean_sine = float(
-                np.sum(weights * np.sin(2.0 * component_axes)) / weight_sum
-            )
-            resultant = float(np.hypot(mean_cosine, mean_sine))
-            if resultant < minimum_crossing_resultant:
-                continue
-            crossing_axis = 0.5 * np.arctan2(mean_sine, mean_cosine)
-            row = float(np.sum(weights * rows) / weight_sum)
-            col = float(np.sum(weights * cols) / weight_sum)
-            anchor_index = int(
-                np.argmin(np.square(rows - row) + np.square(cols - col))
-            )
-            polar_angle = float(np.arctan2(row - center_row, col - center_col))
-            crossings.append(
-                LiteralSkeletonRingCrossing(
-                    point_id=len(crossings),
-                    ring_index=ring_index,
-                    radius=float(radius),
-                    row=row,
-                    col=col,
-                    anchor_row=int(rows[anchor_index]),
-                    anchor_col=int(cols[anchor_index]),
-                    fiber_axis=float(crossing_axis),
-                    radial_tilt=_axial_difference(crossing_axis, polar_angle),
-                    coherence=float(np.mean(weights)),
-                    resultant=resultant,
-                    pixel_count=int(rows.size),
-                )
-            )
-
-    return LiteralSkeletonRingCrossingTransform(
-        crossings=tuple(crossings),
-        reliable_skeleton=reliable_skeleton,
-        radii=sampled_radii.copy(),
-        center=(center_row, center_col),
-        crossing_half_width=float(crossing_half_width),
+    return _sample_literal_skeleton_ring_crossings(
+        prepared,
+        center,
+        radii,
+        crossing_half_width=crossing_half_width,
+        minimum_crossing_resultant=minimum_crossing_resultant,
     )
 
 

@@ -354,7 +354,7 @@ def _deserialize_operation_value(value: Any) -> Any:
                 f"namespace. Make sure it's properly imported in "
                 f"phenotypic.__init__.py"
             )
-        return cls.model_validate(value.get("params", {}) or {})
+        return cls._validate_serialized_params(value.get("params", {}) or {})
 
     return value
 

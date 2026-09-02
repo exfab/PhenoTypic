@@ -20,12 +20,12 @@ import pandas as pd
 from pydantic import PrivateAttr
 from skimage.measure import approximate_polygon, find_contours, regionprops
 
-from phenotypic.abc_ import MeasureFeatures
 from phenotypic.abc_.plotting import Control, PlotImage, figure
+from phenotypic.measure._canonical_zone_measure import CanonicalZoneMeasure
 from phenotypic.measure._zone_segmentation import (
     ZoneSegmentation,
     ZoneSegmentationParams,
-    compute_zone_segmentation,
+    resolve_zone_segmentation,
 )
 from phenotypic.schema import OBJECT
 from phenotypic.schema import SYMMETRIC_ZONES
@@ -82,41 +82,45 @@ BASE_LAYER = Control(
 )
 
 
-class MeasureSymZones(MeasureFeatures, PlotImage):
-    """Measure colony radial expansion and angular symmetry from the object mask alone.
+class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
+    """Measure colony radial expansion, symmetry, and canonical radial zones.
 
-    Quantifies each colony by four scalars derived directly from its binary
-    mask and distance-from-inoculum map — no skeletonization, no branch
-    tracing, no runner outlier flagging. The headline output is
+    Quantifies each colony by four mask-derived expansion and symmetry scalars
+    plus a shared CoreZone / DenseZone / SparseZone partition. The headline is
     ``SymmetricRadius``, the first radius past the inoculum core at which the
     per-annulus circular mean resultant length of mask-boundary pixels drops
     below a tunable symmetry threshold. ``CoreRadius`` (PELT changepoint on
     the radial density profile) anchors the measurement; ``MeanExpansion``
     and ``MaxExpansion`` summarise how far growth reached past that core.
 
-    Zone segmentation (core / dense / sparse) uses a 1D per-annulus
-    **normalised colony-ness** signal ``c(r)`` computed from the ring-wide
-    mean intensity. After calibrating ``I_core`` and ``I_agar`` from
-    percentiles of the expanded crop, each ring's mean intensity is mapped
-    into ``[0, 1]`` where 1 = pure colony and 0 = pure agar. For a
-    roughly circular colony, ``c(r)`` decreases monotonically outward
-    (uniform dense core ≈ 1, mixed dense branching ≈ 0.5–0.8, sparse
-    branching ≈ 0.1–0.4, agar = 0), so zone boundaries follow directly
-    from threshold crossings — no peak-finding. Zones are emitted as
-    concentric circles at the three scalar radii. Variance and raw mean
-    per ring are retained in the intermediates for diagnostic access but
-    do not drive segmentation.
-
-    The mask's only role in this signal is to (1) isolate which colony is
-    being analysed, (2) seed the inoculum centre as the peak of the
-    in-mask Euclidean distance transform, and (3) detect the
-    colony-vs-agar intensity direction so the normalisation handles dark
-    colonies (gray convention) and bright colonies (detect_mat
-    convention) uniformly. The ring accumulation extends out to
-    ``r_max = max_mask_radius × (1 + extent_margin)`` regardless of mask
-    boundaries, so background pixels contribute truthfully to the signal.
+    Canonical Method B resolves those zones from center-origin Sholl-style
+    rings combining target-mask occupancy, ``detect_mat`` signal and edge
+    statistics, structure-tensor coherence, radial-tilt concentration, and
+    literal skeleton-crossing support. CoreZone is operational: it contains the
+    inoculum and any inner region where branch orientation is not sufficiently
+    resolved. ``legacy_mode=True`` restores the historical intensity-based
+    colony-ness thresholds without changing the independent mask-derived
+    expansion and symmetry measurements.
 
     Args:
+        legacy_mode: Use the historical colony-ness zone partition instead of
+            canonical Method B. Defaults to ``False``.
+        outer_zone_percentile: Target-mask radial percentile used as the
+            canonical SparseZone outer boundary. ``100`` uses full extent.
+        sigma_d: Gaussian-derivative scale in pixels, approximately hypha width.
+        sigma_i: Structure-tensor integration scale in pixels.
+        radial_ring_width: Width in pixels of each center-origin Sholl-style
+            annular band.
+        zone_minimum_segment: Minimum ring count in every change-point segment.
+        zone_min_crossings: Minimum literal crossings for ring support.
+        zone_min_resultant: Minimum ring-level axial resultant for support.
+        zone_min_ring_coherence: Minimum reliable-pixel mean coherence for
+            ring support.
+        zone_support_weight: Weight of the Boolean orientation-support feature.
+        zone_outer_support_margin: Minimum outer-minus-inner support fraction
+            accepted at the first Method B boundary.
+        zone_maximum_gap: Largest interior unsupported ring run bridged before
+            change-point fitting.
         n_annuli: Number of equal-area annuli used for the radial density
             profile and angular analysis. Defaults to 100.
         pelt_penalty: PELT penalty controlling changepoint sensitivity for
@@ -157,7 +161,8 @@ class MeasureSymZones(MeasureFeatures, PlotImage):
         intensity_source: Image array used for the mean-intensity
             calculation -- ``"gray"`` uses the grayscale (dark = colony),
             ``"detect_mat"`` uses the detection matrix (bright = colony).
-            Direction is auto-detected. Defaults to ``"gray"``.
+            Direction is auto-detected. This applies only in legacy mode;
+            canonical Method B always uses ``detect_mat``.
 
     Returns:
         pd.DataFrame: Object-level radial symmetry measurements with
@@ -275,7 +280,13 @@ class MeasureSymZones(MeasureFeatures, PlotImage):
         Returns:
             ZoneSegmentation with all computed fields populated.
         """
-        return compute_zone_segmentation(image, prop, params=self._zone_params())
+        return resolve_zone_segmentation(
+            image,
+            prop,
+            legacy_params=self._zone_params(),
+            canonical_params=self._orientation_change_point_params(),
+            legacy_mode=self.legacy_mode,
+        ).segmentation
 
     # ── MeasureFeatures interface ────────────────────────────────────
 
@@ -617,7 +628,11 @@ class MeasureSymZones(MeasureFeatures, PlotImage):
 
         fig.update_layout(
                 title=dict(
-                        text=f"Symmetric Radius -- {len(intermediates_cache)} objects",
+                        text=(
+                            "Symmetric radius and radial zones "
+                            f"(P{self.outer_zone_percentile:g}) -- "
+                            f"{len(intermediates_cache)} objects"
+                        ),
                         font=dict(color=_OI_NAVY),
                         # family from the phenotypic template
                 ),
@@ -685,8 +700,9 @@ class MeasureSymZones(MeasureFeatures, PlotImage):
         - **Zones** — three legend entries grouped under the "Zones"
           heading: **Sparse zone** (sky, annulus r_dense_end..r_outer),
           **Dense zone** (navy, annulus r_core..r_dense_end), and
-          **Core zone** (vermilion, disk 0..r_core). ``r_outer`` is capped
-          at the symmetric envelope. The legend group is set to toggle
+          **CoreZone** (vermilion, disk 0..r_core). In canonical mode,
+          ``r_outer`` is the configured target-mask radial percentile. The
+          legend group is set to toggle
           as a group, so clicking any entry hides/shows all three; the
           entries can also be toggled individually.
         - **Centroids** — inoculum centre markers for every object.
