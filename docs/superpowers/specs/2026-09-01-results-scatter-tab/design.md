@@ -183,33 +183,50 @@ is its own bug.
 
 ### 2.3 The fix
 
-Scale, against a range computed **per image** and cached on
-`store_generation_token(store)` (`results_viewer/_zarr_routes.py`, already used by
-`_store_source.py:127`).
-
-**Not `(store path, mtime_ns)`.** `crop_colony` stats the store *directory*. A
-directory's mtime moves when its dirent set changes, not when a chunk nested under
-`rgb/0/c/…` is rewritten in place. It therefore invalidates on a full re-publish
-and not on a chunk rewrite — the worst possible shape for a cache key, because it
-passes every test one would think to write and fails in production with a silently
-wrong brightness. `crop_store_rgb` is uncached today (the only `lru_cache` in
-`tiles.py` is on `_load_overlay_rgb`, line 103), so this costs nothing now and
-becomes live the moment a display-range cache exists. `image_display_range` needs
-its own cache; `(lo, hi)` is 16 bytes, so a generous `maxsize` is free.
+Scale, against a range computed **per image, per request — with no
+cross-request cache**.
 
 ```python
 # _shared/tiles.py — _store_layer_array_to_rgb
 - if layer == "rgb":
 -     return arr.astype(np.uint8)          # mod-256 truncation
 + if layer == "rgb":
-+     lo, hi = image_display_range(store, mtime_ns)
++     lo, hi = image_display_range(store, layer)
 +     return scale_to_uint8(arr, lo, hi)   # scale, then clip
 ```
 
-`image_display_range` reads the smallest pyramid level whole (374 KB, 39 ms) and returns
-its **min/max, not a percentile**: 0.5/99.5 on `rgb/4` gives 21,644–25,993 against a true
-range of 17,912–45,344, which clips the colonies — the brightest thing in the frame and
-the subject of the picture. Clip on apply instead.
+**Revision 3 withdraws the cache entirely.** Revisions 1 and 2 specified a
+cross-request cache — first on `(store path, mtime_ns)`, then, on review, on
+`store_generation_token`. Both are wrong, and the second is wrong for a reason
+its own docstring states (`_zarr_routes.py:146-150`):
+
+> The token deliberately keys on the root `zarr.json` **only**. An in-place
+> nested-chunk rewrite moves neither the store directory's `st_mtime_ns` nor the
+> root, so the token does not move ... which is correct, because the route holds
+> no cache.
+
+That last clause is the whole point: the token is sound *because nothing caches
+on it*. Introducing a display-range cache keyed on it would break the premise
+that makes it correct, and reintroduce exactly the S5 failure — a key that
+invalidates on full re-publish but not on chunk rewrite, passing every test one
+would write and serving a silently wrong brightness in production.
+
+**Measured, so the trade is not a guess:**
+
+```
+read whole rgb/4 (the range computation)   4.4 ms   min of 5
+the 256 px level-0 crop the request does  164.6 ms
+```
+
+The range is **3% of a request the route already pays**. A cache that saves 3%
+is not worth a correctness hazard with no available sound key. Compute it per
+request; revisit only if profiling shows it matters.
+
+`image_display_range(store, layer)` reads the smallest pyramid level whole and
+returns its **min/max, not a percentile**: 0.5/99.5 on `rgb/4` gives
+21,644–25,993 against a true range of 17,912–45,344, which clips the colonies —
+the brightest thing in the frame and the subject of the picture. Clip on apply
+instead.
 
 Measured on the same colony crop, scaling against 20,511–44,047:
 
@@ -277,9 +294,9 @@ Resolve the label path from `attributes.phenotypic.labels`, never hard-coded.
   `?contours=0` emits none. Use a window with a real colony — object 24 of
   `d000466_280_003` — not bare agar, where objmap is uniformly 0 and the test
   cannot distinguish the two.
-- The display-range cache invalidates when a nested chunk is rewritten without
-  touching the store's top-level listing. This is the S5 failure mode; the test
-  exists because the obvious key does not catch it.
+- Two crops of the same image, taken from different windows, map an identical
+  source value to an identical output — the per-image range must not vary with
+  the window. (This is what the withdrawn per-crop stretch got wrong.)
 
 ## 3. Module layout
 
@@ -714,7 +731,7 @@ polish.
 | Chrome absent on the compute node | **Confirmed** (§11.2). Needs a decision, §16 |
 | 16 gl subplots exceed the context cap | **Withdrawn** (§5.1). Facet count does not consume contexts |
 | A stale click index resolves to the wrong colony | Mitigated by the `master_df` anchor plus snapshot fingerprint (§6.1) |
-| Display-range cache serves a stale brightness | Mitigated by `store_generation_token` (§2.3) |
+| Display-range cache serves a stale brightness | **Eliminated** — there is no cache (§2.3). The range costs 4.4 ms against a 164.6 ms crop read |
 | `rgb/4` under-covers the true range | Stated limitation (§2.3c); widen or read level 0 strided |
 | Per-image scale shifts brightness across prev/next | Accepted for v1 (§14); run-level scale is v2 |
 | The verification run cannot draw the reference figure | Re-run with `--metadata`; no tab change needed |
