@@ -127,6 +127,26 @@
   examples for reference: `Texture_Contrast-deg000-scale05`,
   `ColorXYZ_CieXMean`, `Intensity_MeanIntensity`, `Shape_Area`. If a header
   must be literal, verify it against `get_headers()` first.
+- **Ask the schema for the spelling, then assert the column is in the frame.**
+  A header the schema defines may belong to a measurer this run never
+  configured. `SIZE.AREA` is a real member and `Size_Area` is CLAUDE.md's own
+  worked example, yet the verification fixture has no `Size_*` column at all --
+  its measurers are `MeasureNeighborDist`/`MeasureShape`/`MeasureIntensity`/
+  `MeasureColor`/`MeasureTexture`. Spellability and presence are different
+  questions and only one of them is a property of the run. (Found by cluster H;
+  wording is theirs.)
+- **A count is a summary of evidence, not evidence.** Three defects on this
+  branch came from reasoning about a number -- "19 checks, 1 failed", "30 rows",
+  "23 mutations" -- instead of reading what it summarized. When a run's summary
+  and your expectation disagree, read the failure list. When the disk and your
+  model of a file disagree, `grep` costs one command and settles it. This is the
+  same failure as "a number is only valid where it was measured", arriving from
+  the direction of the summary rather than the boundary.
+- **Prefer the operation that cannot do the wrong thing.** `rmdir` refuses a
+  non-empty directory; `rm -rf` with a guard around it relies on the guard.
+  Applies equally to a differential test whose noise floor is measured rather
+  than assumed, and to a required argument that makes a scope error unwriteable
+  rather than a comment that asks the reader not to make it.
 - **Never `git add -A`, and never stage a directory.** Stage exactly the paths
   your task's **Files:** block names. Clusters share one worktree, so a
   directory-wide add sweeps another agent's half-finished work into your
