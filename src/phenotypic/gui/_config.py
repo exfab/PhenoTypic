@@ -48,6 +48,7 @@ cache (``PHENOTYPIC_CACHE_DIRNAME``), resolved for legacy runs via
 
 from __future__ import annotations
 
+from typing import TypedDict
 import argparse
 import logging
 from pathlib import Path
@@ -164,6 +165,8 @@ __all__ = [
     # Scatter tab caps
     "SCATTER_FACET_CAP",
     "SECTION_GROUP_CAP",
+    # Drag-splitter handles (Scatter inspector + QC worklist)
+    "splitter_attrs",
     # Closed value-set aliases
     "ChannelName",
     # Tile-spotlight dim strength (shared by both toolbars + the crop route)
@@ -597,6 +600,60 @@ SCATTER_FACET_CAP: int = 24
 #: one more pager step. A 60-page PDF is unremarkable; a 60-column facet
 #: grid is not.
 SECTION_GROUP_CAP: int = 60
+
+# ---------------------------------------------------------------------------
+# Drag-splitter handles
+# ---------------------------------------------------------------------------
+
+
+#: The exact hyphenated kwargs :func:`splitter_attrs` supplies. Declared as
+#: a TypedDict rather than ``dict[str, str]`` so mypy can see WHICH keys a
+#: ``**splitter_attrs(...)`` call adds. An opaque ``dict[str, str]`` could
+#: supply any kwarg, so mypy has to reject it against Dash's typed
+#: component signatures -- which is why the inline ``**{...}`` literals
+#: this helper replaced type-checked and a plain dict return does not.
+SplitterAttrs = TypedDict(
+    "SplitterAttrs",
+    {"data-splitter-target": str, "data-splitter-store": str},
+)
+
+
+def splitter_attrs(*, target: str, store: str) -> SplitterAttrs:
+    """The data attributes that make an element a drag-splitter handle.
+
+    The shared splitter controller in ``results_viewer.js`` (section H)
+    names no surface of its own: it selects handles by
+    ``[data-splitter-target]`` and reads both attributes off the element
+    it found, so carrying this pair is the whole of what makes a ``<div>``
+    a handle. Two surfaces mount one -- the Scatter click inspector and
+    the QC Review worklist -- and before this helper each spelled both
+    attribute names itself.
+
+    That is worth one function because of how the mistake presents. A
+    typo in either name does not raise: the controller simply does not
+    recognise the element, so the handle renders, the cursor still says
+    ``col-resize``, and nothing resizes -- on one surface, while the other
+    keeps working.
+
+    **The JavaScript side is not covered by this.** ``results_viewer.js``
+    spells ``"[data-splitter-target]"`` independently and cannot import a
+    Python constant; what this removes is the second Python spelling, not
+    the language boundary. The cross-language contract is pinned by test
+    instead -- ``tests/gui/results_viewer/test_splitter_browser.py`` drives
+    the real controller, and each surface asserts its handle reaches the
+    DOM carrying these attributes. Renaming an attribute here means
+    editing the JS selector in the same change.
+
+    Args:
+        target: Dash id of the pane the drag resizes.
+        store: Dash id of the ``dcc.Store`` the final width is written to,
+            which a Python callback re-applies after a re-render.
+
+    Returns:
+        The attributes, to splat into a component: ``**splitter_attrs(...)``.
+    """
+    return {"data-splitter-target": target, "data-splitter-store": store}
+
 
 # ---------------------------------------------------------------------------
 # Closed value-set aliases

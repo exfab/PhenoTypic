@@ -59,7 +59,7 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 from dash.development.base_component import Component
 
-from phenotypic.gui._config import SECTION_GROUP_CAP
+from phenotypic.gui._config import SECTION_GROUP_CAP, splitter_attrs
 from phenotypic.gui._design import (
     COLOR_BORDER,
     COLOR_MUTED,
@@ -490,12 +490,9 @@ def _build_inspector() -> Component:
         id=ids.SCATTER_INSPECTOR_SPLITTER,
         children=[],
         title="Drag to resize the inspector",
-        **cast(
-            Any,
-            {
-                "data-splitter-target": ids.SCATTER_INSPECTOR,
-                "data-splitter-store": ids.STORE_SCATTER_INSPECTOR_WIDTH,
-            },
+        **splitter_attrs(
+            target=ids.SCATTER_INSPECTOR,
+            store=ids.STORE_SCATTER_INSPECTOR_WIDTH,
         ),
         style={
             "position": "absolute",

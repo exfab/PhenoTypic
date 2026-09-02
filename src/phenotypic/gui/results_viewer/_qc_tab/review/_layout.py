@@ -27,7 +27,7 @@ from typing import Any, cast
 from dash import dcc, html
 from dash.development.base_component import Component
 
-from phenotypic.gui._config import TILE_DIM_DEFAULT
+from phenotypic.gui._config import TILE_DIM_DEFAULT, splitter_attrs
 from phenotypic.gui._design import (
     COLOR_BORDER,
     COLOR_MUTED,
@@ -293,10 +293,10 @@ def _build_splitter() -> Component:
         id=rids.QC_REVIEW_SPLITTER_ID,
         children=[],
         title="Drag to resize the worklist",
-        **{
-            "data-splitter-target": rids.QC_REVIEW_WORKLIST_ID,
-            "data-splitter-store": rids.STORE_QC_SIDEBAR_WIDTH,
-        },
+        **splitter_attrs(
+            target=rids.QC_REVIEW_WORKLIST_ID,
+            store=rids.STORE_QC_SIDEBAR_WIDTH,
+        ),
         style={
             "flex": "0 0 auto",
             "alignSelf": "stretch",
