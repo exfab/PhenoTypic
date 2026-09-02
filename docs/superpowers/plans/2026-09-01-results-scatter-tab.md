@@ -77,6 +77,15 @@
   on it (`assert carried != list(range(height))`), so a fixture that drifts
   back into the coincidence fails as a broken test rather than passing
   vacuously.
+- **The click fingerprint must be the one captured WHEN THE FIGURE WAS DRAWN,
+  never re-read at click time.** `resolve_click(master_df, index, fingerprint,
+  expected_fingerprint)` compares a value stored with the figure against the
+  binding's current value. Reading `OutputRoot.snapshot.consumed_state_
+  fingerprint` on *both* sides makes the comparison a tautology that always
+  passes — the guard still exists, still looks right, and stops nothing. The
+  stored side comes from the Dash store the figure callback wrote; only the
+  expected side is read live. This cannot be caught inside `_inspector.py`,
+  because the defect lives at the call site, and it is the same shape as B1.
 - **`index_frame` is idempotent — a re-call is correct, not a 500.** It
   returns an already-indexed frame unchanged, because the index it carries is
   already master-anchored. Do NOT add a "has this been indexed?" check at a
