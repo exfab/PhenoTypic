@@ -177,7 +177,6 @@ _LEGACY_ALLOWED = {
     "tests/unit/cli/test_cli_recompile.py": {
         "MetadataImage_ImageName",
         "MetadataSample_Strain",
-        "MetadataGenetic_Strain",
     },
     # ``--mode migrate`` (Phase 5). Legacy per-topic spellings are the SUBJECT
     # of these files, not incidental usage: the golden fixtures are written
@@ -197,6 +196,12 @@ _LEGACY_ALLOWED = {
         "MetadataGenetic_Strain",
     },
     "tests/unit/cli/test_cli_migrate_mode.py": {
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/cli/test_cli_migrate_image.py": {
+        "MetadataGenetic_Strain",
+    },
+    "tests/migration/test_metadata_migration_journal.py": {
         "MetadataGenetic_Strain",
     },
     "tests/unit/cli/test_recompile_no_longer_migrates.py": {
@@ -258,6 +263,9 @@ _LEGACY_ALLOWED = {
         "STUDY_METADATA",
         "ACQUISITION_METADATA",
         "MetadataImage_ImageName",
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/sdk_/test_windows_metadata_journal.py": {
         "MetadataGenetic_Strain",
     },
 }

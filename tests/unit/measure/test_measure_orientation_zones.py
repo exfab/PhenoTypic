@@ -1482,10 +1482,8 @@ def test_inspect_remeasures_when_explicit_image_changes():
 
     assert op._cache_signature != previous_signature
     assert op._cache_signature == op.model_dump_json()
-    assert any(
-        "matching sectors 32 px apart" in str(annotation.text)
-        for annotation in figure.layout.annotations
-    )
+    assert not figure.layout.annotations
+    assert figure.layout.margin.b is None
 
 
 def test_report_builds_composed_figure():
