@@ -16,20 +16,37 @@
 
 - **`uv` is the sole runner.** Never bare `python` or `pip`. Tests: `uv run pytest`.
 - **Lint with explicit paths only:** `uv run ruff check --fix <paths you changed>`. A bare `ruff check --fix` rewrites the whole repo.
-- **Escalate any plan defect that changes an API surface — do not decide it
-  yourself.** Correcting the plan's *internals* is expected and encouraged;
-  changing what other code sees is the user's call. Escalate when a fix would:
-  add, remove or rename a parameter, or change one from optional to required
-  (or back); add, remove or rename a module-level function, class, constant or
-  URL segment; change a return type, raised exception, or default value;
-  change what an existing surface *renders or offers* to a user, even with no
-  signature change; or add a dependency.
-  Fixing a wrong `file:line`, a vacuous test, a mis-typed variable or a wrong
-  argument *value* is not an API change — just do it and say so.
-  Two already landed under this bar and are recorded here rather than hidden:
-  `_store_layer_array_to_rgb`'s `store_path` went from optional to **required**
-  (Task 1), and `register_crop_route` gained `default_contours` (Task 3).
-  Both were right; both should have been raised rather than settled in-flight.
+- **Escalate any plan defect that changes the PUBLIC interface — do not decide
+  it yourself.** CLAUDE.md defines that boundary: *only `__init__.py` exports
+  are public*. Everything under a `_`-prefixed module or package is internal,
+  and correcting it is expected and encouraged — just say what you changed.
+
+  Escalate when a fix would change:
+  - a name in any `__init__.py` `__all__` — for this branch that is
+    `gui/__init__.py` and `results_viewer/__init__.py` (`create_app`,
+    `launch_results_viewer`, `OutputRoot`, …);
+  - anything in `phenotypic.schema` — the public measurement schema;
+  - a **URL route or query parameter**, which users and browsers call directly
+    and no `_` prefix protects;
+  - a **CLI flag** or its accepted values;
+  - what an existing surface **renders or offers to a user** — a tab, a
+    dropdown's option list, a rendered image — even with no signature change;
+  - the **dependency set** (`pyproject.toml`).
+
+  Do NOT escalate for internals: `_scatter_tab/*`, `_shared/tiles.py`,
+  `colony_view/_grid.py` and every other `_`-prefixed module. Changing a
+  parameter there from optional to required, adding a helper, or renaming a
+  private function is ordinary work — make the change, say so, and I will
+  reconcile the plan.
+
+  **Correction, since I set this bar wrongly a moment ago.** I cited
+  `_store_layer_array_to_rgb`'s required `store_path` and
+  `register_crop_route`'s `default_contours` as changes that should have been
+  escalated. Under the project's own definition neither is public: the first
+  is `_`-prefixed, and the second lives in `gui/_shared/`, which no
+  `__init__.py` exports. Both were correctly settled in-flight. What *would*
+  have qualified from Task 3 is the `?contours=` **query parameter**, because a
+  URL is a public interface regardless of the module it is defined in.
 - **Never `git add -A`, and never stage a directory.** Stage exactly the paths
   your task's **Files:** block names. Clusters share one worktree, so a
   directory-wide add sweeps another agent's half-finished work into your
