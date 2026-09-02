@@ -191,7 +191,7 @@ def test_process_sanitization_recurses_across_every_application() -> None:
             "input_filename": "plate.tiff",
             "status": "complete",
             "pipeline": {
-                "source_path": "/cluster/private/process.json",
+                "source_path": "process.json",
                 "sha256": "a" * 64,
             },
             "retry_base_length": 0,
@@ -204,7 +204,7 @@ def test_process_sanitization_recurses_across_every_application() -> None:
             "input_filename": "plate.ome.zarr",
             "status": "complete",
             "pipeline": {
-                "source_path": "/another/private/full.json",
+                "source_path": "full.json",
                 "sha256": "b" * 64,
             },
             "retry_base_length": 0,
@@ -296,6 +296,44 @@ def test_every_mutation_seam_refuses_v1_future_and_malformed_v2(
     with pytest.raises(ValueError, match="migrat|schema|malformed"):
         set_provenance_status(image, "failed")
     assert image._metadata.provenance_journal == journal
+
+
+def test_programmatic_apply_refuses_unowned_unfinished_cli_application(
+    tmp_path: Path,
+) -> None:
+    pipeline_path = tmp_path / "pipeline.json"
+    pipeline_path.write_text("{}", encoding="utf-8")
+    image = _image()
+    initialize_cli_provenance(image, pipeline_path, kind="full")
+
+    with pytest.raises(ValueError, match="cannot start a new provenance application"):
+        BlurGauss(sigma=1.0).apply(image, inplace=True)
+
+    assert image._metadata.provenance_journal["applications"][0]["operations"] == []
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda application: application["pipeline"].update(
+            source_path="/private/pipeline.json"
+        ),
+        lambda application: application["operations"].append({"sequence": 1}),
+    ],
+)
+def test_strict_v2_validation_refuses_path_pipeline_and_partial_operation(
+    tmp_path: Path,
+    mutation: Any,
+) -> None:
+    pipeline_path = tmp_path / "pipeline.json"
+    pipeline_path.write_text("{}", encoding="utf-8")
+    image = _image()
+    initialize_cli_provenance(image, pipeline_path, kind="full")
+    application = image._metadata.provenance_journal["applications"][-1]
+    mutation(application)
+
+    with pytest.raises(ValueError, match="malformed"):
+        set_provenance_status(image, "failed")
 
 
 def test_retry_base_mutation_also_refuses_v1_without_partial_change() -> None:

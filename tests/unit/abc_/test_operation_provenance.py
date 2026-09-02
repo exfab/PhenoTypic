@@ -10,7 +10,10 @@ import pytest
 import phenotypic
 from phenotypic import Image, ImagePipeline
 from phenotypic.abc_ import ImageCorrector, ImageEnhancer
-from phenotypic._core._provenance import provenance_success_sink
+from phenotypic._core._provenance import (
+    continuing_provenance_application,
+    provenance_success_sink,
+)
 from phenotypic.enhance import BlurGauss
 from phenotypic.settings import validation
 
@@ -158,7 +161,8 @@ def test_replacement_operation_carries_prior_journal_and_retained_original() -> 
     source._retain_original()
     retained = source._original.copy()
 
-    result = _ReplacementCorrector().apply(source)
+    with continuing_provenance_application(source):
+        result = _ReplacementCorrector().apply(source)
 
     journal = result._metadata.provenance_journal
     assert journal["status"] == "in_progress"
@@ -208,6 +212,10 @@ def test_failed_operate_appends_nothing() -> None:
         _FailingCorrector().apply(image, inplace=True)
 
     assert image.provenance == ()
+    applications = image._metadata.provenance_journal["applications"]
+    assert len(applications) == 1
+    assert applications[0]["kind"] == "programmatic"
+    assert applications[0]["status"] == "failed"
 
 
 def test_integrity_failure_appends_nothing() -> None:

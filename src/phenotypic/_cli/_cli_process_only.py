@@ -21,6 +21,7 @@ from phenotypic.sdk_ import (
     source_image_stem,
 )
 from phenotypic._core._provenance import (
+    continuing_provenance_application,
     initialize_cli_provenance,
     set_provenance_status,
 )
@@ -312,7 +313,8 @@ def process_single_apply_only_core(
             input_filename=image_path.name,
             basename_only=True,
         )
-        pipeline.apply(image, inplace=True)
+        with continuing_provenance_application(image):
+            pipeline.apply(image, inplace=True)
         # BEFORE the write below, or the store records the stale default.
         # `initialize_cli_provenance` opens at `"in_progress"`
         # (_provenance.py:305), and every sibling path closes it --

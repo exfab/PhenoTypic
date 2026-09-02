@@ -6,6 +6,7 @@ import hashlib
 import json
 
 import numpy as np
+import phenotypic
 import pytest
 
 from phenotypic import Image
@@ -150,6 +151,7 @@ def test_stage1_hard_interruption_is_retried_from_the_decoded_checkpoint(
         pass
 
     run = staged_run_with_provenance
+    run.work_id = "provenance-retry-work-id"
     operation = run.plan.pre_pipeline.get_ops()["pre-crop"]
     operation_type = type(operation)
     real_operate = operation_type._operate
@@ -163,7 +165,9 @@ def test_stage1_hard_interruption_is_retried_from_the_decoded_checkpoint(
         run.run_stage1()
 
     interrupted = _journal(run.store())
+    interrupted_version = _application(interrupted)["phenotypic_version"]
     assert interrupted["status"] == "in_progress"
+    assert _application(interrupted)["input_filename"] == run.image_path.name
     assert _application(interrupted)["operations"] == []
     assert classify_staged_image(
         output_dir=run.output_dir,
@@ -175,9 +179,12 @@ def test_stage1_hard_interruption_is_retried_from_the_decoded_checkpoint(
     ) == "stage1"
 
     monkeypatch.setattr(operation_type, "_operate", real_operate)
+    monkeypatch.setattr(phenotypic, "__version__", "retry-build-sentinel")
     run.run_stage1()
     retried = _journal(run.store())
     assert retried["status"] == "staged"
+    assert len(retried["applications"]) == 1
+    assert _application(retried)["phenotypic_version"] == interrupted_version
     assert _application(retried)["retry_base_length"] == 1
     assert [entry["operation_name"] for entry in _application(retried)["operations"]] == [
         "CropImage"
@@ -191,6 +198,7 @@ def test_staged_drop_originals_uses_journal_only_checkpoint_and_omits_series(
         pass
 
     run = staged_run_with_provenance
+    run.work_id = "provenance-retry-work-id"
     operation = run.plan.pre_pipeline.get_ops()["pre-crop"]
     operation_type = type(operation)
     real_operate = operation_type._operate

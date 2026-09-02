@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from contextlib import contextmanager
 from contextvars import ContextVar
 from copy import deepcopy
@@ -42,6 +43,17 @@ _APPLICATION_KEYS = frozenset(
         "operations",
     }
 )
+_OPERATION_REQUIRED_KEYS = frozenset(
+    {
+        "sequence",
+        "operation_name",
+        "operation_class",
+        "phenotypic_version",
+        "parameters",
+        "pipeline_step_path",
+    }
+)
+_OPERATION_TIMING_KEYS = frozenset({"applied_at_utc", "duration_seconds"})
 
 _Apply = TypeVar("_Apply", bound=Callable[..., "Image"])
 
@@ -129,8 +141,14 @@ def _validate_pipeline(value: Any) -> None:
     if not isinstance(value, dict) or set(value) != {"source_path", "sha256"}:
         raise ValueError("malformed provenance schema v2 pipeline identity")
     source_path = value["source_path"]
-    if not isinstance(source_path, str) or not source_path:
-        raise ValueError("malformed provenance schema v2 pipeline source_path")
+    if (
+        not isinstance(source_path, str)
+        or not source_path
+        or Path(source_path).name != source_path
+    ):
+        raise ValueError(
+            "malformed provenance schema v2 pipeline source_path must be a basename"
+        )
     digest = value["sha256"]
     if (
         not isinstance(digest, str)
@@ -214,10 +232,46 @@ def validate_provenance_journal(journal: Mapping[str, Any]) -> None:
         ):
             raise ValueError("malformed provenance schema v2 retry_base_length")
         for operation in operations:
-            if not isinstance(operation, dict):
-                raise ValueError("malformed provenance schema v2 operation")
-            if operation.get("sequence") != expected_operation_sequence:
+            operation_keys = set(operation) if isinstance(operation, dict) else set()
+            if operation_keys not in {
+                _OPERATION_REQUIRED_KEYS,
+                _OPERATION_REQUIRED_KEYS | _OPERATION_TIMING_KEYS,
+            }:
+                raise ValueError("malformed provenance schema v2 operation fields")
+            if operation["sequence"] != expected_operation_sequence:
                 raise ValueError("malformed provenance schema v2 operation sequence")
+            for field_name in (
+                "operation_name",
+                "operation_class",
+                "phenotypic_version",
+            ):
+                if not isinstance(operation[field_name], str) or not operation[field_name]:
+                    raise ValueError(
+                        f"malformed provenance schema v2 operation {field_name}"
+                    )
+            if not isinstance(operation["parameters"], dict):
+                raise ValueError("malformed provenance schema v2 operation parameters")
+            if _OPERATION_TIMING_KEYS <= operation_keys:
+                applied_at = operation["applied_at_utc"]
+                if not isinstance(applied_at, str) or not applied_at.endswith("Z"):
+                    raise ValueError(
+                        "malformed provenance schema v2 operation applied_at_utc"
+                    )
+                duration = operation["duration_seconds"]
+                if (
+                    not isinstance(duration, (int, float))
+                    or isinstance(duration, bool)
+                    or not math.isfinite(duration)
+                    or duration < 0
+                ):
+                    raise ValueError("malformed provenance schema v2 operation duration")
+            step_path = operation["pipeline_step_path"]
+            if step_path is not None and (
+                not isinstance(step_path, list)
+                or not step_path
+                or any(not isinstance(step, str) or not step for step in step_path)
+            ):
+                raise ValueError("malformed provenance schema v2 pipeline step path")
             expected_operation_sequence += 1
 
         if (
@@ -352,11 +406,7 @@ def provenance_application(
     journal = image._metadata.provenance_journal
     validate_provenance_journal(journal)
     depth = _application_owner_depth.get()
-    applications = journal["applications"]
-    joins_existing = bool(
-        applications and applications[-1]["status"] in {"in_progress", "staged"}
-    )
-    owns_application = depth == 0 and not joins_existing
+    owns_application = depth == 0
     if owns_application:
         if journal["original_filename"] is None:
             journal["original_filename"] = _application_input_filename(
@@ -384,6 +434,21 @@ def provenance_application(
             _set_journal_status(
                 image._metadata.provenance_journal, "complete"
             )
+    finally:
+        _application_owner_depth.reset(token)
+
+
+@contextmanager
+def continuing_provenance_application(image: "Image") -> Iterator[None]:
+    """Mark an already-open CLI application as owned by this execution scope."""
+    journal = image._metadata.provenance_journal
+    application = _current_application(journal)
+    if application["status"] not in {"in_progress", "staged"}:
+        raise ValueError("provenance application is not open for continuation")
+    depth = _application_owner_depth.get()
+    token = _application_owner_depth.set(depth + 1)
+    try:
+        yield
     finally:
         _application_owner_depth.reset(token)
 
@@ -499,15 +564,8 @@ def wrap_image_operation_apply(apply_method: _Apply, owner: type) -> _Apply:
         owns_application = False
         try:
             validate_provenance_journal(source_journal)
-            applications = source_journal["applications"]
-            joins_existing = bool(
-                applications
-                and applications[-1]["status"] in {"in_progress", "staged"}
-            )
             owns_application = (
-                parent_frame is None
-                and _application_owner_depth.get() == 0
-                and not joins_existing
+                parent_frame is None and _application_owner_depth.get() == 0
             )
             if owns_application:
                 if source_journal["original_filename"] is None:
@@ -585,7 +643,13 @@ def wrap_image_operation_apply(apply_method: _Apply, owner: type) -> _Apply:
                     logical_input._original = source_original
                     sink(logical_input)
             finally:
-                logical_input._metadata.provenance_journal = input_journal
+                if owns_application:
+                    logical_input._metadata.provenance_journal = deepcopy(source_journal)
+                    _set_journal_status(
+                        logical_input._metadata.provenance_journal, "failed"
+                    )
+                else:
+                    logical_input._metadata.provenance_journal = input_journal
                 logical_input._original = source_original
             raise
         finally:
@@ -690,6 +754,8 @@ def resume_provenance_application(
     kind: str,
     input_filename: str | Path,
     pipeline_identity: Mapping[str, str] | None,
+    expected_work_id: str | None,
+    checkpoint_work_id: object,
 ) -> bool:
     """Resume one exact unfinished checkpoint without inventing a new application.
 
@@ -716,6 +782,15 @@ def resume_provenance_application(
     checkpoint_application = applications[-1]
     if checkpoint_application["status"] not in {"failed", "in_progress"}:
         return False
+    if (
+        not isinstance(expected_work_id, str)
+        or not expected_work_id
+        or checkpoint_work_id != expected_work_id
+    ):
+        raise ValueError(
+            "unfinished provenance checkpoint work identity does not match; "
+            "refusing to overwrite it"
+        )
 
     normalized_pipeline = (
         deepcopy(dict(pipeline_identity))
@@ -869,6 +944,7 @@ def write_provenance_checkpoint(
     image: "Image",
     *,
     journal_only: bool = False,
+    work_id: str | None = None,
     commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Atomically replace only root provenance, or create a journal-only root."""
@@ -890,6 +966,8 @@ def write_provenance_checkpoint(
     attributes = payload.setdefault("attributes", {})
     phenotypic = attributes.setdefault("phenotypic", {})
     phenotypic["provenance"] = deepcopy(image._metadata.provenance_journal)
+    if work_id is not None:
+        phenotypic["work_id"] = work_id
     atomic_write_json(
         root, payload, sort_keys=False, commit_guard=commit_guard
     )

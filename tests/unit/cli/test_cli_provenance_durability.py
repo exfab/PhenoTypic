@@ -65,6 +65,7 @@ def _run_worker(
     manager: OutputManager,
     *,
     drop_originals: bool = False,
+    work_id: str = "durability-work-id",
 ) -> None:
     process_single_image_core(
         pipeline_path=pipeline_path,
@@ -75,6 +76,7 @@ def _run_worker(
         read_kwargs={},
         output_manager=manager,
         drop_originals=drop_originals,
+        work_id=work_id,
     )
 
 
@@ -132,7 +134,10 @@ def test_drop_originals_uses_journal_only_checkpoint_then_final_store(
         "zarr_format": 3,
         "node_type": "group",
         "attributes": {
-            "phenotypic": {"provenance": _journal(store)}
+            "phenotypic": {
+                "provenance": _journal(store),
+                "work_id": "durability-work-id",
+            }
         },
     }
     assert _journal(store)["status"] == "in_progress"
@@ -194,6 +199,30 @@ def test_normal_failure_marks_prefix_failed_and_retry_replaces_it(
         "OtsuDetector",
     ]
     assert [entry["sequence"] for entry in complete_application["operations"]] == [1, 2, 3]
+
+
+def test_retry_refuses_checkpoint_from_a_different_work_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, image_path, pipeline_path, store, manager = _worker_case(
+        tmp_path, {"first": BlurGauss(sigma=1.0)}
+    )
+
+    def _stop(self: BlurGauss, image: Any) -> Any:
+        del self, image
+        raise _HardStop()
+
+    real_operate = BlurGauss._operate
+    monkeypatch.setattr(BlurGauss, "_operate", _stop)
+    with pytest.raises(_HardStop):
+        _run_worker(image_path, pipeline_path, manager, work_id="work-a")
+    before = (store / "zarr.json").read_bytes()
+
+    monkeypatch.setattr(BlurGauss, "_operate", real_operate)
+    with pytest.raises(PerImageScientificError, match="work identity"):
+        _run_worker(image_path, pipeline_path, manager, work_id="work-b")
+
+    assert (store / "zarr.json").read_bytes() == before
 
 
 def test_hard_interruption_leaves_valid_original_checkpoint_in_progress(

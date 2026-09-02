@@ -24,6 +24,7 @@ matplotlib.use("Agg")  # Non-interactive backend
 
 from phenotypic import Image, GridImage, ImagePipeline
 from phenotypic._core._provenance import (
+    continuing_provenance_application,
     initialize_cli_provenance,
     pipeline_source_identity,
     provenance_success_sink,
@@ -185,6 +186,7 @@ def process_single_image_core(
     cli_ncols: Optional[int] = None,
     drop_originals: bool = False,
     pipeline_identity: Mapping[str, str] | None = None,
+    work_id: str | None = None,
     active_check: ActiveCheck | None = None,
     commit_guard: CommitGuard | None = None,
 ) -> bool:
@@ -232,6 +234,7 @@ def process_single_image_core(
             store,
             updated,
             journal_only=journal_only,
+            work_id=work_id,
             commit_guard=commit_guard,
         )
 
@@ -283,11 +286,10 @@ def process_single_image_core(
             checkpoint_payload = json.loads(
                 checkpoint_root.read_text(encoding="utf-8")
             )
-            checkpoint_journal = (
-                checkpoint_payload.get("attributes", {})
-                .get("phenotypic", {})
-                .get("provenance")
+            checkpoint_block = checkpoint_payload.get("attributes", {}).get(
+                "phenotypic", {}
             )
+            checkpoint_journal = checkpoint_block.get("provenance")
             if isinstance(checkpoint_journal, dict):
                 resumed = resume_provenance_application(
                     image,
@@ -295,6 +297,8 @@ def process_single_image_core(
                     kind="full",
                     input_filename=image_path.name,
                     pipeline_identity=resolved_pipeline_identity,
+                    expected_work_id=work_id,
+                    checkpoint_work_id=checkpoint_block.get("work_id"),
                 )
         if not resumed:
             initialize_cli_provenance(
@@ -313,6 +317,7 @@ def process_single_image_core(
                 image,
                 dataset_name,
                 image_stem,
+                work_id=work_id,
                 commit_guard=commit_guard,
             )
             if saved_store is None:
@@ -322,7 +327,9 @@ def process_single_image_core(
         checkpoint_ready = True
         if detect_mode != "gray":
             image.set_detect_mode(detect_mode)
-        with provenance_success_sink(_write_checkpoint):
+        with continuing_provenance_application(image), provenance_success_sink(
+            _write_checkpoint
+        ):
             measurements = pipeline.apply_and_measure(
                 image, inplace=True, apply_post=False
             )
@@ -350,6 +357,7 @@ def process_single_image_core(
             image,
             dataset_name,
             image_stem,
+            work_id=work_id,
             commit_guard=commit_guard,
             measurements=measurements,
         )
@@ -878,21 +886,6 @@ def main(
             )
 
             click.echo(f"Processing {image.name}...")
-            process_single_image_core(
-                pipeline_path=pipeline,
-                image_path=image,
-                output_dir=output_dir,
-                dataset_name=dataset_name,
-                image_type=image_type,  # type: ignore[arg-type]
-                read_kwargs=read_kwargs,
-                output_manager=output_manager,
-                cli_nrows=nrows,
-                cli_ncols=ncols,
-                drop_originals=drop_originals,
-                pipeline_identity=pipeline_identity,
-                active_check=active_check,
-                commit_guard=commit_guard,
-            )
             work_id, relative_path = _worker_work_identity(
                 pipeline=pipeline,
                 image=image,
@@ -911,6 +904,22 @@ def main(
                 save_overlays=save_overlays,
                 drop_originals=drop_originals,
                 mode=mode,
+            )
+            process_single_image_core(
+                pipeline_path=pipeline,
+                image_path=image,
+                output_dir=output_dir,
+                dataset_name=dataset_name,
+                image_type=image_type,  # type: ignore[arg-type]
+                read_kwargs=read_kwargs,
+                output_manager=output_manager,
+                cli_nrows=nrows,
+                cli_ncols=ncols,
+                drop_originals=drop_originals,
+                pipeline_identity=pipeline_identity,
+                work_id=work_id,
+                active_check=active_check,
+                commit_guard=commit_guard,
             )
             # The same resolver the local strategy and the staged SLURM
             # worker use. It is what keeps this site from certifying a `.h5`
