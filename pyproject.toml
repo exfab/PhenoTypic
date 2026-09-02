@@ -22,14 +22,15 @@ description = "An image processing framework created for Ex-FAB NSF BioFoundry t
 readme = "README.md"
 license-files = ["LICENSE", "NOTICE", "licenses/*.txt"]
 
-requires-python = ">=3.10, <3.13"
+# The <3.13 ceiling is mahotas 1.4.18 (no cp313 wheel), NOT zarr — do not
+# read it as unexamined inheritance when raising the floor.
+requires-python = ">=3.11, <3.13"
 
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: Apache Software License",
     "Natural Language :: English",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12"
 ]
@@ -42,7 +43,9 @@ dependencies = [
     "scikit-learn",
     "scipy",
     "opencv-python",
+    # h5py stays for the ``--mode migrate`` legacy-HDF read path.
     "h5py",
+    "zarr>=3.0",
     "mahotas",
     "pillow",
     "tqdm",
@@ -139,6 +142,7 @@ topology = [
 [project.scripts]
 phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
 phenotypic-gui = "phenotypic.gui.shell._launcher:main"
+phenotypic-tune = "phenotypic.tune.__main__:main"
 
 [dependency-groups]
 dev = [
@@ -169,6 +173,21 @@ dev = [
     "pandas-stubs>=2.3.3.260113",
     "types-tqdm>=4.67.3.20260518",
     "types-psutil>=7.2.2.20260518",
+    # NGFF / OME-XML conformance validators. Declared here, not left
+    # transitive: spec §7 forbids a conformance check that skips on a missing
+    # dependency, and every CI lane syncs ``--group dev`` (there is no
+    # ``test`` group). A transitive-only install passes locally and fails in CI.
+    #
+    # The >=4.18 floor is load-bearing, not cosmetic: the conformance harness
+    # constructs ``jsonschema.Draft202012Validator(schema, registry=...)`` to
+    # resolve the vendored ``_version.schema`` offline, and the ``registry``
+    # keyword did not exist before 4.18 (it is a TypeError on 4.17).
+    "jsonschema>=4.18",
+    "xmlschema>=3.0",
+    # ``referencing`` is imported directly by the harness (Registry/Resource),
+    # not merely reached through jsonschema, so it is declared rather than
+    # inherited -- same rule as above.
+    "referencing",
 ]
 test-qt = [
     # Qt/napari widget tests. pytest-qt imports a Qt binding (PyQt6) at
@@ -257,7 +276,16 @@ line-length = 79
 # `ruff check --fix` (the documented lint command) is repo-wide, so without this
 # it silently rewrites them — stripping "unused" imports and reformatting calls —
 # and the diff against upstream stops meaning anything. Never lint or fix them.
-extend-exclude = ["docs/superpowers/**/refs"]
+# ``tests/fixtures/ngff`` and ``tests/fixtures/ome`` are vendored upstream
+# schemas under the same read-only rule. NOTE: this entry is a statement of
+# intent, not the guard — ruff only visits .py/.pyi/.ipynb, so it would never
+# touch a .schema or .xsd anyway. What actually protects those bytes is the
+# sha256 digest test in tests/unit/test_ngff_schema_fixtures.py.
+extend-exclude = [
+    "docs/superpowers/**/refs",
+    "tests/fixtures/ngff",
+    "tests/fixtures/ome",
+]
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
@@ -293,5 +321,14 @@ module = [
     # Foundation-model libs (Spec 2a): permissive but no first-party stubs.
     "transformers.*",
     "huggingface_hub.*",
+]
+ignore_missing_imports = true
+
+# OME-Zarr store backend. Kept as its own block so the store's dependency is
+# legible on its own rather than buried in the long list above.
+[[tool.mypy.overrides]]
+module = [
+    "zarr",
+    "zarr.*",
 ]
 ignore_missing_imports = true

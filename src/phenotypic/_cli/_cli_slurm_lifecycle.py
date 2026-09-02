@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import socket
 import subprocess
 import time
 from collections.abc import Callable, Mapping, Sequence
@@ -13,6 +15,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterator, Literal, cast
 from uuid import uuid4
+
+import psutil
 
 from phenotypic.sdk_ import (
     JobMetadataKey,
@@ -41,6 +45,23 @@ class SchedulerQueryUnavailable(RuntimeError):
 
 class SlurmGenerationInactiveError(RuntimeError):
     """Raised when a worker no longer owns the output lifecycle fence."""
+
+
+def slurm_generation_inactive_cause(
+    exception: BaseException,
+) -> SlurmGenerationInactiveError | None:
+    """Find a lifecycle rejection hidden by scientific exception translation."""
+    current: BaseException | None = exception
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, SlurmGenerationInactiveError):
+            return current
+        if current.__cause__ is not None:
+            current = current.__cause__
+        else:
+            current = current.__context__
+    return None
 
 
 @dataclass(frozen=True)
@@ -77,6 +98,8 @@ def initialize_slurm_lifecycle(
     *,
     generation: str,
     mode: str,
+    owner_kind: str | None = None,
+    control_root: Path | None = None,
 ) -> dict[str, Any]:
     """Publish an active launch fence before any scheduler call."""
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
@@ -98,6 +121,20 @@ def initialize_slurm_lifecycle(
             "created_at": _timestamp(),
             "updated_at": _timestamp(),
         }
+        if owner_kind is not None:
+            if owner_kind not in {"local", "slurm"}:
+                raise ValueError("lifecycle owner_kind must be local or slurm")
+            if control_root is None:
+                raise ValueError("owned lifecycle requires a control root")
+            state.update(
+                {
+                    "owner_kind": owner_kind,
+                    "owner_pid": os.getpid(),
+                    "owner_started_at": psutil.Process(os.getpid()).create_time(),
+                    "owner_host": socket.gethostname(),
+                    "control_root": str(Path(control_root).resolve()),
+                }
+            )
         atomic_write_json(lifecycle_state_path(output_dir), state)
     return state
 
@@ -157,7 +194,14 @@ def generation_publication_guard(
     can deactivate or supersede the generation between this validation and
     the guarded mutation.
     """
-    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
+    # Every recompile/measure worker task (up to the account's concurrency
+    # cap, observed 60-90+) serializes through this single lock via
+    # _write_status on completion. A 60s timeout is too tight when that many
+    # tasks finish in a similar window; one spurious ArtifactLockTimeout here
+    # cascades (via the worker's failure handler) into deactivating the whole
+    # shared generation and failing every sibling task. 300s gives real
+    # headroom under legitimate contention without masking a true deadlock.
+    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=300.0):
         assert_generation_active(output_dir, generation)
         yield
 
@@ -305,6 +349,63 @@ def query_scheduler_comments(
             "Could not query squeue or sacct for scheduler comments"
         )
     return matches
+
+
+def query_scheduler_job_states(
+    job_ids: Sequence[str],
+    *,
+    run_command: Callable[..., subprocess.CompletedProcess[str]] | None = None,
+) -> dict[str, str]:
+    """Return one scheduler state for every requested durable job ID.
+
+    Both the live queue and accounting are queried because a quiescent chain
+    normally disappears from ``squeue`` before recovery begins. Missing state
+    for even one ID is treated as unavailable authority rather than terminal.
+    """
+    requested = {str(job_id) for job_id in job_ids}
+    if not requested or any(not job_id.isdecimal() for job_id in requested):
+        raise ValueError("scheduler state query requires numeric job IDs")
+    runner = run_command or subprocess.run
+    joined = ",".join(sorted(requested))
+    commands = (
+        ["squeue", "--noheader", "--jobs", joined, "--format=%i|%T"],
+        [
+            "sacct", "--noheader", "--parsable2", "--jobs", joined,
+            "--format=JobIDRaw,State",
+        ],
+    )
+    states: dict[str, str] = {}
+    successful_queries = 0
+    for command in commands:
+        try:
+            result = runner(
+                command,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=30,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
+        if result is None or result.returncode != 0:
+            continue
+        successful_queries += 1
+        for raw_line in result.stdout.splitlines():
+            parts = raw_line.rstrip("|").split("|", 1)
+            if len(parts) != 2:
+                continue
+            raw_id, raw_state = (part.strip() for part in parts)
+            base_id = raw_id.split(".", 1)[0].split("_", 1)[0]
+            state = raw_state.split(maxsplit=1)[0].rstrip("+").upper()
+            if base_id in requested and state:
+                states.setdefault(base_id, state)
+    if successful_queries == 0 or set(states) != requested:
+        missing = ", ".join(sorted(requested - set(states)))
+        raise SchedulerQueryUnavailable(
+            "Could not determine scheduler state for job IDs"
+            + (f": {missing}" if missing else "")
+        )
+    return states
 
 
 def mirror_job_to_metadata(
@@ -934,6 +1035,7 @@ __all__ = [
     "mirror_job_to_metadata",
     "new_slurm_generation",
     "query_scheduler_comments",
+    "query_scheduler_job_states",
     "read_lifecycle_ledger",
     "scheduler_comment",
     "submit_with_lifecycle",

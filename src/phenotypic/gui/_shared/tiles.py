@@ -34,7 +34,7 @@ import io
 import logging
 import os
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
@@ -44,13 +44,50 @@ from dash import html
 from dash.development.base_component import Component
 from flask import Blueprint, Response
 from PIL import Image as PILImage
+from werkzeug.exceptions import BadRequest, NotFound
 
-from phenotypic.gui._design import TILE_DIM_RGB
+from phenotypic.gui._design import (
+    FONT_FAMILY_MONO,
+    FONT_SIZE_MICRO,
+    TILE_DIM_RGB,
+)
+from phenotypic.gui._shared._measurement_tint import TileMeasurement
 
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Shared route primitives
+# ---------------------------------------------------------------------------
+
+#: DZI tile filenames are ``<col>_<row>.png`` per the OpenSeadragon spec.
+#: Re-homed here from ``results_viewer/_tile_routes.py``: that module's own
+#: routes went when the results Plate stopped rendering server-built DZI
+#: pyramids, but the BUILDER's preview and point-picker routes still tile
+#: with libvips and still need the name guard. Deleting the module without
+#: moving this would have broken the builder at import, from a different
+#: sub-app than the one being edited.
+TILE_NAME_RE = re.compile(r"^\d+_\d+\.png$")
+
+
+def json_error(message: str, status: int) -> Response:
+    """Build a small JSON error ``Response`` with the given status code.
+
+    Args:
+        message: Human-readable error string surfaced to the caller.
+        status: HTTP status code to attach.
+
+    Returns:
+        A Flask :class:`~flask.Response` with ``application/json`` body.
+    """
+    from flask import jsonify
+
+    response = jsonify({"error": message})
+    response.status_code = status
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +236,7 @@ def _crop_pil_source(
     """Crop an already-decoded RGB source to a centered ``size`` x ``size`` window.
 
     The shared geometry body behind both :func:`crop_overlay` (source = a baked
-    overlay PNG) and :func:`crop_hdf_rgb` (source = a raw HDF layer). Computes
+    overlay PNG) and :func:`crop_store_rgb` (source = one store layer). Computes
     ``(top, left) = (round(center_rr) - size // 2, round(center_cc) - size //
     2)``, clamps the requested window to the image bounds, and pastes the
     clamped region onto a freshly-allocated canvas filled with ``pad_value`` so
@@ -269,10 +306,10 @@ def _crop_pil_source(
 
 
 # ---------------------------------------------------------------------------
-# Full-resolution HDF-layer cropping
+# Full-resolution store-layer cropping and pyramid-level tile reads
 # ---------------------------------------------------------------------------
 
-#: One of the displayable HDF layer names a crop can source.
+#: One of the displayable store layer names a crop can source.
 LayerName = Literal["rgb", "detect_mat", "objmap"]
 
 #: Default layer every crop/tile surface sources when none is requested. The
@@ -281,57 +318,146 @@ LayerName = Literal["rgb", "detect_mat", "objmap"]
 #: route default can never drift apart.
 DEFAULT_LAYER: LayerName = "rgb"
 
-#: Number of decoded full-res HDF layers to keep in memory. Full-res layers
-#: are heavier than overlay PNGs (a single plate's rgb layer can be hundreds of
-#: MB), so this cache is deliberately smaller than ``_OVERLAY_CACHE_SIZE``.
-_HDF_LAYER_CACHE_SIZE = 4
+class StoreUnreadable(RuntimeError):
+    """A store exists but this build of PhenoTypic cannot decode it.
+
+    ``require_readable_store`` gates ``store_schema_version`` **by value** and
+    raises a bare :class:`ValueError`. Bare, that reaches the crop route's
+    blanket handler and the user is told "internal error: crop generation
+    failed" while the actionable message -- which names both versions and the
+    remedy -- reaches only the log. Re-raised as this type, both the crop and
+    the DZI route answer ``422`` and pass the message through.
+    """
 
 
-@functools.lru_cache(maxsize=_HDF_LAYER_CACHE_SIZE)
-def _load_hdf_layer_rgb(
-    path: str, mtime_ns: int, layer: LayerName
-) -> PILImage.Image:
-    """Decode one HDF layer to an RGB PIL image and cache it.
-
-    ``rgb`` -> raw uint8; ``objmap`` -> ``label2rgb`` colourisation; any other
-    (``detect_mat`` / ``gray``) -> contrast-normalised greyscale promoted to RGB.
-
-    Memory discipline (review W5 / spec Section 4): read ONLY the requested
-    ``/layers/<name>`` dataset via :mod:`h5py` — do NOT call
-    ``load_image_from_hdf`` / ``Image.load_hdf5``, which eagerly materialise
-    *every* layer (rgb + gray + detect_mat + objmap, hundreds of MB) only to
-    discard all but one.
+def _readable_block(store_path: Path | str) -> dict:
+    """Read ``attributes.phenotypic``, refusing a store this build can't decode.
 
     Args:
-        path: Absolute path to the per-image ``.h5``, as a string so the cache
-            key is hashable.
-        mtime_ns: ``st_mtime_ns`` at lookup time. Including it in the cache key
-            invalidates the cached frame when the HDF is regenerated under a
-            running viewer.
-        layer: The ``/layers/<name>`` dataset to decode.
+        store_path: Path to a ``*.ome.zarr`` directory.
 
     Returns:
-        The decoded layer as an RGB :class:`PIL.Image.Image`.
+        The ``phenotypic`` block.
 
     Raises:
-        KeyError: If ``layer`` is absent from the HDF.
+        StoreUnreadable: If ``store_schema_version`` is not this build's.
     """
-    del mtime_ns  # Cache-key only.
-    import h5py
+    from phenotypic.sdk_ import ngff_
 
-    with h5py.File(path, "r") as fh:
-        # Modern layout is /layers/<name>; legacy flat layout is /<name>.
-        grp = fh["layers"] if "layers" in fh else fh
-        if layer not in grp:
-            raise KeyError(f"HDF {path} has no layer {layer!r}")
-        arr = np.asarray(grp[layer][:])
-
-    rgb = _hdf_layer_array_to_rgb(arr, layer)
-    return PILImage.fromarray(rgb, mode="RGB")
+    try:
+        return ngff_.require_readable_store(Path(store_path))
+    except ValueError as exc:
+        raise StoreUnreadable(str(exc)) from exc
 
 
-def _hdf_layer_array_to_rgb(arr: np.ndarray, layer: LayerName) -> np.ndarray:
-    """Convert a decoded HDF layer array to an RGB uint8 array."""
+def _store_member_path(block: dict, store_path: Path | str, layer: str) -> str:
+    """Resolve one layer to its store-relative group path.
+
+    ``objmap`` is resolved through ``phenotypic.labels.objmap``, never by a
+    hard-coded ``rgb/labels/objmap``: an rgb-less store puts the label under
+    ``gray``.
+
+    Args:
+        block: The ``attributes.phenotypic`` block.
+        store_path: Store root, for the error message only.
+        layer: ``"rgb"``, ``"gray"``, ``"detect_mat"``, or ``"objmap"``.
+
+    Returns:
+        The store-relative group path of the layer.
+
+    Raises:
+        KeyError: If *layer* is not present in the store.
+    """
+    from phenotypic.sdk_ import ngff_
+
+    # ``.get`` on LABELS: a label-less store omits the key entirely, so
+    # indexing it would raise before the ``is None`` branch below.
+    member = block[ngff_.PhenotypicAttr.SERIES].get(layer) or block.get(
+        ngff_.PhenotypicAttr.LABELS, {}
+    ).get(layer)
+    if member is None:
+        raise KeyError(f"Store {store_path} has no layer {layer!r}")
+    return member
+
+
+def _level_shape(
+    store_path: Path | str, member: str, level: int
+) -> tuple[int, ...]:
+    """Return one pyramid level's array shape, from its own array metadata.
+
+    Args:
+        store_path: Store root.
+        member: Store-relative group path of the layer.
+        level: Pyramid level index.
+
+    Returns:
+        The level's shape.
+
+    Raises:
+        FileNotFoundError: If the level the store DECLARES is not on disk.
+    """
+    import json
+
+    from phenotypic.sdk_ import ngff_
+
+    meta = Path(store_path) / member / str(level) / ngff_.STORE_ROOT_JSON
+    return tuple(json.loads(meta.read_text(encoding="utf-8"))["shape"])
+
+
+def _read_store_level(
+    store_path: Path | str,
+    layer: str,
+    level: int,
+    window: tuple[int, int, int, int] | None = None,
+) -> np.ndarray:
+    """Read one layer's level array, optionally only a ``(t, b, l, r)`` window.
+
+    ``rgb`` is stored ``(C, Y, X)`` and is returned channel-last, matching
+    ``Image.load_layer_zarr``.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+        layer: Layer to read.
+        level: Pyramid level index.
+        window: ``(top, bottom, left, right)`` in level pixels, or ``None``
+            for the whole level.
+
+    Returns:
+        The array, channel-last for ``rgb``.
+
+    Raises:
+        KeyError: If *layer* is absent from the store.
+        StoreUnreadable: If this build cannot decode the store.
+    """
+    import zarr
+
+    from phenotypic.sdk_ import ngff_
+
+    block = _readable_block(store_path)
+    member = _store_member_path(block, store_path, layer)
+    array = zarr.open_array(
+        store=ngff_.long_path(Path(store_path) / member / str(level)),
+        mode="r",
+    )
+    if window is None:
+        raw = array[...]
+    else:
+        top, bottom, left, right = window
+        # Windowed: zarr pulls the covering shards/chunks only. A 64x64 crop
+        # from a sharded level 0 costs a shard-index read plus one full
+        # 1024x1024 inner chunk -- cheap, but not free, and not "the same as
+        # h5py", which an earlier draft implied.
+        raw = (
+            array[:, top:bottom, left:right]
+            if len(array.shape) == 3
+            else array[top:bottom, left:right]
+        )
+    data: np.ndarray = np.asarray(raw)
+    return np.moveaxis(data, 0, -1) if layer == "rgb" else data
+
+
+def _store_layer_array_to_rgb(arr: np.ndarray, layer: str) -> np.ndarray:
+    """Convert a decoded store layer array to an RGB uint8 array."""
     from phenotypic.gui.builder._image_renderer import (
         _label_map_to_rgb,
         _normalize_to_uint8,
@@ -346,8 +472,8 @@ def _hdf_layer_array_to_rgb(arr: np.ndarray, layer: LayerName) -> np.ndarray:
     return np.stack([gray] * 3, axis=-1)
 
 
-def crop_hdf_rgb(
-    h5_path: Path,
+def crop_store_rgb(
+    store_path: Path,
     layer: LayerName,
     center_rr: float,
     center_cc: float,
@@ -357,33 +483,40 @@ def crop_hdf_rgb(
     dim_alpha: float = 0.0,
     bbox: tuple[float, float, float, float] | None = None,
 ) -> bytes:
-    """Full-resolution sibling of :func:`crop_overlay`, sourcing a chosen HDF layer.
+    """Full-resolution sibling of :func:`crop_overlay`, sourcing a store layer.
 
     Same centering / padding / dimming contract as :func:`crop_overlay`; the
-    only difference is the pixel source (a raw ``/layers/<name>`` HDF dataset
-    decoded to RGB instead of a baked overlay PNG). Geometry is byte-identical
-    because both croppers share :func:`_crop_pil_source`.
+    only difference is the pixel source (a windowed read of one layer's
+    level-0 array, decoded to RGB, instead of a baked overlay PNG). Geometry
+    is byte-identical because both croppers share :func:`_crop_pil_source`.
+
+    Level 0 always: a crop is a full-resolution inspection view, so there is
+    no pyramid level to select.
 
     Args:
-        h5_path: Path to the per-image ``.h5`` written under
-            ``results/<dataset>/hdf/<stem>.h5``.
-        layer: The HDF layer to render (``"rgb"``, ``"detect_mat"``,
-            ``"objmap"``, …).
+        store_path: Path to the per-image store written under
+            ``results/<dataset>/zarr/<stem>.ome.zarr``.
+        layer: The store layer to render (``"rgb"``, ``"detect_mat"``,
+            ``"objmap"``).
         center_rr: Row coordinate (Y) of the colony centroid, in image pixels.
         center_cc: Column coordinate (X) of the colony centroid, in image pixels.
         size: Side length of the square crop, in pixels.
-        mtime_ns: ``st_mtime_ns`` of the HDF. Accepted for caller/API
-            compatibility; crop reads are windowed and not full-layer cached.
+        mtime_ns: Accepted for caller/API compatibility; crop reads are
+            windowed and not full-layer cached, so nothing keys on it.
         dim_alpha: Tile-spotlight strength; see :func:`crop_overlay`.
         bbox: ``(min_rr, max_rr, min_cc, max_cc)`` keep-rectangle; see
             :func:`crop_overlay`.
 
     Returns:
         PNG-encoded bytes of the ``size`` x ``size`` crop in RGB mode.
+
+    Raises:
+        KeyError: If *layer* is absent from the store.
+        StoreUnreadable: If this build cannot decode the store.
     """
     del mtime_ns
-    return _crop_hdf_layer_window(
-        h5_path,
+    return _crop_store_layer_window(
+        store_path,
         layer,
         center_rr,
         center_cc,
@@ -393,8 +526,8 @@ def crop_hdf_rgb(
     )
 
 
-def _crop_hdf_layer_window(
-    h5_path: Path,
+def _crop_store_layer_window(
+    store_path: Path,
     layer: LayerName,
     center_rr: float,
     center_cc: float,
@@ -404,47 +537,38 @@ def _crop_hdf_layer_window(
     dim_alpha: float = 0.0,
     bbox: tuple[float, float, float, float] | None = None,
 ) -> bytes:
-    """Crop by reading only the requested HDF window."""
-    import h5py
-
+    """Crop by reading only the requested level-0 window out of the store."""
     half = size // 2
     left_unclamped = round(center_cc) - half
     top_unclamped = round(center_rr) - half
     right_unclamped = left_unclamped + size
     bottom_unclamped = top_unclamped + size
 
-    with h5py.File(h5_path, "r") as fh:
-        grp = fh["layers"] if "layers" in fh else fh
-        if layer not in grp:
-            raise KeyError(f"HDF {h5_path} has no layer {layer!r}")
-        dset = grp[layer]
-        src_height, src_width = dset.shape[:2]
-        left_clamped = max(0, left_unclamped)
-        top_clamped = max(0, top_unclamped)
-        right_clamped = min(src_width, right_unclamped)
-        bottom_clamped = min(src_height, bottom_unclamped)
+    block = _readable_block(store_path)
+    member = _store_member_path(block, store_path, layer)
+    # ``rgb`` is stored (C, Y, X), so the spatial extent is the LAST two axes
+    # on every layer -- ``shape[:2]`` would read (C, Y) and clamp the window
+    # to three columns.
+    level0 = _level_shape(store_path, member, 0)
+    src_height, src_width = level0[-2:]
+    left_clamped = max(0, left_unclamped)
+    top_clamped = max(0, top_unclamped)
+    right_clamped = min(src_width, right_unclamped)
+    bottom_clamped = min(src_height, bottom_unclamped)
 
-        arr: np.ndarray | None = None
-        if right_clamped > left_clamped and bottom_clamped > top_clamped:
-            if len(dset.shape) == 2:
-                arr = np.asarray(
-                    dset[
-                        top_clamped:bottom_clamped, left_clamped:right_clamped
-                    ]
-                )
-            else:
-                arr = np.asarray(
-                    dset[
-                        top_clamped:bottom_clamped,
-                        left_clamped:right_clamped,
-                        ...,
-                    ]
-                )
+    arr: np.ndarray | None = None
+    if right_clamped > left_clamped and bottom_clamped > top_clamped:
+        arr = _read_store_level(
+            store_path,
+            layer,
+            0,
+            window=(top_clamped, bottom_clamped, left_clamped, right_clamped),
+        )
 
     result = PILImage.new("RGB", (size, size), pad_value)
     if arr is not None:
         region = PILImage.fromarray(
-            _hdf_layer_array_to_rgb(arr, layer), mode="RGB"
+            _store_layer_array_to_rgb(arr, layer), mode="RGB"
         )
         paste_x = max(0, -left_unclamped)
         paste_y = max(0, -top_unclamped)
@@ -480,21 +604,27 @@ def crop_colony(
     dim_alpha: float = 0.0,
     bbox: tuple[float, float, float, float] | None = None,
 ) -> bytes | None:
-    """Tier the crop source per-image: full-res HDF layer when available, else overlay.
+    """Tier the crop source per-image: the store layer when available, else overlay.
 
     The single entry point both the colony-view ``/crops`` route and the QC
     review gallery use to fetch a centered colony crop. It prefers the
-    per-image full-resolution HDF (via :func:`crop_hdf_rgb`) and falls back to
+    per-image OME-Zarr store (via :func:`crop_store_rgb`) and falls back to
     the baked overlay PNG (via :func:`crop_overlay`) for a standalone
-    deliverables bundle that ships overlays but no ``results/`` HDFs.
+    deliverables bundle that ships overlays but no ``results/`` stores.
+
+    A :class:`StoreUnreadable` is deliberately **not** caught: falling back to
+    the overlay would show plausible pixels while hiding a run-wide,
+    actionable condition (a store this build cannot decode). The caller turns
+    it into a ``422`` carrying the store's own message.
 
     Args:
         output_root: Validated handle on the CLI output directory; supplies
-            :meth:`hdf_path`, :meth:`has_overlay`, and :meth:`overlay_path`.
+            :meth:`store_path`, :meth:`has_overlay`, and :meth:`overlay_path`.
         dataset: Dataset name (matches ``Metadata_Dataset``).
         stem: Image stem (matches ``Metadata_ImageName`` minus its extension).
-        layer: HDF layer to render when an HDF is the source (e.g. ``"rgb"``);
-            ignored for the overlay fallback (overlays are pre-baked RGB).
+        layer: Store layer to render when a store is the source (e.g.
+            ``"rgb"``); ignored for the overlay fallback (overlays are
+            pre-baked RGB).
         center_rr: Row coordinate (Y) of the colony centroid, in image pixels.
         center_cc: Column coordinate (X) of the colony centroid, in image pixels.
         size: Side length of the square crop, in pixels.
@@ -504,29 +634,32 @@ def crop_colony(
 
     Returns:
         PNG-encoded bytes of the ``size`` x ``size`` crop, or ``None`` when
-        neither an HDF nor an overlay exists (the caller serves a 404).
+        neither a store nor an overlay exists (the caller serves a 404).
+
+    Raises:
+        StoreUnreadable: If the store exists but this build cannot decode it.
     """
-    h5 = output_root.hdf_path(dataset, stem)
-    if h5 is not None:
+    store = output_root.store_path(dataset, stem)
+    if store is not None:
         try:
-            return crop_hdf_rgb(
-                h5,
+            return crop_store_rgb(
+                store,
                 layer,
                 center_rr,
                 center_cc,
                 size,
-                os.stat(h5).st_mtime_ns,
+                os.stat(store).st_mtime_ns,
                 dim_alpha=dim_alpha,
                 bbox=bbox,
             )
         except KeyError:
-            # The HDF exists but lacks the requested ``/layers/<name>``
-            # dataset (e.g. a grayscale-only pipeline writes no ``rgb``
-            # layer). Degrade to the baked overlay PNG rather than 500;
-            # fall through to the overlay branch below (else -> None -> 404).
+            # The store exists but carries no such layer (e.g. a grayscale
+            # pipeline writes no ``rgb`` series). Degrade to the baked
+            # overlay PNG rather than 500; fall through to the overlay
+            # branch below (else -> None -> 404).
             logger.debug(
-                "HDF %s missing layer %r; falling back to overlay for %s/%s",
-                h5,
+                "Store %s missing layer %r; falling back to overlay for %s/%s",
+                store,
                 layer,
                 dataset,
                 stem,
@@ -568,6 +701,117 @@ def is_safe_path_component(name: str) -> bool:
     if "/" in name or "\\" in name or ".." in name:
         return False
     return bool(_NAME_RE.match(name))
+
+
+#: Zarr **v2** metadata filenames. A v3 store never contains one, but
+#: zarrita probes all four beside every ``zarr.json`` before concluding a
+#: node is v3-only -- 17 of them on a first open of a series, 3 on a warm
+#: one (measured in the phase-0 spike).
+#:
+#: They matter because of how zarrita reads a response: its fetch store
+#: returns ``undefined`` on **404** and *throws* on every other non-2xx
+#: status (``Unexpected response status ...``). Each of these names starts
+#: with a dot, so :func:`is_safe_path_component` rejects it and
+#: :func:`resolve_within_root` raises ``BadRequest`` -- a **400**, which
+#: aborts the store open instead of reading as "absent". Every byte route
+#: that a zarr client opens must answer these 404.
+ZARR_V2_METADATA_NAMES: frozenset[str] = frozenset(
+    {".zarray", ".zattrs", ".zgroup", ".zmetadata"}
+)
+
+
+def is_zarr_v2_metadata_probe(tail: str) -> bool:
+    """Return ``True`` if ``tail`` names a Zarr v2 metadata file.
+
+    Shared by every byte route a zarr client opens, for the reason recorded
+    on :data:`ZARR_V2_METADATA_NAMES`: these probes must answer ``404``, not
+    the ``400`` the leading-dot rule would otherwise produce.
+
+    Args:
+        tail: Client-controlled store-relative path, ``/``-separated.
+
+    Returns:
+        ``True`` when the final segment is a Zarr v2 metadata filename.
+    """
+    return tail.rsplit("/", 1)[-1] in ZARR_V2_METADATA_NAMES
+
+
+def resolve_within_root(
+    root: Path,
+    tail: str,
+    *,
+    allowed_roots: frozenset[str],
+) -> Path:
+    """Resolve a client-controlled ``tail`` to a file inside ``root``.
+
+    The single path-escape guard for every route that serves bytes out of a
+    store directory. Two properties are load-bearing and easy to get wrong:
+
+    * Segments are validated INDIVIDUALLY by
+      :func:`is_safe_path_component`. The traversal surface here is wider
+      than a two-component route's because the tail is arbitrary depth.
+    * ``allowed_roots`` is tested on the RESOLVED path, not on the URL
+      segments. Testing the unresolved head lets a symlink inside a readable
+      root (``<root>/rgb/x -> ../tables/measurements/table.parquet``) satisfy
+      both the head check and containment, and the file is served.
+
+    Only the FIRST resolved component is restricted. Restricting every
+    component would reject ``labels``, ``objmap`` and every level index,
+    which would kill the label layer. The store's own root ``zarr.json`` is
+    exempt at depth 1 only -- a pixel client bootstraps from it, and it is
+    the one file that belongs to no series.
+
+    Args:
+        root: Directory the result must live inside.
+        tail: Client-controlled path, ``/``-separated.
+        allowed_roots: First-component allow-list. **Required, and there is
+            no permissive value.** A security primitive whose default is "no
+            restriction" is one forgotten keyword from serving
+            ``tables/measurements/table.parquet``, and the omission would
+            read as ordinary code at review. An empty ``frozenset()`` rejects
+            everything, which is the correct fail-closed shape.
+
+    Returns:
+        The resolved file path.
+
+    Raises:
+        BadRequest: A segment is unsafe, or the resolved path escapes
+            ``root``.
+        NotFound: The path does not exist, is not a file, or its first
+            resolved component is not in ``allowed_roots``.
+    """
+    from phenotypic.sdk_ import ngff_
+
+    segments = [segment for segment in tail.split("/") if segment]
+    if not segments:
+        raise NotFound()
+    for segment in segments:
+        if not is_safe_path_component(segment):
+            raise BadRequest()
+
+    # BOTH resolves inside the try. ``root`` itself can vanish mid-request:
+    # ``promote_store`` republishes by renaming the whole store directory
+    # (``sdk_/ngff_.py``), so this is the routine path, not an exotic race --
+    # it is the very event the generation token exists to handle. Left
+    # outside, a promote during a pan raises ``FileNotFoundError`` and the
+    # client gets a 500 where 404 is meant.
+    try:
+        root_resolved = root.resolve(strict=True)
+        resolved = root.joinpath(*segments).resolve(strict=True)
+    except (OSError, RuntimeError):
+        raise NotFound() from None
+    if not resolved.is_relative_to(root_resolved):
+        raise BadRequest()
+    if not resolved.is_file():
+        raise NotFound()
+
+    rel = resolved.relative_to(root_resolved)
+    head = rel.parts[0]
+    if head not in allowed_roots and not (
+        len(rel.parts) == 1 and head == ngff_.STORE_ROOT_JSON
+    ):
+        raise NotFound()
+    return resolved
 
 
 # ---------------------------------------------------------------------------
@@ -859,6 +1103,9 @@ def build_tile_cell(
     remove_button: Component | list[Component],
     extra_children: Iterable[Component] | None = None,
     outer_height: int | None = None,
+    measurement: TileMeasurement | None = None,
+    outer_props: Mapping[str, Any] | None = None,
+    defer_crop_image: bool = False,
 ) -> Component:
     """Render the chrome + crop for a single tile — shared across tabs.
 
@@ -906,6 +1153,24 @@ def build_tile_cell(
         outer_height: Outer cell height, in pixels. Defaults to
             ``display_size`` (no extra vertical room). Pass a larger value
             to reserve space for a sibling that peeks out below the frame.
+        measurement: The colony's value for the currently-displayed
+            measurement column, already formatted and coloured by
+            :meth:`~phenotypic.gui._shared._measurement_tint.MeasurementScale.measurement_for`.
+            ``None`` -- the default, and the state of every card when no
+            column is chosen -- renders exactly today's card. ``None`` is
+            also the correct rendering for a colony the table has **no row
+            for**: post-measurement operations can drop objects, and a card
+            with no value is a fact about the data, not an error.
+
+            The value is joined on ``label``, which already IS
+            ``Object_Label``; the card needs no new identity plumbing to
+            know which value is its own.
+        outer_props: Optional HTML properties applied to the outer cell.
+            Intended for ``data-*`` lifecycle metadata; visual state remains
+            owned by the named arguments above.
+        defer_crop_image: Render only a sized host element instead of issuing
+            the PNG crop request. Use this when an OME-Zarr renderer owns the
+            tile pixels; the host preserves tile geometry and shared chrome.
 
     Returns:
         A component ready to drop into a tile grid or gallery container.
@@ -916,7 +1181,16 @@ def build_tile_cell(
     if is_removed:
         classes.append("is-removed")
 
-    if has_image_source:
+    if has_image_source and defer_crop_image:
+        crop_node = html.Div(
+            className="colony-cell-img colony-cell-zarr-host",
+            style={
+                "width": f"{display_size}px",
+                "height": f"{display_size}px",
+                "display": "block",
+            },
+        )
+    elif has_image_source:
         crop_url = url_builder(dataset, image_file, label, crop_size)
         crop_node: Component = html.Img(
             src=crop_url,
@@ -979,9 +1253,46 @@ def build_tile_cell(
         if isinstance(remove_button, list)
         else [remove_button]
     )
+    # The value ribbon. It carries BOTH halves of the display -- the number
+    # and the tint -- so the colour a card wears is attached to the number
+    # it encodes rather than floating behind an opaque crop. The frame also
+    # takes an inset ring in the same tint, which is what stays legible when
+    # the tile stepper is at its smallest size and the ribbon is a sliver.
+    #
+    # Curation chrome is untouched: the checkbox keeps the top-left corner
+    # and the radial trigger keeps its own, so the ribbon takes the bottom
+    # edge and nothing moves.
+    frame_children: list[Component] = [crop_node, checkbox, *remove_children]
+    frame_style: dict[str, str] = {}
+    if measurement is not None:
+        frame_style["boxShadow"] = f"inset 0 0 0 3px {measurement.tint}"
+        frame_children.append(
+            html.Span(
+                measurement.text,
+                className="colony-cell-measurement",
+                style={
+                    "position": "absolute",
+                    "bottom": "0",
+                    "left": "0",
+                    "right": "0",
+                    "background": measurement.tint,
+                    "color": measurement.ink,
+                    "fontFamily": FONT_FAMILY_MONO,
+                    "fontSize": FONT_SIZE_MICRO,
+                    "lineHeight": "1.5",
+                    "textAlign": "center",
+                    "letterSpacing": "0.01em",
+                    "pointerEvents": "none",
+                    "zIndex": "3",
+                },
+            )
+        )
     frame = html.Div(
-        [crop_node, checkbox, *remove_children],
+        frame_children,
         className="colony-cell-frame",
+        # ``None`` rather than an empty dict so an untinted card's DOM is
+        # byte-identical to what it was before this feature existed.
+        style=frame_style or None,
     )
 
     children: list[Component] = [frame]
@@ -1000,6 +1311,7 @@ def build_tile_cell(
             "height": f"{outer_height}px",
             "overflow": "visible",
         },
+        **dict(outer_props or {}),
     )
 
 
@@ -1152,7 +1464,8 @@ __all__ = [
     "LayerName",
     "DEFAULT_LAYER",
     "crop_overlay",
-    "crop_hdf_rgb",
+    "crop_store_rgb",
+    "StoreUnreadable",
     "crop_colony",
     "is_safe_path_component",
     "register_crop_route",

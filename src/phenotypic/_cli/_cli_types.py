@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Set
 from phenotypic.sdk_.typing_ import (
     ExecutionMode,
     ImageTypeName,
+    ProcessFormat,
     ProcessOnlyLayer,
 )
 
@@ -126,6 +127,24 @@ class ExecutionConfig:
     retry_failures: bool
     skip_validation: bool
 
+    # ``--durable-writes`` / ``--no-durable-writes``. Deliberately TRI-state:
+    # ``None`` means "auto-detect from the SLURM environment" and must be
+    # carried as ``None`` all the way down to
+    # :func:`phenotypic.sdk_.ngff_.durable_writes_enabled`. Resolving it early
+    # would freeze the *submitting* process's environment into a value a
+    # worker on another node then re-uses (spec §3.7). It is deliberately NOT
+    # part of ``processing_configuration_digest``: durability is a storage
+    # guarantee, not a scientific parameter, so toggling it must not
+    # invalidate a run's work ids and restart finished images.
+    durable_writes: Optional[bool] = None
+
+    # Full-forward storage policy. The default retains decoded source pixels.
+    drop_originals: bool = False
+
+    # Resolved user-supplied pipeline source, retained when workers execute an
+    # immutable submission snapshot instead of the original JSON path.
+    pipeline_identity: Optional[Dict[str, str]] = None
+
     # Lifecycle mode for staged SLURM orchestration. ``restart`` is distinct
     # from a fresh run because existing terminal artifacts must be regenerated.
     restart: bool = False
@@ -146,6 +165,13 @@ class ExecutionConfig:
     # Metadata join
     metadata_csv: Optional[Path] = None
 
+    # Optional approved subset inside ``input_path``. The input root remains
+    # the work-ID anchor, so a manifest never replaces it.
+    image_manifest: Optional[Path] = None
+    # The CLI-bound snapshot's byte fingerprint is persisted in run state;
+    # the entries themselves stay local to the scan that consumes them.
+    image_manifest_digest: Optional[str] = None
+
     # Skip QC during final aggregation, including staged SLURM finalization.
     no_qc: bool = False
 
@@ -165,6 +191,12 @@ class ExecutionConfig:
     # Process-only mode: run pipeline.apply() and export a single image layer
     # (no measurement / analysis output). None = normal forward/measure run.
     process_only_layer: Optional[ProcessOnlyLayer] = None
+
+    # Resolved --process-format for a process run. Always the ANSWER, never
+    # the raw option: `resolve_process_format` runs once at the CLI boundary,
+    # so nothing downstream re-derives a default and drifts from it. Ignored
+    # outside process mode, where the CLI rejects the option outright.
+    process_format: ProcessFormat = "tiff"
 
     # --- Staged GPU detection (Spec 1 §7/§10) ---------------------------------
     # Model replicas packed per physical GPU (Stage 2 fill for small models).

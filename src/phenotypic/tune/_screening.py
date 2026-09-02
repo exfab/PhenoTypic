@@ -14,12 +14,15 @@ downstream freeze decision can be conservative when interactions are unverified
 """
 from __future__ import annotations
 
+import math
+from collections.abc import Sequence
 from typing import Literal
 
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
 
+from ._multi_objective import validate_objective_axes
 from ._study._protocol import StudyStore
 
 #: The importance estimators, a closed set (never a bare ``str``). ``"fanova"``
@@ -53,7 +56,11 @@ class ImportanceReport(BaseModel):
 
 
 def compute_param_importance(
-    store: StudyStore, *, random_state: int = 0, objective: str | None = None
+    store: StudyStore,
+    *,
+    random_state: int = 0,
+    objective: str | None = None,
+    objective_axes: Sequence[str] | None = None,
 ) -> dict[str, float]:
     """Rank tuned parameters by importance against the objective (the dict view).
 
@@ -70,18 +77,28 @@ def compute_param_importance(
             ``None`` (default) ranks against ``Trial.score`` — the unchanged
             single-objective path. A name ranks against
             ``Trial.objectives[name]``, skipping trials that lack the objective.
+        objective_axes: The scorer-declared full objective vector required for
+            a named-axis model. Omit for scalar calls or legacy sidecar
+            inference.
 
     Returns:
         ``{param_key: importance}`` sorted descending. Empty when fewer than two
         usable trials (nothing to fit).
     """
     return compute_param_importance_report(
-        store, random_state=random_state, objective=objective
+        store,
+        random_state=random_state,
+        objective=objective,
+        objective_axes=objective_axes,
     ).importances
 
 
 def compute_param_importance_report(
-    store: StudyStore, *, random_state: int = 0, objective: str | None = None
+    store: StudyStore,
+    *,
+    random_state: int = 0,
+    objective: str | None = None,
+    objective_axes: Sequence[str] | None = None,
 ) -> ImportanceReport:
     """Rank parameters and record the method + interaction honesty flag.
 
@@ -101,12 +118,20 @@ def compute_param_importance_report(
         objective: The named multi-objective to rank against (plan §0a sidecar).
             ``None`` ranks against ``Trial.score`` and may use the native fANOVA
             model; a name forces the RF path against ``Trial.objectives[name]``.
+        objective_axes: The authoritative scorer-declared objective names. When
+            supplied, only COMPLETE trials containing exactly this full finite
+            vector are eligible for a per-objective model.
 
     Returns:
         An :class:`ImportanceReport` carrying the ranked importances, the
         ``method``, and the ``interactions_estimated`` flag.
     """
     # A per-objective request cannot use the native (scalar-targeted) model.
+    validated_axes = (
+        validate_objective_axes(objective_axes)
+        if objective_axes is not None
+        else None
+    )
     if objective is None:
         native = store.param_importances()
         if native:
@@ -120,7 +145,10 @@ def compute_param_importance_report(
             )
     return ImportanceReport(
         importances=_rf_permutation_importance(
-            store, random_state=random_state, objective=objective
+            store,
+            random_state=random_state,
+            objective=objective,
+            objective_axes=validated_axes,
         ),
         method="rf-permutation",
         interactions_estimated=False,
@@ -128,35 +156,69 @@ def compute_param_importance_report(
 
 
 def _rf_permutation_importance(
-    store: StudyStore, *, random_state: int = 0, objective: str | None = None
+    store: StudyStore,
+    *,
+    random_state: int = 0,
+    objective: str | None = None,
+    objective_axes: Sequence[str] | None = None,
 ) -> dict[str, float]:
     """The homegrown fallback: RandomForest + permutation importance.
 
     Fits a ``RandomForestRegressor`` on the trials' (encoded) params → target and
     runs ``permutation_importance``. The target is ``Trial.score`` when
     ``objective`` is ``None`` (single-objective), else ``Trial.objectives[name]``
-    over the trials that carry it (others are dropped). Non-numeric params are
-    one-hot encoded (per-key prefix) and the encoded importances summed back to
-    the original key; absent conditional params fill to ``0``. Imports no optuna —
-    the lazy-import boundary holds on this path (screening-importance.md §1).
+    over COMPLETE trials whose full objective vector is present and finite
+    (others are dropped). Non-numeric params are one-hot encoded (per-key
+    prefix) and the encoded importances summed back to the original key; absent
+    conditional params fill to ``0``. Imports no optuna — the lazy-import
+    boundary holds on this path (screening-importance.md §1).
 
     Args:
         store: The journal of completed trials.
         random_state: Seed for the forest + permutation (reproducibility).
         objective: The named multi-objective to target, or ``None`` for the
             scalar ``Trial.score`` (plan §0a sidecar).
+        objective_axes: The scorer-declared full vector required for
+            multi-objective publication. Omit only for legacy callers that must
+            infer the axes from observed sidecars.
 
     Returns:
         ``{param_key: importance}`` sorted descending. Empty when fewer than two
         usable trials (nothing to fit).
     """
+    validated_axes = (
+        validate_objective_axes(objective_axes)
+        if objective_axes is not None
+        else None
+    )
     trials = [t for t in store.trials if not t.failed]
     if objective is not None:
-        # Per-objective: keep only trials that carry the named objective.
+        eligible_terminal = [
+            t
+            for t in store.terminal_trials()
+            if t.objectives is not None and not t.failed and not t.pruned
+        ]
+        required_axes = (
+            set(validated_axes)
+            if validated_axes is not None
+            else {
+                name
+                for trial in eligible_terminal
+                for name in (trial.objectives or {})
+            }
+        )
+        if objective not in required_axes:
+            return {}
+        # Publication-time per-axis models use only full finite COMPLETE vectors.
         trials = [
             t
-            for t in trials
-            if t.objectives is not None and objective in t.objectives
+            for t in eligible_terminal
+            if t.objectives is not None
+            and set(t.objectives) == required_axes
+            and all(
+                math.isfinite(float(t.objectives[name]))
+                for name in required_axes
+            )
         ]
     if len(trials) < 2:
         return {}
@@ -190,6 +252,9 @@ def _rf_permutation_importance(
         for col in dummies.columns:
             col_to_key[col] = col.split("=", 1)[0]
         parts.append(dummies)
+
+    if not parts:
+        return {}
 
     features = pd.concat(parts, axis=1).fillna(0.0)
     if features.shape[1] == 0:

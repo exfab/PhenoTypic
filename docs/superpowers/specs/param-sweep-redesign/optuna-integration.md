@@ -9,7 +9,7 @@ extra**, never core.
 - **Status:** Design settled (pre-implementation). **Phase 2** (the Optuna backend
   lands after the Phase-1 dependency-free engine core).
 - **Maps to:** master §4 (`SearchStrategy`), D3, §6 (shared study / drivers), §7
-  (multi-objective), §8 (`study.db`), §10 (dependency policy), §12 (resume), §14.
+  (multi-objective), §8 (study storage), §10 (dependency policy), §12 (resume), §14.
   Backs [`screening-importance.md`](screening-importance.md)'s fANOVA
   (`get_param_importances`) and supplies the ASHA pruner that
   [`robust-evaluation.md`](robust-evaluation.md) §7 reports into. Consumes the
@@ -33,7 +33,7 @@ the **default once installed**, and the seam stays open for a future `AxStrategy
 ## 2. What master §4 / D3 / §10 lock (documented, not re-litigated)
 
 Optuna is the default backend behind the thin Protocol; it lives in an **optional
-`tune` extra** (`uv sync --extras tune`), **never core**; Grid + Random + the importance
+`tune` extra** (`uv sync --extra tune`), **never core**; Grid + Random + the importance
 fallback are dependency-free; the seam stays open for `AxStrategy`. `optuna` is
 pure-Python / cross-platform (no Windows exclusion). Promoting it to core later (so TPE
 is the out-of-box default) is a one-line change.
@@ -132,8 +132,11 @@ single-objective, §9).
 
 ## 7. Persistence & concurrency
 
-- **Storage.** The study persists in **`study.db`** via Optuna `RDBStorage` (SQLite URL),
-  **WAL mode** for concurrent readers/writers (master §8).
+- **Storage.** A local run defaults to run-local **`study.db`** via Optuna
+  `RDBStorage` (SQLite/WAL). A Slurm run instead defaults to one absolute,
+  run-local `journal://` file with shared-filesystem locking. Operators may
+  explicitly select a supported external RDB such as PostgreSQL. **Distributed
+  SQLite is rejected** rather than treated as shared storage (master §8).
 - **Distributed ask-and-tell over the shared study.** Every worker (joblib task / SLURM
   array task) — and every driver (engine, human-via-Dash, agent-via-MCP) — opens the
   **same study by name + storage URL**, then `ask`s a trial, evaluates it (the pruning
@@ -145,8 +148,8 @@ single-objective, §9).
   The Protocol does **not** require multi-trial/thread-safe strategies — concurrency comes
   from running **one instance per worker**, each serial `ask→evaluate→tell` (image-level
   parallelism within a trial stays in the batch runner).
-- **Graduation to RDB.** Heavy parallel SLURM writes + live human writes are the point to
-  move to Postgres/MySQL — a **storage-URL config change**, not a rewrite (the seam).
+- **External RDB option.** Heavy parallel Slurm writes plus live human writes may
+  use PostgreSQL — a **storage-URL config change**, not a rewrite (the seam).
 
 ---
 
@@ -176,7 +179,7 @@ single-objective, §9).
 ## 9. Multi-objective
 
 A dict-returning `Scorer` (or `--multi-objective`) creates a multi-objective study with
-`directions=["maximize"] * n` — every term is already normalized higher-is-better
+`directions=["minimize"] * n` — every objective is a normalized cost, lower-is-better
 (robust-eval §5) — sampled by **NSGA-II** (or multi-objective TPE). The Pareto front is
 `study.best_trials`; the report draws the trade-off curve for a knee-point pick (master
 §7). **Pruning is disabled** for multi-objective studies (Optuna pruners are
@@ -190,7 +193,7 @@ objective (robust-eval §9).
 - `import optuna` happens **lazily inside the `OptunaStrategy` module**, never at package
   import. Requesting `--strategy tpe`/`cmaes` (or fANOVA importance) without the extra →
   a clear, actionable error: *"Optuna is required for this strategy; install
-  `phenotypic[tune]` (`uv sync --extras tune`)."*
+  `phenotypic[tune]` (`uv sync --extra tune`)."*
 - The `SearchStrategy` Protocol is the only contract; a future **`AxStrategy`** (BoTorch)
   drops in behind the same seam without touching the engine, the Evaluator, or the
   scorers. fANOVA importance uses Optuna when present and the RF-permutation fallback
@@ -207,7 +210,8 @@ objective (robust-eval §9).
 - **Pruning channel** — Optuna-backed channel reports + prunes; the no-op channel never
   prunes; a pruned outcome tells `PRUNED`; the Evaluator imports no Optuna (assert via a
   dependency check on the Phase-1 path).
-- **Persistence/resume** — a study resumes from `study.db` with persisted trials intact;
+- **Persistence/resume** — a study resumes from its configured backend (local
+  SQLite, a shared journal file, or an external RDB) with persisted trials intact;
   `--deterministic` (sequential) reproduces bit-identically under a fixed seed; a parallel
   run reproduces the *best-score distribution* across seeds (statistical, not exact).
 - **Budget/failure** — `is_exhausted()` counts completed+pruned; failures don't consume
@@ -230,8 +234,9 @@ Fixed seeds throughout; Optuna-requiring tests are skipped when the extra is abs
    auto for multi-objective.
 3. **Pruning** — ASHA (`SuccessiveHalvingPruner`) via the generic channel; config from
    the Evaluator ladder; explore round unpruned; off for multi-objective.
-4. **Concurrency** — distributed ask-and-tell over a shared `study.db` (SQLite WAL → RDB);
-   per-worker one-in-flight-trial strategy.
+4. **Concurrency** — distributed ask-and-tell over a shared journal file or
+   supported external RDB; distributed SQLite is rejected; per-worker
+   one-in-flight-trial strategy.
 5. **Budget** — count completed+pruned vs `n_trials` + a max-failures cap.
 6. **Dead-worker** — heartbeat → retry once (infra); candidate errors → `FAIL`.
 7. **Reproducibility** — bit-identical only for `--deterministic` (sequential); parallel
@@ -245,4 +250,4 @@ Fixed seeds throughout; Optuna-requiring tests are skipped when the extra is abs
 - ASHA `min_resource` / `reduction_factor` final defaults (shared with robust-eval §7,
   master §14).
 - Whether to promote `optuna` to core (making TPE the out-of-box default) post-Phase-2.
-- The RDB graduation threshold (when SQLite-WAL contention warrants Postgres/MySQL).
+- The threshold for selecting external PostgreSQL instead of the shared journal backend.

@@ -69,7 +69,7 @@ def test_run_marker_written_with_required_keys(tmp_path):
     marker_path = io.tune_cache_run_marker_path(out)
     assert marker_path.is_file()
     marker = json.loads(marker_path.read_text())
-    assert marker["version"] == 1
+    assert marker["version"] == 3
     # Study name bumped for the minimize-cost cutover (Phase 2, OQ7).
     assert marker["study_name"] == _STUDY_NAME
     assert marker["strategy"] == "grid"
@@ -135,6 +135,10 @@ def test_run_marker_written_before_slurm_branch(tmp_path, monkeypatch):
     written before the engine/SLURM branch). The strategy + slurm flag reflect
     the run."""
     from phenotypic.tune._tune_cli import _run as run_mod
+    from phenotypic.tune._study._storage import (
+        journal_path_from_url,
+        journal_url_for_path,
+    )
 
     class _FakeSlurmExecutor:
         def __init__(self, **kwargs):
@@ -147,14 +151,16 @@ def test_run_marker_written_before_slurm_branch(tmp_path, monkeypatch):
 
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(_spec(tmp_path).model_dump_json())
-    out = tmp_path / "slurm_out"
+    out = tmp_path / "slurm #?% 雪 out"
+    journal_path = io.tune_cache_journal_path(out.absolute())
+    storage_url = journal_url_for_path(journal_path)
     run_tuning(
         _spec(tmp_path),
         [load_synth_yeast_plate()],
         out,
         strategy="tpe",
         n_trials=4,
-        storage_url=f"sqlite:///{out / 'explicit.db'}",
+        storage_url=None,
         slurm=True,
         spec_path=spec_path,
         images_dir=tmp_path,
@@ -163,8 +169,13 @@ def test_run_marker_written_before_slurm_branch(tmp_path, monkeypatch):
     assert marker["slurm"] is True
     assert marker["strategy"] == "tpe"
     assert marker["n_trials"] == 4
-    # The explicit URL wins the 3-way fallback.
-    assert marker["storage_url"] == f"sqlite:///{out / 'explicit.db'}"
+    # The default URL survives marker serialization and opens the exact
+    # run-local backing file, even when the output path contains URL syntax.
+    assert marker["storage_url"] == storage_url
+    assert marker["storage_url"].endswith("?v=1")
+    assert "%23%3F%25%20%E9%9B%AA%20" in storage_url
+    assert journal_path_from_url(marker["storage_url"]) == journal_path
+    assert journal_path.is_file()
 
 
 def test_run_proceeds_when_marker_write_fails(tmp_path, monkeypatch, caplog):

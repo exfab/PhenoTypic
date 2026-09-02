@@ -21,7 +21,6 @@ from typing import Any, Dict, List, TYPE_CHECKING
 from uuid import uuid4
 
 import click
-import h5py  # type: ignore[import-untyped]
 from joblib import Parallel, delayed
 
 if TYPE_CHECKING:
@@ -35,6 +34,7 @@ from ._cli_types import (
     ExecutionResults,
     ImageFailure,
 )
+from phenotypic._core._provenance import pipeline_source_identity
 from ._cli_output_manager import OutputManager
 from ._cli_process_single import process_single_image_core
 from phenotypic.sdk_.slurm import get_slurm_array_limit
@@ -49,7 +49,11 @@ from ._cli_slurm_lifecycle import (
     mirror_job_to_metadata,
     new_slurm_generation,
 )
-from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
+from ._cli_update_state import (
+    append_event,
+    append_completion_event,
+    aggregate_state_from_events,
+)
 from ._cli_failure_tracker import (
     PerImageScientificError,
     append_failure,
@@ -57,22 +61,22 @@ from ._cli_failure_tracker import (
     read_failures,
     work_id_for_image,
 )
-from ._cli_completion import publish_image_success
+from ._cli_completion import image_data_artifact, publish_image_success
 from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
 from ._cli_constants import MAX_TRACEBACK_LINES
 from phenotypic.sdk_ import (
     JobMetadataKey,
-    HdfAttr,
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     dashboard_html_path,
     event_log_path,
     atomic_write_bytes,
     atomic_write_json,
     job_metadata_path,
     progress_dir,
+    source_image_stem,
 )
 from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
-from phenotypic.sdk_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
 
@@ -108,15 +112,21 @@ def _record_local_terminal_failure(
     exception: Exception,
     traceback_text: str,
     attempt_id: str,
+    *,
+    work_identity: tuple[str, str] | None = None,
 ) -> bool:
     """Commit a caught scientific failure for an exact local computation."""
     if not isinstance(exception, PerImageScientificError):
         return False
-    try:
-        work_id, relative_path = work_id_for_image(config, dataset, image_path)
-    except OSError:
-        logger.error("Could not calculate terminal work identity", exc_info=True)
-        return False
+    if work_identity is None:
+        try:
+            work_identity = work_id_for_image(config, dataset, image_path)
+        except OSError:
+            logger.error(
+                "Could not calculate terminal work identity", exc_info=True
+            )
+            return False
+    work_id, relative_path = work_identity
     try:
         lifecycle_epoch = config.processing_generation
         lifecycle_epoch = lifecycle_epoch or "local-unfenced"
@@ -144,9 +154,13 @@ def _publish_local_image_success(
     dataset: str,
     image_path: Path,
     attempt_id: str,
+    *,
+    work_identity: tuple[str, str] | None = None,
 ) -> None:
     """Write the general marker after all required local artifacts exist."""
-    work_id, relative_path = work_id_for_image(config, dataset, image_path)
+    if work_identity is None:
+        work_identity = work_id_for_image(config, dataset, image_path)
+    work_id, relative_path = work_identity
     if config.process_only_layer is not None:
         from ._cli_process_only import process_only_output_path
 
@@ -156,21 +170,24 @@ def _publish_local_image_success(
                 image_path,
                 config.input_path,
                 config.process_only_layer,
+                fmt=config.process_format,
             )
         }
         mode = "process"
     else:
+        data_key, data_path = image_data_artifact(
+            output_dir,
+            output_manager,
+            dataset,
+            source_image_stem(image_path),
+        )
         artifacts = {
-            "measurements": output_manager.get_output_path(
-                dataset, "measurements", image_path.stem
-            ),
-            "hdf": output_manager.get_output_path(
-                dataset, "hdf", image_path.stem
-            ),
+            "measurements": data_path / MEASUREMENT_TABLE_RELATIVE_PATH,
+            data_key: data_path,
         }
         if output_manager.save_overlays:
             artifacts["overlay"] = output_manager.get_output_path(
-                dataset, "overlays", image_path.stem
+                dataset, "overlays", source_image_stem(image_path)
             )
         mode = "full"
     lifecycle_epoch = config.processing_generation
@@ -181,7 +198,7 @@ def _publish_local_image_success(
             work_id=work_id,
             dataset=dataset,
             relative_image_path=relative_path,
-            image_stem=image_path.stem,
+            image_stem=source_image_stem(image_path),
             mode=mode,
             attempt_id=attempt_id,
             lifecycle_epoch=lifecycle_epoch,
@@ -206,7 +223,9 @@ def _write_slurm_image_task_mapping(
         atomic_write_json(metadata_path, job_metadata)
 
 
-def _truncate_error_message(error_msg: str, max_lines: int = MAX_TRACEBACK_LINES) -> str:
+def _truncate_error_message(
+    error_msg: str, max_lines: int = MAX_TRACEBACK_LINES
+) -> str:
     """
     Truncate error messages to prevent event log bloat.
 
@@ -220,13 +239,13 @@ def _truncate_error_message(error_msg: str, max_lines: int = MAX_TRACEBACK_LINES
     Returns:
         Truncated error message
     """
-    lines = error_msg.split('\n')
+    lines = error_msg.split("\n")
     if len(lines) <= max_lines:
         return error_msg
 
     # Keep first 5 and last 5 lines
-    kept_lines = lines[:5] + ['... (truncated) ...'] + lines[-5:]
-    return '\n'.join(kept_lines)
+    kept_lines = lines[:5] + ["... (truncated) ..."] + lines[-5:]
+    return "\n".join(kept_lines)
 
 
 class ExecutionStrategy(ABC):
@@ -288,7 +307,7 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         if measure_only:
             logger.info(
-                "Measure-only rerun: %d HDFs across %d datasets",
+                "Measure-only rerun: %d image stores across %d datasets",
                 len(all_tasks),
                 len(datasets),
             )
@@ -298,7 +317,7 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         console = Console()
         header = (
-            "Measuring HDFs (Rerun)" if measure_only else "Processing Images"
+            "Measuring Stores (Rerun)" if measure_only else "Processing Images"
         )
         console.print(f"\n[bold cyan]{header}[/bold cyan]")
         console.rule(style="cyan")
@@ -327,7 +346,9 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         if has_gpu_ops:
             try:
-                from phenotypic.detect.nn._helper._checkpoint_manager import resolve_device
+                from phenotypic.detect.nn._helper._checkpoint_manager import (
+                    resolve_device,
+                )
 
                 device = resolve_device("auto")
                 console.print(f"[green]✓ GPU detected: {device}[/green]")
@@ -363,13 +384,9 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         # Generate progress manifest and dashboard (local mode — runs once)
         try:
-            datasets_inventory = (
-                self.config.full_dataset_inventory
-                or {
-                    ds.name: [image.name for image in ds.images]
-                    for ds in datasets
-                }
-            )
+            datasets_inventory = self.config.full_dataset_inventory or {
+                ds.name: [image.name for image in ds.images] for ds in datasets
+            }
             datasets_totals = {
                 name: len(images)
                 for name, images in datasets_inventory.items()
@@ -385,7 +402,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                     datasets=datasets_totals,
                     execution_mode="local",
                     start_time=start_iso,
-                    input_path=self.config.input_path.stem,
+                    input_path=source_image_stem(self.config.input_path),
                     gui_record_generation=os.environ.get(
                         GUI_RECORD_GENERATION_ENV_VAR
                     ),
@@ -395,7 +412,9 @@ class LocalParallelStrategy(ExecutionStrategy):
             else:
                 local_job_meta: dict = {
                     JobMetadataKey.START_TIME: start_iso,
-                    JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
+                    JobMetadataKey.INPUT_PATH: source_image_stem(
+                        self.config.input_path
+                    ),
                     JobMetadataKey.EXECUTION_MODE: "local",
                     JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
                         GUI_RECORD_GENERATION_ENV_VAR
@@ -414,7 +433,9 @@ class LocalParallelStrategy(ExecutionStrategy):
                     datasets_totals,
                 )
         except Exception:
-            logger.debug("Failed to generate progress dashboard", exc_info=True)
+            logger.debug(
+                "Failed to generate progress dashboard", exc_info=True
+            )
 
         return ExecutionResults(
             datasets=dataset_results,
@@ -443,6 +464,8 @@ class LocalParallelStrategy(ExecutionStrategy):
         # Log "started" event
         append_event(event_log, dataset.name, image_path.name, "started")
 
+        work_identity: tuple[str, str] | None = None
+
         try:
             # Prepare read kwargs.
             read_kwargs: Dict[str, Any] = {}
@@ -452,6 +475,9 @@ class LocalParallelStrategy(ExecutionStrategy):
                 read_kwargs["detect_mode"] = self.config.detect_mode
 
             # Process
+            work_identity = work_id_for_image(
+                self.config, dataset.name, image_path
+            )
             process_single_image_core(
                 pipeline_path=self.config.pipeline_json,
                 image_path=image_path,
@@ -461,7 +487,10 @@ class LocalParallelStrategy(ExecutionStrategy):
                 read_kwargs=read_kwargs,
                 output_manager=self.output_manager,
                 cli_nrows=self.config.nrows,
+                drop_originals=self.config.drop_originals,
+                pipeline_identity=self.config.pipeline_identity,
                 cli_ncols=self.config.ncols,
+                work_id=work_identity[0],
             )
 
             _publish_local_image_success(
@@ -471,6 +500,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 dataset.name,
                 image_path,
                 attempt_id,
+                work_identity=work_identity,
             )
 
             # Log success
@@ -494,18 +524,25 @@ class LocalParallelStrategy(ExecutionStrategy):
                 e,
                 tb,
                 attempt_id,
+                work_identity=work_identity,
             )
 
             logger.error(
                 "Processing failed for %s/%s:\n%s",
-                dataset.name, image_path.name, tb,
+                dataset.name,
+                image_path.name,
+                tb,
             )
 
             # Truncate error message to prevent event log bloat
             truncated_msg = _truncate_error_message(error_msg)
 
             append_completion_event(
-                event_log, dataset.name, image_path.name, "failed", truncated_msg
+                event_log,
+                dataset.name,
+                image_path.name,
+                "failed",
+                truncated_msg,
             )
 
             # Write structured failure record
@@ -522,7 +559,10 @@ class LocalParallelStrategy(ExecutionStrategy):
             except Exception:
                 logger.warning("Failed to write failure record", exc_info=True)
 
-            if isinstance(e, PerImageScientificError) and not terminal_committed:
+            if (
+                isinstance(e, PerImageScientificError)
+                and not terminal_committed
+            ):
                 logger.warning(
                     "Scientific failure for %s/%s remains pending because its "
                     "terminal record was not committed",
@@ -568,6 +608,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 read_kwargs=read_kwargs,
                 cli_nrows=self.config.nrows,
                 cli_ncols=self.config.ncols,
+                process_format=self.config.process_format,
             )
             _publish_local_image_success(
                 self.config,
@@ -597,7 +638,9 @@ class LocalParallelStrategy(ExecutionStrategy):
             )
             logger.error(
                 "Apply-only failed for %s/%s:\n%s",
-                dataset.name, image_path.name, tb,
+                dataset.name,
+                image_path.name,
+                tb,
             )
             append_completion_event(
                 event_log,
@@ -618,7 +661,10 @@ class LocalParallelStrategy(ExecutionStrategy):
                 )
             except Exception:
                 logger.warning("Failed to write failure record", exc_info=True)
-            if isinstance(e, PerImageScientificError) and not terminal_committed:
+            if (
+                isinstance(e, PerImageScientificError)
+                and not terminal_committed
+            ):
                 logger.warning(
                     "Scientific failure for %s/%s remains pending because its "
                     "terminal record was not committed",
@@ -635,66 +681,45 @@ class LocalParallelStrategy(ExecutionStrategy):
         event_log: Path,
     ) -> tuple[str, str, bool, str]:
         """
-        Rerun ``pipeline.measure()`` on a single already-processed HDF file.
+        Rerun ``pipeline.measure()`` on one already-processed image store.
 
         Mirrors :meth:`_process_single_local` — same event-log helpers and
         same (name, success, error) return shape so the dashboard aggregator
         treats measure-mode results identically to forward-run results —
         but dispatches to
-        :func:`phenotypic._cli._cli_process_single.process_single_hdf_measure_core`
+        :func:`phenotypic._cli._cli_process_single.process_single_store_measure_core`
         instead of the detection path.  No state file is touched; the
         top-level CLI is responsible for state in forward mode only.
 
         Args:
             dataset: Dataset metadata (used for event logging).
-            image_path: Path to the ``.h5`` file to reload.
+            image_path: Path to the ``*.ome.zarr`` store to reload.
             output_dir: Base output directory (passed through; measure path
                 does not use it directly).
             event_log: Path to the processing event log.
 
         Returns:
-            Tuple of ``(dataset_name, hdf_filename, success, error_or_tb)``
+            Tuple of ``(dataset_name, store_name, success, error_or_tb)``
             matching the forward-path contract.
         """
         # Lazy-import the measure worker to match the forward-run pattern and
         # avoid any new top-level import cycle.
-        from ._cli_process_single import process_single_hdf_measure_core
+        from ._cli_process_single import process_single_store_measure_core
 
         append_event(event_log, dataset.name, image_path.name, "started")
 
         try:
-            # Detect the saved image class from the HDF root attr so
-            # GridImage files rehydrate with their grid state intact.
-            resolved_image_type: ImageTypeName = (
-                self.config.image_type  # type: ignore[assignment]
-            )
-            try:
-                with h5py.File(image_path, "r") as hf:
-                    saved_class = hf.attrs.get(HdfAttr.PHENOTYPIC_CLASS)
-                    if isinstance(saved_class, bytes):
-                        saved_class = saved_class.decode(
-                            "utf-8", errors="replace"
-                        )
-                    if saved_class == "GridImage":
-                        resolved_image_type = "GridImage"
-                    elif saved_class == "Image":
-                        resolved_image_type = "Image"
-            except (OSError, KeyError) as hdf_err:
-                logger.warning(
-                    "Could not read phenotypic_class from %s (%s: %s); "
-                    "falling back to configured image_type=%s",
-                    image_path,
-                    type(hdf_err).__name__,
-                    hdf_err,
-                    resolved_image_type,
-                )
-
-            process_single_hdf_measure_core(
+            # The class dispatch lives in ``load_image_from_store``, which the
+            # measure core calls: it reads ``phenotypic.image_class`` off the
+            # store root so a GridImage rehydrates with its grid state intact,
+            # and falls back to the configured ``--image-type`` only when the
+            # block carries none.
+            process_single_store_measure_core(
                 pipeline_path=self.config.pipeline_json,
-                hdf_path=image_path,
+                store_path=image_path,
                 output_dir=output_dir,
                 dataset_name=dataset.name,
-                image_type=resolved_image_type,
+                image_type=self.config.image_type,  # type: ignore[arg-type]
                 output_manager=self.output_manager,
             )
 
@@ -711,7 +736,9 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             logger.error(
                 "Measure rerun failed for %s/%s:\n%s",
-                dataset.name, image_path.name, tb,
+                dataset.name,
+                image_path.name,
+                tb,
             )
 
             truncated_msg = _truncate_error_message(error_msg)
@@ -735,9 +762,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                     traceback=tb,
                 )
             except Exception:
-                logger.warning(
-                    "Failed to write failure record", exc_info=True
-                )
+                logger.warning("Failed to write failure record", exc_info=True)
 
             return (dataset.name, image_path.name, False, tb)
 
@@ -839,7 +864,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         total_images = sum(len(d.images) for d in datasets)
         if measure_only:
             logger.info(
-                "Measure-only rerun: %d HDFs across %d datasets",
+                "Measure-only rerun: %d image stores across %d datasets",
                 total_images,
                 len(datasets),
             )
@@ -871,12 +896,16 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         # Query SLURM array limits
         console.print("[cyan]Querying SLURM array limits...[/cyan]")
         array_limit = get_slurm_array_limit()
-        console.print(f"[green]✓[/green] SLURM array limit: [bold]{array_limit}[/bold]\n")
+        console.print(
+            f"[green]✓[/green] SLURM array limit: [bold]{array_limit}[/bold]\n"
+        )
 
         from ._cli_validation import pipeline_requires_gpu
 
         # Measure mode never runs detection, so GPU provisioning is skipped.
-        if not measure_only and pipeline_requires_gpu(self.config.pipeline_json):
+        if not measure_only and pipeline_requires_gpu(
+            self.config.pipeline_json
+        ):
             slurm_args = dict(self.config.slurm_args)
 
             if "slurm_gpus_per_node" not in slurm_args:
@@ -890,7 +919,13 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             if partition:
                 try:
                     result = subprocess.run(
-                        ["sinfo", "-p", partition, "--Format=gres", "--noheader"],
+                        [
+                            "sinfo",
+                            "-p",
+                            partition,
+                            "--Format=gres",
+                            "--noheader",
+                        ],
                         capture_output=True,
                         text=True,
                         timeout=10,
@@ -916,6 +951,11 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         # remains a separate identity.
         generation = new_slurm_generation()
         self.config.slurm_generation = generation
+        if self.config.pipeline_identity is None:
+            self.config.pipeline_identity = pipeline_source_identity(
+                self.config.pipeline_json
+            )
+
         pipeline_snapshot = (
             progress_dir(output_dir)
             / "worklists"
@@ -1008,7 +1048,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
                 if self.config.metadata_csv
                 else None
             ),
-            JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
+            JobMetadataKey.INPUT_PATH: source_image_stem(self.config.input_path),
             JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
                 "PHENOTYPIC_GUI_RECORD_GENERATION"
             ),
@@ -1046,9 +1086,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
                 output_dir,
                 generation=generation,
                 token=(
-                    "dispatcher-1"
-                    if has_initial_dispatcher
-                    else "finalizer"
+                    "dispatcher-1" if has_initial_dispatcher else "finalizer"
                 ),
                 role="dispatcher" if has_initial_dispatcher else "finalizer",
                 job_id=str(job_ids[1]),
@@ -1070,7 +1108,9 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
 
         # Preserve the lifecycle's role-bearing job records.
         _write_slurm_image_task_mapping(metadata_path, image_task_mapping)
-        console.print(f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]")
+        console.print(
+            f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]"
+        )
 
         if self.config.process_only_layer:
             # Process-only (D13): no aggregation/dashboard. A dedicated
@@ -1140,13 +1180,10 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         start_time = datetime.now()
 
         total_images = sum(len(d.images) for d in datasets)
-        inventory = (
-            self.config.full_dataset_inventory
-            or {
-                dataset.name: [image.name for image in dataset.images]
-                for dataset in datasets
-            }
-        )
+        inventory = self.config.full_dataset_inventory or {
+            dataset.name: [image.name for image in dataset.images]
+            for dataset in datasets
+        }
         last_completed = 0
 
         try:
@@ -1235,9 +1272,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         return ExecutionResults(
             datasets=dataset_results,
             total_images=total_images,
-            total_completed=sum(
-                r.completed for r in dataset_results.values()
-            ),
+            total_completed=sum(r.completed for r in dataset_results.values()),
             total_failed=sum(r.failed for r in dataset_results.values()),
             execution_mode="slurm",
             start_time=start_time,
@@ -1259,6 +1294,46 @@ def uses_staged_gpu_strategy(config: ExecutionConfig) -> bool:
     return config.process_only_layer in (None, "objmap")
 
 
+def prepare_store_run_environment(
+    output_dir: Path, *, durable_writes: bool | None = None
+) -> int:
+    """Log the resolved durability mode and sweep stale promote leftovers.
+
+    Both are required mitigations from spec §3.7 and §3.2, and neither is
+    qualified by execution mode: a plain ``--mode full`` CPU run publishes its
+    per-image stores through the same ``promote_store``. So this lives in the
+    shared run setup every strategy is dispatched through, not in the staged
+    strategy (OPEN-QUESTIONS **G6/P21**).
+
+    The sweep runs **here, in the submitting/driving process, before any worker
+    exists** — never from a worker's own start-up. A uuid identifies the
+    *attempt*, not whether its process is alive, and under a SLURM array the
+    tasks share one output root and start at different times, so a per-worker
+    sweep would ``rmtree`` the ``.part`` directories its siblings are actively
+    filling. :func:`~phenotypic.sdk_.ngff_.sweep_orphan_parts`'s age guard is a
+    backstop, not a licence to move this call (OPEN-QUESTIONS **B6/P16**).
+
+    Args:
+        output_dir: Run output root.
+        durable_writes: ``--durable-writes`` / ``--no-durable-writes``, or
+            ``None`` to auto-detect from the SLURM environment.
+
+    Returns:
+        Number of orphaned ``.part`` / ``.trash`` directories removed.
+    """
+    from phenotypic.sdk_ import results_dir
+    from phenotypic.sdk_.ngff_ import describe_durability, sweep_orphan_parts
+
+    logger.info(describe_durability(durable_writes))
+    removed = sweep_orphan_parts(results_dir(output_dir))
+    logger.info(
+        "swept %d orphaned store .part/.trash director%s",
+        removed,
+        "y" if removed == 1 else "ies",
+    )
+    return removed
+
+
 def create_execution_strategy(
     config: ExecutionConfig, output_manager: OutputManager
 ) -> ExecutionStrategy:
@@ -1272,6 +1347,11 @@ def create_execution_strategy(
     Returns:
         ExecutionStrategy instance (Local or SLURM)
     """
+    prepare_store_run_environment(
+        config.output_dir or output_manager.base_dir,
+        durable_writes=config.durable_writes,
+    )
+
     if config.is_slurm_mode():
         # SLURM: a forward GPU run becomes the staged 3-link afterany chain
         # (CPU preprocess -> resident-model GPU detect shards -> CPU measure).

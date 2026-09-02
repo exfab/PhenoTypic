@@ -19,6 +19,7 @@ from PIL import Image as PIL_Image
 import phenotypic
 from phenotypic.schema import GENETIC, IMAGE
 from phenotypic.sdk_.constants_ import IO
+from tests.fixtures.legacy_hdf._generate import write_v2_grouped
 
 HAS_EXIFTOOL = shutil.which("exiftool") is not None
 
@@ -773,7 +774,7 @@ class TestStoredMetadataKeyNormalization:
             },
         )
 
-        loaded = phenotypic.Image.load_hdf5(path)
+        loaded = phenotypic.Image._load_hdf5_for_migration(path)
         prot = loaded._metadata.protected
         pub = loaded._metadata.public
 
@@ -791,36 +792,35 @@ class TestStoredMetadataKeyNormalization:
         assert "Strain" not in pub
         assert pub["OperatorNote"] == "late shift"
 
-    def test_hdf_roundtrip_normalizes_known_keys_and_preserves_custom_bare_keys(
+    def test_store_roundtrip_normalizes_known_keys_and_preserves_custom_bare_keys(
         self, temp_image_dir
     ):
-        """New HDF writes mark the namespace and retain the custom-key contract."""
-        from phenotypic._core._image_parts._image_io_handler import (
-            _METADATA_SCHEMA_VERSION_ATTR,
-            _METADATA_SCHEMA_VERSION_FLAT,
-        )
+        """New store writes mark the namespace and retain the custom-key contract.
+
+        Ported from the HDF writer in Phase 6, which removed ``save2hdf5``.
+        The subject is a *live writer*, so the port follows the write path to
+        ``save2zarr`` rather than to the golden-fixture generator -- pointing it
+        at the generator would have turned a claim about production into a
+        claim about test code.
+        """
+        from phenotypic.sdk_ import PhenotypicAttr
+        from phenotypic.sdk_.ngff_ import read_phenotypic_attributes
 
         img = phenotypic.Image(
             arr=np.zeros((12, 16, 3), dtype=np.uint8), name="roundtrip"
         )
         img.metadata["Strain"] = "BY4741"
         img.metadata["OperatorNote"] = "late shift"
-        path = temp_image_dir / "metadata_roundtrip.h5"
+        path = temp_image_dir / "metadata_roundtrip.ome.zarr"
 
-        img.save2hdf5(path)
+        store = img.save2zarr(path)
 
-        with h5py.File(path, "r") as f:
-            assert int(f.attrs["schema_version"]) == 2
-            assert (
-                int(f.attrs[_METADATA_SCHEMA_VERSION_ATTR])
-                == _METADATA_SCHEMA_VERSION_FLAT
-            )
-            attrs = f["metadata"]["public"].attrs
-            assert GENETIC.STRAIN.value in attrs
-            assert "Strain" not in attrs
-            assert "OperatorNote" in attrs
+        public = read_phenotypic_attributes(store)[PhenotypicAttr.METADATA]["public"]
+        assert GENETIC.STRAIN.value in public
+        assert "Strain" not in public
+        assert "OperatorNote" in public
 
-        loaded = phenotypic.Image.load_hdf5(path)
+        loaded = phenotypic.Image.load_zarr(store)
         assert loaded._metadata.public[GENETIC.STRAIN] == "BY4741"
         assert loaded._metadata.public["OperatorNote"] == "late shift"
 
@@ -835,7 +835,7 @@ class TestStoredMetadataKeyNormalization:
             arr=np.zeros((12, 16, 3), dtype=np.uint8), name="future_flat"
         )
         path = temp_image_dir / "future_flat.h5"
-        img.save2hdf5(path)
+        write_v2_grouped(path, img)
         with h5py.File(path, "r+") as f:
             f.attrs[_METADATA_SCHEMA_VERSION_ATTR] = (
                 _METADATA_SCHEMA_VERSION_PER_TOPIC
@@ -843,7 +843,7 @@ class TestStoredMetadataKeyNormalization:
             attrs = f["metadata"]["public"].attrs
             attrs["MetadataGenetic_Strain"] = json.dumps("BY4741")
 
-        loaded = phenotypic.Image.load_hdf5(path)
+        loaded = phenotypic.Image._load_hdf5_for_migration(path)
 
         assert loaded._metadata.public[GENETIC.STRAIN] == "BY4741"
         assert "MetadataGenetic_Strain" not in loaded._metadata.public
@@ -858,13 +858,13 @@ class TestStoredMetadataKeyNormalization:
             arr=np.zeros((12, 16, 3), dtype=np.uint8), name="equal_collision"
         )
         path = temp_image_dir / "equal_collision.h5"
-        img.save2hdf5(path)
+        write_v2_grouped(path, img)
         with h5py.File(path, "r+") as f:
             attrs = f["metadata"]["public"].attrs
             attrs[GENETIC.STRAIN.value] = json.dumps("BY4741")
             attrs["MetadataGenetic_Strain"] = json.dumps("BY4741")
 
-        loaded = phenotypic.Image.load_hdf5(path)
+        loaded = phenotypic.Image._load_hdf5_for_migration(path)
 
         assert loaded._metadata.public == {GENETIC.STRAIN: "BY4741"}
 
@@ -876,7 +876,7 @@ class TestStoredMetadataKeyNormalization:
             arr=np.zeros((12, 16, 3), dtype=np.uint8), name="conflict"
         )
         path = temp_image_dir / "conflict.h5"
-        img.save2hdf5(path)
+        write_v2_grouped(path, img)
         with h5py.File(path, "r+") as f:
             attrs = f["metadata"]["public"].attrs
             attrs[GENETIC.STRAIN.value] = json.dumps("BY4741")
@@ -886,7 +886,7 @@ class TestStoredMetadataKeyNormalization:
             ValueError,
             match=r"Conflicting stored metadata keys.*MetadataGenetic_Strain",
         ):
-            phenotypic.Image.load_hdf5(path)
+            phenotypic.Image._load_hdf5_for_migration(path)
 
         with h5py.File(path, "r") as f:
             attrs = f["metadata"]["public"].attrs
@@ -906,14 +906,14 @@ class TestStoredMetadataKeyNormalization:
             arr=np.zeros((12, 16, 3), dtype=np.uint8), name="typed_conflict"
         )
         path = temp_image_dir / "typed_conflict.h5"
-        img.save2hdf5(path)
+        write_v2_grouped(path, img)
         with h5py.File(path, "r+") as f:
             attrs = f["metadata"]["public"].attrs
             attrs[GENETIC.STRAIN.value] = json.dumps(current_value)
             attrs["MetadataGenetic_Strain"] = json.dumps(flat_value)
 
         with pytest.raises(ValueError, match="Conflicting stored metadata keys"):
-            phenotypic.Image.load_hdf5(path)
+            phenotypic.Image._load_hdf5_for_migration(path)
 
     def test_flat_metadata_marker_does_not_change_legacy_layout_dispatch(
         self, temp_image_dir
@@ -933,7 +933,7 @@ class TestStoredMetadataKeyNormalization:
         with h5py.File(path, "r+") as f:
             f.attrs[_METADATA_SCHEMA_VERSION_ATTR] = _METADATA_SCHEMA_VERSION_FLAT
 
-        loaded = phenotypic.Image.load_hdf5(path)
+        loaded = phenotypic.Image._load_hdf5_for_migration(path)
 
         assert loaded.name == "legacy_layout"
         assert loaded._metadata.public[GENETIC.STRAIN] == "BY4741"
@@ -949,7 +949,7 @@ class TestStoredMetadataKeyNormalization:
             arr=np.zeros((16, 24, 3), dtype=np.uint8), name="v2_legacy", bit_depth=8
         )
         path = temp_image_dir / "v2_legacy.h5"
-        img.save2hdf5(path)
+        write_v2_grouped(path, img)
 
         # Rewrite prefixed protected attr names -> bare labels, in place.
         with h5py.File(path, "r+") as f:
@@ -960,7 +960,7 @@ class TestStoredMetadataKeyNormalization:
                     del prot_attrs[member.value]
                     prot_attrs[member.label] = val
 
-        loaded = phenotypic.Image.load_hdf5(path)
+        loaded = phenotypic.Image._load_hdf5_for_migration(path)
         prot = loaded._metadata.protected
 
         assert all(str(k).startswith("Metadata_") for k in prot)
@@ -981,7 +981,7 @@ class TestStoredMetadataKeyNormalization:
             arr=np.zeros((16, 24, 3), dtype=np.uint8), name="v2_generic", bit_depth=16
         )
         path = temp_image_dir / "v2_generic.h5"
-        img.save2hdf5(path)
+        write_v2_grouped(path, img)
 
         # Rewrite prefixed protected attr names -> the intermediate generic prefix,
         # in place, and add an unknown generic-prefixed user key that must survive.
@@ -994,7 +994,7 @@ class TestStoredMetadataKeyNormalization:
                     prot_attrs[f"Metadata_{member.label}"] = val
             prot_attrs["Metadata_Foo"] = "bar"  # unknown -> must pass through
 
-        loaded = phenotypic.Image.load_hdf5(path)
+        loaded = phenotypic.Image._load_hdf5_for_migration(path)
         prot = loaded._metadata.protected
 
         # Canonical framework keys remain deduplicated and values are preserved.

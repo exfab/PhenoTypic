@@ -12,18 +12,44 @@ from typing import Mapping
 from uuid import uuid4
 
 from phenotypic.sdk_ import (
+    CommitGuard,
+    DIR_IMAGE_COMPLETE,
+    STORE_ROOT_JSON,
     aggregate_publication_marker_path,
     atomic_write_json,
+    file_fingerprint,
     image_completion_marker_path,
     master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
+    publication_commit,
+    progress_dir,
     run_completion_marker_path,
+    source_image_stem,
     validated_published_metadata_migration_targets,
 )
 
-SUCCESS_MARKER_VERSION = 1
+#: Bumped to 2 when artifact descriptors gained ``kind``. A v1 marker
+#: describes the per-image ``.h5``, and ``--mode migrate`` defaults to
+#: ``keep_source=True`` -- so that file is still present at its recorded size
+#: and sha256, and a v1 marker would *validate* against it while the store it
+#: should describe went entirely unverified. The bump protects against a false
+#: ``complete``, not against over-reprocessing (ledger FLOW-23).
+SUCCESS_MARKER_VERSION = 2
+
+# ``STORE_ROOT_JSON`` (imported above) is the root metadata document an
+# OME-Zarr store is fingerprinted by. ``promote_store`` writes it **last**, so
+# its digest covers the whole promoted store: any later re-promote replaces it
+# and invalidates the marker. Fingerprinting the store *directory* instead
+# would be a constant function of the path -- ``paths_fingerprint`` emits one
+# sentinel byte for a directory and does not recurse -- and would certify a
+# store whose contents changed.
+
+#: Artifact descriptor kinds. ``"file"`` is the default for a descriptor
+#: written before the ``kind`` tag existed.
+ARTIFACT_KIND_FILE = "file"
+ARTIFACT_KIND_STORE = "store"
 
 
 def _sha256(path: Path) -> str:
@@ -32,6 +58,106 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _artifact_descriptor(resolved: Path, relative: Path) -> dict[str, object]:
+    """Describe one marker-bound artifact as a file or as a store.
+
+    A store is a *directory*, which the file descriptor cannot express:
+    ``_sha256`` opens its argument and ``stat().st_size`` on a directory is a
+    filesystem detail, not a content fingerprint. Store descriptors therefore
+    carry no ``size`` and key their ``sha256`` on the root ``zarr.json``'s
+    **contents** via :func:`file_fingerprint` -- content-only, so the
+    descriptor stays relocatable exactly like every file descriptor
+    (``paths_fingerprint`` would fold the absolute resolved path in, and this
+    tree is routinely reached through more than one mount; ledger FLOW-3).
+
+    Args:
+        resolved: The strictly-resolved artifact path.
+        relative: Its path relative to the run output root.
+
+    Returns:
+        A JSON-serializable descriptor tagged with its ``kind``.
+
+    Raises:
+        FileNotFoundError: A store directory with no root ``zarr.json``.
+    """
+    if resolved.is_dir():
+        return {
+            "path": relative.as_posix(),
+            "kind": ARTIFACT_KIND_STORE,
+            "sha256": file_fingerprint(resolved / STORE_ROOT_JSON),
+        }
+    return {
+        "path": relative.as_posix(),
+        "kind": ARTIFACT_KIND_FILE,
+        "size": resolved.stat().st_size,
+        "sha256": _sha256(resolved),
+    }
+
+
+def _store_artifact_matches(
+    artifact: Path, descriptor: Mapping[str, object]
+) -> bool:
+    """Return whether a store on disk still matches its descriptor.
+
+    A promoted store always has a root ``zarr.json``, so testing for that one
+    regular file covers "not a directory", "not a store", and "an interrupted
+    re-promote" in a single check.
+    """
+    root_json = artifact / STORE_ROOT_JSON
+    if not root_json.is_file():
+        return False
+    return file_fingerprint(root_json) == descriptor.get("sha256")
+
+
+def image_data_artifact(
+    output_dir: Path,
+    output_manager: object,
+    dataset: str,
+    image_stem: str,
+) -> tuple[str, Path]:
+    """Return the ``(key, path)`` of the per-image data artifact to certify.
+
+    Every forward path now writes an OME-Zarr store; only a **legacy tree**
+    carried over from an older release still has a per-image ``.h5``. Both
+    have to be describable from one place.
+
+    The artifact returned for a store is the **store directory**, and the
+    marker records it as ``kind: "store"``. The digest still keys on the root
+    ``zarr.json``'s contents (see :data:`STORE_ROOT_JSON`) -- naming the
+    directory is what lets the marker say *what class of thing* it certifies,
+    without any caller having to parse a path string to find out.
+
+    Because the root ``zarr.json`` is written **last** by ``promote_store``,
+    its digest covers the whole promoted store: any later re-promote replaces
+    it and invalidates the marker. That is why no store write may follow
+    ``publish_image_success`` on any path (ledger **FLOW-6**).
+
+    The ``"hdf"`` fallback is **not** dead code. Nothing on a forward path
+    writes a per-image ``.h5`` any more, but
+    ``phenotypicCLI._migrate_legacy_success_evidence`` mints markers for
+    **legacy trees**, which have an ``.h5`` and no store, and that is exactly
+    the caller this branch serves.
+
+    Args:
+        output_dir: Run output root.
+        output_manager: The run's :class:`OutputManager` (HDF fallback only).
+        dataset: Dataset name.
+        image_stem: Image stem.
+
+    Returns:
+        ``("store", <store>)`` when a store exists, else
+        ``("hdf", results/<ds>/hdf/<stem>.h5)``.
+    """
+    from phenotypic.sdk_ import zarr_store_path
+
+    store = zarr_store_path(output_dir, dataset, image_stem)
+    if (store / STORE_ROOT_JSON).is_file():
+        return ARTIFACT_KIND_STORE, store
+    return "hdf", output_manager.get_output_path(  # type: ignore[attr-defined]
+        dataset, "hdf", image_stem
+    )
 
 
 def publish_image_success(
@@ -45,6 +171,11 @@ def publish_image_success(
     attempt_id: str,
     lifecycle_epoch: str,
     artifacts: Mapping[str, Path],
+    expected_artifact_descriptors: (
+        Mapping[str, Mapping[str, object]] | None
+    ) = None,
+    source_provenance: Mapping[str, object] | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Validate artifacts and atomically publish the image marker last."""
     if os.environ.get("SLURM_JOB_ID"):
@@ -59,6 +190,7 @@ def publish_image_success(
                 "Cannot publish image success for a stale SLURM lifecycle"
             )
     descriptors: dict[str, dict[str, object]] = {}
+    resolved_artifacts: dict[str, Path] = {}
     output_root = output_dir.resolve()
     for name, artifact in artifacts.items():
         resolved = artifact.resolve(strict=True)
@@ -68,11 +200,28 @@ def publish_image_success(
             raise ValueError(
                 f"Artifact escapes output root: {artifact}"
             ) from exc
-        descriptors[name] = {
-            "path": relative.as_posix(),
-            "size": resolved.stat().st_size,
-            "sha256": _sha256(resolved),
-        }
+        resolved_artifacts[name] = resolved
+        descriptors[name] = _artifact_descriptor(resolved, relative)
+
+    def _validate_expected_artifacts() -> None:
+        if expected_artifact_descriptors is None:
+            return
+        for name, expected in expected_artifact_descriptors.items():
+            artifact = resolved_artifacts.get(name)
+            if artifact is None:
+                raise RuntimeError(
+                    f"Expected marker artifact is missing: {name}"
+                )
+            actual = _artifact_descriptor(
+                artifact,
+                artifact.relative_to(output_root),
+            )
+            if actual != dict(expected):
+                raise RuntimeError(
+                    f"Marker artifact changed before publication: {name}"
+                )
+
+    _validate_expected_artifacts()
     marker = {
         "version": SUCCESS_MARKER_VERSION,
         "work_id": work_id,
@@ -87,8 +236,19 @@ def publish_image_success(
             timespec="milliseconds"
         ),
     }
+    if source_provenance is not None:
+        marker["source_provenance"] = dict(source_provenance)
     marker_path = image_completion_marker_path(output_dir, dataset, image_stem)
-    atomic_write_json(marker_path, marker)
+    atomic_write_json(
+        marker_path,
+        marker,
+        pre_replace=(
+            _validate_expected_artifacts
+            if expected_artifact_descriptors is not None
+            else None
+        ),
+        commit_guard=commit_guard,
+    )
     return marker_path
 
 
@@ -122,11 +282,20 @@ def valid_image_success(
                 return False
             artifact = (output_root / relative).resolve()
             artifact.relative_to(output_root)
-            if (
-                not artifact.is_file()
-                or artifact.stat().st_size != descriptor.get("size")
-                or _sha256(artifact) != descriptor.get("sha256")
-            ):
+            kind = descriptor.get("kind", ARTIFACT_KIND_FILE)
+            if kind == ARTIFACT_KIND_STORE:
+                if not _store_artifact_matches(artifact, descriptor):
+                    return False
+            elif kind == ARTIFACT_KIND_FILE:
+                if (
+                    not artifact.is_file()
+                    or artifact.stat().st_size != descriptor.get("size")
+                    or _sha256(artifact) != descriptor.get("sha256")
+                ):
+                    return False
+            else:
+                # Fail closed: an unrecognized kind is a marker this build
+                # cannot certify, never a file descriptor by default.
                 return False
     except (OSError, ValueError, json.JSONDecodeError, AttributeError):
         return False
@@ -140,11 +309,10 @@ def refresh_success_markers_after_metadata_migration(
 ) -> int:
     """Refresh marker descriptors for receipt-certified schema rewrites.
 
-    Metadata migration intentionally rewrites bundle-owned per-image files.
-    This bridge preserves their existing scientific success authority without
-    blessing any unrelated artifact change. It is idempotent and scans durable
-    receipts so a later recompile repairs a kill between artifact migration and
-    marker refresh.
+    Historical schema-3 metadata receipts could rewrite per-image files. This
+    compatibility bridge preserves their existing success authority without
+    blessing unrelated changes. Schema-4 bundle-durable receipts exclude
+    Task-1-owned external Parquets and therefore need no marker refresh.
 
     Args:
         output_dir: Existing run-output root.
@@ -220,7 +388,7 @@ def refresh_success_markers_after_metadata_migration(
         for image_name, work_id in raw_images.items():
             if not isinstance(image_name, str) or not isinstance(work_id, str):
                 continue
-            stem = Path(image_name).stem
+            stem = source_image_stem(Path(image_name))
             marker_path = image_completion_marker_path(
                 output_root, dataset, stem
             )
@@ -258,6 +426,23 @@ def refresh_success_markers_after_metadata_migration(
                     raise RuntimeError(
                         f"Success marker artifact escapes output root: {artifact}"
                     ) from exc
+                if descriptor.get("kind") == ARTIFACT_KIND_STORE:
+                    # Metadata migration never rewrites a store, so a store
+                    # descriptor can only be verified, never refreshed. It
+                    # still has to be dispatched here: `_sha256` opens its
+                    # argument as a file and would raise IsADirectoryError,
+                    # and the size comparison below reads a key a store
+                    # descriptor does not carry (ledger FLOW-31).
+                    if not (artifact / STORE_ROOT_JSON).is_file():
+                        raise RuntimeError(
+                            f"Success marker artifact is missing: {artifact}"
+                        )
+                    if not _store_artifact_matches(artifact, descriptor):
+                        raise RuntimeError(
+                            "Uncertified artifact change prevents success "
+                            f"marker refresh: {artifact}"
+                        )
+                    continue
                 if not artifact.is_file():
                     raise RuntimeError(
                         f"Success marker artifact is missing: {artifact}"
@@ -335,7 +520,7 @@ def current_success_counts(output_dir: Path) -> tuple[int, int] | None:
             if valid_image_success(
                 output_dir,
                 dataset=dataset,
-                image_stem=Path(image_name).stem,
+                image_stem=source_image_stem(Path(image_name)),
                 work_id=work_id,
             ):
                 successful += 1
@@ -357,7 +542,7 @@ def _current_success_work_ids(output_dir: Path, work_ids: object) -> list[str]:
                 and valid_image_success(
                     output_dir,
                     dataset=dataset,
-                    image_stem=Path(image_name).stem,
+                    image_stem=source_image_stem(Path(image_name)),
                     work_id=work_id,
                 )
             ):
@@ -445,7 +630,38 @@ def authorized_measurement_sources(
     if state is None or not state.config.get(
         "success_markers_required", False
     ):
-        return None
+        marker_root = progress_dir(output_dir) / DIR_IMAGE_COMPLETE
+        marker_paths = sorted(marker_root.glob("*/*.json"))
+        if not marker_paths:
+            return None
+        marker_sources: dict[Path, str] = {}
+        output_root = Path(output_dir).resolve()
+        for marker_path in marker_paths:
+            try:
+                marker = json.loads(marker_path.read_text(encoding="utf-8"))
+                dataset = str(marker["dataset"])
+                stem = str(marker["image_stem"])
+                work_id = str(marker["work_id"])
+                if not valid_image_success(
+                    output_dir,
+                    dataset=dataset,
+                    image_stem=stem,
+                    work_id=work_id,
+                ):
+                    continue
+                relative = marker["artifacts"]["measurements"]["path"]
+                source = (output_root / str(relative)).resolve()
+                source.relative_to(output_root)
+            except (
+                KeyError,
+                OSError,
+                ValueError,
+                TypeError,
+                json.JSONDecodeError,
+            ):
+                continue
+            marker_sources[source] = dataset
+        return marker_sources
     raw_work_ids = state.config.get("work_ids")
     if not isinstance(raw_work_ids, dict):
         return {}
@@ -458,7 +674,7 @@ def authorized_measurement_sources(
         for image_name, work_id in raw_images.items():
             if not isinstance(image_name, str) or not isinstance(work_id, str):
                 continue
-            stem = Path(image_name).stem
+            stem = source_image_stem(Path(image_name))
             if not valid_image_success(
                 output_dir,
                 dataset=dataset,
@@ -497,7 +713,11 @@ def _canonical_digest(value: object) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def publish_aggregate_snapshot(output_dir: Path) -> Path:
+def publish_aggregate_snapshot(
+    output_dir: Path,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> Path:
     """Publish marker-last integrity evidence for the canonical core snapshot."""
     from ._cli_state_management import load_processing_state
 
@@ -554,7 +774,7 @@ def publish_aggregate_snapshot(output_dir: Path) -> Path:
         ),
     }
     path = aggregate_publication_marker_path(output_dir)
-    atomic_write_json(path, marker)
+    atomic_write_json(path, marker, commit_guard=commit_guard)
     return path
 
 
@@ -593,6 +813,7 @@ def publish_run_completion_evidence(
     *,
     execution_epoch: str,
     gui_record_generation: str | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Publish all-success run evidence, idempotently for a no-op run."""
     from ._cli_state_management import load_processing_state
@@ -623,6 +844,7 @@ def publish_run_completion_evidence(
                     timespec="milliseconds"
                 ),
             },
+            commit_guard=commit_guard,
         )
         return path
     if completion is not True:
@@ -680,8 +902,9 @@ def publish_run_completion_evidence(
     if isinstance(existing, dict) and all(
         existing.get(key) == payload.get(key) for key in stable_keys
     ):
-        return path
-    atomic_write_json(path, payload)
+        with publication_commit(commit_guard):
+            return path
+    atomic_write_json(path, payload, commit_guard=commit_guard)
     return path
 
 

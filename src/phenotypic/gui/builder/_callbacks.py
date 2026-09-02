@@ -64,8 +64,10 @@ from phenotypic.gui._config import (
 from phenotypic.gui.builder import _ids as ids
 from phenotypic.gui.builder import _preview_cache as pc
 from phenotypic.gui.builder._ids import LoadPickerPage
-from phenotypic.gui.builder._preview_callbacks import build_preview_payload
-from phenotypic.gui.builder._preview_tiles import preview_dzi_url
+from phenotypic.gui.builder._preview_callbacks import (
+    build_preview_payload,
+    resolve_source_spec,
+)
 from phenotypic.gui.builder._directory_browser import (
     IMAGE_EXTS,
     PIPELINE_EXTS,
@@ -7297,7 +7299,7 @@ def register_callbacks(app: dash.Dash) -> None:
     )
 
     # ----------------------------------------------------------------------
-    # 9b. Node-output preview modal (zoomable OSD viewer + layer toggle).
+    # 9b. Node-output preview modal (Viv/deck.gl stage + layer toggle).
     # ----------------------------------------------------------------------
     @app.callback(
         Output(ids.MODAL_NODE_PREVIEW, "is_open", allow_duplicate=True),
@@ -7320,7 +7322,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.PREVIEW_LAYER_RADIO, "value"),
         Output(ids.MODAL_NODE_PREVIEW_TITLE, "children"),
         Output(ids.PREVIEW_CAPTION, "children"),
-        Output(ids.PREVIEW_DZI_URL_STORE, "data"),
+        Output(ids.PREVIEW_SOURCE_SPEC_STORE, "data"),
         Input(ids.STORE_PREVIEW_TARGET, "data"),
         State(ids.STORE_SESSION_ID, "data"),
         State(ids.STORE_BUILDER_STATE, "data"),
@@ -7348,10 +7350,10 @@ def register_callbacks(app: dash.Dash) -> None:
             logger.exception("Node preview failed")
             return [], None, "Preview", _format_exception(exc), None
         return (payload["options"], payload["value"], payload["title"],
-                payload["caption"], payload["dzi_url"])
+                payload["caption"], payload["source_spec"])
 
     @app.callback(
-        Output(ids.PREVIEW_DZI_URL_STORE, "data", allow_duplicate=True),
+        Output(ids.PREVIEW_SOURCE_SPEC_STORE, "data", allow_duplicate=True),
         Output(ids.PREVIEW_CAPTION, "children", allow_duplicate=True),
         Input(ids.PREVIEW_LAYER_RADIO, "value"),
         State(ids.STORE_PREVIEW_TARGET, "data"),
@@ -7362,14 +7364,20 @@ def register_callbacks(app: dash.Dash) -> None:
         if not channel or not target or not session_id:
             return no_update, no_update
         scope_path = target["scope_path"]
-        shash = pc.scope_hash(scope_path)
         url_prefix = current_app.config.get(CFG_URL_PREFIX, "/")
-        url = preview_dzi_url(url_prefix, session_id, shash, target["block_id"], channel)
-        # Keep the W×H prefix consistent with compute_node_preview's caption.
         manifest = pc.read_manifest(session_id, scope_path) or {}
+        # Re-resolved, never re-pointed: the spec carries a generation token
+        # read from the store as it is NOW. A URL rebuilt from a cached token
+        # would 409 for good after the first parameter edit.
+        spec = resolve_source_spec(
+            session_id=session_id, scope_path=scope_path,
+            block_id=target["block_id"], channel=channel,
+            url_prefix=url_prefix, manifest=manifest,
+        )
+        # Keep the W×H prefix consistent with compute_node_preview's caption.
         node = manifest.get("nodes", {}).get(target["block_id"], {})
         h, w = node.get("shape", [0, 0])
-        return url, f"{w}×{h} · {channel}"
+        return spec, f"{w}×{h} · {channel}"
 
     @app.callback(
         Output(ids.MODAL_NODE_PREVIEW, "is_open", allow_duplicate=True),
@@ -7379,18 +7387,22 @@ def register_callbacks(app: dash.Dash) -> None:
     def close_node_preview(_clicks):
         return False
 
+    # The spec crosses UNMODIFIED: ``build_source_spec`` already returns the
+    # facade's own key names, so there is no second vocabulary to drift.
     app.clientside_callback(
         """
-        function(dziUrl) {
+        function(spec) {
             const ns = window.__phenotypicNodePreview;
             if (!ns || !ns.mountViewer) { return window.dash_clientside.no_update; }
-            if (!dziUrl) { if (ns.disposeViewer) ns.disposeViewer(); return window.dash_clientside.no_update; }
-            requestAnimationFrame(function () { ns.mountViewer("preview-osd", dziUrl); });
+            if (!spec) { if (ns.disposeViewer) ns.disposeViewer(); return window.dash_clientside.no_update; }
+            requestAnimationFrame(function () {
+                ns.mountViewer("preview-viv-stage", spec);
+            });
             return Date.now();
         }
         """,
-        Output(ids.PREVIEW_OSD_MOUNT_TRIGGER, "data", allow_duplicate=True),
-        Input(ids.PREVIEW_DZI_URL_STORE, "data"),
+        Output(ids.PREVIEW_VIV_MOUNT_TRIGGER, "data", allow_duplicate=True),
+        Input(ids.PREVIEW_SOURCE_SPEC_STORE, "data"),
         prevent_initial_call=True,
     )
 
@@ -7403,7 +7415,7 @@ def register_callbacks(app: dash.Dash) -> None:
             return Date.now();
         }
         """,
-        Output(ids.PREVIEW_OSD_MOUNT_TRIGGER, "data", allow_duplicate=True),
+        Output(ids.PREVIEW_VIV_MOUNT_TRIGGER, "data", allow_duplicate=True),
         Input(ids.MODAL_NODE_PREVIEW, "is_open"),
         prevent_initial_call=True,
     )

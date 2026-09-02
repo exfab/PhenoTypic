@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal, Mapping
 
 import numpy as np
 
@@ -121,3 +121,10 @@ class Image(ImageIOHandler):
                 gamma=gamma,
                 illuminant=illuminant,
         )
+
+    @property
+    def provenance(self) -> tuple[Mapping[str, Any], ...]:
+        """Completed leaf image operations in execution order, as a read-only view."""
+        from ._provenance import readonly_operations
+
+        return readonly_operations(self._metadata.provenance_journal)

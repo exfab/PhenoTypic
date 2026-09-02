@@ -18,6 +18,7 @@ import threading
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional
 
+from .._multi_objective import ordered_objective_values, validate_objective_axes
 from .._search_space import (
     Categorical,
     Domain,
@@ -169,8 +170,8 @@ class OptunaStrategy:
         prune: Whether the pruning channel is Optuna-backed (opt-in). The explore
             round and multi-objective studies always get a no-op channel.
         seed: The sampler seed for reproducibility.
-        storage_url: The Optuna storage URL (SQLite/Postgres); ``None`` → an
-            in-memory study.
+        storage_url: The Optuna storage URL (Journal, SQLite, or PostgreSQL);
+            ``None`` → an in-memory study. The distributed CLI rejects SQLite.
         store: Accepted for the uniform factory signature; the Optuna study owns
             persistence so this is unused (the engine reads trials from the
             ``OptunaStudyStore`` wrapping the same study).
@@ -195,6 +196,7 @@ class OptunaStrategy:
         store: Optional[Any] = None,
         study_name: Optional[str] = None,
         directions: Optional[Sequence[str]] = None,
+        objective_axes: Optional[Sequence[str]] = None,
         rung_floor: int = 6,
         rung_factor: int = 3,
     ) -> None:
@@ -209,6 +211,16 @@ class OptunaStrategy:
         self._study_name = study_name
         self._directions = list(directions) if directions is not None else None
         self._multi_objective = is_multi_objective_directions(self._directions)
+        self._objective_axes = (
+            validate_objective_axes(objective_axes) if objective_axes is not None else None
+        )
+        if self._objective_axes is not None and (
+            not self._multi_objective
+            or len(self._objective_axes) != len(self._directions or ())
+        ):
+            raise ValueError(
+                "objective_axes must match the multi-objective study directions"
+            )
         self._rung_floor = rung_floor
         self._rung_factor = rung_factor
         self._stashed: Optional["optuna.trial.Trial"] = None
@@ -233,15 +245,27 @@ class OptunaStrategy:
             shared_study.pruner = pruner
             self._study = shared_study
         else:
+            from .._study._storage import build_optuna_storage
+
             create_kwargs: dict[str, Any] = {
                 "sampler": sampler_obj,
                 "pruner": pruner,
-                "storage": storage_url,
+                "storage": build_optuna_storage(storage_url) if storage_url is not None else None,
                 "study_name": study_name,
                 "load_if_exists": study_name is not None,
                 **study_objective_kwargs(self._directions),
             }
             self._study = optuna.create_study(**create_kwargs)
+
+
+    def bind_objective_axes(self, objective_axes: Sequence[str]) -> None:
+        """Bind scorer-authoritative axes after a legacy config build override."""
+        axes = validate_objective_axes(objective_axes)
+        if not self._multi_objective or len(axes) != len(self._directions or ()):
+            raise ValueError(
+                "objective_axes must match the multi-objective study directions"
+            )
+        self._objective_axes = axes
 
     # -- sampler selection ----------------------------------------------------
 
@@ -385,12 +409,38 @@ class OptunaStrategy:
         trial = self._stashed
         if trial is None:  # pragma: no cover - register without a prior suggest
             raise RuntimeError("register_result called before suggest")
-        self._stashed = None
         trial_number = trial.number
 
+        failed = bool(getattr(result, "failed", False))
+        was_pruned = pruned or bool(getattr(result, "pruned", False))
+
+        values: Optional[list[float]] = None
+
         try:
-            # Stamp our off-model Trial fields onto the in-flight trial BEFORE telling
+            # Validate a clean multi-objective result before touching native
+            # trial attributes or persistent state.
+            if self._multi_objective and not failed and not was_pruned:
+                objectives = getattr(result, "objectives", None)
+                if objectives is None:
+                    raise ValueError(
+                        "complete multi-objective results must contain exactly "
+                        "the declared objective axes"
+                    )
+                if self._objective_axes is None:
+                    if len(objectives) != len(self._directions or ()):
+                        raise ValueError(
+                            "complete multi-objective results must contain exactly "
+                            "one value per study direction"
+                        )
+                    values = [float(value) for value in objectives.values()]
+                else:
+                    values = ordered_objective_values(
+                        objectives, self._objective_axes
+                    )
+            self._stashed = None
+
             # so the strategy's native ask/tell trial IS the full persisted record
+            # Stamp our off-model Trial fields onto the in-flight trial BEFORE telling
             # (one shared study, no add_trial mirror): the store's _to_trial reads
             # these back. Set regardless of terminal state — a FAIL/PRUNED trial still
             # carries its params/terms for the journal export. Each DB-touching call
@@ -402,7 +452,7 @@ class OptunaStrategy:
                 trial_number=trial_number,
             )
 
-            if getattr(result, "failed", False):
+            if failed:
                 retry_on_transient_db_error(
                     lambda: self._study.tell(
                         trial, state=optuna.trial.TrialState.FAIL
@@ -410,7 +460,7 @@ class OptunaStrategy:
                     trial_number=trial_number,
                 )
                 return
-            if pruned or getattr(result, "pruned", False):
+            if was_pruned:
                 retry_on_transient_db_error(
                     lambda: self._study.tell(
                         trial, state=optuna.trial.TrialState.PRUNED
@@ -419,10 +469,7 @@ class OptunaStrategy:
                 )
                 return
             if self._multi_objective:
-                # Tell the per-objective vector (emission order == directions order)
-                # so NSGA-II ranks the Pareto front natively.
-                objectives = getattr(result, "objectives", None) or {}
-                values = [float(v) for v in objectives.values()]
+                assert values is not None
                 retry_on_transient_db_error(
                     lambda: self._study.tell(trial, values),
                     trial_number=trial_number,

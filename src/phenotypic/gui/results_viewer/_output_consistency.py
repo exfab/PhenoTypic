@@ -12,8 +12,10 @@ from phenotypic._cli._cli_update_state import aggregate_state_from_events
 from phenotypic.sdk_ import (
     BundleLayout,
     DashboardManifestKey,
+    MIGRATION_REMEDY,
     ProcessingStateKey,
     RUN_COMPLETION_JSON,
+    datasets_needing_migration,
     gui_launch_owner_path,
     resolve_event_log_path,
     resolve_manifest_json_path,
@@ -67,6 +69,11 @@ class OutputCompletionEvidence:
     processing_completed: int | None = None
     processing_failed: int | None = None
     processing_unfinished: int | None = None
+    #: Datasets holding an unconverted ``.h5``, from the SHARED predicate
+    #: ``datasets_needing_migration``. Part of the evidence, so it is folded
+    #: into ``evidence_fingerprint`` and a tree that gets migrated while the
+    #: viewer is open is seen as changed.
+    datasets_needing_migration: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -297,6 +304,21 @@ def classify_output_consistency(
             "no coherent terminal evidence exists",
         )
 
+    if evidence.datasets_needing_migration:
+        # Informational, NOT danger, and deliberately additive: a
+        # half-migrated tree's deliverables, measurements and dashboards are
+        # all still readable, and the images that are missing are precisely
+        # the ones the viewer would otherwise render silently empty. The CLI
+        # refuses on the same predicate; only the severity differs, and the
+        # reason string carries the remedy either way (ledger MIG-19).
+        reasons = (
+            *reasons,
+            "dataset(s) "
+            + ", ".join(evidence.datasets_needing_migration)
+            + " hold unconverted .h5 results; this output needs "
+            + MIGRATION_REMEDY,
+        )
+
     serialized = json.dumps(
         asdict(evidence),
         sort_keys=True,
@@ -433,6 +455,9 @@ def inspect_output_consistency(layout: BundleLayout) -> OutputConsistencyReport:
         processing_completed=processing_counts[1],
         processing_failed=processing_counts[2],
         processing_unfinished=processing_counts[3],
+        datasets_needing_migration=tuple(
+            datasets_needing_migration(output_root)
+        ),
     )
     return classify_output_consistency(evidence)
 

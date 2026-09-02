@@ -274,6 +274,15 @@ def test_standalone_bundle_curation_persists_and_reloads(
     ).to_be_visible(timeout=20_000)
 
 
+@pytest.mark.skip(
+    reason=(
+        "The QC tab is unmounted by "
+        "docs/superpowers/specs/2026-08-26-gui-simplification-removals "
+        "(spec section 3). Only this test in the module drives it; the "
+        "bundle-mode, curation and layer-toggle tests keep running. Delete "
+        "this marker when the surface returns."
+    )
+)
 def test_standalone_bundle_qc_review_renders_members(
     page: Page, hub_url: str
 ) -> None:

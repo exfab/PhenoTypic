@@ -1,21 +1,90 @@
 # PhenoTypic GUI Module Guide
 
-The GUI is a Dash-based hub: a shell plus six mounted sub-apps:
+The GUI is a Dash-based hub: a shell plus five mounted sub-apps:
 
 | Mount        | Module                              | Purpose                                  |
 | ------------ | ----------------------------------- | ---------------------------------------- |
 | `/`          | `gui/shell/`                        | Top-bar chrome, sidebar, home page       |
 | `/builder/`  | `gui/builder/`                      | Pipeline builder (dash-cytoscape graph)  |
-| `/results/`  | `gui/results_viewer/`               | Output viewer (OpenSeadragon + tables)   |
+| `/results/`  | `gui/results_viewer/`               | Output viewer (Viv/deck.gl + tables)     |
 | `/run/`      | `gui/run_console/`                  | Run console (form + log tail + recents)  |
 | `/analysis/` | `gui/analysis/`                     | Analyzer runner (via `_AnalysisProxy`)   |
-| `/tune/`     | `gui/tune/`                         | Hyperparameter tuning console            |
 | `/browse/`   | `gui/browse/`                       | File / output browser                    |
+
+> **Unmounted surfaces.** `gui/tune/` is **retained on disk and still
+> imports**, but the hub no longer composes it, so `/tune/` 404s and the
+> **Pipeline ▾** group carries no Tune member. Inside the results viewer the
+> **QC**, **Heatmap** and **Error** tabs are unmounted the same way — package,
+> unit tests and callbacks intact, no `dbc.Tab` and no callback registration.
+> The viewer mounts exactly two tabs: **Plate** and **Colony**. Rationale and
+> the re-mount contract are in
+> [`docs/superpowers/specs/2026-08-26-gui-simplification-removals/design.md`](../../../docs/superpowers/specs/2026-08-26-gui-simplification-removals/design.md).
+> The **Timeline** engine is not in this category — it was **deleted**, not
+> unmounted.
 
 Composition lives in [shell/_app.py](shell/_app.py) (`compose_hub`); the
 hub's WSGI seam is a `werkzeug.middleware.dispatcher.DispatcherMiddleware`
 that strips each mount prefix before forwarding to the sub-app's Flask
 server.
+
+---
+
+## Pixel paths — which surface renders how
+
+There are now **two** ways a plate reaches a canvas, and picking the wrong one
+is the expensive mistake in this package. They are not interchangeable.
+
+| Surface | Path |
+| --- | --- |
+| Results **Plate** | store chunks → `/zarr/<ds>/<stem>.ome.zarr/<token>/…` → Viv / deck.gl |
+| Results **Colony** | same route, one `OrthographicView` per colony on one shared `zoom` |
+| Builder **node preview** | same client, its own route: `/preview-zarr/…` |
+| **Browse**, flat image | libvips → DZI → `BrowseCache` → OpenSeadragon |
+| **Browse**, OME-Zarr image store | generation-addressed `/assets/.../zarr/` → shared Results Viv facade |
+| Builder **point picker** | libvips → DZI → OpenSeadragon |
+
+**The results viewer renders no server-side pyramid and caches no rendered
+PNG.** `_tile_routes.py`'s `.dzi` routes are gone; `build_source_spec`
+(`results_viewer/_store_source.py`) reads the store's own
+`attributes.phenotypic` block and hands the browser a spec, and the browser
+does the tiling. Two rules follow, and both have already been got wrong once:
+
+- **Never hard-code `rgb`, `gray`, `detect_mat` or `rgb/labels/objmap`.** The
+  primary series is `rgb` when present and `gray` otherwise; the label path is
+  read from `phenotypic.labels.objmap` with `.get`, because
+  `build_phenotypic_attributes` **omits** the key entirely for a store with no
+  label image. The readable series set is derived per store — a real store can
+  carry `original`.
+- **Never recompute the pyramid.** The level count is recorded in
+  `phenotypic.pyramid`; the client picks a level per frame and the façade
+  *observes* which one, it does not compute it.
+
+**`_dzi_tiler` stays.** Flat Browse images still need it, and it has **four** consumers — `browse/_preparation.py`,
+`browse/_preparation_routes.py`, `browse/_app.py` and
+`builder/_point_picker.py` — and spec §9 keeps Browse on libvips → DZI →
+`BrowseCache` → OSD deliberately. The node preview left that path in the Viv
+rebuild's phase 6, which is what took the count from five to four. Deleting
+the module breaks Browse. `_tile_routes.py`'s two shared symbols
+(`TILE_NAME_RE`, `json_error`) moved to `gui/_shared/tiles.py` because the
+builder imports them across sub-app boundaries.
+
+**Only `results_viewer/_assets/viv_viewer.js` may touch
+`window.__vivBundle`.** It is the one imperative façade — `mount` /
+`setSource` / `setViewState` / `setGridViews` / `setLayerVisibility` /
+`setLayerOpacity` / `destroy`, all `containerId`-first — and the builder
+reaches it through the two-file `gui/_shared/_viv_assets.py` blueprint at
+`/_viv/` rather than committing a second copy of the 2.5 MiB artifact. Dash
+serves the façade **before** the bundle (root-level assets sort ahead of
+subdirectory ones), so the façade resolves the global lazily inside `ready()`
+and never at module scope. The vendored bundle is built outside the repo from
+`tools/viv-bundle/` — there is no npm in CI — and `create_app` logs its
+version at startup, which is the only signal that the committed artifact has
+drifted from its lockfile.
+
+**Viv rendering tests need a real GL stack.** Playwright's default `chromium`
+launch uses `chromium_headless_shell`, which ships none:
+`canvas.getContext('webgl2')` returns `null` and deck.gl paints nothing. Use
+`channel="chromium"` on an `Xvfb` display. Decode tests need neither.
 
 ---
 
@@ -92,7 +161,7 @@ from phenotypic.gui._config import (
     MOUNT_VIEWER,           # "/results/"
     MOUNT_RUN,              # "/run/"
     MOUNT_ANALYSIS,         # "/analysis/"
-    MOUNT_TUNE,             # "/tune/"
+    MOUNT_TUNE,             # "/tune/" -- declared; NOT mounted (see above)
     MOUNT_BROWSE,           # "/browse/"
     SANDBOX_API_PREFIX,     # "/sandbox/api"
     RUNS_BLUEPRINT_PREFIX,  # "/runs"
@@ -211,12 +280,13 @@ lives under `deliverables/qc/` (`DIR_QC` joined on `deliverables_dir(output)`;
 resolve via `qc_dir(output)` / `qc_duckdb_path(output)` / … — never hand-join
 `qc/`). `run_qc` writes the single `qc.duckdb` (one self-describing table per
 QC module plus a `qc_modules` catalog); the QC tabs read it through the
-`review/_db.py` catalog-driven API. It moved
+`review/_db.py` catalog-driven API (those tabs are currently unmounted --
+the writer, the store and the reader are unaffected). It moved
 *into* `deliverables/` so a deliverables bundle is self-contained and portable;
 `resolve_qc_dir(output)` / `BundleLayout.qc_dir` still read the legacy
 output-root `qc/` of pre-relocation runs, and `migrate_legacy_qc` MOVES a
 legacy `qc/` into `deliverables/qc/` on discovery. The root-level
-`RESULTS_DIRNAME` (`results/`, per-image HDF/measurements) is **not** a
+`RESULTS_DIRNAME` (`results/`, per-image stores/measurements) is **not** a
 deliverable. Machine state resolves under `.phenotypic/`: use
 `progress_dir(output)` for `.phenotypic/progress/` and
 `processing_state_path(output)` for `.phenotypic/processing_state.json`.
@@ -413,9 +483,11 @@ travels with the field annotation.
 - **Pixel-layer toggle is gated on `results/`** — `build_layer_toggle`
   (colony view) returns `None` for a standalone bundle (`has_results is
   False`) because the RGB/Enhanced/Labels layers source per-image
-  `results/<ds>/.../<stem>.h5` HDFs that a bundle does not ship. Curation, QC
-  review, overlays, and DZI deep-zoom (overlay-tiled) all still work; only the
-  per-image full-res layer switch is absent. The `STORE_ACTIVE_LAYER` store
+  `results/<ds>/zarr/<stem>.ome.zarr` stores that a bundle does not ship.
+  Curation, QC
+  review and overlays all still work; the per-image full-res layer switch and
+  the Viv deep-zoom stage are what a bundle cannot offer, because both read
+  the stores it does not ship. The `STORE_ACTIVE_LAYER` store
   stays mounted regardless so the colony render callback's Input is resolvable
   even when the control is hidden.
 
@@ -438,10 +510,18 @@ notes not tied to that component:
 
 ---
 
-## Error-analysis tab
+## Error-analysis tab (unmounted)
 
-The results viewer's **Error** tab (`results_viewer/_error_tab/`, 5th tab,
-`TAB_ERROR_ID`) ranks the measurements that best separate a chosen error category
+> **Unmounted, not deleted.** The package, its unit tests and its callbacks are
+> intact; the viewer just no longer builds a `dbc.Tab` for it or registers its
+> callbacks. Everything below still describes the code on disk. See
+> [the removals spec](../../../docs/superpowers/specs/2026-08-26-gui-simplification-removals/design.md).
+> The CLI half of this feature -- `reemit_error_deliverables` and the
+> `deliverables/errors/` round trip -- is **untouched and still runs**, because
+> the Colony radial writes those categories and does not need this tab.
+
+The results viewer's **Error** tab (`results_viewer/_error_tab/`, formerly the
+5th tab, `TAB_ERROR_ID`) ranks the measurements that best separate a chosen error category
 from a good baseline via `phenotypic.analysis.ErrorCutoffFinder`, recomputing as
 the user marks objects on other tabs. The package splits `_data` / `_figure` /
 `_layout` / `_callbacks` / `_ids`; the good-baseline toggle, server-side state

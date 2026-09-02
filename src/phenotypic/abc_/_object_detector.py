@@ -251,8 +251,9 @@ class ObjectDetector(ImageOperation, ABC):
         result = pipeline.operate([image])[0]
         # result now has clean, labeled colonies ready for measurement
 
-    Attributes:
-        None (all operation parameters are stored in subclass instances).
+    This class declares no attributes of its own; all operation parameters live in
+    subclass instances. (Prose, not ``Attributes:`` / ``None`` -- see
+    :class:`~phenotypic.abc_.ImageOperation` for why that form is a trap.)
 
     Methods:
         apply(image, inplace=False): User-facing method to apply detection to an image.

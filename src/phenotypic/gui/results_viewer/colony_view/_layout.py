@@ -30,7 +30,6 @@ from phenotypic.gui._design import (
     COLOR_BG,
     COLOR_BLUE,
     COLOR_NAVY,
-    COLOR_SURFACE,
     FONT_FAMILY_MONO,
     FONT_SIZE_LABEL,
 )
@@ -180,13 +179,148 @@ def _build_dim_stepper(
     )
 
 
+def _camera_button(
+    label: str,
+    component_id: str,
+    *,
+    aria_label: str,
+    title: str,
+    class_name: str = "",
+) -> Component:
+    """Build one client-owned Colony camera button."""
+    classes = "colony-camera-button"
+    if class_name:
+        classes = f"{classes} {class_name}"
+    return html.Button(
+        label,
+        id=component_id,
+        n_clicks=0,
+        title=title,
+        className=classes,
+        type="button",
+        **cast(Any, {"aria-label": aria_label}),
+    )
+
+
+def _build_camera_toolbar(layer_toggle: Component | None = None) -> Component:
+    """Build the linked microscope-stage controls for the Colony grid."""
+    stage_pad = html.Div(
+        [
+            _camera_button(
+                "↑",
+                ids.COLONY_CAMERA_PAN_UP,
+                aria_label="Pan colony crops up",
+                title="Move every crop upward within its fixed region (↑)",
+                class_name="colony-camera-button--up",
+            ),
+            _camera_button(
+                "←",
+                ids.COLONY_CAMERA_PAN_LEFT,
+                aria_label="Pan colony crops left",
+                title="Move every crop left within its fixed region (←)",
+                class_name="colony-camera-button--left",
+            ),
+            _camera_button(
+                "◎",
+                ids.COLONY_CAMERA_CENTER,
+                aria_label="Center colony crops",
+                title="Center every crop without changing zoom (0)",
+                class_name="colony-camera-button--center",
+            ),
+            _camera_button(
+                "→",
+                ids.COLONY_CAMERA_PAN_RIGHT,
+                aria_label="Pan colony crops right",
+                title="Move every crop right within its fixed region (→)",
+                class_name="colony-camera-button--right",
+            ),
+            _camera_button(
+                "↓",
+                ids.COLONY_CAMERA_PAN_DOWN,
+                aria_label="Pan colony crops down",
+                title="Move every crop downward within its fixed region (↓)",
+                class_name="colony-camera-button--down",
+            ),
+        ],
+        className="colony-camera-pad",
+        **cast(Any, {"aria-label": "Pan all colony crops"}),
+    )
+    zoom_group = html.Div(
+        [
+            _camera_button(
+                "−",
+                ids.COLONY_CAMERA_ZOOM_OUT,
+                aria_label="Zoom colony crops out",
+                title="Zoom every crop out (−)",
+            ),
+            html.Span(
+                "Fit",
+                id=ids.COLONY_CAMERA_ZOOM_READOUT,
+                className="colony-camera-zoom-readout",
+                **cast(Any, {"aria-live": "polite"}),
+            ),
+            _camera_button(
+                "+",
+                ids.COLONY_CAMERA_ZOOM_IN,
+                aria_label="Zoom colony crops in",
+                title="Zoom every crop in (+)",
+            ),
+        ],
+        className="colony-camera-zoom-group",
+        **cast(Any, {"aria-label": "Zoom all colony crops"}),
+    )
+    camera_children: list[Component] = [
+        html.Span("Image controls", className="colony-camera-title"),
+        stage_pad,
+        _camera_button(
+            "Fit",
+            ids.COLONY_CAMERA_FIT,
+            aria_label="Fit colony crops",
+            title="Center and fit the largest padded object (F)",
+            class_name="colony-camera-button--wide",
+        ),
+        zoom_group,
+        _camera_button(
+            "1:1",
+            ids.COLONY_CAMERA_ONE_TO_ONE,
+            aria_label="Show colony crops at actual pixels",
+            title="Show one source pixel per screen pixel (1)",
+            class_name="colony-camera-button--wide",
+        ),
+    ]
+    if layer_toggle is not None:
+        camera_children.append(layer_toggle)
+    camera_children.append(
+        html.Span(
+            [html.Span(className="colony-camera-linked-dot"), "All tiles linked"],
+            id=ids.COLONY_CAMERA_LINKED_STATUS,
+            className="colony-camera-linked-status",
+            title="Camera controls apply identically around every object centre",
+        )
+    )
+    return html.Div(
+        camera_children,
+        id=ids.COLONY_CAMERA_TOOLBAR_ID,
+        className="colony-camera-toolbar",
+        tabIndex=0,
+        **cast(
+            Any,
+            {
+                "aria-label": "Linked colony image controls",
+                "data-colony-camera-toolbar": "1",
+            },
+        ),
+    )
+
+
 def _build_toolbar(layer_toggle: Component | None = None) -> Component:
-    """Build the colony-view toolbar (axis dropdowns + refresh + info chip).
+    """Build the colony-view toolbar (axis dropdowns + redraw + info chip).
 
     The toolbar is a horizontal flex row that hosts the X / Y axis
-    dropdowns the grid sorts by, a read-only crop-size info chip
+    dropdowns the grid sorts by, the measurement-column picker each card
+    displays its value and tint from, a read-only crop-size info chip
     populated by a callback (e.g. ``"crop size: 320 px"``), and a manual
-    refresh button. The dropdown ``options`` and ``value`` lists are
+    grid redraw button. The dropdown ``options`` and ``value`` lists are
     intentionally empty here — they are populated reactively from the
     master measurements once the user opens the tab.
 
@@ -236,6 +370,30 @@ def _build_toolbar(layer_toggle: Component | None = None) -> Component:
         style={"minWidth": "200px"},
     )
 
+    # The measurement picker. Options are populated reactively from each
+    # in-view store's own ``measurement_columns`` -- deliberately empty here,
+    # and legitimately empty at runtime too: a ``--mode process`` run never
+    # measured, so the cards simply render as they do without a column.
+    # Clearable, because "no column" is a state the user returns to.
+    measurement_label = html.Span(
+        "Measure",
+        className="me-1",
+        style={
+            "color": _NAVY,
+            "fontWeight": 500,
+            "fontSize": FONT_SIZE_LABEL,
+            "whiteSpace": "nowrap",
+        },
+    )
+    measurement_dropdown = dcc.Dropdown(
+        id=ids.COLONY_MEASUREMENT_DROPDOWN_ID,
+        options=[],
+        value=None,
+        placeholder="Show measurement…",
+        clearable=True,
+        style={"minWidth": "240px"},
+    )
+
     crop_size_info = html.Span(
         id=ids.COLONY_CROP_SIZE_INFO_ID,
         children="",
@@ -247,7 +405,7 @@ def _build_toolbar(layer_toggle: Component | None = None) -> Component:
     )
 
     refresh_button = dbc.Button(
-        "⟳ Refresh",
+        "⟳ Redraw grid",
         id=ids.COLONY_BTN_REFRESH_ID,
         n_clicks=0,
         color="secondary",
@@ -315,7 +473,7 @@ def _build_toolbar(layer_toggle: Component | None = None) -> Component:
         readout_id=ids.COLONY_DIM_READOUT,
     )
 
-    toolbar_children: list[Component] = [
+    data_toolbar_children: list[Component] = [
         html.Div(
             [x_label, x_dropdown],
             style={
@@ -332,31 +490,29 @@ def _build_toolbar(layer_toggle: Component | None = None) -> Component:
                 "gap": "0.25rem",
             },
         ),
+        html.Div(
+            [measurement_label, measurement_dropdown],
+            style={
+                "display": "flex",
+                "alignItems": "center",
+                "gap": "0.25rem",
+            },
+        ),
         tile_size_stepper,
         dim_stepper,
     ]
-    if layer_toggle is not None:
-        toolbar_children.append(layer_toggle)
-    toolbar_children.extend([crop_size_info, refresh_button])
+    data_toolbar_children.extend([crop_size_info, refresh_button])
 
     return html.Div(
-        toolbar_children,
+        [
+            html.Div(
+                data_toolbar_children,
+                className="colony-data-toolbar",
+            ),
+            _build_camera_toolbar(layer_toggle),
+        ],
         id=ids.COLONY_TOOLBAR_ID,
-        style={
-            "display": "flex",
-            "alignItems": "center",
-            # Wrap section blocks onto a new row when the viewport is too
-            # narrow to fit them all. The bar's background grows
-            # vertically because flex-wrap'd rows extend the container's
-            # block-axis size; rowGap keeps wrapped rows visually
-            # separated from the row above.
-            "flexWrap": "wrap",
-            "rowGap": "0.5rem",
-            "columnGap": "1rem",
-            "padding": "0.75rem 1rem",
-            "borderBottom": f"1px solid {_BLUE}22",
-            "background": COLOR_SURFACE,
-        },
+        className="colony-toolbar-stack",
     )
 
 
@@ -471,7 +627,7 @@ def layout(
     Vertical stack (top → bottom):
 
     1. **Toolbar** (:data:`ids.COLONY_TOOLBAR_ID`) — X / Y axis dropdowns,
-       crop-size info chip, refresh button.
+       crop-size info chip, grid redraw button.
     2. **Bulk action bar** (:data:`ids.COLONY_BULK_BAR_ID`) — count
        label plus Remove / Restore / Clear; hidden by default.
     3. **Grid container** (:data:`ids.COLONY_GRID_CONTAINER_ID`) — the
@@ -512,7 +668,8 @@ def layout(
         style={
             "padding": "1rem",
             "maxHeight": "calc(100vh - 8rem)",
-            "overflow": "auto",
+            "overflowX": "hidden",
+            "overflowY": "auto",
             "background": _BG,
         },
     )

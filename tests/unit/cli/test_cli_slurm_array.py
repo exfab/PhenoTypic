@@ -13,6 +13,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+from phenotypic._cli import _cli_slurm_array_scripts
 from phenotypic._cli._cli_slurm_config import (
     get_slurm_array_limit,
     get_slurm_max_submit_jobs,
@@ -262,6 +263,38 @@ class TestArrayJobScriptGeneration:
         assert "SLURM_ARRAY_TASK_ID" in content
         assert "IMAGE_LIST" in content
         assert "CURRENT_IMAGE=" in content
+
+    def test_measure_only_script_defers_hdf_identity_hashing(
+        self, dataset, config, tmp_path, monkeypatch
+    ):
+        """Measure workers calculate HDF identity after parallel dispatch."""
+        config.measure_only = True
+
+        def unexpected_hash(*args, **kwargs):
+            raise AssertionError("measure-only script generation must not hash HDFs")
+
+        monkeypatch.setattr(
+            _cli_slurm_array_scripts, "work_id_for_image", unexpected_hash
+        )
+        monkeypatch.setattr(
+            _cli_slurm_array_scripts, "file_sha256", unexpected_hash
+        )
+
+        script_path = generate_array_job_script(
+            dataset=dataset,
+            array_indices=(0, 10),
+            config=config,
+            output_dir=tmp_path / "output",
+            chunk_id=0,
+        )
+
+        content = script_path.read_text(encoding="utf-8")
+        assert "--mode" in content
+        assert "measure" in content
+        assert "--expected-work-id" not in content
+        assert "--expected-input-sha256" not in content
+        assert "--expected-pipeline-sha256" not in content
+        assert "--attempt-id" in content
 
     def test_generate_array_job_script_chunked(
         self, dataset, config, tmp_path
@@ -556,6 +589,7 @@ class TestSLURMScriptChainSubmission:
             slurm_args=slurm_args,
             log_dir=logs_dir(output_dir) / "slurm",
             continuation_dependency_kinds=("afterany",),
+            lifecycle_output_dir=output_dir,
         )
         mock_submit_drip_feed_start.assert_called_once_with(
             chunk_scripts=chunk_scripts,

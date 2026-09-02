@@ -55,7 +55,8 @@ Examples:
         --image-type GridImage --nrows 16 --ncols 24
 
     # Rerun measurements on a previous forward run without re-detecting
-    # (reads HDFs from <previous-output-dir>/results/*/hdf/, rewrites
+    # (reads image stores from <previous-output-dir>/results/*/zarr/,
+    # rewrites
     # parquet measurements + master CSV, skips detection, does NOT
     # regenerate overlays, does NOT touch processing state):
     uv run python -m phenotypic --mode measure --pipeline pipeline.json \
@@ -63,21 +64,34 @@ Examples:
 
     # Recompile a previous output directory: re-aggregate the master
     # measurements CSV, fill in any overlay PNGs missing under
-    # deliverables/overlays/<ds>/ by reloading their HDFs (threaded across
+    # deliverables/overlays/<ds>/ by reloading their image stores (threaded
+    # across
     # --njobs workers, alpha from --overlay-alpha), rebuild the manifest,
     # and regenerate the progress dashboard.
     # Existing overlays are left untouched.  Pipeline JSON is NOT
     # required:
     uv run python -m phenotypic --mode recompile --output <previous-output-dir>
 
+    # Skip the fsync before each store promote. Durability is auto-detected
+    # (on under SLURM, off locally) and the resolved mode is logged at run
+    # start; --durable-writes / --no-durable-writes overrides the detection.
+    # Reach for --no-durable-writes when a cluster job writes to fast local
+    # scratch and you accept losing stores to node loss or power failure --
+    # a walltime kill does NOT need fsync, since the kernel survives it.
+    # Not accepted with --mode recompile:
+    uv run python -m phenotypic --mode full --pipeline pipeline.json \
+        --input ./images -o ./results --no-durable-writes
+
 Outputs:
-    Forward runs write a single HDF5 per input image under
-    `<output>/results/<dataset>/hdf/<stem>.h5` (layers + metadata + grid
-    state, reloadable via `Image.load_hdf5` / `GridImage.load_hdf5`).
+    Forward runs write a single OME-Zarr store per input image under
+    `<output>/results/<dataset>/zarr/<stem>.ome.zarr/` (layers + objmap
+    label image + metadata + grid state, reloadable via `Image.load_zarr` /
+    `GridImage.load_zarr`, and openable directly in napari, QuPath, or
+    Vizarr without a PhenoTypic install).
     Overlay PNGs are always written under
     `<output>/deliverables/overlays/<dataset>/<stem>.png` for forward runs;
     `--mode measure` reruns reuse existing overlays and do not regenerate them.
-    `--mode recompile` fills in only-missing overlay PNGs from HDFs but
+    `--mode recompile` fills in only-missing overlay PNGs from the stores but
     leaves existing ones untouched.
 
 SLURM Execution (Autonomous HPC Cluster Processing):
@@ -138,13 +152,17 @@ from uuid import UUID, uuid4
 
 import click
 import yaml  # type: ignore[import-untyped]
+from click.core import ParameterSource
 
 from phenotypic import ImagePipeline
 from phenotypic._core._image_parts.detection_modes import available_modes
 from phenotypic._cli._cli_directory_scanner import (
+    ImageManifestError,
+    apply_image_manifest,
+    load_image_manifest,
     organize_by_dataset,
     scan_directory_structure,
-    scan_hdf_outputs,
+    scan_store_outputs,
 )
 from phenotypic._cli._cli_execution_strategies import (
     create_execution_strategy,
@@ -155,6 +173,7 @@ from phenotypic._cli._cli_failure_tracker import (
     migrate_legacy_terminal_failures,
     work_id_for_image,
 )
+from phenotypic._core._provenance import pipeline_source_identity
 from phenotypic._cli._cli_interactive import (
     execute_dry_run,
     get_sample_datasets,
@@ -185,6 +204,7 @@ from phenotypic._cli._cli_utils import (
     parse_slurm_args,
     resolve_local_worker_count,
 )
+from phenotypic._cli._cli_process_only import resolve_process_format
 from phenotypic._cli._cli_recompile_slurm_scripts import (
     TASK_FINALIZE,
     TASK_MEASUREMENTS,
@@ -192,10 +212,6 @@ from phenotypic._cli._cli_recompile_slurm_scripts import (
     generate_recompile_slurm_scripts,
     recompile_attempt_dir,
     recompile_task_status_path,
-)
-from phenotypic._cli._cli_recompile_metadata_migration_slurm import (
-    generate_metadata_migration_slurm_scripts,
-    plan_metadata_schema_for_slurm_recompile,
 )
 from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
 from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
@@ -207,16 +223,21 @@ from phenotypic._cli._cli_constants import MAX_SLURM_TIME_MINUTES
 from phenotypic.schema import EXPERIMENT
 from phenotypic.sdk_ import (
     DIR_PHENOTYPIC,
+    DIR_PROGRESS,
     DIR_RESULTS,
     GUI_LAUNCH_OWNER_JSON,
     GUI_LOG_FILENAMES,
-    dataset_overlays_dir,
     JOB_METADATA_JSON,
+    PROCESSING_EVENTS_LOG,
+    PROCESSING_STATE_JSON,
     RECOMPILE_TASK_MANIFEST_JSON,
+    STORE_SUFFIX,
     JobMetadataKey,
     dashboard_html_path,
     dataset_measurements_dir,
-    load_image_from_hdf,
+    load_image_from_store,
+    source_image_stem,
+    store_stem,
     clear_machine_state,
     atomic_write_bytes,
     atomic_write_json,
@@ -228,7 +249,12 @@ from phenotypic.sdk_ import (
     file_fingerprint,
 )
 from phenotypic.sdk_.slurm import parse_slurm_time
-from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
+from phenotypic.sdk_.typing_ import (
+    CliMode,
+    ImageTypeName,
+    ProcessFormat,
+    ProcessOnlyLayer,
+)
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -236,6 +262,178 @@ logger = logging.getLogger(__name__)
 # Resolved at import time so Click `help=` strings and echo messages track the
 # schema enum rather than hard-coding the column name literal.
 _DATASET_COL: str = str(EXPERIMENT.DATASET)
+
+#: Modes that never write an image store from a pipeline, so a durability
+#: promise about that write would be a lie. ``recompile`` refreshes aggregate
+#: outputs from an existing run; ``migrate`` (Phase 5) converts legacy ``.h5``
+#: runs. ``migrate`` is listed ahead of its own arrival deliberately -- click's
+#: ``Choice`` rejects the spelling until then, so this set is the only place
+#: the contract can be recorded, and it will not need editing when the mode
+#: lands. Spec §3.7 / Phase 3 Task 3.7.
+DURABLE_WRITES_REJECTED_MODES: frozenset[str] = frozenset(
+    {"recompile", "migrate"}
+)
+
+
+#: Stand-ins reported by :func:`_prior_scientific_artifact_names` when the
+#: output root cannot be enumerated at all. They are not entry names, so they
+#: are wrapped in angle brackets to read as a condition rather than a file.
+_OUTPUT_ROOT_NOT_A_DIRECTORY = "<not a directory>"
+_OUTPUT_ROOT_UNREADABLE = "<unreadable>"
+
+
+def _holds_run_output(directory: Path) -> bool:
+    """Return whether ``directory`` actually holds an earlier run's output.
+
+    Every run scaffolds its output tree up front -- ``results/<ds>/zarr/`` and
+    ``deliverables/overlays/<ds>/`` exist from the first moment, empty, before
+    a single image is written. Treating those as science would fire the restart
+    guard on every run that ever started, so emptiness is what separates
+    scaffolding from output. This is the non-empty test the pre-inversion
+    allowlist applied to ``results``/``deliverables``/``qc``, kept now that the
+    set of interesting locations is open (``--mode process`` mirrors to the
+    output *root*).
+
+    A ``*.ome.zarr`` directory counts even when empty: the path itself is a
+    published store identity, not scaffolding. A symlink counts too -- its
+    target is outside this tree and cannot be vouched for.
+
+    Args:
+        directory: A real, non-symlink directory under the output root.
+
+    Returns:
+        ``True`` on the first real file, store directory, or symlink found.
+
+    Raises:
+        OSError: If any level cannot be listed; the caller fails closed.
+    """
+    if directory.name.endswith(STORE_SUFFIX):
+        return True
+    stack = [directory]
+    while stack:
+        for child in stack.pop().iterdir():
+            if child.name.endswith(STORE_SUFFIX) or child.is_symlink():
+                return True
+            if child.is_dir():
+                stack.append(child)
+            else:
+                return True
+    return False
+
+
+def _prior_scientific_artifact_names(
+    output_dir: Path,
+    *,
+    pipeline_snapshot_name: str | None = None,
+) -> list[str]:
+    """Name every top-level entry a ``--restart`` would *not* clear.
+
+    ``--restart`` re-runs the orchestration against clean machine-state while
+    preserving output artifacts, so anything :func:`clear_machine_state` does
+    not delete survives into the new run. Exchanging the approved image subset
+    across such a directory would silently mix two runs' science, which is what
+    the caller refuses.
+
+    Three kinds of entry are *not* an earlier run's science: machine-state the
+    restart clears itself, empty scaffolding (see :func:`_holds_run_output`),
+    and the run's own pipeline copy, which ``_copy_pipeline_to_output`` places
+    at the root under the source file's basename.
+
+    Fails closed: a path that is not a directory, or a root that cannot be
+    enumerated, is reported as holding artifacts rather than assumed fresh.
+    ``Path.exists()`` and ``Path.is_dir()`` swallow ``OSError`` internally and
+    answer ``False``, so both probes run inside the ``try`` -- outside it, an
+    unreadable root would report "fresh" while the identical error one line
+    later is treated as "assume artifacts present".
+
+    Args:
+        output_dir: Prospective run output root.
+        pipeline_snapshot_name: Basename of this run's ``--pipeline`` file, so
+            the copy of it at the output root is not mistaken for science.
+            ``None`` classifies every file at the root as science.
+
+    Returns:
+        Sorted names of the blocking entries, or one of the
+        ``<...>`` stand-ins above when the root itself is the problem. Empty
+        when a restart would preserve nothing from an earlier run.
+    """
+    root = Path(output_dir)
+    blocking: list[str] = []
+    try:
+        if not root.exists():
+            return []
+        if not root.is_dir():
+            return [_OUTPUT_ROOT_NOT_A_DIRECTORY]
+        for entry in root.iterdir():
+            if _is_ignorable_output_entry(entry, allow_machine_state=True):
+                continue
+            if entry.is_symlink():
+                blocking.append(entry.name)
+                continue
+            if (
+                pipeline_snapshot_name is not None
+                and entry.name == pipeline_snapshot_name
+                and entry.is_file()
+            ):
+                continue
+            if entry.is_dir() and not _holds_run_output(entry):
+                continue
+            blocking.append(entry.name)
+    except OSError:
+        return [_OUTPUT_ROOT_UNREADABLE]
+    return sorted(blocking)
+
+
+def _has_prior_scientific_artifacts(output_dir: Path) -> bool:
+    """Return whether restart would preserve artifacts from an earlier run.
+
+    Thin boolean view of :func:`_prior_scientific_artifact_names`; see there for
+    the classification rules and the fail-closed exits.
+
+    Args:
+        output_dir: Prospective run output root.
+
+    Returns:
+        ``True`` when at least one top-level entry would survive a restart.
+    """
+    return bool(_prior_scientific_artifact_names(output_dir))
+
+
+def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
+    """Refuse a tree whose per-image results are not all converted.
+
+    Applied to **every mode that writes or reprocesses** -- ``full``,
+    ``measure``, ``recompile``, ``process`` -- because after Phase 6 the
+    forward path genuinely cannot read an unconverted image. ``migrate``
+    itself is exempt: it is the remedy, and guarding it with its own
+    predicate makes the tree unmigratable (ledger MIG-19).
+
+    The predicate is shared with the viewer, so the two cannot disagree
+    about what "needs migrating" means. The severities differ, not the
+    definition: a writing mode refuses, while the viewer reports.
+
+    Format conversion rewrites the entire results tree, so it is typed
+    deliberately rather than triggered as a side effect of an unrelated run.
+
+    Args:
+        output_dir: Run output root.
+        mode: The mode being refused, for the message.
+
+    Raises:
+        click.UsageError: At least one dataset holds an ``.h5`` result whose
+            store is absent or invalid.
+    """
+    from phenotypic.sdk_ import MIGRATION_REMEDY, datasets_needing_migration
+
+    legacy = datasets_needing_migration(output_dir)
+    if legacy:
+        raise click.UsageError(
+            f"--mode {mode} cannot read this output: dataset(s) "
+            f"{', '.join(legacy)} still hold unconverted .h5 results. "
+            f"Convert them first with:\n"
+            f"  python -m phenotypic {MIGRATION_REMEDY} "
+            f"--output {output_dir}"
+        )
 
 
 def _snapshot_metadata_csv(
@@ -331,7 +529,7 @@ def _repair_incremental_manifest(
             datasets={name: len(images) for name, images in inventory.items()},
             execution_mode=("slurm" if config.is_slurm_mode() else "local"),
             start_time=state.timestamp.isoformat(timespec="milliseconds"),
-            input_path=config.input_path.stem,
+            input_path=source_image_stem(config.input_path),
             dataset_inventory=inventory,
             processing_generation=state.config.get("processing_generation"),
             gui_record_generation=os.environ.get(
@@ -344,6 +542,22 @@ def _repair_incremental_manifest(
         )
 
 
+def _requires_legacy_success_migration(
+    state: Any, config: ExecutionConfig
+) -> bool:
+    """Return whether this resume must synchronously migrate old markers.
+
+    Measure-only reruns always submit every discovered HDF, and their existing
+    per-image workers publish fresh success markers after remeasurement.
+    Running the legacy migration first would serially validate the same HDF and
+    measurement artifacts before the parallel SLURM workers can begin.
+    """
+    return not (
+        getattr(config, "measure_only", False)
+        or state.config.get("success_markers_required", False)
+    )
+
+
 def _migrate_legacy_success_evidence(
     state: Any,
     config: ExecutionConfig,
@@ -353,7 +567,10 @@ def _migrate_legacy_success_evidence(
     """Promote only validated legacy per-image outputs to general markers."""
     if state.config.get("success_markers_required", False):
         return 0
-    from phenotypic._cli._cli_completion import publish_image_success
+    from phenotypic._cli._cli_completion import (
+        image_data_artifact,
+        publish_image_success,
+    )
     from phenotypic._cli._cli_process_only import process_only_output_path
     from phenotypic._cli._cli_staged_resume import stage3_completion_exists
 
@@ -378,7 +595,7 @@ def _migrate_legacy_success_evidence(
             legacy_complete = image.name in ds_state.completed
             if staged:
                 legacy_complete = legacy_complete or stage3_completion_exists(
-                    output_dir, dataset.name, image.stem
+                    output_dir, dataset.name, source_image_stem(image)
                 )
             if not legacy_complete:
                 continue
@@ -389,21 +606,35 @@ def _migrate_legacy_success_evidence(
                         image,
                         config.input_path,
                         config.process_only_layer,
+                        fmt=config.process_format,
                     )
                 }
                 mode = "process"
             else:
+                # The same resolver every publisher uses. This path fires
+                # on a STORE-era run too -- `stage3_completion_exists` is a
+                # store-era signal -- so a hard-coded `"hdf"` here named a
+                # file the run never wrote. `publish_image_success` resolves
+                # strict=True, and the `except OSError` below swallows the
+                # FileNotFoundError, so the symptom was not a crash but a
+                # silent refusal to promote and a full reprocess.
+                data_key, data_path = image_data_artifact(
+                    output_dir,
+                    output_manager,
+                    dataset.name,
+                    source_image_stem(image),
+                )
                 artifacts = {
                     "measurements": output_manager.get_output_path(
-                        dataset.name, "measurements", image.stem
+                        dataset.name,
+                        "measurements",
+                        source_image_stem(image),
                     ),
-                    "hdf": output_manager.get_output_path(
-                        dataset.name, "hdf", image.stem
-                    ),
+                    data_key: data_path,
                 }
                 if config.save_overlays:
                     artifacts["overlay"] = output_manager.get_output_path(
-                        dataset.name, "overlays", image.stem
+                        dataset.name, "overlays", source_image_stem(image)
                     )
                 mode = "full"
             try:
@@ -412,7 +643,7 @@ def _migrate_legacy_success_evidence(
                     work_id=work_id,
                     dataset=dataset.name,
                     relative_image_path=relative_path,
-                    image_stem=image.stem,
+                    image_stem=source_image_stem(image),
                     mode=mode,
                     attempt_id="legacy-migration",
                     lifecycle_epoch=str(
@@ -471,7 +702,7 @@ def _parse_slurm_args(slurm_args: Sequence[str]) -> dict:
 
 
 def _validate_resume_input_images(
-    state, current_datasets
+    state, current_datasets, *, measure_only: bool = False
 ) -> tuple[bool, Optional[str]]:
     """
     Validate that accepted inputs remain present during continuation.
@@ -486,6 +717,8 @@ def _validate_resume_input_images(
     Args:
         state: Saved processing state
         current_datasets: Currently scanned datasets
+        measure_only: Whether the scan contains remeasurement HDFs; compare
+            source-image and HDF filename stems in that case.
 
     Returns:
         Tuple of (is_valid, error_message)
@@ -512,9 +745,17 @@ def _validate_resume_input_images(
         else:
             prev_images = ds_state.completed | ds_state.failed
 
+        # Measure-only rescans HDFs, so compare stems (``image.tiff`` →
+        # ``image.h5``) while ordinary continuations retain exact-name checks.
+        if measure_only:
+            prev_images = {Path(image_name).stem for image_name in prev_images}
+
         # Get current image names from scan
         current_dataset = current_datasets_map[ds_name]
-        curr_images = {img.name for img in current_dataset.images}
+        curr_images = {
+            image.stem if measure_only else image.name
+            for image in current_dataset.images
+        }
 
         # Accepted images are append-only. Additions are valid; removals are not.
         if prev_images and not prev_images.issubset(curr_images):
@@ -668,6 +909,69 @@ def _is_safe_gui_submitter_log_tree(
         child.name in allowed and not child.is_symlink() and child.is_file()
         for child in gui_logs.iterdir()
     )
+
+
+def _is_clearable_machine_state(entry: Path) -> bool:
+    """Return whether ``entry`` is state a ``--restart`` deletes outright.
+
+    Mirrors what :func:`phenotypic.sdk_.clear_machine_state` removes, so the
+    freshness guard and the clearing it authorizes cannot hold two different
+    definitions of "machine state": the ``.phenotypic`` cache, plus the
+    pre-migration root-level layout (``progress/``, ``processing_state.json``,
+    ``processing_events.log``) kept working for a legacy run restarted in place.
+
+    The ``.phenotypic`` arm additionally refuses a cache holding an OME-Zarr
+    store. ``scan_directory_structure`` does not skip dot-directories, so
+    ``--input tree`` where ``tree/.phenotypic/`` holds images yields a dataset
+    literally named ``.phenotypic`` and ``--mode process`` mirrors its exports
+    to ``<output>/.phenotypic/<stem>.ome.zarr``. Calling that machine-state
+    would hand published science to ``shutil.rmtree`` -- the one direction of
+    this predicate that loses data, so it fails closed.
+
+    Args:
+        entry: Direct child of a prospective output directory.
+
+    Returns:
+        ``True`` only for real, non-symlink machine-state entries.
+    """
+    if entry.is_symlink():
+        return False
+    try:
+        if entry.name == DIR_PHENOTYPIC:
+            return entry.is_dir() and not any(
+                child.name.endswith(STORE_SUFFIX) for child in entry.iterdir()
+            )
+        if entry.name == DIR_PROGRESS:
+            return entry.is_dir()
+        if entry.name in {PROCESSING_STATE_JSON, PROCESSING_EVENTS_LOG}:
+            return entry.is_file()
+    except OSError:
+        return False
+    return False
+
+
+def _is_ignorable_output_entry(
+    entry: Path, *, allow_machine_state: bool
+) -> bool:
+    """Return whether a top-level output entry is not an earlier run's science.
+
+    Single definition shared by the two freshness checks that would otherwise
+    drift apart -- the ``--restart --image-manifest`` guard and the
+    already-contains-files check for a genuinely fresh run. They differ only in
+    how they treat machine-state, which is exactly what the keyword selects.
+
+    Args:
+        entry: Direct child of a prospective output directory.
+        allow_machine_state: ``True`` for a restart, which clears machine-state
+            itself and so may ignore it; ``False`` for a fresh run, where a
+            previous run's state means the directory is not fresh.
+
+    Returns:
+        ``True`` when the entry may be ignored by the calling check.
+    """
+    if is_safe_gui_log_entry(entry) or is_safe_gui_launch_state_entry(entry):
+        return True
+    return allow_machine_state and _is_clearable_machine_state(entry)
 
 
 def _format_slurm_key(key: str) -> str:
@@ -885,6 +1189,7 @@ def _print_process_only_dry_run_plan(
                     img,
                     config.input_path,
                     layer,  # type: ignore[arg-type]
+                    fmt=config.process_format,
                 )
             )
 
@@ -930,6 +1235,16 @@ def _print_process_only_dry_run_plan(
     help="Input image file or directory to process.",
 )
 @click.option(
+    "--image-manifest",
+    "image_manifest",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help=(
+        "Exact subset of --input to process: one absolute or --input-relative "
+        "image path per line; blank lines and # comments are ignored."
+    ),
+)
+@click.option(
     "-o",
     "--output",
     "output_dir",
@@ -940,15 +1255,46 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "-m",
     "--mode",
-    type=click.Choice(["full", "measure", "recompile", "process"]),
+    type=click.Choice(["full", "measure", "recompile", "process", "migrate"]),
     default="full",
     show_default=True,
     help=(
         "Execution mode: full applies the pipeline and measures images; "
         "measure reruns measurement from an existing output root; recompile "
         "refreshes aggregate outputs from an existing output root; process "
-        "exports a single layer selected with --layer."
+        "exports a single layer selected with --layer; migrate explicitly "
+        "upgrades a full legacy run, direct OME-Zarr store, or process-output "
+        "tree. A full legacy run uses two passes: metadata headers in every "
+        "non-image target, then each per-image .h5 store conversion and "
+        "completion recertification. Direct stores and process-output trees "
+        "upgrade only schema-v1 root provenance. Runs locally by default or as "
+        "a generation-scoped SLURM attempt with --slurm; re-run it to resume."
     ),
+)
+@click.option(
+    "--delete-sources",
+    is_flag=True,
+    help=(
+        "With --mode migrate: delete each legacy HDF (.h5) and external "
+        "measurement Parquet source after value-level re-read verifies the "
+        "published store. The only irreversible step; sources are retained "
+        "without it."
+    ),
+)
+@click.option(
+    "--durable-writes/--no-durable-writes",
+    "durable_writes",
+    default=None,
+    help=(
+        "fsync each image store before promoting it. Unset auto-detects: on "
+        "under SLURM, off locally. The resolved mode is logged at run start. "
+        "Not accepted with --mode recompile or migrate."
+    ),
+)
+@click.option(
+    "--drop-originals",
+    is_flag=True,
+    help=("Do not retain decoded source pixels in full-forward image stores."),
 )
 @click.option(
     "--image-type",
@@ -1041,10 +1387,10 @@ def _print_process_only_dry_run_plan(
     "--ext",
     default="tiff",
     show_default=True,
-    help="(deprecated for HDF output; still used for overlay PNG) "
+    help="(deprecated for store output; still used for overlay PNG) "
     "File extension for legacy per-layer outputs. Forward runs now "
-    "write a single .h5 per image; only overlay PNG rendering still "
-    "consults this value.",
+    "write a single OME-Zarr store per image; only overlay PNG rendering "
+    "still consults this value.",
 )
 @click.option(
     "--overlay-alpha",
@@ -1138,8 +1484,21 @@ def _print_process_only_dry_run_plan(
     type=click.Choice(["rgb", "gray", "detect_mat", "objmap"]),
     default=None,
     help=(
-        "Layer exported by --mode process. TIFF for rgb/gray/detect_mat; "
-        "16-bit raw-label PNG for objmap."
+        "Layer exported by --mode process. See --process-format for the "
+        "output format and its per-layer default."
+    ),
+)
+@click.option(
+    "--process-format",
+    "process_format",
+    type=click.Choice(["tiff", "zarr"]),
+    default=None,
+    help=(
+        "Output format for --mode process. Default: zarr for rgb/gray (a "
+        "single-series OME-Zarr store carrying the pipeline that produced "
+        "it), tiff for detect_mat (float TIFF) and objmap (a 16-bit "
+        "raw-label PNG). --layer objmap and --layer detect_mat have no "
+        "OME-Zarr form and refuse an explicit zarr."
     ),
 )
 @click.pass_context
@@ -1147,8 +1506,11 @@ def phenotypic_cli(
     ctx: click.Context,
     pipeline_json: Optional[Path],
     input_path: Optional[Path],
+    image_manifest: Optional[Path],
     output_dir: Path,
     mode: str,
+    durable_writes: Optional[bool],
+    drop_originals: bool,
     image_type: str,
     nrows: Optional[int],
     ncols: Optional[int],
@@ -1176,6 +1538,8 @@ def phenotypic_cli(
     skip_validation: bool,
     no_qc: bool,
     layer: Optional[str],
+    process_format: Optional[str],
+    delete_sources: bool,
 ):
     """
     Execute a PhenoTypic image-processing pipeline on a file or directory.
@@ -1189,16 +1553,27 @@ def phenotypic_cli(
       measure    Re-run measurement only against an existing output root.
                  Requires --pipeline; no --input (inputs are discovered
                  from --output).
+      migrate    Explicitly upgrade a full legacy run, direct OME-Zarr store,
+                 or process-output tree. A full run uses two passes: metadata
+                 headers in every non-image target, then each per-image .h5
+                 store conversion and completion recertification. Direct
+                 stores and process-output trees upgrade only schema-v1 root
+                 provenance. It runs locally by default or through a
+                 generation-scoped SLURM attempt with --slurm; re-running it
+                 creates a fresh attempt for interrupted work.
+
       recompile  Refresh aggregate outputs from an existing output root; no
                  --input or --pipeline (both are reloaded from --output).
       process    Apply-only export: write ONE image layer per input (chosen
                  with --layer), mirroring the input tree under --output.
                  Skips measurement, deliverables, QC, and the dashboard.
 
-    Process-mode export writes each layer via the layer accessor's imsave:
-    rgb integer TIFF at the source bit depth; gray/detect_mat float TIFF
-    preserving full precision; objmap 16-bit raw-label PNG (PhenoTypic
-    metadata embedded). Machine-state (progress manifest, event log, pipeline
+    Process-mode export defaults to a single-series OME-Zarr store for rgb
+    and gray, and to the layer accessor's imsave for the rest: detect_mat a
+    float TIFF preserving full precision, objmap a 16-bit raw-label PNG
+    (PhenoTypic metadata embedded). --process-format selects between the two
+    and states its per-layer default; objmap and detect_mat have no OME-Zarr
+    form. Machine-state (progress manifest, event log, pipeline
     copy) lives under <output>/.phenotypic/. All modes support local + SLURM
     execution and content-defined continuation. Example:
 
@@ -1213,32 +1588,94 @@ def phenotypic_cli(
         cli_mode = cast(
             CliMode, mode
         )  # Click's Choice has already validated this.
+        if drop_originals and cli_mode != "full":
+            raise click.UsageError(
+                f"--drop-originals is not accepted with --mode {cli_mode}"
+            )
         measure_only = cli_mode == "measure"
         recompile_only = cli_mode == "recompile"
+        migrate_only = cli_mode == "migrate"
         process_only_layer: Optional[ProcessOnlyLayer] = None
+        resolved_process_format: ProcessFormat = "tiff"
         if cli_mode == "process":
             if layer is None:
                 raise click.UsageError("--mode process requires --layer.")
             process_only_layer = cast(ProcessOnlyLayer, layer)
-        elif layer is not None:
-            raise click.UsageError(
-                "--layer can only be used with --mode process."
+            resolved_process_format = resolve_process_format(
+                process_only_layer,
+                cast("ProcessFormat | None", process_format),
             )
+        else:
+            if layer is not None:
+                raise click.UsageError(
+                    "--layer can only be used with --mode process."
+                )
+            if process_format is not None:
+                raise click.UsageError(
+                    "--process-format can only be used with --mode process."
+                )
 
-        if measure_only or recompile_only:
+        if measure_only or recompile_only or migrate_only:
             if input_path is not None:
                 raise click.UsageError(
                     f"--mode {cli_mode} does not accept --input; it discovers "
                     "inputs from the existing output directory."
                 )
-            if dry_run:
+            # `migrate` is deliberately EXEMPT from the --dry-run rejection
+            # (ledger FLOW-34): --dry-run is a required part of the mode --
+            # spec 5.1's interface line, `migrate_run_hdf_to_zarr(dry_run=)`,
+            # and a phase exit criterion all depend on it. Folding migrate
+            # into this condition rejects it.
+            if dry_run and not migrate_only:
                 raise click.UsageError(
                     f"--dry-run cannot be combined with --mode {cli_mode}."
                 )
-        if recompile_only and pipeline_json is not None:
+        if delete_sources and not migrate_only:
             raise click.UsageError(
-                "--mode recompile does not accept --pipeline; it reloads the "
-                "pipeline from the existing output directory."
+                "--delete-sources is only accepted with --mode migrate."
+            )
+
+        # Process mirrors source-relative names into its output tree. The two
+        # roots therefore must be disjoint in BOTH directions: an output below
+        # the input mutates the source tree during publication, while an input
+        # below the output can be deleted by ``--overwrite``. Resolve aliases
+        # before any output inspection or mutation so symlinked spellings do
+        # not bypass the boundary.
+        if cli_mode == "process" and input_path is not None:
+            canonical_input = Path(input_path).resolve(strict=False)
+            canonical_output = Path(output_dir).resolve(strict=False)
+            if (
+                canonical_input == canonical_output
+                or canonical_input.is_relative_to(canonical_output)
+                or canonical_output.is_relative_to(canonical_input)
+            ):
+                raise click.UsageError(
+                    "--mode process input and output roots must not overlap "
+                    "or contain one another. Choose a disjoint --output so "
+                    "the source can never be modified or deleted."
+                )
+
+        # Every mode that writes or reprocesses refuses an unconverted tree;
+        # `migrate` is exempt because it is the remedy (ledger MIG-19). Placed
+        # here so `full`, `measure`, `recompile` and `process` are all covered
+        # by one call rather than four, and before any of them writes.
+        if not migrate_only and output_dir.exists():
+            _refuse_unmigrated_output(output_dir, mode=cli_mode)
+        if durable_writes is not None and cli_mode in (
+            DURABLE_WRITES_REJECTED_MODES
+        ):
+            flag = (
+                "--durable-writes" if durable_writes else "--no-durable-writes"
+            )
+            raise click.UsageError(
+                f"{flag} is not accepted with --mode {cli_mode}; that mode "
+                "does not write image stores from a pipeline."
+            )
+
+        if (recompile_only or migrate_only) and pipeline_json is not None:
+            raise click.UsageError(
+                f"--mode {cli_mode} does not accept --pipeline; it reloads "
+                "the pipeline from the existing output directory."
             )
 
         # ---- Early validation for --mode process -----------------------
@@ -1260,6 +1697,23 @@ def phenotypic_cli(
                         "(no measurement/aggregation output).",
                         err=True,
                     )
+
+        if image_manifest is not None:
+            if mode not in {"full", "process"}:
+                raise click.UsageError(
+                    "--image-manifest is only supported with --mode full or "
+                    "--mode process."
+                )
+            if input_path is None:
+                raise click.UsageError(
+                    "--image-manifest requires --input: manifest entries are "
+                    "resolved relative to the input tree."
+                )
+            if sample is not None:
+                raise click.UsageError(
+                    "sample_excludes_manifest: --sample cannot be combined "
+                    "with --image-manifest. Narrow the manifest instead."
+                )
 
         # Parse SLURM args before the recompile branch so --mode recompile can
         # explicitly choose between local and SLURM recompile dispatch.
@@ -1320,6 +1774,34 @@ def phenotypic_cli(
                 "--restart and --overwrite are mutually exclusive"
             )
 
+        if migrate_only:
+            from phenotypic._cli._cli_migrate import handle_migrate_mode
+
+            if not output_dir.exists():
+                raise click.UsageError(
+                    "--mode migrate output directory does not exist: "
+                    f"{output_dir}."
+                )
+            njobs_was_explicit = (
+                ctx.get_parameter_source("n_jobs") is not ParameterSource.DEFAULT
+            )
+            sys.exit(
+                handle_migrate_mode(
+                    output_dir,
+                    njobs=max(1, n_jobs) if n_jobs > 0 else 1,
+                    njobs_was_explicit=njobs_was_explicit,
+                    overlay_alpha=overlay_alpha,
+                    dry_run=dry_run,
+                    delete_sources=delete_sources,
+                    slurm_args=(
+                        slurm_args_dict
+                        if slurm_args_dict and not force_local
+                        else None
+                    ),
+                    wait=wait,
+                )
+            )
+
         if recompile_only:
             if not output_dir.exists():
                 raise click.UsageError(
@@ -1368,10 +1850,11 @@ def phenotypic_cli(
             sys.exit(0)
 
         # ---- Early validation for --mode measure (measure_only) --------
-        # Measure mode is a one-shot re-measurement run over HDFs already
-        # written by a previous forward run.  It is incompatible with any
-        # flag that implies a fresh detection pass or state mutation, and
-        # it uses <output>/results/*/hdf/ as its image source.
+        # Measure mode is a one-shot re-measurement run over the image
+        # stores already written by a previous forward run.  It is
+        # incompatible with any flag that implies a fresh detection pass or
+        # state mutation, and it uses <output>/results/*/zarr/ as its image
+        # source.
         if measure_only:
             # Reject incompatible flags first so the user gets a pointed
             # rejection ("--mode measure cannot be combined with --X")
@@ -1379,7 +1862,8 @@ def phenotypic_cli(
             if restart:
                 raise click.UsageError(
                     "--mode measure cannot be combined with --restart; "
-                    "--mode measure reuses existing HDFs and does not clear state."
+                    "--mode measure reuses existing image stores and does "
+                    "not clear state."
                 )
             if retry_failures:
                 raise click.UsageError(
@@ -1391,14 +1875,15 @@ def phenotypic_cli(
             if overwrite:
                 raise click.UsageError(
                     "--mode measure cannot be combined with --overwrite; "
-                    "--mode measure reruns measurements on existing HDFs and "
+                    "--mode measure reruns measurements on existing image "
+                    "stores and "
                     "must not delete output directory contents."
                 )
             if sample is not None:
                 raise click.UsageError(
                     "--mode measure cannot be combined with --sample; "
-                    "--mode measure operates on every HDF discovered under "
-                    "<output>/results/*/hdf/."
+                    "--mode measure operates on every image store "
+                    "discovered under <output>/results/*/zarr/."
                 )
 
             if pipeline_json is None:
@@ -1412,16 +1897,6 @@ def phenotypic_cli(
                     "point it at a directory produced by a previous "
                     "`python -m phenotypic ...` invocation."
                 )
-            measure_state = load_processing_state(output_dir)
-            if measure_state is not None and measure_state.config.get(
-                "success_markers_required", False
-            ):
-                raise click.UsageError(
-                    "--mode measure cannot mutate a marker-authorized "
-                    "incremental run. Continue the original full run or use "
-                    "--mode recompile for aggregate-only changes."
-                )
-
         if not measure_only and (pipeline_json is None or input_path is None):
             missing = []
             if pipeline_json is None:
@@ -1457,7 +1932,8 @@ def phenotypic_cli(
                 error_exit(f"Cannot read metadata CSV: {e}")
 
         continuing = (
-            not restart
+            not measure_only
+            and not restart
             and not overwrite
             and output_dir.exists()
             and resolve_processing_state_path(output_dir).is_file()
@@ -1495,6 +1971,9 @@ def phenotypic_cli(
             wait=wait,
             ext=ext,
             overlay_alpha=overlay_alpha,
+            durable_writes=durable_writes,
+            drop_originals=drop_originals,
+            pipeline_identity=pipeline_source_identity(pipeline_json),
             include_dataset_column=include_dataset_column,
             dry_run=dry_run,
             sample=sample,
@@ -1503,21 +1982,39 @@ def phenotypic_cli(
             skip_validation=skip_validation,
             restart=restart,
             metadata_csv=metadata_csv,
+            image_manifest=image_manifest,
             no_qc=no_qc,
             checkpoint_interval=checkpoint_interval,
             measure_only=measure_only,
             process_only_layer=process_only_layer,  # type: ignore[arg-type]
+            process_format=resolved_process_format,
             gpu_workers_per_gpu=gpu_workers_per_gpu,
             gpu_shards=gpu_shards,
             gpu_slurm_args=_parse_slurm_args(gpu_slurm_args),
         )
+        manifest_snapshot = None
+        if image_manifest is not None:
+            try:
+                manifest_snapshot = load_image_manifest(image_manifest)
+            except ImageManifestError as exc:
+                raise click.UsageError(str(exc)) from exc
+            config.image_manifest_digest = manifest_snapshot.digest
 
         if output_dir.exists():
+            from phenotypic._cli._cli_slurm_lifecycle import (
+                load_slurm_lifecycle,
+            )
             from phenotypic._cli._cli_staged_orchestration import (
                 active_ledger_job_ids,
             )
 
-            active_jobs = active_ledger_job_ids(output_dir)
+            lifecycle = load_slurm_lifecycle(output_dir)
+            active_jobs = (
+                []
+                if lifecycle is not None
+                and lifecycle.get("active") is False
+                else active_ledger_job_ids(output_dir)
+            )
             if active_jobs:
                 click.echo(
                     "Error: Cannot continue, restart, or overwrite while SLURM "
@@ -1574,6 +2071,49 @@ def phenotypic_cli(
 
             click.echo(f"✓ Continuing from {output_dir}")
 
+        # Refuse a restart that would exchange the approved image subset while
+        # preserving an earlier subset's outputs. Gated on the recorded digest,
+        # not on `--image-manifest` being present at all: re-running the *same*
+        # approved subset is ordinary restart usage, and a proxy check made
+        # `--mode process --image-manifest --restart` permanently unusable the
+        # moment its first image was exported. No recorded digest means the
+        # subset cannot be proven unchanged, so that direction refuses too.
+        #
+        # Placed here, after `config.image_manifest_digest` is resolved and
+        # before `clear_machine_state` runs, because it is a check on run state
+        # rather than on argument spelling.
+        manifest_subset_changed = False
+        if restart and image_manifest is not None:
+            prior_state = (
+                load_processing_state(output_dir)
+                if output_dir.exists()
+                else None
+            )
+            recorded_manifest_digest = (
+                prior_state.config.get("image_manifest_digest")
+                if prior_state is not None
+                else None
+            )
+            manifest_subset_changed = (
+                recorded_manifest_digest != config.image_manifest_digest
+            )
+            if manifest_subset_changed:
+                blocking = _prior_scientific_artifact_names(
+                    output_dir,
+                    pipeline_snapshot_name=Path(config.pipeline_json).name,
+                )
+                if blocking:
+                    shown = ", ".join(blocking[:10])
+                    if len(blocking) > 10:
+                        shown += f", … and {len(blocking) - 10} more"
+                    raise click.UsageError(
+                        "--restart with --image-manifest requires a fresh "
+                        f"output directory; {output_dir} contains prior "
+                        f"scientific artifacts: {shown}. Remove those entries "
+                        "if they are not results you need. Choose a new "
+                        "--output directory to keep them."
+                    )
+
         # Handle restart mode - clear ALL previous machine-state so the
         # orchestration re-runs cleanly (fresh state + event log + progress),
         # while preserving any output artifacts (results/, deliverables/, qc/)
@@ -1583,11 +2123,11 @@ def phenotypic_cli(
         # prior run's events.
         if restart:
             if output_dir.exists():
-                from phenotypic._cli._cli_staged_orchestration import (
-                    clear_stage2_sidecars,
-                )
-
-                removed_sidecars = clear_stage2_sidecars(output_dir)
+                # The transient Stage-2 signal (retained raw .npy + consumable
+                # token) lives under .phenotypic/progress/, which
+                # clear_machine_state wipes -- so there is nothing extra to
+                # clear here. The old clear_stage2_sidecars() globbed
+                # results/*/objmap/*.npy and would now be a permanent no-op.
                 if clear_machine_state(output_dir):
                     click.echo(
                         f"✓ Cleared previous machine-state (.phenotypic/) from {output_dir}"
@@ -1595,10 +2135,6 @@ def phenotypic_cli(
                 else:
                     click.echo(
                         f"Note: No previous state found in {output_dir} (starting fresh)"
-                    )
-                if removed_sidecars:
-                    click.echo(
-                        f"✓ Cleared {removed_sidecars} transient Stage 2 sidecar(s)"
                     )
             else:
                 click.echo(
@@ -1610,9 +2146,8 @@ def phenotypic_cli(
         # Check existing contents only for a genuinely fresh run.
         if not config.resume and not restart and not measure_only:
             if output_dir.exists() and any(
-                not (
-                    is_safe_gui_log_entry(entry)
-                    or is_safe_gui_launch_state_entry(entry)
+                not _is_ignorable_output_entry(
+                    entry, allow_machine_state=False
                 )
                 for entry in output_dir.iterdir()
             ):
@@ -1635,13 +2170,13 @@ def phenotypic_cli(
                     )
                     sys.exit(1)
 
-        # Scan directory structure (or discover HDFs in measure mode)
+        # Scan directory structure (or discover image stores in measure mode)
         if measure_only:
             click.echo(
-                f"Discovering HDF outputs under {output_dir}/results/..."
+                f"Discovering image stores under {output_dir}/results/..."
             )
             try:
-                datasets = scan_hdf_outputs(output_dir)
+                datasets = scan_store_outputs(output_dir)
             except ValueError as e:
                 click.echo(f"Error: {e}", err=True)
                 sys.exit(1)
@@ -1651,6 +2186,23 @@ def phenotypic_cli(
             click.echo(f"Scanning {input_path}...")
             try:
                 image_paths_by_dataset = scan_directory_structure(input_path)
+                if image_manifest is not None:
+                    scanned_total = sum(
+                        len(paths) for paths in image_paths_by_dataset.values()
+                    )
+                    image_paths_by_dataset = apply_image_manifest(
+                        image_paths_by_dataset,
+                        image_manifest,
+                        input_path,
+                        snapshot=manifest_snapshot,
+                    )
+                    selected_total = sum(
+                        len(paths) for paths in image_paths_by_dataset.values()
+                    )
+                    click.echo(
+                        f"Image manifest {image_manifest} selected "
+                        f"{selected_total} of {scanned_total} image(s)"
+                    )
                 datasets = organize_by_dataset(
                     image_paths_by_dataset, output_dir
                 )
@@ -1794,7 +2346,7 @@ def phenotypic_cli(
 
             # Validate input image set hasn't changed
             images_valid, image_error = _validate_resume_input_images(
-                resume_state, datasets
+                resume_state, datasets, measure_only=config.measure_only
             )
             if not images_valid:
                 click.echo(f"Error: Cannot continue - {image_error}", err=True)
@@ -1821,9 +2373,11 @@ def phenotypic_cli(
                     "terminal failure record(s)."
                 )
 
-            promoted_successes = _migrate_legacy_success_evidence(
-                resume_state, config, full_datasets, output_dir
-            )
+            promoted_successes = 0
+            if _requires_legacy_success_migration(resume_state, config):
+                promoted_successes = _migrate_legacy_success_evidence(
+                    resume_state, config, full_datasets, output_dir
+                )
             if promoted_successes:
                 click.echo(
                     f"Promoted {promoted_successes} validated legacy image "
@@ -1943,7 +2497,7 @@ def phenotypic_cli(
                             ensure_staged_overlay(
                                 output_dir,
                                 resume_item.dataset,
-                                resume_item.image.stem,
+                                source_image_stem(resume_item.image),
                                 resume_output_manager,
                                 config.image_type,
                             )
@@ -2063,7 +2617,14 @@ def phenotypic_cli(
                     click.echo("  - Including previously failed images")
 
         elif restart:
-            if config.retry_failures:
+            # `clear_machine_state` preserves `terminal_failures.jsonl` by
+            # design, and `work_id_for_image` hashes dataset / relative path /
+            # input sha / pipeline / config digest / mode -- never the manifest
+            # digest. So an earlier subset's terminal failures would match, and
+            # silently drop, images in a newly approved subset. When the subset
+            # changed, the journal describes different work: keep it on disk,
+            # but do not apply it to this run.
+            if config.retry_failures or manifest_subset_changed:
                 terminal_skipped = 0
             else:
                 datasets, terminal_skipped = (
@@ -2103,9 +2664,11 @@ def phenotypic_cli(
                     "ext": config.ext,
                     "save_overlays": config.save_overlays,
                     "process_only_layer": config.process_only_layer,
+                    "drop_originals": config.drop_originals,
                     "pipeline_sha256": pipeline_content_digest(
                         config.pipeline_json
                     ),
+                    "image_manifest_digest": config.image_manifest_digest,
                     "staged_stage3_markers": config.staged_stage3_markers,
                     "success_markers_required": bool(
                         resume_state.config.get(
@@ -2156,13 +2719,16 @@ def phenotypic_cli(
             config.processing_generation
         )
 
-        # Create output manager
+        # Create output manager. This is the manager every local worker and
+        # the SLURM submission path writes stores through, so the run's
+        # durability mode is attached here rather than at each call site.
         output_manager = OutputManager.from_config(
             base_dir=output_dir,
             ext=config.ext,
             include_dataset_column=config.include_dataset_column,
             overlay_alpha=config.overlay_alpha,
             save_overlays=config.save_overlays,
+            durable_writes=config.durable_writes,
         )
         # Process-only runs export image layers mirroring the input tree and
         # write no results/ or deliverables/ structure; the worker creates its
@@ -2351,7 +2917,7 @@ def phenotypic_cli(
                         start_time=results.start_time.isoformat(
                             timespec="milliseconds"
                         ),
-                        input_path=config.input_path.stem,
+                        input_path=source_image_stem(config.input_path),
                         dataset_inventory=inventory,
                         processing_generation=config.processing_generation,
                     )
@@ -2401,7 +2967,9 @@ def phenotypic_cli(
             )
 
             full_stage3_complete = all(
-                stage3_completion_exists(output_dir, dataset, Path(image).stem)
+                stage3_completion_exists(
+                    output_dir, dataset, source_image_stem(Path(image))
+                )
                 for dataset, images in config.full_dataset_inventory.items()
                 for image in images
             )
@@ -2465,6 +3033,9 @@ def phenotypic_cli(
         # two-line output); do NOT swallow into the "Unexpected error"
         # branch below.
         raise
+    except click.ClickException as exc:
+        exc.show()
+        sys.exit(exc.exit_code)
     except Exception as e:
         click.echo(f"\nUnexpected error: {e}", err=True)
         import traceback
@@ -2480,13 +3051,14 @@ def _regenerate_missing_overlays(
 ) -> None:
     """Re-render overlay PNGs that are missing under ``deliverables/overlays/<ds>/``.
 
-    HDF-driven: walks ``results/<ds>/hdf/*.h5`` (the same discovery
-    used by measure mode) and, for each HDF whose corresponding
-    overlay PNG is absent, loads the HDF as the right ``Image`` /
-    ``GridImage`` subclass and writes the overlay using the same
-    :class:`OutputManager` writer the forward run uses.  Existing
-    overlays are left untouched.  Per-image failures are logged and
-    swallowed so one corrupt HDF doesn't abort the rest.
+    Store-driven: walks ``results/<ds>/zarr/*.ome.zarr`` (the same
+    discovery used by measure mode) and, for each store whose
+    corresponding overlay PNG is absent, loads the store as the right
+    ``Image`` / ``GridImage`` subclass and writes the overlay using the same
+    :class:`OutputManager` writer the forward run uses. Existing
+    overlays are left untouched. Failures remain best-effort unless the
+    missing overlay was the sole reason a valid completion marker lost
+    authority; a failed required marker restoration aborts recompile.
 
     Parallelized with a thread pool sized by ``n_jobs``.  Threading
     rather than multiprocessing because the heavy ops (h5py reads,
@@ -2502,97 +3074,116 @@ def _regenerate_missing_overlays(
             under SLURM, otherwise host CPUs.  ``1`` runs in-thread.
             Mirrors the ``--njobs`` flag used by forward runs.
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
     from rich.console import Console
-    from rich.progress import (
-        BarColumn,
-        MofNCompleteColumn,
-        Progress,
-        TextColumn,
-        TimeElapsedColumn,
+    from phenotypic._cli._cli_overlay_rendering import (
+        OverlayWork,
+        discover_missing_overlays,
+        overlay_output_manager,
+        render_overlay_work,
     )
 
     console = Console()
+    output_manager = overlay_output_manager(
+        output_dir, overlay_alpha=overlay_alpha
+    )
     try:
-        datasets = scan_hdf_outputs(output_dir)
+        work, _ = discover_missing_overlays(output_dir, output_manager)
     except ValueError:
         console.print(
-            "[yellow]No HDFs found under results/; skipping overlay regeneration"
+            "[yellow]No image stores found under results/; skipping "
+            "overlay regeneration"
         )
         return
 
-    output_manager = OutputManager.from_config(
-        base_dir=output_dir,
-        ext=".png",
-        include_dataset_column=False,
-        overlay_alpha=overlay_alpha,
-        save_overlays=True,
+    from phenotypic._cli._cli_recompile_recovery import (
+        marker_claims_measurement_authority,
     )
-
-    work: list[tuple[str, Path]] = []
-    for dataset in datasets:
-        for hdf_path in dataset.images:
-            overlay_path = output_manager.get_output_path(
-                dataset.name, "overlays", hdf_path.stem
-            )
-            if not overlay_path.exists():
-                work.append((dataset.name, hdf_path))
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        _marker_binds_overlay_and_table,
+        repair_overlay_marker_authority,
+    )
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        image_completion_marker_path,
+    )
 
     if not work:
         console.print("[green]All overlays present; nothing to regenerate")
         return
-
-    for dataset_name in {ds for ds, _ in work}:
-        dataset_overlays_dir(output_dir, dataset_name).mkdir(
-            parents=True, exist_ok=True
+    restore_required: dict[Path, bool] = {}
+    for item in work:
+        table_path = item.store / MEASUREMENT_TABLE_RELATIVE_PATH
+        requires_marker_restore = _marker_binds_overlay_and_table(
+            output_dir,
+            item.dataset,
+            item.stem,
+            item.overlay,
+            table_path,
         )
+        marker_path = image_completion_marker_path(
+            output_dir, item.dataset, item.stem
+        )
+        if not requires_marker_restore and (
+            table_path.exists()
+            or marker_claims_measurement_authority(marker_path)
+        ):
+            raise RuntimeError(
+                "Cannot safely restore marker authority for "
+                f"{item.dataset}/{item.stem}"
+            )
+        restore_required[item.overlay] = requires_marker_restore
 
-    workers = resolve_local_worker_count(n_jobs, len(work))
+    def _render_one(item: OverlayWork, manager: OutputManager) -> None:
+        image = load_image_from_store(item.store)
 
-    def _render_one(dataset_name: str, hdf_path: Path) -> None:
-        image = load_image_from_hdf(hdf_path)
-        output_manager.save_overlay(image, dataset_name, hdf_path.stem)
+        def _render(render_guard: Any) -> object:
+            return manager.save_overlay(
+                image,
+                item.dataset,
+                item.stem,
+                commit_guard=render_guard,
+            )
+
+        if restore_required[item.overlay]:
+            restored = repair_overlay_marker_authority(
+                output_dir,
+                item.dataset,
+                item.stem,
+                item.store,
+                _render,
+            )
+            if not restored:
+                raise RuntimeError(
+                    "Could not restore marker authority after overlay repair"
+                )
+        else:
+            _render(None)
 
     console.print(
         f"[cyan]Regenerating {len(work)} missing overlay(s) "
-        f"with {workers} thread(s)..."
+        f"with {resolve_local_worker_count(n_jobs, len(work))} thread(s)..."
     )
-    failures = 0
-    with Progress(
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        MofNCompleteColumn(),
-        TimeElapsedColumn(),
-        console=console,
-    ) as progress:
-        task_id = progress.add_task("overlays", total=len(work))
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = {
-                pool.submit(_render_one, ds_name, hdf_path): (
-                    ds_name,
-                    hdf_path,
-                )
-                for ds_name, hdf_path in work
-            }
-            for future in as_completed(futures):
-                ds_name, hdf_path = futures[future]
-                try:
-                    future.result()
-                except Exception:
-                    failures += 1
-                    logger.warning(
-                        "Failed to regenerate overlay for %s/%s",
-                        ds_name,
-                        hdf_path.stem,
-                        exc_info=True,
-                    )
-                finally:
-                    progress.advance(task_id)
+    result = render_overlay_work(
+        work,
+        output_manager=output_manager,
+        n_jobs=n_jobs,
+        render_one=_render_one,
+    )
+    for overlay, reason in result.failures:
+        logger.warning("Failed to regenerate overlay %s: %s", overlay, reason)
+    authority_failures = sum(
+        restore_required.get(overlay, False) for overlay, _ in result.failures
+    )
 
-    if failures:
+    if authority_failures:
+        raise RuntimeError(
+            "Failed to restore marker authority for "
+            f"{authority_failures} required overlay repair(s)"
+        )
+    if result.failures:
         console.print(
-            f"[yellow]Overlay regeneration finished with {failures} failure(s); "
+            "[yellow]Overlay regeneration finished with "
+            f"{len(result.failures)} failure(s); "
             f"see logs for details"
         )
     else:
@@ -2640,16 +3231,6 @@ def _handle_recompile_slurm(
 
     attempt_id = new_slurm_generation()
 
-    # The migration preflight is deliberately the first recompile operation
-    # that inspects bundle content. It is read-only, so a conflict produces no
-    # plan, script, status, dashboard, or scheduler submission artifact.
-    try:
-        migration_plan = plan_metadata_schema_for_slurm_recompile(
-            output_dir, attempt_id=attempt_id
-        )
-    except Exception as exc:
-        error_exit("Metadata migration blocked SLURM recompile", str(exc))
-
     prog_dir = progress_dir(output_dir)
     job_meta = load_job_metadata(prog_dir)
     dataset_names = _discover_recompile_dataset_names(output_dir, job_meta)
@@ -2674,19 +3255,30 @@ def _handle_recompile_slurm(
         shard_size=shard_size,
         attempt_id=attempt_id,
     )
+    from phenotypic.sdk_ import metadata_csv_deliverable_path
+
+    stable_metadata = metadata_csv_deliverable_path(output_dir)
+    effective_metadata = (
+        metadata_csv
+        if metadata_csv is not None
+        else (stable_metadata if stable_metadata.is_file() else None)
+    )
+    for task in tasks:
+        if task.get("task_type") in {TASK_MEASUREMENTS, TASK_FINALIZE}:
+            task[JobMetadataKey.METADATA_CSV] = (
+                str(effective_metadata) if effective_metadata else None
+            )
+
     finalizer_task_index: Optional[int] = None
     if tasks and tasks[-1].get("task_type") == TASK_FINALIZE:
         finalizer_task_index = len(tasks) - 1
-        tasks[-1][JobMetadataKey.METADATA_CSV] = (
-            str(metadata_csv) if metadata_csv else None
-        )
         tasks[-1][JobMetadataKey.NO_QC] = no_qc
         tasks[-1]["slurm_generation"] = attempt_id
 
     has_measurement_tasks = any(
         task.get("task_type") == TASK_MEASUREMENTS for task in tasks
     )
-    if not has_measurement_tasks and not migration_plan.targets:
+    if not has_measurement_tasks:
         console.print(
             "[yellow]No measurement sources require SLURM recompile; "
             "running the safe local path.[/yellow]"
@@ -2712,17 +3304,7 @@ def _handle_recompile_slurm(
         array_limit=array_limit,
         attempt_id=attempt_id,
     )
-    migration_scripts = generate_metadata_migration_slurm_scripts(
-        migration_plan,
-        slurm_args=slurm_args,
-        array_limit=array_limit,
-        attempt_id=attempt_id,
-        slurm_generation=attempt_id,
-        has_recompile_downstream=bool(scripts),
-    )
-    if migration_scripts is None and (
-        not tasks or not scripts or finalizer_task_index is None
-    ):
+    if not tasks or not scripts or finalizer_task_index is None:
         console.print(
             "[yellow]No recompile SLURM tasks/scripts were generated; "
             "running local recompile instead.[/yellow]"
@@ -2737,17 +3319,10 @@ def _handle_recompile_slurm(
         )
         return
 
-    flat_scripts: list[Path] = []
-    dependency_kinds: list[str] | None = None
-    if migration_scripts is not None:
-        flat_scripts.extend(migration_scripts.shard_scripts)
-        flat_scripts.append(migration_scripts.finalizer_script)
-    flat_scripts.extend(scripts)
-    if migration_scripts is not None and scripts:
-        dependency_kinds = ["afterany"] * (len(flat_scripts) - 1)
-        barrier_edge = len(migration_scripts.shard_scripts)
-        dependency_kinds[barrier_edge] = "afterok"
-
+    # No metadata-migration prologue any more: recompile does not rewrite
+    # headers, so there is nothing to fan out and no afterok barrier to place
+    # in front of the recompile array.
+    flat_scripts: list[Path] = list(scripts)
     submission_args: dict[str, Any] = {
         "flat_chunk_scripts": flat_scripts,
         "output_dir": output_dir,
@@ -2755,8 +3330,6 @@ def _handle_recompile_slurm(
         "console": console,
         "generation": attempt_id,
     }
-    if dependency_kinds is not None:
-        submission_args["continuation_dependency_kinds"] = dependency_kinds
     try:
         _initialize_recompile_slurm_attempt(output_dir, attempt_id)
     except Exception as exc:
@@ -2798,24 +3371,9 @@ def _handle_recompile_slurm(
             "task_manifest": str(recompile_manifest_path),
             "finalizer_task_index": finalizer_task_index,
             "metadata_migration": {
-                "plan_fingerprint": migration_plan.report.plan_fingerprint,
-                "source_fingerprint": migration_plan.report.source_fingerprint,
-                "target_count": len(migration_plan.targets),
-                "task_manifest": (
-                    str(migration_plan.manifest_path)
-                    if migration_scripts is not None
-                    else None
-                ),
-                "finalizer_status": (
-                    str(migration_plan.finalizer_status_path)
-                    if migration_scripts is not None
-                    else None
-                ),
-                "barrier_dependency": (
-                    "afterok"
-                    if migration_scripts is not None and scripts
-                    else None
-                ),
+                # Retained as a key so a reader of older job metadata sees the
+                # shape change rather than a silently missing field. Recompile
+                # no longer migrates; `--mode migrate` does, locally.
                 "external_metadata_fingerprint": (
                     file_fingerprint(metadata_csv)
                     if metadata_csv is not None and metadata_csv.is_file()
@@ -2838,51 +3396,22 @@ def _handle_recompile_slurm(
         )
 
     if wait:
-        if finalizer_task_index is None:
-            console.print(
-                "\n[cyan]Waiting for metadata migration finalizer...[/cyan]"
-            )
-            _wait_for_metadata_migration_finalizer_status(
-                migration_plan.finalizer_status_path,
-                output_dir=output_dir,
-                slurm_generation=attempt_id,
-            )
-        elif migration_scripts is None:
-            console.print(
-                "\n[cyan]Waiting for recompile finalizer "
-                f"task {finalizer_task_index}...[/cyan]"
-            )
-            _wait_for_recompile_finalizer_status(
-                output_dir,
-                finalizer_task_index,
-                recompile_finalizer_status_path=recompile_task_status_path(
-                    recompile_manifest_path, finalizer_task_index
-                ),
-                slurm_generation=attempt_id,
-            )
-        else:
-            console.print(
-                "\n[cyan]Waiting for recompile finalizer "
-                f"task {finalizer_task_index}...[/cyan]"
-            )
-            _wait_for_recompile_finalizer_status(
-                output_dir,
-                finalizer_task_index,
-                migration_finalizer_status_path=(
-                    migration_plan.finalizer_status_path
-                ),
-                recompile_finalizer_status_path=recompile_task_status_path(
-                    recompile_manifest_path, finalizer_task_index
-                ),
-                slurm_generation=attempt_id,
-            )
+        console.print(
+            "\n[cyan]Waiting for recompile finalizer "
+            f"task {finalizer_task_index}...[/cyan]"
+        )
+        _wait_for_recompile_finalizer_status(
+            output_dir,
+            finalizer_task_index,
+            recompile_finalizer_status_path=recompile_task_status_path(
+                recompile_manifest_path, finalizer_task_index
+            ),
+            slurm_generation=attempt_id,
+        )
         console.print("[bold green]SLURM recompilation complete[/bold green]")
     else:
-        if scripts:
-            click.echo("\nRecompile jobs submitted. Monitor progress with:")
-            click.echo(f"  Open: {dashboard_html_path(output_dir)}")
-        else:
-            click.echo("\nMetadata migration jobs submitted. Monitor with:")
+        click.echo("\nRecompile jobs submitted. Monitor progress with:")
+        click.echo(f"  Open: {dashboard_html_path(output_dir)}")
         click.echo("  squeue -u $USER --array")
         from phenotypic.sdk_ import logs_dir
 
@@ -2896,16 +3425,22 @@ def _discover_recompile_dataset_names(
     job_meta: Optional[dict[str, Any]],
 ) -> list[str]:
     """Discover datasets using the local recompile precedence."""
-    from phenotypic.sdk_ import DIR_HDF, DIR_MEASUREMENTS
+    from phenotypic.sdk_ import DIR_MEASUREMENTS, DIR_ZARR
 
     results_dir = output_dir / DIR_RESULTS
     dataset_names: list[str] = []
     if results_dir.is_dir():
+        # The ``hdf/`` disjunct retired with the rest of the HDF surface in
+        # Phase 6, and it was unreachable before that: ``recompile`` is one of
+        # the modes ``_refuse_unmigrated_output`` guards, so a bundle carrying
+        # an unconverted ``.h5`` never reaches this function -- and one that
+        # migrated (``keep_source=True`` by default) has a ``zarr/`` beside
+        # its retained ``hdf/``, which the second disjunct already finds.
         dataset_names = sorted(
             d.name
             for d in results_dir.iterdir()
             if d.is_dir()
-            and ((d / DIR_MEASUREMENTS).is_dir() or (d / DIR_HDF).is_dir())
+            and ((d / DIR_MEASUREMENTS).is_dir() or (d / DIR_ZARR).is_dir())
         )
 
     if not dataset_names and job_meta:
@@ -2961,8 +3496,12 @@ def _build_recompile_job_metadata_datasets(
 def _recompile_dataset_image_names(
     output_dir: Path, dataset_name: str
 ) -> list[str]:
-    """Infer image names from per-image measurement Parquets or HDFs."""
-    from phenotypic.sdk_ import DIR_MEASUREMENTS, DIR_HDF
+    """Infer image names from per-image measurement Parquets or stores."""
+    from phenotypic.sdk_ import (
+        DIR_MEASUREMENTS,
+        DIR_ZARR,
+        STORE_SUFFIX,
+    )
 
     dataset_dir = output_dir / DIR_RESULTS / dataset_name
     meas_dir = dataset_dir / DIR_MEASUREMENTS
@@ -2975,12 +3514,24 @@ def _recompile_dataset_image_names(
         if parquet_stems:
             return parquet_stems
 
-    hdf_dir = dataset_dir / DIR_HDF
-    if hdf_dir.is_dir():
-        hdf_stems = sorted(path.stem for path in hdf_dir.glob("*.h5"))
-        if hdf_stems:
-            return hdf_stems
+    zarr_dir = dataset_dir / DIR_ZARR
+    if zarr_dir.is_dir():
+        # ``store_stem``, never ``Path.stem``: these names key the SLURM
+        # recompile job metadata, and `<stem>.ome` would silently mismatch
+        # every parquet and overlay the workers then look for.
+        store_stems = sorted(
+            store_stem(path)
+            for path in zarr_dir.glob(f"*{STORE_SUFFIX}")
+            if path.is_dir() and not path.name.startswith(".")
+        )
+        if store_stems:
+            return store_stems
 
+    # The legacy ``hdf/`` last resort retired in Phase 6 with the rest of the
+    # HDF surface. It could not fire even before that: the two branches above
+    # are checked first, and a bundle with neither parquets nor stores is an
+    # unconverted one, which ``_refuse_unmigrated_output`` rejects before any
+    # recompile discovery runs.
     return []
 
 
@@ -3056,43 +3607,6 @@ def _read_recompile_wait_status(
     return payload if isinstance(payload, dict) else None
 
 
-def _wait_for_metadata_migration_finalizer_status(
-    status_path: Path,
-    *,
-    output_dir: Path | None = None,
-    slurm_generation: str | None = None,
-    poll_interval: float = 10.0,
-    timeout: Optional[float] = None,
-) -> None:
-    """Wait for a migration-only SLURM chain to complete or fail."""
-    import time
-
-    deadline = time.monotonic() + timeout if timeout is not None else None
-    while True:
-        status = _read_recompile_wait_status(
-            status_path, description="metadata migration finalizer"
-        )
-        if status is not None:
-            state = status.get("status")
-            if state == "completed":
-                return
-            if state == "failed":
-                error = status.get("error") or (
-                    "metadata migration finalizer failed"
-                )
-                raise RuntimeError(str(error))
-        if output_dir is not None and slurm_generation is not None:
-            _raise_if_recompile_attempt_cannot_finish(
-                output_dir, slurm_generation
-            )
-        if deadline is not None and time.monotonic() >= deadline:
-            raise TimeoutError(
-                "Timed out waiting for metadata migration finalizer status: "
-                f"{status_path}"
-            )
-        time.sleep(poll_interval)
-
-
 def _raise_if_recompile_attempt_cannot_finish(
     output_dir: Path, slurm_generation: str
 ) -> None:
@@ -3131,7 +3645,7 @@ def _handle_recompile(
 
     Auto-discovers datasets under ``output_dir/results``, re-aggregates
     measurement Parquet files into ``master_measurements.csv``,
-    regenerates any missing overlay PNGs from their HDFs, rebuilds
+    regenerates any missing overlay PNGs from their image stores, rebuilds
     the progress manifest, and regenerates
     the HTML dashboard.
 
@@ -3142,7 +3656,7 @@ def _handle_recompile(
         include_dataset_column: Whether to insert ``Metadata_Dataset``
             into measurements that lack it.
         overlay_alpha: Alpha used when re-rendering missing overlay
-            PNGs from HDFs.  Forwarded from the ``--overlay-alpha``
+            PNGs from image stores.  Forwarded from the ``--overlay-alpha``
             CLI flag.
         n_jobs: Worker thread count for overlay regeneration.
             Forwarded from the ``--njobs`` CLI flag (``-1`` = all
@@ -3153,10 +3667,6 @@ def _handle_recompile(
     from rich.console import Console
 
     from phenotypic._cli._cli_output_manager import aggregate_measurements
-    from phenotypic._cli._cli_recompile_metadata_migration import (
-        RecompileMetadataMigrationError,
-        migrate_metadata_schema_for_recompile,
-    )
     from phenotypic._cli._cli_utils import load_job_metadata
     from phenotypic._cli._dashboard import (
         regenerate_dashboard_artifacts,
@@ -3176,22 +3686,27 @@ def _handle_recompile(
         f"({len(dataset_names)} dataset(s))"
     )
 
-    console.print("[cyan]Checking metadata schema...")
-    try:
-        migration = migrate_metadata_schema_for_recompile(output_dir)
-    except RecompileMetadataMigrationError as exc:
-        error_exit("Metadata schema migration blocked recompile", str(exc))
-        return
-    migrated_count = len(migration.migrated_targets)
-    skipped_count = len(migration.skipped_targets)
-    blocked_count = len(migration.blocked_targets)
-    console.print(
-        "[green]Metadata schema: "
-        f"migrated={migrated_count}, skipped={skipped_count}, "
-        f"blocked={blocked_count}"
+    console.print("[cyan]Checking for missing overlays...")
+    _regenerate_missing_overlays(output_dir, overlay_alpha, n_jobs)
+
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_tables,
     )
-    if migration.receipt_path is not None:
-        console.print(f"[green]Migration receipt: {migration.receipt_path}")
+    from phenotypic.sdk_ import metadata_csv_deliverable_path
+
+    stable_metadata = metadata_csv_deliverable_path(output_dir)
+    effective_metadata = (
+        metadata_csv
+        if metadata_csv is not None
+        else (stable_metadata if stable_metadata.is_file() else None)
+    )
+    rewritten = recompile_embedded_measurement_tables(
+        output_dir, effective_metadata
+    )
+    if rewritten:
+        console.print(
+            f"[green]Embedded measurement tables refreshed: {rewritten}"
+        )
 
     console.print("[cyan]Aggregating measurements...")
     master_path = aggregate_measurements(
@@ -3215,25 +3730,33 @@ def _handle_recompile(
     else:
         console.print("[yellow]No measurements found for aggregation")
 
-    console.print("[cyan]Checking for missing overlays...")
-    _regenerate_missing_overlays(output_dir, overlay_alpha, n_jobs)
-
     console.print("[cyan]Rebuilding manifest...")
     prog_dir.mkdir(parents=True, exist_ok=True)
 
-    datasets_totals: dict[str, int] = {}
-    for name in dataset_names:
-        meas_dir = dataset_measurements_dir(output_dir, name)
-        if meas_dir.is_dir():
-            datasets_totals[name] = len(
-                [
-                    p
-                    for p in meas_dir.glob("*.parquet")
-                    if not p.name.startswith("_")
-                ]
+    from phenotypic._cli._cli_completion import authorized_measurement_sources
+
+    authorized = authorized_measurement_sources(output_dir)
+    datasets_totals: dict[str, int]
+    if authorized is not None:
+        datasets_totals = {
+            name: sum(dataset == name for dataset in authorized.values())
+            for name in dataset_names
+        }
+    else:
+        datasets_totals = {}
+        for name in dataset_names:
+            meas_dir = dataset_measurements_dir(output_dir, name)
+            datasets_totals[name] = (
+                len(
+                    [
+                        path
+                        for path in meas_dir.glob("*.parquet")
+                        if not path.name.startswith("_")
+                    ]
+                )
+                if meas_dir.is_dir()
+                else 0
             )
-        else:
-            datasets_totals[name] = 0
 
     regenerate_dashboard_artifacts(output_dir, job_meta, datasets_totals)
     console.print("[green]Manifest + dashboard regenerated")

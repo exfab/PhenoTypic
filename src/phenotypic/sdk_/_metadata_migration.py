@@ -3,27 +3,77 @@
 This module is intentionally isolated from ordinary readers. Readers normalize
 legacy spellings in memory; the functions here are the explicit mutation API
 used by standalone callers and, through a private CLI facade, recompile.
+
+The ``"hdf"`` ``TargetKind`` -- the decision of record
+------------------------------------------------------
+
+**The ``"hdf"`` arm is RETAINED.** It stays reachable from
+:func:`rollback_metadata_migration` and from the standalone-bundle path, and
+neither of those is going away. ``csv`` / ``parquet`` / ``json`` / ``frame``
+are kept unconditionally: ``--mode migrate``'s **pass 1** -- the non-image
+metadata pass -- is built on them. (Pass **2** is the per-image
+``.h5`` -> ``.ome.zarr`` conversion, which touches this module not at all.)
+
+**The reason is reachability, not harmless emptiness.** An earlier
+justification (ledger FLOW-8) argued that *"once stores replace HDFs that
+target set is empty, so those branches are unreachable rather than
+incorrect."* **That premise is false for the default path**, and the
+correction (FLOW-32, confirmed independently as MIG-21) is what this
+paragraph exists to preserve: ``keep_source=True`` is the default and
+``--delete-sources`` is opt-in, so after an ordinary in-place migration
+``results/<ds>/hdf/*.h5`` still exists -- and ``_discover_bundle_targets``
+walks ``dataset_root / "hdf"`` and appends every one of them. The set is not
+empty. Without a filter, pass 1 would rewrite headers into retained files
+nothing will ever read again, each through a full :func:`shutil.copy2`. That
+is doubled migration cost and receipts binding artifacts nothing consumes --
+not a correctness break, but not free either. It is why
+:data:`NON_IMAGE_KINDS` excludes ``.h5`` targets outright (ledger
+MIG-25 / FLOW-35), and why ``--mode migrate`` pass 1 additionally skips an
+``.h5`` whose stem already has a valid store.
+
+So the arm is retained because it is **reachable and load-bearing for legacy
+trees**, not because it is dead. Deleting it "once migration is complete for
+all known trees" is explicitly future work, outside the OME-Zarr store change.
+
+**Do NOT add a ``"store"`` ``TargetKind``.** Nothing needs one. Header
+canonicalization is a property of the **read** path --
+``_normalize_stored_metadata_items`` runs inside both legacy loaders -- so by
+the time :meth:`Image.save2zarr` runs, the metadata is already canonical. A
+converted store is canonical by construction and needs no second header
+migration. That is the same fact that made a planned "canonicalize the store"
+task unnecessary.
 """
 
 from __future__ import annotations
 
 import base64
+import ctypes
+import errno
 import hashlib
 import importlib
 import json
 import os
 import pickle
 import shutil
+import stat
+import struct
 import tempfile
 from collections.abc import Iterable, Mapping
+from contextlib import ExitStack, contextmanager
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Literal, TypeAlias, cast
+from typing import Any, BinaryIO, Iterator, Literal, TypeAlias, cast
 
 import numpy as np
 import pandas as pd
 
-from ._atomic_io import atomic_write_json
+from ._atomic_io import (
+    CommitGuard,
+    atomic_write_json,
+    publication_commit,
+)
+from ._file_locking import exclusive_file_lock
 from ._io_constants import (
     DATASET_AGGREGATED_PARQUET,
     BundleLayout,
@@ -37,25 +87,111 @@ from ._metadata_helpers import (
     metadata_member_for_label,
     normalize_metadata_columns,
 )
+from ._windows_metadata_journal import (
+    WindowsJournalSession,
+    open_windows_journal_session,
+    windows_journal_supported,
+)
 
 MigrationStatus: TypeAlias = Literal[
     "compatible", "migratable", "blocked", "applied", "rolled_back", "failed"
 ]
 TargetKind: TypeAlias = Literal["csv", "parquet", "json", "hdf", "frame"]
+ReceiptTargetRole: TypeAlias = Literal[
+    "bundle_durable", "bundle_all", "exact_file"
+]
 
-# Version 3 adds a dynamic HDF ``rollback_fingerprint``. Version-2 HDF
-# receipts cannot safely distinguish a valid semantic rollback from external
-# byte-level changes. The receipt schema is global, so all version-2 receipts
-# are explicitly rejected rather than partially or heuristically upgraded.
-_RECEIPT_SCHEMA_VERSION = 3
+BUNDLE_DURABLE_TARGET_ROLE: ReceiptTargetRole = "bundle_durable"
+BUNDLE_ALL_TARGET_ROLE: ReceiptTargetRole = "bundle_all"
+EXACT_FILE_TARGET_ROLE: ReceiptTargetRole = "exact_file"
+
+#: Every target kind except ``"hdf"`` -- the scope ``--mode migrate``'s pass 1
+#: runs with.
+#:
+#: Pass 1 must not touch a ``.h5`` **at all**, unconditionally. Every
+#: pre-flat-metadata ``.h5`` is ``migratable`` even when its headers are
+#: already canonical, because ``_inspect_hdf`` sets ``needs_metadata_marker``
+#: on a missing marker alone -- and the apply path for one is
+#: ``_migrate_hdf_copy``, a full ``shutil.copy2`` byte copy. So a first
+#: migration would rewrite every ``.h5`` in the archive before a single store
+#: exists: it destroys the "the originals are still there" rollback story,
+#: invalidates the pre-existing per-image markers that bind each ``.h5``'s
+#: size and sha256, and needs free space for a second full copy.
+#:
+#: Excluding them is not merely cheaper, it is correct: header canonicalization
+#: is a property of the READ path (``_normalize_stored_metadata_items``, inside
+#: both legacy loaders), so ``save2zarr`` writes canonical metadata whether or
+#: not the source ``.h5`` header was ever rewritten. Rewriting it first is dead
+#: work in every case. Ledger MIG-25 / FLOW-35.
+#: Kind filtering is not ownership: pass 1 additionally selects
+#: :data:`BUNDLE_DURABLE_TARGET_ROLE`, which excludes per-image Parquets.
+NON_IMAGE_KINDS: frozenset[str] = frozenset({"csv", "parquet", "json", "frame"})
+
+# Version 4 makes bundle ownership explicit. Schema-3 receipts are validated
+# with their historical exact kind-based discovery before being superseded;
+# they are never reinterpreted under the new bundle-durable role. Version-2
+# receipts remain unsafe because they lack the dynamic HDF rollback binding.
+_RECEIPT_SCHEMA_VERSION = 4
+_HISTORICAL_RECEIPT_SCHEMA_VERSION = 3
+_JOURNAL_SCHEMA_VERSION = 1
+_JOURNAL_FRAME_HEADER = struct.Struct(">Q")
+_JOURNAL_FRAME_CHECKSUM_SIZE = hashlib.sha256().digest_size
 _FLAT_METADATA_SCHEMA_VERSION = 2
 _METADATA_SCHEMA_ATTR = "metadata_schema_version"
 _HDF_SUFFIXES = frozenset({".h5", ".hdf5", ".hdf"})
+_SUPERSEDED_STATUS_PREFIX = "status.superseded-"
+_REJECTED_STATUS_PREFIX = "status.rejected-"
+_RENAME_NOREPLACE = 1
+try:
+    _RENAMEAT2: Any = getattr(
+        ctypes.CDLL(None, use_errno=True), "renameat2", None
+    )
+except OSError:
+    _RENAMEAT2 = None
+
+
+def _libc_renameat2() -> Any:
+    """Return Linux renameat2 or fail closed before an authority move."""
+    renameat2 = _RENAMEAT2
+    if renameat2 is None:
+        raise RuntimeError(
+            "Metadata migration no-clobber rename is unsupported"
+        )
+    renameat2.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    renameat2.restype = ctypes.c_int
+    return renameat2
 
 
 def _absolute_path(path: str | Path) -> Path:
     """Return an absolute, lexically normalized path without following links."""
     return Path(os.path.abspath(os.fspath(path)))
+
+
+def _path_is_junction(path: Path) -> bool:
+    """Return whether *path* is a Windows reparse point on Python 3.11+.
+
+    ``Path.is_junction`` was added in Python 3.12, while PhenoTypic still
+    supports Python 3.11. On that interpreter, refuse every Windows reparse
+    point via the non-following stat attributes; refusing more than directory
+    junctions is the fail-closed choice for migration authority paths.
+    """
+    is_junction = getattr(path, "is_junction", None)
+    if callable(is_junction):
+        return bool(is_junction())
+    try:
+        attributes = getattr(
+            path.stat(follow_symlinks=False), "st_file_attributes"
+        )
+    except (AttributeError, OSError):
+        return False
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    return bool(attributes & reparse_flag)
 
 
 def _require_safe_migration_path(
@@ -72,11 +208,22 @@ def _require_safe_migration_path(
     resolved spelling.  This also rejects a broken final symlink.
     """
     candidate = _absolute_path(path)
+    cursor = candidate
+    while True:
+        if _path_is_junction(cursor):
+            raise ValueError(f"{role} contains a junction component: {candidate}")
+        if cursor.parent == cursor:
+            break
+        cursor = cursor.parent
     resolved = candidate.resolve(strict=False)
     if candidate.is_symlink() or resolved != candidate:
         raise ValueError(f"{role} contains a symlink component: {candidate}")
     if root is not None:
         boundary = _absolute_path(root)
+        if _path_is_junction(boundary):
+            raise ValueError(
+                f"{role} authoritative root contains a junction component: {boundary}"
+            )
         if boundary.is_symlink() or boundary.resolve(strict=False) != boundary:
             raise ValueError(
                 f"{role} authoritative root contains a symlink component: {boundary}"
@@ -116,6 +263,7 @@ class MetadataMigrationReport:
     plan_fingerprint: str
     targets: tuple[MetadataMigrationTarget, ...]
     conflicts: tuple[str, ...] = ()
+    target_role: ReceiptTargetRole | None = None
 
     @property
     def compatible_count(self) -> int:
@@ -147,6 +295,27 @@ class MetadataMigrationResult:
     skipped_targets: tuple[str, ...] = ()
     blocked_targets: tuple[str, ...] = ()
     conflicts: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class MetadataMigrationAuthority:
+    """Stable terminal authority for the metadata migration stage."""
+
+    status_path: Path
+    terminal_receipt_path: Path
+    terminal_receipt_digest: str
+    plan_fingerprint: str
+    source_fingerprint: str
+    resulting_fingerprint: str
+    compatible_noop: bool
+
+
+@dataclass(frozen=True)
+class _MetadataMigrationAuthorityEvidence:
+    """Internal exact-byte binding for one validated status authority."""
+
+    authority: MetadataMigrationAuthority
+    status_digest: str
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -697,8 +866,22 @@ def _preflight_file(
     return _preflight_hdf(path)
 
 
-def _discover_bundle_targets(layout: BundleLayout) -> tuple[Path, ...]:
-    """Return authoritative sources only, never external metadata copies."""
+def _discover_legacy_bundle_targets(
+    layout: BundleLayout,
+    *,
+    kinds: frozenset[str] | None = None,
+) -> tuple[Path, ...]:
+    """Return the exact historical schema-3 kind-scoped target set.
+
+    Args:
+        layout: The bundle to enumerate.
+        kinds: Restrict the result to these :data:`TargetKind` values.
+            ``None`` -- the default -- means every kind, which is exactly
+            today's behaviour, so every existing caller is unaffected.
+
+    Returns:
+        The authoritative target paths, de-duplicated and in discovery order.
+    """
     if layout.output_root is not None:
         bundle_root = _require_safe_migration_path(
             layout.output_root, role="Bundle root"
@@ -794,23 +977,27 @@ def _discover_bundle_targets(layout: BundleLayout) -> tuple[Path, ...]:
                     root=results_root,
                     role="dataset",
                 )
-                hdf_candidate = dataset_root / "hdf"
-                if hdf_candidate.exists() or hdf_candidate.is_symlink():
-                    hdf_root = validated_directory(
-                        hdf_candidate, dataset_root, "HDF directory"
-                    )
-                    for path in sorted(hdf_root.rglob("*")):
-                        if path.is_symlink():
-                            raise ValueError(
-                                f"Bundle-owned HDF cannot be a symlink: {path}"
-                            )
-                        if (
-                            path.is_file()
-                            and path.suffix.lower() in _HDF_SUFFIXES
-                        ):
-                            targets.append(
-                                validated_candidate(path, hdf_root, "HDF")
-                            )
+                if kinds is None or "hdf" in kinds:
+                    hdf_candidate = dataset_root / "hdf"
+                    if hdf_candidate.exists() or hdf_candidate.is_symlink():
+                        hdf_root = validated_directory(
+                            hdf_candidate, dataset_root, "HDF directory"
+                        )
+                        for path in sorted(hdf_root.rglob("*")):
+                            if path.is_symlink():
+                                raise ValueError(
+                                    "Bundle-owned HDF cannot be a symlink: "
+                                    f"{path}"
+                                )
+                            if (
+                                path.is_file()
+                                and path.suffix.lower() in _HDF_SUFFIXES
+                            ):
+                                targets.append(
+                                    validated_candidate(
+                                        path, hdf_root, "HDF"
+                                    )
+                                )
                 measurements_candidate = dataset_root / "measurements"
                 if not (
                     measurements_candidate.exists()
@@ -851,7 +1038,98 @@ def _discover_bundle_targets(layout: BundleLayout) -> tuple[Path, ...]:
                 targets.append(
                     validated_candidate(path, deliverables_root, "master")
                 )
-    return tuple(dict.fromkeys(targets))
+    discovered = tuple(dict.fromkeys(targets))
+    if kinds is None:
+        return discovered
+    return tuple(path for path in discovered if _kind_for_file(path) in kinds)
+
+
+def _discover_bundle_targets(
+    layout: BundleLayout,
+    *,
+    kinds: frozenset[str] | None = None,
+) -> tuple[Path, ...]:
+    """Discover only bundle-durable metadata authority.
+
+    Per-image HDF and Parquet sources belong to the image manifest. This
+    discovery therefore checks only exact durable names and never lists or
+    globs a dataset's ``measurements`` directory.
+    """
+    candidates: tuple[Path, ...]
+    if layout.output_root is None:
+        deliverables_root = _require_safe_migration_path(
+            layout.deliverables_base, role="Standalone bundle root"
+        )
+        candidates = (
+            layout.resolved_pipeline_config_path,
+            layout.master_parquet,
+            layout.master_csv,
+        )
+        root = deliverables_root
+    else:
+        root = _require_safe_migration_path(
+            layout.output_root, role="Bundle root"
+        )
+        deliverables_root = _require_safe_migration_path(
+            deliverables_dir(root),
+            role="Bundle deliverables",
+            root=root,
+        )
+        candidates_list: list[Path] = [layout.resolved_pipeline_config_path]
+        state_path = resolve_processing_state_path(root)
+        if state_path.is_file() and not state_path.is_symlink():
+            try:
+                payload = json.loads(state_path.read_text(encoding="utf-8"))
+                original = payload.get("pipeline_path")
+            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                original = None
+            if isinstance(original, str) and original:
+                legacy_pipeline = root / Path(original).name
+                if legacy_pipeline.exists() or legacy_pipeline.is_symlink():
+                    candidates_list.append(legacy_pipeline)
+        results_root = _require_safe_migration_path(
+            root / "results", role="Bundle results", root=root
+        )
+        if results_root.is_dir():
+            for dataset in sorted(results_root.iterdir()):
+                if dataset.is_symlink():
+                    raise ValueError(
+                        f"Bundle-owned dataset cannot be a symlink: {dataset}"
+                    )
+                if not dataset.is_dir():
+                    continue
+                safe_dataset = _require_safe_migration_path(
+                    dataset, role="Bundle-owned dataset", root=results_root
+                )
+                aggregate = (
+                    safe_dataset
+                    / "measurements"
+                    / DATASET_AGGREGATED_PARQUET
+                )
+                if aggregate.exists() or aggregate.is_symlink():
+                    candidates_list.append(aggregate)
+        candidates = tuple(candidates_list)
+
+    targets: list[Path] = []
+    for candidate in candidates:
+        if not (candidate.exists() or candidate.is_symlink()):
+            continue
+        if candidate.is_symlink():
+            raise ValueError(
+                f"Bundle-durable metadata target cannot be a symlink: {candidate}"
+            )
+        safe = _require_safe_migration_path(
+            candidate,
+            role="Bundle-durable metadata target",
+            root=root,
+        )
+        if not safe.is_file():
+            raise FileNotFoundError(safe)
+        targets.append(safe)
+    discovered = tuple(dict.fromkeys(targets))
+    if kinds is None:
+        return discovered
+    return tuple(path for path in discovered if _kind_for_file(path) in kinds)
 
 
 def _bundle_target_is_mixed_table(layout: BundleLayout, path: Path) -> bool:
@@ -869,7 +1147,10 @@ def _bundle_target_is_mixed_table(layout: BundleLayout, path: Path) -> bool:
 
 
 def _report_from_targets(
-    source: str, targets: tuple[MetadataMigrationTarget, ...]
+    source: str,
+    targets: tuple[MetadataMigrationTarget, ...],
+    *,
+    target_role: ReceiptTargetRole | None = None,
 ) -> MetadataMigrationReport:
     conflicts = tuple(
         conflict for target in targets for conflict in target.conflicts
@@ -893,8 +1174,16 @@ def _report_from_targets(
         }
         for target in targets
     ]
+    fingerprint_payload: object = plan_data
+    if target_role is not None:
+        fingerprint_payload = {
+            "target_role": target_role,
+            "targets": plan_data,
+        }
     plan_fingerprint = _sha256_bytes(
-        json.dumps(plan_data, sort_keys=True, separators=(",", ":")).encode()
+        json.dumps(
+            fingerprint_payload, sort_keys=True, separators=(",", ":")
+        ).encode()
     )
     source_fingerprint = _sha256_bytes(
         json.dumps(
@@ -910,15 +1199,32 @@ def _report_from_targets(
         plan_fingerprint=plan_fingerprint,
         targets=targets,
         conflicts=conflicts,
+        target_role=target_role,
     )
 
 
-def preflight_metadata_schema(source: Any) -> MetadataMigrationReport:
+def preflight_metadata_schema(
+    source: Any,
+    *,
+    kinds: frozenset[str] | None = None,
+    target_role: ReceiptTargetRole | None = None,
+) -> MetadataMigrationReport:
     """Inspect a frame, supported file, or bundle without changing it.
+
+    Writes nothing. That is what makes ``--mode migrate``'s pass-1 dry run
+    free -- not incidental, but the mechanism.
 
     Args:
         source: pandas/Polars frame, supported file path, run-output path,
             standalone deliverables path, or resolved :class:`BundleLayout`.
+        kinds: Restrict bundle discovery to these :data:`TargetKind` values.
+            ``None`` means every kind, so existing callers are unchanged.
+            Ignored for a frame or a single file, which are already one
+            explicit target.
+        target_role: Explicit bundle ownership role. ``bundle_durable`` uses
+            exact pipeline, aggregate, and standalone-master names without
+            scanning per-image source directories. ``None`` preserves the
+            generic bundle API's complete historical target inventory.
 
     Returns:
         Immutable migration plan and compatibility status.
@@ -926,32 +1232,54 @@ def preflight_metadata_schema(source: Any) -> MetadataMigrationReport:
     module = type(source).__module__.split(".", maxsplit=1)[0]
     if isinstance(source, pd.DataFrame) or module == "polars":
         target = _preflight_frame(source, source=f"<{module}-frame>")
-        return _report_from_targets(target.path, (target,))
+        return _report_from_targets(
+            target.path, (target,), target_role=EXACT_FILE_TARGET_ROLE
+        )
     if isinstance(source, BundleLayout):
         layout = source
+        bundle_role = target_role or BUNDLE_ALL_TARGET_ROLE
+        discovery = (
+            _discover_bundle_targets
+            if bundle_role == BUNDLE_DURABLE_TARGET_ROLE
+            else _discover_legacy_bundle_targets
+        )
         targets = tuple(
             _preflight_file(
                 path,
                 mixed_table=_bundle_target_is_mixed_table(layout, path),
             )
-            for path in _discover_bundle_targets(layout)
+            for path in discovery(layout, kinds=kinds)
         )
-        return _report_from_targets(str(layout.deliverables_base), targets)
+        return _report_from_targets(
+            str(layout.deliverables_base),
+            targets,
+            target_role=bundle_role,
+        )
     path = _require_safe_migration_path(
         source, role="Metadata preflight source"
     )
     if path.is_file():
         target = _preflight_file(path)
-        return _report_from_targets(str(path), (target,))
+        return _report_from_targets(
+            str(path), (target,), target_role=EXACT_FILE_TARGET_ROLE
+        )
     layout = BundleLayout.detect(path)
+    bundle_role = target_role or BUNDLE_ALL_TARGET_ROLE
+    discovery = (
+        _discover_bundle_targets
+        if bundle_role == BUNDLE_DURABLE_TARGET_ROLE
+        else _discover_legacy_bundle_targets
+    )
     targets = tuple(
         _preflight_file(
             item,
             mixed_table=_bundle_target_is_mixed_table(layout, item),
         )
-        for item in _discover_bundle_targets(layout)
+        for item in discovery(layout, kinds=kinds)
     )
-    return _report_from_targets(str(path), targets)
+    return _report_from_targets(
+        str(path), targets, target_role=bundle_role
+    )
 
 
 def _receipt_dir(source: Path, *, bundle: bool) -> Path:
@@ -969,11 +1297,1139 @@ def _receipt_path(
     )
 
 
-def _new_receipt(
-    report: MetadataMigrationReport, *, bundle_root: Path | None
+def _journal_dir(root: Path, plan_fingerprint: str) -> Path:
+    digest = plan_fingerprint.removeprefix("sha256:")
+    return _receipt_dir(root, bundle=True) / f"metadata-schema-{digest}"
+
+
+def _journal_paths(root: Path, plan_fingerprint: str) -> tuple[Path, Path, Path]:
+    directory = _journal_dir(root, plan_fingerprint)
+    return (
+        directory / "plan.json",
+        directory / "transitions.log",
+        directory / "receipt.json",
+    )
+
+
+def _journal_writer_lock_path(log_path: Path) -> Path:
+    """Return the canonical exclusive-writer lock beside one journal log."""
+    return log_path.with_name(f".{log_path.name}.writer.lock")
+
+
+@dataclass
+class _AnchoredJournalFile:
+    """A regular journal child bound to its opened directory and inode."""
+
+    handle: BinaryIO
+    directory: _AnchoredJournalDirectory
+    name: str
+    path: Path
+    role: str
+    identity: tuple[int, int]
+
+
+@dataclass(frozen=True)
+class _AnchoredJournalDirectory:
+    """Held no-follow descriptor chain from an authority root to a journal."""
+
+    root_path: Path
+    path: Path
+    descriptors: tuple[int, ...]
+    components: tuple[tuple[int, str, tuple[int, int]], ...]
+
+    @property
+    def fd(self) -> int:
+        """Return the held final directory descriptor."""
+        return self.descriptors[-1]
+
+
+def _journal_open_flags(flags: int) -> int:
+    """Add the strongest available descriptor-safety flags."""
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    return flags
+
+
+def _journal_directory_flags() -> int:
+    """Return flags for a no-follow directory descriptor."""
+    return _journal_open_flags(os.O_RDONLY) | getattr(os, "O_DIRECTORY", 0)
+
+
+_JOURNAL_DIR_FD_SUPPORTED = (
+    os.name == "posix"
+    and hasattr(os, "O_CLOEXEC")
+    and hasattr(os, "O_DIRECTORY")
+    and hasattr(os, "O_NOFOLLOW")
+    and os.open in os.supports_dir_fd
+    and os.link in os.supports_dir_fd
+    and os.link in os.supports_follow_symlinks
+    and os.mkdir in os.supports_dir_fd
+    and os.rename in os.supports_dir_fd
+    and os.stat in os.supports_dir_fd
+    and os.stat in os.supports_follow_symlinks
+    and os.unlink in os.supports_dir_fd
+)
+
+_WINDOWS_JOURNAL_SESSION: ContextVar[WindowsJournalSession | None] = ContextVar(
+    "phenotypic_windows_metadata_journal_session", default=None
+)
+
+
+def _windows_journal_capabilities_available() -> bool:
+    """Return whether the native handle-bound Windows backend is usable."""
+    return os.name == "nt" and windows_journal_supported()
+
+
+def _require_journal_descriptor_capabilities() -> None:
+    """Refuse authority I/O when no equivalent safe descriptor API exists."""
+    if not _JOURNAL_DIR_FD_SUPPORTED:
+        raise RuntimeError(
+            "Metadata migration journal descriptor safety is unsupported"
+        )
+
+
+def _require_portable_journal_capabilities() -> None:
+    """Fail before authority creation when safe portable primitives are absent."""
+    if not _windows_journal_capabilities_available():
+        raise RuntimeError(
+            "Metadata migration handle-bound descriptor safety is unsupported"
+        )
+
+
+@contextmanager
+def _windows_journal_session(root: Path) -> Iterator[WindowsJournalSession]:
+    """Open or reuse one handle-bound transaction for the complete operation."""
+    _require_portable_journal_capabilities()
+    existing = _WINDOWS_JOURNAL_SESSION.get()
+    if existing is not None:
+        if existing.root != _absolute_path(root):
+            raise ValueError("Windows metadata journal root changed")
+        yield existing
+        return
+    with open_windows_journal_session(root) as session:
+        token = _WINDOWS_JOURNAL_SESSION.set(session)
+        try:
+            yield session
+        finally:
+            _WINDOWS_JOURNAL_SESSION.reset(token)
+
+
+def _active_windows_journal_session(*, root: Path) -> WindowsJournalSession:
+    """Return the transaction-bound Windows session or fail closed."""
+    session = _WINDOWS_JOURNAL_SESSION.get()
+    if session is None or session.root != _absolute_path(root):
+        raise RuntimeError("Windows metadata journal session is not active")
+    return session
+
+
+def _portable_journal_lock_path(root: Path) -> Path:
+    """Return the cross-platform single-writer lock outside authority discovery."""
+    return root / ".phenotypic" / ".metadata-migration.portable.lock"
+
+
+def _portable_read_regular_bytes(path: Path, *, root: Path, role: str) -> bytes:
+    """Read one authority through the active Windows handle session."""
+    safe_path = _require_safe_migration_path(path, role=role, root=root)
+    return _active_windows_journal_session(root=root).read_bytes(
+        safe_path, role=role
+    )
+
+
+def _portable_publish_absent_bytes(
+    path: Path, payload: bytes, *, root: Path, role: str
+) -> None:
+    """Publish immutable bytes through native handle-relative no-replace."""
+    safe_path = _require_safe_migration_path(path, role=role, root=root)
+    _active_windows_journal_session(root=root).publish_absent_bytes(
+        safe_path, payload, role=role
+    )
+
+
+def _journal_regular_exists(path: Path, *, root: Path) -> bool:
+    """Check journal existence through the active platform authority handle."""
+    if _JOURNAL_DIR_FD_SUPPORTED:
+        return path.is_file()
+    return _active_windows_journal_session(root=root).exists(path)
+
+
+def _require_non_inheritable_descriptor(descriptor: int, *, role: str) -> None:
+    """Require the CLOEXEC/non-inheritable promise on a held descriptor."""
+    if os.get_inheritable(descriptor):
+        raise ValueError(f"{role} descriptor is inheritable")
+
+
+def _directory_identity(descriptor: int, *, role: str) -> tuple[int, int]:
+    """Return one held directory identity after validating its descriptor."""
+    opened = os.fstat(descriptor)
+    if not stat.S_ISDIR(opened.st_mode):
+        raise ValueError(f"{role} is not a directory")
+    _require_non_inheritable_descriptor(descriptor, role=role)
+    return opened.st_dev, opened.st_ino
+
+
+def _verify_anchored_journal_directory(
+    directory: _AnchoredJournalDirectory,
+) -> None:
+    """Prove every held component still has its original no-follow identity."""
+    root_opened = os.fstat(directory.descriptors[0])
+    try:
+        root_named = os.stat(directory.root_path, follow_symlinks=False)
+    except OSError as exc:
+        raise ValueError(
+            "Metadata migration journal authoritative directory changed"
+        ) from exc
+    if (
+        not stat.S_ISDIR(root_opened.st_mode)
+        or not stat.S_ISDIR(root_named.st_mode)
+        or (root_opened.st_dev, root_opened.st_ino)
+        != (root_named.st_dev, root_named.st_ino)
+    ):
+        raise ValueError(
+            "Metadata migration journal authoritative directory changed"
+        )
+    _require_non_inheritable_descriptor(
+        directory.descriptors[0],
+        role="Metadata migration journal authoritative root",
+    )
+    for descriptor, (parent_fd, name, identity) in zip(
+        directory.descriptors[1:], directory.components, strict=True
+    ):
+        opened = os.fstat(descriptor)
+        try:
+            named = os.stat(
+                name, dir_fd=parent_fd, follow_symlinks=False
+            )
+        except OSError as exc:
+            raise ValueError(
+                "Metadata migration journal authoritative directory changed"
+            ) from exc
+        if (
+            not stat.S_ISDIR(opened.st_mode)
+            or not stat.S_ISDIR(named.st_mode)
+            or (opened.st_dev, opened.st_ino) != identity
+            or (named.st_dev, named.st_ino) != identity
+        ):
+            raise ValueError(
+                "Metadata migration journal authoritative directory changed"
+            )
+        _require_non_inheritable_descriptor(
+            descriptor, role="Metadata migration journal directory"
+        )
+
+
+@contextmanager
+def _open_anchored_journal_directory(
+    root: Path,
+    directory: Path,
+    *,
+    create: bool = False,
+) -> Iterator[_AnchoredJournalDirectory]:
+    """Open or create ``directory`` from one held no-follow root descriptor."""
+    _require_journal_descriptor_capabilities()
+    safe_root = _require_safe_migration_path(
+        root, role="Metadata migration journal authoritative root"
+    )
+    safe_directory = _absolute_path(directory)
+    try:
+        relative = safe_directory.relative_to(safe_root)
+    except ValueError as exc:
+        raise ValueError(
+            f"Metadata migration journal directory escapes its root: {directory}"
+        ) from exc
+    descriptors: list[int] = []
+    components: list[tuple[int, str, tuple[int, int]]] = []
+    try:
+        root_fd = os.open(safe_root, _journal_directory_flags())
+        descriptors.append(root_fd)
+        _directory_identity(
+            root_fd, role="Metadata migration journal authoritative root"
+        )
+        current_fd = root_fd
+        for component in relative.parts:
+            try:
+                next_fd = os.open(
+                    component,
+                    _journal_directory_flags(),
+                    dir_fd=current_fd,
+                )
+                descriptors.append(next_fd)
+            except FileNotFoundError:
+                if not create:
+                    raise ValueError(
+                        "Metadata migration journal directory changed while "
+                        f"opening: {safe_directory}"
+                    ) from None
+                try:
+                    os.mkdir(component, 0o700, dir_fd=current_fd)
+                    os.fsync(current_fd)
+                    next_fd = os.open(
+                        component,
+                        _journal_directory_flags(),
+                        dir_fd=current_fd,
+                    )
+                    descriptors.append(next_fd)
+                    os.fsync(next_fd)
+                except OSError as exc:
+                    raise ValueError(
+                        "Metadata migration journal directory changed while "
+                        f"creating: {safe_directory}"
+                    ) from exc
+            except OSError as exc:
+                raise ValueError(
+                    "Metadata migration journal directory changed while opening: "
+                    f"{safe_directory}"
+                ) from exc
+            identity = _directory_identity(
+                next_fd, role="Metadata migration journal directory"
+            )
+            components.append((current_fd, component, identity))
+            current_fd = next_fd
+        anchored = _AnchoredJournalDirectory(
+            root_path=safe_root,
+            path=safe_directory,
+            descriptors=tuple(descriptors),
+            components=tuple(components),
+        )
+        _verify_anchored_journal_directory(anchored)
+        yield anchored
+    finally:
+        for descriptor in reversed(descriptors):
+            os.close(descriptor)
+
+
+def _verify_anchored_journal_file(file: _AnchoredJournalFile) -> None:
+    """Prove the child's current pathname still names the held regular file."""
+    held = os.fstat(file.handle.fileno())
+    if not stat.S_ISREG(held.st_mode):
+        raise ValueError(
+            f"{file.role} journal child changed or is not regular: {file.path}"
+        )
+    try:
+        named = os.stat(
+            file.name,
+            dir_fd=file.directory.fd,
+            follow_symlinks=False,
+        )
+    except OSError as exc:
+        raise ValueError(
+            f"{file.role} journal child changed: {file.path}"
+        ) from exc
+    if (
+        not stat.S_ISREG(named.st_mode)
+        or (held.st_dev, held.st_ino) != file.identity
+        or (named.st_dev, named.st_ino) != file.identity
+    ):
+        raise ValueError(f"{file.role} journal child changed: {file.path}")
+    _require_non_inheritable_descriptor(
+        file.handle.fileno(), role=file.role
+    )
+    _verify_anchored_journal_directory(file.directory)
+
+
+@contextmanager
+def _open_anchored_journal_file(
+    path: Path,
+    *,
+    root: Path,
+    role: str,
+    flags: int,
+    mode: str,
+    create_mode: int = 0o600,
+) -> Iterator[_AnchoredJournalFile]:
+    """Open one journal child through its held parent directory descriptor."""
+    safe_path = _absolute_path(path)
+    with _open_anchored_journal_directory(root, safe_path.parent) as directory:
+        try:
+            descriptor = os.open(
+                safe_path.name,
+                _journal_open_flags(flags),
+                create_mode,
+                dir_fd=directory.fd,
+            )
+        except OSError as exc:
+            raise ValueError(
+                f"{role} journal child changed while opening: {safe_path}"
+            ) from exc
+        try:
+            opened = os.fstat(descriptor)
+            if not stat.S_ISREG(opened.st_mode):
+                raise ValueError(
+                    f"{role} journal child is not a regular file: {safe_path}"
+                )
+            identity = (opened.st_dev, opened.st_ino)
+            with os.fdopen(descriptor, mode) as raw_handle:
+                descriptor = -1
+                anchored = _AnchoredJournalFile(
+                    handle=cast(BinaryIO, raw_handle),
+                    directory=directory,
+                    name=safe_path.name,
+                    path=safe_path,
+                    role=role,
+                    identity=identity,
+                )
+                _verify_anchored_journal_file(anchored)
+                yield anchored
+        finally:
+            if descriptor >= 0:
+                os.close(descriptor)
+
+
+def _read_anchored_journal_json(
+    path: Path,
+    *,
+    root: Path,
+    role: str,
+) -> Any:
+    """Read JSON through one no-follow descriptor and recheck its binding."""
+    payload = _read_anchored_journal_bytes(path, root=root, role=role)
+    return json.loads(payload.decode("utf-8"))
+
+
+def _read_anchored_journal_bytes(
+    path: Path,
+    *,
+    root: Path,
+    role: str,
+) -> bytes:
+    """Read bytes through one no-follow descriptor and recheck its binding."""
+    if not _JOURNAL_DIR_FD_SUPPORTED:
+        if _WINDOWS_JOURNAL_SESSION.get() is not None:
+            return _portable_read_regular_bytes(path, root=root, role=role)
+        with _windows_journal_session(root):
+            return _portable_read_regular_bytes(path, root=root, role=role)
+    with _open_anchored_journal_file(
+        path,
+        root=root,
+        role=role,
+        flags=os.O_RDONLY,
+        mode="rb",
+    ) as opened:
+        payload = opened.handle.read()
+        _verify_anchored_journal_file(opened)
+    return payload
+
+
+def _verify_journal_mutation_authority(
+    *files: _AnchoredJournalFile,
+) -> None:
+    """Recheck every held file and directory governing one mutation."""
+    for file in files:
+        _verify_anchored_journal_file(file)
+
+
+def _require_absent_anchored_child(
+    directory: _AnchoredJournalDirectory,
+    name: str,
+    *,
+    role: str,
+) -> None:
+    """Require an absent no-follow child without accepting another file type."""
+    try:
+        os.stat(name, dir_fd=directory.fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise ValueError(f"Could not inspect competing {role}") from exc
+    raise ValueError(f"Competing {role} already exists")
+
+
+def _rename_anchored_noreplace(
+    directory: _AnchoredJournalDirectory,
+    source_name: str,
+    destination_name: str,
+    *,
+    role: str,
+) -> None:
+    """Rename one held-directory child atomically without replacement."""
+    _verify_anchored_journal_directory(directory)
+    source = os.stat(
+        source_name, dir_fd=directory.fd, follow_symlinks=False
+    )
+    if not stat.S_ISREG(source.st_mode):
+        raise ValueError(f"{role} source is not a regular file")
+    source_identity = (source.st_dev, source.st_ino)
+    renameat2 = _RENAMEAT2
+    if renameat2 is not None:
+        _require_absent_anchored_child(
+            directory, destination_name, role=role
+        )
+        renameat2 = _libc_renameat2()
+        result = renameat2(
+            directory.fd,
+            os.fsencode(source_name),
+            directory.fd,
+            os.fsencode(destination_name),
+            _RENAME_NOREPLACE,
+        )
+        if result != 0:
+            error_number = ctypes.get_errno()
+            if error_number == errno.EEXIST:
+                raise ValueError(f"Competing {role} already exists")
+            raise OSError(error_number, os.strerror(error_number))
+    else:
+        try:
+            existing = os.stat(
+                destination_name,
+                dir_fd=directory.fd,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError:
+            existing = None
+        if existing is not None:
+            if (
+                not stat.S_ISREG(existing.st_mode)
+                or (existing.st_dev, existing.st_ino) != source_identity
+            ):
+                raise ValueError(f"Competing {role} already exists")
+        else:
+            try:
+                os.link(
+                    source_name,
+                    destination_name,
+                    src_dir_fd=directory.fd,
+                    dst_dir_fd=directory.fd,
+                    follow_symlinks=False,
+                )
+            except FileExistsError as exc:
+                raise ValueError(f"Competing {role} already exists") from exc
+            os.fsync(directory.fd)
+        linked = os.stat(
+            destination_name,
+            dir_fd=directory.fd,
+            follow_symlinks=False,
+        )
+        if (
+            not stat.S_ISREG(linked.st_mode)
+            or (linked.st_dev, linked.st_ino) != source_identity
+        ):
+            raise ValueError(f"{role} no-replace publication identity changed")
+        os.unlink(source_name, dir_fd=directory.fd)
+        os.fsync(directory.fd)
+    _verify_anchored_journal_directory(directory)
+
+
+def _rollback_anchored_status_publication(
+    directory: _AnchoredJournalDirectory,
+    *,
+    status_name: str,
+    status_path: Path,
+    expected_identity: tuple[int, int],
+    expected_bytes: bytes,
+) -> None:
+    """Retain a failed status publication without unlinking a named child."""
+    current = os.stat(
+        status_name,
+        dir_fd=directory.fd,
+        follow_symlinks=False,
+    )
+    if not stat.S_ISREG(current.st_mode):
+        raise ValueError("Competing metadata status is not regular")
+    with _open_anchored_directory_file(
+        directory,
+        status_name,
+        role="Metadata status pending rollback",
+    ) as current_file:
+        current_bytes = current_file.handle.read()
+        _verify_anchored_journal_file(current_file)
+        if (
+            current_file.identity != expected_identity
+            or current_bytes != expected_bytes
+        ):
+            raise ValueError(
+                "Competing metadata migration status appeared during rollback"
+            )
+    digest = _sha256_bytes(expected_bytes).removeprefix("sha256:")
+    audit_name = (
+        f"status.rejected-publisher-{digest}-{os.urandom(8).hex()}.json"
+    )
+    _rename_anchored_noreplace(
+        directory,
+        status_name,
+        audit_name,
+        role="rejected metadata status rollback audit",
+    )
+    os.fsync(directory.fd)
+    _verify_anchored_journal_directory(directory)
+    moved = os.stat(
+        audit_name,
+        dir_fd=directory.fd,
+        follow_symlinks=False,
+    )
+    if not stat.S_ISREG(moved.st_mode):
+        _rename_anchored_noreplace(
+            directory,
+            audit_name,
+            status_name,
+            role="restored non-regular metadata status",
+        )
+        os.fsync(directory.fd)
+        _verify_anchored_journal_directory(directory)
+        restored = os.stat(
+            status_name,
+            dir_fd=directory.fd,
+            follow_symlinks=False,
+        )
+        if (restored.st_dev, restored.st_ino) != (moved.st_dev, moved.st_ino):
+            raise ValueError(
+                "Non-regular metadata status recovery identity changed"
+            )
+        raise ValueError(
+            "Rejected metadata status rollback audit is not regular"
+        )
+    descriptor = os.open(
+        audit_name,
+        _journal_open_flags(os.O_RDONLY),
+        dir_fd=directory.fd,
+    )
+    try:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(
+                "Rejected metadata status rollback audit is not regular"
+            )
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            audit = _AnchoredJournalFile(
+                handle=handle,
+                directory=directory,
+                name=audit_name,
+                path=status_path.with_name(audit_name),
+                role="Rejected metadata status rollback audit",
+                identity=(opened.st_dev, opened.st_ino),
+            )
+            _verify_anchored_journal_file(audit)
+            audit_bytes = handle.read()
+            _verify_anchored_journal_file(audit)
+            if audit.identity != expected_identity or audit_bytes != expected_bytes:
+                _restore_competing_metadata_status(
+                    directory,
+                    archive_name=audit_name,
+                    status_name=status_name,
+                    archived_bytes=audit_bytes,
+                )
+                return
+            os.fsync(directory.fd)
+            _verify_anchored_journal_directory(directory)
+            _verify_anchored_journal_file(audit)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
+def _publish_anchored_journal_json(
+    path: Path,
+    payload: Mapping[str, Any],
+    *,
+    root: Path,
+    role: str,
+    authorities: tuple[_AnchoredJournalFile, ...] = (),
+) -> None:
+    """Atomically publish absent immutable JSON through one held directory fd."""
+    document = _anchored_json_document(payload)
+    safe_path = _absolute_path(path)
+    with _open_anchored_journal_directory(root, safe_path.parent) as directory:
+        _verify_anchored_journal_directory(directory)
+        _verify_journal_mutation_authority(*authorities)
+        _require_absent_anchored_child(
+            directory, safe_path.name, role=role
+        )
+        temp_name = (
+            f".{safe_path.name}.{os.getpid()}.{os.urandom(8).hex()}.tmp"
+        )
+        ready_name = f"{temp_name}.ready"
+        descriptor = os.open(
+            temp_name,
+            _journal_open_flags(os.O_WRONLY | os.O_CREAT | os.O_EXCL),
+            0o600,
+            dir_fd=directory.fd,
+        )
+        temp_exists = True
+        ready_exists = False
+        final_identity: tuple[int, int] | None = None
+        publication_complete = False
+        try:
+            opened = os.fstat(descriptor)
+            if not stat.S_ISREG(opened.st_mode):
+                raise ValueError(f"{role} temp is not a regular file")
+            identity = (opened.st_dev, opened.st_ino)
+            with os.fdopen(descriptor, "wb") as handle:
+                descriptor = -1
+                temp_file = _AnchoredJournalFile(
+                    handle=handle,
+                    directory=directory,
+                    name=temp_name,
+                    path=safe_path.parent / temp_name,
+                    role=f"{role} temp",
+                    identity=identity,
+                )
+                _verify_anchored_journal_file(temp_file)
+                handle.write(document)
+                handle.flush()
+                os.fsync(handle.fileno())
+                _verify_anchored_journal_file(temp_file)
+            _verify_anchored_journal_directory(directory)
+            _verify_journal_mutation_authority(*authorities)
+            _require_absent_anchored_child(
+                directory, safe_path.name, role=role
+            )
+            os.replace(
+                temp_name,
+                ready_name,
+                src_dir_fd=directory.fd,
+                dst_dir_fd=directory.fd,
+            )
+            temp_exists = False
+            ready_exists = True
+            os.fsync(directory.fd)
+            _verify_anchored_journal_directory(directory)
+            _verify_journal_mutation_authority(*authorities)
+            _require_absent_anchored_child(
+                directory, safe_path.name, role=role
+            )
+            ready_stat = os.stat(
+                ready_name,
+                dir_fd=directory.fd,
+                follow_symlinks=False,
+            )
+            if not stat.S_ISREG(ready_stat.st_mode):
+                raise ValueError(f"{role} ready authority is not regular")
+            try:
+                os.link(
+                    ready_name,
+                    safe_path.name,
+                    src_dir_fd=directory.fd,
+                    dst_dir_fd=directory.fd,
+                    follow_symlinks=False,
+                )
+            except FileExistsError as exc:
+                raise ValueError(f"Competing {role} already exists") from exc
+            final_identity = (ready_stat.st_dev, ready_stat.st_ino)
+            os.fsync(directory.fd)
+            _verify_anchored_journal_directory(directory)
+            _verify_journal_mutation_authority(*authorities)
+            final_fd = os.open(
+                safe_path.name,
+                _journal_open_flags(os.O_RDONLY),
+                dir_fd=directory.fd,
+            )
+            try:
+                final_opened = os.fstat(final_fd)
+                if not stat.S_ISREG(final_opened.st_mode):
+                    raise ValueError(f"{role} is not a regular file")
+                with os.fdopen(final_fd, "rb") as final_handle:
+                    final_fd = -1
+                    final_file = _AnchoredJournalFile(
+                        handle=final_handle,
+                        directory=directory,
+                        name=safe_path.name,
+                        path=safe_path,
+                        role=role,
+                        identity=(final_opened.st_dev, final_opened.st_ino),
+                    )
+                    _verify_anchored_journal_file(final_file)
+                    if final_handle.read() != document:
+                        raise ValueError(f"{role} publication bytes changed")
+                    _verify_anchored_journal_file(final_file)
+                    _verify_journal_mutation_authority(*authorities)
+                    publication_complete = True
+            finally:
+                if final_fd >= 0:
+                    os.close(final_fd)
+        finally:
+            if descriptor >= 0:
+                os.close(descriptor)
+            rollback_failure: BaseException | None = None
+            try:
+                if final_identity is not None and not publication_complete:
+                    if role == "Metadata migration status":
+                        _rollback_anchored_status_publication(
+                            directory,
+                            status_name=safe_path.name,
+                            status_path=safe_path,
+                            expected_identity=final_identity,
+                            expected_bytes=document,
+                        )
+                    else:
+                        try:
+                            published = os.stat(
+                                safe_path.name,
+                                dir_fd=directory.fd,
+                                follow_symlinks=False,
+                            )
+                            if (
+                                stat.S_ISREG(published.st_mode)
+                                and (published.st_dev, published.st_ino)
+                                == final_identity
+                            ):
+                                os.unlink(safe_path.name, dir_fd=directory.fd)
+                                os.fsync(directory.fd)
+                        except OSError:
+                            pass
+            except BaseException as exc:
+                rollback_failure = exc
+            finally:
+                if temp_exists:
+                    try:
+                        os.unlink(temp_name, dir_fd=directory.fd)
+                    except OSError:
+                        pass
+                if ready_exists:
+                    try:
+                        os.unlink(ready_name, dir_fd=directory.fd)
+                        os.fsync(directory.fd)
+                    except OSError:
+                        pass
+            if rollback_failure is not None:
+                raise rollback_failure
+
+
+def _anchored_json_document(payload: Mapping[str, Any]) -> bytes:
+    """Return the exact canonical bytes used for immutable authority JSON."""
+    return (
+        json.dumps(dict(payload), indent=2, sort_keys=True, ensure_ascii=False)
+        + "\n"
+    ).encode("utf-8")
+
+
+def _require_safe_journal_children(
+    root: Path,
+    plan_path: Path,
+    log_path: Path,
+    receipt_path: Path,
+) -> tuple[Path, Path, Path, Path]:
+    """Validate every journal child before any authority I/O."""
+    safe_plan = _require_safe_migration_path(
+        plan_path, role="Metadata migration journal plan", root=root
+    )
+    safe_log = _require_safe_migration_path(
+        log_path, role="Metadata migration transition log", root=root
+    )
+    safe_receipt = _require_safe_migration_path(
+        receipt_path, role="Metadata migration terminal receipt", root=root
+    )
+    safe_writer_lock = _require_safe_migration_path(
+        _journal_writer_lock_path(safe_log),
+        role="Metadata migration journal writer lock",
+        root=root,
+    )
+    return safe_plan, safe_log, safe_receipt, safe_writer_lock
+
+
+def _canonical_json_payload(payload: Mapping[str, Any]) -> bytes:
+    return json.dumps(
+        dict(payload), sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def _decode_journal_frames(
+    log_path: Path,
+    *,
+    root: Path,
+) -> tuple[list[dict[str, Any]], int, bool]:
+    """Decode complete frames, accepting only a torn final frame."""
+    log_path = _require_safe_migration_path(
+        log_path, role="Metadata migration transition log", root=root
+    )
+    with _open_anchored_journal_file(
+        log_path,
+        root=root,
+        role="Metadata migration transition log",
+        flags=os.O_RDONLY,
+        mode="rb",
+    ) as opened:
+        data = opened.handle.read()
+        _verify_anchored_journal_file(opened)
+    return _decode_journal_data(data)
+
+
+def _decode_journal_data(
+    data: bytes,
+) -> tuple[list[dict[str, Any]], int, bool]:
+    """Decode an already descriptor-bound journal byte stream."""
+    frames: list[dict[str, Any]] = []
+    offset = 0
+    while offset < len(data):
+        frame_start = offset
+        header_end = offset + _JOURNAL_FRAME_HEADER.size
+        if header_end > len(data):
+            return frames, frame_start, True
+        (length,) = _JOURNAL_FRAME_HEADER.unpack(data[offset:header_end])
+        payload_end = header_end + length
+        checksum_end = payload_end + _JOURNAL_FRAME_CHECKSUM_SIZE
+        if checksum_end > len(data):
+            return frames, frame_start, True
+        payload = data[header_end:payload_end]
+        checksum = data[payload_end:checksum_end]
+        if hashlib.sha256(payload).digest() != checksum:
+            raise ValueError("Metadata migration journal checksum mismatch")
+        try:
+            frame = json.loads(payload.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError("Invalid metadata migration journal payload") from exc
+        if not isinstance(frame, dict):
+            raise ValueError("Metadata migration journal frame must be an object")
+        if _canonical_json_payload(frame) != payload:
+            raise ValueError("Metadata migration journal frame is not canonical JSON")
+        frames.append(frame)
+        offset = checksum_end
+    return frames, offset, False
+
+
+def _append_journal_transition(
+    writer: _JournalWriter,
+    transition: Mapping[str, Any],
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> None:
+    """Append and fsync one complete length-prefixed transition frame."""
+    payload = _canonical_json_payload(transition)
+    frame = (
+        _JOURNAL_FRAME_HEADER.pack(len(payload))
+        + payload
+        + hashlib.sha256(payload).digest()
+    )
+    if transition.get("sequence") != writer.next_sequence:
+        raise ValueError("Metadata migration journal sequence is not monotonic")
+    with publication_commit(commit_guard):
+        _verify_journal_mutation_authority(
+            writer.plan_file, writer.log_file, writer.writer_lock_file
+        )
+        writer.log_file.handle.seek(writer.end_offset)
+        writer.log_file.handle.write(frame)
+        writer.log_file.handle.flush()
+        os.fsync(writer.log_file.handle.fileno())
+        _verify_journal_mutation_authority(
+            writer.plan_file, writer.log_file, writer.writer_lock_file
+        )
+    writer.end_offset += len(frame)
+    writer.next_sequence += 1
+
+
+@dataclass
+class _JournalWriter:
+    """Exclusive retained append state established by one journal replay."""
+
+    plan_file: _AnchoredJournalFile
+    log_file: _AnchoredJournalFile
+    writer_lock_file: _AnchoredJournalFile
+    next_sequence: int
+    end_offset: int
+
+
+def _new_journal_plan(
+    report: MetadataMigrationReport,
+    *,
+    root: Path,
+    kinds: frozenset[str] | None,
+    supersedes_digest: str | None = None,
+) -> dict[str, Any]:
+    plan = _new_receipt(
+        report,
+        bundle_root=root,
+        kinds=kinds,
+        supersedes_digest=supersedes_digest,
+    )
+    plan["journal_schema_version"] = _JOURNAL_SCHEMA_VERSION
+    return cast(dict[str, Any], json.loads(json.dumps(plan)))
+
+
+def _write_journal_plan(
+    root: Path,
+    plan_path: Path,
+    log_path: Path,
+    plan: Mapping[str, Any],
+    *,
+    commit_guard: CommitGuard | None,
+    authorities: tuple[_AnchoredJournalFile, ...] = (),
+) -> None:
+    """Publish one immutable plan and initialize its append-only log."""
+    _require_journal_descriptor_capabilities()
+    plan_path = _require_safe_migration_path(
+        plan_path, role="Metadata migration journal plan", root=root
+    )
+    log_path = _require_safe_migration_path(
+        log_path, role="Metadata migration transition log", root=root
+    )
+    with publication_commit(commit_guard):
+        _verify_journal_mutation_authority(*authorities)
+        plan_path = _require_safe_migration_path(
+            plan_path, role="Metadata migration journal plan", root=root
+        )
+        log_path = _require_safe_migration_path(
+            log_path, role="Metadata migration transition log", root=root
+        )
+        with _open_anchored_journal_directory(
+            root, plan_path.parent, create=True
+        ) as directory:
+            _verify_anchored_journal_directory(directory)
+            _verify_journal_mutation_authority(*authorities)
+        if plan_path.is_file():
+            existing = _read_anchored_journal_json(
+                plan_path,
+                root=root,
+                role="Metadata migration journal plan",
+            )
+            if existing != plan:
+                raise ValueError("Immutable metadata migration plan has changed")
+        else:
+            _publish_anchored_journal_json(
+                plan_path,
+                plan,
+                root=root,
+                role="Metadata migration journal plan",
+                authorities=authorities,
+            )
+        _verify_journal_mutation_authority(*authorities)
+        if not log_path.exists():
+            with _open_anchored_journal_file(
+                log_path,
+                root=root,
+                role="Metadata migration transition log",
+                flags=os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                mode="wb",
+            ) as opened:
+                opened.handle.flush()
+                os.fsync(opened.handle.fileno())
+                os.fsync(opened.directory.fd)
+                _verify_anchored_journal_file(opened)
+                _verify_journal_mutation_authority(*authorities)
+        else:
+            with _open_anchored_journal_file(
+                log_path,
+                root=root,
+                role="Metadata migration transition log",
+                flags=os.O_RDONLY,
+                mode="rb",
+            ):
+                pass
+        _verify_journal_mutation_authority(*authorities)
+
+
+def _replay_journal(
+    plan: Mapping[str, Any],
+    log_path: Path,
+    *,
+    root: Path,
+    log_file: _AnchoredJournalFile | None = None,
+) -> tuple[dict[str, Any], list[dict[str, Any]], int, bool]:
+    """Rebuild mutable receipt state from an immutable plan and frames."""
+    receipt = json.loads(json.dumps(plan))
+    raw_targets = receipt.get("targets")
+    if (
+        receipt.get("journal_schema_version") != _JOURNAL_SCHEMA_VERSION
+        or not isinstance(raw_targets, list)
+    ):
+        raise ValueError("Unsupported metadata migration journal plan")
+    if log_file is None:
+        frames, valid_size, torn = _decode_journal_frames(log_path, root=root)
+    else:
+        _verify_anchored_journal_file(log_file)
+        log_file.handle.seek(0)
+        log_data = log_file.handle.read()
+        _verify_anchored_journal_file(log_file)
+        frames, valid_size, torn = _decode_journal_data(log_data)
+    last_target = -1
+    runtime_fields = (
+        "post_fingerprint",
+        "rollback_fingerprint",
+        "temp_path",
+        "backup_path",
+        "hdf_snapshot",
+    )
+    for sequence, frame in enumerate(frames):
+        if frame.get("schema_version") != _JOURNAL_SCHEMA_VERSION:
+            raise ValueError("Unsupported metadata migration journal frame")
+        if frame.get("sequence") != sequence:
+            raise ValueError("Metadata migration journal sequence is not monotonic")
+        target_index = frame.get("target_index")
+        if not isinstance(target_index, int) or not 0 <= target_index < len(raw_targets):
+            raise ValueError("Metadata migration journal target index is invalid")
+        if target_index < last_target:
+            raise ValueError("Metadata migration journal target order is not monotonic")
+        target = raw_targets[target_index]
+        if not isinstance(target, dict):
+            raise ValueError("Invalid metadata migration journal target")
+        previous_state = frame.get("previous_state")
+        next_state = frame.get("next_state")
+        if previous_state != target.get("state"):
+            raise ValueError("Metadata migration journal transition is non-monotonic")
+        if (previous_state, next_state) not in {
+            ("pending", "prepared"),
+            ("prepared", "applied"),
+        }:
+            raise ValueError("Metadata migration journal transition is invalid")
+        if frame.get("source_fingerprint") != target.get("source_fingerprint"):
+            raise ValueError("Metadata migration journal source binding changed")
+        if next_state in {"prepared", "applied"} and not isinstance(
+            frame.get("post_fingerprint"), str
+        ):
+            raise ValueError("Metadata migration journal lacks post fingerprint")
+        if previous_state == "prepared" and frame.get(
+            "post_fingerprint"
+        ) != target.get("post_fingerprint"):
+            raise ValueError("Metadata migration journal post binding changed")
+        for field in runtime_fields:
+            target[field] = frame.get(field)
+        target["state"] = next_state
+        last_target = target_index
+    receipt["state"] = "prepared"
+    return receipt, frames, valid_size, torn
+
+
+def _journal_transition(
+    *,
+    sequence: int,
+    target_index: int,
+    previous_state: str,
+    next_state: str,
+    target: Mapping[str, Any],
 ) -> dict[str, Any]:
     return {
+        "schema_version": _JOURNAL_SCHEMA_VERSION,
+        "sequence": sequence,
+        "target_index": target_index,
+        "previous_state": previous_state,
+        "next_state": next_state,
+        "source_fingerprint": target.get("source_fingerprint"),
+        "post_fingerprint": target.get("post_fingerprint"),
+        "rollback_fingerprint": target.get("rollback_fingerprint"),
+        "temp_path": target.get("temp_path"),
+        "backup_path": target.get("backup_path"),
+        "hdf_snapshot": target.get("hdf_snapshot"),
+    }
+
+
+def _new_receipt(
+    report: MetadataMigrationReport,
+    *,
+    bundle_root: Path | None,
+    kinds: frozenset[str] | None = None,
+    supersedes_digest: str | None = None,
+) -> dict[str, Any]:
+    """Build a prepared receipt, recording the SCOPE it was planned under.
+
+    ``kinds`` lives in the receipt rather than only in the call because
+    :func:`_validate_receipt` re-derives the target set to prove it is
+    authoritative. Re-deriving the *unfiltered* set against a deliberately
+    filtered receipt makes that check fire on every tree holding a single
+    ``.h5`` -- which is every tree being migrated. Recording the scope keeps
+    the check honest instead of merely quiet: it still catches a target set
+    that drifted, and no longer fires on one that was legitimately scoped
+    (ledger MIG-26, corrected by C10).
+
+    Args:
+        report: The preflight plan being committed.
+        bundle_root: Bundle root, or ``None`` for a single-file scope.
+        kinds: The scope the plan was built with. ``None`` means unfiltered.
+
+    Returns:
+        A JSON-serializable receipt.
+    """
+    return {
         "schema_version": _RECEIPT_SCHEMA_VERSION,
+        "target_role": report.target_role,
+        "supersedes_digest": supersedes_digest,
+        "kinds": sorted(kinds) if kinds is not None else None,
         "scope": "bundle" if bundle_root is not None else "file",
         "bundle_root": str(bundle_root) if bundle_root is not None else None,
         "state": "prepared",
@@ -999,6 +2455,19 @@ def _new_receipt(
 
 def _write_receipt(path: Path, receipt: Mapping[str, Any]) -> None:
     path = _require_safe_migration_path(path, role="Migration receipt")
+    session = _WINDOWS_JOURNAL_SESSION.get()
+    if session is not None:
+        safe_path = _require_safe_migration_path(
+            path,
+            role="Migration receipt",
+            root=session.root,
+        )
+        session.replace_bytes(
+            safe_path,
+            _anchored_json_document(receipt),
+            role="Migration receipt",
+        )
+        return
     _ensure_directory_durable(path.parent)
     atomic_write_json(path, dict(receipt), sort_keys=True)
     _fsync_directory(path.parent)
@@ -1627,12 +3096,53 @@ def _validate_receipt(
     *,
     expected_plan_fingerprint: str | None = None,
 ) -> None:
-    """Strictly validate a receipt and every path before any mutation."""
-    if receipt.get("schema_version") != _RECEIPT_SCHEMA_VERSION:
+    """Strictly validate a receipt and every path before any mutation.
+
+    The authoritative-set check re-derives the bundle's targets with **the
+    receipt's own** ``kinds`` scope. Re-deriving the unfiltered set would
+    reject every deliberately scoped migration -- see :func:`_new_receipt`.
+    """
+    schema_version = receipt.get("schema_version")
+    if schema_version not in {
+        _HISTORICAL_RECEIPT_SCHEMA_VERSION,
+        _RECEIPT_SCHEMA_VERSION,
+    }:
         raise ValueError("Unsupported metadata migration receipt schema")
+    historical = schema_version == _HISTORICAL_RECEIPT_SCHEMA_VERSION
+    raw_kinds = receipt.get("kinds")
+    if raw_kinds is None:
+        receipt_kinds: frozenset[str] | None = None
+    elif isinstance(raw_kinds, list) and all(
+        isinstance(item, str) for item in raw_kinds
+    ):
+        receipt_kinds = frozenset(raw_kinds)
+    else:
+        raise ValueError("Invalid metadata migration receipt kinds")
     scope = receipt.get("scope")
     if scope not in {"file", "bundle"}:
         raise ValueError("Invalid metadata migration receipt scope")
+    if historical:
+        if "target_role" in receipt or "supersedes_digest" in receipt:
+            raise ValueError(
+                "Historical metadata migration receipt has v4 authority fields"
+            )
+        target_role: ReceiptTargetRole | None = None
+    else:
+        raw_role = receipt.get("target_role")
+        valid_roles = (
+            {BUNDLE_DURABLE_TARGET_ROLE, BUNDLE_ALL_TARGET_ROLE}
+            if scope == "bundle"
+            else {EXACT_FILE_TARGET_ROLE}
+        )
+        if raw_role not in valid_roles:
+            raise ValueError("Invalid metadata migration receipt target role")
+        target_role = cast(ReceiptTargetRole, raw_role)
+        supersedes_digest = receipt.get("supersedes_digest")
+        if supersedes_digest is not None and (
+            not isinstance(supersedes_digest, str)
+            or not supersedes_digest.startswith("sha256:")
+        ):
+            raise ValueError("Invalid superseded receipt digest")
     if receipt.get("state") not in {
         "prepared",
         "applied",
@@ -1662,6 +3172,7 @@ def _validate_receipt(
     if not isinstance(source_text, str):
         raise ValueError("Invalid metadata migration receipt source")
     expected_paths: tuple[Path, ...]
+    expected_receipts: tuple[Path, ...]
     if scope == "file":
         source = _require_safe_migration_path(
             source_text, role="Migration source"
@@ -1672,8 +3183,8 @@ def _validate_receipt(
             )
         expected_paths = (source,)
         receipt_source = str(source)
-        expected_receipt = _receipt_path(
-            source, plan_fingerprint, bundle=False
+        expected_receipts = (
+            _receipt_path(source, plan_fingerprint, bundle=False),
         )
     else:
         raw_root = receipt.get("bundle_root")
@@ -1697,9 +3208,15 @@ def _validate_receipt(
             raise ValueError(
                 "Bundle receipt source is not rooted in its bundle"
             )
-        expected_paths = _discover_bundle_targets(layout)
+        discovery = _discover_legacy_bundle_targets
+        if target_role == BUNDLE_DURABLE_TARGET_ROLE:
+            discovery = _discover_bundle_targets
+        expected_paths = discovery(layout, kinds=receipt_kinds)
         receipt_source = str(layout.deliverables_base)
-        expected_receipt = _receipt_path(root, plan_fingerprint, bundle=True)
+        expected_receipts = (
+            _receipt_path(root, plan_fingerprint, bundle=True),
+            _journal_paths(root, plan_fingerprint)[2],
+        )
     if source_text != receipt_source:
         raise ValueError(
             "Migration receipt source does not match its resolved scope"
@@ -1710,12 +3227,15 @@ def _validate_receipt(
         role="Migration receipt",
         root=journal_root,
     )
-    expected_receipt = _require_safe_migration_path(
-        expected_receipt,
-        role="Expected migration receipt",
-        root=journal_root,
+    safe_expected_receipts = tuple(
+        _require_safe_migration_path(
+            expected_receipt,
+            role="Expected migration receipt",
+            root=journal_root,
+        )
+        for expected_receipt in expected_receipts
     )
-    if receipt_path != expected_receipt:
+    if receipt_path not in safe_expected_receipts:
         raise ValueError(
             "Migration receipt is outside its authoritative journal"
         )
@@ -1744,7 +3264,9 @@ def _validate_receipt(
                 "Migration receipt target kind does not match its path"
             )
 
-    rebuilt = _report_from_targets(source_text, targets)
+    rebuilt = _report_from_targets(
+        source_text, targets, target_role=target_role
+    )
     if rebuilt.plan_fingerprint != plan_fingerprint:
         raise ValueError("Migration receipt plan content has been altered")
     if rebuilt.source_fingerprint != source_fingerprint:
@@ -2014,7 +3536,7 @@ def _receipt_validation_failure(
     )
 
 
-def _apply_receipt(
+def _apply_receipt_unlocked(
     receipt_path: Path,
     receipt: dict[str, Any],
     *,
@@ -2150,6 +3672,22 @@ def _apply_receipt(
         )
 
 
+def _apply_receipt(
+    receipt_path: Path,
+    receipt: dict[str, Any],
+    *,
+    expected_plan_fingerprint: str | None = None,
+    commit_guard: CommitGuard | None = None,
+) -> MetadataMigrationResult:
+    """Apply a legacy receipt while fencing all validation and mutation."""
+    with publication_commit(commit_guard):
+        return _apply_receipt_unlocked(
+            receipt_path,
+            receipt,
+            expected_plan_fingerprint=expected_plan_fingerprint,
+        )
+
+
 def _blocked_result(
     report: MetadataMigrationReport,
 ) -> MetadataMigrationResult:
@@ -2203,7 +3741,11 @@ def _find_file_receipt(
             receipt = json.loads(candidate.read_text(encoding="utf-8"))
             targets = receipt.get("targets", [])
             if (
-                receipt.get("schema_version") != _RECEIPT_SCHEMA_VERSION
+                receipt.get("schema_version")
+                not in {
+                    _HISTORICAL_RECEIPT_SCHEMA_VERSION,
+                    _RECEIPT_SCHEMA_VERSION,
+                }
                 or len(targets) != 1
                 or Path(str(targets[0]["path"])).resolve() != source
             ):
@@ -2288,48 +3830,2177 @@ def _resolve_bundle(
     )
 
 
-def migrate_metadata_bundle(
-    source: str | Path | BundleLayout, *, expected_plan_fingerprint: str
-) -> MetadataMigrationResult:
-    """Migrate authoritative sources in a full or standalone bundle."""
-    layout, root = _resolve_bundle(source)
-    requested_receipt = _receipt_path(
-        root, expected_plan_fingerprint, bundle=True
+def _validate_preflighted_bundle_authority(
+    layout: BundleLayout,
+    root: Path,
+    report: MetadataMigrationReport,
+    *,
+    kinds: frozenset[str] | None,
+) -> None:
+    """Recheck a prepared report's exact path set and current bytes."""
+    expected_source = str(layout.deliverables_base)
+    if report.source != expected_source:
+        raise ValueError("Prepared migration report does not match the bundle")
+    rebuilt = _report_from_targets(
+        report.source,
+        report.targets,
+        target_role=report.target_role,
     )
-    _require_safe_migration_path(
-        requested_receipt,
-        role="Migration bundle receipt",
+    if rebuilt != report:
+        raise ValueError("Prepared migration report content has been altered")
+    discovery = (
+        _discover_bundle_targets
+        if report.target_role == BUNDLE_DURABLE_TARGET_ROLE
+        else _discover_legacy_bundle_targets
+    )
+    authoritative_paths = discovery(layout, kinds=kinds)
+    report_paths = tuple(
+        _require_safe_migration_path(
+            target.path, role="Prepared migration target", root=root
+        )
+        for target in report.targets
+    )
+    if authoritative_paths != report_paths:
+        raise ValueError("Prepared migration target set is not authoritative")
+    for path, target in zip(authoritative_paths, report.targets, strict=True):
+        if _kind_for_file(path) != target.kind:
+            raise ValueError("Prepared migration target kind has changed")
+        if file_fingerprint(path) != target.source_fingerprint:
+            raise ValueError(f"Prepared migration target changed: {path}")
+
+
+def _metadata_status_path(root: Path) -> Path:
+    return _receipt_dir(root, bundle=True) / "status.json"
+
+
+def _validate_superseded_historical_receipt(
+    root: Path,
+    receipt_path: Path,
+    *,
+    expected_digest: str,
+) -> str:
+    """Validate immutable v3 adoption evidence without live target discovery."""
+    safe_path = _require_safe_migration_path(
+        receipt_path, role="Superseded historical receipt", root=root
+    )
+    if not _journal_regular_exists(safe_path, root=root):
+        raise ValueError("Superseded historical metadata receipt is missing")
+    receipt_bytes = _read_anchored_journal_bytes(
+        safe_path,
+        root=root,
+        role="Superseded historical receipt",
+    )
+    digest = _sha256_bytes(receipt_bytes)
+    if digest != expected_digest:
+        raise ValueError("Superseded historical metadata receipt digest changed")
+    try:
+        receipt = json.loads(receipt_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            "Superseded historical metadata receipt is malformed"
+        ) from exc
+    if (
+        not isinstance(receipt, dict)
+        or receipt.get("schema_version")
+        != _HISTORICAL_RECEIPT_SCHEMA_VERSION
+        or receipt.get("scope") != "bundle"
+        or receipt.get("bundle_root") != str(root)
+        or receipt.get("state") != "applied"
+    ):
+        raise ValueError(
+            "Superseded metadata authority is not a terminal schema-3 receipt"
+        )
+    plan_fingerprint = receipt.get("plan_fingerprint")
+    if not isinstance(plan_fingerprint, str) or not plan_fingerprint.startswith(
+        "sha256:"
+    ):
+        raise ValueError(
+            "Superseded historical metadata receipt has invalid plan authority"
+        )
+    canonical_paths = {
+        _receipt_path(root, plan_fingerprint, bundle=True),
+        _journal_paths(root, plan_fingerprint)[2],
+    }
+    if safe_path not in canonical_paths:
+        raise ValueError(
+            "Superseded historical metadata receipt path is not canonical"
+        )
+    return digest
+
+
+def _validated_terminal_receipt_evidence(
+    root: Path,
+    receipt_path: Path,
+    *,
+    expected_digest: str | None = None,
+    receipt_file: _AnchoredJournalFile | None = None,
+) -> tuple[MetadataMigrationResult, bool, str]:
+    """Validate terminal receipt bytes, bindings, target set, and live bytes."""
+    safe_receipt_path = _require_safe_migration_path(
+        receipt_path, role="Terminal migration receipt", root=root
+    )
+    if not _journal_regular_exists(safe_receipt_path, root=root):
+        raise ValueError("Metadata migration terminal receipt is missing")
+    if receipt_file is None:
+        receipt_bytes = _read_anchored_journal_bytes(
+            safe_receipt_path,
+            root=root,
+            role="Terminal migration receipt",
+        )
+    else:
+        if receipt_file.path != safe_receipt_path:
+            raise ValueError("Terminal migration receipt authority changed")
+        _verify_anchored_journal_file(receipt_file)
+        receipt_file.handle.seek(0)
+        receipt_bytes = receipt_file.handle.read()
+        _verify_anchored_journal_file(receipt_file)
+    receipt_digest = _sha256_bytes(receipt_bytes)
+    if expected_digest is not None and receipt_digest != expected_digest:
+        raise ValueError("Metadata migration terminal receipt digest changed")
+    try:
+        receipt = json.loads(receipt_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            "Metadata migration terminal receipt is malformed"
+        ) from exc
+    if not isinstance(receipt, dict):
+        raise ValueError("Metadata migration terminal receipt is malformed")
+    raw_targets = receipt.get("targets")
+    if not isinstance(raw_targets, list):
+        raise ValueError("Metadata migration terminal receipt lacks targets")
+    compatible_noop = not any(
+        target.get("status") == "migratable"
+        for target in raw_targets
+        if isinstance(target, dict)
+    )
+    result = _result_from_terminal_receipt(
+        safe_receipt_path,
+        receipt,
+        compatible=compatible_noop,
+    )
+    supersedes_digest = receipt.get("supersedes_digest")
+    if isinstance(supersedes_digest, str):
+        historical: list[Path] = []
+        for candidate_kind, candidate in _bundle_authority_candidates(root):
+            candidate_receipt = (
+                candidate / "receipt.json"
+                if candidate_kind == "journal"
+                else candidate
+            )
+            if candidate_receipt == safe_receipt_path:
+                continue
+            historical.append(candidate_receipt)
+        if len(historical) != 1:
+            raise ValueError(
+                "Superseding metadata authority lacks one historical receipt"
+            )
+        _validate_superseded_historical_receipt(
+            root,
+            historical[0],
+            expected_digest=supersedes_digest,
+        )
+    return result, compatible_noop, receipt_digest
+
+
+def _publish_metadata_authority(
+    root: Path,
+    result: MetadataMigrationResult,
+    *,
+    compatible_noop: bool,
+    commit_guard: CommitGuard | None,
+) -> MetadataMigrationAuthority:
+    """Atomically publish and return stable metadata-stage authority."""
+    if not _JOURNAL_DIR_FD_SUPPORTED:
+        return _publish_metadata_authority_portable(
+            root,
+            result,
+            compatible_noop=compatible_noop,
+            commit_guard=commit_guard,
+        )
+    if result.receipt_path is None or result.resulting_fingerprint is None:
+        raise ValueError("Successful metadata migration lacks terminal evidence")
+    receipt_path = _require_safe_migration_path(
+        result.receipt_path, role="Terminal migration receipt", root=root
+    )
+    status_path = _require_safe_migration_path(
+        _metadata_status_path(root), role="Metadata migration status", root=root
+    )
+    with publication_commit(commit_guard):
+        with _open_anchored_journal_file(
+            receipt_path,
+            root=root,
+            role="Terminal migration receipt",
+            flags=os.O_RDONLY,
+            mode="rb",
+        ) as receipt_file:
+            terminal, receipt_noop, receipt_digest = (
+                _validated_terminal_receipt_evidence(
+                    root,
+                    receipt_path,
+                    receipt_file=receipt_file,
+                )
+            )
+            if receipt_noop != compatible_noop:
+                raise ValueError(
+                    "Terminal metadata receipt no-op authority changed"
+                )
+            if (
+                terminal.receipt_path != receipt_path
+                or terminal.plan_fingerprint != result.plan_fingerprint
+                or terminal.source_fingerprint != result.source_fingerprint
+                or terminal.resulting_fingerprint
+                != result.resulting_fingerprint
+            ):
+                raise ValueError(
+                    "Terminal metadata receipt does not match migration result"
+                )
+            payload = {
+                "schema_version": 1,
+                "state": "complete",
+                "terminal_receipt_path": str(receipt_path),
+                "terminal_receipt_digest": receipt_digest,
+                "plan_fingerprint": terminal.plan_fingerprint,
+                "source_fingerprint": terminal.source_fingerprint,
+                "resulting_fingerprint": terminal.resulting_fingerprint,
+                "compatible_noop": receipt_noop,
+            }
+            status_bytes: bytes
+            _verify_journal_mutation_authority(receipt_file)
+            if status_path.exists():
+                status_bytes = _read_anchored_journal_bytes(
+                    status_path,
+                    root=root,
+                    role="Metadata migration status",
+                )
+                existing = json.loads(status_bytes.decode("utf-8"))
+                if existing != payload:
+                    raise ValueError(
+                        "Competing metadata migration status authority exists"
+                    )
+                _verify_journal_mutation_authority(receipt_file)
+            else:
+                status_bytes = _anchored_json_document(payload)
+                _publish_anchored_journal_json(
+                    status_path,
+                    payload,
+                    root=root,
+                    role="Metadata migration status",
+                    authorities=(receipt_file,),
+                )
+                _verify_journal_mutation_authority(receipt_file)
+    return MetadataMigrationAuthority(
+        status_path=status_path,
+        terminal_receipt_path=receipt_path,
+        terminal_receipt_digest=cast(str, payload["terminal_receipt_digest"]),
+        plan_fingerprint=result.plan_fingerprint,
+        source_fingerprint=result.source_fingerprint,
+        resulting_fingerprint=result.resulting_fingerprint,
+        compatible_noop=compatible_noop,
+    )
+
+
+def _publish_metadata_authority_portable(
+    root: Path,
+    result: MetadataMigrationResult,
+    *,
+    compatible_noop: bool,
+    commit_guard: CommitGuard | None,
+) -> MetadataMigrationAuthority:
+    """Publish immutable terminal status through the portable no-clobber path."""
+    if result.receipt_path is None or result.resulting_fingerprint is None:
+        raise ValueError("Successful metadata migration lacks terminal evidence")
+    receipt_path = _require_safe_migration_path(
+        result.receipt_path, role="Terminal migration receipt", root=root
+    )
+    status_path = _require_safe_migration_path(
+        _metadata_status_path(root), role="Metadata migration status", root=root
+    )
+    with publication_commit(commit_guard):
+        terminal, receipt_noop, receipt_digest = (
+            _validated_terminal_receipt_evidence(root, receipt_path)
+        )
+        if receipt_noop != compatible_noop:
+            raise ValueError("Terminal metadata receipt no-op authority changed")
+        if (
+            terminal.receipt_path != receipt_path
+            or terminal.plan_fingerprint != result.plan_fingerprint
+            or terminal.source_fingerprint != result.source_fingerprint
+            or terminal.resulting_fingerprint != result.resulting_fingerprint
+        ):
+            raise ValueError(
+                "Terminal metadata receipt does not match migration result"
+            )
+        payload = {
+            "schema_version": 1,
+            "state": "complete",
+            "terminal_receipt_path": str(receipt_path),
+            "terminal_receipt_digest": receipt_digest,
+            "plan_fingerprint": terminal.plan_fingerprint,
+            "source_fingerprint": terminal.source_fingerprint,
+            "resulting_fingerprint": terminal.resulting_fingerprint,
+            "compatible_noop": receipt_noop,
+        }
+        document = _anchored_json_document(payload)
+        session = _active_windows_journal_session(root=root)
+        if session.exists(status_path):
+            if _portable_read_regular_bytes(
+                status_path,
+                root=root,
+                role="Metadata migration status",
+            ) != document:
+                raise ValueError(
+                    "Competing metadata migration status authority exists"
+                )
+        else:
+            _portable_publish_absent_bytes(
+                status_path,
+                document,
+                root=root,
+                role="Metadata migration status",
+            )
+    return MetadataMigrationAuthority(
+        status_path=status_path,
+        terminal_receipt_path=receipt_path,
+        terminal_receipt_digest=receipt_digest,
+        plan_fingerprint=result.plan_fingerprint,
+        source_fingerprint=result.source_fingerprint,
+        resulting_fingerprint=result.resulting_fingerprint,
+        compatible_noop=compatible_noop,
+    )
+
+
+def _remove_exact_metadata_authority(
+    root: Path,
+    authority: MetadataMigrationAuthority,
+    *,
+    commit_guard: CommitGuard | None,
+    status_digest: str | None = None,
+) -> Path:
+    """Move one exact legacy status to immutable superseded audit evidence."""
+    status_path = _require_safe_migration_path(
+        authority.status_path,
+        role="Metadata migration status",
         root=root,
     )
-    if requested_receipt.is_file():
-        receipt = json.loads(requested_receipt.read_text(encoding="utf-8"))
-        return _apply_receipt(
-            requested_receipt,
-            receipt,
-            expected_plan_fingerprint=expected_plan_fingerprint,
+    expected = _metadata_authority_payload(authority)
+    expected_digest = status_digest or _sha256_bytes(
+        _anchored_json_document(expected)
+    )
+    expected_bytes = _anchored_json_document(expected)
+    archive_name = _status_audit_name(
+        _SUPERSEDED_STATUS_PREFIX, expected_digest
+    )
+    archive_path = status_path.with_name(archive_name)
+    with publication_commit(commit_guard):
+        with _open_anchored_journal_directory(
+            root, status_path.parent
+        ) as directory:
+            _verify_anchored_journal_directory(directory)
+            try:
+                os.stat(
+                    archive_name,
+                    dir_fd=directory.fd,
+                    follow_symlinks=False,
+                )
+            except FileNotFoundError:
+                pass
+            except OSError as exc:
+                raise ValueError(
+                    "Could not inspect superseded metadata status audit"
+                ) from exc
+            else:
+                archived_bytes = _read_anchored_journal_bytes(
+                    archive_path,
+                    root=root,
+                    role="Metadata migration superseded status audit",
+                )
+                if (
+                    _sha256_bytes(archived_bytes) != expected_digest
+                    or json.loads(archived_bytes.decode("utf-8")) != expected
+                ):
+                    raise ValueError(
+                        "Competing superseded metadata status audit exists"
+                    )
+                try:
+                    os.stat(
+                        status_path.name,
+                        dir_fd=directory.fd,
+                        follow_symlinks=False,
+                    )
+                except FileNotFoundError:
+                    return archive_path
+                raise ValueError(
+                    "Competing live metadata status exists beside its exact "
+                    "superseded audit"
+                )
+            try:
+                live_stat = os.stat(
+                    status_path.name,
+                    dir_fd=directory.fd,
+                    follow_symlinks=False,
+                )
+            except FileNotFoundError:
+                raise ValueError("Metadata migration status is missing")
+            if not stat.S_ISREG(live_stat.st_mode):
+                raise ValueError(
+                    "Competing metadata migration status is not regular"
+                )
+            with _open_anchored_directory_file(
+                directory,
+                status_path.name,
+                role="Metadata migration status before supersession",
+            ) as status_file:
+                live_bytes = status_file.handle.read()
+                _verify_anchored_journal_file(status_file)
+                if live_bytes != expected_bytes:
+                    raise ValueError(
+                        "Competing metadata migration status authority exists"
+                    )
+                _verify_anchored_journal_file(status_file)
+            _rename_anchored_noreplace(
+                directory,
+                status_path.name,
+                archive_name,
+                role="superseded metadata status audit",
+            )
+            os.fsync(directory.fd)
+            _verify_anchored_journal_directory(directory)
+            descriptor = os.open(
+                archive_name,
+                _journal_open_flags(os.O_RDONLY),
+                dir_fd=directory.fd,
+            )
+            try:
+                opened = os.fstat(descriptor)
+                if not stat.S_ISREG(opened.st_mode):
+                    raise ValueError(
+                        "Metadata migration superseded status audit is not regular"
+                    )
+                with os.fdopen(descriptor, "rb") as handle:
+                    descriptor = -1
+                    archived = _AnchoredJournalFile(
+                        handle=handle,
+                        directory=directory,
+                        name=archive_name,
+                        path=archive_path,
+                        role="Metadata migration superseded status audit",
+                        identity=(opened.st_dev, opened.st_ino),
+                    )
+                    _verify_anchored_journal_file(archived)
+                    archived_bytes = handle.read()
+                    _verify_anchored_journal_file(archived)
+                    try:
+                        payload = json.loads(archived_bytes.decode("utf-8"))
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        payload = None
+                    if (
+                        _sha256_bytes(archived_bytes) != expected_digest
+                        or payload != expected
+                    ):
+                        _restore_competing_metadata_status(
+                            directory,
+                            archive_name=archive_name,
+                            status_name=status_path.name,
+                            archived_bytes=archived_bytes,
+                        )
+                        raise ValueError(
+                            "Competing metadata migration status authority exists"
+                        )
+                    os.fsync(directory.fd)
+                    _verify_anchored_journal_directory(directory)
+                    _verify_anchored_journal_file(archived)
+            finally:
+                if descriptor >= 0:
+                    os.close(descriptor)
+    return archive_path
+
+
+def _metadata_authority_payload(
+    authority: MetadataMigrationAuthority,
+) -> dict[str, object]:
+    """Return the exact schema-1 payload represented by public authority."""
+    return {
+        "schema_version": 1,
+        "state": "complete",
+        "terminal_receipt_path": str(authority.terminal_receipt_path),
+        "terminal_receipt_digest": authority.terminal_receipt_digest,
+        "plan_fingerprint": authority.plan_fingerprint,
+        "source_fingerprint": authority.source_fingerprint,
+        "resulting_fingerprint": authority.resulting_fingerprint,
+        "compatible_noop": authority.compatible_noop,
+    }
+
+
+def _status_audit_name(prefix: str, digest: str) -> str:
+    """Return a deterministic safe audit filename for one SHA-256 digest."""
+    raw_digest = digest.removeprefix("sha256:")
+    if len(raw_digest) != 64 or any(
+        character not in "0123456789abcdef" for character in raw_digest
+    ):
+        raise ValueError("Metadata migration status digest is invalid")
+    return f"{prefix}{raw_digest}.json"
+
+
+def _restore_competing_metadata_status(
+    directory: _AnchoredJournalDirectory,
+    *,
+    archive_name: str,
+    status_name: str,
+    archived_bytes: bytes,
+) -> None:
+    """Restore a displaced competitor and retain its immutable rejection audit."""
+    rejected_name = _status_audit_name(
+        _REJECTED_STATUS_PREFIX, _sha256_bytes(archived_bytes)
+    )
+    try:
+        os.stat(
+            rejected_name,
+            dir_fd=directory.fd,
+            follow_symlinks=False,
         )
-    report = preflight_metadata_schema(layout)
+    except FileNotFoundError:
+        pass
+    else:
+        rejected_stem = rejected_name.removesuffix(".json")
+        rejected_name = (
+            f"{rejected_stem}-duplicate-{os.urandom(8).hex()}.json"
+        )
+    _rename_anchored_noreplace(
+        directory,
+        archive_name,
+        rejected_name,
+        role="rejected metadata status audit",
+    )
+    os.fsync(directory.fd)
+    _verify_anchored_journal_directory(directory)
+    try:
+        os.link(
+            rejected_name,
+            status_name,
+            src_dir_fd=directory.fd,
+            dst_dir_fd=directory.fd,
+            follow_symlinks=False,
+        )
+    except FileExistsError as exc:
+        raise ValueError(
+            "Competing metadata migration status appeared during recovery; "
+            f"displaced authority retained as {rejected_name}"
+        ) from exc
+    os.fsync(directory.fd)
+    _verify_anchored_journal_directory(directory)
+    rejected = os.stat(
+        rejected_name,
+        dir_fd=directory.fd,
+        follow_symlinks=False,
+    )
+    restored = os.stat(
+        status_name,
+        dir_fd=directory.fd,
+        follow_symlinks=False,
+    )
+    if (
+        not stat.S_ISREG(rejected.st_mode)
+        or not stat.S_ISREG(restored.st_mode)
+        or (rejected.st_dev, rejected.st_ino)
+        != (restored.st_dev, restored.st_ino)
+    ):
+        raise ValueError(
+            "Competing metadata migration status recovery identity changed"
+        )
+
+
+@contextmanager
+def _open_anchored_directory_file(
+    directory: _AnchoredJournalDirectory,
+    name: str,
+    *,
+    role: str,
+) -> Iterator[_AnchoredJournalFile]:
+    """Open one regular child through an already-held directory descriptor."""
+    descriptor = os.open(
+        name,
+        _journal_open_flags(os.O_RDONLY),
+        dir_fd=directory.fd,
+    )
+    try:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{role} is not regular")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            opened_file = _AnchoredJournalFile(
+                handle=handle,
+                directory=directory,
+                name=name,
+                path=directory.path / name,
+                role=role,
+                identity=(opened.st_dev, opened.st_ino),
+            )
+            _verify_anchored_journal_file(opened_file)
+            yield opened_file
+            _verify_anchored_journal_file(opened_file)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
+def _metadata_migration_authority_evidence(
+    source: str | Path | BundleLayout,
+) -> _MetadataMigrationAuthorityEvidence:
+    """Load public authority plus its exact internal status-byte digest."""
+    _, root = _resolve_bundle(source)
+    if not _JOURNAL_DIR_FD_SUPPORTED:
+        with _windows_journal_session(root):
+            return _metadata_migration_authority_evidence_held(root)
+    return _metadata_migration_authority_evidence_held(root)
+
+
+def _metadata_migration_authority_evidence_held(
+    root: Path,
+) -> _MetadataMigrationAuthorityEvidence:
+    """Validate status and receipt within one platform authority transaction."""
+    status_path = _require_safe_migration_path(
+        _metadata_status_path(root), role="Metadata migration status", root=root
+    )
+    status_bytes = _read_anchored_journal_bytes(
+        status_path,
+        root=root,
+        role="Metadata migration status",
+    )
+    payload = json.loads(status_bytes.decode("utf-8"))
+    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+        raise ValueError("Unsupported metadata migration status schema")
+    if payload.get("state") != "complete":
+        raise ValueError("Metadata migration status is not terminal")
+    receipt_text = payload.get("terminal_receipt_path")
+    receipt_digest = payload.get("terminal_receipt_digest")
+    if not isinstance(receipt_text, str) or not isinstance(receipt_digest, str):
+        raise ValueError("Metadata migration status lacks receipt authority")
+    receipt_path = _require_safe_migration_path(
+        receipt_text, role="Terminal migration receipt", root=root
+    )
+    terminal, receipt_noop, _ = _validated_terminal_receipt_evidence(
+        root,
+        receipt_path,
+        expected_digest=receipt_digest,
+    )
+    fingerprints = {
+        name: payload.get(name)
+        for name in (
+            "plan_fingerprint",
+            "source_fingerprint",
+            "resulting_fingerprint",
+        )
+    }
+    if any(
+        not isinstance(value, str) or not value.startswith("sha256:")
+        for value in fingerprints.values()
+    ):
+        raise ValueError("Metadata migration status has invalid fingerprints")
+    compatible_noop = payload.get("compatible_noop")
+    if not isinstance(compatible_noop, bool):
+        raise ValueError("Metadata migration status has invalid no-op authority")
+    if (
+        fingerprints["plan_fingerprint"] != terminal.plan_fingerprint
+        or fingerprints["source_fingerprint"] != terminal.source_fingerprint
+        or fingerprints["resulting_fingerprint"]
+        != terminal.resulting_fingerprint
+        or compatible_noop != receipt_noop
+    ):
+        raise ValueError(
+            "Metadata migration status conflicts with terminal receipt authority"
+        )
+    return _MetadataMigrationAuthorityEvidence(
+        authority=MetadataMigrationAuthority(
+            status_path=status_path,
+            terminal_receipt_path=receipt_path,
+            terminal_receipt_digest=receipt_digest,
+            plan_fingerprint=cast(str, fingerprints["plan_fingerprint"]),
+            source_fingerprint=cast(str, fingerprints["source_fingerprint"]),
+            resulting_fingerprint=cast(
+                str, fingerprints["resulting_fingerprint"]
+            ),
+            compatible_noop=compatible_noop,
+        ),
+        status_digest=_sha256_bytes(status_bytes),
+    )
+
+
+def metadata_migration_authority(
+    source: str | Path | BundleLayout,
+) -> MetadataMigrationAuthority:
+    """Load and validate the bundle's published metadata-stage authority."""
+    return _metadata_migration_authority_evidence(source).authority
+
+
+def _receipt_resulting_fingerprint(receipt: Mapping[str, Any]) -> str:
+    return _sha256_bytes(
+        json.dumps(
+            [
+                (
+                    target["path"],
+                    target.get("post_fingerprint")
+                    or target["source_fingerprint"],
+                )
+                for target in receipt["targets"]
+            ],
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    )
+
+
+def _result_from_terminal_receipt(
+    receipt_path: Path,
+    receipt: dict[str, Any],
+    *,
+    compatible: bool,
+) -> MetadataMigrationResult:
+    _validate_receipt(receipt_path, receipt)
+    if receipt.get("state") != "applied":
+        raise ValueError("Metadata migration receipt is not terminal")
+    migrated = tuple(
+        str(target["path"])
+        for target in receipt["targets"]
+        if target.get("state") == "applied"
+    )
+    skipped = tuple(
+        str(target["path"])
+        for target in receipt["targets"]
+        if target.get("state") == "skipped"
+    )
+    return MetadataMigrationResult(
+        status="compatible" if compatible else "applied",
+        source=str(receipt["source"]),
+        source_fingerprint=str(receipt["source_fingerprint"]),
+        resulting_fingerprint=_receipt_resulting_fingerprint(receipt),
+        plan_fingerprint=str(receipt["plan_fingerprint"]),
+        receipt_path=receipt_path,
+        migrated_targets=() if compatible else migrated,
+        skipped_targets=skipped,
+    )
+
+
+def _validate_replayed_authority(
+    layout: BundleLayout,
+    root: Path,
+    receipt: Mapping[str, Any],
+    *,
+    kinds: frozenset[str] | None,
+) -> None:
+    discovery = _discover_legacy_bundle_targets
+    if receipt.get("target_role") == BUNDLE_DURABLE_TARGET_ROLE:
+        discovery = _discover_bundle_targets
+    authoritative_paths = discovery(layout, kinds=kinds)
+    raw_targets = receipt.get("targets")
+    if not isinstance(raw_targets, list):
+        raise ValueError("Metadata migration journal lacks targets")
+    target_paths = tuple(
+        _require_safe_migration_path(
+            str(target.get("path")),
+            role="Metadata migration journal target",
+            root=root,
+        )
+        for target in raw_targets
+    )
+    if target_paths != authoritative_paths:
+        raise ValueError("Metadata migration journal target set is not authoritative")
+    for path, target in zip(authoritative_paths, raw_targets, strict=True):
+        state = target.get("state")
+        current = file_fingerprint(path)
+        if state in {"pending", "skipped"}:
+            accepted = {target.get("source_fingerprint")}
+        elif state in {"prepared", "applied"}:
+            accepted = {target.get("post_fingerprint")}
+            if state == "prepared":
+                accepted.add(target.get("source_fingerprint"))
+        else:
+            raise ValueError("Metadata migration journal target state is invalid")
+        if current not in accepted:
+            raise ValueError(
+                f"Metadata migration journal target fingerprint changed: {path}"
+            )
+
+
+def _publish_journal_terminal_receipt(
+    layout: BundleLayout,
+    root: Path,
+    receipt: dict[str, Any],
+    receipt_path: Path,
+    *,
+    plan_file: _AnchoredJournalFile,
+    log_file: _AnchoredJournalFile,
+    writer_lock_file: _AnchoredJournalFile,
+    kinds: frozenset[str] | None,
+    commit_guard: CommitGuard | None,
+) -> dict[str, Any]:
+    """Validate retained replay state and atomically compact one receipt."""
+    receipt_path = _require_safe_migration_path(
+        receipt_path,
+        role="Metadata migration terminal receipt",
+        root=root,
+    )
+    with publication_commit(commit_guard):
+        authorities = (plan_file, log_file, writer_lock_file)
+        _verify_journal_mutation_authority(*authorities)
+        receipt_path = _require_safe_migration_path(
+            receipt_path,
+            role="Metadata migration terminal receipt",
+            root=root,
+        )
+        _validate_replayed_authority(
+            layout, root, receipt, kinds=kinds
+        )
+        if any(
+            target.get("state") not in {"applied", "skipped"}
+            for target in receipt["targets"]
+        ):
+            raise ValueError("Metadata migration journal is not terminal")
+        receipt["state"] = "applied"
+        _publish_anchored_journal_json(
+            receipt_path,
+            receipt,
+            root=root,
+            role="Metadata migration terminal receipt",
+            authorities=authorities,
+        )
+        _verify_journal_mutation_authority(*authorities)
+    _validate_receipt(receipt_path, receipt)
+    return receipt
+
+
+def _apply_metadata_journal(
+    layout: BundleLayout,
+    root: Path,
+    plan_path: Path,
+    log_path: Path,
+    receipt_path: Path,
+    *,
+    kinds: frozenset[str] | None,
+    commit_guard: CommitGuard | None,
+) -> MetadataMigrationResult:
+    """Replay and advance one prepared bundle journal to terminal state."""
+    plan_path, log_path, receipt_path, writer_lock = (
+        _require_safe_journal_children(
+            root, plan_path, log_path, receipt_path
+        )
+    )
+    plan: dict[str, Any] = {}
+    try:
+        with ExitStack() as writer_lock_stack:
+            plan_file = writer_lock_stack.enter_context(
+                _open_anchored_journal_file(
+                    plan_path,
+                    root=root,
+                    role="Metadata migration journal plan",
+                    flags=os.O_RDONLY,
+                    mode="rb",
+                )
+            )
+            plan_bytes = plan_file.handle.read()
+            _verify_anchored_journal_file(plan_file)
+            raw_plan = json.loads(plan_bytes.decode("utf-8"))
+            if not isinstance(raw_plan, dict):
+                raise ValueError(
+                    "Metadata migration plan must be a JSON object"
+                )
+            plan = raw_plan
+            with publication_commit(commit_guard):
+                _verify_journal_mutation_authority(plan_file)
+                log_path = _require_safe_migration_path(
+                    log_path,
+                    role="Metadata migration transition log",
+                    root=root,
+                )
+                writer_lock = _require_safe_migration_path(
+                    writer_lock,
+                    role="Metadata migration journal writer lock",
+                    root=root,
+                )
+                writer_lock_file = writer_lock_stack.enter_context(
+                    _open_anchored_journal_file(
+                        writer_lock,
+                        root=root,
+                        role="Metadata migration journal writer lock",
+                        flags=os.O_RDWR | os.O_CREAT,
+                        mode="a+b",
+                    )
+                )
+                writer_lock_stack.enter_context(
+                    exclusive_file_lock(
+                        writer_lock_file.handle, timeout=0.0
+                    )
+                )
+                _verify_journal_mutation_authority(
+                    plan_file, writer_lock_file
+                )
+            receipt_path = _require_safe_migration_path(
+                receipt_path,
+                role="Metadata migration terminal receipt",
+                root=root,
+            )
+            if receipt_path.is_file():
+                receipt_path = _require_safe_migration_path(
+                    receipt_path,
+                    role="Metadata migration terminal receipt",
+                    root=root,
+                )
+                receipt = _read_anchored_journal_json(
+                    receipt_path,
+                    root=root,
+                    role="Metadata migration terminal receipt",
+                )
+                if not isinstance(receipt, dict):
+                    raise ValueError(
+                        "Metadata migration receipt must be a JSON object"
+                    )
+                compatible = not any(
+                    target.get("status") == "migratable"
+                    for target in receipt.get("targets", [])
+                )
+                return _result_from_terminal_receipt(
+                    receipt_path, receipt, compatible=compatible
+                )
+            with publication_commit(commit_guard):
+                _verify_journal_mutation_authority(
+                    plan_file, writer_lock_file
+                )
+                log_path = _require_safe_migration_path(
+                    log_path,
+                    role="Metadata migration transition log",
+                    root=root,
+                )
+                writer_lock = _require_safe_migration_path(
+                    writer_lock,
+                    role="Metadata migration journal writer lock",
+                    root=root,
+                )
+                log_file = writer_lock_stack.enter_context(
+                    _open_anchored_journal_file(
+                        log_path,
+                        root=root,
+                        role="Metadata migration transition log",
+                        flags=os.O_RDWR,
+                        mode="r+b",
+                    )
+                )
+                _verify_journal_mutation_authority(
+                    plan_file, log_file, writer_lock_file
+                )
+            receipt, frames, valid_size, torn = _replay_journal(
+                plan, log_path, root=root, log_file=log_file
+            )
+            _validate_replayed_authority(
+                layout, root, receipt, kinds=kinds
+            )
+            first_mutation_validated = False
+
+            def validate_first_mutation() -> None:
+                nonlocal first_mutation_validated
+                if first_mutation_validated:
+                    return
+                _validate_replayed_authority(
+                    layout, root, receipt, kinds=kinds
+                )
+                first_mutation_validated = True
+
+            migrated: list[str] = []
+            skipped: list[str] = []
+            writer = _JournalWriter(
+                plan_file=plan_file,
+                log_file=log_file,
+                writer_lock_file=writer_lock_file,
+                next_sequence=len(frames),
+                end_offset=valid_size,
+            )
+            if torn:
+                with publication_commit(commit_guard):
+                    validate_first_mutation()
+                    _verify_journal_mutation_authority(
+                        plan_file, log_file, writer_lock_file
+                    )
+                    log_file.handle.truncate(valid_size)
+                    log_file.handle.flush()
+                    os.fsync(log_file.handle.fileno())
+                    _verify_journal_mutation_authority(
+                        plan_file, log_file, writer_lock_file
+                    )
+            for target_index, target in enumerate(receipt["targets"]):
+                path = Path(target["path"])
+                state = target["state"]
+                if state == "skipped":
+                    skipped.append(str(path))
+                    continue
+                if state == "applied":
+                    migrated.append(str(path))
+                    continue
+                if state == "pending":
+                    with publication_commit(commit_guard):
+                        validate_first_mutation()
+                        _verify_journal_mutation_authority(
+                            plan_file, log_file, writer_lock_file
+                        )
+                        if (
+                            file_fingerprint(path)
+                            != target["source_fingerprint"]
+                        ):
+                            raise ValueError(
+                                f"Source changed after preflight: {path}"
+                            )
+                        _prepare_receipt_target(target, receipt_path)
+                        _verify_journal_mutation_authority(
+                            plan_file, log_file, writer_lock_file
+                        )
+                    transition = _journal_transition(
+                        sequence=writer.next_sequence,
+                        target_index=target_index,
+                        previous_state="pending",
+                        next_state="prepared",
+                        target=target,
+                    )
+                    with publication_commit(commit_guard):
+                        validate_first_mutation()
+                        _verify_journal_mutation_authority(
+                            plan_file, log_file, writer_lock_file
+                        )
+                        _append_journal_transition(
+                            writer, transition, commit_guard=None
+                        )
+                    state = "prepared"
+                if state != "prepared":
+                    raise ValueError(
+                        "Metadata migration target transition is invalid"
+                    )
+                current = file_fingerprint(path)
+                if current == target["source_fingerprint"]:
+                    temp = Path(str(target["temp_path"]))
+                    with publication_commit(commit_guard):
+                        _verify_journal_mutation_authority(
+                            plan_file, log_file, writer_lock_file
+                        )
+                        validate_first_mutation()
+                        if (
+                            file_fingerprint(path)
+                            != target["source_fingerprint"]
+                        ):
+                            raise ValueError(
+                                "Migration target changed before "
+                                f"publication: {path}"
+                            )
+                        if (
+                            not temp.is_file()
+                            or file_fingerprint(temp)
+                            != target["post_fingerprint"]
+                        ):
+                            raise ValueError(
+                                f"Prepared migration temp changed: {temp}"
+                            )
+                        _publish_temp(temp, path)
+                        _verify_journal_mutation_authority(
+                            plan_file, log_file, writer_lock_file
+                        )
+                elif current != target["post_fingerprint"]:
+                    raise ValueError(
+                        f"Prepared migration target changed: {path}"
+                    )
+                if file_fingerprint(path) != target["post_fingerprint"]:
+                    raise ValueError(
+                        "Published migration target failed validation: "
+                        f"{path}"
+                    )
+                target["state"] = "applied"
+                target["temp_path"] = None
+                target["rollback_fingerprint"] = None
+                transition = _journal_transition(
+                    sequence=writer.next_sequence,
+                    target_index=target_index,
+                    previous_state="prepared",
+                    next_state="applied",
+                    target=target,
+                )
+                with publication_commit(commit_guard):
+                    validate_first_mutation()
+                    _append_journal_transition(
+                        writer, transition, commit_guard=None
+                    )
+                migrated.append(str(path))
+            terminal = _publish_journal_terminal_receipt(
+                layout,
+                root,
+                receipt,
+                receipt_path,
+                plan_file=plan_file,
+                log_file=log_file,
+                writer_lock_file=writer_lock_file,
+                kinds=kinds,
+                commit_guard=commit_guard,
+            )
+            return MetadataMigrationResult(
+                status="compatible" if not migrated else "applied",
+                source=str(terminal["source"]),
+                source_fingerprint=str(terminal["source_fingerprint"]),
+                resulting_fingerprint=_receipt_resulting_fingerprint(
+                    terminal
+                ),
+                plan_fingerprint=str(terminal["plan_fingerprint"]),
+                receipt_path=receipt_path,
+                migrated_targets=tuple(migrated),
+                skipped_targets=tuple(skipped),
+            )
+    except Exception as exc:
+        return MetadataMigrationResult(
+            status="failed",
+            source=str(plan.get("source", root)),
+            source_fingerprint=str(plan.get("source_fingerprint", "")),
+            resulting_fingerprint=None,
+            plan_fingerprint=str(plan.get("plan_fingerprint", "")),
+            receipt_path=receipt_path,
+            blocked_targets=(str(exc),),
+            conflicts=(str(exc),),
+        )
+
+
+def _bundle_authority_candidates(root: Path) -> tuple[tuple[str, Path], ...]:
+    """Discover every new or legacy bundle authority deterministically."""
+    authority_root = _receipt_dir(root, bundle=True)
+    _require_safe_migration_path(
+        authority_root, role="Metadata migration authority root", root=root
+    )
+    if not authority_root.exists():
+        return ()
+    if authority_root.is_symlink() or not authority_root.is_dir():
+        raise ValueError("Metadata migration authority root is unsafe")
+    candidates: list[tuple[str, Path]] = []
+    for candidate in sorted(authority_root.iterdir()):
+        if candidate.is_symlink():
+            raise ValueError(
+                f"Metadata migration authority cannot be a symlink: {candidate}"
+            )
+        if candidate.is_dir() and candidate.name.startswith("metadata-schema-"):
+            if not any(candidate.iterdir()):
+                continue
+            candidates.append(("journal", candidate))
+        elif (
+            candidate.is_file()
+            and candidate.name.startswith("metadata-schema-")
+            and candidate.suffix == ".json"
+        ):
+            candidates.append(("legacy", candidate))
+    return tuple(candidates)
+
+
+def _superseded_metadata_status_evidence(
+    root: Path,
+) -> _MetadataMigrationAuthorityEvidence | None:
+    """Load one immutable superseded status audit without live-target replay."""
+    authority_root = _receipt_dir(root, bundle=True)
+    _require_safe_migration_path(
+        authority_root, role="Metadata migration authority root", root=root
+    )
+    if not authority_root.exists():
+        return None
+    with _open_anchored_journal_directory(
+        root, authority_root
+    ) as directory:
+        names = sorted(
+            name
+            for name in os.listdir(directory.fd)
+            if name.startswith(_SUPERSEDED_STATUS_PREFIX)
+            and name.endswith(".json")
+        )
+        _verify_anchored_journal_directory(directory)
+    if not names:
+        return None
+    if len(names) != 1:
+        raise ValueError(
+            "Competing superseded metadata status audits exist"
+        )
+    archive_name = names[0]
+    raw_digest = archive_name.removeprefix(
+        _SUPERSEDED_STATUS_PREFIX
+    ).removesuffix(".json")
+    expected_digest = f"sha256:{raw_digest}"
+    if _status_audit_name(
+        _SUPERSEDED_STATUS_PREFIX, expected_digest
+    ) != archive_name:
+        raise ValueError("Superseded metadata status audit name is invalid")
+    archive_path = authority_root / archive_name
+    status_bytes = _read_anchored_journal_bytes(
+        archive_path,
+        root=root,
+        role="Metadata migration superseded status audit",
+    )
+    if _sha256_bytes(status_bytes) != expected_digest:
+        raise ValueError("Superseded metadata status audit digest changed")
+    try:
+        payload = json.loads(status_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            "Superseded metadata status audit is malformed"
+        ) from exc
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema_version") != 1
+        or payload.get("state") != "complete"
+    ):
+        raise ValueError("Superseded metadata status audit is malformed")
+    receipt_text = payload.get("terminal_receipt_path")
+    receipt_digest = payload.get("terminal_receipt_digest")
+    if not isinstance(receipt_text, str) or not isinstance(
+        receipt_digest, str
+    ):
+        raise ValueError(
+            "Superseded metadata status audit lacks receipt authority"
+        )
+    receipt_path = _require_safe_migration_path(
+        receipt_text, role="Superseded terminal migration receipt", root=root
+    )
+    _validate_superseded_historical_receipt(
+        root,
+        receipt_path,
+        expected_digest=receipt_digest,
+    )
+    fingerprints = {
+        name: payload.get(name)
+        for name in (
+            "plan_fingerprint",
+            "source_fingerprint",
+            "resulting_fingerprint",
+        )
+    }
+    if any(
+        not isinstance(value, str) or not value.startswith("sha256:")
+        for value in fingerprints.values()
+    ):
+        raise ValueError(
+            "Superseded metadata status audit has invalid fingerprints"
+        )
+    compatible_noop = payload.get("compatible_noop")
+    if not isinstance(compatible_noop, bool):
+        raise ValueError(
+            "Superseded metadata status audit has invalid no-op authority"
+        )
+    return _MetadataMigrationAuthorityEvidence(
+        authority=MetadataMigrationAuthority(
+            status_path=archive_path,
+            terminal_receipt_path=receipt_path,
+            terminal_receipt_digest=receipt_digest,
+            plan_fingerprint=cast(str, fingerprints["plan_fingerprint"]),
+            source_fingerprint=cast(str, fingerprints["source_fingerprint"]),
+            resulting_fingerprint=cast(
+                str, fingerprints["resulting_fingerprint"]
+            ),
+            compatible_noop=compatible_noop,
+        ),
+        status_digest=expected_digest,
+    )
+
+
+def _report_from_authority_plan(
+    plan: Mapping[str, Any],
+    *,
+    root: Path,
+    kinds: frozenset[str] | None,
+) -> MetadataMigrationReport:
+    schema_version = plan.get("schema_version")
+    if (
+        plan.get("journal_schema_version") != _JOURNAL_SCHEMA_VERSION
+        or schema_version
+        not in {
+            _HISTORICAL_RECEIPT_SCHEMA_VERSION,
+            _RECEIPT_SCHEMA_VERSION,
+        }
+        or plan.get("scope") != "bundle"
+        or plan.get("bundle_root") != str(root)
+        or plan.get("kinds")
+        != (sorted(kinds) if kinds is not None else None)
+    ):
+        raise ValueError("Metadata migration journal scope is incompatible")
+    historical = schema_version == _HISTORICAL_RECEIPT_SCHEMA_VERSION
+    if historical:
+        if "target_role" in plan or "supersedes_digest" in plan:
+            raise ValueError("Historical metadata migration plan is malformed")
+        target_role = None
+    else:
+        if plan.get("target_role") not in {
+            BUNDLE_DURABLE_TARGET_ROLE,
+            BUNDLE_ALL_TARGET_ROLE,
+        }:
+            raise ValueError("Metadata migration journal role is incompatible")
+        target_role = cast(ReceiptTargetRole, plan.get("target_role"))
+    raw_targets = plan.get("targets")
+    source = plan.get("source")
+    if not isinstance(raw_targets, list) or not isinstance(source, str):
+        raise ValueError("Metadata migration journal plan is malformed")
+    targets = tuple(_receipt_target(target) for target in raw_targets)
+    report = _report_from_targets(
+        source, targets, target_role=target_role
+    )
+    if (
+        report.plan_fingerprint != plan.get("plan_fingerprint")
+        or report.source_fingerprint != plan.get("source_fingerprint")
+    ):
+        raise ValueError("Metadata migration journal plan content has changed")
+    return report
+
+
+def _authority_failure_result(
+    layout: BundleLayout,
+    expected_plan_fingerprint: str | None,
+    exc: Exception,
+    *,
+    receipt_path: Path | None = None,
+) -> MetadataMigrationResult:
+    return MetadataMigrationResult(
+        status="failed",
+        source=str(layout.deliverables_base),
+        source_fingerprint="",
+        resulting_fingerprint=None,
+        plan_fingerprint=expected_plan_fingerprint or "",
+        receipt_path=receipt_path,
+        blocked_targets=(str(exc),),
+        conflicts=(str(exc),),
+    )
+
+
+def _migrate_superseding_v4_authority(
+    layout: BundleLayout,
+    root: Path,
+    *,
+    superseded_receipt: Path,
+    expected_superseded_digest: str,
+    kinds: frozenset[str] | None,
+    target_role: ReceiptTargetRole,
+    commit_guard: CommitGuard | None,
+) -> MetadataMigrationResult:
+    """Publish durable v4 authority only after exact v3 validation."""
+    with _open_anchored_journal_file(
+        superseded_receipt,
+        root=root,
+        role="Historical metadata migration receipt",
+        flags=os.O_RDONLY,
+        mode="rb",
+    ) as historical_file:
+        historical_bytes = historical_file.handle.read()
+        _verify_anchored_journal_file(historical_file)
+        supersedes_digest = _sha256_bytes(historical_bytes)
+        if supersedes_digest != expected_superseded_digest:
+            raise ValueError(
+                "Superseded historical metadata receipt digest changed"
+            )
+        try:
+            superseded = json.loads(historical_bytes.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError(
+                "Historical metadata migration receipt is malformed"
+            ) from exc
+        if not isinstance(superseded, dict):
+            raise ValueError(
+                "Historical metadata migration receipt is malformed"
+            )
+        _result_from_terminal_receipt(
+            superseded_receipt,
+            superseded,
+            compatible=not any(
+                target.get("status") == "migratable"
+                for target in superseded.get("targets", [])
+                if isinstance(target, dict)
+            ),
+        )
+        _verify_anchored_journal_file(historical_file)
+        report = preflight_metadata_schema(
+            layout, kinds=kinds, target_role=target_role
+        )
+        plan_path, log_path, receipt_path = _journal_paths(
+            root, report.plan_fingerprint
+        )
+        plan_path, log_path, receipt_path, _ = _require_safe_journal_children(
+            root, plan_path, log_path, receipt_path
+        )
+        expected_plan = _new_journal_plan(
+            report,
+            root=root,
+            kinds=kinds,
+            supersedes_digest=supersedes_digest,
+        )
+        if plan_path.is_file():
+            existing = _read_anchored_journal_json(
+                plan_path,
+                root=root,
+                role="Metadata migration journal plan",
+            )
+            if existing != expected_plan:
+                raise ValueError(
+                    "Competing superseding metadata authority exists"
+                )
+            _verify_anchored_journal_file(historical_file)
+        else:
+            with publication_commit(commit_guard):
+                _verify_journal_mutation_authority(historical_file)
+                _validate_preflighted_bundle_authority(
+                    layout, root, report, kinds=kinds
+                )
+                _verify_journal_mutation_authority(historical_file)
+                _write_journal_plan(
+                    root,
+                    plan_path,
+                    log_path,
+                    expected_plan,
+                    commit_guard=None,
+                    authorities=(historical_file,),
+                )
+                _verify_journal_mutation_authority(historical_file)
+    result = _apply_metadata_journal(
+        layout,
+        root,
+        plan_path,
+        log_path,
+        receipt_path,
+        kinds=kinds,
+        commit_guard=commit_guard,
+    )
+    if result.status not in {"compatible", "applied"}:
+        return result
+    _publish_metadata_authority(
+        root,
+        result,
+        compatible_noop=report.status == "compatible",
+        commit_guard=commit_guard,
+    )
+    return result
+
+
+def _reconcile_portable_metadata_bundle_unlocked(
+    layout: BundleLayout,
+    root: Path,
+    *,
+    kinds: frozenset[str] | None,
+    target_role: ReceiptTargetRole | None,
+    expected_plan_fingerprint: str | None,
+    commit_guard: CommitGuard | None,
+) -> MetadataMigrationResult | None:
+    """Resume the sole portable receipt while a cross-platform lock is held."""
+    _active_windows_journal_session(root=root).hold_directory(
+        _receipt_dir(root, bundle=True)
+    )
+    candidates = _bundle_authority_candidates(root)
+    status_path = _metadata_status_path(root)
+    if not candidates:
+        if _active_windows_journal_session(root=root).exists(status_path):
+            raise ValueError(
+                "Competing metadata migration status exists without receipt authority"
+            )
+        return None
+    if len(candidates) != 1 or candidates[0][0] != "legacy":
+        raise ValueError(
+            "Portable metadata backend found incompatible or competing authority"
+        )
+    receipt_path = candidates[0][1]
+    receipt_bytes = _portable_read_regular_bytes(
+        receipt_path, root=root, role="Portable metadata migration receipt"
+    )
+    try:
+        receipt = json.loads(receipt_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("Portable metadata migration receipt is malformed") from exc
+    if not isinstance(receipt, dict):
+        raise ValueError("Portable metadata migration receipt is malformed")
+    plan_fingerprint = receipt.get("plan_fingerprint")
+    was_terminal = receipt.get("state") == "applied"
+    if (
+        expected_plan_fingerprint is not None
+        and plan_fingerprint != expected_plan_fingerprint
+        and not was_terminal
+    ):
+        raise ValueError("Portable metadata migration plan is incompatible")
+    if receipt.get("kinds") != (sorted(kinds) if kinds is not None else None):
+        raise ValueError("Portable metadata migration scope is incompatible")
+    if target_role is not None and receipt.get("target_role") != target_role:
+        raise ValueError("Portable metadata migration role is incompatible")
+    compatible_noop = not any(
+        isinstance(target, Mapping) and target.get("status") == "migratable"
+        for target in receipt.get("targets", [])
+    )
+    result = _apply_receipt(
+        receipt_path,
+        receipt,
+        expected_plan_fingerprint=cast(str | None, plan_fingerprint),
+        commit_guard=commit_guard,
+    )
+    if result.status not in {"compatible", "applied"}:
+        return result
+    _publish_metadata_authority_portable(
+        root,
+        result,
+        compatible_noop=compatible_noop,
+        commit_guard=commit_guard,
+    )
+    if not was_terminal:
+        return result
+    return MetadataMigrationResult(
+        status="compatible",
+        source=result.source,
+        source_fingerprint=result.source_fingerprint,
+        resulting_fingerprint=result.resulting_fingerprint,
+        plan_fingerprint=result.plan_fingerprint,
+        receipt_path=result.receipt_path,
+        skipped_targets=result.skipped_targets,
+    )
+
+
+def _reconcile_portable_metadata_bundle(
+    layout: BundleLayout,
+    root: Path,
+    *,
+    kinds: frozenset[str] | None,
+    target_role: ReceiptTargetRole | None,
+    expected_plan_fingerprint: str | None,
+    commit_guard: CommitGuard | None,
+) -> MetadataMigrationResult | None:
+    """Lock and reconcile the path-safe backend used without ``dir_fd``."""
+    _require_portable_journal_capabilities()
+    lock_path = _require_safe_migration_path(
+        _portable_journal_lock_path(root),
+        role="Portable metadata migration writer lock",
+        root=root,
+    )
+    with _windows_journal_session(root) as session:
+        with session.writer_lock(lock_path):
+            return _reconcile_portable_metadata_bundle_unlocked(
+                layout,
+                root,
+                kinds=kinds,
+                target_role=target_role,
+                expected_plan_fingerprint=expected_plan_fingerprint,
+                commit_guard=commit_guard,
+            )
+
+
+def reconcile_metadata_migration_bundle(
+    source: str | Path | BundleLayout,
+    *,
+    kinds: frozenset[str] | None = None,
+    target_role: ReceiptTargetRole | None = None,
+    expected_plan_fingerprint: str | None = None,
+    commit_guard: CommitGuard | None = None,
+) -> MetadataMigrationResult | None:
+    """Resume or accept the sole existing authority before fresh preflight."""
+    layout, root = _resolve_bundle(source)
+    if not _JOURNAL_DIR_FD_SUPPORTED:
+        try:
+            return _reconcile_portable_metadata_bundle(
+                layout,
+                root,
+                kinds=kinds,
+                target_role=target_role,
+                expected_plan_fingerprint=expected_plan_fingerprint,
+                commit_guard=commit_guard,
+            )
+        except Exception as exc:
+            return _authority_failure_result(
+                layout, expected_plan_fingerprint, exc
+            )
+    _require_safe_migration_path(
+        _receipt_dir(root, bundle=True),
+        role="Metadata migration authority root",
+        root=root,
+    )
+    try:
+        candidates = _bundle_authority_candidates(root)
+        archived_evidence = _superseded_metadata_status_evidence(root)
+        status_path = _metadata_status_path(root)
+        published_authority: MetadataMigrationAuthority | None = None
+        published_status_digest: str | None = None
+        if status_path.exists():
+            try:
+                published_evidence = _metadata_migration_authority_evidence(
+                    layout
+                )
+                published_authority = published_evidence.authority
+                published_status_digest = published_evidence.status_digest
+            except Exception as exc:
+                raise ValueError(
+                    "Competing metadata migration status authority: "
+                    f"{exc}"
+                ) from exc
+        if not candidates:
+            if published_authority is not None:
+                raise ValueError(
+                    "Competing metadata migration status exists without "
+                    "receipt authority"
+                )
+            if archived_evidence is not None:
+                _validate_superseded_historical_receipt(
+                    root,
+                    archived_evidence.authority.terminal_receipt_path,
+                    expected_digest=(
+                        archived_evidence.authority.terminal_receipt_digest
+                    ),
+                )
+                raise ValueError(
+                    "Superseded metadata status exists without discoverable "
+                    "receipt authority"
+                )
+            return None
+        superseded_receipt: Path | None = None
+        if len(candidates) == 2:
+            by_schema: dict[int, tuple[str, Path, dict[str, Any]]] = {}
+            for candidate_kind, candidate_path in candidates:
+                if candidate_kind == "journal":
+                    payload_path, _, _, _ = _require_safe_journal_children(
+                        root,
+                        candidate_path / "plan.json",
+                        candidate_path / "transitions.log",
+                        candidate_path / "receipt.json",
+                    )
+                else:
+                    payload_path = _require_safe_migration_path(
+                        candidate_path,
+                        role="Metadata migration receipt",
+                        root=root,
+                    )
+                try:
+                    payload = json.loads(
+                        payload_path.read_text(encoding="utf-8")
+                    )
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise ValueError(
+                        "Metadata migration receipt authority is malformed"
+                    ) from exc
+                if not isinstance(payload, dict):
+                    raise ValueError(
+                        "Metadata migration authority payload is malformed"
+                    )
+                schema = payload.get("schema_version")
+                if not isinstance(schema, int) or schema in by_schema:
+                    raise ValueError(
+                        "Competing metadata migration authorities exist"
+                    )
+                by_schema[schema] = (
+                    candidate_kind,
+                    candidate_path,
+                    payload,
+                )
+            if set(by_schema) != {
+                _HISTORICAL_RECEIPT_SCHEMA_VERSION,
+                _RECEIPT_SCHEMA_VERSION,
+            }:
+                raise ValueError("Competing metadata migration authorities exist")
+            old_kind, old_path, _ = by_schema[
+                _HISTORICAL_RECEIPT_SCHEMA_VERSION
+            ]
+            new_kind, new_path, new_plan = by_schema[_RECEIPT_SCHEMA_VERSION]
+            superseded_receipt = (
+                old_path / "receipt.json" if old_kind == "journal" else old_path
+            )
+            new_supersedes_digest = new_plan.get("supersedes_digest")
+            if not isinstance(new_supersedes_digest, str):
+                raise ValueError(
+                    "Competing metadata migration supersession authority"
+                )
+            old_digest = _validate_superseded_historical_receipt(
+                root,
+                superseded_receipt,
+                expected_digest=new_supersedes_digest,
+            )
+            if new_supersedes_digest != old_digest:
+                raise ValueError(
+                    "Competing metadata migration supersession authority"
+                )
+            candidates = ((new_kind, new_path),)
+        if len(candidates) != 1:
+            raise ValueError("Competing metadata migration authorities exist")
+        authority_kind, authority_path = candidates[0]
+        if authority_kind == "journal":
+            plan_path = authority_path / "plan.json"
+            log_path = authority_path / "transitions.log"
+            receipt_path = authority_path / "receipt.json"
+            plan_path, log_path, receipt_path, _ = (
+                _require_safe_journal_children(
+                    root, plan_path, log_path, receipt_path
+                )
+            )
+            journal_entries = {entry.name for entry in authority_path.iterdir()}
+            if not plan_path.is_file():
+                raise ValueError(
+                    "Metadata migration journal has unexpected contents before "
+                    "plan publication"
+                )
+            plan = _read_anchored_journal_json(
+                plan_path,
+                root=root,
+                role="Metadata migration journal plan",
+            )
+            if not isinstance(plan, dict):
+                raise ValueError("Metadata migration journal plan is malformed")
+            receipt_schema_version = plan.get("schema_version")
+            report = _report_from_authority_plan(
+                plan, root=root, kinds=kinds
+            )
+            if (
+                target_role is not None
+                and report.target_role not in {None, target_role}
+            ):
+                raise ValueError(
+                    "Metadata migration journal role is incompatible"
+                )
+            expected_paths = _journal_paths(root, report.plan_fingerprint)
+            if (plan_path, log_path, receipt_path) != expected_paths:
+                raise ValueError("Metadata migration journal path is incompatible")
+            if not log_path.exists():
+                if receipt_path.exists():
+                    raise ValueError(
+                        "Metadata migration receipt exists without its transition log"
+                    )
+                if journal_entries != {plan_path.name}:
+                    raise ValueError(
+                        "Metadata migration journal has unexpected contents without "
+                        "its transition log"
+                    )
+                _write_journal_plan(
+                    root,
+                    plan_path,
+                    log_path,
+                    plan,
+                    commit_guard=commit_guard,
+                )
+            elif not log_path.is_file():
+                raise ValueError(
+                    "Metadata migration transition log is not a regular file"
+                )
+            terminal_payload: dict[str, Any] | None = None
+            if receipt_path.is_file():
+                try:
+                    loaded_terminal = _read_anchored_journal_json(
+                        receipt_path,
+                        root=root,
+                        role="Metadata migration terminal receipt",
+                    )
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise ValueError(
+                        "Metadata migration terminal receipt is malformed"
+                    ) from exc
+                if not isinstance(loaded_terminal, dict):
+                    raise ValueError(
+                        "Metadata migration terminal receipt is malformed"
+                    )
+                terminal_payload = loaded_terminal
+            was_terminal = (
+                terminal_payload is not None
+                and terminal_payload.get("state") == "applied"
+            )
+            if (
+                expected_plan_fingerprint is not None
+                and expected_plan_fingerprint != report.plan_fingerprint
+                and not was_terminal
+            ):
+                raise ValueError("Metadata migration journal plan is incompatible")
+            if terminal_payload is not None:
+                if not was_terminal:
+                    result = _apply_receipt(
+                        receipt_path,
+                        terminal_payload,
+                        expected_plan_fingerprint=report.plan_fingerprint,
+                        commit_guard=commit_guard,
+                    )
+                else:
+                    result = _apply_metadata_journal(
+                        layout,
+                        root,
+                        plan_path,
+                        log_path,
+                        receipt_path,
+                        kinds=kinds,
+                        commit_guard=commit_guard,
+                    )
+            else:
+                result = _apply_metadata_journal(
+                    layout,
+                    root,
+                    plan_path,
+                    log_path,
+                    receipt_path,
+                    kinds=kinds,
+                    commit_guard=commit_guard,
+                )
+            compatible_noop = report.status == "compatible"
+        else:
+            receipt_path = authority_path
+            receipt = _read_anchored_journal_json(
+                receipt_path,
+                root=root,
+                role="Legacy metadata migration receipt",
+            )
+            if not isinstance(receipt, dict):
+                raise ValueError("Legacy metadata migration receipt is malformed")
+            receipt_schema_version = receipt.get("schema_version")
+            plan_fingerprint = receipt.get("plan_fingerprint")
+            was_terminal = receipt.get("state") == "applied"
+            if (
+                expected_plan_fingerprint is not None
+                and expected_plan_fingerprint != plan_fingerprint
+                and not was_terminal
+            ):
+                raise ValueError("Legacy metadata migration receipt is incompatible")
+            raw_kinds = receipt.get("kinds")
+            if raw_kinds != (sorted(kinds) if kinds is not None else None):
+                raise ValueError("Legacy metadata migration receipt scope is incompatible")
+            result = _apply_receipt(
+                receipt_path,
+                receipt,
+                expected_plan_fingerprint=cast(str | None, plan_fingerprint),
+                commit_guard=commit_guard,
+            )
+            compatible_noop = not any(
+                target.get("status") == "migratable"
+                for target in receipt.get("targets", [])
+            )
+        if result.status not in {"compatible", "applied"}:
+            return result
+        if was_terminal:
+            result = MetadataMigrationResult(
+                status="compatible",
+                source=result.source,
+                source_fingerprint=result.source_fingerprint,
+                resulting_fingerprint=result.resulting_fingerprint,
+                plan_fingerprint=result.plan_fingerprint,
+                receipt_path=result.receipt_path,
+                skipped_targets=result.skipped_targets,
+            )
+        if (
+            receipt_schema_version
+            == _HISTORICAL_RECEIPT_SCHEMA_VERSION
+        ):
+            if result.receipt_path is None:
+                raise ValueError(
+                    "Historical metadata migration lacks terminal receipt"
+                )
+            if published_authority is not None:
+                if (
+                    published_authority.terminal_receipt_path
+                    != result.receipt_path
+                    or published_authority.plan_fingerprint
+                    != result.plan_fingerprint
+                    or published_authority.source_fingerprint
+                    != result.source_fingerprint
+                    or published_authority.resulting_fingerprint
+                    != result.resulting_fingerprint
+                ):
+                    raise ValueError(
+                        "Competing metadata migration status authority does not "
+                        "match the historical receipt"
+                    )
+            elif archived_evidence is not None:
+                archived_authority = archived_evidence.authority
+                if (
+                    archived_authority.terminal_receipt_path
+                    != result.receipt_path
+                    or archived_authority.plan_fingerprint
+                    != result.plan_fingerprint
+                    or archived_authority.source_fingerprint
+                    != result.source_fingerprint
+                    or archived_authority.resulting_fingerprint
+                    != result.resulting_fingerprint
+                    or archived_authority.compatible_noop != compatible_noop
+                ):
+                    raise ValueError(
+                        "Superseded metadata status audit does not match the "
+                        "historical receipt"
+                    )
+            else:
+                published_authority = _publish_metadata_authority(
+                    root,
+                    result,
+                    compatible_noop=compatible_noop,
+                    commit_guard=commit_guard,
+                )
+                published_status_digest = _sha256_bytes(
+                    _anchored_json_document(
+                        _metadata_authority_payload(published_authority)
+                    )
+                )
+            if published_authority is not None:
+                _remove_exact_metadata_authority(
+                    root,
+                    published_authority,
+                    commit_guard=commit_guard,
+                    status_digest=published_status_digest,
+                )
+            if archived_evidence is not None:
+                expected_superseded_digest = (
+                    archived_evidence.authority.terminal_receipt_digest
+                )
+            elif published_authority is not None:
+                expected_superseded_digest = (
+                    published_authority.terminal_receipt_digest
+                )
+            else:
+                raise ValueError(
+                    "Historical metadata status lacks receipt digest authority"
+                )
+            return _migrate_superseding_v4_authority(
+                layout,
+                root,
+                superseded_receipt=result.receipt_path,
+                expected_superseded_digest=expected_superseded_digest,
+                kinds=kinds,
+                target_role=target_role or BUNDLE_ALL_TARGET_ROLE,
+                commit_guard=commit_guard,
+            )
+        if published_authority is not None:
+            if (
+                superseded_receipt is not None
+                and published_authority.terminal_receipt_path
+                == superseded_receipt
+            ):
+                _remove_exact_metadata_authority(
+                    root,
+                    published_authority,
+                    commit_guard=commit_guard,
+                    status_digest=published_status_digest,
+                )
+                _publish_metadata_authority(
+                    root,
+                    result,
+                    compatible_noop=compatible_noop,
+                    commit_guard=commit_guard,
+                )
+                return result
+            if (
+                result.receipt_path is None
+                or result.resulting_fingerprint is None
+                or published_authority.terminal_receipt_path
+                != result.receipt_path
+                or published_authority.plan_fingerprint
+                != result.plan_fingerprint
+                or published_authority.source_fingerprint
+                != result.source_fingerprint
+                or published_authority.resulting_fingerprint
+                != result.resulting_fingerprint
+                or published_authority.compatible_noop != compatible_noop
+            ):
+                raise ValueError(
+                    "Competing metadata migration status authority does not "
+                    "match the receipt authority"
+                )
+            return result
+        _publish_metadata_authority(
+            root,
+            result,
+            compatible_noop=compatible_noop,
+            commit_guard=commit_guard,
+        )
+        return result
+    except Exception as exc:
+        return _authority_failure_result(
+            layout,
+            expected_plan_fingerprint,
+            exc,
+        )
+
+
+def _migrate_preflighted_metadata_bundle_portable(
+    layout: BundleLayout,
+    root: Path,
+    *,
+    report: MetadataMigrationReport,
+    kinds: frozenset[str] | None,
+    commit_guard: CommitGuard | None,
+) -> MetadataMigrationResult:
+    """Apply a fresh local migration through the cross-platform receipt backend."""
+    receipt_path = _receipt_path(root, report.plan_fingerprint, bundle=True)
+    receipt = _new_receipt(report, bundle_root=root, kinds=kinds)
+    try:
+        _require_portable_journal_capabilities()
+        lock_path = _require_safe_migration_path(
+            _portable_journal_lock_path(root),
+            role="Portable metadata migration writer lock",
+            root=root,
+        )
+        with _windows_journal_session(root) as session:
+            with session.writer_lock(lock_path):
+                reconciled = _reconcile_portable_metadata_bundle_unlocked(
+                    layout,
+                    root,
+                    kinds=kinds,
+                    target_role=report.target_role,
+                    expected_plan_fingerprint=report.plan_fingerprint,
+                    commit_guard=commit_guard,
+                )
+                if reconciled is not None:
+                    return reconciled
+                if report.status == "blocked":
+                    return _blocked_result(report)
+                with publication_commit(commit_guard):
+                    _validate_preflighted_bundle_authority(
+                        layout, root, report, kinds=kinds
+                    )
+                    _portable_publish_absent_bytes(
+                        receipt_path,
+                        _anchored_json_document(receipt),
+                        root=root,
+                        role="Portable metadata migration receipt",
+                    )
+                result = _apply_receipt(
+                    receipt_path,
+                    receipt,
+                    expected_plan_fingerprint=report.plan_fingerprint,
+                    commit_guard=commit_guard,
+                )
+                if result.status in {"compatible", "applied"}:
+                    _publish_metadata_authority_portable(
+                        root,
+                        result,
+                        compatible_noop=report.status == "compatible",
+                        commit_guard=commit_guard,
+                    )
+                return result
+    except Exception as exc:
+        return _receipt_validation_failure(receipt_path, receipt, exc)
+
+
+def migrate_preflighted_metadata_bundle(
+    source: str | Path | BundleLayout,
+    *,
+    report: MetadataMigrationReport,
+    kinds: frozenset[str] | None = None,
+    commit_guard: CommitGuard | None = None,
+) -> MetadataMigrationResult:
+    """Migrate a bundle from one already-computed semantic preflight."""
+    layout, root = _resolve_bundle(source)
+    if not _JOURNAL_DIR_FD_SUPPORTED:
+        return _migrate_preflighted_metadata_bundle_portable(
+            layout,
+            root,
+            report=report,
+            kinds=kinds,
+            commit_guard=commit_guard,
+        )
+    reconciled = reconcile_metadata_migration_bundle(
+        layout,
+        kinds=kinds,
+        target_role=report.target_role,
+        expected_plan_fingerprint=report.plan_fingerprint,
+        commit_guard=commit_guard,
+    )
+    if reconciled is not None:
+        return reconciled
+    if report.status == "blocked":
+        return _blocked_result(report)
+    plan_path, log_path, receipt_path = _journal_paths(
+        root, report.plan_fingerprint
+    )
+    plan_path, log_path, receipt_path, _ = _require_safe_journal_children(
+        root, plan_path, log_path, receipt_path
+    )
+    expected_plan = _new_journal_plan(report, root=root, kinds=kinds)
+    if plan_path.is_file():
+        existing_plan = _read_anchored_journal_json(
+            plan_path,
+            root=root,
+            role="Metadata migration journal plan",
+        )
+        if existing_plan != expected_plan:
+            return _receipt_validation_failure(
+                receipt_path,
+                expected_plan,
+                ValueError("Immutable metadata migration plan has changed"),
+            )
+    else:
+        try:
+            with publication_commit(commit_guard):
+                _validate_preflighted_bundle_authority(
+                    layout, root, report, kinds=kinds
+                )
+                _write_journal_plan(
+                    root,
+                    plan_path,
+                    log_path,
+                    expected_plan,
+                    commit_guard=None,
+                )
+        except Exception as exc:
+            return _receipt_validation_failure(
+                receipt_path, expected_plan, exc
+            )
+    result = _apply_metadata_journal(
+        layout,
+        root,
+        plan_path,
+        log_path,
+        receipt_path,
+        kinds=kinds,
+        commit_guard=commit_guard,
+    )
+    if result.status in {"compatible", "applied"}:
+        _publish_metadata_authority(
+            root,
+            result,
+            compatible_noop=report.status == "compatible",
+            commit_guard=commit_guard,
+        )
+    return result
+
+
+def migrate_metadata_bundle(
+    source: str | Path | BundleLayout,
+    *,
+    expected_plan_fingerprint: str,
+    kinds: frozenset[str] | None = None,
+    target_role: ReceiptTargetRole | None = None,
+    commit_guard: CommitGuard | None = None,
+) -> MetadataMigrationResult:
+    """Migrate authoritative sources in a full or standalone bundle.
+
+    Re-running after an interruption is safe, by two mechanisms that are worth
+    naming because "pass 1 is idempotent by content" is **false** -- a parquet
+    rewrite is not byte-idempotent and a re-applied rewrite changes every
+    sha256. The real mechanisms are that an existing receipt short-circuits the
+    re-run onto itself, and that an already-canonical bundle returns a
+    ``compatible`` no-op that rewrites nothing. An executor who "optimizes"
+    past the receipt check on the strength of the wrong reason breaks marker
+    validity for the whole tree.
+
+    Args:
+        source: Bundle path or resolved :class:`BundleLayout`.
+        expected_plan_fingerprint: Fingerprint from the matching preflight.
+        kinds: Restrict the migration to these :data:`TargetKind` values, and
+            record that scope in the receipt. ``None`` means every kind.
+        target_role: Explicit bundle ownership role. The migrate CLI passes
+            ``bundle_durable``; ``None`` preserves the generic full-bundle API.
+
+    Returns:
+        The migration result.
+    """
+    layout, _ = _resolve_bundle(source)
+    reconciled = reconcile_metadata_migration_bundle(
+        layout,
+        kinds=kinds,
+        target_role=target_role,
+        expected_plan_fingerprint=expected_plan_fingerprint,
+        commit_guard=commit_guard,
+    )
+    if reconciled is not None:
+        return reconciled
+    report = preflight_metadata_schema(
+        layout, kinds=kinds, target_role=target_role
+    )
     if expected_plan_fingerprint != report.plan_fingerprint:
         mismatch = MetadataMigrationReport(
             source=report.source,
             status="blocked",
             source_fingerprint=report.source_fingerprint,
             plan_fingerprint=report.plan_fingerprint,
-            targets=report.targets,
-            conflicts=("Migration plan fingerprint does not match preflight",),
+        targets=report.targets,
+        conflicts=("Migration plan fingerprint does not match preflight",),
+        target_role=report.target_role,
         )
         return _blocked_result(mismatch)
-    if report.status == "blocked":
-        return _blocked_result(report)
-    if report.status == "compatible":
-        return _compatible_result(report)
-    receipt_path = _receipt_path(root, report.plan_fingerprint, bundle=True)
-    receipt = _new_receipt(report, bundle_root=root)
-    _write_receipt(receipt_path, receipt)
-    return _apply_receipt(
-        receipt_path,
-        receipt,
-        expected_plan_fingerprint=expected_plan_fingerprint,
+    return migrate_preflighted_metadata_bundle(
+        layout,
+        report=report,
+        kinds=kinds,
+        commit_guard=commit_guard,
     )
 
 
@@ -2387,6 +6058,41 @@ def _rollback_hdf(
         raise
 
 
+def _invalidate_metadata_authority_for_rollback(
+    receipt_path: Path,
+    receipt: Mapping[str, Any],
+) -> None:
+    """Remove only the validated status that certifies this bundle receipt."""
+    if receipt.get("scope") != "bundle":
+        return
+    raw_root = receipt.get("bundle_root")
+    if not isinstance(raw_root, str):
+        raise ValueError("Bundle rollback receipt is missing its root")
+    root = _require_safe_migration_path(
+        raw_root, role="Migration rollback bundle root"
+    )
+    status_path = _require_safe_migration_path(
+        _metadata_status_path(root),
+        role="Metadata migration status",
+        root=root,
+    )
+    if not status_path.exists():
+        return
+    authority = metadata_migration_authority(root)
+    if (
+        authority.terminal_receipt_path != receipt_path
+        or authority.plan_fingerprint != receipt.get("plan_fingerprint")
+        or authority.source_fingerprint != receipt.get("source_fingerprint")
+        or authority.resulting_fingerprint
+        != _receipt_resulting_fingerprint(receipt)
+    ):
+        raise ValueError(
+            "Metadata migration status does not authorize this rollback"
+        )
+    status_path.unlink()
+    _fsync_directory(status_path.parent)
+
+
 def rollback_metadata_migration(
     receipt_path: str | Path,
 ) -> MetadataMigrationResult:
@@ -2401,6 +6107,7 @@ def rollback_metadata_migration(
     receipt = json.loads(path.read_text(encoding="utf-8"))
     try:
         _validate_receipt(path, receipt)
+        _invalidate_metadata_authority_for_rollback(path, receipt)
     except Exception as exc:
         return _receipt_validation_failure(path, receipt, exc)
     rolled_back: list[str] = []
@@ -2509,6 +6216,7 @@ __all__ = [
     "MetadataMigrationReport",
     "MetadataMigrationResult",
     "MetadataMigrationTarget",
+    "NON_IMAGE_KINDS",
     "migrate_metadata_bundle",
     "migrate_metadata_file",
     "preflight_metadata_schema",

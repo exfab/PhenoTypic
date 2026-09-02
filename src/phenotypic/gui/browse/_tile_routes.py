@@ -2,11 +2,23 @@
 
 from __future__ import annotations
 
+import json
+import os
 import re
+import stat
 import time
+from pathlib import Path
+from typing import BinaryIO
 
 import dash
-from flask import Blueprint, Response, jsonify, request, send_from_directory
+from flask import (
+    Blueprint,
+    Response,
+    jsonify,
+    request,
+    send_file,
+    send_from_directory,
+)
 from werkzeug.utils import secure_filename
 
 from phenotypic.gui._config import BROWSE_TILES_PREFIX
@@ -18,7 +30,9 @@ from phenotypic.gui.browse._preparation_routes import (
 from phenotypic.gui.browse._cache import BrowseCache
 from phenotypic.gui.browse._preparation import BrowsePreparationManager
 from phenotypic.gui.browse._source_probe import SourceProbeError
+from phenotypic.gui.browse._source_item import is_source_store
 from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.sdk_ import store_publication_token
 
 _TILE_NAME_RE = re.compile(r"^\d+_\d+\.png$")
 _TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -26,6 +40,244 @@ _REVISION_RE = re.compile(r"^[a-f0-9]{64}$")
 _IMMUTABLE_CACHE = "private, max-age=31536000, immutable"
 
 __all__ = ["register"]
+
+
+class _MutableStoreUnsupported(RuntimeError):
+    """A third-party store has no O(1) immutable publication generation."""
+
+
+class _UnreadableImageStore(RuntimeError):
+    """A published store is not a readable PhenoTypic image store."""
+
+
+class _UnsafeStoreAccess(RuntimeError):
+    """The platform cannot bind store access to held directory identities."""
+
+
+_SAFE_STORE_IO = (
+    os.name == "posix"
+    and hasattr(os, "O_DIRECTORY")
+    and hasattr(os, "O_NOFOLLOW")
+    and hasattr(os, "O_NONBLOCK")
+    and os.open in os.supports_dir_fd
+)
+_MAX_STORE_METADATA_BYTES = 16 * 1024 * 1024
+
+
+def _store_member_parts(member: str) -> tuple[str, ...]:
+    """Return canonical URL path components or raise before filesystem I/O."""
+    if (
+        not member
+        or member.startswith("/")
+        or "\\" in member
+        or "\x00" in member
+        or "\ufffd" in member
+    ):
+        raise ValueError("invalid store member")
+    try:
+        member.encode("utf-8", errors="strict")
+    except UnicodeError as exc:
+        raise ValueError("invalid store member") from exc
+    parts = tuple(member.split("/"))
+    if any(
+        part in {"", ".", ".."}
+        or any(ord(character) < 32 or ord(character) == 127 for character in part)
+        for part in parts
+    ):
+        raise ValueError("invalid store member")
+    return parts
+
+
+def _open_store_root(store: Path) -> int:
+    """Open a store directory without following a swapped root symlink."""
+    if not _SAFE_STORE_IO:
+        raise _UnsafeStoreAccess(
+            "this platform cannot safely serve Zarr store members"
+        )
+    root_fd = os.open(
+        store,
+        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+    )
+    try:
+        if not stat.S_ISDIR(os.fstat(root_fd).st_mode):
+            raise OSError("store root is not a directory")
+    except BaseException:
+        os.close(root_fd)
+        raise
+    return root_fd
+
+
+def _open_regular_store_member(
+    root_fd: int,
+    parts: tuple[str, ...],
+) -> BinaryIO:
+    """Open a regular member through held, no-follow directory descriptors."""
+    directory_fd = os.dup(root_fd)
+    member_fd: int | None = None
+    try:
+        directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        for component in parts[:-1]:
+            child_fd = os.open(
+                component,
+                directory_flags,
+                dir_fd=directory_fd,
+            )
+            if not stat.S_ISDIR(os.fstat(child_fd).st_mode):
+                os.close(child_fd)
+                raise OSError("store path component is not a directory")
+            os.close(directory_fd)
+            directory_fd = child_fd
+        member_fd = os.open(
+            parts[-1],
+            os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW,
+            dir_fd=directory_fd,
+        )
+        identity = os.fstat(member_fd)
+        if not stat.S_ISREG(identity.st_mode) or identity.st_nlink != 1:
+            raise OSError("store member is not a single-link regular file")
+        stream = os.fdopen(member_fd, "rb")
+        member_fd = None
+        return stream
+    finally:
+        if member_fd is not None:
+            os.close(member_fd)
+        os.close(directory_fd)
+
+
+def _read_store_json(root_fd: int, parts: tuple[str, ...]) -> dict:
+    """Read one bounded JSON metadata member through anchored descriptors."""
+    try:
+        with _open_regular_store_member(root_fd, parts) as handle:
+            size = os.fstat(handle.fileno()).st_size
+            if size > _MAX_STORE_METADATA_BYTES:
+                raise ValueError("store metadata is too large")
+            payload = json.load(handle)
+    except (
+        json.JSONDecodeError,
+        OSError,
+        RecursionError,
+        TypeError,
+        UnicodeError,
+        ValueError,
+    ) as exc:
+        raise _UnreadableImageStore("store metadata is malformed") from exc
+    if not isinstance(payload, dict):
+        raise _UnreadableImageStore("store metadata is malformed")
+    return payload
+
+
+def _is_ngff_image_group(
+    root_fd: int,
+    parts: tuple[str, ...],
+    *,
+    require_image_label: bool,
+) -> bool:
+    """Return whether a declared path is a Zarr v3 NGFF multiscale group."""
+    from phenotypic.sdk_ import ngff_
+
+    try:
+        payload = _read_store_json(root_fd, (*parts, ngff_.STORE_ROOT_JSON))
+        if payload.get("zarr_format") != 3 or payload.get("node_type") != "group":
+            return False
+        attributes = payload.get("attributes")
+        ome = attributes.get("ome") if isinstance(attributes, dict) else None
+        if not isinstance(ome, dict) or ome.get("version") != ngff_.NGFF_VERSION:
+            return False
+        if require_image_label and not isinstance(ome.get("image-label"), dict):
+            return False
+        multiscales = ome.get("multiscales")
+        if not isinstance(multiscales, list) or not multiscales:
+            return False
+        first = multiscales[0]
+        datasets = first.get("datasets") if isinstance(first, dict) else None
+        if not isinstance(datasets, list) or not datasets:
+            return False
+        first_dataset = datasets[0]
+        dataset = first_dataset.get("path") if isinstance(first_dataset, dict) else None
+        dataset_parts = _store_member_parts(dataset) if isinstance(dataset, str) else ()
+        if not dataset_parts:
+            return False
+        array = _read_store_json(
+            root_fd,
+            (*parts, *dataset_parts, ngff_.STORE_ROOT_JSON),
+        )
+        return array.get("zarr_format") == 3 and array.get("node_type") == "array"
+    except (_UnreadableImageStore, ValueError):
+        return False
+
+
+def _image_store_prefixes(root_fd: int) -> frozenset[tuple[str, ...]]:
+    """Return validated declared image paths, excluding reserved namespaces."""
+    from phenotypic.sdk_ import ngff_
+
+    root = _read_store_json(root_fd, (ngff_.STORE_ROOT_JSON,))
+    try:
+        attributes = root["attributes"]
+        block = attributes[ngff_.PhenotypicAttr.ROOT]
+        if (
+            not isinstance(block, dict)
+            or block.get(ngff_.PhenotypicAttr.STORE_SCHEMA_VERSION)
+            != ngff_.STORE_SCHEMA_VERSION
+        ):
+            raise TypeError("store schema is not readable")
+        series = block[ngff_.PhenotypicAttr.SERIES]
+        labels = block.get(ngff_.PhenotypicAttr.LABELS, {})
+        if not isinstance(series, dict) or not isinstance(labels, dict):
+            raise TypeError("image-series maps are malformed")
+    except (KeyError, TypeError) as exc:
+        raise _UnreadableImageStore(str(exc)) from exc
+
+    reserved = {
+        ngff_.OME_GROUP,
+        ngff_.STORE_ROOT_JSON,
+        ngff_.TABLES_GROUP,
+    }
+    prefixes: set[tuple[str, ...]] = set()
+    for declarations, require_image_label in (
+        (series, False),
+        (labels, True),
+    ):
+        for member in declarations.values():
+            if not isinstance(member, str):
+                continue
+            try:
+                parts = _store_member_parts(member)
+            except ValueError:
+                continue
+            if any(part in reserved or part.startswith(".") for part in parts):
+                continue
+            if _is_ngff_image_group(
+                root_fd,
+                parts,
+                require_image_label=require_image_label,
+            ):
+                prefixes.add(parts)
+    return frozenset(prefixes)
+
+
+def _is_authorized_image_member(
+    parts: tuple[str, ...],
+    prefixes: frozenset[tuple[str, ...]],
+) -> bool:
+    """Return whether a member is required by a validated image declaration."""
+    from phenotypic.sdk_ import ngff_
+
+    if ngff_.TABLES_GROUP in parts:
+        return False
+    if parts == (ngff_.STORE_ROOT_JSON,) or parts[0] == ngff_.OME_GROUP:
+        return True
+    for prefix in prefixes:
+        if parts[: len(prefix)] == prefix:
+            return True
+        ancestor = parts[:-1]
+        if (
+            parts[-1] == ngff_.STORE_ROOT_JSON
+            and ancestor
+            and len(ancestor) < len(prefix)
+            and prefix[: len(ancestor)] == ancestor
+        ):
+            return True
+    return False
 
 
 def register(
@@ -79,6 +331,115 @@ def register(
         client_id, generation = _selection_identity()
         handle = api.select(client_id, generation, revision)
         return revision, entry, handle, cache_hit, lookup_ms
+
+    def _published_store_revision(token: str, key: str):
+        """Resolve one immutable PhenoTypic store without a recursive rescan."""
+        if not _TOKEN_RE.fullmatch(token) or not _REVISION_RE.fullmatch(key):
+            raise FileNotFoundError
+        try:
+            relative = _source_render.decode_token(token)
+            source = api.sandbox.resolve(relative)
+        except Exception as exc:  # noqa: BLE001 - fixed route error
+            raise FileNotFoundError from exc
+        if not is_source_store(source):
+            raise FileNotFoundError
+        try:
+            publication = store_publication_token(source)
+        except OSError as exc:
+            raise SourceProbeError("unstable store root") from exc
+        if publication is None:
+            raise _MutableStoreUnsupported
+        revision = resolve_revision(api.sandbox, token, key)
+        if revision.store_revision != publication:
+            raise SourceProbeError("stale source revision")
+        return revision
+
+    @asset_bp.get("/<token>/<revision>/zarr/<path:member>")
+    def zarr_member(token: str, revision: str, member: str) -> Response:
+        """Serve one byte member from an immutable process-store generation."""
+        try:
+            parts = _store_member_parts(member)
+        except (TypeError, UnicodeError, ValueError):
+            return _error("invalid store member", 404)
+        try:
+            source = _published_store_revision(token, revision)
+        except _MutableStoreUnsupported:
+            return _error(
+                "mutable third-party Zarr store has no root-last publication "
+                "token; Browse refuses an unsafe multi-request image view",
+                422,
+            )
+        except FileNotFoundError:
+            return _error("invalid or unknown image store", 404)
+        except SourceProbeError:
+            return _error("source image changed", 409)
+
+        try:
+            root_fd = _open_store_root(source.source_path)
+        except _UnsafeStoreAccess as exc:
+            return _error(str(exc), 422)
+        except (OSError, RuntimeError, TypeError, ValueError):
+            return _error("store member not found", 404)
+        try:
+            try:
+                publication = store_publication_token(
+                    source.source_path,
+                    root_dir_fd=root_fd,
+                )
+            except OSError:
+                return _error("source image changed", 409)
+            if publication != source.store_revision:
+                return _error("source image changed", 409)
+            try:
+                image_prefixes = _image_store_prefixes(root_fd)
+            except _UnreadableImageStore as exc:
+                return _error(str(exc), 422)
+            if not _is_authorized_image_member(parts, image_prefixes):
+                return _error("invalid store member", 404)
+            try:
+                handle = _open_regular_store_member(root_fd, parts)
+            except (OSError, RuntimeError, TypeError, ValueError):
+                return _error("store member not found", 404)
+            try:
+                try:
+                    publication = store_publication_token(
+                        source.source_path,
+                        root_dir_fd=root_fd,
+                    )
+                except OSError:
+                    handle.close()
+                    return _error("source image changed", 409)
+                if publication != source.store_revision:
+                    handle.close()
+                    return _error("source image changed", 409)
+                size = os.fstat(handle.fileno()).st_size
+                response = send_file(
+                    handle,
+                    conditional=False,
+                    download_name=parts[-1],
+                )
+                response.content_length = size
+                response.make_conditional(
+                    request,
+                    accept_ranges=True,
+                    complete_length=size,
+                )
+                response.headers["Cache-Control"] = _IMMUTABLE_CACHE
+                response.call_on_close(handle.close)
+                return response
+            except BaseException:
+                handle.close()
+                raise
+        except (OSError, RuntimeError, TypeError, UnicodeError, ValueError):
+            return _error("store member not found", 404)
+        finally:
+            os.close(root_fd)
+
+    @asset_bp.get("/<token>/<revision>/zarr/")
+    def empty_zarr_member(token: str, revision: str) -> Response:
+        """Reject an empty member before Dash's catch-all can serve HTML."""
+        del token, revision
+        return _error("invalid store member", 404)
 
     @asset_bp.get("/<token>/<revision>/preview.png")
     def preview(token: str, revision: str) -> Response:

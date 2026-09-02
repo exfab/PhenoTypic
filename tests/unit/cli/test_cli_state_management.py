@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+from phenotypic._cli import _cli_failure_tracker
 from phenotypic._cli._cli_state_management import (
     get_remaining_images_for_datasets,
     load_processing_state,
@@ -19,7 +20,13 @@ from phenotypic._cli._cli_types import (
     ProcessingState,
 )
 from phenotypic._cli._cli_staged_resume import pipeline_content_digest
+from phenotypic._cli._cli_completion import publish_image_success
+from phenotypic._cli._cli_failure_tracker import work_id_for_image
 from phenotypic._cli._cli_update_state import append_completion_event
+from phenotypic.phenotypicCLI import (
+    _requires_legacy_success_migration,
+    _validate_resume_input_images,
+)
 from phenotypic.sdk_ import event_log_path, processing_state_path
 
 
@@ -147,6 +154,64 @@ def test_cpu_resume_still_requires_retry_failures_for_failed_images(
     assert retry[0].images == [image]
 
 
+def test_continuation_recognizes_direct_store_canonical_success(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "p01.ome.zarr"
+    source.mkdir()
+    (source / "zarr.json").write_text("{}", encoding="utf-8")
+    pipeline = tmp_path / "pipeline.json"
+    pipeline.write_text("{}", encoding="utf-8")
+    config = SimpleNamespace(
+        input_path=source,
+        pipeline_json=pipeline,
+        image_type="Image",
+        nrows=None,
+        ncols=None,
+        bit_depth=None,
+        detect_mode="gray",
+        process_only_layer=None,
+        ext=".tiff",
+        process_format="tiff",
+        include_dataset_column=True,
+        overlay_alpha=0.3,
+        save_overlays=False,
+        drop_originals=False,
+        measure_only=False,
+    )
+    dataset = Dataset("plate", [source], source.parent, tmp_path)
+    work_id, _ = work_id_for_image(config, "plate", source)
+    artifact = tmp_path / "results" / "plate" / "p01.parquet"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"measurement")
+    publish_image_success(
+        tmp_path,
+        work_id=work_id,
+        dataset="plate",
+        relative_image_path="p01.ome.zarr",
+        image_stem="p01",
+        mode="full",
+        attempt_id="attempt",
+        lifecycle_epoch="epoch",
+        artifacts={"measurements": artifact},
+    )
+    state = _make_state(tmp_path)
+    state.datasets["plate"] = DatasetState(
+        initial_images={"p01.ome.zarr"}
+    )
+    state.config = {
+        "success_markers_required": True,
+        "work_ids": {"plate": {"p01.ome.zarr": work_id}},
+    }
+
+    assert get_remaining_images_for_datasets(
+        state,
+        [dataset],
+        config=config,
+        output_dir=tmp_path,
+    ) == []
+
+
 def test_resume_rejects_changed_pipeline_contents(tmp_path: Path) -> None:
     pipeline = tmp_path / "pipeline.json"
     pipeline.write_text('{"operations": []}', encoding="utf-8")
@@ -199,6 +264,97 @@ def test_digest_resume_accepts_same_pipeline_from_new_path(tmp_path: Path) -> No
     )
 
     assert validate_resume_compatibility(state, config) == (True, None)
+
+
+def test_measure_only_resume_ignores_effective_input_path(tmp_path: Path) -> None:
+    """Measure-only reuses HDFs from output rather than the original inputs."""
+    pipeline = tmp_path / "pipeline.json"
+    pipeline.write_text('{"operations": []}', encoding="utf-8")
+    state = _make_state(tmp_path)
+    state.pipeline_path = pipeline
+    state.input_path = tmp_path / "original-images"
+    state.config = {
+        "image_type": "Image",
+        "pipeline_sha256": pipeline_content_digest(pipeline),
+        "image_manifest_digest": "sha256:approved-image-subset",
+        "process_only_layer": None,
+    }
+    config = SimpleNamespace(
+        pipeline_json=pipeline,
+        input_path=tmp_path,
+        image_manifest=None,
+        image_type="Image",
+        nrows=None,
+        ncols=None,
+        process_only_layer=None,
+        measure_only=True,
+    )
+
+    assert validate_resume_compatibility(state, config) == (True, None)
+
+
+def test_measure_only_resume_compares_original_image_stems(
+    tmp_path: Path,
+) -> None:
+    """Measure-only accepts matching HDF stems but rejects missing ones."""
+    state = _make_state(tmp_path)
+    state.datasets["plate"] = DatasetState(
+        initial_images={"plate_001.tiff", "missing_002.tiff"}
+    )
+    hdf = tmp_path / "plate_001.h5"
+    hdf.touch()
+    hdf_dataset = Dataset("plate", [hdf], tmp_path, tmp_path / "results")
+
+    valid, error = _validate_resume_input_images(
+        state, [hdf_dataset], measure_only=True
+    )
+    assert valid is False
+    assert error is not None and "Missing 1 images" in error
+    assert _validate_resume_input_images(state, [hdf_dataset])[0] is False
+
+
+def test_measure_only_resume_defers_legacy_success_marker_migration(
+    tmp_path: Path,
+) -> None:
+    """Measure-only workers publish markers alongside their HDF remeasurement."""
+    state = _make_state(tmp_path)
+
+    assert _requires_legacy_success_migration(
+        state, SimpleNamespace(measure_only=True)
+    ) is False
+    assert _requires_legacy_success_migration(
+        state, SimpleNamespace(measure_only=False)
+    ) is True
+    state.config["success_markers_required"] = True
+    assert _requires_legacy_success_migration(
+        state, SimpleNamespace(measure_only=False)
+    ) is False
+
+
+def test_measure_only_resume_selects_hdfs_without_identity_hashing(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """Measure-only dispatches HDF remeasurement without serial preflight hashes."""
+    hdf = tmp_path / "plate_001.h5"
+    hdf.touch()
+    state = _make_state(tmp_path)
+    dataset = Dataset("plate", [hdf], tmp_path, tmp_path / "results")
+
+    def unexpected_work_id(*args, **kwargs):
+        raise AssertionError("measure-only must not hash HDFs before dispatch")
+
+    monkeypatch.setattr(
+        _cli_failure_tracker, "work_id_for_image", unexpected_work_id
+    )
+
+    remaining = get_remaining_images_for_datasets(
+        state,
+        [dataset],
+        config=SimpleNamespace(measure_only=True),
+        output_dir=tmp_path,
+    )
+
+    assert remaining[0].images == [hdf]
 
 
 def test_resume_rejects_changed_artifact_shaping_setting(

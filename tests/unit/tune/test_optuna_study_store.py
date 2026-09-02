@@ -78,6 +78,19 @@ def test_best_reads_from_study(tmp_path):
     assert best.number == 0
 
 
+def test_finite_pruned_trial_consumes_budget_but_complete_trial_wins(tmp_path):
+    """A numerically strong partial-fidelity result cannot become published best."""
+    store = _store(tmp_path)
+    store.append(_trial(0, 0.01, pruned=True))
+    store.append(_trial(1, 0.40))
+
+    assert [trial.number for trial in store.terminal_trials()] == [0, 1]
+    assert store.completed_count() == 2
+    best = store.best()
+    assert best is not None
+    assert best.number == 1
+
+
 def test_best_none_when_only_failures(tmp_path):
     store = _store(tmp_path)
     store.append(_trial(0, 0.0, failed=True))
@@ -137,22 +150,51 @@ def test_study_db_path_resolves_to_tune_cache(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _mo_store(tmp_path, name="mo"):
+def _mo_store(tmp_path, name="mo", *, objective_axes=None):
     from phenotypic.tune._study._optuna_store import OptunaStudyStore
 
     url = f"sqlite:///{tmp_path / 'study.db'}"
     # Cost convention: every axis minimizes (Optuna's best_trials domination
     # must agree with the store-agnostic minimize-cost Pareto math).
     return OptunaStudyStore(
-        storage_url=url, study_name=name, directions=["minimize", "minimize"]
+        storage_url=url,
+        study_name=name,
+        directions=["minimize", "minimize"],
+        objective_axes=objective_axes,
     )
 
+def test_direct_store_rejects_duplicate_objective_axes(tmp_path) -> None:
+    """Direct store construction cannot collapse duplicate axes through sets."""
+    with pytest.raises(ValueError, match="unique"):
+        _mo_store(tmp_path, objective_axes=("Dice", "Dice"))
 
-def _mo_trial(number, objectives, *, failed=False):
+
+
+def test_direct_store_rejects_casefold_objective_axes(tmp_path) -> None:
+    """Native storage axes cannot alias artifact names on Windows."""
+    with pytest.raises(ValueError, match="case-insensitive|casefold|unique"):
+        _mo_store(tmp_path, objective_axes=("Dice", "dice"))
+
+
+@pytest.mark.parametrize(
+    "objective_axes", [(), ("s0",), ("s0", "s0"), ("Dice", "dice"), ("", "s1")]
+)
+def test_scalar_optuna_pareto_consumer_validates_supplied_axes(
+    tmp_path, objective_axes
+) -> None:
+    """A scalar study cannot bypass validation through its empty-front shortcut."""
+    store = _store(tmp_path)
+
+    with pytest.raises(ValueError, match="at least two|unique|non.?empty"):
+        store.pareto_front(objective_axes=objective_axes)
+
+
+
+def _mo_trial(number, objectives, *, failed=False, pruned=False):
     score = sum(objectives.values()) / len(objectives)
     return Trial(
         number=number, params={"a": number}, score=score,
-        terms={}, n_images=2, objectives=objectives, failed=failed,
+        terms={}, n_images=2, objectives=objectives, failed=failed, pruned=pruned,
     )
 
 
@@ -178,12 +220,67 @@ def test_multi_objective_optuna_store_pareto_front_excludes_dominated(tmp_path):
     assert front_numbers == {0, 1, 2}
 
 
+def test_multi_objective_optuna_front_excludes_pruned_dominating_trial(tmp_path):
+    """A partial-fidelity vector cannot displace a COMPLETE Pareto point."""
+    store = _mo_store(tmp_path)
+    store.append(
+        _mo_trial(0, {"Dice": 0.01, "IoU": 0.01}, pruned=True)
+    )
+    store.append(_mo_trial(1, {"Dice": 0.40, "IoU": 0.40}))
+
+    assert [trial.number for trial in store.pareto_front()] == [1]
+
+
 def test_multi_objective_objectives_round_trip(tmp_path):
     # The objectives sidecar survives the study round-trip (axis labels intact).
     store = _mo_store(tmp_path)
     store.append(_mo_trial(0, {"Dice": 0.8, "IoU": 0.3}))
     reloaded = {t.number: t for t in store.trials}
     assert reloaded[0].objectives == {"Dice": 0.8, "IoU": 0.3}
+
+
+def test_multi_objective_append_uses_authoritative_axis_order(tmp_path):
+    """Frozen values follow scorer order, not the sidecar mapping's insertion."""
+    store = _mo_store(tmp_path, objective_axes=("Dice", "IoU"))
+
+    store.append(_mo_trial(0, {"IoU": 0.8, "Dice": 0.2}))
+
+    assert store.study.trials[0].values == [0.2, 0.8]
+
+
+@pytest.mark.parametrize(
+    "objectives",
+    [{"Dice": 0.2}, {"Dice": 0.2, "IoU": 0.8, "unexpected": 0.4}],
+)
+def test_multi_objective_append_requires_exact_authoritative_keys(
+    tmp_path, objectives
+):
+    """Missing or extra axes must fail before adding a frozen trial."""
+    store = _mo_store(tmp_path, objective_axes=("Dice", "IoU"))
+
+    with pytest.raises(ValueError, match="exactly"):
+        store.append(_mo_trial(0, objectives))
+
+    assert len(store) == 0
+
+def test_complete_multi_objective_append_without_objectives_is_nonmutating(
+    tmp_path,
+) -> None:
+    """A COMPLETE scalar fallback cannot enter an authoritative vector study."""
+    store = _mo_store(tmp_path, objective_axes=("Dice", "IoU"))
+    trial = Trial(
+        number=0,
+        params={"a": 0},
+        score=0.5,
+        terms={"cost": 0.5},
+        n_images=1,
+        objectives=None,
+    )
+
+    with pytest.raises(ValueError, match="exactly"):
+        store.append(trial)
+
+    assert store.study.trials == []
 
 
 def test_multi_objective_knee_point_matches_shared_math(tmp_path):

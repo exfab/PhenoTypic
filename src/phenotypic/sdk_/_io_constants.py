@@ -47,7 +47,7 @@ Module layout
 * **Reader helpers** — `read_run_manifest`, `load_master_measurements`,
   `resolve_execution_mode` consolidate three high-frequency duplicates.
 * **JSON contract keys** (`JobMetadataKey`, `DashboardManifestKey`,
-  `ChunkStateKey`, `ChunkManifestKey`, `HdfAttr`) — namespace classes
+  `ChunkStateKey`, `ChunkManifestKey`) — namespace classes
   whose class-level ``Final[str]`` attributes are the keys writers and
   readers must reference instead of bare strings. Keeps the contract
   on-disk format mechanically discoverable.
@@ -72,7 +72,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
+import stat as stat_module
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -480,6 +482,9 @@ TRIALS_PARQUET: Final[str] = "trials.parquet"
 #: either location (no migration).
 STUDY_DB: Final[str] = "study.db"
 
+#: Append-only Optuna JournalStorage log for a distributed tuning run.
+STUDY_JOURNAL_LOG: Final[str] = "journal.log"
+
 #: The robust-eval held-out split assignment ``split.json`` written inside
 #: :data:`DIR_SPLITS`. A machine-state sidecar — it must survive a
 #: fresh-master rewrite and gate resume — so it lives in the hidden tune cache
@@ -506,7 +511,7 @@ PARETO_FRONT_PARQUET: Final[str] = "pareto_front.parquet"
 
 #: Per-objective best-pipeline filename template written into :data:`DIR_PARETO`:
 #: ``best_<objective>`` with the pipeline config suffix. One per
-#: objective axis — the pipeline maximizing that single objective on the front.
+#: objective axis — the pipeline with the lowest cost on that axis of the front.
 #: Rendered by :func:`pareto_best_pipeline_path`; kept private (a parameterized
 #: string is not an enumeration — see the code-style note on render functions).
 _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE: Final[str] = (
@@ -521,6 +526,21 @@ _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE: Final[str] = (
 _PARETO_IMPORTANCE_FILENAME_TEMPLATE: Final[str] = (
     "param_importance_{objective}.json"
 )
+
+_WINDOWS_INVALID_FILENAME_CHARS: Final[frozenset[str]] = frozenset('<>:"/\\|?*')
+_WINDOWS_RESERVED_DEVICE_NAMES: Final[frozenset[str]] = frozenset(
+    {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        "CONIN$",
+        "CONOUT$",
+        *(f"COM{suffix}" for suffix in (*range(1, 10), "¹", "²", "³")),
+        *(f"LPT{suffix}" for suffix in (*range(1, 10), "¹", "²", "³")),
+    }
+)
+
 
 # ---------------------------------------------------------------------------
 # QC artifact filenames (live inside DIR_QC)
@@ -652,8 +672,16 @@ DIR_MEASUREMENTS_BY_FEATURE: Final[str] = "measurements_by_feature"
 #: SLURM stdout/stderr subdirectory inside the hidden machine-state cache.
 DIR_LOGS: Final[str] = "logs"
 
-#: HDF5 image-state subdirectory: ``<output>/results/<ds>/hdf/``.
-DIR_HDF: Final[str] = "hdf"
+#: HDF5 image-state subdirectory of a LEGACY run: ``<output>/results/<ds>/hdf/``.
+#: Module-private since Phase 6. The only thing here that still needs it is
+#: :func:`datasets_needing_migration`, the predicate that refuses an
+#: unconverted tree; ``--mode migrate`` carries its own copy in
+#: :mod:`phenotypic.sdk_._hdf_to_zarr`, which is the module allowed to know
+#: the legacy layout.
+_DIR_HDF: Final[str] = "hdf"
+
+#: OME-Zarr image-state subdirectory: ``<output>/results/<ds>/zarr/``.
+DIR_ZARR: Final[str] = "zarr"
 
 #: Overlay PNG subdirectory: ``<output>/deliverables/overlays/<ds>/``.
 DIR_OVERLAYS: Final[str] = "overlays"
@@ -1261,6 +1289,11 @@ def tune_cache_study_db_path(output_dir: Path) -> Path:
     return tune_cache_dir(output_dir) / STUDY_DB
 
 
+def tune_cache_journal_path(output_dir: Path) -> Path:
+    """Return ``<output>/.pht-tune-cache/journal.log`` for a tune fleet."""
+    return tune_cache_dir(output_dir) / STUDY_JOURNAL_LOG
+
+
 def tune_cache_splits_dir(output_dir: Path) -> Path:
     """Return ``<output>/.pht-tune-cache/splits/`` — the held-out split folder.
 
@@ -1383,10 +1416,33 @@ def pareto_front_parquet_path(output_dir: Path) -> Path:
     return pareto_dir(output_dir) / PARETO_FRONT_PARQUET
 
 
+def _safe_pareto_objective_component(objective: str) -> str:
+    """Require one contained human-readable Pareto filename component."""
+    from pathlib import PurePosixPath, PureWindowsPath
+    import unicodedata
+
+    if (
+        not isinstance(objective, str)
+        or not objective
+        or objective in {".", ".."}
+        or any(char in _WINDOWS_INVALID_FILENAME_CHARS for char in objective)
+        or PurePosixPath(objective).is_absolute()
+        or PureWindowsPath(objective).is_absolute()
+        or bool(PureWindowsPath(objective).drive)
+        or any(unicodedata.category(char) == "Cc" for char in objective)
+        or objective.endswith((".", " "))
+        or objective.split(".", 1)[0].upper() in _WINDOWS_RESERVED_DEVICE_NAMES
+    ):
+        raise ValueError(
+            f"Pareto objective {objective!r} is not a safe filename component"
+        )
+    return objective
+
+
 def pareto_best_pipeline_path(output_dir: Path, objective: str) -> Path:
     """Return ``deliverables/pareto/best_<objective>.json`` (a per-axis winner).
 
-    The pipeline maximizing the single ``objective`` axis on the Pareto front.
+    The pipeline minimizing cost on the single ``objective`` axis of the Pareto front.
     ``objective`` is the objective name as it appears in ``objectives_json`` (a
     scorer-defined label, e.g. ``"Dice"`` or a composite child handle ``"s0"``).
 
@@ -1397,9 +1453,13 @@ def pareto_best_pipeline_path(output_dir: Path, objective: str) -> Path:
     Returns:
         The per-objective best-pipeline path under :func:`pareto_dir`.
     """
-    return pareto_dir(
-        output_dir
-    ) / _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE.format(objective=objective)
+    safe_objective = _safe_pareto_objective_component(objective)
+    path = pareto_dir(output_dir) / _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE.format(
+        objective=safe_objective
+    )
+    if path.parent != pareto_dir(output_dir):
+        raise ValueError("Pareto output path escaped its containing directory")
+    return path
 
 
 def pareto_importance_path(output_dir: Path, objective: str) -> Path:
@@ -1417,9 +1477,13 @@ def pareto_importance_path(output_dir: Path, objective: str) -> Path:
     Returns:
         The per-objective importance-report path under :func:`pareto_dir`.
     """
-    return pareto_dir(
-        output_dir
-    ) / _PARETO_IMPORTANCE_FILENAME_TEMPLATE.format(objective=objective)
+    safe_objective = _safe_pareto_objective_component(objective)
+    path = pareto_dir(output_dir) / _PARETO_IMPORTANCE_FILENAME_TEMPLATE.format(
+        objective=safe_objective
+    )
+    if path.parent != pareto_dir(output_dir):
+        raise ValueError("Pareto output path escaped its containing directory")
+    return path
 
 
 def phenotypic_cache_pipeline_json_path(output_dir: Path) -> Path:
@@ -1444,9 +1508,371 @@ def dataset_measurements_dir(output_dir: Path, dataset: str) -> Path:
     return dataset_results_dir(output_dir, dataset) / DIR_MEASUREMENTS
 
 
-def dataset_hdf_dir(output_dir: Path, dataset: str) -> Path:
-    """Return ``<output>/results/<dataset>/hdf/``."""
-    return dataset_results_dir(output_dir, dataset) / DIR_HDF
+def dataset_zarr_dir(output_dir: Path, dataset: str) -> Path:
+    """Return ``<output>/results/<dataset>/zarr/``."""
+    return dataset_results_dir(output_dir, dataset) / DIR_ZARR
+
+
+#: The remedy named in every "this output needs migrating" message. One
+#: string, so the CLI's refusal and the viewer's banner cannot drift apart.
+MIGRATION_REMEDY: Final[str] = "--mode migrate"
+
+
+def datasets_needing_migration(output_dir: Path) -> list[str]:
+    """Datasets holding at least one `.h5` result without a VALID store.
+
+    One predicate, so the CLI and the GUI cannot disagree about what
+    "needs migrating" means.
+
+    Per-IMAGE, not per-dataset: the half-migrated tree this exists to catch
+    has converted and unconverted images in the SAME dataset, so a
+    dataset-level "has .h5 and has no zarr/ dir" test misses it entirely.
+    That tree is the expected state after any interruption, because migration
+    is resumable -- and it is neither "only .h5" nor fully converted, so the
+    older "only .h5" guard let it through and `--mode full` silently
+    reprocessed every unconverted image from source.
+
+    Validity, not existence: `valid_staged_store`, not `path.exists()`. A
+    store written at an older `store_schema_version` is present but the
+    loader refuses it, so an existence test reads that tree as clean while
+    every image fails to open.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        Dataset names needing migration, sorted. Empty for a modern tree.
+    """
+    from phenotypic.sdk_.ngff_ import valid_staged_store
+
+    root = results_dir(Path(output_dir))
+    if not root.is_dir():
+        return []
+    needing: list[str] = []
+    for dataset_dir in sorted(path for path in root.iterdir() if path.is_dir()):
+        hdf_dir = dataset_dir / _DIR_HDF
+        if not hdf_dir.is_dir():
+            continue
+        for hdf_path in sorted(hdf_dir.glob("*.h5")):
+            if hdf_path.name.startswith("."):
+                continue
+            store = zarr_store_path(output_dir, dataset_dir.name, hdf_path.stem)
+            if not valid_staged_store(store):
+                needing.append(dataset_dir.name)
+                break
+    return needing
+
+
+def zarr_store_path(output_dir: Path, dataset: str, stem: str) -> Path:
+    """Return ``<output>/results/<dataset>/zarr/<stem>.ome.zarr/``.
+
+    The single place ``.ome.zarr`` is joined to an image stem. Callers must
+    never hand-join the suffix, and must take the stem back off a store with
+    :func:`store_stem` rather than ``Path.stem``. Both rules are enforced by
+    ``tests/unit/test_ome_zarr_invariants.py``
+    (``test_store_suffix_is_joined_in_exactly_one_place`` and
+    ``test_path_stem_is_never_taken_of_a_store_directory``).
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        stem: Image filename without extension.
+
+    Returns:
+        The per-image store path. Existence is not checked.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
+    return dataset_zarr_dir(output_dir, dataset) / f"{stem}{STORE_SUFFIX}"
+
+
+def store_stem(store_path: Path) -> str:
+    """Return the image stem of an ``*.ome.zarr`` or ``*.zarr`` directory.
+
+    ``Path.stem`` is WRONG here — it strips one suffix and leaves ``img.ome``,
+    which is a plausible-looking wrong name rather than an error: it propagates
+    into parquet filenames and completion markers, and
+    ``zarr_store_path(out, ds, "img.ome")`` then resolves to a store that does
+    not exist, so every image reprocesses forever.
+
+    Args:
+        store_path: A ``<stem>.ome.zarr`` or ``<stem>.zarr`` directory.
+
+    Returns:
+        The bare stem, e.g. ``"img"`` for ``img.ome.zarr``.
+
+    Raises:
+        ValueError: If *store_path* does not end in ``.zarr``. It raises
+            rather than falling back to ``.stem``, because a silent fallback is
+            exactly the failure being prevented.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
+    name = Path(store_path).name
+    suffix = STORE_SUFFIX if name.endswith(STORE_SUFFIX) else ".zarr"
+    if not name.endswith(suffix) or name == suffix:
+        raise ValueError(f"not an OME-Zarr store directory: {store_path}")
+    return name[: -len(suffix)]
+
+
+def is_zarr_store_name(path: Path | str) -> bool:
+    """Return whether a path name uses a supported Zarr store suffix.
+
+    ``.ome.zarr`` remains the canonical PhenoTypic output suffix. Generic
+    ``.zarr`` names are accepted as inputs so validity can be decided by the
+    NGFF reader at the open/render boundary.
+    """
+    name = Path(path).name
+    return name.endswith(".zarr") and name != ".zarr"
+
+
+def source_image_stem(path: Path) -> str:
+    """Return the canonical artifact stem for a source image path.
+
+    OME-Zarr source images use a double suffix, so their identity strips the
+    complete ``.ome.zarr`` suffix. Every other source keeps the standard
+    :attr:`pathlib.Path.stem` contract, including ordinary multi-dot files.
+
+    Args:
+        path: Source image file or OME-Zarr store path.
+
+    Returns:
+        The canonical source-image stem.
+    """
+    source = Path(path)
+    if is_zarr_store_name(source):
+        return store_stem(source)
+    return source.stem
+
+
+def source_image_suffix(path: Path) -> str:
+    """Return the canonical suffix for a source image path.
+
+    Args:
+        path: Source image file or OME-Zarr store path.
+
+    Returns:
+        ``.ome.zarr`` for a store source, otherwise the standard final suffix.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
+    source = Path(path)
+    if source.name.endswith(STORE_SUFFIX):
+        return STORE_SUFFIX
+    return ".zarr" if is_zarr_store_name(source) else source.suffix
+
+
+def store_revision_identity(path: Path) -> str:
+    """Return a stable revision identity for one OME-Zarr store.
+
+    PhenoTypic-published immutable generations use the explicit root-last
+    publication token and touch only ``zarr.json``. Generic third-party stores
+    have no publication invariant, so the conservative fallback hashes framed
+    relative paths, member types, sizes, and nanosecond mtimes twice to reject
+    an unstable snapshot. It intentionally does not read chunk contents: CLI
+    work and completion use a separate content-digest contract.
+
+    Args:
+        path: Existing ``*.ome.zarr`` directory.
+
+    Returns:
+        A versioned SHA-256 metadata identity.
+
+    Raises:
+        OSError: If the store is unstable or contains a symlink or another
+            non-regular member.
+        ValueError: If ``path`` is not named as an OME-Zarr store.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
+
+    store = Path(path)
+    if not is_zarr_store_name(store):
+        raise ValueError(f"not an OME-Zarr store directory: {store}")
+    published = store_publication_token(store)
+    if published is not None:
+        return published
+    first = _store_revision_snapshot(store, root_json=STORE_ROOT_JSON)
+    second = _store_revision_snapshot(store, root_json=STORE_ROOT_JSON)
+    if first != second:
+        raise OSError("OME-Zarr store changed during revision inspection")
+
+    members, promoted_root_token = second
+    digest = hashlib.sha256(b"phenotypic-store-revision\x00v1\x00")
+    for relative_path, member_type, size, mtime_ns in members:
+        encoded_path = relative_path.encode("utf-8")
+        digest.update(len(encoded_path).to_bytes(8, "big"))
+        digest.update(encoded_path)
+        digest.update(member_type)
+        digest.update(size.to_bytes(8, "big", signed=False))
+        digest.update(mtime_ns.to_bytes(8, "big", signed=True))
+    digest.update(b"\x01" if promoted_root_token is not None else b"\x00")
+    if promoted_root_token is not None:
+        size, mtime_ns = promoted_root_token
+        digest.update(size.to_bytes(8, "big", signed=False))
+        digest.update(mtime_ns.to_bytes(8, "big", signed=True))
+    return f"sha256-stat-tree-v1:{digest.hexdigest()}"
+
+
+def store_publication_token(
+    store: Path,
+    *,
+    root_dir_fd: int | None = None,
+) -> str | None:
+    """Return the root-last token for a PhenoTypic-published store.
+
+    PhenoTypic promotes an immutable store by replacing ``zarr.json`` last.
+    Its root bytes and file identity therefore identify the complete
+    generation without touching every chunk on GPFS. Inode and ctime close
+    the gap where a byte-identical replacement preserves the old mtime. A
+    generic third-party store has no such publication contract and returns
+    ``None`` so the caller uses the conservative recursive snapshot fallback.
+
+    Args:
+        store: Published store path. Used for ordinary path-based inspection.
+        root_dir_fd: Optional held descriptor for the store root. When given,
+            ``zarr.json`` is opened relative to that identity with
+            ``O_NOFOLLOW`` so a route can keep validation and serving bound to
+            one directory generation.
+
+    Returns:
+        The publication token, or ``None`` when the protocol is not declared.
+    """
+    from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
+
+    root = Path(store) / STORE_ROOT_JSON
+    try:
+        if root_dir_fd is None:
+            before = root.lstat()
+            if not stat_module.S_ISREG(before.st_mode):
+                return None
+            raw = root.read_bytes()
+            after = root.lstat()
+        else:
+            flags = os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW
+            root_fd = os.open(STORE_ROOT_JSON, flags, dir_fd=root_dir_fd)
+            try:
+                before = os.fstat(root_fd)
+                if (
+                    not stat_module.S_ISREG(before.st_mode)
+                    or before.st_nlink != 1
+                ):
+                    return None
+                chunks: list[bytes] = []
+                while chunk := os.read(root_fd, 1024 * 1024):
+                    chunks.append(chunk)
+                raw = b"".join(chunks)
+                after = os.fstat(root_fd)
+            finally:
+                os.close(root_fd)
+    except OSError:
+        return None
+    before_identity = (
+        before.st_size,
+        before.st_mtime_ns,
+        before.st_ctime_ns,
+        before.st_ino,
+    )
+    after_identity = (
+        after.st_size,
+        after.st_mtime_ns,
+        after.st_ctime_ns,
+        after.st_ino,
+    )
+    if before_identity != after_identity or len(raw) != after.st_size:
+        raise OSError("OME-Zarr root changed during revision inspection")
+    try:
+        payload = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    attributes = payload.get("attributes") if isinstance(payload, dict) else None
+    phenotypic = attributes.get("phenotypic") if isinstance(attributes, dict) else None
+    if not isinstance(phenotypic, dict):
+        return None
+    from phenotypic.sdk_.ngff_ import (
+        PhenotypicAttr,
+        ROOT_LAST_PUBLICATION_PROTOCOL,
+    )
+
+    if (
+        phenotypic.get(PhenotypicAttr.PUBLICATION_PROTOCOL)
+        != ROOT_LAST_PUBLICATION_PROTOCOL
+    ):
+        return None
+    digest = hashlib.sha256(b"phenotypic-root-publication\x00v2\x00")
+    digest.update(len(raw).to_bytes(8, "big"))
+    digest.update(raw)
+    digest.update(after.st_mtime_ns.to_bytes(8, "big", signed=True))
+    digest.update(after.st_ctime_ns.to_bytes(8, "big", signed=True))
+    digest.update(after.st_ino.to_bytes(8, "big", signed=False))
+    return f"sha256-root-publish-v2:{digest.hexdigest()}"
+
+
+def _store_revision_snapshot(
+    store: Path,
+    *,
+    root_json: str,
+) -> tuple[tuple[tuple[str, bytes, int, int], ...], tuple[int, int] | None]:
+    """Capture one symlink-free stat snapshot for ``store``."""
+    try:
+        root_stat = store.lstat()
+    except OSError as exc:
+        raise OSError("OME-Zarr store cannot be inspected") from exc
+    if stat_module.S_ISLNK(root_stat.st_mode):
+        raise OSError("OME-Zarr store cannot be a symlink")
+    if not stat_module.S_ISDIR(root_stat.st_mode):
+        raise OSError("OME-Zarr store must be a directory")
+
+    members: list[tuple[str, bytes, int, int]] = []
+    directories = [store]
+    while directories:
+        directory = directories.pop()
+        try:
+            entries = sorted(directory.iterdir(), key=lambda item: item.name)
+        except OSError as exc:
+            raise OSError("OME-Zarr store member cannot be inspected") from exc
+        child_directories: list[Path] = []
+        for entry in entries:
+            try:
+                entry_stat = entry.lstat()
+            except OSError as exc:
+                raise OSError(
+                    "OME-Zarr store member cannot be inspected"
+                ) from exc
+            relative = entry.relative_to(store).as_posix()
+            mode = entry_stat.st_mode
+            if stat_module.S_ISLNK(mode):
+                raise OSError(
+                    f"OME-Zarr store contains symlink member: {relative}"
+                )
+            if stat_module.S_ISDIR(mode):
+                member_type = b"d"
+                child_directories.append(entry)
+            elif stat_module.S_ISREG(mode):
+                member_type = b"f"
+            else:
+                raise OSError(
+                    f"OME-Zarr store contains non-regular member: {relative}"
+                )
+            members.append(
+                (
+                    relative,
+                    member_type,
+                    entry_stat.st_size,
+                    entry_stat.st_mtime_ns,
+                )
+            )
+        directories.extend(reversed(child_directories))
+
+    members.sort(key=lambda item: item[0])
+    root_record = next(
+        (
+            (size, mtime_ns)
+            for relative, member_type, size, mtime_ns in members
+            if relative == root_json and member_type == b"f"
+        ),
+        None,
+    )
+    return tuple(members), root_record
 
 
 def overlays_dir(output_dir: Path) -> Path:
@@ -1883,12 +2309,6 @@ class ChunkManifestKey:
     NAME: Final[str] = "name"
 
 
-class HdfAttr:
-    """Top-level attribute keys on per-image HDF5 files."""
-
-    PHENOTYPIC_CLASS: Final[str] = "phenotypic_class"
-
-
 # ---------------------------------------------------------------------------
 # Module-path constants for importlib dispatch
 # ---------------------------------------------------------------------------
@@ -1929,47 +2349,68 @@ class EnvVar:
 
 
 # ---------------------------------------------------------------------------
-# HDF image-class reader (eliminates 3-site duplication)
+# Store image-class reader
 # ---------------------------------------------------------------------------
 
 
-def load_image_from_hdf(
-    hdf_path: Path,
+def load_image_from_store(
+    store_path: Path,
     *,
     fallback: ImageTypeName = "Image",
 ) -> "_Image | _GridImage":
-    """Open an HDF5, read its ``phenotypic_class`` attr, dispatch to the right Image class.
+    """Read ``phenotypic.image_class`` from a store root and dispatch the loader.
 
-    Replaces the 3 ad-hoc ``h5py.File(...) → fh.attrs.get('phenotypic_class', 'Image')
-    → GridImage if cls_attr == 'GridImage' else Image`` patterns in
-    :mod:`_cli_recompile_worker`, :mod:`_cli_execution_strategies`, and
-    :mod:`phenotypicCLI`.
+    Dispatches on ``image_class`` (``Image`` / ``GridImage``), which is the
+    loader-dispatch field. It is **not** ``Metadata_ImageType``, which is
+    user-visible schema metadata and may be ``GridSection`` on a plain
+    :class:`Image`.
+
+    **Bypasses the public :meth:`Image.load_zarr` guard, deliberately.** That
+    guard refuses a store carrying no ``image_class``, because a *user* calling
+    the public verb on such a store has almost certainly mistaken a
+    ``--mode process`` export for a run bundle and wants ``imread`` instead.
+    This function is the internal dispatcher: its caller supplies *fallback*
+    and has therefore already made that determination itself
+    (``_cli_process_single`` passes the run's own image type; the tune CLI
+    passes ``"GridImage"``). Routing through ``load_zarr`` would raise before
+    the resolved class could ever be used, making *fallback* dead code. So the
+    resolved class is asked to load the store directly.
+
+    A store with no bundle *content* still fails, one layer down and by its
+    own error: ``_load_from_store`` subscripts the series mapping bare at
+    ``series["gray"]`` and ``series["detect_mat"]``
+    (``_image_io_handler.py``), so a single-series process store raises
+    ``KeyError: 'detect_mat'``.
 
     Args:
-        hdf_path: Path to a per-image HDF5 file.
-        fallback: Image class name to use when the HDF lacks the
-            ``phenotypic_class`` attribute (legacy files). Type-checked
-            (statically) against :data:`ImageTypeName` — there is no
-            runtime validation; the only effect of an unrecognized
-            string is that the dispatch falls through to :class:`Image`.
+        store_path: Path to a ``*.ome.zarr`` directory.
+        fallback: Class name used when the block carries no ``image_class``.
 
     Returns:
-        An :class:`Image` or :class:`GridImage` instance loaded from the HDF.
-    """
-    import h5py  # type: ignore[import-untyped]
+        An :class:`Image` or :class:`GridImage` loaded from the store.
 
+    Raises:
+        KeyError: If the store root carries no ``phenotypic`` block, or if it
+            carries one but no bundle series.
+        ValueError: If ``store_schema_version`` is not this build's.
+    """
     from phenotypic import (
         GridImage,
         Image,
     )  # lazy: avoids circular import at module load
-    from phenotypic.sdk_.constants_ import IMAGE_TYPES
+    from phenotypic.sdk_.ngff_ import PhenotypicAttr, require_readable_store
 
-    with h5py.File(hdf_path, "r") as fh:
-        cls_attr = fh.attrs.get(HdfAttr.PHENOTYPIC_CLASS, fallback)
-    if isinstance(cls_attr, bytes):
-        cls_attr = cls_attr.decode("utf-8", errors="replace")
-    image_cls = GridImage if cls_attr == IMAGE_TYPES.GRID.value else Image
-    return image_cls.load_hdf5(hdf_path)
+    # `require_readable_store`, not `read_phenotypic_attributes`: bypassing
+    # `load_zarr` must not also bypass the store_schema_version gate it
+    # applied. One read serves both the dispatch and the load.
+    block = require_readable_store(store_path)
+    class_name = block.get(PhenotypicAttr.IMAGE_CLASS, fallback)
+    # See ``_hdf_to_zarr._load_image_from_hdf``: the comparison is against
+    # the class name the writer recorded, not against ``IMAGE_TYPES.GRID`` -- that enum is the
+    # ``Metadata_ImageType`` vocabulary, a different field that spec 2.1 keeps
+    # deliberately independent of ``image_class``.
+    image_cls = GridImage if class_name == GridImage.__name__ else Image
+    return image_cls._load_from_store(store_path, block)
 
 
 # ---------------------------------------------------------------------------
@@ -2060,20 +2501,23 @@ class BundleLayout:
         results = self.output_root / DIR_RESULTS
         return results if results.is_dir() else None
 
-    def hdf_path(self, dataset: str, stem: str) -> Optional[Path]:
-        """Full-res per-image HDF for ``(dataset, stem)``, or ``None`` if unavailable.
+    def store_path(self, dataset: str, stem: str) -> Optional[Path]:
+        """Full-res per-image OME-Zarr store for ``(dataset, stem)``, or ``None``.
 
         Args:
             dataset: Dataset name (subdirectory under ``results/``).
             stem: Image stem (filename without extension).
 
         Returns:
-            Resolved ``.h5`` path if the file exists, otherwise ``None``.
+            Resolved store path if the **directory** exists, otherwise ``None``.
+            Note the ``is_dir`` check: a store is a directory, so the
+            ``is_file`` test the removed ``hdf_path`` used (it resolved a single
+            per-image HDF file) would always return ``None`` here.
         """
         if self.output_root is None:
             return None
-        candidate = dataset_hdf_dir(self.output_root, dataset) / f"{stem}.h5"
-        return candidate if candidate.is_file() else None
+        candidate = zarr_store_path(self.output_root, dataset, stem)
+        return candidate if candidate.is_dir() else None
 
     # -- deliverables-anchored artefacts ------------------------------------
 

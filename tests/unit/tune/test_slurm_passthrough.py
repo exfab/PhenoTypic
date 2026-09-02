@@ -72,6 +72,7 @@ def _patched_fleet_call(tmp_path, monkeypatch, **fleet_kwargs):
     assert what got threaded through. ``executor.run`` is a no-op.
     """
     from phenotypic.tune._tune_cli import _run as run_mod
+    from phenotypic.tune._study._storage import journal_url_for_path
 
     captured: dict = {}
 
@@ -105,7 +106,7 @@ def _patched_fleet_call(tmp_path, monkeypatch, **fleet_kwargs):
     run_mod._submit_slurm_fleet(
         spec,
         tmp_path,
-        storage_url=f"sqlite:///{tmp_path / 'study.db'}",
+        storage_url=journal_url_for_path(tmp_path / "study.log"),
         spec_path=tmp_path / "spec.json",
         images_dir=tmp_path / "images",
         split_path=tmp_path / ".pht-tune-cache" / "splits" / "split.json",
@@ -145,9 +146,11 @@ def test_passthrough_threads_flags_into_executor(tmp_path, monkeypatch):
         tmp_path,
         monkeypatch,
         n_workers=3,
-        slurm_partition="gpu",
-        slurm_mem="16G",
-        slurm_time="08:00:00",
+        slurm_args={
+            "slurm_partition": "gpu",
+            "slurm_mem": "16G",
+            "slurm_time": "08:00:00",
+        },
     )
     assert captured["n_workers"] == 3
     assert captured["_run_items"] == [0, 1, 2]

@@ -36,6 +36,19 @@ def test_importance_empty_below_two_trials():
     assert compute_param_importance(store) == {}
 
 
+def test_importance_empty_for_successful_trials_without_search_params():
+    # Removing the pre-concat empty-parts guard raises No objects to concatenate.
+    store = StudyStore()
+    store.append(
+        Trial(number=0, params={}, score=0.25, terms={}, n_images=1)
+    )
+    store.append(
+        Trial(number=1, params={}, score=0.75, terms={}, n_images=1)
+    )
+
+    assert compute_param_importance(store) == {}
+
+
 # --- G1: fANOVA-vs-RF dispatch (polymorphic, on store capability) -------------
 
 
@@ -49,6 +62,38 @@ def _rf_store() -> StudyStore:
             n_images=2,
         ))
     return store
+
+@pytest.mark.parametrize(
+    "objective_axes, message",
+    [
+        (("s0", "s0"), "unique"),
+        (("only",), "at least two"),
+        (("s0", "../escape"), "safe filename"),
+    ],
+)
+def test_all_importance_axis_consumers_validate_raw_authoritative_axes(
+    objective_axes, message
+):
+    """Public and direct RF importance calls reject malformed axis contracts."""
+    from phenotypic.tune._screening import _rf_permutation_importance
+
+    store = _rf_store()
+    consumers = (
+        lambda: compute_param_importance(
+            store, objective="s0", objective_axes=objective_axes
+        ),
+        lambda: compute_param_importance_report(
+            store, objective="s0", objective_axes=objective_axes
+        ),
+        lambda: _rf_permutation_importance(
+            store, objective="s0", objective_axes=objective_axes
+        ),
+    )
+
+    for consume in consumers:
+        with pytest.raises(ValueError, match=message):
+            consume()
+
 
 
 def test_report_falls_back_to_rf_for_journal():

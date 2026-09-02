@@ -47,7 +47,17 @@ from tests.e2e.gui.conftest import (
 # shared runners the Dash callback chain + Plotly first-render budget
 # stochastically exceeds the 15s ``wait_for_function`` poll. See
 # ``tests/CLAUDE.md`` for the convention and re-validation workflow.
-pytestmark = pytest.mark.ci_flaky
+pytestmark = [
+    pytest.mark.ci_flaky,
+    pytest.mark.skip(
+        reason=(
+            "QC/Heatmap/Error are unmounted by "
+            "docs/superpowers/specs/2026-08-26-gui-simplification-removals "
+            "(spec section 3). These tests are the acceptance suite for the "
+            "overhauled tabs; delete this marker when the surface returns."
+        )
+    ),
+]
 
 
 # ---------------------------------------------------------------------------

@@ -7,16 +7,44 @@ file collection, and organization into datasets.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
 from phenotypic.sdk_.constants_ import IO
-from phenotypic.sdk_ import default_output_dir_name, DIR_RESULTS, DIR_HDF
+from phenotypic.sdk_ import (
+    DIR_RESULTS,
+    DIR_ZARR,
+    STORE_SUFFIX,
+    default_output_dir_name,
+    is_zarr_store_name,
+)
+from phenotypic.sdk_._io_constants import bytes_fingerprint, file_fingerprint
 from ._cli_types import Dataset
 
 
-def _is_image_file(path: Path, valid_exts: set[str]) -> bool:
-    """True if ``path`` is a real input image.
+def _is_store_dir(path: Path) -> bool:
+    """True if ``path`` is an OME-Zarr store directory.
+
+    Tested by **name**, not by opening the store: the scanner runs over every
+    entry of every candidate directory, and reading a root ``zarr.json`` per
+    entry would cost an open per file at 10k-image scale. A directory named
+    ``*.ome.zarr`` that is not a store fails later, loudly, in ``imread``.
+
+    This is the same shape as :func:`scan_store_outputs`'s glob, which matches
+    directories non-recursively for the same reason its docstring gives: a
+    store is a directory full of files, so anything recursive costs roughly
+    forty stat calls per store.
+    """
+    return (
+        path.is_dir()
+        and not path.name.startswith(".")
+        and is_zarr_store_name(path)
+    )
+
+
+def _is_image_input(path: Path, valid_exts: set[str]) -> bool:
+    """True if ``path`` is a real input image -- a flat file or a store.
 
     Dotfiles are excluded, which an extension-only test does not do. macOS
     writes an AppleDouble ``._<name>`` sidecar beside every file on exFAT/FAT
@@ -25,7 +53,16 @@ def _is_image_file(path: Path, valid_exts: set[str]) -> bool:
     twice. Observed on a real run: ``manifest.json`` reported
     ``total_images: 60`` for 30 images and ``is_complete: false`` on a run that
     had finished, which anything gating on completion reads as still running.
+
+    The same dot test also excludes ``promote_store``'s in-flight
+    ``.<stem>.ome.zarr.<uuid>.part`` and ``.trash`` siblings, which is exactly
+    right: neither is a readable store.
+
+    A ``*.ome.zarr`` store counts as one input even though it is a directory.
+    Its contents are never enumerated: see :func:`_is_store_dir`.
     """
+    if _is_store_dir(path):
+        return True
     return (
         path.is_file()
         and not path.name.startswith(".")
@@ -75,15 +112,16 @@ def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
 
     datasets = {}
 
-    # Case 1: Single file
-    if input_path.is_file():
-        if input_path.suffix.lower() in valid_exts:
+    # Case 1: Single file, or a single store
+    if input_path.is_file() or _is_store_dir(input_path):
+        if _is_image_input(input_path, valid_exts):
             datasets["single_image"] = [input_path]
             return datasets
         else:
             raise ValueError(
                     f"File {input_path.name} is not a supported image format. "
-                    f"Supported: {', '.join(sorted(valid_exts))}"
+                    f"Supported: {', '.join(sorted(valid_exts))}, "
+                    f"or an *.ome.zarr store"
             )
 
     # Case 2 & 3: Directory (flat or recursive)
@@ -93,19 +131,33 @@ def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
     # Collect images directly in root directory
     root_images = [
         p for p in input_path.iterdir()
-        if _is_image_file(p, valid_exts)
+        if _is_image_input(p, valid_exts)
     ]
 
     # Scan one level of subdirectories
     subdatasets = {}
     for subdir in input_path.iterdir():
-        if not subdir.is_dir():
+        # A store IS a directory, and this skip is a COST guard, not a
+        # correctness one. Unguarded, a store is read once, yields no image
+        # input at its top level, and is dropped by the `if sub_images:`
+        # below -- and it was already collected by `root_images` above, so
+        # nothing disappears and no dataset is named after it. (An earlier
+        # comment here claimed both "contributes nothing" AND "the images
+        # disappear from the run"; those cannot both be true, and the second
+        # is false -- verified by deleting the guard and watching
+        # `test_a_flat_tree_of_stores_scans_as_one_dataset` stay green.)
+        #
+        # What it buys is one directory read per store avoided -- the same
+        # argument `_is_store_dir` makes for matching by name instead of
+        # opening the store. That cost is what
+        # `test_scanning_does_not_descend_into_stores` measures.
+        if not subdir.is_dir() or _is_store_dir(subdir):
             continue
 
         # Collect images in this subdirectory
         sub_images = [
             p for p in subdir.iterdir()
-            if _is_image_file(p, valid_exts)
+            if _is_image_input(p, valid_exts)
         ]
 
         if sub_images:
@@ -170,31 +222,204 @@ def organize_by_dataset(
     return datasets
 
 
-def scan_hdf_outputs(output_dir: Path) -> List[Dataset]:
+class ImageManifestError(ValueError):
+    """Raised when an image manifest is unreadable or outside ``--input``."""
+
+
+@dataclass(frozen=True)
+class ImageManifestSnapshot:
+    """Exact bytes-derived manifest entries and their content fingerprint."""
+
+    entries: tuple[str, ...]
+    digest: str
+
+
+def image_manifest_digest(manifest_path: Path) -> str:
+    """Return the content fingerprint for an image-manifest file.
+
+    Args:
+        manifest_path: Plain-text manifest path.
+
+    Returns:
+        A ``"sha256:<hex>"`` fingerprint of the manifest's exact bytes.
     """
-    Discover datasets already written as HDF by a previous forward run.
+    return file_fingerprint(Path(manifest_path))
+
+
+def load_image_manifest(manifest_path: Path) -> ImageManifestSnapshot:
+    """Take one byte snapshot of an image manifest and parse its entries.
+
+    Args:
+        manifest_path: UTF-8 image-manifest path.
+
+    Returns:
+        Parsed entries and the fingerprint of the exact bytes they came from.
+
+    Raises:
+        ImageManifestError: If the manifest is unreadable, invalid, or empty.
+    """
+    manifest_path = Path(manifest_path)
+    try:
+        content = manifest_path.read_bytes()
+    except OSError as exc:
+        raise ImageManifestError(
+            f"Cannot read image manifest {manifest_path}: {exc}"
+        ) from exc
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ImageManifestError(
+            f"Image manifest {manifest_path} is not valid UTF-8 text: {exc}"
+        ) from exc
+
+    entries = [
+        stripped
+        for line in text.splitlines()
+        if (stripped := line.strip()) and not stripped.startswith("#")
+    ]
+    if not entries:
+        raise ImageManifestError(
+            f"Image manifest {manifest_path} lists no images. An empty "
+            "manifest is refused rather than treated as all images."
+        )
+    return ImageManifestSnapshot(tuple(entries), bytes_fingerprint(content))
+
+
+def read_image_manifest(manifest_path: Path) -> List[str]:
+    """Read non-empty, non-comment image-manifest entries in file order.
+
+    Args:
+        manifest_path: UTF-8 image-manifest path.
+
+    Returns:
+        Stripped image paths, without comments or blank lines.
+
+    Raises:
+        ImageManifestError: If the manifest is unreadable, invalid, or empty.
+    """
+    return list(load_image_manifest(manifest_path).entries)
+
+
+def apply_image_manifest(
+    image_paths_by_dataset: Dict[str, List[Path]],
+    manifest_path: Path,
+    input_path: Path,
+    *,
+    snapshot: ImageManifestSnapshot | None = None,
+) -> Dict[str, List[Path]]:
+    """Select exactly the manifest paths from an existing input-tree scan.
+
+    Args:
+        image_paths_by_dataset: Mapping returned by
+            :func:`scan_directory_structure`.
+        manifest_path: Plain-text manifest path.
+        input_path: The ``--input`` root for relative manifest entries.
+        snapshot: Optional already-read manifest snapshot. When supplied, its
+            entries are selected without rereading ``manifest_path``.
+
+    Returns:
+        Dataset mapping filtered to the approved images, in scan order.
+
+    Raises:
+        ImageManifestError: If an entry is absent from the scan, duplicated,
+            or does not select exactly one scanned image.
+    """
+    entries = (
+        snapshot.entries
+        if snapshot is not None
+        else read_image_manifest(manifest_path)
+    )
+    input_path = Path(input_path)
+
+    by_resolved: Dict[Path, List[tuple[str, Path]]] = {}
+    by_spelling: Dict[Path, List[tuple[str, Path]]] = {}
+    for dataset_name, image_paths in image_paths_by_dataset.items():
+        for image_path in image_paths:
+            identity = (dataset_name, image_path)
+            by_resolved.setdefault(
+                _resolved_manifest_path(image_path), []
+            ).append(identity)
+            by_spelling.setdefault(Path(image_path), []).append(identity)
+
+    selected_resolved: set[Path] = set()
+    selected_by_dataset: Dict[str, set[Path]] = {}
+    for entry in entries:
+        candidate = Path(entry)
+        if not candidate.is_absolute():
+            candidate = input_path / candidate
+        resolved = _resolved_manifest_path(candidate)
+        matches = by_spelling.get(candidate) or by_resolved.get(resolved, [])
+        if not matches:
+            raise ImageManifestError(
+                f"Image manifest {manifest_path} names {entry!r}, which is "
+                f"not one of the images found under --input {input_path}."
+            )
+        if len(matches) != 1:
+            raise ImageManifestError(
+                f"Image manifest {manifest_path} names {entry!r}, which does "
+                "not uniquely identify one scanned image. Use an exact "
+                "--input-relative spelling for the intended dataset."
+            )
+        if resolved in selected_resolved:
+            raise ImageManifestError(
+                f"Image manifest {manifest_path} names {entry!r} more than "
+                "once. Duplicates are refused rather than deduplicated."
+            )
+        selected_resolved.add(resolved)
+        dataset_name, image_path = matches[0]
+        selected_by_dataset.setdefault(dataset_name, set()).add(image_path)
+
+    filtered: Dict[str, List[Path]] = {}
+    for dataset_name, image_paths in image_paths_by_dataset.items():
+        selected = selected_by_dataset.get(dataset_name)
+        if selected:
+            filtered[dataset_name] = [path for path in image_paths if path in selected]
+
+    selected_count = sum(len(image_paths) for image_paths in filtered.values())
+    if selected_count != len(entries):
+        raise ImageManifestError(
+            f"Image manifest {manifest_path} names {len(entries)} image(s) "
+            f"but selects {selected_count}; every entry must select one image."
+        )
+    return filtered
+
+
+def _resolved_manifest_path(path: Path) -> Path:
+    """Normalize a path for manifest membership checks without requiring it."""
+    return Path(path).resolve(strict=False)
+
+
+def scan_store_outputs(output_dir: Path) -> List[Dataset]:
+    """
+    Discover datasets already written as OME-Zarr stores by a previous run.
 
     Walks ``<output_dir>/results/``; for each subdirectory containing a
-    non-empty ``hdf/`` directory, constructs a :class:`Dataset` whose
-    ``images`` are the sorted ``*.h5`` files in that ``hdf/``,
-    ``input_dir`` is the ``hdf/`` directory itself, ``output_dir`` is the
-    supplied root output directory, and ``name`` is the subdirectory name.
+    non-empty ``zarr/`` directory, constructs a :class:`Dataset` whose
+    ``images`` are the sorted ``*.ome.zarr`` **store directories** in that
+    ``zarr/``, ``input_dir`` is the ``zarr/`` directory itself, ``output_dir``
+    is the supplied root output directory, and ``name`` is the subdirectory
+    name.
 
-    Intended for measure mode, which skips detection and reloads
-    HDFs emitted by a prior forward run.
+    Intended for measure mode and overlay recompile, which skip detection and
+    reload the stores emitted by a prior forward run.
+
+    The glob is deliberately **non-recursive** and matches **directories**. A
+    store *is* a directory full of files, so ``rglob`` would descend into every
+    one of them — roughly forty stat calls per store, 400k at 10k images — and
+    an ``is_file()`` filter would find nothing at all.
 
     Args:
         output_dir: Root output directory from a previous forward run.
-            Expected to contain ``<output_dir>/results/<dataset>/hdf/``.
+            Expected to contain ``<output_dir>/results/<dataset>/zarr/``.
 
     Returns:
         List of :class:`Dataset` objects, one per subdirectory with a
-        non-empty ``hdf/``.  Empty ``results/`` and missing ``results/``
-        both raise ``ValueError``; per-dataset empty ``hdf/`` folders are
+        non-empty ``zarr/``.  Empty ``results/`` and missing ``results/``
+        both raise ``ValueError``; per-dataset empty ``zarr/`` folders are
         skipped silently.
 
     Raises:
-        ValueError: If no HDFs are found under ``<output_dir>/results``.
+        ValueError: If no stores are found under ``<output_dir>/results``.
     """
     output_dir = Path(output_dir)
     results_dir = output_dir / DIR_RESULTS
@@ -206,34 +431,39 @@ def scan_hdf_outputs(output_dir: Path) -> List[Dataset]:
             if not subdir.is_dir():
                 continue
 
-            hdf_dir = subdir / DIR_HDF
-            if not hdf_dir.is_dir():
+            zarr_dir = subdir / DIR_ZARR
+            if not zarr_dir.is_dir():
                 continue
 
-            # Skip dotfiles: on an exFAT/FAT volume macOS leaves an
-            # AppleDouble `._<name>.h5` beside every HDF, and it is binary
-            # junk, not an HDF — `--mode measure` on such a tree would try to
-            # load it.
-            hdf_files = sorted(
-                p for p in hdf_dir.glob("*.h5") if not p.name.startswith(".")
+            # Skip dotted entries. This is the AppleDouble guard the HDF scan
+            # carried (macOS leaves a `._<name>` beside every entry on
+            # exFAT/FAT), and it now also excludes the in-flight
+            # `.<stem>.ome.zarr.<uuid>.part` / `.trash` siblings that
+            # `promote_store` creates — which is exactly right, since neither
+            # is a readable store.
+            stores = sorted(
+                p
+                for p in zarr_dir.glob(f"*{STORE_SUFFIX}")
+                if p.is_dir() and not p.name.startswith(".")
             )
-            if not hdf_files:
+            if not stores:
                 continue
 
             datasets.append(
                 Dataset(
                     name=subdir.name,
-                    images=hdf_files,
-                    input_dir=hdf_dir,
+                    images=stores,
+                    input_dir=zarr_dir,
                     output_dir=output_dir,
                 )
             )
 
     if not datasets:
         raise ValueError(
-            f"No HDF outputs found under {results_dir}. "
+            f"No OME-Zarr outputs found under {results_dir}. "
             f"--mode measure expects a previous forward run to have written "
-            f"HDF files under <output-dir>/results/<dataset>/hdf/*.h5."
+            f"image stores under "
+            f"<output-dir>/results/<dataset>/zarr/*{STORE_SUFFIX}."
         )
 
     return datasets
@@ -288,9 +518,9 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, Any]:
     valid_exts = set(IO.ACCEPTED_FILE_EXTENSIONS + IO.RAW_FILE_EXTENSIONS)
     valid_exts = {ext.lower() for ext in valid_exts}
 
-    # Single file case
-    if input_path.is_file():
-        if input_path.suffix.lower() not in valid_exts:
+    # Single file case, or a single store
+    if input_path.is_file() or _is_store_dir(input_path):
+        if not _is_image_input(input_path, valid_exts):
             raise ValueError(f"File {input_path.name} is not a supported image format")
         return {
             "type"        : "single_file",
@@ -304,18 +534,28 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, Any]:
     # Count root images
     root_count = sum(
             1 for p in input_path.iterdir()
-            if _is_image_file(p, valid_exts)
+            if _is_image_input(p, valid_exts)
     )
 
     # Count subdirectory images
     subdir_counts = {}
     for subdir in input_path.iterdir():
-        if not subdir.is_dir():
+        # The same cost guard as `scan_directory_structure`, for the same
+        # reason: a store's top level holds no image input, so `sub_count` is
+        # 0 and it never becomes a dataset either way. The skip is what stops
+        # the summary reading every store in the tree.
+        #
+        # This function has no production caller -- `--dry-run` routes through
+        # `scan_directory_structure` (`phenotypicCLI.py:1803`) -- so a
+        # divergence here is not user-visible today. It is kept in step
+        # because the duplicate predicates exist and the next reader will
+        # assume they agree.
+        if not subdir.is_dir() or _is_store_dir(subdir):
             continue
 
         sub_count = sum(
                 1 for p in subdir.iterdir()
-                if _is_image_file(p, valid_exts)
+                if _is_image_input(p, valid_exts)
         )
 
         if sub_count > 0:

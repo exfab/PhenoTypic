@@ -29,6 +29,7 @@ from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
 from phenotypic.gui.results_viewer._app import create_app
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._qc_tab import register_qc_callbacks
 from phenotypic.sdk_ import (
     custom_categories_json_path,
     error_category_parquet_path,
@@ -134,6 +135,21 @@ def _outputs_from_key(output_key: str) -> list[dict[str, str]]:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
+
+def _app_with_qc_callbacks(output_root: OutputRoot):
+    """Boot the viewer app and re-attach the unmounted QC tab's callbacks.
+
+    The QC tab is unmounted by
+    ``docs/superpowers/specs/2026-08-26-gui-simplification-removals``
+    (spec section 3), so :func:`create_app` no longer registers its
+    callbacks. The package is retained and its curation behaviour is
+    unchanged, so these tests register it themselves and keep covering
+    it; drop this helper when the tab returns to the tab bar.
+    """
+    app = create_app(output_root)
+    register_qc_callbacks(app)
+    return app
 
 
 def test_app_boots_and_config_holds_curation_labels(output_root: OutputRoot) -> None:
@@ -489,7 +505,7 @@ def test_qc_wedge_mark_writes_category_parquet_and_drops_mirror(
     tmp_path: Path,
 ) -> None:
     """A QC ``merged`` wedge click categorizes the object and drops the mirror."""
-    app = create_app(output_root)
+    app = _app_with_qc_callbacks(output_root)
 
     resp = _post_qc_wedge(app, image_file="img-B", label=1, category="merged")
     assert resp.status_code == 200, (
@@ -516,7 +532,7 @@ def test_qc_radial_body_lazy_populates_on_trigger_click(
     output_root: OutputRoot,
 ) -> None:
     """Clicking a QC tile's ▾ trigger fills the empty radial popover body."""
-    app = create_app(output_root)
+    app = _app_with_qc_callbacks(output_root)
     client = app.server.test_client()
 
     image_file, label = "img-A", 2
@@ -634,7 +650,7 @@ def test_qc_bulk_mark_marks_whole_selection(
     output_root: OutputRoot,
 ) -> None:
     """The QC bulk-mark dropdown marks every selected colony with a category."""
-    app = create_app(output_root)
+    app = _app_with_qc_callbacks(output_root)
     store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
 
     resp = _post_bulk_mark(
@@ -679,7 +695,7 @@ def test_qc_selection_delta_consumer_is_registered(
     store the JS bridge writes) and Output (the SHARED selection store the
     bulk bar reads) — the wiring the broken-in-browser bug was about.
     """
-    app = create_app(output_root)
+    app = _app_with_qc_callbacks(output_root)
     key = _find_output_key(
         app, "store-colony-selection.data", "store-qc-gallery-selection-delta"
     )
@@ -921,7 +937,7 @@ def test_qc_custom_add_registers_and_persists(
     tmp_path: Path,
 ) -> None:
     """The QC surface's ＋ Add-custom registers + persists a custom category."""
-    app = create_app(output_root)
+    app = _app_with_qc_callbacks(output_root)
     store: CurationLabels = app.server.config[CFG_FILTERED_STATE]
 
     resp = _post_radial_custom_add(

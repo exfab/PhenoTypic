@@ -4,6 +4,7 @@ from PIL import Image as PILImage
 
 from phenotypic.gui.browse import _source_render as sr
 from phenotypic.gui.browse._app import create_app
+from phenotypic.gui._shared import viv_script_urls
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
 
@@ -32,21 +33,14 @@ def test_create_app_injects_app_prefix(sandbox):
     assert "/browse/" in app.index_string
 
 
-def test_create_app_serves_thumbnail_route(monkeypatch, tmp_path) -> None:
-    import io
-    from PIL import Image as PILImage
-    from phenotypic.gui.browse._app import create_app
-    from phenotypic.gui.browse import _source_render
-    from phenotypic.gui.shell._sandbox import SandboxRoot
+def test_create_app_serves_the_shared_viv_facade_after_its_bundle(sandbox):
+    app = create_app(sandbox, url_prefix="/browse/")
 
-    monkeypatch.setattr(
-        _source_render.tempfile, "gettempdir", lambda: str(tmp_path / "cache")
-    )
-    (tmp_path / "imgs").mkdir()
-    PILImage.new("RGB", (120, 60), (1, 2, 3)).save(tmp_path / "imgs" / "p.png")
-    app = create_app(SandboxRoot.from_path(tmp_path))
+    assert app.config.external_scripts == viv_script_urls("/browse/")
+    assert app.config.external_scripts == [
+        "/browse/_viv/viv-bundle.min.js",
+        "/browse/_viv/viv_viewer.js",
+    ]
     client = app.server.test_client()
-    token = _source_render.encode_token("imgs/p.png")
-    resp = client.get(f"/thumb/{token}?size=64")
-    assert resp.status_code == 200
-    assert PILImage.open(io.BytesIO(resp.data)).size[0] <= 64
+    assert client.get("/_viv/viv-bundle.min.js").status_code == 200
+    assert client.get("/_viv/viv_viewer.js").status_code == 200

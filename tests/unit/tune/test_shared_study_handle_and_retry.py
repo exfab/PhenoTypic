@@ -12,6 +12,8 @@ non-transient error immediately.
 """
 from __future__ import annotations
 
+import errno
+
 import importlib.util
 
 import pytest
@@ -135,6 +137,25 @@ def test_retry_exhausts_and_reraises_transient_error(monkeypatch):
 
     with pytest.raises(OperationalError):
         retry_on_transient_db_error(_always_locked, attempts=3)
+
+
+def test_retry_succeeds_after_transient_os_error(monkeypatch):
+    import phenotypic.tune.strategy._optuna_support as support
+    from phenotypic.tune.strategy._optuna_support import (
+        retry_on_transient_db_error,
+    )
+
+    monkeypatch.setattr(support.time, "sleep", lambda *_: None)
+    calls = {"n": 0}
+
+    def _temporarily_unavailable():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise OSError(errno.EAGAIN, "try again")
+        return "ok"
+
+    assert retry_on_transient_db_error(_temporarily_unavailable, attempts=2) == "ok"
+    assert calls["n"] == 2
 
 
 def test_retry_does_not_retry_non_transient_error():

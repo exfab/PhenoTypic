@@ -17,10 +17,18 @@ from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, cast
 
 from .._io_constants import slurm_scripts_dir
 from ._environment import SLURM_PYTHONPATH_BOOTSTRAP_BASH
+from ._generation import generation_script_key
 
 logger = logging.getLogger(__name__)
 
 SlurmDependencyKind = Literal["afterany", "afterok"]
+
+# Importing the lifecycle CLI loads the package and its scheduler contracts.
+# 100M is below that process's observed Linux RSS (~99 MiB before allocator
+# and interpreter headroom) and was OOM-killed on the first real migration
+# dispatcher. Keep this much smaller than an image worker while leaving safe
+# room for the control-plane Python process.
+_DISPATCHER_MEMORY = "512M"
 
 
 def _validate_dependency_kind(value: str) -> SlurmDependencyKind:
@@ -60,7 +68,7 @@ def generate_dispatcher_script(
 ) -> Path:
     """Generate a dispatcher script that submits the next chunk and dispatcher.
 
-    The dispatcher requests minimal resources (1 CPU, 100M, 5 min) and
+    The dispatcher requests control-plane resources (1 CPU, 512M, 5 min) and
     invokes the Python lifecycle entry point. That entry point durably submits
     the next processing chunk and optional dependent dispatcher.
 
@@ -117,7 +125,7 @@ def generate_dispatcher_script(
 #SBATCH --job-name=dispatch
 #SBATCH --partition={partition}
 #SBATCH --time=00:05:00
-#SBATCH --mem=100M
+#SBATCH --mem={_DISPATCHER_MEMORY}
 #SBATCH --cpus-per-task=1
 #SBATCH --output={log_dir}/dispatch_%j.log
 #SBATCH --error={log_dir}/dispatch_%j.log
@@ -153,6 +161,7 @@ def generate_dispatcher_chain(
     finalizer_script: Path | None = None,
     continuation_dependency_kinds: Sequence[SlurmDependencyKind] | None = None,
     generation: str | None = None,
+    lifecycle_output_dir: Path | None = None,
 ) -> List[Path]:
     """Generate dispatcher scripts for a chain of chunk scripts.
 
@@ -173,6 +182,8 @@ def generate_dispatcher_chain(
             ``afterany`` for every edge.
         generation: Optional explicit lifecycle generation. When supplied,
             dispatcher scripts are isolated under that generation.
+        lifecycle_output_dir: Optional lifecycle fence root when dispatcher
+            scripts themselves are written beneath a separate control root.
 
     Returns:
         List of dispatcher script paths (one fewer than ``chunk_scripts``,
@@ -187,11 +198,12 @@ def generate_dispatcher_chain(
     if len(chunk_scripts) <= 1:
         return []
 
-    lifecycle_generation = generation or _ensure_generation(output_dir)
+    lifecycle_output = lifecycle_output_dir or output_dir
+    lifecycle_generation = generation or _ensure_generation(lifecycle_output)
     log_dir.mkdir(parents=True, exist_ok=True)
     script_dir = slurm_scripts_dir(output_dir)
     if generation is not None:
-        script_dir = script_dir / "dispatch" / generation
+        script_dir = script_dir / "dispatch" / generation_script_key(generation)
     script_dir.mkdir(parents=True, exist_ok=True)
 
     num_dispatchers = len(chunk_scripts) - 1
@@ -217,7 +229,7 @@ def generate_dispatcher_chain(
             output_path=dispatcher_path,
             slurm_args=slurm_args,
             log_dir=log_dir,
-            output_dir=output_dir,
+            output_dir=lifecycle_output,
             generation=lifecycle_generation,
             chunk_index=i + 1,
             finalizer_script=(

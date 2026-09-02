@@ -16,8 +16,12 @@ class FootprintMixin:
     colony edges, shapes, or connectivity, and can assist in segmentation, noise reduction,
     and feature extraction.
 
-    Attributes:
-        None
+    The mixin declares no attributes -- it contributes a single static helper.
+    (Do NOT write ``Attributes:`` followed by ``None`` to say so: napoleon
+    renders that as an attribute *named* ``None``, which registers a ``.None``
+    cross-reference target. Four such targets made every autodoc'd docstring
+    returning ``None`` ambiguous, producing 23,934 of the docs build's 24,585
+    warnings.)
     """
 
     @staticmethod

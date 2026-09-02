@@ -29,6 +29,19 @@ def test_best_picks_min_cost_ignoring_failures():
     assert best is not None and best.number == 0 and best.score == 0.3
 
 
+def test_finite_pruned_trial_consumes_budget_but_complete_trial_wins():
+    """Treating terminal budget eligibility as winner eligibility picks partial work."""
+    store = StudyStore()
+    store.append(_trial(0, 0.01, pruned=True, fidelity="partial"))
+    store.append(_trial(1, 0.40, fidelity="complete"))
+
+    assert [trial.number for trial in store.terminal_trials()] == [0, 1]
+    assert store.completed_count() == 2
+    best = store.best()
+    assert best is not None
+    assert best.number == 1
+
+
 def test_best_none_when_empty_or_all_failed():
     assert StudyStore().best() is None
     store = StudyStore()

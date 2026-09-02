@@ -7,10 +7,16 @@ import subprocess
 from contextlib import contextmanager
 from pathlib import Path
 
-import h5py
 import numpy as np
 import pytest
 
+from phenotypic import Image
+from phenotypic._cli._cli_stage2_token import (
+    stage2_raw_path,
+    stage2_token_path,
+    write_stage2_raw,
+    write_stage2_token,
+)
 from phenotypic._cli._cli_staged_controller import run_staged_controller
 from phenotypic._cli._cli_slurm_lifecycle import generation_is_active
 from phenotypic._cli._cli_staged_orchestration import (
@@ -20,7 +26,6 @@ from phenotypic._cli._cli_staged_orchestration import (
     append_job_ledger,
     append_stage2_terminal_failure,
     cancel_staged_jobs,
-    clear_stage2_sidecars,
     completed_inventory_images,
     current_slurm_job_id,
     deactivate_orchestration,
@@ -40,10 +45,19 @@ from phenotypic._cli._cli_staged_orchestration import (
 from phenotypic.sdk_ import (
     JobMetadataKey,
     atomic_write_json,
-    dataset_hdf_dir,
+    clear_machine_state,
     dataset_measurements_dir,
     job_metadata_path,
+    zarr_store_path,
 )
+
+
+@pytest.fixture(autouse=True)
+def _clear_inherited_slurm_array_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Keep standalone controller simulations independent of runner arrays."""
+    monkeypatch.delenv("SLURM_ARRAY_JOB_ID", raising=False)
 
 
 def _controller_fixture(tmp_path: Path, epoch: str = "epoch-1") -> Path:
@@ -52,13 +66,9 @@ def _controller_fixture(tmp_path: Path, epoch: str = "epoch-1") -> Path:
         StagedManifestEntry("plate", "image.tif", "image", "/in/image.tif")
     ]
     write_staged_manifest(manifest_path, entries)
-    hdf = dataset_hdf_dir(tmp_path, "plate") / "image.h5"
-    hdf.parent.mkdir(parents=True, exist_ok=True)
-    with h5py.File(hdf, "w") as handle:
-        handle.attrs["schema_version"] = 2
-        layers = handle.create_group("layers")
-        for name in ("gray", "detect_mat", "objmap"):
-            layers.create_dataset(name, data=np.zeros((2, 2)))
+    store = zarr_store_path(tmp_path, "plate", "image")
+    store.parent.mkdir(parents=True, exist_ok=True)
+    Image(np.zeros((4, 4, 3), dtype=np.uint8)).save2zarr(store)
     config_path = tmp_path / "controller.json"
     config_path.write_text(
         json.dumps(
@@ -440,11 +450,10 @@ def test_duplicate_controller_launches_finalizer_once(
     config = json.loads(config_path.read_text(encoding="utf-8"))
     config["stage3_scripts"] = []
     config_path.write_text(json.dumps(config), encoding="utf-8")
-    from phenotypic._cli._cli_sidecar import sidecar_path
-
-    sidecar = sidecar_path(tmp_path, "plate", "image")
-    sidecar.parent.mkdir(parents=True, exist_ok=True)
-    sidecar.touch()
+    # A finished Stage 2 is the raw array AND the token, together: the
+    # controller skips the entry only when Stage 3 can actually replay it.
+    write_stage2_raw(tmp_path, "plate", "image", np.zeros((4, 4), np.uint16))
+    write_stage2_token(tmp_path, "plate", "image", objmap_shape=(4, 4))
     submitted_roles: list[str] = []
 
     def fake_submit(*args, **kwargs):
@@ -817,17 +826,53 @@ def test_cancellation_after_failure_includes_reused_tokens_across_epochs(
     assert cancelled == {"601", "602"}
 
 
-def test_restart_cleanup_removes_only_transient_sidecars(tmp_path: Path) -> None:
-    sidecar = tmp_path / "results" / "plate" / "objmap" / "image.npy"
-    partial = sidecar.parent / ".image.npy.deadbeef.tmp"
+def test_a_token_without_its_raw_array_is_retryable_not_done(
+    tmp_path: Path,
+) -> None:
+    """The controller's already-done skip tests both halves of the signal.
+
+    A token-only probe makes the controller ``continue`` past the entry, so it
+    is never resubmitted -- and the SLURM path has nothing else that routes it
+    back to Stage 2. The image is stranded for the life of the run
+    (ledger FLOW-17 / M7).
+    """
+    from phenotypic._cli._cli_staged_controller import _classify_stage2
+
+    config_path = _controller_fixture(tmp_path)
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    entries = [
+        StagedManifestEntry("plate", "image.tif", "image", "/in/image.tif")
+    ]
+
+    write_stage2_raw(tmp_path, "plate", "image", np.zeros((4, 4), np.uint16))
+    write_stage2_token(tmp_path, "plate", "image", objmap_shape=(4, 4))
+    assert _classify_stage2(config, entries, 0) == ([], [])
+
+    stage2_raw_path(tmp_path, "plate", "image").unlink()
+    retryable, terminal = _classify_stage2(config, entries, 0)
+
+    assert [entry.stem for entry in retryable] == ["image"]
+    assert terminal == []
+
+
+def test_restart_cleanup_removes_only_transient_stage2_state(
+    tmp_path: Path,
+) -> None:
+    """``--restart`` drops the Stage-2 signal and keeps measured output.
+
+    ``clear_stage2_sidecars`` used to do this by globbing
+    ``results/*/objmap/*.npy``. The signal now lives under
+    ``.phenotypic/progress/``, which ``clear_machine_state`` -- already called
+    on the same ``--restart`` branch -- wipes wholesale. This test is what
+    keeps that from being an assumption.
+    """
+    write_stage2_raw(tmp_path, "plate", "image", np.zeros((4, 4), np.uint16))
+    write_stage2_token(tmp_path, "plate", "image", objmap_shape=(4, 4))
     parquet = tmp_path / "results" / "plate" / "measurements" / "image.parquet"
-    sidecar.parent.mkdir(parents=True)
     parquet.parent.mkdir(parents=True)
-    sidecar.touch()
-    partial.touch()
     parquet.touch()
 
-    assert clear_stage2_sidecars(tmp_path) == 2
-    assert not sidecar.exists()
-    assert not partial.exists()
+    assert clear_machine_state(tmp_path) is True
+    assert not stage2_token_path(tmp_path, "plate", "image").exists()
+    assert not stage2_raw_path(tmp_path, "plate", "image").exists()
     assert parquet.exists()

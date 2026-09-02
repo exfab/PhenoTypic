@@ -1,7 +1,12 @@
 """Tests for delta-based intermediate storage in ImagePipeline.
 
-Covers the ``_layers_modified_by()`` helper, delta HDF5 output from
-``apply_with_intermediates()``, and corrector base-file emission.
+Covers the ``_layers_modified_by()`` helper, delta OME-Zarr output from
+``apply_with_intermediates()``, and corrector base-store emission.
+
+A delta store carries the layers the operation modified **plus ``gray``**:
+``save_intermediate_zarr`` always co-writes the primary series, without which
+the store has no anchor for its label group or its OME projection (user ruling,
+2026-08-19).
 
 The delta-intermediate *resolver/scanner* tests
 (``build_layer_resolution_index`` / ``SweepOutputScanner``) were removed with
@@ -11,8 +16,9 @@ no surviving production consumer. The core *write* path exercised here
 (``apply_with_intermediates``) is still used by the builder GUI.
 """
 
-import h5py
+import numpy as np
 
+from phenotypic import Image
 from phenotypic._core._pipeline_parts._image_pipeline_core import _layers_modified_by
 from phenotypic._core._image_pipeline import ImagePipeline
 from phenotypic.abc_ import ImageCorrector
@@ -22,6 +28,16 @@ from phenotypic.measure import MeasureSize
 from phenotypic.refine import SmallObjectRemover
 
 _ALL_LAYERS = {"rgb", "gray", "detect_mat", "objmap"}
+
+
+def _store_layers(store) -> set[str]:
+    """Every layer a store actually carries: its series plus its label."""
+    from phenotypic.sdk_ import ngff_
+
+    block = ngff_.read_phenotypic_attributes(store)
+    return set(block.get(ngff_.PhenotypicAttr.SERIES, {})) | set(
+        block.get(ngff_.PhenotypicAttr.LABELS, {})
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -74,9 +90,9 @@ class TestLayersModifiedBy:
 
 
 class TestDeltaIntermediatesOutput:
-    """Pipeline.apply_with_intermediates writes delta HDF5 files."""
+    """Pipeline.apply_with_intermediates writes delta OME-Zarr stores."""
 
-    def test_delta_files_contain_only_modified_layers(self, tmp_path):
+    def test_delta_stores_contain_the_modified_layers_plus_gray(self, tmp_path):
         from phenotypic.data import load_synth_yeast_plate
 
         image = load_synth_yeast_plate()
@@ -85,32 +101,31 @@ class TestDeltaIntermediatesOutput:
         out_dir = tmp_path / "intermediates"
         result = pipeline.apply_with_intermediates(image, output_dir=out_dir)
 
-        # -- base file: all 4 layers ---------------------------------
-        base = out_dir / "base_00.h5"
-        assert base.exists(), "base_00.h5 should be created"
-        with h5py.File(base, "r") as f:
-            assert "rgb" in f
-            assert "gray" in f
-            assert "detect_mat" in f
-            assert "objmap" in f
+        # -- base store: all 4 layers ---------------------------------
+        base = out_dir / "base_00.ome.zarr"
+        assert base.is_dir(), "base_00.ome.zarr should be created"
+        assert _store_layers(base) == _ALL_LAYERS
 
-        # -- enhancer delta: detect_mat only --------------------------
-        enhancer_file = out_dir / "00_BlurGauss.h5"
-        assert enhancer_file.exists(), "00_BlurGauss.h5 should be created"
-        with h5py.File(enhancer_file, "r") as f:
-            assert "detect_mat" in f
-            assert "rgb" not in f
-            assert "gray" not in f
-            assert "objmap" not in f
+        # -- enhancer delta: detect_mat, plus the co-written gray -----
+        enhancer_store = out_dir / "00_BlurGauss.ome.zarr"
+        assert enhancer_store.is_dir(), "00_BlurGauss.ome.zarr should be created"
+        assert _store_layers(enhancer_store) == {"gray", "detect_mat"}
+        # The delta really is the POST-op state, not a copy of the base.
+        assert not np.array_equal(
+            Image.load_layer_zarr(enhancer_store, "detect_mat"),
+            Image.load_layer_zarr(base, "detect_mat"),
+        )
+        # ... and the co-written gray is the real gray, not a zeros filler.
+        np.testing.assert_array_equal(
+            Image.load_layer_zarr(enhancer_store, "gray"),
+            Image.load_layer_zarr(base, "gray"),
+        )
 
-        # -- detector delta: objmap only ------------------------------
-        detector_file = out_dir / "01_OtsuDetector.h5"
-        assert detector_file.exists(), "01_OtsuDetector.h5 should be created"
-        with h5py.File(detector_file, "r") as f:
-            assert "objmap" in f
-            assert "rgb" not in f
-            assert "gray" not in f
-            assert "detect_mat" not in f
+        # -- detector delta: objmap, plus the co-written gray ---------
+        detector_store = out_dir / "01_OtsuDetector.ome.zarr"
+        assert detector_store.is_dir(), "01_OtsuDetector.ome.zarr should be created"
+        assert _store_layers(detector_store) == {"gray", "objmap"}
+        assert int(Image.load_layer_zarr(detector_store, "objmap").max()) > 0
 
         # -- result image is valid ------------------------------------
         assert result.image is not None
@@ -122,7 +137,7 @@ class TestDeltaIntermediatesOutput:
 
 
 class TestCorrectorEmitsBase:
-    """Pipeline containing a corrector produces a base_NN.h5 file."""
+    """Pipeline containing a corrector produces a base_NN.ome.zarr store."""
 
     def test_corrector_emits_base(self, tmp_path):
         from phenotypic.data import load_synth_yeast_plate
@@ -135,24 +150,22 @@ class TestCorrectorEmitsBase:
         out_dir = tmp_path / "intermediates"
         pipeline.apply_with_intermediates(image, output_dir=out_dir)
 
-        # base_00.h5 -> initial base
-        assert (out_dir / "base_00.h5").exists()
-        with h5py.File(out_dir / "base_00.h5", "r") as f:
-            assert set(f.keys()) & _ALL_LAYERS == _ALL_LAYERS
+        # base_00.ome.zarr -> initial base
+        assert (out_dir / "base_00.ome.zarr").is_dir()
+        assert _store_layers(out_dir / "base_00.ome.zarr") == _ALL_LAYERS
 
-        # 00_BlurGauss.h5 -> detect_mat delta
-        assert (out_dir / "00_BlurGauss.h5").exists()
-        with h5py.File(out_dir / "00_BlurGauss.h5", "r") as f:
-            assert "detect_mat" in f
-            assert "rgb" not in f
+        # 00_BlurGauss.ome.zarr -> detect_mat delta (+ gray)
+        assert (out_dir / "00_BlurGauss.ome.zarr").is_dir()
+        assert _store_layers(out_dir / "00_BlurGauss.ome.zarr") == {
+            "gray", "detect_mat",
+        }
 
-        # base_01.h5 -> corrector base (all layers)
-        assert (out_dir / "base_01.h5").exists()
-        with h5py.File(out_dir / "base_01.h5", "r") as f:
-            assert set(f.keys()) & _ALL_LAYERS == _ALL_LAYERS
+        # base_01.ome.zarr -> corrector base (all layers)
+        assert (out_dir / "base_01.ome.zarr").is_dir()
+        assert _store_layers(out_dir / "base_01.ome.zarr") == _ALL_LAYERS
 
-        # 02_OtsuDetector.h5 -> objmap delta
-        assert (out_dir / "02_OtsuDetector.h5").exists()
-        with h5py.File(out_dir / "02_OtsuDetector.h5", "r") as f:
-            assert "objmap" in f
-            assert "rgb" not in f
+        # 02_OtsuDetector.ome.zarr -> objmap delta (+ gray)
+        assert (out_dir / "02_OtsuDetector.ome.zarr").is_dir()
+        assert _store_layers(out_dir / "02_OtsuDetector.ome.zarr") == {
+            "gray", "objmap",
+        }

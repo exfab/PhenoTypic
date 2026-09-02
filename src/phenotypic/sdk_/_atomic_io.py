@@ -22,6 +22,7 @@ import json
 import os
 import tempfile
 from collections.abc import Callable, Mapping
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from typing import Any, Union
 
@@ -30,12 +31,21 @@ PARQUET_WRITE_OPTIONS: dict[str, Any] = {
     "compression_level": 3,
 }
 
+CommitGuard = Callable[[], AbstractContextManager[None]]
+
+
+def publication_commit(
+    commit_guard: CommitGuard | None,
+) -> AbstractContextManager[None]:
+    """Return the narrow context guarding one canonical filesystem mutation."""
+    return nullcontext() if commit_guard is None else commit_guard()
 
 def _atomic_replace(
     target: Path,
     data: bytes,
     *,
     pre_replace: Callable[[], None] | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """Write ``data`` to a same-dir temp file, fsync, then replace ``target``.
 
@@ -74,9 +84,10 @@ def _atomic_replace(
             os.fsync(handle.fileno())
         finally:
             handle.close()
-        if pre_replace is not None:
-            pre_replace()
-        os.replace(tmp_path, target)
+        with publication_commit(commit_guard):
+            if pre_replace is not None:
+                pre_replace()
+            os.replace(tmp_path, target)
     except BaseException:
         if tmp_path is not None:
             try:
@@ -91,6 +102,8 @@ def atomic_write_with_writer(
     writer: Callable[[str], None],
     *,
     pre_replace: Callable[[], None] | None = None,
+    commit_guard: CommitGuard | None = None,
+    temp_suffix: str = ".tmp",
 ) -> None:
     """Atomically write ``path`` using a callback that receives a temp path.
 
@@ -111,7 +124,7 @@ def atomic_write_with_writer(
         handle = tempfile.NamedTemporaryFile(
             dir=target.parent,
             prefix=f".{target.name}.",
-            suffix=".tmp",
+            suffix=temp_suffix,
             delete=False,
         )
         tmp_path = handle.name
@@ -119,9 +132,10 @@ def atomic_write_with_writer(
         writer(tmp_path)
         with open(tmp_path, "r+b") as fh:
             os.fsync(fh.fileno())
-        if pre_replace is not None:
-            pre_replace()
-        os.replace(tmp_path, target)
+        with publication_commit(commit_guard):
+            if pre_replace is not None:
+                pre_replace()
+            os.replace(tmp_path, target)
     except BaseException:
         if tmp_path is not None:
             try:
@@ -137,6 +151,7 @@ def atomic_write_text(
     *,
     encoding: str = "utf-8",
     pre_replace: Callable[[], None] | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """Atomically write ``text`` to ``path`` (temp sibling + ``os.replace``).
 
@@ -158,6 +173,7 @@ def atomic_write_text(
         Path(path),
         text.encode(encoding),
         pre_replace=pre_replace,
+        commit_guard=commit_guard,
     )
 
 
@@ -166,6 +182,7 @@ def atomic_write_bytes(
     data: bytes,
     *,
     pre_replace: Callable[[], None] | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """Atomically write ``data`` to ``path`` (temp sibling + ``os.replace``).
 
@@ -181,7 +198,12 @@ def atomic_write_bytes(
     Raises:
         OSError: If the write or rename fails (the temp file is removed first).
     """
-    _atomic_replace(Path(path), bytes(data), pre_replace=pre_replace)
+    _atomic_replace(
+        Path(path),
+        bytes(data),
+        pre_replace=pre_replace,
+        commit_guard=commit_guard,
+    )
 
 
 def atomic_write_json(
@@ -192,6 +214,7 @@ def atomic_write_json(
     sort_keys: bool = True,
     ensure_ascii: bool = False,
     pre_replace: Callable[[], None] | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """Atomically write a JSON payload with deterministic formatting.
 
@@ -213,12 +236,15 @@ def atomic_write_json(
         )
         + "\n",
         pre_replace=pre_replace,
+        commit_guard=commit_guard,
     )
 
 
 def atomic_write_parquet(
     path: Union[str, Path],
     frame: Any,
+    *,
+    commit_guard: CommitGuard | None = None,
     **kwargs: Any,
 ) -> None:
     """Atomically write a pandas-like frame with shared parquet defaults.
@@ -232,4 +258,5 @@ def atomic_write_parquet(
     atomic_write_with_writer(
         path,
         lambda tmp_path: frame.to_parquet(tmp_path, **write_options),
+        commit_guard=commit_guard,
     )

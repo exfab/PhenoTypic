@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from phenotypic import ImagePipeline
+import pytest
+
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
 from phenotypic.tune import (
@@ -16,6 +18,7 @@ from phenotypic.tune.strategy import (
 )
 from phenotypic.tune._engine import TuningEngine
 from phenotypic.tune._spec import Budget, TuningSpec
+from phenotypic.tune._study_store import JournalStudyStore, Trial
 
 
 class _ConstScorer(Scorer):
@@ -143,6 +146,244 @@ def test_engine_budget_caps_trials():
     engine = TuningEngine(spec)
     engine.optimize([load_synth_yeast_plate()])
     assert len(engine.store) == 3
+
+
+def test_engine_does_not_count_an_abandoned_running_trial_against_budget(monkeypatch):
+    """Replacing completed_count with len would stop before evaluating a recovery trial."""
+    from phenotypic.tune._evaluation._evaluator import EvaluationResult
+    from phenotypic.tune.strategy._config import GridConfig as _GridConfig
+
+    abandoned = Trial(number=0, params={}, score=0.0, terms={}, n_images=0)
+
+    class _ResumableStore:
+        def __init__(self) -> None:
+            self.trials = [abandoned]
+            self.evaluated: list[Trial] = []
+
+        def __len__(self) -> int:
+            return len(self.trials)
+
+        def terminal_trials(self) -> list[Trial]:
+            return list(self.evaluated)
+
+        def completed_count(self) -> int:
+            return len(self.evaluated)
+
+        def is_resumable_in_place(self) -> bool:
+            return True
+
+        def append(self, trial: Trial) -> None:
+            self.evaluated.append(trial)
+            self.trials.append(trial)
+
+        def best(self):
+            return self.evaluated[0] if self.evaluated else None
+
+        def param_importances(self):
+            return None
+
+        def pareto_front(self):
+            return []
+
+        def knee_point(self, front):
+            return None
+
+    class _OneRecoveryTrial:
+        def __init__(self, store: _ResumableStore) -> None:
+            self._store = store
+            self._suggested = False
+
+        def suggest(self):
+            self._suggested = True
+            return {"1.ignore_zeros": True}, _SpyChannel()
+
+        def register_result(self, params, result, *, pruned=False) -> None:
+            self._store.append(
+                Trial(number=1, params=params, score=result.score, terms={}, n_images=1)
+            )
+
+        def is_exhausted(self) -> bool:
+            return self._suggested
+
+    store = _ResumableStore()
+    monkeypatch.setattr(
+        _GridConfig,
+        "build",
+        lambda self, space, bound_store, *, directions=None: _OneRecoveryTrial(bound_store),
+    )
+    monkeypatch.setattr(
+        Evaluator,
+        "evaluate",
+        lambda self, *args, **kwargs: EvaluationResult(
+            score=0.3, terms={"Count": 0.3}, n_images=1
+        ),
+    )
+
+    TuningEngine(_spec(Budget(n_trials=1), _base()), store=store).optimize([])
+
+    assert [trial.number for trial in store.evaluated] == [1]
+
+
+def test_engine_preserves_legacy_strategy_config_build_signature() -> None:
+    """Third-party configs overriding the old build signature still execute."""
+    from typing import Literal
+
+    from phenotypic.tune.score import CompositeScorer
+    from phenotypic.tune.strategy._config import StrategyConfig
+
+    seen_directions: list[list[str] | None] = []
+
+    class _AlreadyExhaustedStrategy:
+        def suggest(self):
+            raise AssertionError(
+                "an exhausted compatibility strategy must not suggest"
+            )
+
+        def register_result(self, params, result, *, pruned=False) -> None:
+            raise AssertionError(
+                "an exhausted compatibility strategy must not tell"
+            )
+
+        def is_exhausted(self) -> bool:
+            return True
+
+    class _LegacyOptunaConfig(StrategyConfig):
+        kind: Literal["optuna"] = "optuna"
+
+        def build(self, space, store, *, directions=None):
+            seen_directions.append(directions)
+            return _AlreadyExhaustedStrategy()
+
+    spec = TuningSpec(
+        pipeline=_base(),
+        search_space=_grid_space(),
+        scorer=CompositeScorer(
+            scorers=[_ConstScorer(), _ConstScorer()],
+            multi_objective=True,
+        ),
+        evaluator=Evaluator(),
+        strategy=_LegacyOptunaConfig(),
+        budget=Budget(n_trials=1),
+    )
+
+    assert TuningEngine(spec).optimize([]) is None
+    assert seen_directions == [["minimize", "minimize"]]
+
+
+def test_engine_invokes_legacy_optuna_subclass_build_and_binds_axes() -> None:
+    """An inherited objective hook cannot bypass an old Optuna build override."""
+    from typing import ClassVar
+
+    from phenotypic.tune.score import CompositeScorer
+    from phenotypic.tune.strategy import OptunaConfig
+
+    class _LegacyOptunaConfig(OptunaConfig):
+        called: ClassVar[bool] = False
+        built: ClassVar[object | None] = None
+
+        def build(self, space, store, *, directions=None):
+            type(self).called = True
+            strategy = super().build(space, store, directions=directions)
+            type(self).built = strategy
+            return strategy
+
+    spec = TuningSpec(
+        pipeline=_base(), search_space=_grid_space(),
+        scorer=CompositeScorer(
+            scorers=[_ConstScorer(), _ConstScorer()], multi_objective=True
+        ),
+        evaluator=Evaluator(), strategy=_LegacyOptunaConfig(n_trials=1),
+        budget=Budget(n_trials=1),
+    )
+    store = JournalStudyStore(
+        [Trial(number=0, params={}, score=0.2, terms={}, n_images=1)]
+    )
+
+    TuningEngine(spec, store=store).optimize([])
+
+    assert _LegacyOptunaConfig.called is True
+    assert getattr(_LegacyOptunaConfig.built, "_objective_axes") == ("s0", "s1")
+
+
+def test_engine_invokes_modern_optuna_objective_hook() -> None:
+    """A modern objective-aware override remains the primary dispatch hook."""
+    from typing import ClassVar
+
+    from phenotypic.tune.score import CompositeScorer
+    from phenotypic.tune.strategy import OptunaConfig
+
+    class _ModernOptunaConfig(OptunaConfig):
+        seen_axes: ClassVar[tuple[str, ...] | None] = None
+
+        def build_with_objectives(
+            self, space, store, *, directions=None, objective_axes=None
+        ):
+            type(self).seen_axes = tuple(objective_axes or ())
+            return super().build_with_objectives(
+                space, store, directions=directions, objective_axes=objective_axes
+            )
+
+    spec = TuningSpec(
+        pipeline=_base(), search_space=_grid_space(),
+        scorer=CompositeScorer(
+            scorers=[_ConstScorer(), _ConstScorer()], multi_objective=True
+        ),
+        evaluator=Evaluator(), strategy=_ModernOptunaConfig(n_trials=1),
+        budget=Budget(n_trials=1),
+    )
+    store = JournalStudyStore(
+        [Trial(number=0, params={}, score=0.2, terms={}, n_images=1)]
+    )
+
+    TuningEngine(spec, store=store).optimize([])
+
+    assert _ModernOptunaConfig.seen_axes == ("s0", "s1")
+
+
+def test_engine_legacy_optuna_subclass_scalar_path_has_no_axes() -> None:
+    """Legacy Optuna overrides also run unchanged for scalar scorers."""
+    from typing import ClassVar
+
+    from phenotypic.tune.strategy import OptunaConfig
+
+    class _LegacyScalarOptunaConfig(OptunaConfig):
+        built: ClassVar[object | None] = None
+
+        def build(self, space, store, *, directions=None):
+            strategy = super().build(space, store, directions=directions)
+            type(self).built = strategy
+            return strategy
+
+    spec = TuningSpec(
+        pipeline=_base(), search_space=_grid_space(), scorer=_ConstScorer(),
+        evaluator=Evaluator(), strategy=_LegacyScalarOptunaConfig(n_trials=1),
+        budget=Budget(n_trials=1),
+    )
+    store = JournalStudyStore(
+        [Trial(number=0, params={}, score=0.2, terms={}, n_images=1)]
+    )
+
+    TuningEngine(spec, store=store).optimize([])
+
+    assert getattr(_LegacyScalarOptunaConfig.built, "_objective_axes") is None
+
+
+def test_engine_propagates_legacy_optuna_build_errors_unchanged() -> None:
+    """Compatibility dispatch must not catch TypeError raised by an override."""
+    from phenotypic.tune.strategy import OptunaConfig
+
+    class _BrokenLegacyOptunaConfig(OptunaConfig):
+        def build(self, space, store, *, directions=None):
+            raise TypeError("legacy override exploded")
+
+    spec = TuningSpec(
+        pipeline=_base(), search_space=_grid_space(), scorer=_ConstScorer(),
+        evaluator=Evaluator(), strategy=_BrokenLegacyOptunaConfig(n_trials=1),
+        budget=Budget(n_trials=1),
+    )
+
+    with pytest.raises(TypeError, match="legacy override exploded"):
+        TuningEngine(spec).optimize([])
 
 
 def test_engine_resumes_from_store():

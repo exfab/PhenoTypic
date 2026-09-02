@@ -35,14 +35,14 @@ The basic run takes a `tuning_spec.json`, an image directory, and an output
 directory:
 
 ```bash
-python -m phenotypic.tune run spec.json -i ./plates -o ./out
+uv run phenotypic-tune run spec.json -i ./plates -o ./out
 ```
 
 Override the spec's strategy and trial budget, and turn on the two-round
 screening freeze, from the command line:
 
 ```bash
-python -m phenotypic.tune run spec.json -i ./plates -o ./out \
+uv run phenotypic-tune run spec.json -i ./plates -o ./out \
     --strategy tpe \
     --n-trials 200 \
     --screen
@@ -50,7 +50,7 @@ python -m phenotypic.tune run spec.json -i ./plates -o ./out \
 
 `--strategy grid` and `--strategy random` use the built-in configs;
 `tpe`, `cmaes`, `gp`, and `nsga2` build an `OptunaConfig` and require the
-`tune` extra (`uv sync --extras tune`). `--screen` enables the two-round
+`tune` extra (`uv sync --extra tune`). `--screen` enables the two-round
 screening freeze (it is off by default; `--no-screen` is the explicit
 default). `--n-trials` overrides the spec's `Budget.n_trials`.
 
@@ -68,13 +68,20 @@ A run writes its deliverables under `<output>/deliverables/`:
   reserved plates versus the search set.
 
 Alongside the deliverables, `trials.parquet` is written at the **output
-root**. It is dual-purpose: the Optuna resume store *and* the trial journal.
+root**. It is the published trial archive, including PRUNED partial evaluations.
+PRUNED trials consume terminal budget but never participate in best, per-axis,
+Pareto-front, or knee-point selection; only finite COMPLETE trials are eligible
+for those published choices. Optuna keeps its live local store in
+`.pht-tune-cache/study.db`; a SLURM run instead records one shared
+`.pht-tune-cache/journal.log` and publishes `trials.parquet` only after the
+terminal finalizer verifies the budget and a COMPLETE winner.
 
-**Resume** is automatic. Re-running `run` with `-o` pointed at a prior run
-directory *resumes* the study rather than restarting it — grid/random pick up
-from `trials.parquet`, while the Optuna samplers resume from the study store
-(the local `.pht-tune-cache/study.db` or the `--storage-url` study). A killed or
-extended run picks up its prior trials.
+**Resume** is automatic for a local run: re-running `run` with `-o` pointed at
+a prior directory reopens its local `.pht-tune-cache/study.db`. A distributed
+run records its shared journal in the run marker and is published only by its
+terminal lifecycle finalizer. Do not relaunch an output with an active
+lifecycle; after scheduler quiescence, use `uv run phenotypic-tune finalize
+OUTPUT` to recover publication from the recorded backend.
 
 ### Authoring a `TuningSpec` in Python
 
@@ -132,7 +139,7 @@ Gaussian-blur `sigma` ahead of an Otsu detector, scored against an expected
 
 A knob's `key` is a position-indexed path: `"0.sigma"` targets the `sigma`
 field of op `0` (the `BlurGauss`). Save the spec with
-`spec.model_dump_json()` and feed it to `python -m phenotypic.tune run`. For a
+`spec.model_dump_json()` and feed it to `uv run phenotypic-tune run`. For a
 spec that must round-trip through JSON, configure the count check from a
 metadata *path* (`ExpectedVsDetectedCount(metadata="layout.csv", ...)`) — a
 check built from an in-memory frame cannot be rebuilt from JSON.
@@ -143,7 +150,7 @@ When you don't want to hand-author every knob, `auto-space` mines a configured
 pipeline's pydantic fields into a reviewable candidate space — no engine runs:
 
 ```bash
-python -m phenotypic.tune auto-space pipeline.json -o ./out
+uv run phenotypic-tune auto-space pipeline.json -o ./out
 ```
 
 The same inference is available in Python as `infer_search_space`, which
@@ -162,16 +169,16 @@ generously-inferred bound never silently drives a fully-automatic study.
 
 ## The four scoring objectives
 
-Every scorer is a `Scorer` subclass with a higher-is-better objective in
-`[0, 1]`. Pick the one that matches the ground truth you have.
+Every scorer is a `Scorer` subclass that emits a bounded cost in `[0, 1]`:
+`0` is perfect, `1` is worst, and every objective is minimized.
 
 ### `QCScorer`
 
 Use it when you have **no ground-truth masks** but you know the expected colony
 **count** per plate (e.g. a 96-well layout). It is a purely statistical check:
-it wraps `phenotypic.analysis.ExpectedVsDetectedCount` and scores each
-`groupby` unit on `|detected − expected| / expected`, folded to a
-higher-is-better term.
+it wraps `phenotypic.analysis.ExpectedVsDetectedCount` and converts each
+`groupby` unit's `|detected − expected| / expected` discrepancy into a
+bounded lower-is-better cost.
 
 It requires a configured count check on its `check` field. Configure that check
 from a metadata **path** so the scorer round-trips through `tuning_spec.json`:
@@ -247,9 +254,10 @@ Use it to **combine** the above into one objective — the small complementary
 panel no single metric covers. It nests a `list[Scorer]` on its `scorers` field
 and composes them two ways:
 
-- **single-objective** (default): a `weights`-weighted arithmetic blend, or
-  (without weights) the geometric mean — so one weak axis cannot be masked by a
-  strong one.
+- **single-objective** (default): an augmented Tchebycheff blend that is
+  worst-axis-dominant; set `blend="weighted_mean"` for the compensatory option.
+  A geometric mean is intentionally unavailable because one zero-cost axis would
+  annihilate the product and mask weak axes.
 - **multi-objective** (`multi_objective=True`): per-child objectives kept
   separate, driving a true Pareto study (requires an Optuna `nsga2` strategy;
   pairing a multi-objective scorer with grid/random is rejected at spec
@@ -265,6 +273,17 @@ scorer = CompositeScorer(
 ```
 
 ## GUI interface
+
+```{admonition} Currently unmounted
+:class: warning
+
+The `/tune/` co-pilot described below is unmounted from the GUI hub (see
+`docs/superpowers/specs/2026-08-26-gui-simplification-removals`, §2): its
+code is retained on disk and unit-tested, but it is not reachable from
+`phenotypic-gui`'s top-bar navigation. The section below documents its design
+for when it is re-mounted; use the CLI interface above for tuning in the
+meantime.
+```
 
 `phenotypic-gui` mounts a `/tune/` Dash co-pilot as a tab alongside
 **Home · Builder · Tune · Run · Viewer · Analysis**. The co-pilot is a full
@@ -286,7 +305,7 @@ see below.)
 
 The Run destination (unlocked once a pipeline is chosen) is a launch form whose
 live command card mirrors your choices into the real
-`python -m phenotypic.tune run` invocation — the same subcommand and flag names
+`uv run phenotypic-tune run` invocation — the same subcommand and flag names
 you would type by hand. It exposes:
 
 - **Inputs** — an in-sandbox image-source override (blank falls back to the
@@ -307,7 +326,7 @@ terminal (though the live command card still lets you, if you prefer).
 ### Monitor — watch, curate, and export
 
 Once a run is deployed (or you **Bind run** to an existing
-`python -m phenotypic.tune` output directory via the sandbox-bounded run
+`phenotypic-tune` output directory via the sandbox-bounded run
 picker), the Monitor destination opens the live read over the study. It carries
 a run switcher across registered Local/SLURM runs, a Local-only **Cancel**
 (SLURM runs are not killed from the GUI in v1), and an **Export best pipeline**
@@ -326,17 +345,14 @@ button — plus the four classic sub-tabs:
 - **Space** — the inferred search space as editable knob-rows; export the
   edited space back to `tuning_spec.json`.
 - **Launch** — a strategy / budget / storage-URL form whose live command card
-  renders a copy-paste `python -m phenotypic.tune run` invocation.
+  renders a copy-paste `uv run phenotypic-tune run` invocation.
 
 The co-pilot keeps its import surface optuna-free — the live study is opened
 lazily inside the Monitor poll only — and binding an existing run never writes
 to its directory.
 
-For the full walkthrough, see the
-[Tune co-pilot tutorial](../../tutorials/gui/16_tune_copilot.md).
-
 ## Distributed runs
 
 For running a single tune study across many SLURM compute nodes that share one
-Optuna study (via `--slurm` and a Postgres `--storage-url`), see
+Optuna journal (via `--slurm`), see
 [Distributed Tuning on HPCC Clusters](tune_distributed_hpcc.md).

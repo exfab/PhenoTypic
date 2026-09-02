@@ -14,6 +14,7 @@ Covers the three entry points added alongside the splitter:
 from __future__ import annotations
 
 import json
+import logging
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
@@ -35,12 +36,14 @@ from phenotypic.sdk_ import (
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic._cli._cli_output_manager import (
+    OutputManager,
     _image_metadata_from_mirror,
     _collect_feature_headers,
     _load_pipeline_from_output_dir,
     _reset_qc_review_state,
     aggregate_measurements,
     finalize_post_master_outputs,
+    join_metadata,
     split_master_by_feature,
 )
 from phenotypic.schema import EXPERIMENT, IMAGE
@@ -78,6 +81,32 @@ def test_review_state_reset_serializes_with_gui_writer(tmp_path: Path) -> None:
         reset.result(timeout=5)
 
     assert not state_path.exists()
+
+
+def test_join_metadata_infers_schema_from_string_after_row_100(
+    tmp_path: Path,
+) -> None:
+    """A late alphanumeric strain identifier must not abort CSV loading."""
+    metadata_csv = tmp_path / "metadata.csv"
+    numeric_identifiers = [str(index) for index in range(101)]
+    metadata_csv.write_text(
+        "Metadata_Strain\n"
+        + "\n".join([*numeric_identifiers, "strain-outlier"])
+        + "\n",
+        encoding="utf-8",
+    )
+    measurements = pl.DataFrame(
+        {
+            "Metadata_Strain": ["strain-outlier"],
+            "Size_Area": [12.0],
+        }
+    )
+
+    joined = join_metadata(measurements, metadata_csv)
+
+    assert joined.to_dicts() == [
+        {"Metadata_Strain": "strain-outlier", "Size_Area": 12.0}
+    ]
 
 
 def _make_master_df(pipeline: ImagePipeline) -> pl.DataFrame:
@@ -696,3 +725,141 @@ class TestRembiImageMetadataExcludesPhantoms:
         rows = _image_metadata_from_mirror(mirror)
 
         assert sorted(r["ImageName"] for r in rows) == ["plateA", "plateB"]
+
+
+# ---------------------------------------------------------------------------
+# save_image_store — the OME-Zarr replacement for save_image_hdf
+# ---------------------------------------------------------------------------
+
+
+def _make_manager(tmp_path: Path) -> OutputManager:
+    """Same construction the real save_image_hdf tests use.
+
+    See tests/integration/cli/test_staged_gpu_local.py:114.
+    """
+    return OutputManager.from_config(tmp_path, ".tiff", save_overlays=False)
+
+
+def _synth_image():
+    from phenotypic import Image
+    from phenotypic.data import load_synth_yeast_plate
+
+    return Image(load_synth_yeast_plate())
+
+
+def test_save_image_store_writes_under_results_dataset_zarr(tmp_path) -> None:
+    from phenotypic.sdk_ import zarr_store_path
+
+    manager = _make_manager(tmp_path)
+    saved = manager.save_image_store(_synth_image(), "ds", "img")
+    assert saved == zarr_store_path(tmp_path, "ds", "img")
+    assert saved.is_dir()
+
+
+def test_save_image_store_round_trips_the_pixels_it_was_given(tmp_path) -> None:
+    """A store at the right path holding the wrong image is still a bug."""
+    import numpy as np
+
+    from phenotypic import Image
+
+    source = _synth_image()
+    manager = _make_manager(tmp_path)
+    saved = manager.save_image_store(source, "ds", "img")
+
+    reloaded = Image.load_zarr(saved)
+    np.testing.assert_array_equal(reloaded.rgb[:], source.rgb[:])
+    np.testing.assert_allclose(reloaded.gray[:], source.gray[:], rtol=0, atol=0)
+
+
+def test_save_image_store_writes_work_id_at_write_time(tmp_path) -> None:
+    """The root zarr.json is written last, so a post-hoc patch is impossible."""
+    from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
+
+    manager = _make_manager(tmp_path)
+    saved = manager.save_image_store(_synth_image(), "ds", "img", work_id="w-7")
+    assert read_phenotypic_attributes(saved)[PhenotypicAttr.WORK_ID] == "w-7"
+
+
+def test_save_image_store_forwards_durable_to_the_writer(tmp_path, monkeypatch) -> None:
+    """`durable` is the SLURM fsync lever; dropping it silently loses durability."""
+    from phenotypic import Image
+
+    seen: dict = {}
+
+    def _fake_save2zarr(
+        self,
+        path,
+        *,
+        work_id=None,
+        durable=None,
+        commit_guard=None,
+    ):
+        seen["path"] = Path(path)
+        seen["work_id"] = work_id
+        seen["durable"] = durable
+        seen["commit_guard"] = commit_guard
+        Path(path).mkdir(parents=True, exist_ok=True)
+        return Path(path)
+
+    monkeypatch.setattr(Image, "save2zarr", _fake_save2zarr)
+    manager = _make_manager(tmp_path)
+    manager.save_image_store(
+        _synth_image(), "ds", "img", work_id="w-9", durable=True
+    )
+    assert seen["durable"] is True
+    assert seen["commit_guard"] is None
+    assert seen["work_id"] == "w-9"
+
+    seen.clear()
+    manager.save_image_store(_synth_image(), "ds", "img", durable=False)
+    assert seen["durable"] is False
+    assert seen["work_id"] is None
+
+
+def test_save_image_store_returns_none_and_logs_on_failure(
+    tmp_path, monkeypatch, caplog
+) -> None:
+    """Preserves save_image_hdf's contract: the workers raise, not the manager."""
+    from phenotypic import Image
+
+    manager = _make_manager(tmp_path)
+    monkeypatch.setattr(
+        Image, "save2zarr", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full"))
+    )
+    with caplog.at_level(logging.WARNING):
+        assert manager.save_image_store(_synth_image(), "ds", "img") is None
+    messages = [record.getMessage() for record in caplog.records]
+    assert any("Failed to save" in message for message in messages)
+    # The identifying detail, not just the prefix: which image, and why.
+    assert any(
+        "ds" in message and "img" in message and "disk full" in message
+        for message in messages
+    )
+
+
+def test_save_image_store_preserves_a_same_target_live_part_on_failure(
+    tmp_path, monkeypatch
+) -> None:
+    """OutputManager cannot own a part allocated inside another writer."""
+    from phenotypic import Image
+    from phenotypic.sdk_ import zarr_store_path
+    from phenotypic.sdk_.ngff_ import new_part_path
+
+    manager = _make_manager(tmp_path)
+    final = zarr_store_path(tmp_path, "ds", "img")
+    live_part = new_part_path(final)
+    live_part.mkdir(parents=True)
+    monkeypatch.setattr(
+        Image, "save2zarr", lambda *a, **k: (_ for _ in ()).throw(OSError("boom"))
+    )
+
+    assert manager.save_image_store(_synth_image(), "ds", "img") is None
+    assert live_part.is_dir(), "another same-target writer owns this part"
+
+
+def test_save_image_store_result_passes_valid_staged_store(tmp_path) -> None:
+    from phenotypic.sdk_.ngff_ import valid_staged_store
+
+    manager = _make_manager(tmp_path)
+    saved = manager.save_image_store(_synth_image(), "ds", "img")
+    assert valid_staged_store(saved) is True

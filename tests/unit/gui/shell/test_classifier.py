@@ -93,6 +93,27 @@ def test_image_extension_case_insensitive(tmp_path: Path) -> None:
     assert caps.image_count == 2
 
 
+def test_store_child_counts_as_one_source_image(tmp_path: Path) -> None:
+    store = tmp_path / "p01.ome.zarr"
+    (store / "rgb" / "c").mkdir(parents=True)
+    (store / "rgb" / "c" / "0").write_bytes(b"chunk")
+
+    caps = classify(tmp_path)
+
+    assert caps.is_image_dir is True
+    assert caps.image_count == 1
+
+
+def test_direct_store_root_counts_as_one_source_image(tmp_path: Path) -> None:
+    store = tmp_path / "p01.ome.zarr"
+    store.mkdir()
+
+    caps = classify(store)
+
+    assert caps.is_image_dir is True
+    assert caps.image_count == 1
+
+
 def test_cli_output_directory(tmp_path: Path) -> None:
     """NESTED layout: master parquet under deliverables/, results/ at root."""
     _seed_deliverables_cli_output(tmp_path, dashboard=True)

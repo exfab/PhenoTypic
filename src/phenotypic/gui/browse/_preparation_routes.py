@@ -18,6 +18,7 @@ from phenotypic.gui.browse._source_probe import (
     SourceRevision,
     probe_source,
 )
+from phenotypic.gui.browse._source_item import is_source_store
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
 __all__ = ["BrowsePreparationApi", "register", "resolve_revision"]
@@ -61,7 +62,11 @@ class BrowsePreparationApi:
         revisions: Sequence[SourceRevision],
     ) -> None:
         """Replace one tab's directional speculative queue."""
-        self.manager.replace_nearby(client_id, generation, revisions)
+        self.manager.replace_nearby(
+            client_id,
+            generation,
+            [revision for revision in revisions if revision.store_revision is None],
+        )
 
     def start_dataset(
         self,
@@ -71,7 +76,9 @@ class BrowsePreparationApi:
     ) -> dict[str, Any]:
         """Start or replace one tab's explicit dataset job."""
         handles = self.manager.prepare_dataset(
-            client_id, generation, revisions
+            client_id,
+            generation,
+            [revision for revision in revisions if revision.store_revision is None],
         )
         with self._lock:
             self._jobs[client_id] = _DatasetJob(
@@ -170,8 +177,8 @@ def resolve_revision(
         source = sandbox.resolve(relative)
     except Exception as exc:  # noqa: BLE001 - fixed client-safe route errors
         raise FileNotFoundError("invalid source token") from exc
-    if not source.is_file():
-        raise FileNotFoundError("source is not a file")
+    if not source.is_file() and not is_source_store(source):
+        raise FileNotFoundError("source is not an image file or Zarr store")
     try:
         revision = probe_source(
             source,

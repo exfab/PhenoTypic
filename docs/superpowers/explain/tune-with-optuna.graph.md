@@ -33,6 +33,9 @@ The narrative companion is [`tune-with-optuna.md`](./tune-with-optuna.md).
 - **The cycle** Strategy → params → Evaluator → result → store → (tell) →
   Strategy is the ask-and-tell loop. Everything below `store.best()` is the
   one-time post-study finalize.
+- **Distributed execution** resolves one `journal://` GPFS backend, submits one
+  worker array, then lets exactly one non-array `afterany` finalizer validate
+  terminal trials and publish artifacts. It is not a parallel scheduler sidecar.
 
 ---
 
@@ -45,6 +48,16 @@ flowchart TD
     INFER("infer_search_space<br/>Tier-1 TuneSpec / Tier-2 heuristics<br/>numeric: [d/4, d·4], log if span &gt;10x/100x")
     SPACE[/"SearchSpace (Knobs)"/]
     PIPE --> INFER --> SPACE
+
+    %% ---- distributed ownership ----
+    SUBMIT("uv run phenotypic-tune run --slurm<br/>claim lifecycle first; then persist artifacts/storage")
+    JOURNAL[("journal:// GPFS log<br/>symlink-locked Optuna storage")]
+    ARRAY("worker array<br/>ask → evaluate → tell")
+    FINALIZER("one non-array afterany finalizer<br/>study identity preflight; COMPLETE+PRUNED budget<br/>finite COMPLETE winner; empty multi front refuses")
+    PUBLISH[/"trials.parquet + deliverables<br/>best_params.json written last"/]
+    SUBMIT --> JOURNAL --> ARRAY
+    ARRAY --> JOURNAL
+    ARRAY --> FINALIZER --> PUBLISH
 
     %% ---- ask-and-tell loop ----
     SPACE --> STRAT
@@ -63,13 +76,13 @@ flowchart TD
     PRUNE{"between rungs:<br/>should_prune()?"}
 
     RUNG --> SCORE --> AGG --> FINAL --> PRUNE
-    PRUNE -- "yes (not final rung)" --> PARTIAL[/"EvaluationResult<br/>pruned=True (partial)"/]
+    PRUNE -- "yes (not final rung)" --> PARTIAL[/"PRUNED partial<br/>history + budget only"/]
     PRUNE -- "no / final rung" --> RESULT[/"EvaluationResult<br/>score, terms, objectives?, gap, suspicious"/]
 
     RESULT --> STORE
     PARTIAL --> STORE
     FAIL --> STORE
-    STORE[("StudyStore<br/>append Trial; budget number+=1, failures+=failed")]
+    STORE[("StudyStore<br/>exact COMPLETE-axis preflight before attrs/append<br/>budget number+=1, failures+=failed")]
 
     STORE -. "tell: register_result(params, result)" .-> STRAT
     STORE --> EXH{"exhausted? / n_trials / max_failures"}
@@ -77,9 +90,9 @@ flowchart TD
     EXH -- yes --> BEST
 
     %% ---- one-time finalize ----
-    BEST("store.best()")
-    IMP("param importance<br/>fANOVA (interactions) | RF-permutation (main effects)")
-    PARETO("multi-objective:<br/>Pareto front → knee point")
+    BEST("finite COMPLETE store.best()")
+    IMP("param importance<br/>per-axis: scorer-required full finite COMPLETE vectors")
+    PARETO("multi-objective:<br/>scorer-required full finite COMPLETE Pareto front → knee<br/>empty eligible front → refuse")
     GEN("held-out re-eval →<br/>generalization gap (report-only)")
     BEST --> IMP
     BEST --> PARETO
@@ -112,19 +125,29 @@ digraph tune_dataflow {
     agg    [shape=box, style=rounded, label="robust-aggregate per term\nmedian + lambda*IQR, clamp01  (lambda=0.5)"];
     final  [shape=box, style=rounded, label="scorer.finalize -> running scalar"];
     prune  [shape=diamond, label="between rungs:\nshould_prune()?"];
-    partial[shape=box, style=filled, fillcolor="#ffd", label="EvaluationResult\npruned=True (partial)"];
+    partial[shape=box, style=filled, fillcolor="#ffd", label="PRUNED partial\nhistory + budget only"];
     result [shape=box, style=filled, fillcolor="#dfd", label="EvaluationResult\nscore, terms, objectives?, gap, suspicious"];
 
-    store  [shape=cylinder, style=filled, fillcolor="#efe", label="StudyStore\nappend Trial; budget number+=1, failures+=failed"];
+    store  [shape=cylinder, style=filled, fillcolor="#efe", label="StudyStore\nexact COMPLETE-axis preflight before attrs/append\nbudget number+=1, failures+=failed"];
     exh    [shape=diamond, label="exhausted?\nn_trials / max_failures"];
 
-    best   [shape=box, style=rounded, label="store.best()"];
-    imp    [shape=box, style=rounded, label="param importance\nfANOVA (interactions) | RF-permutation (main effects)"];
-    pareto [shape=box, style=rounded, label="multi-objective:\nPareto front -> knee point"];
+    best   [shape=box, style=rounded, label="finite COMPLETE store.best()"];
+    imp    [shape=box, style=rounded, label="param importance\nper-axis: scorer-required full finite COMPLETE vectors"];
+    pareto [shape=box, style=rounded, label="multi-objective:\nscorer-required full finite COMPLETE Pareto front -> knee\nempty eligible front -> refuse"];
     gen    [shape=box, style=rounded, label="held-out re-eval ->\ngeneralization gap (report-only)"];
 
     // setup
     pipe -> infer -> space -> strat;
+
+    // distributed ownership
+    submit [shape=box, style=rounded, label="uv run phenotypic-tune run --slurm\nclaim lifecycle first; then persist artifacts/storage"];
+    journal [shape=cylinder, style=filled, fillcolor="#eef", label="journal:// GPFS log\nsymlink-locked Optuna storage"];
+    array [shape=box, style=rounded, label="worker array\nask -> evaluate -> tell"];
+    finalizer [shape=box, style=rounded, label="one non-array afterany finalizer\nstudy identity preflight; COMPLETE+PRUNED budget\nfinite COMPLETE winner; empty multi front refuses"];
+    publish [shape=box, style=filled, fillcolor="#dfd", label="trials.parquet + deliverables\nbest_params.json written last"];
+    submit -> journal -> array;
+    array -> journal;
+    array -> finalizer -> publish;
 
     // ask
     strat -> params -> build;
@@ -166,7 +189,8 @@ digraph tune_dataflow {
 | `Scorer.to_cost` | `score/_orient.py` | natural value → cost ∈ [0,1] (Sense + anchor) |
 | robust-aggregate | `_evaluator.py:55` + `_aggregate_math.py:28` | `median + λ·IQR` (clamped), λ=0.5 |
 | `should_prune()` | `_optuna.py:218` (ASHA) | top `1/reduction_factor` survive |
-| `StudyStore` | `_study_store.py` / `_study/_optuna_store.py` | journal or Optuna RDB |
+| `StudyStore` | `_study_store.py` / `_study/_optuna_store.py` | local SQLite, journal, or explicit Optuna RDB |
+| Slurm submit/finalizer | `_tune_cli/_run.py`, `_execution/_slurm.py`, `_tune_cli/_finalize.py` | one array → one `afterany` finalizer → fenced publication |
 | param importance | `_screening.py:85` | fANOVA vs RF-permutation |
 | Pareto knee | `_study/_pareto.py:54,115` | dominance + max chord distance |
 | generalization gap | `_generalization.py:58` | loss-space `heldout_cost − cal_cost`; `rel>0.15 ∧ abs>0.05` flag |

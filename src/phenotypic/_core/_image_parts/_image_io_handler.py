@@ -5,14 +5,19 @@ import json
 import shutil
 import subprocess
 import warnings
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
+from copy import deepcopy
 from datetime import datetime
 from fractions import Fraction
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
+    from phenotypic.sdk_ import CommitGuard
+    from phenotypic.sdk_._measurement_tables import (
+        PreparedEmbeddedMeasurementTable,
+    )
 
 # Check for optional dependencies and import if available
 if importlib.util.find_spec("exifread") is not None:
@@ -35,7 +40,6 @@ else:
 
 import skimage as ski
 
-import phenotypic
 from phenotypic.sdk_.exceptions_ import UnsupportedFileTypeError
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
@@ -44,7 +48,6 @@ from phenotypic.sdk_ import (
     metadata_member_for_label,
 )
 from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS, IO
-from phenotypic.sdk_.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
 
 # -----------------------------------------------------------------------------
@@ -99,10 +102,9 @@ def _remap_legacy_metadata_key(key: str) -> str:
     """
     stored_key = str(key)
     normalized = ensure_metadata_prefix(stored_key)
-    if (
-        metadata_member_for_label(stored_key) is None
-        and not is_metadata_header(stored_key)
-    ):
+    if metadata_member_for_label(
+        stored_key
+    ) is None and not is_metadata_header(stored_key):
         return stored_key
     return normalized
 
@@ -114,7 +116,9 @@ def _metadata_values_equal(left: Any, right: Any) -> bool:
     if isinstance(right, np.generic):
         right = right.item()
     if isinstance(left, np.ndarray) or isinstance(right, np.ndarray):
-        if not isinstance(left, np.ndarray) or not isinstance(right, np.ndarray):
+        if not isinstance(left, np.ndarray) or not isinstance(
+            right, np.ndarray
+        ):
             return False
         if left.dtype != right.dtype or left.shape != right.shape:
             return False
@@ -189,6 +193,46 @@ def _normalize_stored_metadata_items(
     return normalized
 
 
+def _consolidate_store_part(part: Path) -> None:
+    """Collapse a written part's per-node metadata into its root ``zarr.json``.
+
+    Opening a store costs one GET per metadata file -- 8 of a single-series
+    store's 12 -- which is the latency that matters once the destination is
+    object storage and a viewer enumerates many stores. Consolidation collapses
+    that to one and **adds no files**: every per-node ``zarr.json`` remains, so
+    a reader that ignores the key still walks the tree.
+
+    Called on the ``.part``, never on the promoted path. Consolidating a
+    promoted store rewrites its root ``zarr.json`` in place, which is the one
+    write this whole design exists to avoid -- a store must either have its
+    root or not exist -- and it would land after ``promote_store``'s ``fsync``,
+    leaving the consolidated root non-durable under SLURM.
+
+    Legal under the Zarr v3 extension mechanism rather than in spite of it: the
+    core specification requires a reader to fail on an unrecognised metadata
+    field *unless* it carries ``"must_understand": false``, and zarr-python
+    writes exactly that (verified against zarr 3.1.5).
+
+    Two ``ZarrUserWarning``s are suppressed here rather than by a global
+    filter: the consolidated-metadata notice, and ``"Object at
+    METADATA.ome.xml is not recognized as a component of a Zarr hierarchy"``,
+    which fires once per image. Both are instances of the same class -- a
+    ``UserWarning`` subclass -- so filtering on the class covers both, where a
+    ``message=`` regex naming only consolidation would let the second through.
+
+    Args:
+        part: The allocated ``.part`` directory, fully written.
+    """
+    import zarr
+    from zarr.errors import ZarrUserWarning
+
+    from phenotypic.sdk_ import ngff_
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ZarrUserWarning)
+        zarr.consolidate_metadata(ngff_.long_path(part))
+
+
 class _BackCompatUnpickler(pickle.Unpickler):
     """Unpickler that resolves classes which moved since older pickles were written.
 
@@ -258,7 +302,7 @@ class ImageIOHandler(ImageColorSpace):
     This class extends ImageColorSpace to provide comprehensive file I/O capabilities,
     including:
     - Reading images from various file formats (JPEG, PNG, TIFF, RAW)
-    - Writing images to HDF5 and pickle formats
+    - Writing images to OME-Zarr stores and pickle formats
     - Extracting and parsing metadata from image files
     - Managing EXIF, TIFF tags, and custom PhenoTypic metadata
     - Support for raw sensor data processing via rawpy
@@ -271,13 +315,15 @@ class ImageIOHandler(ImageColorSpace):
         Basic usage:
 
         >>> img = ImageIOHandler.imread('photo.jpg')
-        >>> img.save2hdf5('output.h5')
-        >>> loaded = ImageIOHandler.load_hdf5('output.h5')
+        >>> img.save2zarr('output.ome.zarr')
+        >>> loaded = ImageIOHandler.load_zarr('output.ome.zarr')
     """
 
     def __init__(
-            self, arr: np.ndarray | Image | None = None, name: str | None = None,
-            **kwargs
+        self,
+        arr: np.ndarray | Image | None = None,
+        name: str | None = None,
+        **kwargs,
     ):
         """Initialize ImageIOHandler with I/O capabilities.
 
@@ -376,20 +422,26 @@ class ImageIOHandler(ImageColorSpace):
                     for tag, value in tags.items():
                         if tag.startswith("Thumbnail"):
                             continue  # Skip thumbnail data
-                        normalized = ImageIOHandler._normalize_metadata_value(value)
+                        normalized = ImageIOHandler._normalize_metadata_value(
+                            value
+                        )
                         if normalized is not None:
                             metadata[tag] = normalized
 
                             # Check for PhenoTypic data in EXIF UserComment
-                            if tag == "EXIF UserComment" and isinstance(normalized,
-                                                                        str):
+                            if tag == "EXIF UserComment" and isinstance(
+                                normalized, str
+                            ):
                                 try:
                                     phenotypic_data = json.loads(normalized)
                                     if (
-                                            isinstance(phenotypic_data, dict)
-                                            and "phenotypic_version" in phenotypic_data
+                                        isinstance(phenotypic_data, dict)
+                                        and "phenotypic_version"
+                                        in phenotypic_data
                                     ):
-                                        metadata["_phenotypic_data"] = phenotypic_data
+                                        metadata["_phenotypic_data"] = (
+                                            phenotypic_data
+                                        )
                                 except json.JSONDecodeError:
                                     pass
             except Exception:
@@ -408,14 +460,18 @@ class ImageIOHandler(ImageColorSpace):
                             try:
                                 phenotypic_data = json.loads(value)
                                 if (
-                                        isinstance(phenotypic_data, dict)
-                                        and "phenotypic_version" in phenotypic_data
+                                    isinstance(phenotypic_data, dict)
+                                    and "phenotypic_version" in phenotypic_data
                                 ):
-                                    metadata["_phenotypic_data"] = phenotypic_data
+                                    metadata["_phenotypic_data"] = (
+                                        phenotypic_data
+                                    )
                             except json.JSONDecodeError:
                                 pass
                             continue
-                        normalized = ImageIOHandler._normalize_metadata_value(value)
+                        normalized = ImageIOHandler._normalize_metadata_value(
+                            value
+                        )
                         if normalized is not None:
                             metadata[f"PIL:{key}"] = normalized
 
@@ -429,18 +485,22 @@ class ImageIOHandler(ImageColorSpace):
                             # UserComment may have encoding prefix
                             if isinstance(user_comment, bytes):
                                 # Skip encoding prefix if present (first 8 bytes)
-                                if user_comment.startswith(b"ASCII\x00\x00\x00"):
+                                if user_comment.startswith(
+                                    b"ASCII\x00\x00\x00"
+                                ):
                                     user_comment = user_comment[8:]
                                 elif user_comment.startswith(b"UNICODE\x00"):
-                                    user_comment = user_comment[8:].decode("utf-16")
+                                    user_comment = user_comment[8:].decode(
+                                        "utf-16"
+                                    )
                                 else:
                                     user_comment = user_comment.decode(
-                                            "utf-8", errors="replace"
+                                        "utf-8", errors="replace"
                                     )
                             phenotypic_data = json.loads(user_comment)
                             if (
-                                    isinstance(phenotypic_data, dict)
-                                    and "phenotypic_version" in phenotypic_data
+                                isinstance(phenotypic_data, dict)
+                                and "phenotypic_version" in phenotypic_data
                             ):
                                 metadata["_phenotypic_data"] = phenotypic_data
                         except (json.JSONDecodeError, UnicodeDecodeError):
@@ -468,7 +528,9 @@ class ImageIOHandler(ImageColorSpace):
                 if hasattr(img, "tag_v2") and img.tag_v2:
                     for tag_id, value in img.tag_v2.items():
                         tag_name = TIFF_TAGS.get(tag_id, f"Tag_{tag_id}")
-                        normalized = ImageIOHandler._normalize_metadata_value(value)
+                        normalized = ImageIOHandler._normalize_metadata_value(
+                            value
+                        )
                         if normalized is not None:
                             metadata[f"TIFF:{tag_name}"] = normalized
 
@@ -480,8 +542,8 @@ class ImageIOHandler(ImageColorSpace):
                     try:
                         phenotypic_data = json.loads(desc)
                         if (
-                                isinstance(phenotypic_data, dict)
-                                and "phenotypic_version" in phenotypic_data
+                            isinstance(phenotypic_data, dict)
+                            and "phenotypic_version" in phenotypic_data
                         ):
                             metadata["_phenotypic_data"] = phenotypic_data
                     except json.JSONDecodeError:
@@ -507,10 +569,10 @@ class ImageIOHandler(ImageColorSpace):
         if shutil.which("exiftool"):
             try:
                 result = subprocess.run(
-                        ["exiftool", "-json", "-n", str(filepath)],
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
+                    ["exiftool", "-json", "-n", str(filepath)],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 )
                 if result.returncode == 0:
                     exif_data = json.loads(result.stdout)
@@ -518,11 +580,17 @@ class ImageIOHandler(ImageColorSpace):
                         for key, value in exif_data[0].items():
                             if key == "SourceFile":
                                 continue
-                            normalized = ImageIOHandler._normalize_metadata_value(value)
+                            normalized = (
+                                ImageIOHandler._normalize_metadata_value(value)
+                            )
                             if normalized is not None:
                                 metadata[f"EXIF:{key}"] = normalized
                     return metadata
-            except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
+            except (
+                subprocess.TimeoutExpired,
+                json.JSONDecodeError,
+                Exception,
+            ):
                 pass  # Fall through to rawpy
 
         # Fallback to rawpy if exiftool not available
@@ -531,32 +599,39 @@ class ImageIOHandler(ImageColorSpace):
                 with rawpy.imread(str(filepath)) as raw:
                     # Extract available rawpy metadata attributes
                     metadata["rawpy:camera_whitebalance"] = str(
-                            list(raw.camera_whitebalance)
+                        list(raw.camera_whitebalance)
                     )
                     metadata["rawpy:daylight_whitebalance"] = str(
-                            list(raw.daylight_whitebalance)
+                        list(raw.daylight_whitebalance)
                     )
                     metadata["rawpy:num_colors"] = int(raw.num_colors)
                     metadata["rawpy:color_desc"] = (
-                        raw.color_desc.decode("utf-8") if raw.color_desc else None
+                        raw.color_desc.decode("utf-8")
+                        if raw.color_desc
+                        else None
                     )
                     metadata["rawpy:raw_type"] = str(raw.raw_type)
 
                     if raw.sizes:
-                        metadata["rawpy:raw_height"] = int(raw.sizes.raw_height)
+                        metadata["rawpy:raw_height"] = int(
+                            raw.sizes.raw_height
+                        )
                         metadata["rawpy:raw_width"] = int(raw.sizes.raw_width)
                         metadata["rawpy:height"] = int(raw.sizes.height)
                         metadata["rawpy:width"] = int(raw.sizes.width)
 
                     # Black and white levels
                     if (
-                            hasattr(raw, "black_level_per_channel")
-                            and raw.black_level_per_channel is not None
+                        hasattr(raw, "black_level_per_channel")
+                        and raw.black_level_per_channel is not None
                     ):
                         metadata["rawpy:black_level_per_channel"] = str(
-                                list(raw.black_level_per_channel)
+                            list(raw.black_level_per_channel)
                         )
-                    if hasattr(raw, "white_level") and raw.white_level is not None:
+                    if (
+                        hasattr(raw, "white_level")
+                        and raw.white_level is not None
+                    ):
                         metadata["rawpy:white_level"] = int(raw.white_level)
             except Exception:
                 pass
@@ -565,7 +640,16 @@ class ImageIOHandler(ImageColorSpace):
 
     @classmethod
     def imread(
-            cls, filepath: PathLike, rawpy_params: dict | None = None, **kwargs
+        cls,
+        filepath: PathLike,
+        rawpy_params: dict | None = None,
+        *,
+        series: str | None = None,
+        level: int = 0,
+        t: int | None = None,
+        z: int | None = None,
+        c: int | None = None,
+        **kwargs,
     ) -> Image:
         """
         imread is a class method responsible for reading an image file from the specified
@@ -582,6 +666,19 @@ class ImageIOHandler(ImageColorSpace):
             rawpy_params (dict | None): Optional dictionary of parameters for processing raw image
                 files when using rawpy. Supports options like white balance settings, demosaic
                 algorithm, gamma correction, and others. Defaults to None.
+            series (str | None): OME-Zarr store only. Series to read; ``None``
+                resolves it from the store's own OME metadata. Ignored for a
+                flat image file.
+            level (int): OME-Zarr store only. Pyramid level to read; ``0`` is
+                the highest resolution. Ignored for a flat image file.
+            t (int | None): OME-Zarr store only. Index to take on a ``time``
+                axis of size > 1. ``None`` refuses such a store rather than
+                silently reading its first frame.
+            z (int | None): OME-Zarr store only. Index to take on the stacking
+                ``space`` axis when its size is > 1. ``None`` refuses.
+            c (int | None): OME-Zarr store only. Index to take on a ``channel``
+                axis whose size is neither 1 (grayscale) nor 3 (RGB). ``None``
+                refuses.
             **kwargs: Arbitrary keyword arguments to be passed for additional configurations
                 specific to the Image instantiation.
 
@@ -593,7 +690,40 @@ class ImageIOHandler(ImageColorSpace):
             UnsupportedFileTypeError: If the file type of the provided filepath is not supported
                 by the method, either due to its extension not being recognized or due to the
                 absence of required libraries like rawpy.
+            ValueError: If *filepath* is an OME-Zarr store that cannot be mapped
+                onto the 2-D image model -- an HCS plate, a timelapse, a z-stack,
+                or a channel count that is neither 1 nor 3.
+
+        Examples:
+            Read a process-mode store as plain pixels:
+
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from phenotypic import Image
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> img = Image(load_synth_yeast_plate())
+            >>> with tempfile.TemporaryDirectory() as tmp:
+            ...     store = img.save2zarr(Path(tmp) / 'plate.ome.zarr')
+            ...     Image.imread(store).rgb[:].shape == img.rgb[:].shape
+            True
         """
+        from phenotypic.sdk_ import is_zarr_store_name
+
+        # A store is a directory, so this is checked before the suffix
+        # dispatch below -- and on its own local, because `filepath` is
+        # annotated `PathLike` and only re-annotated `Path` further down.
+        store_candidate = Path(filepath)
+        if store_candidate.is_dir() and is_zarr_store_name(store_candidate):
+            return cls._imread_store(
+                store_candidate,
+                series=series,
+                level=level,
+                t=t,
+                z=z,
+                c=c,
+                **kwargs,
+            )
+
         # Convert to a Path object
         filepath: Path = Path(filepath)
         rawpy_params = rawpy_params or {}
@@ -603,16 +733,16 @@ class ImageIOHandler(ImageColorSpace):
             arr = ski.io.imread(fname=filepath)
 
         elif (
-                suffix in IO.RAW_FILE_EXTENSIONS and rawpy is not None
+            suffix in IO.RAW_FILE_EXTENSIONS and rawpy is not None
         ):  # raw sensor data handling
             use_auto_wb = rawpy_params.pop("use_auto_wb", False)
             use_camera_wb = rawpy_params.pop("use_camera_wb", False)
 
             no_auto_scale = rawpy_params.pop(
-                    "no_auto_scale", False
+                "no_auto_scale", False
             )  # TODO: implement calibration schema
             no_auto_bright = rawpy_params.pop(
-                    "no_auto_bright", False
+                "no_auto_bright", False
             )  # TODO: implement calibration schema
 
             # noinspection PyUnresolvedReferences
@@ -624,22 +754,22 @@ class ImageIOHandler(ImageColorSpace):
                 default_demosaic = rawpy.DemosaicAlgorithm.AHD
 
             demosaic_algorithm = rawpy_params.pop(
-                    "demosaic_algorithm", default_demosaic
+                "demosaic_algorithm", default_demosaic
             )
             gamma = rawpy_params.pop("gamma", (1, 1))
             with rawpy.imread(str(filepath)) as raw:
                 # noinspection PyUnresolvedReferences
                 arr = raw.postprocess(
-                        demosaic_algorithm=demosaic_algorithm,
-                        use_camera_wb=use_camera_wb,
-                        use_auto_wb=use_auto_wb,
-                        no_auto_scale=no_auto_scale,
-                        no_auto_bright=no_auto_bright,
-                        gamma=gamma,
-                        median_filter_passes=0,
-                        output_bps=16,  # Preserve as much detail as possible
-                        output_color=rawpy.ColorSpace.sRGB,
-                        **rawpy_params,
+                    demosaic_algorithm=demosaic_algorithm,
+                    use_camera_wb=use_camera_wb,
+                    use_auto_wb=use_auto_wb,
+                    no_auto_scale=no_auto_scale,
+                    no_auto_bright=no_auto_bright,
+                    gamma=gamma,
+                    median_filter_passes=0,
+                    output_bps=16,  # Preserve as much detail as possible
+                    output_color=rawpy.ColorSpace.sRGB,
+                    **rawpy_params,
                 )
 
         else:
@@ -652,9 +782,13 @@ class ImageIOHandler(ImageColorSpace):
         image = cls(arr=arr, name=filepath.stem, bit_depth=bit_depth, **kwargs)
         image.name = filepath.stem
         image.metadata[IMAGE.SUFFIX] = suffix
+        image._metadata.provenance_journal["original_filename"] = filepath.name
 
         # Extract and store metadata based on file type
-        if suffix in IO.JPEG_FILE_EXTENSIONS or suffix in IO.PNG_FILE_EXTENSIONS:
+        if (
+            suffix in IO.JPEG_FILE_EXTENSIONS
+            or suffix in IO.PNG_FILE_EXTENSIONS
+        ):
             imported_metadata = cls._extract_jpeg_png_metadata(filepath)
         elif suffix in IO.TIFF_EXTENSIONS:
             imported_metadata = cls._extract_tiff_metadata(filepath)
@@ -668,7 +802,9 @@ class ImageIOHandler(ImageColorSpace):
             phenotypic_data = imported_metadata.pop("_phenotypic_data")
             # Only restore protected/public metadata if saved from rgb or gray property
             # (not from color space accessors or detect_mat which are derived views)
-            source_property = phenotypic_data.get("phenotypic_image_property", "")
+            source_property = phenotypic_data.get(
+                "phenotypic_image_property", ""
+            )
             if source_property in ("Image.rgb", "Image.gray"):
                 protected = _normalize_stored_metadata_items(
                     phenotypic_data.get("protected", {}).items(),
@@ -689,283 +825,665 @@ class ImageIOHandler(ImageColorSpace):
 
         return image
 
-    @staticmethod
-    def _get_hdf5_group(handler: h5py.File | h5py.Group, name: str):
-        """
-        Retrieves an HDF5 group from the given handler by name. If the group does not
-        exist, it creates a new group with the specified name.
+    @classmethod
+    def _imread_store(
+        cls,
+        store_path: Path,
+        *,
+        series: str | None = None,
+        level: int = 0,
+        t: int | None = None,
+        z: int | None = None,
+        c: int | None = None,
+        **kwargs,
+    ) -> Image:
+        """Read an OME-Zarr store as plain pixels.
+
+        The store analogue of the TIFF branch: pixels in, a fresh image out. It
+        never restores PhenoTypic run state -- that is
+        :meth:`load_zarr`'s job, and it refuses a store that is not a run
+        bundle.
+
+        Only what the file says about itself is carried across: the provenance
+        journal and the ``imported`` metadata section. The ``protected`` and
+        ``public`` sections are run state and are deliberately dropped; that is
+        the line that keeps this from becoming a partial ``load_zarr``.
 
         Args:
-            handler: HDF5 file or group handler used to manage HDF5 groups.
-            name: The name of the group to retrieve or create.
+            store_path: A ``*.ome.zarr`` directory.
+            series: Series to read; ``None`` resolves it from the store.
+            level: Pyramid level to read.
+            t: Index on a ``time`` axis of size > 1.
+            z: Index on the stacking ``space`` axis when its size is > 1.
+            c: Index on a ``channel`` axis that is neither 1 nor 3.
+            **kwargs: Forwarded to the ``Image`` constructor.
 
         Returns:
-            h5py.Group: The requested or newly created HDF5 group.
-        """
-        file_handler = handler if isinstance(handler, h5py.File) else handler.file
-        name = str(name)
-        if name in handler:
-            return handler[name]
-        elif file_handler.swmr_mode is True:
-            raise ValueError("hdf5 handler in SWMR mode cannot create group")
-        else:
-            return handler.create_group(name)
-
-    @staticmethod
-    def _save_array2hdf5(group: h5py.Group, array: np.ndarray, name: str, **kwargs):
-        """
-        Saves a given numpy array to an HDF5 group. If a dataset with the specified
-        name already exists in the group, it checks if the shapes match. If the
-        shapes match, it updates the existing dataset; otherwise, it removes the
-        existing dataset and creates a new one with the specified name. If a dataset
-        with the given name doesn't exist, it creates a new dataset.
-
-        Args:
-            group: h5py.Group
-                The HDF5 group in which the dataset will be saved.
-            array: numpy.ndarray
-                The data array to be stored in the dataset.
-            name: str
-                The name of the dataset within the group.
-            **kwargs: dict
-                Additional keyword arguments to pass when creating a new dataset.
-        """
-        assert isinstance(array, np.ndarray), "array must be a numpy array."
-
-        file_handler = group.file if isinstance(group, h5py.Group) else group
-        if name in group:
-            dataset = group[name]
-            assert isinstance(dataset, h5py.Dataset), f"{name} is not a dataset."
-            if dataset.shape == array.shape:
-                dataset[:] = array
-            elif file_handler.swmr_mode is True:
-                raise ValueError(
-                        "Shape does not match existing dataset shape and cannot be changed because file handler is in SWMR mode"
-                )
-            else:
-                del group[name]
-                group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)
-        else:
-            group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)
-
-    def _save_image2hdfgroup(
-            self,
-            grp,
-            compression="gzip",
-            compression_opts=4,
-    ):
-        """Save image datasets and metadata into the given HDF5 group.
-
-        Uses schema_version=2 layout:
-          - root attrs: version, schema_version, phenotypic_class,
-            bit_depth, illuminant, gamma
-          - /layers/: rgb (optional), gray, detect_mat, objmap
-          - /metadata/{protected,public,imported}/: JSON-encoded attrs
-        """
-        # ------------------------------------------------------------------
-        # Root attributes
-        # ------------------------------------------------------------------
-        grp.attrs["version"] = phenotypic.__version__
-        grp.attrs["schema_version"] = _SCHEMA_VERSION
-        grp.attrs[_METADATA_SCHEMA_VERSION_ATTR] = _METADATA_SCHEMA_VERSION
-        grp.attrs["phenotypic_class"] = type(self).__name__
-
-        if self.bit_depth is not None:
-            grp.attrs["bit_depth"] = int(self.bit_depth)
-        if self.illuminant is not None:
-            grp.attrs["illuminant"] = str(self.illuminant)
-        if self.gamma is not None:
-            grp.attrs["gamma"] = (
-                self.gamma.name if hasattr(self.gamma, "name") else str(self.gamma)
-            )
-
-        # ------------------------------------------------------------------
-        # Layers subgroup
-        # ------------------------------------------------------------------
-        layers = grp.require_group("layers")
-
-        if not self.rgb.isempty():
-            array = self.rgb[:]
-            HDF.save_array2hdf5(
-                    group=layers,
-                    array=array,
-                    name="rgb",
-                    dtype=array.dtype,
-                    compression=compression,
-                    compression_opts=compression_opts,
-            )
-
-        matrix = self.gray[:]
-        HDF.save_array2hdf5(
-                group=layers,
-                array=matrix,
-                name="gray",
-                dtype=matrix.dtype,
-                compression=compression,
-                compression_opts=compression_opts,
-        )
-
-        detect_matrix = self.detect_mat[:]
-        HDF.save_array2hdf5(
-                group=layers,
-                array=detect_matrix,
-                name="detect_mat",
-                dtype=detect_matrix.dtype,
-                compression=compression,
-                compression_opts=compression_opts,
-        )
-        layers["detect_mat"].attrs["detect_mode"] = self._data.detect_mode
-
-        objmap = self.objmap[:]
-        HDF.save_array2hdf5(
-                group=layers,
-                array=objmap,
-                name="objmap",
-                dtype=objmap.dtype,
-                compression=compression,
-                compression_opts=compression_opts,
-        )
-
-        # ------------------------------------------------------------------
-        # Metadata subgroups (protected / public / imported)
-        # ------------------------------------------------------------------
-        meta = grp.require_group("metadata")
-        sections = {
-            "protected": self._metadata.protected,
-            "public"   : self._metadata.public,
-            "imported" : self._metadata.imported,
-        }
-        for name, section in sections.items():
-            sub = meta.require_group(name)
-            normalized = _normalize_stored_metadata_items(
-                section.items(), section=name
-            )
-            for key, val in normalized.items():
-                sub.attrs[key] = _encode_meta(val)
-
-    def _save_hdf5_metadata(self, grp) -> None:
-        """Write version info and metadata subgroups into an HDF5 group.
-
-        Deprecated legacy-flat layout helper retained so
-        :meth:`save_intermediate_layers` (which still writes the v1 flat
-        layout) continues to round-trip. The v2 writer is inlined in
-        :meth:`_save_image2hdfgroup`.
-        """
-        grp.attrs["version"] = phenotypic.__version__
-        grp.attrs[_METADATA_SCHEMA_VERSION_ATTR] = _METADATA_SCHEMA_VERSION
-
-        prot = grp.require_group("protected_metadata")
-        normalized_protected = _normalize_stored_metadata_items(
-            self._metadata.protected.items(), section="protected"
-        )
-        for key, val in normalized_protected.items():
-            prot.attrs.modify(key, str(val))
-
-        pub = grp.require_group("public_metadata")
-        normalized_public = _normalize_stored_metadata_items(
-            self._metadata.public.items(), section="public"
-        )
-        for key, val in normalized_public.items():
-            pub.attrs.modify(key, str(val))
-
-    def save2hdf5(
-            self, filename, compression="gzip", compression_opts=4,
-    ):
-        """Save the image to an HDF5 file with all data and metadata.
-
-        Stores the complete image data (RGB, gray, detection matrix,
-        object map) and metadata (protected and public) directly at
-        the HDF5 file's root group. The file is always overwritten
-        if it already exists.
-
-        Args:
-            filename: Path to the HDF5 file (.h5 extension
-                recommended). Created or overwritten on each call.
-            compression: Compression filter to apply to datasets.
-                Options: 'gzip' (recommended), 'szip', or None.
-                Defaults to 'gzip'.
-            compression_opts: Compression level for 'gzip' (1-9,
-                where 1=fastest, 9=best). Ignored for 'szip' and
-                None. Defaults to 4 (balanced).
-
-        Examples:
-            Save to HDF5:
-
-            >>> img = Image.imread('photo.jpg')
-            >>> img.save2hdf5('output.h5')
-            >>> img.save2hdf5('output.h5', compression='szip')
-        """
-        with h5py.File(filename, mode="w") as filehandler:
-            self._save_image2hdfgroup(
-                    grp=filehandler,
-                    compression=compression,
-                    compression_opts=compression_opts,
-            )
-
-    def save_intermediate_layers(
-            self,
-            filename,
-            layers: tuple[str, ...],
-            compression="gzip",
-            compression_opts=4,
-    ):
-        """Save only the specified image layers to an HDF5 file.
-
-        Args:
-            filename: Path to the HDF5 file to create.
-            layers: Tuple of layer names to save. Valid names are
-                ``"rgb"``, ``"gray"``, ``"detect_mat"``, ``"objmap"``.
-            compression: Compression filter. Defaults to ``"gzip"``.
-            compression_opts: Compression level (1-9). Defaults to 4.
+            Image: A fresh image carrying the store's pixels.
 
         Raises:
-            ValueError: If *layers* contains unknown layer names.
+            ValueError: If the store cannot be mapped onto the 2-D image model.
         """
-        _valid = {"rgb", "gray", "detect_mat", "objmap"}
-        unknown = set(layers) - _valid
+        from phenotypic.sdk_ import ngff_, source_image_suffix, store_stem
+
+        spec = ngff_.read_ngff_image_spec(
+            store_path, series=series, level=level, t=t, z=z, c=c
+        )
+        name = store_stem(store_path)
+        # `is None`, not `or`: an explicit `bit_depth=0` is a caller
+        # instruction, and `or` would silently swap the store's value in.
+        explicit = kwargs.pop("bit_depth", None)
+        bit_depth = spec.bit_depth if explicit is None else explicit
+        image = cls(arr=spec.array, name=name, bit_depth=bit_depth, **kwargs)
+        image.name = name
+        image.metadata[IMAGE.SUFFIX] = source_image_suffix(store_path)
+
+        journal = spec.phenotypic.get(ngff_.PhenotypicAttr.PROVENANCE)
+        if journal:
+            image._metadata.provenance_journal = deepcopy(journal)
+        else:
+            image._metadata.provenance_journal["original_filename"] = store_path.name
+
+        # Through `_metadata.imported`, NEVER `image.metadata[key] = value`.
+        # `MetadataAccessor.__setitem__` routes an unrecognised key into
+        # `_public_metadata` and raises ValueError on any non-scalar value, so
+        # the obvious loop would land imported tags in the `public` section --
+        # contradicting the paragraph above -- and raise on a structured TIFF
+        # tag. This is what the TIFF branch already does, normalised through
+        # the same helper `_load_from_store` uses.
+        imported = spec.phenotypic.get(ngff_.PhenotypicAttr.METADATA, {}).get(
+            ngff_.PhenotypicAttr.IMPORTED, {}
+        )
+        if imported:
+            image._metadata.imported.update(
+                _normalize_stored_metadata_items(
+                    imported.items(), section=ngff_.PhenotypicAttr.IMPORTED
+                )
+            )
+        return cast("Image", image)
+
+    def _series_names(self) -> list[str]:
+        """Series this image will write, in canonical order.
+
+        ``rgb`` is omitted entirely when empty; ``gray`` then becomes the
+        primary series and the objmap label attaches under it.
+
+        Returns:
+            The series names to write, in :data:`ngff_.SERIES_ORDER` order.
+        """
+        from phenotypic.sdk_.ngff_ import SERIES_ORDER
+
+        return [
+            name
+            for name in SERIES_ORDER
+            if name != "rgb" or not self.rgb.isempty()
+        ]
+
+    def _write_series(
+        self,
+        part: Path,
+        series: str,
+        array: np.ndarray,
+        levels: int,
+        dimension_series: str | None = None,
+    ) -> None:
+        """Write every pyramid level of one series (or label) into *part*.
+
+        Args:
+            part: The ``.part`` directory being built.
+            series: Group path relative to *part*.
+            array: Level-0 array.
+            levels: Level count, uniform across the store.
+            dimension_series: Series whose axes describe *array*. Used by the
+                ``original`` group, whose dimensionality follows decoded pixels.
+        """
+        import zarr
+
+        from phenotypic.sdk_ import ngff_
+
+        kind: Literal["image", "label"] = (
+            "label" if series.endswith(ngff_.OBJMAP_LABEL) else "image"
+        )
+        array_series = dimension_series or (
+            ngff_.OBJMAP_LABEL if kind == "label" else series
+        )
+        for index, level in enumerate(
+            ngff_.build_pyramid(array, levels, kind=kind)
+        ):
+            handle = zarr.create_array(
+                store=ngff_.long_path(part / series / str(index)),
+                **ngff_.array_create_kwargs(
+                    level.shape, level.dtype, array_series
+                ),
+            )
+            handle[...] = level
+
+    @staticmethod
+    def _write_group_json(group_dir: Path, attributes: dict) -> None:
+        """Write a Zarr v3 group ``zarr.json`` carrying *attributes*.
+
+        ``default=str`` mirrors :func:`_encode_meta`: metadata values are
+        stored verbatim and unvalidated, so a non-JSON-native value (an
+        ``np.datetime64`` read off a TIFF, say) must serialise rather than
+        abort the write, exactly as it does on the HDF path.
+
+        Args:
+            group_dir: Directory of the Zarr group; created if absent.
+            attributes: The group's ``attributes`` mapping.
+        """
+        group_dir = Path(group_dir)
+        group_dir.mkdir(parents=True, exist_ok=True)
+        (group_dir / "zarr.json").write_text(
+            json.dumps(
+                {
+                    "zarr_format": 3,
+                    "node_type": "group",
+                    "attributes": attributes,
+                },
+                indent=2,
+                default=str,
+            ),
+            encoding="utf-8",
+        )
+
+    def _store_grid_attributes(self) -> dict | None:
+        """Grid state for ``attributes.phenotypic.grid``; ``None`` here.
+
+        The single seam ``GridImage`` overrides. It exists so the grid reaches
+        the store through ``build_phenotypic_attributes(grid=...)`` -- the
+        declared interface for that key -- rather than being written into the
+        returned block afterwards by a second mechanism.
+
+        Returns:
+            ``None``; a plain Image has no grid.
+        """
+        return None
+
+    def _build_store_attributes(
+        self,
+        *,
+        series_names,
+        levels,
+        sections,
+        work_id,
+        has_labels=True,
+        write_image_class: bool = True,
+        reproducible_provenance: bool = False,
+    ) -> dict:
+        """Assemble ``attributes.phenotypic``.
+
+        Args:
+            series_names: Series actually written, in canonical order.
+            levels: Resolved pyramid level count.
+            sections: ``{"protected": …, "public": …, "imported": …}``.
+            work_id: CLI work id, or ``None``.
+            has_labels: Whether the store carries the objmap label. ``False``
+                omits the ``labels`` key **entirely** rather than emitting an
+                empty mapping, so a preview store never declares a group it
+                does not have.
+            write_image_class: Write ``image_class``. ``False`` omits it, which
+                is what makes ``load_zarr`` refuse the store. Only the
+                ``--mode process`` writer passes ``False``.
+            reproducible_provenance: Omit ``applied_at_utc`` and
+                ``duration_seconds`` from the journal written into the store,
+                making it byte-identical across identical runs (spec 2.3.3).
+                The image's own journal is untouched -- the fields are dropped
+                from a copy on the way in. Only the ``--mode process`` writer
+                passes ``True``; the bundle store never leaves the run
+                directory and keeps its telemetry.
+
+        Returns:
+            The ``phenotypic`` attributes block.
+        """
+        from phenotypic._core._provenance import (
+            strip_non_reproducible_operation_fields,
+        )
+        from phenotypic.sdk_ import ngff_
+
+        provenance = deepcopy(self._metadata.provenance_journal)
+        if reproducible_provenance:
+            strip_non_reproducible_operation_fields(provenance)
+
+        return ngff_.build_phenotypic_attributes(
+            image_class=type(self).__name__ if write_image_class else None,
+            series_names=series_names,
+            pyramid_levels=levels,
+            metadata_sections=sections,
+            detect_mode=self._data.detect_mode,
+            illuminant=str(self.illuminant)
+            if self.illuminant is not None
+            else None,
+            gamma=(
+                self.gamma.name
+                if hasattr(self.gamma, "name")
+                else str(self.gamma)
+            )
+            if self.gamma is not None
+            else None,
+            has_labels=has_labels,
+            grid=self._store_grid_attributes(),
+            work_id=work_id,
+            provenance=provenance,
+        )
+
+    def save2zarr(
+        self,
+        path,
+        *,
+        work_id: str | None = None,
+        durable: bool | None = None,
+        commit_guard: CommitGuard | None = None,
+        measurement_table: PreparedEmbeddedMeasurementTable | None = None,
+    ) -> Path:
+        """Save the image as an OME-Zarr (NGFF 0.5 / Zarr v3) store.
+
+        Builds a uuid-suffixed ``.part`` sibling, writes every array, then
+        ``OME/zarr.json``, then the root ``zarr.json`` **last**, then promotes
+        by directory rename. An interrupted write leaves no valid root, so the
+        store reads as absent rather than as partial.
+
+        ``rgb`` is omitted entirely when empty, which moves the primary series
+        and the objmap label to ``gray``; ``objmap`` is always written, zeros
+        included, because ``valid_staged_store`` requires it after Stage 1.
+
+        Args:
+            path: Target ``*.ome.zarr`` directory. Created or replaced.
+            work_id: CLI work id, written into ``attributes.phenotypic`` at
+                build time. Never patched in afterwards.
+            durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
+
+        Returns:
+            The promoted store path.
+
+        Examples:
+            Save a synthetic plate and read it back:
+
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from phenotypic import Image
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> img = Image(load_synth_yeast_plate())
+            >>> with tempfile.TemporaryDirectory() as tmp:
+            ...     store = img.save2zarr(Path(tmp) / 'plate.ome.zarr')
+            ...     Image.load_zarr(store).gray[:].shape == img.gray[:].shape
+            True
+        """
+        from phenotypic.sdk_ import ngff_
+
+        gray = self.gray[:]
+        pyramid_height, pyramid_width = gray.shape[:2]
+        if self._original is not None:
+            pyramid_height = max(pyramid_height, self._original.shape[0])
+            pyramid_width = max(pyramid_width, self._original.shape[1])
+        return self._save_store(
+            path,
+            series=tuple(self._series_names()),
+            write_objmap=True,
+            levels=ngff_.pyramid_level_count(pyramid_height, pyramid_width),
+            work_id=work_id,
+            durable=durable,
+            commit_guard=commit_guard,
+            measurement_table=measurement_table,
+        )
+
+    def _save_store(
+        self,
+        path,
+        *,
+        series: Sequence[str],
+        write_objmap: bool,
+        levels: int,
+        work_id: str | None,
+        durable: bool | None,
+        commit_guard: CommitGuard | None = None,
+        measurement_table: PreparedEmbeddedMeasurementTable | None = None,
+        write_image_class: bool = True,
+        consolidate: bool = False,
+        reproducible_provenance: bool = False,
+    ) -> Path:
+        """Write one OME-Zarr store into a ``.part`` sibling and promote it.
+
+        The single implementation behind both :meth:`save2zarr` (every series,
+        the label, a full pyramid) and :meth:`save_intermediate_zarr` (a subset
+        of the series, maybe no label, one level).
+
+        *series* and *write_objmap* are two different namespaces and stay two
+        arguments: *series* ranges over :data:`ngff_.SERIES_ORDER`, while
+        ``objmap`` is the label image and is never a member of it. Collapsing
+        them makes ``primary_series`` raise for every enhancer preview
+        (``("detect_mat",)``) and every detector preview (``("objmap",)``).
+
+        The objmap array, the ``labels`` group JSON, and the ``labels`` key in
+        ``attributes.phenotypic`` are one decision -- all three follow
+        *write_objmap*, so a label-less store never declares a group it does
+        not have.
+
+        Args:
+            path: Target ``*.ome.zarr`` directory. Created or replaced.
+            series: Series to write, in canonical order. Must contain a
+                primary series (``rgb`` or ``gray``).
+            write_objmap: Write the objmap label image.
+            levels: Pyramid level count, uniform across the store.
+            work_id: CLI work id, written into the block at build time.
+            durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
+            write_image_class: Write ``image_class``. ``False`` omits it, which
+                is what makes ``load_zarr`` refuse the store. Only the
+                ``--mode process`` writer passes ``False``.
+            consolidate: Consolidate the part's metadata into its root
+                ``zarr.json`` immediately before the promote. It is a
+                parameter rather than a step applied to the returned path
+                because consolidating a promoted store rewrites its root in
+                place, which is the non-atomic write the rename-commit exists
+                to prevent, and lands after the ``fsync``.
+            reproducible_provenance: Omit the journal's ``applied_at_utc`` and
+                ``duration_seconds`` from the store, making it byte-identical
+                across identical runs (spec 2.3.3). Only the ``--mode
+                process`` writer passes ``True``.
+
+        Returns:
+            The promoted store path.
+
+        Raises:
+            ValueError: If *series* carries no primary series.
+        """
+        from phenotypic.sdk_ import ngff_
+
+        final = Path(path)
+        final.parent.mkdir(parents=True, exist_ok=True)
+        part = ngff_.new_part_path(final)
+        try:
+            return self._write_store_part(
+                part,
+                final,
+                series=series,
+                write_objmap=write_objmap,
+                levels=levels,
+                work_id=work_id,
+                durable=durable,
+                commit_guard=commit_guard,
+                measurement_table=measurement_table,
+                write_image_class=write_image_class,
+                consolidate=consolidate,
+                reproducible_provenance=reproducible_provenance,
+            )
+        except Exception:
+            shutil.rmtree(ngff_.long_path(part), ignore_errors=True)
+            raise
+
+    def _write_store_part(
+        self,
+        part: Path,
+        final: Path,
+        *,
+        series: Sequence[str],
+        write_objmap: bool,
+        levels: int,
+        work_id: str | None,
+        durable: bool | None,
+        commit_guard: CommitGuard | None = None,
+        measurement_table: PreparedEmbeddedMeasurementTable | None = None,
+        write_image_class: bool = True,
+        consolidate: bool = False,
+        reproducible_provenance: bool = False,
+    ) -> Path:
+        """Populate one allocated part and promote it to its final path.
+
+        Args:
+            write_image_class: Write ``image_class``. ``False`` omits it, which
+                is what makes ``load_zarr`` refuse the store. Only the
+                ``--mode process`` writer passes ``False``.
+            consolidate: Consolidate the part's metadata into its root
+                ``zarr.json`` immediately before the promote -- never on the
+                promoted path, which would rewrite a live root in place and
+                land after ``promote_store``'s ``fsync``.
+            reproducible_provenance: Omit the journal's ``applied_at_utc`` and
+                ``duration_seconds`` from the store, making it byte-identical
+                across identical runs (spec 2.3.3). Only the ``--mode
+                process`` writer passes ``True``.
+        """
+        from phenotypic.sdk_ import ngff_
+
+        series_names = list(series)
+        original_axis: str | None = None
+        if self._original is not None:
+            series_names.append("original")
+            original_axis = "rgb" if self._original.ndim == 3 else "gray"
+
+        primary = ngff_.primary_series(series_names)
+
+        # Only the requested layers are materialised: a preview store must not
+        # pay for a `detect_mat` the node never touched.
+        loaders = {
+            "rgb": lambda: np.moveaxis(self.rgb[:], -1, 0),  # (H,W,C)->(c,y,x)
+            "gray": lambda: self.gray[:],
+            "detect_mat": lambda: self.detect_mat[:],
+        }
+        arrays: dict[str, np.ndarray] = {
+            name: loaders[name]() for name in series
+        }
+        if original_axis is not None and self._original is not None:
+            arrays["original"] = (
+                np.moveaxis(self._original, -1, 0)
+                if original_axis == "rgb"
+                else self._original
+            )
+
+        # 1. arrays and chunks
+        for name in series_names:
+            self._write_series(
+                part,
+                name,
+                arrays[name],
+                levels,
+                dimension_series=original_axis if name == "original" else None,
+            )
+        objmap = self.objmap[:] if write_objmap else None
+        if objmap is not None:
+            self._write_series(
+                part, ngff_.objmap_path(primary), objmap, levels
+            )
+
+        # 2. per-group ome metadata
+        bit_depth = int(self.bit_depth or 8)
+        # ``protected`` is a metadata mapping whose values are the broad
+        # ``int | str | float | None`` union; the OME ``name`` field is a
+        # string. Coerce rather than assume the stored type.
+        # Named ``image_name``, not ``name``: ``name`` is the loop variable a
+        # few lines above, and rebinding it here is a redefinition.
+        raw_name = self._metadata.protected.get(IMAGE.IMAGE_NAME)
+        image_name: str | None = None if raw_name is None else str(raw_name)
+        for series_name in series_names:
+            shapes = ngff_.pyramid_level_shapes(
+                arrays[series_name].shape, levels
+            )
+            metadata_series = (
+                original_axis if series_name == "original" else series_name
+            )
+            assert metadata_series is not None
+            block = {
+                "version": ngff_.NGFF_VERSION,
+                **ngff_.build_multiscales(
+                    series=metadata_series,
+                    level_shapes=shapes,
+                    name=image_name,
+                ),
+                **ngff_.build_omero(
+                    series=metadata_series,
+                    dtype=arrays[series_name].dtype,
+                    bit_depth=bit_depth,
+                    name=image_name,
+                ),
+            }
+            self._write_group_json(part / series_name, {"ome": block})
+        if objmap is not None:
+            label_shapes = ngff_.pyramid_level_shapes(objmap.shape, levels)
+            self._write_group_json(
+                part / primary / ngff_.LABELS_GROUP,
+                {
+                    "ome": {
+                        "version": ngff_.NGFF_VERSION,
+                        "labels": [ngff_.OBJMAP_LABEL],
+                    }
+                },
+            )
+            self._write_group_json(
+                part / ngff_.objmap_path(primary),
+                {
+                    "ome": {
+                        "version": ngff_.NGFF_VERSION,
+                        # `name` here too: §2.4's "SHOULD contain the field
+                        # 'name'" is not scoped to image series, and every
+                        # sibling group honours it (ledger ALGO-R2B-16).
+                        **ngff_.build_multiscales(
+                            series=ngff_.OBJMAP_LABEL,
+                            level_shapes=label_shapes,
+                            name=f"{image_name}/{ngff_.OBJMAP_LABEL}"
+                            if image_name
+                            else None,
+                        ),
+                        **ngff_.build_image_label(),
+                    }
+                },
+            )
+
+        # 3. OME/ group -- all or nothing. `build_ome_xml` RAISES rather than
+        # returning None (user ruling, ALGO-3), so there is no fallback branch:
+        # keeping the named groups while dropping `series` is not the
+        # consecutive-integer form NGFF 2.2.3 requires when `series` is absent.
+        sections = {
+            "protected": dict(self._metadata.protected),
+            "public": dict(self._metadata.public),
+            "imported": dict(self._metadata.imported),
+        }
+        xml = ngff_.build_ome_xml(
+            series_names=series_names,
+            series_shapes={
+                name_: arrays[name_].shape for name_ in series_names
+            },
+            series_dtypes={
+                name_: arrays[name_].dtype for name_ in series_names
+            },
+            metadata_sections=sections,
+        )
+        (part / ngff_.OME_GROUP).mkdir(parents=True, exist_ok=True)
+        (part / ngff_.OME_GROUP / ngff_.OME_XML_NAME).write_text(
+            xml, encoding="utf-8"
+        )
+        self._write_group_json(
+            part / ngff_.OME_GROUP,
+            {"ome": {"version": ngff_.NGFF_VERSION, "series": series_names}},
+        )
+
+        tables_descriptor = None
+        if measurement_table is not None:
+            from phenotypic.sdk_._measurement_tables import (
+                build_measurement_table_descriptor,
+                write_embedded_measurement_table,
+            )
+
+            write_embedded_measurement_table(part, measurement_table)
+            tables_descriptor = build_measurement_table_descriptor(
+                measurement_table,
+                objmap_target=ngff_.objmap_path(primary),
+            )
+
+        # 4. root zarr.json LAST
+        phenotypic_attributes = self._build_store_attributes(
+            series_names=series_names,
+            levels=levels,
+            sections=sections,
+            work_id=work_id,
+            has_labels=write_objmap,
+            write_image_class=write_image_class,
+            reproducible_provenance=reproducible_provenance,
+        )
+        if tables_descriptor is not None:
+            phenotypic_attributes[ngff_.PhenotypicAttr.TABLES] = {
+                ngff_.MEASUREMENT_TABLE_GROUP: tables_descriptor
+            }
+        self._write_group_json(
+            part,
+            {
+                "ome": {
+                    "version": ngff_.NGFF_VERSION,
+                    "bioformats2raw.layout": ngff_.BIOFORMATS2RAW_LAYOUT,
+                },
+                ngff_.PhenotypicAttr.ROOT: phenotypic_attributes,
+            },
+        )
+        if consolidate:
+            _consolidate_store_part(part)
+        return ngff_.promote_store(
+            part,
+            final,
+            fsync=ngff_.durable_writes_enabled(durable),
+            commit_guard=commit_guard,
+        )
+
+    def save_intermediate_zarr(self, path, layers: tuple[str, ...]) -> Path:
+        """Save only *layers* as a single-level OME-Zarr store.
+
+        Used for GUI builder node previews. No pyramid: previews are transient
+        and small, and pyramiding them would multiply builder-cache inodes for
+        no reader benefit. The promote primitive is still used, because Dash
+        callbacks write these concurrently.
+
+        ``gray`` is always co-written whatever *layers* names (user ruling,
+        2026-08-19): *layers* says what the node **changed**, and without a
+        primary series there is no anchor for the objmap path, the ``labels``
+        group, or the OME projection.
+
+        Args:
+            path: Target ``*.ome.zarr`` directory.
+            layers: Subset of ``("rgb", "gray", "detect_mat", "objmap")``.
+
+        Returns:
+            The promoted store path.
+
+        Raises:
+            ValueError: If *layers* contains unknown names.
+
+        Examples:
+            Preview an enhancer node -- ``detect_mat`` is what changed, and
+            ``gray`` rides along as the primary series:
+
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from phenotypic import Image
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> img = Image(load_synth_yeast_plate())
+            >>> with tempfile.TemporaryDirectory() as tmp:
+            ...     store = img.save_intermediate_zarr(
+            ...             Path(tmp) / 'node.ome.zarr', layers=('detect_mat',)
+            ...     )
+            ...     Image.load_layer_zarr(store, 'gray').shape
+            (600, 800)
+        """
+        from phenotypic.sdk_ import ngff_
+
+        valid = {"rgb", "gray", "detect_mat", ngff_.OBJMAP_LABEL}
+        unknown = set(layers) - valid
         if unknown:
             raise ValueError(f"Unknown layer names: {unknown}")
-
-        with h5py.File(filename, mode="w") as f:
-            for layer in layers:
-                if layer == "rgb":
-                    if not self.rgb.isempty():
-                        array = self.rgb[:]
-                        HDF.save_array2hdf5(
-                                group=f, array=array, name="rgb",
-                                dtype=array.dtype,
-                                compression=compression,
-                                compression_opts=compression_opts,
-                        )
-                elif layer == "gray":
-                    array = self.gray[:]
-                    HDF.save_array2hdf5(
-                            group=f, array=array, name="gray",
-                            dtype=array.dtype,
-                            compression=compression,
-                            compression_opts=compression_opts,
-                    )
-                elif layer == "detect_mat":
-                    array = self.detect_mat[:]
-                    HDF.save_array2hdf5(
-                            group=f, array=array, name="detect_mat",
-                            dtype=array.dtype,
-                            compression=compression,
-                            compression_opts=compression_opts,
-                    )
-                    f["detect_mat"].attrs["detect_mode"] = (
-                        self._data.detect_mode
-                    )
-                elif layer == "objmap":
-                    array = self.objmap[:]
-                    HDF.save_array2hdf5(
-                            group=f, array=array, name="objmap",
-                            dtype=array.dtype,
-                            compression=compression,
-                            compression_opts=compression_opts,
-                    )
-
-            self._save_hdf5_metadata(f)
+        # `gray` is unioned in so the store always has a primary series; see
+        # the docstring. `objmap` is the LABEL and travels separately -- it is
+        # not a member of SERIES_ORDER.
+        #
+        # Filtered through `_series_names()`, not SERIES_ORDER: every
+        # ImageCorrector reports all four layers, and `self.rgb[:]` RAISES
+        # NoArrayError on an image built from a 2-D array, so a grayscale
+        # preview would abort mid-write.
+        wanted = set(layers) | {"gray"}
+        return self._save_store(
+            path,
+            series=tuple(
+                name for name in self._series_names() if name in wanted
+            ),
+            write_objmap=ngff_.OBJMAP_LABEL in layers,
+            levels=1,
+            work_id=None,
+            durable=False,
+        )
 
     @classmethod
     def _load_from_hdf5_group(cls, group, **kwargs) -> Image:
@@ -1012,10 +1530,10 @@ class ImageIOHandler(ImageColorSpace):
                 gamma_val: GAMMA_ENCODINGS = GAMMA_ENCODINGS[gamma_name]
             except KeyError:
                 warnings.warn(
-                        f"Unknown gamma encoding {gamma_name!r}; falling back to "
-                        f"GAMMA_ENCODINGS.SRGB",
-                        UserWarning,
-                        stacklevel=2,
+                    f"Unknown gamma encoding {gamma_name!r}; falling back to "
+                    f"GAMMA_ENCODINGS.SRGB",
+                    UserWarning,
+                    stacklevel=2,
                 )
                 kwargs.setdefault("gamma", GAMMA_ENCODINGS.SRGB)
             else:
@@ -1032,12 +1550,22 @@ class ImageIOHandler(ImageColorSpace):
         else:
             img = cls(arr=matrix_data, **kwargs)
 
-        # Detection matrix + mode.
-        detect_mat_ds = layers["detect_mat"]
-        detect_matrix_data = detect_mat_ds[()]
-        detect_mode = detect_mat_ds.attrs.get("detect_mode", "gray")
-        if isinstance(detect_mode, bytes):
-            detect_mode = detect_mode.decode("utf-8", errors="replace")
+        # Detection matrix + mode. Backward compat: 'enh_gray' is the
+        # pre-rename name, still accepted by valid_staged_hdf in
+        # _cli_staged_resume, so schema-2 files carrying it exist. The v1-flat
+        # loader has had this fallback all along; the v2 one raised KeyError,
+        # which is OPEN-QUESTIONS D8. `--mode migrate` reads these files, and
+        # Phase 6 keeps this loader as the migration reader, so the fallback
+        # has to land before the retirement.
+        if "detect_mat" in layers:
+            detect_mat_ds = layers["detect_mat"]
+            detect_matrix_data = detect_mat_ds[()]
+            detect_mode = detect_mat_ds.attrs.get("detect_mode", "gray")
+            if isinstance(detect_mode, bytes):
+                detect_mode = detect_mode.decode("utf-8", errors="replace")
+        else:
+            detect_matrix_data = layers["enh_gray"][()]
+            detect_mode = "gray"
         img.detect_mat[:] = detect_matrix_data
         img._data.detect_mode = detect_mode
 
@@ -1049,8 +1577,8 @@ class ImageIOHandler(ImageColorSpace):
             meta = group["metadata"]
             targets = {
                 "protected": img._metadata.protected,
-                "public"   : img._metadata.public,
-                "imported" : img._metadata.imported,
+                "public": img._metadata.public,
+                "imported": img._metadata.imported,
             }
             for name, target in targets.items():
                 if name not in meta:
@@ -1074,6 +1602,154 @@ class ImageIOHandler(ImageColorSpace):
                     target[mapped] = value
 
         return img
+
+    @classmethod
+    def _load_from_store(cls, path, block, **kwargs) -> Image:
+        """Build an Image from a store root and its ``phenotypic`` block.
+
+        Follows the shape of :meth:`_load_v2_grouped` -- read each series'
+        level-0 array, restore the metadata sections, apply ``detect_mode``,
+        ``illuminant`` and ``gamma`` -- but **assigns the three stored sections
+        verbatim** instead of merging them. ``_load_v2_grouped`` skips any key
+        the constructor already populated, which silently drops the stored
+        ``Metadata_ImageType`` (verified by execution: ``GridSection`` in,
+        ``Image`` out). Spec §2.1 requires ``image_class`` and
+        ``Metadata_ImageType`` to stay independent, so the store read path is
+        deliberately more correct than the HDF one (OPEN-QUESTIONS D7); the HDF
+        loader is not fixed here, it is retired in Phase 6.
+
+        The fourth metadata section, ``private``, is deliberately not persisted
+        -- the HDF writer does not persist it either, and a fresh ``uuid`` per
+        load is the intended behaviour. Do not "complete" the set.
+
+        Args:
+            path: Store root.
+            block: The ``attributes.phenotypic`` mapping.
+            **kwargs: Constructor overrides; these win over stored state.
+
+        Returns:
+            An instance of *cls*.
+        """
+        from phenotypic.sdk_ import ngff_
+
+        series = block.get(ngff_.PhenotypicAttr.SERIES, {})
+        sections = block.get(ngff_.PhenotypicAttr.METADATA, {})
+        stored_protected = sections.get(ngff_.PhenotypicAttr.PROTECTED, {})
+        explicit_overrides = {
+            key: kwargs[key]
+            for key in ("name", "bit_depth")
+            if kwargs.get(key) is not None
+        }
+
+        bit_depth = stored_protected.get(IMAGE.BIT_DEPTH)
+        if bit_depth is not None:
+            try:
+                kwargs.setdefault("bit_depth", int(bit_depth))
+            except (TypeError, ValueError):
+                pass
+        illuminant = block.get(ngff_.PhenotypicAttr.ILLUMINANT)
+        if illuminant is not None:
+            kwargs.setdefault("illuminant", str(illuminant))
+        gamma_name = block.get(ngff_.PhenotypicAttr.GAMMA)
+        if gamma_name is not None:
+            # Map the name back through GAMMA_ENCODINGS; on an unknown name
+            # fall back to the constructor-validated default rather than
+            # handing __init__ a string it will reject.
+            try:
+                gamma_val: GAMMA_ENCODINGS = GAMMA_ENCODINGS[str(gamma_name)]
+            except KeyError:
+                warnings.warn(
+                    f"Unknown gamma encoding {gamma_name!r}; falling back to "
+                    f"GAMMA_ENCODINGS.SRGB",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                kwargs.setdefault("gamma", GAMMA_ENCODINGS.SRGB)
+            else:
+                kwargs.setdefault("gamma", gamma_val)
+
+        matrix_data = cls._read_store_array(path, series["gray"])
+        if "rgb" in series:
+            img = cls(
+                arr=cls._read_store_array(path, series["rgb"], layer="rgb"),
+                **kwargs,
+            )
+            img.gray[:] = matrix_data
+        else:
+            img = cls(arr=matrix_data, **kwargs)
+
+        img.detect_mat[:] = cls._read_store_array(path, series["detect_mat"])
+        img._data.detect_mode = (
+            block.get(ngff_.PhenotypicAttr.DETECT_MODE) or "gray"
+        )
+
+        # `.get`: a label-less store OMITS the key entirely (ledger C3).
+        labels = block.get(ngff_.PhenotypicAttr.LABELS, {})
+        if ngff_.OBJMAP_LABEL in labels:
+            img.objmap[:] = cls._read_store_array(
+                path, labels[ngff_.OBJMAP_LABEL]
+            )
+        if "original" in series:
+            original = cls._read_store_array(path, series["original"])
+            img._original = (
+                np.moveaxis(original, 0, -1)
+                if original.ndim == 3
+                else original
+            )
+
+        provenance = block.get(ngff_.PhenotypicAttr.PROVENANCE)
+        if isinstance(provenance, dict):
+            img._metadata.provenance_journal = deepcopy(provenance)
+
+        targets = {
+            ngff_.PhenotypicAttr.PROTECTED: img._metadata.protected,
+            ngff_.PhenotypicAttr.PUBLIC: img._metadata.public,
+            ngff_.PhenotypicAttr.IMPORTED: img._metadata.imported,
+        }
+        for section_name, target in targets.items():
+            normalized = _normalize_stored_metadata_items(
+                sections.get(section_name, {}).items(), section=section_name
+            )
+            target.clear()
+            target.update(normalized)
+
+        if "name" in explicit_overrides:
+            img.name = explicit_overrides["name"]
+        if "bit_depth" in explicit_overrides:
+            img.metadata[IMAGE.BIT_DEPTH] = explicit_overrides["bit_depth"]
+
+        # ``cls`` is always an ``Image`` subclass -- ``ImageIOHandler`` is a mixin
+        # and is never instantiated on its own -- but mypy resolves ``cls(...)``
+        # to the mixin. The three sibling loaders carry the same unannotated
+        # shape; this one is new, so it is narrowed here rather than adding a
+        # fourth instance of the pattern.
+        return cast("Image", img)
+
+    @staticmethod
+    def _read_store_array(path, member: str, *, layer: str = "") -> np.ndarray:
+        """Read one member array's level 0 out of a store.
+
+        Args:
+            path: Store root.
+            member: Store-relative group path, e.g. ``"gray"``.
+            layer: Set to ``"rgb"`` to move the channel axis back to last.
+
+        Returns:
+            The level-0 array.
+        """
+        import zarr
+
+        from phenotypic.sdk_ import ngff_
+
+        # ``np.asarray``: zarr types ``__getitem__`` as a broad scalar-or-array
+        # union, and a full-slice read of a 2-D/3-D array is always an ndarray.
+        # No copy is made for one.
+        array = np.asarray(
+            zarr.open_array(
+                store=ngff_.long_path(Path(path) / member / "0"), mode="r"
+            )[...]
+        )
+        return np.moveaxis(array, 0, -1) if layer == "rgb" else array
 
     @classmethod
     def _load_legacy_flat_group(cls, group, **kwargs) -> Image:
@@ -1152,9 +1828,15 @@ class ImageIOHandler(ImageColorSpace):
         return img
 
     @classmethod
-    def load_hdf5(cls, filename, **kwargs) -> Image:
+    def _load_hdf5_for_migration(cls, filename, **kwargs) -> Image:
         """
-        Loads an image object from an HDF5 file.
+        Loads an image object from a legacy HDF5 file.
+
+        Private since Phase 6 of the OME-Zarr store change: the public
+        ``load_hdf5`` is gone and this entry point exists only so
+        ``--mode migrate`` can read a legacy tree. Callers are
+        :mod:`phenotypic.sdk_._hdf_to_zarr` and the private loader in
+        :mod:`phenotypic.sdk_._io_constants`.
 
         Args:
             filename (str): The path to the HDF5 file containing the image data. Providing an incorrect or
@@ -1170,55 +1852,135 @@ class ImageIOHandler(ImageColorSpace):
             through kwargs, as they affect the image's suitability for detailed microbe colony studies.
         """
         with h5py.File(filename, "r") as filehandler:
-            # Auto-dispatch warning: if a user calls Image.load_hdf5 on a file
-            # that was saved as a GridImage, warn but do NOT upcast — still
-            # return a plain Image so behaviour stays explicit.
+            # Auto-dispatch warning: if migration reads a file through
+            # ``Image`` when it was saved as a GridImage, warn but do NOT
+            # upcast -- still return a plain Image so behaviour stays
+            # explicit.
             saved_class = filehandler.attrs.get("phenotypic_class")
             if isinstance(saved_class, bytes):
                 saved_class = saved_class.decode("utf-8", errors="replace")
-            if (
-                    saved_class == "GridImage"
-                    and cls.__name__ != "GridImage"
-            ):
+            if saved_class == "GridImage" and cls.__name__ != "GridImage":
                 warnings.warn(
-                        "File was saved as GridImage; "
-                        "use GridImage.load_hdf5 to preserve grid state",
-                        UserWarning,
-                        stacklevel=2,
+                    "File was saved as GridImage; "
+                    "use GridImage to preserve grid state",
+                    UserWarning,
+                    stacklevel=2,
                 )
             img = cls._load_from_hdf5_group(filehandler, **kwargs)
 
         return img
 
     @classmethod
-    def load_layer_hdf5(cls, filename, layer: str) -> np.ndarray:
-        """Read a single image layer from an intermediate HDF5 file.
+    def load_zarr(cls, path, **kwargs) -> Image:
+        """Load an image from an OME-Zarr store.
 
-        Reads only the requested dataset without reconstructing a full
-        :class:`Image`. Handles both the schema-v2 grouped layout
-        (``/layers/<layer>``) and the legacy flat layout (``/<layer>``).
+        Reads only level 0. ``attributes.phenotypic`` is the sole source of
+        truth; the write-only OME projection is never read back.
 
         Args:
-            filename: Path to the HDF5 file.
-            layer: One of ``"rgb"``, ``"gray"``, ``"detect_mat"``, ``"objmap"``.
+            path: Path to a ``*.ome.zarr`` directory.
+            **kwargs: Forwarded to the constructor, taking priority over
+                anything recovered from the store.
 
         Returns:
-            The layer array.
+            An :class:`Image` (or :class:`GridImage`, via the subclass).
 
         Raises:
-            KeyError: If *layer* is not present in the file.
+            FileNotFoundError: If the store has no root ``zarr.json`` -- an
+                interrupted write reads as absent, not as partial.
+            ValueError: If the store carries no ``phenotypic.image_class`` --
+                it was written by ``--mode process`` or by another tool and is
+                not a run bundle; use :meth:`imread` to read its pixels. Also
+                if ``store_schema_version`` is not this build's. The
+                gate is by VALUE, not presence: opening a future store under
+                today's semantics is exactly what it exists to prevent.
+
+        Examples:
+            Round-trip a synthetic plate:
+
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from phenotypic import Image
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> img = Image(load_synth_yeast_plate())
+            >>> with tempfile.TemporaryDirectory() as tmp:
+            ...     store = img.save2zarr(Path(tmp) / 'plate.ome.zarr')
+            ...     Image.load_zarr(store).num_objects == img.num_objects
+            True
         """
-        with h5py.File(filename, "r") as f:
-            schema_version = int(f.attrs.get("schema_version", 1))
-            if schema_version >= _SCHEMA_VERSION and "layers" in f:
-                group = f["layers"]
-            else:
-                group = f
-            if layer not in group:
-                raise KeyError(
-                    f"Layer {layer!r} not found in {filename}"
-                )
-            return group[layer][()]
+        from phenotypic.sdk_ import ngff_
+
+        # BEFORE require_readable_store, deliberately. That call ends in
+        # `attributes[PhenotypicAttr.ROOT]` (ngff_.py:631), a bare subscript,
+        # so a third-party store raises KeyError there and a guard placed
+        # after it would never fire on the case it most needs to serve.
+        # FileNotFoundError from read_root_attributes still propagates: an
+        # interrupted write reads as absent, not as "not a bundle".
+        attributes = ngff_.read_root_attributes(path)
+        phenotypic_block = attributes.get(ngff_.PhenotypicAttr.ROOT, {})
+        if ngff_.PhenotypicAttr.IMAGE_CLASS not in phenotypic_block:
+            raise ValueError(
+                f"{path} carries no phenotypic.image_class and is not a "
+                f"PhenoTypic run bundle. It was written by --mode process or "
+                f"by another tool. Use Image.imread() to read its pixels."
+            )
+
+        block = ngff_.require_readable_store(path)
+        saved_class = block.get(ngff_.PhenotypicAttr.IMAGE_CLASS)
+        if saved_class == "GridImage" and cls.__name__ != "GridImage":
+            warnings.warn(
+                "Store was saved as GridImage; use GridImage.load_zarr to "
+                "preserve grid state",
+                UserWarning,
+                stacklevel=2,
+            )
+        return cls._load_from_store(path, block, **kwargs)
+
+    @classmethod
+    def load_layer_zarr(cls, path, layer: str, level: int = 0) -> np.ndarray:
+        """Read one layer at one pyramid level without building an Image.
+
+        ``objmap`` is resolved through ``phenotypic.labels.objmap``, never by a
+        hard-coded ``rgb/labels/objmap`` -- an rgb-less store puts the label
+        under ``gray``.
+
+        Args:
+            path: Store path.
+            layer: ``"rgb"``, ``"gray"``, ``"detect_mat"``, or ``"objmap"``.
+            level: Pyramid level index; 0 is full resolution.
+
+        Returns:
+            The layer array. ``rgb`` is returned as ``(H, W, C)``.
+
+        Raises:
+            KeyError: If *layer* is not present in the store.
+            ValueError: If ``store_schema_version`` is not this build's. This
+                reads pixels, so it carries the same value gate as
+                :meth:`load_zarr` -- decoding a future store's bytes under
+                today's semantics is wrong on either entry point, and this one
+                is the GUI tile server's.
+        """
+        import zarr
+
+        from phenotypic.sdk_ import ngff_
+
+        block = ngff_.require_readable_store(path)
+        # `.get` on LABELS: a label-less store omits the key entirely
+        # (ledger C3), so indexing it would raise KeyError before reaching
+        # the `member is None` branch below.
+        member = block[ngff_.PhenotypicAttr.SERIES].get(layer) or block.get(
+            ngff_.PhenotypicAttr.LABELS, {}
+        ).get(layer)
+        if member is None:
+            raise KeyError(f"Layer {layer!r} not found in {path}")
+        # See ``_load_layer_from_store``: narrow zarr's broad read union.
+        array = np.asarray(
+            zarr.open_array(
+                store=ngff_.long_path(Path(path) / member / str(level)),
+                mode="r",
+            )[...]
+        )
+        return np.moveaxis(array, 0, -1) if layer == "rgb" else array
 
     def save2pickle(self, filename: str) -> None:
         """Save the image to a pickle file for fast serialization and deserialization.
@@ -1247,13 +2009,13 @@ class ImageIOHandler(ImageColorSpace):
         """
         with open(filename, "wb") as filehandler:
             data2save = {
-                "_data.rgb"         : self._data.rgb,
-                "_data.gray"        : self._data.gray,
-                "_data.detect_mat"  : self._data.detect_mat,
-                "_data.detect_mode" : self._data.detect_mode,
-                "objmap"            : self.objmap[:],
+                "_data.rgb": self._data.rgb,
+                "_data.gray": self._data.gray,
+                "_data.detect_mat": self._data.detect_mat,
+                "_data.detect_mode": self._data.detect_mode,
+                "objmap": self.objmap[:],
                 "protected_metadata": self._metadata.protected,
-                "public_metadata"   : self._metadata.public,
+                "public_metadata": self._metadata.public,
             }
 
             if hasattr(self, "grid_finder"):
@@ -1336,21 +2098,27 @@ class ImageIOHandler(ImageColorSpace):
             target_class = GridImage
             grid_finder = loaded["grid_finder"]
         else:
-            target_class = cls  # Use Image or whatever class this was called on
+            target_class = (
+                cls  # Use Image or whatever class this was called on
+            )
             grid_finder = None
 
         # Create instance with appropriate type
         # GridImage constructor accepts grid_finder parameter
         if loaded["_data.rgb"].size > 0:
             if has_grid_finder:
-                instance = target_class(arr=loaded["_data.rgb"], name=None,
-                                        grid_finder=grid_finder)
+                instance = target_class(
+                    arr=loaded["_data.rgb"], name=None, grid_finder=grid_finder
+                )
             else:
                 instance = target_class(arr=loaded["_data.rgb"], name=None)
         else:
             if has_grid_finder:
-                instance = target_class(arr=loaded["_data.gray"], name=None,
-                                        grid_finder=grid_finder)
+                instance = target_class(
+                    arr=loaded["_data.gray"],
+                    name=None,
+                    grid_finder=grid_finder,
+                )
             else:
                 instance = target_class(arr=loaded["_data.gray"], name=None)
 
@@ -1360,7 +2128,7 @@ class ImageIOHandler(ImageColorSpace):
 
         # Backward compat: old pickles use '_data.enh_gray', new use '_data.detect_mat'
         instance._data.detect_mat = loaded.get(
-                "_data.detect_mat", loaded.get("_data.enh_gray")
+            "_data.detect_mat", loaded.get("_data.enh_gray")
         )
         instance._data.detect_mode = loaded.get("_data.detect_mode", "gray")
         instance.objmap[:] = loaded["objmap"]

@@ -43,6 +43,7 @@ def submit_slurm_script_chain(
     finalizer_script: Path | None = None,
     continuation_dependency_kinds: Sequence[SlurmDependencyKind] | None = None,
     generation: str | None = None,
+    control_output_dir: Path | None = None,
 ) -> SLURMScriptChainSubmission:
     """Generate and start a drip-feed SLURM dispatcher chain.
 
@@ -56,6 +57,8 @@ def submit_slurm_script_chain(
         continuation_dependency_kinds: Dependency kind for each
             chunk-to-continuation edge. Defaults to ``afterany`` throughout.
         generation: Optional explicit lifecycle generation for this chain.
+        control_output_dir: Optional root for dispatcher scripts and logs when
+            they must be isolated from the lifecycle/scientific output root.
 
     Returns:
         Submission result with job IDs and generated script paths.
@@ -71,7 +74,8 @@ def submit_slurm_script_chain(
             "Check that datasets contain images."
         )
 
-    log_dir = logs_dir(output_dir) / "slurm"
+    control_output = Path(control_output_dir or output_dir)
+    log_dir = logs_dir(control_output) / "slurm"
     dependency_kinds = _resolve_continuation_dependency_kinds(
         chunk_count=len(flat_scripts),
         has_finalizer=finalizer_script is not None,
@@ -91,20 +95,22 @@ def submit_slurm_script_chain(
     if finalizer_script is None:
         dispatcher_scripts = generate_dispatcher_chain(
             chunk_scripts=flat_scripts,
-            output_dir=output_dir,
+            output_dir=control_output,
             slurm_args=slurm_args,
             log_dir=log_dir,
             continuation_dependency_kinds=dependency_kinds,
+            lifecycle_output_dir=output_dir,
             **generation_kwargs,
         )
     else:
         dispatcher_scripts = generate_dispatcher_chain(
             chunk_scripts=flat_scripts,
-            output_dir=output_dir,
+            output_dir=control_output,
             slurm_args=slurm_args,
             log_dir=log_dir,
             finalizer_script=finalizer_script,
             continuation_dependency_kinds=dependency_kinds,
+            lifecycle_output_dir=output_dir,
             **generation_kwargs,
         )
 

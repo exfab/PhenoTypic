@@ -35,6 +35,7 @@ from phenotypic.sdk_ import (
     atomic_write_json,
     resolve_event_log_path,
     resolve_processing_state_path,
+    source_image_stem,
 )
 from .._cli_completion import valid_image_success
 from phenotypic.sdk_.typing_ import ExecutionMode
@@ -616,7 +617,7 @@ def build_manifest(
                     and valid_image_success(
                         output_dir,
                         dataset=ds_name,
-                        image_stem=Path(image_name).stem,
+                        image_stem=source_image_stem(Path(image_name)),
                         work_id=work_id,
                     )
                 )
@@ -661,7 +662,7 @@ def build_manifest(
                         and valid_image_success(
                             output_dir,
                             dataset=ds_name,
-                            image_stem=Path(image_name).stem,
+                            image_stem=source_image_stem(Path(image_name)),
                             work_id=work_id,
                         )
                     )

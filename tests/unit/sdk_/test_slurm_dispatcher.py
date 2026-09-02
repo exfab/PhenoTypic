@@ -279,8 +279,10 @@ class TestGenerateDispatcherScript:
         assert "no further dispatcher needed" in content
         assert "--dispatcher-script" not in content
 
-    def test_dispatcher_minimal_resources(self, tmp_path, slurm_args):
-        """Dispatcher should request minimal resources."""
+    def test_dispatcher_has_import_headroom_without_worker_sized_resources(
+        self, tmp_path, slurm_args
+    ):
+        """Lifecycle imports fit without assigning worker-sized resources."""
         chunk_script = tmp_path / "chunk1.sh"
         chunk_script.touch()
         log_dir = tmp_path / "logs"
@@ -295,7 +297,7 @@ class TestGenerateDispatcherScript:
         )
 
         content = output.read_text()
-        assert "--mem=100M" in content
+        assert "--mem=512M" in content
         assert "--time=00:05:00" in content
         assert "--cpus-per-task=1" in content
 

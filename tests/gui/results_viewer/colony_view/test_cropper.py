@@ -99,34 +99,46 @@ def test_rgba_source_is_normalised_to_rgb(tmp_path: Path) -> None:
     assert img.getpixel((4, 4)) == (200, 100, 50)
 
 
-def test_hdf_crop_reads_window_without_full_layer_loader(
+def test_store_crop_reads_window_without_full_layer_loader(
     tmp_path: Path, monkeypatch
 ) -> None:
-    import h5py
+    """A crop pulls its window, not the layer.
 
-    h5_path = tmp_path / "plate.h5"
+    Guarded on the number of ELEMENTS the zarr array yields rather than on
+    a monkeypatched full-layer loader: the loaders this test used to poison
+    (`_load_zarr_layer_rgb` / `_load_zarr_level_rgb`) were retired with the
+    Plate DZI path, and a patch on a name nothing imports asserts nothing.
+    """
+    import zarr
+
+    from phenotypic import Image
+
     rgb = np.zeros((64, 64, 3), dtype=np.uint8)
     rgb[24:40, 24:40] = (10, 80, 160)
-    with h5py.File(h5_path, "w") as fh:
-        layers = fh.create_group("layers")
-        layers.create_dataset("rgb", data=rgb)
+    store = Image(arr=rgb).save2zarr(tmp_path / "plate.ome.zarr")
 
-    def _raise_full_layer(*_args, **_kwargs):
-        raise AssertionError(
-            "crop_hdf_rgb should not decode the full HDF layer"
-        )
+    pulled: list[int] = []
+    real_getitem = zarr.Array.__getitem__
 
-    monkeypatch.setattr(tiles, "_load_hdf_layer_rgb", _raise_full_layer)
+    def _counting(self, selection):
+        out = real_getitem(self, selection)
+        pulled.append(int(np.asarray(out).size))
+        return out
 
-    png_bytes = tiles.crop_hdf_rgb(
-        h5_path,
+    monkeypatch.setattr(zarr.Array, "__getitem__", _counting)
+
+    png_bytes = tiles.crop_store_rgb(
+        store,
         "rgb",
         center_rr=32,
         center_cc=32,
         size=16,
-        mtime_ns=h5_path.stat().st_mtime_ns,
+        mtime_ns=store.stat().st_mtime_ns,
     )
     img = PILImage.open(io.BytesIO(png_bytes))
 
     assert img.size == (16, 16)
     assert img.getpixel((8, 8)) == (10, 80, 160)
+    # 3 channels x a 16x16 window. A full-layer read would be 64x64x3.
+    assert pulled, "no zarr read happened at all"
+    assert max(pulled) <= 3 * 16 * 16, pulled

@@ -34,6 +34,8 @@ from pathlib import Path
 from typing import Callable, TypeVar
 from contextlib import contextmanager
 
+from phenotypic.sdk_ import CommitGuard, publication_commit
+
 # Platform-specific imports
 if sys.platform == "win32":
     import msvcrt
@@ -172,6 +174,7 @@ def atomic_append(
         *,
         durable: bool = False,
         repair_incomplete_line: bool = False,
+        commit_guard: CommitGuard | None = None,
 ) -> None:
     """
     Append to file with exclusive lock.
@@ -203,7 +206,9 @@ def atomic_append(
     if not durable:
         with open(file_path, 'a', encoding='utf-8') as f:
             with file_lock(f, timeout=timeout, shared=False):
-                f.write(content)
+                with publication_commit(commit_guard):
+                    f.write(content)
+                    f.flush()
         return
 
     encoded = content.encode("utf-8")
@@ -211,25 +216,24 @@ def atomic_append(
         with file_lock(f, timeout=timeout, shared=False):
             f.seek(0, os.SEEK_END)
             end = f.tell()
-            try:
-                if repair_incomplete_line and end:
-                    f.seek(-1, os.SEEK_END)
-                    if f.read(1) != b"\n":
-                        f.seek(0, os.SEEK_END)
-                        if f.write(b"\n") != 1:
-                            raise OSError(
-                                "short write while terminating partial line"
-                            )
-                f.seek(0, os.SEEK_END)
-                if f.write(encoded) != len(encoded):
-                    raise OSError("short write while appending durable record")
-                f.flush()
-                os.fsync(f.fileno())
-            except BaseException:
-                # A caught write/flush/fsync failure must not become visible as
-                # a terminal outcome in this still-running process. Restore
-                # only this uncommitted append while the exclusive lock is held.
-                f.seek(0)
-                f.truncate(end)
-                f.flush()
-                raise
+            with publication_commit(commit_guard):
+                try:
+                    if repair_incomplete_line and end:
+                        f.seek(-1, os.SEEK_END)
+                        if f.read(1) != b"\n":
+                            f.seek(0, os.SEEK_END)
+                            if f.write(b"\n") != 1:
+                                raise OSError(
+                                    "short write while terminating partial line"
+                                )
+                    f.seek(0, os.SEEK_END)
+                    if f.write(encoded) != len(encoded):
+                        raise OSError("short write while appending durable record")
+                    f.flush()
+                    os.fsync(f.fileno())
+                except BaseException:
+                    # Roll back while both artifact and lifecycle locks remain held.
+                    f.seek(0)
+                    f.truncate(end)
+                    f.flush()
+                    raise

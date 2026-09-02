@@ -212,10 +212,10 @@ Note: `phenotypic gui` (no hyphen, as a subcommand) is **not supported**. Use
 
 # Hyperparameter Tuning
 
-Search an `ImagePipeline`'s parameters to maximize a scorer with the tuning engine:
+Search an `ImagePipeline`'s parameters to minimize a scorer-defined cost with the tuning engine:
 
 ```bash
-uv run python -m phenotypic.tune run spec.json -i ./plates -o ./out
+uv run phenotypic-tune run spec.json -i ./plates -o ./out
 ```
 
 Grid and random search work out of the box; the Optuna samplers
@@ -236,7 +236,7 @@ Grid and random search work out of the box; the Optuna samplers
 | `phenotypic.detect.nn`  | GPU-accelerated detectors (SAM2, micro-sam) with checkpoint management — see [setup guide](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html)                                                     |
 | `phenotypic.refine`     | Different tools to edit the detected objects such as morphology, relabeling, joining, or removing                                                                                                                        |
 | `phenotypic.prefab`     | Various premade image processing pipelines that are in use at ExFAB                                                                                                                                                      |
-| `phenotypic.tune`       | Hyperparameter-tuning engine: grid/random search plus Optuna samplers (behind the `tune` extra), pluggable scorers, robust held-out evaluation, distributed search over HPCC SLURM/Postgres, and a `/tune/` GUI co-pilot |
+| `phenotypic.tune`       | Hyperparameter-tuning engine: grid/random search plus Optuna samplers (behind the `tune` extra), pluggable scorers, robust held-out evaluation, a shared-journal SLURM worker array with terminal publication, and a `/tune/` GUI co-pilot |
 
 # Sponsors
 

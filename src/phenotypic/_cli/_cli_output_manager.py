@@ -8,12 +8,12 @@ error logging to prevent silent data loss.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
 import shutil
 import uuid
-import warnings
 from pathlib import Path
 from typing import (
     Any,
@@ -22,7 +22,6 @@ from typing import (
     Final,
     List,
     Literal,
-    Mapping,
     Optional,
     TYPE_CHECKING,
 )
@@ -34,9 +33,12 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.plotting._pipeline import AnalysisResult
+    from phenotypic.sdk_ import CommitGuard
 
 from ._cli_types import Dataset
+from ._embedded_measurement_tables import prepare_embedded_measurement_table
 from ._metadata_join import (
+    normalize_external_metadata_columns,
     normalize_measurement_metadata_columns,
     prepare_metadata_join_keys,
 )
@@ -51,8 +53,7 @@ from phenotypic.util import split_measurements
 from phenotypic.sdk_ import (
     analysis_manifest_path,
     DIR_RESULTS,
-    DIR_MEASUREMENTS,
-    DIR_HDF,
+    DIR_ZARR,
     PARQUET_WRITE_OPTIONS,
     EnvVar,
     atomic_write_with_writer,
@@ -60,12 +61,14 @@ from phenotypic.sdk_ import (
     deliverables_dir,
     master_measurements_csv_path,
     master_measurements_parquet_path,
+    metadata_csv_deliverable_path,
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
     logs_dir,
     pipeline_json_path,
     pipeline_publication_lock,
+    publication_commit,
     qc_duckdb_path,
     resolve_pipeline_config_path,
     resolve_processing_state_path,
@@ -81,6 +84,34 @@ logger = logging.getLogger(__name__)
 #: over frame shape (callers pass frames without ``Object_Label``). Dropped
 #: before returning.
 _MEAS_PRESENT_SENTINEL: Final = "__phenotypic_measurement_present"
+
+
+def _guarded_terminal_call(
+    commit_guard: "CommitGuard | None",
+    operation: Callable[[], Any],
+) -> Any:
+    """Run one terminal side effect while generation ownership is held."""
+    with publication_commit(commit_guard):
+        return operation()
+
+
+def _guarded_terminal_best_effort(
+    commit_guard: "CommitGuard | None",
+    operation: Callable[[], Any],
+    *,
+    warning: str,
+    default: Any = None,
+) -> Any:
+    """Keep legacy best-effort I/O without swallowing fence rejection."""
+
+    def attempt() -> Any:
+        try:
+            return operation()
+        except Exception:
+            logger.warning(warning, exc_info=True)
+            return default
+
+    return _guarded_terminal_call(commit_guard, attempt)
 
 
 def _is_metadata_integrity_error(exc: ValueError) -> bool:
@@ -141,7 +172,14 @@ def join_metadata(
         ``QC_MetadataOnly`` when ``how="left"``). Row order follows the metadata
         frame.
     """
-    metadata_df = pl.read_csv(metadata_csv)
+    # infer_schema_length=None scans the whole file for dtype inference,
+    # not just the default first 100 rows. Real metadata CSVs can have a
+    # mostly-numeric-looking column (e.g. a Strain id column) with a rare
+    # alphanumeric outlier past row 100 — the default silently infers Int64
+    # from the first rows, then read_csv raises a ComputeError once it hits
+    # the outlier, aborting the whole join. A full scan costs a few seconds
+    # even for CSVs in the tens of MB and avoids that failure mode entirely.
+    metadata_df = pl.read_csv(metadata_csv, infer_schema_length=None)
     prepared = prepare_metadata_join_keys(df, metadata_df)
     df = prepared.measurements
     metadata_df = prepared.metadata
@@ -225,7 +263,8 @@ def join_metadata(
 
 def _scratch_dest_name(pq: Path) -> str:
     """Build a collision-safe filename for a parquet staged to $SCRATCH."""
-    return f"{pq.parent.parent.name}_{pq.name}"
+    source_digest = hashlib.sha256(str(pq).encode()).hexdigest()
+    return f"{source_digest}_{pq.name}"
 
 
 def _stage_to_scratch(parquet_files: List[Path]) -> Optional[Path]:
@@ -738,7 +777,12 @@ def _apply_post_to_master(
         return master_df
 
 
-def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
+def _seed_measurements(
+    output_dir: Path,
+    master_df: "pl.DataFrame",
+    *,
+    commit_guard: "CommitGuard | None" = None,
+) -> None:
     """Atomically write ``measurements.{csv,parquet}`` as a fresh master copy.
 
     The GUI's results viewer mutates these mirrors in place when users curate
@@ -747,22 +791,22 @@ def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
     written. Failures of either write are logged at WARNING and do not raise
     — the master output is preserved as the authoritative source.
     """
-    try:
-        atomic_write_with_writer(
-            measurements_csv_path(output_dir), master_df.write_csv
-        )
-    except Exception:
-        logger.warning("Failed to seed measurements.csv (master was saved)")
-
-    try:
-        atomic_write_with_writer(
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: atomic_write_with_writer(
+            measurements_csv_path(output_dir),
+            master_df.write_csv,
+        ),
+        warning="Failed to seed measurements.csv (master was saved)",
+    )
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: atomic_write_with_writer(
             measurements_parquet_path(output_dir),
             lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
-        )
-    except Exception:
-        logger.warning(
-            "Failed to seed measurements.parquet (master was saved)"
-        )
+        ),
+        warning="Failed to seed measurements.parquet (master was saved)",
+    )
 
 
 #: Post-applied mirror columns that source the REMBI manifest's per-image
@@ -827,13 +871,110 @@ def _image_metadata_from_mirror(mirror_df: "pl.DataFrame") -> list[dict]:
     ]
 
 
+def _append_metadata_only_rows(
+    master_df: "pl.DataFrame",
+    metadata_csv: Path,
+    join_keys: tuple[str, ...],
+) -> "pl.DataFrame":
+    """Append the external metadata anti-join without rejoining measured rows."""
+    working = normalize_measurement_metadata_columns(master_df)
+    metadata = normalize_external_metadata_columns(
+        working, pl.read_csv(metadata_csv)
+    )
+    missing = [
+        key
+        for key in join_keys
+        if key not in working.columns or key not in metadata.columns
+    ]
+    if missing:
+        raise ValueError(
+            "Recorded metadata join keys are absent during finalization: "
+            + ", ".join(missing)
+        )
+    flag = str(METADATA_MATCH.METADATA_ONLY)
+    measured = working.with_columns(pl.lit(False).alias(flag))
+    if not join_keys:
+        return measured
+
+    comparable_measurements = working.with_columns(
+        pl.col(key).cast(pl.String) for key in join_keys
+    )
+    comparable_metadata = metadata.with_columns(
+        pl.col(key).cast(pl.String) for key in join_keys
+    )
+    measured_keys = comparable_measurements.select(join_keys).unique()
+    phantoms = comparable_metadata.join(
+        measured_keys,
+        on=list(join_keys),
+        how="anti",
+    ).with_columns(pl.lit(True).alias(flag))
+    return pl.concat([measured, phantoms], how="diagonal_relaxed")
+
+
+def _consistent_embedded_join_keys(
+    paths: list[Path],
+) -> tuple[str, ...] | None:
+    """Return one embedded-table join generation or reject a mixed snapshot."""
+    import pyarrow.parquet as pq  # type: ignore[import-untyped]
+
+    from phenotypic.sdk_ import (
+        EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS,
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+    )
+
+    suffix = MEASUREMENT_TABLE_RELATIVE_PATH.parts
+    embedded = [
+        path
+        for path in paths
+        if tuple(Path(path).parts[-len(suffix) :]) == suffix
+    ]
+    if not embedded:
+        return None
+    if len(embedded) != len(paths):
+        raise ValueError(
+            "Cannot aggregate mixed embedded and legacy measurement authority"
+        )
+
+    keys = EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS
+    generations: set[tuple[str, tuple[str, ...]]] = set()
+    for path in embedded:
+        metadata = pq.read_schema(path).metadata or {}
+        required = (
+            keys.JOIN_STATUS,
+            keys.JOIN_KEYS,
+            keys.METADATA_SNAPSHOT_SHA256,
+        )
+        missing = [key for key in required if key.encode() not in metadata]
+        if missing:
+            raise ValueError(
+                f"Embedded measurement table {path} lacks provenance: {missing}"
+            )
+        status = metadata[keys.JOIN_STATUS.encode()].decode()
+        raw_join_keys = json.loads(metadata[keys.JOIN_KEYS.encode()].decode())
+        if not isinstance(raw_join_keys, list) or not all(
+            isinstance(key, str) for key in raw_join_keys
+        ):
+            raise ValueError(f"Invalid embedded join-key provenance in {path}")
+        digest = metadata[keys.METADATA_SNAPSHOT_SHA256.encode()].decode()
+        if status == "joined" and (not raw_join_keys or not digest):
+            raise ValueError(f"Incomplete joined-table provenance in {path}")
+        generations.add((digest, tuple(raw_join_keys)))
+    if len(generations) != 1:
+        raise ValueError(
+            "Embedded measurement tables have mixed metadata digests or join keys"
+        )
+    return next(iter(generations))[1]
+
+
 def finalize_post_master_outputs(
     output_dir: Path,
     master_df: "pl.DataFrame",
     pipeline: Optional["ImagePipeline"],
     metadata_csv: Optional[Path] = None,
+    metadata_join_keys: tuple[str, ...] | None = None,
     no_qc: bool = False,
     study_config: Optional[dict] = None,
+    commit_guard: "CommitGuard | None" = None,
 ) -> "pl.DataFrame":
     """Run every CLI side effect that follows a freshly written master file.
 
@@ -848,16 +989,14 @@ def finalize_post_master_outputs(
 
     The order is:
 
-    1. If *metadata_csv* is provided, left-join its rows onto a copy of
-       *master_df* via :func:`join_metadata` — so a metadata key that
-       matched no measured object survives as a phantom row flagged
-       ``QC_MetadataOnly = true``. The join lands here — not
-       on the master archive on disk — so
-       ``master_measurements.{csv,parquet}`` stays a clean, op-free
-       archive of what the workers measured, while the working frame
-       used for the mirror picks up the external metadata columns. The
-       join runs **before** post so :class:`PostMeasurement` ops can
-       reference joined columns through their schema member names.
+    1. If *metadata_csv* and recorded *metadata_join_keys* are provided,
+       append only metadata rows whose keys are absent from *master_df*,
+       flagging them ``QC_MetadataOnly = true``. Measured rows already
+       carry their publication-time metadata from the embedded tables and are
+       not joined again. Legacy metadata-free masters without recorded keys
+       retain the historical left join. This runs **before** post so
+       :class:`PostMeasurement` ops can reference joined columns through
+       their schema member names.
     2. Apply ``pipeline._post`` to the (optionally metadata-joined)
        working frame via :func:`_apply_post_to_master`. The resulting
        ``post_df`` is what the GUI viewer/curation layer reads from
@@ -885,17 +1024,18 @@ def finalize_post_master_outputs(
         output_dir: Output root that already contains
             :data:`~phenotypic.sdk_.MASTER_MEASUREMENTS_PARQUET` (and the
             CSV counterpart).
-        master_df: The clean (post-free, metadata-free) aggregated master.
+        master_df: Exact concatenation of authorized embedded tables: joined
+            measured rows before post operations. Legacy callers may still
+            supply a metadata-free master.
         pipeline: Recovered pipeline, or ``None`` when it can't be
             located (the SLURM sentinel may run before any pipeline.json
             is persisted).
-        metadata_csv: Optional external metadata CSV. When provided, its
-            columns are left-joined onto an in-memory copy of *master_df*
-            before post ops run, so :class:`PostMeasurement` operations
-            can reference joined columns. Only the mirror (and its
-            derivatives) carry external metadata — never the master
-            archive on disk. Undetected metadata keys survive as phantom
-            rows carrying ``QC_MetadataOnly = true``.
+        metadata_csv: Optional effective metadata snapshot. For embedded
+            masters, measured rows already contain its joined columns; only
+            the anti-join rows absent from measurements are appended to the
+            mirror before post operations. Legacy metadata-free masters use
+            the historical left join. Undetected metadata identities survive
+            as phantom rows carrying ``QC_MetadataOnly = true``.
         no_qc: When ``True``, skip the QC compute step entirely (no ``qc/``
             artifact is written and the GUI review state is left as-is).
             When ``False`` (default), QC runs whenever the pipeline has a
@@ -922,7 +1062,10 @@ def finalize_post_master_outputs(
     """
     from phenotypic.sdk_ import migrate_legacy_qc
 
-    migrate_legacy_qc(output_dir)
+    _guarded_terminal_call(
+        commit_guard,
+        lambda: migrate_legacy_qc(output_dir),
+    )
 
     # Metadata join runs first so PostMeasurement ops can reference joined
     # columns through their schema member names. The
@@ -931,11 +1074,21 @@ def finalize_post_master_outputs(
     working_df = normalize_measurement_metadata_columns(master_df)
     if metadata_csv is not None:
         try:
-            working_df = join_metadata(working_df, metadata_csv, how="left")
+            if metadata_join_keys is None:
+                # Legacy masters are metadata-free and retain the historical
+                # join path. Embedded masters supply their recorded keys and
+                # must never join measured rows a second time.
+                working_df = join_metadata(
+                    working_df, metadata_csv, how="left"
+                )
+            else:
+                working_df = _append_metadata_only_rows(
+                    working_df, metadata_csv, metadata_join_keys
+                )
         except ValueError:
             # Metadata normalization uses ValueError for conflicting aliases,
             # incompatible duplicate dtypes, and lossy coalescing. A fallback
-            # to the metadata-free master would publish an invalid mirror.
+            # to the unaugmented master would publish an invalid mirror.
             raise
         except Exception as e:
             logger.warning(
@@ -951,7 +1104,7 @@ def finalize_post_master_outputs(
     from phenotypic.sdk_ import order_measurement_columns
 
     post_df = post_df.select(order_measurement_columns(post_df.columns))
-    _seed_measurements(output_dir, post_df)
+    _seed_measurements(output_dir, post_df, commit_guard=commit_guard)
 
     # Always emit the REMBI run manifest (deliverables/rembi.yaml) from the
     # post-applied MIRROR — never the clean master — folding its per-colony rows
@@ -959,21 +1112,21 @@ def finalize_post_master_outputs(
     # ``write_rembi_manifest`` is internally guarded and no-ops when deliverables/
     # is absent, and the mirror→image-metadata derivation is wrapped so a forward
     # finalize is never blocked.
-    try:
-        from phenotypic.sdk_._rembi_manifest import write_rembi_manifest
+    from phenotypic.sdk_._rembi_manifest import write_rembi_manifest
 
-        write_rembi_manifest(
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: write_rembi_manifest(
             output_dir,
             post_df.to_pandas(),
             _image_metadata_from_mirror(post_df),
             study_config=study_config,
-        )
-    except Exception:
-        logger.warning(
+        ),
+        warning=(
             "Failed to write REMBI manifest deliverables/rembi.yaml "
-            "(master/measurements still written)",
-            exc_info=True,
-        )
+            "(master/measurements still written)"
+        ),
+    )
 
     if pipeline is not None:
         from phenotypic.plotting._pipeline import (
@@ -981,22 +1134,37 @@ def finalize_post_master_outputs(
             PlotCoordinator,
         )
 
-        _persist_pipeline_to_output_dir(output_dir, pipeline)
+        _guarded_terminal_call(
+            commit_guard,
+            lambda: _persist_pipeline_to_output_dir(output_dir, pipeline),
+        )
         measurements_pd = post_df.to_pandas()
         coordinator = PlotCoordinator(pipeline, output_dir)
         registry = AnalysisRegistry(deliverables_dir(output_dir))
-        coordinator.emit_measurements(measurements_pd)
+        _guarded_terminal_call(
+            commit_guard,
+            lambda: coordinator.emit_measurements(measurements_pd),
+        )
 
-        analysis_result = _emit_analysis_outputs(output_dir, post_df, pipeline)
+        analysis_result = _guarded_terminal_call(
+            commit_guard,
+            lambda: _emit_analysis_outputs(output_dir, post_df, pipeline),
+        )
         if analysis_result is not None:
-            registry.register(
-                analysis_result.analysis_id,
-                analysis_result.table,
-                producer=analysis_result.producer,
-                artifacts=analysis_result.artifacts,
-                manifest_entry=analysis_result.manifest_entry,
+            _guarded_terminal_call(
+                commit_guard,
+                lambda: registry.register(
+                    analysis_result.analysis_id,
+                    analysis_result.table,
+                    producer=analysis_result.producer,
+                    artifacts=analysis_result.artifacts,
+                    manifest_entry=analysis_result.manifest_entry,
+                ),
             )
-        coordinator.emit_analyses(measurements_pd, registry)
+        _guarded_terminal_call(
+            commit_guard,
+            lambda: coordinator.emit_analyses(measurements_pd, registry),
+        )
 
         # QC compute + review-progress reset. A fresh CLI run is "a different
         # run", so the GUI-owned review_state.json is cleared regardless of
@@ -1004,30 +1172,35 @@ def finalize_post_master_outputs(
         # across a rerun). The ``qc/`` artifact is rewritten by ``run_qc`` only
         # when QC is enabled and configured; failures are isolated so the
         # authoritative master files are never affected.
-        _reset_qc_review_state(output_dir)
+        _guarded_terminal_call(
+            commit_guard,
+            lambda: _reset_qc_review_state(output_dir),
+        )
         successful_qc: dict[str, Any] = {}
         if not no_qc and pipeline.get_qc():
-            try:
-                # Import the submodule directly (not ``phenotypic.qc``) so QC
-                # compute is only pulled in on the path that needs it, keeping
-                # the qc package __init__ free of an eager _runner import.
-                from phenotypic.sdk_._qc_recipe._runner import run_qc
+            # Import the submodule directly (not ``phenotypic.qc``) so QC
+            # compute is only pulled in on the path that needs it, keeping
+            # the qc package __init__ free of an eager _runner import.
+            from phenotypic.sdk_._qc_recipe._runner import run_qc
 
-                successful = run_qc(measurements_pd, pipeline, output_dir)
-                successful_qc = {
-                    module.instance_id: module for module in successful
-                }
-            except Exception:
-                logger.warning(
-                    "QC compute failed (master/measurements still written)",
-                    exc_info=True,
-                )
-        coordinator.emit_qc(
-            measurements_pd,
-            registry,
-            successful_modules=successful_qc,
-            qc_database=(
-                qc_duckdb_path(output_dir) if successful_qc else None
+            successful = _guarded_terminal_best_effort(
+                commit_guard,
+                lambda: run_qc(measurements_pd, pipeline, output_dir),
+                warning="QC compute failed (master/measurements still written)",
+                default=(),
+            )
+            successful_qc = {
+                module.instance_id: module for module in successful
+            }
+        _guarded_terminal_call(
+            commit_guard,
+            lambda: coordinator.emit_qc(
+                measurements_pd,
+                registry,
+                successful_modules=successful_qc,
+                qc_database=(
+                    qc_duckdb_path(output_dir) if successful_qc else None
+                ),
             ),
         )
     else:
@@ -1037,32 +1210,29 @@ def finalize_post_master_outputs(
             output_dir,
         )
 
-    try:
-        # Splits operate on the post-applied frame so per-feature
-        # spreadsheets match what the GUI viewer reads from
-        # measurements.{csv,parquet}. The clean master_measurements.*
-        # remains the archival source of truth.
-        split_master_by_feature(post_df, output_dir, pipeline)
-    except Exception:
-        logger.warning(
-            "Per-feature measurement split failed (master files still written)",
-            exc_info=True,
-        )
+    # Splits operate on the post-applied frame so per-feature spreadsheets
+    # match what the GUI viewer reads from measurements.{csv,parquet}. The
+    # clean master_measurements.* remains the archival source of truth.
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: split_master_by_feature(post_df, output_dir, pipeline),
+        warning=(
+            "Per-feature measurement split failed (master files still written)"
+        ),
+        default={},
+    )
 
     # Re-emit the durable error-triage deliverables (errors/* + error_analysis.*)
     # from the labels store, keyed off the CLEAN master (the same frame the GUI's
     # CurationLabels loads, so headless == live). No-op without a durable
     # qc/curation_labels.parquet. (spec §9)
-    try:
-        from phenotypic._cli._cli_error_outputs import (
-            reemit_error_deliverables,
-        )
+    from phenotypic._cli._cli_error_outputs import reemit_error_deliverables
 
-        reemit_error_deliverables(output_dir, master_df)
-    except Exception:  # defensive: a curation re-emit must never fail finalize
-        logger.warning(
-            "Failed to re-emit error-triage deliverables", exc_info=True
-        )
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: reemit_error_deliverables(output_dir, master_df),
+        warning="Failed to re-emit error-triage deliverables",
+    )
 
     return post_df
 
@@ -1186,6 +1356,7 @@ def _aggregate_measurements_unlocked(
     pipeline: Optional["ImagePipeline"] = None,
     no_qc: bool = False,
     study_config: Optional[dict] = None,
+    commit_guard: "CommitGuard | None" = None,
 ) -> Optional[Path]:
     """Aggregate per-image Parquet files into a master CSV via DuckDB.
 
@@ -1238,12 +1409,12 @@ def _aggregate_measurements_unlocked(
         is available — persists ``pipeline.json`` and runs the analysis chain
         into ``analysis.{csv,parquet}``.
 
-        ``master_measurements.{csv,parquet}`` are intentionally a clean
-        (pre-post) archive of what the per-image runs measured, while
-        ``measurements.{csv,parquet}`` carry the post-applied frame that
-        the GUI viewer reads/curates. The two diverge whenever the
-        pipeline has any :class:`PostMeasurement` op configured. Split
-        and analysis failures never change the return value.
+        ``master_measurements.{csv,parquet}`` are the exact concatenation
+        of authorized embedded tables (joined measured rows, pre-post), while
+        ``measurements.{csv,parquet}`` additionally carry exactly-once
+        metadata-only phantoms and the post-applied frame that the GUI viewer
+        reads/curates. Split and analysis failures never change the return
+        value.
     """
     from ._cli_completion import authorized_measurement_sources
 
@@ -1260,6 +1431,12 @@ def _aggregate_measurements_unlocked(
         # Schema-3 terminal publication never trusts checkpoint aggregates or
         # an unmarked per-image Parquet merely because it exists.
         path_to_dataset = authorized_sources
+
+    metadata_join_keys = (
+        _consistent_embedded_join_keys(list(path_to_dataset))
+        if authorized_sources is not None
+        else None
+    )
 
     # -- Stage to $SCRATCH ---------------------------------------------
     scratch_dir = _stage_to_scratch(list(path_to_dataset.keys()))
@@ -1306,19 +1483,33 @@ def _aggregate_measurements_unlocked(
     master_csv_path = master_measurements_csv_path(output_dir)
     master_pq_path = master_measurements_parquet_path(output_dir)
 
-    try:
-        atomic_write_with_writer(master_csv_path, master_df.write_csv)
-    except Exception:
-        logger.error("Failed to save master CSV")
+    def write_master_csv() -> bool:
+        atomic_write_with_writer(
+            master_csv_path,
+            master_df.write_csv,
+        )
+        return True
+
+    master_csv_saved = _guarded_terminal_best_effort(
+        commit_guard,
+        write_master_csv,
+        warning="Failed to save master CSV",
+        default=False,
+    )
+    if not master_csv_saved:
         return None
 
-    try:
+    def write_master_parquet() -> None:
         atomic_write_with_writer(
             master_pq_path,
             lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
-    except Exception:
-        logger.warning("Failed to save master Parquet (CSV was saved)")
+
+    _guarded_terminal_best_effort(
+        commit_guard,
+        write_master_parquet,
+        warning="Failed to save master Parquet (CSV was saved)",
+    )
 
     logger.info(
         "Aggregated %d rows x %d cols into %s",
@@ -1337,14 +1528,16 @@ def _aggregate_measurements_unlocked(
         master_df,
         resolved_pipeline,
         metadata_csv=metadata_csv,
+        metadata_join_keys=metadata_join_keys,
         no_qc=no_qc,
         study_config=study_config,
+        commit_guard=commit_guard,
     )
 
     if authorized_sources is not None:
         from ._cli_completion import publish_aggregate_snapshot
 
-        publish_aggregate_snapshot(output_dir)
+        publish_aggregate_snapshot(output_dir, commit_guard=commit_guard)
 
     return master_csv_path
 
@@ -1357,6 +1550,7 @@ def aggregate_measurements(
     pipeline: Optional["ImagePipeline"] = None,
     no_qc: bool = False,
     study_config: Optional[dict] = None,
+    commit_guard: "CommitGuard | None" = None,
 ) -> Optional[Path]:
     """Serialize aggregate publication across forward and recompile finalizers."""
     from phenotypic.sdk_ import phenotypic_cache_dir
@@ -1374,6 +1568,7 @@ def aggregate_measurements(
             pipeline=pipeline,
             no_qc=no_qc,
             study_config=study_config,
+            commit_guard=commit_guard,
         )
 
 
@@ -1393,6 +1588,7 @@ class OutputManager:
         include_dataset_column: bool = True,
         overlay_alpha: float = 0.3,
         save_overlays: bool = True,
+        durable_writes: bool | None = None,
     ):
         """
         Initialize OutputManager.
@@ -1410,6 +1606,11 @@ class OutputManager:
                 ``overlays/`` directory per dataset and workers will save
                 a PNG overlay per image. Defaults to True; set False only
                 for measure-mode reruns that should not regenerate overlays.
+            durable_writes: ``--durable-writes`` / ``--no-durable-writes``, or
+                ``None`` (the default) to auto-detect SLURM. Carried here
+                rather than passed per call so that no ``save_image_store``
+                site can be silently inert: every write this manager performs
+                inherits the run's resolved durability (spec §3.7).
         """
         self.base_dir = Path(base_dir)
         self.save_layers = save_layers
@@ -1417,6 +1618,7 @@ class OutputManager:
         self.include_dataset_column = include_dataset_column
         self.overlay_alpha = overlay_alpha
         self.save_overlays = save_overlays
+        self.durable_writes = durable_writes
 
         # Results directory for dataset outputs (images, measurements, overlays)
         self.results_dir = self.base_dir / DIR_RESULTS
@@ -1432,14 +1634,22 @@ class OutputManager:
         include_dataset_column: bool = True,
         overlay_alpha: float = 0.3,
         save_overlays: bool = True,
+        durable_writes: bool | None = None,
     ) -> "OutputManager":
-        """Create an OutputManager configured for HDF-centric forward runs.
+        """Create an OutputManager configured for store-centric forward runs.
 
-        Forward runs now write a single ``.h5`` per image under
-        ``results/<ds>/hdf/`` plus the parquet measurements and an
-        overlay PNG. The ``ext`` argument is retained for backward
-        compatibility with callers that still construct overlay
-        filenames via :meth:`get_output_path`.
+        Forward runs write a single OME-Zarr store per image under
+        ``results/<ds>/zarr/<stem>.ome.zarr/`` plus the parquet
+        measurements and an overlay PNG. The ``ext`` argument is retained
+        for backward compatibility with callers that still construct
+        overlay filenames via :meth:`get_output_path`.
+
+        The ``"hdf"`` entries in ``save_layers`` / ``extensions`` below are
+        **not** a write path -- nothing has written an ``.h5`` since Phase 3
+        Task 3.6. They exist so :meth:`get_output_path` can still *name*
+        ``results/<ds>/hdf/<stem>.h5`` for the two readers that legitimately
+        resolve a legacy tree: ``image_data_artifact``'s ``"hdf"`` completion
+        -marker fallback, and ``_migrate_legacy_success_evidence``.
 
         Args:
             base_dir: Base output directory.
@@ -1451,6 +1661,12 @@ class OutputManager:
                 dataset and save an overlay per image. Pass False only
                 for measure-mode reruns that should not regenerate
                 overlays.
+            durable_writes: ``--durable-writes`` / ``--no-durable-writes``, or
+                ``None`` to auto-detect SLURM. Every worker process that
+                builds its own manager must pass the value down from its own
+                command line -- an unset flag re-detects correctly on its own,
+                but ``--no-durable-writes`` exists only in the submitting
+                process (spec §3.7).
         """
         return cls(
             base_dir=base_dir,
@@ -1459,6 +1675,7 @@ class OutputManager:
             include_dataset_column=include_dataset_column,
             overlay_alpha=overlay_alpha,
             save_overlays=save_overlays,
+            durable_writes=durable_writes,
         )
 
     def create_structure(self, datasets: List[Dataset]) -> None:
@@ -1466,9 +1683,10 @@ class OutputManager:
         Create complete output directory structure.
 
         Always creates dataset-first structure with each dataset in its own
-        folder.  Forward runs provision ``measurements/``, ``hdf/``, and
-        ``overlays/`` for every dataset; ``overlays/`` is skipped only
-        when :attr:`save_overlays` is False (e.g. measure-mode reruns).
+        folder. Current-schema forward runs provision ``zarr/`` for every
+        dataset and intentionally do not create legacy ``measurements/``
+        directories. ``overlays/`` is skipped only when
+        :attr:`save_overlays` is False (e.g. measure-mode reruns).
 
         Args:
             datasets: List of datasets to create directories for
@@ -1488,8 +1706,11 @@ class OutputManager:
             dataset_dir = self.results_dir / dataset.name
             dataset_dir.mkdir(exist_ok=True)
 
-            (dataset_dir / DIR_MEASUREMENTS).mkdir(exist_ok=True)
-            (dataset_dir / DIR_HDF).mkdir(exist_ok=True)
+            # ``zarr/``, not ``hdf/``: nothing writes an `.h5` on a
+            # forward run any more (Phase 3 Task 3.6), so provisioning
+            # ``hdf/`` would leave an empty directory in every output
+            # tree that the generated README does not document.
+            (dataset_dir / DIR_ZARR).mkdir(exist_ok=True)
             if self.save_overlays:
                 dataset_overlays_dir(self.base_dir, dataset.name).mkdir(
                     parents=True, exist_ok=True
@@ -1532,7 +1753,12 @@ class OutputManager:
         return self.results_dir / dataset_name / layer / f"{image_stem}{ext}"
 
     def save_measurements(
-        self, measurements: pd.DataFrame, dataset_name: str, image_stem: str
+        self,
+        measurements: pd.DataFrame,
+        dataset_name: str,
+        image_stem: str,
+        *,
+        commit_guard: CommitGuard | None = None,
     ) -> Path:
         """
         Save measurements as a Parquet file for a single image.
@@ -1561,12 +1787,18 @@ class OutputManager:
         atomic_write_with_writer(
             output_path,
             lambda p: parquet_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
+            commit_guard=commit_guard,
         )
 
         return output_path
 
     def save_overlay(
-        self, image: Image, dataset_name: str, image_stem: str
+        self,
+        image: Image,
+        dataset_name: str,
+        image_stem: str,
+        *,
+        commit_guard: CommitGuard | None = None,
     ) -> Path:
         """
         Save overlay visualization for a single image.
@@ -1586,14 +1818,20 @@ class OutputManager:
             dataset_name, "overlays", image_stem
         )
 
-        if not image.rgb.isempty():
-            image.rgb.save_overlay(
-                filepath=output_path, overlay_alpha=self.overlay_alpha
-            )
-        else:
-            image.gray.save_overlay(
-                filepath=output_path, overlay_alpha=self.overlay_alpha
-            )
+        accessor = image.rgb if not image.rgb.isempty() else image.gray
+        atomic_write_with_writer(
+            output_path,
+            lambda temporary: accessor.save_overlay(
+                filepath=Path(temporary),
+                overlay_alpha=self.overlay_alpha,
+                # A zero-object GridImage has no section boxes to draw. Its
+                # RGB/gray pixels are still a valid overlay deliverable, but
+                # the grid annotation path correctly refuses object access.
+                show_grid=image.num_objects > 0,
+            ),
+            commit_guard=commit_guard,
+            temp_suffix=f".tmp{output_path.suffix}",
+        )
 
         return output_path
 
@@ -1630,54 +1868,98 @@ class OutputManager:
             )
             return None
 
-    def save_image_hdf(
+    def save_image_store(
         self,
         image: "Image",
         dataset_name: str,
         image_stem: str,
         *,
-        root_attributes: Mapping[str, str] | None = None,
+        work_id: str | None = None,
+        durable: bool | None = None,
+        commit_guard: CommitGuard | None = None,
+        measurements: pd.DataFrame | None = None,
     ) -> Optional[Path]:
-        """Save processed image as HDF5 under ``results/<ds>/hdf/``.
+        """Save a processed image as an OME-Zarr store under ``results/<ds>/zarr/``.
 
-        Writes atomically: ``image.save2hdf5`` writes to a temp file in the
-        same directory, then :func:`os.replace` promotes it to the final
-        path. This mirrors :func:`atomic_write_with_writer`'s spirit, but h5py
-        needs to own the file handle so we cannot feed it a buffer.
+        Atomicity comes from :func:`phenotypic.sdk_.ngff_.promote_store`: the
+        image is built into a uuid-suffixed ``.part`` sibling and promoted by
+        directory rename.
+
+        ``work_id`` is a first-class argument rather than the old
+        ``root_attributes`` mapping. The store's root ``zarr.json`` is written
+        last so an interrupted write reads as absent, which makes the previous
+        post-write patch (``h5py.File(tmp, "r+")``) impossible by construction.
 
         Args:
             image: Image object with processing results.
             dataset_name: Dataset name.
             image_stem: Image filename without extension.
+            measurements: Optional baseline per-object measurements. When
+                present they are joined to the stable metadata snapshot and
+                embedded transactionally in the store.
+            work_id: CLI work id, written into ``attributes.phenotypic``.
+            durable: Per-call override. ``None`` (the default) defers to
+                :attr:`durable_writes`, which is the run's
+                ``--durable-writes`` / ``--no-durable-writes`` value and is
+                itself ``None`` when the SLURM auto-detection should decide.
+                Deferring rather than re-defaulting to ``None`` here is what
+                makes the flag reach *every* write site: a caller that passes
+                nothing still gets the run's mode, so no site can be inert.
 
         Returns:
-            Path where HDF5 was saved, or ``None`` if saving failed.
+            Path where the store was promoted, or ``None`` if saving failed.
+            Callers that require publication (the staged workers) turn ``None``
+            into a ``RuntimeError`` themselves; that layering is deliberate.
         """
-        final_path = self.get_output_path(dataset_name, "hdf", image_stem)
-        final_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = final_path.with_name(
-            f".{final_path.name}.{os.getpid()}.part"
-        )
-        try:
-            image.save2hdf5(tmp_path)
-            if root_attributes:
-                import h5py
+        from phenotypic.sdk_ import zarr_store_path
 
-                with h5py.File(tmp_path, "r+") as handle:
-                    for key, value in root_attributes.items():
-                        handle.attrs[key] = value
-                    handle.flush()
-            os.replace(tmp_path, final_path)
-            logger.info("Saved HDF5 for %s/%s", dataset_name, image_stem)
-            return final_path
+        # OutputManager's root attribute is ``base_dir``; there is no
+        # ``self.output_dir``.
+        final_path = zarr_store_path(self.base_dir, dataset_name, image_stem)
+        final_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            table = None
+            if measurements is not None:
+                baseline = measurements.copy()
+                if (
+                    self.include_dataset_column
+                    and str(EXPERIMENT.DATASET) not in baseline.columns
+                ):
+                    baseline.insert(
+                        len(baseline.columns),
+                        str(EXPERIMENT.DATASET),
+                        dataset_name,
+                    )
+                metadata_snapshot = metadata_csv_deliverable_path(
+                    self.base_dir
+                )
+                table = prepare_embedded_measurement_table(
+                    baseline,
+                    metadata_snapshot if metadata_snapshot.is_file() else None,
+                )
+            save_kwargs: dict[str, Any] = {
+                "work_id": work_id,
+                "durable": (
+                    self.durable_writes if durable is None else durable
+                ),
+                "commit_guard": commit_guard,
+            }
+            if table is not None:
+                save_kwargs["measurement_table"] = table
+            saved = image.save2zarr(final_path, **save_kwargs)
+            logger.info(
+                "Saved OME-Zarr store for %s/%s", dataset_name, image_stem
+            )
+            return saved
         except Exception as e:
-            if tmp_path.exists():
-                try:
-                    tmp_path.unlink()
-                except OSError:
-                    pass
+            # A lifecycle rejection is authoritative infrastructure state,
+            # never a best-effort scientific save failure.
+            from ._cli_slurm_lifecycle import slurm_generation_inactive_cause
+
+            if (inactive := slurm_generation_inactive_cause(e)) is not None:
+                raise inactive
             logger.warning(
-                "Failed to save HDF5 for %s/%s: %s: %s",
+                "Failed to save OME-Zarr store for %s/%s: %s: %s",
                 dataset_name,
                 image_stem,
                 type(e).__name__,
@@ -1685,63 +1967,39 @@ class OutputManager:
             )
             return None
 
-    def save_image_layers(
+    def replace_image_store_measurements(
         self,
-        image: Image,
+        store_path: Path,
+        measurements: pd.DataFrame,
         dataset_name: str,
-        image_stem: str,
-    ) -> Dict[str, Path]:
-        """Save all requested image layers (rgb, gray, detect_mat, objmap).
+        *,
+        durable: bool | None = None,
+        commit_guard: CommitGuard | None = None,
+    ) -> Path:
+        """Replace an existing store's authoritative measurement table."""
+        from phenotypic.sdk_ import replace_embedded_measurement_table
 
-        .. deprecated::
-            Use :meth:`save_image_hdf` instead. Forward runs now persist a
-            single HDF5 per image under ``results/<ds>/hdf/``. This shim
-            remains for downstream scripts that still call the old per-layer
-            writer; it will be removed in a future release.
-
-        Args:
-            image: Image object with processing results.
-            dataset_name: Dataset name.
-            image_stem: Image filename without extension.
-
-        Returns:
-            Dictionary mapping layer names to saved paths (only successful saves).
-        """
-        warnings.warn(
-            "save_image_layers is deprecated; use save_image_hdf instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        saved_paths: Dict[str, Path] = {}
-
-        layer_accessors = {
-            "rgb": image.rgb,
-            "gray": image.gray,
-            "detect_mat": image.detect_mat,
-            "objmap": image.objmap,
-        }
-
-        for layer_name, accessor in layer_accessors.items():
-            if not self.save_layers.get(layer_name) or accessor.isempty():
-                continue
-
-            def _save_selected_layer(
-                path: Path,
-                *,
-                _accessor: Any = accessor,
-            ) -> None:
-                _accessor.imsave(filepath=path)
-
-            path = self._save_layer_safely(
-                layer_name,
+        baseline = measurements.copy()
+        if (
+            self.include_dataset_column
+            and str(EXPERIMENT.DATASET) not in baseline.columns
+        ):
+            baseline.insert(
+                len(baseline.columns),
+                str(EXPERIMENT.DATASET),
                 dataset_name,
-                image_stem,
-                _save_selected_layer,
             )
-            if path:
-                saved_paths[layer_name] = path
-
-        return saved_paths
+        metadata_snapshot = metadata_csv_deliverable_path(self.base_dir)
+        table = prepare_embedded_measurement_table(
+            baseline,
+            metadata_snapshot if metadata_snapshot.is_file() else None,
+        )
+        return replace_embedded_measurement_table(
+            store_path,
+            table,
+            durable=self.durable_writes if durable is None else durable,
+            commit_guard=commit_guard,
+        )
 
     def aggregate_master_csv(
         self,

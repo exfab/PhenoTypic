@@ -1,15 +1,19 @@
 """Unit-level guard for the top-bar nav model.
 
 The shell's :data:`NAV_MODEL` tuple is the single source of truth for the
-unified hub's top-bar navigation. It consolidates the seven mounts into a
-Home leaf, a Browse leaf, plus two dropdown tab groups:
+unified hub's top-bar navigation. It consolidates the six reachable mounts
+into a Home leaf, a Browse leaf, plus two dropdown tab groups:
 
 * **Browse** (leaf) -> source-image viewer
-* **Pipeline** -> Builder, Tune, Run
+* **Pipeline** -> Builder, Run
 * **Results**  -> Viewer, Analysis
 
+Tune is unmounted (docs/superpowers/plans/2026-08-26-gui-simplification-removals,
+phase-4-tune-unmount.md) and is therefore not a Pipeline-group member here;
+its package stays on disk and importable, just unreachable from the UI.
+
 The order follows the user workflow (browse the source images, then
-compose -> tune -> run, then inspect -> analyse) and downstream
+compose -> run, then inspect -> analyse) and downstream
 documentation (FEATURES.md) advertises it. A future refactor that
 rotates the tuple, drops a member, or duplicates a tab id would
 otherwise only surface in the e2e suite.
@@ -24,7 +28,6 @@ from phenotypic.gui.shell._ids import (
     SHELL_TAB_GROUP_RESULTS,
     SHELL_TAB_HOME,
     SHELL_TAB_RUN,
-    SHELL_TAB_TUNE,
     SHELL_TAB_VIEWER,
 )
 from phenotypic.gui.shell._layout import (
@@ -47,7 +50,7 @@ def _flatten(nav: tuple) -> list[str]:
 
 
 def test_nav_model_structure_matches_workflow() -> None:
-    """Home leaf, Browse leaf, then Pipeline (Builder/Tune/Run), then
+    """Home leaf, Browse leaf, then Pipeline (Builder/Run), then
     Results (Viewer/Analysis)."""
     assert NAV_MODEL[0] == SHELL_TAB_HOME
 
@@ -60,7 +63,6 @@ def test_nav_model_structure_matches_workflow() -> None:
     assert pipeline.group_id == SHELL_TAB_GROUP_PIPELINE
     assert pipeline.members == (
         SHELL_TAB_BUILDER,
-        SHELL_TAB_TUNE,
         SHELL_TAB_RUN,
     )
 

@@ -1,0 +1,13 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Plate view" },
+    { "file": "ColonyGrid.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "Colony view" }
+  ],
+  "annotations": [
+    { "id": "note-plate", "x": 0, "y": -150, "w": 460,
+      "text": "PLATE — Viv / deck.gl.\nNo server-side tiling: the browser pulls zarr chunks over HTTP range requests straight from the .ome.zarr store. Controls float over the canvas (vizarr-style) instead of sitting in a sidebar, so the image gets the full frame.\nThe bottom-right readout names the pyramid level actually being served — that is the thing the old DZI path had to rebuild every time." },
+    { "id": "note-colony", "x": 1560, "y": -150, "w": 460,
+      "text": "COLONY — the gui/_smart_grid port.\nN viewports, one shared camera (the 'Shared camera' lock), which is the deck.gl equivalent of cloning overlay visuals into every vispy viewbox.\nCuration radial retained per your call, so this tab keeps the viewer's only write path. Categories and colours are the real ERROR_CATEGORY_COLORS map, not invented ones." }
+  ],
+  "launch": { "view": "canvas" }
+}

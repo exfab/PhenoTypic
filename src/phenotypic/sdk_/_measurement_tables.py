@@ -1,0 +1,491 @@
+"""Embedded per-image object-measurement table payloads."""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
+
+import pandas as pd
+
+from ._atomic_io import (
+    CommitGuard,
+    PARQUET_WRITE_OPTIONS,
+    atomic_write_json,
+    atomic_write_with_writer,
+)
+
+JoinStatus = Literal["not_requested", "joined", "no_common_keys"]
+
+
+@dataclass(frozen=True)
+class PreparedEmbeddedMeasurementTable:
+    """Joined payload plus stable provenance recorded with its Parquet file."""
+
+    frame: pd.DataFrame
+    measurement_columns: tuple[str, ...]
+    join_status: JoinStatus
+    join_keys: tuple[str, ...]
+    metadata_snapshot_sha256: str
+
+    def parquet_metadata(self) -> dict[bytes, bytes]:
+        """Return replaceable join provenance as Arrow schema metadata."""
+        from . import ngff_
+
+        keys = ngff_.EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS
+        values = {
+            keys.JOIN_STATUS: self.join_status,
+            keys.JOIN_KIND: "right",
+            keys.JOIN_LEFT: "metadata",
+            keys.JOIN_RIGHT: "measurements",
+            keys.JOIN_KEYS: json.dumps(
+                list(self.join_keys), separators=(",", ":")
+            ),
+            keys.METADATA_SNAPSHOT_SHA256: self.metadata_snapshot_sha256,
+            keys.MEASUREMENT_COLUMNS: json.dumps(
+                list(self.measurement_columns), separators=(",", ":")
+            ),
+        }
+        return {key.encode(): value.encode() for key, value in values.items()}
+
+
+def _write_validated_parquet(
+    payload: Path,
+    table: PreparedEmbeddedMeasurementTable,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> None:
+    """Atomically write and validate a prepared Arrow table."""
+
+    import pyarrow as pa  # type: ignore[import-untyped]
+    import pyarrow.parquet as pq  # type: ignore[import-untyped]
+
+    def _write(temp_path: str) -> None:
+        arrow_table = pa.Table.from_pandas(table.frame, preserve_index=False)
+        arrow_table = arrow_table.replace_schema_metadata(
+            table.parquet_metadata()
+        )
+        pq.write_table(arrow_table, temp_path, **PARQUET_WRITE_OPTIONS)
+        reread = pq.read_table(temp_path)
+        if reread.column_names != list(table.frame.columns):
+            raise RuntimeError(
+                "Embedded measurement table failed schema validation"
+            )
+
+    atomic_write_with_writer(
+        payload,
+        _write,
+        commit_guard=commit_guard,
+        temp_suffix=".parquet.tmp",
+    )
+
+
+def write_embedded_measurement_table(
+    store_part: Path,
+    table: PreparedEmbeddedMeasurementTable,
+) -> Path:
+    """Write the prepared Parquet payload and its two Zarr v3 groups."""
+    from . import ngff_
+
+    payload = Path(store_part) / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
+    payload.parent.mkdir(parents=True, exist_ok=True)
+    group_document = {
+        "zarr_format": 3,
+        "node_type": "group",
+        "attributes": {},
+    }
+    atomic_write_json(
+        Path(store_part) / ngff_.TABLES_GROUP / ngff_.STORE_ROOT_JSON,
+        group_document,
+    )
+    atomic_write_json(payload.parent / ngff_.STORE_ROOT_JSON, group_document)
+    _write_validated_parquet(payload, table)
+    return payload
+
+
+def build_measurement_table_descriptor(
+    table: PreparedEmbeddedMeasurementTable,
+    *,
+    objmap_target: str,
+) -> dict[str, object]:
+    """Build the stable root descriptor for one embedded measurement table."""
+    from phenotypic.schema import OBJECT
+
+    from . import ngff_
+
+    return {
+        "schema_version": ngff_.MEASUREMENT_TABLE_SCHEMA_VERSION,
+        "type": "object_measurements",
+        "format": "parquet",
+        "path": ngff_.MEASUREMENT_TABLE_RELATIVE_PATH.as_posix(),
+        "measurement_columns": list(table.measurement_columns),
+        "target": {
+            "column": str(OBJECT.LABEL),
+            "path": objmap_target,
+        },
+    }
+
+
+def _valid_embedded_measurement_contract(store_path: Path) -> bool:
+    """Return whether a store's table payload, groups, and descriptor agree."""
+    from phenotypic.schema import OBJECT
+
+    from . import ngff_
+
+    try:
+        store = Path(store_path)
+        root = json.loads(
+            (store / ngff_.STORE_ROOT_JSON).read_text(encoding="utf-8")
+        )
+        phenotypic = root["attributes"][ngff_.PhenotypicAttr.ROOT]
+        descriptor = phenotypic[ngff_.PhenotypicAttr.TABLES][
+            ngff_.MEASUREMENT_TABLE_GROUP
+        ]
+        columns = descriptor["measurement_columns"]
+        objmap_target = phenotypic[ngff_.PhenotypicAttr.LABELS][
+            ngff_.OBJMAP_LABEL
+        ]
+        if not isinstance(columns, list) or not all(
+            isinstance(column, str) for column in columns
+        ):
+            return False
+        if descriptor != {
+            "schema_version": ngff_.MEASUREMENT_TABLE_SCHEMA_VERSION,
+            "type": "object_measurements",
+            "format": "parquet",
+            "path": ngff_.MEASUREMENT_TABLE_RELATIVE_PATH.as_posix(),
+            "measurement_columns": columns,
+            "target": {
+                "column": str(OBJECT.LABEL),
+                "path": objmap_target,
+            },
+        }:
+            return False
+
+        expected_group = {
+            "zarr_format": 3,
+            "node_type": "group",
+            "attributes": {},
+        }
+        for group in (
+            store / ngff_.TABLES_GROUP,
+            store / ngff_.TABLES_GROUP / ngff_.MEASUREMENT_TABLE_GROUP,
+        ):
+            document = json.loads(
+                (group / ngff_.STORE_ROOT_JSON).read_text(encoding="utf-8")
+            )
+            if document != expected_group:
+                return False
+
+        import pyarrow.parquet as pq  # type: ignore[import-untyped]
+
+        payload = store / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
+        table = pq.read_table(payload)
+        if any(column not in table.column_names for column in columns):
+            return False
+        metadata = table.schema.metadata or {}
+        keys = ngff_.EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS
+        required = tuple(key.encode() for key in keys)
+        if any(key not in metadata for key in required):
+            return False
+        join_status = metadata[keys.JOIN_STATUS.encode()].decode()
+        if join_status not in {
+            "not_requested",
+            "joined",
+            "no_common_keys",
+        }:
+            return False
+        if (
+            metadata[keys.JOIN_KIND.encode()] != b"right"
+            or metadata[keys.JOIN_LEFT.encode()] != b"metadata"
+            or metadata[keys.JOIN_RIGHT.encode()] != b"measurements"
+        ):
+            return False
+        join_keys = json.loads(metadata[keys.JOIN_KEYS.encode()].decode())
+        recorded_columns = json.loads(
+            metadata[keys.MEASUREMENT_COLUMNS.encode()].decode()
+        )
+        if not isinstance(join_keys, list) or not all(
+            isinstance(key, str) for key in join_keys
+        ):
+            return False
+        digest = metadata[keys.METADATA_SNAPSHOT_SHA256.encode()].decode()
+        if join_status == "not_requested":
+            if join_keys or digest:
+                return False
+        else:
+            if len(digest) != 64 or any(
+                character not in "0123456789abcdef" for character in digest
+            ):
+                return False
+            if join_status == "joined" and not join_keys:
+                return False
+            if join_status == "no_common_keys" and join_keys:
+                return False
+        return recorded_columns == columns
+    except Exception:
+        return False
+
+
+def _clone_file_without_pixel_rewrite(source: str, target: str) -> str:
+    """Hard-link an existing store file, falling back to a byte copy."""
+    try:
+        os.link(source, target)
+        return target
+    except OSError:
+        return shutil.copy2(source, target)
+
+
+def replace_embedded_measurement_table(
+    store_path: Path,
+    table: PreparedEmbeddedMeasurementTable,
+    *,
+    objmap_target: str | None = None,
+    durable: bool | None = None,
+    commit_guard: CommitGuard | None = None,
+) -> Path:
+    """Replace one store's authoritative table without recomputing pixel arrays.
+
+    A descriptor-compatible replacement validates a same-directory temporary
+    Parquet before one atomic file replacement. A descriptor change uses a
+    complete root-last store transaction whose unchanged files are hard-linked
+    where the platform permits.
+    """
+    from . import ngff_
+
+    store_path = Path(store_path)
+    root_path = store_path / ngff_.STORE_ROOT_JSON
+    root_document = json.loads(root_path.read_text(encoding="utf-8"))
+    phenotypic = root_document["attributes"][ngff_.PhenotypicAttr.ROOT]
+    current = phenotypic.get(ngff_.PhenotypicAttr.TABLES, {}).get(
+        ngff_.MEASUREMENT_TABLE_GROUP
+    )
+    if objmap_target is None:
+        if isinstance(current, dict):
+            target = current.get("target", {})
+            if isinstance(target, dict):
+                candidate = target.get("path")
+                if isinstance(candidate, str):
+                    objmap_target = candidate
+        if objmap_target is None:
+            labels = phenotypic.get(ngff_.PhenotypicAttr.LABELS, {})
+            candidate = labels.get(ngff_.OBJMAP_LABEL)
+            if isinstance(candidate, str):
+                objmap_target = candidate
+    if objmap_target is None:
+        raise ValueError("OME-Zarr store does not declare an objmap target")
+
+    descriptor = build_measurement_table_descriptor(
+        table, objmap_target=objmap_target
+    )
+    payload = store_path / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
+    if (
+        current == descriptor
+        and payload.is_file()
+        and _valid_embedded_measurement_contract(store_path)
+    ):
+        _write_validated_parquet(payload, table, commit_guard=commit_guard)
+        return payload
+
+    part = ngff_.new_part_path(store_path)
+    try:
+        shutil.copytree(
+            store_path,
+            part,
+            copy_function=_clone_file_without_pixel_rewrite,
+        )
+        # A transaction is readable only after its refreshed root is written last.
+        (part / ngff_.STORE_ROOT_JSON).unlink()
+        write_embedded_measurement_table(part, table)
+        phenotypic.setdefault(ngff_.PhenotypicAttr.TABLES, {})[
+            ngff_.MEASUREMENT_TABLE_GROUP
+        ] = descriptor
+        atomic_write_json(part / ngff_.STORE_ROOT_JSON, root_document)
+        ngff_.promote_store(
+            part,
+            store_path,
+            fsync=ngff_.durable_writes_enabled(durable),
+            commit_guard=commit_guard,
+        )
+    except BaseException:
+        if part.exists():
+            shutil.rmtree(part, ignore_errors=True)
+        raise
+    return store_path / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
+
+
+def read_embedded_measurement_descriptor(
+    store_path: Path,
+) -> dict[str, object]:
+    """Return one store's ``tables.measurements`` descriptor.
+
+    The descriptor is the store's own account of its embedded table: the
+    payload path, the ``measurement_columns`` list, and the ``target``
+    naming the join column and the label image it indexes. Reading it costs
+    one small JSON parse and **never** opens the Parquet payload, so a
+    caller that only needs the column list -- a column picker, say -- pays
+    nothing for the ~130 columns it does not want.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+
+    Returns:
+        The descriptor mapping, exactly as
+        :func:`build_measurement_table_descriptor` wrote it.
+
+    Raises:
+        OSError: If the store's root ``zarr.json`` does not exist.
+        KeyError: If the root carries no ``phenotypic`` block, or the block
+            declares no ``tables.measurements`` descriptor. **An absent
+            descriptor is a normal state**, not a fault: a ``--mode
+            process`` run never measures, and a store written before
+            embedded tables has none.
+        ValueError: If the store's ``store_schema_version`` is not this
+            build's -- the same refusal every other content reader makes.
+
+    Examples:
+        >>> import tempfile
+        >>> from pathlib import Path
+        >>> from phenotypic import GridImage
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> img = GridImage(load_synth_yeast_plate())
+        >>> with tempfile.TemporaryDirectory() as tmp:
+        ...     store = img.save2zarr(Path(tmp) / 'plate.ome.zarr')
+        ...     try:
+        ...         read_embedded_measurement_descriptor(store)
+        ...     except KeyError:
+        ...         print('no embedded table')
+        no embedded table
+    """
+    from . import ngff_
+
+    store_path = Path(store_path)
+    # Gated by VALUE, not read raw: a store written by a newer build must be
+    # refused here exactly as it is on every other path that decodes store
+    # content, or this reader becomes the one place a future schema slips
+    # through under today's semantics.
+    block = ngff_.require_readable_store(store_path)
+    descriptor = block.get(ngff_.PhenotypicAttr.TABLES, {}).get(
+        ngff_.MEASUREMENT_TABLE_GROUP
+    )
+    if not isinstance(descriptor, dict):
+        raise KeyError(
+            f"OME-Zarr store declares no embedded measurement table: "
+            f"{store_path}"
+        )
+    return descriptor
+
+
+def embedded_measurement_columns(store_path: Path) -> tuple[str, ...]:
+    """Return the column names one store's embedded table carries.
+
+    The store enumerates its own columns in the descriptor, so this is the
+    authoritative allow-list for anything that projects a single column --
+    and it is what makes a column name a *closed* value set rather than a
+    free-text parameter that reaches the filesystem.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+
+    Returns:
+        The declared column names, in the order the writer recorded them.
+
+    Raises:
+        OSError: If the store's root ``zarr.json`` does not exist.
+        KeyError: If the store declares no measurement-table descriptor.
+    """
+    descriptor = read_embedded_measurement_descriptor(store_path)
+    columns = descriptor.get("measurement_columns")
+    if not isinstance(columns, list):
+        raise KeyError(
+            f"Measurement-table descriptor carries no column list: "
+            f"{Path(store_path)}"
+        )
+    return tuple(str(column) for column in columns)
+
+
+def read_embedded_measurement_column(
+    store_path: Path, column: str
+) -> dict[int, float | None]:
+    """Project one measurement column out of a store's embedded table.
+
+    Returns the column keyed by the descriptor's own ``target.column`` --
+    ``Object_Label`` -- rather than by a positional index or an assumed key
+    name, so the value a caller paints onto a colony is the value measured
+    for *that* object. The join key is read from the store; it is never
+    assumed.
+
+    ``column`` is checked against
+    :func:`embedded_measurement_columns` **before** the Parquet is opened.
+    A name the store does not declare therefore never reaches the
+    filesystem, which is what lets a request-facing caller pass a
+    user-supplied name through without it becoming a probe.
+
+    Only two of the table's ~130 columns are read. Parquet is columnar, so
+    the other 128 are never decoded -- that is what makes a per-request
+    projection affordable.
+
+    Args:
+        store_path: Path to a ``*.ome.zarr`` directory.
+        column: Name of the column to project. Must appear in the store's
+            declared ``measurement_columns``.
+
+    Returns:
+        A mapping ``{object_label: value}``. A null cell maps to ``None``.
+
+    Raises:
+        OSError: If the store's root ``zarr.json`` does not exist.
+        KeyError: If the store declares no measurement-table descriptor.
+        ValueError: If *column* is not one the store declares.
+        TypeError: If *column* holds values that are not numbers -- a
+            colour hex string, say. Measurement display scales them, and a
+            silent ``None`` would hide the mismatch.
+    """
+    import pyarrow.parquet as pq  # type: ignore[import-untyped]
+
+    from . import ngff_
+
+    store_path = Path(store_path)
+    descriptor = read_embedded_measurement_descriptor(store_path)
+    declared = descriptor.get("measurement_columns")
+    if not isinstance(declared, list) or column not in declared:
+        raise ValueError(
+            f"Column {column!r} is not declared by the embedded measurement "
+            f"table at {store_path}"
+        )
+    target = descriptor.get("target")
+    if not isinstance(target, dict) or not isinstance(
+        target.get("column"), str
+    ):
+        raise KeyError(
+            f"Measurement-table descriptor names no target column: "
+            f"{store_path}"
+        )
+    join_column = str(target["column"])
+
+    payload = store_path / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
+    projection = [join_column]
+    if column != join_column:
+        projection.append(column)
+    table = pq.read_table(payload, columns=projection)
+
+    labels = table.column(join_column).to_pylist()
+    values = table.column(column).to_pylist()
+    projected: dict[int, float | None] = {}
+    for label, value in zip(labels, values, strict=True):
+        if label is None:
+            continue
+        if value is None:
+            projected[int(label)] = None
+            continue
+        try:
+            projected[int(label)] = float(value)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(
+                f"Column {column!r} of {store_path} is not numeric "
+                f"(value {value!r} for label {label!r})"
+            ) from exc
+    return projected

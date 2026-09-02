@@ -1,5 +1,6 @@
 # Worktrees
 .worktrees/
+.verification/
 .claude/worktrees
 
 # Claude Code: track shared team skills; keep the rest of .claude/ per-developer.
@@ -83,6 +84,11 @@ scratch/
 
 # Data files
 *.h5
+# ...except the golden legacy-HDF fixtures --mode migrate converts. They are
+# the only .h5 files in the repo that are INPUT rather than output, and the
+# blanket rule above silently dropped them from `git add tests/fixtures/`
+# with no error, leaving a suite that cannot collect on a fresh clone.
+!tests/fixtures/legacy_hdf/**/*.h5
 .run/
 *.zip
 tmp/

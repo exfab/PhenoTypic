@@ -22,11 +22,24 @@ from phenotypic.sdk_ import (
     processing_state_path,
     resolve_event_log_path,
     resolve_processing_state_path,
+    source_image_stem,
 )
 
+from ._cli_directory_scanner import image_manifest_digest
 from ._cli_staged_resume import pipeline_content_digest
 
 logger = logging.getLogger(__name__)
+
+
+def _image_manifest_digest_for(config: ExecutionConfig) -> Optional[str]:
+    """Return the current manifest fingerprint, or ``None`` without one."""
+    cached_digest = getattr(config, "image_manifest_digest", None)
+    if cached_digest is not None:
+        return cached_digest
+    manifest = getattr(config, "image_manifest", None)
+    if manifest is None:
+        return None
+    return image_manifest_digest(manifest)
 
 
 def save_processing_state(
@@ -203,10 +216,12 @@ def create_initial_state(
             "ncols": config.ncols,
             "bit_depth": config.bit_depth,
             "detect_mode": config.detect_mode,
+            "drop_originals": config.drop_originals,
             "n_jobs": config.n_jobs,
             "slurm_args": config.slurm_args,
             "ext": config.ext,
             "process_only_layer": config.process_only_layer,
+            "process_format": config.process_format,
             "include_dataset_column": config.include_dataset_column,
             "overlay_alpha": config.overlay_alpha,
             "save_overlays": config.save_overlays,
@@ -216,6 +231,7 @@ def create_initial_state(
                 if config.pipeline_json.is_file()
                 else None
             ),
+            "image_manifest_digest": _image_manifest_digest_for(config),
             "staged_stage3_markers": config.staged_stage3_markers,
             "success_markers_required": True,
             "processing_generation": uuid4().hex,
@@ -298,8 +314,23 @@ def validate_resume_compatibility(
         )
     
     # Check input path
-    if state.input_path != config.input_path:
+    if not getattr(config, "measure_only", False) and state.input_path != config.input_path:
         return False, f"Input path mismatch: saved={state.input_path}, current={config.input_path}"
+
+    if not getattr(config, "measure_only", False):
+        saved_manifest_digest = state.config.get("image_manifest_digest")
+        try:
+            current_manifest_digest = _image_manifest_digest_for(config)
+        except OSError as exc:
+            return False, (
+                f"Image manifest {getattr(config, 'image_manifest', None)} cannot be read, so "
+                f"the approved image set cannot be re-derived: {exc}"
+            )
+        if saved_manifest_digest != current_manifest_digest:
+            return False, (
+                "Image manifest mismatch: "
+                f"saved={saved_manifest_digest}, current={current_manifest_digest}"
+            )
     
     # Check image type
     if state.config.get("image_type") != config.image_type:
@@ -310,7 +341,9 @@ def validate_resume_compatibility(
         "detect_mode",
         "include_dataset_column",
         "overlay_alpha",
+        "drop_originals",
         "save_overlays",
+        "process_format",
     ):
         if key not in state.config:
             continue
@@ -382,7 +415,11 @@ def get_remaining_images_for_datasets(
         retry_images: list[Path] = []
         for image in dataset.images:
             work_id: str | None = None
-            if config is not None and output_dir is not None:
+            if (
+                config is not None
+                and output_dir is not None
+                and not getattr(config, "measure_only", False)
+            ):
                 try:
                     work_id, _ = work_id_for_image(config, dataset.name, image)
                 except OSError:
@@ -402,7 +439,7 @@ def get_remaining_images_for_datasets(
                     if valid_image_success(
                         output_dir,
                         dataset=dataset.name,
-                        image_stem=image.stem,
+                        image_stem=source_image_stem(image),
                         work_id=work_id,
                     ):
                         continue

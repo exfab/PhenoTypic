@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from ._cli_types import DatasetState
 from ._cli_file_locking import atomic_read, atomic_append, FileLockTimeout
 from ._stages import STAGED_TERMINAL_STAGE, StageTag, validate_stage_tag
+from phenotypic.sdk_ import CommitGuard
 from phenotypic.sdk_.typing_ import ProcessingStatus
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,7 @@ def append_event(
     generation: str | None = None,
     attempt_id: str = "",
     work_id: str = "",
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """
     Atomically append a processing event to the event log.
@@ -148,7 +150,9 @@ def append_event(
     event_line = "|".join(parts) + "\n"
 
     try:
-        atomic_append(event_log, event_line, timeout=60.0)
+        atomic_append(
+            event_log, event_line, timeout=60.0, commit_guard=commit_guard
+        )
     except FileLockTimeout as e:
         logger.error(
             f"Failed to acquire event log lock after 60s: {e}\n"
@@ -169,6 +173,7 @@ def append_completion_event(
     error_msg: str = "",
     stage: str | None = None,
     generation: str | None = None,
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """
     Atomically append a completion event to the processing log.
@@ -192,6 +197,7 @@ def append_completion_event(
         error_msg=error_msg,
         stage=stage,
         generation=generation,
+        commit_guard=commit_guard,
     )
 
 

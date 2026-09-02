@@ -15,10 +15,11 @@ Click capture is delegated to the clientside JS layer at
 ``builder/assets/point_picker.js``, which pushes new points into
 ``PICKER_STAGED_STORE`` via ``dash_clientside.set_props``.
 
-The module reuses :func:`_dzi_tiler.tile`, :data:`_TILE_NAME_RE`,
-:func:`is_safe_path_component`, and :func:`_json_error` from the results
-viewer's tile-routes module so this blueprint behaves like the public
-viewer's tile route — same on-disk layout, same path-traversal hardening.
+The module reuses :func:`_dzi_tiler.tile`, :data:`TILE_NAME_RE`,
+:func:`is_safe_path_component`, and :func:`json_error` from
+:mod:`phenotypic.gui._shared.tiles`, so this blueprint keeps the same
+on-disk layout and the same path-traversal hardening the viewer's DZI
+route had before the results Plate moved off it.
 """
 
 from __future__ import annotations
@@ -53,12 +54,12 @@ from phenotypic.gui.builder._state import (
     current_scope,
     state_from_json,
 )
-from phenotypic.gui._shared.tiles import is_safe_path_component
-from phenotypic.gui.results_viewer import _dzi_tiler
-from phenotypic.gui.results_viewer._tile_routes import (
-    _TILE_NAME_RE,
-    _json_error,
+from phenotypic.gui._shared.tiles import (
+    TILE_NAME_RE,
+    is_safe_path_component,
+    json_error,
 )
+from phenotypic.gui.results_viewer import _dzi_tiler
 
 logger = logging.getLogger(__name__)
 
@@ -369,7 +370,7 @@ def _validate_picker_url(session_id: str, source: str) -> Optional[Response]:
         session_id,
         source,
     )
-    return _json_error("invalid session or source", 404)
+    return json_error("invalid session or source", 404)
 
 
 def register_point_picker_routes(
@@ -411,13 +412,13 @@ def register_point_picker_routes(
         cache_dir = _session_cache_dir(image_root, session_id)
         png_path = _channel_png_path(cache_dir, source)
         if not png_path.exists():
-            return _json_error("source not staged", 404)
+            return json_error("source not staged", 404)
 
         try:
             _dzi_tiler.tile(png_path, cache_dir)
         except Exception:
             logger.exception("DZI tile generation failed: %s", png_path)
-            return _json_error("tile generation failed", 500)
+            return json_error("tile generation failed", 500)
 
         return send_from_directory(
             cache_dir,
@@ -435,12 +436,12 @@ def register_point_picker_routes(
             return err
 
         secured = secure_filename(filename)
-        if secured != filename or not _TILE_NAME_RE.match(filename):
+        if secured != filename or not TILE_NAME_RE.match(filename):
             logger.warning(
                 "Rejected picker tile request with unsafe filename: %r",
                 filename,
             )
-            return _json_error("invalid tile filename", 404)
+            return json_error("invalid tile filename", 404)
 
         tile_dir = (
             _session_cache_dir(image_root, session_id)
@@ -448,7 +449,7 @@ def register_point_picker_routes(
             / str(level)
         )
         if not tile_dir.is_dir():
-            return _json_error("tile cache missing", 404)
+            return json_error("tile cache missing", 404)
 
         return send_from_directory(tile_dir, filename, mimetype="image/png")
 

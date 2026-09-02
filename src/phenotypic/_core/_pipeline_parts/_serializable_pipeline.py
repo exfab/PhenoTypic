@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import importlib
 from dataclasses import dataclass
@@ -251,6 +252,7 @@ class SerializablePipeline(NapariPipelineViewer):
             >>> # Load with benchmarking enabled
             >>> pipe = ImagePipeline.from_json(saved_path, benchmark=True)
         """
+        source_identity: dict[str, str] | None = None
         # If already a parsed dict, use directly
         if isinstance(json_data, dict):
             config = json_data
@@ -262,7 +264,12 @@ class SerializablePipeline(NapariPipelineViewer):
                     # Only try to read as file if it looks like a path and exists
                     # This prevents trying to stat very long JSON strings
                     if len(str(json_data)) < 256 and path.exists() and path.is_file():
-                        json_data = path.read_text()
+                        content = path.read_bytes()
+                        json_data = content.decode("utf-8")
+                        source_identity = {
+                            "source_path": str(path.resolve()),
+                            "sha256": hashlib.sha256(content).hexdigest(),
+                        }
                 except (OSError, ValueError):
                     # If Path operations fail, treat as JSON string
                     pass
@@ -273,13 +280,15 @@ class SerializablePipeline(NapariPipelineViewer):
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON data: {e}")
 
-        return cls._deserialize_pipeline_config(
+        pipeline = cls._deserialize_pipeline_config(
             config,
             benchmark=benchmark,
             verbose=verbose,
             skip_unknown_analyzers=skip_unknown_analyzers,
             load_warnings=load_warnings,
         )
+        pipeline._provenance_pipeline = source_identity
+        return pipeline
 
     @classmethod
     def _deserialize_pipeline_config(

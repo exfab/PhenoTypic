@@ -11,8 +11,9 @@ from typing import Optional
 from phenotypic import ImagePipeline
 
 from ._evaluation import build_pipeline
-from ._multi_objective import objective_directions
+from ._multi_objective import is_multi_objective, objective_directions, objective_names
 from .score import CompositeScorer
+from .strategy._config import build_strategy_with_objectives
 from ._spec import TuningSpec
 from ._study._protocol import StudyStore
 from ._study_store import JournalStudyStore, Trial
@@ -60,6 +61,11 @@ class TuningEngine:
         # scorer yields per-objective ``directions`` the Optuna backend turns into
         # an NSGA-II Pareto study; ``None`` keeps the scalar single-objective path.
         directions = objective_directions(spec.scorer)
+        objective_axes = (
+            tuple(objective_names(spec.scorer))
+            if is_multi_objective(spec.scorer)
+            else None
+        )
 
         # Pin the study-global active set for the augmented Tchebycheff composite
         # (§6.3): the children available study-wide form the fixed roster for both
@@ -84,30 +90,35 @@ class TuningEngine:
             )
             scorer.set_active_set(active)
 
-        strategy = spec.strategy.build(
-            spec.search_space, self._store, directions=directions
+        strategy = build_strategy_with_objectives(
+            spec.strategy,
+            spec.search_space,
+            self._store,
+            directions=directions,
+            objective_axes=objective_axes,
         )
 
         # Resume: a deterministic journal is fast-forwarded by replaying the
         # strategy past the recorded trials; an in-place-resumable backend (e.g.
         # an Optuna RDB) already restores the sampler state, so it skips replay.
         # The same flag decides who writes each trial below (see the loop).
-        completed = len(self._store)
+        recorded = len(self._store)
+        completed = self._store.completed_count()
         resumable = self._store.is_resumable_in_place()
         if not resumable:
-            for _ in range(completed):
+            for _ in range(recorded):
                 if strategy.is_exhausted():
                     break
                 strategy.suggest()
 
-        # Seed both budget counters from the store so resume is symmetric:
-        # n_trials counts all recorded trials, max_failures counts recorded
-        # failures (else the failure safety-valve resets to 0 on every resume).
+        # Resume keeps separate identities: ``recorded`` preserves deterministic
+        # replay/trial numbering, while ``completed`` is the budget quantity.
+        # The failure cap still counts every recorded failure.
         failures = sum(1 for t in self._store.trials if t.failed)
-        number = completed
+        number = recorded
         budget = spec.budget
         while not strategy.is_exhausted():
-            if budget.n_trials is not None and number >= budget.n_trials:
+            if budget.n_trials is not None and completed >= budget.n_trials:
                 break
             # Checked at the top (not only after a failing trial) so a run
             # resumed at/over the failure cap stops immediately.
@@ -155,5 +166,7 @@ class TuningEngine:
             number += 1
             if result.failed:
                 failures += 1
+            else:
+                completed += 1
 
         return self._store.best()

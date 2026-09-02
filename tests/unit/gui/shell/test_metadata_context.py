@@ -143,6 +143,20 @@ def test_metadata_image_identity_preserves_canonical_dotted_stem() -> None:
     assert identity.normalized_values == ("plate.01",)
 
 
+def test_metadata_filename_alias_normalizes_store_double_suffix() -> None:
+    from phenotypic.gui.shell._metadata_context import (
+        resolve_metadata_image_identity,
+    )
+
+    identity = resolve_metadata_image_identity(
+        ["Metadata_ImageFileName"],
+        [{"Metadata_ImageFileName": "images/p01.ome.zarr"}],
+    )
+
+    assert identity.state == "resolved"
+    assert identity.normalized_values == ("p01",)
+
+
 def test_metadata_image_identity_prefers_populated_legacy_column() -> None:
     from phenotypic.gui.shell._metadata_context import (
         resolve_metadata_image_identity,

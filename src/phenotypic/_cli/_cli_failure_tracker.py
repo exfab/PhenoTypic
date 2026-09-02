@@ -20,7 +20,11 @@ from typing import Any, Dict, List, Mapping, TYPE_CHECKING
 
 from ._cli_file_locking import atomic_append, atomic_read, FileLockTimeout
 from phenotypic.sdk_ import (
+    CommitGuard,
     FAILURES_JSONL,
+    is_zarr_store_name,
+    publication_commit,
+    source_image_stem,
     terminal_failures_jsonl_path,
 )
 from phenotypic.sdk_.typing_ import FailureSource
@@ -88,11 +92,108 @@ def _canonical_digest(payload: Mapping[str, Any]) -> str:
 
 
 def file_sha256(path: Path) -> str:
-    """Return the SHA-256 digest of *path* without retaining file contents."""
+    """Return the SHA-256 digest of *path* without retaining file contents.
+
+    A ``*.ome.zarr`` input is a **directory**, so the streaming read raises
+    ``IsADirectoryError``. A store is digested over its whole tree: every
+    member's type, store-relative path, content length, and content, in sorted
+    path order. Variable-length fields are length-framed so member bytes cannot
+    forge the boundary before the next member.
+
+    **Not the root ``zarr.json`` alone.** An earlier version did that, on the
+    reasoning that the promote protocol writes the root last so it fingerprints
+    completeness, and that it "changes whenever any published content does".
+    The first half is true; the second is false, and verified so by execution.
+    The root carries the schema version, the series map, the pyramid geometry,
+    the metadata sections and the provenance journal -- none of which move when
+    pixels do. Two stores whose images differ entirely produced one digest::
+
+        pixels genuinely differ : True (mean 0.640 vs 0.500)
+        shard bytes differ      : True
+        root zarr.json identical: True
+        file_sha256 differs     : False
+
+    That silently breaks content-change detection for a store input: the
+    digest feeds :func:`work_id_for_image` and the SLURM identity ledger, so
+    an edited store would keep its work ID and continuation would reuse stale
+    output. The flat-file path digests every pixel byte; the store path must
+    not be weaker.
+
+    The walk is also not the cost the earlier reasoning assumed. A store holds
+    roughly a dozen files whose bytes are the same bytes an equivalent TIFF
+    would carry, so digesting the tree reads about as much as digesting that
+    TIFF -- plus a directory walk, which is what buys the guarantee.
+
+    Paths are folded in alongside content so that moving a chunk between
+    members, or renaming one, changes the digest. Sorting makes it independent
+    of filesystem iteration order.
+
+    A directory that is not a store still raises ``IsADirectoryError``. It has
+    no meaningful content fingerprint, and inventing one would let a
+    mis-specified ``--input`` produce a stable work ID for something that is
+    not an image.
+
+    A directory that merely *looks* like a store -- named ``*.ome.zarr`` with
+    no root ``zarr.json`` -- is **not** refused here, and deliberately so: this
+    function digests bytes, and ``_is_store_dir`` matches by name precisely so
+    that no scan opens a store. Such a directory digests to whatever its
+    members happen to be, so two empty store-shaped directories share the
+    same domain-separated empty-tree digest. Nothing downstream is harmed by
+    that, because the run never gets far enough to care: ``Image.imread``
+    raises ``FileNotFoundError`` naming the missing ``zarr.json``, which is
+    the loud later failure ``_is_store_dir``'s docstring promises. Pinned by
+    ``test_a_store_shaped_directory_digests_and_fails_in_imread``.
+
+    Args:
+        path: An input image file, or a ``*.zarr`` store directory.
+
+    Returns:
+        The hex digest.
+
+    Raises:
+        IsADirectoryError: If *path* is a directory that is not an OME-Zarr
+            store.
+    """
+    target = Path(path)
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
+
+    def _feed(file_path: Path) -> None:
+        """Stream one file into *digest* without retaining its contents."""
+        with file_path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+
+    if target.is_dir():
+        if not is_zarr_store_name(target):
+            raise IsADirectoryError(
+                f"{target} is a directory but not an OME-Zarr store; "
+                f"it has no content fingerprint"
+            )
+        members = sorted(
+            target.rglob("*"),
+            key=lambda p: p.relative_to(target).as_posix(),
+        )
+        digest.update(b"phenotypic-store-tree-v2\0")
+        for member in members:
+            if member.is_symlink():
+                raise OSError(f"OME-Zarr store contains a symlink: {member}")
+            member_type = b"d" if member.is_dir() else b"f"
+            if member_type == b"f" and not member.is_file():
+                raise OSError(
+                    f"OME-Zarr store contains a non-regular member: {member}"
+                )
+            relative = member.relative_to(target).as_posix().encode("utf-8")
+            digest.update(member_type)
+            digest.update(len(relative).to_bytes(8, "big"))
+            digest.update(relative)
+            if member_type == b"d":
+                digest.update((0).to_bytes(8, "big"))
+                continue
+            digest.update(member.stat().st_size.to_bytes(8, "big"))
+            _feed(member)
+        return digest.hexdigest()
+
+    _feed(target)
     return digest.hexdigest()
 
 
@@ -105,9 +206,11 @@ def processing_configuration_digest_from_values(
     detect_mode: str,
     process_only_layer: str | None,
     ext: str,
+    process_format: str,
     include_dataset_column: bool,
     overlay_alpha: float,
     save_overlays: bool,
+    drop_originals: bool = False,
 ) -> str:
     """Hash explicit settings that affect one image's scientific outputs."""
     payload: dict[str, object] = {
@@ -116,12 +219,18 @@ def processing_configuration_digest_from_values(
         "ncols": ncols,
         "bit_depth": bit_depth,
         "detect_mode": detect_mode,
+        "drop_originals": drop_originals,
     }
     if process_only_layer is not None:
         payload.update(
             {
                 "process_only_layer": process_only_layer,
                 "ext": ext,
+                # Beside `ext` and NOT in the base payload: a full or measure
+                # run has no process format, and folding it into the base
+                # would change every existing run's digest and cold-start
+                # every continuation in flight.
+                "process_format": process_format,
             }
         )
     else:
@@ -145,9 +254,11 @@ def processing_configuration_digest(config: "ExecutionConfig") -> str:
         detect_mode=config.detect_mode,
         process_only_layer=config.process_only_layer,
         ext=config.ext,
+        process_format=config.process_format,
         include_dataset_column=config.include_dataset_column,
         overlay_alpha=config.overlay_alpha,
         save_overlays=config.save_overlays,
+        drop_originals=config.drop_originals,
     )
 
 
@@ -174,17 +285,50 @@ def compute_work_id(
     )
 
 
+def _normalized_input_relative_path(
+    input_root: Path | None, image: Path
+) -> Path:
+    """Return a stable input-relative identity for a source image.
+
+    ``Path.relative_to`` returns ``Path(".")`` when a direct OME-Zarr input is
+    its own input root. A direct image must retain its filename identity, just
+    like a flat-file input whose root takes the ``is_file`` branch.
+
+    Args:
+        input_root: Configured input file, directory, store, or ``None`` in a
+            worker invoked without an input root.
+        image: Source image path.
+
+    Returns:
+        A relative source path, falling back to the image name when the paths
+        are unrelated or identify the same direct input.
+    """
+    source = Path(image)
+    if input_root is None:
+        return Path(source.name)
+    root = Path(input_root)
+    if root.is_file():
+        return Path(source.name)
+    try:
+        relative = source.relative_to(root)
+    except ValueError:
+        return Path(source.name)
+    return Path(source.name) if relative == Path(".") else relative
+
+
 def work_id_for_image(
     config: "ExecutionConfig", dataset: str, image_path: Path
 ) -> tuple[str, str]:
-    """Return ``(work_id, normalized_relative_path)`` for an input image."""
-    if config.input_path.is_file():
-        relative_path = Path(image_path.name)
-    else:
-        try:
-            relative_path = image_path.relative_to(config.input_path)
-        except ValueError:
-            relative_path = Path(image_path.name)
+    """Return ``(work_id, normalized_relative_path)`` for an input image.
+
+    A ``*.ome.zarr`` store is a directory, so ``--input`` naming one directly
+    does not take the ``is_file`` branch. It falls through to ``relative_to``,
+    which yields ``Path(".")`` when the two paths are the same -- see the
+    degenerate-path recovery below.
+    """
+    relative_path = _normalized_input_relative_path(
+        config.input_path, image_path
+    )
     mode = (
         "measure"
         if config.measure_only
@@ -218,6 +362,7 @@ def append_terminal_failure(
     lifecycle_epoch: str,
     traceback: str = "",
     slurm_job_id: str = "",
+    commit_guard: CommitGuard | None = None,
 ) -> bool:
     """Durably append one terminal failure without an unlocked fallback.
 
@@ -232,7 +377,7 @@ def append_terminal_failure(
     if valid_image_success(
         output_dir,
         dataset=dataset,
-        image_stem=Path(relative_image_path).stem,
+        image_stem=source_image_stem(Path(relative_image_path)),
         work_id=work_id,
     ):
         return False
@@ -260,6 +405,7 @@ def append_terminal_failure(
             timeout=60.0,
             durable=True,
             repair_incomplete_line=True,
+            commit_guard=commit_guard,
         )
     except (FileLockTimeout, OSError, ValueError):
         logger.error("Failed to commit terminal failure", exc_info=True)
@@ -450,6 +596,7 @@ def append_failure(
     traceback: str = "",
     slurm_job_id: str = "",
     failure_source: FailureSource = "python",
+    commit_guard: CommitGuard | None = None,
 ) -> None:
     """
     Atomically append a structured failure record to ``failures.jsonl``.
@@ -485,13 +632,17 @@ def append_failure(
     # Use file-locked atomic append for thread/process safety, consistent
     # with how append_event() works for the event log.
     try:
-        atomic_append(failures_path, line, timeout=10.0)
+        atomic_append(
+            failures_path, line, timeout=10.0, commit_guard=commit_guard
+        )
     except FileLockTimeout:
         # Fallback: best-effort direct append (still safe for single writes
         # on most POSIX systems).
         try:
-            with open(failures_path, "a", encoding="utf-8") as f:
-                f.write(line)
+            with publication_commit(commit_guard):
+                with open(failures_path, "a", encoding="utf-8") as f:
+                    f.write(line)
+                    f.flush()
         except OSError as exc:
             logger.error("Failed to write failure record: %s", exc)
 

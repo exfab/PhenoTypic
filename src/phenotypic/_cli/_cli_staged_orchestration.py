@@ -1,7 +1,8 @@
 """Durable orchestration state for staged SLURM GPU runs.
 
-The staged controller is deliberately artifact-driven. Per-image HDF, objmap
-sidecar, and terminal Stage 3 markers decide what work remains. This module
+The staged controller is deliberately artifact-driven. The per-image OME-Zarr
+store, the Stage-2 signal (a retained raw ``.npy`` plus a consumable token), and
+terminal Stage 3 markers decide what work remains. This module
 supplies the small amount of durable coordination needed to make scheduler
 submissions and run cancellation crash-recoverable.
 """
@@ -22,13 +23,14 @@ from phenotypic.sdk_ import (
     atomic_write_json,
     dataset_measurements_dir,
     progress_dir,
-    results_dir,
+    source_image_stem,
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 from ._cli_file_locking import atomic_append, atomic_read
 from ._cli_slurm_lifecycle import (
     SchedulerQueryUnavailable,
+    SlurmGenerationInactiveError,
     _deactivate_generation_locked,
     append_lifecycle_entry,
     cancel_generation,
@@ -199,17 +201,19 @@ def assert_active_epoch(output_dir: Path, epoch: str) -> None:
     """Raise when a worker/controller belongs to an inactive run epoch."""
     state = load_orchestration_state(output_dir)
     if state is None or state.get("epoch") != epoch:
-        raise RuntimeError(
+        raise SlurmGenerationInactiveError(
             f"Stale staged worker epoch {epoch!r}; active epoch is "
             f"{None if state is None else state.get('epoch')!r}"
         )
     if state.get("phase") in {"cancelled", "complete", "failed"}:
-        raise RuntimeError(
+        raise SlurmGenerationInactiveError(
             f"Staged orchestration {epoch} is already {state.get('phase')}"
         )
     lifecycle = load_slurm_lifecycle(output_dir)
     if lifecycle is not None and not generation_is_active(output_dir, epoch):
-        raise RuntimeError(f"Staged orchestration {epoch} is fenced inactive")
+        raise SlurmGenerationInactiveError(
+            f"Staged orchestration {epoch} is fenced inactive"
+        )
 
 
 def epoch_is_active(output_dir: Path, epoch: str) -> bool:
@@ -268,7 +272,7 @@ def completed_inventory_images(
     old_fingerprints = state.get("restart_parquet_fingerprints", {})
     completed: set[str] = set()
     for image_name in image_names:
-        stem = Path(image_name).stem
+        stem = source_image_stem(Path(image_name))
         if markers_required:
             if stage3_completion_exists(output_dir, dataset, stem):
                 completed.add(image_name)
@@ -293,7 +297,7 @@ def snapshot_inventory_parquets(
     for dataset, image_names in inventory.items():
         measurements = dataset_measurements_dir(output_dir, dataset)
         for image_name in image_names:
-            parquet = measurements / f"{Path(image_name).stem}.parquet"
+            parquet = measurements / f"{source_image_stem(Path(image_name))}.parquet"
             try:
                 stat = parquet.stat()
             except FileNotFoundError:
@@ -323,7 +327,7 @@ def quarantine_unchanged_restart_parquets(output_dir: Path, epoch: str) -> int:
             continue
         parquet = (
             dataset_measurements_dir(output_dir, dataset)
-            / f"{Path(image_name).stem}.parquet"
+            / f"{source_image_stem(Path(image_name))}.parquet"
         )
         try:
             stat = parquet.stat()
@@ -658,22 +662,6 @@ def cancel_staged_jobs(output_dir: Path) -> list[str]:
     return sorted(all_ids)
 
 
-def clear_stage2_sidecars(output_dir: Path) -> int:
-    """Delete transient Stage-2 objmap sidecars during an explicit restart."""
-    root = results_dir(output_dir)
-    removed = 0
-    if not root.is_dir():
-        return removed
-    for objmap_dir in root.glob("*/objmap"):
-        if not objmap_dir.is_dir():
-            continue
-        for path in objmap_dir.iterdir():
-            if path.is_file() and path.suffix in {".npy", ".tmp"}:
-                path.unlink()
-                removed += 1
-    return removed
-
-
 def mark_staged_complete(output_dir: Path, epoch: str) -> None:
     """Atomically mark successful remote finalization for *epoch*."""
     assert_active_epoch(output_dir, epoch)
@@ -724,7 +712,6 @@ __all__ = [
     "append_stage2_terminal_failure",
     "assert_active_epoch",
     "cancel_staged_jobs",
-    "clear_stage2_sidecars",
     "completed_inventory_images",
     "current_slurm_job_id",
     "deactivate_orchestration",

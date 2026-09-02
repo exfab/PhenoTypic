@@ -53,20 +53,22 @@ Image Options
    ``LabB``. Default: ``gray``.
 
 ``--ext EXT``
-   Deprecated for HDF output. Forward runs write a single ``.h5`` per image;
-   only overlay PNG rendering still consults this value. Default: ``tiff``.
+   Deprecated for per-image output. Forward runs write a single OME-Zarr store
+   per image; only overlay PNG rendering still consults this value. Default:
+   ``tiff``.
 
 Execution Options
 -----------------
 
-``-m, --mode {full,measure,recompile,process}``
+``-m, --mode {full,measure,recompile,process,migrate}``
    Select the execution mode. Default: ``full``.
 
    ``full``
       Apply the pipeline, measure, and emit all deliverables.
 
    ``measure``
-      Re-run measurements from HDF files in an existing output root. Requires
+      Re-run measurements from the per-image OME-Zarr stores in an existing
+      output root. Requires
       ``--pipeline`` and ``--output``. Rejects ``--input``, ``--dry-run``,
       ``--restart``, ``--retry-failures``, ``--overwrite``, and
       ``--sample``.
@@ -74,6 +76,15 @@ Execution Options
    ``recompile``
       Rebuild aggregate deliverables from an existing output root. Requires
       ``--output``. Rejects ``--pipeline``, ``--input``, and ``--dry-run``.
+
+   ``migrate``
+      Convert a legacy ``.h5`` output tree to OME-Zarr stores **in place**, in
+      two passes: the non-image metadata targets first, then each per-image
+      ``results/<ds>/hdf/<stem>.h5`` to
+      ``results/<ds>/zarr/<stem>.ome.zarr`` with its marker re-published.
+      Requires ``--output``. Sources are kept unless ``--delete-sources`` is
+      passed. Every other writing mode refuses an unconverted tree and points
+      here.
 
    ``process``
       Apply the pipeline and export one image layer per input, mirroring the
@@ -106,8 +117,8 @@ Continuation and Recovery
 -------------------------
 
 Compatible full and process invocations continue automatically when run again.
-Staged GPU runs select Stage 1, 2, or 3 from valid HDF, sidecar, and completion
-artifacts.
+Staged GPU runs select Stage 1, 2, or 3 from the per-image store, the Stage-2
+signal under ``.phenotypic/progress/``, and the Stage-3 completion marker.
 
 ``--retry-failures``
    Include exact terminal scientific failures for the current computation in
@@ -147,7 +158,7 @@ A pipeline containing a ``GpuDetector`` runs as three stages (CPU preprocess →
 resident-model GPU detect → CPU measure). These flags tune Stage 2.
 
 On SLURM, an epoch-fenced dependent controller submits additional Stage-2
-arrays while sidecar-less retryable images remain. It replaces worker
+arrays while retryable images lack a complete Stage-2 signal. It replaces worker
 signal/self-requeue behavior. Dynamic controller, array, Stage-3, and finalizer
 job IDs are recorded in the run ledger for monitoring and cancellation.
 
@@ -202,23 +213,24 @@ Output Options
 Tuning CLI
 ==========
 
-PhenoTypic also ships a hyperparameter-tuning engine, ``python -m phenotypic.tune``,
-which searches an ``ImagePipeline``'s parameters to maximize a scorer. It has two
-subcommands: ``run`` (the search engine) and ``auto-space`` (infer a reviewable search
-space from a pipeline). The ``tpe``, ``cmaes``, ``gp``, and ``nsga2`` strategies require
-the optional ``tune`` extra (``uv sync --extras tune``); ``grid`` and ``random`` work out
-of the box.
+PhenoTypic also ships a hyperparameter-tuning engine, launched as
+``uv run phenotypic-tune``. It searches an ``ImagePipeline``'s parameters with
+``run``, infers a reviewable search space with ``auto-space``, and republishes a
+completed distributed run with ``finalize``. The ``tpe``, ``cmaes``, ``gp``, and
+``nsga2`` strategies require the optional ``tune`` extra (``uv sync --extra tune``);
+``grid`` and ``random`` work out of the box. ``python -m phenotypic.tune`` remains
+an equivalent module invocation.
 
 See the :doc:`tuning how-to </how_to/pages/tuning>` for an end-to-end walkthrough and
-the :doc:`distributed HPCC guide </how_to/pages/tune_distributed_hpcc>` for SLURM and
-Postgres fan-out.
+the :doc:`distributed HPCC guide </how_to/pages/tune_distributed_hpcc>` for the
+shared-journal SLURM flow.
 
 ``run`` — run a tuning spec
 ---------------------------
 
 .. code-block:: bash
 
-   python -m phenotypic.tune run SPEC_JSON -i INPUT_DIR [OPTIONS]
+   uv run phenotypic-tune run SPEC_JSON -i INPUT_DIR [OPTIONS]
 
 Path Options
 ~~~~~~~~~~~~
@@ -251,16 +263,19 @@ Storage Options
 ~~~~~~~~~~~~~~~
 
 ``--storage-url URL``
-   Optuna storage URL: ``sqlite:///…`` (local single node) or a password-less
-   ``postgresql+psycopg://USER@HOST:PORT/DB`` (distributed; libpq reads the password
-   from ``~/.pgpass`` or ``$PGPASSWORD``, so it never enters argv or the worker script).
-   Falls back to ``$PHENOTYPIC_TUNE_STORAGE_URL``.
+   Optuna storage URL. Resolution is command-line URL, tuning-spec URL,
+   ``$PHENOTYPIC_TUNE_STORAGE_URL``, then the mode default: run-local SQLite
+   locally or an absolute run-local ``journal://`` URL for ``--slurm``.
+   Password-bearing URLs are rejected.
 
 Distributed Options
 ~~~~~~~~~~~~~~~~~~~
 
-``--slurm``
-   Submit a distributed worker fleet over SLURM instead of running locally.
+``--slurm [KEY=VALUE]``
+   Submit a distributed worker array and one terminal ``afterany`` finalizer
+   instead of running locally. It may be repeated as ``--slurm KEY=VALUE`` for
+   SBATCH settings. A Slurm Optuna run defaults to a shared journal; explicit
+   SQLite storage is rejected before run artifacts are created.
 
 ``--n-workers N``
    Number of SLURM array workers in the fleet (``--slurm`` only). When unset,
@@ -294,7 +309,7 @@ Robust-Eval Options
 
 .. code-block:: bash
 
-   python -m phenotypic.tune auto-space PIPELINE_JSON [OPTIONS]
+   uv run phenotypic-tune auto-space PIPELINE_JSON [OPTIONS]
 
 ``PIPELINE_JSON``
    Positional. Path to a pipeline JSON created with ``pipeline.to_json()``.
@@ -304,3 +319,21 @@ Robust-Eval Options
 
 ``--unattended``
    Reserved: skip the interactive review prompt (currently a no-op).
+
+``finalize`` — republish a distributed study
+--------------------------------------------
+
+.. code-block:: bash
+
+   uv run phenotypic-tune finalize OUTPUT_DIR [--force]
+
+``OUTPUT_DIR``
+   Positional. Existing distributed tune output directory. The command opens
+   its recorded backing store without creating one, requires the recorded
+   terminal-trial budget and a valid winner, then republishes the durable
+   tuning outputs. It refuses an active lifecycle generation.
+
+``--force``
+   Cancel the recorded generation first, then continue only after scheduler
+   quiescence and zero unresolved scheduler tokens are proven. Successful
+   re-finalization is byte-identical to the existing publication.

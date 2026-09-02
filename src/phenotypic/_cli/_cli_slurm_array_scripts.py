@@ -230,15 +230,21 @@ def generate_array_job_script(
         "full",
         "--input-root",
         shlex.quote(str(config.input_path.absolute())),
-        "--expected-work-id",
-        '"${CURRENT_WORK_ID}"',
-        "--expected-input-sha256",
-        '"${CURRENT_INPUT_SHA256}"',
-        "--expected-pipeline-sha256",
-        '"${EXPECTED_PIPELINE_SHA256}"',
         "--attempt-id",
         '"${CURRENT_ATTEMPT_ID}"',
     ]
+
+    if not config.measure_only:
+        cmd_parts.extend(
+            [
+                "--expected-work-id",
+                '"${CURRENT_WORK_ID}"',
+                "--expected-input-sha256",
+                '"${CURRENT_INPUT_SHA256}"',
+                "--expected-pipeline-sha256",
+                '"${EXPECTED_PIPELINE_SHA256}"',
+            ]
+        )
 
     # Omit when unset so the worker falls back to the pipeline's preset.
     if config.image_type == "GridImage":
@@ -267,6 +273,30 @@ def generate_array_job_script(
     if not config.include_dataset_column:
         cmd_parts.append("--no-dataset-column")
 
+    # Durability is tri-state. Emit ONLY an explicit choice: an unset flag has
+    # to stay unset so the worker re-detects SLURM on its own node, while
+    # --no-durable-writes exists only here and would otherwise be lost, leaving
+    # every array task silently fsyncing (spec §3.7).
+    if config.durable_writes is not None:
+        cmd_parts.append(
+            "--durable-writes"
+            if config.durable_writes
+            else "--no-durable-writes"
+        )
+
+    if config.pipeline_identity is not None:
+        cmd_parts.extend(
+            [
+                "--provenance-pipeline-source-path",
+                shlex.quote(config.pipeline_identity["source_path"]),
+                "--provenance-pipeline-sha256",
+                shlex.quote(config.pipeline_identity["sha256"]),
+            ]
+        )
+
+    if config.drop_originals:
+        cmd_parts.append("--drop-originals")
+
     # Process-only (apply-only) mode: export a single layer, mirror the input
     # tree, and skip overlays/measurement entirely. Mutually exclusive with the
     # measure / forward overlay flags.
@@ -276,6 +306,8 @@ def generate_array_job_script(
             [
                 "--layer",
                 config.process_only_layer,
+                "--process-format",
+                config.process_format,
             ]
         )
     elif config.measure_only:
@@ -338,36 +370,45 @@ else
     {cmd}
 fi"""
 
-    identity_assignment = (
-        'CURRENT_WORK_ID="${EXPECTED_WORK_IDS[$SLURM_ARRAY_TASK_ID]}"\n'
-        'CURRENT_INPUT_SHA256="${EXPECTED_INPUT_SHA256S[$SLURM_ARRAY_TASK_ID]}"\n'
-        'CURRENT_ATTEMPT_ID="${ATTEMPT_IDS[$SLURM_ARRAY_TASK_ID]}"'
-    )
-    dispatch_block = f"{identity_assignment}\n\n{dispatch_block}"
-
     script_path = script_dir / script_name
     prelude = SLURM_THREAD_PIN_BASH
-    identity_rows: list[tuple[str, str, str]] = []
-    for entry in entries:
-        if entry in {_CHECKPOINT_SENTINEL, _MANIFEST_SENTINEL}:
-            identity_rows.append(("", "", ""))
-            continue
-        image_path = Path(entry)
-        work_id, _ = work_id_for_image(config, dataset.name, image_path)
-        identity_rows.append((work_id, file_sha256(image_path), uuid4().hex))
-    prelude += "\nEXPECTED_WORK_IDS=(\n" + "\n".join(
-        f"    {shlex.quote(row[0])}" for row in identity_rows
-    ) + "\n)"
-    prelude += "\nEXPECTED_INPUT_SHA256S=(\n" + "\n".join(
-        f"    {shlex.quote(row[1])}" for row in identity_rows
-    ) + "\n)"
-    prelude += "\nATTEMPT_IDS=(\n" + "\n".join(
-        f"    {shlex.quote(row[2])}" for row in identity_rows
-    ) + "\n)"
-    prelude += (
-        "\nEXPECTED_PIPELINE_SHA256="
-        f"{shlex.quote(file_sha256(config.pipeline_json))}"
-    )
+    if config.measure_only:
+        identity_assignment = (
+            'CURRENT_ATTEMPT_ID="${ATTEMPT_IDS[$SLURM_ARRAY_TASK_ID]}"'
+        )
+        attempt_ids = [uuid4().hex for _ in entries]
+        prelude += "\nATTEMPT_IDS=(\n" + "\n".join(
+            f"    {shlex.quote(attempt_id)}" for attempt_id in attempt_ids
+        ) + "\n)"
+    else:
+        identity_assignment = (
+            'CURRENT_WORK_ID="${EXPECTED_WORK_IDS[$SLURM_ARRAY_TASK_ID]}"\n'
+            'CURRENT_INPUT_SHA256="${EXPECTED_INPUT_SHA256S[$SLURM_ARRAY_TASK_ID]}"\n'
+            'CURRENT_ATTEMPT_ID="${ATTEMPT_IDS[$SLURM_ARRAY_TASK_ID]}"'
+        )
+        identity_rows: list[tuple[str, str, str]] = []
+        for entry in entries:
+            if entry in {_CHECKPOINT_SENTINEL, _MANIFEST_SENTINEL}:
+                identity_rows.append(("", "", ""))
+                continue
+            image_path = Path(entry)
+            work_id, _ = work_id_for_image(config, dataset.name, image_path)
+            identity_rows.append((work_id, file_sha256(image_path), uuid4().hex))
+        prelude += "\nEXPECTED_WORK_IDS=(\n" + "\n".join(
+            f"    {shlex.quote(row[0])}" for row in identity_rows
+        ) + "\n)"
+        prelude += "\nEXPECTED_INPUT_SHA256S=(\n" + "\n".join(
+            f"    {shlex.quote(row[1])}" for row in identity_rows
+        ) + "\n)"
+        prelude += "\nATTEMPT_IDS=(\n" + "\n".join(
+            f"    {shlex.quote(row[2])}" for row in identity_rows
+        ) + "\n)"
+        prelude += (
+            "\nEXPECTED_PIPELINE_SHA256="
+            f"{shlex.quote(file_sha256(config.pipeline_json))}"
+        )
+    dispatch_block = f"{identity_assignment}\n\n{dispatch_block}"
+
     if config.processing_generation:
         prelude += (
             "\nexport "

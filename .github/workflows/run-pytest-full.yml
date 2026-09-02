@@ -7,7 +7,7 @@ name: run-pytest-full
 #   * workflow_dispatch                         — manual full run on any ref
 #
 # Matrix:
-#   * Linux x Python {3.10, 3.11, 3.12}
+#   * Linux x Python {3.11, 3.12}
 #   * macOS-14 x Python 3.12 (public repo only)
 #   * Windows-latest x Python 3.12
 #
@@ -42,8 +42,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            python-version: "3.10"
           - os: ubuntu-latest
             python-version: "3.11"
           - os: ubuntu-latest

@@ -1,6 +1,7 @@
 """Tests for the shared CLI ↔ GUI artifact-layout constants module."""
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -10,7 +11,6 @@ import pytest
 
 from phenotypic.sdk_ import (
     DELIVERABLES_METADATA_CSV,
-    DIR_HDF,
     DIR_MEASUREMENTS,
     DIR_OVERLAYS,
     DIR_PROGRESS,
@@ -39,13 +39,11 @@ from phenotypic.sdk_ import (
     ChunkStateKey,
     DashboardManifestKey,
     EnvVar,
-    HdfAttr,
     JobMetadataKey,
     ModulePath,
     checkpoint_lock_filename,
     chunk_parquet_filename,
     dashboard_html_path,
-    dataset_hdf_dir,
     dataset_measurements_dir,
     dataset_overlays_dir,
     dataset_results_dir,
@@ -282,7 +280,6 @@ class TestDirectoryConstants:
 
     def test_per_dataset_subdirs(self) -> None:
         assert DIR_MEASUREMENTS == "measurements"
-        assert DIR_HDF == "hdf"
         assert DIR_OVERLAYS == "overlays"
 
 
@@ -424,7 +421,6 @@ class TestPathHelpers:
     def test_dataset_subdirs(self, output: Path) -> None:
         assert dataset_results_dir(output, "ds1") == output / "results" / "ds1"
         assert dataset_measurements_dir(output, "ds1") == output / "results" / "ds1" / "measurements"
-        assert dataset_hdf_dir(output, "ds1") == output / "results" / "ds1" / "hdf"
         assert dataset_overlays_dir(output, "ds1") == output / "deliverables" / "overlays" / "ds1"
 
     def test_overlays_dir_roots_under_deliverables(self) -> None:
@@ -635,6 +631,100 @@ class TestParetoPaths:
             pareto_dir(output) / "best_s0.json.pht-pipe"
         )
 
+    def test_validated_axes_keep_human_names_in_direct_path_helpers(
+        self, output: Path
+    ) -> None:
+        """Central identity validation precedes direct artifact-path rendering."""
+        from phenotypic.sdk_ import (
+            pareto_best_pipeline_path,
+            pareto_importance_path,
+        )
+        from phenotypic.tune._multi_objective import validate_objective_axes
+
+        axes = validate_objective_axes(("Dice", "IoU"))
+        paths = [
+            *(pareto_best_pipeline_path(output, axis) for axis in axes),
+            *(pareto_importance_path(output, axis) for axis in axes),
+        ]
+
+        assert [path.name for path in paths] == [
+            "best_Dice.json.pht-pipe",
+            "best_IoU.json.pht-pipe",
+            "param_importance_Dice.json",
+            "param_importance_IoU.json",
+        ]
+        assert len({path.name.casefold() for path in paths}) == len(paths)
+
+        with pytest.raises(ValueError, match="case-insensitive|casefold|unique"):
+            validate_objective_axes(("Dice", "dice"))
+
+
+    @pytest.mark.parametrize(
+        "objective",
+        ["", ".", "..", "../escape", r"..\escape", "/absolute", r"C:\escape"],
+    )
+    def test_pareto_axis_paths_reject_unsafe_components(
+        self, output: Path, objective: str
+    ) -> None:
+        """Both Pareto path helpers must remain contained under their directory."""
+        from phenotypic.sdk_ import (
+            pareto_best_pipeline_path,
+            pareto_importance_path,
+        )
+
+        with pytest.raises(ValueError, match="safe filename"):
+            pareto_best_pipeline_path(output, objective)
+        with pytest.raises(ValueError, match="safe filename"):
+            pareto_importance_path(output, objective)
+
+    @pytest.mark.parametrize(
+        "objective",
+        [
+            r"\\server\share",
+            "bad<axis",
+            "bad>axis",
+            'bad"axis',
+            "bad:axis",
+            "bad|axis",
+            "bad?axis",
+            "bad*axis",
+            "bad\x00axis",
+            "bad\x01axis",
+            "bad\x1faxis",
+            "bad\x7faxis",
+            "bad\x80axis",
+            "bad\x9faxis",
+            "trailing.",
+            "trailing ",
+            "CON",
+            "con.txt",
+            "PRN",
+            "AUX",
+            "NUL",
+            "COM1",
+            "com9.csv",
+            "LPT1",
+            "lpt9.json",
+            "CONIN$",
+            "CONOUT$",
+            "COM¹",
+            "LPT³.txt",
+        ],
+    )
+    def test_pareto_axis_paths_reject_cross_platform_unsafe_components(
+        self, output: Path, objective: str
+    ) -> None:
+        """Windows-invalid and control names cannot reach either path helper."""
+        from phenotypic.sdk_ import (
+            pareto_best_pipeline_path,
+            pareto_importance_path,
+        )
+
+        with pytest.raises(ValueError, match="safe filename"):
+            pareto_best_pipeline_path(output, objective)
+        with pytest.raises(ValueError, match="safe filename"):
+            pareto_importance_path(output, objective)
+
     def test_pareto_importance_path_per_objective(self, output: Path) -> None:
         from phenotypic.sdk_._io_constants import (
             pareto_dir,
@@ -719,9 +809,6 @@ class TestJsonContractKeys:
         assert ChunkManifestKey.DATASETS == "datasets"
         assert ChunkManifestKey.TOTAL_ROWS == "total_rows"
         assert ChunkManifestKey.NAME == "name"
-
-    def test_hdf_attr_keys(self) -> None:
-        assert HdfAttr.PHENOTYPIC_CLASS == "phenotypic_class"
 
     def test_processing_state_keys(self) -> None:
         from phenotypic.sdk_ import ProcessingStateKey
@@ -830,20 +917,24 @@ class TestLoadImageFromHdf:
     def test_byte_class_attr_is_decoded(self, tmp_path: Path) -> None:
         """HDF attrs from older h5py versions arrive as bytes, not str.
 
-        Regression test for the byte-decode fallback in load_image_from_hdf.
-        We assert the attribute extraction logic without exercising the full
-        Image construction (which requires real image data).
+        Regression test for the byte-decode fallback in
+        ``_hdf_to_zarr._load_image_from_hdf``. Phase 6 moved the reader and
+        its ``phenotypic_class`` constant out of ``_io_constants`` into the
+        one module allowed to know the legacy layout; the assertion is
+        unchanged. We assert the attribute extraction logic without
+        exercising the full Image construction (which requires real image
+        data).
         """
         import h5py  # type: ignore[import-untyped]
 
-        from phenotypic.sdk_._io_constants import HdfAttr
+        from phenotypic.sdk_._hdf_to_zarr import _PHENOTYPIC_CLASS
 
         hdf_path = tmp_path / "test.h5"
         with h5py.File(hdf_path, "w") as fh:
-            fh.attrs[HdfAttr.PHENOTYPIC_CLASS] = b"GridImage"
+            fh.attrs[_PHENOTYPIC_CLASS] = b"GridImage"
 
         with h5py.File(hdf_path, "r") as fh:
-            cls_attr = fh.attrs.get(HdfAttr.PHENOTYPIC_CLASS, "Image")
+            cls_attr = fh.attrs.get(_PHENOTYPIC_CLASS, "Image")
 
         # h5py returns bytes on some platforms — verify the decode pattern
         if isinstance(cls_attr, bytes):
@@ -1496,4 +1587,217 @@ def test_generation_owner_and_completion_paths_use_progress_dir(
     )
     assert run_completion_marker_path(tmp_path) == (
         progress_dir(tmp_path) / RUN_COMPLETION_JSON
+    )
+
+
+def test_zarr_store_path_is_the_only_suffix_joiner(tmp_path) -> None:
+    from phenotypic.sdk_ import dataset_zarr_dir, zarr_store_path
+    from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+
+    path = zarr_store_path(tmp_path, "plates", "plate_01")
+    assert path == dataset_zarr_dir(tmp_path, "plates") / f"plate_01{STORE_SUFFIX}"
+    assert path.parent.name == "zarr"
+
+
+def test_dataset_zarr_dir_sits_beside_the_other_result_dirs(tmp_path) -> None:
+    from phenotypic.sdk_ import dataset_results_dir, dataset_zarr_dir
+
+    assert dataset_zarr_dir(tmp_path, "ds") == dataset_results_dir(tmp_path, "ds") / "zarr"
+
+
+def test_store_stem_strips_the_whole_double_suffix(tmp_path) -> None:
+    """``Path.stem`` leaves ``img.ome``; a wrong stem propagates silently."""
+    from phenotypic.sdk_ import store_stem, zarr_store_path
+
+    store = zarr_store_path(tmp_path, "ds", "img")
+    assert store.stem == "img.ome"  # the trap this helper exists for
+    assert store_stem(store) == "img"
+
+
+def test_source_image_stem_normalizes_only_ome_zarr_sources() -> None:
+    """A generic multi-dot file must keep pathlib's one-suffix behavior."""
+    import phenotypic.sdk_ as sdk
+
+    assert sdk.source_image_stem(Path("p01.ome.zarr")) == "p01"
+    assert sdk.source_image_stem(Path("p01.channel.tiff")) == "p01.channel"
+    assert sdk.source_image_stem(Path("p01.tiff")) == "p01"
+    assert sdk.source_image_suffix(Path("p01.ome.zarr")) == ".ome.zarr"
+    assert sdk.source_image_suffix(Path("p01.channel.tiff")) == ".tiff"
+
+
+def test_store_revision_identity_changes_for_nested_member(tmp_path) -> None:
+    from phenotypic.sdk_ import store_revision_identity
+
+    store = tmp_path / "p01.ome.zarr"
+    chunk = store / "rgb" / "c" / "0"
+    chunk.parent.mkdir(parents=True)
+    chunk.write_bytes(b"first")
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+    first = store_revision_identity(store)
+
+    chunk.write_bytes(b"second-version")
+
+    assert store_revision_identity(store) != first
+
+
+def test_phenotypic_store_revision_uses_only_root_last_publication_token(
+    tmp_path, monkeypatch
+) -> None:
+    """Published process stores must not recursively stat every chunk."""
+    from phenotypic.sdk_ import _io_constants as io
+
+    store = tmp_path / "plate.zarr"
+    chunk = store / "rgb" / "0" / "c" / "0"
+    chunk.parent.mkdir(parents=True)
+    chunk.write_bytes(b"pixels")
+    root = store / "zarr.json"
+    root.write_text(
+        '{"attributes":{"phenotypic":{'
+        '"publication_protocol":"root-last-immutable-v1"}}}',
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        io,
+        "_store_revision_snapshot",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("published store was recursively traversed")
+        ),
+    )
+
+    first = io.store_revision_identity(store)
+    chunk.write_bytes(b"different pixels")
+    assert io.store_revision_identity(store) == first
+    root.write_text(
+        '{"attributes":{"phenotypic":{'
+        '"publication_protocol":"root-last-immutable-v1","changed":true}}}',
+        encoding="utf-8",
+    )
+    assert io.store_revision_identity(store) != first
+
+
+def test_publication_token_detects_same_bytes_same_mtime_root_replacement(
+    tmp_path,
+) -> None:
+    """Root identity closes the same-tick, byte-identical replacement gap."""
+    from phenotypic.sdk_ import store_publication_token
+
+    store = tmp_path / "plate.zarr"
+    store.mkdir()
+    root = store / "zarr.json"
+    payload = (
+        '{"attributes":{"phenotypic":{'
+        '"publication_protocol":"root-last-immutable-v1"}}}'
+    )
+    root.write_text(payload, encoding="utf-8")
+    initial_stat = root.stat()
+    first = store_publication_token(store)
+    replacement = store / "replacement.json"
+    replacement.write_text(payload, encoding="utf-8")
+    os.utime(
+        replacement,
+        ns=(initial_stat.st_atime_ns, initial_stat.st_mtime_ns),
+    )
+    replacement.replace(root)
+
+    assert store_publication_token(store) != first
+
+
+def test_phenotypic_named_block_without_publication_protocol_is_not_trusted(
+    tmp_path,
+) -> None:
+    from phenotypic.sdk_ import store_publication_token
+
+    store = tmp_path / "third-party.zarr"
+    store.mkdir()
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{"store_schema_version":3}}}',
+        encoding="utf-8",
+    )
+
+    assert store_publication_token(store) is None
+
+
+def test_store_revision_identity_rejects_nested_symlink(tmp_path) -> None:
+    from phenotypic.sdk_ import store_revision_identity
+
+    store = tmp_path / "p01.ome.zarr"
+    store.mkdir()
+    outside = tmp_path / "outside"
+    outside.write_bytes(b"secret")
+    link = store / "chunk"
+    try:
+        link.symlink_to(outside)
+    except (OSError, NotImplementedError):  # pragma: no cover - platform guard
+        pytest.skip("symlinks not supported on this platform/filesystem")
+
+    with pytest.raises(OSError, match="symlink"):
+        store_revision_identity(store)
+
+
+def test_store_revision_identity_rejects_mutating_snapshot(
+    tmp_path, monkeypatch
+) -> None:
+    from phenotypic.sdk_ import _io_constants as io
+
+    store = tmp_path / "p01.ome.zarr"
+    store.mkdir()
+    chunk = store / "chunk"
+    chunk.write_bytes(b"first")
+    original = io._store_revision_snapshot
+    calls = 0
+
+    def mutating_snapshot(*args, **kwargs):
+        nonlocal calls
+        snapshot = original(*args, **kwargs)
+        calls += 1
+        if calls == 1:
+            chunk.write_bytes(b"second-version")
+        return snapshot
+
+    monkeypatch.setattr(io, "_store_revision_snapshot", mutating_snapshot)
+
+    with pytest.raises(OSError, match="changed during revision"):
+        io.store_revision_identity(store)
+
+
+def test_store_stem_round_trips_through_zarr_store_path(tmp_path) -> None:
+    """The composition must be the identity, or resume reprocesses forever."""
+    from phenotypic.sdk_ import store_stem, zarr_store_path
+
+    for stem in ("img", "plate.01", "a.ome", "img.h5", "img.ome.zarr"):
+        store = zarr_store_path(tmp_path, "ds", stem)
+        assert store_stem(store) == stem
+        assert zarr_store_path(tmp_path, "ds", store_stem(store)) == store
+
+
+def test_store_stem_raises_on_a_path_that_is_not_a_store(tmp_path) -> None:
+    """A silent ``.stem`` fallback is exactly the failure being prevented."""
+    from phenotypic.sdk_ import store_stem
+
+    with pytest.raises(ValueError, match="not an OME-Zarr store"):
+        store_stem(tmp_path / "img.h5")
+    with pytest.raises(ValueError, match="not an OME-Zarr store"):
+        store_stem(tmp_path / "img.ome")
+
+
+def test_plain_zarr_source_identity_strips_one_store_suffix(tmp_path) -> None:
+    from phenotypic.sdk_ import (
+        source_image_stem,
+        source_image_suffix,
+        store_stem,
+    )
+
+    store = tmp_path / "img.zarr"
+    assert store_stem(store) == "img"
+    assert source_image_stem(store) == "img"
+    assert source_image_suffix(store) == ".zarr"
+
+
+def test_dir_zarr_is_the_directory_name_zarr_store_path_uses(tmp_path) -> None:
+    from phenotypic.sdk_ import DIR_ZARR, dataset_results_dir, dataset_zarr_dir
+
+    assert DIR_ZARR == "zarr"
+    assert dataset_zarr_dir(tmp_path, "ds") == (
+        dataset_results_dir(tmp_path, "ds") / DIR_ZARR
     )

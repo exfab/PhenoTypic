@@ -31,6 +31,20 @@
   (`test-qt` + the `napari` extra are required for the napari/Qt widget tests)
 - `source .venv/bin/activate` — manual venv activation
 
+### Running tests
+
+Use the **`run-phenotypic-test`** skill before any non-trivial pytest invocation —
+the full `tests/unit` suite, anything on a compute node, anything headless, or any
+run whose numbers you intend to quote as a baseline. Four traps here produce a
+**wrong answer** rather than a slow one: a missing `QT_QPA_PLATFORM=offscreen`
+aborts the interpreter at 79% with no summary; `-n auto` reads the node's core
+count instead of the allocation's and manufactures timeout failures; the default
+`addopts` streams uncaptured output and can triple the runtime when stdout is a
+file on shared storage; and `-x` silently truncates a run that then gets recorded
+as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
+(**`slurm-job`** skill), with a committed batch script at
+`docs/superpowers/plans/2026-08-18-ome-zarr-image-store/run_unit_suite.sbatch`.
+
 ### Linting & Type Checking
 
 - `uv run mypy src/phenotypic` — type checking
@@ -47,18 +61,64 @@
 - `uv run python -m phenotypic` — single pipeline on images/directories (parallel,
   SLURM, automatic continuation)
 - `uv run python -m phenotypic --mode process --layer {rgb|gray|detect_mat|objmap}` —
-  apply-only export: runs `pipeline.apply()` and writes ONE image layer per input
-  (via the accessor `imsave` — `rgb` integer TIFF, `gray`/`detect_mat` float TIFF,
-  `objmap` 16-bit raw-label PNG), mirroring the input tree. Skips
-  measurement/deliverables/QC/dashboard; machine-state lives under `.phenotypic/`.
-  Full local + SLURM continuation reuse. Run the same command again after an
-  interruption or when new compatible inputs appear; there is no `--resume` flag.
+  apply-only export: runs `pipeline.apply()` and writes ONE image layer per
+  input, mirroring the input tree. **Output is a single-series OME-Zarr store**
+  (`<stem>.ome.zarr/`) for `rgb`/`gray`, a float TIFF for `detect_mat`, and a
+  16-bit raw-label PNG for `objmap`. `--process-format {tiff,zarr}` overrides;
+  `--layer objmap --process-format zarr` and `--layer detect_mat
+  --process-format zarr` are both refused, for different reasons — NGFF has no
+  standalone label-image form, and PhenoTypic's store writer requires a primary
+  series (`rgb` or `gray`). The store carries the pipeline that produced it in
+  `attributes.phenotypic.provenance` and omits `image_class`, so
+  `Image.load_zarr` refuses it and points at `Image.imread`, which reads any
+  OME-Zarr — PhenoTypic's or a third party's — as plain pixels. A published
+  store is bit-reproducible: `applied_at_utc` and `duration_seconds` are
+  omitted from its journal, so two identical runs write byte-identical stores.
+  Provenance is cumulative: reading a PhenoTypic store retains its complete
+  journal, and each process/full/programmatic invocation appends a separately
+  typed application with its own pipeline identity. Process output is therefore
+  valid input to the normal CLI and browse GUI without losing the process
+  pipeline. A tree of stores is valid `--input`. Skips
+  measurement/deliverables/QC/
+  dashboard; machine state lives under `.phenotypic/`. Full local + SLURM
+  continuation reuse; switching `--process-format` invalidates continuation
+  rather than reusing outputs of the other kind. Run the same command again
+  after an interruption or when new compatible inputs appear; there is no
+  `--resume` flag.
+- `uv run python -m phenotypic --mode migrate --output <target>` — explicitly
+  migrate a full legacy run, one direct OME-Zarr store, or a process-output tree.
+  Full runs keep the metadata → image → seal → optional reclaim → finalizer
+  chain; direct stores and process trees run provenance-only store array → seal
+  → finalizer work. Use `--njobs N` for local GPFS-latency parallelism, or the
+  mode's native repeated `--slurm key=value` options for scheduler dispatch
+  (never a custom wrapper; explicit `--njobs` and `--slurm` are incompatible).
+  Inventory never descends into Zarr chunks. Each provenance worker reads one
+  root `zarr.json` and writes only a schema-v1 journal. Direct-store lifecycle
+  state is a hashed sibling below `.phenotypic`, never inside the store.
+  Sources are **kept** by default; full-run `--delete-sources` is opt-in and
+  value-level gated, while provenance-only targets reject it. Re-running after
+  interruption is the recovery procedure. New schema-v2 applications always
+  carry a non-empty installed `phenotypic_version`. Only explicit migrate mode
+  may emit `phenotypic_version: null`, only for a converted `legacy`
+  application whose historical version cannot be recovered. Never substitute
+  the migrator's installed version, and never fabricate unknown original/input
+  filenames from a store directory. **Every other mode that writes or
+  reprocesses (`full`, `measure`, `recompile`, `process`) refuses an unconverted
+  tree** with a pointer to this command. Per-image storage is OME-Zarr only:
+  `save2zarr` / `load_zarr` / `load_layer_zarr` /
+  `save_intermediate_zarr` replaced the HDF quartet outright, and there is no
+  `Image.save2hdf5`. See `docs/source/how_to/pages/migrate_ome_zarr.md` and
+  `docs/source/how_to/pages/zarr_storage.md`.
 - **GPU detectors stage automatically:** when a pipeline contains a `GpuDetector`,
   `python -m phenotypic` runs detection as three internal stages — CPU preprocess →
-  resident-model GPU detect → CPU measure — reusing the per-image HDF. Stage 2 writes a
-  per-image `.npy` objmap **sidecar** (HDF opened read-only); Stage 3 merges it into the
-  final HDF, measures, and deletes the sidecar. The output folder is identical to a
-  single-pass run; continuation is content-defined (valid HDF → sidecar → atomic Stage-3
+  resident-model GPU detect → CPU measure — reusing the per-image OME-Zarr store.
+  Stage 2 reads that store **read-only** and never writes into it; its result is a
+  **Stage-2 signal** under `.phenotypic/progress/`: the retained **raw** detector
+  output `stage2_raw/<ds>/<stem>.npy` plus a consumable **token**
+  `stage2_done/<ds>/<stem>.json`. Stage 3 replays the raw array, measures,
+  re-promotes the store, and consumes the token and then the raw array. The output
+  folder is identical to a single-pass run; continuation is content-defined
+  (valid store → complete Stage-2 signal → atomic Stage-3
   completion marker) and progress is
   stage-tagged. `--mode process --layer objmap` exports objmaps after Stages 1–2.
   On SLURM, the stages submit through an **epoch-fenced recoverable controller**:
@@ -68,7 +128,7 @@
   chunked). Only Controller 0 is submitted initially; it pre-arms a dependent recovery
   controller before launching Stage-1 chunk 0. Each controller records the next job in
   an append-only ledger. After a Stage-2 timeout, the controller derives remaining work
-  from atomic sidecars and submits another round. No worker signal handler or self-requeue
+  from complete Stage-2 signals and submits another round. No worker signal handler or self-requeue
   is used. Without `--wait`, the CLI reports submission only; the dependent finalizer is
   the sole publisher of aggregated outputs and the completion marker.
   Staged GPU flags (Spec 1 §10):
@@ -78,7 +138,7 @@
     - `--gpu-shards N` (default 1) — parallel whole-GPU Stage-2 tasks (SLURM-only).
     - `--gpu-workers-per-gpu W` (default 1) — reserved for future replica packing;
       the current staged worker runs one resident model per GPU shard.
-- `uv run python -m phenotypic.tune run spec.json -i <images> -o <out>` —
+- `uv run phenotypic-tune run spec.json -i <images> -o <out>` —
   hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/
   `--storage-url`
 
@@ -91,8 +151,9 @@
   `__PHENOTYPIC_MANIFEST__` dispatch pattern. Count every trigger entry when
   sizing chunks against `MaxArraySize`, and test that no standalone parallel job
   is submitted.
-- This rule concerns scheduler jobs, not the staged GPU `.npy` objmap sidecar
-  file. A terminal `afterany` finalizer is also not a parallel sidecar.
+- This rule concerns scheduler jobs, not the staged GPU Stage-2 signal files
+  (the retained raw `.npy` and its token). A terminal `afterany` finalizer is
+  also not a parallel sidecar.
 - See `src/phenotypic/_cli/CLAUDE.md` for the full routing contract. Root
   `AGENTS.md` is a symlink to this file and therefore carries the same rule.
 
@@ -111,6 +172,14 @@
   `python -m phenotypic.gui.results_viewer`, `python -m phenotypic.gui.run_console`.
 - Note: `phenotypic gui` (no hyphen, as a subcommand of the existing CLI) is NOT
   supported. Use `phenotypic-gui` or `python -m phenotypic.gui`.
+- **Two pixel paths, not one.** The results viewer's Plate and Colony surfaces
+  and the builder's node preview read per-image OME-Zarr chunks in the browser
+  through Viv/deck.gl (`/zarr/...`, `/preview-zarr/...`); Browse and the
+  builder's point picker keep libvips → DZI → OpenSeadragon. The results viewer
+  renders no server-side pyramid and caches no rendered PNG. Which surface uses
+  which, and the two rules that go with it (never hard-code the series or label
+  path, never recompute the pyramid), are in
+  [gui/CLAUDE.md](src/phenotypic/gui/CLAUDE.md).
 
 #### Adding GUI features
 
@@ -256,12 +325,23 @@ enforces this for ruff, but the rule binds regardless of the tool.
 
 ## Gotchas
 
+- **`imread` vs `load_zarr` on an OME-Zarr store:** the verb decides, never the
+  file. `Image.imread(store)` always reads plain pixels — PhenoTypic's own
+  output, or a napari/QuPath/`bioformats2raw` export — and refuses rather than
+  guessing when a store cannot be projected onto a 2-D image (a real `t` or `z`
+  axis, a channel count that is neither 1 nor 3, an HCS plate); pass
+  `t=`/`z=`/`c=`/`series=` to choose explicitly. `Image.load_zarr(store)`
+  always restores run state and raises on a store with no
+  `phenotypic.image_class`. NGFF has no RGB type: `rgb` is a 3-length `channel`
+  axis ordered **before** the space axes, so stores are planar `(3,H,W)` and
+  `imread` transposes to `(H,W,3)`.
 - Some packages excluded on Windows: `rawpy`, `pympler`, `jupyter` — use try/except.
 - External tools: ExifTool (raw metadata), Pandoc (doc builds).
 - **Operations use `.apply()`, not `__call__`:** `op.apply(image)` is correct;
   `op(image)` raises `TypeError`.
 - **GPU pipelines stage internally:** a `GpuDetector` in a CLI run triggers the staged
-  engine (preprocess → GPU → measure) with a per-image objmap **sidecar**, not per-image
+  engine (preprocess → GPU → measure) with a per-image Stage-2 signal (a retained
+  raw `.npy` plus a consumable token under `.phenotypic/progress/`), not per-image
   processing; the resident model loads once. Notebook `op.apply(image)` is unchanged.
   See [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) for the strategy dispatch +
   stages.
@@ -306,18 +386,35 @@ enforces this for ruff, but the rule binds regardless of the tool.
   `image.num_objects`.
 - **Output layout (`deliverables/`):** user-facing run outputs live under
   `<output>/deliverables/` (measurements, analysis, dashboards, overlays, and
-  the durable QC + curation state under `deliverables/qc/`); per-image
-  parquets/HDF and run state stay at the output root. `master_measurements.*`
-  is the clean pre-post, metadata-free archive; `measurements.*` is the
-  post-applied mirror the GUI reads/curates — feed analysis and dashboards from
-  the **mirror**, not the master. Always resolve paths via the
+  the durable QC + curation state under `deliverables/qc/`); per-image image
+  state lives in `results/<ds>/zarr/<stem>.ome.zarr/`, with authoritative
+  object measurements at `tables/measurements/table.parquet` inside each
+  store. Forward runs do not create external per-image measurement Parquets.
+  `master_measurements.*` is the exact pre-post concatenation of authorized
+  embedded tables (already metadata-joined measured rows);
+  `measurements.*` appends metadata-only phantoms once and is the post-applied
+  mirror the GUI reads/curates — feed analysis and dashboards from the
+  **mirror**, not the master. Always resolve paths via the
   `phenotypic.sdk_` helpers (never hand-join names), and route any FINAL master
   write through `finalize_post_master_outputs`. Full file inventory,
   master-vs-mirror rules, and the finalize/chunk-writer carve-out are in
   [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md).
 - **Metadata startup snapshot:** full runs and recompile copy a configured
   `--metadata` CSV byte-for-byte to `deliverables/metadata.csv` before local
-  work or SLURM submission. Treat that file as immutable input provenance:
-  normalize legacy headers only in memory, and never rewrite it from
-  finalization or metadata-schema migration. Generated scientific tables still
-  emit only the canonical flat `Metadata_<Label>` namespace.
+  work or SLURM submission. Treat that file as input provenance: **never rewrite
+  it as a side effect** of any other operation. Finalization, chunk writers, and
+  `--mode recompile` normalize legacy headers **only in memory**.
+  **There is no exception, including `--mode migrate`.** An earlier draft of
+  this rule carved one out — migrate would rewrite `deliverables/metadata.csv`
+  with canonical headers after copying the original to
+  `deliverables/metadata.original.csv`. That was **withdrawn** (spec D9 /
+  FLOW-4) and never implemented. A snapshot that is sometimes rewritten is not
+  provenance, and "the original is recoverable over there" is a weaker
+  guarantee than "the bytes you supplied are still the bytes on disk".
+  `--mode migrate` instead **emits a canonical view alongside** the snapshot,
+  at `deliverables/metadata.canonical.csv`, and leaves `metadata.csv`
+  byte-identical (pinned by
+  `test_the_metadata_snapshot_is_byte_unchanged_by_a_full_migrate`).
+  `metadata.original.csv` does not exist and must not be created. Generated
+  scientific tables still emit only the canonical flat `Metadata_<Label>`
+  namespace.

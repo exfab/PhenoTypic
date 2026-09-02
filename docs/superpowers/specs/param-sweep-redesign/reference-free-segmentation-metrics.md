@@ -271,8 +271,8 @@ of regions of area exactly `a`; `MaxArea` = largest region area.
    combinations beat any one.**
 6. **Watch the signs.** *Lower is better:* F, F′, Q, E, `σ²_W`, Rosenberger intra `D`.
    *Higher is better:* Zeboudj `C(I)`, Levine–Nazif `U`/contrast, Otsu `σ²_B`/`η`.
-   Any ensemble must normalize sign/direction before combining (cf. master §4's
-   `higher_is_better` contract).
+   Any ensemble must declare that natural sense so the shared scorer boundary can
+   orient every term to lower-is-better cost (master §4).
 7. **Cost.** Otsu/F/F′/Q/E are essentially free per evaluation; Zeboudj/Levine-contrast/
    Rosenberger need region adjacency or boundary extraction (modest extra cost).
 
@@ -1152,8 +1152,9 @@ templates directly executable):
 - **Reference metric:** Dice/Jaccard/F-measure on synthetic-plate GT (the role Vinet's
   measure plays in Chabrier 2006).
 - **Acceptance statistic:** require **rank agreement** (Spearman ρ, robust to monotone
-  nonlinearity) **AND** the **argmax test** (the parameters the `ReferenceFreeScorer`
-  picks must land within a small tolerance of the true best-Dice parameters). Suggested
+  nonlinearity) **AND** a **cost-argmin agreement test** (the parameters minimizing
+  `ReferenceFreeScorer` cost must land within a small tolerance of those minimizing
+  supervised reference cost, equivalently maximizing raw Dice). Suggested
   engineering bars (inference, not a cited cutoff): **Spearman ρ ≥ ~0.7 to pass**,
   **≥ ~0.8 to allow unattended auto-tuning**, demote to advisory below ~0.5. *(The master
   spec's §4 floor of "≥3–5 annotated plates" and "warns/abstains if the correlation is
@@ -1247,11 +1248,13 @@ multi-axis layout Chen & Murphy and BIDCell both endorse:
 - **Optional edge-validity axis:** Yu's **EVI** idea (does the colony boundary sit on a real
   intensity edge?) for crisp rims — under-used in optical UE and cheap to add (R2 §8).
 
-Fuse with **z-score-then-PCA-leading-component(s)** (Chen & Murphy's validated recipe) or a
-**Mahalanobis-to-ideal-point** combination (Gao 2017) to avoid hand-tuned weights — both
-sidestep arbitrary scalarization, and both satisfy master §4's requirement that the `Scorer`
-declare an optimization direction / normalizer (normalize all terms to a common
-higher-is-better scale first; mind the sign conventions in R1 cross-cutting note 6).
+The cited z-score/PCA and Mahalanobis-to-ideal-point recipes motivate using
+complementary, externally normalized axes. The implemented scorer declares each
+natural term's sense and fixed normalizer, then converts it to bounded cost. The
+canonical `CompositeScorer` scalarizes child costs with augmented Tchebycheff by
+default (`blend="weighted_mean"` is the compensatory option), or preserves the axes
+for true multi-objective optimization. Mind the raw-metric sign conventions in R1
+cross-cutting note 6 before cost orientation.
 
 **2. Avoid the GEOBIA normalization trap (the single most important transfer caveat).**
 Do **not** use min–max-over-the-tested-set normalization (Espíndola/Johnson Global Score) —
@@ -1276,8 +1279,9 @@ cross-cutting note 3).
 **4. Gate before trusting it to drive optimization (D1 / master §4 meta-validation).** This
 is non-negotiable and the substance of D1's gating clause. Implement the R5 gate:
 - Reference = Dice/Jaccard/F-measure on synthetic-plate GT (Chabrier 2006's Vinet role).
-- Acceptance = **Spearman rank agreement AND an argmax test** (the picked parameters land
-  near the true best-Dice parameters). Suggested bars: **ρ ≥ ~0.7 pass**, **≥ ~0.8 for
+- Acceptance = **Spearman rank agreement AND a cost-argmin agreement test** (the
+  picked parameters land near the supervised-cost minimum, equivalently the raw-Dice
+  maximum). Suggested bars: **ρ ≥ ~0.7 pass**, **≥ ~0.8 for
   unattended tuning**, advisory below ~0.5 (engineering inference; the literature validates
   the *method*, not a numeric cutoff — consistent with master §4's "warns/abstains if the
   correlation is weak" and §14's open question on the threshold).

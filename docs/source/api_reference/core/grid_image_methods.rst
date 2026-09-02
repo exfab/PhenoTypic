@@ -247,8 +247,9 @@ GridImage inherits all file I/O methods from :class:`Image`:
 
 - :meth:`Image.imread` - Load image from file
 - :meth:`Image.save2pickle` - Save to pickle format
-- :meth:`Image.save2hdf5` - Save to HDF5 format with metadata
-- :meth:`Image.load_hdf5` - Load from HDF5
+- :meth:`Image.save2zarr` - Save to an OME-Zarr store with metadata
+- :meth:`Image.load_zarr` - Load from an OME-Zarr store
+- :meth:`Image.load_layer_zarr` - Read one layer at one pyramid level
 
 The grid structure (nrows, ncols, grid_finder configuration) is preserved during
 save/load operations, allowing complete restoration of the GridImage state.
@@ -261,10 +262,10 @@ save/load operations, allowing complete restoration of the GridImage state.
     grid_img = GridImage('plate.jpg', nrows=8, ncols=12)
     
     # Save with grid structure preserved
-    grid_img.save2hdf5('plate_with_grid.h5')
+    grid_img.save2zarr('plate_with_grid.ome.zarr')
     
     # Load later - grid structure restored
-    restored = GridImage.load_hdf5('plate_with_grid.h5')
+    restored = GridImage.load_zarr('plate_with_grid.ome.zarr')
     print(restored.grid.nrows, restored.grid.ncols)  # 8, 12
 
 Image Manipulation (Inherited)

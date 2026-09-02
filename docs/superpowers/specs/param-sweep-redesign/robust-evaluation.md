@@ -33,8 +33,8 @@ and validate the winner on held-out data; (4) feed multi-fidelity pruning. It ow
 
 ## 2. What master §4 / D4 lock (documented, not re-litigated)
 
-Calibration set, metadata-stratified; `level − λ·dispersion` on a normalized
-higher-is-better scale (`level` = median, `dispersion` = IQR); k-fold /
+Calibration set, metadata-stratified; `level + λ·dispersion` on normalized
+lower-is-better costs (`level` = median, `dispersion` = IQR); k-fold /
 leave-one-plate-out for small counts; held-out validation of the winner; pruning
 fidelity = number of calibration images. This doc resolves the *open* parts.
 
@@ -51,25 +51,26 @@ The `Evaluator` runs **one** loop that serves both a per-image `Scorer` (e.g.
 ```
 for image in calibration_subset:
     result        = pipeline.measure(image, apply_post=False)     # clean, per-image (CLAUDE.md path)
-    terms[image]  = scorer.score_image(image, result)             # dict of higher-is-better terms
+    terms[image]  = scorer.score_image(image, result)             # dict of lower-is-better costs
 
-aggregated_terms  = { t: median(terms[:, t]) − λ·IQR(terms[:, t]) for t in terms }   # §4
+aggregated_terms  = { t: clamp01(median(terms[:, t]) + λ·IQR(terms[:, t])) for t in terms }   # §4
 objective         = scorer.finalize(aggregated_terms, per_image_results, full_measurements)   # §scorer
 ```
 
-1. **`score_image(image, result)`** → a dict of per-image **terms**, already
-   normalized higher-is-better (§5). A per-image-only Scorer returns its metric
-   terms; `QCScorer` returns `{"Count": t}`.
+1. **`score_image(image, result)`** → a dict of per-image **cost terms**, already
+   normalized lower-is-better (§5). A per-image-only Scorer returns its oriented
+   costs; `QCScorer` returns `{"Count": c_count}`.
 2. The **Evaluator robust-aggregates each term** across images (§4).
 3. **`finalize(aggregated_terms, per_image_results, full_measurements)`** → the scalar
-   objective. The **default `finalize`** is a weighted mean of `aggregated_terms`
+   objective. The **default `finalize`** is the arithmetic mean of `aggregated_terms`
    (covers every per-image-only Scorer); **`QCScorer` overrides** it to run the batch
-   panel once and geometric-fuse using `aggregated_terms["Count"]` as `Count_agg`.
+   panel once, read `C_count = aggregated_terms["Count"]`, convert to `G_count =
+   1 − C_count`, geometric-fuse goodness, and return its `QC_cost` complement.
 
 > **Reconciliation with qc §3.** That doc wrote `finalize(per_image_results,
-> full_measurements)` but never said *how* `Count_agg` reaches the fusion. Adding
-> `aggregated_terms` as `finalize`'s first argument closes exactly that gap: the
-> Evaluator computes the robust per-term aggregates, the Scorer fuses them.
+> full_measurements)` but never said *how* the Count aggregate reaches the fusion.
+> Adding `aggregated_terms` as `finalize`'s first argument closes exactly that gap:
+> the Evaluator computes `C_count`; the Scorer converts it once to `G_count` and fuses.
 > **qc §3's signature is updated to match** (applied alongside this doc), so the two
 > docs publish one `finalize` contract.
 
@@ -81,10 +82,10 @@ the merged measurement frame.
 
 ## 4. The stability penalty
 
-Each term is aggregated as `agg = median(termᵢ) − λ·IQR(termᵢ)`, **clamped at 0**,
-with `λ = 0.5` by default (CLI `--stability-weight`). The median rewards a high
-central level; subtracting `λ·IQR` rewards *flat* optima over *sharp* ones (D4) — a
-candidate whose per-plate scores swing wildly is penalised even if its median is high.
+Each term is aggregated as `agg = clamp01(median(termᵢ) + λ·IQR(termᵢ))`,
+with `λ = 0.5` by default (CLI `--stability-weight`). The median captures central
+cost; adding `λ·IQR` rewards *flat* optima over *sharp* ones (D4) — a candidate
+whose per-plate costs swing wildly is penalised even if its median cost is low.
 
 Two properties:
 
@@ -106,16 +107,16 @@ empirical calibration on real plates. `λ = 0` recovers pure-median selection.
 
 ## 5. Metric-normalization contract
 
-**The `Scorer` owns normalization; the `Evaluator` never re-normalizes.** A Scorer
-emits terms already on the common `[0, 1]` higher-is-better scale, using **fixed /
-threshold-anchored** maps (qc §4.2) — *never* min–max over the tested candidates,
-which would make the argmax grid-dependent (the **Böck trap**, master §2). The
-Evaluator only **validates** that emitted terms fall in the declared range (a cheap
-guard) and **aggregates** them; it performs no transformation.
+**The `Scorer` owns normalization and cost orientation; the `Evaluator` never
+re-normalizes.** A Scorer emits terms already as common `[0, 1]` lower-is-better
+costs, using **fixed / threshold-anchored** maps (qc §4.2) — *never* min–max over
+the tested candidates, which would make the argmin grid-dependent (the **Böck
+trap**, master §2). The Evaluator only **validates** that emitted terms fall in
+the declared range (a cheap guard) and **aggregates** them; it performs no transformation.
 
 This reconciles master §4's "the Evaluator normalizes each metric": the Scorer still
-*declares* `higher_is_better` + range/normalizer (for reporting and the Evaluator's
-validation) but *applies* it itself. **Master §4's wording is updated to match** (applied
+declares each natural term's sense plus its range/normalizer, then applies the
+one shared cost conversion itself. **Master §4's wording is updated to match** (applied
 alongside this doc — normalization ownership moves to the Scorer). Keeping normalization
 in the Scorer keeps the Evaluator metric-agnostic and keeps Böck-safety where the domain
 knowledge lives.
@@ -184,8 +185,8 @@ Pruning and cross-validation operate on **separate axes**, so they never interfe
 
 - Pruning runs a **single progressive pass** over a stratified, **Count-only** subset,
   *independent of the CV fold structure*. The reported `running_agg` is the running
-  per-image `median − λ·IQR` of the Count term — a lower-fidelity estimate of the **same
-  quantity** the final objective's `Count_agg` uses, so Optuna's `step`-keyed pruner
+  per-image `median + λ·IQR` cost of the Count term — a lower-fidelity estimate of the **same
+  quantity** the final objective's `C_count` uses, so Optuna's `step`-keyed pruner
   always compares like with like.
 - Rung subsets **need not be group-intact**: only the per-plate Count term is scored per
   rung, and Count has no replicate dependency, so splitting a replicate group across the
@@ -256,7 +257,7 @@ double-counting:
 
 | Scope | Who | Over what | Operator |
 |-------|-----|-----------|----------|
-| **Within-pass, per-image** | Evaluator (§4) | per-image terms across calibration plates | `median − λ·IQR` (stability penalty) |
+| **Within-pass, per-image** | Evaluator (§4) | per-image costs across calibration plates | `clamp01(median + λ·IQR)` (stability penalty) |
 | **Scorer-internal, cross-strain** | Scorer `finalize` (qc §4.4–4.5) | batch-panel values across strains | coverage-weighted trimmed mean → geometric fusion |
 | **Across resampling** | Evaluator (§6, §8) | folds / held-out | CV estimate + generalization-gap flag |
 
@@ -265,10 +266,10 @@ robustness is internal to the Scorer; generalization is the CV/held-out layer. T
 operate on disjoint inputs, so none double-counts another.
 
 **Multi-objective seam (master §7).** The Evaluator returns the scalar
-`level − λ·dispersion` *and* can surface the `(level, dispersion)` pair, so
+`level + λ·dispersion` cost *and* can surface the `(level, dispersion)` pair, so
 `--multi-objective` can put stability on a Pareto axis (level vs dispersion) instead
 of hard-scalarising via `λ`. For a two-phase Scorer this exposes the **per-image term's**
-level/dispersion (e.g. Count's stability), *not* the fused `QCScore`'s — the fusion is
+level/dispersion (e.g. Count's stability), *not* the fused `QC_cost`'s — the fusion is
 the Scorer's, and surfacing fused-score stability would need multiple `finalize` passes
 (out of scope). One output shape serves both paths.
 
@@ -283,13 +284,13 @@ The principle: *measured-bad* (ran, scored poorly) **teaches** the surrogate;
 |------|-----------|
 | Invalid params / pipeline won't construct | `TrialState.FAIL` immediately — no scoring |
 | **All** images error | `TrialState.FAIL` — the candidate could not be measured at all (Optuna excludes it from the surrogate) |
-| Per-image **exception** in an otherwise-working trial | that image → **worst term (0)** + logged (the existing per-image failure log); aggregate continues — honestly drags the median and closes the "crash a bad plate to dodge it" hole |
-| Per-image **degenerate-but-ran** (0 objects, `NaN` metric) | scored by the metric naturally (Count error → ~0); a definite low score the surrogate learns from — **never** FAIL |
+| Per-image **exception** in an otherwise-working trial | that image → **worst cost (1)** + logged (the existing per-image failure log); aggregate continues — honestly raises the median and closes the "crash a bad plate to dodge it" hole |
+| Per-image **degenerate-but-ran** (0 objects, `NaN` metric) | scored by the metric naturally (Count error → ~1 cost); a definite high cost the surrogate learns from — **never** FAIL |
 
 **Boundary notes.** "All images error" is the *post-loop* observation that every
 per-image result came from the exception path (count of exception-terms == `n_images`) —
 distinct from per-image `NaN` metrics. An op that **returns** a degenerate sentinel
-(empty / all-`NaN` frame) *without raising* counts as "ran" → a low score, not FAIL; the
+(empty / all-`NaN` frame) *without raising* counts as "ran" → a high cost, not FAIL; the
 Scorer must tolerate an empty frame (a divide-by-zero there would itself raise and wrongly
 flip the classification to "errored").
 
@@ -335,10 +336,10 @@ The `(level, dispersion)` pair is recorded per trial for the optional Pareto vie
 
 ## 14. Testing
 
-- **Aggregation math** — `median − λ·IQR`, the 0-clamp, and the small-`n` guard;
+- **Aggregation math** — `median + λ·IQR`, the `[0,1]` clamp, and the small-`n` guard;
   per-term placement (penalty applies to per-image terms, not the panel).
-- **Loop composition** — the default `finalize` (weighted mean) and the `QCScorer`
-  override both drive off `aggregated_terms`; `Count_agg` reaches the fusion.
+- **Loop composition** — the default `finalize` (arithmetic mean) and the `QCScorer`
+  override both drive off `aggregated_terms`; `C_count` converts once to `G_count` before fusion.
 - **Normalization guard** — the Evaluator validates the Scorer's declared range and
   does not transform; an out-of-range term is flagged.
 - **Group-aware CV** — replicate plates of a strain stay in one fold (panel
@@ -348,8 +349,8 @@ The `(level, dispersion)` pair is recorded per trial for the optional Pareto vie
   channel never prunes); the panel runs only for survivors; incremental cache hit means
   rung N runs only the new plates; cache key changes with any param field (no stale reuse).
 - **Failure taxonomy** — invalid-params → FAIL; all-errored → FAIL; per-image
-  exception → 0-term with the aggregate continuing; degenerate-but-ran → low score, not
-  FAIL.
+  exception → worst-cost term with the aggregate continuing; degenerate-but-ran →
+  high cost, not FAIL.
 - **Determinism** — same `(seed, dataset)` reproduces identical split/folds/rungs;
   resume reuses the persisted split.
 - **Held-out** — gap flag fires when held-out underperforms beyond the margin;
@@ -364,9 +365,9 @@ Fixed seeds throughout (project reproducibility requirement).
 **Resolved (recorded so they aren't re-litigated):**
 
 1. **Eval↔Scorer contract** — uniform 3-step loop; `finalize(aggregated_terms,
-   per_image_results, full_measurements)`; default = weighted mean, `QCScorer`
+   per_image_results, full_measurements)`; default = arithmetic mean, `QCScorer`
    overrides.
-2. **Stability penalty** — per-term `median − λ·IQR`, clamp at 0, `λ = 0.5` default,
+2. **Stability penalty** — per-term `median + λ·IQR`, clamp to `[0,1]`, `λ = 0.5` default,
    small-`n` guard; per-image-term operator (panel excluded).
 3. **Normalization** — Scorer owns it (fixed/threshold-anchored, Böck-safe); Evaluator
    validates, never transforms.
@@ -377,8 +378,8 @@ Fixed seeds throughout (project reproducibility requirement).
    per-image-frame cache.
 6. **Held-out** — adaptive (pristine group when affordable, CV-estimate + warning when
    not); Phase-1 CV-only MVP.
-7. **Failure** — invalid/all-errored → FAIL; per-image exception → 0-term; degenerate →
-   low score.
+7. **Failure** — invalid/all-errored → FAIL; per-image exception → worst cost; degenerate →
+   high cost.
 8. **Determinism** — `SeedSequence`-derived sub-seeds, splits persisted, dataset-identity
    dependent.
 

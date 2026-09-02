@@ -68,6 +68,64 @@ def test_current_image_payload_flat_source_round_trips():
     assert "prefetch" not in payload
 
 
+def test_current_image_payload_direct_store_does_not_double_join():
+    from phenotypic.gui.browse._source_render import decode_token
+
+    payload = cb.current_image_payload(
+        "inputs/p01.ome.zarr", ".", "p01.ome.zarr"
+    )
+
+    assert decode_token(payload["token"]) == "inputs/p01.ome.zarr"
+    assert payload["label"] == "inputs/p01.ome.zarr"
+
+
+def test_store_asset_payload_selects_generation_addressed_zarr_not_dzi():
+    payload = cb.source_asset_payload(
+        "/browse/", "opaque-token", "a" * 64, is_store=True
+    )
+
+    assert payload == {
+        "render_kind": "ome-zarr",
+        "preview_url": None,
+        "dzi_url": None,
+        "store_url": (
+            "/browse/assets/opaque-token/"
+            f"{'a' * 64}/zarr/"
+        ),
+    }
+
+
+def test_real_store_asset_payload_is_the_canonical_viv_source_spec(tmp_path):
+    import numpy as np
+
+    from phenotypic import Image
+    from phenotypic.gui.results_viewer._store_source import build_source_spec
+
+    rgb = np.zeros((96, 128, 3), dtype=np.uint8)
+    rgb[:, :, 0] = 64
+    rgb[:48, :64, 1] = 192
+    image = Image(arr=rgb)
+    store = image.save2zarr(tmp_path / "process-output.ome.zarr")
+
+    payload = cb.source_asset_payload(
+        "/browse/",
+        "opaque-token",
+        "b" * 64,
+        is_store=True,
+        store=store,
+    )
+    store_url = f"/browse/assets/opaque-token/{'b' * 64}/zarr/"
+
+    assert payload["render_kind"] == "ome-zarr"
+    assert payload["store_url"] == store_url
+    assert payload["preview_url"] is None
+    assert payload["dzi_url"] is None
+    assert payload["source_spec"] == build_source_spec(store, store_url)
+    assert payload["source_spec"]["seriesPath"] == "rgb"
+    assert payload["source_spec"]["labelPath"] == "rgb/labels/objmap"
+    assert payload["source_spec"]["pyramid"]["levels"] >= 1
+
+
 def test_neighbor_filenames_three_each_side_clamped():
     files = ["a", "b", "c", "d", "e", "f", "g", "h", "i"]
     # Interior: 3 before + 3 after, current excluded, nav order preserved.
@@ -148,61 +206,6 @@ def test_csv_metadata_panel_reports_conflicting_identity_columns():
     )
 
     assert "conflicting image-name columns" in str(panel)
-
-
-def test_timeline_image_column_defaults_to_recognized_legacy_header():
-    columns = ["Treatment", "Metadata_ImageFileName", "Time"]
-    rows = [
-        {
-            "Treatment": "control",
-            "Metadata_ImageFileName": "plate_a.tif",
-            "Time": "0",
-        }
-    ]
-
-    options, default = cb.csv_column_options_and_image_default(columns, rows)
-
-    assert options == [
-        {"label": "Treatment", "value": "Treatment"},
-        {
-            "label": "Metadata_ImageFileName",
-            "value": "Metadata_ImageFileName",
-        },
-        {"label": "Time", "value": "Time"},
-    ]
-    assert default == "Metadata_ImageFileName"
-
-
-def test_timeline_image_column_has_no_default_for_ambiguous_aliases():
-    columns = ["Metadata_ImageName", "Metadata_ImageFileName"]
-    rows = [
-        {
-            "Metadata_ImageName": "plate_a",
-            "Metadata_ImageFileName": "plate_b.tif",
-        }
-    ]
-
-    _options, default = cb.csv_column_options_and_image_default(columns, rows)
-
-    assert default is None
-
-
-def test_timeline_image_column_has_no_default_for_complementary_aliases():
-    columns = ["Metadata_ImageName", "Metadata_ImageFileName"]
-    rows = [
-        {
-            "Metadata_ImageName": "plate_a",
-            "Metadata_ImageFileName": "",
-        },
-        {
-            "Metadata_ImageName": "",
-            "Metadata_ImageFileName": "plate_b.tif",
-        },
-    ]
-
-    _options, default = cb.csv_column_options_and_image_default(columns, rows)
-
-    assert default is None
 
 
 def test_csv_metadata_panel_table_is_bounded_and_horizontally_scrollable():

@@ -1,7 +1,8 @@
 import numpy as np
+import pytest
 from PIL import Image as PILImage
 
-from phenotypic.gui.browse._source_probe import probe_source
+from phenotypic.gui.browse._source_probe import SourceProbeError, probe_source
 
 
 def test_probe_reads_headers_and_builds_revision_identity(tmp_path):
@@ -38,3 +39,56 @@ def test_dzi_parameters_are_part_of_cache_identity(tmp_path):
 
     assert default.source_id == changed.source_id
     assert default.cache_key != changed.cache_key
+
+
+def test_store_revision_changes_when_nested_member_changes(tmp_path):
+    store = tmp_path / "p01.ome.zarr"
+    chunk = store / "rgb" / "c" / "0"
+    chunk.parent.mkdir(parents=True)
+    chunk.write_bytes(b"first")
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+
+    first = probe_source(store, sandbox_root=tmp_path)
+    chunk.write_bytes(b"second-version")
+    second = probe_source(store, sandbox_root=tmp_path)
+
+    assert first.cache_key != second.cache_key
+    assert not first.matches_disk()
+
+
+def test_store_probe_rejects_nested_symlink(tmp_path):
+    store = tmp_path / "p01.ome.zarr"
+    store.mkdir()
+    outside = tmp_path / "outside"
+    outside.write_bytes(b"secret")
+    link = store / "chunk"
+    try:
+        link.symlink_to(outside)
+    except (OSError, NotImplementedError):  # pragma: no cover - platform guard
+        pytest.skip("symlinks not supported on this platform/filesystem")
+
+    with pytest.raises(SourceProbeError):
+        probe_source(store, sandbox_root=tmp_path)
+
+
+def test_store_probe_computes_one_already_stable_revision(
+    tmp_path, monkeypatch
+) -> None:
+    """The probe must not wrap a stable store identity in another full pass."""
+    from phenotypic.gui.browse import _source_probe as source_probe
+
+    store = tmp_path / "plate.zarr"
+    store.mkdir()
+    (store / "zarr.json").write_text("{}", encoding="utf-8")
+    calls = 0
+
+    def identity(_path):
+        nonlocal calls
+        calls += 1
+        return "sha256-stat-tree-v1:" + "a" * 64
+
+    monkeypatch.setattr(source_probe, "store_revision_identity", identity)
+    revision = probe_source(store, sandbox_root=tmp_path)
+
+    assert revision.store_revision is not None
+    assert calls == 1

@@ -14,6 +14,7 @@ to an already-allowed shim file is still caught.
 """
 import pathlib
 import re
+from typing import Final
 
 SRC = pathlib.Path(__file__).resolve().parents[3] / "src" / "phenotypic"
 REPO = SRC.parents[1]
@@ -108,6 +109,14 @@ _LEGACY_HEADER_PAT = re.compile(
 # same file still fails the gate. Frozen superpowers specs/plans remain outside
 # this live-code/live-doc/test gate.
 _LEGACY_ALLOWED = {
+    # OME-Zarr store: `ngff_.py` DEFINES the store-attribute enum member as a
+    # bare `METADATA: Final[str] = "metadata"`. That spelling is not covered by
+    # `_NOT_THE_BANNED_TOKEN` above, and should not be -- a bare METADATA is
+    # exactly what this gate bans, so the definition site is exempted here
+    # explicitly rather than by widening the strip. Every USE of it
+    # (`PhenotypicAttr.METADATA`) and the NGFF filename (`METADATA.ome.xml`) are
+    # handled by context, so no other OME-Zarr file needs an entry.
+    "src/phenotypic/sdk_/ngff_.py": {"METADATA"},
     # Permanent read compatibility and one-release import shims.
     "src/phenotypic/_core/_image_parts/_image_io_handler.py": {
         "METADATA",
@@ -168,10 +177,34 @@ _LEGACY_ALLOWED = {
     "tests/unit/cli/test_cli_recompile.py": {
         "MetadataImage_ImageName",
         "MetadataSample_Strain",
+    },
+    # ``--mode migrate`` (Phase 5). Legacy per-topic spellings are the SUBJECT
+    # of these files, not incidental usage: the golden fixtures are written
+    # with them, and the tests assert they are gone after conversion. A
+    # migration suite that could only spell canonical names could not test
+    # migration.
+    "tests/fixtures/legacy_hdf/_generate.py": {
+        "MetadataImage_ImageName",
+        "MetadataImage_BitDepth",
         "MetadataGenetic_Strain",
     },
-    "tests/unit/cli/test_cli_recompile_metadata_migration_slurm.py": {
-        "MetadataSample_Strain",
+    "tests/unit/sdk_/_migration_fixtures.py": {
+        "MetadataImage_ImageFile",
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/sdk_/test_metadata_canonical_view.py": {
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/cli/test_cli_migrate_mode.py": {
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/cli/test_cli_migrate_image.py": {
+        "MetadataGenetic_Strain",
+    },
+    "tests/migration/test_metadata_migration_journal.py": {
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/cli/test_recompile_no_longer_migrates.py": {
         "MetadataGenetic_Strain",
     },
     # Exact legacy/canonical collision and ingress behavior.
@@ -232,11 +265,40 @@ _LEGACY_ALLOWED = {
         "MetadataImage_ImageName",
         "MetadataGenetic_Strain",
     },
+    "tests/unit/sdk_/test_windows_metadata_journal.py": {
+        "MetadataGenetic_Strain",
+    },
 }
+
+
+#: Spellings that contain a banned token but are not the banned thing.
+#:
+#: The gate bans the bare token ``METADATA`` because it names a **deprecated
+#: metadata-topic enum**. Two unrelated identifiers introduced by the OME-Zarr
+#: store collide with that spelling and are not it:
+#:
+#: * ``METADATA.ome.xml`` -- the filename NGFF 0.5 §2.2.3 mandates for the
+#:   OME-XML document. Not ours to rename.
+#: * ``PhenotypicAttr.METADATA`` -- a member of the store-attribute enum,
+#:   naming the ``attributes.phenotypic.metadata`` block.
+#:
+#: These are stripped by CONTEXT rather than allowlisted by file. An allowlist
+#: entry would have to be added for every file in every remaining phase that
+#: touches the store attributes -- three were needed for Phase 1 and three more
+#: for Phase 2 -- and each entry blankets the whole file, so a genuine legacy
+#: alias appearing alongside would be waved through. Stripping the exact
+#: spelling keeps the gate's teeth: a bare ``METADATA``, or any other qualified
+#: use of it, still fails everywhere.
+_NOT_THE_BANNED_TOKEN: Final[tuple[str, ...]] = (
+    "METADATA.ome.xml",
+    "PhenotypicAttr.METADATA",
+)
 
 
 def _legacy_tokens(text: str) -> set[str]:
     """Return exact deprecated enum identifiers and serialized headers."""
+    for spelling in _NOT_THE_BANNED_TOKEN:
+        text = text.replace(spelling, "")
     return set(_LEGACY_NAME_PAT.findall(text)) | set(_LEGACY_HEADER_PAT.findall(text))
 
 
