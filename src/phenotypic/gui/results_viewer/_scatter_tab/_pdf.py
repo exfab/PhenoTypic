@@ -84,15 +84,18 @@ def export_sections_pdf(
     )
     # A section list the frame cannot honour would otherwise render N
     # identical pages under N different titles -- a document that states
-    # something untrue rather than one that is merely empty.
-    pages: list[object] = (
-        list(sections) if section_col is not None else [_NO_SECTION]
-    )
+    # something untrue rather than one that is merely empty. The `or`
+    # covers the other end: a real section column with no values left
+    # would otherwise produce a zero-page document. Both land on the one
+    # sentinel page, so there is a single place that says "never zero
+    # pages" rather than two that each look defensive.
+    pages: list[object] = list(sections) if section_col is not None else []
+    pages = pages or [_NO_SECTION]
 
     writer = PdfWriter()
     buf = io.BytesIO()
     with tempfile.TemporaryDirectory() as tmp:
-        for n, value in enumerate(pages or [_NO_SECTION]):
+        for n, value in enumerate(pages):
             page_df = df
             title_text = ""
             if value is not _NO_SECTION and section_col is not None:

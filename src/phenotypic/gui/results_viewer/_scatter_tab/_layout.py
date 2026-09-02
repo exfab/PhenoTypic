@@ -369,6 +369,38 @@ def _build_config_popover(output_root: OutputRoot) -> Component:
     )
 
 
+def _pager_button(glyph: str, component_id: str, label: str) -> Component:
+    """Build one icon-only pager arrow.
+
+    `html.Button` with the Bootstrap classes, not `dbc.Button`: dbc
+    components declare a closed `_prop_names` and reject `aria-label`
+    outright. Both pager arrows are icon-only, so the aria label is the
+    only thing that names them to a screen reader -- dropping it to
+    satisfy the constructor would trade an exception for a silently
+    unusable control. This is what every other icon-only button in the
+    viewer does; the QC Review pager (`_qc_tab/review/_layout.py:363`)
+    is the same pair of arrows.
+
+    Args:
+        glyph: The arrow character shown in the button.
+        component_id: The button's Dash id.
+        label: Accessible name, used for both ``title`` and
+            ``aria-label`` -- the arrow itself names nothing.
+
+    Returns:
+        A :class:`dash.html.Button` styled as a small outline button.
+    """
+    return html.Button(
+        glyph,
+        id=component_id,
+        n_clicks=0,
+        title=label,
+        className="btn btn-outline-secondary btn-sm",
+        type="button",
+        **cast(Any, {"aria-label": label}),
+    )
+
+
 def _build_toolbar() -> Component:
     """Build the tab's toolbar: config toggle, section pager, export.
 
@@ -383,32 +415,10 @@ def _build_toolbar() -> Component:
         outline=True,
         size="sm",
     )
-    # `html.Button` with the Bootstrap classes, not `dbc.Button`: dbc
-    # components declare a closed `_prop_names` and reject `aria-label`
-    # outright. Both pager arrows are icon-only, so the aria label is the
-    # only thing that names them to a screen reader -- dropping it to
-    # satisfy the constructor would trade an exception for a silently
-    # unusable control. This is what every other icon-only button in the
-    # viewer does; the QC Review pager (`_qc_tab/review/_layout.py:363`)
-    # is the same pair of arrows.
-    prev_button = html.Button(
-        "‹",
-        id=ids.SCATTER_PREV_BTN,
-        n_clicks=0,
-        title="Previous section",
-        className="btn btn-outline-secondary btn-sm",
-        type="button",
-        **cast(Any, {"aria-label": "Previous section"}),
+    prev_button = _pager_button(
+        "‹", ids.SCATTER_PREV_BTN, "Previous section"
     )
-    next_button = html.Button(
-        "›",
-        id=ids.SCATTER_NEXT_BTN,
-        n_clicks=0,
-        title="Next section",
-        className="btn btn-outline-secondary btn-sm",
-        type="button",
-        **cast(Any, {"aria-label": "Next section"}),
-    )
+    next_button = _pager_button("›", ids.SCATTER_NEXT_BTN, "Next section")
     pager_label = html.Span(
         id=ids.SCATTER_PAGER_LABEL,
         children="",

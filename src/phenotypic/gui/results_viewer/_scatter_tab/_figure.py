@@ -196,6 +196,32 @@ def _split_on_curation(
     return live, (df.filter(flag) if show_removed else empty)
 
 
+def _filter_equal(
+    frame: pl.DataFrame, col: str | None, value: str | None
+) -> pl.DataFrame:
+    """Keep the rows whose ``col``, read as a string, equals ``value``.
+
+    The one narrowing every channel here does: facet row, facet column,
+    hue and shape. ``None`` on either side narrows nothing -- an unset
+    role and a single unsplit series both mean "every row". The String
+    cast is what lets one facet value match an ``Int64``, a
+    ``Categorical`` and a ``String`` column alike, since the values
+    themselves were read out as strings.
+
+    Args:
+        frame: The frame to narrow.
+        col: The resolved column, or None when the role is unset.
+        value: The value this series or cell draws, or None for all of
+            them.
+
+    Returns:
+        The narrowed frame.
+    """
+    if col is None or value is None:
+        return frame
+    return frame.filter(pl.col(col).cast(pl.String) == value)
+
+
 def _filter_cell(
     frame: pl.DataFrame,
     row_col: str | None,
@@ -215,11 +241,8 @@ def _filter_cell(
     Returns:
         The rows belonging to this cell.
     """
-    if row_col is not None:
-        frame = frame.filter(pl.col(row_col).cast(pl.String) == row_value)
-    if col_col is not None:
-        frame = frame.filter(pl.col(col_col).cast(pl.String) == col_value)
-    return frame
+    frame = _filter_equal(frame, row_col, row_value)
+    return _filter_equal(frame, col_col, col_value)
 
 
 def _marker_trace(
@@ -319,7 +342,11 @@ def build_scatter_figure(
         curation series per cell.
     """
     trace_cls = go.Scatter if for_export else go.Scattergl
-    n_rows, n_cols = max(len(plan.rows), 1), max(len(plan.cols), 1)
+    # An empty axis means "one panel holding everything", so the [""]
+    # fallback is applied ONCE here and every count, loop and title below
+    # reads these rather than re-deriving it.
+    rows, cols = plan.rows or [""], plan.cols or [""]
+    n_rows, n_cols = len(rows), len(cols)
 
     live, removed = _split_on_curation(df, show_removed=spec.show_removed)
     # Everything the axes and the legend channels are derived from is the
@@ -357,8 +384,8 @@ def build_scatter_figure(
     # from cell (0,0) from vanishing out of the legend on a sparse frame --
     # the common case at 23 strains over 36 images, not a corner.
     legended: set[str] = set()
-    for r_i, r_val in enumerate(plan.rows or [""], start=1):
-        for c_i, c_val in enumerate(plan.cols or [""], start=1):
+    for r_i, r_val in enumerate(rows, start=1):
+        for c_i, c_val in enumerate(cols, start=1):
 
             cell = _filter_cell(live, row_col, r_val, col_col, c_val)
 
@@ -385,15 +412,8 @@ def build_scatter_figure(
 
             for h_i, hue in enumerate(hues):
                 for s_i, shape in enumerate(shapes):
-                    part = cell
-                    if hue_col is not None and hue is not None:
-                        part = part.filter(
-                            pl.col(hue_col).cast(pl.String) == hue
-                        )
-                    if shape_col is not None and shape is not None:
-                        part = part.filter(
-                            pl.col(shape_col).cast(pl.String) == shape
-                        )
+                    part = _filter_equal(cell, hue_col, hue)
+                    part = _filter_equal(part, shape_col, shape)
                     if part.height == 0:
                         continue
                     label = _join_label(
