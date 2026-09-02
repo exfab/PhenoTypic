@@ -634,6 +634,12 @@ def test_a_store_payload_is_read_as_a_number_or_refused() -> None:
     assert store_int(None) is None
     assert store_int("not a number") is None
     assert store_int([1]) is None
+    # `int` raises OverflowError for an infinity and ValueError for a NaN.
+    # That split is an accident of `int`, not a distinction this function
+    # makes, so both must refuse rather than one refusing and one raising.
+    assert store_int(float("inf")) is None
+    assert store_int(float("-inf")) is None
+    assert store_int(float("nan")) is None
 
 
 def test_a_frame_without_curation_keys_gets_no_flag_column(

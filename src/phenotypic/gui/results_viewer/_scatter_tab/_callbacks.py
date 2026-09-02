@@ -342,7 +342,10 @@ def store_int(value: object) -> int | None:
         return None
     try:
         return int(value)
-    except ValueError:
+    except (ValueError, OverflowError):
+        # OverflowError is what `int(float("inf"))` raises, where NaN
+        # raises ValueError -- an asymmetry in `int`, not a distinction
+        # this function wants to make. Both mean "not a whole number".
         return None
 
 
@@ -421,6 +424,49 @@ def _empty_figure(message: str) -> go.Figure:
     return figure
 
 
+def _figure_spec(
+    *,
+    x_col: str,
+    y_col: str,
+    section_col: str | None,
+    row_col: str | None,
+    col_col: str | None,
+    hue_col: str | None,
+    shape_col: str | None,
+    show_removed: object,
+) -> FigureSpec:
+    """Bind the role controls into the spec both destinations share.
+
+    One constructor for the screen and the export, so a role cannot be
+    carried on one path and dropped on the other -- the same reason
+    :func:`prepare_frame` is shared. ``show_removed`` arrives from a Dash
+    control as an untyped payload and is coerced here, once.
+
+    Args:
+        x_col: Column plotted on X, or ``COMPUTED_FRAME_INDEX``.
+        y_col: Column plotted on Y.
+        section_col: Column whose values become sections.
+        row_col: Column whose values become facet rows.
+        col_col: Column whose values become facet columns.
+        hue_col: Column mapped to marker colour.
+        shape_col: Column mapped to marker symbol.
+        show_removed: The curation toggle's value.
+
+    Returns:
+        The :class:`FigureSpec` for this render.
+    """
+    return FigureSpec(
+        x_col=x_col,
+        y_col=y_col,
+        section_col=section_col,
+        row_col=row_col,
+        col_col=col_col,
+        hue_col=hue_col,
+        shape_col=shape_col,
+        show_removed=bool(show_removed),
+    )
+
+
 def build_render_state(
     output_root: OutputRoot,
     *,
@@ -477,7 +523,7 @@ def build_render_state(
         filter_payload=filter_payload,
         removed_payload=removed_payload,
     )
-    spec = FigureSpec(
+    spec = _figure_spec(
         x_col=x_col,
         y_col=y_col,
         section_col=section_col,
@@ -485,7 +531,7 @@ def build_render_state(
         col_col=col_col,
         hue_col=hue_col,
         shape_col=shape_col,
-        show_removed=bool(show_removed),
+        show_removed=show_removed,
     )
 
     sections = section_values(frame, section_col)
@@ -812,7 +858,7 @@ def export_payload(
         filter_payload=filter_payload,
         removed_payload=removed_payload,
     )
-    spec = FigureSpec(
+    spec = _figure_spec(
         x_col=x_col,
         y_col=y_col,
         section_col=section_col,
@@ -820,7 +866,7 @@ def export_payload(
         col_col=col_col,
         hue_col=hue_col,
         shape_col=shape_col,
-        show_removed=bool(show_removed),
+        show_removed=show_removed,
     )
     try:
         pdf = export_sections_pdf(frame, spec, section_values(frame, section_col))
