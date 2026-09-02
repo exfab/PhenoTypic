@@ -16,6 +16,18 @@
 
 - **`uv` is the sole runner.** Never bare `python` or `pip`. Tests: `uv run pytest`.
 - **Lint with explicit paths only:** `uv run ruff check --fix <paths you changed>`. A bare `ruff check --fix` rewrites the whole repo.
+- **Never `git add -A`, and never stage a directory.** Stage exactly the paths
+  your task's **Files:** block names. Clusters share one worktree, so a
+  directory-wide add sweeps another agent's half-finished work into your
+  commit — and the resulting commit passes its own tests while containing
+  changes nobody described. Found by cluster A during Task 3, when
+  `colony_view/_grid.py` was dirty from cluster B's concurrent Task 4.
+- **A task's commit boundary is notional when tasks share files.** Tasks 1-3
+  all edit `tiles.py` and `test_tiles_zarr.py`; once written, no sequence of
+  `git add` can separate them, and `git add -p` is unavailable (interactive
+  git flags are unsupported here). Land them as one accurate commit rather
+  than a split whose messages misdescribe their own contents. Splitting is
+  only honest if each commit owns distinct files.
 - **Any pytest run wider than a single file goes through Slurm, never inline.**
   Use `docs/superpowers/plans/2026-09-01-results-scatter-tab/run_scatter_tests.sbatch`,
   which shards the tree across a 16-task array:
@@ -551,7 +563,7 @@ SCATTER_CROPS_URL_SEGMENT: str = "scatter-crops"
 ```bash
 sbatch --export=ALL,SCOPE=gui docs/superpowers/plans/2026-09-01-results-scatter-tab/run_scatter_tests.sbatch
 uv run ruff check --fix src/phenotypic/gui/_shared/tiles.py src/phenotypic/gui/_config.py tests/unit/gui/shared/test_tiles_zarr.py
-git add -A src/phenotypic/gui tests/unit/gui/shared
+git add <exactly the files this task's **Files:** block names>   # never -A
 git commit -m "feat(gui): composite objmap contours into store crops
 
 The store crop path served no contours at all: layer=rgb is bare pixels
@@ -667,7 +679,7 @@ Expected: the new file passes. If a colony-grid test asserts a specific option l
 
 ```bash
 uv run ruff check --fix src/phenotypic/gui/results_viewer/colony_view/_grid.py tests/unit/gui/results_viewer/test_measurement_prefixes.py
-git add -A src/phenotypic/gui tests/unit/gui/results_viewer
+git add <exactly the files this task's **Files:** block names>   # never -A
 git commit -m "fix(gui): derive _MEASUREMENT_PREFIXES from schema categories
 
 The literal listed TextureGray_, which no schema declares, so Texture_
@@ -833,7 +845,7 @@ Expected: 3 passed.
 
 ```bash
 uv run ruff check --fix src/phenotypic/gui/results_viewer/_scatter_tab/ tests/unit/gui/results_viewer/test_scatter_spec.py
-git add -A src/phenotypic/gui tests/unit/gui/results_viewer
+git add <exactly the files this task's **Files:** block names>   # never -A
 git commit -m "feat(gui): add FigureSpec and the phantom-row predicate"
 ```
 
@@ -1042,7 +1054,7 @@ Expected: 5 passed.
 
 ```bash
 uv run ruff check --fix src/phenotypic/gui/results_viewer/_scatter_tab/ src/phenotypic/gui/_config.py tests/unit/gui/results_viewer/test_scatter_facets.py
-git add -A src/phenotypic/gui tests/unit/gui/results_viewer
+git add <exactly the files this task's **Files:** block names>   # never -A
 git commit -m "feat(gui): add Scatter facet planning, ordering and caps"
 ```
 
@@ -1268,7 +1280,7 @@ Expected exactly: MeasureShape 17, MeasureColor 15, MeasureIntensity 12, Measure
 
 ```bash
 uv run ruff check --fix src/phenotypic/gui/results_viewer/_scatter_tab/ tests/unit/gui/results_viewer/test_scatter_grouping.py
-git add -A src/phenotypic/gui tests/unit/gui/results_viewer
+git add <exactly the files this task's **Files:** block names>   # never -A
 git commit -m "feat(gui): group measurement columns by their measurer
 
 Instantiates each measurer from the run's recorded params, since the
@@ -1401,7 +1413,7 @@ Expected: 3 passed.
 
 ```bash
 uv run ruff check --fix src/phenotypic/gui/results_viewer/_scatter_tab/_facets.py tests/unit/gui/results_viewer/test_scatter_frame_index.py
-git add -A src/phenotypic/gui tests/unit/gui/results_viewer
+git add <exactly the files this task's **Files:** block names>   # never -A
 git commit -m "feat(gui): derive a frame index from capture order within plate"
 ```
 
@@ -1742,7 +1754,7 @@ Expected: 5 passed.
 
 ```bash
 uv run ruff check --fix src/phenotypic/gui/results_viewer/_scatter_tab/_figure.py tests/unit/gui/results_viewer/test_scatter_figure.py
-git add -A src/phenotypic/gui tests/unit/gui/results_viewer
+git add <exactly the files this task's **Files:** block names>   # never -A
 git commit -m "feat(gui): add the pure Scatter figure builder
 
 Scattergl for the screen, Scatter for export -- kaleido renders a gl layer
@@ -2017,7 +2029,7 @@ every default run — a green suite over a blank export.
 
 ```bash
 uv run ruff check --fix src/phenotypic/gui/results_viewer/_scatter_tab/_pdf.py tests/unit/gui/results_viewer/test_scatter_pdf.py
-git add -A src/phenotypic/gui tests/unit/gui/results_viewer pyproject.toml uv.lock
+git add <exactly the files this task's **Files:** block names>   # never -A
 git commit -m "feat(gui): export Scatter sections as a multi-page PDF
 
 One kaleido page per section, merged with pypdf. The ink assertion is the
@@ -2246,7 +2258,7 @@ Expected: 3 passed. If the `KEY_*` imports fail, confirm the names in `results_v
 
 ```bash
 uv run ruff check --fix src/phenotypic/gui/results_viewer/_scatter_tab/_inspector.py tests/unit/gui/results_viewer/test_scatter_click.py
-git add -A src/phenotypic/gui tests/unit/gui/results_viewer
+git add <exactly the files this task's **Files:** block names>   # never -A
 git commit -m "feat(gui): resolve Scatter clicks against master_df
 
 Anchors to the frozen frame rather than the filtered one, and refuses a
@@ -2328,7 +2340,7 @@ Expected: pass.
 
 ```bash
 uv run ruff check --fix src/phenotypic/gui/results_viewer/ tests/unit/gui/results_viewer/
-git add -A src/phenotypic/gui tests/unit/gui/results_viewer
+git add <exactly the files this task's **Files:** block names>   # never -A
 git commit -m "feat(gui): mount the Scatter tab and generalize the splitter"
 ```
 
@@ -2496,7 +2508,7 @@ report the per-task exit statuses from the logs.
 ```bash
 uv run ruff check --fix src/phenotypic/gui/results_viewer/
 uv run mypy src/phenotypic/gui/results_viewer/_scatter_tab/
-git add -A src/phenotypic/gui tests/unit/gui/results_viewer
+git add <exactly the files this task's **Files:** block names>   # never -A
 git commit -m "feat(gui): wire the Scatter tab's callbacks and crop route"
 ```
 
