@@ -453,26 +453,19 @@ def _ordered_status_digest(paths: Sequence[Path]) -> str:
     return digest.hexdigest()
 
 
-def seal_provenance_migration(
+def _provenance_status_summary(
     manifest_path: Path,
+    manifest: ProvenanceMigrationManifest,
     *,
     expected_target_root: Path,
     expected_control_root: Path,
     generation: str,
-    commit_guard: CommitGuard | None = None,
-) -> ProvenanceMigrationSeal:
-    """Validate every typed store result and publish one exact barrier."""
-    manifest = _read_manifest(
-        manifest_path,
-        expected_target_root=expected_target_root,
-        expected_control_root=expected_control_root,
-    )
-    if manifest.generation != generation:
-        raise ValueError("provenance seal generation does not match manifest")
+) -> tuple[tuple[Path, ...], int, tuple[tuple[Path, str], ...]]:
+    """Re-derive terminal counters and failures from canonical statuses."""
     status_dir = provenance_worker_status_path(
         expected_control_root, generation, 0
     ).parent
-    paths = sorted(status_dir.glob("*.json")) if status_dir.is_dir() else []
+    paths = tuple(sorted(status_dir.glob("*.json"))) if status_dir.is_dir() else ()
     failures: list[tuple[Path, str]] = []
     upgraded = 0
     if len(paths) != manifest.task_count:
@@ -518,13 +511,46 @@ def seal_provenance_migration(
             if not valid_schema_before or raw["upgraded"] != (
                 schema_before == 1
             ):
-                failures.append((task.store_path, "provenance status has invalid prior schema"))
+                failures.append(
+                    (task.store_path, "provenance status has invalid prior schema")
+                )
                 continue
             upgraded += int(raw["upgraded"])
-        elif raw.get("state") == "failed" and isinstance(raw.get("reason"), str) and raw["reason"]:
+        elif (
+            raw.get("state") == "failed"
+            and isinstance(raw.get("reason"), str)
+            and raw["reason"]
+        ):
             failures.append((task.store_path, raw["reason"]))
         else:
             failures.append((task.store_path, "provenance status is not terminal"))
+    return paths, upgraded, tuple(failures)
+
+
+def seal_provenance_migration(
+    manifest_path: Path,
+    *,
+    expected_target_root: Path,
+    expected_control_root: Path,
+    generation: str,
+    commit_guard: CommitGuard | None = None,
+) -> ProvenanceMigrationSeal:
+    """Validate every typed store result and publish one exact barrier."""
+    manifest = _read_manifest(
+        manifest_path,
+        expected_target_root=expected_target_root,
+        expected_control_root=expected_control_root,
+    )
+    if manifest.generation != generation:
+        raise ValueError("provenance seal generation does not match manifest")
+    paths, upgraded, failure_rows = _provenance_status_summary(
+        manifest_path,
+        manifest,
+        expected_target_root=expected_target_root,
+        expected_control_root=expected_control_root,
+        generation=generation,
+    )
+    failures = list(failure_rows)
     try:
         ordered_digest = _ordered_status_digest(paths)
     except OSError as exc:
@@ -597,10 +623,13 @@ def read_provenance_migration_seal(
         or not isinstance(raw.get("failures"), list)
     ):
         raise ValueError("provenance migration seal has invalid schema")
-    status_dir = provenance_worker_status_path(
-        expected_control_root, generation, 0
-    ).parent
-    paths = sorted(status_dir.glob("*.json")) if status_dir.is_dir() else []
+    paths, derived_upgraded, derived_failures = _provenance_status_summary(
+        manifest_path,
+        manifest,
+        expected_target_root=expected_target_root,
+        expected_control_root=expected_control_root,
+        generation=generation,
+    )
     if raw.get("ordered_status_digest") != _ordered_status_digest(paths):
         raise ValueError("provenance migration seal is stale")
     failures: list[tuple[Path, str]] = []
@@ -614,8 +643,14 @@ def read_provenance_migration_seal(
         ):
             raise ValueError("provenance migration seal has invalid failures")
         failures.append((Path(failure["store_path"]), failure["reason"]))
-    if raw["clean"] != (not failures):
-        raise ValueError("provenance migration seal has contradictory status")
+    if (
+        raw["clean"] != (not derived_failures)
+        or upgraded != derived_upgraded
+        or tuple(failures) != derived_failures
+    ):
+        raise ValueError(
+            "provenance migration seal summary does not match current statuses"
+        )
     return ProvenanceMigrationSeal(
         generation=generation,
         manifest_digest=manifest.inventory_digest,

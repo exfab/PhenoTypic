@@ -235,14 +235,7 @@ def _run_finalizer_worker(config: _ProvenanceWorkerConfig) -> int:
             commit_guard=_commit_guard(config),
             control_root=config.control_root,
         )
-    except Exception as exc:  # noqa: BLE001 - close failed publication authority
-        publication_reason = f"terminal publication failed: {type(exc).__name__}: {exc}"
-        close_migration_generation(
-            config.lifecycle_root,
-            generation=config.generation,
-            succeeded=False,
-            reason=publication_reason,
-        )
+    except Exception:  # noqa: BLE001 - preserve recoverable active lifecycle
         return 1
     close_migration_generation(
         config.lifecycle_root,

@@ -2343,6 +2343,14 @@ def handle_migrate_mode(
         if provenance_only
         else target.root
     )
+    if dry_run and provenance_only:
+        active = load_slurm_lifecycle(lifecycle_owner)
+        if active is not None and active.get("active") is True:
+            raise click.ClickException(
+                "Could not initialize SLURM migration attempt: Output "
+                "already has an active SLURM generation "
+                f"{active.get('generation')!r}"
+            )
 
     generation = new_slurm_generation()
     try:
