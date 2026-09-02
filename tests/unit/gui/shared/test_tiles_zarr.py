@@ -16,7 +16,6 @@ pixels.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import numpy as np
@@ -65,7 +64,7 @@ def test_a_future_store_is_refused_rather_than_decoded(tmp_path: Path) -> None:
     root.write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(StoreUnreadable) as excinfo:
-        crop_store_rgb(store, "gray", 20, 20, 16, 0)
+        crop_store_rgb(store, "gray", 20, 20, 16)
     assert "999" in str(excinfo.value)
     assert "upgrade" in str(excinfo.value)
 
@@ -94,7 +93,6 @@ def test_crop_matches_the_full_resolution_slice(store: Path) -> None:
         center_rr=42,
         center_cc=42,
         size=64,
-        mtime_ns=0,
     )
     crop = _decode_rgb(png)
     assert crop.shape == (64, 64, 3)
@@ -122,7 +120,7 @@ def test_crop_reads_only_the_window_not_the_whole_layer(
         return out
 
     monkeypatch.setattr(zarr.Array, "__getitem__", _counting)
-    crop_store_rgb(store, "detect_mat", 42, 42, 64, 0)
+    crop_store_rgb(store, "detect_mat", 42, 42, 64)
     assert pulled, "no zarr read happened at all"
     assert max(pulled) <= 64 * 64, pulled
 
@@ -133,12 +131,12 @@ def test_crop_of_a_missing_layer_raises_key_error(tmp_path: Path) -> None:
         tmp_path / "f.ome.zarr", layers=("gray",)
     )
     with pytest.raises(KeyError):
-        crop_store_rgb(flat, "rgb", 20, 20, 16, 0)
+        crop_store_rgb(flat, "rgb", 20, 20, 16)
 
 
 def test_crop_pads_at_the_edge(store: Path) -> None:
     """The shared ``_crop_pil_source`` padding contract survives the port."""
-    png = crop_store_rgb(store, "detect_mat", 0, 0, 32, 0)
+    png = crop_store_rgb(store, "detect_mat", 0, 0, 32)
     crop = _decode_rgb(png)
     assert crop.shape == (32, 32, 3)
     # The top-left quadrant falls outside the image and is pad-filled black.
@@ -148,7 +146,7 @@ def test_crop_pads_at_the_edge(store: Path) -> None:
 def test_rgb_crop_returns_channel_last_pixels(store: Path) -> None:
     """``rgb`` is stored ``(C, Y, X)``; a naive window read transposes it."""
     rgb = Image.load_layer_zarr(store, "rgb", level=0)
-    png = crop_store_rgb(store, "rgb", 42, 42, 64, 0)
+    png = crop_store_rgb(store, "rgb", 42, 42, 64)
     np.testing.assert_array_equal(_decode_rgb(png), rgb[10:74, 10:74, :3])
 
 
@@ -266,7 +264,6 @@ def test_a_brighter_window_renders_brighter_than_a_dim_one() -> None:
     dim_rr, dim_cc, dim_level = min(candidates, key=lambda item: item[2])
     assert bright_level > dim_level, "the search found no brightness spread"
 
-    mtime = os.stat(FIXTURE_STORE).st_mtime_ns
     bright = _decode_rgb(
         crop_store_rgb(
             FIXTURE_STORE,
@@ -274,7 +271,6 @@ def test_a_brighter_window_renders_brighter_than_a_dim_one() -> None:
             float(bright_rr * factor),
             float(bright_cc * factor),
             size,
-            mtime,
         )
     ).mean()
     dim = _decode_rgb(
@@ -284,7 +280,6 @@ def test_a_brighter_window_renders_brighter_than_a_dim_one() -> None:
             float(dim_rr * factor),
             float(dim_cc * factor),
             size,
-            mtime,
         )
     ).mean()
 
@@ -321,7 +316,7 @@ def test_a_uint8_crop_never_pays_for_a_display_range(
         return out
 
     monkeypatch.setattr(zarr.Array, "__getitem__", _counting)
-    crop_store_rgb(store, "rgb", 42, 42, size, 0)
+    crop_store_rgb(store, "rgb", 42, 42, size)
 
     assert pulled, "no zarr read happened at all"
     assert max(pulled) <= 3 * size * size, (
@@ -359,7 +354,6 @@ def test_a_uint16_crop_still_resolves_the_display_range(monkeypatch) -> None:
         1783.158135,
         342.748203,
         64,
-        os.stat(FIXTURE_STORE).st_mtime_ns,
     )
 
     assert seen, "a uint16 crop resolved no display range -- it truncates"
@@ -388,7 +382,6 @@ def test_a_real_colony_crop_is_smooth_not_noise() -> None:
         1783.158135,
         342.748203,
         256,
-        os.stat(FIXTURE_STORE).st_mtime_ns,
     )
     a = _decode_rgb(png).astype(np.int16)
     delta = np.abs(np.diff(a[:, :, 0], axis=1))
@@ -465,8 +458,8 @@ def test_contours_are_skipped_rather_than_fatal_on_a_label_less_store(
     flat = Image(load_synth_yeast_plate()).save_intermediate_zarr(
         tmp_path / "nolabels.ome.zarr", layers=("rgb",)
     )
-    with_contours = crop_store_rgb(flat, "rgb", 42, 42, 64, 0, contours=1)
-    without = crop_store_rgb(flat, "rgb", 42, 42, 64, 0)
+    with_contours = crop_store_rgb(flat, "rgb", 42, 42, 64, contours=1)
+    without = crop_store_rgb(flat, "rgb", 42, 42, 64)
     assert _decode_rgb(with_contours).tolist() == _decode_rgb(without).tolist()
 
 
@@ -489,14 +482,14 @@ def test_a_real_store_crop_gains_contours_only_when_asked(store: Path) -> None:
     center_rr, center_cc = float(rows.mean()), float(cols.mean())
 
     plain = _decode_rgb(
-        crop_store_rgb(store, "rgb", center_rr, center_cc, 64, 0)
+        crop_store_rgb(store, "rgb", center_rr, center_cc, 64)
     )
     drawn = _decode_rgb(
-        crop_store_rgb(store, "rgb", center_rr, center_cc, 64, 0, contours=focal)
+        crop_store_rgb(store, "rgb", center_rr, center_cc, 64, contours=focal)
     )
 
     assert not np.array_equal(plain, drawn), "contours=N drew nothing"
     default = _decode_rgb(
-        crop_store_rgb(store, "rgb", center_rr, center_cc, 64, 0)
+        crop_store_rgb(store, "rgb", center_rr, center_cc, 64)
     )
     np.testing.assert_array_equal(plain, default)

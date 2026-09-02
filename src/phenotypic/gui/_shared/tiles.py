@@ -726,7 +726,6 @@ def crop_store_rgb(
     center_rr: float,
     center_cc: float,
     size: int,
-    mtime_ns: int,
     *,
     dim_alpha: float = 0.0,
     bbox: tuple[float, float, float, float] | None = None,
@@ -751,8 +750,6 @@ def crop_store_rgb(
         center_rr: Row coordinate (Y) of the colony centroid, in image pixels.
         center_cc: Column coordinate (X) of the colony centroid, in image pixels.
         size: Side length of the square crop, in pixels.
-        mtime_ns: Accepted for caller/API compatibility; crop reads are
-            windowed and not full-layer cached, so nothing keys on it.
         dim_alpha: Tile-spotlight strength; see :func:`crop_overlay`.
         bbox: ``(min_rr, max_rr, min_cc, max_cc)`` keep-rectangle; see
             :func:`crop_overlay`.
@@ -770,7 +767,6 @@ def crop_store_rgb(
         KeyError: If *layer* is absent from the store.
         StoreUnreadable: If this build cannot decode the store.
     """
-    del mtime_ns
     return _crop_store_layer_window(
         store_path,
         layer,
@@ -887,7 +883,6 @@ def crop_colony(
                 center_rr,
                 center_cc,
                 size,
-                os.stat(store).st_mtime_ns,
                 dim_alpha=dim_alpha,
                 bbox=bbox,
                 contours=contours,
