@@ -2580,6 +2580,40 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         return fig, label, output_root.snapshot.consumed_state_fingerprint
 ```
 
+### 13.1 The curation join — `show_removed`'s producer half
+
+`show_removed` was wired to nothing in the original plan: Task 13 set it and
+no task read it. The user chose the **in-memory join**, cluster D built the
+render half in `_figure.py`, and this is the producer. Without it the toggle
+renders nothing again, in the opposite direction.
+
+**Contract, fixed by `_figure.py` — do not redesign it:**
+
+- Column name `REMOVED_COL` = `"_scatter_removed"`. **Import the constant from
+  `_figure.py`; never re-spell the string.**
+- **Boolean dtype. Null is read as False.** A non-Boolean column is treated as
+  *absent*, not coerced — the column is produced here, in memory, so a wrong
+  dtype is a defect in this callback and guessing at it would hide colonies on
+  the strength of a guess.
+- Absent column ⇒ `_figure.py` behaves exactly as if nothing were removed. So
+  a run with no curation state needs no special case here.
+
+**Source:** `STORE_REMOVED_KEYS` (`_ids.py:808`), the Dash store the curation
+surfaces already write. `_viewer_card.py` consumes it as an `Input` — follow
+that precedent. Join it onto the indexed frame as a Boolean column.
+
+**Ordering, and why it matters:** join curation **after** `index_frame` and
+**before** `plottable`. Indexing first keeps every carried index
+master-anchored (§6.1); joining before the phantom filter means a removed
+*phantom* is dropped by `plottable` rather than drawn as a grey x for a colony
+that does not exist.
+
+**Test it against a mutation:** dropping the join must fail a test asserting
+the grey series appears for a frame whose keys are in the store. A join that
+silently produces an all-False column is the failure to guard — it renders
+identically to "nothing is removed", which is exactly how the toggle read
+before this section existed.
+
 The remaining five are mechanical and follow the same shape:
 
 1. **Pager** — `Input(PREV, "n_clicks")` / `Input(NEXT, "n_clicks")` →
