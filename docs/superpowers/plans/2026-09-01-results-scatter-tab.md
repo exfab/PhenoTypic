@@ -63,6 +63,29 @@
   this context still matches it. Where possible prefer a **differential**
   against a control over an absolute threshold — it cannot drift when the
   fixture changes, which is the coupling that produced two of the five.
+- **A mutation harness must verify its PRECONDITION, not only its
+  postcondition — and the orchestrator must snapshot independently.** Two
+  harnesses on this branch left a dirty tree. Cluster D's was killed by a
+  foreground timeout between applying a mutation and restoring it, so its own
+  check never ran; only the orchestrator's separate sha256 set caught it.
+  Cluster F's keyed backups on `basename`, and two of its four targets were
+  both `_layout.py` — so the backup overwrote one with the other and the
+  restore copied the wrong module into a source path, replacing it wholesale.
+  Its `sha256sum -c` did fire, but only *after* the evidence was gone.
+  The generalisation, in cluster F's words: restore and verification shared not
+  a mechanism but a **premise** — both trusted that the backup held four
+  distinct files. Verifying a postcondition cannot save you when the flaw is in
+  a precondition you never stated. So: mirror full relative paths (in a package
+  tree `_layout.py`, `_ids.py` and `__init__.py` repeat by construction, and
+  basename is never a unique key over source paths); assert the backup *count*
+  equals the target count, which a collision fails even when every surviving
+  comparison passes; verify before touching anything and exit non-zero having
+  changed nothing; and restore-and-verify after **each** mutation rather than
+  letting a corrupted file propagate into the next.
+  Run long harnesses in a background slot — a foreground timeout is a SIGTERM
+  mid-mutation — and never edit a file a harness has open: an `atexit` restore
+  reverts your edit, and a digest check cannot distinguish that from a clean
+  restore.
 - **Two guards for one property means the property is untested.** Found by
   cluster E while *writing* a mutation, not running it: the phantom check had
   both an explicit `label is None` and a `try/except` around `int(label)`.
