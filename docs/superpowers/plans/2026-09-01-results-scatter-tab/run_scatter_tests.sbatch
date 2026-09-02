@@ -29,6 +29,19 @@ export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 # Without this the interpreter aborts partway through with no summary, which
 # reads as a hang rather than a missing display.
 export QT_QPA_PLATFORM=offscreen
+# Point kaleido at the browser Playwright vendors for the e2e suite. Without
+# it, every Chrome-guarded export test SKIPS and the array silently verifies
+# less than a local run does -- which is how a gate reports green over tests
+# that never executed. No Chrome is installed on these nodes; this is the
+# only browser available, and it renders correctly (measured on epyc and
+# intel alike).
+_PW_CHROME=$(ls -d "$HOME"/.cache/ms-playwright/chromium-*/chrome-linux64/chrome 2>/dev/null | tail -1)
+if [[ -n "${_PW_CHROME}" ]]; then
+    export BROWSER_PATH="${_PW_CHROME}"
+    echo "BROWSER_PATH: ${BROWSER_PATH}"
+else
+    echo "WARNING: no Playwright chromium found; export tests will SKIP" >&2
+fi
 
 echo "Date:  $(date -Is)"
 echo "Node:  $(hostname -s)"
