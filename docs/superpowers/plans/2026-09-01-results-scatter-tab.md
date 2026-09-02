@@ -2208,6 +2208,25 @@ orchestrator's prompts do surface. Every agent is briefed to:
 - never `git commit` itself — hand the orchestrator the exact message;
 - stop and ask rather than run anything directly.
 
+**Spikes round-trip too — and spikes are encouraged.** Ad-hoc investigation is
+where this project's most valuable findings came from: rendering a figure through
+kaleido and counting ink pixels proved the export path was silently blank;
+counting WebGL canvases in a real browser withdrew a whole contingency from the
+spec. Reviewers and implementers should keep writing them. The flow is:
+
+1. **Write** the script to the session scratchpad — file writes need no approval.
+2. Send `RUN: uv run python <path>` and wait.
+3. The orchestrator executes from the worktree root and returns stdout+stderr
+   verbatim; iterate by editing and asking for a re-run.
+
+The same applies to a targeted `pytest -k`, a `python -c` one-liner, `git show`,
+`ruff` and `mypy`. A lone spike run need not wait to fill a batch — do not stall
+an investigation for the sake of the protocol.
+
+**Large output goes to a file, not a message.** An agent expecting a big result
+says so and the orchestrator writes it to a path the agent can `Read`. Message
+payloads truncate, which cost this project a complete review report once already.
+
 This trades round-trips for the user's ability to approve from a phone. Agents
 batch 3–6 commands per request to keep the trade cheap.
 
