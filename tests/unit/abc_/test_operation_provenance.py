@@ -74,6 +74,17 @@ class _DiscardedNestedCorrector(ImageCorrector):
         return image
 
 
+class _NestedPipelineCorrector(ImageCorrector):
+    """Invoke a pipeline inside an outer direct operation."""
+
+    def _operate(self, image: Image) -> Image:
+        nested = ImagePipeline(
+            ops={"nested-blur": BlurGauss(sigma=0.75)}
+        ).apply(image, inplace=False, reset=False)
+        image.detect_mat[:] = nested.detect_mat[:]
+        return image
+
+
 class _NestedFailureCorrector(ImageCorrector):
     """Invoke a distinct failing operation inside an outer operation."""
 
@@ -202,6 +213,22 @@ def test_nested_pipeline_uses_configured_dictionary_keys_as_step_path() -> None:
     assert [entry["pipeline_step_path"] for entry in result.provenance] == [
         ["first-prep"],
         ["nested-block", "inner-prep"],
+    ]
+
+
+def test_direct_operation_owns_nested_pipeline_application() -> None:
+    result = _NestedPipelineCorrector().apply(_plate())
+
+    journal = result._metadata.provenance_journal
+    assert len(journal["applications"]) == 1
+    assert journal["status"] == "complete"
+    assert [entry["operation_name"] for entry in result.provenance] == [
+        "BlurGauss",
+        "_NestedPipelineCorrector",
+    ]
+    assert [entry["pipeline_step_path"] for entry in result.provenance] == [
+        ["nested-blur"],
+        None,
     ]
 
 

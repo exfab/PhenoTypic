@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 from contextlib import contextmanager
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -574,6 +574,7 @@ def wrap_image_operation_apply(apply_method: _Apply, owner: type) -> _Apply:
         source_original = logical_input._original
         source_journal = deepcopy(input_journal)
         owns_application = False
+        application_owner_token: Token[int] | None = None
         try:
             validate_provenance_journal(source_journal)
             owns_application = (
@@ -602,6 +603,10 @@ def wrap_image_operation_apply(apply_method: _Apply, owner: type) -> _Apply:
             _operation_apply_stack.reset(token)
             raise
         started = perf_counter()
+        if owns_application:
+            application_owner_token = _application_owner_depth.set(
+                _application_owner_depth.get() + 1
+            )
         try:
             result = apply_method(self, *args, **kwargs)
             duration = perf_counter() - started
@@ -666,6 +671,8 @@ def wrap_image_operation_apply(apply_method: _Apply, owner: type) -> _Apply:
             raise
         finally:
             _operation_apply_stack.reset(token)
+            if application_owner_token is not None:
+                _application_owner_depth.reset(application_owner_token)
 
     setattr(_recording_apply, "__phenotypic_provenance_owner__", owner)
     return cast(_Apply, _recording_apply)

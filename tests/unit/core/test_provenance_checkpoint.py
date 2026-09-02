@@ -11,6 +11,7 @@ import numpy as np
 from phenotypic import Image, ImagePipeline
 from phenotypic.enhance import BlurGauss
 from phenotypic._core._provenance import (
+    continuing_provenance_application,
     provenance_success_sink,
     set_provenance_status,
     start_provenance_application,
@@ -70,7 +71,7 @@ def test_journal_only_checkpoint_and_success_sink_publish_ordered_prefix(
     }
     assert not (store / "gray").exists()
 
-    with provenance_success_sink(
+    with continuing_provenance_application(image), provenance_success_sink(
         lambda updated: write_provenance_checkpoint(store, updated)
     ):
         BlurGauss(sigma=1.0).apply(image, inplace=True)
@@ -98,7 +99,7 @@ def test_success_sink_updates_only_root_attributes_on_a_full_store(
     store = image.save2zarr(tmp_path / "full.ome.zarr")
     ome_before = (store / "OME" / "zarr.json").read_bytes()
 
-    with provenance_success_sink(
+    with continuing_provenance_application(image), provenance_success_sink(
         lambda updated: write_provenance_checkpoint(store, updated)
     ):
         BlurGauss(sigma=1.0).apply(image, inplace=True)

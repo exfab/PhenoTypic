@@ -478,11 +478,15 @@ def test_save2zarr_keeps_the_wall_clock_fields(
     process store would be reproducible and nothing would say the bundle had
     silently lost its timestamps.
     """
-    from phenotypic._core._provenance import initialize_cli_provenance
+    from phenotypic._core._provenance import (
+        continuing_provenance_application,
+        initialize_cli_provenance,
+    )
 
     image = Image(load_synth_yeast_plate())
     initialize_cli_provenance(image, pipeline_file)
-    ImagePipeline.from_json(pipeline_file).apply(image, inplace=True)
+    with continuing_provenance_application(image):
+        ImagePipeline.from_json(pipeline_file).apply(image, inplace=True)
 
     store = image.save2zarr(tmp_path / "bundle.ome.zarr")
     journal = _block(Path(store))[PhenotypicAttr.PROVENANCE]
