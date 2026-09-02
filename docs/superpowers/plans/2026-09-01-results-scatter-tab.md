@@ -2177,6 +2177,10 @@ def test_an_out_of_range_index_is_refused() -> None:
 
 
 def test_an_index_survives_filtering_and_sorting() -> None:
+    # The filter MUST drop rows and the sort MUST reorder them. Measured on
+    # the fixture: with all 844 rows kept, the carried index equals the row
+    # position exactly -- the coincidence B1 hid behind -- so a round-trip
+    # test over an unfiltered frame passes against the defect it names.
     """The round-trip Gate 0 found missing, and the bug it would have caught.
 
     The index must be assigned to master_df BEFORE any filtering, so that a
@@ -2249,9 +2253,14 @@ def index_frame(master_df: pl.DataFrame) -> pl.DataFrame:
     because every one of them is a real colony with a real crop, nothing
     errors and the inspector simply shows the wrong colony.
 
-    ``FilterSpec.apply_to`` is a ``.filter()``, which preserves both added
-    columns and their values, so an index stamped here survives every
-    downstream filter, sort and row-drop.
+    ``FilterSpec.apply_to`` (``_filter_state.py:230``) is **not** a bare
+    ``.filter()`` -- it calls ``normalize_viewer_frame`` first, which renames
+    every non-metadata column to a shield name, coalesces, and renames back,
+    so this index makes that round trip on every filter application.
+    Measured on the real mirror rather than assumed: the column survives
+    ``apply_to`` as ``UInt64``, 844 rows in and out, and **0** rows resolve
+    to a different colony. ``normalize_viewer_frame`` alone also preserves
+    both the column and its values.
 
     Args:
         master_df: The frozen run frame from ``OutputRoot``.
@@ -2293,14 +2302,23 @@ def resolve_click(
     """
     if fingerprint != expected_fingerprint:
         return None
-    if index < 0 or index >= master_df.height:
+    # Not decorative. Measured: polars `row(-1)` returns the LAST row
+    # Python-style, so without this a negative index silently resolves to a
+    # real colony from the wrong end of the frame -- the same shape as B1.
+    # `bool` subclasses `int`, so a stray True would otherwise resolve as
+    # index 1; refuse it rather than resolve it.
+    if isinstance(index, bool) or index < 0 or index >= master_df.height:
         return None
     row = master_df.row(index, named=True)
     label = row[KEY_OBJECT_LABEL]
     if label is None:
         # master_df is the mirror, which carries metadata-only phantoms --
-        # 117,415 of them in the full run. A phantom has no colony to open,
-        # and int(None) would 500 the callback.
+        # 121 of 844 in the fixture, 117,415 of 231,229 in the full run. A
+        # phantom has no colony to open, and int(None) would 500 the
+        # callback. Measured: Object_Label is Int64 (not float), so a
+        # phantom is a true None and `is None` is the right test -- a float
+        # dtype would make it NaN, where `is None` is False and int(nan)
+        # raises ValueError instead.
         return None
     return ColonyRef(
         dataset=str(row[KEY_DATASET]),
