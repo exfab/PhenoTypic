@@ -63,6 +63,26 @@
   this context still matches it. Where possible prefer a **differential**
   against a control over an absolute threshold — it cannot drift when the
   fixture changes, which is the coupling that produced two of the five.
+- **Two guards for one property means the property is untested.** Found by
+  cluster E while *writing* a mutation, not running it: the phantom check had
+  both an explicit `label is None` and a `try/except` around `int(label)`.
+  Removing either left the other, so no mutation could kill the test and
+  neither guard was pinned — while the redundancy read to a later maintainer
+  as evidence the case was covered. Collapse to the single guard a mutation
+  can kill. More defensive is not more tested; it is often less.
+- **A test that touches the real mirror needs a filter that genuinely drops
+  rows.** The index-equals-row-position coincidence is live on the fixture, so
+  a round-trip test over an unfiltered frame passes against the very defect it
+  names. Assert the degeneracy is absent *before* the assertion that depends
+  on it (`assert carried != list(range(height))`), so a fixture that drifts
+  back into the coincidence fails as a broken test rather than passing
+  vacuously.
+- **`index_frame` is idempotent — a re-call is correct, not a 500.** It
+  returns an already-indexed frame unchanged, because the index it carries is
+  already master-anchored. Do NOT add a "has this been indexed?" check at a
+  call site, and do NOT catch `DuplicateError` and re-stamp: re-stamping a
+  filtered frame *is* the B1 defect, manufactured by the guard meant to
+  prevent a crash.
 - **Never spell a measurement header — ask the schema for it.** This branch has
   produced the same defect three times: `TextureGray_AvgContrast` pinned in the
   existing suite, a `TextureGray` category in `_MEASUREMENT_PREFIXES` that no
