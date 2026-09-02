@@ -702,9 +702,121 @@ polish.
 | `rgb/4` under-covers the true range | Stated limitation (§2.3c); widen or read level 0 strided |
 | Per-image scale shifts brightness across prev/next | Accepted for v1 (§14); run-level scale is v2 |
 | The verification run cannot draw the reference figure | Re-run with `--metadata`; no tab change needed |
-| 14,784 master rows missing from the mirror, cause unknown | Open (§16). Bounds how far §1.1's arithmetic can be trusted on other runs |
+| 14,784 master rows missing from the mirror | **Open, and not a Scatter bug** (§16.2). Not curation, not duplicates, not relabeling, not keep-largest. Dropped rows are ~5.5x smaller and no kept row sits in grid row 0 or 7. Needs tracing through the mirror-write path; every Scatter figure inherits it meanwhile |
+| `_MEASUREMENT_PREFIXES` is wrong in both directions | `TextureGray` is not a real category; 31 real ones are missing (§16.3). Fix by derivation; changes Colony axis options |
 
-## 16. Open questions for the user
+## 16. Answers (2026-09-01) — all four resolved
+
+### 16.1 Chrome: `plotly_get_chrome` at environment-build time
+
+The path is not what differs — both land in a user home cache
+(`~/.cache/kaleido` vs `~/.cache/ms-playwright`) and neither is inside the venv.
+What differs is **ownership and availability**:
+
+- `plotly_get_chrome` — kaleido owns the lifecycle; stable, independent of other
+  tooling. Costs a ~150 MB download from Google, so it must survive HPCC egress
+  policy and must enter the `uv sync` guidance or every fresh worktree exports
+  blank PDFs.
+- `BROWSER_PATH` — no download, but PDF export would silently depend on the
+  browser Playwright vendors for the e2e suite: `playwright install` can GC the
+  pinned directory, and a machine that never ran the e2e suite has nothing.
+
+**Decided: `plotly_get_chrome`.** Two follow-ons that are now requirements, not
+notes: verify the download works from a compute node before relying on it, and
+document it in the environment-setup guidance beside `uv sync`.
+
+### 16.2 The 14,784 rows: not curation, cause still unidentified
+
+**Terminology first, since "mirror" was jargon.** The CLI writes two frames into
+`deliverables/`:
+
+| File | What it is |
+|---|---|
+| `master_measurements.parquet` | the **master** — the exact pre-post concatenation of the per-store embedded tables. 128,598 rows here. |
+| `measurements.parquet` | the **mirror** — the master with post-operations applied and metadata-only phantoms appended. 231,229 rows here. This is what the GUI reads and curates, and what the Scatter tab plots. |
+
+CLAUDE.md requires analysis and dashboards to read the mirror, not the master, so
+Scatter inherits whatever the mirror contains.
+
+**Four hypotheses tested and rejected:**
+
+| Hypothesis | Result |
+|---|---|
+| GUI curation removed them | **No.** `deliverables/qc/` is 512 bytes — one lock file, no review state |
+| Duplicate keys collapsed | **No.** Master has 128,598 rows and 128,598 unique `(image, label)` keys; 0 duplicates |
+| `Object_Label` was renumbered | **No.** Where per-image counts match, the label sets are identical |
+| `KeepSectionLargest` deduplicated per grid cell | **No.** Only 164 grid cells hold more than one master object, and **14,549** of the dropped rows are the *only* object in their cell |
+
+**What the dropped rows actually look like:**
+
+```
+                     dropped        kept
+Shape_Area            5,971.8    33,035.1     ~5.5x smaller
+Shape_MedianRadius        9.7        23.8
+Grid_RowNum          0..7 (all)   1..6 only
+```
+
+Two signatures: a strong **size bias**, and **no surviving row in grid row 0 or 7**
+— the outer rows of the 8x12 plate — while columns 0 and 11 survive fine.
+
+That is 14,784 measured colonies, **11.5% of the master**, absent from the frame
+the GUI reads, on a run whose `pipeline.json.pht-pipe` has `"post": {}` and
+`"filters": {}`. Something between master and mirror is applying an edge-row rule
+and a size rule that the recorded config does not describe.
+
+**This is not a Scatter question and the spec does not resolve it.** It is a
+question about the run, and it wants tracing through the mirror-write path. It is
+recorded here because the tab plots the mirror: if the reduction is unintentional,
+every Scatter figure inherits it silently. §15 carries it as an open risk.
+
+### 16.3 `_MEASUREMENT_PREFIXES`: derive it, and it is worse than one typo
+
+Derived from `MeasurementInfo` subclasses, the current tuple is wrong in both
+directions:
+
+- `TextureGray` **is not a category at all** — no schema declares it. The entry is
+  dead, which is why `Texture_*` was never excluded.
+- **31 real categories are missing**, including `Size`, `Grid`, `Object`,
+  `ColorLab`, `ColorHSV`, `RadialExpansion`, `OrientZones` and the `QC_*` family.
+
+So the fix is to derive, not to add one string. **But a naive derivation is wrong
+too:** the discoverable set includes `Metadata`, `Grid`, `Object`, `Curation` and
+`Status`, which are exactly the families that *should* stay selectable as axes.
+`_MEASUREMENT_PREFIXES` is an exclusion list for continuous per-object
+measurements, so it must be "every `MeasurementInfo` category, minus the
+metadata/identity/grouping families" — expressed by schema ownership, not by a
+hand-maintained tuple and not by string prefixes.
+
+Fix the shared helper, since a wrong prefix list is a bug wherever it is read.
+That changes the Colony grid's axis options as a side effect; it needs a
+`FEATURES.md` note and a look at the Colony tutorial capture.
+
+### 16.4 Refresh: reuse the existing one, and the fingerprint is load-bearing
+
+The machinery already exists — `BTN_REFRESH_SNAPSHOT` (`_ids.py:107`),
+`STORE_PLOT_REFRESH_REVISION` (`:813`), `OutputSnapshotDescriptor.active_run`
+(`_output_root.py:106`) and `active_run_is_currently_running()` (`:571`). Scatter
+**subscribes to the existing refresh revision store** rather than adding a second
+button, so one Refresh re-derives every surface consistently. A Scatter-local
+button would let the tab disagree with Plate and Colony about which snapshot it is
+showing.
+
+On refresh the tab rebuilds the facet plan and every figure, because new images
+can add section groups and facet values, and axis ranges are shared (§9) so they
+must be recomputed rather than held.
+
+**Curation can change while Scatter is open, and the run may be live.** That
+settles §6.1: the `OutputSnapshotDescriptor` fingerprint beside the click index is
+load-bearing, not belt-and-braces. A point clicked on a figure drawn before a
+refresh resolves against a frame that no longer matches, and without the
+fingerprint it opens the wrong colony silently.
+
+Live-run specifics: a partially written run means facet values appear over time,
+so the pager must tolerate its current section disappearing (fall back to the
+first available and say so), and the "showing first N of M" notice must recompute
+per refresh rather than being cached with the figure.
+
+## 17. Superseded — original open questions
 
 Everything else the review raised is resolved above. These four need a decision or
 information I do not have.
