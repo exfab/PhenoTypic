@@ -47,6 +47,18 @@
   `__init__.py` exports. Both were correctly settled in-flight. What *would*
   have qualified from Task 3 is the `?contours=` **query parameter**, because a
   URL is a public interface regardless of the module it is defined in.
+- **Never spell a measurement header — ask the schema for it.** This branch has
+  produced the same defect three times: `TextureGray_AvgContrast` pinned in the
+  existing suite, a `TextureGray` category in `_MEASUREMENT_PREFIXES` that no
+  schema declares, and `ColorXYZ_X` invented for a Gate 0 test. Each time a
+  plausible header was written from the *shape* of a category name, and each
+  time it read correctly and tested nothing — the column matched no measurer,
+  so the assertion passed or failed for a reason unrelated to its subject.
+  Reading cannot catch it, because the string looks right.
+  In a test, write `ColorXYZ.get_headers()[0]`, not `"ColorXYZ_X"`. Real
+  examples for reference: `Texture_Contrast-deg000-scale05`,
+  `ColorXYZ_CieXMean`, `Intensity_MeanIntensity`, `Shape_Area`. If a header
+  must be literal, verify it against `get_headers()` first.
 - **Never `git add -A`, and never stage a directory.** Stage exactly the paths
   your task's **Files:** block names. Clusters share one worktree, so a
   directory-wide add sweeps another agent's half-finished work into your
