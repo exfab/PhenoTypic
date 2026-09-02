@@ -2582,6 +2582,32 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         return fig, label, output_root.snapshot.consumed_state_fingerprint
 ```
 
+### 13.0 Required: prove the id contract in both directions
+
+Task 12 declares ids and mounts components; Task 13 binds callbacks to them.
+Each half can be correct alone while the pair disagrees — B1's shape, and the
+reason the post-G gate exists.
+
+Task 12 already proves one direction with
+`test_every_declared_id_is_actually_mounted`: every id in `_scatter_tab/_ids.__all__`
+is present in the built body. **Task 13 must prove the other**: every id its
+callbacks bind is one Task 12 declares *and mounts*.
+
+Why neither rename is the failure to look for, established by cluster F rather
+than assumed:
+
+- renaming an id's **string value** stays in sync, because `_layout.py` and the
+  tests both reference the symbol;
+- renaming the **symbol** raises `AttributeError` at import — loud;
+- **binding an `Input` to an id nothing mounts** is the silent one. Depending on
+  `suppress_callback_exceptions` you get a registration error or, worse, a
+  callback that simply never fires.
+
+Walk `app.callback_map`, collect every input and output id, and assert the set
+is a subset of the mounted ids. Dash 4.1 stores those as plain dicts keyed
+`"id"` — `{spec["id"] for entry in app.callback_map.values() for spec in entry["inputs"]}`
+(`test_filter_panel.py:215-219`); `dep.component_id` raises.
+
 ### 13.1 The curation join — `show_removed`'s producer half
 
 `show_removed` was wired to nothing in the original plan: Task 13 set it and
