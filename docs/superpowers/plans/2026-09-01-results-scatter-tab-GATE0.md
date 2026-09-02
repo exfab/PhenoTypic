@@ -190,7 +190,7 @@ filter, so the Scatter figure silently goes stale — defeating decision Q4
 ("Share filters only"), which is the tab's entire relationship to the rest of
 the viewer. It must be an `Input`.
 
-## B3 — Task 13's registration test cannot pass, before or after implementation [SRC, SPIKE-pending]
+## B3 — Task 13's registration test cannot pass, before or after implementation [MEASURED]
 
 plan:1983-1987:
 
@@ -220,7 +220,7 @@ substring-matches (`:222-226`). Scatter's ids are plain strings, so the set
 membership above is correct as written. `spike_e` and `spike_f` both print the
 live structure to confirm.
 
-## B4 — Task 9's `test_an_empty_facet_still_occupies_its_cell` is vacuous [SRC, SPIKE-pending]
+## B4 — Task 9's `test_an_empty_facet_still_occupies_its_cell` is vacuous [MEASURED]
 
 plan:1342-1351. The frame is:
 
@@ -274,7 +274,7 @@ def test_two_windows_map_a_shared_pixel_identically(store: Path) -> None:
     np.testing.assert_array_equal(a[32, 32], b[16, 16])
 ```
 
-## B6 — Task 10's page-count test hard-fails wherever Chrome is absent, which the spec says is here [SRC, SPIKE-pending]
+## B6 — Task 10's page-count test hard-fails wherever Chrome is absent, which the spec says is here [MEASURED]
 
 `test_one_page_is_written_per_section` (plan:1588-1595) calls
 `export_sections_pdf`, which calls `kaleido.write_fig_sync`, which needs a
@@ -299,7 +299,7 @@ Path("~/.cache/kaleido").expanduser().exists(), ...)`), or make §16.1's decided
 from a compute node — §16.1 already lists that as "a requirement, not a note",
 and the plan does not carry it into any task.
 
-## B7 — The blank-PDF guard, which §15 calls the only defence, never executes [SRC, SPIKE-pending]
+## B7 — The blank-PDF guard, which §15 calls the only defence, never executes [MEASURED]
 
 `test_the_exported_page_contains_ink_not_just_axes` (plan:1599) is the sole
 protection against §11.1's silent failure — a valid, well-formed, entirely blank
@@ -674,55 +674,27 @@ from phenotypic.schema import METADATA_MATCH
 CURATION_PHANTOM_COL = str(METADATA_MATCH.METADATA_ONLY)
 ```
 
-**Related, and more than cosmetic:** `plottable` does
+**Related, and the severity is now measured.** `plottable` does
 `pl.col(CURATION_PHANTOM_COL).cast(pl.Boolean)` (plan:713). The existing pandas
 equivalent `metadata_only_mask` (`sdk_/_metadata_helpers.py:712-765`) devotes a
 paragraph to why that coercion must be refused: "The dtype check is deliberately
 **strict**: only a real boolean column is trusted. An object/string column is
 rejected rather than coerced, because `pd.Series(["False", "True"]).astype(bool)`
 is `[True, True]` — the string `"False"` is truthy — which would silently mark
-every row a phantom." Polars may raise on the cast instead of coercing, which
-turns a silent corruption into a 500; `spike_c` reports which. Either way, mirror
-the existing helper: test `df.schema[col] == pl.Boolean` and treat anything else
-as "no flag present".
+every row a phantom."
 
-## S7 — Task 8's left join has no order guarantee [SPIKE-pending]
+`spike_c` shows polars does **not** repeat pandas' mistake: a string-typed flag
+raises `InvalidOperationError` (`Utf8View` to `Boolean`), so the failure is loud,
+not silent. That lowers the danger class — a 500 rather than a corrupted plot —
+but it is still an unhandled exception on a code path fed by a user-supplied
+parquet. Mirror the existing helper: test `df.schema[col] == pl.Boolean` and
+treat anything else as "no flag present". **[MEASURED]** The fixture's column is
+`Boolean`, so this never fires on the verification run — which is precisely why
+it needs the guard rather than the fixture as evidence.
 
-plan:1248: `df.join(ranked, on=[plate_col, time_col], how="left")`. Polars 1.41.2
-does not guarantee output row order for joins unless `maintain_order` is passed,
-and `test_index_ranks_within_each_plate_independently` (plan:1173) asserts an
-exact positional list.
+## S7 — *(withdrawn — see "Withdrawn after measurement")*
 
-The *values* stay correctly keyed — the join carries them by key, so the plotted
-data is not corrupted — but the test can flake and any positional consumer
-downstream breaks. `spike_b` measures whether the order actually moves at n=2000
-and whether `maintain_order="left"` is accepted on this version.
-
-Pass `maintain_order="left"` regardless; it costs nothing and removes the
-question.
-
-## S8 — A hue absent from the first facet never appears in the legend [SRC, SPIKE-pending]
-
-plan:1490 sets `showlegend=first_cell`, and plan:1503 clears `first_cell` after
-the first `(row, col)` cell. If that cell has no rows for hue *k*, the
-`if part.height == 0: continue` at plan:1475-1476 skips it, and hue *k* is then
-drawn in every other facet with `showlegend=False` — invisible in the legend
-despite being on the plot.
-
-This is not hypothetical for this data. Spec §1.3 says the verification fixture
-is "sparse by construction": 23 strains across 36 images, median 32 plottable
-rows per strain, explicitly kept for "exercising empty facets, sparse grids and
-the 'no data' cell". The first facet having a gap is the normal case, not the
-edge case.
-
-**Fix:** track emitted legend groups instead of cell position.
-
-```python
-seen_legend: set[str] = set()
-...
-showlegend = label not in seen_legend
-seen_legend.add(label)
-```
+## S8 — *(promoted to B9)*
 
 ## S9 — The facet row label is never rendered [SRC]
 
@@ -737,20 +709,21 @@ complain — this fails as a silent usability gap, not an exception. Row labels
 normally go on the left via `fig.update_yaxes(title_text=r_val, row=i, col=1)`
 or a left-edge annotation.
 
-## S10 — The shared-axes test passes when it finds nothing [SRC, SPIKE-pending]
+## S10 — *(promoted to B8; my original analysis of it was too generous)*
 
-plan:1354-1361 ends `assert len(ranges) <= 1`, which is satisfied by
-`len(ranges) == 0`.
+For the record, because the correction matters more than the finding: I traced
+this by hand and concluded the test was *weak but functional* — that a
+per-facet-range regression would surface four distinct ranges against one, so
+`<= 1` would still fail. `spike_c` disproves that. With `share_axes=False` the
+walk finds **zero** ranges, not four, because no `yaxis*` entry carries a `range`
+key at all when nothing sets one. `<= 1` therefore passes in both directions.
 
-I traced the layout walk and it does find something: with `make_subplots(2, 2)`
-plus `fig.update_yaxes(range=...)`, all four `yaxis*` entries carry the same
-range, so the set has exactly one element and a per-facet-range regression would
-produce four. The test is therefore not vacuous in the B4/B5 sense — but it
-silently degrades to always-true if `_axis_range` starts returning `None`, if the
-`share_axes` branch is dropped, or if plotly changes its layout key naming.
-
-Make it `== 1`. `spike_c` re-runs the builder with `share_axes=False` to confirm
-the assertion actually flips.
+The lesson generalizes past this test: an assertion of the form
+`len(collection) <= n` over a walk that *finds* the collection is
+indistinguishable from an assertion that the walk found nothing. Hand-tracing
+told me what the correct implementation produces; only execution told me what
+the broken one produces, and that is the half that decides whether a test has
+teeth.
 
 ## S11 — The `_config.py` ownership claim is false [SRC]
 
@@ -785,7 +758,7 @@ steps or Step 3 leaves the tree un-importable.
 Both belong under `tests/integration/`. `tests/unit` is in `testpaths`
 (`pyproject.toml:219`), so this is the suite everyone runs by default.
 
-## S13 — `resolve_click` will raise on a null `Object_Label` [SRC, SPIKE-pending]
+## S13 — `resolve_click` will raise on a null `Object_Label` [SRC]
 
 plan:1859: `label=int(row[KEY_OBJECT_LABEL])`.
 
@@ -838,6 +811,85 @@ Dash callback is neither, and surfaces as a 500. Guard it and return `None`.
     emits a `Scattergl` trace"; Task 9's trace-type test covers the *builder*,
     not the export function that calls it. One line: assert every trace in the
     figure `_pdf` builds is `"scatter"`. **[SRC]**
+
+---
+
+# VACUITY SWEEP — can each test in the plan actually fail?
+
+A test that passes without exercising the code it names is worse than no test,
+because it reports coverage that does not exist. Three of this plan's tests are
+in that category (B4, B5, B8). This is the full sweep across every task that
+ships one.
+
+Two questions per test, and both matter. **Red** asks whether it fails before
+the implementation exists — a TDD plan's own claim. **Teeth** asks the harder
+question: whether it fails against a *plausible wrong* implementation. A test
+can pass the first and fail the second, which is exactly what happened to B8.
+
+`spike_f_fix_and_vacuity.py` runs the teeth column by mutation — it implements
+each plausible bug and asserts the test catches it. *I have not seen its
+output;* the orchestrator reports four defects found by it. The verdicts below
+are my own hand-trace, and where the two disagree the spike wins.
+
+| Task | Test | Red | Teeth | Verdict |
+|---|---|---|---|---|
+| 1 | `a_uint16_ramp_renders_monotonically` | ✅ `ImportError` | ✅ catches the mod-256 cast | **sound** |
+| 1 | `values_above_the_range_clip` | ✅ | ✅ catches wrap-instead-of-clip | **sound** |
+| 1 | `uint8_stores_passed_through` | ✅ | ✅ catches an unconditional stretch | **sound** |
+| 1 | `display_range_does_not_depend_on_crop_window` | ❌ | ❌ | **B5 — cannot fail** |
+| 2 | `a_real_colony_crop_is_smooth_not_noise` | n/a (green by design) | ✅ mean-delta 85.3 → 7.2 is wide | **sound**, but skips without the fixture |
+| 3 | `contours_draw_a_boundary` | ✅ `ImportError` | ✅ | **sound** |
+| 3 | `contours_are_a_no_op_when_no_label` | ✅ | ⚠️ passes against a stub returning `rgb.copy()` unconditionally | **weak** — pair it with the positive case, which is what saves it |
+| 3 | *(threading through the route)* | — | — | **missing entirely — S4** |
+| 4 | three prefix tests | ✅ fails on `Texture_` | ✅ | **sound** |
+| 6 | `numeric_looking_values_sort_numerically` | ✅ | ✅ catches a plain `sorted()` | **sound** |
+| 6 | `non_numeric_values_sort_lexically` | ✅ | ⚠️ a plain `sorted()` also passes | **weak alone**, fine beside the numeric case |
+| 6 | `mixed_values_fall_back_to_lexical` | ✅ | ✅ catches a partial-numeric key | **sound** |
+| 6 | `grid_is_capped_by_the_product_not_per_axis` | ✅ | ✅ a per-axis cap gives 12×12=144 > 16 | **sound** — the docstring's named bug is caught |
+| 6 | `an_uncapped_grid_is_not_marked_truncated` | ✅ | ✅ catches an always-truncate | **sound** |
+| 7 | `exact_headers_group_by_measurer` | ✅ | ✅ | **sound** |
+| 7 | `parameterized_schemas_fall_back_to_category` | ✅ | ✅ catches dropping the `TypeError` branch | **sound** — the best test in the plan |
+| 7 | `measurer_params_change_the_claimed_headers` | ✅ | ✅ catches `cls()` instead of `cls(**params)` | **sound** |
+| 7 | `metadata_is_one_flat_group` | ✅ | ✅ | **sound** |
+| 7 | `unclaimed_columns_land_in_unattributed` | ✅ | ⚠️ passes against most mutations, since these columns are unclaimed either way | **weak** |
+| 8 | `index_ranks_within_each_plate` | ✅ | ✅ catches a global rank | **sound** |
+| 8 | `repeated_timestamps_share_one_index` | ✅ | ✅ catches a missing `.unique()` | **sound** |
+| 8 | `null_datetimes_get_a_null_index` | ✅ | ✅ catches nulls ranked 0 | **sound** |
+| 9 | `screen_figure_uses_webgl` | ✅ | ✅ | **sound** |
+| 9 | `export_figure_uses_svg` | ✅ | ✅ — this is §11.1's guard and it works | **sound** |
+| 9 | `every_point_carries_its_row_index` | ✅ | ⚠️ passes against B1's wrong index, because it only checks membership in `range(df.height)` | **weak — and it is why B1 survived** |
+| 9 | `an_empty_facet_still_occupies_its_cell` | ❌ | ❌ | **B4 — cannot fail** |
+| 9 | `shared_axes_give_every_facet_one_range` | ❌ | ❌ | **B8 — cannot fail** |
+| 10 | `one_page_is_written_per_section` | ❌ errors on missing Chrome | ✅ if Chrome existed | **B6 — fails for the wrong reason** |
+| 10 | `exported_page_contains_ink` | n/a | ✅ 289 vs 36,608 | **B7 — never executes** |
+| 11 | `an_index_resolves_to_its_colony` | ✅ | ✅ | **sound** |
+| 11 | `a_stale_fingerprint_is_refused` | ✅ | ✅ catches dropping the guard | **sound** |
+| 11 | `an_out_of_range_index_is_refused` | ✅ | ✅ catches dropping the bounds check | **sound** |
+| 11 | *(index round-trips under a filter)* | — | — | **missing — this is B1's pin** |
+| 12 | `tab_bar_carries_plate_colony_and_scatter` | ✅ `AttributeError` | ✅ | **sound**, but calls a helper that does not exist — S3 |
+| 13 | `scatter_subscribes_to_shared_refresh` | ❌ `AttributeError` both phases | ❌ | **B3 — cannot pass** |
+
+**Five conclusions.**
+
+1. **Tasks 6, 7, 8 and 11 are in good shape.** Every one of their tests fails
+   red and catches its plausible mutation. Task 7's parameterized-schema test is
+   the strongest in the plan — it pins the exact bug §8 spends a page on.
+2. **Task 9 is where the rot is:** two of its five tests cannot fail, and a
+   third (`every_point_carries_its_row_index`) is the specific weakness that let
+   B1 through. It asserts `seen <= set(range(df.height))` — membership in a
+   range, not correspondence to a row. A filtered-frame index satisfies it
+   perfectly. Strengthen it to assert the index *resolves to the right colony*,
+   and B1 becomes untestable-to-miss.
+3. **Task 10's two tests are both non-functional**, for unrelated reasons
+   (B6 environment, B7 marker + missing dependency). The export path currently
+   has no working test at all.
+4. **Three tests are weak rather than broken** (Task 3's no-op case, Task 6's
+   lexical case, Task 7's unattributed case). Each is saved by a sibling that
+   does have teeth, so none needs action on its own — noted so a later refactor
+   does not delete the sibling and leave the weak one standing.
+5. **Two tests that should exist do not** — Task 3's route threading (S4) and
+   B1's index round-trip. Both cover a seam between components, which is the
+   category this plan's per-task test design structurally under-covers.
 
 ---
 

@@ -243,24 +243,31 @@ def image_display_range(store_path: Path, layer: LayerName) -> tuple[int, int]:
         (``lo == hi``), so a constant layer cannot produce a zero-width
         range that divides to infinity.
     """
-    # _read_store_level takes a LAYER and resolves the member itself --
-    # passing a member path here "works" for rgb only because the fixture's
-    # series map is the identity, and raises KeyError for objmap, whose
-    # member is rgb/labels/objmap. Verified against the real signature:
-    # _read_store_level(store_path, layer, level, window=None).
+    # Two things this must NOT do.
+    #
+    # 1. Pass a member path where a layer is wanted. _read_store_level takes
+    #    a LAYER and resolves the member itself; a member path "works" for
+    #    rgb only because the series map is the identity, raises KeyError
+    #    for objmap (member rgb/labels/objmap), and returns (0, 0) silently
+    #    for detect_mat and gray.
+    # 2. Scan the directory for level names. gui/CLAUDE.md:58 -- "Never
+    #    recompute the pyramid. The level count is recorded in
+    #    phenotypic.pyramid." An iterdir()/isdigit() scan is that
+    #    recomputation. Depth is uniform across layers (verified on the
+    #    fixture: rgb, gray, detect_mat and rgb/labels/objmap each hold
+    #    levels 0..4 against the block's "levels": 5).
     block = _readable_block(store_path)
-    member = _store_member_path(block, store_path, layer)
-    levels = sorted(
-        (d.name for d in (Path(store_path) / member).iterdir() if d.name.isdigit()),
-        key=int,
-    )
-    if not levels:
+    levels = int(block[PhenotypicAttr.PYRAMID]["levels"])
+    if levels < 1:
         return (0, 255)
-    smallest = _read_store_level(store_path, layer, int(levels[-1]))
+    smallest = _read_store_level(store_path, layer, levels - 1)
     finite = smallest[np.isfinite(smallest)] if smallest.dtype.kind == "f" else smallest
     if finite.size == 0:
         return (0, 255)
     lo, hi = int(finite.min()), int(finite.max())
+    # (0, 255) on a degenerate level, never (0, 0): scale_to_uint8's
+    # span <= 0 branch returns np.zeros, so a zero-width range renders an
+    # entirely black crop with no error anywhere.
     return (lo, hi) if hi > lo else (0, 255)
 ```
 
@@ -1459,14 +1466,28 @@ def test_a_series_absent_from_the_first_cell_still_reaches_the_legend() -> None:
     assert drawn == in_legend, f"drawn {drawn} but only {in_legend} in the legend"
 
 
-def test_every_point_carries_its_row_index_as_customdata() -> None:
+def test_every_point_carries_the_index_of_its_own_row() -> None:
+    """Correspondence, not membership. This is the assertion that let B1 pass.
+
+    The original asserted ``seen <= set(range(df.height))`` -- that every
+    index falls in a plausible range. A filtered-frame index satisfies that
+    perfectly while pointing at the wrong row, which is exactly how the
+    filtered-vs-master defect survived a careful read. Assert that the index
+    on a point resolves to the row whose x and y that point actually carries.
+    """
     df, spec = _frame(), _spec()
     fig = build_scatter_figure(df, spec, plan_facets(df, spec))
-    seen = set()
+
+    n_points = 0
     for trace in fig.data:
-        if trace.customdata is not None:
-            seen.update(int(v[0]) for v in trace.customdata)
-    assert seen and seen <= set(range(df.height))
+        for x, y, cd in zip(trace.x, trace.y, trace.customdata):
+            row = df.row(int(cd[0]), named=True)
+            assert row["x"] == x and row["y"] == y, (
+                f"index {int(cd[0])} points at ({row['x']}, {row['y']}) but "
+                f"the marker is at ({x}, {y})"
+            )
+            n_points += 1
+    assert n_points == df.height, "every row must be drawn exactly once"
 
 
 def test_an_empty_facet_still_occupies_its_cell() -> None:
@@ -1715,21 +1736,34 @@ Spec §11.
 - Consumes: `build_scatter_figure` (Task 9).
 - Produces: `export_sections_pdf(df, spec, sections, *, width_in=16, height_in=12) -> bytes`
 
-- [ ] **Step 1: Add both dependencies**
+- [ ] **Step 1: Add the one dependency**
 
 ```bash
 uv add pypdf
-uv add --group dev pymupdf
 ```
 
-`pymupdf` is not optional here, and this is the one place the plan insists
-on a test dependency. The ink assertion is the **only** defence against
-kaleido's silent blank export — a valid, well-formed, entirely empty PDF
-produced with exit code 0 and no warning. Behind a bare
-`pytest.importorskip("fitz")` on a machine without pymupdf (this one: fitz,
-pymupdf and pypdf are all absent) that assertion never runs anywhere, and
-the suite reports green over an export that produces 23 blank pages. A
-guard that is skipped by default is not a guard.
+**No rasterizer is needed, and none should be added.** The ink assertion
+renders a single page to **PNG** rather than to PDF: `write_fig_sync` takes
+its format from the path extension, and Pillow and numpy are already
+dependencies. That is also the spec's own methodology — §11.1's evidence
+(`gl.png` 624 non-white against `svg.png` 46,886) was measured on PNGs, so
+the regression test becomes the measurement rather than an approximation of
+it.
+
+Two rejected alternatives, recorded so they are not re-proposed:
+
+- **pypdf text or image extraction.** A kaleido chart is vector, so
+  `page.images` is empty, and `extract_text()` returns the axis labels —
+  which are **identical** on a blank and a rendered page. §11.1's failure
+  mode is precisely that the axes render and the markers do not, so a text
+  assertion passes against the broken export.
+- **Adding pymupdf.** No rasterizer exists in the tree (fitz, pymupdf,
+  pypdfium2 and pdf2image are all absent), and adding a dependency to test
+  a property already measurable on a PNG is not worth it.
+
+If a future change must assert on the merged PDF itself, use
+`page.get_contents().get_data()` length — 5,000 markers are 5,000 path
+operators — rather than reaching for a rasterizer.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -1788,7 +1822,9 @@ def test_one_page_is_written_per_section(chrome_or_skip) -> None:
     assert PdfReader(io.BytesIO(out)).get_num_pages() == 2
 
 
-def test_the_exported_page_contains_ink_not_just_axes(chrome_or_skip) -> None:
+def test_the_exported_page_contains_ink_not_just_axes(
+    chrome_or_skip, tmp_path
+) -> None:
     """The regression pin for the silent-blank-export failure.
 
     NOT marked ``slow``. ``addopts`` carries ``-m 'not slow'``, so a slow
@@ -1802,18 +1838,33 @@ def test_the_exported_page_contains_ink_not_just_axes(chrome_or_skip) -> None:
     """
     import io
 
-    import fitz  # pymupdf, a dev dependency -- NOT importorskip, see Step 1
+    import io
+
+    from PIL import Image as PILImage
+
+    import kaleido
+
+    from phenotypic.gui.results_viewer._scatter_tab._facets import plan_facets
+    from phenotypic.gui.results_viewer._scatter_tab._figure import (
+        build_scatter_figure,
+    )
 
     df = _frame()
     spec = FigureSpec(x_col="x", y_col="y", section_col="s")
-    out = export_sections_pdf(df, spec, ["A"])
+    fig = build_scatter_figure(df, spec, plan_facets(df, spec), for_export=True)
+    fig.update_layout(width=800, height=600, paper_bgcolor="white",
+                      plot_bgcolor="white", showlegend=False)
 
-    page = fitz.open(stream=out, filetype="pdf")[0]
-    pix = page.get_pixmap(dpi=72)
-    arr = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, pix.n)
-    gray = arr[:, :, :3].mean(axis=2)
+    png = tmp_path / "page.png"
+    kaleido.write_fig_sync(fig, png)   # format follows the extension
+    gray = np.asarray(PILImage.open(png).convert("L"))
 
-    assert (gray < 128).sum() > 2000, "exported page has no ink beyond axes"
+    # Measured separation, from spec 11.1: a blank page is 289 dark pixels
+    # (axis furniture only) and a rendered one is 36,608. 2,000 sits far
+    # from both, so this is not a delicate threshold.
+    assert (gray < 128).sum() > 2000, (
+        f"exported page has no ink beyond axes: {(gray < 128).sum()} dark px"
+    )
 ```
 
 - [ ] **Step 2b: Install Chrome for kaleido, once**
@@ -1929,7 +1980,10 @@ def export_sections_pdf(
 uv run pytest tests/unit/gui/results_viewer/test_scatter_pdf.py -v
 ```
 
-Expected: the page-count test passes. The ink test is skipped when Chrome or pymupdf is absent — that is expected in a bare environment and is exactly why it is marked `slow`.
+Expected: both pass once Chrome is installed (Step 2b), and both **skip
+loudly** without it rather than failing. Neither is marked `slow`: `addopts`
+carries `-m 'not slow'`, so a slow marker would deselect the ink assertion on
+every default run — a green suite over a blank export.
 
 - [ ] **Step 6: Commit**
 
