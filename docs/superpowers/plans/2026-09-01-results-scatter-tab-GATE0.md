@@ -1,3 +1,15 @@
+> **STATUS: CLOSED 2026-09-02.** All six spikes were run by the orchestrator
+> after this file was written, so any finding below tagged `[SPIKE-pending]`
+> is resolved — read the outcomes in the plan's **Gate 0 findings** table
+> rather than the pending tag here.
+>
+> Fifteen defects were found and fixed before any implementation: five by
+> reading, five by spikes A–E, four by `spike_f`'s mutation testing, and one
+> during close-out. Notably `spike_a` did **not** escalate S5 — no
+> `MeasurementInfo` leaf's `category()` raises, in either import order.
+>
+> Kept as the record of what the gate caught and why.
+
 # Gate 0 review — Results Viewer Scatter Tab implementation plan
 
 **Reviewed:** `docs/superpowers/plans/2026-09-01-results-scatter-tab.md`
@@ -467,7 +479,32 @@ error in one edit. Two caveats worth a line of code:
 
 # SHOULD-FIX
 
-## S1 — `_read_store_level`'s second parameter is `layer`, not `member` [SRC, SPIKE-pending]
+## S1 — `_read_store_level`'s second parameter is `layer`, not `member` [MEASURED]
+
+**Measured outcome, which is worse than the wrong-argument-name framing.**
+`spike_d` ran the plan's `image_display_range` verbatim against the real store:
+
+| layer | as written | corrected |
+|---|---|---|
+| `rgb` | `(20511, 44047)` — right, by accident | `(20511, 44047)` |
+| `objmap` | **raises `KeyError`** | `(0, 45)` |
+| `detect_mat` | **`(0, 0)` silently** | — |
+| `gray` | **`(0, 0)` silently** | — |
+
+Two of the four layers fail *silently*, and `(0, 0)` is the dangerous value:
+`scale_to_uint8` takes its `span <= 0` branch (plan:160-161) and returns
+`np.zeros`, i.e. a completely black crop with no error and no log. Today only
+`rgb` reaches this helper, so it is latent rather than live — but the helper is
+module-public and the next caller inherits it. See *Answer 2* for the form that
+removes the whole class.
+
+**Also measured:** level-0's true range is `(17290, 47898)`, not the
+`(17912, 45344)` spec §2.3(c) quotes. The under-coverage that section admits is
+therefore worse than stated — roughly 11% clipped at the bottom **and ~8%
+saturated at the top**, against a `rgb/4`-derived range of `(20511, 44047)`. The
+spec's mitigation options (widen the range, or read level 0 strided) are
+unchanged, but the number in §2.3(c) should be corrected.
+
 
 Real signature, `gui/_shared/tiles.py:407-412`:
 
@@ -508,7 +545,14 @@ Two further consequences:
 `_store_member_path` lookup at plan:191 is then needed only to locate the
 directory for the level scan.
 
-## S2 — `src/phenotypic/gui/_assets/results_viewer.js` does not exist [SRC]
+## S2 — `src/phenotypic/gui/_assets/results_viewer.js` does not exist [MEASURED]
+
+*The orchestrator classifies this blocking. I do not contest it — the severity
+argument is that an agent creates a file at a path Dash never serves, the
+splitter silently never attaches, and nothing fails. It is listed here only
+because the fix is one path segment and is identical at either severity.*
+`spike_e` confirms the plan's path is absent and the real one present.
+
 
 That directory does not exist at all. The real file is
 `src/phenotypic/gui/results_viewer/_assets/results_viewer.js` — splitter block
@@ -581,43 +625,35 @@ no-op, or acceptable (the baked overlay already has contours drawn in, so it is
 probably acceptable — but it should be stated, since the two paths would then
 render different-looking contours).
 
-## S5 — Task 4's derivation is import-order dependent and reintroduces a dead entry [SRC, SPIKE-pending]
+## S5 — Task 4's derivation is sound; two smaller problems remain [MEASURED]
 
-Four separate problems in `_derive_measurement_prefixes` (plan:531-555):
+**Most of this finding is withdrawn.** `spike_a` disproves the two hypotheses I
+raised: nothing raises, and nothing depends on import order. Across all 46
+discoverable leaves, `category()` raises on none; `Status` is present whether or
+not `phenotypic.sdk_` is loaded first; and the derived tuple is byte-identical
+(31 prefixes) under both import orders. All four of Task 4's assertions pass.
+The derivation ships as written.
 
-**(a) `"Status"` may not be discoverable.** `PIPE_STATUS.category()` returns
-`"Status"` and lives at `src/phenotypic/sdk_/constants_.py:141-146` — **outside**
-`phenotypic.schema`. `from phenotypic.schema import MeasurementInfo` does not
-import it, so `MeasurementInfo.__subclasses__()` reaches it only if something
-else already loaded `phenotypic.sdk_`. It happens to work because `_grid.py`
-imports `from phenotypic.sdk_ import is_metadata_header` at module scope
-(`colony_view/_grid.py:67`), but `_MEASUREMENT_PREFIXES` is computed at **module
-import time** and is therefore a function of import order. This is the same
-class of latent wrongness as the `TextureGray_` entry the task exists to remove.
-Import the owning enums explicitly instead of relying on `__subclasses__()`
-reachability. `spike_a` measures the difference with and without `sdk_` loaded.
+Two smaller points survive:
 
 **(b) The docstring becomes a second stale copy.** `selectable_axis_columns`
 spells the tuple's contents out in prose at `colony_view/_grid.py:212-214`
 (`Bbox_`, `Shape_`, `Intensity_`, `TextureGray_`, `SymZones_`, `GridSpatial_`).
 Task 4 changes the tuple and never touches that docstring, recreating exactly
-the drift it is fixing.
+the drift it is fixing. **[SRC]**
 
-**(c) `hasattr(c, "category")` is vacuous.** `MeasurementInfo` declares
-`category()` on the base (`schema/_measurement_info.py:342-343`), so the guard is
-always true. If the intent was to skip leaves that do not override it, the guard
-does not do that — and the base's `Raises:` section means a non-overriding leaf
-would raise at module import, taking the Colony tab down with it. `spike_a`
-enumerates every leaf and reports any that raise. **If any does, this becomes
-BLOCKING.**
-
-**(d) An unstated behaviour change.** `METADATA_MATCH.category()` and
+**(d) An unstated behaviour change**, now measured: selectability changes for
+exactly two real column families — `QC_MetadataOnly` and `Texture_*`, both newly
+excluded from axis pickers. `METADATA_MATCH.category()` and
 `QUALITY_CHECK.category()` both return `"QC"`
 (`schema/_metadata_match.py:19`, `schema/_quality_check.py:33`), so `"QC_"`
 enters the exclusion tuple and `QC_MetadataOnly` stops being offered as a
-section or facet column. That is probably desirable, but it is a user-visible
-change to the Colony grid's axis options that the plan does not mention and
-FEATURES.md would need to reflect.
+section or facet column; `Texture_` likewise stops being offered, which is the
+§9 problem the fix exists to solve. Both are probably desirable, but they are
+user-visible changes to the Colony grid's axis options that the plan does not
+mention and FEATURES.md would need to reflect. Spec §16.3 already flags this
+("changes the Colony grid's axis options too"); the plan does not carry it into
+Task 4 or Task 14.
 
 *Not a defect, for the record:* `analysis/_error_cutoffs.py:32-42` keeps its own
 `MEASUREMENT_PREFIXES` and its comment says the independence is deliberate ("This
