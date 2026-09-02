@@ -78,6 +78,7 @@ dependencies = [
     "python-lucide>=0.2.24",
     "polars[rtcompat]>=1.41.2",
     "duckdb>=1.5.4",
+    "pypdf>=6.16.2",
 ]
 
 [project.urls]
@@ -330,5 +331,17 @@ ignore_missing_imports = true
 module = [
     "zarr",
     "zarr.*",
+]
+ignore_missing_imports = true
+
+# Static figure renderer for the Scatter tab's PDF export. Its own block for
+# the same reason as zarr: it is a distinct package from `plotly.*` above,
+# with a distinct runtime prerequisite (a Chrome install -- see
+# `gui/results_viewer/_scatter_tab/_pdf.py`), and folding it into the long
+# list would hide both facts.
+[[tool.mypy.overrides]]
+module = [
+    "kaleido",
+    "kaleido.*",
 ]
 ignore_missing_imports = true
