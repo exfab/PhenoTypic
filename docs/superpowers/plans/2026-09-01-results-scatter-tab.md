@@ -47,6 +47,22 @@
   `__init__.py` exports. Both were correctly settled in-flight. What *would*
   have qualified from Task 3 is the `?contours=` **query parameter**, because a
   URL is a public interface regardless of the module it is defined in.
+- **A number is only valid where it was measured. Carrying one across a
+  boundary is this branch's single most common defect — five instances, none
+  catchable by reading.** In every case the value was correct in its original
+  context and wrong in the one it was pasted into, and in every case only
+  running something exposed it:
+  | pasted value | correct where measured | wrong because |
+  |---|---|---|
+  | `100`, then `72`, page multiplier | 1600x1200 px of PNG raster; a PDF point is 1/72 in | kaleido reads plotly `width` as px at **96** DPI; the px→pt conversion is its own |
+  | `TIMELINE_COMPARE_CAP`'s WebGL rationale | 12 independent OpenSeadragon viewers, 12 contexts | Plotly pools every gl trace into **one** context |
+  | `TextureGray_` in `_MEASUREMENT_PREFIXES` | — | no schema declares that category |
+  | `rgb/4` display range | that pyramid level | quoted as level 0's |
+  | ink threshold `2000` dark px | 5,000 **opaque** markers | applied to 60 at opacity 0.5, luminance ~149, which score **zero** below 128 |
+  Before reusing any measured number, ask what was being measured and whether
+  this context still matches it. Where possible prefer a **differential**
+  against a control over an absolute threshold — it cannot drift when the
+  fixture changes, which is the coupling that produced two of the five.
 - **Never spell a measurement header — ask the schema for it.** This branch has
   produced the same defect three times: `TextureGray_AvgContrast` pinned in the
   existing suite, a `TextureGray` category in `_MEASUREMENT_PREFIXES` that no
