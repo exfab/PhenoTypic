@@ -161,6 +161,9 @@ __all__ = [
     "COLONY_CROPS_URL_SEGMENT",
     "QC_CROPS_URL_SEGMENT",
     "SCATTER_CROPS_URL_SEGMENT",
+    # Scatter tab caps
+    "SCATTER_FACET_CAP",
+    "SECTION_GROUP_CAP",
     # Closed value-set aliases
     "ChannelName",
     # Tile-spotlight dim strength (shared by both toolbars + the crop route)
@@ -566,6 +569,34 @@ QC_CROPS_URL_SEGMENT: str = "qc-crops"
 #: colony and QC segments so the three can differ in their contour default
 #: without a shared flag.
 SCATTER_CROPS_URL_SEGMENT: str = "scatter-crops"
+
+# ---------------------------------------------------------------------------
+# Scatter tab caps
+# ---------------------------------------------------------------------------
+
+#: Maximum panels in one Scatter facet grid, as ``rows * cols``.
+#: NOT a WebGL-context bound -- Plotly pools every gl trace into one
+#: shared gl-container (measured: 1 container at 1, 4, 16 and 36
+#: subplots), so facet count does not consume contexts the way
+#: :data:`TIMELINE_COMPARE_CAP`'s independent OpenSeadragon viewers do.
+#: This bounds legibility (below ~200 px a panel stops being readable),
+#: point count per figure, and axis and tick DOM. Over-cap renders the
+#: first N in facet-value order plus a visible "showing first N of M"
+#: notice, never a silent truncation.
+SCATTER_FACET_CAP: int = 24
+
+#: Maximum distinct values a column may have to be offered as a section
+#: group. Each section is one PDF page and one pager step, so an
+#: unbounded control lets a continuous column ask for one page per colony.
+#:
+#: Deliberately ABOVE ``selectable_axis_columns``'s own
+#: ``max_cardinality=50`` default, which is not an inconsistency to be
+#: tidied away: that default caps a *facet axis*, where the cost of each
+#: extra value is a grid cell and the legibility of every other cell,
+#: while this caps a *section group*, where the cost is one more page and
+#: one more pager step. A 60-page PDF is unremarkable; a 60-column facet
+#: grid is not.
+SECTION_GROUP_CAP: int = 60
 
 # ---------------------------------------------------------------------------
 # Closed value-set aliases
