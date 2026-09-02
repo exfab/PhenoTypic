@@ -40,10 +40,15 @@ Note the option lists cannot go stale against curation either way:
 ``column_value_sets`` is a lazy view over the frozen ``master_df``
 captured at ``discover()``, and a curation write does not rebind it.
 
-Not built here, deliberately: the click inspector's offcanvas (it lives in
-:mod:`._inspector` with the click resolution it serves), the floating
-legend, and the type/marker sizing steppers. Nothing reads them yet, and
-chrome nothing reads is chrome nobody can trust.
+The click inspector's offcanvas is built here (:func:`_build_inspector`)
+rather than in :mod:`._inspector`, which stays Dash-free so the index
+producer and the click resolver can be unit-tested without a server.
+Its width handle names no JavaScript behaviour of its own: it carries the
+two data attributes the shared splitter dispatches on, so both ids stay
+beside the callbacks that bind them.
+
+Still not built here, deliberately: the type/marker sizing steppers.
+Nothing reads them, and chrome nothing reads is chrome nobody can trust.
 """
 
 from __future__ import annotations
@@ -93,6 +98,25 @@ _DEFAULT_SECTION_CAP = 50
 
 #: Label for the derived capture-order X axis (spec section 10).
 _FRAME_INDEX_LABEL = "frame index (capture order)"
+
+#: The four legend corners, in the order the control offers them. The
+#: values are the store payload's ``corner`` and the keys of
+#: ``_callbacks._LEGEND_ANCHORS``; a value absent from that table falls
+#: back to the default rather than raising.
+LEGEND_CORNERS: tuple[tuple[str, str], ...] = (
+    ("Top left", "top-left"),
+    ("Top right", "top-right"),
+    ("Bottom left", "bottom-left"),
+    ("Bottom right", "bottom-right"),
+)
+
+#: Spec section 9's default: bottom-right, expanded.
+LEGEND_CORNER_DEFAULT: str = "bottom-right"
+
+#: Starting width of the click inspector, in px. Inside the shared
+#: splitter's ``[140, 380]`` clamp (``results_viewer.js`` section H) so
+#: the first drag does not jump the pane before it moves.
+_INSPECTOR_WIDTH_DEFAULT = 360
 
 #: The metadata column the derived frame index stands in for when the run
 #: does carry it. Asked of the schema rather than spelled, so it cannot
@@ -310,6 +334,24 @@ def _build_config_popover(output_root: OutputRoot) -> Component:
             None,
             placeholder="Circles",
         ),
+        _labelled_dropdown(
+            "Legend corner",
+            ids.SCATTER_LEGEND_CORNER,
+            [],
+            LEGEND_CORNER_DEFAULT,
+            placeholder="Legend corner…",
+            clearable=False,
+            extra=[
+                {"label": label, "value": value}
+                for label, value in LEGEND_CORNERS
+            ],
+        ),
+        dbc.Switch(
+            id=ids.SCATTER_LEGEND_COLLAPSE,
+            label="Collapse the legend",
+            value=False,
+            style={"fontSize": FONT_SIZE_CAPTION, "color": COLOR_NAVY},
+        ),
         dbc.Switch(
             id=ids.SCATTER_SHOW_REMOVED,
             label="Show removed colonies as grey ×",
@@ -387,8 +429,24 @@ def _build_toolbar() -> Component:
         title="Render every section to a multi-page PDF",
         style={"marginLeft": "auto"},
     )
+    export_status = html.Span(
+        id=ids.SCATTER_EXPORT_STATUS,
+        children="",
+        style={
+            "fontSize": FONT_SIZE_CAPTION,
+            "color": COLOR_MUTED,
+            "maxWidth": "22rem",
+        },
+    )
     return html.Div(
-        [config_toggle, prev_button, pager_label, next_button, export_button],
+        [
+            config_toggle,
+            prev_button,
+            pager_label,
+            next_button,
+            export_button,
+            export_status,
+        ],
         style={
             "display": "flex",
             "alignItems": "center",
@@ -397,6 +455,94 @@ def _build_toolbar() -> Component:
             "padding": "0.5rem 0.75rem",
             "borderBottom": f"1px solid {COLOR_BORDER}",
         },
+    )
+
+
+def _build_inspector() -> Component:
+    """Build the click inspector: a right-docked, resizable offcanvas.
+
+    Three pieces, in the order the eye reads them: the colony's identity,
+    the crop plus its Contours/Raw control, and the measurement rows
+    grouped by the measurer that emitted them.
+
+    The width handle carries the two data attributes the shared splitter
+    (``results_viewer.js`` section H) dispatches on, and nothing else --
+    ``data-splitter-target`` naming this offcanvas and
+    ``data-splitter-store`` naming the store a Python callback re-applies
+    from. Both ids live here, beside the callbacks that bind them, rather
+    than being spelled a second time in JavaScript; that is the whole
+    point of Task 12 generalizing the QC worklist splitter.
+
+    Returns:
+        A :class:`dbc.Offcanvas`, booting closed.
+    """
+    handle = html.Div(
+        id=ids.SCATTER_INSPECTOR_SPLITTER,
+        children=[],
+        title="Drag to resize the inspector",
+        **cast(
+            Any,
+            {
+                "data-splitter-target": ids.SCATTER_INSPECTOR,
+                "data-splitter-store": ids.STORE_SCATTER_INSPECTOR_WIDTH,
+            },
+        ),
+        style={
+            "position": "absolute",
+            "top": "0",
+            "left": "0",
+            "width": "6px",
+            "height": "100%",
+            "cursor": "col-resize",
+            "background": COLOR_BORDER,
+        },
+    )
+    contours = dbc.RadioItems(
+        id=ids.SCATTER_CONTOUR_TOGGLE,
+        options=[
+            {"label": "Contours", "value": 1},
+            {"label": "Raw", "value": 0},
+        ],
+        value=1,
+        inline=True,
+        class_name="btn-group",
+        input_class_name="btn-check",
+        label_class_name="btn btn-outline-secondary btn-sm",
+    )
+    return dbc.Offcanvas(
+        [
+            handle,
+            html.Div(
+                id=ids.SCATTER_INSPECTOR_TITLE,
+                children="",
+                style={
+                    "fontFamily": FONT_FAMILY_MONO,
+                    "fontSize": FONT_SIZE_CAPTION,
+                    "color": COLOR_MUTED,
+                    "marginBottom": "0.5rem",
+                },
+            ),
+            html.Img(
+                id=ids.SCATTER_INSPECTOR_CROP,
+                src="",
+                alt="Crop of the clicked colony",
+                style={
+                    "width": "100%",
+                    "imageRendering": "pixelated",
+                    "border": f"1px solid {COLOR_BORDER}",
+                    "borderRadius": "4px",
+                },
+            ),
+            html.Div(contours, style={"margin": "0.5rem 0"}),
+            html.Div(id=ids.SCATTER_INSPECTOR_MEASUREMENTS, children=[]),
+        ],
+        id=ids.SCATTER_INSPECTOR,
+        title="Colony",
+        placement="end",
+        is_open=False,
+        scrollable=True,
+        backdrop=False,
+        style={"width": f"{_INSPECTOR_WIDTH_DEFAULT}px"},
     )
 
 
@@ -421,9 +567,19 @@ def build_scatter_tab_body(output_root: OutputRoot) -> Component:
                 config={"displaylogo": False, "scrollZoom": True},
                 style={"height": "72vh"},
             ),
+            _build_inspector(),
             dcc.Download(id=ids.SCATTER_DOWNLOAD),
             dcc.Store(id=ids.STORE_SCATTER_SECTION_INDEX, data=0),
             dcc.Store(id=ids.STORE_SCATTER_FINGERPRINT, data=None),
+            dcc.Store(id=ids.STORE_SCATTER_COLONY, data=None),
+            dcc.Store(
+                id=ids.STORE_SCATTER_LEGEND,
+                data={"corner": LEGEND_CORNER_DEFAULT, "collapsed": False},
+            ),
+            dcc.Store(
+                id=ids.STORE_SCATTER_INSPECTOR_WIDTH,
+                data=_INSPECTOR_WIDTH_DEFAULT,
+            ),
         ],
         className="scatter-view-root",
     )

@@ -76,6 +76,9 @@ from phenotypic.gui.results_viewer._mutation_guard import (
     OutputMutationBlocked,
     require_output_mutation,
 )
+from phenotypic.gui.results_viewer._scatter_tab import (
+    _callbacks as _scatter_callbacks,
+)
 from phenotypic.gui.results_viewer.colony_view import (
     _callbacks as _colony_callbacks,
 )
@@ -106,6 +109,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     _filter_offcanvas.register_filter_offcanvas_callbacks(app)
     _viewer_card.register_callbacks(app, output_root)
     _colony_callbacks.register_callbacks(app, output_root, filtered_state)
+    _scatter_callbacks.register_callbacks(app, output_root)
     _register_plot_refresh_callback(app, output_root, filtered_state)
     _register_clientside_callbacks(app)
 

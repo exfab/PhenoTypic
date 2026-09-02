@@ -36,6 +36,12 @@ SCATTER_EXPORT_BTN = "scatter-export-btn"
 #: ``dcc.Download`` target the export writes through.
 SCATTER_DOWNLOAD = "scatter-download"
 
+#: Where the export reports a refusal. kaleido needs Chrome, which is an
+#: undeclared prerequisite (spec section 11.2), so the one failure a user
+#: will actually hit needs somewhere to say so -- a button that silently
+#: does nothing reads as a broken export.
+SCATTER_EXPORT_STATUS = "scatter-export-status"
+
 
 # ---------------------------------------------------------------------------
 # Configuration popover
@@ -66,6 +72,45 @@ SCATTER_SHAPE_COL = "scatter-shape-col"
 #: Checklist toggle: draw curation-removed colonies as a grey x series.
 SCATTER_SHOW_REMOVED = "scatter-show-removed"
 
+#: Which corner the figure's legend sits in, and whether it is collapsed
+#: away entirely. Spec section 9's Legend row; both feed one store the
+#: figure callback reads.
+SCATTER_LEGEND_CORNER = "scatter-legend-corner"
+SCATTER_LEGEND_COLLAPSE = "scatter-legend-collapse"
+
+
+# ---------------------------------------------------------------------------
+# Click inspector
+# ---------------------------------------------------------------------------
+
+#: Right-docked ``dbc.Offcanvas`` a resolved click opens. Also the pane
+#: the splitter resizes, so its id is what the handle's
+#: ``data-splitter-target`` names.
+SCATTER_INSPECTOR = "scatter-inspector"
+
+#: Line naming the colony on show (``"ds / stem / label 12"``), or the
+#: reason a click was refused.
+SCATTER_INSPECTOR_TITLE = "scatter-inspector-title"
+
+#: ``html.Img`` fed by the ``scatter-crops`` route. Its ``src`` is
+#: rebuilt when the Contours/Raw control moves, so a toggle re-requests
+#: rather than re-resolving the click.
+SCATTER_INSPECTOR_CROP = "scatter-inspector-crop"
+
+#: Container the clicked colony's measurements render into, grouped by
+#: the ``MeasureFeatures`` class that emitted each column.
+SCATTER_INSPECTOR_MEASUREMENTS = "scatter-inspector-measurements"
+
+#: Segmented control choosing whether the crop is composited with object
+#: boundaries (``?contours=1``) or served raw (``?contours=0``).
+SCATTER_CONTOUR_TOGGLE = "scatter-contour-toggle"
+
+#: Drag handle for the inspector's width. Carries
+#: ``data-splitter-target`` / ``data-splitter-store``, which is what makes
+#: an element a handle to the shared splitter in ``results_viewer.js``
+#: section H -- this module names no JS behaviour of its own.
+SCATTER_INSPECTOR_SPLITTER = "scatter-inspector-splitter"
+
 
 # ---------------------------------------------------------------------------
 # Stores
@@ -80,15 +125,41 @@ STORE_SCATTER_SECTION_INDEX = "store-scatter-section-index"
 #: resolved against a frame it no longer indexes.
 STORE_SCATTER_FINGERPRINT = "store-scatter-fingerprint"
 
+#: The colony a resolved click landed on, as
+#: ``{"dataset": str, "stem": str, "label": int}``. Written once per
+#: click and read by the crop-URL callback, so moving the Contours/Raw
+#: control re-requests the image without re-resolving the click.
+STORE_SCATTER_COLONY = "store-scatter-colony"
+
+#: Legend placement: ``{"corner": str, "collapsed": bool}``. One payload
+#: rather than two Inputs so the figure callback reads legend state the
+#: same way whether it came from the corner control or the collapse
+#: switch.
+STORE_SCATTER_LEGEND = "store-scatter-legend"
+
+#: Inspector width in px, written by the shared drag-splitter and
+#: re-applied to the offcanvas by a Python callback so it survives a
+#: re-render.
+STORE_SCATTER_INSPECTOR_WIDTH = "store-scatter-inspector-width"
+
 
 __all__ = [
     "SCATTER_COL_COL",
     "SCATTER_CONFIG_POPOVER",
     "SCATTER_CONFIG_TOGGLE",
+    "SCATTER_CONTOUR_TOGGLE",
     "SCATTER_DOWNLOAD",
     "SCATTER_EXPORT_BTN",
+    "SCATTER_EXPORT_STATUS",
     "SCATTER_GRAPH",
     "SCATTER_HUE_COL",
+    "SCATTER_INSPECTOR",
+    "SCATTER_INSPECTOR_CROP",
+    "SCATTER_INSPECTOR_MEASUREMENTS",
+    "SCATTER_INSPECTOR_SPLITTER",
+    "SCATTER_INSPECTOR_TITLE",
+    "SCATTER_LEGEND_COLLAPSE",
+    "SCATTER_LEGEND_CORNER",
     "SCATTER_NEXT_BTN",
     "SCATTER_PAGER_LABEL",
     "SCATTER_PREV_BTN",
@@ -98,6 +169,9 @@ __all__ = [
     "SCATTER_SHOW_REMOVED",
     "SCATTER_X_COL",
     "SCATTER_Y_COL",
+    "STORE_SCATTER_COLONY",
     "STORE_SCATTER_FINGERPRINT",
+    "STORE_SCATTER_INSPECTOR_WIDTH",
+    "STORE_SCATTER_LEGEND",
     "STORE_SCATTER_SECTION_INDEX",
 ]
