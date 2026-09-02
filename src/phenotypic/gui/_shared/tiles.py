@@ -627,11 +627,7 @@ def composite_contours(
     """
     from skimage.segmentation import find_boundaries
 
-    from phenotypic.gui._design import OI_ORANGE, OI_SKY
-
-    def _rgb(hex_: str) -> tuple[int, int, int]:
-        h = hex_.lstrip("#")
-        return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+    from phenotypic.gui._design import OI_ORANGE, OI_SKY, hex_to_rgb
 
     out: np.ndarray = rgb.copy()
     if labels.shape != rgb.shape[:2]:
@@ -641,10 +637,10 @@ def composite_contours(
     # focal tint is what survives, which is the half that carries meaning.
     others = (labels > 0) & (labels != focal)
     if others.any():
-        out[find_boundaries(others, mode="outer")] = _rgb(OI_SKY)
+        out[find_boundaries(others, mode="outer")] = hex_to_rgb(OI_SKY)
     focal_mask = labels == focal
     if focal_mask.any():
-        out[find_boundaries(focal_mask, mode="outer")] = _rgb(OI_ORANGE)
+        out[find_boundaries(focal_mask, mode="outer")] = hex_to_rgb(OI_ORANGE)
     return out
 
 

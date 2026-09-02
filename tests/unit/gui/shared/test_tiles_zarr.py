@@ -429,6 +429,10 @@ def test_the_focal_and_neighbour_contours_are_different_colours() -> None:
     from phenotypic.gui._design import OI_ORANGE, OI_SKY
     from phenotypic.gui._shared.tiles import composite_contours
 
+    # Decoded HERE rather than with `_design.hex_to_rgb`, on purpose: the
+    # code under test uses that function, so sharing it would let a bug in
+    # it make both sides agree and this test pass. An independent witness
+    # is the point -- do not dedupe these two lines.
     def _rgb(hex_: str) -> tuple[int, int, int]:
         h = hex_.lstrip("#")
         return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
