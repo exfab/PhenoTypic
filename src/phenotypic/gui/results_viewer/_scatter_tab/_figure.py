@@ -290,15 +290,23 @@ def _marker_trace(
 
 def _subplot_titles(
     spec: FigureSpec,
-    plan: FacetPlan,
+    rows: list[str],
+    cols: list[str],
     row_col: str | None,
     col_col: str | None,
 ) -> list[str]:
     """One title per cell, naming whichever facet roles are in use.
 
+    Takes the already-normalized axis values rather than the ``FacetPlan``
+    so the empty-axis fallback is not spelled a second time here: the one
+    place that decides an empty axis draws a single unnamed panel is
+    :func:`build_scatter_figure`, and these titles must describe exactly
+    the grid it built.
+
     Args:
         spec: The figure's configuration.
-        plan: The grid being drawn.
+        rows: Row values being drawn, ``[""]`` for a single row.
+        cols: Column values being drawn, ``[""]`` for a single column.
         row_col: The resolved facet-row column, or None.
         col_col: The resolved facet-column column, or None.
 
@@ -310,8 +318,8 @@ def _subplot_titles(
             f"{spec.row_col}={r_val}" if row_col else "",
             f"{spec.col_col}={c_val}" if col_col else "",
         )
-        for r_val in plan.rows or [""]
-        for c_val in plan.cols or [""]
+        for r_val in rows
+        for c_val in cols
     ]
 
 
@@ -371,7 +379,7 @@ def build_scatter_figure(
         cols=n_cols,
         shared_xaxes=spec.share_axes,
         shared_yaxes=spec.share_axes,
-        subplot_titles=_subplot_titles(spec, plan, row_col, col_col),
+        subplot_titles=_subplot_titles(spec, rows, cols, row_col, col_col),
         horizontal_spacing=0.02,
         vertical_spacing=0.04,
     )
