@@ -12,10 +12,12 @@ import pytest
 import phenotypic
 from phenotypic import Image, ImagePipeline
 from phenotypic._core._provenance import (
+    continuing_provenance_application,
     initialize_cli_provenance,
     new_provenance_journal,
     set_provenance_status,
     set_retry_base_length,
+    start_provenance_application,
     strip_non_reproducible_operation_fields,
     truncate_provenance_to_retry_base,
 )
@@ -109,6 +111,89 @@ def test_apply_with_intermediates_owns_one_programmatic_application() -> None:
         ["first"],
         ["second"],
     ]
+
+
+def test_apply_with_intermediates_snapshots_are_terminal_and_reusable() -> None:
+    pipeline = ImagePipeline(
+        ops={
+            "first": BlurGauss(sigma=0.75),
+            "second": BlurGauss(sigma=1.25),
+        }
+    )
+
+    result = pipeline.apply_with_intermediates(_image())
+    first = result.intermediates["first"]
+
+    assert first is not None
+    assert first._metadata.provenance_journal["status"] == "complete"
+    chained = BlurGauss(sigma=2.0).apply(first)
+    assert [
+        application["status"]
+        for application in chained._metadata.provenance_journal["applications"]
+    ] == ["complete", "complete"]
+
+
+@pytest.mark.parametrize("status", ["in_progress", "staged"])
+def test_apply_with_intermediates_preserves_externally_owned_status(
+    status: str,
+) -> None:
+    image = _image()
+    start_provenance_application(
+        image,
+        kind="full",
+        input_filename="plate.tiff",
+        pipeline_identity=None,
+        status=status,
+    )
+    pipeline = ImagePipeline(ops={"first": BlurGauss(sigma=0.75)})
+
+    with continuing_provenance_application(image):
+        result = pipeline.apply_with_intermediates(image)
+    first = result.intermediates["first"]
+
+    assert first is not None
+    assert image._metadata.provenance_journal["status"] == status
+    assert result.image._metadata.provenance_journal["status"] == status
+    assert first._metadata.provenance_journal["status"] == status
+    with pytest.raises(
+        ValueError,
+        match="cannot start a new provenance application before the last ends",
+    ):
+        BlurGauss(sigma=2.0).apply(first)
+
+
+@pytest.mark.parametrize(
+    "journal",
+    [
+        {
+            "schema_version": 1,
+            "status": "complete",
+            "pipeline": None,
+            "retry_base_length": 0,
+            "operations": [],
+        },
+        {
+            "schema_version": 2,
+            "status": "complete",
+            "original_filename": "plate.tiff",
+        },
+    ],
+)
+def test_apply_with_intermediates_validates_before_publishing_snapshots(
+    tmp_path: Path,
+    journal: dict[str, Any],
+) -> None:
+    image = _image()
+    image._metadata.provenance_journal = journal
+    output_dir = tmp_path / "intermediates"
+
+    with pytest.raises(ValueError, match="migrat|malformed"):
+        ImagePipeline(ops={"blur": BlurGauss()}).apply_with_intermediates(
+            image,
+            output_dir=output_dir,
+        )
+
+    assert not output_dir.exists()
 
 
 def test_cli_initialization_owns_one_typed_application_with_exact_basenames(

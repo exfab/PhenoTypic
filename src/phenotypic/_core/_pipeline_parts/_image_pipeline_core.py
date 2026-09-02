@@ -1018,6 +1018,18 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if effective_reset:
             img.reset()
 
+        from phenotypic._core._provenance import (
+            provenance_application,
+            set_provenance_status,
+            validate_provenance_journal,
+        )
+
+        validate_provenance_journal(img._metadata.provenance_journal)
+        application_count = len(
+            img._metadata.provenance_journal["applications"]
+        )
+        owns_application = False
+
         if output_dir is not None:
             output_dir = Path(output_dir)
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -1033,6 +1045,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 img.copy().save_intermediate_zarr(
                         output_dir / "base_00.ome.zarr", layers=_all_layers,
                 )
+
+        def _detached_snapshot(current: Image) -> Image:
+            """Copy a snapshot, closing only an application owned here."""
+            snapshot = current.copy()
+            if owns_application:
+                set_provenance_status(snapshot, "complete")
+            return snapshot
 
         def _capture(
                 i: int,
@@ -1050,11 +1069,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     # Faithful full snapshot (every series + the label + class
                     # and grid state), so any node's store reconstructs an
                     # Image/GridImage on its own.
-                    current.copy().save2zarr(output_dir / f"{i:02d}_{key}.ome.zarr")
+                    _detached_snapshot(current).save2zarr(
+                            output_dir / f"{i:02d}_{key}.ome.zarr"
+                    )
                     intermediates[key] = None
                 elif len(layers) == 4:
                     # Corrector: emit a new base with all layers
-                    current.copy().save_intermediate_zarr(
+                    _detached_snapshot(current).save_intermediate_zarr(
                             output_dir / f"base_{i:02d}.ome.zarr", layers=layers,
                     )
                     intermediates[key] = None
@@ -1063,16 +1084,17 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     # series `save_intermediate_zarr` always co-writes -- a
                     # store without one has no anchor for its label group or
                     # its OME projection.
-                    current.copy().save_intermediate_zarr(
+                    _detached_snapshot(current).save_intermediate_zarr(
                             output_dir / f"{i:02d}_{key}.ome.zarr", layers=layers,
                     )
                     intermediates[key] = None
             else:
-                intermediates[key] = current.copy()
-
-        from phenotypic._core._provenance import provenance_application
+                intermediates[key] = _detached_snapshot(current)
 
         with provenance_application(img, pipeline=self._provenance_pipeline):
+            owns_application = len(
+                img._metadata.provenance_journal["applications"]
+            ) == application_count + 1
             self._run_operations(img, on_op_complete=_capture)
         return IntermediateResult(image=img, intermediates=intermediates)
 
