@@ -1128,10 +1128,76 @@ class TestAutomaticContinuation:
         assert result.exit_code != 0
         assert "123, 456" in result.output
 
+    def test_overwrite_trusts_closed_slurm_lifecycle_without_squeue(
+        self,
+        runner,
+        tmp_path,
+        temp_pipeline,
+        temp_input_dir,
+        monkeypatch,
+    ):
+        """A closed ownership fence makes purged scheduler history harmless."""
+        from phenotypic._cli._cli_slurm_lifecycle import (
+            deactivate_generation,
+            initialize_slurm_lifecycle,
+        )
+        from phenotypic._cli._cli_staged_orchestration import append_job_ledger
+
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation="finished-generation",
+            mode="process",
+        )
+        append_job_ledger(
+            output_dir,
+            epoch="finished-generation",
+            token="array",
+            role="array",
+            round_index=0,
+            status="submitted",
+            job_id="789",
+        )
+        assert deactivate_generation(output_dir, "finished-generation")
+        monkeypatch.setattr(
+            "phenotypic._cli._cli_staged_orchestration.scheduler_job_is_active",
+            lambda job_id: pytest.fail(
+                f"closed lifecycle unexpectedly queried squeue for {job_id}"
+            ),
+        )
+
+        result = runner.invoke(
+            phenotypic_cli,
+            [
+                "--pipeline",
+                str(temp_pipeline),
+                "--input",
+                str(temp_input_dir),
+                "--output",
+                str(output_dir),
+                "--overwrite",
+                "--dry-run",
+                "--skip-validation",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "DRY-RUN MODE" in result.output
+
+    @pytest.mark.parametrize(
+        "lifecycle_contents",
+        [
+            pytest.param(None, id="missing"),
+            pytest.param("{malformed", id="malformed"),
+            pytest.param('{"generation":"epoch-1","active":true}', id="active"),
+        ],
+    )
     def test_continuation_rejects_indeterminate_ledgered_job(
-        self, runner, tmp_path, temp_pipeline, monkeypatch
+        self, runner, tmp_path, temp_pipeline, monkeypatch, lifecycle_contents
     ):
         from phenotypic._cli._cli_staged_orchestration import append_job_ledger
+        from phenotypic._cli._cli_slurm_lifecycle import lifecycle_state_path
 
         input_dir = tmp_path / "images"
         input_dir.mkdir()
@@ -1147,6 +1213,9 @@ class TestAutomaticContinuation:
             status="submitted",
             job_id="789",
         )
+        if lifecycle_contents is not None:
+            lifecycle_state_path(output_dir).write_text(lifecycle_contents)
+
         monkeypatch.setattr(
             "phenotypic._cli._cli_staged_orchestration.scheduler_job_is_active",
             lambda job_id: None,

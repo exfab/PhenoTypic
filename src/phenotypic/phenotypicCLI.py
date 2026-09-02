@@ -2001,11 +2001,20 @@ def phenotypic_cli(
             config.image_manifest_digest = manifest_snapshot.digest
 
         if output_dir.exists():
+            from phenotypic._cli._cli_slurm_lifecycle import (
+                load_slurm_lifecycle,
+            )
             from phenotypic._cli._cli_staged_orchestration import (
                 active_ledger_job_ids,
             )
 
-            active_jobs = active_ledger_job_ids(output_dir)
+            lifecycle = load_slurm_lifecycle(output_dir)
+            active_jobs = (
+                []
+                if lifecycle is not None
+                and lifecycle.get("active") is False
+                else active_ledger_job_ids(output_dir)
+            )
             if active_jobs:
                 click.echo(
                     "Error: Cannot continue, restart, or overwrite while SLURM "
