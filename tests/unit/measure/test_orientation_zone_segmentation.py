@@ -302,11 +302,9 @@ def test_center_detector_accepts_and_roundtrips_an_image_pipeline():
     restored = MeasureOrientationZones.from_json(operation.to_json())
 
     assert isinstance(restored.center_detector, ImagePipeline)
-    center, required = restored._canonical_center_for_object(
-        _off_center_core_image(), 1
-    )
-    assert required is True
-    np.testing.assert_allclose(center, (45.0, 35.0), atol=1e-12)
+    centers = restored._detected_centers(_off_center_core_image())
+    assert centers is not None
+    np.testing.assert_allclose(centers[1], (45.0, 35.0), atol=1e-12)
 
 
 def test_legacy_mode_ignores_center_detector(monkeypatch):

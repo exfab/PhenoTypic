@@ -298,6 +298,8 @@ def _resolve_radial_profile(
     evaluation reuse one expensive tensor/skeleton profile across a declared
     parameter grid while production follows the identical solver path.
     """
+    # 1. A ring is supported only when literal crossings, their axial
+    # agreement, and the local structure tensor all pass their thresholds.
     crossing_resultant = np.nan_to_num(
         profile.crossing_resultant, nan=-np.inf
     )
@@ -310,6 +312,8 @@ def _resolve_radial_profile(
         )
     )
     support = bridge_short_gaps(raw_support, params.maximum_gap)
+    # 2. Standardize the continuous evidence robustly, then append support as
+    # a deliberately weighted feature for the change-point objective.
     matrix = np.column_stack(
         (
             robust_standardize(profile.continuous_features),
@@ -326,6 +330,7 @@ def _resolve_radial_profile(
         bridged_support=support.copy(),
     )
     supported_fraction = float(np.mean(support)) if support.size else 0.0
+    # 3. Prefer two ordered boundaries: unresolved -> dense -> sparse.
     exact = exact_two_change_points(
         matrix,
         support,
@@ -343,6 +348,8 @@ def _resolve_radial_profile(
         method: Literal["exact", "collapsed"] = "exact"
         reason = "none"
     else:
+        # 4. If a valid two-boundary partition is unavailable, allow one
+        # boundary and expose DenseZone as a zero-width, unavailable interval.
         collapsed = collapsed_one_change_point(support, params.minimum_segment)
         if collapsed is None:
             return (
@@ -392,7 +399,30 @@ def fit_orientation_zones(
     center: tuple[float, float],
     params: OrientationChangePointParams,
 ) -> OrientationZoneFit:
-    """Fit canonical Method B zones and retain reusable orientation evidence."""
+    """Fit canonical Method B zones and retain reusable orientation evidence.
+
+    Method B follows five explicit stages:
+
+    1. Validate the final object mask and choose its percentile-limited radius.
+    2. Robustly scale the signal and calculate the structure-tensor field.
+    3. Sample literal skeleton crossings on fixed-width circular rings.
+    4. Summarize seven intensity, occupancy, orientation, and edge features per
+       ring.
+    5. Resolve exact or collapsed boundaries and retain the evidence so the
+       orientation measurer does not repeat tensor or crossing calculations.
+
+    Args:
+        object_mask: Final detector mask for one object.
+        signal: Detection signal aligned pixel-for-pixel with ``object_mask``.
+        center: Selected object center as ``(row, column)`` in crop coordinates.
+        params: Fixed Method B parameters for the applicable experimental
+            regime.
+
+    Returns:
+        Boundary result plus reusable orientation context. Invalid geometry has
+        a missing result and no context.
+    """
+    # Stage 1: validate geometry and select the outer measurement extent.
     mask = np.asarray(object_mask, dtype=bool)
     source = np.asarray(signal, dtype=np.float64)
     if mask.ndim != 2 or source.shape != mask.shape or not mask.any():
@@ -420,6 +450,9 @@ def fit_orientation_zones(
         np.arange(ring_count, dtype=np.float64) + 0.5
     ) * params.ring_width
 
+    # Stage 2: produce an affine-stable signal before all gradients and tensor
+    # calculations. ``source_validity`` keeps filled non-finite pixels out of
+    # every radial statistic.
     scaled, derivative_scaled, source_validity = robust_scale_signal(source, mask)
     gradient_y, gradient_x = np.gradient(derivative_scaled)
     edge_energy = np.hypot(gradient_x, gradient_y)
@@ -434,6 +467,8 @@ def fit_orientation_zones(
         np.cos(2.0 * (fiber_axis - azimuth)),
     )
 
+    # Stage 3: calculate literal skeleton/ring intersections once. Separate
+    # profiles retain permissive zoning evidence and stricter measurements.
     transform = literal_skeleton_ring_crossings(
         mask,
         fiber_axis,
@@ -455,6 +490,7 @@ def fit_orientation_zones(
         minimum_resultant=_CROSSING_RESULTANT,
     )
 
+    # Stage 4: assemble one seven-feature row for each Sholl-style ring.
     features: list[list[float]] = []
     for index, radius in enumerate(radii):
         geometric_ring = (
@@ -508,6 +544,7 @@ def fit_orientation_zones(
         raw_support=np.zeros(ring_count, dtype=bool),
         bridged_support=np.zeros(ring_count, dtype=bool),
     )
+    # Stage 5: fit the radial partition and package all reusable evidence.
     result, radial_profile = _resolve_radial_profile(
         radial_profile,
         params,

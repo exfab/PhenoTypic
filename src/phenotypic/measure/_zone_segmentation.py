@@ -504,6 +504,41 @@ def compute_zone_segmentation(
     )
 
 
+def _missing_canonical_segmentation(
+    base: ZoneSegmentation,
+    *,
+    clear_morphology: bool,
+) -> ZoneSegmentation:
+    """Return a canonical failure geometry with all zone outputs missing.
+
+    A missing center or a tiny object invalidates both mask morphology and
+    Method B, while an invalid analysis crop invalidates only the Method B
+    zones. Keeping that distinction in one helper makes each failure branch
+    short without changing its public output contract.
+    """
+    morphology = (
+        {
+            "core_radius": float("nan"),
+            "symmetric_radius": float("nan"),
+            "mean_expansion": float("nan"),
+            "max_expansion": float("nan"),
+        }
+        if clear_morphology
+        else {}
+    )
+    return replace(
+        base,
+        **morphology,
+        core_end_radius=float("nan"),
+        dense_end_radius=float("nan"),
+        sparse_end_radius=float("nan"),
+        core_area=float("nan"),
+        dense_area=float("nan"),
+        sparse_area=float("nan"),
+        zones_computed=False,
+    )
+
+
 def resolve_zone_segmentation(
     image: Image,
     prop,
@@ -511,8 +546,7 @@ def resolve_zone_segmentation(
     legacy_params: ZoneSegmentationParams,
     canonical_params: OrientationChangePointParams,
     legacy_mode: bool,
-    center_global: tuple[float, float] | None = None,
-    center_required: bool = False,
+    detected_centers: dict[int, tuple[float, float]] | None = None,
 ) -> ZoneResolution:
     """Resolve one canonical zone geometry for all zone-aware measurers.
 
@@ -527,13 +561,15 @@ def resolve_zone_segmentation(
         legacy_params: Parameters for the preserved mask and colony-ness path.
         canonical_params: Parameters for Method B.
         legacy_mode: Whether to return the colony-ness zone partition unchanged.
-        center_global: Optional detector-selected center in full-image coordinates.
-        center_required: Whether a configured detector makes a missing center a
-            canonical failure rather than a request for the default estimator.
+        detected_centers: Detector-selected centers in full-image coordinates.
+            ``None`` requests the final-mask fallback. An empty mapping means
+            that a configured detector found no usable centers.
 
     Returns:
         Shared segmentation, provenance, and reusable orientation context.
     """
+    # Phase 1: preserve the historical path exactly when compatibility is
+    # requested. Canonical failures never fall back into this branch.
     if legacy_mode:
         base = compute_zone_segmentation(image, prop, params=legacy_params)
         return ZoneResolution(
@@ -543,69 +579,46 @@ def resolve_zone_segmentation(
             failure_reason="none",
         )
 
+    # Phase 2: choose the center once, then derive the independent mask-based
+    # morphology (PELT core, symmetry, and expansion) from that same center.
+    center_global = (
+        None
+        if detected_centers is None
+        else detected_centers.get(int(prop.label))
+    )
     base = _compute_mask_morphology(
         image,
         prop,
         params=legacy_params,
         center_global=center_global,
     )
-    if center_required and center_global is None:
-        missing = replace(
-            base,
-            core_radius=float("nan"),
-            symmetric_radius=float("nan"),
-            mean_expansion=float("nan"),
-            max_expansion=float("nan"),
-            core_end_radius=float("nan"),
-            dense_end_radius=float("nan"),
-            sparse_end_radius=float("nan"),
-            core_area=float("nan"),
-            dense_area=float("nan"),
-            sparse_area=float("nan"),
-            zones_computed=False,
-        )
+    if detected_centers is not None and center_global is None:
         return ZoneResolution(
-            segmentation=missing,
+            segmentation=_missing_canonical_segmentation(
+                base, clear_morphology=True
+            ),
             method_code=4,
             method_used="missing",
             failure_reason="center_not_found",
         )
     if prop.area < 10:
-        missing = replace(
-            base,
-            core_radius=float("nan"),
-            symmetric_radius=float("nan"),
-            mean_expansion=float("nan"),
-            max_expansion=float("nan"),
-            core_end_radius=float("nan"),
-            dense_end_radius=float("nan"),
-            sparse_end_radius=float("nan"),
-            core_area=float("nan"),
-            dense_area=float("nan"),
-            sparse_area=float("nan"),
-            zones_computed=False,
-        )
         return ZoneResolution(
-            segmentation=missing,
+            segmentation=_missing_canonical_segmentation(
+                base, clear_morphology=True
+            ),
             method_code=4,
             method_used="missing",
             failure_reason="tiny_object",
         )
 
-    # Use one full-image crop for both public measurers. The target mask alone
+    # Phase 3: build one center-aligned crop for both public measurers. The
+    # target mask alone
     # determines the radius; adjacent objects remain excluded from every ring.
     coords = np.asarray(prop.coords, dtype=np.float64)
     if coords.size == 0:
         return ZoneResolution(
-            segmentation=replace(
-                base,
-                core_end_radius=float("nan"),
-                dense_end_radius=float("nan"),
-                sparse_end_radius=float("nan"),
-                core_area=float("nan"),
-                dense_area=float("nan"),
-                sparse_area=float("nan"),
-                zones_computed=False,
+            segmentation=_missing_canonical_segmentation(
+                base, clear_morphology=False
             ),
             method_code=4,
             method_used="missing",
@@ -633,6 +646,8 @@ def resolve_zone_segmentation(
         base.centroid_global[0] - float(analysis_slice[0].start),
         base.centroid_global[1] - float(analysis_slice[1].start),
     )
+    # Phase 4: fit Method B once and translate its radial boundaries into the
+    # shared geometry consumed by measurements and figures.
     fitted = fit_orientation_zones(
         object_mask,
         signal,

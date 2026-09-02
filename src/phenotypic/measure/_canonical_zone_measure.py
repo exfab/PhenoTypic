@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union
 import weakref
+from typing import TYPE_CHECKING, Any, Literal, Union
 
 import numpy as np
 from pydantic import PrivateAttr, field_validator, model_validator
@@ -12,7 +12,12 @@ from phenotypic.abc_ import MeasureFeatures
 from phenotypic.measure._orientation_zone_segmentation import (
     OrientationChangePointParams,
 )
-from phenotypic.measure._zone_segmentation import detected_center_coordinates
+from phenotypic.measure._zone_segmentation import (
+    ZoneResolution,
+    ZoneSegmentationParams,
+    detected_center_coordinates,
+    resolve_zone_segmentation,
+)
 from phenotypic.sdk_.typing_ import OperationField
 
 if TYPE_CHECKING:
@@ -35,6 +40,22 @@ class CanonicalZoneMeasure(MeasureFeatures):
     zone_support_weight: float = 4.0
     zone_outer_support_margin: float = 0.0
     zone_maximum_gap: int = 0
+
+    # Shared mask-morphology and legacy-zone configuration. These used to be
+    # repeated verbatim by both public measurers, which made it easy for their
+    # geometry contracts to drift.
+    n_annuli: int = 100
+    pelt_penalty: float = 5.0
+    symmetry_threshold: float = 4 / 6
+    n_angular_bins: int = 6
+    smoothing_window: int = 3
+    method: Literal["distance", "intensity"] = "distance"
+    extent_margin: float = 0.05
+    min_samples_per_ring: int = 5
+    tau_core: float = 0.9
+    tau_dense: float = 0.5
+    tau_sparse: float = 0.1
+    intensity_source: Literal["gray", "detect_mat"] = "detect_mat"
 
     _center_cache_image_ref: "weakref.ReferenceType[Image] | None" = PrivateAttr(
         default=None
@@ -154,21 +175,37 @@ class CanonicalZoneMeasure(MeasureFeatures):
             maximum_gap=self.zone_maximum_gap,
         )
 
-    def _canonical_center_for_object(
+    def _zone_params(self) -> ZoneSegmentationParams:
+        """Snapshot the shared morphology and legacy-zone parameters."""
+        return ZoneSegmentationParams(
+            n_annuli=self.n_annuli,
+            pelt_penalty=self.pelt_penalty,
+            symmetry_threshold=self.symmetry_threshold,
+            n_angular_bins=self.n_angular_bins,
+            smoothing_window=self.smoothing_window,
+            method=self.method,
+            extent_margin=self.extent_margin,
+            min_samples_per_ring=self.min_samples_per_ring,
+            tau_core=self.tau_core,
+            tau_dense=self.tau_dense,
+            tau_sparse=self.tau_sparse,
+            intensity_source=self.intensity_source,
+        )
+
+    def _detected_centers(
         self,
         image: "Image",
-        object_label: int,
-    ) -> tuple[tuple[float, float] | None, bool]:
-        """Return an optional detector-selected center for one final object.
+    ) -> dict[int, tuple[float, float]] | None:
+        """Return all configured detector centers, calculated once per image.
 
-        The configured detector is applied once per image-and-parameter
-        signature. Its center components are associated with final colonies by
-        pixel overlap. ``required`` is true only when the user configured a
-        detector, allowing the shared resolver to distinguish an absent
-        optional override from a requested detector that found no center.
+        ``None`` means no detector was requested and tells the resolver to use
+        the final-mask distance-transform fallback. An empty dictionary means
+        a detector was requested but found no centers; that distinction makes
+        the affected canonical objects fail explicitly instead of silently
+        changing center policy.
         """
         if self.legacy_mode or self.center_detector is None:
-            return None, False
+            return None
 
         signature = self.model_dump_json()
         cached_image = (
@@ -192,7 +229,23 @@ class CanonicalZoneMeasure(MeasureFeatures):
             self._center_cache_image_ref = weakref.ref(image)
             self._center_cache_signature = signature
 
-        return self._center_cache.get(int(object_label)), True
+        return self._center_cache
+
+    def _resolve_object_zones(self, image: "Image", prop) -> ZoneResolution:
+        """Run the one shared zone resolver for a detected object.
+
+        This is the only method through which either public measurer enters
+        zone analysis. It makes the complete orchestration visible in one
+        place: prepare centers, snapshot parameters, and resolve geometry.
+        """
+        return resolve_zone_segmentation(
+            image,
+            prop,
+            legacy_params=self._zone_params(),
+            canonical_params=self._orientation_change_point_params(),
+            legacy_mode=self.legacy_mode,
+            detected_centers=self._detected_centers(image),
+        )
 
     @classmethod
     def _migrate_serialized_params(cls, params: dict[str, Any]) -> dict[str, Any]:

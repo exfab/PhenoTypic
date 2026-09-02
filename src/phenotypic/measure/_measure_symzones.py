@@ -29,8 +29,6 @@ from phenotypic.abc_.plotting import Control, PlotImage, figure
 from phenotypic.measure._canonical_zone_measure import CanonicalZoneMeasure
 from phenotypic.measure._zone_segmentation import (
     ZoneSegmentation,
-    ZoneSegmentationParams,
-    resolve_zone_segmentation,
 )
 from phenotypic.schema import OBJECT
 from phenotypic.schema import SYMMETRIC_ZONES
@@ -226,17 +224,6 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
 
     _measurement_infoclass: ClassVar[type] = SYMMETRIC_ZONES
 
-    n_annuli: int = 100
-    pelt_penalty: float = 5.0
-    symmetry_threshold: float = 4 / 6
-    n_angular_bins: int = 6
-    smoothing_window: int = 3
-    method: Literal["distance", "intensity"] = "distance"
-    extent_margin: float = 0.05
-    min_samples_per_ring: int = 5
-    tau_core: float = 0.9
-    tau_dense: float = 0.5
-    tau_sparse: float = 0.1
     intensity_source: Literal["gray", "detect_mat"] = "gray"
 
     # Diagnostic cache populated by ``measure()`` so ``inspect()`` /
@@ -250,23 +237,6 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
     __cache_signature: str | None = PrivateAttr(default=None)
 
     # ── shared pipeline for one object ───────────────────────────────
-
-    def _zone_params(self) -> ZoneSegmentationParams:
-        """Snapshot this operator's zone parameters for the shared pipeline."""
-        return ZoneSegmentationParams(
-                n_annuli=self.n_annuli,
-                pelt_penalty=self.pelt_penalty,
-                symmetry_threshold=self.symmetry_threshold,
-                n_angular_bins=self.n_angular_bins,
-                smoothing_window=self.smoothing_window,
-                method=self.method,
-                extent_margin=self.extent_margin,
-                min_samples_per_ring=self.min_samples_per_ring,
-                tau_core=self.tau_core,
-                tau_dense=self.tau_dense,
-                tau_sparse=self.tau_sparse,
-                intensity_source=self.intensity_source,
-        )
 
     def _compute_intermediates(
             self,
@@ -290,18 +260,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
         Returns:
             ZoneSegmentation with all computed fields populated.
         """
-        center_global, center_required = self._canonical_center_for_object(
-            image, prop.label
-        )
-        return resolve_zone_segmentation(
-            image,
-            prop,
-            legacy_params=self._zone_params(),
-            canonical_params=self._orientation_change_point_params(),
-            legacy_mode=self.legacy_mode,
-            center_global=center_global,
-            center_required=center_required,
-        ).segmentation
+        return self._resolve_object_zones(image, prop).segmentation
 
     # ── MeasureFeatures interface ────────────────────────────────────
 

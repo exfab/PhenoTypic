@@ -36,6 +36,28 @@ from phenotypic.measure._measure_orientation_zones import (
 )
 
 
+def _mock_object_analysis(
+    segmentation,
+    object_mask,
+    orientation,
+    coherence,
+    distance_map,
+    center,
+):
+    """Build the named per-object record used by diagnostic figure tests."""
+    return SimpleNamespace(
+        prop=None,
+        resolution=None,
+        segmentation=segmentation,
+        object_mask=object_mask,
+        orientation=orientation,
+        coherence=coherence,
+        gradient=None,
+        distance_map=distance_map,
+        center=center,
+    )
+
+
 def test_aggregate_parallel_field_high_R_zero_turning():
     n = 40
     phi = np.full((n, n), 0.3)  # constant orientation
@@ -1050,9 +1072,13 @@ def test_cumulative_rotation_overlay_uses_degrees_and_excludes_inoculum(
     )
     monkeypatch.setattr(
         MeasureOrientationZones,
-        "_iter_object_fields",
+        "_analyze_objects",
         lambda self, image, props, label2section: iter(
-            [(None, seg, obj_mask, phi, coherence, None, distance, centre)]
+            [
+                _mock_object_analysis(
+                    seg, obj_mask, phi, coherence, distance, centre
+                )
+            ]
         ),
     )
     fig = go.Figure()
@@ -1114,9 +1140,13 @@ def test_matched_cumulative_overlay_tracks_nearby_sectors_and_uses_full_range(
     )
     monkeypatch.setattr(
         MeasureOrientationZones,
-        "_iter_object_fields",
+        "_analyze_objects",
         lambda self, image, props, label2section: iter(
-            [(None, seg, obj_mask, phi, coherence, None, distance, centre)]
+            [
+                _mock_object_analysis(
+                    seg, obj_mask, phi, coherence, distance, centre
+                )
+            ]
         ),
     )
     fig = go.Figure()
@@ -1206,9 +1236,13 @@ def test_matched_cumulative_overlay_draws_gap_as_dashed_bridge(monkeypatch):
     )
     monkeypatch.setattr(
         MeasureOrientationZones,
-        "_iter_object_fields",
+        "_analyze_objects",
         lambda self, image, props, label2section: iter(
-            [(None, seg, obj_mask, phi, coherence, None, distance, centre)]
+            [
+                _mock_object_analysis(
+                    seg, obj_mask, phi, coherence, distance, centre
+                )
+            ]
         ),
     )
     monkeypatch.setattr(
@@ -1312,9 +1346,13 @@ def test_fiber_bend_overlay_is_multiscale_unsigned_and_excludes_core(
     )
     monkeypatch.setattr(
         MeasureOrientationZones,
-        "_iter_object_fields",
+        "_analyze_objects",
         lambda self, subject, props, label2section: iter(
-            [(None, seg, obj_mask, phi, coherence, None, distance, centre)]
+            [
+                _mock_object_analysis(
+                    seg, obj_mask, phi, coherence, distance, centre
+                )
+            ]
         ),
     )
 
@@ -1571,21 +1609,20 @@ def test_collapsed_zones_yield_all_nan():
     image = load_synth_filamentous_plate()
     op = MeasureOrientationZones(legacy_mode=True)
     props, label2section = op._prep(image)
-    _prop, seg, obj_mask, phi, coh, grad, dist_map, _centre = next(
-        op._iter_object_fields(image, props, label2section)
-    )
+    analysis = next(op._analyze_objects(image, props, label2section))
+    seg = analysis.segmentation
     seg.zones_computed = False
     seg.symmetric_radius = 0.0
     row: dict = {}
     op._fill_metrics(
         row,
         seg,
-        obj_mask,
-        phi,
-        coh,
-        grad,
-        dist_map,
-        _centre,
+        analysis.object_mask,
+        analysis.orientation,
+        analysis.coherence,
+        analysis.gradient,
+        analysis.distance_map,
+        analysis.center,
     )
     assert len(row) == len(ORIENTATION_ZONE_PRIMARY.get_headers())
     assert all(np.isnan(v) for v in row.values())
