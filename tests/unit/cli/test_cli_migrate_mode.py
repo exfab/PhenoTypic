@@ -959,6 +959,30 @@ def test_terminal_authority_rejects_malformed_typed_fields(
     assert _read_migration_terminal_status(path, generation="attempt-1") is None
 
 
+def test_terminal_authority_reads_legacy_v1_report_without_provenance_fields(
+    tmp_path: Path,
+) -> None:
+    """Persisted pre-provenance terminal evidence remains valid authority."""
+    import json
+
+    from phenotypic._cli._cli_migrate import _read_migration_terminal_status
+
+    status = _terminal_status_payload(generation="attempt-1")
+    status["schema_version"] = 1
+    report = status["report"]
+    assert isinstance(report, dict)
+    report.pop("provenance_upgraded")
+    report.pop("provenance_failures")
+    path = tmp_path / "terminal_status.json"
+    path.write_text(json.dumps(status), encoding="utf-8")
+
+    loaded = _read_migration_terminal_status(path, generation="attempt-1")
+
+    assert loaded is not None
+    assert loaded["report"]["provenance_upgraded"] == 0
+    assert loaded["report"]["provenance_failures"] == []
+
+
 def test_succeeded_terminal_rejects_any_failure_rows(tmp_path: Path) -> None:
     """A success authority cannot carry contradictory failed-work evidence."""
     import json

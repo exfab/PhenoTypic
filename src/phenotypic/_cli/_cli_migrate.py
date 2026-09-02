@@ -237,7 +237,7 @@ def publish_migration_terminal_status(
     atomic_write_json(
         path,
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "generation": generation,
             "status": "succeeded" if succeeded else "failed",
             "failure_category": failure_category,
@@ -1109,6 +1109,10 @@ def finalize_migration_attempt(
                     final_report, metadata_pass.authority.status_path, reason
                 )
 
+    if failure_category is None and final_report.provenance_failures:
+        failure_category = "provenance"
+        reason = final_report.provenance_failures[0][1]
+
     if failure_category is None and image_failures:
         failure_category = "image"
         reason = image_failures[0][1]
@@ -1537,7 +1541,12 @@ def run_migrate(
                         lifecycle_root, generation, str(exc)
                     )
                     raise
-                deactivate_generation(lifecycle_root, generation)
+                if failures:
+                    mark_generation_failed(
+                        lifecycle_root, generation, failures[0][1]
+                    )
+                else:
+                    deactivate_generation(lifecycle_root, generation)
         return MigrationReport(
             provenance_upgraded=sum(result.upgraded for result in results),
             provenance_failures=failures,
@@ -1735,9 +1744,7 @@ def _run_migrate_owned(
             dry_run=False,
             commit_guard=commit_guard,
         )
-        if provenance_failures:
-            image_failures = provenance_failures
-        else:
+        if not provenance_failures:
             try:
                 _ensure_migration_processing_state(
                     output_dir,
@@ -2018,19 +2025,23 @@ def _read_migration_terminal_status(
     }
     if not isinstance(raw, dict) or set(raw) != required:
         return None
+    schema_version = raw["schema_version"]
     if (
-        not isinstance(raw["schema_version"], int)
-        or isinstance(raw["schema_version"], bool)
-        or raw["schema_version"] != 1
+        not isinstance(schema_version, int)
+        or isinstance(schema_version, bool)
+        or schema_version not in {1, 2}
         or raw["generation"] != generation
         or raw["status"] not in {"succeeded", "failed"}
-        or not _valid_migration_terminal_report(raw["report"])
         or not _valid_terminal_timestamp(raw["completed_at"])
     ):
         return None
+    report = _normalized_migration_terminal_report(
+        raw["report"], schema_version=schema_version
+    )
+    if report is None:
+        return None
+    raw["report"] = report
     if raw["status"] == "succeeded":
-        report = raw["report"]
-        assert isinstance(report, Mapping)
         if (
             raw["failure_category"] is not None
             or raw["reason"] is not None
@@ -2056,6 +2067,30 @@ def _read_migration_terminal_status(
     ):
         return None
     return raw
+
+
+def _normalized_migration_terminal_report(
+    value: object, *, schema_version: int
+) -> dict[str, Any] | None:
+    """Normalize legacy terminal reports without inventing science."""
+    if not isinstance(value, Mapping):
+        return None
+    normalized = dict(value)
+    legacy_count_fields = {
+        "converted", "skipped", "headers_migrated", "tables_migrated",
+        "tables_skipped", "overlays_created", "overlays_skipped",
+    }
+    legacy_failure_fields = {
+        "failed", "header_failures", "table_failures", "overlay_failures",
+        "publication_failures",
+    }
+    legacy_fields = legacy_count_fields | legacy_failure_fields
+    if schema_version == 1 and set(normalized) == legacy_fields:
+        normalized["provenance_upgraded"] = 0
+        normalized["provenance_failures"] = []
+    if not _valid_migration_terminal_report(normalized):
+        return None
+    return normalized
 
 
 def _valid_migration_terminal_report(value: object) -> bool:

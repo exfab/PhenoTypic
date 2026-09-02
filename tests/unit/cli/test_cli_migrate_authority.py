@@ -1334,6 +1334,7 @@ def test_finalizer_rejects_source_recreated_after_clean_reclaim_seal(
     "failure_case",
     (
         "metadata",
+        "provenance",
         "image",
         "image_seal",
         "reclaim_noop",
@@ -1364,6 +1365,10 @@ def test_finalizer_publishes_typed_failure_before_exact_lifecycle_close(
             headers_migrated=0,
             failures=((run, "metadata failed"),),
             authority=None,
+        )
+    elif failure_case == "provenance":
+        report = MigrationReport(
+            provenance_failures=((run / "plate.ome.zarr", "future schema"),)
         )
     elif failure_case == "image":
         image_failures = ((run / "image.h5", "image failed"),)

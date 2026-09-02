@@ -309,6 +309,11 @@ def test_malformed_and_future_journals_are_reported_without_rewrite(
     tmp_path: Path, journal: dict[str, Any]
 ) -> None:
     from phenotypic._cli._cli_migrate import run_migrate
+    from phenotypic._cli._cli_migrate_provenance import (
+        classify_provenance_migration_target,
+        provenance_migration_lifecycle_root,
+    )
+    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
 
     store = tmp_path / "bad.ome.zarr"
     root = _write_store_root(store, journal)
@@ -319,6 +324,14 @@ def test_malformed_and_future_journals_are_reported_without_rewrite(
     assert report.ok is False
     assert len(report.provenance_failures) == 1
     assert root.read_bytes() == before
+    lifecycle = load_slurm_lifecycle(
+        provenance_migration_lifecycle_root(
+            classify_provenance_migration_target(store)
+        )
+    )
+    assert lifecycle is not None
+    assert lifecycle["active"] is False
+    assert lifecycle["terminal_status"] == "failed"
 
 
 def test_provenance_only_rejects_delete_sources_and_ambiguous_layout(
