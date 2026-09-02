@@ -112,17 +112,21 @@ def _record_local_terminal_failure(
     exception: Exception,
     traceback_text: str,
     attempt_id: str,
+    *,
+    work_identity: tuple[str, str] | None = None,
 ) -> bool:
     """Commit a caught scientific failure for an exact local computation."""
     if not isinstance(exception, PerImageScientificError):
         return False
-    try:
-        work_id, relative_path = work_id_for_image(config, dataset, image_path)
-    except OSError:
-        logger.error(
-            "Could not calculate terminal work identity", exc_info=True
-        )
-        return False
+    if work_identity is None:
+        try:
+            work_identity = work_id_for_image(config, dataset, image_path)
+        except OSError:
+            logger.error(
+                "Could not calculate terminal work identity", exc_info=True
+            )
+            return False
+    work_id, relative_path = work_identity
     try:
         lifecycle_epoch = config.processing_generation
         lifecycle_epoch = lifecycle_epoch or "local-unfenced"
@@ -150,9 +154,13 @@ def _publish_local_image_success(
     dataset: str,
     image_path: Path,
     attempt_id: str,
+    *,
+    work_identity: tuple[str, str] | None = None,
 ) -> None:
     """Write the general marker after all required local artifacts exist."""
-    work_id, relative_path = work_id_for_image(config, dataset, image_path)
+    if work_identity is None:
+        work_identity = work_id_for_image(config, dataset, image_path)
+    work_id, relative_path = work_identity
     if config.process_only_layer is not None:
         from ._cli_process_only import process_only_output_path
 
@@ -465,6 +473,9 @@ class LocalParallelStrategy(ExecutionStrategy):
                 read_kwargs["detect_mode"] = self.config.detect_mode
 
             # Process
+            work_identity = work_id_for_image(
+                self.config, dataset.name, image_path
+            )
             process_single_image_core(
                 pipeline_path=self.config.pipeline_json,
                 image_path=image_path,
@@ -477,6 +488,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 drop_originals=self.config.drop_originals,
                 pipeline_identity=self.config.pipeline_identity,
                 cli_ncols=self.config.ncols,
+                work_id=work_identity[0],
             )
 
             _publish_local_image_success(
@@ -486,6 +498,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 dataset.name,
                 image_path,
                 attempt_id,
+                work_identity=work_identity,
             )
 
             # Log success
@@ -509,6 +522,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 e,
                 tb,
                 attempt_id,
+                work_identity=work_identity,
             )
 
             logger.error(

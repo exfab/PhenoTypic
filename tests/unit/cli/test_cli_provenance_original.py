@@ -24,7 +24,6 @@ def _captured_config(
     extra: list[str],
 ) -> Any:
     seen: dict[str, Any] = {}
-
     def _spy(config: Any, datasets: Any, output_dir: Any) -> None:
         del datasets, output_dir
         seen["config"] = config
@@ -151,13 +150,29 @@ def test_local_strategy_hands_drop_originals_to_forward_worker(
     )
     dataset = Dataset("ds", [image], synth_one_level_input, output_dir)
     seen: dict[str, Any] = {}
+    identity_calls = 0
+    real_work_id_for_image = strategies.work_id_for_image
+    expected_identity = real_work_id_for_image(config, "ds", image)
+
+    def _work_identity(*args: Any, **kwargs: Any) -> tuple[str, str]:
+        nonlocal identity_calls
+        identity_calls += 1
+        return real_work_id_for_image(*args, **kwargs)
+
 
     def _spy(**kwargs: Any) -> bool:
         seen.update(kwargs)
         return True
 
+    published: dict[str, Any] = {}
+
+    def _publish(*args: Any, **kwargs: Any) -> None:
+        del args
+        published.update(kwargs)
+
+    monkeypatch.setattr(strategies, "work_id_for_image", _work_identity)
     monkeypatch.setattr(strategies, "process_single_image_core", _spy)
-    monkeypatch.setattr(strategies, "_publish_local_image_success", lambda *a: None)
+    monkeypatch.setattr(strategies, "_publish_local_image_success", _publish)
 
     result = strategy._process_single_local(
         dataset, image, output_dir, tmp_path / "events.jsonl"
@@ -165,6 +180,63 @@ def test_local_strategy_hands_drop_originals_to_forward_worker(
 
     assert result[2] is True
     assert seen["drop_originals"] is True
+    assert seen["work_id"] == expected_identity[0]
+    assert published["work_identity"] == expected_identity
+    assert identity_calls == 1
+
+
+def test_local_strategy_reuses_preflight_identity_for_failure_publication(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    simple_pipeline_json: Path,
+    synth_one_level_input: Path,
+    make_exec_config: Callable[..., Any],
+    make_output_manager: Callable[..., Any],
+) -> None:
+    from phenotypic._cli import _cli_execution_strategies as strategies
+    from phenotypic._cli._cli_failure_tracker import PerImageScientificError
+
+    image = next(synth_one_level_input.rglob("*.tif"))
+    output_dir = tmp_path / "out"
+    config = make_exec_config(
+        pipeline_json=simple_pipeline_json,
+        input_path=synth_one_level_input,
+        output_dir=output_dir,
+    )
+    strategy = strategies.LocalParallelStrategy(
+        config, make_output_manager(output_dir, save_overlays=False)
+    )
+    dataset = Dataset("ds", [image], synth_one_level_input, output_dir)
+    real_work_id_for_image = strategies.work_id_for_image
+    expected_identity = real_work_id_for_image(config, "ds", image)
+    identity_calls = 0
+    recorded: dict[str, Any] = {}
+
+    def _work_identity(*args: Any, **kwargs: Any) -> tuple[str, str]:
+        nonlocal identity_calls
+        identity_calls += 1
+        return real_work_id_for_image(*args, **kwargs)
+
+    def _fail(**kwargs: Any) -> None:
+        assert kwargs["work_id"] == expected_identity[0]
+        raise PerImageScientificError("pipeline", RuntimeError("boom"))
+
+    def _record(*args: Any, **kwargs: Any) -> bool:
+        del args
+        recorded.update(kwargs)
+        return True
+
+    monkeypatch.setattr(strategies, "work_id_for_image", _work_identity)
+    monkeypatch.setattr(strategies, "process_single_image_core", _fail)
+    monkeypatch.setattr(strategies, "_record_local_terminal_failure", _record)
+
+    result = strategy._process_single_local(
+        dataset, image, output_dir, tmp_path / "events.jsonl"
+    )
+
+    assert result[2] is False
+    assert recorded["work_identity"] == expected_identity
+    assert identity_calls == 1
 
 
 def test_ordinary_worker_and_slurm_script_transport_drop_originals(
