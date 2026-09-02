@@ -16,6 +16,7 @@ from phenotypic._core._provenance import (
     new_provenance_journal,
     set_provenance_status,
     set_retry_base_length,
+    strip_non_reproducible_operation_fields,
     truncate_provenance_to_retry_base,
 )
 from phenotypic.enhance import BlurGauss
@@ -178,6 +179,52 @@ def test_flattened_reads_are_deeply_immutable_across_applications() -> None:
     assert journal["applications"][1]["operations"][0]["parameters"][
         "axes"
     ] == [0, 1]
+
+
+def test_process_sanitization_recurses_across_every_application() -> None:
+    journal = new_provenance_journal("plate.tiff")
+    journal["applications"] = [
+        {
+            "sequence": 1,
+            "kind": "process",
+            "phenotypic_version": phenotypic.__version__,
+            "input_filename": "plate.tiff",
+            "status": "complete",
+            "pipeline": {
+                "source_path": "/cluster/private/process.json",
+                "sha256": "a" * 64,
+            },
+            "retry_base_length": 0,
+            "operations": [_operation(1, sigma=1.0)],
+        },
+        {
+            "sequence": 2,
+            "kind": "full",
+            "phenotypic_version": phenotypic.__version__,
+            "input_filename": "plate.ome.zarr",
+            "status": "complete",
+            "pipeline": {
+                "source_path": "/another/private/full.json",
+                "sha256": "b" * 64,
+            },
+            "retry_base_length": 0,
+            "operations": [_operation(2, sigma=2.0)],
+        },
+    ]
+    source = deepcopy(journal)
+
+    sanitized = strip_non_reproducible_operation_fields(deepcopy(journal))
+
+    assert [
+        application["pipeline"]["source_path"]
+        for application in sanitized["applications"]
+    ] == ["process.json", "full.json"]
+    for application in sanitized["applications"]:
+        for operation in application["operations"]:
+            assert "applied_at_utc" not in operation
+            assert "duration_seconds" not in operation
+    assert sanitized["original_filename"] == "plate.tiff"
+    assert source == journal
 
 
 def test_retry_truncation_is_local_to_the_last_application() -> None:
