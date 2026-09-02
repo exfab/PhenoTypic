@@ -639,8 +639,14 @@ the figure construction are unchanged, so the PDF is still the same figure.
 This does not reopen Q2. Q5's ">500k points" governs the **screen**, where a
 section is drawn from a live frame; the export path draws one section per page —
 723 rows in the fixture, ~5,173 at full-run scale. Measured with `go.Scatter` in a 4x4
-`make_subplots` at 1600x1200: **2.8 s and 0.10 MB per page** at 5,000 points. No
-downsampling, so the PDF is not a quiet lie about the figure.
+`make_subplots` at 1600x1200: **2.8 s and 0.10 MB per page** at 5,000 points --
+*measured just below the full-run figure, not at it.* 5,173 is 3.5% above the
+measured point, so the per-page cost there is extrapolated (~2.9 s on a
+near-linear path), not observed. Left un-benchmarked deliberately: the margin is
+small and the export is user-initiated. Re-measure before quoting this at a
+materially larger section.
+
+There is no downsampling, so the PDF is not a quiet lie about the figure.
 
 If a future run makes a single section large enough that SVG export stalls, that
 is the point to revisit — not now.
