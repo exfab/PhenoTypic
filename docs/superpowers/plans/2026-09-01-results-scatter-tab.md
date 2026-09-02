@@ -2430,7 +2430,9 @@ Expected: FAIL — `AttributeError: TAB_SCATTER_ID`. If `_tab_ids_in_layout` doe
 
 - [ ] **Step 3: Generalize the splitter**
 
-In section F of `results_viewer.js`, replace the four hard-coded identifiers with a data-attribute contract, mirroring how `timeline.js` was made surface-agnostic: the handle carries `data-splitter-target` (the id of the pane to resize) and `data-splitter-store` (the Dash store id to persist to). Keep `clampSidebarWidth` exported. Attach to every `[data-splitter-target]`, not to one id, and clear the poll once attached so an unmounted surface does not leave a timer running for the session.
+In section F of `results_viewer.js`, replace the four hard-coded identifiers with a data-attribute contract, mirroring section (F)'s tile-bridge `BRIDGES` table, which already
+parameterizes two surfaces in this same file (`timeline.js` was deleted in
+`fe74d832`; the precedent this originally cited no longer exists): the handle carries `data-splitter-target` (the id of the pane to resize) and `data-splitter-store` (the Dash store id to persist to). Keep `clampSidebarWidth` exported. Attach to every `[data-splitter-target]`, not to one id, and clear the poll once attached so an unmounted surface does not leave a timer running for the session.
 
 - [ ] **Step 4: Add the id and mount the tab**
 

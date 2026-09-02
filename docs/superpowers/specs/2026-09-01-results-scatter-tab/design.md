@@ -452,7 +452,8 @@ Right-docked `dbc.Offcanvas`, the component the filter sidebar already uses.
   default 180) is the right *pattern* but **is not reusable as written**: every
   identifier is hard-coded (`#qc-review-splitter`, `#qc-review-worklist`,
   `store-qc-sidebar-width`, the `_qcSplitter` idempotence flag). Reuse means
-  generalizing that module the way `timeline.js` was made surface-agnostic — real
+  generalizing that module the way section (F)'s tile-bridge `BRIDGES` table
+  already parameterizes two surfaces — real
   work, scoped into v1, not a free reuse.
   Second-order, inherited: QC is not mounted, so `#qc-review-splitter` never
   enters the DOM, its `setInterval(tryAttach, 100)` never clears and its body-wide
