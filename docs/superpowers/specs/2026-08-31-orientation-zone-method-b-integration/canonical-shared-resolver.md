@@ -312,6 +312,15 @@ extent sensitivity setting.
 - Canonical failure must not expose legacy zone boundaries.
 - Canonical mode must not execute the legacy colony-ness extension.
 - `legacy_mode=True` must preserve the historical measurement goldens.
+- The pre-simplification migration golden at
+  `tests/unit/measure/_golden/orientation_zones_pre_simplification.json` freezes
+  complete `MeasureSymZones` and diagnostic `MeasureOrientationZones` tables,
+  selected centers, solver states, configured-detector serialization, and old
+  payload migration for exact, collapsed, missing, tiny, detector-center, and
+  legacy cases. Regenerate it only through the opt-in capture test in
+  `test_orientation_zone_migration_golden.py` before intentional behavior
+  changes. Its initial SHA-256 is
+  `7f67797ea72d2e9c54b1352d06db55c5f3a6eff260819141e89e899f2b1dd073`.
 - Old standalone, pipeline, legacy-nested, and `OperationField` payloads must
   migrate to legacy mode; new payloads must serialize the canonical default.
 - Inspection figures must show the exact configured outer percentile and apply
