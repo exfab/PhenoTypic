@@ -581,6 +581,7 @@ def read_provenance_migration_seal(
         "schema_version", "task_type", "generation", "manifest_digest",
         "ordered_status_digest", "clean", "upgraded", "failures",
     }
+    upgraded = raw.get("upgraded") if isinstance(raw, Mapping) else None
     if (
         not isinstance(raw, Mapping)
         or set(raw) != fields
@@ -589,10 +590,10 @@ def read_provenance_migration_seal(
         or raw.get("generation") != generation
         or raw.get("manifest_digest") != manifest.inventory_digest
         or not isinstance(raw.get("clean"), bool)
-        or not isinstance(raw.get("upgraded"), int)
-        or isinstance(raw.get("upgraded"), bool)
-        or raw.get("upgraded") < 0
-        or raw.get("upgraded") > manifest.task_count
+        or not isinstance(upgraded, int)
+        or isinstance(upgraded, bool)
+        or upgraded < 0
+        or upgraded > manifest.task_count
         or not isinstance(raw.get("failures"), list)
     ):
         raise ValueError("provenance migration seal has invalid schema")

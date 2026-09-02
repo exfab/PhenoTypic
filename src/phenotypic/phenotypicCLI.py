@@ -1262,12 +1262,13 @@ def _print_process_only_dry_run_plan(
         "Execution mode: full applies the pipeline and measures images; "
         "measure reruns measurement from an existing output root; recompile "
         "refreshes aggregate outputs from an existing output root; process "
-        "exports a single layer selected with --layer; migrate converts a "
-        "legacy .h5 output tree to OME-Zarr stores IN PLACE, in two passes -- "
-        "pass 1 canonicalizes metadata headers in every non-image target, "
-        "pass 2 converts each per-image .h5 to a store and re-publishes the "
-        "run's completion evidence. Runs locally by default or as a "
-        "generation-scoped SLURM attempt with --slurm; re-run it to resume."
+        "exports a single layer selected with --layer; migrate explicitly "
+        "upgrades a full legacy run, direct OME-Zarr store, or process-output "
+        "tree. A full legacy run uses two passes: metadata headers in every "
+        "non-image target, then each per-image .h5 store conversion and "
+        "completion recertification. Direct stores and process-output trees "
+        "upgrade only schema-v1 root provenance. Runs locally by default or as "
+        "a generation-scoped SLURM attempt with --slurm; re-run it to resume."
     ),
 )
 @click.option(
@@ -1552,12 +1553,14 @@ def phenotypic_cli(
       measure    Re-run measurement only against an existing output root.
                  Requires --pipeline; no --input (inputs are discovered
                  from --output).
-      migrate    Convert a legacy .h5 output tree to OME-Zarr stores IN
-                 PLACE, in two passes: metadata headers in every non-image
-                 target first, then each per-image .h5 to a store followed by
-                 the run's completion evidence. It runs locally by default or
-                 through a generation-scoped SLURM attempt with --slurm; re-
-                 running it creates a fresh attempt for interrupted work.
+      migrate    Explicitly upgrade a full legacy run, direct OME-Zarr store,
+                 or process-output tree. A full run uses two passes: metadata
+                 headers in every non-image target, then each per-image .h5
+                 store conversion and completion recertification. Direct
+                 stores and process-output trees upgrade only schema-v1 root
+                 provenance. It runs locally by default or through a
+                 generation-scoped SLURM attempt with --slurm; re-running it
+                 creates a fresh attempt for interrupted work.
 
       recompile  Refresh aggregate outputs from an existing output root; no
                  --input or --pipeline (both are reloaded from --output).

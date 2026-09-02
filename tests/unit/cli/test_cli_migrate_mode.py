@@ -49,6 +49,15 @@ def test_the_mode_help_states_both_passes() -> None:
     assert "two passes" in help_text or "two-pass" in help_text, help_text
 
 
+def test_migrate_help_names_provenance_only_targets() -> None:
+    """Migration help must distinguish full runs from provenance-only targets."""
+    result = CliRunner().invoke(phenotypic_cli, ["--help"])
+
+    assert result.exit_code == 0
+    assert "direct OME-Zarr store" in result.output
+    assert "process-output tree" in result.output
+
+
 def test_migration_help_names_all_reclaimed_sources_and_durability_rejection() -> None:
     """Destructive and inapplicable option help must match migration behavior."""
     from phenotypic.phenotypicCLI import phenotypic_cli as command

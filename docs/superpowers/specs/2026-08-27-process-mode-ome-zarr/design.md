@@ -362,25 +362,27 @@ and stores the result, so a published store would carry, e.g.,
 — cluster filesystem layout, username, and project directory names, inside an
 artifact bound for a NAS and then object storage.
 
-Process-mode stores record `Path(path).name` instead. `sha256` is unchanged and
-still pins the pipeline's identity exactly, so nothing is lost but the ability
-to point at the file on the cluster — which a published artifact should not be
-asserting anyway.
+**Superseded 2026-09-01 by provenance schema v2.** Every persisted pipeline
+identity now uses the portable basename in every application kind; the SHA-256
+continues to pin the exact pipeline bytes. Bundle stores no longer persist an
+absolute source path either.
 
-The journal therefore means slightly different things by mode, and that is
-deliberate: a bundle store stays inside the run directory and benefits from the
-absolute path; a process-mode store is a publication artifact and does not. The
-difference is carried by one explicit parameter, not by inference (§8).
+The former one-hop rule is also superseded. `Image.imread` imports the complete
+normalized journal from a PhenoTypic OME-Zarr input, and the new invocation
+appends one separately typed application (`process`, `full`, or
+`programmatic`). Feeding a process store into another process run or the normal
+CLI therefore preserves the earlier pipeline and adds the later pipeline; it
+does not overwrite lineage. `original_filename` remains the earliest imported
+basename PhenoTypic durably knows, while each application's `input_filename`
+names its immediate input.
 
-**Provenance travels with the pixels for exactly one hop.** Because
-`initialize_cli_provenance` opens with `new_provenance_journal()` and `imread`
-reads a store as plain pixels rather than restoring state (§3.2), feeding a
-process-mode store back in as input yields a second store whose journal records
-only the *second* pipeline — a chain of process-mode runs does not accumulate a
-lineage. That follows from decision 3 and is intended, but it is not what "the
-store carries the operations that ran" reads like at first glance, so it is
-stated here rather than left to be discovered. Pinned by
-`test_a_store_round_trips_store_in_to_store_out`.
+This supersession deliberately does not make third-party OME-Zarr stateful.
+Stores without a valid PhenoTypic journal still enter as plain pixels and begin
+a new application history. Explicit migrate mode converts a schema-v1 journal
+to one `legacy` application. That application's `phenotypic_version` may be
+null only when no historical version can be recovered; the migration release
+is never substituted. Pinned by the schema-v2 process → full → exported-store
+integration regression and repeated-application tests.
 
 #### 2.3.3 A published store is bit-reproducible
 

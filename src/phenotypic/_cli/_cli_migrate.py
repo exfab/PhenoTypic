@@ -1614,7 +1614,7 @@ def _run_migrate_owned(
 
     if dry_run:
         metadata_pass = run_metadata_pass(output_dir, dry_run=True)
-        provenance_results, provenance_failures = execute_provenance_migration(
+        provenance_results, dry_provenance_failures = execute_provenance_migration(
             provenance_target, n_jobs=njobs, dry_run=True
         )
         dry_results, dry_stage_failures = _execute_migration_tasks(
@@ -1636,7 +1636,7 @@ def _run_migrate_owned(
             provenance_upgraded=sum(
                 result.upgraded for result in provenance_results
             ),
-            provenance_failures=provenance_failures,
+            provenance_failures=dry_provenance_failures,
         )
 
     reconcile_interrupted_migration_attempt(output_dir, _lease_held=True)
