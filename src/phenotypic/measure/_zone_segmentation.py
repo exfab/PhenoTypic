@@ -168,11 +168,77 @@ def _resolve_target_prop(image: Image, prop):
     return max(props, key=lambda candidate: candidate.area)
 
 
+def detected_center_coordinates(
+    object_map: np.ndarray,
+    center_map: np.ndarray,
+) -> dict[int, tuple[float, float]]:
+    """Associate detected center components with final colony labels.
+
+    Each positive center component is assigned to the final object with which
+    it has the largest pixel overlap. If several center components overlap the
+    same object, the component with the greatest overlap wins. Ties are broken
+    by the lowest numeric label. The reported coordinate is the centroid of
+    the winning component's overlapping pixels, so unrelated detector pixels
+    outside the final colony cannot pull the center away.
+
+    Args:
+        object_map: Final labeled colony map.
+        center_map: Labeled compact-center map produced by ``center_detector``.
+
+    Returns:
+        Mapping from final colony label to global ``(row, col)`` coordinate.
+
+    Raises:
+        ValueError: If the two label maps do not have the same two-dimensional
+            shape.
+    """
+    objects = np.asarray(object_map)
+    centers = np.asarray(center_map)
+    if objects.ndim != 2 or centers.ndim != 2 or objects.shape != centers.shape:
+        raise ValueError(
+            "center_detector output and final objmap must have the same 2-D shape"
+        )
+
+    overlapping = (objects > 0) & (centers > 0)
+    if not overlapping.any():
+        return {}
+
+    center_labels = np.unique(centers[overlapping])
+    assignments: dict[int, tuple[int, int, tuple[float, float]]] = {}
+    for center_label_value in center_labels:
+        center_label = int(center_label_value)
+        component_overlap = overlapping & (centers == center_label_value)
+        object_labels, counts = np.unique(
+            objects[component_overlap], return_counts=True
+        )
+        maximum = int(counts.max())
+        object_label = int(object_labels[counts == maximum].min())
+        selected_pixels = np.argwhere(
+            component_overlap & (objects == object_label)
+        )
+        coordinate = (
+            float(np.mean(selected_pixels[:, 0])),
+            float(np.mean(selected_pixels[:, 1])),
+        )
+        candidate = (maximum, center_label, coordinate)
+        current = assignments.get(object_label)
+        if current is None or (-candidate[0], candidate[1]) < (
+            -current[0], current[1]
+        ):
+            assignments[object_label] = candidate
+
+    return {
+        object_label: candidate[2]
+        for object_label, candidate in assignments.items()
+    }
+
+
 def _compute_mask_morphology(
     image: Image,
     prop=None,
     *,
     params: ZoneSegmentationParams,
+    center_global: tuple[float, float] | None = None,
 ) -> ZoneSegmentation:
     """Compute mask-derived center, PELT core, symmetry, and expansion.
 
@@ -214,7 +280,12 @@ def _compute_mask_morphology(
     objmap_crop = np.asarray(image.objmap[:])[slc]
     gray_crop = np.asarray(image.gray[:])[slc]
     local_mask = objmap_crop == target_prop.label
-    if params.method == "distance":
+    if center_global is not None:
+        local_cr = (
+            float(center_global[0]) - float(slc[0].start),
+            float(center_global[1]) - float(slc[1].start),
+        )
+    elif params.method == "distance":
         dt = np.asarray(
             distance_transform_edt(local_mask), dtype=np.float64
         )
@@ -440,6 +511,8 @@ def resolve_zone_segmentation(
     legacy_params: ZoneSegmentationParams,
     canonical_params: OrientationChangePointParams,
     legacy_mode: bool,
+    center_global: tuple[float, float] | None = None,
+    center_required: bool = False,
 ) -> ZoneResolution:
     """Resolve one canonical zone geometry for all zone-aware measurers.
 
@@ -454,6 +527,9 @@ def resolve_zone_segmentation(
         legacy_params: Parameters for the preserved mask and colony-ness path.
         canonical_params: Parameters for Method B.
         legacy_mode: Whether to return the colony-ness zone partition unchanged.
+        center_global: Optional detector-selected center in full-image coordinates.
+        center_required: Whether a configured detector makes a missing center a
+            canonical failure rather than a request for the default estimator.
 
     Returns:
         Shared segmentation, provenance, and reusable orientation context.
@@ -467,7 +543,33 @@ def resolve_zone_segmentation(
             failure_reason="none",
         )
 
-    base = _compute_mask_morphology(image, prop, params=legacy_params)
+    base = _compute_mask_morphology(
+        image,
+        prop,
+        params=legacy_params,
+        center_global=center_global,
+    )
+    if center_required and center_global is None:
+        missing = replace(
+            base,
+            core_radius=float("nan"),
+            symmetric_radius=float("nan"),
+            mean_expansion=float("nan"),
+            max_expansion=float("nan"),
+            core_end_radius=float("nan"),
+            dense_end_radius=float("nan"),
+            sparse_end_radius=float("nan"),
+            core_area=float("nan"),
+            dense_area=float("nan"),
+            sparse_area=float("nan"),
+            zones_computed=False,
+        )
+        return ZoneResolution(
+            segmentation=missing,
+            method_code=4,
+            method_used="missing",
+            failure_reason="center_not_found",
+        )
     if prop.area < 10:
         missing = replace(
             base,

@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import weakref
 from dataclasses import dataclass
-from typing import ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias
+
+if TYPE_CHECKING:
+    # See MeasureSymZones: this satisfies the pydantic mypy plugin's inherited
+    # field resolution without changing CanonicalZoneMeasure's runtime type.
+    OperationField: TypeAlias = Any
 
 import numpy as np
 import pandas as pd
@@ -962,6 +967,11 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
     legacy :class:`~phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC` columns.
 
     Args:
+        center_detector: Optional ObjectDetector or ImagePipeline that produces
+            compact center regions. In canonical mode, each detected component
+            is associated with the final colony it overlaps and its overlap
+            centroid becomes the shared radial origin. ``None`` preserves the
+            ``method`` estimator. Ignored in legacy mode. Defaults to ``None``.
         legacy_mode: Use the historical colony-ness zone partition instead of
             canonical Method B. Defaults to ``False``.
         outer_zone_percentile: Target-mask radial percentile used as the
@@ -1256,12 +1266,17 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
         for prop in props:
             if prop.area < 10 and self.legacy_mode:
                 continue
+            center_global, center_required = self._canonical_center_for_object(
+                image, prop.label
+            )
             resolution = resolve_zone_segmentation(
                     image,
                     prop,
                     legacy_params=self._zone_params(),
                     canonical_params=self._orientation_change_point_params(),
                     legacy_mode=self.legacy_mode,
+                    center_global=center_global,
+                    center_required=center_required,
             )
             seg = resolution.segmentation
             context = resolution.orientation_context

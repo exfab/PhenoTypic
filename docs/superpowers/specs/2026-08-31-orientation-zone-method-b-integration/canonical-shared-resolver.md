@@ -29,6 +29,7 @@ biological orientation is absent inside CoreZone.
 Both public measurers declare these fields through one private base class:
 
 ```python
+center_detector: OperationField | None = None
 legacy_mode: bool = False
 outer_zone_percentile: float = 100.0
 sigma_d: float = 1.5
@@ -43,21 +44,40 @@ zone_outer_support_margin: float = 0.0
 zone_maximum_gap: int = 0
 ```
 
+`center_detector` is an optional `ObjectDetector` or `ImagePipeline` that
+produces compact center regions. Canonical measurement applies it once to an
+image copy. Each positive center component is assigned to the final colony
+with which it has the greatest pixel overlap; ties use the lowest numeric
+label. If several components map to one colony, greatest overlap wins with the
+same label tie-break. The centroid of the winning component's pixels inside
+the final colony is the authoritative center for morphology, Method B,
+orientation measurements, and figures. A configured detector that has no
+overlapping center for an object produces canonical failure code 4 with
+`failure_reason="center_not_found"`; it never silently falls back to the final
+mask. `legacy_mode=True` ignores this field.
+
+`center_detector=None` preserves the V1 fallback behavior: canonical mode uses
+the final-mask distance-transform center selected by `method="distance"`.
+This fallback exists for compatibility and does not claim that the final
+branch mask is the best inoculum-center support mask.
+
 The default numeric values are configuration defaults, not biological
 constants. Parameter regimes may differ by species x medium, but every crop in
 one species x medium stratum must use the same values. Production code never
 branches on species, medium, scene, or crop identity.
 
-Canonical mode requires `method="distance"` and always consumes the final
-`Image.objmap` target mask and `Image.detect_mat`. The historical
+Canonical mode requires `method="distance"` for the fallback estimator and
+always consumes the final `Image.objmap` target mask and `Image.detect_mat`.
+When configured, `center_detector` supplies only the radial origin; it does not
+replace the target mask or Method B feature signal. The historical
 `intensity_source`, `tau_core`, `tau_dense`, and `tau_sparse` fields affect only
 legacy zone boundaries. `n_annuli`, `pelt_penalty`, and symmetry parameters
 remain active in both modes because they produce the independent morphological
 measurements.
 
 `outer_zone_percentile` is finite in `(0, 100]`. P100 is the exact maximum
-finite target-mask distance from the distance-transform center. Lower values
-use NumPy's linear percentile. Pixel selectors use
+finite target-mask distance from the selected radial origin. Lower values use
+NumPy's linear percentile. Pixel selectors use
 `np.nextafter(radius, +inf)` as their exclusive upper bound so boundary pixels
 are retained. The same exact radius drives measurement and visualization.
 
@@ -67,7 +87,7 @@ For every non-tiny object, the shared resolver performs:
 
 ```text
 final target object mask
-  -> distance-transform center
+  -> configured compact center detector, or final-mask EDT fallback
   -> shared mask-only PELT/symmetry/expansion primitive
   -> one detect_mat crop
   -> one structure-tensor field
@@ -85,9 +105,10 @@ No full image, tensor field, skeleton, or distance map is retained in an
 operation cache.
 
 One private morphology primitive is the source of `CoreRadius`,
-`SymmetricRadius`, `MeanExpansion`, `MaxExpansion`, and the distance-transform
-center in both modes. Canonical mode passes that geometry directly to Method B
-and never calculates colony-ness profiles or thresholds. The existing
+`SymmetricRadius`, `MeanExpansion`, and `MaxExpansion`. In canonical mode it
+uses the detector-selected center when configured, otherwise the historical
+distance-transform fallback. Canonical mode passes that geometry directly to
+Method B and never calculates colony-ness profiles or thresholds. The existing
 `compute_zone_segmentation()` extends the morphology result only for explicit
 legacy mode.
 
@@ -161,7 +182,7 @@ Stable diagnostic method codes are:
 | 0 | explicit legacy colony-ness |
 | 1 | exact two-change Method B |
 | 2 | collapsed one-change Method B |
-| 4 | canonical failure with missing zone measurements |
+| 4 | canonical failure with missing zone measurements, including a requested center that was not found |
 
 ## 6. Orientation measurement geometry
 
@@ -192,7 +213,9 @@ it is not the canonical Method B outer boundary.
 
 Direct construction with no arguments selects canonical mode. Newly serialized
 operations always include `"legacy_mode": false` unless the user selected
-legacy mode.
+legacy mode, and include `"center_detector": null` unless a detector or nested
+pipeline was configured. A configured detector round-trips through the shared
+`OperationField` class-tagged representation.
 
 Serialized `MeasureOrientationZones` and `MeasureSymZones` payloads that lack
 the field predate this redesign. All operation deserialization paths run a

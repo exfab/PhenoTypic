@@ -10,10 +10,15 @@ from __future__ import annotations
 
 import weakref
 from dataclasses import fields, replace
-from typing import ClassVar, Literal, TYPE_CHECKING, TypeAlias
+from typing import Any, ClassVar, Literal, TYPE_CHECKING, TypeAlias
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
+
+    # The pydantic mypy plugin resolves the inherited runtime OperationField
+    # annotation in each concrete model's module. Runtime validation remains
+    # on CanonicalZoneMeasure; the checker needs only the erased carrier type.
+    OperationField: TypeAlias = Any
 
 import numpy as np
 import pandas as pd
@@ -103,6 +108,11 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
     expansion and symmetry measurements.
 
     Args:
+        center_detector: Optional ObjectDetector or ImagePipeline that produces
+            compact center regions. In canonical mode, each detected component
+            is associated with the final colony it overlaps and its overlap
+            centroid becomes the shared radial origin. ``None`` preserves the
+            ``method`` estimator. Ignored in legacy mode. Defaults to ``None``.
         legacy_mode: Use the historical colony-ness zone partition instead of
             canonical Method B. Defaults to ``False``.
         outer_zone_percentile: Target-mask radial percentile used as the
@@ -280,12 +290,17 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
         Returns:
             ZoneSegmentation with all computed fields populated.
         """
+        center_global, center_required = self._canonical_center_for_object(
+            image, prop.label
+        )
         return resolve_zone_segmentation(
             image,
             prop,
             legacy_params=self._zone_params(),
             canonical_params=self._orientation_change_point_params(),
             legacy_mode=self.legacy_mode,
+            center_global=center_global,
+            center_required=center_required,
         ).segmentation
 
     # ── MeasureFeatures interface ────────────────────────────────────

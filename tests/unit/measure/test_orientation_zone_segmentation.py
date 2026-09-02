@@ -10,6 +10,8 @@ from pydantic import BaseModel, ConfigDict
 
 from phenotypic import Image, ImagePipeline
 from phenotypic.abc_ import BaseOperation
+from phenotypic.detect import HysteresisDetector
+from phenotypic.enhance import BlurGauss
 from phenotypic.measure import MeasureOrientationZones, MeasureSymZones
 from phenotypic.measure._orientation_zone_segmentation import (
     OrientationChangePointParams,
@@ -23,6 +25,7 @@ from phenotypic.measure._measure_orientation_zones import (
     radial_ring_orientation_profile,
     zone_selector,
 )
+from phenotypic.measure._zone_segmentation import detected_center_coordinates
 from phenotypic.sdk_.typing_ import OperationField
 
 
@@ -199,6 +202,126 @@ def _radial_spoke_image() -> Image:
     image.detect_mat[:] = signal
     image.objmap[:] = mask.astype(np.int32)
     return image
+
+
+def _off_center_core_image(*, center_overlaps_object: bool = True) -> Image:
+    """Build one colony with a threshold-isolatable compact center."""
+    rows, cols = np.indices((121, 121), dtype=float)
+    object_mask = np.hypot(rows - 60.0, cols - 60.0) <= 45.0
+    core_center = (45.0, 35.0) if center_overlaps_object else (8.0, 8.0)
+    core_mask = np.hypot(
+        rows - core_center[0], cols - core_center[1]
+    ) <= 5.0
+    signal = np.zeros(object_mask.shape, dtype=np.float32)
+    signal[object_mask] = 0.2
+    signal[core_mask] = 1.0
+    image = Image(np.repeat(signal[..., None], 3, axis=2))
+    image.detect_mat[:] = signal
+    image.objmap[:] = object_mask.astype(np.int32)
+    return image
+
+
+def _compact_center_detector() -> HysteresisDetector:
+    return HysteresisDetector(
+        low=0.8,
+        high=0.8,
+        ignore_borders=False,
+    )
+
+
+def test_detected_centers_are_associated_by_overlap_with_deterministic_ties():
+    objects = np.zeros((8, 12), dtype=np.int32)
+    objects[:, :6] = 1
+    objects[:, 6:] = 2
+    centers = np.zeros_like(objects)
+    centers[1:3, 1:3] = 3
+    centers[4:6, 1:3] = 2
+    centers[2:4, 5:7] = 4
+    centers[5:7, 8:10] = 5
+
+    coordinates = detected_center_coordinates(objects, centers)
+
+    # Labels 2 and 3 have equal overlap with object 1, so label 2 wins.
+    assert coordinates[1] == (4.5, 1.5)
+    assert coordinates[2] == (5.5, 8.5)
+
+
+def test_center_detector_supplies_the_shared_center_to_both_measurers():
+    image = _off_center_core_image()
+    symmetric = MeasureSymZones(center_detector=_compact_center_detector())
+    orientation = MeasureOrientationZones(
+        center_detector=_compact_center_detector(),
+        include_diagnostics=True,
+    )
+
+    symmetric.measure(image)
+    orientation.measure(image)
+
+    symmetric_center = symmetric._MeasureSymZones__cache_intermediates[
+        1
+    ].centroid_global
+    orientation_center = orientation._cache[1]["centroid_global"]
+    np.testing.assert_allclose(symmetric_center, (45.0, 35.0), atol=1e-12)
+    np.testing.assert_allclose(orientation_center, symmetric_center, atol=1e-12)
+
+
+def test_requested_center_detector_without_overlap_is_canonical_failure():
+    image = _off_center_core_image(center_overlaps_object=False)
+    symmetric = MeasureSymZones(
+        center_detector=_compact_center_detector()
+    ).measure(image).iloc[0]
+    orientation = MeasureOrientationZones(
+        center_detector=_compact_center_detector(),
+        include_diagnostics=True,
+    ).measure(image).iloc[0]
+
+    assert symmetric.drop(labels="Object_Label").isna().all()
+    assert orientation["OrientZones_ZoneSegmentationMethodCode"] == 4.0
+    assert orientation.filter(like="OrientZones_").drop(
+        labels="OrientZones_ZoneSegmentationMethodCode"
+    ).isna().all()
+
+
+def test_center_detector_is_serialized_and_rejects_non_detectors():
+    operation = MeasureSymZones(center_detector=_compact_center_detector())
+    restored = MeasureSymZones.from_json(operation.to_json())
+
+    assert isinstance(restored.center_detector, HysteresisDetector)
+    assert restored.center_detector.low == 0.8
+    assert "center_detector" in MeasureSymZones.model_json_schema()["properties"]
+    assert "center_detector" in MeasureOrientationZones.model_json_schema()[
+        "properties"
+    ]
+    with pytest.raises(ValueError, match="center_detector must be"):
+        MeasureSymZones(center_detector=BlurGauss())
+
+
+def test_center_detector_accepts_and_roundtrips_an_image_pipeline():
+    center_pipeline = ImagePipeline(ops=[_compact_center_detector()])
+    operation = MeasureOrientationZones(center_detector=center_pipeline)
+    restored = MeasureOrientationZones.from_json(operation.to_json())
+
+    assert isinstance(restored.center_detector, ImagePipeline)
+    center, required = restored._canonical_center_for_object(
+        _off_center_core_image(), 1
+    )
+    assert required is True
+    np.testing.assert_allclose(center, (45.0, 35.0), atol=1e-12)
+
+
+def test_legacy_mode_ignores_center_detector(monkeypatch):
+    image = _off_center_core_image()
+
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("legacy mode must not run center_detector")
+
+    monkeypatch.setattr(HysteresisDetector, "apply", fail_if_called)
+    result = MeasureSymZones(
+        legacy_mode=True,
+        center_detector=_compact_center_detector(),
+    ).measure(image)
+
+    assert len(result) == 1
 
 
 def test_both_measurers_use_identical_canonical_zone_geometry():

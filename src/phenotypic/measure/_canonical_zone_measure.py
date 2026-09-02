@@ -2,20 +2,27 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, Union
+import weakref
 
 import numpy as np
-from pydantic import field_validator, model_validator
+from pydantic import PrivateAttr, field_validator, model_validator
 
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.measure._orientation_zone_segmentation import (
     OrientationChangePointParams,
 )
+from phenotypic.measure._zone_segmentation import detected_center_coordinates
+from phenotypic.sdk_.typing_ import OperationField
+
+if TYPE_CHECKING:
+    from phenotypic._core._image import Image
 
 
 class CanonicalZoneMeasure(MeasureFeatures):
     """Private base declaring the single canonical zone-resolution surface."""
 
+    center_detector: Union[OperationField, None] = None  # type: ignore[valid-type]
     legacy_mode: bool = False
     outer_zone_percentile: float = 100.0
     sigma_d: float = 1.5
@@ -28,6 +35,28 @@ class CanonicalZoneMeasure(MeasureFeatures):
     zone_support_weight: float = 4.0
     zone_outer_support_margin: float = 0.0
     zone_maximum_gap: int = 0
+
+    _center_cache_image_ref: "weakref.ReferenceType[Image] | None" = PrivateAttr(
+        default=None
+    )
+    _center_cache_signature: str | None = PrivateAttr(default=None)
+    _center_cache: dict[int, tuple[float, float]] = PrivateAttr(
+        default_factory=dict
+    )
+
+    @field_validator("center_detector")
+    @classmethod
+    def _valid_center_detector(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        from phenotypic import ImagePipeline
+        from phenotypic.abc_ import ObjectDetector
+
+        if not isinstance(value, (ObjectDetector, ImagePipeline)):
+            raise ValueError(
+                "center_detector must be an ObjectDetector, ImagePipeline, or None"
+            )
+        return value
 
     @field_validator(
         "outer_zone_percentile",
@@ -124,6 +153,46 @@ class CanonicalZoneMeasure(MeasureFeatures):
             outer_support_margin=self.zone_outer_support_margin,
             maximum_gap=self.zone_maximum_gap,
         )
+
+    def _canonical_center_for_object(
+        self,
+        image: "Image",
+        object_label: int,
+    ) -> tuple[tuple[float, float] | None, bool]:
+        """Return an optional detector-selected center for one final object.
+
+        The configured detector is applied once per image-and-parameter
+        signature. Its center components are associated with final colonies by
+        pixel overlap. ``required`` is true only when the user configured a
+        detector, allowing the shared resolver to distinguish an absent
+        optional override from a requested detector that found no center.
+        """
+        if self.legacy_mode or self.center_detector is None:
+            return None, False
+
+        signature = self.model_dump_json()
+        cached_image = (
+            self._center_cache_image_ref()
+            if self._center_cache_image_ref is not None
+            else None
+        )
+        if cached_image is not image or self._center_cache_signature != signature:
+            from phenotypic import ImagePipeline
+
+            if isinstance(self.center_detector, ImagePipeline):
+                center_image = self.center_detector.apply(
+                    image, inplace=False, reset=False
+                )
+            else:
+                center_image = self.center_detector.apply(image, inplace=False)
+            self._center_cache = detected_center_coordinates(
+                np.asarray(image.objmap[:]),
+                np.asarray(center_image.objmap[:]),
+            )
+            self._center_cache_image_ref = weakref.ref(image)
+            self._center_cache_signature = signature
+
+        return self._center_cache.get(int(object_label)), True
 
     @classmethod
     def _migrate_serialized_params(cls, params: dict[str, Any]) -> dict[str, Any]:
