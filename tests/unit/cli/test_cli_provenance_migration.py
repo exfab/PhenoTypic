@@ -286,6 +286,56 @@ def test_direct_store_refuses_active_external_migration_before_rewrite(
     assert ".phenotypic" in lifecycle_root.parts
 
 
+@pytest.mark.parametrize("target_kind", ["direct_store", "process_tree"])
+def test_provenance_only_dry_run_refuses_active_owner_without_rewrite(
+    tmp_path: Path, target_kind: str
+) -> None:
+    """Dry runs honor the same active-owner fence as a mutating migration."""
+    from phenotypic._cli._cli_migrate import MigrateModeError, run_migrate
+    from phenotypic._cli._cli_migrate_provenance import (
+        classify_provenance_migration_target,
+        provenance_migration_lifecycle_root,
+    )
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        initialize_slurm_lifecycle,
+        lifecycle_state_path,
+    )
+    from phenotypic.sdk_ import phenotypic_cache_dir
+
+    process_root = tmp_path / "process"
+    store = (
+        tmp_path / "direct.ome.zarr"
+        if target_kind == "direct_store"
+        else process_root / "plate.ome.zarr"
+    )
+    target_path = store if target_kind == "direct_store" else process_root
+    root = _write_store_root(store, {
+        "schema_version": 1,
+        "status": "complete",
+        "pipeline": None,
+        "retry_base_length": 0,
+        "operations": [],
+    })
+    root_before = root.read_bytes()
+    target = classify_provenance_migration_target(target_path)
+    assert target.kind == target_kind
+    lifecycle_root = provenance_migration_lifecycle_root(target)
+    initialize_slurm_lifecycle(
+        lifecycle_root,
+        generation="already-active",
+        mode="migrate",
+        owner_kind="local",
+        control_root=phenotypic_cache_dir(lifecycle_root),
+    )
+    lifecycle_before = lifecycle_state_path(lifecycle_root).read_bytes()
+
+    with pytest.raises(MigrateModeError, match="active"):
+        run_migrate(target_path, dry_run=True)
+
+    assert root.read_bytes() == root_before
+    assert lifecycle_state_path(lifecycle_root).read_bytes() == lifecycle_before
+
+
 @pytest.mark.parametrize(
     "journal",
     [

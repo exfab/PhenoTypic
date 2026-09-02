@@ -1502,6 +1502,14 @@ def run_migrate(
             raise MigrateModeError(
                 "--delete-sources is not accepted for provenance-only migration"
             )
+        lifecycle_root = provenance_migration_lifecycle_root(target)
+        if dry_run:
+            active = load_slurm_lifecycle(lifecycle_root)
+            if active is not None and active.get("active") is True:
+                raise MigrateModeError(
+                    "provenance migration target already has an active "
+                    f"generation {active.get('generation')!r}"
+                )
         if dry_run:
             results, failures = execute_provenance_migration(
                 target, n_jobs=njobs, dry_run=True
