@@ -4,7 +4,8 @@
 **Against spec:** `docs/superpowers/specs/2026-09-01-results-scatter-tab/design.md` (revision 3)
 **Worktree:** `/bigdata/exfab/anguy344/PhenoTypic/.worktrees/results-scatter-gui`, branch `feat/results-scatter-gui`
 **Date:** 2026-09-01
-**Verdict:** do not start implementation. 7 blocking findings, 13 should-fix, 11 nits.
+**Verdict:** do not start implementation. **9 blocking findings**, 12 should-fix,
+11 nits.
 
 ## How to read the evidence markers
 
@@ -12,24 +13,41 @@ Every finding is marked with how it was established. The plan contains runnable
 code, so "I read the signature" and "I ran it" are different strengths of claim
 and are not conflated here.
 
-- **[SRC]** — read directly from the named `file:line`. Authoritative.
-- **[SPIKE-pending]** — the finding rests on reasoning about a third-party
-  library or framework internal. A spike script exists and is queued with the
-  orchestrator; the finding stands on analysis until its output lands.
+- **[SRC]** — read directly from the named `file:line`.
+- **[MEASURED]** — a spike script was written and executed; the numbers quoted
+  are its output, not an estimate.
+- **[SPIKE-pending]** — written and queued, output not yet returned.
 
-Six spike scripts are written and awaiting execution:
-
-| Script | Settles |
-|---|---|
-| `spike_a_schema_prefixes.py` | Task 4 derivation: does any leaf's `category()` raise; is the result import-order dependent |
-| `spike_b_frame_index.py` | Task 8 polars semantics; left-join row order |
-| `spike_c_figure_facets.py` | Tasks 5/6/9 tests, incl. whether the shared-axes test has teeth |
-| `spike_d_store_and_grouping.py` | Task 1 `image_display_range` on the real store; Task 7's 149-column claim |
-| `spike_e_dash_and_deps.py` | Dash `callback_map` shape; pypdf/fitz/Chrome availability |
-| `spike_f_fix_and_vacuity.py` | B1's fix shape; vacuity sweep by mutation |
-
-They live in
+Seven spike scripts live in
 `/scratch/anguy344/27996931/claude-5188/-bigdata-exfab-anguy344-PhenoTypic/e6ad7160-0024-44c2-ba1e-552a606cebac/scratchpad/`.
+A–F have been executed (all exit 0); G is queued.
+
+| Script | Settled |
+|---|---|
+| `spike_a_schema_prefixes.py` | **Clean.** No leaf's `category()` raises (46 leaves); result is NOT import-order dependent; all four Task 4 assertions pass |
+| `spike_b_frame_index.py` | **Clean.** All three Task 8 tests pass; left join preserves order at n=2000; `maintain_order='left'` accepted |
+| `spike_c_figure_facets.py` | Shared-axes test has **no teeth**; legend bug **confirmed**; `plottable` raises rather than corrupts |
+| `spike_d_store_and_grouping.py` | `_read_store_level` misuse **confirmed and worse than named**; Task 7's 149-column claim reproduces exactly |
+| `spike_e_dash_and_deps.py` | `callback_map` form, missing symbols, missing asset path, absent Chrome/pypdf/fitz — all confirmed |
+| `spike_f_fix_and_vacuity.py` | B1 fix shape; vacuity sweep by mutation |
+| `spike_g_rasterizer_and_range.py` | *(queued)* whether pymupdf is needed; simplest correct `image_display_range` |
+
+## Withdrawn after measurement
+
+Two findings from the first pass did not survive their spikes. Recorded so they
+are not re-raised:
+
+- **S5(a) and S5(c), import-order dependence and a raising `category()`** —
+  disproved. `spike_a` walks all 46 discoverable leaves under both import
+  orders: nothing raises, `Status` is present either way, and the derived tuple
+  is identical (31 prefixes) with and without `phenotypic.sdk_` loaded. Task 4's
+  derivation is sound as written. The docstring-drift point (S5b) and the
+  unstated `QC_` behaviour change (S5d) still stand.
+- **S7, join-order flakiness** — disproved, and by a wider margin than a
+  downgrade. `spike_b` confirms the left join preserves left row order at
+  n=2000, the per-key rank values are correct regardless of order, and
+  `maintain_order='left'` is accepted by polars 1.41.2 if belt-and-braces is
+  wanted. Task 8 needs no change.
 
 ---
 

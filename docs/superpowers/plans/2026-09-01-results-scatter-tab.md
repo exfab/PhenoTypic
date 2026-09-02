@@ -16,6 +16,21 @@
 
 - **`uv` is the sole runner.** Never bare `python` or `pip`. Tests: `uv run pytest`.
 - **Lint with explicit paths only:** `uv run ruff check --fix <paths you changed>`. A bare `ruff check --fix` rewrites the whole repo.
+- **Any pytest run wider than a single file goes through Slurm, never inline.**
+  Use `docs/superpowers/plans/2026-09-01-results-scatter-tab/run_scatter_tests.sbatch`,
+  which shards the tree across a 16-task array:
+  ```bash
+  sbatch --export=ALL,SCOPE=gui  docs/superpowers/plans/2026-09-01-results-scatter-tab/run_scatter_tests.sbatch
+  sbatch --export=ALL,SCOPE=full docs/superpowers/plans/2026-09-01-results-scatter-tab/run_scatter_tests.sbatch
+  ```
+  Targeted runs (`-k`, one file) stay inline — they finish in seconds. A
+  module-wide run does not, and a head node kills it. Three traps the script
+  already handles and an inline run does not: `-n auto` reads the node's core
+  count rather than the allocation's and manufactures timeouts; the repo's
+  `--capture=no` triples runtime against shared storage; and a missing
+  `QT_QPA_PLATFORM=offscreen` aborts the interpreter with no summary.
+  **Submission is not execution** — always report `StartTime` and `Reason` from
+  `scontrol show job <id>`, never "submitted" as if it were "passed".
 - **Verification fixture:** `/rhome/anguy344/bigdata_exfab/projects/ucr_029_e_d_Maresca/data/results/2026-08-11-migration-test/` — 36 migrated stores, 844 mirror rows, 723 plottable, 121 phantoms, 23 strains, 28 plates, 36 images. Never write to it.
 - **Never use `startswith("Metadata_")`** as a semantic metadata check. Use `is_metadata_header()` (`sdk_/_metadata_helpers.py:281`).
 - **Never hard-code a store's series or label path.** Resolve from `attributes.phenotypic` (`labels` → `{"objmap": "rgb/labels/objmap"}`, `series`, `pyramid`).
@@ -605,9 +620,11 @@ _MEASUREMENT_PREFIXES: tuple[str, ...] = _derive_measurement_prefixes()
 - [ ] **Step 4: Run the test and the colony-grid suite**
 
 ```bash
-uv run pytest tests/unit/gui/results_viewer/test_measurement_prefixes.py -v
-uv run pytest tests/unit/gui/results_viewer/ -k "colony or axis or grid" -v
+uv run pytest tests/unit/gui/results_viewer/test_measurement_prefixes.py -v   # one file: inline
+sbatch --export=ALL,SCOPE=gui docs/superpowers/plans/2026-09-01-results-scatter-tab/run_scatter_tests.sbatch
 ```
+The single new file runs inline; the colony/axis/grid regression scope is
+wide enough to belong on Slurm.
 
 Expected: the new file passes. If a colony-grid test asserts a specific option list, update it — the option list legitimately changes, and that is the point of the fix.
 
@@ -2218,8 +2235,10 @@ Add `TAB_SCATTER_ID = "tab-scatter"` to `results_viewer/_ids.py` and its `__all_
 - [ ] **Step 5: Run the layout tests**
 
 ```bash
-uv run pytest tests/unit/gui/results_viewer/test_layout_tab_shape.py tests/unit/gui/results_viewer/test_callback_output_ids.py -v
+uv run pytest tests/unit/gui/results_viewer/test_layout_tab_shape.py \
+             tests/unit/gui/results_viewer/test_callback_output_ids.py -v
 ```
+Two named files — inline is correct here.
 
 Expected: pass.
 
@@ -2384,10 +2403,11 @@ In `results_viewer/_app.py`, beside the existing two crop-route registrations:
 - [ ] **Step 5: Run the full results-viewer suite**
 
 ```bash
-uv run pytest tests/unit/gui/results_viewer/ -v
+sbatch --export=ALL,SCOPE=gui docs/superpowers/plans/2026-09-01-results-scatter-tab/run_scatter_tests.sbatch
 ```
 
-Expected: pass.
+Expected: every array task exits 0. Ask the orchestrator to submit and to
+report the per-task exit statuses from the logs.
 
 - [ ] **Step 6: Commit**
 
@@ -2467,8 +2487,14 @@ git commit -m "docs(gui): add Scatter to the feature ledgers and tutorial"
 The suite is ~65 minutes, not two, and `-n auto` reads the node's core count rather than the allocation's, manufacturing timeout failures. Use the committed batch script:
 
 ```bash
-sbatch docs/superpowers/plans/2026-08-18-ome-zarr-image-store/run_unit_suite.sbatch
+sbatch --export=ALL,SCOPE=full \
+       docs/superpowers/plans/2026-09-01-results-scatter-tab/run_scatter_tests.sbatch
 ```
+
+16 tasks x 8 CPUs = 128 CPU peak, sized against the 384-CPU account cap with
+an interactive session already holding ~170. Check headroom before raising
+either number:
+`squeue -u "$USER" -t RUNNING -h -o "%C" | paste -sd+ | bc`
 
 Follow the `slurm-job` skill to verify it actually starts (`scontrol show job <id> | grep -E 'StartTime|Reason'`).
 
