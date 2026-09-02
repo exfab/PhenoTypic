@@ -464,6 +464,8 @@ class LocalParallelStrategy(ExecutionStrategy):
         # Log "started" event
         append_event(event_log, dataset.name, image_path.name, "started")
 
+        work_identity: tuple[str, str] | None = None
+
         try:
             # Prepare read kwargs.
             read_kwargs: Dict[str, Any] = {}

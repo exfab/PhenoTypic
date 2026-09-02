@@ -239,6 +239,42 @@ def test_local_strategy_reuses_preflight_identity_for_failure_publication(
     assert identity_calls == 1
 
 
+def test_local_strategy_reports_identity_preflight_failure_without_masking(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    simple_pipeline_json: Path,
+    synth_one_level_input: Path,
+    make_exec_config: Callable[..., Any],
+    make_output_manager: Callable[..., Any],
+) -> None:
+    from phenotypic._cli import _cli_execution_strategies as strategies
+
+    image = next(synth_one_level_input.rglob("*.tif"))
+    output_dir = tmp_path / "out"
+    config = make_exec_config(
+        pipeline_json=simple_pipeline_json,
+        input_path=synth_one_level_input,
+        output_dir=output_dir,
+    )
+    strategy = strategies.LocalParallelStrategy(
+        config, make_output_manager(output_dir, save_overlays=False)
+    )
+    dataset = Dataset("ds", [image], synth_one_level_input, output_dir)
+
+    def _unreadable(*args: Any, **kwargs: Any) -> tuple[str, str]:
+        del args, kwargs
+        raise OSError("input disappeared during identity preflight")
+
+    monkeypatch.setattr(strategies, "work_id_for_image", _unreadable)
+
+    result = strategy._process_single_local(
+        dataset, image, output_dir, tmp_path / "events.jsonl"
+    )
+
+    assert result[2] is False
+    assert "input disappeared during identity preflight" in result[3]
+
+
 def test_ordinary_worker_and_slurm_script_transport_drop_originals(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
