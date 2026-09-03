@@ -50,6 +50,30 @@ _TWO_SPLITTERS = _PRODUCTION_SHAPE + """
 </div>
 """
 
+#: A right-docked pane whose handle rides its LEFT edge -- the Scatter
+#: click inspector's shape, reduced to the two facts the controller acts
+#: on. ``pane-left-edge`` declares no bounds, so it exercises the drag
+#: SIGN against the module's own [140, 380]; ``pane-bounded`` declares
+#: its own and starts outside the module's range, so it exercises the
+#: bounds without the sign being able to stand in for them.
+_LEFT_EDGE_SPLITTERS = _PRODUCTION_SHAPE + """
+<div id="dock" style="position:relative;height:240px;margin:0">
+  <div id="pane-left-edge"
+       style="position:absolute;top:0;right:0;width:180px;height:100px">
+    <div id="handle-left-edge" data-splitter-target="pane-left-edge"
+         data-splitter-store="store-left-edge" data-splitter-edge="left"
+         style="position:absolute;top:0;left:0;width:10px;height:100%"></div>
+  </div>
+  <div id="pane-bounded"
+       style="position:absolute;top:120px;right:0;width:360px;height:100px">
+    <div id="handle-bounded" data-splitter-target="pane-bounded"
+         data-splitter-store="store-bounded" data-splitter-edge="left"
+         data-splitter-min="280" data-splitter-max="720"
+         style="position:absolute;top:0;left:0;width:10px;height:100%"></div>
+  </div>
+</div>
+"""
+
 #: Installed BEFORE the script tag: tracks which ``setInterval`` timers
 #: the file leaves running, and captures ``dash_clientside.set_props``.
 _INSTRUMENT = """() => {
@@ -84,6 +108,12 @@ def _load(page, body_html: str):
 def splitter_page(page):
     """A page with two mounted splitters and the module already evaluated."""
     return _load(page, _TWO_SPLITTERS)
+
+
+@pytest.fixture
+def left_edge_page(page):
+    """A page whose two splitters both sit on their pane's left edge."""
+    return _load(page, _LEFT_EDGE_SPLITTERS)
 
 
 def _width(page, element_id: str) -> float:
@@ -181,6 +211,88 @@ def test_clamp_sidebar_width_stays_on_the_namespace(splitter_page) -> None:
     assert page.evaluate(clamp, 9999) == 380
     assert page.evaluate(clamp, -5) == 140
     assert page.evaluate(clamp, "not-a-number") == 180
+
+
+def test_clamp_sidebar_width_takes_per_call_bounds(splitter_page) -> None:
+    """Supplied bounds replace the module's; a bad one falls back to it.
+
+    The garbage-input case is the interesting one: ``DEFAULT_W`` is 180,
+    which sits *below* a pane whose own minimum is 280, so returning it
+    unclamped would hand back a width the caller just said was illegal.
+    """
+    page = splitter_page
+    clamp = (
+        "([v, lo, hi]) =>"
+        " window.__phenotypicResultsViewer.clampSidebarWidth(v, lo, hi)"
+    )
+    assert page.evaluate(clamp, [500, 280, 720]) == 500
+    assert page.evaluate(clamp, [9999, 280, 720]) == 720
+    assert page.evaluate(clamp, [10, 280, 720]) == 280
+    # A bound that is not a number is ignored, not propagated as NaN.
+    assert page.evaluate(clamp, [9999, "", None]) == 380
+    assert page.evaluate(clamp, ["not-a-number", 280, 720]) == 280
+
+
+# ---------------------------------------------------------------------------
+# Which edge the handle sits on decides the sign of the drag
+# ---------------------------------------------------------------------------
+
+
+def test_a_left_edge_handle_widens_when_dragged_left(left_edge_page) -> None:
+    """A right-docked pane grows away from the cursor's direction.
+
+    Its handle rides the pane's *leading* edge, so widening means moving
+    the cursor left. The shared controller assumed the other arrangement
+    -- the only one it originally served -- which left the Scatter
+    inspector resizing backwards: measured live, dragging its handle
+    151 px left took the pane from 360 px to 209 px.
+
+    Bounds are deliberately absent here. 180 -> 280 stays inside the
+    module's own [140, 380], so this asserts the sign and nothing else;
+    under the old ``startW + dx`` it lands on 80 and clamps to 140.
+    """
+    page = left_edge_page
+    assert _width(page, "pane-left-edge") == pytest.approx(180, abs=1)
+
+    _drag(page, "handle-left-edge", -100)
+    assert _width(page, "pane-left-edge") == pytest.approx(280, abs=2)
+
+    _drag(page, "handle-left-edge", 60)
+    assert _width(page, "pane-left-edge") == pytest.approx(220, abs=2)
+
+
+def test_a_handle_without_an_edge_still_grows_rightward(splitter_page) -> None:
+    """The default edge is unchanged, so the QC worklist is untouched.
+
+    ``_TWO_SPLITTERS`` declares no ``data-splitter-edge`` at all, which
+    is exactly what :func:`splitter_attrs` emits for a right-edge handle.
+    """
+    page = splitter_page
+    _drag(page, "handle-a", 100)
+    assert _width(page, "pane-a") == pytest.approx(280, abs=2)
+
+
+def test_a_handles_own_bounds_replace_the_module_defaults(
+    left_edge_page,
+) -> None:
+    """Bounds belong to the pane, not to the controller.
+
+    ``pane-bounded`` opens at 360 px. Under the module's [140, 380] it
+    could be dragged 20 px wider and no further, so both assertions here
+    fail without per-handle bounds -- the first at the shared 380 ceiling
+    and the second at the shared 140 floor.
+    """
+    page = left_edge_page
+    assert _width(page, "pane-bounded") == pytest.approx(360, abs=1)
+
+    _drag(page, "handle-bounded", -500)
+    assert _width(page, "pane-bounded") == pytest.approx(720, abs=2)
+
+    _drag(page, "handle-bounded", 600)
+    assert _width(page, "pane-bounded") == pytest.approx(280, abs=2)
+
+    widths = page.evaluate("() => window.__setProps.map((c) => c[1].data)")
+    assert widths == [720, 280]
 
 
 # ---------------------------------------------------------------------------

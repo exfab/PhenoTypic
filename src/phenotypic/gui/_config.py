@@ -48,7 +48,7 @@ cache (``PHENOTYPIC_CACHE_DIRNAME``), resolved for legacy runs via
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 import argparse
 import logging
 from pathlib import Path
@@ -614,11 +614,36 @@ SECTION_GROUP_CAP: int = 60
 #: this helper replaced type-checked and a plain dict return does not.
 SplitterAttrs = TypedDict(
     "SplitterAttrs",
-    {"data-splitter-target": str, "data-splitter-store": str},
+    {
+        "data-splitter-target": str,
+        "data-splitter-store": str,
+        "data-splitter-edge": NotRequired[str],
+        "data-splitter-min": NotRequired[str],
+        "data-splitter-max": NotRequired[str],
+    },
 )
 
+#: Which edge of the resized pane the handle sits on. A handle on the
+#: pane's ``"right"`` edge grows the pane as the cursor moves right; one
+#: on its ``"left"`` edge grows it as the cursor moves *left*. Only the
+#: sign of the drag differs, but getting it wrong is not subtle -- the
+#: pane edge runs away from the cursor.
+SplitterEdge = Literal["left", "right"]
 
-def splitter_attrs(*, target: str, store: str) -> SplitterAttrs:
+#: Emitted only for a non-default edge, so the QC worklist's handle keeps
+#: the exact attribute set it had before the edge existed and the
+#: controller's default stays the case that needs no declaration.
+SPLITTER_EDGE_DEFAULT: SplitterEdge = "right"
+
+
+def splitter_attrs(
+    *,
+    target: str,
+    store: str,
+    edge: SplitterEdge = SPLITTER_EDGE_DEFAULT,
+    min_width: int | None = None,
+    max_width: int | None = None,
+) -> SplitterAttrs:
     """The data attributes that make an element a drag-splitter handle.
 
     The shared splitter controller in ``results_viewer.js`` (section H)
@@ -644,15 +669,47 @@ def splitter_attrs(*, target: str, store: str) -> SplitterAttrs:
     DOM carrying these attributes. Renaming an attribute here means
     editing the JS selector in the same change.
 
+    **The two panes sit on opposite edges of their handle**, which is why
+    ``edge`` exists. The QC worklist is a left pane whose handle follows
+    it in flex order, so the handle rides the pane's *right* edge and the
+    pane grows with a rightward drag. The Scatter inspector is a
+    right-docked offcanvas whose handle is absolutely positioned at
+    ``left: 0``, so it rides the pane's *left* edge and grows with a
+    *leftward* drag. One shared controller cannot infer which; declaring
+    it is the whole of the difference.
+
+    ``min_width`` / ``max_width`` exist for the same reason. The
+    controller's built-in bounds were written around the worklist's 180 px
+    default; the inspector opens at 360 px, so under those same bounds it
+    could be dragged 20 px wider and no further. Bounds belong to the
+    pane, not to the controller.
+
     Args:
         target: Dash id of the pane the drag resizes.
         store: Dash id of the ``dcc.Store`` the final width is written to,
             which a Python callback re-applies after a re-render.
+        edge: Which edge of the pane the handle sits on. Defaults to
+            :data:`SPLITTER_EDGE_DEFAULT`, and the attribute is omitted
+            entirely at that value.
+        min_width: Smallest width the drag may set, in px. ``None`` uses
+            the controller's own bound.
+        max_width: Largest width the drag may set, in px. ``None`` uses
+            the controller's own bound.
 
     Returns:
         The attributes, to splat into a component: ``**splitter_attrs(...)``.
     """
-    return {"data-splitter-target": target, "data-splitter-store": store}
+    attrs: SplitterAttrs = {
+        "data-splitter-target": target,
+        "data-splitter-store": store,
+    }
+    if edge != SPLITTER_EDGE_DEFAULT:
+        attrs["data-splitter-edge"] = edge
+    if min_width is not None:
+        attrs["data-splitter-min"] = str(min_width)
+    if max_width is not None:
+        attrs["data-splitter-max"] = str(max_width)
+    return attrs
 
 
 # ---------------------------------------------------------------------------

@@ -897,3 +897,41 @@ def test_the_inspector_handle_declares_its_own_splitter_wiring(
     props = handle.to_plotly_json()["props"]
     assert props["data-splitter-target"] == ids.SCATTER_INSPECTOR
     assert props["data-splitter-store"] == ids.STORE_SCATTER_INSPECTOR_WIDTH
+
+
+def test_the_inspector_handle_declares_the_edge_it_sits_on(
+    output_root: OutputRoot,
+) -> None:
+    """It rides the pane's LEFT edge, and only it can say so.
+
+    The offcanvas is ``placement="end"`` with the handle pinned at
+    ``left: 0``, so widening it means dragging left. Drop this attribute
+    and the shared controller falls back to the left-docked sign it was
+    written for: the pane still resizes, in the wrong direction, with
+    nothing raising on either side.
+
+    The bounds are asserted for the same reason and not as decoration.
+    The controller's own ``[140, 380]`` brackets a 180 px pane; this one
+    opens at 360, so inheriting them caps "wider" at 20 px.
+    """
+    body = build_scatter_tab_body(output_root)
+    handle = next(
+        node
+        for node in walk_components(body)
+        if getattr(node, "id", None) == ids.SCATTER_INSPECTOR_SPLITTER
+    )
+    inspector = next(
+        node
+        for node in walk_components(body)
+        if getattr(node, "id", None) == ids.SCATTER_INSPECTOR
+    )
+
+    props = handle.to_plotly_json()["props"]
+    assert props["data-splitter-edge"] == "left"
+
+    # The declared range must actually contain the width the pane opens
+    # at, or the first drag jumps the pane before it moves.
+    low = int(props["data-splitter-min"])
+    high = int(props["data-splitter-max"])
+    opens_at = int(inspector.style["width"].removesuffix("px"))
+    assert low < opens_at < high

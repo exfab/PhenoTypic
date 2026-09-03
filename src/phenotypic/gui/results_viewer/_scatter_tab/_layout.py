@@ -44,8 +44,10 @@ The click inspector's offcanvas is built here (:func:`_build_inspector`)
 rather than in :mod:`._inspector`, which stays Dash-free so the index
 producer and the click resolver can be unit-tested without a server.
 Its width handle names no JavaScript behaviour of its own: it carries the
-two data attributes the shared splitter dispatches on, so both ids stay
-beside the callbacks that bind them.
+data attributes the shared splitter dispatches on, so both ids stay
+beside the callbacks that bind them. Among them is the edge the handle
+sits on, which a right-docked pane must declare — see
+:func:`_build_inspector`.
 
 Still not built here, deliberately: the type/marker sizing steppers.
 Nothing reads them, and chrome nothing reads is chrome nobody can trust.
@@ -113,10 +115,33 @@ LEGEND_CORNERS: tuple[tuple[str, str], ...] = (
 #: Spec section 9's default: bottom-right, expanded.
 LEGEND_CORNER_DEFAULT: str = "bottom-right"
 
-#: Starting width of the click inspector, in px. Inside the shared
-#: splitter's ``[140, 380]`` clamp (``results_viewer.js`` section H) so
-#: the first drag does not jump the pane before it moves.
+#: Starting width of the click inspector, in px.
 _INSPECTOR_WIDTH_DEFAULT = 360
+
+#: Drag bounds for the inspector, passed to the shared splitter as its
+#: own rather than inherited. The controller's built-in ``[140, 380]``
+#: brackets the QC worklist's 180 px default; against this pane's 360 it
+#: leaves 20 px of headroom, so "drag it wider" is a control that does
+#: nothing a user would notice. These bracket 360 the way the built-in
+#: pair brackets 180.
+#:
+#: The floor is measured, against the verification run: its widest
+#: measurement row -- a ``MeasureColor`` label/value pair, the longest
+#: being ``ColorLab_DeltaE2000MedianFromMedoid`` -- needs 278 px of
+#: content, and ``.offcanvas-body`` adds 16 px of padding each side, so
+#: 310 px is where the values stop being clipped. Rounded up to 320 for
+#: slack. An earlier 280 was picked by eye and did clip them, which is
+#: how a number chosen to look reasonable presents: everything renders,
+#: and the right-hand column is quietly short a digit.
+#:
+#: A run whose measurers emit longer headers than this one's will still
+#: clip at the floor; the bound is a floor on the drag, not a promise
+#: about every possible schema.
+#:
+#: The ceiling is chosen, not measured: it leaves a 1440 px window more
+#: than half its width for the figure the inspector was opened from.
+_INSPECTOR_WIDTH_MIN = 320
+_INSPECTOR_WIDTH_MAX = 720
 
 #: The metadata column the derived frame index stands in for when the run
 #: does carry it. Asked of the schema rather than spelled, so it cannot
@@ -475,13 +500,21 @@ def _build_inspector() -> Component:
     the crop plus its Contours/Raw control, and the measurement rows
     grouped by the measurer that emitted them.
 
-    The width handle carries the two data attributes the shared splitter
-    (``results_viewer.js`` section H) dispatches on, and nothing else --
-    ``data-splitter-target`` naming this offcanvas and
-    ``data-splitter-store`` naming the store a Python callback re-applies
-    from. Both ids live here, beside the callbacks that bind them, rather
-    than being spelled a second time in JavaScript; that is the whole
-    point of Task 12 generalizing the QC worklist splitter.
+    The width handle carries the data attributes the shared splitter
+    (``results_viewer.js`` section H) dispatches on: ``-target`` naming
+    this offcanvas, ``-store`` naming the store a Python callback
+    re-applies from, and ``-edge``/``-min``/``-max`` describing the pane
+    the controller cannot see for itself. Both ids live here, beside the
+    callbacks that bind them, rather than being spelled a second time in
+    JavaScript; that is the whole point of Task 12 generalizing the QC
+    worklist splitter.
+
+    ``edge="left"`` is load-bearing, not decoration. This is a
+    ``placement="end"`` offcanvas and the handle is pinned at
+    ``left: 0``, so it rides the pane's *leading* edge: widening it means
+    dragging the cursor left, against the sign a left-docked pane needs.
+    Omitting the declaration does not fail loudly -- the pane resizes,
+    just in the wrong direction, running its edge away from the cursor.
 
     Returns:
         A :class:`dbc.Offcanvas`, booting closed.
@@ -493,6 +526,9 @@ def _build_inspector() -> Component:
         **splitter_attrs(
             target=ids.SCATTER_INSPECTOR,
             store=ids.STORE_SCATTER_INSPECTOR_WIDTH,
+            edge="left",
+            min_width=_INSPECTOR_WIDTH_MIN,
+            max_width=_INSPECTOR_WIDTH_MAX,
         ),
         style={
             "position": "absolute",

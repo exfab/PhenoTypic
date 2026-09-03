@@ -837,16 +837,28 @@
  * (H) Generic drag-splitter.
  *
  * A thin handle between a sizeable side pane and the rest of a surface.
- * Dragging it sets the pane's width live, clamped to [MIN_W, MAX_W] px;
- * on mouse-up the final width is persisted to a Dash store via
- * window.dash_clientside.set_props, so a Python callback can re-apply it
- * across re-renders and collapse.
+ * Dragging it sets the pane's width live, clamped to the handle's bounds
+ * (defaulting to [MIN_W, MAX_W] px); on mouse-up the final width is
+ * persisted to a Dash store via window.dash_clientside.set_props, so a
+ * Python callback can re-apply it across re-renders and collapse.
  *
  * Every identifier is DATA-DRIVEN, because more than one surface needs
  * this. The handle declares its own wiring:
  *
  *   data-splitter-target : id of the pane whose width the drag sets
  *   data-splitter-store  : id of the dcc.Store the final width goes to
+ *   data-splitter-edge   : "left" if the handle sits on the pane's LEFT
+ *                          edge; anything else (incl. absent) means the
+ *                          right edge
+ *   data-splitter-min    : lower clamp in px, default MIN_W
+ *   data-splitter-max    : upper clamp in px, default MAX_W
+ *
+ * The edge is what decides the SIGN of the drag, and it cannot be
+ * inferred. A left pane's handle follows it, so the pane grows as the
+ * cursor moves right (+dx). A right-docked pane's handle is on its
+ * leading edge, so the pane grows as the cursor moves LEFT (-dx). Assume
+ * the first and the second pane's edge runs away from the cursor: drag
+ * left to widen and it narrows instead.
  *
  * Carrying `data-splitter-target` is what MAKES an element a handle --
  * this module names no surface and no id of its own. Python owns both
@@ -875,10 +887,29 @@
     //: dataset key for the idempotence flag -> `data-splitter-attached`.
     const ATTACHED_FLAG = "splitterAttached";
 
-    ns.clampSidebarWidth = function (px) {
+    // A bound that is absent, blank or unparseable falls back to the
+    // module's own. `Number()` alone cannot decide this: it maps "" and
+    // null to 0, both of which are finite, so `data-splitter-min=""` --
+    // what an empty attribute reads as -- would be honoured as a zero
+    // floor and let the pane be dragged shut. Emptiness is checked before
+    // the numeric coercion, not after it.
+    function boundOr(value, fallback) {
+        if (value === null || value === undefined) return fallback;
+        if (String(value).trim() === "") return fallback;
+        const n = Number(value);
+        return Number.isFinite(n) ? n : fallback;
+    }
+
+    // `min`/`max` are optional: omit them and the module's own bounds
+    // apply, which is what every caller predating per-pane bounds did.
+    ns.clampSidebarWidth = function (px, min, max) {
+        const lo = boundOr(min, MIN_W);
+        const hi = boundOr(max, MAX_W);
         const n = Math.round(Number(px));
-        if (!Number.isFinite(n)) return DEFAULT_W;
-        return Math.max(MIN_W, Math.min(MAX_W, n));
+        // The garbage-input fallback is clamped too: DEFAULT_W is the
+        // worklist's default and can sit outside a pane's own bounds.
+        if (!Number.isFinite(n)) return Math.max(lo, Math.min(hi, DEFAULT_W));
+        return Math.max(lo, Math.min(hi, n));
     };
 
     function persistWidth(storeId, px) {
@@ -905,12 +936,18 @@
             downEvt.preventDefault();  // don't text-select while dragging
             const startX = downEvt.clientX;
             const startW = pane.getBoundingClientRect().width;
+            // Resolved per drag for the same reason the ids are.
+            const sign = handle.dataset.splitterEdge === "left" ? -1 : 1;
+            const minW = handle.dataset.splitterMin;
+            const maxW = handle.dataset.splitterMax;
             // Visual feedback during the drag.
             document.body.style.userSelect = "none";
             document.body.style.cursor = "col-resize";
 
             function onMove(moveEvt) {
-                const next = ns.clampSidebarWidth(startW + (moveEvt.clientX - startX));
+                const next = ns.clampSidebarWidth(
+                    startW + sign * (moveEvt.clientX - startX), minW, maxW
+                );
                 pane.style.width = next + "px";
             }
             function onUp() {
@@ -919,7 +956,7 @@
                 document.body.style.userSelect = "";
                 document.body.style.cursor = "";
                 const finalW = ns.clampSidebarWidth(
-                    pane.getBoundingClientRect().width
+                    pane.getBoundingClientRect().width, minW, maxW
                 );
                 pane.style.width = finalW + "px";
                 // survives re-renders + collapse

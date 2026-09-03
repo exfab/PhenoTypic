@@ -515,3 +515,42 @@ class TestInjectDesignTokens:
         assert css_pos != -1
         assert marker_pos != -1
         assert marker_pos > css_pos
+
+
+class TestSplitterAttrs:
+    """The handle contract ``results_viewer.js`` section H dispatches on."""
+
+    def test_a_right_edge_handle_declares_only_the_two_ids(self) -> None:
+        """The default edge is the one that needs no attribute.
+
+        The QC worklist predates the edge entirely, so emitting a
+        ``data-splitter-edge="right"`` for it would be a change to a
+        working surface's DOM in a fix aimed at a different one.
+        """
+        assert _config.splitter_attrs(target="pane", store="store") == {
+            "data-splitter-target": "pane",
+            "data-splitter-store": "store",
+        }
+
+    def test_a_left_edge_handle_says_so(self) -> None:
+        """A right-docked pane's handle must declare the inverted sign."""
+        attrs = _config.splitter_attrs(
+            target="pane", store="store", edge="left"
+        )
+        assert attrs["data-splitter-edge"] == "left"
+
+    def test_bounds_are_stringified_for_the_dom(self) -> None:
+        """Data attributes are strings; the controller parses them back."""
+        attrs = _config.splitter_attrs(
+            target="pane", store="store", min_width=280, max_width=720
+        )
+        assert attrs["data-splitter-min"] == "280"
+        assert attrs["data-splitter-max"] == "720"
+
+    def test_bounds_are_independent(self) -> None:
+        """Declaring one bound leaves the other on the module default."""
+        attrs = _config.splitter_attrs(
+            target="pane", store="store", max_width=720
+        )
+        assert "data-splitter-min" not in attrs
+        assert attrs["data-splitter-max"] == "720"
