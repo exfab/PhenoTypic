@@ -47,10 +47,10 @@ latter as kwargs that `_callbacks.py:872` never passes.
 
 ## Architecture
 
-**Two stores, not one, and not eighteen Inputs.** The figure callback already takes 15
-`Input`s (`_callbacks.py:918-938`) and the export callback restates 8 of them as `State`s
-(`_callbacks.py:1057-1069`). Eight more steppers as individual Inputs would take those to
-23 and 16. `STORE_SCATTER_LEGEND` already set the precedent for the alternative, and
+**Two stores, not one, and not eighteen Inputs.** The figure callback already takes 13
+`Input`s (`_callbacks.py:920-938`) and the export callback restates 10 of them as `State`s
+(`_callbacks.py:1060-1069`). Eight more steppers as individual Inputs would take those to
+21 and 18. `STORE_SCATTER_LEGEND` already set the precedent for the alternative, and
 `_ids.py` states the reason for it: *"One payload rather than two Inputs so the figure
 callback reads legend state the same way whether it came from the corner control or the
 collapse switch."*
