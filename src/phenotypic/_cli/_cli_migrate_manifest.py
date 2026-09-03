@@ -8,7 +8,10 @@ import json
 import os
 from pathlib import Path
 import struct
-from typing import Any, Final, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Final, Literal, Mapping, Sequence
+
+if TYPE_CHECKING:
+    from ._cli_migrate_provenance import ProvenanceUpgradeResult
 
 from phenotypic.sdk_ import (
     CommitGuard,
@@ -88,6 +91,8 @@ class MigrationImageSeal:
     clean: bool
     failures: tuple[str, ...]
     seal_path: Path
+    provenance_upgraded: int = 0
+    provenance_failures: tuple[tuple[Path, str], ...] = ()
 
     @property
     def status_digest(self) -> str:
@@ -868,6 +873,103 @@ def _validated_manifest_for_authority(
     return output_root, manifest
 
 
+@dataclass(frozen=True)
+class _MigrationProvenanceEvidence:
+    """Typed provenance outcome embedded in one canonical image status."""
+
+    state: Literal["complete", "failed"]
+    store_path: Path
+    schema_before: int | None
+    upgraded: bool
+    reason: str | None
+
+
+_PROVENANCE_EVIDENCE_FIELDS: Final = frozenset(
+    {"state", "store_path", "schema_before", "upgraded", "reason"}
+)
+
+
+def _provenance_evidence(
+    task: MigrationImageTask, value: object
+) -> tuple[_MigrationProvenanceEvidence | None, str | None]:
+    """Validate one status provenance payload against its manifest task."""
+    if value is None:
+        return None, None
+    if (
+        not isinstance(value, Mapping)
+        or set(value) != _PROVENANCE_EVIDENCE_FIELDS
+        or value.get("state") not in {"complete", "failed"}
+        or value.get("store_path") != str(task.store_path)
+        or not isinstance(value.get("upgraded"), bool)
+    ):
+        return None, "provenance result evidence is invalid"
+    state = value["state"]
+    schema_before = value.get("schema_before")
+    upgraded = value["upgraded"]
+    reason = value.get("reason")
+    if state == "complete":
+        valid_schema = schema_before is None or (
+            isinstance(schema_before, int)
+            and not isinstance(schema_before, bool)
+            and schema_before in {1, 2}
+        )
+        if (
+            not valid_schema
+            or upgraded != (schema_before == 1)
+            or reason is not None
+        ):
+            return None, "provenance result evidence is invalid"
+    elif (
+        schema_before is not None
+        or upgraded
+        or not isinstance(reason, str)
+        or not reason
+    ):
+        return None, "provenance failure evidence is invalid"
+    return (
+        _MigrationProvenanceEvidence(
+            state=state,
+            store_path=task.store_path,
+            schema_before=schema_before,
+            upgraded=upgraded,
+            reason=reason,
+        ),
+        None,
+    )
+
+
+def _provenance_result_evidence(
+    task: MigrationImageTask, result: "ProvenanceUpgradeResult"
+) -> _MigrationProvenanceEvidence:
+    """Validate one in-memory upgrade result for canonical publication."""
+    value = {
+        "state": "complete",
+        "store_path": str(getattr(result, "store_path", "")),
+        "schema_before": getattr(result, "schema_before", object()),
+        "upgraded": getattr(result, "upgraded", object()),
+        "reason": None,
+    }
+    evidence, failure = _provenance_evidence(task, value)
+    if evidence is None:
+        raise ValueError(failure or "provenance result evidence is invalid")
+    return evidence
+
+
+def _provenance_evidence_payload(
+    evidence: _MigrationProvenanceEvidence | None,
+) -> dict[str, object] | None:
+    """Serialize typed provenance evidence without changing its meaning."""
+    if evidence is None:
+        return None
+    return {
+        "state": evidence.state,
+        "store_path": str(evidence.store_path),
+        "schema_before": evidence.schema_before,
+        "upgraded": evidence.upgraded,
+        "reason": evidence.reason,
+    }
+
+
 def publish_migration_task_status(
     control_root: Path,
     *,
@@ -876,6 +978,7 @@ def publish_migration_task_status(
     generation: str,
     metadata_terminal_digest: str,
     result: Any,
+    provenance_result: "ProvenanceUpgradeResult | None" = None,
     commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Atomically publish one completed image result under its generation fence."""
@@ -927,11 +1030,16 @@ def publish_migration_task_status(
     ):
         raise ValueError("migration result lacks current semantic marker authority")
 
+    provenance = (
+        None
+        if provenance_result is None
+        else _provenance_result_evidence(task, provenance_result)
+    )
     path = migration_task_status_path(control_root, generation, task.index)
     atomic_write_json(
         path,
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "state": "complete",
             "generation": manifest.generation,
             "manifest_digest": manifest.inventory_digest,
@@ -941,6 +1049,7 @@ def publish_migration_task_status(
             "work_id": result.work_id,
             "metadata_terminal_digest": metadata_terminal_digest,
             "marker_payload_digest": result.marker_digest,
+            "provenance": _provenance_evidence_payload(provenance),
         },
         commit_guard=commit_guard,
     )
@@ -959,6 +1068,7 @@ _IMAGE_STATUS_FIELDS: Final = frozenset(
         "work_id",
         "metadata_terminal_digest",
         "marker_payload_digest",
+        "provenance",
     }
 )
 
@@ -972,6 +1082,104 @@ def _read_json_mapping(path: Path, role: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise ValueError(f"invalid {role}: {path.name}")
     return value
+
+
+def publish_migration_provenance_status(
+    control_root: Path,
+    *,
+    manifest_path: Path,
+    expected_scientific_output: Path,
+    generation: str,
+    metadata_terminal_digest: str,
+    index: int,
+    result: "ProvenanceUpgradeResult | None",
+    reason: str | None = None,
+    commit_guard: CommitGuard | None = None,
+) -> "ProvenanceUpgradeResult | None":
+    """Publish a typed pre-image provenance receipt for one manifest task."""
+    _, manifest = _validated_manifest_for_authority(
+        control_root,
+        manifest_path,
+        expected_scientific_output,
+        generation,
+    )
+    if not _valid_metadata_terminal_digest(metadata_terminal_digest):
+        raise ValueError("migration status has an invalid metadata digest")
+    if (result is None) == (reason is None):
+        raise ValueError("provenance status requires exactly one result or reason")
+    task = read_migration_task(
+        manifest_path,
+        index,
+        expected_scientific_output=expected_scientific_output,
+        expected_control_root=control_root,
+    )
+    evidence = (
+        _MigrationProvenanceEvidence(
+            state="failed",
+            store_path=task.store_path,
+            schema_before=None,
+            upgraded=False,
+            reason=reason,
+        )
+        if result is None
+        else _provenance_result_evidence(task, result)
+    )
+    path = migration_task_status_path(control_root, generation, index)
+    if path.is_file():
+        current = _read_json_mapping(path, "migration image status")
+        current_identity = (
+            set(current) == _IMAGE_STATUS_FIELDS
+            and current.get("schema_version") == 2
+            and current.get("generation") == generation
+            and current.get("manifest_digest") == manifest.inventory_digest
+            and current.get("index") == index
+            and current.get("dataset") == task.dataset
+            and current.get("stem") == task.stem
+            and current.get("metadata_terminal_digest")
+            == metadata_terminal_digest
+        )
+        current_evidence, current_failure = _provenance_evidence(
+            task, current.get("provenance")
+        )
+        if not current_identity or current_failure is not None:
+            raise ValueError("existing provenance status is invalid")
+        if (
+            current_evidence is not None
+            and current_evidence.state == "complete"
+            and current_evidence.upgraded
+        ):
+            evidence = current_evidence
+            from ._cli_migrate_provenance import ProvenanceUpgradeResult
+
+            result = ProvenanceUpgradeResult(
+                task.store_path,
+                current_evidence.schema_before,
+                current_evidence.upgraded,
+            )
+            if reason is not None:
+                return result
+    atomic_write_json(
+        path,
+        {
+            "schema_version": 2,
+            "state": (
+                "provenance_complete"
+                if evidence.state == "complete"
+                else "provenance_failed"
+            ),
+            "generation": manifest.generation,
+            "manifest_digest": manifest.inventory_digest,
+            "index": task.index,
+            "dataset": task.dataset,
+            "stem": task.stem,
+            "work_id": None,
+            "metadata_terminal_digest": metadata_terminal_digest,
+            "marker_payload_digest": None,
+            "provenance": _provenance_evidence_payload(evidence),
+        },
+        commit_guard=commit_guard,
+    )
+    return result
 
 
 def seal_migration_image_stage(
@@ -991,6 +1199,8 @@ def seal_migration_image_stage(
         generation,
     )
     failures: list[str] = []
+    provenance_upgraded = 0
+    provenance_failures: list[tuple[Path, str]] = []
     if not _valid_metadata_terminal_digest(metadata_terminal_digest):
         failures.append("invalid expected metadata digest")
     status_dir = migration_task_status_path(
@@ -1035,8 +1245,9 @@ def seal_migration_image_stage(
         if set(status) != _IMAGE_STATUS_FIELDS:
             failures.append(f"status index {index} has invalid schema")
             continue
-        if status.get("schema_version") != 1 or status.get("state") != "complete":
-            failures.append(f"status index {index} is not complete")
+        if status.get("schema_version") != 2:
+            failures.append(f"status index {index} has invalid schema version")
+            continue
         if status.get("generation") != generation:
             failures.append(f"status index {index} has wrong generation")
         if status.get("manifest_digest") != manifest.inventory_digest:
@@ -1049,13 +1260,46 @@ def seal_migration_image_stage(
         )
         if status.get("dataset") != task.dataset or status.get("stem") != task.stem:
             failures.append(f"status index {index} has wrong image identity")
+        if status.get("metadata_terminal_digest") != metadata_terminal_digest:
+            failures.append(f"status index {index} has wrong metadata digest")
+        evidence, evidence_failure = _provenance_evidence(
+            task, status.get("provenance")
+        )
+        if evidence_failure is not None:
+            provenance_failures.append((task.store_path, evidence_failure))
+            failures.append(f"status index {index} {evidence_failure}")
+            continue
+        if evidence is not None and evidence.state == "complete":
+            provenance_upgraded += int(evidence.upgraded)
+        elif evidence is not None:
+            assert evidence.reason is not None
+            provenance_failures.append((task.store_path, evidence.reason))
+        state = status.get("state")
+        if state == "provenance_failed":
+            if evidence is None or evidence.state != "failed":
+                failures.append(f"status index {index} has invalid provenance failure")
+            else:
+                failures.append(
+                    f"status index {index} provenance failed: {evidence.reason}"
+                )
+            continue
+        if state == "provenance_complete":
+            if evidence is None or evidence.state != "complete":
+                failures.append(f"status index {index} has invalid provenance receipt")
+            else:
+                failures.append(f"status index {index} did not complete image migration")
+            continue
+        if state != "complete":
+            failures.append(f"status index {index} is not complete")
+            continue
+        if evidence is not None and evidence.state != "complete":
+            failures.append(f"status index {index} completed after provenance failure")
+            continue
         expected_work_id = _configured_work_id(
             output_root, task.dataset, task.stem
         )
         if status.get("work_id") != expected_work_id:
             failures.append(f"status index {index} has wrong work ID")
-        if status.get("metadata_terminal_digest") != metadata_terminal_digest:
-            failures.append(f"status index {index} has wrong metadata digest")
         marker_digest = status.get("marker_payload_digest")
         try:
             current_marker_digest = _sha256_bytes(task.marker_path.read_bytes())
@@ -1082,13 +1326,18 @@ def seal_migration_image_stage(
         ordered_status_digest = hashlib.sha256(b"").hexdigest()
     seal_path = migration_image_seal_path(control_root, generation)
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generation": generation,
         "manifest_digest": manifest.inventory_digest,
         "ordered_status_digest": ordered_status_digest,
         "metadata_terminal_digest": metadata_terminal_digest,
         "clean": not failures,
         "failures": failures,
+        "provenance_upgraded": provenance_upgraded,
+        "provenance_failures": [
+            {"store_path": str(path), "reason": reason}
+            for path, reason in provenance_failures
+        ],
     }
     atomic_write_json(seal_path, payload, commit_guard=commit_guard)
     return MigrationImageSeal(
@@ -1099,6 +1348,8 @@ def seal_migration_image_stage(
         clean=not failures,
         failures=tuple(failures),
         seal_path=seal_path,
+        provenance_upgraded=provenance_upgraded,
+        provenance_failures=tuple(provenance_failures),
     )
 
 
@@ -1616,13 +1867,18 @@ def valid_migration_image_seal(
     except (OSError, ValueError):
         return False
     seal_is_current = dict(payload) == {
-        "schema_version": 1,
+        "schema_version": 2,
         "generation": seal.generation,
         "manifest_digest": seal.manifest_digest,
         "ordered_status_digest": seal.ordered_status_digest,
         "metadata_terminal_digest": seal.metadata_terminal_digest,
         "clean": seal.clean,
         "failures": list(seal.failures),
+        "provenance_upgraded": seal.provenance_upgraded,
+        "provenance_failures": [
+            {"store_path": str(path), "reason": reason}
+            for path, reason in seal.provenance_failures
+        ],
     } and current_digest == seal.ordered_status_digest
     if not seal_is_current:
         return False
@@ -1644,6 +1900,11 @@ def valid_migration_image_seal(
             _valid_migration_marker,
         )
 
+        if len(status_paths) != manifest.task_count:
+            return False
+        provenance_upgraded = 0
+        provenance_failures: list[tuple[Path, str]] = []
+        all_complete = True
         for index in range(manifest.task_count):
             task = read_migration_task(
                 manifest_path,
@@ -1655,6 +1916,50 @@ def valid_migration_image_seal(
                 migration_task_status_path(control_root, seal.generation, index),
                 "migration image status",
             )
+            if (
+                set(status) != _IMAGE_STATUS_FIELDS
+                or status.get("schema_version") != 2
+                or status.get("generation") != seal.generation
+                or status.get("manifest_digest") != manifest.inventory_digest
+                or status.get("index") != index
+                or status.get("dataset") != task.dataset
+                or status.get("stem") != task.stem
+                or status.get("metadata_terminal_digest")
+                != seal.metadata_terminal_digest
+            ):
+                return False
+            evidence, evidence_failure = _provenance_evidence(
+                task, status.get("provenance")
+            )
+            if evidence_failure is not None:
+                provenance_failures.append((task.store_path, evidence_failure))
+            elif evidence is not None and evidence.state == "complete":
+                provenance_upgraded += int(evidence.upgraded)
+            elif evidence is not None:
+                assert evidence.reason is not None
+                provenance_failures.append((task.store_path, evidence.reason))
+            state = status.get("state")
+            if state in {"provenance_complete", "provenance_failed"}:
+                if status.get("work_id") is not None:
+                    return False
+                if status.get("marker_payload_digest") is not None:
+                    return False
+                if (
+                    state == "provenance_complete"
+                    and (evidence is None or evidence.state != "complete")
+                ):
+                    return False
+                if (
+                    state == "provenance_failed"
+                    and (evidence is None or evidence.state != "failed")
+                ):
+                    return False
+                all_complete = False
+                continue
+            if state != "complete":
+                return False
+            if evidence is not None and evidence.state != "complete":
+                return False
             marker_digest = _sha256_bytes(task.marker_path.read_bytes())
             if status.get("marker_payload_digest") != marker_digest:
                 return False
@@ -1663,8 +1968,16 @@ def valid_migration_image_seal(
                 task.dataset,
                 task.stem,
             )
+            if status.get("work_id") != work_id:
+                return False
             if not _valid_migration_marker(output_root, task, work_id):
                 return False
+        if (
+            provenance_upgraded != seal.provenance_upgraded
+            or tuple(provenance_failures) != seal.provenance_failures
+            or seal.clean != all_complete
+        ):
+            return False
     except (OSError, ValueError):
         return False
     return True

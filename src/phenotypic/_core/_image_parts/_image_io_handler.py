@@ -782,6 +782,7 @@ class ImageIOHandler(ImageColorSpace):
         image = cls(arr=arr, name=filepath.stem, bit_depth=bit_depth, **kwargs)
         image.name = filepath.stem
         image.metadata[IMAGE.SUFFIX] = suffix
+        image._metadata.provenance_journal["original_filename"] = filepath.name
 
         # Extract and store metadata based on file type
         if (
@@ -880,6 +881,8 @@ class ImageIOHandler(ImageColorSpace):
         journal = spec.phenotypic.get(ngff_.PhenotypicAttr.PROVENANCE)
         if journal:
             image._metadata.provenance_journal = deepcopy(journal)
+        else:
+            image._metadata.provenance_journal["original_filename"] = store_path.name
 
         # Through `_metadata.imported`, NEVER `image.metadata[key] = value`.
         # `MetadataAccessor.__setitem__` routes an unrecognised key into

@@ -1334,6 +1334,7 @@ def test_finalizer_rejects_source_recreated_after_clean_reclaim_seal(
     "failure_case",
     (
         "metadata",
+        "provenance",
         "image",
         "image_seal",
         "reclaim_noop",
@@ -1364,6 +1365,10 @@ def test_finalizer_publishes_typed_failure_before_exact_lifecycle_close(
             headers_migrated=0,
             failures=((run, "metadata failed"),),
             authority=None,
+        )
+    elif failure_case == "provenance":
+        report = MigrationReport(
+            provenance_failures=((run / "plate.ome.zarr", "future schema"),)
         )
     elif failure_case == "image":
         image_failures = ((run / "image.h5", "image failed"),)
@@ -1893,6 +1898,7 @@ def test_local_migrate_terminalizes_manifest_publication_failure(
     from phenotypic._cli import _cli_migrate as subject
 
     run = tmp_path / "run"
+    (run / "results").mkdir(parents=True)
     monkeypatch.setattr(subject, "new_slurm_generation", lambda: _GENERATION)
     monkeypatch.setattr(subject, "discover_migration_tasks", lambda *_: ())
     monkeypatch.setattr(
@@ -1931,6 +1937,7 @@ def test_local_migrate_terminalizes_invalidation_failure_and_releases_generation
     from phenotypic._cli import _cli_migrate as subject
 
     run = tmp_path / "run"
+    (run / "results").mkdir(parents=True)
     monkeypatch.setattr(subject, "new_slurm_generation", lambda: _GENERATION)
     monkeypatch.setattr(subject, "discover_migration_tasks", lambda *_: ())
     monkeypatch.setattr(
@@ -1979,6 +1986,7 @@ def test_run_migrate_rerun_uses_new_generation_and_retries_incomplete_work(
     from phenotypic._cli import _cli_migrate as subject
 
     run = tmp_path / "run"
+    (run / "results").mkdir(parents=True)
     tasks = (_task(run, 0), _task(run, 1))
     generations = iter(("attempt-1", "attempt-2"))
     monkeypatch.setattr(subject, "new_slurm_generation", lambda: next(generations))
@@ -2108,6 +2116,7 @@ def test_local_migrate_dry_run_preserves_terminal_authority_and_control_state(
     from phenotypic._cli import _cli_migrate as subject
 
     run = tmp_path / "run"
+    (run / "results").mkdir(parents=True)
     tasks = (_task(run, 0),)
     aggregate = aggregate_publication_marker_path(run)
     completion = run_completion_marker_path(run)

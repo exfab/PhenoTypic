@@ -80,27 +80,40 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
   OME-Zarr — PhenoTypic's or a third party's — as plain pixels. A published
   store is bit-reproducible: `applied_at_utc` and `duration_seconds` are
   omitted from its journal, so two identical runs write byte-identical stores.
-  Provenance travels one hop — processing a store into another store resets the
-  second store's journal to that second pipeline only, it does not chain. A
-  tree of stores is valid `--input`. Skips measurement/deliverables/QC/
+  Provenance is cumulative: reading a PhenoTypic store retains its complete
+  journal, and each process/full/programmatic invocation appends a separately
+  typed application with its own pipeline identity. Process output is therefore
+  valid input to the normal CLI and browse GUI without losing the process
+  pipeline. A tree of stores is valid `--input`. Skips
+  measurement/deliverables/QC/
   dashboard; machine state lives under `.phenotypic/`. Full local + SLURM
   continuation reuse; switching `--process-format` invalidates continuation
   rather than reusing outputs of the other kind. Run the same command again
   after an interruption or when new compatible inputs appear; there is no
   `--resume` flag.
-- `uv run python -m phenotypic --mode migrate --output <run>` — convert a legacy
-  `.h5` output tree to OME-Zarr stores **in place**, in two passes: pass 1 migrates
-  the non-image metadata targets (`csv`/`parquet`/`json`/`frame`, never `.h5`), pass 2
-  converts each per-image `results/<ds>/hdf/<stem>.h5` to
-  `results/<ds>/zarr/<stem>.ome.zarr` and re-publishes its marker. Sources are
-  **kept** by default; `--delete-sources` is opt-in and gated on a value-level
-  re-read. Re-running after an interruption *is* the recovery procedure.
-  **Every other mode that writes or reprocesses (`full`, `measure`, `recompile`,
-  `process`) refuses an unconverted tree** with a pointer to this command —
-  conversion rewrites the whole results tree, so it is typed deliberately rather
-  than triggered as a side effect. Per-image storage is OME-Zarr only: `save2zarr`
-  / `load_zarr` / `load_layer_zarr` / `save_intermediate_zarr` replaced the HDF
-  quartet outright, and there is no `Image.save2hdf5`. See
+- `uv run python -m phenotypic --mode migrate --output <target>` — explicitly
+  migrate a full legacy run, one direct OME-Zarr store, or a process-output tree.
+  Full runs keep the metadata → image → seal → optional reclaim → finalizer
+  chain; direct stores and process trees run provenance-only store array → seal
+  → finalizer work. Use `--njobs N` for local GPFS-latency parallelism, or the
+  mode's native repeated `--slurm key=value` options for scheduler dispatch
+  (never a custom wrapper; explicit `--njobs` and `--slurm` are incompatible).
+  Inventory never descends into Zarr chunks. Each provenance worker reads one
+  root `zarr.json` and writes only a schema-v1 journal. Direct-store lifecycle
+  state is a hashed sibling below `.phenotypic`, never inside the store.
+  Sources are **kept** by default; full-run `--delete-sources` is opt-in and
+  value-level gated, while provenance-only targets reject it. Re-running after
+  interruption is the recovery procedure. New schema-v2 applications always
+  carry a non-empty installed `phenotypic_version`. Only explicit migrate mode
+  may emit `phenotypic_version: null`, only for a converted `legacy`
+  application whose historical version cannot be recovered. Never substitute
+  the migrator's installed version, and never fabricate unknown original/input
+  filenames from a store directory. **Every other mode that writes or
+  reprocesses (`full`, `measure`, `recompile`, `process`) refuses an unconverted
+  tree** with a pointer to this command. Per-image storage is OME-Zarr only:
+  `save2zarr` / `load_zarr` / `load_layer_zarr` /
+  `save_intermediate_zarr` replaced the HDF quartet outright, and there is no
+  `Image.save2hdf5`. See `docs/source/how_to/pages/migrate_ome_zarr.md` and
   `docs/source/how_to/pages/zarr_storage.md`.
 - **GPU detectors stage automatically:** when a pipeline contains a `GpuDetector`,
   `python -m phenotypic` runs detection as three internal stages — CPU preprocess →
