@@ -31,7 +31,10 @@
  *   - applyPlateSources(records) : helper invoked from clientside callbacks.
  *   - onElementsMounted(sel, fn) : attach to matching elements now and as
  *                                  Dash mounts more of them (section F).
- *   - clampSidebarWidth(px)      : the splitter's width clamp (section H).
+ *   - clampSidebarWidth(px, min, max)
+ *                              : the splitter's width clamp; `min`/`max`
+ *                                default to the module's own bounds
+ *                                (section H).
  * -------------------------------------------------------------------------
  */
 

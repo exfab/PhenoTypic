@@ -228,9 +228,37 @@ def test_clamp_sidebar_width_takes_per_call_bounds(splitter_page) -> None:
     assert page.evaluate(clamp, [500, 280, 720]) == 500
     assert page.evaluate(clamp, [9999, 280, 720]) == 720
     assert page.evaluate(clamp, [10, 280, 720]) == 280
-    # A bound that is not a number is ignored, not propagated as NaN.
-    assert page.evaluate(clamp, [9999, "", None]) == 380
     assert page.evaluate(clamp, ["not-a-number", 280, 720]) == 280
+
+
+def test_an_unusable_bound_falls_back_rather_than_reading_as_zero(
+    splitter_page,
+) -> None:
+    """Each rejected spelling is asserted on the bound it is passed as.
+
+    This is two assertions because ``null`` and ``""`` are rejected by two
+    different lines of ``boundOr``, and because a bound can only be shown
+    to do anything by testing a value **it** decides. An earlier version
+    of this test passed ``""`` as the *min* while asserting a result the
+    *max* determines -- ``clamp(9999, "", null)`` is 380 either way -- so
+    it could not fail, and it survived deleting the empty-string guard
+    outright.
+
+    Both are load-bearing rather than defensive. ``Number("")`` and
+    ``Number(null)`` are both ``0``, and both are finite, so a guard
+    written on ``Number.isFinite`` alone reads either as a **zero floor**:
+    the pane drags shut, and the 0 is persisted to its store, so a
+    re-render restores it.
+    """
+    page = splitter_page
+    clamp = (
+        "([v, lo, hi]) =>"
+        " window.__phenotypicResultsViewer.clampSidebarWidth(v, lo, hi)"
+    )
+    # Empty string as the MIN, tested with a value the min decides.
+    assert page.evaluate(clamp, [10, "", 720]) == 140
+    # null as the MAX, tested with a value the max decides.
+    assert page.evaluate(clamp, [9999, 280, None]) == 380
 
 
 # ---------------------------------------------------------------------------

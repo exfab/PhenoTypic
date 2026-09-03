@@ -554,3 +554,26 @@ class TestSplitterAttrs:
         )
         assert "data-splitter-min" not in attrs
         assert attrs["data-splitter-max"] == "720"
+
+    def test_an_inverted_bound_pair_is_refused(self) -> None:
+        """min > max is rejected at the boundary, not passed to the DOM.
+
+        The JS clamp is ``Math.max(lo, Math.min(hi, n))``, which for an
+        inverted pair returns ``lo`` for every input: the pane jumps to
+        the larger number on mousedown and then never moves, keeping its
+        ``col-resize`` cursor the whole time. Nothing raises on either
+        side, so the boundary is the only place this can be caught.
+        """
+        with pytest.raises(ValueError, match="exceeds max_width"):
+            _config.splitter_attrs(
+                target="pane", store="store", min_width=720, max_width=320
+            )
+
+    def test_one_bound_alone_is_never_an_inverted_pair(self) -> None:
+        """The guard must not fire when the other bound is the default."""
+        assert _config.splitter_attrs(
+            target="pane", store="store", min_width=720
+        )["data-splitter-min"] == "720"
+        assert _config.splitter_attrs(
+            target="pane", store="store", max_width=10
+        )["data-splitter-max"] == "10"

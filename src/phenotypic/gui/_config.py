@@ -48,11 +48,10 @@ cache (``PHENOTYPIC_CACHE_DIRNAME``), resolved for legacy runs via
 
 from __future__ import annotations
 
-from typing import NotRequired, TypedDict
 import argparse
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Literal, NotRequired, TypedDict
 from urllib.parse import urlsplit
 
 from phenotypic.sdk_ import (
@@ -167,6 +166,8 @@ __all__ = [
     "SECTION_GROUP_CAP",
     # Drag-splitter handles (Scatter inspector + QC worklist)
     "splitter_attrs",
+    "SplitterEdge",
+    "SPLITTER_EDGE_DEFAULT",
     # Closed value-set aliases
     "ChannelName",
     # Tile-spotlight dim strength (shared by both toolbars + the crop route)
@@ -699,6 +700,21 @@ def splitter_attrs(
     Returns:
         The attributes, to splat into a component: ``**splitter_attrs(...)``.
     """
+    if (
+        min_width is not None
+        and max_width is not None
+        and min_width > max_width
+    ):
+        # Raised rather than swapped or clamped, because the JS cannot
+        # tell an inverted pair from a deliberate one: `Math.max(lo,
+        # Math.min(hi, n))` pins the pane at `lo` for every drag, so it
+        # jumps to the larger number on mousedown and then never moves.
+        # Nothing raises on either side, and the handle keeps its
+        # `col-resize` cursor while being inert.
+        raise ValueError(
+            f"splitter min_width {min_width} exceeds max_width {max_width}; "
+            "the pane would pin to min_width and never move"
+        )
     attrs: SplitterAttrs = {
         "data-splitter-target": target,
         "data-splitter-store": store,

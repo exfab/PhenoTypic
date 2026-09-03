@@ -125,21 +125,42 @@ _INSPECTOR_WIDTH_DEFAULT = 360
 #: nothing a user would notice. These bracket 360 the way the built-in
 #: pair brackets 180.
 #:
-#: The floor is measured, against the verification run: its widest
-#: measurement row -- a ``MeasureColor`` label/value pair, the longest
-#: being ``ColorLab_DeltaE2000MedianFromMedoid`` -- needs 278 px of
-#: content, and ``.offcanvas-body`` adds 16 px of padding each side, so
-#: 310 px is where the values stop being clipped. Rounded up to 320 for
-#: slack. An earlier 280 was picked by eye and did clip them, which is
-#: how a number chosen to look reasonable presents: everything renders,
-#: and the right-hand column is quietly short a digit.
+#: The floor is measured. Its widest measurement row -- a
+#: ``MeasureColor`` label/value pair, the longest label being
+#: ``ColorLab_DeltaE2000MedianFromMedoid`` -- needs **287 px** of content
+#: under Bootstrap's fallback font stack, and ``.offcanvas-end`` takes
+#: **33 px** out of a declared width before the content box: 16 px of
+#: ``.offcanvas-body`` padding each side plus a 1 px ``border-left``,
+#: under a global ``box-sizing: border-box``. 287 + 33 = 320. Both terms
+#: are re-derived in
+#: ``test_the_inspector_handle_declares_the_edge_it_sits_on``, so this
+#: constant cannot be edited without the arithmetic moving with it.
 #:
-#: A run whose measurers emit longer headers than this one's will still
-#: clip at the floor; the bound is a floor on the drag, not a promise
-#: about every possible schema.
+#: Three corrections a review made to a first pass at this number, each
+#: of which changed it or what it claims:
 #:
-#: The ceiling is chosen, not measured: it leaves a 1440 px window more
-#: than half its width for the figure the inspector was opened from.
+#: * **The border was missing.** 287 + 32 = 319 is one px short, and the
+#:   earlier chain (278 + 32 = 310) had the same hole.
+#: * **The font matters, and 278 was the narrower case.** That figure was
+#:   measured with Inter/JetBrains Mono loaded from a CDN. The documented
+#:   deployment is an SSH tunnel off a cluster, where the fallback stack
+#:   is what renders and the same row measures 287.
+#: * **"Clipped" was the wrong mechanism.** ``.offcanvas-body`` resolves
+#:   ``overflow-x`` to ``auto``, so below this floor the row *scrolls*
+#:   rather than losing a digit. The floor is where the values fit
+#:   without scrolling, not where they stop existing.
+#:
+#: What it therefore does **not** cover: a platform with classic
+#: scrollbars (Chrome on Linux/Windows) takes a further ~15 px out of the
+#: content box, and this was measured only on macOS overlay scrollbars,
+#: where the gutter is free. Below the floor there, the row scrolls -- as
+#: it does for a run whose measurers emit longer headers than this one's.
+#: This is a comfort threshold for the measured configuration, not a
+#: promise about every schema on every platform.
+#:
+#: The ceiling is chosen, not measured. It leaves exactly half of a
+#: 1440 px window unoccluded -- the offcanvas is ``position: fixed`` with
+#: ``backdrop=False``, so it covers the figure rather than reflowing it.
 _INSPECTOR_WIDTH_MIN = 320
 _INSPECTOR_WIDTH_MAX = 720
 

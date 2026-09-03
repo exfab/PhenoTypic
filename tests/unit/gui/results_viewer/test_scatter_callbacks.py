@@ -82,6 +82,24 @@ _AREA = str(SIZE.AREA)
 _TIME = str(CULTURE.TIME)
 _STRAIN = "Metadata_Strain"
 
+#: Width in px the widest inspector measurement row needs for its content
+#: -- a ``MeasureColor`` label/value pair, the longest label being
+#: ``ColorLab_DeltaE2000MedianFromMedoid``. Measured in a browser against
+#: the verification run with Bootstrap's **fallback** font stack, which is
+#: the wider of the two cases: with Inter/JetBrains Mono loaded the same
+#: row measures 278. The fallback is the one to budget for, because the
+#: documented deployment is an SSH tunnel off a cluster and the webfonts
+#: come from a CDN that may not be reachable.
+_WIDEST_ROW_CONTENT_PX = 287
+
+#: What ``.offcanvas-end`` takes out of a declared width before the
+#: content box: ``.offcanvas-body``'s ``padding: 1rem`` on both sides plus
+#: the panel's 1 px ``border-left``, under a global ``box-sizing:
+#: border-box``. Read off the Bootstrap 5.3 stylesheet dbc ships, not
+#: assumed -- the border is the term a first pass at this arithmetic
+#: dropped.
+_OFFCANVAS_HORIZONTAL_CHROME_PX = 16 * 2 + 1
+
 #: Ids the layout mounts that no Python callback binds, each for a
 #: reason. Without naming them the "declared implies bound" direction of
 #: the id contract cannot be asserted at all; with a blanket exemption it
@@ -929,9 +947,18 @@ def test_the_inspector_handle_declares_the_edge_it_sits_on(
     props = handle.to_plotly_json()["props"]
     assert props["data-splitter-edge"] == "left"
 
-    # The declared range must actually contain the width the pane opens
-    # at, or the first drag jumps the pane before it moves.
     low = int(props["data-splitter-min"])
     high = int(props["data-splitter-max"])
     opens_at = int(inspector.style["width"].removesuffix("px"))
+
+    # The declared range must contain the width the pane opens at, or the
+    # first drag jumps the pane before it moves.
     assert low < opens_at < high
+
+    # And the floor must be the one its derivation produces. Asserting
+    # only the bracket above leaves the anchor doing no work: 280 -- the
+    # value that shipped first and overflowed the values -- satisfies
+    # `280 < 360 < 720`, and so does any other number below 360. Both
+    # terms are re-derived here rather than restated, so tightening the
+    # content estimate has to move the constant with it.
+    assert low >= _WIDEST_ROW_CONTENT_PX + _OFFCANVAS_HORIZONTAL_CHROME_PX

@@ -110,10 +110,12 @@ SCATTER_INSPECTOR_MEASUREMENTS = "scatter-inspector-measurements"
 #: boundaries (``?contours=1``) or served raw (``?contours=0``).
 SCATTER_CONTOUR_TOGGLE = "scatter-contour-toggle"
 
-#: Drag handle for the inspector's width. Carries
-#: ``data-splitter-target`` / ``data-splitter-store``, which is what makes
-#: an element a handle to the shared splitter in ``results_viewer.js``
-#: section H -- this module names no JS behaviour of its own.
+#: Drag handle for the inspector's width. Carrying
+#: ``data-splitter-target`` is what makes an element a handle to the
+#: shared splitter in ``results_viewer.js`` section H; alongside it the
+#: handle declares ``-store``, and -- because this pane is right-docked
+#: and the controller cannot infer it -- ``-edge``/``-min``/``-max``.
+#: This module names no JS behaviour of its own.
 SCATTER_INSPECTOR_SPLITTER = "scatter-inspector-splitter"
 
 

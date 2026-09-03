@@ -244,6 +244,20 @@ def test_splitter_handle_declares_its_target_and_store() -> None:
     assert props["data-splitter-target"] == rids.QC_REVIEW_WORKLIST_ID
     assert props["data-splitter-store"] == rids.STORE_QC_SIDEBAR_WIDTH
 
+    # What this handle must NOT carry, which is as load-bearing as what
+    # it must. The worklist is a left pane and its handle follows it, so
+    # it rides the pane's RIGHT edge and wants the controller's default
+    # sign; the Scatter inspector is right-docked and declares
+    # `edge="left"` for the opposite one. Copy that declaration here --
+    # a plausible merge, since the two call sites are otherwise twins --
+    # and the worklist resizes backwards, which is precisely the bug that
+    # motivated the edge attribute, reintroduced in the surface it was
+    # fixed from. Nothing raises; a mutation adding these three kwargs to
+    # this call site passed the whole GUI suite.
+    assert "data-splitter-edge" not in props
+    assert "data-splitter-min" not in props
+    assert "data-splitter-max" not in props
+
 
 def test_clamp_sidebar_width_bounds_and_fallback() -> None:
     """``clamp_sidebar_width`` mirrors the JS clamp: bound + default-on-garbage.
