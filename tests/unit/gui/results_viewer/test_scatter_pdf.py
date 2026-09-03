@@ -183,6 +183,38 @@ def test_no_section_grouping_renders_one_page(recorded_pages) -> None:
     assert PdfReader(io.BytesIO(out)).get_num_pages() == 1
 
 
+def test_a_missing_chrome_is_reported_not_raised(monkeypatch) -> None:
+    """No Chrome must degrade to an actionable message, never a crash.
+
+    Runs WITHOUT Chrome and without skipping, which is the point: every
+    other rendering test here skips when kaleido has no browser, so the
+    one behaviour a user without Chrome actually meets was the one
+    behaviour nothing pinned. It already worked; this keeps it working.
+
+    kaleido's error is recognised by its text, so this also fails if that
+    text stops containing "chrome" -- the export would then surface
+    kaleido's raw message instead of the install hint. Still a
+    RuntimeError, so still caught by the callback, but no longer telling
+    the user what to do about it.
+    """
+    import kaleido
+
+    def _no_chrome(*_args, **_kwargs):
+        raise RuntimeError("Chrome not found. Please install Chrome.")
+
+    monkeypatch.setattr(kaleido, "write_fig_sync", _no_chrome)
+
+    with pytest.raises(RuntimeError) as excinfo:
+        export_sections_pdf(
+            _frame(),
+            FigureSpec(x_col="x", y_col="y", section_col="s"),
+            ["A", "B"],
+        )
+    assert "plotly_get_chrome" in str(excinfo.value), (
+        "the hint must name the command that fixes it"
+    )
+
+
 def test_one_page_is_written_per_section(chrome_or_skip) -> None:
     from pypdf import PdfReader
 
