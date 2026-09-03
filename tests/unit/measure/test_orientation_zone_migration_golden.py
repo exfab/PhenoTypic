@@ -153,16 +153,18 @@ def _case_snapshot(
 def _current_snapshot() -> dict[str, Any]:
     """Calculate every behavior that the simplification must preserve."""
     exact_params = {
+        "center_detector": None,
         "radial_ring_width": 4.0,
         "zone_minimum_segment": 2,
         "zone_min_crossings": 1,
     }
     collapsed_params = {
+        "center_detector": None,
         "radial_ring_width": 8.0,
         "zone_minimum_segment": 4,
         "zone_min_crossings": 1,
     }
-    missing_params = {"zone_minimum_segment": 20}
+    missing_params = {"center_detector": None, "zone_minimum_segment": 20}
     center_params = {"center_detector": _center_detector()}
     legacy_params = {"legacy_mode": True}
 
@@ -202,8 +204,8 @@ def _current_snapshot() -> dict[str, Any]:
             ),
             "canonical_tiny": _case_snapshot(
                 _tiny_image(),
-                symmetric_kwargs={},
-                orientation_kwargs={},
+                symmetric_kwargs={"center_detector": None},
+                orientation_kwargs={"center_detector": None},
             ),
             "legacy": _case_snapshot(
                 _radial_spoke_image(),

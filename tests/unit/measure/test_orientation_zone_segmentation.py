@@ -10,8 +10,8 @@ from pydantic import BaseModel, ConfigDict
 
 from phenotypic import Image, ImagePipeline
 from phenotypic.abc_ import BaseOperation
-from phenotypic.detect import HysteresisDetector
-from phenotypic.enhance import BlurGauss
+from phenotypic.detect import HysteresisDetector, InoculumDetector
+from phenotypic.enhance import BlurGauss, SetDetectMode
 from phenotypic.measure import MeasureOrientationZones, MeasureSymZones
 from phenotypic.measure._orientation_zone_segmentation import (
     OrientationChangePointParams,
@@ -325,6 +325,7 @@ def test_legacy_mode_ignores_center_detector(monkeypatch):
 def test_both_measurers_use_identical_canonical_zone_geometry():
     image = _radial_spoke_image()
     params = dict(
+        center_detector=None,
         radial_ring_width=4.0,
         zone_minimum_segment=2,
         zone_min_crossings=1,
@@ -360,6 +361,7 @@ def test_both_measurers_use_identical_canonical_zone_geometry():
 def test_collapsed_canonical_fit_has_zero_dense_area_and_missing_dense_metrics():
     image = _radial_spoke_image()
     params = dict(
+        center_detector=None,
         radial_ring_width=8.0,
         zone_minimum_segment=4,
         zone_min_crossings=1,
@@ -405,7 +407,10 @@ def test_canonical_measurement_failure_never_exposes_legacy_zone_radii():
     image.detect_mat[:] = signal
     image.objmap[:] = mask.astype(np.int32)
 
-    result = MeasureSymZones(zone_minimum_segment=20).measure(image).iloc[0]
+    result = MeasureSymZones(
+        center_detector=None,
+        zone_minimum_segment=20,
+    ).measure(image).iloc[0]
     assert result[
         [
             "SymZones_CoreEndRadius",
@@ -414,6 +419,7 @@ def test_canonical_measurement_failure_never_exposes_legacy_zone_radii():
         ]
     ].isna().all()
     orientation_op = MeasureOrientationZones(
+        center_detector=None,
         zone_minimum_segment=20,
         include_diagnostics=True,
     )
@@ -432,8 +438,11 @@ def test_tiny_canonical_object_is_missing_for_both_measurers_and_code_four():
     image.detect_mat[:] = signal
     image.objmap[:] = (signal > 0).astype(np.int32)
 
-    symmetric = MeasureSymZones().measure(image).iloc[0]
-    orientation_op = MeasureOrientationZones(include_diagnostics=True)
+    symmetric = MeasureSymZones(center_detector=None).measure(image).iloc[0]
+    orientation_op = MeasureOrientationZones(
+        center_detector=None,
+        include_diagnostics=True,
+    )
     orientation = orientation_op.measure(image).iloc[0]
 
     assert symmetric.drop(labels="Object_Label").isna().all()
@@ -472,6 +481,7 @@ def test_canonical_mode_does_not_execute_legacy_colony_ness(
         fail_if_called,
     )
     result = MeasureSymZones(
+        center_detector=None,
         radial_ring_width=4.0,
         zone_minimum_segment=2,
         zone_min_crossings=1,
@@ -481,19 +491,77 @@ def test_canonical_mode_does_not_execute_legacy_colony_ness(
 
 @pytest.mark.parametrize("operation", [MeasureSymZones, MeasureOrientationZones])
 def test_new_instances_are_canonical_but_old_serialized_payloads_migrate(operation):
-    assert operation().legacy_mode is False
+    new_operation = operation()
+    assert new_operation.legacy_mode is False
+    assert isinstance(new_operation.center_detector, ImagePipeline)
     old_payload = {"class": operation.__name__, "params": {}}
     restored = BaseOperation.from_json(json.dumps(old_payload))
     assert restored.legacy_mode is True
-    new_payload = json.loads(operation().to_json())
+    assert restored.center_detector is None
+    new_payload = json.loads(new_operation.to_json())
     assert new_payload["params"]["legacy_mode"] is False
+    assert new_payload["params"]["center_detector"]["__type__"] == "pipeline"
+
+
+@pytest.mark.parametrize("operation", [MeasureSymZones, MeasureOrientationZones])
+def test_default_center_detector_is_the_validated_grayscale_inoculum_pipeline(
+    operation,
+):
+    first = operation()
+    second = operation()
+
+    assert isinstance(first.center_detector, ImagePipeline)
+    assert first.center_detector is not second.center_detector
+    center_ops = list(first.center_detector._ops.values())
+    assert len(center_ops) == 2
+    assert isinstance(center_ops[0], SetDetectMode)
+    assert center_ops[0].mode == "gray"
+    assert isinstance(center_ops[1], InoculumDetector)
+    assert center_ops[1].min_diameter == 20.0
+    assert center_ops[1].max_diameter == 140.0
+    assert center_ops[1].thresh_method == "otsu"
+    assert center_ops[1].enable_gmm is True
+    assert center_ops[1].gmm_n_components == 2
+    assert center_ops[1].gmm_separation_threshold == 0.9
+    assert center_ops[1].validate_obj_count is True
+    restored = operation.from_json(first.to_json())
+    assert isinstance(restored.center_detector, ImagePipeline)
+    assert [
+        type(item) for item in restored.center_detector._ops.values()
+    ] == [SetDetectMode, InoculumDetector]
+
+
+@pytest.mark.parametrize("operation", [MeasureSymZones, MeasureOrientationZones])
+def test_explicit_none_retains_the_final_mask_edt_center(operation):
+    measurer = operation(center_detector=None)
+
+    assert measurer.center_detector is None
+    assert measurer._detected_centers(_off_center_core_image()) is None
+    assert json.loads(measurer.to_json())["params"]["center_detector"] is None
+
+
+@pytest.mark.parametrize("operation", [MeasureSymZones, MeasureOrientationZones])
+def test_pre_default_canonical_payload_migrates_to_edt_center(operation):
+    restored = BaseOperation.from_json(
+        json.dumps(
+            {
+                "class": operation.__name__,
+                "params": {"legacy_mode": False},
+            }
+        )
+    )
+
+    assert restored.legacy_mode is False
+    assert restored.center_detector is None
 
 
 def test_old_pipeline_measurement_payload_migrates_to_legacy_mode():
     payload = json.loads(ImagePipeline(meas=[MeasureSymZones()]).to_json())
     del payload["meas"]["MeasureSymZones"]["params"]["legacy_mode"]
+    del payload["meas"]["MeasureSymZones"]["params"]["center_detector"]
     restored = ImagePipeline.from_json(json.dumps(payload))
     assert restored._meas["MeasureSymZones"].legacy_mode is True
+    assert restored._meas["MeasureSymZones"].center_detector is None
 
 
 def test_old_nested_operation_payload_migrates_to_legacy_mode():

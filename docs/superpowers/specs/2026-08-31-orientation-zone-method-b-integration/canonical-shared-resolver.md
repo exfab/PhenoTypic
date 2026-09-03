@@ -29,7 +29,20 @@ biological orientation is absent inside CoreZone.
 Both public measurers declare these fields through one private base class:
 
 ```python
-center_detector: OperationField | None = None
+center_detector: OperationField | None = ImagePipeline(
+    ops=[
+        SetDetectMode(mode="gray"),
+        InoculumDetector(
+            min_diameter=20.0,
+            max_diameter=140.0,
+            thresh_method="otsu",
+            enable_gmm=True,
+            gmm_n_components=2,
+            gmm_separation_threshold=0.9,
+            validate_obj_count=True,
+        ),
+    ]
+)
 legacy_mode: bool = False
 outer_zone_percentile: float = 100.0
 sigma_d: float = 1.5
@@ -44,9 +57,11 @@ zone_outer_support_margin: float = 0.0
 zone_maximum_gap: int = 0
 ```
 
-`center_detector` is an optional `ObjectDetector` or `ImagePipeline` that
-produces compact center regions. Canonical measurement applies it once to an
-image copy. Each positive center component is assigned to the final colony
+`center_detector` is an `ObjectDetector`, `ImagePipeline`, or `None`. Its
+default is the deterministic grayscale-reset `InoculumDetector` pipeline shown
+above, selected by the 16-crop scene-derived center campaign. Canonical
+measurement applies it once to an image copy. Each positive center component
+is assigned to the final colony
 with which it has the greatest pixel overlap; ties use the lowest numeric
 label. If several components map to one colony, greatest overlap wins with the
 same label tie-break. The centroid of the winning component's pixels inside
@@ -56,7 +71,7 @@ overlapping center for an object produces canonical failure code 4 with
 `failure_reason="center_not_found"`; it never silently falls back to the final
 mask. `legacy_mode=True` ignores this field.
 
-`center_detector=None` preserves the V1 fallback behavior: canonical mode uses
+Explicit `center_detector=None` preserves the V1 fallback behavior: canonical mode uses
 the final-mask distance-transform center selected by `method="distance"`.
 This fallback exists for compatibility and does not claim that the final
 branch mask is the best inoculum-center support mask.
@@ -211,15 +226,19 @@ it is not the canonical Method B outer boundary.
 
 ## 7. Serialization compatibility
 
-Direct construction with no arguments selects canonical mode. Newly serialized
-operations always include `"legacy_mode": false` unless the user selected
-legacy mode, and include `"center_detector": null` unless a detector or nested
-pipeline was configured. A configured detector round-trips through the shared
-`OperationField` class-tagged representation.
+Direct construction with no arguments selects canonical mode and the default
+grayscale-reset inoculum-center pipeline. Newly serialized operations always
+include `"legacy_mode": false` unless the user selected legacy mode, and
+include the complete default center pipeline unless the user explicitly chose
+`"center_detector": null`. A configured detector round-trips through the
+shared `OperationField` class-tagged representation.
 
 Serialized `MeasureOrientationZones` and `MeasureSymZones` payloads that lack
-the field predate this redesign. All operation deserialization paths run a
-class-specific migration hook that inserts `legacy_mode=True` for those payloads:
+`legacy_mode` predate the Method B redesign. The class-specific migration hook
+inserts `legacy_mode=True`. Payloads that lack `center_detector` predate the
+new center default, so the same hook inserts `center_detector=None` and retains
+their original final-mask EDT behavior. This applies through every operation
+deserialization path:
 
 - standalone `BaseOperation.from_json()`;
 - pipeline measurement deserialization;

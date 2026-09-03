@@ -6,7 +6,7 @@ import weakref
 from typing import TYPE_CHECKING, Any, Literal, Union
 
 import numpy as np
-from pydantic import PrivateAttr, field_validator, model_validator
+from pydantic import Field, PrivateAttr, field_validator, model_validator
 
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.measure._orientation_zone_segmentation import (
@@ -21,13 +21,46 @@ from phenotypic.measure._zone_segmentation import (
 from phenotypic.sdk_.typing_ import OperationField
 
 if TYPE_CHECKING:
+    from phenotypic import ImagePipeline
     from phenotypic._core._image import Image
+
+
+def _default_center_detector() -> "ImagePipeline":
+    """Build the validated scene-derived orientation-center pipeline."""
+    from phenotypic import ImagePipeline
+    from phenotypic.detect import InoculumDetector
+    from phenotypic.enhance import SetDetectMode
+
+    return ImagePipeline(
+        name="orientation-zone-default-center-detector",
+        desc=(
+            "Reset detect_mat to grayscale and locate compact inoculum "
+            "centers with the validated Otsu InoculumDetector regime."
+        ),
+        ops=[
+            SetDetectMode(mode="gray"),
+            InoculumDetector(
+                min_diameter=20.0,
+                max_diameter=140.0,
+                thresh_method="otsu",
+                enable_gmm=True,
+                gmm_n_components=2,
+                gmm_separation_threshold=0.9,
+                validate_obj_count=True,
+            ),
+        ],
+        reset=False,
+        benchmark=False,
+        verbose=False,
+    )
 
 
 class CanonicalZoneMeasure(MeasureFeatures):
     """Private base declaring the single canonical zone-resolution surface."""
 
-    center_detector: Union[OperationField, None] = None  # type: ignore[valid-type]
+    center_detector: Union[OperationField, None] = Field(  # type: ignore[valid-type]
+        default_factory=_default_center_detector
+    )
     legacy_mode: bool = False
     outer_zone_percentile: float = 100.0
     sigma_d: float = 1.5
@@ -249,7 +282,8 @@ class CanonicalZoneMeasure(MeasureFeatures):
 
     @classmethod
     def _migrate_serialized_params(cls, params: dict[str, Any]) -> dict[str, Any]:
-        """Preserve legacy behavior for payloads created before this field."""
+        """Preserve behavior for payloads created before either new default."""
         migrated = dict(params)
+        migrated.setdefault("center_detector", None)
         migrated.setdefault("legacy_mode", True)
         return migrated

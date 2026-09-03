@@ -965,11 +965,14 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
     legacy :class:`~phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC` columns.
 
     Args:
-        center_detector: Optional ObjectDetector or ImagePipeline that produces
-            compact center regions. In canonical mode, each detected component
-            is associated with the final colony it overlaps and its overlap
-            centroid becomes the shared radial origin. ``None`` preserves the
-            ``method`` estimator. Ignored in legacy mode. Defaults to ``None``.
+        center_detector: ObjectDetector or ImagePipeline that produces compact
+            center regions. The default pipeline resets ``detect_mat`` to
+            grayscale and applies ``InoculumDetector(min_diameter=20,
+            max_diameter=140, thresh_method="otsu")``. In canonical mode, each
+            detected component is associated with the final colony it overlaps
+            and its overlap centroid becomes the shared radial origin. Set to
+            ``None`` to use the final-mask distance-transform estimator.
+            Ignored in legacy mode.
         legacy_mode: Use the historical colony-ness zone partition instead of
             canonical Method B. Defaults to ``False``.
         outer_zone_percentile: Target-mask radial percentile used as the
