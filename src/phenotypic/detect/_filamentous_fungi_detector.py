@@ -9,6 +9,7 @@ from typing_extensions import Self
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic._core._grid_image import GridImage
+    from phenotypic.sdk_.reconnect import ReconnectConfig
 
 from skimage.measure import label
 
@@ -29,16 +30,13 @@ from phenotypic.detect import HysteresisDetector
 from phenotypic.detect._inoculum_detector import InoculumDetector
 from phenotypic.refine import KeepSectionLargest
 
-from phenotypic.sdk_.reconnect import (
-    ReconnectConfig,
-    build_reconnect_cost,
-    compute_full_image_app2_gi_cost,
-    filter_mask_by_overlap,
-    select_reconnect_fragments,
-    markers_from_centroids,
-    partition_by_grid_voronoi,
-    reconnect_fragments_tiled,
-)
+# `phenotypic.sdk_.reconnect` is imported inside the two methods that use it,
+# not here. Its `_tensor_voting` kernel applies `@numba.njit` at import time, so
+# a module-scope import would make `import phenotypic` load numba (and, through
+# `numba.misc.coverage_support`, coverage) for every entry point — while only a
+# run that actually reaches this detector needs it. `from __future__ import
+# annotations` is in force, so the `-> ReconnectConfig` annotation below is a
+# string and does not force the import either.
 
 
 class FilamentousFungiDetector(GridObjectDetector):
@@ -382,6 +380,15 @@ class FilamentousFungiDetector(GridObjectDetector):
         """
 
         from phenotypic import ImagePipeline
+        from phenotypic.sdk_.reconnect import (
+            build_reconnect_cost,
+            compute_full_image_app2_gi_cost,
+            filter_mask_by_overlap,
+            markers_from_centroids,
+            partition_by_grid_voronoi,
+            reconnect_fragments_tiled,
+            select_reconnect_fragments,
+        )
 
         # Validate that detectors are set before operation
         if self.inoculum_detector is None:
@@ -564,6 +571,8 @@ class FilamentousFungiDetector(GridObjectDetector):
 
     def _reconnect_config(self) -> ReconnectConfig:
         """Bundle scene-derived scalars for the sdk_.reconnect functions."""
+        from phenotypic.sdk_.reconnect import ReconnectConfig
+
         return ReconnectConfig(
             beta=self.beta,
             gamma=self.gamma,

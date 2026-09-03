@@ -7,10 +7,14 @@ See docs/superpowers/specs/2026-06-10-robust-lab-color-measures-design.md.
 """
 from __future__ import annotations
 
-import colour
 import numpy as np
 
 from phenotypic.util._geometric_median import geometric_median as _geometric_median
+
+# `colour` is imported inside the two functions that need it. A module-scope
+# import would load colour-science on `import phenotypic` — the largest single
+# cost on the startup path — because `phenotypic/__init__` imports `util`, which
+# imports this module, on every entry point.
 
 _EPS = 1e-12
 
@@ -88,6 +92,8 @@ def medoid_ciede2000(
     else:
         sample = lab
 
+    import colour
+
     # Accumulate each candidate's total ΔE2000 to all sample points in blocks,
     # so we never allocate the full (m, m) pairwise matrix at once.
     m = sample.shape[0]
@@ -143,6 +149,8 @@ def lab_to_srgb_hex(lab: np.ndarray) -> str:
 
     Returns ``""`` if any coordinate is NaN (e.g. an empty object).
     """
+    import colour
+
     lab = np.asarray(lab, dtype=np.float64)
     if np.isnan(lab).any():
         return ""

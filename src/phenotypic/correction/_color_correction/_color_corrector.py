@@ -10,7 +10,9 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Any, overload
 
-import colour
+# `colour` is imported inside the functions that use it. A module-scope import
+# here would load colour-science on `import phenotypic` — its largest single
+# startup cost — for work only a colour correction performs.
 import numpy as np
 from pydantic import PrivateAttr, field_validator
 from skimage.color import rgb2gray
@@ -185,6 +187,8 @@ class ColorCorrector(ImageCorrector):
         Returns:
             Image with corrected RGB, gray, and detect_mat.
         """
+        import colour
+
         ccm = self._ccm
         rgb_raw = image.rgb[:]
         original_dtype = rgb_raw.dtype

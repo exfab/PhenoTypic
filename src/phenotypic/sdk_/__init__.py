@@ -13,8 +13,9 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 (re-exported here at package level for convenience).
 """
 
+# `colourspace` is intentionally absent: it is served by `__getattr__` below so
+# colour-science stays off the startup path.
 from . import (
-    colourspace,
     constants_,
     exceptions_,
     napari_,
@@ -249,7 +250,6 @@ from ._io_constants import (
 )
 from ._pipeline_publication import pipeline_publication_lock
 from .funcs_ import is_binary_mask, timed_execution
-from .hdf_ import HDF
 from ._metadata_helpers import (
     canonical_metadata_order,
     ensure_metadata_prefix,
@@ -602,3 +602,50 @@ __all__ = [
     "validate_analysis_id",
     "zarr_store_path",
 ]
+
+
+def __getattr__(name: str):
+    """Serve the heavy-dependency members of this package on demand.
+
+    ``sdk_`` is imported by ``phenotypic.abc_``, which ``phenotypic/__init__``
+    imports first, so anything bound here at module scope is loaded by every
+    entry point — CLI, tune, GUI launcher — whether or not it is used. The
+    members below each drag a large third-party library in for a code path most
+    runs never take, so they are bound on first access instead.
+
+    Both stay in ``__all__``: this changes *when* they load, not whether they
+    are part of the package's public surface. ``from phenotypic.sdk_ import
+    HDF`` and ``phenotypic.sdk_.colourspace`` both still work.
+
+    Args:
+        name: Attribute being looked up.
+
+    Returns:
+        The requested member.
+
+    Raises:
+        AttributeError: For any other name. This must stay a clean
+            ``AttributeError`` — ``_serializable_pipeline._find_class_in_phenotypic``
+            probes package attributes with ``hasattr`` while resolving a
+            pipeline's operation classes, and any other exception type would
+            break deserialization rather than falling through to its next
+            candidate module.
+    """
+    # h5py, for the retired HDF read/write surface. Nothing in the library
+    # calls it any more — per-image storage is OME-Zarr — but the legacy
+    # fixture generator and the HDF surface tests still import it, so it is
+    # kept rather than deleted.
+    if name == "HDF":
+        from .hdf_ import HDF
+
+        return HDF
+
+    # colour-science, whose import is the single largest cost on the startup
+    # path. Only the colour-space conversions and the colour-checker correction
+    # operations need it.
+    if name == "colourspace":
+        from . import colourspace
+
+        return colourspace
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

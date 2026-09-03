@@ -9,11 +9,15 @@ from __future__ import annotations
 
 import logging
 import weakref
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, NamedTuple
 
-import colour
 import numpy as np
+
+# `colour` is imported inside the four functions that use it. A module-scope
+# import here would load colour-science on `import phenotypic` — its largest
+# single startup cost — for work only a colour-checker fit performs.
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -120,10 +124,19 @@ _RoiSlice = Annotated[
 # Illuminant constants
 # ---------------------------------------------------------------------------
 
-_ILLUMINANT_XY: dict[str, np.ndarray] = {
-    "D50": colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D50"],
-    "D65": colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D65"],
-}
+@lru_cache(maxsize=1)
+def _illuminant_xy_table() -> dict[str, np.ndarray]:
+    """The two common illuminants, resolved from colour on first use.
+
+    Cached so every caller shares one dict, matching the module-level constant
+    this replaced.
+    """
+    import colour
+
+    return {
+        "D50": colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D50"],
+        "D65": colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D65"],
+    }
 
 
 def _illuminant_xy(name: str) -> np.ndarray:
@@ -138,8 +151,11 @@ def _illuminant_xy(name: str) -> np.ndarray:
     Raises:
         ValueError: If *name* is not a recognised illuminant.
     """
-    if name in _ILLUMINANT_XY:
-        return _ILLUMINANT_XY[name]
+    import colour
+
+    table = _illuminant_xy_table()
+    if name in table:
+        return table[name]
     try:
         return colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"][name]
     except KeyError:
@@ -151,6 +167,8 @@ def _illuminant_xy(name: str) -> np.ndarray:
 
 def _illuminant_XYZ(name: str) -> np.ndarray:
     """Return normalised XYZ (Y=1) for a named illuminant."""
+    import colour
+
     return colour.xy_to_XYZ(_illuminant_xy(name))
 
 
@@ -180,6 +198,8 @@ def _load_reference_data(
         maps patch names to ``(R, G, B)`` linear arrays, and *target_wp_xy*
         is the CIE xy whitepoint of the target illuminant.
     """
+    import colour
+
     cc = colour.CCS_COLOURCHECKERS[checker_type]
     checker_wp_xy = cc.illuminant
     target_wp_xy = _illuminant_xy(target_illuminant)
@@ -707,6 +727,8 @@ class ColorCheckerProfile(BaseModel):
         dicts, computes Delta-E 2000 for outlier rejection, fits the
         root-polynomial matrix, and populates diagnostics.
         """
+        import colour
+
         cs = colour.RGB_COLOURSPACES["sRGB"]
         all_patch_names = list(ref_Lab.keys())
         warnings_list: list[str] = []
@@ -899,6 +921,8 @@ class ColorCheckerProfile(BaseModel):
         Returns:
             Correction matrix of shape ``(3, F)``.
         """
+        import colour
+
         Phi = colour.characterisation.polynomial_expansion_Finlayson2015(
                 measured_linear,
                 degree=self.degree,  # type: ignore[arg-type]

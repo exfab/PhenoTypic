@@ -32,7 +32,9 @@ import copy
 import weakref
 from typing import TYPE_CHECKING, Any
 
-import colour
+# `colour` is imported inside the functions that use it. A module-scope import
+# here would load colour-science on `import phenotypic` — its largest single
+# startup cost — for work only a colour correction performs.
 import numpy as np
 import plotly.graph_objects as go
 
@@ -98,6 +100,8 @@ def _lab_to_srgb(
     Returns:
         sRGB array clipped to ``[0, 1]``.
     """
+    import colour
+
     kwargs: dict[str, Any] = {}
     if illuminant is not None:
         kwargs["illuminant"] = illuminant

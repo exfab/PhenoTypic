@@ -8,14 +8,29 @@ patch shape validation.
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Literal
 
-import colour
 import numpy as np
 from scipy.ndimage import binary_fill_holes, label, median_filter
 from scipy.optimize import linear_sum_assignment
 
-_SRGB_CS = colour.RGB_COLOURSPACES["sRGB"]
+# `colour` is imported inside the two functions that use it. Building
+# `_SRGB_CS` at module scope was enough to put colour-science on the
+# `import phenotypic` path — its largest single cost — for a colourspace only a
+# colour correction ever needs.
+
+
+@lru_cache(maxsize=1)
+def _srgb_cs():
+    """The sRGB colourspace definition, built on first use.
+
+    Cached so every caller shares one object, matching the module-level
+    constant this replaced.
+    """
+    import colour
+
+    return colour.RGB_COLOURSPACES["sRGB"]
 
 
 # ---------------------------------------------------------------------------
@@ -56,9 +71,12 @@ def _rgb_to_lab(rgb_float: np.ndarray, illuminant_xy: np.ndarray | None = None) 
     Returns:
         Lab array with the same spatial dimensions.
     """
+    import colour
+
+    srgb_cs = _srgb_cs()
     if illuminant_xy is None:
-        illuminant_xy = _SRGB_CS.whitepoint
-    XYZ = colour.RGB_to_XYZ(rgb_float, colourspace=_SRGB_CS, apply_cctf_decoding=True)
+        illuminant_xy = srgb_cs.whitepoint
+    XYZ = colour.RGB_to_XYZ(rgb_float, colourspace=srgb_cs, apply_cctf_decoding=True)
     return colour.XYZ_to_Lab(XYZ, illuminant=illuminant_xy)
 
 
@@ -570,6 +588,8 @@ def hungarian_match_swatches(
     Raises:
         ValueError: If *observed_Lab* has wrong shape or is empty.
     """
+    import colour
+
     observed_Lab = np.asarray(observed_Lab, dtype=np.float64)
     if observed_Lab.ndim != 2 or observed_Lab.shape[1] != 3:
         raise ValueError("observed_Lab must have shape (K, 3).")

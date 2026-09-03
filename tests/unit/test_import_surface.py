@@ -155,9 +155,9 @@ def test_module_scope_imports_stay_deferred():
 
     src = Path(phenotypic.__file__).parent
     offenders = [
-        (relative, root)
-        for relative, root in surface.FORBIDDEN_MODULE_SCOPE_IMPORTS
-        if root in surface.toplevel_import_roots(src / relative)
+        (relative, target)
+        for relative, target in surface.FORBIDDEN_MODULE_SCOPE_IMPORTS
+        if surface.imports_at_module_scope(src / relative, target)
     ]
     assert not offenders, f"module-scope imports that must be deferred: {offenders}"
 
@@ -186,6 +186,53 @@ def test_legacy_migration_output_is_unchanged(layout):
     assert measured["paths"] == expected["paths"], "store layout changed"
     assert measured["series"] == expected["series"], "pixel content changed"
     assert measured["attributes"] == expected["attributes"], "store metadata changed"
+
+
+# ---------------------------------------------------------------------------
+# Deferred constants must keep their identity
+# ---------------------------------------------------------------------------
+
+
+def test_the_lazily_built_colourspace_is_one_shared_object():
+    """``sRGB_D50`` must be the same object on every access, as it was eagerly.
+
+    This is not a caching nicety. ``rgb_to_xyz`` assigns
+    ``sRGB_D50.whitepoint = ...`` and then passes ``sRGB_D50.whitepoint`` into
+    the conversion, so a ``__getattr__`` that built a fresh colourspace per
+    access would silently change what every D50 conversion in the library
+    computes -- while every existing test still passed, because each call would
+    mutate and read its own private copy and look self-consistent.
+    """
+    from phenotypic.sdk_ import colourspace
+
+    first = colourspace.sRGB_D50
+    second = colourspace.sRGB_D50
+    assert first is second
+
+    # And the mutation the conversion path performs must be visible to the next
+    # reader, which is only true while they are the same object. `whitepoint` is
+    # a validated property on colour's RGB_Colourspace, so the probe has to be a
+    # real chromaticity pair rather than a sentinel.
+    import numpy as np
+
+    original = np.array(first.whitepoint, copy=True)
+    probe = original + 0.01
+    try:
+        first.whitepoint = probe
+        assert np.allclose(colourspace.sRGB_D50.whitepoint, probe)
+    finally:
+        first.whitepoint = original
+
+
+def test_the_lazily_built_correction_constants_are_shared_too():
+    """The two colour constants inside colour-correction share the same rule."""
+    from phenotypic.correction._color_correction import _color_checker_profile, _helpers
+
+    assert _helpers._srgb_cs() is _helpers._srgb_cs()
+    assert (
+        _color_checker_profile._illuminant_xy_table()
+        is _color_checker_profile._illuminant_xy_table()
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,6 @@
-import colour
+# `colour` is imported inside the method below rather than here: a module-scope
+# import would put colour-science on the `import phenotypic` path, which is its
+# largest single cost, for a conversion most runs never perform.
 import numpy as np
 
 from ..accessor_abstracts import ColorSpaceAccessor
@@ -60,4 +62,6 @@ class xyChromaticityAccessor(ColorSpaceAccessor):
             - The conversion is performed by the Colour science library's
               `colour.XYZ_to_xy` function.
         """
+        import colour
+
         return colour.XYZ_to_xy(XYZ=self._root_image.color.XYZ[:])

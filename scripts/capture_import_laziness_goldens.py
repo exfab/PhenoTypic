@@ -230,13 +230,17 @@ def main() -> int:
                 set(was["third_party_roots"]) - set(entry["third_party_roots"])
             )
             delta = entry["phenotypic_module_count"] - was["phenotypic_module_count"]
+            total_delta = entry["total_modules"] - was["total_modules"]
             if gained or delta > 0:
-                print(f"  REGRESSED import {target}: +{gained}, modules {delta:+d}")
+                print(
+                    f"  REGRESSED import {target}: newly eager {gained}, "
+                    f"phenotypic modules {delta:+d}, total modules {total_delta:+d}"
+                )
                 ok = False
             else:
                 print(
-                    f"  ok       import {target}: "
-                    f"-{dropped or 'no'} third-party, modules {delta:+d}"
+                    f"  ok       import {target}: dropped {dropped or 'nothing'}, "
+                    f"phenotypic modules {delta:+d}, total modules {total_delta:+d}"
                 )
 
         ok &= _report_diff(

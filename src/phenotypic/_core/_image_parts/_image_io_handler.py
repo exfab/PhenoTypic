@@ -25,7 +25,6 @@ if importlib.util.find_spec("exifread") is not None:
 else:
     exifread = None
 
-import h5py
 import numpy as np
 import pickle  # noqa: S403 - existing load_pickle/save2pickle support
 from os import PathLike
@@ -1851,6 +1850,12 @@ class ImageIOHandler(ImageColorSpace):
             of this object depends on both the input file's quality and the parameters provided
             through kwargs, as they affect the image's suitability for detailed microbe colony studies.
         """
+        # The only h5py use in this module, on the legacy-migration path alone.
+        # Imported here so `import phenotypic` does not load h5py for every run
+        # that never touches a `.h5` file — which, since per-image storage moved
+        # to OME-Zarr, is all of them but a migration.
+        import h5py
+
         with h5py.File(filename, "r") as filehandler:
             # Auto-dispatch warning: if migration reads a file through
             # ``Image`` when it was saved as a GridImage, warn but do NOT

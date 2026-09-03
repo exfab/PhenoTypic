@@ -24,5 +24,31 @@
         "importtime_self_seconds": 3.258
       }
     }
+  },
+  {
+    "label": "stage-1-colour-numba-h5py",
+    "recorded_at_utc": "2026-09-03T05:40:02.487556+00:00",
+    "node": "r34",
+    "commit": "25c3b84b",
+    "measurements": {
+      "import phenotypic": {
+        "wall_seconds": [
+          2.856,
+          2.9,
+          2.883
+        ],
+        "wall_seconds_min": 2.856,
+        "importtime_self_seconds": 2.432
+      },
+      "python -m phenotypic --help": {
+        "wall_seconds": [
+          2.847,
+          2.843,
+          2.938
+        ],
+        "wall_seconds_min": 2.843,
+        "importtime_self_seconds": 2.556
+      }
+    }
   }
 ]

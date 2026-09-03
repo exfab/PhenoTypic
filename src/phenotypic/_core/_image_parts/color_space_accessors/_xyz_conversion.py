@@ -7,11 +7,15 @@ pipeline the accessor uses, carrying the source image's colour configuration.
 
 from __future__ import annotations
 
-import colour
 import numpy as np
 
-from phenotypic.sdk_.colourspace import sRGB_D50
 from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
+
+# `colour` and `sRGB_D50` are imported inside `rgb_to_xyz`. Importing them here
+# would make colour-science load on `import phenotypic` — it is the largest
+# single cost on the startup path, and only an actual colour-space conversion
+# needs it. `sRGB_D50` is cached behind `sdk_.colourspace.__getattr__`, so the
+# in-place `whitepoint` assignment below still mutates one shared object.
 
 
 def rgb_to_xyz(
@@ -36,6 +40,10 @@ def rgb_to_xyz(
     Raises:
         ValueError: If the gamma/illuminant combination is unrecognized.
     """
+    import colour
+
+    from phenotypic.sdk_.colourspace import sRGB_D50
+
     match (gamma, illuminant):
         case (GAMMA_ENCODINGS.SRGB, "D50"):
             sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[observer]["D50"]

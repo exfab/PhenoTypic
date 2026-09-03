@@ -86,13 +86,45 @@ EAGER_TARGETS: tuple[str, ...] = ("phenotypic", "phenotypic.phenotypicCLI")
 #: target in :data:`EAGER_TARGETS` is imported. Empty at stage 0 -- each stage
 #: of the laziness refactor appends what it evicted, and nothing is ever
 #: removed. Keep the comment naming the stage that added each entry.
-FORBIDDEN_EAGER: tuple[str, ...] = ()
+FORBIDDEN_EAGER: tuple[str, ...] = (
+    # Stage 1. `colour` was the single largest cost on the startup path; `numba`
+    # (with `llvmlite`, and `coverage` via `numba.misc.coverage_support`) came in
+    # for two detectors' method bodies; `h5py` for a read/write surface nothing
+    # calls since per-image storage moved to OME-Zarr.
+    "colour",
+    "coverage",
+    "h5py",
+    "llvmlite",
+    "numba",
+)
 
-#: ``(relative source path, forbidden top-level import root)`` pairs checked by
-#: static AST analysis. This catches a module-scope import that the runtime
-#: probe would miss because the file happens to be off the eager path today.
+#: ``(relative source path, module that must not be imported at module scope)``
+#: pairs checked by static AST analysis. This catches a module-scope import the
+#: runtime probe would miss because the file happens to be off the eager path
+#: today, and would only start costing on the day something imports it. Entries
+#: may name a package (``phenotypic.sdk_.reconnect``) as well as a library.
 #: Grows alongside :data:`FORBIDDEN_EAGER`.
-FORBIDDEN_MODULE_SCOPE_IMPORTS: tuple[tuple[str, str], ...] = ()
+FORBIDDEN_MODULE_SCOPE_IMPORTS: tuple[tuple[str, str], ...] = (
+    # Stage 1 -- colour.
+    ("sdk_/colourspace.py", "colour"),
+    ("util/_robust_color_stats.py", "colour"),
+    ("_core/_image_parts/color_space_accessors/_xyz_conversion.py", "colour"),
+    ("_core/_image_parts/color_space_accessors/_xyz_d65_accessor.py", "colour"),
+    ("_core/_image_parts/color_space_accessors/_cielab_accessor.py", "colour"),
+    (
+        "_core/_image_parts/color_space_accessors/_chromaticity_xy_accessor.py",
+        "colour",
+    ),
+    ("correction/_color_correction/_helpers.py", "colour"),
+    ("correction/_color_correction/_color_corrector.py", "colour"),
+    ("correction/_color_correction/_color_correction_report.py", "colour"),
+    ("correction/_color_correction/_color_checker_profile.py", "colour"),
+    # Stage 1 -- numba, reached only through these two detectors.
+    ("detect/_filamentous_fungi_detector.py", "phenotypic.sdk_.reconnect"),
+    ("detect/_two_k_filamentous_detector.py", "phenotypic.sdk_.reconnect"),
+    # Stage 1 -- h5py.
+    ("_core/_image_parts/_image_io_handler.py", "h5py"),
+)
 
 
 # --------------------------------------------------------------------------
@@ -129,13 +161,29 @@ import {target}  # noqa: F401
 added = set(sys.modules) - before
 
 stdlib = sys.stdlib_module_names
-third_party = sorted({{
-    name.split(".")[0]
-    for name in added
-    if not name.startswith("_")
-    and name.split(".")[0] not in stdlib
-    and name.split(".")[0] != "phenotypic"
-}})
+
+
+def eagerly_imported(root):
+    """Whether *root* names a third-party package that genuinely loaded.
+
+    Deriving roots by splitting every added module name is not enough. A lazy
+    stand-in registered under a submodule key -- `_startup_perf` puts one at
+    `colour.plotting` so colour's own `__init__` binds it instead of importing
+    matplotlib and the spectral datasets -- makes the root look imported when
+    the package itself never was. Requiring the root's own entry, and rejecting
+    a stub found there, keeps the measurement honest in both directions.
+    """
+    if root in stdlib or root.startswith("_") or root == "phenotypic":
+        return False
+    module = sys.modules.get(root)
+    if module is None:
+        return False
+    return not getattr(module, "__phenotypic_lazy_stub__", False)
+
+
+third_party = sorted(
+    {{root for root in {{name.split(".")[0] for name in added}} if eagerly_imported(root)}}
+)
 phenotypic_modules = sorted(name for name in added if name.split(".")[0] == "phenotypic")
 print(json.dumps({{
     "third_party_roots": third_party,
@@ -260,21 +308,36 @@ def capture() -> dict[str, Any]:
 # --------------------------------------------------------------------------
 
 
-def toplevel_import_roots(path: Path) -> set[str]:
-    """Top-level (i.e. executed-at-import) imported root names for one file.
+def toplevel_import_modules(path: Path) -> set[str]:
+    """Fully dotted modules imported at *module scope* by one file.
 
     Only module-body statements are walked, so ``if TYPE_CHECKING:`` blocks and
-    in-function lazy imports are correctly excluded. Same technique as
-    ``tests/unit/viz/test_import_rules.py``.
+    in-function lazy imports are correctly excluded — that distinction is the
+    whole point, and it is what makes "imported at runtime" precise. Same
+    technique as ``tests/unit/viz/test_import_rules.py``, but keeping the full
+    dotted name rather than only the root: some of what this branch defers is an
+    internal package (``phenotypic.sdk_.reconnect``) whose root would be
+    indistinguishable from any other ``phenotypic`` import.
+
+    Relative imports are skipped: resolving them needs the importing file's
+    package, and nothing this is used for needs them.
     """
     tree = ast.parse(path.read_text(encoding="utf-8"))
-    roots: set[str] = set()
+    modules: set[str] = set()
     for node in tree.body:
         if isinstance(node, ast.Import):
-            roots |= {alias.name.split(".")[0] for alias in node.names}
+            modules |= {alias.name for alias in node.names}
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-            roots.add(node.module.split(".")[0])
-    return roots
+            modules.add(node.module)
+    return modules
+
+
+def imports_at_module_scope(path: Path, target: str) -> bool:
+    """Whether *path* imports *target* (or a submodule of it) at module scope."""
+    return any(
+        module == target or module.startswith(f"{target}.")
+        for module in toplevel_import_modules(path)
+    )
 
 
 # --------------------------------------------------------------------------
