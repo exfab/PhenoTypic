@@ -341,3 +341,44 @@ def test_the_exported_page_contains_ink_not_just_axes(chrome_or_skip, tmp_path) 
         f"exported page has no ink beyond axes: {drawn} px against a "
         f"{blank} px control"
     )
+
+
+def test_a4_lands_within_a_point_of_its_non_integer_inches(
+    chrome_or_skip,
+) -> None:
+    """A4 landscape is 11.69 x 8.27 in, the first fraction this path sees.
+
+    Every earlier page size was whole inches, so the inch -> px -> pt
+    chain had only ever been exercised where each step lands on an
+    integer. A4 does not: 11.69 in is 1122.24 px, and kaleido's own
+    px -> pt conversion has to carry the fraction through.
+
+    **Measured, and the tolerance is honest about what it rests on.**
+    Asking for 11.69 x 8.27 in yields a MediaBox of 841.92 x 594.96 pt,
+    which is 11.6933 x 8.2633 in -- errors of 0.24 and 0.48 pt. The two
+    whole-inch presets land exact (1152.00 x 864.00 and 792.00 x 612.00).
+
+    A half-point bound derived from "the MediaBox is written in points"
+    would pass here at 0.48 with almost nothing to spare, and it does not
+    predict 0.48 anyway: rounding the pixel dimension to an integer first
+    caps the error at 0.375 pt, and the observed value exceeds that. The
+    quantization kaleido and Chrome perform between the two is not
+    something this test derives, so the bound is **1 pt** -- twice the
+    largest error measured, and still an order of magnitude tighter than
+    any page-size mistake this guards. Under 1 pt the page is correct to
+    0.014 in; a wrong px-per-inch rate is off by inches, which is what
+    caught ``* 100`` and ``* 72`` before it.
+    """
+    from pypdf import PdfReader
+
+    df = _frame()
+    spec = FigureSpec(x_col="x", y_col="y", section_col="s")
+    out = export_sections_pdf(df, spec, ["A"], width_in=11.69, height_in=8.27)
+
+    box = PdfReader(io.BytesIO(out)).pages[0].mediabox
+    assert float(box.width) == pytest.approx(11.69 * 72, abs=1.0), (
+        f"page is {float(box.width) / 72:.4f} in wide"
+    )
+    assert float(box.height) == pytest.approx(8.27 * 72, abs=1.0), (
+        f"page is {float(box.height) / 72:.4f} in tall"
+    )

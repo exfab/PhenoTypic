@@ -1266,6 +1266,8 @@ def _capture_scatter(context, base_url: str) -> None:
        and measurements grouped by the measurer that emitted them.
     4. ``04_inspector_raw.png`` — the same colony with Contours switched to
        Raw, which re-requests the crop rather than re-resolving the click.
+    5. ``05_style_sizing.png`` — the Style section's type/marker steppers,
+       expanded for the shot because the popover opens on Data.
 
     They are *taken* in the order 02, 01, 03, 04 — the popover has to be
     open before its dropdowns can be bound, and the figure shot is only
@@ -1310,6 +1312,19 @@ def _capture_scatter(context, base_url: str) -> None:
     print(f"[shot]   scatter roles: {bound}")
     page.wait_for_timeout(600)
     _save(page, "scatter", "02_plot_settings.png")
+
+    # 2b) The Style section, which is collapsed on mount so the role
+    #     dropdowns stay the first thing the popover shows. Expanding it
+    #     for the shot is the only way the tutorial can picture controls
+    #     the tab deliberately does not lead with.
+    page.locator('button.accordion-button:has-text("Style")').first.click()
+    page.wait_for_selector(
+            '[id*="scatter-style-readout"]', state="visible", timeout=10_000
+    )
+    page.wait_for_timeout(400)
+    _save(page, "scatter", "05_style_sizing.png")
+    page.locator('button.accordion-button:has-text("Data")').first.click()
+    page.wait_for_timeout(300)
 
     page.click("#scatter-config-toggle")
     page.wait_for_timeout(400)

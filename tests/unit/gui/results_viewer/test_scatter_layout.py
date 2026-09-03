@@ -226,14 +226,26 @@ def test_every_declared_id_is_actually_mounted(
     catches.
     """
     body = build_scatter_tab_body(_output_for(three_strain_frame, tmp_path))
-    mounted = {
-        getattr(node, "id", None)
-        for node in _walk(body)
-        if getattr(node, "id", None) is not None
-    }
+
+    # Two kinds of mounted id, and a declared name may be either. A
+    # literal id mounts as a string; a pattern-matching id mounts as a
+    # dict, and what `_ids` declares for one of those is the `type` token
+    # its instances share -- `SCATTER_STYLE_STEP` is never an id by
+    # itself, it is the `type` of eight pairs of them. Collecting only
+    # string ids would report every such token as unmounted; collecting
+    # both into one set raises `TypeError: unhashable type: 'dict'`.
+    mounted_strings: set[str] = set()
+    mounted_types: set[str] = set()
+    for node in _walk(body):
+        node_id = getattr(node, "id", None)
+        if isinstance(node_id, str):
+            mounted_strings.add(node_id)
+        elif isinstance(node_id, dict) and isinstance(node_id.get("type"), str):
+            mounted_types.add(node_id["type"])
 
     declared = {getattr(ids, name) for name in ids.__all__}
-    assert declared <= mounted, f"declared but never mounted: {declared - mounted}"
+    unmounted = declared - mounted_strings - mounted_types
+    assert not unmounted, f"declared but never mounted: {unmounted}"
 
 
 # ---------------------------------------------------------------------------

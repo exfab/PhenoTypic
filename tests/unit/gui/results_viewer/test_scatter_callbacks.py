@@ -24,6 +24,8 @@ reason.
 
 from __future__ import annotations
 
+import contextlib
+import json
 from pathlib import Path
 
 import dash
@@ -54,6 +56,7 @@ from phenotypic.gui.results_viewer._scatter_tab._callbacks import (
     legend_layout,
     paged_section_index,
     prepare_frame,
+    page_size_payload,
     register_callbacks,
     resolve_inspector_click,
     section_values,
@@ -67,7 +70,9 @@ from phenotypic.gui.results_viewer._scatter_tab._figure import (
 from phenotypic.gui.results_viewer._scatter_tab._inspector import resolve_click
 from phenotypic.gui.results_viewer._scatter_tab._layout import (
     LEGEND_CORNER_DEFAULT,
+    PAGE_SIZE_CUSTOM,
     build_scatter_tab_body,
+    default_style_payload,
 )
 from phenotypic.gui.results_viewer._scatter_tab._spec import CURATION_PHANTOM_COL
 from phenotypic.schema import CULTURE, SIZE
@@ -202,7 +207,16 @@ def _render(output_root: OutputRoot, **overrides: object):
         "legend_payload": None,
     }
     kwargs.update(overrides)
-    return build_render_state(output_root, **kwargs)  # type: ignore[arg-type]
+    figure, label, fingerprint, _graph_style = build_render_state(
+        output_root, **kwargs  # type: ignore[arg-type]
+    )
+    # The graph style is dropped here on purpose. Every caller of this
+    # helper asserts on the figure, the pager label or the fingerprint;
+    # widening their unpack to carry a value none of them reads would be
+    # churn that hides which tests actually cover it.
+    # `test_the_graph_height_is_per_facet_row` calls
+    # `build_render_state` directly for that.
+    return figure, label, fingerprint
 
 
 def _carried(figure) -> list[int]:
@@ -225,7 +239,15 @@ def _bound_ids(app: dash.Dash) -> set[str]:
     for entry in app.callback_map.values():
         for spec in list(entry["inputs"]) + list(entry.get("state") or []):
             component_id = spec["id"] if isinstance(spec, dict) else spec
-            if isinstance(component_id, str):
+            # Dash serializes a pattern-matching id to a JSON *string*, so
+            # an `isinstance(str)` test alone reads
+            # `{"field":["ALL"],"type":"scatter-style-readout"}` as a
+            # literal component id and then reports it unmounted -- it
+            # names a family, not a component. `_bound_pattern_types`
+            # handles those; the brace is what tells them apart.
+            if isinstance(component_id, str) and not component_id.startswith(
+                "{"
+            ):
                 bound.add(component_id)
     # Outputs are not stored as a dependency list; they are encoded in the
     # callback_map KEY, in the format ``tests/_dash_layout.py`` decodes.
@@ -236,6 +258,46 @@ def _bound_ids(app: dash.Dash) -> set[str]:
                 continue
             bound.add(segment.rsplit(".", 1)[0])
     return bound
+
+
+def _bound_pattern_types(app: dash.Dash) -> set[str]:
+    """Every ``type`` token the app's callbacks bind through a wildcard id.
+
+    A pattern-matching dependency's id is a dict, so :func:`_bound_ids`
+    skips it -- correctly, since ``{"type": ..., "field": ALL}`` names no
+    single component. But ``_ids`` declares the ``type`` token for such a
+    family, and that token is bound in exactly this sense. Without this,
+    the eight Style steppers read as "declared, mounted, and nothing
+    reads them".
+
+    Outputs are read from the callback-map key, where a wildcard segment
+    is the one :func:`_bound_ids` skips on ``startswith("{")``; the JSON
+    there is compact and key-sorted, so ``"type"`` is recoverable.
+    """
+    types: set[str] = set()
+    for entry in app.callback_map.values():
+        for spec in list(entry["inputs"]) + list(entry.get("state") or []):
+            component_id = spec["id"] if isinstance(spec, dict) else spec
+            if isinstance(component_id, dict):
+                token = component_id.get("type")
+                if isinstance(token, str):
+                    types.add(token)
+            elif isinstance(component_id, str) and component_id.startswith("{"):
+                with contextlib.suppress(json.JSONDecodeError):
+                    token = json.loads(component_id).get("type")
+                    if isinstance(token, str):
+                        types.add(token)
+    for key in app.callback_map:
+        for segment in key.strip(".").split("..."):
+            segment = segment.strip(".").split("@", 1)[0]
+            if not segment.startswith("{"):
+                continue
+            payload = segment.rsplit(".", 1)[0]
+            with contextlib.suppress(json.JSONDecodeError):
+                token = json.loads(payload).get("type")
+                if isinstance(token, str):
+                    types.add(token)
+    return types
 
 
 # ---------------------------------------------------------------------------
@@ -311,7 +373,9 @@ def test_every_declared_scatter_id_is_bound_by_a_callback(
     register_callbacks(app, output_root)
 
     declared = {getattr(ids, name) for name in ids.__all__}
-    unbound = declared - _bound_ids(app) - _SELF_WIRED
+    unbound = (
+        declared - _bound_ids(app) - _bound_pattern_types(app) - _SELF_WIRED
+    )
     assert not unbound, f"declared and mounted, but nothing reads: {sorted(unbound)}"
 
 
@@ -962,3 +1026,218 @@ def test_the_inspector_handle_declares_the_edge_it_sits_on(
     # terms are re-derived here rather than restated, so tightening the
     # content estimate has to move the constant with it.
     assert low >= _WIDEST_ROW_CONTENT_PX + _OFFCANVAS_HORIZONTAL_CHROME_PX
+
+
+# ---------------------------------------------------------------------------
+# Spec section 9 "Sizing" -- the styling controls reach both destinations
+# ---------------------------------------------------------------------------
+
+
+def test_every_style_field_reaches_the_rendered_figure(
+    output_root: OutputRoot,
+) -> None:
+    """Each of the eight fields, asserted separately.
+
+    Separately on purpose. One "the styles are applied" test that reads
+    a single field passes while four others are dropped, and the whole
+    point of this control set is that each moves something different.
+    """
+    style = {
+        "section": 21,
+        "facet": 15,
+        "axis": 17,
+        "tick": 13,
+        "legend": 19,
+        "marker_size": 11,
+        "marker_opacity": 0.25,
+        "facet_height": 300,
+    }
+    figure, _label, _fp, graph = build_render_state(
+        output_root,
+        section_col=_STRAIN,
+        row_col=None,
+        col_col=None,
+        x_col=_TIME,
+        y_col=_AREA,
+        hue_col=None,
+        shape_col=None,
+        show_removed=True,
+        section_index=0,
+        filter_payload=None,
+        removed_payload=None,
+        legend_payload=None,
+        style=style,
+    )
+
+    assert figure.layout.font.size == style["axis"]
+    assert figure.layout.legend.font.size == style["legend"]
+    assert all(
+        axis.tickfont.size == style["tick"]
+        for axis in figure.select_xaxes()
+    )
+    assert all(
+        axis.tickfont.size == style["tick"]
+        for axis in figure.select_yaxes()
+    )
+    assert all(
+        trace.marker.size == style["marker_size"] for trace in figure.data
+    )
+    assert all(
+        trace.marker.opacity == style["marker_opacity"]
+        for trace in figure.data
+    )
+    # One facet row here, so the graph is exactly one facet tall.
+    assert graph["height"] == f"{style['facet_height']}px"
+
+
+def test_the_facet_annotation_size_follows_its_field(
+    output_root: OutputRoot,
+) -> None:
+    """``facet`` sizes the subplot titles, which need a faceted figure.
+
+    Split from the test above because the default single-panel figure
+    carries no annotations at all, so asserting ``facet`` there would
+    pass over an empty sequence.
+    """
+    style = dict(default_style_payload(), facet=16)
+    figure, _label, _fp, _graph = build_render_state(
+        output_root,
+        section_col=None,
+        row_col=_STRAIN,
+        col_col=None,
+        x_col=_TIME,
+        y_col=_AREA,
+        hue_col=None,
+        shape_col=None,
+        show_removed=True,
+        section_index=0,
+        filter_payload=None,
+        removed_payload=None,
+        legend_payload=None,
+        style=style,
+    )
+
+    annotations = list(figure.layout.annotations)
+    assert annotations, "a faceted figure must carry subplot titles"
+    assert all(a.font.size == 16 for a in annotations)
+
+
+def test_the_graph_height_is_per_facet_row_not_per_figure(
+    output_root: OutputRoot,
+) -> None:
+    """Three facet rows must be three facets tall, not one.
+
+    This is the whole of what replacing the fixed ``72vh`` bought. Under
+    the old fixed height both cases returned the same number, so the
+    grid squashed as rows were added.
+    """
+    style = dict(default_style_payload(), facet_height=200)
+    common = dict(
+        section_col=None,
+        col_col=None,
+        x_col=_TIME,
+        y_col=_AREA,
+        hue_col=None,
+        shape_col=None,
+        show_removed=True,
+        section_index=0,
+        filter_payload=None,
+        removed_payload=None,
+        legend_payload=None,
+        style=style,
+    )
+
+    _f, _l, _fp, one_row = build_render_state(
+        output_root, row_col=None, **common
+    )
+    _f2, _l2, _fp2, many_rows = build_render_state(
+        output_root, row_col=_STRAIN, **common
+    )
+
+    assert one_row["height"] == "200px"
+    assert many_rows["height"] == "600px"  # three strains
+
+
+def test_an_unusable_style_payload_falls_back_to_the_defaults(
+    output_root: OutputRoot,
+) -> None:
+    """A malformed store costs the styling, never the figure.
+
+    This runs on every render, including the first, when the store has
+    not been written yet. Each junk value is rejected on its own, so one
+    bad field does not discard the seven good ones beside it.
+    """
+    defaults = default_style_payload()
+    figure, _label, _fp, graph = build_render_state(
+        output_root,
+        section_col=_STRAIN,
+        row_col=None,
+        col_col=None,
+        x_col=_TIME,
+        y_col=_AREA,
+        hue_col=None,
+        shape_col=None,
+        show_removed=True,
+        section_index=0,
+        filter_payload=None,
+        removed_payload=None,
+        legend_payload=None,
+        style={"axis": "big", "tick": None, "legend": True, "marker_size": 9},
+    )
+
+    assert figure.layout.font.size == defaults["axis"]
+    assert all(
+        axis.tickfont.size == defaults["tick"] for axis in figure.select_xaxes()
+    )
+    # `True` is an int in Python; reading it as a legend size of 1 would
+    # render a legend nobody can see.
+    assert figure.layout.legend.font.size == defaults["legend"]
+    # The one readable field is still honoured.
+    assert all(trace.marker.size == 9 for trace in figure.data)
+    assert graph["height"] == f"{defaults['facet_height']}px"
+
+
+# ---------------------------------------------------------------------------
+# Spec section 11 -- page size is a control
+# ---------------------------------------------------------------------------
+
+
+def test_a_named_preset_drives_the_inch_inputs(output_root: OutputRoot) -> None:
+    """Choosing a preset moves the boxes and hides them."""
+    payload, row_style, width, height = page_size_payload(
+        "A4 landscape", 16.0, 12.0
+    )
+
+    assert (payload["width_in"], payload["height_in"]) == (11.69, 8.27)
+    assert (width, height) == (11.69, 8.27)
+    assert row_style["display"] == "none"
+
+
+def test_custom_reveals_the_inputs_and_takes_their_values(
+    output_root: OutputRoot,
+) -> None:
+    """Under Custom the boxes win, and the row is shown."""
+    payload, row_style, width, height = page_size_payload(
+        PAGE_SIZE_CUSTOM, 20.0, 9.5
+    )
+
+    assert (payload["width_in"], payload["height_in"]) == (20.0, 9.5)
+    assert (width, height) == (20.0, 9.5)
+    assert row_style["display"] == "flex"
+
+
+def test_an_unusable_custom_dimension_falls_back_to_a_real_page(
+    output_root: OutputRoot,
+) -> None:
+    """Zero, negative and non-numeric are not pages.
+
+    A zero would reach kaleido as a zero-pixel figure, which renders a
+    PDF with nothing on it rather than raising.
+    """
+    payload, _row, _w, _h = page_size_payload(PAGE_SIZE_CUSTOM, 0, -3)
+    assert payload["width_in"] == 16.0
+    assert payload["height_in"] == 12.0
+
+    payload, _row, _w, _h = page_size_payload(PAGE_SIZE_CUSTOM, "wide", None)
+    assert payload["width_in"] == 16.0
+    assert payload["height_in"] == 12.0

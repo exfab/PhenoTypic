@@ -42,8 +42,8 @@ def export_sections_pdf(
     spec: FigureSpec,
     sections: list[str],
     *,
-    width_in: int = 16,
-    height_in: int = 12,
+    width_in: float = 16,
+    height_in: float = 12,
 ) -> bytes:
     """Render one page per section and merge them.
 
@@ -65,7 +65,9 @@ def export_sections_pdf(
         spec: The figure configuration.
         sections: Section values, in page order. Empty means "no section
             grouping" and yields one page.
-        width_in: Page width in inches.
+        width_in: Page width in inches. Fractional sizes are
+            supported and exercised: A4 landscape is 11.69 in,
+            the first non-integer this path carries.
         height_in: Page height in inches.
 
     Returns:

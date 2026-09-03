@@ -164,6 +164,10 @@ __all__ = [
     # Scatter tab caps
     "SCATTER_FACET_CAP",
     "SECTION_GROUP_CAP",
+    # Scatter tab figure styling (spec section 9 "Sizing")
+    "SCATTER_STYLE_FIELDS",
+    "SCATTER_STYLE_SIZE_FIELDS",
+    "step_scatter_style",
     # Drag-splitter handles (Scatter inspector + QC worklist)
     "splitter_attrs",
     "SplitterEdge",
@@ -1217,3 +1221,78 @@ def print_launcher_banner(
     for line in extra_lines:
         print(f"  {line}")
     print()
+
+
+# ---------------------------------------------------------------------------
+# Scatter tab figure styling (shared numeric policy)
+# ---------------------------------------------------------------------------
+#
+# Spec section 9's "Sizing" row. Every value here was already consumed by
+# the Scatter figure builder and the PDF exporter, pinned at a
+# `FigureSpec` dataclass default with nothing able to move it; these
+# bounds are what let a stepper move it without producing a figure whose
+# type is illegible or whose markers occlude the data.
+
+#: Per-field ``(label, minimum, maximum, step)`` for the Style steppers,
+#: in the order the popover offers them. Defaults live on ``FigureSpec``
+#: and are read from there rather than restated, so the control and the
+#: dataclass cannot disagree about what "default" means.
+#:
+#: The type-size bounds are chosen to bracket DESIGN.md section 06, which
+#: fixes axis labels at 7-8 px and a chart title at 13 px -- the current
+#: defaults sit inside that, and the range gives room either side without
+#: reaching sizes that would overflow a facet cell. Marker size and
+#: opacity are chosen. The opacity step mirrors ``TILE_DIM_STEP`` so the
+#: two steppers in this GUI feel the same under the finger.
+SCATTER_STYLE_FIELDS: dict[str, tuple[str, float, float, float]] = {
+    "section": ("Section title", 8, 28, 1),
+    "facet": ("Facet labels", 6, 20, 1),
+    "axis": ("Axis titles", 6, 20, 1),
+    "tick": ("Tick labels", 5, 18, 1),
+    "legend": ("Legend text", 6, 20, 1),
+    "marker_size": ("Marker size", 2, 20, 1),
+    "marker_opacity": ("Marker opacity", 0.05, 1.0, 0.05),
+    "facet_height": ("Facet height", 120, 600, 20),
+}
+
+#: Fields whose value is a type size in px, keyed inside
+#: ``FigureSpec.sizes`` rather than being a field of their own. Keeping
+#: the split here means the stepper callback does not need to know the
+#: dataclass's shape, and adding a sixth size is one row above.
+SCATTER_STYLE_SIZE_FIELDS: tuple[str, ...] = (
+    "section",
+    "facet",
+    "axis",
+    "tick",
+    "legend",
+)
+
+
+def step_scatter_style(current: float, field: str, direction: int) -> float:
+    """Step one Style field a click and clamp it to that field's range.
+
+    Pure arithmetic, so the stepping is unit-testable without Dash --
+    the same reason :func:`step_dim_alpha` exists, and the same rounding
+    for the same reason: repeated clicks on a fractional step otherwise
+    accumulate binary drift (``0.5 + 0.05 + 0.05`` landing on
+    ``0.6000000000000001``).
+
+    Args:
+        current: The value before the click.
+        field: Key into :data:`SCATTER_STYLE_FIELDS`.
+        direction: ``+1`` for the ``+`` button, ``-1`` for the ``−``.
+
+    Returns:
+        The stepped value, clamped to the field's bounds. Integral-step
+        fields return a value that is integral; the fractional one is
+        rounded to two decimals.
+
+    Raises:
+        KeyError: If *field* is not a known Style field. Raised rather
+            than defaulted: a typo'd field would otherwise step something
+            silently, or nothing at all.
+    """
+    _, low, high, step = SCATTER_STYLE_FIELDS[field]
+    stepped = current + direction * step
+    clamped = min(high, max(low, stepped))
+    return round(clamped, 2)

@@ -77,6 +77,42 @@ SCATTER_SHAPE_COL = "scatter-shape-col"
 #: Checklist toggle: draw curation-removed colonies as a grey x series.
 SCATTER_SHOW_REMOVED = "scatter-show-removed"
 
+
+# ---------------------------------------------------------------------------
+# Style steppers (spec section 9's "Sizing" row)
+# ---------------------------------------------------------------------------
+
+#: ``type`` of the pattern-matching id every Style stepper button carries:
+#: ``{"type": SCATTER_STYLE_STEP, "field": <field>, "dir": -1 | 1}``. One
+#: ``ALL``-keyed callback serves all eight, so a ninth field is a row in
+#: ``SCATTER_STYLE_FIELDS`` rather than a ninth callback.
+#:
+#: Note a pattern-matching id is a JSON object, which is not a valid CSS
+#: selector -- browser automation that walks the accessibility tree
+#: chokes on it. A test drives these by ``field``/``dir`` through the DOM,
+#: not by role.
+SCATTER_STYLE_STEP = "scatter-style-step"
+
+#: ``type`` of the readout beside each stepper pair:
+#: ``{"type": SCATTER_STYLE_READOUT, "field": <field>}``.
+SCATTER_STYLE_READOUT = "scatter-style-readout"
+
+
+# ---------------------------------------------------------------------------
+# Export settings (spec section 11)
+# ---------------------------------------------------------------------------
+
+#: Page-size preset. ``_layout.PAGE_SIZE_CUSTOM`` reveals the two inch
+#: inputs; every other value drives them and disables them.
+SCATTER_PAGE_PRESET = "scatter-page-preset"
+
+#: Page width / height in inches. Only editable under the Custom preset.
+SCATTER_PAGE_WIDTH = "scatter-page-width"
+SCATTER_PAGE_HEIGHT = "scatter-page-height"
+
+#: The row holding the two inch inputs, hidden unless Custom is chosen.
+SCATTER_PAGE_CUSTOM_ROW = "scatter-page-custom-row"
+
 #: Which corner the figure's legend sits in, and whether it is collapsed
 #: away entirely. Spec section 9's Legend row; both feed one store the
 #: figure callback reads.
@@ -149,6 +185,20 @@ STORE_SCATTER_LEGEND = "store-scatter-legend"
 #: re-render.
 STORE_SCATTER_INSPECTOR_WIDTH = "store-scatter-inspector-width"
 
+#: Every Style field as ``{field: value}`` -- the five type sizes, marker
+#: size, marker opacity and facet height. One payload rather than eight
+#: Inputs, for the reason ``STORE_SCATTER_LEGEND`` gives: the figure
+#: callback reads styling one way regardless of which stepper moved, and
+#: its Input list does not grow a row per control.
+STORE_SCATTER_STYLE = "store-scatter-style"
+
+#: Page size as ``{"preset": str, "width_in": float, "height_in": float}``.
+#: Kept **out** of :data:`STORE_SCATTER_STYLE` because it changes nothing
+#: on screen: it is a ``State`` on the export callback and an ``Input``
+#: nowhere, so choosing a page size does not re-render a figure it cannot
+#: affect.
+STORE_SCATTER_PAGE = "store-scatter-page"
+
 
 __all__ = [
     "SCATTER_COL_COL",
@@ -173,12 +223,20 @@ __all__ = [
     "SCATTER_ROW_COL",
     "SCATTER_SECTION_COL",
     "SCATTER_SHAPE_COL",
+    "SCATTER_PAGE_CUSTOM_ROW",
+    "SCATTER_PAGE_HEIGHT",
+    "SCATTER_PAGE_PRESET",
+    "SCATTER_PAGE_WIDTH",
     "SCATTER_SHOW_REMOVED",
+    "SCATTER_STYLE_READOUT",
+    "SCATTER_STYLE_STEP",
     "SCATTER_X_COL",
     "SCATTER_Y_COL",
     "STORE_SCATTER_COLONY",
     "STORE_SCATTER_FINGERPRINT",
     "STORE_SCATTER_INSPECTOR_WIDTH",
     "STORE_SCATTER_LEGEND",
+    "STORE_SCATTER_PAGE",
     "STORE_SCATTER_SECTION_INDEX",
+    "STORE_SCATTER_STYLE",
 ]

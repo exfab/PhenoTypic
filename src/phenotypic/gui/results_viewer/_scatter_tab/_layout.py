@@ -2,8 +2,10 @@
 
 Builds the tab body: a toolbar (config popover toggle, section pager,
 PDF export), the ``dcc.Graph`` one section renders into, and the stores
-the callbacks read. The eight controls in the popover are spec section 9's
-configuration surface.
+the callbacks read. The popover is spec section 9's configuration
+surface, grouped into Data / Style / Legend / Export sections -- a count
+is not maintained here, because the last one written down was wrong by
+two within a release.
 
 Option lists and defaults are resolved **here, at build time**, and this
 is a deliberate departure from the Colony view, which recomputes its axis
@@ -49,8 +51,14 @@ beside the callbacks that bind them. Among them is the edge the handle
 sits on, which a right-docked pane must declare — see
 :func:`_build_inspector`.
 
-Still not built here, deliberately: the type/marker sizing steppers.
-Nothing reads them, and chrome nothing reads is chrome nobody can trust.
+The Style section's steppers write one store, :data:`._ids.STORE_SCATTER_STYLE`,
+which :func:`._callbacks._figure_spec` folds into the ``FigureSpec`` both
+destinations share. An earlier revision deferred them with the note
+"nothing reads them, and chrome nothing reads is chrome nobody can
+trust" -- true when written, and false by the time it was read: every
+value it described was already consumed by ``_figure.py`` and
+``_pdf.py``, pinned at its dataclass default with no way to move it. The
+missing piece was never the wiring, only the control.
 """
 
 from __future__ import annotations
@@ -61,7 +69,11 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 from dash.development.base_component import Component
 
-from phenotypic.gui._config import SECTION_GROUP_CAP, splitter_attrs
+from phenotypic.gui._config import (
+    SCATTER_STYLE_FIELDS,
+    SECTION_GROUP_CAP,
+    splitter_attrs,
+)
 from phenotypic.gui._design import (
     COLOR_BORDER,
     COLOR_MUTED,
@@ -81,6 +93,7 @@ from phenotypic.sdk_ import is_metadata_header
 
 from . import _ids as ids
 from ._facets import COMPUTED_FRAME_INDEX
+from ._spec import FigureSpec
 
 #: Cardinality ceilings per role, from spec section 9. A facet axis is
 #: capped well below the section-group cap because rows and columns
@@ -114,6 +127,22 @@ LEGEND_CORNERS: tuple[tuple[str, str], ...] = (
 
 #: Spec section 9's default: bottom-right, expanded.
 LEGEND_CORNER_DEFAULT: str = "bottom-right"
+
+#: Sentinel preset that reveals the two inch inputs.
+PAGE_SIZE_CUSTOM = "custom"
+
+#: Page-size presets as ``(label, width_in, height_in)``. The first is
+#: spec section 11's default and the reference script's page. A4 is the
+#: only non-integer pair, which is why the PDF test renders it: the
+#: inch -> px -> point chain had never seen a fraction before.
+PAGE_SIZE_PRESETS: tuple[tuple[str, float, float], ...] = (
+    ("16 x 12 in", 16.0, 12.0),
+    ("Letter landscape", 11.0, 8.5),
+    ("A4 landscape", 11.69, 8.27),
+)
+
+#: The preset a fresh tab opens on.
+PAGE_SIZE_DEFAULT: str = PAGE_SIZE_PRESETS[0][0]
 
 #: Starting width of the click inspector, in px.
 _INSPECTOR_WIDTH_DEFAULT = 360
@@ -317,8 +346,201 @@ def _labelled_dropdown(
     )
 
 
+def _style_stepper(field: str, default: float) -> Component:
+    """One ``[ − ]  Label  8  [ + ]`` row of the Style section.
+
+    Modelled on the colony grid's tile-dim stepper
+    (``colony_view/_layout.py``), including seeding the readout from the
+    default so it reads correctly before the store's first echo.
+
+    Both buttons carry a **pattern-matching** id keyed by field and
+    direction, so one ``ALL`` callback drives every field. The
+    alternative -- a pair of literal ids per field -- is eight callbacks
+    that differ only in a constant.
+
+    Args:
+        field: Key into :data:`SCATTER_STYLE_FIELDS`.
+        default: The field's ``FigureSpec`` default, shown until the
+            store echoes.
+
+    Returns:
+        A flex ``html.Div`` holding caption, buttons and readout.
+    """
+    label, _low, _high, step = SCATTER_STYLE_FIELDS[field]
+    return html.Div(
+        [
+            html.Div(
+                label,
+                style={
+                    "fontSize": FONT_SIZE_LABEL,
+                    "color": COLOR_MUTED,
+                    "flex": "1 1 auto",
+                },
+            ),
+            dbc.Button(
+                "−",
+                id={"type": ids.SCATTER_STYLE_STEP, "field": field, "dir": -1},
+                n_clicks=0,
+                color="secondary",
+                outline=True,
+                size="sm",
+                title=f"Decrease {label.lower()}",
+                style={"padding": "0 0.45rem", "lineHeight": "1.2"},
+            ),
+            html.Span(
+                _format_style_value(field, default),
+                id={"type": ids.SCATTER_STYLE_READOUT, "field": field},
+                style={
+                    "fontFamily": FONT_FAMILY_MONO,
+                    "fontSize": FONT_SIZE_LABEL,
+                    "color": COLOR_NAVY,
+                    "minWidth": "3rem",
+                    "textAlign": "center",
+                },
+            ),
+            dbc.Button(
+                "+",
+                id={"type": ids.SCATTER_STYLE_STEP, "field": field, "dir": 1},
+                n_clicks=0,
+                color="secondary",
+                outline=True,
+                size="sm",
+                title=f"Increase {label.lower()}",
+                style={"padding": "0 0.45rem", "lineHeight": "1.2"},
+            ),
+        ],
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "gap": "0.35rem",
+            "marginBottom": "0.35rem",
+        },
+    )
+
+
+def _format_style_value(field: str, value: float) -> str:
+    """Render one Style value for its readout.
+
+    Integral fields read as integers because ``8.0 px`` for a font size
+    invites the reader to wonder what the fraction is for. The one
+    fractional field keeps two decimals, matching its step.
+
+    Args:
+        field: Key into :data:`SCATTER_STYLE_FIELDS`.
+        value: The current value.
+
+    Returns:
+        The readout text.
+    """
+    _, _low, _high, step = SCATTER_STYLE_FIELDS[field]
+    return f"{value:.2f}" if step < 1 else f"{int(round(value))}"
+
+
+def default_style_payload() -> dict[str, float]:
+    """The Style store's initial contents, read off ``FigureSpec``.
+
+    Sourced from the dataclass rather than restated, so the popover and
+    the figure cannot disagree about what an untouched control means.
+
+    Returns:
+        Every Style field mapped to its default.
+    """
+    spec = FigureSpec(x_col="", y_col="")
+    payload: dict[str, float] = dict(spec.sizes)
+    payload["marker_size"] = spec.marker_size
+    payload["marker_opacity"] = spec.marker_opacity
+    payload["facet_height"] = spec.facet_height
+    return payload
+
+
+def _build_export_controls() -> list[Component]:
+    """The Export section: page size, as spec section 11 asks for.
+
+    A preset dropdown plus two inch inputs that only matter under
+    Custom. The presets carry the sizes so the common cases need no
+    arithmetic from the user, and Custom keeps the escape hatch -- 16x12
+    is the reference script's page and someone will want another.
+
+    These write their own store rather than joining the Style payload.
+    Page size changes nothing on screen, so folding it in would make
+    choosing a page re-render a figure it cannot affect.
+
+    Returns:
+        The section's children.
+    """
+    return [
+        _labelled_dropdown(
+            "Page size",
+            ids.SCATTER_PAGE_PRESET,
+            [],
+            PAGE_SIZE_DEFAULT,
+            placeholder="Page size…",
+            clearable=False,
+            extra=(
+                [
+                    {"label": label, "value": label}
+                    for label, _w, _h in PAGE_SIZE_PRESETS
+                ]
+                + [{"label": "Custom…", "value": PAGE_SIZE_CUSTOM}]
+            ),
+        ),
+        html.Div(
+            [
+                _inch_input("Width", ids.SCATTER_PAGE_WIDTH),
+                _inch_input("Height", ids.SCATTER_PAGE_HEIGHT),
+            ],
+            id=ids.SCATTER_PAGE_CUSTOM_ROW,
+            style={
+                "display": "none",
+                "gap": "0.5rem",
+                "marginBottom": "0.6rem",
+            },
+        ),
+    ]
+
+
+def _inch_input(label: str, component_id: str) -> Component:
+    """One captioned page-dimension input, in inches.
+
+    ``step=0.01`` because A4 landscape is 11.69 x 8.27 in; a whole-inch
+    step would make the preset unreachable by hand.
+
+    Args:
+        label: Caption shown above the input.
+        component_id: The input's Dash id.
+
+    Returns:
+        A ``html.Div`` wrapping caption and input.
+    """
+    return html.Div(
+        [
+            html.Div(
+                label,
+                style={"fontSize": FONT_SIZE_LABEL, "color": COLOR_MUTED},
+            ),
+            dbc.Input(
+                id=component_id,
+                type="number",
+                min=1,
+                max=200,
+                step=0.01,
+                debounce=True,
+                size="sm",
+            ),
+        ],
+        style={"flex": "1 1 0"},
+    )
+
+
 def _build_config_popover(output_root: OutputRoot) -> Component:
-    """Build the configuration popover: the eight role bindings.
+    """Build the configuration popover.
+
+    Four accordion sections rather than one flat list: **Data** (which
+    columns fill which role), **Style** (spec section 9's Sizing row),
+    **Legend**, and **Export**. Only Data is open on mount, so the roles
+    stay the first thing seen -- eighteen controls in a flat column would
+    put the section group above a scrollbar it does not need to be
+    behind.
 
     Args:
         output_root: Validated handle on the CLI output directory.
@@ -327,7 +549,7 @@ def _build_config_popover(output_root: OutputRoot) -> Component:
         A :class:`dbc.Popover` anchored to the toolbar's config toggle.
     """
     numeric = _numeric_columns(output_root)
-    body = [
+    data_controls = [
         _labelled_dropdown(
             "Section group",
             ids.SCATTER_SECTION_COL,
@@ -380,6 +602,23 @@ def _build_config_popover(output_root: OutputRoot) -> Component:
             None,
             placeholder="Circles",
         ),
+        # Selects which rows plot, not how they look, so it belongs with
+        # the roles rather than under Style.
+        dbc.Switch(
+            id=ids.SCATTER_SHOW_REMOVED,
+            label="Show removed colonies as grey ×",
+            value=True,
+            style={"fontSize": FONT_SIZE_CAPTION, "color": COLOR_NAVY},
+        ),
+    ]
+
+    defaults = default_style_payload()
+    style_controls = [
+        _style_stepper(field, defaults[field])
+        for field in SCATTER_STYLE_FIELDS
+    ]
+
+    legend_controls = [
         _labelled_dropdown(
             "Legend corner",
             ids.SCATTER_LEGEND_CORNER,
@@ -398,13 +637,22 @@ def _build_config_popover(output_root: OutputRoot) -> Component:
             value=False,
             style={"fontSize": FONT_SIZE_CAPTION, "color": COLOR_NAVY},
         ),
-        dbc.Switch(
-            id=ids.SCATTER_SHOW_REMOVED,
-            label="Show removed colonies as grey ×",
-            value=True,
-            style={"fontSize": FONT_SIZE_CAPTION, "color": COLOR_NAVY},
-        ),
     ]
+
+    body = dbc.Accordion(
+        [
+            dbc.AccordionItem(data_controls, title="Data", item_id="data"),
+            dbc.AccordionItem(style_controls, title="Style", item_id="style"),
+            dbc.AccordionItem(
+                legend_controls, title="Legend", item_id="legend"
+            ),
+            dbc.AccordionItem(
+                _build_export_controls(), title="Export", item_id="export"
+            ),
+        ],
+        active_item="data",
+        flush=True,
+    )
     return dbc.Popover(
         dbc.PopoverBody(body, style={"maxHeight": "70vh", "overflowY": "auto"}),
         id=ids.SCATTER_CONFIG_POPOVER,
@@ -629,7 +877,14 @@ def build_scatter_tab_body(output_root: OutputRoot) -> Component:
                 id=ids.SCATTER_GRAPH,
                 figure={"data": [], "layout": {}},
                 config={"displaylogo": False, "scrollZoom": True},
-                style={"height": "72vh"},
+                # Height is set by the render callback from the facet
+                # plan and the Style store, so it is per facet ROW rather
+                # than per figure -- a six-row grid is six rows tall and
+                # the tab scrolls. A fixed viewport height here divided
+                # itself among however many rows there were, leaving six
+                # at about 90 px each. Seeded so the graph has a height
+                # before the first render.
+                style={"height": f"{FigureSpec(x_col='', y_col='').facet_height}px"},
             ),
             _build_inspector(),
             dcc.Download(id=ids.SCATTER_DOWNLOAD),
@@ -643,6 +898,17 @@ def build_scatter_tab_body(output_root: OutputRoot) -> Component:
             dcc.Store(
                 id=ids.STORE_SCATTER_INSPECTOR_WIDTH,
                 data=_INSPECTOR_WIDTH_DEFAULT,
+            ),
+            dcc.Store(
+                id=ids.STORE_SCATTER_STYLE, data=default_style_payload()
+            ),
+            dcc.Store(
+                id=ids.STORE_SCATTER_PAGE,
+                data={
+                    "preset": PAGE_SIZE_DEFAULT,
+                    "width_in": PAGE_SIZE_PRESETS[0][1],
+                    "height_in": PAGE_SIZE_PRESETS[0][2],
+                },
             ),
         ],
         className="scatter-view-root",

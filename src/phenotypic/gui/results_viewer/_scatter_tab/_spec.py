@@ -44,6 +44,13 @@ class FigureSpec:
         sizes: Type sizes in px, keyed by role.
         marker_size: Marker area in points squared.
         marker_opacity: Marker alpha in ``[0, 1]``.
+        facet_height: Height in px of **one** facet row. The on-screen
+            figure is this times its row count, so a tall grid scrolls
+            rather than squashing every row into one viewport -- which is
+            what a fixed height did, at six facet rows leaving each about
+            90 px. The export does not use it: there the page owns the
+            height, and a facet row gets whatever a page divided by the
+            row count gives it.
     """
 
     x_col: str
@@ -66,6 +73,7 @@ class FigureSpec:
     )
     marker_size: int = 6
     marker_opacity: float = 0.5
+    facet_height: int = 220
 
 
 def _phantom_mask(dtype: pl.DataType) -> pl.Expr:

@@ -577,3 +577,75 @@ class TestSplitterAttrs:
         assert _config.splitter_attrs(
             target="pane", store="store", max_width=10
         )["data-splitter-max"] == "10"
+
+
+class TestScatterStyleFields:
+    """Spec section 9's "Sizing" bounds, and the stepper arithmetic."""
+
+    def _defaults(self) -> dict[str, float]:
+        """Every Style field's default, read off ``FigureSpec`` itself."""
+        from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec
+
+        spec = FigureSpec(x_col="x", y_col="y")
+        values: dict[str, float] = dict(spec.sizes)
+        values["marker_size"] = spec.marker_size
+        values["marker_opacity"] = spec.marker_opacity
+        values["facet_height"] = spec.facet_height
+        return values
+
+    def test_every_default_lies_inside_its_own_bounds(self) -> None:
+        """A control whose default is out of range jumps on first click.
+
+        Table-driven on purpose: a per-field assertion list would let a
+        ninth field be added without anyone checking it, which is the
+        shape of the mistake this guards.
+        """
+        defaults = self._defaults()
+        for field, (_, low, high, _step) in _config.SCATTER_STYLE_FIELDS.items():
+            assert field in defaults, f"{field} has no FigureSpec default"
+            assert low <= defaults[field] <= high, (
+                f"{field} default {defaults[field]} outside [{low}, {high}]"
+            )
+
+    def test_the_field_table_and_the_dataclass_cover_the_same_fields(
+        self,
+    ) -> None:
+        """Neither may carry a field the other does not.
+
+        A stepper for a field ``FigureSpec`` lacks writes into nothing; a
+        ``FigureSpec`` field with no stepper is the state this whole
+        change existed to end.
+        """
+        assert set(_config.SCATTER_STYLE_FIELDS) == set(self._defaults())
+
+    def test_the_size_fields_are_the_ones_keyed_inside_sizes(self) -> None:
+        """``SCATTER_STYLE_SIZE_FIELDS`` must match ``FigureSpec.sizes``."""
+        from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec
+
+        spec = FigureSpec(x_col="x", y_col="y")
+        assert set(_config.SCATTER_STYLE_SIZE_FIELDS) == set(spec.sizes)
+
+    def test_stepping_past_a_bound_clamps_to_it(self) -> None:
+        """Both ends, on a field whose step does not divide its range."""
+        assert _config.step_scatter_style(20, "marker_size", 1) == 20
+        assert _config.step_scatter_style(2, "marker_size", -1) == 2
+        assert _config.step_scatter_style(19, "marker_size", 1) == 20
+
+    def test_repeated_fractional_steps_do_not_drift(self) -> None:
+        """Opacity is the one fractional field, so it is the one that drifts.
+
+        Ten clicks from the default without rounding lands on
+        ``1.0000000000000002``, which then fails a ``<= 1.0`` clamp check
+        written the obvious way.
+        """
+        value = self._defaults()["marker_opacity"]
+        for _ in range(10):
+            value = _config.step_scatter_style(value, "marker_opacity", 1)
+        assert value == 1.0
+
+    def test_an_unknown_field_raises_rather_than_stepping_nothing(
+        self,
+    ) -> None:
+        """A typo must not silently no-op."""
+        with pytest.raises(KeyError):
+            _config.step_scatter_style(8, "not_a_field", 1)

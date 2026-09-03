@@ -33,12 +33,12 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 import dash
 import plotly.graph_objects as go
 import polars as pl
-from dash import Input, Output, State, ctx, dcc, html, no_update
+from dash import ALL, Input, Output, State, ctx, dcc, html, no_update
 from dash.development.base_component import Component
 from flask import current_app
 
@@ -46,6 +46,9 @@ from phenotypic.gui._config import (
     CFG_URL_PREFIX,
     MOUNT_HOME,
     SCATTER_CROPS_URL_SEGMENT,
+    SCATTER_STYLE_FIELDS,
+    SCATTER_STYLE_SIZE_FIELDS,
+    step_scatter_style,
 )
 from phenotypic.gui._design import (
     COLOR_BORDER,
@@ -83,6 +86,11 @@ from phenotypic.gui.results_viewer._scatter_tab._inspector import (
 )
 from phenotypic.gui.results_viewer._scatter_tab._layout import (
     LEGEND_CORNER_DEFAULT,
+    PAGE_SIZE_CUSTOM,
+    PAGE_SIZE_DEFAULT,
+    PAGE_SIZE_PRESETS,
+    _format_style_value,
+    default_style_payload,
 )
 from phenotypic.gui.results_viewer._scatter_tab._pdf import export_sections_pdf
 from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec, plottable
@@ -424,6 +432,80 @@ def _empty_figure(message: str) -> go.Figure:
     return figure
 
 
+def page_size_payload(
+    preset: object, width: object, height: object
+) -> tuple[dict[str, object], dict[str, str], float, float]:
+    """Resolve the export page size from the three Export controls.
+
+    Pure, so the preset table and the Custom branch are testable without
+    a Dash app -- the same reason :func:`legend_layout` is pure.
+
+    A named preset wins over the inch inputs even when one of them was
+    what fired, because choosing a preset must move the boxes rather
+    than be overridden by their stale contents. Under Custom the boxes
+    win, and an unreadable one falls back to the default page rather
+    than to zero, which would render an empty PDF.
+
+    Args:
+        preset: The preset dropdown's value.
+        width: The width input's value, in inches.
+        height: The height input's value, in inches.
+
+    Returns:
+        ``(store payload, custom-row style, width, height)``.
+    """
+    sizes = {label: (w, h) for label, w, h in PAGE_SIZE_PRESETS}
+    if preset in sizes:
+        w, h = sizes[str(preset)]
+        return (
+            {"preset": preset, "width_in": w, "height_in": h},
+            {"display": "none"},
+            w,
+            h,
+        )
+
+    fallback = sizes[PAGE_SIZE_DEFAULT]
+    w = _positive_inches(width, fallback[0])
+    h = _positive_inches(height, fallback[1])
+    return (
+        {"preset": PAGE_SIZE_CUSTOM, "width_in": w, "height_in": h},
+        {"display": "flex", "gap": "0.5rem", "marginBottom": "0.6rem"},
+        w,
+        h,
+    )
+
+
+def _positive_inches(value: object, fallback: float) -> float:
+    """Read one page dimension, refusing values that cannot be a page.
+
+    Args:
+        value: The input's value, of unknown type.
+        fallback: Used when *value* is missing, non-numeric or <= 0.
+
+    Returns:
+        A positive page dimension in inches.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return fallback
+    return float(value) if value > 0 else fallback
+
+
+def format_style_value(field: str, value: float) -> str:
+    """Render one Style value for its readout.
+
+    Re-exported from the layout so the echo callback and the initial
+    seed cannot format the same number two ways.
+
+    Args:
+        field: Key into ``SCATTER_STYLE_FIELDS``.
+        value: The current value.
+
+    Returns:
+        The readout text.
+    """
+    return _format_style_value(field, value)
+
+
 def _figure_spec(
     *,
     x_col: str,
@@ -434,13 +516,15 @@ def _figure_spec(
     hue_col: str | None,
     shape_col: str | None,
     show_removed: object,
+    style: object = None,
 ) -> FigureSpec:
-    """Bind the role controls into the spec both destinations share.
+    """Bind the role and style controls into the spec both destinations share.
 
-    One constructor for the screen and the export, so a role cannot be
-    carried on one path and dropped on the other -- the same reason
-    :func:`prepare_frame` is shared. ``show_removed`` arrives from a Dash
-    control as an untyped payload and is coerced here, once.
+    One constructor for the screen and the export, so neither a role nor
+    a type size can be carried on one path and dropped on the other --
+    the same reason :func:`prepare_frame` is shared. ``show_removed`` and
+    ``style`` arrive from Dash controls as untyped payloads and are
+    coerced here, once.
 
     Args:
         x_col: Column plotted on X, or ``COMPUTED_FRAME_INDEX``.
@@ -451,10 +535,16 @@ def _figure_spec(
         hue_col: Column mapped to marker colour.
         shape_col: Column mapped to marker symbol.
         show_removed: The curation toggle's value.
+        style: The Style store's payload, or ``None`` before its first
+            write. Unreadable or partial payloads fall back per field to
+            the dataclass default rather than raising: this runs on every
+            render, and a malformed store should cost the styling, not
+            the figure.
 
     Returns:
         The :class:`FigureSpec` for this render.
     """
+    resolved = resolve_style(style)
     return FigureSpec(
         x_col=x_col,
         y_col=y_col,
@@ -464,7 +554,69 @@ def _figure_spec(
         hue_col=hue_col,
         shape_col=shape_col,
         show_removed=bool(show_removed),
+        sizes=resolved.sizes,
+        marker_size=resolved.marker_size,
+        marker_opacity=resolved.marker_opacity,
+        facet_height=resolved.facet_height,
     )
+
+
+class ResolvedStyle(NamedTuple):
+    """One Style store payload, reshaped for :class:`FigureSpec`.
+
+    Named rather than splatted as ``**kwargs``: a ``dict[str, object]``
+    hides every field's type from the checker, so ``sizes`` could be
+    handed an int and ``marker_size`` a dict without anything objecting
+    until a figure came out wrong.
+    """
+
+    sizes: dict[str, int]
+    marker_size: int
+    marker_opacity: float
+    facet_height: int
+
+
+def resolve_style(style: object) -> ResolvedStyle:
+    """Project a Style store payload onto ``FigureSpec``'s fields.
+
+    The store is flat (``{"axis": 8, "marker_size": 6, ...}``) while the
+    dataclass nests the five type sizes under ``sizes``. Reshaping here
+    keeps the stepper callback ignorant of the dataclass's shape, so
+    adding a sixth size is a row in ``SCATTER_STYLE_FIELDS`` and nothing
+    else.
+
+    Every field falls back independently, so one unusable value does not
+    discard the seven good ones beside it. ``bool`` is rejected
+    explicitly because it is an ``int`` in Python, and ``True`` would
+    otherwise read as a legend size of 1.
+
+    Args:
+        style: The store payload, of unknown type.
+
+    Returns:
+        The resolved values, defaults filled in for anything unreadable.
+    """
+    defaults = FigureSpec(x_col="", y_col="")
+    sizes = dict(defaults.sizes)
+    marker_size = defaults.marker_size
+    marker_opacity = defaults.marker_opacity
+    facet_height = defaults.facet_height
+    if not isinstance(style, dict):
+        return ResolvedStyle(sizes, marker_size, marker_opacity, facet_height)
+
+    for field in SCATTER_STYLE_FIELDS:
+        value = style.get(field)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            continue
+        if field in SCATTER_STYLE_SIZE_FIELDS:
+            sizes[field] = int(value)
+        elif field == "marker_opacity":
+            marker_opacity = float(value)
+        elif field == "marker_size":
+            marker_size = int(value)
+        elif field == "facet_height":
+            facet_height = int(value)
+    return ResolvedStyle(sizes, marker_size, marker_opacity, facet_height)
 
 
 def build_render_state(
@@ -482,7 +634,8 @@ def build_render_state(
     filter_payload: object,
     removed_payload: object,
     legend_payload: object,
-) -> tuple[go.Figure, str, str]:
+    style: object = None,
+) -> tuple[go.Figure, str, str, dict[str, str]]:
     """Build one section's figure, its pager label and its fingerprint.
 
     The returned fingerprint is the value the click callback will later
@@ -504,9 +657,15 @@ def build_render_state(
         filter_payload: Raw filter-spec store data.
         removed_payload: Raw removed-keys store data.
         legend_payload: Raw legend store data.
+        style: Raw Style store data.
 
     Returns:
-        ``(figure, pager_label, fingerprint)``.
+        ``(figure, pager_label, fingerprint, graph_style)``. The
+        graph style carries the height the facet grid needs: the
+        figure is `facet_height` px per row, so a six-row grid
+        scrolls rather than compressing every row into one viewport.
+        A fixed viewport height was what left six rows at ~90 px
+        each.
     """
     fingerprint = output_root.consumed_state_fingerprint
     if not x_col or not y_col:
@@ -514,6 +673,7 @@ def build_render_state(
             _empty_figure("Choose an X and a Y column in Plot settings."),
             "",
             fingerprint,
+            graph_style(1, style),
         )
 
     frame, dropped = prepare_frame(
@@ -532,6 +692,7 @@ def build_render_state(
         hue_col=hue_col,
         shape_col=shape_col,
         show_removed=show_removed,
+        style=style,
     )
 
     sections = section_values(frame, section_col)
@@ -546,7 +707,34 @@ def build_render_state(
     plan = plan_facets(page, spec)
     figure = build_scatter_figure(page, spec, plan)
     figure.update_layout(**legend_layout(legend_payload))
-    return figure, _pager_label(current, position, sections, plan, dropped), fingerprint
+    return (
+        figure,
+        _pager_label(current, position, sections, plan, dropped),
+        fingerprint,
+        graph_style(len(plan.rows), style),
+    )
+
+
+def graph_style(n_rows: int, style: object) -> dict[str, str]:
+    """The ``dcc.Graph`` style for a facet grid of *n_rows* rows.
+
+    Height is per-row rather than per-figure, which is the whole of what
+    the facet-height control does. A fixed viewport height divides
+    whatever it is among however many rows there are, so adding facet
+    rows silently shrinks every one of them; six rows in a 72vh graph
+    left each about 90 px on a 1080-tall screen. Multiplying instead
+    means a tall grid is tall, and the tab scrolls.
+
+    Args:
+        n_rows: Facet rows in the plan. Coerced to at least one, since a
+            single-panel figure is a one-row grid.
+        style: Raw Style store data.
+
+    Returns:
+        A ``dcc.Graph`` style dict.
+    """
+    height = resolve_style(style).facet_height
+    return {"height": f"{max(1, n_rows) * height}px"}
 
 
 def _pager_label(
@@ -819,6 +1007,8 @@ def export_payload(
     show_removed: object,
     filter_payload: object,
     removed_payload: object,
+    style: object = None,
+    page: object = None,
 ) -> tuple[Any, str]:
     """Render every section to a PDF, or say why it could not.
 
@@ -839,6 +1029,11 @@ def export_payload(
         show_removed: The curation toggle's value.
         filter_payload: Raw filter-spec store data.
         removed_payload: Raw removed-keys store data.
+        style: Raw Style store data, so the exported type sizes are the
+            ones on screen.
+        page: Raw page-size store data. ``None`` keeps
+            ``export_sections_pdf``'s own default page, which is spec
+            section 11's 16x12 in.
 
     Returns:
         ``(download, status)``. ``download`` is :data:`dash.no_update`
@@ -867,13 +1062,43 @@ def export_payload(
         hue_col=hue_col,
         shape_col=shape_col,
         show_removed=show_removed,
+        style=style,
     )
+    width_in, height_in = _page_inches(page)
     try:
-        pdf = export_sections_pdf(frame, spec, section_values(frame, section_col))
+        pdf = export_sections_pdf(
+            frame,
+            spec,
+            section_values(frame, section_col),
+            width_in=width_in,
+            height_in=height_in,
+        )
     except RuntimeError as exc:
         logger.warning("Scatter PDF export failed", exc_info=True)
         return no_update, str(exc)
     return dcc.send_bytes(lambda buffer: buffer.write(pdf), "scatter.pdf"), ""
+
+
+def _page_inches(page: object) -> tuple[float, float]:
+    """Read the page size out of its store, falling back to the default.
+
+    Args:
+        page: The page store's payload, of unknown type.
+
+    Returns:
+        ``(width_in, height_in)``. A missing or unusable payload yields
+        the default preset rather than zero, which would render a PDF
+        with no page to draw on.
+    """
+    default = next(
+        (w, h) for label, w, h in PAGE_SIZE_PRESETS if label == PAGE_SIZE_DEFAULT
+    )
+    if not isinstance(page, dict):
+        return default
+    return (
+        _positive_inches(page.get("width_in"), default[0]),
+        _positive_inches(page.get("height_in"), default[1]),
+    )
 
 
 def _measurement_config(output_root: OutputRoot) -> dict[str, dict]:
@@ -918,6 +1143,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         Output(ids.SCATTER_GRAPH, "figure"),
         Output(ids.SCATTER_PAGER_LABEL, "children"),
         Output(ids.STORE_SCATTER_FINGERPRINT, "data"),
+        Output(ids.SCATTER_GRAPH, "style"),
         Input(ids.SCATTER_SECTION_COL, "value"),
         Input(ids.SCATTER_ROW_COL, "value"),
         Input(ids.SCATTER_COL_COL, "value"),
@@ -928,6 +1154,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         Input(ids.SCATTER_SHOW_REMOVED, "value"),
         Input(ids.STORE_SCATTER_SECTION_INDEX, "data"),
         Input(ids.STORE_SCATTER_LEGEND, "data"),
+        Input(ids.STORE_SCATTER_STYLE, "data"),
         # Inputs, NOT States. The refresh revision moves every surface
         # together (spec 16.4); the filter store is shared with the
         # sidebar (Q4) so a filter edit must rebuild rather than leave
@@ -948,10 +1175,11 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         show_removed: object,
         section_index: object,
         legend_payload: object,
+        style: object,
         _revision: object,
         filter_payload: object,
         removed_payload: object,
-    ) -> tuple[go.Figure, str, str]:
+    ) -> tuple[go.Figure, str, str, dict[str, str]]:
         return build_render_state(
             output_root,
             section_col=section_col,
@@ -966,6 +1194,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             filter_payload=filter_payload,
             removed_payload=removed_payload,
             legend_payload=legend_payload,
+            style=style,
         )
 
     @app.callback(
@@ -1054,6 +1283,91 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         return {"width": f"{pixels}px"}
 
     @app.callback(
+        Output(ids.STORE_SCATTER_STYLE, "data"),
+        Input(
+            {"type": ids.SCATTER_STYLE_STEP, "field": ALL, "dir": ALL},
+            "n_clicks",
+        ),
+        State(ids.STORE_SCATTER_STYLE, "data"),
+        prevent_initial_call=True,
+    )
+    def _step_style(_clicks: object, current: object) -> dict[str, float]:
+        """Step whichever Style button fired, and write the whole payload.
+
+        One callback for all sixteen buttons. ``ctx.triggered_id`` names
+        the field and direction, so the eight fields differ by data
+        rather than by callback.
+        """
+        payload = dict(default_style_payload())
+        if isinstance(current, dict):
+            for field, value in current.items():
+                if isinstance(value, (int, float)) and not isinstance(
+                    value, bool
+                ):
+                    payload[field] = value
+
+        trigger = ctx.triggered_id
+        if not isinstance(trigger, dict):
+            return payload
+        field = trigger.get("field")
+        direction = trigger.get("dir")
+        if field not in SCATTER_STYLE_FIELDS or direction not in (-1, 1):
+            # A trigger naming an unknown field cannot be stepped, and
+            # guessing one would move a control the user did not touch.
+            return payload
+        payload[field] = step_scatter_style(
+            payload[field], field, int(direction)
+        )
+        return payload
+
+    @app.callback(
+        Output(
+            {"type": ids.SCATTER_STYLE_READOUT, "field": ALL}, "children"
+        ),
+        Input(ids.STORE_SCATTER_STYLE, "data"),
+        State({"type": ids.SCATTER_STYLE_READOUT, "field": ALL}, "id"),
+    )
+    def _echo_style(style: object, readout_ids: list[dict]) -> list[str]:
+        """Render each readout from the store, in the order Dash asks.
+
+        Driven off the store rather than the button click, so a readout
+        cannot disagree with the value the figure was built from.
+        """
+        payload = dict(default_style_payload())
+        if isinstance(style, dict):
+            for field, value in style.items():
+                if isinstance(value, (int, float)) and not isinstance(
+                    value, bool
+                ):
+                    payload[field] = value
+        return [
+            format_style_value(
+                item.get("field", ""), payload.get(item.get("field", ""), 0)
+            )
+            for item in readout_ids
+        ]
+
+    @app.callback(
+        Output(ids.STORE_SCATTER_PAGE, "data"),
+        Output(ids.SCATTER_PAGE_CUSTOM_ROW, "style"),
+        Output(ids.SCATTER_PAGE_WIDTH, "value"),
+        Output(ids.SCATTER_PAGE_HEIGHT, "value"),
+        Input(ids.SCATTER_PAGE_PRESET, "value"),
+        Input(ids.SCATTER_PAGE_WIDTH, "value"),
+        Input(ids.SCATTER_PAGE_HEIGHT, "value"),
+    )
+    def _page_size(
+        preset: object, width: object, height: object
+    ) -> tuple[dict[str, object], dict[str, str], float, float]:
+        """Resolve the page size and show the inch inputs only for Custom.
+
+        The inputs are driven from the chosen preset as well as read, so
+        switching to Custom starts from the size on screen rather than
+        from empty boxes.
+        """
+        return page_size_payload(preset, width, height)
+
+    @app.callback(
         Output(ids.SCATTER_DOWNLOAD, "data"),
         Output(ids.SCATTER_EXPORT_STATUS, "children"),
         Input(ids.SCATTER_EXPORT_BTN, "n_clicks"),
@@ -1065,6 +1379,8 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         State(ids.SCATTER_HUE_COL, "value"),
         State(ids.SCATTER_SHAPE_COL, "value"),
         State(ids.SCATTER_SHOW_REMOVED, "value"),
+        State(ids.STORE_SCATTER_STYLE, "data"),
+        State(ids.STORE_SCATTER_PAGE, "data"),
         State(rv_ids.STORE_FILTER_SPEC, "data"),
         State(rv_ids.STORE_REMOVED_KEYS, "data"),
         prevent_initial_call=True,
@@ -1079,6 +1395,8 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         hue_col: str | None,
         shape_col: str | None,
         show_removed: object,
+        style: object,
+        page: object,
         filter_payload: object,
         removed_payload: object,
     ) -> tuple[Any, str]:
@@ -1093,6 +1411,8 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             hue_col=hue_col,
             shape_col=shape_col,
             show_removed=show_removed,
+            style=style,
+            page=page,
             filter_payload=filter_payload,
             removed_payload=removed_payload,
         )

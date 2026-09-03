@@ -57,6 +57,37 @@ every colony in one image shares a frame number. An image with no timestamp is
 excluded from the plot rather than ranked zero, and the ranking happens after
 filtering, so a filtered-out image leaves no gap in the order.
 
+## Size the figure's type and markers
+
+The popover groups its controls into **Data**, **Style**, **Legend** and
+**Export**. Only Data is open when the popover mounts, so the role dropdowns
+stay the first thing you see; expand **Style** for the sizing steppers.
+
+![The Style section's type and marker steppers.](../../_static/gui_images/scatter/05_style_sizing.png)
+
+Each stepper moves one thing:
+
+| Control | What it sizes |
+| --- | --- |
+| Section title | The heading on each exported PDF page |
+| Facet labels | The `column=value` captions above each facet |
+| Axis titles | The X and Y axis names |
+| Tick labels | The numbers along both axes |
+| Legend text | The series names in the legend |
+| Marker size | Point diameter |
+| Marker opacity | Point alpha — lower it when points overlap heavily |
+| Facet height | The height of **one facet row**, in pixels |
+
+Facet height is the one worth understanding. The figure is that many pixels
+per facet *row*, not in total, so a ten-row grid is ten facets tall and the
+page scrolls. Raising it makes every row taller rather than dividing a fixed
+height among more of them.
+
+```{tip}
+These sizes apply to the export as well as the screen — the same `FigureSpec`
+feeds both — so set them before you export rather than after.
+```
+
 ## Page through the sections
 
 `‹` and `›` step one section group at a time. The chip between them names the
@@ -134,6 +165,11 @@ button, because one would let this tab disagree with the others about which
 snapshot it is showing.
 
 ## Export a PDF
+
+Page size lives in the popover's **Export** section: 16×12 in (the default,
+matching the reference script), Letter landscape, A4 landscape, or **Custom**,
+which reveals width and height inputs seeded from whichever preset was showing.
+
 
 **⇩ Export PDF** renders *every* section — one page each — and merges them into
 a single `scatter.pdf`. It consumes exactly the frame on screen, so the document
