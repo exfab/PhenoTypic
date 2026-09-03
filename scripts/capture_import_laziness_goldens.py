@@ -193,12 +193,57 @@ def main() -> int:
         print("\nComparing against committed goldens:")
         ok = True
         expected_surface = surface.load_golden()
-        for section in ("exports", "eager", "class_resolution"):
+
+        # `__all__` and per-name identity are the contract. `dir()` reads
+        # __dict__ and does not trigger PEP-562 __getattr__, so it shrinks
+        # legitimately whenever a name goes lazy -- reported, never failed.
+        for key in ("__all__", "resolved"):
             ok &= _report_diff(
-                f"import_surface.{section}",
-                expected_surface[section],
-                import_surface[section],
+                f"import_surface.exports[{key}]",
+                {
+                    name: entry.get(key)
+                    for name, entry in expected_surface["exports"].items()
+                },
+                {
+                    name: entry.get(key)
+                    for name, entry in import_surface["exports"].items()
+                },
             )
+        for name, entry in import_surface["exports"].items():
+            was = set(expected_surface["exports"][name]["dir"])
+            now = set(entry["dir"])
+            if was != now:
+                print(
+                    f"  note     {name} dir(): "
+                    f"-{sorted(was - now)} +{sorted(now - was)}"
+                )
+
+        # The eager set is a ratchet, not an equality: every successful stage
+        # shrinks it, so demanding equality would fail on exactly the runs that
+        # worked. Growth is the regression.
+        for target, entry in import_surface["eager"].items():
+            was = expected_surface["eager"][target]
+            gained = sorted(
+                set(entry["third_party_roots"]) - set(was["third_party_roots"])
+            )
+            dropped = sorted(
+                set(was["third_party_roots"]) - set(entry["third_party_roots"])
+            )
+            delta = entry["phenotypic_module_count"] - was["phenotypic_module_count"]
+            if gained or delta > 0:
+                print(f"  REGRESSED import {target}: +{gained}, modules {delta:+d}")
+                ok = False
+            else:
+                print(
+                    f"  ok       import {target}: "
+                    f"-{dropped or 'no'} third-party, modules {delta:+d}"
+                )
+
+        ok &= _report_diff(
+            "import_surface.class_resolution",
+            expected_surface["class_resolution"],
+            import_surface["class_resolution"],
+        )
         ok &= _report_diff(
             "legacy_migration.layouts",
             legacy.load_golden()["layouts"],
