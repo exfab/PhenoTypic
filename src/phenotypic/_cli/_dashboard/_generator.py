@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+from collections.abc import Collection, Mapping
 from pathlib import Path
 
 from phenotypic._assets import asset_bytes
@@ -50,6 +51,8 @@ def regenerate_dashboard_artifacts(
     output_dir: Path,
     job_meta: "dict | None",
     datasets: "dict[str, int]",
+    *,
+    dataset_inventory: "Mapping[str, Collection[str]] | None" = None,
 ) -> None:
     """Rebuild manifest.json and regenerate dashboard HTML in one call.
 
@@ -61,6 +64,19 @@ def regenerate_dashboard_artifacts(
         job_meta: Parsed ``job_metadata.json`` dict (may be ``None`` for
             runs that pre-date metadata persistence).
         datasets: Mapping of dataset name to total image count.
+        dataset_inventory: The authorized image names per dataset. Given
+            explicitly it wins over the one derived from *job_meta*, which
+            is what a caller holding a freshly-walked inventory should do
+            -- and what a run with no ``job_metadata.json`` at all must
+            do, since there is nothing to derive from.
+
+            Supplying it is not optional detail. ``build_manifest``
+            reconciles ``datasets`` against it and raises on a mismatch,
+            and falls back to counting completions from it when the event
+            log carries nothing for a dataset. Passing ``None`` disables
+            both: a recompile that did so wrote a manifest declaring
+            ``completed: 0`` for a fully completed run, and no guard
+            noticed.
     """
     from phenotypic.sdk_ import JobMetadataKey, progress_dir, resolve_execution_mode
     from ._manifest_builder import (
@@ -75,9 +91,10 @@ def regenerate_dashboard_artifacts(
         if execution_mode == "local"
         else None
     )
-    dataset_inventory = dataset_inventory_from_metadata(
-        (job_meta or {}).get(JobMetadataKey.DATASETS)
-    )
+    if dataset_inventory is None:
+        dataset_inventory = dataset_inventory_from_metadata(
+            (job_meta or {}).get(JobMetadataKey.DATASETS)
+        )
 
     build_manifest(
         output_dir=output_dir,
