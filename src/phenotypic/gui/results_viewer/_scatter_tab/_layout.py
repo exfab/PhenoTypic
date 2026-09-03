@@ -128,6 +128,35 @@ LEGEND_CORNERS: tuple[tuple[str, str], ...] = (
 #: Spec section 9's default: bottom-right, expanded.
 LEGEND_CORNER_DEFAULT: str = "bottom-right"
 
+#: Fixed outer width of the settings popover, in px.
+#:
+#: **Fixed rather than content-sized, because it was disorienting.** The
+#: popover used to size itself to whichever accordion section was open,
+#: so toggling Data -> Style moved its edge by 41 px (320 -> 279,
+#: measured) and every control under the cursor shifted with it.
+#:
+#: Derived, and the derivation is why the controls below changed too.
+#: ``.offcanvas``-style chrome takes **74 px** out of a declared width
+#: before any control sees it -- 2 px popover border, 32 px
+#: ``.popover-body`` padding, 40 px ``.accordion-body`` padding, all read
+#: off the computed styles rather than assumed. The dropdowns used to
+#: declare ``min-width: 240px``, so a section holding one demanded
+#: 240 + 74 = 314 px, and Data demanded 329 because its curation switch
+#: label is wider still.
+#:
+#: Sizing the popover to that 329 would have fixed today's numbers and
+#: left the mechanism intact: any longer future label, or any longer
+#: switch caption, moves the demand again. So the dependency is
+#: inverted. The popover declares its width, the controls fill it, and
+#: nothing inside can push it. 340 px leaves each control
+#: ``340 - 74 = 266`` px -- more than the 240 they previously asked for,
+#: and above the 329 any section was measured to need.
+#:
+#: Measured under both the loaded webfonts and the fallback stack, which
+#: agreed to within 2 px: the binding constraint here is structural, not
+#: typographic.
+CONFIG_POPOVER_WIDTH_PX = 340
+
 #: Sentinel preset that reveals the two inch inputs.
 PAGE_SIZE_CUSTOM = "custom"
 
@@ -339,7 +368,11 @@ def _labelled_dropdown(
                 value=value,
                 placeholder=placeholder,
                 clearable=clearable,
-                style={"minWidth": "240px"},
+                # Fills the popover rather than setting a floor for
+                # it: see `CONFIG_POPOVER_WIDTH_PX`. A `min-width`
+                # here is what let one section be wider than
+                # another.
+                style={"width": "100%"},
             ),
         ],
         style={"marginBottom": "0.6rem"},
@@ -659,7 +692,12 @@ def _build_config_popover(output_root: OutputRoot) -> Component:
         target=ids.SCATTER_CONFIG_TOGGLE,
         trigger="legacy",
         placement="bottom-start",
-        style={"maxWidth": "320px"},
+        # Both, not just `maxWidth`: a max alone still lets a
+        # narrow section shrink, which is half of the movement.
+        style={
+            "width": f"{CONFIG_POPOVER_WIDTH_PX}px",
+            "maxWidth": f"{CONFIG_POPOVER_WIDTH_PX}px",
+        },
     )
 
 

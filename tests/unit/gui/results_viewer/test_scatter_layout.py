@@ -23,6 +23,7 @@ from phenotypic.gui.results_viewer._scatter_tab._facets import (
     COMPUTED_FRAME_INDEX,
 )
 from phenotypic.gui.results_viewer._scatter_tab._layout import (
+    CONFIG_POPOVER_WIDTH_PX,
     build_scatter_tab_body,
 )
 from phenotypic.schema import CULTURE, IMAGE, SIZE
@@ -302,3 +303,76 @@ def test_a_column_filtered_away_entirely_still_plans(three_strain_frame) -> None
     # never to zero.
     assert plan.rows == [""]
     assert plan.cols == [""]
+
+
+def test_the_settings_popover_declares_one_fixed_width(
+    three_strain_frame, tmp_path
+) -> None:
+    """Both ``width`` and ``maxWidth``, and no control setting a floor.
+
+    A ``maxWidth`` alone caps the wide sections and lets the narrow ones
+    shrink, which is half the movement this removes -- measured, the
+    popover ran 279 px on Style against 320 px on Data.
+
+    The second assertion is the one that keeps it fixed. Any descendant
+    declaring a ``minWidth`` can demand more than the popover grants and
+    reintroduce exactly the per-section variation, and it would do so
+    silently: the popover still has a width, it is just not the width it
+    declared.
+    """
+    body = build_scatter_tab_body(_output_for(three_strain_frame, tmp_path))
+    popover = next(
+        node
+        for node in _walk(body)
+        if getattr(node, "id", None) == ids.SCATTER_CONFIG_POPOVER
+    )
+
+    style = popover.style
+    assert style["width"] == f"{CONFIG_POPOVER_WIDTH_PX}px"
+    assert style["maxWidth"] == f"{CONFIG_POPOVER_WIDTH_PX}px"
+
+    # Not "no min-width anywhere" -- the stepper readouts declare 3rem so
+    # the number does not jitter its neighbours as it goes 9 -> 14 -> 100,
+    # and 48 px inside a 266 px row cannot push anything. What matters is
+    # that no declared minimum EXCEEDS the width the popover grants, which
+    # is the only way one can win against it.
+    content_px = CONFIG_POPOVER_WIDTH_PX - (2 + 32 + 40)
+    offenders = []
+    for node in _walk(popover):
+        style = getattr(node, "style", None)
+        if not isinstance(style, dict) or "minWidth" in style is None:
+            continue
+        raw = style.get("minWidth")
+        if raw is None:
+            continue
+        if isinstance(raw, str) and raw.endswith("px"):
+            demand = float(raw.removesuffix("px"))
+        elif isinstance(raw, str) and raw.endswith("rem"):
+            demand = float(raw.removesuffix("rem")) * 16
+        elif isinstance(raw, (int, float)):
+            demand = float(raw)
+        else:
+            continue
+        if demand > content_px:
+            offenders.append((getattr(node, "id", None), raw))
+    assert not offenders, (
+        f"min-width exceeding the popover's {content_px}px of content: "
+        f"{offenders}"
+    )
+
+
+def test_the_popover_is_wider_than_the_chrome_it_must_hold(
+    three_strain_frame, tmp_path
+) -> None:
+    """The width must leave a usable control, not merely be a number.
+
+    ``.popover-body`` padding, ``.accordion-body`` padding and the
+    popover border take 74 px before any control is drawn -- measured off
+    the computed styles. Asserting the remainder clears the 240 px the
+    dropdowns used to ask for keeps the constant honest if someone tunes
+    it down.
+    """
+    _body = build_scatter_tab_body(_output_for(three_strain_frame, tmp_path))
+
+    chrome_px = 2 + 32 + 40
+    assert CONFIG_POPOVER_WIDTH_PX - chrome_px >= 240
