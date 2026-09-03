@@ -1,0 +1,28 @@
+[
+  {
+    "label": "stage-0-baseline",
+    "recorded_at_utc": "2026-09-03T04:49:18.607994+00:00",
+    "node": "r34",
+    "commit": "72f68b9b",
+    "measurements": {
+      "import phenotypic": {
+        "wall_seconds": [
+          3.636,
+          4.935,
+          3.384
+        ],
+        "wall_seconds_min": 3.384,
+        "importtime_self_seconds": 3.009
+      },
+      "python -m phenotypic --help": {
+        "wall_seconds": [
+          3.647,
+          3.528,
+          3.52
+        ],
+        "wall_seconds_min": 3.52,
+        "importtime_self_seconds": 3.258
+      }
+    }
+  }
+]

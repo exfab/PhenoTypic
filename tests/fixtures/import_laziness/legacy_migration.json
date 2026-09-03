@@ -1,0 +1,558 @@
+{
+  "layouts": {
+    "v1_flat": {
+      "attributes": {
+        "detect_mode": "gray",
+        "gamma": "SRGB",
+        "illuminant": "D65",
+        "image_class": "Image",
+        "labels": {
+          "objmap": "rgb/labels/objmap"
+        },
+        "metadata": {
+          "imported": {},
+          "protected": {
+            "Metadata_BitDepth": 8,
+            "Metadata_ImageName": "img"
+          },
+          "public": {
+            "Metadata_Strain": "BY4741"
+          }
+        },
+        "provenance": {
+          "applications": [],
+          "original_filename": null,
+          "schema_version": 2,
+          "status": "complete"
+        },
+        "publication_protocol": "root-last-immutable-v1",
+        "pyramid": {
+          "downsample": {
+            "image": "mean",
+            "label": "nearest"
+          },
+          "levels": 1,
+          "stop_px": 512
+        },
+        "series": {
+          "detect_mat": "detect_mat",
+          "gray": "gray",
+          "rgb": "rgb"
+        },
+        "store_schema_version": 3
+      },
+      "paths": [
+        "OME/METADATA.ome.xml",
+        "OME/zarr.json",
+        "detect_mat/0/c.0.0",
+        "detect_mat/0/zarr.json",
+        "detect_mat/zarr.json",
+        "gray/0/c.0.0",
+        "gray/0/zarr.json",
+        "gray/zarr.json",
+        "rgb/0/c.0.0.0",
+        "rgb/0/zarr.json",
+        "rgb/labels/objmap/0/c.0.0",
+        "rgb/labels/objmap/0/zarr.json",
+        "rgb/labels/objmap/zarr.json",
+        "rgb/labels/zarr.json",
+        "rgb/zarr.json",
+        "zarr.json"
+      ],
+      "series": {
+        "detect_mat": {
+          "dtype": "float32",
+          "sha256": "5ea3ba006dec18bcd18bfcf22958ee5a62fb85fa561c23b3c2df1913abc9158d",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        "gray": {
+          "dtype": "float32",
+          "sha256": "5ea3ba006dec18bcd18bfcf22958ee5a62fb85fa561c23b3c2df1913abc9158d",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        "rgb": {
+          "dtype": "uint8",
+          "sha256": "54c189a48c4cbb09df109cbed97dedfb969f69650ffbfee82fbe19705ccea974",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        }
+      }
+    },
+    "v2_enh_gray": {
+      "attributes": {
+        "detect_mode": "gray",
+        "gamma": "SRGB",
+        "illuminant": "D65",
+        "image_class": "Image",
+        "labels": {
+          "objmap": "rgb/labels/objmap"
+        },
+        "metadata": {
+          "imported": {
+            "Metadata_PlateNum": 3
+          },
+          "protected": {
+            "Metadata_BitDepth": 8,
+            "Metadata_ImageName": "img",
+            "Metadata_ImageType": "Image"
+          },
+          "public": {
+            "Metadata_Strain": "BY4741"
+          }
+        },
+        "provenance": {
+          "applications": [],
+          "original_filename": null,
+          "schema_version": 2,
+          "status": "complete"
+        },
+        "publication_protocol": "root-last-immutable-v1",
+        "pyramid": {
+          "downsample": {
+            "image": "mean",
+            "label": "nearest"
+          },
+          "levels": 1,
+          "stop_px": 512
+        },
+        "series": {
+          "detect_mat": "detect_mat",
+          "gray": "gray",
+          "rgb": "rgb"
+        },
+        "store_schema_version": 3
+      },
+      "paths": [
+        "OME/METADATA.ome.xml",
+        "OME/zarr.json",
+        "detect_mat/0/c.0.0",
+        "detect_mat/0/zarr.json",
+        "detect_mat/zarr.json",
+        "gray/0/c.0.0",
+        "gray/0/zarr.json",
+        "gray/zarr.json",
+        "rgb/0/c.0.0.0",
+        "rgb/0/zarr.json",
+        "rgb/labels/objmap/0/c.0.0",
+        "rgb/labels/objmap/0/zarr.json",
+        "rgb/labels/objmap/zarr.json",
+        "rgb/labels/zarr.json",
+        "rgb/zarr.json",
+        "zarr.json"
+      ],
+      "series": {
+        "detect_mat": {
+          "dtype": "float32",
+          "sha256": "5ea3ba006dec18bcd18bfcf22958ee5a62fb85fa561c23b3c2df1913abc9158d",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        "gray": {
+          "dtype": "float32",
+          "sha256": "5ea3ba006dec18bcd18bfcf22958ee5a62fb85fa561c23b3c2df1913abc9158d",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        "rgb": {
+          "dtype": "uint8",
+          "sha256": "54c189a48c4cbb09df109cbed97dedfb969f69650ffbfee82fbe19705ccea974",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        }
+      }
+    },
+    "v2_grid": {
+      "attributes": {
+        "detect_mode": "gray",
+        "gamma": "SRGB",
+        "grid": {
+          "grid_finder": {
+            "class": "AutoGridFinder",
+            "params": {
+              "max_iter": null,
+              "ncols": 24,
+              "nrows": 16,
+              "residual_fraction": 0.4,
+              "tol": null,
+              "warn": false
+            }
+          },
+          "ncols": 24,
+          "nrows": 16
+        },
+        "illuminant": "D65",
+        "image_class": "GridImage",
+        "labels": {
+          "objmap": "rgb/labels/objmap"
+        },
+        "metadata": {
+          "imported": {
+            "Metadata_PlateNum": 3
+          },
+          "protected": {
+            "Metadata_BitDepth": 8,
+            "Metadata_ImageName": "img",
+            "Metadata_ImageType": "Image"
+          },
+          "public": {
+            "Metadata_Strain": "BY4741"
+          }
+        },
+        "provenance": {
+          "applications": [],
+          "original_filename": null,
+          "schema_version": 2,
+          "status": "complete"
+        },
+        "publication_protocol": "root-last-immutable-v1",
+        "pyramid": {
+          "downsample": {
+            "image": "mean",
+            "label": "nearest"
+          },
+          "levels": 1,
+          "stop_px": 512
+        },
+        "series": {
+          "detect_mat": "detect_mat",
+          "gray": "gray",
+          "rgb": "rgb"
+        },
+        "store_schema_version": 3
+      },
+      "paths": [
+        "OME/METADATA.ome.xml",
+        "OME/zarr.json",
+        "detect_mat/0/c.0.0",
+        "detect_mat/0/zarr.json",
+        "detect_mat/zarr.json",
+        "gray/0/c.0.0",
+        "gray/0/zarr.json",
+        "gray/zarr.json",
+        "rgb/0/c.0.0.0",
+        "rgb/0/zarr.json",
+        "rgb/labels/objmap/0/c.0.0",
+        "rgb/labels/objmap/0/zarr.json",
+        "rgb/labels/objmap/zarr.json",
+        "rgb/labels/zarr.json",
+        "rgb/zarr.json",
+        "zarr.json"
+      ],
+      "series": {
+        "detect_mat": {
+          "dtype": "float32",
+          "sha256": "5ea3ba006dec18bcd18bfcf22958ee5a62fb85fa561c23b3c2df1913abc9158d",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        "gray": {
+          "dtype": "float32",
+          "sha256": "5ea3ba006dec18bcd18bfcf22958ee5a62fb85fa561c23b3c2df1913abc9158d",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        "rgb": {
+          "dtype": "uint8",
+          "sha256": "54c189a48c4cbb09df109cbed97dedfb969f69650ffbfee82fbe19705ccea974",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        }
+      }
+    },
+    "v2_grouped": {
+      "attributes": {
+        "detect_mode": "gray",
+        "gamma": "SRGB",
+        "illuminant": "D65",
+        "image_class": "Image",
+        "labels": {
+          "objmap": "rgb/labels/objmap"
+        },
+        "metadata": {
+          "imported": {
+            "Metadata_PlateNum": 3
+          },
+          "protected": {
+            "Metadata_BitDepth": 8,
+            "Metadata_ImageName": "img",
+            "Metadata_ImageType": "Image"
+          },
+          "public": {
+            "Metadata_Strain": "BY4741"
+          }
+        },
+        "provenance": {
+          "applications": [],
+          "original_filename": null,
+          "schema_version": 2,
+          "status": "complete"
+        },
+        "publication_protocol": "root-last-immutable-v1",
+        "pyramid": {
+          "downsample": {
+            "image": "mean",
+            "label": "nearest"
+          },
+          "levels": 1,
+          "stop_px": 512
+        },
+        "series": {
+          "detect_mat": "detect_mat",
+          "gray": "gray",
+          "rgb": "rgb"
+        },
+        "store_schema_version": 3
+      },
+      "paths": [
+        "OME/METADATA.ome.xml",
+        "OME/zarr.json",
+        "detect_mat/0/c.0.0",
+        "detect_mat/0/zarr.json",
+        "detect_mat/zarr.json",
+        "gray/0/c.0.0",
+        "gray/0/zarr.json",
+        "gray/zarr.json",
+        "rgb/0/c.0.0.0",
+        "rgb/0/zarr.json",
+        "rgb/labels/objmap/0/c.0.0",
+        "rgb/labels/objmap/0/zarr.json",
+        "rgb/labels/objmap/zarr.json",
+        "rgb/labels/zarr.json",
+        "rgb/zarr.json",
+        "zarr.json"
+      ],
+      "series": {
+        "detect_mat": {
+          "dtype": "float32",
+          "sha256": "5ea3ba006dec18bcd18bfcf22958ee5a62fb85fa561c23b3c2df1913abc9158d",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        "gray": {
+          "dtype": "float32",
+          "sha256": "5ea3ba006dec18bcd18bfcf22958ee5a62fb85fa561c23b3c2df1913abc9158d",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        "rgb": {
+          "dtype": "uint8",
+          "sha256": "54c189a48c4cbb09df109cbed97dedfb969f69650ffbfee82fbe19705ccea974",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        }
+      }
+    },
+    "v2_image_type": {
+      "attributes": {
+        "detect_mode": "gray",
+        "gamma": "SRGB",
+        "illuminant": "D65",
+        "image_class": "Image",
+        "labels": {
+          "objmap": "rgb/labels/objmap"
+        },
+        "metadata": {
+          "imported": {
+            "Metadata_PlateNum": 3
+          },
+          "protected": {
+            "Metadata_BitDepth": 8,
+            "Metadata_ImageName": "img",
+            "Metadata_ImageType": "GridSection"
+          },
+          "public": {
+            "Metadata_Strain": "BY4741"
+          }
+        },
+        "provenance": {
+          "applications": [],
+          "original_filename": null,
+          "schema_version": 2,
+          "status": "complete"
+        },
+        "publication_protocol": "root-last-immutable-v1",
+        "pyramid": {
+          "downsample": {
+            "image": "mean",
+            "label": "nearest"
+          },
+          "levels": 1,
+          "stop_px": 512
+        },
+        "series": {
+          "detect_mat": "detect_mat",
+          "gray": "gray",
+          "rgb": "rgb"
+        },
+        "store_schema_version": 3
+      },
+      "paths": [
+        "OME/METADATA.ome.xml",
+        "OME/zarr.json",
+        "detect_mat/0/c.0.0",
+        "detect_mat/0/zarr.json",
+        "detect_mat/zarr.json",
+        "gray/0/c.0.0",
+        "gray/0/zarr.json",
+        "gray/zarr.json",
+        "rgb/0/c.0.0.0",
+        "rgb/0/zarr.json",
+        "rgb/labels/objmap/0/c.0.0",
+        "rgb/labels/objmap/0/zarr.json",
+        "rgb/labels/objmap/zarr.json",
+        "rgb/labels/zarr.json",
+        "rgb/zarr.json",
+        "zarr.json"
+      ],
+      "series": {
+        "detect_mat": {
+          "dtype": "float32",
+          "sha256": "5ea3ba006dec18bcd18bfcf22958ee5a62fb85fa561c23b3c2df1913abc9158d",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        "gray": {
+          "dtype": "float32",
+          "sha256": "5ea3ba006dec18bcd18bfcf22958ee5a62fb85fa561c23b3c2df1913abc9158d",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        "rgb": {
+          "dtype": "uint8",
+          "sha256": "54c189a48c4cbb09df109cbed97dedfb969f69650ffbfee82fbe19705ccea974",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        }
+      }
+    },
+    "v2_work_id": {
+      "attributes": {
+        "detect_mode": "gray",
+        "gamma": "SRGB",
+        "illuminant": "D65",
+        "image_class": "Image",
+        "labels": {
+          "objmap": "rgb/labels/objmap"
+        },
+        "metadata": {
+          "imported": {
+            "Metadata_PlateNum": 3
+          },
+          "protected": {
+            "Metadata_BitDepth": 8,
+            "Metadata_ImageName": "img",
+            "Metadata_ImageType": "Image"
+          },
+          "public": {
+            "Metadata_Strain": "BY4741"
+          }
+        },
+        "provenance": {
+          "applications": [],
+          "original_filename": null,
+          "schema_version": 2,
+          "status": "complete"
+        },
+        "publication_protocol": "root-last-immutable-v1",
+        "pyramid": {
+          "downsample": {
+            "image": "mean",
+            "label": "nearest"
+          },
+          "levels": 1,
+          "stop_px": 512
+        },
+        "series": {
+          "detect_mat": "detect_mat",
+          "gray": "gray",
+          "rgb": "rgb"
+        },
+        "store_schema_version": 3,
+        "work_id": "w-fixture"
+      },
+      "paths": [
+        "OME/METADATA.ome.xml",
+        "OME/zarr.json",
+        "detect_mat/0/c.0.0",
+        "detect_mat/0/zarr.json",
+        "detect_mat/zarr.json",
+        "gray/0/c.0.0",
+        "gray/0/zarr.json",
+        "gray/zarr.json",
+        "rgb/0/c.0.0.0",
+        "rgb/0/zarr.json",
+        "rgb/labels/objmap/0/c.0.0",
+        "rgb/labels/objmap/0/zarr.json",
+        "rgb/labels/objmap/zarr.json",
+        "rgb/labels/zarr.json",
+        "rgb/zarr.json",
+        "zarr.json"
+      ],
+      "series": {
+        "detect_mat": {
+          "dtype": "float32",
+          "sha256": "5ea3ba006dec18bcd18bfcf22958ee5a62fb85fa561c23b3c2df1913abc9158d",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        "gray": {
+          "dtype": "float32",
+          "sha256": "5ea3ba006dec18bcd18bfcf22958ee5a62fb85fa561c23b3c2df1913abc9158d",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        "rgb": {
+          "dtype": "uint8",
+          "sha256": "54c189a48c4cbb09df109cbed97dedfb969f69650ffbfee82fbe19705ccea974",
+          "shape": [
+            64,
+            64,
+            3
+          ]
+        }
+      }
+    }
+  },
+  "schema_version": 1
+}
