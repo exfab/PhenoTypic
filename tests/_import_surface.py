@@ -156,6 +156,8 @@ def _probe(script: str) -> Any:
 _EAGER_PROBE = '''
 import json, sys
 
+forbidden = json.loads({forbidden!r})
+
 before = set(sys.modules)
 import {target}  # noqa: F401
 added = set(sys.modules) - before
@@ -163,26 +165,30 @@ added = set(sys.modules) - before
 stdlib = sys.stdlib_module_names
 
 
-def eagerly_imported(root):
-    """Whether *root* names a third-party package that genuinely loaded.
+def genuinely_loaded(root):
+    """Whether *root* names a third-party package that is really imported.
 
-    Deriving roots by splitting every added module name is not enough. A lazy
-    stand-in registered under a submodule key -- `_startup_perf` puts one at
-    `colour.plotting` so colour's own `__init__` binds it instead of importing
-    matplotlib and the spectral datasets -- makes the root look imported when
-    the package itself never was. Requiring the root's own entry, and rejecting
-    a stub found there, keeps the measurement honest in both directions.
+    Two ways this can be wrong, both seen:
+
+    * Deriving roots by splitting every module name counts a package whose
+      *submodule key* is occupied by a lazy stand-in. `_startup_perf` puts one
+      at `colour.plotting` so colour's own `__init__` binds it instead of
+      importing matplotlib and the spectral datasets, which made `colour` look
+      imported when the package never was. Hence: require the root's own entry.
+    * Reading the stub marker with `getattr` runs the module's own
+      `__getattr__`, so a package with a permissive one could pass itself off
+      as a stub and vanish from the report. Hence: read `__dict__` directly.
     """
     if root in stdlib or root.startswith("_") or root == "phenotypic":
         return False
     module = sys.modules.get(root)
     if module is None:
         return False
-    return not getattr(module, "__phenotypic_lazy_stub__", False)
+    return not vars(module).get("__phenotypic_lazy_stub__", False)
 
 
 third_party = sorted(
-    {{root for root in {{name.split(".")[0] for name in added}} if eagerly_imported(root)}}
+    {{root for root in {{name.split(".")[0] for name in added}} if genuinely_loaded(root)}}
 )
 phenotypic_modules = sorted(name for name in added if name.split(".")[0] == "phenotypic")
 print(json.dumps({{
@@ -190,6 +196,14 @@ print(json.dumps({{
     "phenotypic_module_count": len(phenotypic_modules),
     "phenotypic_modules": phenotypic_modules,
     "total_modules": len(sys.modules),
+    # A forbidden library already loaded before the import under test does not
+    # show up in `added`, so the deferral check would pass vacuously. This is
+    # not hypothetical: pytest-cov's .pth starts coverage in every subprocess,
+    # which would silence the `coverage` entry precisely under `pytest --cov`.
+    # Report both the pre-existing set (the measurement is void if non-empty)
+    # and membership in the FINAL sys.modules, which no preload can hide.
+    "forbidden_preloaded": sorted(r for r in forbidden if r in before),
+    "forbidden_in_final": sorted(r for r in forbidden if genuinely_loaded(r)),
 }}))
 '''
 
@@ -201,7 +215,9 @@ def measure_eager_imports(target: str) -> dict[str, Any]:
     ``tests/unit/sdk_/reconnect/test_import_rules.py`` -- interpreter startup
     and any ``sitecustomize`` imports must not be attributed to the package.
     """
-    return _probe(_EAGER_PROBE.format(target=target))
+    return _probe(
+        _EAGER_PROBE.format(target=target, forbidden=json.dumps(list(FORBIDDEN_EAGER)))
+    )
 
 
 _SURFACE_PROBE = '''

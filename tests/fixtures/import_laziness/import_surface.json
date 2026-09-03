@@ -130,6 +130,8 @@
   },
   "eager": {
     "phenotypic": {
+      "forbidden_in_final": [],
+      "forbidden_preloaded": [],
       "phenotypic_module_count": 431,
       "phenotypic_modules": [
         "phenotypic",
@@ -616,6 +618,8 @@
       "total_modules": 2709
     },
     "phenotypic.phenotypicCLI": {
+      "forbidden_in_final": [],
+      "forbidden_preloaded": [],
       "phenotypic_module_count": 467,
       "phenotypic_modules": [
         "phenotypic",

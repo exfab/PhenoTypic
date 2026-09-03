@@ -106,14 +106,38 @@ def test_pipeline_class_resolution_is_unchanged(golden):
 
 
 @pytest.mark.parametrize("target", surface.EAGER_TARGETS)
+def test_the_deferral_measurement_was_not_compromised(target, measured_eager):
+    """A forbidden library preloaded before the probe voids the measurement.
+
+    The probe reports what importing the target *added* to ``sys.modules``, so a
+    library already loaded when the subprocess started is invisible to it and
+    the deferral check below passes for the wrong reason. That is not
+    hypothetical: pytest-cov's ``.pth`` starts coverage in every subprocess it
+    spawns, which would silence the ``coverage`` entry precisely under
+    ``pytest --cov`` — the configuration where you would most want it.
+
+    Failing here means the environment, not the library, is wrong.
+    """
+    preloaded = measured_eager[target]["forbidden_preloaded"]
+    assert not preloaded, (
+        f"{preloaded} were already in sys.modules before 'import {target}' ran, "
+        "so the deferral check cannot see them; the measurement is void"
+    )
+
+
+@pytest.mark.parametrize("target", surface.EAGER_TARGETS)
 def test_forbidden_libraries_are_not_imported_eagerly(target, measured_eager):
     """Libraries a stage has already evicted must never come back.
 
     :data:`surface.FORBIDDEN_EAGER` starts empty and grows by one entry per
     stage. Nothing is ever removed from it.
+
+    Asserted against the *final* ``sys.modules``, not against what the import
+    added: a preload cannot hide from the final state. The companion test above
+    separately rejects a compromised measurement, so a failure here is a real
+    re-introduced module-scope import rather than a dirty environment.
     """
-    eager = set(measured_eager[target]["third_party_roots"])
-    offenders = sorted(eager & set(surface.FORBIDDEN_EAGER))
+    offenders = measured_eager[target]["forbidden_in_final"]
     assert not offenders, (
         f"'import {target}' eagerly loads {offenders}, which an earlier stage "
         "deferred; something re-introduced a module-scope import"
@@ -131,9 +155,16 @@ def test_the_eager_module_set_never_grows(target, golden, measured_eager):
     measured = measured_eager[target]
     expected = golden["eager"][target]
 
-    assert measured["phenotypic_module_count"] <= expected["phenotypic_module_count"], (
-        f"'import {target}' now loads {measured['phenotypic_module_count']} "
-        f"phenotypic modules, up from {expected['phenotypic_module_count']}"
+    # A subset, not a count. A change that drops five eager modules and adds
+    # five different ones leaves the count identical while quietly making
+    # something new eager -- and the golden already stores the full list, so
+    # the stronger check costs nothing.
+    newly_eager = sorted(
+        set(measured["phenotypic_modules"]) - set(expected["phenotypic_modules"])
+    )
+    assert not newly_eager, (
+        f"'import {target}' newly loads {len(newly_eager)} phenotypic modules "
+        f"at import time: {newly_eager[:10]}"
     )
     new_roots = sorted(
         set(measured["third_party_roots"]) - set(expected["third_party_roots"])
