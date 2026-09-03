@@ -176,10 +176,30 @@ _LEGACY_ALLOWED = {
         "MetadataImage_ImageName",
         "MetadataGenetic_Strain",
     },
+    # The legacy spelling is the INPUT of a migration assertion in each of
+    # these: the test writes it, then asserts the canonical name replaced it.
+    # Removing the literal would remove the thing being tested.
+    #
+    #   test_metadata_migration_journal      LEGACY_STRAIN, paired with
+    #                                        CANONICAL_STRAIN = "Metadata_Strain"
+    #   test_cli_migrate_image               writes a legacy parquet, then asserts
+    #                                        "MetadataGenetic_Strain" not in
+    #                                        embedded.columns after the migration
+    #   test_windows_metadata_journal        writes a legacy-named aggregate as the
+    #                                        precondition preflight_metadata_schema
+    #                                        must detect
+    "tests/migration/test_metadata_migration_journal.py": {
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/cli/test_cli_migrate_image.py": {
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/sdk_/test_windows_metadata_journal.py": {
+        "MetadataGenetic_Strain",
+    },
     "tests/unit/cli/test_cli_recompile.py": {
         "MetadataImage_ImageName",
         "MetadataSample_Strain",
-        "MetadataGenetic_Strain",
     },
     # ``--mode migrate`` (Phase 5). Legacy per-topic spellings are the SUBJECT
     # of these files, not incidental usage: the golden fixtures are written
