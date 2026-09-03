@@ -216,6 +216,10 @@ def test_legacy_migration_output_is_unchanged(layout):
 
     assert measured["paths"] == expected["paths"], "store layout changed"
     assert measured["series"] == expected["series"], "pixel content changed"
+    # Labels are hashed separately from series because they are not a series:
+    # `objmap` lives under `rgb/labels/`, so wrong object labels would leave
+    # paths, series and attributes all identical.
+    assert measured["labels"] == expected["labels"], "label content changed"
     assert measured["attributes"] == expected["attributes"], "store metadata changed"
 
 
@@ -350,3 +354,39 @@ print(json.dumps({"installed": install_lazy_colour_plotting()}))
     import json
 
     assert json.loads(completed.stdout.strip().splitlines()[-1])["installed"] is False
+
+
+def test_no_new_file_imports_a_deferred_library_at_module_scope():
+    """Scan every source file, not just the ones a stage happened to touch.
+
+    :data:`surface.FORBIDDEN_MODULE_SCOPE_IMPORTS` is a hand-maintained list, so
+    it is blind to a *new* file. Concretely: add
+    ``correction/_color_correction/_swatch_locator.py`` with ``import colour`` at
+    module scope, imported only from inside a corrector's ``_operate``. The
+    runtime probe passes (colour still is not eager), the static per-file check
+    passes (the file is not in the list), the golden passes (nothing changed).
+    Months later someone hoists that import into ``correction/__init__.py``,
+    colour is back on every CLI startup, and nothing said a word at any point.
+
+    Scanning everything and allowing three named exceptions inverts the default:
+    a new offender fails immediately, and adding it to the allowlist is a
+    deliberate act with a reason attached.
+    """
+    import phenotypic
+
+    src = Path(phenotypic.__file__).parent
+    offenders = []
+    for path in sorted(src.rglob("*.py")):
+        relative = path.relative_to(src).as_posix()
+        for library in surface.FORBIDDEN_EAGER:
+            if (relative, library) in surface.MODULE_SCOPE_IMPORT_ALLOWLIST:
+                continue
+            if surface.imports_at_module_scope(path, library):
+                offenders.append(f"{relative} imports {library}")
+
+    assert not offenders, (
+        "these files import a deferred library at module scope:\n  "
+        + "\n  ".join(offenders)
+        + "\nDefer the import into the function that uses it, or add the file to "
+        "MODULE_SCOPE_IMPORT_ALLOWLIST with a reason."
+    )

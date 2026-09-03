@@ -50,6 +50,10 @@ LAYOUTS: tuple[str, ...] = (
 #: every release; the rest are wall-clock or duration fields written into the
 #: provenance journal. Excluding them is deliberate -- tolerating a mismatch
 #: instead would let a real difference hide behind the tolerance.
+#: NOTE on ``phenotypic_version``: excluding it means this digest is **not** the
+#: guard for the rule that a converted ``legacy`` application may carry
+#: ``phenotypic_version: null`` but must never be given the migrator's own
+#: installed version. The migrate tests own that; do not lean on this one for it.
 VOLATILE_ATTR_KEYS: frozenset[str] = frozenset(
     {
         "phenotypic_version",
@@ -86,16 +90,41 @@ def _array_digest(array: Any) -> dict[str, Any]:
     }
 
 
+def _label_digests(store: Path, attributes: dict[str, Any]) -> dict[str, Any]:
+    """Content digests for the store's label images.
+
+    Hashing only the series would leave the object labels unguarded: they are
+    written under ``rgb/labels/objmap`` rather than as a series, so a migration
+    that produced *wrong object labels* would keep ``paths`` identical (the file
+    is still there), ``series`` identical (labels are not a series) and
+    ``attributes`` identical (only the label's path is recorded there) — and
+    every assertion in the test would pass.
+
+    The label paths come from ``attributes["labels"]``, never hard-coded: when
+    ``rgb`` is empty the primary series is ``gray`` and the label lives under
+    that instead.
+    """
+    import zarr
+
+    from phenotypic.sdk_.ngff_ import PhenotypicAttr
+
+    digests: dict[str, Any] = {}
+    for name, relative in sorted(attributes.get(PhenotypicAttr.LABELS, {}).items()):
+        # NGFF multiscales: level 0 is the full-resolution array.
+        digests[name] = _array_digest(zarr.open_array(store / relative / "0", mode="r")[:])
+    return digests
+
+
 def digest_store(store: Path) -> dict[str, Any]:
-    """Structure, pixels and metadata for one migrated OME-Zarr store.
+    """Structure, pixels, labels and metadata for one migrated OME-Zarr store.
 
     Args:
         store: Path to a written ``*.ome.zarr`` store directory.
 
     Returns:
         A JSON-serializable digest: ``paths`` (store-relative file names),
-        ``series`` (per-layer shape/dtype/content hash) and ``attributes``
-        (the ``phenotypic`` block with volatile keys removed).
+        ``series`` and ``labels`` (per-array shape/dtype/content hash) and
+        ``attributes`` (the ``phenotypic`` block with volatile keys removed).
     """
     from phenotypic import Image
     from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
@@ -112,6 +141,7 @@ def digest_store(store: Path) -> dict[str, Any]:
             if path.is_file()
         ),
         "series": series,
+        "labels": _label_digests(store, attributes),
         "attributes": _strip_volatile(attributes),
     }
 

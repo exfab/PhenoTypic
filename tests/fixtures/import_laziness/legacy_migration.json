@@ -41,6 +41,16 @@
         },
         "store_schema_version": 3
       },
+      "labels": {
+        "objmap": {
+          "dtype": "uint16",
+          "sha256": "0a4419b55ac1200e9705b66276d41f52692a4bf76d4eb6b537bdf69b7f3f597f",
+          "shape": [
+            64,
+            64
+          ]
+        }
+      },
       "paths": [
         "OME/METADATA.ome.xml",
         "OME/zarr.json",
@@ -130,6 +140,16 @@
           "rgb": "rgb"
         },
         "store_schema_version": 3
+      },
+      "labels": {
+        "objmap": {
+          "dtype": "uint16",
+          "sha256": "0a4419b55ac1200e9705b66276d41f52692a4bf76d4eb6b537bdf69b7f3f597f",
+          "shape": [
+            64,
+            64
+          ]
+        }
       },
       "paths": [
         "OME/METADATA.ome.xml",
@@ -236,6 +256,16 @@
         },
         "store_schema_version": 3
       },
+      "labels": {
+        "objmap": {
+          "dtype": "uint16",
+          "sha256": "0a4419b55ac1200e9705b66276d41f52692a4bf76d4eb6b537bdf69b7f3f597f",
+          "shape": [
+            64,
+            64
+          ]
+        }
+      },
       "paths": [
         "OME/METADATA.ome.xml",
         "OME/zarr.json",
@@ -325,6 +355,16 @@
           "rgb": "rgb"
         },
         "store_schema_version": 3
+      },
+      "labels": {
+        "objmap": {
+          "dtype": "uint16",
+          "sha256": "0a4419b55ac1200e9705b66276d41f52692a4bf76d4eb6b537bdf69b7f3f597f",
+          "shape": [
+            64,
+            64
+          ]
+        }
       },
       "paths": [
         "OME/METADATA.ome.xml",
@@ -416,6 +456,16 @@
         },
         "store_schema_version": 3
       },
+      "labels": {
+        "objmap": {
+          "dtype": "uint16",
+          "sha256": "0a4419b55ac1200e9705b66276d41f52692a4bf76d4eb6b537bdf69b7f3f597f",
+          "shape": [
+            64,
+            64
+          ]
+        }
+      },
       "paths": [
         "OME/METADATA.ome.xml",
         "OME/zarr.json",
@@ -506,6 +556,16 @@
         },
         "store_schema_version": 3,
         "work_id": "w-fixture"
+      },
+      "labels": {
+        "objmap": {
+          "dtype": "uint16",
+          "sha256": "0a4419b55ac1200e9705b66276d41f52692a4bf76d4eb6b537bdf69b7f3f597f",
+          "shape": [
+            64,
+            64
+          ]
+        }
       },
       "paths": [
         "OME/METADATA.ome.xml",

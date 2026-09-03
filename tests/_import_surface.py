@@ -98,6 +98,27 @@ FORBIDDEN_EAGER: tuple[str, ...] = (
     "numba",
 )
 
+#: Files permitted to import a :data:`FORBIDDEN_EAGER` library at module scope.
+#: Every one is genuinely off the ``import phenotypic`` path -- reachable only
+#: through a lazy ``__getattr__`` or a function-body import -- and each would be
+#: awkward to defer in place: the numba kernels apply ``@numba.njit`` as a
+#: decorator at import, and ``hdf_.py`` has no ``from __future__ import
+#: annotations``, so its ``h5py.File`` annotations evaluate at def time.
+#:
+#: This allowlist is what makes :func:`FORBIDDEN_MODULE_SCOPE_IMPORTS` obsolete
+#: as a *sufficient* check. A hand-list of files a stage happened to touch cannot
+#: see a NEW file that imports a deferred library at module scope -- off the eager
+#: path today, one careless re-export away from being on it tomorrow, with
+#: nothing failing in between. Scanning every file and allowing three named
+#: exceptions inverts that: new offenders fail by default.
+MODULE_SCOPE_IMPORT_ALLOWLIST: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("sdk_/hdf_.py", "h5py"),
+        ("sdk_/reconnect/_tensor_voting.py", "numba"),
+        ("sdk_/branch_pathfinding/_dijkstra_kernels.py", "numba"),
+    }
+)
+
 #: ``(relative source path, module that must not be imported at module scope)``
 #: pairs checked by static AST analysis. This catches a module-scope import the
 #: runtime probe would miss because the file happens to be off the eager path
