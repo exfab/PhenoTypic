@@ -390,3 +390,127 @@ def test_no_new_file_imports_a_deferred_library_at_module_scope():
         + "\nDefer the import into the function that uses it, or add the file to "
         "MODULE_SCOPE_IMPORT_ALLOWLIST with a reason."
     )
+
+
+# ---------------------------------------------------------------------------
+# Numeric anchors -- what the shared mutable colourspace actually computes
+# ---------------------------------------------------------------------------
+
+
+def test_rgb_to_xyz_matches_the_pre_refactor_numbers():
+    """Pin the numbers, not just the object identity.
+
+    ``sRGB_D50`` is a shared mutable global: ``rgb_to_xyz`` assigns
+    ``.whitepoint`` and reads it back two lines later. The identity test proves
+    every caller sees one object, but a colourspace rebuilt per access would
+    still return finite arrays of the right shape — every existing colour test
+    is phenotypic-against-phenotypic, so all of them stay green while every
+    ``image.color.Lab[:]`` value shifts.
+
+    The golden was captured by running the *pre-refactor* source out of the
+    pinned baseline worktree, so it is an outside witness rather than a
+    photograph of current behaviour.
+
+    Each combination is computed twice: the in-place whitepoint assignment must
+    be idempotent, which is precisely what a per-thread or per-access cache
+    would break.
+    """
+    import hashlib
+    import json
+
+    import numpy as np
+
+    from phenotypic._core._image_parts.color_space_accessors._xyz_conversion import (
+        rgb_to_xyz,
+    )
+    from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
+
+    expected = json.loads(
+        (surface.GOLDEN_DIR / "rgb_to_xyz.json").read_text(encoding="utf-8")
+    )
+    rgb = np.linspace(0.0, 1.0, 4 * 5 * 3, dtype=np.float64).reshape(4, 5, 3)
+    observer = "CIE 1931 2 Degree Standard Observer"
+
+    for _ in range(2):
+        for gamma in (GAMMA_ENCODINGS.SRGB, GAMMA_ENCODINGS.LINEAR):
+            for illuminant in ("D50", "D65"):
+                out = np.ascontiguousarray(
+                    rgb_to_xyz(
+                        rgb, gamma=gamma, illuminant=illuminant, observer=observer
+                    )
+                )
+                key = f"{gamma.name}:{illuminant}"
+                assert (
+                    hashlib.sha256(out.tobytes()).hexdigest()
+                    == expected[key]["sha256"]
+                ), f"{key} no longer matches the pre-refactor conversion"
+
+
+def test_the_colour_plotting_stub_swaps_itself_out_on_a_real_attribute():
+    """The stub's other half: it must actually forward, and install the real module.
+
+    Three tests covered install, dunder-decline and no-op-when-late; none ever
+    triggered ``__getattr__`` on a real name, which is the path that does the
+    swap. Leaving half of it uncovered is an odd gap in the one mechanism the
+    whole refactor imitates.
+    """
+    script = """
+import json, sys
+import phenotypic  # noqa: F401  -- installs the stub
+
+stub = sys.modules["colour.plotting"]
+assert getattr(stub, "__phenotypic_lazy_stub__", False)
+
+value = stub.plot_chromaticity_diagram_CIE1931  # a real plotting attribute
+real = sys.modules["colour.plotting"]
+import colour
+
+print(json.dumps({
+    "forwarded": value is not None,
+    "swapped_in": not getattr(real, "__phenotypic_lazy_stub__", False),
+    "parent_repointed": colour.plotting is real,
+}))
+"""
+    result = surface._probe(script)
+    assert result["forwarded"], "the stub did not forward a real attribute"
+    assert result["swapped_in"], "sys.modules still holds the stub after a real access"
+    assert result["parent_repointed"], "colour.plotting was not repointed on the parent"
+
+
+def test_a_failing_swap_in_leaves_the_stub_installed():
+    """If the real import raises, the stub must stay — not vanish.
+
+    It pops itself from ``sys.modules`` before importing. Without a rollback a
+    failed import leaves ``colour.plotting`` absent entirely, so the *second*
+    access raises a different and more confusing error than the first, and the
+    laziness is silently gone for the rest of the process.
+    """
+    script = """
+import importlib, json, sys
+import phenotypic  # noqa: F401
+
+stub = sys.modules["colour.plotting"]
+
+
+def boom(name):
+    raise ImportError("simulated matplotlib backend failure")
+
+
+importlib.import_module = boom
+raised = False
+try:
+    stub.plot_chromaticity_diagram_CIE1931
+except ImportError:
+    raised = True
+
+print(json.dumps({
+    "raised": raised,
+    "stub_still_installed": sys.modules.get("colour.plotting") is stub,
+}))
+"""
+    result = surface._probe(script)
+    assert result["raised"], "the failing import should propagate"
+    assert result["stub_still_installed"], (
+        "a failed swap-in removed the stub from sys.modules; the next access "
+        "would fail differently and laziness would be gone"
+    )

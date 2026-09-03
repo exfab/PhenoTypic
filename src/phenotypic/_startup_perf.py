@@ -59,9 +59,20 @@ class _LazyColourPlotting(types.ModuleType):
         # error during traceback formatting.
         if name.startswith("__") and name.endswith("__"):
             raise AttributeError(name)
-        # First real use: replace ourselves with the genuine submodule.
-        sys.modules.pop("colour.plotting", None)
-        real = importlib.import_module("colour.plotting")
+        # First real use: replace ourselves with the genuine submodule. The
+        # stub must go back if that import fails, or we leave `colour.plotting`
+        # absent from sys.modules entirely: the next access would raise a
+        # different, more confusing error than the first, and the lazy
+        # behaviour this module exists to provide would be silently gone. That
+        # is the same failure the dunder guard above prevents, arriving through
+        # the other half of this method.
+        stub = sys.modules.pop("colour.plotting", None)
+        try:
+            real = importlib.import_module("colour.plotting")
+        except BaseException:
+            if stub is not None:
+                sys.modules["colour.plotting"] = stub
+            raise
         colour = sys.modules.get("colour")
         if colour is not None:
             setattr(colour, "plotting", real)  # repoint parent-package attr

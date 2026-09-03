@@ -1,0 +1,18 @@
+{
+  "LINEAR:D50": {
+    "sha256": "612dc1768fb036fa227b7dad80afef5d5cfb706fdb8da1d1f6edb2ce9544a15e",
+    "sum": 27.97861940096983
+  },
+  "LINEAR:D65": {
+    "sha256": "81d76afad44444aaa2474ac4e407fb09e68b1929a0f467c2825db62685ffb66c",
+    "sum": 30.584457627118635
+  },
+  "SRGB:D50": {
+    "sha256": "b4ffdd287840331ebdd4365b78fe332d857c4444787cdfde40ffb9e77e1847f9",
+    "sum": 17.5705326729022
+  },
+  "SRGB:D65": {
+    "sha256": "b01e75d26fd7f5dfcc93f5a8deb5c1bc61ed8db264daac1e0a3900e2aeae85fd",
+    "sum": 19.245552127168523
+  }
+}
