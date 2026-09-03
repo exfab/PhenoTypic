@@ -1,0 +1,6 @@
+phenotypic.sdk\_.describe\_durability
+=====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: describe_durability

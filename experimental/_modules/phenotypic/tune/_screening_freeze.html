@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -616,10 +616,10 @@
 <span class="sd">Guards: screening is **off below** ``free_param_floor`` free params; a **warm-up</span>
 <span class="sd">floor** ``W = max(warmup_floor, warmup_c · n_params)`` blocks a premature freeze;</span>
 <span class="sd">the RF-permutation path freezes **fewer** params and flags interactions</span>
-<span class="sd">unverified (§6). The **winner is the best held-out trial across both rounds**, so</span>
-<span class="sd">freezing can never make the result worse than the explore best; if the focused</span>
-<span class="sd">round underperforms the explore best on held-out, the freeze is **flagged** and</span>
-<span class="sd">the explore best is returned with a re-run recommendation (G3, §6).</span>
+<span class="sd">unverified (§6). The **winner is the best COMPLETE held-out trial across both</span>
+<span class="sd">rounds**, so freezing can never make the result worse than the explore best; if</span>
+<span class="sd">the focused round underperforms the explore best on held-out, the freeze is</span>
+<span class="sd">**flagged** and the explore best is returned with a re-run recommendation (G3, §6).</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -668,8 +668,8 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The outcome of a (possibly two-round) screening run.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        winner: The best held-out :class:`Trial` across both rounds (``None`` only</span>
-<span class="sd">            if nothing succeeded).</span>
+<span class="sd">        winner: The best COMPLETE held-out :class:`Trial` across both rounds</span>
+<span class="sd">            (``None`` only if nothing completed).</span>
 <span class="sd">        frozen: ``{frozen_key: pinned_value}`` — empty when no freeze occurred.</span>
 <span class="sd">        method: The importance method used (fANOVA vs RF-permutation).</span>
 <span class="sd">        interactions_estimated: Whether ``method`` accounts for interactions.</span>
@@ -1052,24 +1052,19 @@
 <span class="sd">        search.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-        <span class="n">fresh</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">t</span>
-            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span><span class="o">.</span><span class="n">trials</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_warm_count</span> <span class="p">:]</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span>
-        <span class="p">]</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">fresh</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">fresh</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">)</span>
+        <span class="n">fresh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span><span class="o">.</span><span class="n">trials</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_warm_count</span> <span class="p">:]</span>
+        <span class="k">return</span> <span class="n">JournalStudyStore</span><span class="p">(</span><span class="n">fresh</span><span class="p">)</span><span class="o">.</span><span class="n">best</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_winner</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">explore_best</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">],</span>
+        <span class="n">_explore_best</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">],</span>
         <span class="n">frozen_values</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
         <span class="n">report</span><span class="p">:</span> <span class="n">ImportanceReport</span><span class="p">,</span>
         <span class="n">reduced</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ScreeningResult</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Pick the winner across both rounds + the wrong-freeze recovery (G3).&quot;&quot;&quot;</span>
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">explore_best</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">explore_store</span><span class="o">.</span><span class="n">best</span><span class="p">()</span>
 
         <span class="n">explore_score</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">explore_best</span><span class="o">.</span><span class="n">score</span> <span class="k">if</span> <span class="n">explore_best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
@@ -1101,11 +1096,7 @@
         <span class="c1"># Winner = best held-out across both rounds (the full union, including</span>
         <span class="c1"># warm-start seeds), so freezing never beats the explore best by accident.</span>
         <span class="n">union</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">explore_store</span><span class="o">.</span><span class="n">trials</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span><span class="o">.</span><span class="n">trials</span>
-        <span class="n">winner</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
-            <span class="p">(</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">union</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span><span class="p">),</span>
-            <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">,</span>
-            <span class="n">default</span><span class="o">=</span><span class="n">explore_best</span><span class="p">,</span>
-        <span class="p">)</span>
+        <span class="n">winner</span> <span class="o">=</span> <span class="n">JournalStudyStore</span><span class="p">(</span><span class="n">union</span><span class="p">)</span><span class="o">.</span><span class="n">best</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">ScreeningResult</span><span class="p">(</span>
             <span class="n">winner</span><span class="o">=</span><span class="n">winner</span><span class="p">,</span>
             <span class="n">frozen</span><span class="o">=</span><span class="n">frozen_values</span><span class="p">,</span>

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.write\_embedded\_measurement\_table
+====================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: write_embedded_measurement_table

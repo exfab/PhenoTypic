@@ -1,0 +1,6 @@
+phenotypic.sdk\_.is\_zarr\_store\_name
+======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: is_zarr_store_name

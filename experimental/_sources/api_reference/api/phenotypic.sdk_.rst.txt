@@ -22,6 +22,13 @@
       atomic_write_parquet
       atomic_write_text
       atomic_write_with_writer
+      publication_commit
+      build_measurement_table_descriptor
+      embedded_measurement_columns
+      read_embedded_measurement_column
+      read_embedded_measurement_descriptor
+      replace_embedded_measurement_table
+      write_embedded_measurement_table
       canonical_metadata_order
       ensure_metadata_prefix
       is_binary_mask
@@ -35,12 +42,21 @@
       metadata_owner_for_label
       normalize_metadata_columns
       order_measurement_columns
+      metadata_migration_authority
       migrate_metadata_bundle
       migrate_metadata_file
+      migrate_preflighted_metadata_bundle
       preflight_metadata_schema
       rollback_metadata_migration
       validated_published_metadata_migration_targets
       timed_execution
+      describe_durability
+      durable_writes_enabled
+      new_part_path
+      promote_store
+      read_phenotypic_attributes
+      sweep_orphan_parts
+      valid_staged_store
       analysis_full_parquet_path
       analysis_manifest_path
       best_pipeline_path
@@ -55,10 +71,11 @@
       checkpoint_lock_filename
       checkpoint_lock_path
       dashboard_html_path
-      dataset_hdf_dir
       dataset_measurements_dir
       dataset_overlays_dir
       dataset_results_dir
+      dataset_zarr_dir
+      datasets_needing_migration
       overlays_dir
       plots_dir
       curation_labels_parquet_path
@@ -80,7 +97,7 @@
       image_completion_marker_path
       has_config_suffix
       job_metadata_path
-      load_image_from_hdf
+      load_image_from_store
       load_master_measurements
       logs_dir
       manifest_json_path
@@ -141,17 +158,25 @@
       shard_parquet_filename
       slurm_scripts_dir
       source_cache_key
+      is_zarr_store_name
+      store_stem
+      source_image_stem
+      source_image_suffix
+      store_publication_token
+      store_revision_identity
       task_status_filename
       task_status_path
       trials_parquet_path
       tune_cache_dir
       tune_cache_run_marker_path
+      tune_cache_journal_path
       tune_cache_split_assignment_path
       tune_cache_splits_dir
       tune_cache_study_db_path
       tuning_spec_path
       verified_parquet_path
       validate_analysis_id
+      zarr_store_path
    
    
 
@@ -171,15 +196,17 @@
       LazyWidgetMixin
       NormControlMixin
       NormalizedOutputMixin
+      PreparedEmbeddedMeasurementTable
+      MetadataMigrationAuthority
       MetadataMigrationReport
       MetadataMigrationResult
       MetadataMigrationTarget
+      PhenotypicAttr
       ChunkManifestKey
       ChunkStateKey
       DashboardManifestKey
       DashboardManifestSlurmInfoKey
       EnvVar
-      HdfAttr
       JobMetadataKey
       ModulePath
       ProcessingStateKey

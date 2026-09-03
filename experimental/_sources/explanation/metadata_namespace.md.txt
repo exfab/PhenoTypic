@@ -85,11 +85,12 @@ configured input CSV. It is immutable provenance rather than a generated schema
 table, so it may retain historical headers. Readers normalize it in memory;
 generated measurement, analysis, QC, and REMBI outputs remain canonical.
 
-`--mode recompile` is the explicit mutation boundary for a bundle. Local and
-SLURM recompiles preflight and migrate bundle-owned authoritative legacy data
-before aggregation. A conflict or failed target stops recompile before new
-aggregate outputs are published. Canonical bundles are an idempotent no-op
-apart from preflight.
+`--mode migrate` is the sole metadata migration boundary for a run bundle. It
+preflights bundle-owned authoritative legacy data, refuses blocked plans, and
+applies only the fingerprinted plan. `--mode recompile` performs neither that
+preflight nor migration. Legacy storage and external per-image measurement
+authority must be migrated explicitly before recompile; readable historical
+header spellings continue to normalize in memory.
 
 Migration uses source and plan fingerprints plus a prepared/applied receipt
 journal. CSV, parquet, typed pipeline JSON, and HDF metadata attributes are
@@ -101,9 +102,9 @@ Receipts make an interrupted bundle migration resumable and can be passed to
 
 An external file supplied with `--metadata` is always read-only during
 recompile: PhenoTypic normalizes its contents in memory without writing to the
-source, and the regenerated bundle-owned `deliverables/metadata.csv` uses
-canonical headers. To mutate a standalone external file, call
-`migrate_metadata_file()` explicitly.
+source, and copies its original bytes to the immutable bundle-owned
+`deliverables/metadata.csv` provenance snapshot. To mutate a standalone
+external file, call `migrate_metadata_file()` explicitly.
 
 ```python
 from pathlib import Path

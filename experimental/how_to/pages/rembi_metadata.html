@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="How To: Assess Image Quality Before Pipeline Design" href="../notebooks/assess_image_quality.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -582,7 +582,8 @@
 <li class="toctree-l1"><a class="reference internal" href="tune_distributed_hpcc.html">Distributed Tuning on HPCC Clusters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gui_hub.html">GUI hub</a></li>
 <li class="toctree-l1"><a class="reference internal" href="serialize_pipelines.html">Serialize and Share Pipelines</a></li>
-<li class="toctree-l1"><a class="reference internal" href="hdf5_storage.html">Store Results in HDF5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migrate_ome_zarr.html">Migrate legacy results and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zarr_storage.html">Store Results in OME-Zarr</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generate_reports.html">Generate HTML Processing Reports</a></li>
 </ul>
 </div>
@@ -853,14 +854,14 @@ inputs.</p>
 </section>
 <section id="refreshing-a-pre-migration-run">
 <h2>Refreshing a pre-migration run<a class="headerlink" href="#refreshing-a-pre-migration-run" title="Link to this heading">#</a></h2>
-<p>Old output folders remain readable. Exact historical per-topic headers are
-normalized in memory and retain their schema ownership. To rewrite
-bundle-owned authoritative sources to flat headers and rebuild derived output,
-run <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">recompile</span></code>. Local and SLURM recompiles migrate before aggregation;
-a conflict stops publication. External <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> files are never modified,
-while the regenerated bundle-owned metadata copy uses canonical headers.
-Background, standalone migration, receipts, and rollback are described in the
-<a class="reference internal" href="../../explanation/metadata_namespace.html"><span class="doc">metadata namespace explanation</span></a>.</p>
+<p>Old output folders remain readable where their storage and measurement
+authority are supported. Exact historical per-topic headers are normalized in
+memory and retain their schema ownership. To rewrite bundle-owned authoritative
+sources to flat headers, run <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">migrate</span></code> explicitly; use <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">recompile</span></code>
+afterward when derived output also needs rebuilding. Recompile performs no
+metadata preflight or migration. External <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> files and the immutable
+bundle-owned metadata snapshot are never rewritten. Background, standalone
+migration, receipts, and rollback are described in the <a class="reference internal" href="../../explanation/metadata_namespace.html"><span class="doc">metadata namespace explanation</span></a>.</p>
 </section>
 </section>
 

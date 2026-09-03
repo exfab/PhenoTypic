@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -615,10 +615,18 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._io_constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">slurm_scripts_dir</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">SLURM_PYTHONPATH_BOOTSTRAP_BASH</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._generation</span><span class="w"> </span><span class="kn">import</span> <span class="n">generation_script_key</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="n">SlurmDependencyKind</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;afterany&quot;</span><span class="p">,</span> <span class="s2">&quot;afterok&quot;</span><span class="p">]</span>
+
+<span class="c1"># Importing the lifecycle CLI loads the package and its scheduler contracts.</span>
+<span class="c1"># 100M is below that process&#39;s observed Linux RSS (~99 MiB before allocator</span>
+<span class="c1"># and interpreter headroom) and was OOM-killed on the first real migration</span>
+<span class="c1"># dispatcher. Keep this much smaller than an image worker while leaving safe</span>
+<span class="c1"># room for the control-plane Python process.</span>
+<span class="n">_DISPATCHER_MEMORY</span> <span class="o">=</span> <span class="s2">&quot;512M&quot;</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_validate_dependency_kind</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SlurmDependencyKind</span><span class="p">:</span>
@@ -660,7 +668,7 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a dispatcher script that submits the next chunk and dispatcher.</span>
 
-<span class="sd">    The dispatcher requests minimal resources (1 CPU, 100M, 5 min) and</span>
+<span class="sd">    The dispatcher requests control-plane resources (1 CPU, 512M, 5 min) and</span>
 <span class="sd">    invokes the Python lifecycle entry point. That entry point durably submits</span>
 <span class="sd">    the next processing chunk and optional dependent dispatcher.</span>
 
@@ -717,7 +725,7 @@
 <span class="s2">#SBATCH --job-name=dispatch</span>
 <span class="s2">#SBATCH --partition=</span><span class="si">{</span><span class="n">partition</span><span class="si">}</span>
 <span class="s2">#SBATCH --time=00:05:00</span>
-<span class="s2">#SBATCH --mem=100M</span>
+<span class="s2">#SBATCH --mem=</span><span class="si">{</span><span class="n">_DISPATCHER_MEMORY</span><span class="si">}</span>
 <span class="s2">#SBATCH --cpus-per-task=1</span>
 <span class="s2">#SBATCH --output=</span><span class="si">{</span><span class="n">log_dir</span><span class="si">}</span><span class="s2">/dispatch_%j.log</span>
 <span class="s2">#SBATCH --error=</span><span class="si">{</span><span class="n">log_dir</span><span class="si">}</span><span class="s2">/dispatch_%j.log</span>
@@ -756,6 +764,7 @@
     <span class="n">finalizer_script</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">continuation_dependency_kinds</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">SlurmDependencyKind</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">generation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">lifecycle_output_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate dispatcher scripts for a chain of chunk scripts.</span>
 
@@ -776,6 +785,8 @@
 <span class="sd">            ``afterany`` for every edge.</span>
 <span class="sd">        generation: Optional explicit lifecycle generation. When supplied,</span>
 <span class="sd">            dispatcher scripts are isolated under that generation.</span>
+<span class="sd">        lifecycle_output_dir: Optional lifecycle fence root when dispatcher</span>
+<span class="sd">            scripts themselves are written beneath a separate control root.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        List of dispatcher script paths (one fewer than ``chunk_scripts``,</span>
@@ -790,11 +801,12 @@
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunk_scripts</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">[]</span>
 
-    <span class="n">lifecycle_generation</span> <span class="o">=</span> <span class="n">generation</span> <span class="ow">or</span> <span class="n">_ensure_generation</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">lifecycle_output</span> <span class="o">=</span> <span class="n">lifecycle_output_dir</span> <span class="ow">or</span> <span class="n">output_dir</span>
+    <span class="n">lifecycle_generation</span> <span class="o">=</span> <span class="n">generation</span> <span class="ow">or</span> <span class="n">_ensure_generation</span><span class="p">(</span><span class="n">lifecycle_output</span><span class="p">)</span>
     <span class="n">log_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">script_dir</span> <span class="o">=</span> <span class="n">slurm_scripts_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">generation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">script_dir</span> <span class="o">=</span> <span class="n">script_dir</span> <span class="o">/</span> <span class="s2">&quot;dispatch&quot;</span> <span class="o">/</span> <span class="n">generation</span>
+        <span class="n">script_dir</span> <span class="o">=</span> <span class="n">script_dir</span> <span class="o">/</span> <span class="s2">&quot;dispatch&quot;</span> <span class="o">/</span> <span class="n">generation_script_key</span><span class="p">(</span><span class="n">generation</span><span class="p">)</span>
     <span class="n">script_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="n">num_dispatchers</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunk_scripts</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
@@ -820,7 +832,7 @@
             <span class="n">output_path</span><span class="o">=</span><span class="n">dispatcher_path</span><span class="p">,</span>
             <span class="n">slurm_args</span><span class="o">=</span><span class="n">slurm_args</span><span class="p">,</span>
             <span class="n">log_dir</span><span class="o">=</span><span class="n">log_dir</span><span class="p">,</span>
-            <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">output_dir</span><span class="o">=</span><span class="n">lifecycle_output</span><span class="p">,</span>
             <span class="n">generation</span><span class="o">=</span><span class="n">lifecycle_generation</span><span class="p">,</span>
             <span class="n">chunk_index</span><span class="o">=</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
             <span class="n">finalizer_script</span><span class="o">=</span><span class="p">(</span>

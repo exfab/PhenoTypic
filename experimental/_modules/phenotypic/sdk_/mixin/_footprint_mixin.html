@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -616,8 +616,12 @@
 <span class="sd">    colony edges, shapes, or connectivity, and can assist in segmentation, noise reduction,</span>
 <span class="sd">    and feature extraction.</span>
 
-<span class="sd">    Attributes:</span>
-<span class="sd">        None</span>
+<span class="sd">    The mixin declares no attributes -- it contributes a single static helper.</span>
+<span class="sd">    (Do NOT write ``Attributes:`` followed by ``None`` to say so: napoleon</span>
+<span class="sd">    renders that as an attribute *named* ``None``, which registers a ``.None``</span>
+<span class="sd">    cross-reference target. Four such targets made every autodoc&#39;d docstring</span>
+<span class="sd">    returning ``None`` ambiguous, producing 23,934 of the docs build&#39;s 24,585</span>
+<span class="sd">    warnings.)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="nd">@staticmethod</span>

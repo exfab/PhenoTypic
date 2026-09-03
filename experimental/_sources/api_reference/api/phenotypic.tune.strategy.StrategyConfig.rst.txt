@@ -18,6 +18,7 @@ phenotypic.tune.strategy.StrategyConfig
    
       ~StrategyConfig.__init__
       ~StrategyConfig.build
+      ~StrategyConfig.build_with_objectives
       ~StrategyConfig.construct
       ~StrategyConfig.copy
       ~StrategyConfig.dict

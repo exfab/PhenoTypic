@@ -25,6 +25,7 @@ phenotypic.tune.StudyStore
       ~StudyStore.knee_point
       ~StudyStore.param_importances
       ~StudyStore.pareto_front
+      ~StudyStore.terminal_trials
       ~StudyStore.to_dataframe
       ~StudyStore.to_parquet
    

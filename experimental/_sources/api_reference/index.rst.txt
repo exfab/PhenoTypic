@@ -14,6 +14,7 @@ Image
    core/image_methods
    core/color_space_operations
    core/visualization_plotting
+   core/store_layout
 
 GridImage
 ---------

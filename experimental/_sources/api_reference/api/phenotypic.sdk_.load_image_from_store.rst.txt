@@ -1,0 +1,6 @@
+phenotypic.sdk\_.load\_image\_from\_store
+=========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: load_image_from_store

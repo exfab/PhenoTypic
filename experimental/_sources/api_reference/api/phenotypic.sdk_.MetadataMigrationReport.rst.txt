@@ -30,6 +30,7 @@ phenotypic.sdk\_.MetadataMigrationReport
       ~MetadataMigrationReport.compatible_count
       ~MetadataMigrationReport.conflicts
       ~MetadataMigrationReport.migratable_count
+      ~MetadataMigrationReport.target_role
       ~MetadataMigrationReport.source
       ~MetadataMigrationReport.status
       ~MetadataMigrationReport.source_fingerprint

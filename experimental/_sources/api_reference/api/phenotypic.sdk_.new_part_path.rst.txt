@@ -1,0 +1,6 @@
+phenotypic.sdk\_.new\_part\_path
+================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: new_part_path

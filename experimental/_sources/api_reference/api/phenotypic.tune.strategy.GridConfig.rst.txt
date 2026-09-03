@@ -18,6 +18,7 @@ phenotypic.tune.strategy.GridConfig
    
       ~GridConfig.__init__
       ~GridConfig.build
+      ~GridConfig.build_with_objectives
       ~GridConfig.construct
       ~GridConfig.copy
       ~GridConfig.dict

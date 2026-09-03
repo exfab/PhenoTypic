@@ -18,6 +18,7 @@ phenotypic.tune.strategy.OptunaConfig
    
       ~OptunaConfig.__init__
       ~OptunaConfig.build
+      ~OptunaConfig.build_with_objectives
       ~OptunaConfig.construct
       ~OptunaConfig.copy
       ~OptunaConfig.dict

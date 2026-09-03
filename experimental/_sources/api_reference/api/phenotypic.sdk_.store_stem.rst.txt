@@ -1,0 +1,6 @@
+phenotypic.sdk\_.store\_stem
+============================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: store_stem

@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -609,8 +609,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_pipeline</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._multi_objective</span><span class="w"> </span><span class="kn">import</span> <span class="n">objective_directions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._multi_objective</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_multi_objective</span><span class="p">,</span> <span class="n">objective_directions</span><span class="p">,</span> <span class="n">objective_names</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.score</span><span class="w"> </span><span class="kn">import</span> <span class="n">CompositeScorer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.strategy._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_strategy_with_objectives</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuningSpec</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._study._protocol</span><span class="w"> </span><span class="kn">import</span> <span class="n">StudyStore</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._study_store</span><span class="w"> </span><span class="kn">import</span> <span class="n">JournalStudyStore</span><span class="p">,</span> <span class="n">Trial</span>
@@ -668,6 +669,11 @@
         <span class="c1"># scorer yields per-objective ``directions`` the Optuna backend turns into</span>
         <span class="c1"># an NSGA-II Pareto study; ``None`` keeps the scalar single-objective path.</span>
         <span class="n">directions</span> <span class="o">=</span> <span class="n">objective_directions</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">)</span>
+        <span class="n">objective_axes</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">tuple</span><span class="p">(</span><span class="n">objective_names</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">is_multi_objective</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">)</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
 
         <span class="c1"># Pin the study-global active set for the augmented Tchebycheff composite</span>
         <span class="c1"># (§6.3): the children available study-wide form the fixed roster for both</span>
@@ -692,30 +698,35 @@
             <span class="p">)</span>
             <span class="n">scorer</span><span class="o">.</span><span class="n">set_active_set</span><span class="p">(</span><span class="n">active</span><span class="p">)</span>
 
-        <span class="n">strategy</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
-            <span class="n">spec</span><span class="o">.</span><span class="n">search_space</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="p">,</span> <span class="n">directions</span><span class="o">=</span><span class="n">directions</span>
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">build_strategy_with_objectives</span><span class="p">(</span>
+            <span class="n">spec</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span>
+            <span class="n">spec</span><span class="o">.</span><span class="n">search_space</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="p">,</span>
+            <span class="n">directions</span><span class="o">=</span><span class="n">directions</span><span class="p">,</span>
+            <span class="n">objective_axes</span><span class="o">=</span><span class="n">objective_axes</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># Resume: a deterministic journal is fast-forwarded by replaying the</span>
         <span class="c1"># strategy past the recorded trials; an in-place-resumable backend (e.g.</span>
         <span class="c1"># an Optuna RDB) already restores the sampler state, so it skips replay.</span>
         <span class="c1"># The same flag decides who writes each trial below (see the loop).</span>
-        <span class="n">completed</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="p">)</span>
+        <span class="n">recorded</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="p">)</span>
+        <span class="n">completed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="o">.</span><span class="n">completed_count</span><span class="p">()</span>
         <span class="n">resumable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="o">.</span><span class="n">is_resumable_in_place</span><span class="p">()</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">resumable</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">completed</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">recorded</span><span class="p">):</span>
                 <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">is_exhausted</span><span class="p">():</span>
                     <span class="k">break</span>
                 <span class="n">strategy</span><span class="o">.</span><span class="n">suggest</span><span class="p">()</span>
 
-        <span class="c1"># Seed both budget counters from the store so resume is symmetric:</span>
-        <span class="c1"># n_trials counts all recorded trials, max_failures counts recorded</span>
-        <span class="c1"># failures (else the failure safety-valve resets to 0 on every resume).</span>
+        <span class="c1"># Resume keeps separate identities: ``recorded`` preserves deterministic</span>
+        <span class="c1"># replay/trial numbering, while ``completed`` is the budget quantity.</span>
+        <span class="c1"># The failure cap still counts every recorded failure.</span>
         <span class="n">failures</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="o">.</span><span class="n">trials</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span><span class="p">)</span>
-        <span class="n">number</span> <span class="o">=</span> <span class="n">completed</span>
+        <span class="n">number</span> <span class="o">=</span> <span class="n">recorded</span>
         <span class="n">budget</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">budget</span>
         <span class="k">while</span> <span class="ow">not</span> <span class="n">strategy</span><span class="o">.</span><span class="n">is_exhausted</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">budget</span><span class="o">.</span><span class="n">n_trials</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">number</span> <span class="o">&gt;=</span> <span class="n">budget</span><span class="o">.</span><span class="n">n_trials</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">budget</span><span class="o">.</span><span class="n">n_trials</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">completed</span> <span class="o">&gt;=</span> <span class="n">budget</span><span class="o">.</span><span class="n">n_trials</span><span class="p">:</span>
                 <span class="k">break</span>
             <span class="c1"># Checked at the top (not only after a failing trial) so a run</span>
             <span class="c1"># resumed at/over the failure cap stops immediately.</span>
@@ -763,6 +774,8 @@
             <span class="n">number</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">failed</span><span class="p">:</span>
                 <span class="n">failures</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">completed</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="o">.</span><span class="n">best</span><span class="p">()</span></div>
 </div>

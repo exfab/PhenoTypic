@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Hyperparameter Tuning" href="tuning.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -582,7 +582,8 @@
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Distributed Tuning on HPCC Clusters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gui_hub.html">GUI hub</a></li>
 <li class="toctree-l1"><a class="reference internal" href="serialize_pipelines.html">Serialize and Share Pipelines</a></li>
-<li class="toctree-l1"><a class="reference internal" href="hdf5_storage.html">Store Results in HDF5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migrate_ome_zarr.html">Migrate legacy results and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zarr_storage.html">Store Results in OME-Zarr</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generate_reports.html">Generate HTML Processing Reports</a></li>
 </ul>
 </div>
@@ -646,167 +647,85 @@
                   
   <section class="tex2jax_ignore mathjax_ignore" id="distributed-tuning-on-hpcc-clusters">
 <h1>Distributed Tuning on HPCC Clusters<a class="headerlink" href="#distributed-tuning-on-hpcc-clusters" title="Link to this heading">#</a></h1>
-<p>Run a PhenoTypic tune study across many SLURM compute nodes that share one
-optimization study.</p>
-<section id="why-postgres-for-distributed-studies">
-<h2>Why Postgres for distributed studies<a class="headerlink" href="#why-postgres-for-distributed-studies" title="Link to this heading">#</a></h2>
-<p>A local single-node run keeps its Optuna study in a SQLite database
-(<code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/study.db</span></code>) using WAL mode. That is fine when one process owns
-the file, but SQLite-WAL is unsafe on the network filesystems HPCC clusters use
-(NFS, Lustre): file locking across nodes is unreliable, so several SLURM array
-workers writing the same <code class="docutils literal notranslate"><span class="pre">study.db</span></code> will corrupt it or lose trials.</p>
-<p>A distributed study therefore needs a shared relational database that every
-worker can reach over the network. PhenoTypic is backend-agnostic — it does not
-ship or depend on any particular database server. It takes a generic,
-user-provided storage URL and hands it straight to Optuna’s RDB storage, so any
-reachable PostgreSQL server works. The rest of this guide uses Postgres because
-it is the standard choice for an Optuna study shared by a SLURM array.</p>
+<p>Run one Optuna tuning study across many SLURM compute nodes without deploying a
+database service. A distributed PhenoTypic tune run uses one GPFS-visible
+append-only journal and a terminal publisher owned by the run lifecycle.</p>
+<section id="start-a-distributed-study">
+<h2>Start a distributed study<a class="headerlink" href="#start-a-distributed-study" title="Link to this heading">#</a></h2>
+<p>Use an Optuna sampler and add <code class="docutils literal notranslate"><span class="pre">--slurm</span></code>. When no storage URL is supplied,
+PhenoTypic records an absolute shared journal URL at
+<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/journal.log</span></code>; every worker opens that same journal
+with Optuna’s symlink-lock backend.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-tune<span class="w"> </span>run<span class="w"> </span>spec.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--strategy<span class="w"> </span>tpe<span class="w"> </span>--n-trials<span class="w"> </span><span class="m">200</span><span class="w"> </span>--n-workers<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--slurm<span class="w"> </span><span class="nv">slurm_partition</span><span class="o">=</span>short<span class="w"> </span>--slurm<span class="w"> </span><span class="nv">slurm_mem</span><span class="o">=</span>8G<span class="w"> </span>--slurm<span class="w"> </span><span class="nv">slurm_time</span><span class="o">=</span><span class="m">04</span>:00:00
+</pre></div>
+</div>
+<p>The output directory and its journal must be on storage visible to every
+compute node (for example your <code class="docutils literal notranslate"><span class="pre">/bigdata</span></code> allocation), not a node-local
+<code class="docutils literal notranslate"><span class="pre">/scratch</span></code> path. The command returns after submitting the worker array and its
+one dependent terminal finalizer; it does not run a separate scheduler sidecar.</p>
 </section>
-<section id="standing-up-a-postgres-server">
-<h2>Standing up a Postgres server<a class="headerlink" href="#standing-up-a-postgres-server" title="Link to this heading">#</a></h2>
-<p>PhenoTypic does not manage a server for you; it only needs a URL that resolves
-to a running PostgreSQL instance the workers can reach. One common pattern on an
-HPCC is a user-space PostgreSQL server submitted as its own <code class="docutils literal notranslate"><span class="pre">sbatch</span></code> job: the
-job initializes a data directory on shared storage (e.g. <code class="docutils literal notranslate"><span class="pre">pgdata/</span></code> under your
-<code class="docutils literal notranslate"><span class="pre">/bigdata</span></code> allocation), starts <code class="docutils literal notranslate"><span class="pre">postgres</span></code> on a non-default port such as <code class="docutils literal notranslate"><span class="pre">54399</span></code>,
-and writes its host:port address to a file other jobs can read. Any tooling that
-gets you a reachable server is fine — this is one example, not a requirement.</p>
-<p>Once the server is up, create a database for the study:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>createdb<span class="w"> </span>-h<span class="w"> </span>&lt;pg-host&gt;<span class="w"> </span>-p<span class="w"> </span><span class="m">54399</span><span class="w"> </span>-U<span class="w"> </span><span class="nv">$USER</span><span class="w"> </span>tune_study
-</pre></div>
-</div>
+<section id="storage-policy">
+<h2>Storage policy<a class="headerlink" href="#storage-policy" title="Link to this heading">#</a></h2>
+<p>For an Optuna strategy, storage resolves in this order:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--storage-url</span></code> on the command line.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">strategy.storage_url</span></code> in the tuning spec.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">$PHENOTYPIC_TUNE_STORAGE_URL</span></code>.</p></li>
+<li><p>The mode default: run-local SQLite for a local run, or the absolute
+run-local <code class="docutils literal notranslate"><span class="pre">journal://</span></code> URL for <code class="docutils literal notranslate"><span class="pre">--slurm</span></code>.</p></li>
+</ol>
+<p>Do not use SQLite for a multi-node fleet. <code class="docutils literal notranslate"><span class="pre">--slurm</span></code> rejects an explicit SQLite
+URL before it creates run artifacts. Password-bearing URLs are also rejected:
+they would otherwise be copied into the run marker and generated worker script.
+An explicitly configured password-less RDB URL remains available when your
+environment already operates one, but it is not required for the normal HPCC
+workflow.</p>
 </section>
-<section id="connecting">
-<h2>Connecting<a class="headerlink" href="#connecting" title="Link to this heading">#</a></h2>
-<p>The connection target is given to <code class="docutils literal notranslate"><span class="pre">--storage-url</span></code> (or the
-<code class="docutils literal notranslate"><span class="pre">$PHENOTYPIC_TUNE_STORAGE_URL</span></code> environment variable). PhenoTypic uses the
-password-less psycopg3 scheme</p>
-<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">postgresql</span><span class="o">+</span><span class="n">psycopg</span><span class="p">:</span><span class="o">//</span><span class="n">USER</span><span class="nd">@HOST</span><span class="p">:</span><span class="n">PORT</span><span class="o">/</span><span class="n">DB</span>
-</pre></div>
-</div>
-<p>The password is <strong>never</strong> part of the URL, the command line, or the generated
-worker script. libpq resolves it from <code class="docutils literal notranslate"><span class="pre">~/.pgpass</span></code> (or the <code class="docutils literal notranslate"><span class="pre">$PGPASSWORD</span></code>
-environment variable), the same as any other PostgreSQL client. Add one line to
-<code class="docutils literal notranslate"><span class="pre">~/.pgpass</span></code> (mode <code class="docutils literal notranslate"><span class="pre">600</span></code>) in <code class="docutils literal notranslate"><span class="pre">host:port:database:username:password</span></code> format:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>chmod<span class="w"> </span><span class="m">600</span><span class="w"> </span>~/.pgpass
-<span class="c1"># host:port:database:username:password</span>
-<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;&lt;pg-host&gt;:54399:*:</span><span class="nv">$USER</span><span class="s2">:&lt;secret&gt;&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.pgpass
-</pre></div>
-</div>
-<p>There are three equivalent ways to point at the server; all three already work
-through the <code class="docutils literal notranslate"><span class="pre">psycopg</span> <span class="pre">→</span> <span class="pre">SQLAlchemy</span> <span class="pre">→</span> <span class="pre">Optuna</span></code> stack with no extra configuration in
-PhenoTypic, and all three read the password from <code class="docutils literal notranslate"><span class="pre">~/.pgpass</span></code>.</p>
-<p>The first is the full password-less URL, naming the driver, user, host, port,
-and database directly:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.tune<span class="w"> </span>run<span class="w"> </span>spec.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--strategy<span class="w"> </span>tpe<span class="w"> </span>--n-trials<span class="w"> </span><span class="m">200</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--storage-url<span class="w"> </span><span class="s2">&quot;postgresql+psycopg://</span><span class="nv">$USER</span><span class="s2">@&lt;pg-host&gt;:54399/tune_study&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--slurm
-</pre></div>
-</div>
-<p>The second is a named service. Define the connection target once in
-<code class="docutils literal notranslate"><span class="pre">~/.pg_service.conf</span></code> so you never retype host/port/dbname:</p>
-<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[tune]</span>
-<span class="na">host</span><span class="o">=</span><span class="s">&lt;pg-host&gt;</span>
-<span class="na">port</span><span class="o">=</span><span class="s">54399</span>
-<span class="na">dbname</span><span class="o">=</span><span class="s">tune_study</span>
-<span class="na">user</span><span class="o">=</span><span class="s">&lt;your-user&gt;</span>
-</pre></div>
-</div>
-<p>then reference it with a service-only URL:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.tune<span class="w"> </span>run<span class="w"> </span>spec.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--strategy<span class="w"> </span>tpe<span class="w"> </span>--n-trials<span class="w"> </span><span class="m">200</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--storage-url<span class="w"> </span><span class="s2">&quot;postgresql+psycopg://?service=tune&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--slurm
-</pre></div>
-</div>
-<p>The third uses the standard <code class="docutils literal notranslate"><span class="pre">PG*</span></code> environment variables for the target and a
-bare URL:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">PGHOST</span><span class="o">=</span>&lt;pg-host&gt;
-<span class="nb">export</span><span class="w"> </span><span class="nv">PGPORT</span><span class="o">=</span><span class="m">54399</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">PGDATABASE</span><span class="o">=</span>tune_study
-<span class="nb">export</span><span class="w"> </span><span class="nv">PGUSER</span><span class="o">=</span><span class="nv">$USER</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.tune<span class="w"> </span>run<span class="w"> </span>spec.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--strategy<span class="w"> </span>tpe<span class="w"> </span>--n-trials<span class="w"> </span><span class="m">200</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--storage-url<span class="w"> </span><span class="s2">&quot;postgresql+psycopg://&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--slurm
-</pre></div>
-</div>
-<p>A target is always required because <code class="docutils literal notranslate"><span class="pre">--storage-url</span></code> names the server to reach,
-while <code class="docutils literal notranslate"><span class="pre">~/.pgpass</span></code> only supplies the password (it is keyed by host/port/db/user
-and does not, on its own, tell libpq which server to contact). A future
-convenience flag — <code class="docutils literal notranslate"><span class="pre">--pg-service</span> <span class="pre">NAME</span></code> to build the <code class="docutils literal notranslate"><span class="pre">?service=NAME</span></code> URL for you
-— is <strong>not yet implemented</strong>; until then the <code class="docutils literal notranslate"><span class="pre">?service=tune</span></code> form above gives
-the same result.</p>
-</section>
-<section id="launching-the-fleet">
-<h2>Launching the fleet<a class="headerlink" href="#launching-the-fleet" title="Link to this heading">#</a></h2>
-<p>Add <code class="docutils literal notranslate"><span class="pre">--slurm</span></code> to submit a worker fleet instead of running in-process. Every
-worker opens the same study at the shared <code class="docutils literal notranslate"><span class="pre">--storage-url</span></code> (or
-<code class="docutils literal notranslate"><span class="pre">$PHENOTYPIC_TUNE_STORAGE_URL</span></code>) and drains the one trial budget set by
-<code class="docutils literal notranslate"><span class="pre">--n-trials</span></code>, so the budget is shared across the fleet rather than multiplied by
-the number of workers:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">PHENOTYPIC_TUNE_STORAGE_URL</span><span class="o">=</span><span class="s2">&quot;postgresql+psycopg://</span><span class="nv">$USER</span><span class="s2">@&lt;pg-host&gt;:54399/tune_study&quot;</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.tune<span class="w"> </span>run<span class="w"> </span>spec.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--strategy<span class="w"> </span>tpe<span class="w"> </span>--n-trials<span class="w"> </span><span class="m">200</span><span class="w"> </span>--slurm
-</pre></div>
-</div>
-<p>The submitting process pre-creates the study (and its RDB schema) before any
-worker starts. A cold Postgres database has no Optuna tables, so without this
-step the workers would race to create the schema and all but one would crash on
-a duplicate-key error. Materializing the study once up front means every worker
-finds an existing study and only reads and appends trials.</p>
-<p>The workers reload the resolved spec written to
-<code class="docutils literal notranslate"><span class="pre">deliverables/tuning_spec.json</span></code>, not the raw input spec, so any <code class="docutils literal notranslate"><span class="pre">--strategy</span></code>,
-<code class="docutils literal notranslate"><span class="pre">--n-trials</span></code>, or held-out overrides given at submission are honored on every
-node.</p>
-<section id="sizing-the-fleet">
-<h3>Sizing the fleet<a class="headerlink" href="#sizing-the-fleet" title="Link to this heading">#</a></h3>
-<p>The fleet’s shape is set by four <code class="docutils literal notranslate"><span class="pre">--slurm</span></code>-only flags; all are optional and
-fall back to sensible defaults:</p>
+<section id="what-slurm-submits">
+<h2>What SLURM submits<a class="headerlink" href="#what-slurm-submits" title="Link to this heading">#</a></h2>
+<p>The submitter writes the resolved tuning spec, the recorded storage URL, a
+held-out split, and one lifecycle generation before it submits work. It then
+submits exactly these compute roles:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--n-workers</span> <span class="pre">N</span></code> — how many SLURM array workers to submit. Unset, it defaults
-to <code class="docutils literal notranslate"><span class="pre">min(8,</span> <span class="pre">n_trials)</span></code> (or 4 when no trial budget is known). Because the
-budget is shared, adding workers shortens wall-clock without spending more
-trials.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--slurm-partition</span> <span class="pre">NAME</span></code> — the partition for the array. Unset, the
-<code class="docutils literal notranslate"><span class="pre">#SBATCH</span> <span class="pre">--partition</span></code> directive is omitted and the cluster default applies.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--slurm-mem</span> <span class="pre">MEM</span></code> — per-worker memory (e.g. <code class="docutils literal notranslate"><span class="pre">8G</span></code>).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--slurm-time</span> <span class="pre">HMS</span></code> — per-worker wall-clock limit (e.g. <code class="docutils literal notranslate"><span class="pre">04:00:00</span></code>).</p></li>
+<li><p>One worker <strong>array</strong>. Each task reloads the resolved spec and calibration
+images, then claims trials from the shared journal until the common terminal
+budget is reached.</p></li>
+<li><p>One non-array terminal <strong>finalizer</strong> with an <code class="docutils literal notranslate"><span class="pre">afterany</span></code> dependency on that
+array. It reopens the recorded backend without create semantics, requires the
+expected number of completed-or-pruned terminal trials and a valid winner,
+then publishes the tuning artifacts.</p></li>
 </ul>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.tune<span class="w"> </span>run<span class="w"> </span>spec.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--strategy<span class="w"> </span>tpe<span class="w"> </span>--n-trials<span class="w"> </span><span class="m">200</span><span class="w"> </span>--slurm<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--n-workers<span class="w"> </span><span class="m">16</span><span class="w"> </span>--slurm-partition<span class="w"> </span>batch<span class="w"> </span>--slurm-mem<span class="w"> </span>8G<span class="w"> </span>--slurm-time<span class="w"> </span><span class="m">04</span>:00:00<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--storage-url<span class="w"> </span><span class="s2">&quot;postgresql+psycopg://</span><span class="nv">$USER</span><span class="s2">@&lt;pg-host&gt;:54399/tune_study&quot;</span>
+<p>The finalizer writes <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code>, <code class="docutils literal notranslate"><span class="pre">best_pipeline.json</span></code>, <code class="docutils literal notranslate"><span class="pre">best_params.json</span></code>,
+importance/Pareto outputs where applicable, and the held-out generalization
+report. <code class="docutils literal notranslate"><span class="pre">best_params.json</span></code> is the final completion signal. If the journal is
+missing, corrupt, incomplete, or has no valid terminal winner, publication fails
+closed and the lifecycle records the failed generation.</p>
+</section>
+<section id="monitor-and-recover">
+<h2>Monitor and recover<a class="headerlink" href="#monitor-and-recover" title="Link to this heading">#</a></h2>
+<p>The run marker at <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/run.json</span></code> records the selected backend and
+expected terminal budget. The lifecycle state and append-only ledger live under
+<code class="docutils literal notranslate"><span class="pre">.phenotypic/progress/</span></code>; use them together with your scheduler’s normal job
+tools to follow the worker and finalizer roles.</p>
+<p>After a completed or interrupted distributed run is quiescent, republish from
+the exact recorded backend:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-tune<span class="w"> </span>finalize<span class="w"> </span>./out
 </pre></div>
 </div>
-</section>
-</section>
-<section id="resume">
-<h2>Resume<a class="headerlink" href="#resume" title="Link to this heading">#</a></h2>
-<p>A tune run resumes by re-pointing <code class="docutils literal notranslate"><span class="pre">-o</span></code> at the same output directory. The shared
-study still holds every trial the fleet recorded, and the run’s
-<code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code> plus the machine state under <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/</span></code> let a new
-invocation pick up where the previous one stopped. If the local <code class="docutils literal notranslate"><span class="pre">study.db</span></code> (or a
-relocated split) was moved, it is read back from <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/</span></code>. For a
-distributed study, resuming means submitting the fleet again against the same
-<code class="docutils literal notranslate"><span class="pre">--storage-url</span></code> — the workers re-attach to the existing study rather than
-starting fresh.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.tune<span class="w"> </span>run<span class="w"> </span>spec.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--strategy<span class="w"> </span>tpe<span class="w"> </span>--n-trials<span class="w"> </span><span class="m">400</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--storage-url<span class="w"> </span><span class="s2">&quot;postgresql+psycopg://</span><span class="nv">$USER</span><span class="s2">@&lt;pg-host&gt;:54399/tune_study&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--slurm
+<p>Normal manual finalization refuses an active lifecycle generation. If a failed
+generation remains active, <code class="docutils literal notranslate"><span class="pre">--force</span></code> first requests cancellation and proceeds
+only after scheduler quiescence has been proven and no unresolved scheduler
+tokens remain:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-tune<span class="w"> </span>finalize<span class="w"> </span>./out<span class="w"> </span>--force
 </pre></div>
 </div>
-</section>
-<section id="local-vs-distributed-when-to-use-which">
-<h2>Local vs. distributed (when to use which)<a class="headerlink" href="#local-vs-distributed-when-to-use-which" title="Link to this heading">#</a></h2>
-<p>For a single node, omit <code class="docutils literal notranslate"><span class="pre">--slurm</span></code> and <code class="docutils literal notranslate"><span class="pre">--storage-url</span></code>. The run uses the local
-SQLite-WAL study at <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/study.db</span></code>, which is the safe and simplest
-default when one process owns the database.</p>
-<p>For a SLURM array spanning multiple nodes on a shared (NFS/Lustre) filesystem,
-use a Postgres <code class="docutils literal notranslate"><span class="pre">--storage-url</span></code> with <code class="docutils literal notranslate"><span class="pre">--slurm</span></code>. SQLite-WAL is unsafe there, so the
-shared relational database is what lets the workers cooperate on one study.</p>
+<p>Publication is lifecycle-locked from ownership validation through all writes.
+Running <code class="docutils literal notranslate"><span class="pre">finalize</span></code> again after a successful publication is safe and produces
+byte-identical published artifacts. Re-running <code class="docutils literal notranslate"><span class="pre">run</span></code> against an output with an
+active lifecycle is not a replacement for finalization; wait for the finalizer
+or use the explicit recovery command after quiescence.</p>
 </section>
 </section>
 
@@ -833,15 +752,10 @@ shared relational database is what lets the workers cooperate on one study.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#why-postgres-for-distributed-studies">Why Postgres for distributed studies</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#standing-up-a-postgres-server">Standing up a Postgres server</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#connecting">Connecting</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launching-the-fleet">Launching the fleet</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sizing-the-fleet">Sizing the fleet</a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#resume">Resume</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#local-vs-distributed-when-to-use-which">Local vs. distributed (when to use which)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#start-a-distributed-study">Start a distributed study</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#storage-policy">Storage policy</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-slurm-submits">What SLURM submits</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#monitor-and-recover">Monitor and recover</a></li>
 </ul>
   </nav></div>
 

@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -599,7 +599,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;The trial journal — Phase-1 homegrown persistence (Optuna SQLite is Phase 2).</span>
 
 <span class="sd">A ``JournalStudyStore`` accumulates ``Trial`` records, reports the ``best``</span>
-<span class="sd">(**min** cost among non-failed trials), and round-trips through ``trials.parquet``</span>
+<span class="sd">(**min** cost among COMPLETE trials), and round-trips through ``trials.parquet``</span>
 <span class="sd">(params and terms persisted as JSON columns — lossless across heterogeneous/</span>
 <span class="sd">conditional param sets). Reloading a store powers CLI resume (``_engine``</span>
 <span class="sd">fast-forwards a deterministic strategy past the recorded trials). It is the</span>
@@ -611,6 +611,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
 
@@ -639,8 +641,9 @@
 <span class="sd">            journal column. ``None`` for every legacy (pre-sidecar) trial.</span>
 <span class="sd">        failed: ``True`` when the candidate raised and scored the failure floor.</span>
 <span class="sd">        pruned: ``True`` when the rung ladder early-stopped this candidate.</span>
-<span class="sd">            Distinct from ``failed``: pruned trials ran cleanly on a partial set</span>
-<span class="sd">            and still count against the budget (failed trials do not).</span>
+<span class="sd">            Distinct from ``failed``: pruned trials ran cleanly on a partial</span>
+<span class="sd">            set, remain exported terminal history, and still count against the</span>
+<span class="sd">            budget (failed trials do not), but cannot be published as winners.</span>
 <span class="sd">        gap: The trial&#39;s relative across-plate dispersion of the primary term —</span>
 <span class="sd">            a cheap instability / overfit-risk flag carried from</span>
 <span class="sd">            ``EvaluationResult.gap``, persisted as the nullable-float ``gap``</span>
@@ -705,14 +708,25 @@
     <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trials</span><span class="p">)</span>
 
+<div class="viewcode-block" id="JournalStudyStore.terminal_trials">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.terminal_trials">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">terminal_trials</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return every journal entry; this backend has no in-flight records.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trials</span><span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="JournalStudyStore.best">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.best">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">best</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The non-failed trial with the lowest cost score, or ``None``.&quot;&quot;&quot;</span>
-        <span class="n">valid</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trials</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span><span class="p">]</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The finite COMPLETE trial with the lowest cost, or ``None``.&quot;&quot;&quot;</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">trial</span>
+            <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trials</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">trial</span><span class="o">.</span><span class="n">failed</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">trial</span><span class="o">.</span><span class="n">pruned</span> <span class="ow">and</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">trial</span><span class="o">.</span><span class="n">score</span><span class="p">)</span>
+        <span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">valid</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">valid</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">trial</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">score</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="JournalStudyStore.is_resumable_in_place">
@@ -742,29 +756,28 @@
 
 <div class="viewcode-block" id="JournalStudyStore.pareto_front">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.pareto_front">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">pareto_front</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The non-dominated trials by their ``objectives`` sidecar (plan §0a).</span>
-
-<span class="sd">        Delegates to the store-agnostic :func:`pareto_front_of` over the</span>
-<span class="sd">        journaled trials. A single-objective journal (no trial carries</span>
-<span class="sd">        ``objectives``) returns ``[]`` while scalar :meth:`best` still works.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">pareto_front</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">objective_axes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return finite non-dominated COMPLETE trials on optional fixed axes.&quot;&quot;&quot;</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">._study._pareto</span><span class="w"> </span><span class="kn">import</span> <span class="n">pareto_front_of</span>
 
-        <span class="k">return</span> <span class="n">pareto_front_of</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trials</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">pareto_front_of</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trials</span><span class="p">,</span> <span class="n">objective_axes</span><span class="o">=</span><span class="n">objective_axes</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="JournalStudyStore.knee_point">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.knee_point">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">knee_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">front</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The ``front`` trial at max perpendicular distance to the chord.</span>
-
-<span class="sd">        Delegates to the store-agnostic :func:`knee_point_of`; ``None`` for an</span>
-<span class="sd">        empty front.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">knee_point</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">front</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">],</span>
+        <span class="n">objective_axes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the ``front`` knee using optional fixed scorer axes.&quot;&quot;&quot;</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">._study._pareto</span><span class="w"> </span><span class="kn">import</span> <span class="n">knee_point_of</span>
 
-        <span class="k">return</span> <span class="n">knee_point_of</span><span class="p">(</span><span class="n">front</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">knee_point_of</span><span class="p">(</span><span class="n">front</span><span class="p">,</span> <span class="n">objective_axes</span><span class="o">=</span><span class="n">objective_axes</span><span class="p">)</span></div>
 
 
     <span class="c1">#: Stable column order for the trials frame (explicit so an empty store</span>

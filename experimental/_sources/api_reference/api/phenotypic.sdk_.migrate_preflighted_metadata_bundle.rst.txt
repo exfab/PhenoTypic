@@ -1,0 +1,6 @@
+phenotypic.sdk\_.migrate\_preflighted\_metadata\_bundle
+=======================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: migrate_preflighted_metadata_bundle

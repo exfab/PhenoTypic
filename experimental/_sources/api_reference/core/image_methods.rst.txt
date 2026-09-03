@@ -179,14 +179,23 @@ Automatically extracts metadata when available.
 Save the complete Image state (data, metadata, detection results) to a pickle file
 for later restoration.
 
-.. automethod:: Image.save2hdf5
+.. automethod:: Image.save2zarr
 
-Save the image to HDF5 format with metadata. HDF5 provides efficient storage and
-supports compression.
+Save the image as an OME-Zarr (NGFF 0.5 / Zarr v3) store with metadata. The store
+carries every layer as a multiscale pyramid and is written crash-safely, by
+building a ``.part`` sibling and promoting it with a directory rename.
 
-.. automethod:: Image.load_hdf5
+.. automethod:: Image.save_intermediate_zarr
 
-Load an Image from HDF5 file created with ``save2hdf5``.
+Save a chosen subset of layers as a single-level store, for previews.
+
+.. automethod:: Image.load_zarr
+
+Load an Image from an OME-Zarr store created with ``save2zarr``.
+
+.. automethod:: Image.load_layer_zarr
+
+Read one layer, at one pyramid level, without reconstructing a whole Image.
 
 Image Manipulation
 ------------------

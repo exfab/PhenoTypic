@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -601,12 +601,15 @@
 <span class="sd">These are a closed set in Phase 1 (grid/random) → a discriminated union.</span>
 <span class="sd">Phase 2 adds ``OptunaConfig``; the polymorphic-field path (engine-architecture</span>
 <span class="sd">§6) lets the open Scorer/Strategy sets extend, but the in-spec config field uses</span>
-<span class="sd">this union for the built-in kinds.</span>
+<span class="sd">this union for the built-in kinds. Distributed Optuna workers share Journal or</span>
+<span class="sd">PostgreSQL storage; SQLite remains local-only and is rejected by distributed</span>
+<span class="sd">CLI validation.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypeAlias</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">get_args</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">Field</span>
@@ -638,8 +641,8 @@
 
 <span class="c1">#: Environment variable naming the Optuna storage URL when ``OptunaConfig`` is</span>
 <span class="c1">#: built with ``storage_url=None`` (e.g. a SLURM array exporting a shared</span>
-<span class="c1">#: Postgres/SQLite URL to every worker). Resolved inside ``build`` only — never</span>
-<span class="c1">#: at construction — so the lazy-import boundary holds.</span>
+<span class="c1">#: Journal or PostgreSQL URL to every worker). Distributed SQLite is rejected.</span>
+<span class="c1">#: Resolution stays inside ``build`` so the lazy-import boundary holds.</span>
 <span class="n">PHENOTYPIC_TUNE_STORAGE_URL_ENV</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;PHENOTYPIC_TUNE_STORAGE_URL&quot;</span>
 
 
@@ -683,7 +686,23 @@
 <span class="sd">                multi-objective scorer at validation, so they never receive it).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="o">...</span></div>
+
+
+<div class="viewcode-block" id="StrategyConfig.build_with_objectives">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.StrategyConfig.html#phenotypic.tune.strategy.StrategyConfig.build_with_objectives">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">build_with_objectives</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+        <span class="n">store</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">directions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">objective_axes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchStrategy</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build with scorer axes without widening third-party ``build`` APIs.&quot;&quot;&quot;</span>
+        <span class="k">del</span> <span class="n">objective_axes</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">store</span><span class="p">,</span> <span class="n">directions</span><span class="o">=</span><span class="n">directions</span><span class="p">)</span></div>
 </div>
+
 
 
 
@@ -763,9 +782,10 @@
 <span class="sd">        prune: Whether to enable ASHA pruning (opt-in; the explore round runs</span>
 <span class="sd">            unpruned). Defaults to ``False``.</span>
 <span class="sd">        seed: The sampler seed for reproducibility; defaults to ``0``.</span>
-<span class="sd">        storage_url: The Optuna storage URL (SQLite/Postgres). ``None`` resolves</span>
-<span class="sd">            from ``$PHENOTYPIC_TUNE_STORAGE_URL`` at build time; if that is also</span>
-<span class="sd">            unset the strategy uses an in-memory study.</span>
+<span class="sd">        storage_url: The Optuna storage URL (Journal, SQLite, or PostgreSQL).</span>
+<span class="sd">            ``None`` resolves from ``$PHENOTYPIC_TUNE_STORAGE_URL`` at build</span>
+<span class="sd">            time; if that is also unset the strategy uses an in-memory study.</span>
+<span class="sd">            Distributed runs reject SQLite; use Journal or PostgreSQL instead.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">kind</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;optuna&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;optuna&quot;</span>
@@ -782,6 +802,21 @@
         <span class="n">store</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
         <span class="o">*</span><span class="p">,</span>
         <span class="n">directions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchStrategy</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build without axes for backward-compatible direct callers.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_with_objectives</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">store</span><span class="p">,</span> <span class="n">directions</span><span class="o">=</span><span class="n">directions</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="OptunaConfig.build_with_objectives">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.OptunaConfig.html#phenotypic.tune.strategy.OptunaConfig.build_with_objectives">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">build_with_objectives</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+        <span class="n">store</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">directions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">objective_axes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchStrategy</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Construct the live ``OptunaStrategy`` (resolves the ``tune`` extra).</span>
 
@@ -824,9 +859,41 @@
             <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
             <span class="n">study_name</span><span class="o">=</span><span class="n">study_name</span><span class="p">,</span>
             <span class="n">directions</span><span class="o">=</span><span class="n">directions</span><span class="p">,</span>
+            <span class="n">objective_axes</span><span class="o">=</span><span class="n">objective_axes</span><span class="p">,</span>
         <span class="p">)</span></div>
 </div>
 
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build_strategy_with_objectives</span><span class="p">(</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">StrategyConfig</span><span class="p">,</span>
+    <span class="n">space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">directions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">objective_axes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchStrategy</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build through modern hooks while preserving historic Optuna overrides.&quot;&quot;&quot;</span>
+    <span class="n">legacy_optuna_override</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">OptunaConfig</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">build_with_objectives</span> <span class="ow">is</span> <span class="n">OptunaConfig</span><span class="o">.</span><span class="n">build_with_objectives</span>
+        <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">build</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">OptunaConfig</span><span class="o">.</span><span class="n">build</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">legacy_optuna_override</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">config</span><span class="o">.</span><span class="n">build_with_objectives</span><span class="p">(</span>
+            <span class="n">space</span><span class="p">,</span>
+            <span class="n">store</span><span class="p">,</span>
+            <span class="n">directions</span><span class="o">=</span><span class="n">directions</span><span class="p">,</span>
+            <span class="n">objective_axes</span><span class="o">=</span><span class="n">objective_axes</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">strategy</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">store</span><span class="p">,</span> <span class="n">directions</span><span class="o">=</span><span class="n">directions</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">objective_axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">._optuna</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptunaStrategy</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">OptunaStrategy</span><span class="p">):</span>
+            <span class="n">strategy</span><span class="o">.</span><span class="n">bind_objective_axes</span><span class="p">(</span><span class="n">objective_axes</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">strategy</span>
 
 
 <span class="c1">#: Discriminated union of the built-in (Phase 1) strategy configs. ``OptunaConfig``</span>

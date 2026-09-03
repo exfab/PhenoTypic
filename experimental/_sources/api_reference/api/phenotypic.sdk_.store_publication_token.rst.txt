@@ -1,0 +1,6 @@
+phenotypic.sdk\_.store\_publication\_token
+==========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: store_publication_token

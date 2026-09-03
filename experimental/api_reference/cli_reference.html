@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../_static/documentation_options.js?v=8a079089"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Pipeline builder validation rules" href="gui/builder_validation.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -559,6 +559,7 @@
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="core/color_space_operations.html">Color Space Operations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="core/visualization_plotting.html">Plotting capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="core/store_layout.html">OME-Zarr store layout</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="core/grid_image_methods.html">GridImage Class Methods</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -874,6 +875,13 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.atomic_write_parquet.html">phenotypic.sdk_.atomic_write_parquet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.atomic_write_text.html">phenotypic.sdk_.atomic_write_text</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.atomic_write_with_writer.html">phenotypic.sdk_.atomic_write_with_writer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.publication_commit.html">phenotypic.sdk_.publication_commit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.build_measurement_table_descriptor.html">phenotypic.sdk_.build_measurement_table_descriptor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.embedded_measurement_columns.html">phenotypic.sdk_.embedded_measurement_columns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.read_embedded_measurement_column.html">phenotypic.sdk_.read_embedded_measurement_column</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.read_embedded_measurement_descriptor.html">phenotypic.sdk_.read_embedded_measurement_descriptor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.replace_embedded_measurement_table.html">phenotypic.sdk_.replace_embedded_measurement_table</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.write_embedded_measurement_table.html">phenotypic.sdk_.write_embedded_measurement_table</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.canonical_metadata_order.html">phenotypic.sdk_.canonical_metadata_order</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.ensure_metadata_prefix.html">phenotypic.sdk_.ensure_metadata_prefix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.is_binary_mask.html">phenotypic.sdk_.is_binary_mask</a></li>
@@ -887,12 +895,21 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.metadata_owner_for_label.html">phenotypic.sdk_.metadata_owner_for_label</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.normalize_metadata_columns.html">phenotypic.sdk_.normalize_metadata_columns</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.order_measurement_columns.html">phenotypic.sdk_.order_measurement_columns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.metadata_migration_authority.html">phenotypic.sdk_.metadata_migration_authority</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.migrate_metadata_bundle.html">phenotypic.sdk_.migrate_metadata_bundle</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.migrate_metadata_file.html">phenotypic.sdk_.migrate_metadata_file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.migrate_preflighted_metadata_bundle.html">phenotypic.sdk_.migrate_preflighted_metadata_bundle</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.preflight_metadata_schema.html">phenotypic.sdk_.preflight_metadata_schema</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.rollback_metadata_migration.html">phenotypic.sdk_.rollback_metadata_migration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.validated_published_metadata_migration_targets.html">phenotypic.sdk_.validated_published_metadata_migration_targets</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.timed_execution.html">phenotypic.sdk_.timed_execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.describe_durability.html">phenotypic.sdk_.describe_durability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.durable_writes_enabled.html">phenotypic.sdk_.durable_writes_enabled</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.new_part_path.html">phenotypic.sdk_.new_part_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.promote_store.html">phenotypic.sdk_.promote_store</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.read_phenotypic_attributes.html">phenotypic.sdk_.read_phenotypic_attributes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.sweep_orphan_parts.html">phenotypic.sdk_.sweep_orphan_parts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.valid_staged_store.html">phenotypic.sdk_.valid_staged_store</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.analysis_full_parquet_path.html">phenotypic.sdk_.analysis_full_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.analysis_manifest_path.html">phenotypic.sdk_.analysis_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.best_pipeline_path.html">phenotypic.sdk_.best_pipeline_path</a></li>
@@ -907,10 +924,11 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.checkpoint_lock_filename.html">phenotypic.sdk_.checkpoint_lock_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.checkpoint_lock_path.html">phenotypic.sdk_.checkpoint_lock_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.dashboard_html_path.html">phenotypic.sdk_.dashboard_html_path</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.dataset_hdf_dir.html">phenotypic.sdk_.dataset_hdf_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.dataset_measurements_dir.html">phenotypic.sdk_.dataset_measurements_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.dataset_overlays_dir.html">phenotypic.sdk_.dataset_overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.dataset_results_dir.html">phenotypic.sdk_.dataset_results_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.dataset_zarr_dir.html">phenotypic.sdk_.dataset_zarr_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.datasets_needing_migration.html">phenotypic.sdk_.datasets_needing_migration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.overlays_dir.html">phenotypic.sdk_.overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.plots_dir.html">phenotypic.sdk_.plots_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.curation_labels_parquet_path.html">phenotypic.sdk_.curation_labels_parquet_path</a></li>
@@ -932,7 +950,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.image_completion_marker_path.html">phenotypic.sdk_.image_completion_marker_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.has_config_suffix.html">phenotypic.sdk_.has_config_suffix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.job_metadata_path.html">phenotypic.sdk_.job_metadata_path</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.load_image_from_hdf.html">phenotypic.sdk_.load_image_from_hdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.load_image_from_store.html">phenotypic.sdk_.load_image_from_store</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.load_master_measurements.html">phenotypic.sdk_.load_master_measurements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.logs_dir.html">phenotypic.sdk_.logs_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.manifest_json_path.html">phenotypic.sdk_.manifest_json_path</a></li>
@@ -993,17 +1011,25 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.shard_parquet_filename.html">phenotypic.sdk_.shard_parquet_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.slurm_scripts_dir.html">phenotypic.sdk_.slurm_scripts_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.source_cache_key.html">phenotypic.sdk_.source_cache_key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.is_zarr_store_name.html">phenotypic.sdk_.is_zarr_store_name</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.store_stem.html">phenotypic.sdk_.store_stem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.source_image_stem.html">phenotypic.sdk_.source_image_stem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.source_image_suffix.html">phenotypic.sdk_.source_image_suffix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.store_publication_token.html">phenotypic.sdk_.store_publication_token</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.store_revision_identity.html">phenotypic.sdk_.store_revision_identity</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.task_status_filename.html">phenotypic.sdk_.task_status_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.task_status_path.html">phenotypic.sdk_.task_status_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.trials_parquet_path.html">phenotypic.sdk_.trials_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.tune_cache_dir.html">phenotypic.sdk_.tune_cache_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.tune_cache_run_marker_path.html">phenotypic.sdk_.tune_cache_run_marker_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.tune_cache_journal_path.html">phenotypic.sdk_.tune_cache_journal_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.tune_cache_split_assignment_path.html">phenotypic.sdk_.tune_cache_split_assignment_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.tune_cache_splits_dir.html">phenotypic.sdk_.tune_cache_splits_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.tune_cache_study_db_path.html">phenotypic.sdk_.tune_cache_study_db_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.tuning_spec_path.html">phenotypic.sdk_.tuning_spec_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.verified_parquet_path.html">phenotypic.sdk_.verified_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.validate_analysis_id.html">phenotypic.sdk_.validate_analysis_id</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.zarr_store_path.html">phenotypic.sdk_.zarr_store_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.FootprintMixin.html">phenotypic.sdk_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.GridInferenceMixin.html">phenotypic.sdk_.GridInferenceMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.HDF.html">phenotypic.sdk_.HDF</a></li>
@@ -1011,15 +1037,17 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.LazyWidgetMixin.html">phenotypic.sdk_.LazyWidgetMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.NormControlMixin.html">phenotypic.sdk_.NormControlMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.NormalizedOutputMixin.html">phenotypic.sdk_.NormalizedOutputMixin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.PreparedEmbeddedMeasurementTable.html">phenotypic.sdk_.PreparedEmbeddedMeasurementTable</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.MetadataMigrationAuthority.html">phenotypic.sdk_.MetadataMigrationAuthority</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.MetadataMigrationReport.html">phenotypic.sdk_.MetadataMigrationReport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.MetadataMigrationResult.html">phenotypic.sdk_.MetadataMigrationResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.MetadataMigrationTarget.html">phenotypic.sdk_.MetadataMigrationTarget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.PhenotypicAttr.html">phenotypic.sdk_.PhenotypicAttr</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.ChunkManifestKey.html">phenotypic.sdk_.ChunkManifestKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.ChunkStateKey.html">phenotypic.sdk_.ChunkStateKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.DashboardManifestKey.html">phenotypic.sdk_.DashboardManifestKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.DashboardManifestSlurmInfoKey.html">phenotypic.sdk_.DashboardManifestSlurmInfoKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.EnvVar.html">phenotypic.sdk_.EnvVar</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.HdfAttr.html">phenotypic.sdk_.HdfAttr</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.JobMetadataKey.html">phenotypic.sdk_.JobMetadataKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.ModulePath.html">phenotypic.sdk_.ModulePath</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.ProcessingStateKey.html">phenotypic.sdk_.ProcessingStateKey</a></li>
@@ -1089,6 +1117,7 @@
 <li class="toctree-l3"><a class="reference internal" href="api/phenotypic.sdk_.slurm.format_sbatch_directives.html">phenotypic.sdk_.slurm.format_sbatch_directives</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/phenotypic.sdk_.slurm.generate_dispatcher_chain.html">phenotypic.sdk_.slurm.generate_dispatcher_chain</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/phenotypic.sdk_.slurm.generate_dispatcher_script.html">phenotypic.sdk_.slurm.generate_dispatcher_script</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/phenotypic.sdk_.slurm.generation_script_key.html">phenotypic.sdk_.slurm.generation_script_key</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/phenotypic.sdk_.slurm.get_slurm_array_limit.html">phenotypic.sdk_.slurm.get_slurm_array_limit</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/phenotypic.sdk_.slurm.get_slurm_max_submit_jobs.html">phenotypic.sdk_.slurm.get_slurm_max_submit_jobs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/phenotypic.sdk_.slurm.parse_job_id.html">phenotypic.sdk_.slurm.parse_job_id</a></li>
@@ -1288,25 +1317,35 @@ when omitted, the pipeline preset is used, falling back to 12.</p>
 <code class="docutils literal notranslate"><span class="pre">blue</span></code>, <code class="docutils literal notranslate"><span class="pre">MinRGB</span></code>, <code class="docutils literal notranslate"><span class="pre">HsvS</span></code>, <code class="docutils literal notranslate"><span class="pre">HsvV</span></code>, <code class="docutils literal notranslate"><span class="pre">InvS</span></code>, <code class="docutils literal notranslate"><span class="pre">LabL</span></code>, <code class="docutils literal notranslate"><span class="pre">LabA</span></code>,
 <code class="docutils literal notranslate"><span class="pre">LabB</span></code>. Default: <code class="docutils literal notranslate"><span class="pre">gray</span></code>.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">--ext</span> <span class="pre">EXT</span></code></dt><dd><p>Deprecated for HDF output. Forward runs write a single <code class="docutils literal notranslate"><span class="pre">.h5</span></code> per image;
-only overlay PNG rendering still consults this value. Default: <code class="docutils literal notranslate"><span class="pre">tiff</span></code>.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">--ext</span> <span class="pre">EXT</span></code></dt><dd><p>Deprecated for per-image output. Forward runs write a single OME-Zarr store
+per image; only overlay PNG rendering still consults this value. Default:
+<code class="docutils literal notranslate"><span class="pre">tiff</span></code>.</p>
 </dd>
 </dl>
 </section>
 <section id="execution-options">
 <h2>Execution Options<a class="headerlink" href="#execution-options" title="Link to this heading">#</a></h2>
 <dl>
-<dt><code class="docutils literal notranslate"><span class="pre">-m,</span> <span class="pre">--mode</span> <span class="pre">{full,measure,recompile,process}</span></code></dt><dd><p>Select the execution mode. Default: <code class="docutils literal notranslate"><span class="pre">full</span></code>.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">-m,</span> <span class="pre">--mode</span> <span class="pre">{full,measure,recompile,process,migrate}</span></code></dt><dd><p>Select the execution mode. Default: <code class="docutils literal notranslate"><span class="pre">full</span></code>.</p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">full</span></code></dt><dd><p>Apply the pipeline, measure, and emit all deliverables.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">measure</span></code></dt><dd><p>Re-run measurements from HDF files in an existing output root. Requires
+<dt><code class="docutils literal notranslate"><span class="pre">measure</span></code></dt><dd><p>Re-run measurements from the per-image OME-Zarr stores in an existing
+output root. Requires
 <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code> and <code class="docutils literal notranslate"><span class="pre">--output</span></code>. Rejects <code class="docutils literal notranslate"><span class="pre">--input</span></code>, <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>,
 <code class="docutils literal notranslate"><span class="pre">--restart</span></code>, <code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code>, <code class="docutils literal notranslate"><span class="pre">--overwrite</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">--sample</span></code>.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">recompile</span></code></dt><dd><p>Rebuild aggregate deliverables from an existing output root. Requires
 <code class="docutils literal notranslate"><span class="pre">--output</span></code>. Rejects <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code>, <code class="docutils literal notranslate"><span class="pre">--input</span></code>, and <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">migrate</span></code></dt><dd><p>Convert a legacy <code class="docutils literal notranslate"><span class="pre">.h5</span></code> output tree to OME-Zarr stores <strong>in place</strong>, in
+two passes: the non-image metadata targets first, then each per-image
+<code class="docutils literal notranslate"><span class="pre">results/&lt;ds&gt;/hdf/&lt;stem&gt;.h5</span></code> to
+<code class="docutils literal notranslate"><span class="pre">results/&lt;ds&gt;/zarr/&lt;stem&gt;.ome.zarr</span></code> with its marker re-published.
+Requires <code class="docutils literal notranslate"><span class="pre">--output</span></code>. Sources are kept unless <code class="docutils literal notranslate"><span class="pre">--delete-sources</span></code> is
+passed. Every other writing mode refuses an unconverted tree and points
+here.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">process</span></code></dt><dd><p>Apply the pipeline and export one image layer per input, mirroring the
 input tree. Requires <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code>, <code class="docutils literal notranslate"><span class="pre">--input</span></code>, <code class="docutils literal notranslate"><span class="pre">--output</span></code>, and
@@ -1335,8 +1374,8 @@ other modes. <code class="docutils literal notranslate"><span class="pre">rgb</s
 <section id="continuation-and-recovery">
 <h2>Continuation and Recovery<a class="headerlink" href="#continuation-and-recovery" title="Link to this heading">#</a></h2>
 <p>Compatible full and process invocations continue automatically when run again.
-Staged GPU runs select Stage 1, 2, or 3 from valid HDF, sidecar, and completion
-artifacts.</p>
+Staged GPU runs select Stage 1, 2, or 3 from the per-image store, the Stage-2
+signal under <code class="docutils literal notranslate"><span class="pre">.phenotypic/progress/</span></code>, and the Stage-3 completion marker.</p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code></dt><dd><p>Include exact terminal scientific failures for the current computation in
 addition to unfinished images. It does not clear failure history.</p>
@@ -1372,7 +1411,7 @@ cancelling the active epoch.</p>
 <p>A pipeline containing a <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> runs as three stages (CPU preprocess →
 resident-model GPU detect → CPU measure). These flags tune Stage 2.</p>
 <p>On SLURM, an epoch-fenced dependent controller submits additional Stage-2
-arrays while sidecar-less retryable images remain. It replaces worker
+arrays while retryable images lack a complete Stage-2 signal. It replaces worker
 signal/self-requeue behavior. Dynamic controller, array, Stage-3, and finalizer
 job IDs are recorded in the run ledger for monitoring and cancellation.</p>
 <dl class="simple">
@@ -1422,18 +1461,19 @@ GUI review progress.</p>
 </section>
 <section id="tuning-cli">
 <h1>Tuning CLI<a class="headerlink" href="#tuning-cli" title="Link to this heading">#</a></h1>
-<p>PhenoTypic also ships a hyperparameter-tuning engine, <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span></code>,
-which searches an <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>’s parameters to maximize a scorer. It has two
-subcommands: <code class="docutils literal notranslate"><span class="pre">run</span></code> (the search engine) and <code class="docutils literal notranslate"><span class="pre">auto-space</span></code> (infer a reviewable search
-space from a pipeline). The <code class="docutils literal notranslate"><span class="pre">tpe</span></code>, <code class="docutils literal notranslate"><span class="pre">cmaes</span></code>, <code class="docutils literal notranslate"><span class="pre">gp</span></code>, and <code class="docutils literal notranslate"><span class="pre">nsga2</span></code> strategies require
-the optional <code class="docutils literal notranslate"><span class="pre">tune</span></code> extra (<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span> <span class="pre">--extras</span> <span class="pre">tune</span></code>); <code class="docutils literal notranslate"><span class="pre">grid</span></code> and <code class="docutils literal notranslate"><span class="pre">random</span></code> work out
-of the box.</p>
+<p>PhenoTypic also ships a hyperparameter-tuning engine, launched as
+<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">phenotypic-tune</span></code>. It searches an <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>’s parameters with
+<code class="docutils literal notranslate"><span class="pre">run</span></code>, infers a reviewable search space with <code class="docutils literal notranslate"><span class="pre">auto-space</span></code>, and republishes a
+completed distributed run with <code class="docutils literal notranslate"><span class="pre">finalize</span></code>. The <code class="docutils literal notranslate"><span class="pre">tpe</span></code>, <code class="docutils literal notranslate"><span class="pre">cmaes</span></code>, <code class="docutils literal notranslate"><span class="pre">gp</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">nsga2</span></code> strategies require the optional <code class="docutils literal notranslate"><span class="pre">tune</span></code> extra (<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span> <span class="pre">--extra</span> <span class="pre">tune</span></code>);
+<code class="docutils literal notranslate"><span class="pre">grid</span></code> and <code class="docutils literal notranslate"><span class="pre">random</span></code> work out of the box. <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span></code> remains
+an equivalent module invocation.</p>
 <p>See the <a class="reference internal" href="../how_to/pages/tuning.html"><span class="doc">tuning how-to</span></a> for an end-to-end walkthrough and
-the <a class="reference internal" href="../how_to/pages/tune_distributed_hpcc.html"><span class="doc">distributed HPCC guide</span></a> for SLURM and
-Postgres fan-out.</p>
+the <a class="reference internal" href="../how_to/pages/tune_distributed_hpcc.html"><span class="doc">distributed HPCC guide</span></a> for the
+shared-journal SLURM flow.</p>
 <section id="run-run-a-tuning-spec">
 <h2><code class="docutils literal notranslate"><span class="pre">run</span></code> — run a tuning spec<a class="headerlink" href="#run-run-a-tuning-spec" title="Link to this heading">#</a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.tune<span class="w"> </span>run<span class="w"> </span>SPEC_JSON<span class="w"> </span>-i<span class="w"> </span>INPUT_DIR<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-tune<span class="w"> </span>run<span class="w"> </span>SPEC_JSON<span class="w"> </span>-i<span class="w"> </span>INPUT_DIR<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
 </pre></div>
 </div>
 <section id="id1">
@@ -1464,17 +1504,20 @@ extra).</p>
 <section id="storage-options">
 <h3>Storage Options<a class="headerlink" href="#storage-options" title="Link to this heading">#</a></h3>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">--storage-url</span> <span class="pre">URL</span></code></dt><dd><p>Optuna storage URL: <code class="docutils literal notranslate"><span class="pre">sqlite:///…</span></code> (local single node) or a password-less
-<code class="docutils literal notranslate"><span class="pre">postgresql+psycopg://USER&#64;HOST:PORT/DB</span></code> (distributed; libpq reads the password
-from <code class="docutils literal notranslate"><span class="pre">~/.pgpass</span></code> or <code class="docutils literal notranslate"><span class="pre">$PGPASSWORD</span></code>, so it never enters argv or the worker script).
-Falls back to <code class="docutils literal notranslate"><span class="pre">$PHENOTYPIC_TUNE_STORAGE_URL</span></code>.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">--storage-url</span> <span class="pre">URL</span></code></dt><dd><p>Optuna storage URL. Resolution is command-line URL, tuning-spec URL,
+<code class="docutils literal notranslate"><span class="pre">$PHENOTYPIC_TUNE_STORAGE_URL</span></code>, then the mode default: run-local SQLite
+locally or an absolute run-local <code class="docutils literal notranslate"><span class="pre">journal://</span></code> URL for <code class="docutils literal notranslate"><span class="pre">--slurm</span></code>.
+Password-bearing URLs are rejected.</p>
 </dd>
 </dl>
 </section>
 <section id="distributed-options">
 <h3>Distributed Options<a class="headerlink" href="#distributed-options" title="Link to this heading">#</a></h3>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">--slurm</span></code></dt><dd><p>Submit a distributed worker fleet over SLURM instead of running locally.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">--slurm</span> <span class="pre">[KEY=VALUE]</span></code></dt><dd><p>Submit a distributed worker array and one terminal <code class="docutils literal notranslate"><span class="pre">afterany</span></code> finalizer
+instead of running locally. It may be repeated as <code class="docutils literal notranslate"><span class="pre">--slurm</span> <span class="pre">KEY=VALUE</span></code> for
+SBATCH settings. A Slurm Optuna run defaults to a shared journal; explicit
+SQLite storage is rejected before run artifacts are created.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">--n-workers</span> <span class="pre">N</span></code></dt><dd><p>Number of SLURM array workers in the fleet (<code class="docutils literal notranslate"><span class="pre">--slurm</span></code> only). When unset,
 defaults to <code class="docutils literal notranslate"><span class="pre">min(8,</span> <span class="pre">n_trials)</span></code> (or 4 if no trial budget is known). The
@@ -1504,7 +1547,7 @@ scorer’s <code class="docutils literal notranslate"><span class="pre">groupby[
 </section>
 <section id="auto-space-infer-a-search-space">
 <h2><code class="docutils literal notranslate"><span class="pre">auto-space</span></code> — infer a search space<a class="headerlink" href="#auto-space-infer-a-search-space" title="Link to this heading">#</a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.tune<span class="w"> </span>auto-space<span class="w"> </span>PIPELINE_JSON<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-tune<span class="w"> </span>auto-space<span class="w"> </span>PIPELINE_JSON<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
 </pre></div>
 </div>
 <dl class="simple">
@@ -1513,6 +1556,23 @@ scorer’s <code class="docutils literal notranslate"><span class="pre">groupby[
 <dt><code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--output</span> <span class="pre">OUTPUT_DIR</span></code></dt><dd><p>Directory where the inferred search space is written.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">--unattended</span></code></dt><dd><p>Reserved: skip the interactive review prompt (currently a no-op).</p>
+</dd>
+</dl>
+</section>
+<section id="finalize-republish-a-distributed-study">
+<h2><code class="docutils literal notranslate"><span class="pre">finalize</span></code> — republish a distributed study<a class="headerlink" href="#finalize-republish-a-distributed-study" title="Link to this heading">#</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-tune<span class="w"> </span>finalize<span class="w"> </span>OUTPUT_DIR<span class="w"> </span><span class="o">[</span>--force<span class="o">]</span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">OUTPUT_DIR</span></code></dt><dd><p>Positional. Existing distributed tune output directory. The command opens
+its recorded backing store without creating one, requires the recorded
+terminal-trial budget and a valid winner, then republishes the durable
+tuning outputs. It refuses an active lifecycle generation.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">--force</span></code></dt><dd><p>Cancel the recorded generation first, then continue only after scheduler
+quiescence and zero unresolved scheduler tokens are proven. Successful
+re-finalization is byte-identical to the existing publication.</p>
 </dd>
 </dl>
 </section>
@@ -1562,6 +1622,7 @@ scorer’s <code class="docutils literal notranslate"><span class="pre">groupby[
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#auto-space-infer-a-search-space"><code class="docutils literal notranslate"><span class="pre">auto-space</span></code> — infer a search space</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#finalize-republish-a-distributed-study"><code class="docutils literal notranslate"><span class="pre">finalize</span></code> — republish a distributed study</a></li>
 </ul>
 </li>
 </ul>

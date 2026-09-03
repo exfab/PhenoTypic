@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -612,12 +612,15 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">._multi_objective</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_objective_axes</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._study._protocol</span><span class="w"> </span><span class="kn">import</span> <span class="n">StudyStore</span>
 
 <span class="c1">#: The importance estimators, a closed set (never a bare ``str``). ``&quot;fanova&quot;``</span>
@@ -656,7 +659,11 @@
 <div class="viewcode-block" id="compute_param_importance">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.compute_param_importance.html#phenotypic.tune.compute_param_importance">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">compute_param_importance</span><span class="p">(</span>
-    <span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">random_state</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">objective_axes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Rank tuned parameters by importance against the objective (the dict view).</span>
 
@@ -673,13 +680,19 @@
 <span class="sd">            ``None`` (default) ranks against ``Trial.score`` — the unchanged</span>
 <span class="sd">            single-objective path. A name ranks against</span>
 <span class="sd">            ``Trial.objectives[name]``, skipping trials that lack the objective.</span>
+<span class="sd">        objective_axes: The scorer-declared full objective vector required for</span>
+<span class="sd">            a named-axis model. Omit for scalar calls or legacy sidecar</span>
+<span class="sd">            inference.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        ``{param_key: importance}`` sorted descending. Empty when fewer than two</span>
 <span class="sd">        usable trials (nothing to fit).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">compute_param_importance_report</span><span class="p">(</span>
-        <span class="n">store</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span><span class="p">,</span> <span class="n">objective</span><span class="o">=</span><span class="n">objective</span>
+        <span class="n">store</span><span class="p">,</span>
+        <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span><span class="p">,</span>
+        <span class="n">objective</span><span class="o">=</span><span class="n">objective</span><span class="p">,</span>
+        <span class="n">objective_axes</span><span class="o">=</span><span class="n">objective_axes</span><span class="p">,</span>
     <span class="p">)</span><span class="o">.</span><span class="n">importances</span></div>
 
 
@@ -687,7 +700,11 @@
 <div class="viewcode-block" id="compute_param_importance_report">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.compute_param_importance_report.html#phenotypic.tune.compute_param_importance_report">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">compute_param_importance_report</span><span class="p">(</span>
-    <span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">random_state</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">objective_axes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImportanceReport</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Rank parameters and record the method + interaction honesty flag.</span>
 
@@ -707,12 +724,20 @@
 <span class="sd">        objective: The named multi-objective to rank against (plan §0a sidecar).</span>
 <span class="sd">            ``None`` ranks against ``Trial.score`` and may use the native fANOVA</span>
 <span class="sd">            model; a name forces the RF path against ``Trial.objectives[name]``.</span>
+<span class="sd">        objective_axes: The authoritative scorer-declared objective names. When</span>
+<span class="sd">            supplied, only COMPLETE trials containing exactly this full finite</span>
+<span class="sd">            vector are eligible for a per-objective model.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        An :class:`ImportanceReport` carrying the ranked importances, the</span>
 <span class="sd">        ``method``, and the ``interactions_estimated`` flag.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># A per-objective request cannot use the native (scalar-targeted) model.</span>
+    <span class="n">validated_axes</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">validate_objective_axes</span><span class="p">(</span><span class="n">objective_axes</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">objective_axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
     <span class="k">if</span> <span class="n">objective</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">native</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">param_importances</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">native</span><span class="p">:</span>
@@ -726,7 +751,10 @@
             <span class="p">)</span>
     <span class="k">return</span> <span class="n">ImportanceReport</span><span class="p">(</span>
         <span class="n">importances</span><span class="o">=</span><span class="n">_rf_permutation_importance</span><span class="p">(</span>
-            <span class="n">store</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span><span class="p">,</span> <span class="n">objective</span><span class="o">=</span><span class="n">objective</span>
+            <span class="n">store</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span><span class="p">,</span>
+            <span class="n">objective</span><span class="o">=</span><span class="n">objective</span><span class="p">,</span>
+            <span class="n">objective_axes</span><span class="o">=</span><span class="n">validated_axes</span><span class="p">,</span>
         <span class="p">),</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;rf-permutation&quot;</span><span class="p">,</span>
         <span class="n">interactions_estimated</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -735,35 +763,69 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_rf_permutation_importance</span><span class="p">(</span>
-    <span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">random_state</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">objective_axes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The homegrown fallback: RandomForest + permutation importance.</span>
 
 <span class="sd">    Fits a ``RandomForestRegressor`` on the trials&#39; (encoded) params → target and</span>
 <span class="sd">    runs ``permutation_importance``. The target is ``Trial.score`` when</span>
 <span class="sd">    ``objective`` is ``None`` (single-objective), else ``Trial.objectives[name]``</span>
-<span class="sd">    over the trials that carry it (others are dropped). Non-numeric params are</span>
-<span class="sd">    one-hot encoded (per-key prefix) and the encoded importances summed back to</span>
-<span class="sd">    the original key; absent conditional params fill to ``0``. Imports no optuna —</span>
-<span class="sd">    the lazy-import boundary holds on this path (screening-importance.md §1).</span>
+<span class="sd">    over COMPLETE trials whose full objective vector is present and finite</span>
+<span class="sd">    (others are dropped). Non-numeric params are one-hot encoded (per-key</span>
+<span class="sd">    prefix) and the encoded importances summed back to the original key; absent</span>
+<span class="sd">    conditional params fill to ``0``. Imports no optuna — the lazy-import</span>
+<span class="sd">    boundary holds on this path (screening-importance.md §1).</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        store: The journal of completed trials.</span>
 <span class="sd">        random_state: Seed for the forest + permutation (reproducibility).</span>
 <span class="sd">        objective: The named multi-objective to target, or ``None`` for the</span>
 <span class="sd">            scalar ``Trial.score`` (plan §0a sidecar).</span>
+<span class="sd">        objective_axes: The scorer-declared full vector required for</span>
+<span class="sd">            multi-objective publication. Omit only for legacy callers that must</span>
+<span class="sd">            infer the axes from observed sidecars.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        ``{param_key: importance}`` sorted descending. Empty when fewer than two</span>
 <span class="sd">        usable trials (nothing to fit).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">validated_axes</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">validate_objective_axes</span><span class="p">(</span><span class="n">objective_axes</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">objective_axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
     <span class="n">trials</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">store</span><span class="o">.</span><span class="n">trials</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">objective</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># Per-objective: keep only trials that carry the named objective.</span>
+        <span class="n">eligible_terminal</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">t</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">store</span><span class="o">.</span><span class="n">terminal_trials</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">objectives</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">pruned</span>
+        <span class="p">]</span>
+        <span class="n">required_axes</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">set</span><span class="p">(</span><span class="n">validated_axes</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">validated_axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="p">{</span>
+                <span class="n">name</span>
+                <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">eligible_terminal</span>
+                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="n">trial</span><span class="o">.</span><span class="n">objectives</span> <span class="ow">or</span> <span class="p">{})</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">objective</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">required_axes</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+        <span class="c1"># Publication-time per-axis models use only full finite COMPLETE vectors.</span>
         <span class="n">trials</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">t</span>
-            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">trials</span>
-            <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">objectives</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">objective</span> <span class="ow">in</span> <span class="n">t</span><span class="o">.</span><span class="n">objectives</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">eligible_terminal</span>
+            <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">objectives</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="nb">set</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">objectives</span><span class="p">)</span> <span class="o">==</span> <span class="n">required_axes</span>
+            <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span>
+                <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">objectives</span><span class="p">[</span><span class="n">name</span><span class="p">]))</span>
+                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">required_axes</span>
+            <span class="p">)</span>
         <span class="p">]</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">trials</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">{}</span>
@@ -797,6 +859,9 @@
         <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">dummies</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="n">col_to_key</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dummies</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">parts</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{}</span>
 
     <span class="n">features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">parts</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">features</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>

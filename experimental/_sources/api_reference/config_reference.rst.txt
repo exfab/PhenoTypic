@@ -97,9 +97,10 @@ migration. Pass its optimistic fingerprint to the matching mutation API:
 
 Migration is fingerprint-gated and journaled with prepared/applied receipts.
 HDF changes use a validated sibling copy and do not change the independent HDF
-layout version. Local and SLURM recompiles invoke bundle migration before
-aggregation. External ``--metadata`` files are normalized in memory and remain
-byte-for-byte unchanged; only bundle-owned regenerated outputs are canonicalized.
+layout version. Explicit ``--mode migrate`` is the sole CLI owner of migration
+preflight and mutation; local and SLURM recompiles perform neither. External
+``--metadata`` files are normalized in memory and remain byte-for-byte
+unchanged; only bundle-owned regenerated outputs are canonicalized.
 
 Pipeline JSON Format
 --------------------

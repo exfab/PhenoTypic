@@ -1,0 +1,6 @@
+phenotypic.sdk\_.replace\_embedded\_measurement\_table
+======================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: replace_embedded_measurement_table

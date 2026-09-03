@@ -25,6 +25,7 @@ phenotypic.tune.JournalStudyStore
       ~JournalStudyStore.knee_point
       ~JournalStudyStore.param_importances
       ~JournalStudyStore.pareto_front
+      ~JournalStudyStore.terminal_trials
       ~JournalStudyStore.to_dataframe
       ~JournalStudyStore.to_parquet
    

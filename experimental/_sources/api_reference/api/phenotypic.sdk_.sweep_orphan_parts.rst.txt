@@ -1,0 +1,6 @@
+phenotypic.sdk\_.sweep\_orphan\_parts
+=====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: sweep_orphan_parts

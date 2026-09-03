@@ -19,9 +19,9 @@ phenotypic.sdk\_.BundleLayout
       ~BundleLayout.__init__
       ~BundleLayout.detect
       ~BundleLayout.error_category_parquet
-      ~BundleLayout.hdf_path
       ~BundleLayout.overlay_path
       ~BundleLayout.overlays_dir
+      ~BundleLayout.store_path
    
    
 

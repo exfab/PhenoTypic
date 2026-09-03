@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="How To: Merge Fragmented Detections" href="../notebooks/merge_fragmented_detections.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -582,7 +582,8 @@
 <li class="toctree-l1"><a class="reference internal" href="tune_distributed_hpcc.html">Distributed Tuning on HPCC Clusters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gui_hub.html">GUI hub</a></li>
 <li class="toctree-l1"><a class="reference internal" href="serialize_pipelines.html">Serialize and Share Pipelines</a></li>
-<li class="toctree-l1"><a class="reference internal" href="hdf5_storage.html">Store Results in HDF5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migrate_ome_zarr.html">Migrate legacy results and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zarr_storage.html">Store Results in OME-Zarr</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generate_reports.html">Generate HTML Processing Reports</a></li>
 </ul>
 </div>
@@ -1133,25 +1134,33 @@ image is streamed through it — far more efficient than the notebook per-image
 path when processing a directory:</p>
 <ol class="arabic simple">
 <li><p><strong>Stage 1 — CPU preprocess.</strong> Every prior <code class="docutils literal notranslate"><span class="pre">ImageOperation</span></code> (enhancers,
-corrections) is applied per image and the result is saved to the normal
-per-image HDF (<code class="docutils literal notranslate"><span class="pre">results/&lt;dataset&gt;/hdf/&lt;stem&gt;.h5</span></code>).</p></li>
+corrections) is applied per image and the result is published as the
+per-image OME-Zarr store
+(<code class="docutils literal notranslate"><span class="pre">results/&lt;dataset&gt;/zarr/&lt;stem&gt;.ome.zarr/</span></code>).</p></li>
 <li><p><strong>Stage 2 — resident-model GPU detect.</strong> The detector’s model is built once
-and kept resident while each staged HDF is streamed through
-<code class="docutils literal notranslate"><span class="pre">preprocess</span> <span class="pre">→</span> <span class="pre">infer_batch</span></code>. The labelled object map is written to a per-image
-<code class="docutils literal notranslate"><span class="pre">.npy</span></code> <strong>sidecar</strong> at <code class="docutils literal notranslate"><span class="pre">results/&lt;dataset&gt;/objmap/&lt;stem&gt;.npy</span></code>; the HDF is opened
-read-only here, so an interrupted run never corrupts it.</p></li>
-<li><p><strong>Stage 3 — CPU merge + measure.</strong> The sidecar is merged back into the image
-through the object-map accessor, the post-detector refiners and the
-measurement queue run, the HDF is re-saved atomically, and the sidecar is
-<strong>deleted</strong>.</p></li>
+and kept resident while each staged store is streamed through
+<code class="docutils literal notranslate"><span class="pre">preprocess</span> <span class="pre">→</span> <span class="pre">infer_batch</span></code>. The store is opened <strong>read-only</strong> and is never
+written to here, so an interrupted run never corrupts it. Instead Stage 2
+drops its result as machine state under <code class="docutils literal notranslate"><span class="pre">.phenotypic/progress/</span></code>: the
+<strong>raw</strong> labelled object map at <code class="docutils literal notranslate"><span class="pre">stage2_raw/&lt;dataset&gt;/&lt;stem&gt;.npy</span></code>, followed by
+a consumable <strong>token</strong> at <code class="docutils literal notranslate"><span class="pre">stage2_done/&lt;dataset&gt;/&lt;stem&gt;.json</span></code>.</p></li>
+<li><p><strong>Stage 3 — CPU replay + measure.</strong> The <strong>raw</strong> array is merged back into the
+image through the object-map accessor, the post-detector refiners and the
+measurement queue run, the store is re-promoted atomically, and the token and
+then the raw array are <strong>consumed</strong>. Stage 3 always replays from the retained
+raw array rather than from the store’s own object map, so a retried Stage 3
+cannot re-refine already-refined labels.</p></li>
 </ol>
 <p>The output folder is identical to a single-pass run — staging is an internal
 optimization, not a different output contract.</p>
 <p><strong>Continuation is content-defined.</strong> Re-running the same command classifies each image:
-a missing or invalid HDF selects Stage 1, a valid HDF without a sidecar selects
-Stage 2, and a valid HDF with a sidecar selects Stage 3. Stage 3 writes an atomic
-completion marker after publishing the parquet, HDF, and plot, then deletes the
-sidecar. Exact terminal scientific failures are retried only when
+a missing or invalid store selects Stage 1, a valid store without a complete
+Stage-2 signal selects Stage 2, and a valid store with one selects Stage 3. Every
+such check tests <strong>both</strong> halves of the signal — the token is only a flag, and
+the raw <code class="docutils literal notranslate"><span class="pre">.npy</span></code> is what Stage 3 actually reads — so an image whose token survived
+its raw array is sent back to Stage 2 rather than into a Stage 3 that cannot
+run. Stage 3 writes an atomic completion marker after publishing the parquet,
+store, and plot, then consumes the signal. Exact terminal scientific failures are retried only when
 <code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code> is supplied; interrupted infrastructure work remains pending.
 Progress is <strong>stage-tagged</strong> in the event log, so the run dashboard can show how
 far each image has moved through the three stages. If Stage 1 fails for an image
@@ -1194,18 +1203,19 @@ python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w
 the staged engine above, coordinated by an <strong>epoch-fenced dependent controller</strong>
 with <strong>per-stage resources</strong>:</p>
 <ul class="simple">
-<li><p><strong>Stage 1</strong> — a CPU array over images (preprocess → staged HDF), on the
+<li><p><strong>Stage 1</strong> — a CPU array over images (preprocess → staged store), on the
 <code class="docutils literal notranslate"><span class="pre">--slurm</span></code> profile.</p></li>
 <li><p><strong>Stage 2</strong> — a GPU array over <strong>shards</strong> (<code class="docutils literal notranslate"><span class="pre">--gpu-shards</span> <span class="pre">N</span></code>): each task is one
-whole GPU running a resident model that streams its shard of HDFs to objmap
-sidecars, on the <code class="docutils literal notranslate"><span class="pre">--gpu-slurm</span></code> profile.</p></li>
-<li><p><strong>Stage 3</strong> — a CPU array over images (merge sidecar → measure), on the
+whole GPU running a resident model that streams its shard of stores to
+<code class="docutils literal notranslate"><span class="pre">stage2_raw/</span></code> <code class="docutils literal notranslate"><span class="pre">.npy</span></code> arrays plus their tokens, on the <code class="docutils literal notranslate"><span class="pre">--gpu-slurm</span></code> profile.</p></li>
+<li><p><strong>Stage 3</strong> — a CPU array over images (replay raw → measure), on the
 <code class="docutils literal notranslate"><span class="pre">--slurm</span></code> profile.</p></li>
 </ul>
 <p>Controllers wait with <code class="docutils literal notranslate"><span class="pre">afterany</span></code>, so a handful of per-image failures never block
-the next decision. Because Stage 2 writes a <code class="docutils literal notranslate"><span class="pre">.npy</span></code> sidecar with the HDF opened
-read-only, there is <strong>no HDF5 write-locking on the GPU nodes</strong>; Stages 1 &amp; 3
-write the HDF atomically (temp + rename) on CPU nodes.</p>
+the next decision. Because Stage 2 writes only <code class="docutils literal notranslate"><span class="pre">.phenotypic/progress/</span></code> state
+with the store opened read-only, there is <strong>no store writer on the GPU nodes</strong>;
+Stages 1 &amp; 3 promote the store atomically (build a sibling <code class="docutils literal notranslate"><span class="pre">.part/</span></code>, then
+rename) on CPU nodes.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># CPU partition for Stages 1 &amp; 3 (--slurm); GPU partition + 2 concurrent GPUs for Stage 2</span>
 python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>sam2_pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--slurm<span class="w"> </span><span class="nv">slurm_partition</span><span class="o">=</span>batch<span class="w"> </span>--slurm<span class="w"> </span><span class="nv">slurm_time</span><span class="o">=</span><span class="m">02</span>:00:00<span class="w"> </span><span class="se">\</span>
@@ -1219,7 +1229,7 @@ python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w
 restating; one GPU is requested automatically.</p>
 <p><strong>Walltime survival.</strong> Before a controller decides what comes next, it has a
 dependent recovery controller in the queue. After a Stage-2 array terminates,
-the controller checks valid HDFs, atomic sidecars, Stage-3 markers,
+the controller checks valid stores, complete Stage-2 signals, Stage-3 markers,
 and the current epoch’s terminal-failure journal. If retryable images remain,
 it submits another Stage-2 array and moves the recovery controller behind that
 array master. Workers do not install a walltime signal handler and do not call

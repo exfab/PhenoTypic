@@ -18,6 +18,7 @@ phenotypic.tune.strategy.RandomConfig
    
       ~RandomConfig.__init__
       ~RandomConfig.build
+      ~RandomConfig.build_with_objectives
       ~RandomConfig.construct
       ~RandomConfig.copy
       ~RandomConfig.dict

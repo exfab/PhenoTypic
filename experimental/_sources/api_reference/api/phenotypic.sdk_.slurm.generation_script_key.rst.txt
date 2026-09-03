@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.generation\_script\_key
+==============================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: generation_script_key

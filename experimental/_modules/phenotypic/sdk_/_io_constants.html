@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -645,7 +645,7 @@
 <span class="sd">* **Reader helpers** — `read_run_manifest`, `load_master_measurements`,</span>
 <span class="sd">  `resolve_execution_mode` consolidate three high-frequency duplicates.</span>
 <span class="sd">* **JSON contract keys** (`JobMetadataKey`, `DashboardManifestKey`,</span>
-<span class="sd">  `ChunkStateKey`, `ChunkManifestKey`, `HdfAttr`) — namespace classes</span>
+<span class="sd">  `ChunkStateKey`, `ChunkManifestKey`) — namespace classes</span>
 <span class="sd">  whose class-level ``Final[str]`` attributes are the keys writers and</span>
 <span class="sd">  readers must reference instead of bare strings. Keeps the contract</span>
 <span class="sd">  on-disk format mechanically discoverable.</span>
@@ -670,7 +670,9 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">stat</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">stat_module</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -1135,6 +1137,9 @@
 <span class="c1">#: either location (no migration).</span>
 <span class="n">STUDY_DB</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;study.db&quot;</span>
 
+<span class="c1">#: Append-only Optuna JournalStorage log for a distributed tuning run.</span>
+<span class="n">STUDY_JOURNAL_LOG</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;journal.log&quot;</span>
+
 <span class="c1">#: The robust-eval held-out split assignment ``split.json`` written inside</span>
 <span class="c1">#: :data:`DIR_SPLITS`. A machine-state sidecar — it must survive a</span>
 <span class="c1">#: fresh-master rewrite and gate resume — so it lives in the hidden tune cache</span>
@@ -1161,7 +1166,7 @@
 
 <span class="c1">#: Per-objective best-pipeline filename template written into :data:`DIR_PARETO`:</span>
 <span class="c1">#: ``best_&lt;objective&gt;`` with the pipeline config suffix. One per</span>
-<span class="c1">#: objective axis — the pipeline maximizing that single objective on the front.</span>
+<span class="c1">#: objective axis — the pipeline with the lowest cost on that axis of the front.</span>
 <span class="c1">#: Rendered by :func:`pareto_best_pipeline_path`; kept private (a parameterized</span>
 <span class="c1">#: string is not an enumeration — see the code-style note on render functions).</span>
 <span class="n">_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
@@ -1176,6 +1181,21 @@
 <span class="n">_PARETO_IMPORTANCE_FILENAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
     <span class="s2">&quot;param_importance_</span><span class="si">{objective}</span><span class="s2">.json&quot;</span>
 <span class="p">)</span>
+
+<span class="n">_WINDOWS_INVALID_FILENAME_CHARS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="s1">&#39;&lt;&gt;:&quot;/</span><span class="se">\\</span><span class="s1">|?*&#39;</span><span class="p">)</span>
+<span class="n">_WINDOWS_RESERVED_DEVICE_NAMES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;CON&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;PRN&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;AUX&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;NUL&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CONIN$&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CONOUT$&quot;</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;COM</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="p">(</span><span class="o">*</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="s2">&quot;¹&quot;</span><span class="p">,</span> <span class="s2">&quot;²&quot;</span><span class="p">,</span> <span class="s2">&quot;³&quot;</span><span class="p">)),</span>
+        <span class="o">*</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;LPT</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="p">(</span><span class="o">*</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="s2">&quot;¹&quot;</span><span class="p">,</span> <span class="s2">&quot;²&quot;</span><span class="p">,</span> <span class="s2">&quot;³&quot;</span><span class="p">)),</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
 
 <span class="c1"># ---------------------------------------------------------------------------</span>
 <span class="c1"># QC artifact filenames (live inside DIR_QC)</span>
@@ -1307,8 +1327,16 @@
 <span class="c1">#: SLURM stdout/stderr subdirectory inside the hidden machine-state cache.</span>
 <span class="n">DIR_LOGS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;logs&quot;</span>
 
-<span class="c1">#: HDF5 image-state subdirectory: ``&lt;output&gt;/results/&lt;ds&gt;/hdf/``.</span>
-<span class="n">DIR_HDF</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hdf&quot;</span>
+<span class="c1">#: HDF5 image-state subdirectory of a LEGACY run: ``&lt;output&gt;/results/&lt;ds&gt;/hdf/``.</span>
+<span class="c1">#: Module-private since Phase 6. The only thing here that still needs it is</span>
+<span class="c1">#: :func:`datasets_needing_migration`, the predicate that refuses an</span>
+<span class="c1">#: unconverted tree; ``--mode migrate`` carries its own copy in</span>
+<span class="c1">#: :mod:`phenotypic.sdk_._hdf_to_zarr`, which is the module allowed to know</span>
+<span class="c1">#: the legacy layout.</span>
+<span class="n">_DIR_HDF</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hdf&quot;</span>
+
+<span class="c1">#: OME-Zarr image-state subdirectory: ``&lt;output&gt;/results/&lt;ds&gt;/zarr/``.</span>
+<span class="n">DIR_ZARR</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;zarr&quot;</span>
 
 <span class="c1">#: Overlay PNG subdirectory: ``&lt;output&gt;/deliverables/overlays/&lt;ds&gt;/``.</span>
 <span class="n">DIR_OVERLAYS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;overlays&quot;</span>
@@ -2030,6 +2058,14 @@
 
 
 
+<div class="viewcode-block" id="tune_cache_journal_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.tune_cache_journal_path.html#phenotypic.sdk_.tune_cache_journal_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">tune_cache_journal_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.pht-tune-cache/journal.log`` for a tune fleet.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">tune_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">STUDY_JOURNAL_LOG</span></div>
+
+
+
 <div class="viewcode-block" id="tune_cache_splits_dir">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.tune_cache_splits_dir.html#phenotypic.sdk_.tune_cache_splits_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">tune_cache_splits_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
@@ -2173,12 +2209,35 @@
 
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_safe_pareto_objective_component</span><span class="p">(</span><span class="n">objective</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Require one contained human-readable Pareto filename component.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">PurePosixPath</span><span class="p">,</span> <span class="n">PureWindowsPath</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">unicodedata</span>
+
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">objective</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="ow">not</span> <span class="n">objective</span>
+        <span class="ow">or</span> <span class="n">objective</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="s2">&quot;..&quot;</span><span class="p">}</span>
+        <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">char</span> <span class="ow">in</span> <span class="n">_WINDOWS_INVALID_FILENAME_CHARS</span> <span class="k">for</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">objective</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">PurePosixPath</span><span class="p">(</span><span class="n">objective</span><span class="p">)</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">()</span>
+        <span class="ow">or</span> <span class="n">PureWindowsPath</span><span class="p">(</span><span class="n">objective</span><span class="p">)</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">()</span>
+        <span class="ow">or</span> <span class="nb">bool</span><span class="p">(</span><span class="n">PureWindowsPath</span><span class="p">(</span><span class="n">objective</span><span class="p">)</span><span class="o">.</span><span class="n">drive</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">unicodedata</span><span class="o">.</span><span class="n">category</span><span class="p">(</span><span class="n">char</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;Cc&quot;</span> <span class="k">for</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">objective</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">objective</span><span class="o">.</span><span class="n">endswith</span><span class="p">((</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">))</span>
+        <span class="ow">or</span> <span class="n">objective</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_WINDOWS_RESERVED_DEVICE_NAMES</span>
+    <span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Pareto objective </span><span class="si">{</span><span class="n">objective</span><span class="si">!r}</span><span class="s2"> is not a safe filename component&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">objective</span>
+
+
 <div class="viewcode-block" id="pareto_best_pipeline_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.pareto_best_pipeline_path.html#phenotypic.sdk_.pareto_best_pipeline_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">pareto_best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``deliverables/pareto/best_&lt;objective&gt;.json`` (a per-axis winner).</span>
 
-<span class="sd">    The pipeline maximizing the single ``objective`` axis on the Pareto front.</span>
+<span class="sd">    The pipeline minimizing cost on the single ``objective`` axis of the Pareto front.</span>
 <span class="sd">    ``objective`` is the objective name as it appears in ``objectives_json`` (a</span>
 <span class="sd">    scorer-defined label, e.g. ``&quot;Dice&quot;`` or a composite child handle ``&quot;s0&quot;``).</span>
 
@@ -2189,9 +2248,13 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        The per-objective best-pipeline path under :func:`pareto_dir`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">pareto_dir</span><span class="p">(</span>
-        <span class="n">output_dir</span>
-    <span class="p">)</span> <span class="o">/</span> <span class="n">_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">objective</span><span class="p">)</span></div>
+    <span class="n">safe_objective</span> <span class="o">=</span> <span class="n">_safe_pareto_objective_component</span><span class="p">(</span><span class="n">objective</span><span class="p">)</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">objective</span><span class="o">=</span><span class="n">safe_objective</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">parent</span> <span class="o">!=</span> <span class="n">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Pareto output path escaped its containing directory&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">path</span></div>
 
 
 
@@ -2212,9 +2275,13 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        The per-objective importance-report path under :func:`pareto_dir`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">pareto_dir</span><span class="p">(</span>
-        <span class="n">output_dir</span>
-    <span class="p">)</span> <span class="o">/</span> <span class="n">_PARETO_IMPORTANCE_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">objective</span><span class="p">)</span></div>
+    <span class="n">safe_objective</span> <span class="o">=</span> <span class="n">_safe_pareto_objective_component</span><span class="p">(</span><span class="n">objective</span><span class="p">)</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">_PARETO_IMPORTANCE_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">objective</span><span class="o">=</span><span class="n">safe_objective</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">parent</span> <span class="o">!=</span> <span class="n">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Pareto output path escaped its containing directory&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">path</span></div>
 
 
 
@@ -2252,12 +2319,398 @@
 
 
 
-<div class="viewcode-block" id="dataset_hdf_dir">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.dataset_hdf_dir.html#phenotypic.sdk_.dataset_hdf_dir">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">dataset_hdf_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/&lt;dataset&gt;/hdf/``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">dataset_results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_HDF</span></div>
+<div class="viewcode-block" id="dataset_zarr_dir">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.dataset_zarr_dir.html#phenotypic.sdk_.dataset_zarr_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">dataset_zarr_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/&lt;dataset&gt;/zarr/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">dataset_results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_ZARR</span></div>
 
+
+
+<span class="c1">#: The remedy named in every &quot;this output needs migrating&quot; message. One</span>
+<span class="c1">#: string, so the CLI&#39;s refusal and the viewer&#39;s banner cannot drift apart.</span>
+<span class="n">MIGRATION_REMEDY</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;--mode migrate&quot;</span>
+
+
+<div class="viewcode-block" id="datasets_needing_migration">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.datasets_needing_migration.html#phenotypic.sdk_.datasets_needing_migration">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">datasets_needing_migration</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Datasets holding at least one `.h5` result without a VALID store.</span>
+
+<span class="sd">    One predicate, so the CLI and the GUI cannot disagree about what</span>
+<span class="sd">    &quot;needs migrating&quot; means.</span>
+
+<span class="sd">    Per-IMAGE, not per-dataset: the half-migrated tree this exists to catch</span>
+<span class="sd">    has converted and unconverted images in the SAME dataset, so a</span>
+<span class="sd">    dataset-level &quot;has .h5 and has no zarr/ dir&quot; test misses it entirely.</span>
+<span class="sd">    That tree is the expected state after any interruption, because migration</span>
+<span class="sd">    is resumable -- and it is neither &quot;only .h5&quot; nor fully converted, so the</span>
+<span class="sd">    older &quot;only .h5&quot; guard let it through and `--mode full` silently</span>
+<span class="sd">    reprocessed every unconverted image from source.</span>
+
+<span class="sd">    Validity, not existence: `valid_staged_store`, not `path.exists()`. A</span>
+<span class="sd">    store written at an older `store_schema_version` is present but the</span>
+<span class="sd">    loader refuses it, so an existence test reads that tree as clean while</span>
+<span class="sd">    every image fails to open.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output root.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dataset names needing migration, sorted. Empty for a modern tree.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.ngff_</span><span class="w"> </span><span class="kn">import</span> <span class="n">valid_staged_store</span>
+
+    <span class="n">root</span> <span class="o">=</span> <span class="n">results_dir</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">root</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="n">needing</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">dataset_dir</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">path</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span> <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()):</span>
+        <span class="n">hdf_dir</span> <span class="o">=</span> <span class="n">dataset_dir</span> <span class="o">/</span> <span class="n">_DIR_HDF</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">hdf_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">continue</span>
+        <span class="k">for</span> <span class="n">hdf_path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">hdf_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.h5&quot;</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">hdf_path</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">store</span> <span class="o">=</span> <span class="n">zarr_store_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset_dir</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">hdf_path</span><span class="o">.</span><span class="n">stem</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid_staged_store</span><span class="p">(</span><span class="n">store</span><span class="p">):</span>
+                <span class="n">needing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dataset_dir</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="k">break</span>
+    <span class="k">return</span> <span class="n">needing</span></div>
+
+
+
+<div class="viewcode-block" id="zarr_store_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.zarr_store_path.html#phenotypic.sdk_.zarr_store_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">zarr_store_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/&lt;dataset&gt;/zarr/&lt;stem&gt;.ome.zarr/``.</span>
+
+<span class="sd">    The single place ``.ome.zarr`` is joined to an image stem. Callers must</span>
+<span class="sd">    never hand-join the suffix, and must take the stem back off a store with</span>
+<span class="sd">    :func:`store_stem` rather than ``Path.stem``. Both rules are enforced by</span>
+<span class="sd">    ``tests/unit/test_ome_zarr_invariants.py``</span>
+<span class="sd">    (``test_store_suffix_is_joined_in_exactly_one_place`` and</span>
+<span class="sd">    ``test_path_stem_is_never_taken_of_a_store_directory``).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output root.</span>
+<span class="sd">        dataset: Dataset name.</span>
+<span class="sd">        stem: Image filename without extension.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The per-image store path. Existence is not checked.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.ngff_</span><span class="w"> </span><span class="kn">import</span> <span class="n">STORE_SUFFIX</span>
+
+    <span class="k">return</span> <span class="n">dataset_zarr_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stem</span><span class="si">}{</span><span class="n">STORE_SUFFIX</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="store_stem">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.store_stem.html#phenotypic.sdk_.store_stem">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">store_stem</span><span class="p">(</span><span class="n">store_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the image stem of an ``*.ome.zarr`` or ``*.zarr`` directory.</span>
+
+<span class="sd">    ``Path.stem`` is WRONG here — it strips one suffix and leaves ``img.ome``,</span>
+<span class="sd">    which is a plausible-looking wrong name rather than an error: it propagates</span>
+<span class="sd">    into parquet filenames and completion markers, and</span>
+<span class="sd">    ``zarr_store_path(out, ds, &quot;img.ome&quot;)`` then resolves to a store that does</span>
+<span class="sd">    not exist, so every image reprocesses forever.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        store_path: A ``&lt;stem&gt;.ome.zarr`` or ``&lt;stem&gt;.zarr`` directory.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The bare stem, e.g. ``&quot;img&quot;`` for ``img.ome.zarr``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If *store_path* does not end in ``.zarr``. It raises</span>
+<span class="sd">            rather than falling back to ``.stem``, because a silent fallback is</span>
+<span class="sd">            exactly the failure being prevented.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.ngff_</span><span class="w"> </span><span class="kn">import</span> <span class="n">STORE_SUFFIX</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">store_path</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">suffix</span> <span class="o">=</span> <span class="n">STORE_SUFFIX</span> <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">STORE_SUFFIX</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;.zarr&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">suffix</span><span class="p">)</span> <span class="ow">or</span> <span class="n">name</span> <span class="o">==</span> <span class="n">suffix</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;not an OME-Zarr store directory: </span><span class="si">{</span><span class="n">store_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">name</span><span class="p">[:</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">suffix</span><span class="p">)]</span></div>
+
+
+
+<div class="viewcode-block" id="is_zarr_store_name">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.is_zarr_store_name.html#phenotypic.sdk_.is_zarr_store_name">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_zarr_store_name</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether a path name uses a supported Zarr store suffix.</span>
+
+<span class="sd">    ``.ome.zarr`` remains the canonical PhenoTypic output suffix. Generic</span>
+<span class="sd">    ``.zarr`` names are accepted as inputs so validity can be decided by the</span>
+<span class="sd">    NGFF reader at the open/render boundary.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+    <span class="k">return</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.zarr&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">name</span> <span class="o">!=</span> <span class="s2">&quot;.zarr&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="source_image_stem">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.source_image_stem.html#phenotypic.sdk_.source_image_stem">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">source_image_stem</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical artifact stem for a source image path.</span>
+
+<span class="sd">    OME-Zarr source images use a double suffix, so their identity strips the</span>
+<span class="sd">    complete ``.ome.zarr`` suffix. Every other source keeps the standard</span>
+<span class="sd">    :attr:`pathlib.Path.stem` contract, including ordinary multi-dot files.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path: Source image file or OME-Zarr store path.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The canonical source-image stem.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">is_zarr_store_name</span><span class="p">(</span><span class="n">source</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">store_stem</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">source</span><span class="o">.</span><span class="n">stem</span></div>
+
+
+
+<div class="viewcode-block" id="source_image_suffix">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.source_image_suffix.html#phenotypic.sdk_.source_image_suffix">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">source_image_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical suffix for a source image path.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path: Source image file or OME-Zarr store path.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``.ome.zarr`` for a store source, otherwise the standard final suffix.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.ngff_</span><span class="w"> </span><span class="kn">import</span> <span class="n">STORE_SUFFIX</span>
+
+    <span class="n">source</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">source</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">STORE_SUFFIX</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">STORE_SUFFIX</span>
+    <span class="k">return</span> <span class="s2">&quot;.zarr&quot;</span> <span class="k">if</span> <span class="n">is_zarr_store_name</span><span class="p">(</span><span class="n">source</span><span class="p">)</span> <span class="k">else</span> <span class="n">source</span><span class="o">.</span><span class="n">suffix</span></div>
+
+
+
+<div class="viewcode-block" id="store_revision_identity">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.store_revision_identity.html#phenotypic.sdk_.store_revision_identity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">store_revision_identity</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a stable revision identity for one OME-Zarr store.</span>
+
+<span class="sd">    PhenoTypic-published immutable generations use the explicit root-last</span>
+<span class="sd">    publication token and touch only ``zarr.json``. Generic third-party stores</span>
+<span class="sd">    have no publication invariant, so the conservative fallback hashes framed</span>
+<span class="sd">    relative paths, member types, sizes, and nanosecond mtimes twice to reject</span>
+<span class="sd">    an unstable snapshot. It intentionally does not read chunk contents: CLI</span>
+<span class="sd">    work and completion use a separate content-digest contract.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path: Existing ``*.ome.zarr`` directory.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A versioned SHA-256 metadata identity.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        OSError: If the store is unstable or contains a symlink or another</span>
+<span class="sd">            non-regular member.</span>
+<span class="sd">        ValueError: If ``path`` is not named as an OME-Zarr store.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.ngff_</span><span class="w"> </span><span class="kn">import</span> <span class="n">STORE_ROOT_JSON</span>
+
+    <span class="n">store</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_zarr_store_name</span><span class="p">(</span><span class="n">store</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;not an OME-Zarr store directory: </span><span class="si">{</span><span class="n">store</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">published</span> <span class="o">=</span> <span class="n">store_publication_token</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">published</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">published</span>
+    <span class="n">first</span> <span class="o">=</span> <span class="n">_store_revision_snapshot</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">root_json</span><span class="o">=</span><span class="n">STORE_ROOT_JSON</span><span class="p">)</span>
+    <span class="n">second</span> <span class="o">=</span> <span class="n">_store_revision_snapshot</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">root_json</span><span class="o">=</span><span class="n">STORE_ROOT_JSON</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">first</span> <span class="o">!=</span> <span class="n">second</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;OME-Zarr store changed during revision inspection&quot;</span><span class="p">)</span>
+
+    <span class="n">members</span><span class="p">,</span> <span class="n">promoted_root_token</span> <span class="o">=</span> <span class="n">second</span>
+    <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;phenotypic-store-revision</span><span class="se">\x00</span><span class="s2">v1</span><span class="se">\x00</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">relative_path</span><span class="p">,</span> <span class="n">member_type</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">mtime_ns</span> <span class="ow">in</span> <span class="n">members</span><span class="p">:</span>
+        <span class="n">encoded_path</span> <span class="o">=</span> <span class="n">relative_path</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">encoded_path</span><span class="p">)</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">))</span>
+        <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">encoded_path</span><span class="p">)</span>
+        <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">member_type</span><span class="p">)</span>
+        <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">size</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">,</span> <span class="n">signed</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+        <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">mtime_ns</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">,</span> <span class="n">signed</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+    <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x01</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">promoted_root_token</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x00</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">promoted_root_token</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">size</span><span class="p">,</span> <span class="n">mtime_ns</span> <span class="o">=</span> <span class="n">promoted_root_token</span>
+        <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">size</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">,</span> <span class="n">signed</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+        <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">mtime_ns</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">,</span> <span class="n">signed</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;sha256-stat-tree-v1:</span><span class="si">{</span><span class="n">digest</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="store_publication_token">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.store_publication_token.html#phenotypic.sdk_.store_publication_token">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">store_publication_token</span><span class="p">(</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">root_dir_fd</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the root-last token for a PhenoTypic-published store.</span>
+
+<span class="sd">    PhenoTypic promotes an immutable store by replacing ``zarr.json`` last.</span>
+<span class="sd">    Its root bytes and file identity therefore identify the complete</span>
+<span class="sd">    generation without touching every chunk on GPFS. Inode and ctime close</span>
+<span class="sd">    the gap where a byte-identical replacement preserves the old mtime. A</span>
+<span class="sd">    generic third-party store has no such publication contract and returns</span>
+<span class="sd">    ``None`` so the caller uses the conservative recursive snapshot fallback.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        store: Published store path. Used for ordinary path-based inspection.</span>
+<span class="sd">        root_dir_fd: Optional held descriptor for the store root. When given,</span>
+<span class="sd">            ``zarr.json`` is opened relative to that identity with</span>
+<span class="sd">            ``O_NOFOLLOW`` so a route can keep validation and serving bound to</span>
+<span class="sd">            one directory generation.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The publication token, or ``None`` when the protocol is not declared.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.ngff_</span><span class="w"> </span><span class="kn">import</span> <span class="n">STORE_ROOT_JSON</span>
+
+    <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">store</span><span class="p">)</span> <span class="o">/</span> <span class="n">STORE_ROOT_JSON</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">root_dir_fd</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">before</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">lstat</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">stat_module</span><span class="o">.</span><span class="n">S_ISREG</span><span class="p">(</span><span class="n">before</span><span class="o">.</span><span class="n">st_mode</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
+            <span class="n">after</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">lstat</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">flags</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">O_RDONLY</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_NONBLOCK</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_NOFOLLOW</span>
+            <span class="n">root_fd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">STORE_ROOT_JSON</span><span class="p">,</span> <span class="n">flags</span><span class="p">,</span> <span class="n">dir_fd</span><span class="o">=</span><span class="n">root_dir_fd</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">before</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fstat</span><span class="p">(</span><span class="n">root_fd</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="ow">not</span> <span class="n">stat_module</span><span class="o">.</span><span class="n">S_ISREG</span><span class="p">(</span><span class="n">before</span><span class="o">.</span><span class="n">st_mode</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">before</span><span class="o">.</span><span class="n">st_nlink</span> <span class="o">!=</span> <span class="mi">1</span>
+                <span class="p">):</span>
+                    <span class="k">return</span> <span class="kc">None</span>
+                <span class="n">chunks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">while</span> <span class="n">chunk</span> <span class="o">:=</span> <span class="n">os</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">root_fd</span><span class="p">,</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">):</span>
+                    <span class="n">chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+                <span class="n">raw</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span>
+                <span class="n">after</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fstat</span><span class="p">(</span><span class="n">root_fd</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">root_fd</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">before_identity</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">before</span><span class="o">.</span><span class="n">st_size</span><span class="p">,</span>
+        <span class="n">before</span><span class="o">.</span><span class="n">st_mtime_ns</span><span class="p">,</span>
+        <span class="n">before</span><span class="o">.</span><span class="n">st_ctime_ns</span><span class="p">,</span>
+        <span class="n">before</span><span class="o">.</span><span class="n">st_ino</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">after_identity</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">after</span><span class="o">.</span><span class="n">st_size</span><span class="p">,</span>
+        <span class="n">after</span><span class="o">.</span><span class="n">st_mtime_ns</span><span class="p">,</span>
+        <span class="n">after</span><span class="o">.</span><span class="n">st_ctime_ns</span><span class="p">,</span>
+        <span class="n">after</span><span class="o">.</span><span class="n">st_ino</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">before_identity</span> <span class="o">!=</span> <span class="n">after_identity</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span> <span class="o">!=</span> <span class="n">after</span><span class="o">.</span><span class="n">st_size</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;OME-Zarr root changed during revision inspection&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">payload</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">UnicodeDecodeError</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">attributes</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;attributes&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">phenotypic</span> <span class="o">=</span> <span class="n">attributes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phenotypic&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attributes</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">phenotypic</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.ngff_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">PhenotypicAttr</span><span class="p">,</span>
+        <span class="n">ROOT_LAST_PUBLICATION_PROTOCOL</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">phenotypic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">PUBLICATION_PROTOCOL</span><span class="p">)</span>
+        <span class="o">!=</span> <span class="n">ROOT_LAST_PUBLICATION_PROTOCOL</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;phenotypic-root-publication</span><span class="se">\x00</span><span class="s2">v2</span><span class="se">\x00</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">))</span>
+    <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+    <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">after</span><span class="o">.</span><span class="n">st_mtime_ns</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">,</span> <span class="n">signed</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+    <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">after</span><span class="o">.</span><span class="n">st_ctime_ns</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">,</span> <span class="n">signed</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+    <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">after</span><span class="o">.</span><span class="n">st_ino</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">,</span> <span class="n">signed</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;sha256-root-publish-v2:</span><span class="si">{</span><span class="n">digest</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_store_revision_snapshot</span><span class="p">(</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">root_json</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="o">...</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Capture one symlink-free stat snapshot for ``store``.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">root_stat</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">lstat</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;OME-Zarr store cannot be inspected&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">if</span> <span class="n">stat_module</span><span class="o">.</span><span class="n">S_ISLNK</span><span class="p">(</span><span class="n">root_stat</span><span class="o">.</span><span class="n">st_mode</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;OME-Zarr store cannot be a symlink&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stat_module</span><span class="o">.</span><span class="n">S_ISDIR</span><span class="p">(</span><span class="n">root_stat</span><span class="o">.</span><span class="n">st_mode</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;OME-Zarr store must be a directory&quot;</span><span class="p">)</span>
+
+    <span class="n">members</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">directories</span> <span class="o">=</span> <span class="p">[</span><span class="n">store</span><span class="p">]</span>
+    <span class="k">while</span> <span class="n">directories</span><span class="p">:</span>
+        <span class="n">directory</span> <span class="o">=</span> <span class="n">directories</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">entries</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">directory</span><span class="o">.</span><span class="n">iterdir</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;OME-Zarr store member cannot be inspected&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="n">child_directories</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">entry_stat</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">lstat</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span>
+                    <span class="s2">&quot;OME-Zarr store member cannot be inspected&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+            <span class="n">relative</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">store</span><span class="p">)</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
+            <span class="n">mode</span> <span class="o">=</span> <span class="n">entry_stat</span><span class="o">.</span><span class="n">st_mode</span>
+            <span class="k">if</span> <span class="n">stat_module</span><span class="o">.</span><span class="n">S_ISLNK</span><span class="p">(</span><span class="n">mode</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;OME-Zarr store contains symlink member: </span><span class="si">{</span><span class="n">relative</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">stat_module</span><span class="o">.</span><span class="n">S_ISDIR</span><span class="p">(</span><span class="n">mode</span><span class="p">):</span>
+                <span class="n">member_type</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;d&quot;</span>
+                <span class="n">child_directories</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">stat_module</span><span class="o">.</span><span class="n">S_ISREG</span><span class="p">(</span><span class="n">mode</span><span class="p">):</span>
+                <span class="n">member_type</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;f&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;OME-Zarr store contains non-regular member: </span><span class="si">{</span><span class="n">relative</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">members</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">(</span>
+                    <span class="n">relative</span><span class="p">,</span>
+                    <span class="n">member_type</span><span class="p">,</span>
+                    <span class="n">entry_stat</span><span class="o">.</span><span class="n">st_size</span><span class="p">,</span>
+                    <span class="n">entry_stat</span><span class="o">.</span><span class="n">st_mtime_ns</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">directories</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">child_directories</span><span class="p">))</span>
+
+    <span class="n">members</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">root_record</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+        <span class="p">(</span>
+            <span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">mtime_ns</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">relative</span><span class="p">,</span> <span class="n">member_type</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">mtime_ns</span> <span class="ow">in</span> <span class="n">members</span>
+            <span class="k">if</span> <span class="n">relative</span> <span class="o">==</span> <span class="n">root_json</span> <span class="ow">and</span> <span class="n">member_type</span> <span class="o">==</span> <span class="sa">b</span><span class="s2">&quot;f&quot;</span>
+        <span class="p">),</span>
+        <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">members</span><span class="p">),</span> <span class="n">root_record</span>
 
 
 <div class="viewcode-block" id="overlays_dir">
@@ -2832,15 +3285,6 @@
 
 
 
-<div class="viewcode-block" id="HdfAttr">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HdfAttr.html#phenotypic.sdk_.HdfAttr">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">HdfAttr</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Top-level attribute keys on per-image HDF5 files.&quot;&quot;&quot;</span>
-
-    <span class="n">PHENOTYPIC_CLASS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;phenotypic_class&quot;</span></div>
-
-
-
 <span class="c1"># ---------------------------------------------------------------------------</span>
 <span class="c1"># Module-path constants for importlib dispatch</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
@@ -2887,49 +3331,70 @@
 
 
 <span class="c1"># ---------------------------------------------------------------------------</span>
-<span class="c1"># HDF image-class reader (eliminates 3-site duplication)</span>
+<span class="c1"># Store image-class reader</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
 
-<div class="viewcode-block" id="load_image_from_hdf">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.load_image_from_hdf.html#phenotypic.sdk_.load_image_from_hdf">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">load_image_from_hdf</span><span class="p">(</span>
-    <span class="n">hdf_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+<div class="viewcode-block" id="load_image_from_store">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.load_image_from_store.html#phenotypic.sdk_.load_image_from_store">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_image_from_store</span><span class="p">(</span>
+    <span class="n">store_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">fallback</span><span class="p">:</span> <span class="n">ImageTypeName</span> <span class="o">=</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;_Image | _GridImage&quot;</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Open an HDF5, read its ``phenotypic_class`` attr, dispatch to the right Image class.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read ``phenotypic.image_class`` from a store root and dispatch the loader.</span>
 
-<span class="sd">    Replaces the 3 ad-hoc ``h5py.File(...) → fh.attrs.get(&#39;phenotypic_class&#39;, &#39;Image&#39;)</span>
-<span class="sd">    → GridImage if cls_attr == &#39;GridImage&#39; else Image`` patterns in</span>
-<span class="sd">    :mod:`_cli_recompile_worker`, :mod:`_cli_execution_strategies`, and</span>
-<span class="sd">    :mod:`phenotypicCLI`.</span>
+<span class="sd">    Dispatches on ``image_class`` (``Image`` / ``GridImage``), which is the</span>
+<span class="sd">    loader-dispatch field. It is **not** ``Metadata_ImageType``, which is</span>
+<span class="sd">    user-visible schema metadata and may be ``GridSection`` on a plain</span>
+<span class="sd">    :class:`Image`.</span>
+
+<span class="sd">    **Bypasses the public :meth:`Image.load_zarr` guard, deliberately.** That</span>
+<span class="sd">    guard refuses a store carrying no ``image_class``, because a *user* calling</span>
+<span class="sd">    the public verb on such a store has almost certainly mistaken a</span>
+<span class="sd">    ``--mode process`` export for a run bundle and wants ``imread`` instead.</span>
+<span class="sd">    This function is the internal dispatcher: its caller supplies *fallback*</span>
+<span class="sd">    and has therefore already made that determination itself</span>
+<span class="sd">    (``_cli_process_single`` passes the run&#39;s own image type; the tune CLI</span>
+<span class="sd">    passes ``&quot;GridImage&quot;``). Routing through ``load_zarr`` would raise before</span>
+<span class="sd">    the resolved class could ever be used, making *fallback* dead code. So the</span>
+<span class="sd">    resolved class is asked to load the store directly.</span>
+
+<span class="sd">    A store with no bundle *content* still fails, one layer down and by its</span>
+<span class="sd">    own error: ``_load_from_store`` subscripts the series mapping bare at</span>
+<span class="sd">    ``series[&quot;gray&quot;]`` and ``series[&quot;detect_mat&quot;]``</span>
+<span class="sd">    (``_image_io_handler.py``), so a single-series process store raises</span>
+<span class="sd">    ``KeyError: &#39;detect_mat&#39;``.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        hdf_path: Path to a per-image HDF5 file.</span>
-<span class="sd">        fallback: Image class name to use when the HDF lacks the</span>
-<span class="sd">            ``phenotypic_class`` attribute (legacy files). Type-checked</span>
-<span class="sd">            (statically) against :data:`ImageTypeName` — there is no</span>
-<span class="sd">            runtime validation; the only effect of an unrecognized</span>
-<span class="sd">            string is that the dispatch falls through to :class:`Image`.</span>
+<span class="sd">        store_path: Path to a ``*.ome.zarr`` directory.</span>
+<span class="sd">        fallback: Class name used when the block carries no ``image_class``.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        An :class:`Image` or :class:`GridImage` instance loaded from the HDF.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>  <span class="c1"># type: ignore[import-untyped]</span>
+<span class="sd">        An :class:`Image` or :class:`GridImage` loaded from the store.</span>
 
+<span class="sd">    Raises:</span>
+<span class="sd">        KeyError: If the store root carries no ``phenotypic`` block, or if it</span>
+<span class="sd">            carries one but no bundle series.</span>
+<span class="sd">        ValueError: If ``store_schema_version`` is not this build&#39;s.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
         <span class="n">GridImage</span><span class="p">,</span>
         <span class="n">Image</span><span class="p">,</span>
     <span class="p">)</span>  <span class="c1"># lazy: avoids circular import at module load</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE_TYPES</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.ngff_</span><span class="w"> </span><span class="kn">import</span> <span class="n">PhenotypicAttr</span><span class="p">,</span> <span class="n">require_readable_store</span>
 
-    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">hdf_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
-        <span class="n">cls_attr</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">HdfAttr</span><span class="o">.</span><span class="n">PHENOTYPIC_CLASS</span><span class="p">,</span> <span class="n">fallback</span><span class="p">)</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cls_attr</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
-        <span class="n">cls_attr</span> <span class="o">=</span> <span class="n">cls_attr</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span>
-    <span class="n">image_cls</span> <span class="o">=</span> <span class="n">GridImage</span> <span class="k">if</span> <span class="n">cls_attr</span> <span class="o">==</span> <span class="n">IMAGE_TYPES</span><span class="o">.</span><span class="n">GRID</span><span class="o">.</span><span class="n">value</span> <span class="k">else</span> <span class="n">Image</span>
-    <span class="k">return</span> <span class="n">image_cls</span><span class="o">.</span><span class="n">load_hdf5</span><span class="p">(</span><span class="n">hdf_path</span><span class="p">)</span></div>
+    <span class="c1"># `require_readable_store`, not `read_phenotypic_attributes`: bypassing</span>
+    <span class="c1"># `load_zarr` must not also bypass the store_schema_version gate it</span>
+    <span class="c1"># applied. One read serves both the dispatch and the load.</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">require_readable_store</span><span class="p">(</span><span class="n">store_path</span><span class="p">)</span>
+    <span class="n">class_name</span> <span class="o">=</span> <span class="n">block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">IMAGE_CLASS</span><span class="p">,</span> <span class="n">fallback</span><span class="p">)</span>
+    <span class="c1"># See ``_hdf_to_zarr._load_image_from_hdf``: the comparison is against</span>
+    <span class="c1"># the class name the writer recorded, not against ``IMAGE_TYPES.GRID`` -- that enum is the</span>
+    <span class="c1"># ``Metadata_ImageType`` vocabulary, a different field that spec 2.1 keeps</span>
+    <span class="c1"># deliberately independent of ``image_class``.</span>
+    <span class="n">image_cls</span> <span class="o">=</span> <span class="n">GridImage</span> <span class="k">if</span> <span class="n">class_name</span> <span class="o">==</span> <span class="n">GridImage</span><span class="o">.</span><span class="vm">__name__</span> <span class="k">else</span> <span class="n">Image</span>
+    <span class="k">return</span> <span class="n">image_cls</span><span class="o">.</span><span class="n">_load_from_store</span><span class="p">(</span><span class="n">store_path</span><span class="p">,</span> <span class="n">block</span><span class="p">)</span></div>
 
 
 
@@ -3026,22 +3491,25 @@
         <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span>
         <span class="k">return</span> <span class="n">results</span> <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
 
-<div class="viewcode-block" id="BundleLayout.hdf_path">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.BundleLayout.html#phenotypic.sdk_.BundleLayout.hdf_path">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">hdf_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Full-res per-image HDF for ``(dataset, stem)``, or ``None`` if unavailable.</span>
+<div class="viewcode-block" id="BundleLayout.store_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.BundleLayout.html#phenotypic.sdk_.BundleLayout.store_path">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">store_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Full-res per-image OME-Zarr store for ``(dataset, stem)``, or ``None``.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            dataset: Dataset name (subdirectory under ``results/``).</span>
 <span class="sd">            stem: Image stem (filename without extension).</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Resolved ``.h5`` path if the file exists, otherwise ``None``.</span>
+<span class="sd">            Resolved store path if the **directory** exists, otherwise ``None``.</span>
+<span class="sd">            Note the ``is_dir`` check: a store is a directory, so the</span>
+<span class="sd">            ``is_file`` test the removed ``hdf_path`` used (it resolved a single</span>
+<span class="sd">            per-image HDF file) would always return ``None`` here.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
-        <span class="n">candidate</span> <span class="o">=</span> <span class="n">dataset_hdf_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_root</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stem</span><span class="si">}</span><span class="s2">.h5&quot;</span>
-        <span class="k">return</span> <span class="n">candidate</span> <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span></div>
+        <span class="n">candidate</span> <span class="o">=</span> <span class="n">zarr_store_path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_root</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">stem</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">candidate</span> <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span></div>
 
 
     <span class="c1"># -- deliverables-anchored artefacts ------------------------------------</span>

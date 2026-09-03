@@ -1,0 +1,37 @@
+phenotypic.sdk\_.MetadataMigrationAuthority
+===========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: MetadataMigrationAuthority
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MetadataMigrationAuthority.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MetadataMigrationAuthority.status_path
+      ~MetadataMigrationAuthority.terminal_receipt_path
+      ~MetadataMigrationAuthority.terminal_receipt_digest
+      ~MetadataMigrationAuthority.plan_fingerprint
+      ~MetadataMigrationAuthority.source_fingerprint
+      ~MetadataMigrationAuthority.resulting_fingerprint
+      ~MetadataMigrationAuthority.compatible_noop
+   
+   

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.durable\_writes\_enabled
+=========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: durable_writes_enabled

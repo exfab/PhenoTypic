@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Choosing the polars CPU build (lts-cpu vs stock)" href="polars_cpu_build.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -582,7 +582,8 @@
 <li class="toctree-l1"><a class="reference internal" href="tune_distributed_hpcc.html">Distributed Tuning on HPCC Clusters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gui_hub.html">GUI hub</a></li>
 <li class="toctree-l1"><a class="reference internal" href="serialize_pipelines.html">Serialize and Share Pipelines</a></li>
-<li class="toctree-l1"><a class="reference internal" href="hdf5_storage.html">Store Results in HDF5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migrate_ome_zarr.html">Migrate legacy results and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zarr_storage.html">Store Results in OME-Zarr</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generate_reports.html">Generate HTML Processing Reports</a></li>
 </ul>
 </div>
@@ -677,12 +678,12 @@ hand against the new <code class="docutils literal notranslate"><span class="pre
 <span class="n">directory</span><span class="p">:</span>
 
 <span class="err">```</span><span class="n">bash</span>
-<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">tune</span> <span class="n">run</span> <span class="n">spec</span><span class="o">.</span><span class="n">json</span> <span class="o">-</span><span class="n">i</span> <span class="o">./</span><span class="n">plates</span> <span class="o">-</span><span class="n">o</span> <span class="o">./</span><span class="n">out</span>
+<span class="n">uv</span> <span class="n">run</span> <span class="n">phenotypic</span><span class="o">-</span><span class="n">tune</span> <span class="n">run</span> <span class="n">spec</span><span class="o">.</span><span class="n">json</span> <span class="o">-</span><span class="n">i</span> <span class="o">./</span><span class="n">plates</span> <span class="o">-</span><span class="n">o</span> <span class="o">./</span><span class="n">out</span>
 </pre></div>
 </div>
 <p>Override the spec’s strategy and trial budget, and turn on the two-round
 screening freeze, from the command line:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.tune<span class="w"> </span>run<span class="w"> </span>spec.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-tune<span class="w"> </span>run<span class="w"> </span>spec.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--strategy<span class="w"> </span>tpe<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--n-trials<span class="w"> </span><span class="m">200</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--screen
@@ -690,7 +691,7 @@ screening freeze, from the command line:</p>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">--strategy</span> <span class="pre">grid</span></code> and <code class="docutils literal notranslate"><span class="pre">--strategy</span> <span class="pre">random</span></code> use the built-in configs;
 <code class="docutils literal notranslate"><span class="pre">tpe</span></code>, <code class="docutils literal notranslate"><span class="pre">cmaes</span></code>, <code class="docutils literal notranslate"><span class="pre">gp</span></code>, and <code class="docutils literal notranslate"><span class="pre">nsga2</span></code> build an <code class="docutils literal notranslate"><span class="pre">OptunaConfig</span></code> and require the
-<code class="docutils literal notranslate"><span class="pre">tune</span></code> extra (<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span> <span class="pre">--extras</span> <span class="pre">tune</span></code>). <code class="docutils literal notranslate"><span class="pre">--screen</span></code> enables the two-round
+<code class="docutils literal notranslate"><span class="pre">tune</span></code> extra (<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span> <span class="pre">--extra</span> <span class="pre">tune</span></code>). <code class="docutils literal notranslate"><span class="pre">--screen</span></code> enables the two-round
 screening freeze (it is off by default; <code class="docutils literal notranslate"><span class="pre">--no-screen</span></code> is the explicit
 default). <code class="docutils literal notranslate"><span class="pre">--n-trials</span></code> overrides the spec’s <code class="docutils literal notranslate"><span class="pre">Budget.n_trials</span></code>.</p>
 <p>A run writes its deliverables under <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/</span></code>:</p>
@@ -707,12 +708,18 @@ showing which knobs moved the objective.</p></li>
 reserved plates versus the search set.</p></li>
 </ul>
 <p>Alongside the deliverables, <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code> is written at the <strong>output
-root</strong>. It is dual-purpose: the Optuna resume store <em>and</em> the trial journal.</p>
-<p><strong>Resume</strong> is automatic. Re-running <code class="docutils literal notranslate"><span class="pre">run</span></code> with <code class="docutils literal notranslate"><span class="pre">-o</span></code> pointed at a prior run
-directory <em>resumes</em> the study rather than restarting it — grid/random pick up
-from <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code>, while the Optuna samplers resume from the study store
-(the local <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/study.db</span></code> or the <code class="docutils literal notranslate"><span class="pre">--storage-url</span></code> study). A killed or
-extended run picks up its prior trials.</p>
+root</strong>. It is the published trial archive, including PRUNED partial evaluations.
+PRUNED trials consume terminal budget but never participate in best, per-axis,
+Pareto-front, or knee-point selection; only finite COMPLETE trials are eligible
+for those published choices. Optuna keeps its live local store in
+<code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/study.db</span></code>; a SLURM run instead records one shared
+<code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/journal.log</span></code> and publishes <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code> only after the
+terminal finalizer verifies the budget and a COMPLETE winner.</p>
+<p><strong>Resume</strong> is automatic for a local run: re-running <code class="docutils literal notranslate"><span class="pre">run</span></code> with <code class="docutils literal notranslate"><span class="pre">-o</span></code> pointed at
+a prior directory reopens its local <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/study.db</span></code>. A distributed
+run records its shared journal in the run marker and is published only by its
+terminal lifecycle finalizer. Do not relaunch an output with an active
+lifecycle; after scheduler quiescence, use <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">phenotypic-tune</span> <span class="pre">finalize</span> <span class="pre">OUTPUT</span></code> to recover publication from the recorded backend.</p>
 <section id="authoring-a-tuningspec-in-python">
 <h2>Authoring a <code class="docutils literal notranslate"><span class="pre">TuningSpec</span></code> in Python<a class="headerlink" href="#authoring-a-tuningspec-in-python" title="Link to this heading">#</a></h2>
 <p>A <code class="docutils literal notranslate"><span class="pre">TuningSpec</span></code> is one self-contained, round-trippable recipe. Its fields are:</p>
@@ -767,7 +774,7 @@ Gaussian-blur <code class="docutils literal notranslate"><span class="pre">sigma
 </div>
 <p>A knob’s <code class="docutils literal notranslate"><span class="pre">key</span></code> is a position-indexed path: <code class="docutils literal notranslate"><span class="pre">&quot;0.sigma&quot;</span></code> targets the <code class="docutils literal notranslate"><span class="pre">sigma</span></code>
 field of op <code class="docutils literal notranslate"><span class="pre">0</span></code> (the <code class="docutils literal notranslate"><span class="pre">BlurGauss</span></code>). Save the spec with
-<code class="docutils literal notranslate"><span class="pre">spec.model_dump_json()</span></code> and feed it to <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code>. For a
+<code class="docutils literal notranslate"><span class="pre">spec.model_dump_json()</span></code> and feed it to <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">phenotypic-tune</span> <span class="pre">run</span></code>. For a
 spec that must round-trip through JSON, configure the count check from a
 metadata <em>path</em> (<code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount(metadata=&quot;layout.csv&quot;,</span> <span class="pre">...)</span></code>) — a
 check built from an in-memory frame cannot be rebuilt from JSON.</p>
@@ -776,7 +783,7 @@ check built from an in-memory frame cannot be rebuilt from JSON.</p>
 <h2>Inferring a search space with <code class="docutils literal notranslate"><span class="pre">auto-space</span></code><a class="headerlink" href="#inferring-a-search-space-with-auto-space" title="Link to this heading">#</a></h2>
 <p>When you don’t want to hand-author every knob, <code class="docutils literal notranslate"><span class="pre">auto-space</span></code> mines a configured
 pipeline’s pydantic fields into a reviewable candidate space — no engine runs:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.tune<span class="w"> </span>auto-space<span class="w"> </span>pipeline.json<span class="w"> </span>-o<span class="w"> </span>./out
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-tune<span class="w"> </span>auto-space<span class="w"> </span>pipeline.json<span class="w"> </span>-o<span class="w"> </span>./out
 </pre></div>
 </div>
 <p>The same inference is available in Python as <code class="docutils literal notranslate"><span class="pre">infer_search_space</span></code>, which
@@ -795,15 +802,15 @@ generously-inferred bound never silently drives a fully-automatic study.</p>
 </section>
 <section id="the-four-scoring-objectives">
 <h2>The four scoring objectives<a class="headerlink" href="#the-four-scoring-objectives" title="Link to this heading">#</a></h2>
-<p>Every scorer is a <code class="docutils literal notranslate"><span class="pre">Scorer</span></code> subclass with a higher-is-better objective in
-<code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>. Pick the one that matches the ground truth you have.</p>
+<p>Every scorer is a <code class="docutils literal notranslate"><span class="pre">Scorer</span></code> subclass that emits a bounded cost in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>:
+<code class="docutils literal notranslate"><span class="pre">0</span></code> is perfect, <code class="docutils literal notranslate"><span class="pre">1</span></code> is worst, and every objective is minimized.</p>
 <section id="qcscorer">
 <h3><code class="docutils literal notranslate"><span class="pre">QCScorer</span></code><a class="headerlink" href="#qcscorer" title="Link to this heading">#</a></h3>
 <p>Use it when you have <strong>no ground-truth masks</strong> but you know the expected colony
 <strong>count</strong> per plate (e.g. a 96-well layout). It is a purely statistical check:
-it wraps <code class="docutils literal notranslate"><span class="pre">phenotypic.analysis.ExpectedVsDetectedCount</span></code> and scores each
-<code class="docutils literal notranslate"><span class="pre">groupby</span></code> unit on <code class="docutils literal notranslate"><span class="pre">|detected</span> <span class="pre">−</span> <span class="pre">expected|</span> <span class="pre">/</span> <span class="pre">expected</span></code>, folded to a
-higher-is-better term.</p>
+it wraps <code class="docutils literal notranslate"><span class="pre">phenotypic.analysis.ExpectedVsDetectedCount</span></code> and converts each
+<code class="docutils literal notranslate"><span class="pre">groupby</span></code> unit’s <code class="docutils literal notranslate"><span class="pre">|detected</span> <span class="pre">−</span> <span class="pre">expected|</span> <span class="pre">/</span> <span class="pre">expected</span></code> discrepancy into a
+bounded lower-is-better cost.</p>
 <p>It requires a configured count check on its <code class="docutils literal notranslate"><span class="pre">check</span></code> field. Configure that check
 from a metadata <strong>path</strong> so the scorer round-trips through <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
@@ -873,9 +880,10 @@ count tier additionally needs a configured <code class="docutils literal notrans
 panel no single metric covers. It nests a <code class="docutils literal notranslate"><span class="pre">list[Scorer]</span></code> on its <code class="docutils literal notranslate"><span class="pre">scorers</span></code> field
 and composes them two ways:</p>
 <ul class="simple">
-<li><p><strong>single-objective</strong> (default): a <code class="docutils literal notranslate"><span class="pre">weights</span></code>-weighted arithmetic blend, or
-(without weights) the geometric mean — so one weak axis cannot be masked by a
-strong one.</p></li>
+<li><p><strong>single-objective</strong> (default): an augmented Tchebycheff blend that is
+worst-axis-dominant; set <code class="docutils literal notranslate"><span class="pre">blend=&quot;weighted_mean&quot;</span></code> for the compensatory option.
+A geometric mean is intentionally unavailable because one zero-cost axis would
+annihilate the product and mask weak axes.</p></li>
 <li><p><strong>multi-objective</strong> (<code class="docutils literal notranslate"><span class="pre">multi_objective=True</span></code>): per-child objectives kept
 separate, driving a true Pareto study (requires an Optuna <code class="docutils literal notranslate"><span class="pre">nsga2</span></code> strategy;
 pairing a multi-objective scorer with grid/random is rejected at spec
@@ -893,6 +901,15 @@ construction). The non-dominated front lands in <code class="docutils literal no
 </section>
 <section id="gui-interface">
 <h2>GUI interface<a class="headerlink" href="#gui-interface" title="Link to this heading">#</a></h2>
+<div class="warning admonition">
+<p class="admonition-title">Currently unmounted</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">/tune/</span></code> co-pilot described below is unmounted from the GUI hub (see
+<code class="docutils literal notranslate"><span class="pre">docs/superpowers/specs/2026-08-26-gui-simplification-removals</span></code>, §2): its
+code is retained on disk and unit-tested, but it is not reachable from
+<code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code>’s top-bar navigation. The section below documents its design
+for when it is re-mounted; use the CLI interface above for tuning in the
+meantime.</p>
+</div>
 <p><code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code> mounts a <code class="docutils literal notranslate"><span class="pre">/tune/</span></code> Dash co-pilot as a tab alongside
 <strong>Home · Builder · Tune · Run · Viewer · Analysis</strong>. The co-pilot is a full
 <strong>author → run → monitor</strong> workflow organised as three top-level destinations,
@@ -912,7 +929,7 @@ see below.)</p>
 <h3>Run — configure and launch<a class="headerlink" href="#run-configure-and-launch" title="Link to this heading">#</a></h3>
 <p>The Run destination (unlocked once a pipeline is chosen) is a launch form whose
 live command card mirrors your choices into the real
-<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code> invocation — the same subcommand and flag names
+<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">phenotypic-tune</span> <span class="pre">run</span></code> invocation — the same subcommand and flag names
 you would type by hand. It exposes:</p>
 <ul class="simple">
 <li><p><strong>Inputs</strong> — an in-sandbox image-source override (blank falls back to the
@@ -933,7 +950,7 @@ terminal (though the live command card still lets you, if you prefer).</p>
 <section id="monitor-watch-curate-and-export">
 <h3>Monitor — watch, curate, and export<a class="headerlink" href="#monitor-watch-curate-and-export" title="Link to this heading">#</a></h3>
 <p>Once a run is deployed (or you <strong>Bind run</strong> to an existing
-<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span></code> output directory via the sandbox-bounded run
+<code class="docutils literal notranslate"><span class="pre">phenotypic-tune</span></code> output directory via the sandbox-bounded run
 picker), the Monitor destination opens the live read over the study. It carries
 a run switcher across registered Local/SLURM runs, a Local-only <strong>Cancel</strong>
 (SLURM runs are not killed from the GUI in v1), and an <strong>Export best pipeline</strong>
@@ -952,19 +969,17 @@ writes <code class="docutils literal notranslate"><span class="pre">best_pipelin
 <li><p><strong>Space</strong> — the inferred search space as editable knob-rows; export the
 edited space back to <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>.</p></li>
 <li><p><strong>Launch</strong> — a strategy / budget / storage-URL form whose live command card
-renders a copy-paste <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code> invocation.</p></li>
+renders a copy-paste <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">phenotypic-tune</span> <span class="pre">run</span></code> invocation.</p></li>
 </ul>
 <p>The co-pilot keeps its import surface optuna-free — the live study is opened
 lazily inside the Monitor poll only — and binding an existing run never writes
 to its directory.</p>
-<p>For the full walkthrough, see the
-<a class="reference internal" href="../../tutorials/gui/16_tune_copilot.html"><span class="std std-doc">Tune co-pilot tutorial</span></a>.</p>
 </section>
 </section>
 <section id="distributed-runs">
 <h2>Distributed runs<a class="headerlink" href="#distributed-runs" title="Link to this heading">#</a></h2>
 <p>For running a single tune study across many SLURM compute nodes that share one
-Optuna study (via <code class="docutils literal notranslate"><span class="pre">--slurm</span></code> and a Postgres <code class="docutils literal notranslate"><span class="pre">--storage-url</span></code>), see
+Optuna journal (via <code class="docutils literal notranslate"><span class="pre">--slurm</span></code>), see
 <a class="reference internal" href="tune_distributed_hpcc.html"><span class="std std-doc">Distributed Tuning on HPCC Clusters</span></a>.</p>
 </section>
 </section>

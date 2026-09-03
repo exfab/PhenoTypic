@@ -1,0 +1,36 @@
+phenotypic.sdk\_.PreparedEmbeddedMeasurementTable
+=================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: PreparedEmbeddedMeasurementTable
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PreparedEmbeddedMeasurementTable.__init__
+      ~PreparedEmbeddedMeasurementTable.parquet_metadata
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PreparedEmbeddedMeasurementTable.frame
+      ~PreparedEmbeddedMeasurementTable.measurement_columns
+      ~PreparedEmbeddedMeasurementTable.join_status
+      ~PreparedEmbeddedMeasurementTable.join_keys
+      ~PreparedEmbeddedMeasurementTable.metadata_snapshot_sha256
+   
+   

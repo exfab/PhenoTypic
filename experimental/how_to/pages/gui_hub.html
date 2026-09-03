@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Distributed Tuning on HPCC Clusters" href="tune_distributed_hpcc.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -582,7 +582,8 @@
 <li class="toctree-l1"><a class="reference internal" href="tune_distributed_hpcc.html">Distributed Tuning on HPCC Clusters</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">GUI hub</a></li>
 <li class="toctree-l1"><a class="reference internal" href="serialize_pipelines.html">Serialize and Share Pipelines</a></li>
-<li class="toctree-l1"><a class="reference internal" href="hdf5_storage.html">Store Results in HDF5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migrate_ome_zarr.html">Migrate legacy results and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zarr_storage.html">Store Results in OME-Zarr</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generate_reports.html">Generate HTML Processing Reports</a></li>
 </ul>
 </div>
@@ -664,15 +665,18 @@ single server:</p>
 <td><p>Home: sandbox tree, capability badges, tab navigation</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/browse/</span></code></p></td>
-<td><p>Browse source images as deep-zoom single, timeline, or compare views</p></td>
+<td><p>Browse source images as a deep-zoom single view</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/builder/</span></code></p></td>
 <td><p>Pipeline builder (node-graph editor)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/results/</span></code></p></td>
-<td><p>Results viewer (OpenSeadragon overlays, measurement tables)</p></td>
+<td><p>Results viewer (deep-zoom OME-Zarr plate + colony views, measurement tables)</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/run/</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/analysis/</span></code></p></td>
+<td><p>Analysis runner (standalone analyzers over a loaded output)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/run/</span></code></p></td>
 <td><p>Run console (submit local or SLURM jobs, tail logs, view dashboard)</p></td>
 </tr>
 </tbody>
@@ -752,8 +756,13 @@ a shell with Homebrew’s library directory exposed:</p>
 </pre></div>
 </div>
 <p>PhenoTypic automatically uses its Pillow tiler when libvips cannot be loaded.
-This preserves Browse and Results functionality, but preparation of large DZI
-pyramids can be slower and use more memory.</p>
+This preserves Browse functionality, but preparation of large DZI pyramids can
+be slower and use more memory.</p>
+<p>libvips is <strong>not</strong> involved in the Results viewer. Its Plate and Colony
+surfaces read the per-image OME-Zarr store the CLI already wrote and do the
+tiling in the browser, so they build no pyramid, need no tiler, and keep no
+tile cache to go stale. The same is true of the pipeline builder’s node
+preview. DZI is Browse’s path, and the builder’s point picker’s.</p>
 </section>
 <section id="browse-preparation-and-cache">
 <h3>Browse preparation and cache<a class="headerlink" href="#browse-preparation-and-cache" title="Link to this heading">#</a></h3>
@@ -841,9 +850,8 @@ directory.</p>
 </section>
 <section id="browse-browse">
 <h3>Browse (<code class="docutils literal notranslate"><span class="pre">/browse/</span></code>)<a class="headerlink" href="#browse-browse" title="Link to this heading">#</a></h3>
-<p>Browse source-image directories in a deep-zoom single view, acquisition-time
-timeline, or synchronized compare view. Image access remains constrained to the
-hub sandbox root.</p>
+<p>Browse source-image directories in a deep-zoom single view. Image access
+remains constrained to the hub sandbox root.</p>
 </section>
 <section id="builder-builder">
 <h3>Builder (<code class="docutils literal notranslate"><span class="pre">/builder/</span></code>)<a class="headerlink" href="#builder-builder" title="Link to this heading">#</a></h3>

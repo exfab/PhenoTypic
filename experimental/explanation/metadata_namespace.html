@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../_static/documentation_options.js?v=8a079089"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Measurement Metrics and Their Biological Meaning" href="measurement_metrics_biological_meaning.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -761,11 +761,12 @@ code should use <code class="docutils literal notranslate"><span class="pre">IMA
 configured input CSV. It is immutable provenance rather than a generated schema
 table, so it may retain historical headers. Readers normalize it in memory;
 generated measurement, analysis, QC, and REMBI outputs remain canonical.</p>
-<p><code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">recompile</span></code> is the explicit mutation boundary for a bundle. Local and
-SLURM recompiles preflight and migrate bundle-owned authoritative legacy data
-before aggregation. A conflict or failed target stops recompile before new
-aggregate outputs are published. Canonical bundles are an idempotent no-op
-apart from preflight.</p>
+<p><code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">migrate</span></code> is the sole metadata migration boundary for a run bundle. It
+preflights bundle-owned authoritative legacy data, refuses blocked plans, and
+applies only the fingerprinted plan. <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">recompile</span></code> performs neither that
+preflight nor migration. Legacy storage and external per-image measurement
+authority must be migrated explicitly before recompile; readable historical
+header spellings continue to normalize in memory.</p>
 <p>Migration uses source and plan fingerprints plus a prepared/applied receipt
 journal. CSV, parquet, typed pipeline JSON, and HDF metadata attributes are
 replaced atomically. HDF migration writes and validates a sibling copy, changes
@@ -775,9 +776,9 @@ Receipts make an interrupted bundle migration resumable and can be passed to
 <code class="docutils literal notranslate"><span class="pre">rollback_metadata_migration()</span></code>.</p>
 <p>An external file supplied with <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> is always read-only during
 recompile: PhenoTypic normalizes its contents in memory without writing to the
-source, and the regenerated bundle-owned <code class="docutils literal notranslate"><span class="pre">deliverables/metadata.csv</span></code> uses
-canonical headers. To mutate a standalone external file, call
-<code class="docutils literal notranslate"><span class="pre">migrate_metadata_file()</span></code> explicitly.</p>
+source, and copies its original bytes to the immutable bundle-owned
+<code class="docutils literal notranslate"><span class="pre">deliverables/metadata.csv</span></code> provenance snapshot. To mutate a standalone
+external file, call <code class="docutils literal notranslate"><span class="pre">migrate_metadata_file()</span></code> explicitly.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">migrate_metadata_bundle</span><span class="p">,</span>

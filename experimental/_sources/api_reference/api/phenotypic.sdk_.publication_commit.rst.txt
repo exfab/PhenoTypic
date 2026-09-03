@@ -1,0 +1,6 @@
+phenotypic.sdk\_.publication\_commit
+====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: publication_commit

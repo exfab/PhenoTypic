@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -62,11 +62,11 @@
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.sdk_.validate_analysis_id.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="phenotypic.sdk_.FootprintMixin" href="phenotypic.sdk_.FootprintMixin.html" />
+    <link rel="next" title="phenotypic.sdk_.zarr_store_path" href="phenotypic.sdk_.zarr_store_path.html" />
     <link rel="prev" title="phenotypic.sdk_.verified_parquet_path" href="phenotypic.sdk_.verified_parquet_path.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -559,6 +559,7 @@
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../core/color_space_operations.html">Color Space Operations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../core/visualization_plotting.html">Plotting capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core/store_layout.html">OME-Zarr store layout</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="../core/grid_image_methods.html">GridImage Class Methods</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -874,6 +875,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_parquet.html">phenotypic.sdk_.atomic_write_parquet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_text.html">phenotypic.sdk_.atomic_write_text</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_with_writer.html">phenotypic.sdk_.atomic_write_with_writer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.publication_commit.html">phenotypic.sdk_.publication_commit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.build_measurement_table_descriptor.html">phenotypic.sdk_.build_measurement_table_descriptor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.embedded_measurement_columns.html">phenotypic.sdk_.embedded_measurement_columns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.read_embedded_measurement_column.html">phenotypic.sdk_.read_embedded_measurement_column</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.read_embedded_measurement_descriptor.html">phenotypic.sdk_.read_embedded_measurement_descriptor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.replace_embedded_measurement_table.html">phenotypic.sdk_.replace_embedded_measurement_table</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.write_embedded_measurement_table.html">phenotypic.sdk_.write_embedded_measurement_table</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.canonical_metadata_order.html">phenotypic.sdk_.canonical_metadata_order</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ensure_metadata_prefix.html">phenotypic.sdk_.ensure_metadata_prefix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_binary_mask.html">phenotypic.sdk_.is_binary_mask</a></li>
@@ -887,12 +895,21 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_owner_for_label.html">phenotypic.sdk_.metadata_owner_for_label</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.normalize_metadata_columns.html">phenotypic.sdk_.normalize_metadata_columns</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.order_measurement_columns.html">phenotypic.sdk_.order_measurement_columns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_migration_authority.html">phenotypic.sdk_.metadata_migration_authority</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_metadata_bundle.html">phenotypic.sdk_.migrate_metadata_bundle</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_metadata_file.html">phenotypic.sdk_.migrate_metadata_file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_preflighted_metadata_bundle.html">phenotypic.sdk_.migrate_preflighted_metadata_bundle</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.preflight_metadata_schema.html">phenotypic.sdk_.preflight_metadata_schema</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.rollback_metadata_migration.html">phenotypic.sdk_.rollback_metadata_migration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.validated_published_metadata_migration_targets.html">phenotypic.sdk_.validated_published_metadata_migration_targets</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.timed_execution.html">phenotypic.sdk_.timed_execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.describe_durability.html">phenotypic.sdk_.describe_durability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.durable_writes_enabled.html">phenotypic.sdk_.durable_writes_enabled</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.new_part_path.html">phenotypic.sdk_.new_part_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.promote_store.html">phenotypic.sdk_.promote_store</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.read_phenotypic_attributes.html">phenotypic.sdk_.read_phenotypic_attributes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.sweep_orphan_parts.html">phenotypic.sdk_.sweep_orphan_parts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.valid_staged_store.html">phenotypic.sdk_.valid_staged_store</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_full_parquet_path.html">phenotypic.sdk_.analysis_full_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_manifest_path.html">phenotypic.sdk_.analysis_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.best_pipeline_path.html">phenotypic.sdk_.best_pipeline_path</a></li>
@@ -907,10 +924,11 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.checkpoint_lock_filename.html">phenotypic.sdk_.checkpoint_lock_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.checkpoint_lock_path.html">phenotypic.sdk_.checkpoint_lock_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dashboard_html_path.html">phenotypic.sdk_.dashboard_html_path</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_hdf_dir.html">phenotypic.sdk_.dataset_hdf_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_measurements_dir.html">phenotypic.sdk_.dataset_measurements_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_overlays_dir.html">phenotypic.sdk_.dataset_overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_results_dir.html">phenotypic.sdk_.dataset_results_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_zarr_dir.html">phenotypic.sdk_.dataset_zarr_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.datasets_needing_migration.html">phenotypic.sdk_.datasets_needing_migration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlays_dir.html">phenotypic.sdk_.overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.plots_dir.html">phenotypic.sdk_.plots_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.curation_labels_parquet_path.html">phenotypic.sdk_.curation_labels_parquet_path</a></li>
@@ -932,7 +950,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.image_completion_marker_path.html">phenotypic.sdk_.image_completion_marker_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.has_config_suffix.html">phenotypic.sdk_.has_config_suffix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.job_metadata_path.html">phenotypic.sdk_.job_metadata_path</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.load_image_from_hdf.html">phenotypic.sdk_.load_image_from_hdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.load_image_from_store.html">phenotypic.sdk_.load_image_from_store</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.load_master_measurements.html">phenotypic.sdk_.load_master_measurements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.logs_dir.html">phenotypic.sdk_.logs_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.manifest_json_path.html">phenotypic.sdk_.manifest_json_path</a></li>
@@ -993,17 +1011,25 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.shard_parquet_filename.html">phenotypic.sdk_.shard_parquet_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.slurm_scripts_dir.html">phenotypic.sdk_.slurm_scripts_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.source_cache_key.html">phenotypic.sdk_.source_cache_key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_zarr_store_name.html">phenotypic.sdk_.is_zarr_store_name</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.store_stem.html">phenotypic.sdk_.store_stem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.source_image_stem.html">phenotypic.sdk_.source_image_stem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.source_image_suffix.html">phenotypic.sdk_.source_image_suffix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.store_publication_token.html">phenotypic.sdk_.store_publication_token</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.store_revision_identity.html">phenotypic.sdk_.store_revision_identity</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.task_status_filename.html">phenotypic.sdk_.task_status_filename</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.task_status_path.html">phenotypic.sdk_.task_status_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.trials_parquet_path.html">phenotypic.sdk_.trials_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.tune_cache_dir.html">phenotypic.sdk_.tune_cache_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.tune_cache_run_marker_path.html">phenotypic.sdk_.tune_cache_run_marker_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.tune_cache_journal_path.html">phenotypic.sdk_.tune_cache_journal_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.tune_cache_split_assignment_path.html">phenotypic.sdk_.tune_cache_split_assignment_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.tune_cache_splits_dir.html">phenotypic.sdk_.tune_cache_splits_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.tune_cache_study_db_path.html">phenotypic.sdk_.tune_cache_study_db_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.tuning_spec_path.html">phenotypic.sdk_.tuning_spec_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.verified_parquet_path.html">phenotypic.sdk_.verified_parquet_path</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.sdk_.validate_analysis_id</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.zarr_store_path.html">phenotypic.sdk_.zarr_store_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.FootprintMixin.html">phenotypic.sdk_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.GridInferenceMixin.html">phenotypic.sdk_.GridInferenceMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.HDF.html">phenotypic.sdk_.HDF</a></li>
@@ -1011,15 +1037,17 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.LazyWidgetMixin.html">phenotypic.sdk_.LazyWidgetMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.NormControlMixin.html">phenotypic.sdk_.NormControlMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.NormalizedOutputMixin.html">phenotypic.sdk_.NormalizedOutputMixin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.PreparedEmbeddedMeasurementTable.html">phenotypic.sdk_.PreparedEmbeddedMeasurementTable</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.MetadataMigrationAuthority.html">phenotypic.sdk_.MetadataMigrationAuthority</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.MetadataMigrationReport.html">phenotypic.sdk_.MetadataMigrationReport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.MetadataMigrationResult.html">phenotypic.sdk_.MetadataMigrationResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.MetadataMigrationTarget.html">phenotypic.sdk_.MetadataMigrationTarget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.PhenotypicAttr.html">phenotypic.sdk_.PhenotypicAttr</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ChunkManifestKey.html">phenotypic.sdk_.ChunkManifestKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ChunkStateKey.html">phenotypic.sdk_.ChunkStateKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.DashboardManifestKey.html">phenotypic.sdk_.DashboardManifestKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.DashboardManifestSlurmInfoKey.html">phenotypic.sdk_.DashboardManifestSlurmInfoKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.EnvVar.html">phenotypic.sdk_.EnvVar</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.HdfAttr.html">phenotypic.sdk_.HdfAttr</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.JobMetadataKey.html">phenotypic.sdk_.JobMetadataKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ModulePath.html">phenotypic.sdk_.ModulePath</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ProcessingStateKey.html">phenotypic.sdk_.ProcessingStateKey</a></li>
@@ -1089,6 +1117,7 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.format_sbatch_directives.html">phenotypic.sdk_.slurm.format_sbatch_directives</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.generate_dispatcher_chain.html">phenotypic.sdk_.slurm.generate_dispatcher_chain</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.generate_dispatcher_script.html">phenotypic.sdk_.slurm.generate_dispatcher_script</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.generation_script_key.html">phenotypic.sdk_.slurm.generation_script_key</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.get_slurm_array_limit.html">phenotypic.sdk_.slurm.get_slurm_array_limit</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.get_slurm_max_submit_jobs.html">phenotypic.sdk_.slurm.get_slurm_max_submit_jobs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.parse_job_id.html">phenotypic.sdk_.slurm.parse_job_id</a></li>

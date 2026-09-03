@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../../_static/documentation_options.js?v=8a079089"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.1" />
+  <meta name="docsearch:version" content="0.19.0" />
   </head>
   
   
@@ -614,6 +614,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -636,7 +637,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._multi_objective</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">is_multi_objective</span><span class="p">,</span>
     <span class="n">objective_directions</span><span class="p">,</span>
+    <span class="n">objective_names</span><span class="p">,</span>
     <span class="n">reject_grid_random_multi_objective</span><span class="p">,</span>
+    <span class="n">validate_objective_axes</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._screening</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_param_importance</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._screening_freeze</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScreeningConfig</span><span class="p">,</span> <span class="n">ScreeningController</span>
@@ -650,9 +653,15 @@
     <span class="n">StrategyConfig</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._study._protocol</span><span class="w"> </span><span class="kn">import</span> <span class="n">StudyStore</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._study._storage</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_sqlite_url</span> <span class="k">as</span> <span class="n">_is_sqlite_url</span><span class="p">,</span> <span class="n">journal_url_for_path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._study_store</span><span class="w"> </span><span class="kn">import</span> <span class="n">JournalStudyStore</span><span class="p">,</span> <span class="n">Trial</span>
 
-<span class="n">_IMAGE_SUFFIXES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;.png&quot;</span><span class="p">,</span> <span class="s2">&quot;.jpg&quot;</span><span class="p">,</span> <span class="s2">&quot;.jpeg&quot;</span><span class="p">,</span> <span class="s2">&quot;.tif&quot;</span><span class="p">,</span> <span class="s2">&quot;.tiff&quot;</span><span class="p">,</span> <span class="s2">&quot;.h5&quot;</span><span class="p">}</span>
+<span class="c1">#: Ordinary image files ``GridImage.imread`` decodes. ``.h5`` used to be</span>
+<span class="c1">#: listed here, but ``imread`` never accepted it (``IO.ACCEPTED_FILE_EXTENSIONS``</span>
+<span class="c1">#: has no HDF entry), so every ``.h5`` was silently counted as &quot;unreadable&quot;</span>
+<span class="c1">#: and skipped. Processed images now arrive as ``*.ome.zarr`` **directories**</span>
+<span class="c1">#: and are loaded through :func:`load_image_from_store`, below.</span>
+<span class="n">_IMAGE_SUFFIXES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;.png&quot;</span><span class="p">,</span> <span class="s2">&quot;.jpg&quot;</span><span class="p">,</span> <span class="s2">&quot;.jpeg&quot;</span><span class="p">,</span> <span class="s2">&quot;.tif&quot;</span><span class="p">,</span> <span class="s2">&quot;.tiff&quot;</span><span class="p">}</span>
 
 <span class="c1">#: Default trial budget when ``--n-trials`` is omitted for a ``random`` or Optuna</span>
 <span class="c1">#: strategy (grid is exhaustive and ignores it).</span>
@@ -660,7 +669,7 @@
 
 <span class="c1">#: Schema version of the ``.pht-tune-cache/run.json`` marker (bump on any key</span>
 <span class="c1">#: change so a reader can branch on the contract).</span>
-<span class="n">_RUN_MARKER_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">_RUN_MARKER_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span>
 
 <span class="c1">#: The study name every tune run uses (the Optuna ``study_name`` + the marker&#39;s</span>
 <span class="c1">#: ``study_name`` field). A single constant keeps the store, the SLURM fleet, and</span>
@@ -669,6 +678,10 @@
 <span class="c1">#: ``&quot;tune&quot;`` (maximize) study is never reopened — the silent-maximize hazard is</span>
 <span class="c1">#: impossible by construction, not contingent on a runtime guard.</span>
 <span class="n">_STUDY_NAME</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;tune_cost_v1&quot;</span>
+
+<span class="n">_SLURM_SUGAR_KEYS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span><span class="s2">&quot;partition&quot;</span><span class="p">,</span> <span class="s2">&quot;mem&quot;</span><span class="p">,</span> <span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;constraint&quot;</span><span class="p">}</span>
+<span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_default_study_db_url</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -680,6 +693,13 @@
 <span class="sd">    location (the resolver&#39;s no-file default).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;sqlite:///</span><span class="si">{</span><span class="n">io</span><span class="o">.</span><span class="n">resolve_study_db_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_default_journal_url</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the absolute run-local journal URL for a Slurm fleet.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">journal_url_for_path</span><span class="p">(</span>
+        <span class="n">io</span><span class="o">.</span><span class="n">tune_cache_journal_path</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span><span class="o">.</span><span class="n">absolute</span><span class="p">())</span>
+    <span class="p">)</span>
 
 
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -696,6 +716,7 @@
     <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">spec_storage_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">slurm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the Optuna storage URL with the canonical 4-way fallback.</span>
 
@@ -731,7 +752,7 @@
         <span class="n">storage_url</span>
         <span class="ow">or</span> <span class="n">spec_storage_url</span>
         <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">PHENOTYPIC_TUNE_STORAGE_URL_ENV</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="n">_default_study_db_url</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="p">(</span><span class="n">_default_journal_url</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="k">if</span> <span class="n">slurm</span> <span class="k">else</span> <span class="n">_default_study_db_url</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span>
     <span class="p">)</span>
     <span class="n">_reject_password_in_url</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">url</span>
@@ -777,6 +798,17 @@
     <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s2">&quot;kind&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_effective_terminal_budget</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">TuningSpec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the first terminal-trial cap the engine can reach.&quot;&quot;&quot;</span>
+    <span class="n">budget</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="s2">&quot;budget&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">caps</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">getattr</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span> <span class="s2">&quot;n_trials&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="nb">getattr</span><span class="p">(</span><span class="n">budget</span><span class="p">,</span> <span class="s2">&quot;n_trials&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">defined</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">cap</span><span class="p">)</span> <span class="k">for</span> <span class="n">cap</span> <span class="ow">in</span> <span class="n">caps</span> <span class="k">if</span> <span class="n">cap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">defined</span><span class="p">)</span> <span class="k">if</span> <span class="n">defined</span> <span class="k">else</span> <span class="kc">None</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_write_run_marker</span><span class="p">(</span>
     <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">spec</span><span class="p">:</span> <span class="n">TuningSpec</span><span class="p">,</span>
@@ -784,14 +816,18 @@
     <span class="n">storage_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">images_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="n">slurm</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">nrows</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ncols</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">generation</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">required</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Write the ``.pht-tune-cache/run.json`` marker at run START.</span>
 
-<span class="sd">    Emitted right after the ``deliverables/`` mkdir and BEFORE the engine/SLURM</span>
-<span class="sd">    branch, so a live run is marked before any deliverable lands and the GUI</span>
-<span class="sd">    shell classifier can recognise the output. The caller passes the already</span>
-<span class="sd">    resolved Optuna URL for Optuna runs and ``None`` for grid/random runs, so the</span>
-<span class="sd">    marker matches the backend the run actually uses.</span>
+<span class="sd">    Local runs emit after creating ``deliverables/`` and before optimization.</span>
+<span class="sd">    Slurm runs emit only after lifecycle ownership and shared-study preparation,</span>
+<span class="sd">    inside the generation publication guard. The caller passes the already</span>
+<span class="sd">    resolved Optuna URL for Optuna runs and ``None`` for grid/random runs, so a</span>
+<span class="sd">    live run remains GUI-discoverable and its marker names the actual backend.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        output_dir: The run output directory.</span>
@@ -801,18 +837,28 @@
 <span class="sd">            non-Optuna strategies.</span>
 <span class="sd">        images_dir: The calibration image directory (the ``-i`` arg), or ``None``.</span>
 <span class="sd">        slurm: Whether this run submits a distributed worker fleet.</span>
+<span class="sd">        nrows: Fixed calibration grid row count, or ``None``.</span>
+<span class="sd">        ncols: Fixed calibration grid column count, or ``None``.</span>
+<span class="sd">        generation: Exact Slurm lifecycle generation owning this marker.</span>
+<span class="sd">        required: Re-raise write failures for a load-bearing Slurm marker.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">marker</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="n">_RUN_MARKER_VERSION</span><span class="p">,</span>
         <span class="s2">&quot;study_name&quot;</span><span class="p">:</span> <span class="n">_STUDY_NAME</span><span class="p">,</span>
         <span class="s2">&quot;storage_url&quot;</span><span class="p">:</span> <span class="n">storage_url</span><span class="p">,</span>
-        <span class="s2">&quot;images_dir&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">images_dir</span><span class="p">)</span> <span class="k">if</span> <span class="n">images_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;images_dir&quot;</span><span class="p">:</span> <span class="p">(</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">images_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span> <span class="k">if</span> <span class="n">images_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">),</span>
+        <span class="s2">&quot;nrows&quot;</span><span class="p">:</span> <span class="n">nrows</span><span class="p">,</span>
+        <span class="s2">&quot;ncols&quot;</span><span class="p">:</span> <span class="n">ncols</span><span class="p">,</span>
         <span class="s2">&quot;strategy&quot;</span><span class="p">:</span> <span class="n">_strategy_marker_name</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">strategy</span><span class="p">),</span>
-        <span class="s2">&quot;n_trials&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span> <span class="s2">&quot;n_trials&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="s2">&quot;n_trials&quot;</span><span class="p">:</span> <span class="n">_effective_terminal_budget</span><span class="p">(</span><span class="n">spec</span><span class="p">),</span>
         <span class="s2">&quot;is_multi_objective&quot;</span><span class="p">:</span> <span class="n">is_multi_objective</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">),</span>
         <span class="s2">&quot;slurm&quot;</span><span class="p">:</span> <span class="n">slurm</span><span class="p">,</span>
         <span class="s2">&quot;start_time&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
     <span class="p">}</span>
+    <span class="k">if</span> <span class="n">generation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">marker</span><span class="p">[</span><span class="s2">&quot;generation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">generation</span>
     <span class="n">marker_path</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">tune_cache_run_marker_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
     <span class="c1"># The marker is a GUI-discovery SIDECAR, not a deliverable: a read-only /</span>
     <span class="c1"># over-quota output FS (the HPCC reality) raising OSError here must NOT abort</span>
@@ -822,6 +868,8 @@
         <span class="n">marker_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">atomic_write_text</span><span class="p">(</span><span class="n">marker_path</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">marker</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
     <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">required</span><span class="p">:</span>
+            <span class="k">raise</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
             <span class="s2">&quot;could not write the tune run.json marker at </span><span class="si">%s</span><span class="s2">; the run proceeds &quot;</span>
             <span class="s2">&quot;but the GUI may not auto-discover it&quot;</span><span class="p">,</span>
@@ -836,10 +884,13 @@
     <span class="n">nrows</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">ncols</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load every image file under ``input_dir`` as a ``GridImage``.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load every image under ``input_dir`` as a ``GridImage``.</span>
 
 <span class="sd">    Mirrors the forward CLI&#39;s directory scan; tuning targets arrayed plates, so</span>
-<span class="sd">    images load as ``GridImage`` via ``imread``. Unreadable / non-grid files are</span>
+<span class="sd">    images load as ``GridImage``. Ordinary image files go through ``imread``;</span>
+<span class="sd">    ``*.ome.zarr`` **store directories** written by a previous forward run go</span>
+<span class="sd">    through :func:`load_image_from_store`, so a tuning run can be pointed</span>
+<span class="sd">    straight at ``results/&lt;dataset&gt;/zarr/``. Unreadable / non-grid entries are</span>
 <span class="sd">    skipped (warned) rather than aborting the whole run.</span>
 
 <span class="sd">    Args:</span>
@@ -855,9 +906,21 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        The loaded ``GridImage`` instances, in sorted filename order.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">STORE_SUFFIX</span><span class="p">,</span> <span class="n">load_image_from_store</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_is_store</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="c1"># A store is a DIRECTORY, and its `.part`/`.trash` siblings are</span>
+        <span class="c1"># dotted -- the same two tests the CLI&#39;s own store scan makes.</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
+            <span class="ow">and</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">STORE_SUFFIX</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+
     <span class="n">paths</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
         <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">(</span><span class="n">input_dir</span><span class="p">)</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_IMAGE_SUFFIXES</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_IMAGE_SUFFIXES</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">_is_store</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
     <span class="p">)</span>
     <span class="n">grid_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">if</span> <span class="n">nrows</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ncols</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -866,8 +929,15 @@
     <span class="n">failures</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">images</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">GridImage</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">grid_kwargs</span><span class="p">))</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># skip unreadable / non-grid files, don&#39;t abort</span>
+            <span class="k">if</span> <span class="n">_is_store</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                <span class="c1"># A store already records its own grid state; the</span>
+                <span class="c1"># nrows/ncols imread overrides do not apply to it.</span>
+                <span class="n">images</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">load_image_from_store</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">fallback</span><span class="o">=</span><span class="s2">&quot;GridImage&quot;</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">images</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">GridImage</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">grid_kwargs</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># skip unreadable / non-grid entries, don&#39;t abort</span>
             <span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)))</span>
     <span class="k">if</span> <span class="n">failures</span><span class="p">:</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
@@ -886,7 +956,7 @@
 <span class="sd">    an Optuna sampler (``tpe`` / ``cmaes`` / ``gp`` / ``nsga2``) builds an</span>
 <span class="sd">    :class:`OptunaConfig`, first calling ``_require_optuna`` so a missing ``tune``</span>
 <span class="sd">    extra raises an **actionable** ``ImportError`` (pointing at</span>
-<span class="sd">    ``uv sync --extras tune``) rather than a bare ``KeyError`` deep in ``build``.</span>
+<span class="sd">    ``uv sync --extra tune``) rather than a bare ``KeyError`` deep in ``build``.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        name: The strategy name (a closed set; validated by the CLI choices).</span>
@@ -963,6 +1033,7 @@
     <span class="n">storage_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">held_out_fraction</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
     <span class="n">cv_group</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">slurm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_ResolvedRunConfig</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve CLI overrides and storage policy before any run side effects.&quot;&quot;&quot;</span>
     <span class="c1"># Reject explicit secrets before an Optuna strategy override imports optuna.</span>
@@ -997,7 +1068,10 @@
     <span class="k">if</span> <span class="n">is_optuna</span><span class="p">:</span>
         <span class="n">spec_storage_url</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">resolved_spec</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span> <span class="s2">&quot;storage_url&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="n">effective_storage_url</span> <span class="o">=</span> <span class="n">_resolve_storage_url</span><span class="p">(</span>
-            <span class="n">storage_url</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">spec_storage_url</span><span class="o">=</span><span class="n">spec_storage_url</span>
+            <span class="n">storage_url</span><span class="p">,</span>
+            <span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">spec_storage_url</span><span class="o">=</span><span class="n">spec_storage_url</span><span class="p">,</span>
+            <span class="n">slurm</span><span class="o">=</span><span class="n">slurm</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">resolved_spec</span> <span class="o">=</span> <span class="n">resolved_spec</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span>
             <span class="n">update</span><span class="o">=</span><span class="p">{</span>
@@ -1035,6 +1109,9 @@
     <span class="n">storage_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">resume_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">directions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">objective_axes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">study_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">_STUDY_NAME</span><span class="p">,</span>
+    <span class="n">create</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StudyStore</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Select + open the study backend matching ``strategy``.</span>
 
@@ -1042,8 +1119,9 @@
 <span class="sd">    ``study.db`` (or the explicit ``storage_url``); any other strategy gets the</span>
 <span class="sd">    homegrown :class:`JournalStudyStore` (resumed from ``trials.parquet`` when one</span>
 <span class="sd">    already exists). A multi-objective run passes ``directions`` so the Optuna</span>
-<span class="sd">    store opens a multi-objective study (its ``append`` records the per-objective</span>
-<span class="sd">    vector and ``pareto_front`` reads the study&#39;s native ``best_trials``).</span>
+<span class="sd">    store opens a multi-objective study. Its ``append`` records the per-objective</span>
+<span class="sd">    vector, and ``pareto_front`` applies the shared COMPLETE-only selector over</span>
+<span class="sd">    terminal trials.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        strategy: The resolved strategy config.</span>
@@ -1070,9 +1148,16 @@
             <span class="n">output_dir</span><span class="p">,</span>
             <span class="n">spec_storage_url</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s2">&quot;storage_url&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">OptunaStudyStore</span><span class="p">(</span>
-            <span class="n">storage_url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">study_name</span><span class="o">=</span><span class="n">_STUDY_NAME</span><span class="p">,</span> <span class="n">directions</span><span class="o">=</span><span class="n">directions</span>
-        <span class="p">)</span>
+        <span class="n">store_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;storage_url&quot;</span><span class="p">:</span> <span class="n">url</span><span class="p">,</span>
+            <span class="s2">&quot;study_name&quot;</span><span class="p">:</span> <span class="n">study_name</span><span class="p">,</span>
+            <span class="s2">&quot;directions&quot;</span><span class="p">:</span> <span class="n">directions</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">objective_axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">store_kwargs</span><span class="p">[</span><span class="s2">&quot;objective_axes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">objective_axes</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">create</span><span class="p">:</span>
+            <span class="n">store_kwargs</span><span class="p">[</span><span class="s2">&quot;create&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="n">OptunaStudyStore</span><span class="p">(</span><span class="o">**</span><span class="n">store_kwargs</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">resume_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="k">return</span> <span class="n">JournalStudyStore</span><span class="o">.</span><span class="n">from_parquet</span><span class="p">(</span><span class="n">resume_path</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">JournalStudyStore</span><span class="p">()</span>
@@ -1099,6 +1184,7 @@
     <span class="n">slurm_mem</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">slurm_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">slurm_constraint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">slurm_args</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">nrows</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">ncols</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
@@ -1154,6 +1240,7 @@
         <span class="n">storage_url</span><span class="o">=</span><span class="n">storage_url</span><span class="p">,</span>
         <span class="n">held_out_fraction</span><span class="o">=</span><span class="n">held_out_fraction</span><span class="p">,</span>
         <span class="n">cv_group</span><span class="o">=</span><span class="n">cv_group</span><span class="p">,</span>
+        <span class="n">slurm</span><span class="o">=</span><span class="n">slurm</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">resolved_spec</span> <span class="o">=</span> <span class="n">resolved</span><span class="o">.</span><span class="n">spec</span>
     <span class="n">effective_storage_url</span> <span class="o">=</span> <span class="n">resolved</span><span class="o">.</span><span class="n">storage_url</span>
@@ -1165,7 +1252,78 @@
             <span class="n">spec_path</span><span class="o">=</span><span class="n">spec_path</span><span class="p">,</span>
             <span class="n">images_dir</span><span class="o">=</span><span class="n">images_dir</span><span class="p">,</span>
             <span class="n">n_workers</span><span class="o">=</span><span class="n">n_workers</span><span class="p">,</span>
+            <span class="n">screen</span><span class="o">=</span><span class="n">screen</span><span class="p">,</span>
         <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">slurm</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_slurm_lifecycle</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">generation_publication_guard</span><span class="p">,</span>
+            <span class="n">initialize_slurm_lifecycle</span><span class="p">,</span>
+            <span class="n">mark_generation_failed</span><span class="p">,</span>
+            <span class="n">new_slurm_generation</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">effective_storage_url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">generation</span> <span class="o">=</span> <span class="n">new_slurm_generation</span><span class="p">()</span>
+        <span class="c1"># The ownership claim must be the first shared mutation. A conflicting</span>
+        <span class="c1"># rerun therefore cannot rewrite the incumbent split/spec/marker or open</span>
+        <span class="c1"># the incumbent study through a potentially mutating constructor.</span>
+        <span class="n">initialize_slurm_lifecycle</span><span class="p">(</span>
+            <span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;tune&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">generation_publication_guard</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">generation</span><span class="p">):</span>
+                <span class="n">split</span><span class="p">,</span> <span class="n">images_by_name</span><span class="p">,</span> <span class="n">cal_images</span> <span class="o">=</span> <span class="n">_resolve_calibration_images</span><span class="p">(</span>
+                    <span class="n">resolved_spec</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">output_dir</span>
+                <span class="p">)</span>
+                <span class="n">io</span><span class="o">.</span><span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">atomic_write_text</span><span class="p">(</span>
+                    <span class="n">io</span><span class="o">.</span><span class="n">tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span>
+                    <span class="n">resolved_spec</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span>
+                <span class="p">)</span>
+                <span class="n">_precreate_shared_optuna_study</span><span class="p">(</span>
+                    <span class="n">resolved_spec</span><span class="p">,</span> <span class="n">effective_storage_url</span>
+                <span class="p">)</span>
+                <span class="n">_write_run_marker</span><span class="p">(</span>
+                    <span class="n">output_dir</span><span class="p">,</span>
+                    <span class="n">resolved_spec</span><span class="p">,</span>
+                    <span class="n">storage_url</span><span class="o">=</span><span class="n">effective_storage_url</span><span class="p">,</span>
+                    <span class="n">images_dir</span><span class="o">=</span><span class="n">images_dir</span><span class="p">,</span>
+                    <span class="n">slurm</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
+                    <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
+                    <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+                    <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">mark_generation_failed</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">generation</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span>
+            <span class="k">raise</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_submit_slurm_fleet</span><span class="p">(</span>
+                <span class="n">resolved_spec</span><span class="p">,</span>
+                <span class="n">output_dir</span><span class="p">,</span>
+                <span class="n">storage_url</span><span class="o">=</span><span class="n">effective_storage_url</span><span class="p">,</span>
+                <span class="n">spec_path</span><span class="o">=</span><span class="n">spec_path</span><span class="p">,</span>
+                <span class="n">images_dir</span><span class="o">=</span><span class="n">images_dir</span><span class="p">,</span>
+                <span class="n">split_path</span><span class="o">=</span><span class="n">io</span><span class="o">.</span><span class="n">tune_cache_split_assignment_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span>
+                <span class="n">n_workers</span><span class="o">=</span><span class="n">n_workers</span><span class="p">,</span>
+                <span class="n">slurm_args</span><span class="o">=</span><span class="n">merge_slurm_args</span><span class="p">(</span>
+                    <span class="n">slurm_args</span><span class="p">,</span>
+                    <span class="n">partition</span><span class="o">=</span><span class="n">slurm_partition</span><span class="p">,</span>
+                    <span class="n">mem</span><span class="o">=</span><span class="n">slurm_mem</span><span class="p">,</span>
+                    <span class="n">time</span><span class="o">=</span><span class="n">slurm_time</span><span class="p">,</span>
+                    <span class="n">constraint</span><span class="o">=</span><span class="n">slurm_constraint</span><span class="p">,</span>
+                <span class="p">),</span>
+                <span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
+                <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
+                <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+                <span class="n">shared_state_prepared</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">mark_generation_failed</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">generation</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span>
+            <span class="k">raise</span>
 
     <span class="n">split</span><span class="p">,</span> <span class="n">images_by_name</span><span class="p">,</span> <span class="n">cal_images</span> <span class="o">=</span> <span class="n">_resolve_calibration_images</span><span class="p">(</span>
         <span class="n">resolved_spec</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">output_dir</span>
@@ -1178,46 +1336,34 @@
         <span class="n">io</span><span class="o">.</span><span class="n">tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span> <span class="n">resolved_spec</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="p">)</span>
 
-    <span class="c1"># Mark the run as a tune output at START — before the engine/SLURM branch, so</span>
-    <span class="c1"># a live run (and a fire-and-forget SLURM submission) is GUI-discoverable</span>
-    <span class="c1"># before any deliverable lands. The resolved (non-null) storage URL keeps the</span>
-    <span class="c1"># GUI Monitor off parquet-only mode for an env-driven distributed-Postgres run.</span>
+    <span class="c1"># Mark the run as a tune output at START so a live local run is</span>
+    <span class="c1"># GUI-discoverable before any deliverable lands.</span>
     <span class="n">_write_run_marker</span><span class="p">(</span>
         <span class="n">output_dir</span><span class="p">,</span>
         <span class="n">resolved_spec</span><span class="p">,</span>
         <span class="n">storage_url</span><span class="o">=</span><span class="n">effective_storage_url</span><span class="p">,</span>
         <span class="n">images_dir</span><span class="o">=</span><span class="n">images_dir</span><span class="p">,</span>
-        <span class="n">slurm</span><span class="o">=</span><span class="n">slurm</span><span class="p">,</span>
+        <span class="n">slurm</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
+        <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
     <span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">slurm</span><span class="p">:</span>
-        <span class="k">assert</span> <span class="n">effective_storage_url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">_submit_slurm_fleet</span><span class="p">(</span>
-            <span class="n">resolved_spec</span><span class="p">,</span>
-            <span class="n">output_dir</span><span class="p">,</span>
-            <span class="n">storage_url</span><span class="o">=</span><span class="n">effective_storage_url</span><span class="p">,</span>
-            <span class="n">spec_path</span><span class="o">=</span><span class="n">spec_path</span><span class="p">,</span>
-            <span class="n">images_dir</span><span class="o">=</span><span class="n">images_dir</span><span class="p">,</span>
-            <span class="n">split_path</span><span class="o">=</span><span class="n">io</span><span class="o">.</span><span class="n">tune_cache_split_assignment_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span>
-            <span class="n">n_workers</span><span class="o">=</span><span class="n">n_workers</span><span class="p">,</span>
-            <span class="n">slurm_partition</span><span class="o">=</span><span class="n">slurm_partition</span><span class="p">,</span>
-            <span class="n">slurm_mem</span><span class="o">=</span><span class="n">slurm_mem</span><span class="p">,</span>
-            <span class="n">slurm_time</span><span class="o">=</span><span class="n">slurm_time</span><span class="p">,</span>
-            <span class="n">slurm_constraint</span><span class="o">=</span><span class="n">slurm_constraint</span><span class="p">,</span>
-            <span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
-            <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
-        <span class="p">)</span>
 
     <span class="n">trials_path</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">trials_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
     <span class="c1"># Multi-objective is inferred from the scorer (plan §0b): the directions feed</span>
     <span class="c1"># both the Optuna store (Pareto front) and, via the engine, the NSGA-II study.</span>
     <span class="n">directions</span> <span class="o">=</span> <span class="n">objective_directions</span><span class="p">(</span><span class="n">resolved_spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">)</span>
+    <span class="n">store_axes</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">tuple</span><span class="p">(</span><span class="n">objective_names</span><span class="p">(</span><span class="n">resolved_spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">is_multi_objective</span><span class="p">(</span><span class="n">resolved_spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">)</span>
+        <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
     <span class="n">store</span> <span class="o">=</span> <span class="n">_open_store</span><span class="p">(</span>
         <span class="n">resolved_spec</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span>
         <span class="n">output_dir</span><span class="p">,</span>
         <span class="n">storage_url</span><span class="o">=</span><span class="n">effective_storage_url</span><span class="p">,</span>
         <span class="n">resume_path</span><span class="o">=</span><span class="n">trials_path</span><span class="p">,</span>
         <span class="n">directions</span><span class="o">=</span><span class="n">directions</span><span class="p">,</span>
+        <span class="n">objective_axes</span><span class="o">=</span><span class="n">store_axes</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">screen</span><span class="p">:</span>
@@ -1225,7 +1371,21 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">engine</span> <span class="o">=</span> <span class="n">TuningEngine</span><span class="p">(</span><span class="n">resolved_spec</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">)</span>
         <span class="n">best</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">cal_images</span><span class="p">)</span>
-    <span class="n">headline</span> <span class="o">=</span> <span class="n">_headline_winner</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
+    <span class="n">multi_objective_run</span> <span class="o">=</span> <span class="n">is_multi_objective</span><span class="p">(</span><span class="n">resolved_spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">)</span>
+    <span class="n">objective_axes</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">tuple</span><span class="p">(</span><span class="n">objective_names</span><span class="p">(</span><span class="n">resolved_spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">multi_objective_run</span>
+        <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
+    <span class="n">headline</span> <span class="o">=</span> <span class="n">_headline_winner</span><span class="p">(</span>
+        <span class="n">store</span><span class="p">,</span>
+        <span class="n">multi_objective</span><span class="o">=</span><span class="n">multi_objective_run</span><span class="p">,</span>
+        <span class="n">objective_axes</span><span class="o">=</span><span class="n">objective_axes</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">multi_objective_run</span> <span class="ow">and</span> <span class="n">headline</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="s2">&quot;the terminal study has no valid winner; refusing publication&quot;</span>
+        <span class="p">)</span>
     <span class="n">winner_pipeline</span> <span class="o">=</span> <span class="n">_pipeline_for_trial</span><span class="p">(</span><span class="n">resolved_spec</span><span class="p">,</span> <span class="n">headline</span><span class="p">)</span>
 
     <span class="n">_finalize_outputs</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">trials_path</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">winner_pipeline</span><span class="p">)</span>
@@ -1233,13 +1393,21 @@
     <span class="c1"># per-objective best pipelines) and overwrite best_pipeline.json with the</span>
     <span class="c1"># knee; a single-objective run&#39;s empty front makes this a no-op (no pareto/</span>
     <span class="c1"># dir — the back-compat lock, plan §0b).</span>
-    <span class="n">_finalize_pareto_outputs</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">resolved_spec</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
-    <span class="n">_finalize_best_params</span><span class="p">(</span><span class="n">headline</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">selection</span><span class="o">=</span><span class="n">_selection_label</span><span class="p">(</span><span class="n">store</span><span class="p">))</span>
+    <span class="n">_finalize_pareto_outputs</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">resolved_spec</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">objective_axes</span><span class="p">)</span>
+    <span class="n">_finalize_best_params</span><span class="p">(</span>
+        <span class="n">headline</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="p">,</span>
+        <span class="n">selection</span><span class="o">=</span><span class="n">_selection_label</span><span class="p">(</span>
+            <span class="n">store</span><span class="p">,</span>
+            <span class="n">multi_objective</span><span class="o">=</span><span class="n">multi_objective_run</span><span class="p">,</span>
+            <span class="n">objective_axes</span><span class="o">=</span><span class="n">objective_axes</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
     <span class="c1"># Report-only held-out generalization verdict → deliverables/generalization.json.</span>
     <span class="n">_finalize_generalization</span><span class="p">(</span>
         <span class="n">headline</span><span class="p">,</span> <span class="n">resolved_spec</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">split</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">images_by_name</span>
     <span class="p">)</span>
-    <span class="k">return</span> <span class="n">headline</span> <span class="k">if</span> <span class="n">headline</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">best</span></div>
+    <span class="k">return</span> <span class="n">headline</span> <span class="k">if</span> <span class="n">multi_objective_run</span> <span class="k">else</span> <span class="n">best</span></div>
 
 
 
@@ -1268,10 +1436,15 @@
     <span class="n">spec_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="n">images_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="n">n_workers</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+    <span class="n">screen</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Reject unsupported SLURM combinations before any run artifact is written.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">screen</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--screen is not supported with --slurm&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">resolved</span><span class="o">.</span><span class="n">is_optuna</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--slurm requires an Optuna strategy&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">_is_sqlite_url</span><span class="p">(</span><span class="n">resolved</span><span class="o">.</span><span class="n">storage_url</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--slurm cannot use a SQLite storage URL&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">spec_path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">images_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
             <span class="s2">&quot;--slurm requires the on-disk spec path and image directory &quot;</span>
@@ -1281,17 +1454,96 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--n-workers must be a positive integer&quot;</span><span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_headline_winner</span><span class="p">(</span><span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the run&#39;s single headline winner across scalar and Pareto runs.&quot;&quot;&quot;</span>
-    <span class="n">front</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">pareto_front</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">front</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">store</span><span class="o">.</span><span class="n">knee_point</span><span class="p">(</span><span class="n">front</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_canonical_slurm_argument</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Collapse aliases onto the same key used by SBATCH directive rendering.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;mem_gb&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;slurm_mem&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">G&quot;</span>
+    <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;slurm_&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;slurm_</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">value</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">merge_slurm_args</span><span class="p">(</span>
+    <span class="n">explicit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">partition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">mem</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">constraint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Merge legacy Slurm flags with explicit pairs; explicit values win.&quot;&quot;&quot;</span>
+    <span class="n">merged</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="p">(</span><span class="s2">&quot;partition&quot;</span><span class="p">,</span> <span class="n">partition</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;mem&quot;</span><span class="p">,</span> <span class="n">mem</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">time</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;constraint&quot;</span><span class="p">,</span> <span class="n">constraint</span><span class="p">),</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">merged</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;slurm_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">(</span><span class="n">explicit</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">canonical_key</span><span class="p">,</span> <span class="n">canonical_value</span> <span class="o">=</span> <span class="n">_canonical_slurm_argument</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="n">value</span><span class="p">)</span>
+        <span class="n">merged</span><span class="p">[</span><span class="n">canonical_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">canonical_value</span>
+    <span class="k">return</span> <span class="n">merged</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_store_has_multi_objective_history</span><span class="p">(</span><span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Infer multi-objective identity from sidecars for direct private callers.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">any</span><span class="p">(</span>
+        <span class="nb">getattr</span><span class="p">(</span><span class="n">trial</span><span class="p">,</span> <span class="s2">&quot;objectives&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">store</span><span class="o">.</span><span class="n">trials</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_headline_winner</span><span class="p">(</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">multi_objective</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">objective_axes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a headline winner without scalar or partial-vector fallback.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">objective_axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">objective_axes</span> <span class="o">=</span> <span class="n">validate_objective_axes</span><span class="p">(</span><span class="n">objective_axes</span><span class="p">)</span>
+    <span class="n">resolved_multi_objective</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">objective_axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="p">(</span>
+            <span class="n">_store_has_multi_objective_history</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">multi_objective</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">multi_objective</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">resolved_multi_objective</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">objective_axes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">front</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">pareto_front</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">store</span><span class="o">.</span><span class="n">knee_point</span><span class="p">(</span><span class="n">front</span><span class="p">)</span> <span class="k">if</span> <span class="n">front</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">front</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">pareto_front</span><span class="p">(</span><span class="n">objective_axes</span><span class="o">=</span><span class="n">objective_axes</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">store</span><span class="o">.</span><span class="n">knee_point</span><span class="p">(</span><span class="n">front</span><span class="p">,</span> <span class="n">objective_axes</span><span class="o">=</span><span class="n">objective_axes</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">front</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
     <span class="k">return</span> <span class="n">store</span><span class="o">.</span><span class="n">best</span><span class="p">()</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_selection_label</span><span class="p">(</span><span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the best-params selection label for ``store``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="s2">&quot;pareto_knee&quot;</span> <span class="k">if</span> <span class="n">store</span><span class="o">.</span><span class="n">pareto_front</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;single_best&quot;</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_selection_label</span><span class="p">(</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">multi_objective</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">objective_axes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the selection label from identity, not front cardinality.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">objective_axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">objective_axes</span> <span class="o">=</span> <span class="n">validate_objective_axes</span><span class="p">(</span><span class="n">objective_axes</span><span class="p">)</span>
+    <span class="n">resolved_multi_objective</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">objective_axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="p">(</span>
+            <span class="n">_store_has_multi_objective_history</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">multi_objective</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">multi_objective</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="s2">&quot;pareto_knee&quot;</span> <span class="k">if</span> <span class="n">resolved_multi_objective</span> <span class="k">else</span> <span class="s2">&quot;single_best&quot;</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_pipeline_for_trial</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">TuningSpec</span><span class="p">,</span> <span class="n">trial</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]):</span>
@@ -1322,6 +1574,27 @@
     <span class="n">atomic_write_text</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">best_params_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_precreate_shared_optuna_study</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">TuningSpec</span><span class="p">,</span> <span class="n">storage_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create the shared Optuna study once after lifecycle ownership is held.</span>
+
+<span class="sd">    A cold Postgres database cannot safely be initialized concurrently by every</span>
+<span class="sd">    worker. The submitter materializes its schema and study under the generation</span>
+<span class="sd">    publication guard, so workers only open and append to an existing study.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.._study._optuna_store</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptunaStudyStore</span>
+
+    <span class="n">OptunaStudyStore</span><span class="p">(</span>
+        <span class="n">storage_url</span><span class="o">=</span><span class="n">storage_url</span><span class="p">,</span>
+        <span class="n">study_name</span><span class="o">=</span><span class="n">_STUDY_NAME</span><span class="p">,</span>
+        <span class="n">directions</span><span class="o">=</span><span class="n">objective_directions</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">),</span>
+        <span class="n">objective_axes</span><span class="o">=</span><span class="p">(</span>
+            <span class="nb">tuple</span><span class="p">(</span><span class="n">objective_names</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">is_multi_objective</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">)</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_submit_slurm_fleet</span><span class="p">(</span>
     <span class="n">spec</span><span class="p">:</span> <span class="n">TuningSpec</span><span class="p">,</span>
     <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
@@ -1331,12 +1604,11 @@
     <span class="n">images_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="n">split_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">n_workers</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">slurm_partition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">slurm_mem</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">slurm_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">slurm_constraint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">slurm_args</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">nrows</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">ncols</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">generation</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">shared_state_prepared</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Submit a distributed worker fleet via :class:`SlurmExecutor`.</span>
 
@@ -1359,70 +1631,78 @@
 <span class="sd">        slurm_time: The per-worker ``--time`` limit (e.g. ``&quot;04:00:00&quot;``);</span>
 <span class="sd">            ``None`` omits it.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">spec_path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">images_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;--slurm requires the on-disk spec path and image directory &quot;</span>
-            <span class="s2">&quot;(each worker reloads them)&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_slurm_lifecycle</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">generation_publication_guard</span><span class="p">,</span>
+        <span class="n">initialize_slurm_lifecycle</span><span class="p">,</span>
+        <span class="n">mark_generation_failed</span><span class="p">,</span>
+        <span class="n">new_slurm_generation</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">spec_path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">images_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;--slurm requires the on-disk spec path and image directory &quot;</span>
+                <span class="s2">&quot;(each worker reloads them)&quot;</span>
+            <span class="p">)</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">storage_url</span>
+        <span class="n">n_trials</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span> <span class="s2">&quot;n_trials&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">default_workers</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">min</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_trials</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">n_trials</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="n">n_trials</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">4</span>
         <span class="p">)</span>
-    <span class="n">url</span> <span class="o">=</span> <span class="n">storage_url</span>
-    <span class="n">n_trials</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span> <span class="s2">&quot;n_trials&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-    <span class="n">default_workers</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="nb">min</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_trials</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">n_trials</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="n">n_trials</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">4</span>
-    <span class="p">)</span>
-    <span class="n">resolved_workers</span> <span class="o">=</span> <span class="n">n_workers</span> <span class="k">if</span> <span class="n">n_workers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default_workers</span>
-    <span class="k">if</span> <span class="n">resolved_workers</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--n-workers must be a positive integer&quot;</span><span class="p">)</span>
-    <span class="c1"># Pre-create the shared study (and its RDB schema) in THIS process BEFORE the</span>
-    <span class="c1"># fleet starts. A cold Postgres DB has no Optuna schema, so N workers opening</span>
-    <span class="c1"># it simultaneously race to CREATE TYPE studydirection / the trial tables and</span>
-    <span class="c1"># all but one crash with a duplicate-key UniqueViolation. Materializing the</span>
-    <span class="c1"># study once here (Optuna&#39;s documented distributed pattern) means every worker</span>
-    <span class="c1"># finds an existing study and only reads/appends trials. The directions match</span>
-    <span class="c1"># what each worker&#39;s engine infers from the scorer, so the load_if_exists open</span>
-    <span class="c1"># never conflicts.</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">.._study._optuna_store</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptunaStudyStore</span>
+        <span class="n">resolved_workers</span> <span class="o">=</span> <span class="n">n_workers</span> <span class="k">if</span> <span class="n">n_workers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default_workers</span>
+        <span class="k">if</span> <span class="n">resolved_workers</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--n-workers must be a positive integer&quot;</span><span class="p">)</span>
+        <span class="c1"># Each worker launches with the submitting process&#39;s own venv interpreter</span>
+        <span class="c1"># (the absolute sys.executable, shared across the cluster filesystem) —</span>
+        <span class="c1"># bare ``python`` on a fresh compute node would not resolve</span>
+        <span class="c1"># phenotypic/optuna. This reuses the forward CLI&#39;s SLURM interpreter</span>
+        <span class="c1"># resolution for parity.</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_python_command</span>
 
-    <span class="n">directions</span> <span class="o">=</span> <span class="n">objective_directions</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">)</span>
-    <span class="n">OptunaStudyStore</span><span class="p">(</span><span class="n">storage_url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">study_name</span><span class="o">=</span><span class="n">_STUDY_NAME</span><span class="p">,</span> <span class="n">directions</span><span class="o">=</span><span class="n">directions</span><span class="p">)</span>
-    <span class="c1"># Each worker launches with the submitting process&#39;s own venv interpreter</span>
-    <span class="c1"># (the absolute sys.executable, shared across the cluster filesystem) — bare</span>
-    <span class="c1"># ``python`` on a fresh compute node would not resolve phenotypic/optuna. This</span>
-    <span class="c1"># reuses the forward CLI&#39;s SLURM interpreter resolution for parity.</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_python_command</span>
-
-    <span class="n">python_command</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_python_command</span><span class="p">(</span><span class="n">for_slurm</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="c1"># Build the #SBATCH passthrough from the explicit flags only — an unset flag</span>
-    <span class="c1"># is OMITTED so format_sbatch_directives emits no directive for it (the</span>
-    <span class="c1"># cluster default applies). Notably ``slurm_partition`` is no longer hardcoded</span>
-    <span class="c1"># to &quot;batch&quot;: a cluster without a &quot;batch&quot; partition would reject every job.</span>
-    <span class="n">slurm_args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="k">if</span> <span class="n">slurm_partition</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">slurm_args</span><span class="p">[</span><span class="s2">&quot;slurm_partition&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slurm_partition</span>
-    <span class="k">if</span> <span class="n">slurm_mem</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">slurm_args</span><span class="p">[</span><span class="s2">&quot;slurm_mem&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slurm_mem</span>
-    <span class="k">if</span> <span class="n">slurm_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">slurm_args</span><span class="p">[</span><span class="s2">&quot;slurm_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slurm_time</span>
-    <span class="k">if</span> <span class="n">slurm_constraint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">slurm_args</span><span class="p">[</span><span class="s2">&quot;slurm_constraint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slurm_constraint</span>
-    <span class="c1"># Workers reload the RESOLVED spec persisted to deliverables/tuning_spec.json</span>
-    <span class="c1"># (written above), NOT the raw input ``spec_path``: the --strategy / --n-trials</span>
-    <span class="c1"># / --held-out overrides live only in the resolved spec, so handing the workers</span>
-    <span class="c1"># the input file would silently run the original (e.g. grid) strategy on every</span>
-    <span class="c1"># node and the distributed Optuna study would never form.</span>
-    <span class="n">executor</span> <span class="o">=</span> <span class="n">SlurmExecutor</span><span class="p">(</span>
-        <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
-        <span class="n">spec_path</span><span class="o">=</span><span class="n">io</span><span class="o">.</span><span class="n">tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span>
-        <span class="n">images_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">images_dir</span><span class="p">),</span>
-        <span class="n">split_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">split_path</span><span class="p">),</span>
-        <span class="n">study_name</span><span class="o">=</span><span class="n">_STUDY_NAME</span><span class="p">,</span>
-        <span class="n">n_workers</span><span class="o">=</span><span class="n">resolved_workers</span><span class="p">,</span>
-        <span class="n">slurm_args</span><span class="o">=</span><span class="n">slurm_args</span><span class="p">,</span>
-        <span class="n">storage_url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span>
-        <span class="n">python_command</span><span class="o">=</span><span class="n">python_command</span><span class="p">,</span>
-        <span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
-        <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">executor</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="k">lambda</span> <span class="n">w</span><span class="p">:</span> <span class="n">w</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">resolved_workers</span><span class="p">)))</span>
+        <span class="n">python_command</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_python_command</span><span class="p">(</span><span class="n">for_slurm</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># Workers reload the RESOLVED spec persisted to</span>
+        <span class="c1"># deliverables/tuning_spec.json (written above), NOT the raw input</span>
+        <span class="c1"># ``spec_path``: CLI overrides live only in the resolved spec.</span>
+        <span class="k">if</span> <span class="n">generation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">generation</span> <span class="o">=</span> <span class="n">new_slurm_generation</span><span class="p">()</span>
+            <span class="n">initialize_slurm_lifecycle</span><span class="p">(</span>
+                <span class="n">output_dir</span><span class="p">,</span>
+                <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+                <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;tune&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">shared_state_prepared</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">generation_publication_guard</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">generation</span><span class="p">):</span>
+                <span class="n">_precreate_shared_optuna_study</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+                <span class="n">_write_run_marker</span><span class="p">(</span>
+                    <span class="n">output_dir</span><span class="p">,</span>
+                    <span class="n">spec</span><span class="p">,</span>
+                    <span class="n">storage_url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span>
+                    <span class="n">images_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">images_dir</span><span class="p">),</span>
+                    <span class="n">slurm</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
+                    <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
+                    <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+                    <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="n">executor</span> <span class="o">=</span> <span class="n">SlurmExecutor</span><span class="p">(</span>
+            <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">spec_path</span><span class="o">=</span><span class="n">io</span><span class="o">.</span><span class="n">tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span>
+            <span class="n">images_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">images_dir</span><span class="p">),</span>
+            <span class="n">split_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">split_path</span><span class="p">),</span>
+            <span class="n">study_name</span><span class="o">=</span><span class="n">_STUDY_NAME</span><span class="p">,</span>
+            <span class="n">n_workers</span><span class="o">=</span><span class="n">resolved_workers</span><span class="p">,</span>
+            <span class="n">slurm_args</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">slurm_args</span> <span class="ow">or</span> <span class="p">{}),</span>
+            <span class="n">storage_url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span>
+            <span class="n">python_command</span><span class="o">=</span><span class="n">python_command</span><span class="p">,</span>
+            <span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
+            <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
+            <span class="n">lifecycle_generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">executor</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="k">lambda</span> <span class="n">w</span><span class="p">:</span> <span class="n">w</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">resolved_workers</span><span class="p">)))</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">generation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">mark_generation_failed</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">generation</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span>
+        <span class="k">raise</span>
     <span class="k">return</span> <span class="kc">None</span>
 
 
@@ -1576,20 +1856,24 @@
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">JournalStudyStore</span><span class="p">):</span>
         <span class="n">store</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">trials_path</span><span class="p">)</span>
         <span class="k">return</span>
-    <span class="n">mirror</span> <span class="o">=</span> <span class="n">JournalStudyStore</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">store</span><span class="o">.</span><span class="n">trials</span><span class="p">))</span>
+    <span class="n">mirror</span> <span class="o">=</span> <span class="n">JournalStudyStore</span><span class="p">(</span><span class="n">store</span><span class="o">.</span><span class="n">terminal_trials</span><span class="p">())</span>
     <span class="n">mirror</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">trials_path</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_finalize_pareto_outputs</span><span class="p">(</span>
-    <span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">TuningSpec</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">,</span>
+    <span class="n">spec</span><span class="p">:</span> <span class="n">TuningSpec</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">objective_axes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Publish ``deliverables/pareto/`` when the run was multi-objective.</span>
 
 <span class="sd">    A multi-objective run (a scorer whose ``finalize`` returns a dict, so trials</span>
-<span class="sd">    carry ``Trial.objectives``) has a non-empty :meth:`StudyStore.pareto_front`;</span>
-<span class="sd">    a single-objective run&#39;s front is empty and this is a **no-op** — no</span>
-<span class="sd">    ``pareto/`` directory is created (the back-compat lock, plan §0b). When the</span>
-<span class="sd">    front is non-empty it writes, under :func:`pareto_dir`:</span>
+<span class="sd">    carry ``Trial.objectives``) can have a non-empty</span>
+<span class="sd">    :meth:`StudyStore.pareto_front`. An empty front is a **no-op** here; callers</span>
+<span class="sd">    use scorer identity to distinguish a scalar run from an invalid</span>
+<span class="sd">    multi-objective run and refuse the latter before invoking publishers. When</span>
+<span class="sd">    the front is non-empty this writes, under :func:`pareto_dir`:</span>
 
 <span class="sd">    * ``pareto_front.parquet`` — the front&#39;s trials (same schema as</span>
 <span class="sd">      ``trials.parquet``, ``objectives_json`` populated);</span>
@@ -1603,12 +1887,29 @@
 <span class="sd">        store: The finished study store (any backend).</span>
 <span class="sd">        spec: The resolved tuning spec (its ``pipeline`` is the build base).</span>
 <span class="sd">        output_dir: The run directory.</span>
+<span class="sd">        objective_axes: The authoritative scorer-required objective names.</span>
+<span class="sd">            Direct legacy callers may omit them only when the spec has no</span>
+<span class="sd">            multi-objective scorer contract.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.._evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_pipeline</span>
 
-    <span class="n">front</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">pareto_front</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">objective_axes</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">is_multi_objective</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">):</span>
+        <span class="n">resolved_axes</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="n">objective_names</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">resolved_axes</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">validate_objective_axes</span><span class="p">(</span><span class="n">objective_axes</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">objective_axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+    <span class="n">front</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">pareto_front</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">resolved_axes</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">store</span><span class="o">.</span><span class="n">pareto_front</span><span class="p">(</span><span class="n">objective_axes</span><span class="o">=</span><span class="n">resolved_axes</span><span class="p">)</span>
+    <span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">front</span><span class="p">:</span>
-        <span class="k">return</span>  <span class="c1"># single-objective run — no pareto/ dir (back-compat lock)</span>
+        <span class="k">return</span>  <span class="c1"># No eligible front; the caller owns scalar-vs-multi identity.</span>
 
     <span class="n">pareto_dir</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
     <span class="n">pareto_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1618,15 +1919,9 @@
 
     <span class="c1"># One best pipeline + importance per objective axis (stable name order).</span>
     <span class="c1"># Source the axis order from the scorer (authoritative — every axis the</span>
-    <span class="c1"># study optimized) rather than an arbitrary front member, so each axis gets</span>
-    <span class="c1"># a best_&lt;axis&gt;.json even when the front&#39;s first trial floored one to 0.0;</span>
-    <span class="c1"># fall back to the first trial&#39;s keys for a scorer exposing no names.</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">.._multi_objective</span><span class="w"> </span><span class="kn">import</span> <span class="n">objective_names</span> <span class="k">as</span> <span class="n">_scorer_objective_axes</span>
-
-    <span class="n">objective_axes</span> <span class="o">=</span> <span class="n">_scorer_objective_axes</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">list</span><span class="p">(</span>
-        <span class="n">front</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">objectives</span> <span class="ow">or</span> <span class="p">{}</span>
-    <span class="p">)</span>
-    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">objective_axes</span><span class="p">:</span>
+    <span class="c1"># study optimized); only legacy scalar-spec helpers infer sidecar names.</span>
+    <span class="n">axes</span> <span class="o">=</span> <span class="n">resolved_axes</span> <span class="ow">or</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">front</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">objectives</span> <span class="ow">or</span> <span class="p">{})</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">:</span>
         <span class="n">winner</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
             <span class="p">(</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">front</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">objectives</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">t</span><span class="o">.</span><span class="n">objectives</span><span class="p">),</span>
             <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">objectives</span><span class="p">[</span><span class="n">name</span><span class="p">],</span>  <span class="c1"># type: ignore[index]</span>
@@ -1640,11 +1935,22 @@
             <span class="p">)</span>
         <span class="n">atomic_write_text</span><span class="p">(</span>
             <span class="n">io</span><span class="o">.</span><span class="n">pareto_importance_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
-            <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">compute_param_importance</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">objective</span><span class="o">=</span><span class="n">name</span><span class="p">),</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+                <span class="n">compute_param_importance</span><span class="p">(</span>
+                    <span class="n">store</span><span class="p">,</span>
+                    <span class="n">objective</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                    <span class="n">objective_axes</span><span class="o">=</span><span class="n">resolved_axes</span><span class="p">,</span>
+                <span class="p">),</span>
+                <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">),</span>
         <span class="p">)</span>
 
     <span class="c1"># The knee is the run&#39;s headline winner: overwrite best_pipeline.json.</span>
-    <span class="n">knee</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">knee_point</span><span class="p">(</span><span class="n">front</span><span class="p">)</span>
+    <span class="n">knee</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">knee_point</span><span class="p">(</span><span class="n">front</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">resolved_axes</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">store</span><span class="o">.</span><span class="n">knee_point</span><span class="p">(</span><span class="n">front</span><span class="p">,</span> <span class="n">objective_axes</span><span class="o">=</span><span class="n">resolved_axes</span><span class="p">)</span>
+    <span class="p">)</span>
     <span class="k">if</span> <span class="n">knee</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">knee_pipeline</span> <span class="o">=</span> <span class="n">build_pipeline</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">pipeline</span><span class="p">,</span> <span class="n">knee</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
         <span class="n">atomic_write_text</span><span class="p">(</span>

@@ -1,0 +1,959 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Store Results in OME-Zarr &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'how_to/pages/zarr_storage';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/how_to/pages/zarr_storage.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Generate HTML Processing Reports" href="generate_reports.html" />
+    <link rel="prev" title="Migrate legacy results and provenance" href="migrate_ome_zarr.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.19.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="../index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="../index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Correction &amp; Preprocessing</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/correct_grid_rotation.html">How To: Correct Grid Rotation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/enhance_low_contrast.html">How To: Enhance Low-Contrast Images</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/crop_and_pad.html">How To: Crop and Pad Images for Batch Consistency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/denoise_low_light.html">How To: Denoise Low-Light Images</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Detection &amp; Refinement</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/choose_detection_algorithm.html">How To: Choose a Detection Algorithm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/refine_noisy_boundaries.html">How To: Refine Noisy Detection Boundaries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/manual_grid_detection.html">How To: Manual Grid Detection When Automatic Fails</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/combine_detectors.html">How To: Combine Detectors with CompositeDetector</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/merge_fragmented_detections.html">How To: Merge Fragmented Detections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gpu_detection_setup.html">GPU-Accelerated Colony Detection</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Measurement &amp; Analysis</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/measure_colony_size_intensity.html">How To: Measure Colony Size and Intensity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/correct_edge_effects.html">How To: Correct Edge Effects in Plate Assays</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/fit_logistic_growth.html">How To: Fit Logistic Growth Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/assess_image_quality.html">How To: Assess Image Quality Before Pipeline Design</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CLI &amp; Infrastructure</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="rembi_metadata.html">Describe a run’s metadata with REMBI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="slurm_pipelines.html">SLURM Pipelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="polars_cpu_build.html">Choosing the polars CPU build (lts-cpu vs stock)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tuning.html">Hyperparameter Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tune_distributed_hpcc.html">Distributed Tuning on HPCC Clusters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui_hub.html">GUI hub</a></li>
+<li class="toctree-l1"><a class="reference internal" href="serialize_pipelines.html">Serialize and Share Pipelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migrate_ome_zarr.html">Migrate legacy results and provenance</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Store Results in OME-Zarr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generate_reports.html">Generate HTML Processing Reports</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">How-To Guides</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Store Results in OME-Zarr</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="store-results-in-ome-zarr">
+<h1>Store Results in OME-Zarr<a class="headerlink" href="#store-results-in-ome-zarr" title="Link to this heading">#</a></h1>
+<p>Save processed images and their intermediate states as OME-Zarr (NGFF 0.5 /
+Zarr format v3) stores — one directory per image — for efficient storage,
+partial reads, and interoperability with third-party viewers.</p>
+<section id="save-a-processed-image">
+<h2>Save a Processed Image<a class="headerlink" href="#save-a-processed-image" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pht</span>
+
+<span class="n">image</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="s2">&quot;plate.png&quot;</span><span class="p">)</span>
+<span class="c1"># ... process image ...</span>
+<span class="n">image</span><span class="o">.</span><span class="n">save2zarr</span><span class="p">(</span><span class="s2">&quot;processed_plate.ome.zarr&quot;</span><span class="p">)</span>
+
+<span class="n">restored</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">load_zarr</span><span class="p">(</span><span class="s2">&quot;processed_plate.ome.zarr&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The store carries the image layers as named sibling multiscale series
+(<code class="docutils literal notranslate"><span class="pre">rgb</span></code>, <code class="docutils literal notranslate"><span class="pre">gray</span></code>, <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>), the object map as a first-class NGFF label
+image, and all PhenoTypic state in a namespaced <code class="docutils literal notranslate"><span class="pre">attributes.phenotypic</span></code>
+block. <code class="docutils literal notranslate"><span class="pre">rgb</span></code> is omitted entirely when empty, in which case <code class="docutils literal notranslate"><span class="pre">gray</span></code> becomes the
+primary series and the label attaches under it.</p>
+<p>Reading one layer without reconstructing a whole <code class="docutils literal notranslate"><span class="pre">Image</span></code> — and at whatever
+pyramid level you need — is a single call:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">full_res</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">load_layer_zarr</span><span class="p">(</span><span class="s2">&quot;processed_plate.ome.zarr&quot;</span><span class="p">,</span> <span class="s2">&quot;objmap&quot;</span><span class="p">)</span>
+<span class="n">thumbnail</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">load_layer_zarr</span><span class="p">(</span><span class="s2">&quot;processed_plate.ome.zarr&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="save-pipeline-intermediates">
+<h2>Save Pipeline Intermediates<a class="headerlink" href="#save-pipeline-intermediates" title="Link to this heading">#</a></h2>
+<p>Capture the image state after each pipeline operation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pipeline</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">ImagePipeline</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="o">...</span><span class="p">])</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">apply_with_intermediates</span><span class="p">(</span>
+    <span class="n">image</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;intermediates/&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Each intermediate is saved as a separate <code class="docutils literal notranslate"><span class="pre">*.ome.zarr</span></code> store in <code class="docutils literal notranslate"><span class="pre">output_dir/</span></code>,
+named after the operation that produced it. To write a chosen subset of
+layers directly — the GUI builder’s node previews do exactly this — use
+<code class="docutils literal notranslate"><span class="pre">save_intermediate_zarr</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">image</span><span class="o">.</span><span class="n">save_intermediate_zarr</span><span class="p">(</span><span class="s2">&quot;node_03.ome.zarr&quot;</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;detect_mat&quot;</span><span class="p">,))</span>
+</pre></div>
+</div>
+</section>
+<section id="why-ome-zarr">
+<h2>Why OME-Zarr<a class="headerlink" href="#why-ome-zarr" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Pyramid levels:</strong> every series is stored as a multiscale pyramid, so a
+thumbnail or a zoomed-out view reads a small array instead of decoding a
+full plate.</p></li>
+<li><p><strong>Partial reads:</strong> the store is chunked and sharded, so a crop reads only
+the chunks it overlaps — no whole-layer decode.</p></li>
+<li><p><strong>Interoperable:</strong> the store is a conformant NGFF 0.5 image, readable by
+napari (<code class="docutils literal notranslate"><span class="pre">napari-ome-zarr</span></code>), Vizarr, Fiji, and anything else that speaks
+OME-Zarr, without PhenoTypic installed.</p></li>
+<li><p><strong>Self-describing:</strong> metadata, image arrays, masks, and object maps live
+together in one directory, with PhenoTypic state namespaced under
+<code class="docutils literal notranslate"><span class="pre">attributes.phenotypic</span></code> so it never collides with the OME metadata.</p></li>
+<li><p><strong>Crash-safe writes:</strong> each store is built in a <code class="docutils literal notranslate"><span class="pre">.part</span></code> sibling and
+promoted by directory rename, with the root <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code> written last — an
+interrupted write leaves no valid root and reads as absent, never as
+partial.</p></li>
+</ul>
+</section>
+<section id="what-the-store-looks-like-on-disk">
+<h2>What the store looks like on disk<a class="headerlink" href="#what-the-store-looks-like-on-disk" title="Link to this heading">#</a></h2>
+<p>One image is one directory. Everything about it — pixels, label image, metadata,
+grid state — is inside:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>plate_01.ome.zarr/
+├── zarr.json              &lt;- root: bioformats2raw.layout + attributes.phenotypic
+├── OME/
+│   ├── METADATA.ome.xml   &lt;- write-only OME projection; never read back
+│   └── zarr.json
+├── rgb/                   &lt;- primary series (omitted entirely when empty)
+│   ├── zarr.json          &lt;- ome.multiscales for this series
+│   ├── 0/                 &lt;- level 0, full resolution
+│   │   ├── zarr.json
+│   │   └── c.0.0.0        &lt;- one shard; chunks live inside it
+│   ├── 1/                 &lt;- level 1, half resolution
+│   └── labels/
+│       ├── zarr.json      &lt;- ome.labels
+│       └── objmap/        &lt;- the object map, a first-class NGFF label image
+│           ├── zarr.json
+│           ├── 0/
+│           └── 1/
+├── gray/                  &lt;- same shape as rgb
+└── detect_mat/
+</pre></div>
+</div>
+<p>Pyramid depth is not configurable: levels halve until the longest edge is
+512 px or smaller, derived purely from the level-0 shape. Two stores in one
+output tree therefore cannot disagree about geometry.</p>
+<p><strong><code class="docutils literal notranslate"><span class="pre">rgb</span></code> is the primary series only when present.</strong> An enhancement-only or
+delta store has no <code class="docutils literal notranslate"><span class="pre">rgb</span></code>, in which case <code class="docutils literal notranslate"><span class="pre">gray</span></code> becomes primary and
+<code class="docutils literal notranslate"><span class="pre">labels/objmap</span></code> attaches under <code class="docutils literal notranslate"><span class="pre">gray/</span></code> instead. Resolve the label through
+<code class="docutils literal notranslate"><span class="pre">attributes.phenotypic.labels</span></code>, never by hard-coding <code class="docutils literal notranslate"><span class="pre">rgb/labels/objmap</span></code>.</p>
+<p><strong><code class="docutils literal notranslate"><span class="pre">attributes.phenotypic</span></code> is the only thing PhenoTypic reads back.</strong> The <code class="docutils literal notranslate"><span class="pre">ome</span></code>
+blocks and <code class="docutils literal notranslate"><span class="pre">METADATA.ome.xml</span></code> are a write-only projection for other tools; on
+load, the namespaced block is the sole source of truth. That is what keeps a
+third-party tool rewriting OME metadata from changing how PhenoTypic reads the
+store.</p>
+</section>
+<section id="open-a-store-in-another-tool">
+<h2>Open a store in another tool<a class="headerlink" href="#open-a-store-in-another-tool" title="Link to this heading">#</a></h2>
+<p>The store is a conformant NGFF 0.5 image, so it opens without PhenoTypic
+installed:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># napari</span>
+pip<span class="w"> </span>install<span class="w"> </span>napari-ome-zarr<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>napari<span class="w"> </span>plate_01.ome.zarr
+
+<span class="c1"># Vizarr / any HTTP viewer — serve the directory and point the viewer at it</span>
+python<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8000</span><span class="w">    </span><span class="c1"># then open the store&#39;s URL in the viewer</span>
+</pre></div>
+</div>
+<p>QuPath and Fiji read the same layout through their Bio-Formats/OME-Zarr
+readers. In every case the pyramid is what makes a whole-plate view cheap: the
+viewer reads a coarse level rather than decoding full resolution.</p>
+</section>
+<section id="in-a-cli-run">
+<h2>In a CLI run<a class="headerlink" href="#in-a-cli-run" title="Link to this heading">#</a></h2>
+<p>A forward run writes one store per input image:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>&lt;output&gt;/results/&lt;dataset&gt;/zarr/&lt;stem&gt;.ome.zarr/
+</pre></div>
+</div>
+<p>Two flags govern storage behaviour:</p>
+<dl class="simple myst">
+<dt><code class="docutils literal notranslate"><span class="pre">--durable-writes</span></code> / <code class="docutils literal notranslate"><span class="pre">--no-durable-writes</span></code></dt><dd><p>Whether each store is <code class="docutils literal notranslate"><span class="pre">fsync</span></code>ed before being promoted into place. Unset
+means auto-detect — <strong>on under SLURM, off locally</strong> — and the resolved mode
+is logged at run start. Reach for <code class="docutils literal notranslate"><span class="pre">--no-durable-writes</span></code> when a cluster job
+writes to fast local scratch and you accept losing stores to node loss or
+power failure. A walltime kill does <strong>not</strong> need <code class="docutils literal notranslate"><span class="pre">fsync</span></code>: the kernel
+survives it.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">migrate</span></code></dt><dd><p>Accepts a full legacy run, a direct OME-Zarr store, or a process-output tree.
+Full runs convert legacy <code class="docutils literal notranslate"><span class="pre">.h5</span></code> images <strong>in place</strong> and recertify markers;
+direct stores and process trees perform only an explicit root-provenance
+upgrade. Add <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> to validate without scientific writes, <code class="docutils literal notranslate"><span class="pre">--njobs</span> <span class="pre">N</span></code>
+for local parallel root checks, or repeated <code class="docutils literal notranslate"><span class="pre">--slurm</span> <span class="pre">key=value</span></code> options for
+the native migration dispatcher. <code class="docutils literal notranslate"><span class="pre">--delete-sources</span></code> applies only to full-run
+HDF conversion and is refused for provenance-only targets. Running migration
+twice changes nothing the second time. See
+<a class="reference internal" href="migrate_ome_zarr.html"><span class="std std-doc">Migrate legacy results and provenance</span></a>.</p>
+</dd>
+</dl>
+<p>Schema-v2 provenance is an ordered application history. A process store used
+as normal CLI input retains its process application and appends a distinct full
+application, including both pipeline identities. Only a migrated <code class="docutils literal notranslate"><span class="pre">legacy</span></code>
+application may have a null <code class="docutils literal notranslate"><span class="pre">phenotypic_version</span></code>, and only when the historical
+version is unavailable; readers must preserve that null.</p>
+</section>
+<section id="invariants-if-you-are-writing-code-against-a-store">
+<h2>Invariants, if you are writing code against a store<a class="headerlink" href="#invariants-if-you-are-writing-code-against-a-store" title="Link to this heading">#</a></h2>
+<p>Three separate subsystems depend on these, and <strong>none of them can detect a
+violation on its own</strong> — so breaking one is silent:</p>
+<ol class="arabic simple">
+<li><p><strong>A store is promoted by directory rename, with the root <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code>
+written last.</strong> An interrupted write therefore has no valid root and reads
+as absent, never as partial.</p></li>
+<li><p><strong>Nothing writes into a promoted store.</strong> A re-publish builds a new <code class="docutils literal notranslate"><span class="pre">.part</span></code>
+and replaces the directory wholesale.</p></li>
+</ol>
+<p>Because of (1) and (2), both the per-image completion marker and the results
+viewer’s staleness scan identify a store by its root <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code> alone. Add a
+code path that writes into a promoted store and both start reporting stale
+data as fresh, with nothing failing to say so. The guard is
+<code class="docutils literal notranslate"><span class="pre">tests/unit/sdk_/test_ngff_promote.py::test_nothing_writes_into_a_promoted_store</span></code>,
+which asserts inode identity rather than content — a merge-in-place
+implementation leaves the old directory in position with new bytes inside it,
+which passes any content comparison.</p>
+</section>
+<section id="removed">
+<h2>Removed<a class="headerlink" href="#removed" title="Link to this heading">#</a></h2>
+<p>The HDF5 per-image API this page used to document has been removed:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Image.save2hdf5</span></code>, <code class="docutils literal notranslate"><span class="pre">Image.load_hdf5</span></code>, <code class="docutils literal notranslate"><span class="pre">Image.load_layer_hdf5</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">Image.save_intermediate_layers</span></code> (and their <code class="docutils literal notranslate"><span class="pre">GridImage</span></code> counterparts). Per-image
+storage is now an OME-Zarr (NGFF 0.5 / Zarr v3) store; use <code class="docutils literal notranslate"><span class="pre">save2zarr</span></code>,
+<code class="docutils literal notranslate"><span class="pre">load_zarr</span></code>, and <code class="docutils literal notranslate"><span class="pre">load_layer_zarr</span></code>.</p></li>
+<li><p>The DataFrame half of <code class="docutils literal notranslate"><span class="pre">phenotypic.sdk_.HDF</span></code> (<code class="docutils literal notranslate"><span class="pre">save_series_*</span></code>, <code class="docutils literal notranslate"><span class="pre">load_series</span></code>,
+<code class="docutils literal notranslate"><span class="pre">save_frame_*</span></code>, <code class="docutils literal notranslate"><span class="pre">load_frame</span></code>, <code class="docutils literal notranslate"><span class="pre">preallocate_*</span></code>, and their fixed-length-string
+codecs), together with three unrelated statics on the same class —
+<code class="docutils literal notranslate"><span class="pre">HDF.assert_swmr_on</span></code>, <code class="docutils literal notranslate"><span class="pre">HDF.get_uncompressed_sizes_for_group</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">HDF.close_handle</span></code>. These had no remaining call sites. The HDF <strong>read</strong>
+surface is unchanged: the writer/reader properties, the group accessors, and
+<code class="docutils literal notranslate"><span class="pre">HDF.save_array2hdf5</span></code> all survive, because <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">migrate</span></code> is built on them.</p></li>
+<li><p>The HDF path constants <code class="docutils literal notranslate"><span class="pre">DIR_HDF</span></code>, <code class="docutils literal notranslate"><span class="pre">dataset_hdf_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">HdfAttr</span></code>,
+<code class="docutils literal notranslate"><span class="pre">load_image_from_hdf</span></code>, and <code class="docutils literal notranslate"><span class="pre">BundleLayout.hdf_path</span></code>. The two that migration
+still needs live on as private helpers inside
+<code class="docutils literal notranslate"><span class="pre">phenotypic.sdk_._hdf_to_zarr</span></code>.</p></li>
+</ul>
+</section>
+<section id="migration">
+<h2>Migration<a class="headerlink" href="#migration" title="Link to this heading">#</a></h2>
+<p>Existing <code class="docutils literal notranslate"><span class="pre">.h5</span></code> output directories are converted with:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>uv run python -m phenotypic --mode migrate --output &lt;previous-output-dir&gt;
+</pre></div>
+</div>
+<p>A run whose output contains only <code class="docutils literal notranslate"><span class="pre">.h5</span></code> results now fails with a pointer to this
+command rather than converting as a side effect.</p>
+</section>
+<section id="requires">
+<h2>Requires<a class="headerlink" href="#requires" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Python 3.11 or 3.12. Python 3.10 is no longer supported.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#save-a-processed-image">Save a Processed Image</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#save-pipeline-intermediates">Save Pipeline Intermediates</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#why-ome-zarr">Why OME-Zarr</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-the-store-looks-like-on-disk">What the store looks like on disk</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#open-a-store-in-another-tool">Open a store in another tool</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#in-a-cli-run">In a CLI run</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#invariants-if-you-are-writing-code-against-a-store">Invariants, if you are writing code against a store</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#removed">Removed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration">Migration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#requires">Requires</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/how_to/pages/zarr_storage.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
