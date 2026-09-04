@@ -118,6 +118,13 @@ FORBIDDEN_EAGER_BY_TARGET: dict[str, tuple[str, ...]] = {
     ),
 }
 
+# A target absent from the mapping would forbid nothing while the test still
+# reported green, so the two must agree by construction.
+assert set(EAGER_TARGETS) == set(FORBIDDEN_EAGER_BY_TARGET), (
+    "every EAGER_TARGETS entry needs a FORBIDDEN_EAGER_BY_TARGET entry: "
+    f"{set(EAGER_TARGETS) ^ set(FORBIDDEN_EAGER_BY_TARGET)}"
+)
+
 #: Every library any target forbids, for the static scan and the allowlist.
 FORBIDDEN_EAGER: tuple[str, ...] = tuple(
     sorted({lib for libs in FORBIDDEN_EAGER_BY_TARGET.values() for lib in libs})
@@ -141,6 +148,16 @@ MODULE_SCOPE_IMPORT_ALLOWLIST: frozenset[tuple[str, str]] = frozenset(
         ("sdk_/hdf_.py", "h5py"),
         ("sdk_/reconnect/_tensor_voting.py", "numba"),
         ("sdk_/branch_pathfinding/_dijkstra_kernels.py", "numba"),
+        # Figure/report builders that are NOT on either eager path. Verified,
+        # not assumed: `_detect_modes_plotter` is reached only from inside
+        # `PlotDetectModes.inspect`/`.report` (`plotting/_image_plots.py:128,137`),
+        # so it stays out of `sys.modules` after `import phenotypic` -- unlike
+        # its sibling `_diagnostics_plotter`, which the `@_diagnostics_figure`
+        # decorator pulls in at class-body time and which therefore did need its
+        # plotly imports deferred.
+        ("_core/_image_parts/plot_accessor/_detect_modes_plotter.py", "plotly"),
+        ("correction/_color_correction/_color_correction_report.py", "plotly"),
+        ("grid/_grid_fit_report.py", "plotly"),
     }
 )
 
@@ -158,12 +175,13 @@ MODULE_SCOPE_ALLOWED_PREFIXES: tuple[tuple[str, str], ...] = (
     # polars is the CLI measurement layer's working dependency; the CLI target
     # does not forbid it. See FORBIDDEN_EAGER_BY_TARGET.
     ("_cli/", "polars"),
-    # Report/figure builders off both eager paths. Deferring plotly inside them
-    # would buy nothing today, but the scan should still notice a NEW one.
-    ("_core/_image_parts/plot_accessor/_detect_modes_plotter.py", "plotly"),
-    ("correction/_color_correction/_color_correction_report.py", "plotly"),
-    ("grid/_grid_fit_report.py", "plotly"),
 )
+
+# NOTE: only genuine directory prefixes belong above. Matching is
+# `relative.startswith(prefix)`, so a full filename here would silently exempt
+# every file whose name extends it -- `grid/_grid_fit_report.py` would also
+# cover a future `grid/_grid_fit_report_v2.py`. Exact files go in
+# MODULE_SCOPE_IMPORT_ALLOWLIST, which is matched by equality.
 
 #: ``(relative source path, module that must not be imported at module scope)``
 #: pairs checked by static AST analysis. This catches a module-scope import the

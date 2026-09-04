@@ -7,7 +7,7 @@ import re
 import sys
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import TYPE_CHECKING, Iterable, Iterator, TypeAlias, TypeGuard
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, TypeAlias, TypeGuard
 
 import pandas as pd
 
@@ -22,8 +22,21 @@ if TYPE_CHECKING:
     import polars as pl
 
     MeasurementFrame: TypeAlias = pd.DataFrame | pl.DataFrame
-else:  # pragma: no cover - the alias is only consulted by a type checker
-    MeasurementFrame: TypeAlias = "pd.DataFrame | pl.DataFrame"
+else:
+    # At runtime the alias resolves to `Any`, deliberately.
+    #
+    # A string (`"pd.DataFrame | pl.DataFrame"`) was tried first and broke the
+    # public API: `typing.get_type_hints(split_measurements)` raised
+    # `NameError: name 'pl' is not defined`, where before it returned
+    # `pandas...DataFrame | polars...DataFrame`. Sphinx autodoc and anything
+    # else that resolves annotations at runtime would have hit that.
+    #
+    # `polars.DataFrame` cannot be named at runtime without importing polars,
+    # which is the whole point of this module's deferral, so `Any` is the honest
+    # runtime value: annotations still resolve, and type checkers still see the
+    # precise union above. Pinned by
+    # `test_public_util_annotations_still_resolve_at_runtime`.
+    MeasurementFrame: TypeAlias = Any
 
 
 def _is_polars_frame(df: object) -> bool:

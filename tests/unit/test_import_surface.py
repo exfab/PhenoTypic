@@ -540,3 +540,24 @@ print(json.dumps({
         "a failed swap-in removed the stub from sys.modules; the next access "
         "would fail differently and laziness would be gone"
     )
+
+
+def test_public_util_annotations_still_resolve_at_runtime():
+    """Deferring a library must not break runtime annotation resolution.
+
+    ``util/_measurement_outputs.py`` annotates its public functions with
+    ``MeasurementFrame``, a union over pandas and polars. Moving polars under
+    ``TYPE_CHECKING`` first left the runtime alias as the *string*
+    ``"pd.DataFrame | pl.DataFrame"``, which made
+    ``typing.get_type_hints(split_measurements)`` raise
+    ``NameError: name 'pl' is not defined`` — where the pre-refactor source
+    returned the resolved union. Sphinx autodoc resolves annotations at runtime,
+    so this would have surfaced as a docs-build failure, not a test failure.
+    """
+    import typing
+
+    from phenotypic.util import generate_output_key, split_measurements
+
+    for function in (split_measurements, generate_output_key):
+        hints = typing.get_type_hints(function)
+        assert "df" in hints, f"{function.__name__} lost its parameter annotation"
