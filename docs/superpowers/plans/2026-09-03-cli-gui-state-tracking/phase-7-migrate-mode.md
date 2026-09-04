@@ -678,7 +678,7 @@ def test_an_interrupted_migration_is_resumable_not_corrupt(tmp_path):
 
 
 def test_the_pre_existing_metadata_receipt_path_still_raises_on_uncertified_drift(tmp_path):
-    """INV-IMMUTABLE's one exception, kept scoped. D-A cut §6.4's GENERALISATION,
+    """INV-PROVEN's certified-transition exception, kept scoped. D-A cut §6.4's GENERALISATION,
     not refresh_success_markers_after_metadata_migration itself -- it serves a real
     historical case and it keeps its RuntimeError."""
     import pytest
@@ -790,7 +790,7 @@ git commit -m "feat(cli): migrate gains a dry run and resumable conversion
 Spec §15.1. Verified end to end on a real legacy tree on GPFS: migrate, then a full
 run that resumes without reprocessing an image, then a GUI bind. The pre-existing
 metadata receipt path keeps its RuntimeError for uncertified artifact drift --
-INV-IMMUTABLE's one exception, still scoped to migrate."
+INV-PROVEN's certified-transition exception, still scoped to migrate."
 ```
 
 ---

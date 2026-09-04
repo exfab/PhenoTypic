@@ -1,6 +1,6 @@
 # Phase 4 — Embedded-table inversion and `finalize_run`
 
-**Depends on:** P3, P0 (S-4). **Blocks:** P5–P7.
+**Depends on:** P3. **Blocks:** P5–P7. *(P0 no longer gates this phase — S-4 was cut by CAN-25 and its one real question lives in Task 1.)*
 
 **Spec:** §7 (measurement and metadata data flow), D8 — as amended by
 [D-A](OPEN-QUESTIONS.md#d-a-per-store-metadata-is-written-at-promote-time-not-backfilled).
@@ -17,7 +17,7 @@ measurements**, before the root `zarr.json`; the metadata join moves to finaliza
 
 `finalize_run` is **six steps, not seven** — step 6 ("backfill `pht-metadata.parquet` per
 store — certified re-promote") is cut. The metadata table is written at promote time
-instead, so no artifact carrying a content proof is ever mutated (**INV-IMMUTABLE**).
+instead, so **no NEW path** writes into a promoted store (**INV-PROVEN**, first obligation).
 
 §7.4's late-metadata guarantee narrows correspondingly, and the narrowing must be
 documented where users read it, not only here:
@@ -204,13 +204,13 @@ this boundary, computed from the baseline before the join."
 - Modify: `src/phenotypic/sdk_/_measurement_tables.py`
 - Test: `tests/unit/cli/test_embedded_table_inversion.py`, `tests/unit/sdk_/`
 
-Implements **D-A** and **INV-IMMUTABLE**.
+Implements **D-A** and **INV-PROVEN**.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```python
 def test_both_tables_land_in_the_same_part_before_the_root(tmp_path):
-    """D-A / INV-IMMUTABLE. The root zarr.json is written last and is the record's
+    """D-A / INV-PROVEN. The root zarr.json is written last and is the record's
     content anchor (_cli_completion.py:41-47), so anything written after it is a
     mutation of a proven artifact. Writing metadata in the same .part is what makes
     the backfill unnecessary."""
@@ -310,7 +310,7 @@ The Parquet KV keys ride along unchanged (§7.2): `phenotypic.join.keys`,
 from the file itself, which is the property that makes the store useful to a third party at
 all.
 
-**Order is load-bearing and is the whole of INV-IMMUTABLE:** chunks → both tables →
+**Order is load-bearing and is INV-PROVEN's first obligation:** chunks → both tables →
 `OME/zarr.json` → root `zarr.json` → `promote_store`. Any other order and an interrupted
 store can read as present.
 
@@ -330,7 +330,7 @@ git add -A src/phenotypic/sdk_ src/phenotypic/_cli tests/unit
 git commit -m "feat(sdk): write pht-metadata.parquet in the store's original promote
 
 D-A. No post-proof store mutation exists on any forward path, so §6.3's hardlink
-re-promote and §6.4's receipt generalisation are both unnecessary. INV-IMMUTABLE is
+re-promote and §6.4's receipt generalisation are both unnecessary. INV-PROVEN is
 pinned by a property test over every file's mtime across a finalize_run."
 ```
 

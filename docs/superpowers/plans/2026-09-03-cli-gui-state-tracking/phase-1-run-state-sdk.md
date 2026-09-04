@@ -1,6 +1,6 @@
 # Phase 1 — `sdk_/_run_state.py`: the one reader
 
-**Depends on:** P0 (S-5 verdict). **Blocks:** P2–P7.
+**Depends on:** nothing. **Blocks:** P2–P7. *(P0 no longer gates this phase — S-5 was demoted to a step in this phase's own gate, CAN-26.)*
 
 **Spec:** §4 (authority model), §5.2 (function surface), §9 (`RunState`), §9.1 (the
 verification cache), §13 (error handling) — as amended by
@@ -23,16 +23,16 @@ rule this phase implements.
 | File | Responsibility |
 |---|---|
 | **Create** `src/phenotypic/sdk_/_run_state.py` | The four public readers and the four state types. Imports nothing from `phenotypic._cli`. ~400 lines. |
-| **Create** `src/phenotypic/sdk_/_verification_cache.py` | The bounded, in-process, identity-fenced verification cache and its currency rule. Separate file because INV-CACHE is tested against it directly and it must be trivially auditable. ~120 lines. |
+| **Create** `src/phenotypic/sdk_/_verification_cache.py` | The bounded, in-process, identity-fenced verification cache and its currency rule. Separate file because INV-VERDICT is tested against it directly and it must be trivially auditable. ~120 lines. |
 | **Modify** `src/phenotypic/sdk_/_io_constants.py` | Add `DIR_IMAGE_RECORDS` and `image_record_path()`. |
 | **Modify** `src/phenotypic/sdk_/__init__.py` | Export `RunIdentity`, `ImageState`, `RunState`, `RunDiagnostics`, `resolve_run_state`, `run_identity`, `assert_identity_current`, `clear_verification_cache`. **Not** `mint_run_identity` — that is a writer and lives CLI-side (P2). |
-| **Create** `tests/unit/sdk_/test_run_state.py` | Verdict matrix, depth behaviour, advisories, INV-DEGRADE. |
-| **Create** `tests/unit/sdk_/test_verification_cache.py` | INV-CACHE mutation suite. **The highest-value test in the change** (spec §14). |
+| **Create** `tests/unit/sdk_/test_run_state.py` | Verdict matrix, depth behaviour, advisories, the degrade half of INV-VERDICT. |
+| **Create** `tests/unit/sdk_/test_verification_cache.py` | INV-VERDICT mutation suite. **The highest-value test in the change** (spec §14). |
 | **Create** `tests/unit/sdk_/test_run_state_layering.py` | INV-LAYER. |
 
 **Why two modules and not one:** the cache is the only part of this phase that can produce
 a *wrong* answer rather than a slow one. Keeping it in its own file with its own test
-module means a reviewer can read all of it at once, and means INV-CACHE's mutation tests
+module means a reviewer can read all of it at once, and means INV-VERDICT's mutation tests
 target a surface small enough to be exhaustive.
 
 **No `verification_cache.json`, and no `VERIFICATION_CACHE_JSON` constant** — unless S-5
@@ -73,12 +73,13 @@ class ImageState:
 
 @dataclass(frozen=True)
 class RunDiagnostics:
+    #: Derived from `images` -- one-line projections, not cached counts. The
+    #: demoted trio (manifest_completed, manifest_total, event_log_present) is
+    #: DROPPED per U-5: verified zero consumers survive P6, and carrying demoted
+    #: evidence into RunState is what keeps it alive as a quasi-evidence surface.
     accepted: int
     verified: int
     failed: int
-    manifest_completed: int | None
-    manifest_total: int | None
-    event_log_present: bool
 
 @dataclass(frozen=True)
 class RunState:
@@ -473,7 +474,7 @@ Spec §9. ImageState is defined here because the spec uses it and never declares
 
 ---
 
-## Task 3: The in-process verification cache and INV-CACHE
+## Task 3: The in-process verification cache and INV-VERDICT
 
 **This is the highest-value task in the phase.** Spec §14 names its mutation tests as the
 highest-value test in the whole change.
@@ -482,18 +483,27 @@ highest-value test in the whole change.
 - Modify: `src/phenotypic/sdk_/_verification_cache.py`
 - Test: `tests/unit/sdk_/test_verification_cache.py`
 
-**Shape, per D-B:** a **bounded** module-level LRU keyed on
-`(resolved output_dir, identity_digest, work_id)`. Bounded is not optional — audit §5,
-S22 and S23 are all findings about unbounded module globals in this codebase
-(`LocalRunner._instances`, `_terminal_job_cache`, `_LAST_DUMPED`), and shipping a fourth
-while deleting the machinery that made the first three necessary would be indefensible.
+**Shape, per D-B and CAN-28:** a module-level map of
+`output_dir → (identity_digest, dict[work_id, CachedVerification])`, **replaced wholesale
+when the identity changes**. No LRU, no `_MAX_ENTRIES`, no eviction policy.
 
-- [ ] **Step 1: Write the INV-CACHE mutation suite first**
+Entries are already identity-fenced, so the only entries that can ever be *used* are those
+under the current identity for the current output; everything else is dead weight an LRU
+would exist only to sweep. Wholesale replacement is bounded by "images in the runs
+currently being asked about" — a **tighter** bound than a 200k-entry LRU — and it *follows
+from* the fence rather than being a policy layered on top of it.
+
+Bounded is still not optional: audit §5, S22 and S23 are all findings about unbounded
+module globals in this codebase (`LocalRunner._instances`, `_terminal_job_cache`,
+`_LAST_DUMPED`), and shipping a fourth while deleting the machinery that made the first
+three necessary would be indefensible. The fence is what makes it bounded.
+
+- [ ] **Step 1: Write the INV-VERDICT mutation suite first**
 
 `tests/unit/sdk_/test_verification_cache.py`:
 
 ```python
-"""INV-CACHE: the cache can only cause re-verification, never a wrong `complete`.
+"""INV-VERDICT: nothing may improve a verdict except a successful deep verification.
 
 Spec §9.1 states the invariant and §14 calls these the highest-value tests in the
 change. The current design's whole point is that it never trusts a cache, so the
@@ -542,7 +552,7 @@ def test_a_forged_entry_cannot_manufacture_complete(incomplete_run):
     from phenotypic.sdk_ import run_identity
     from phenotypic.sdk_._verification_cache import (
         CachedVerification,
-        remember_verification,
+        remember_states,
     )
 
     baseline = resolve_run_state(incomplete_run, depth="deep").completion
@@ -559,17 +569,17 @@ def test_a_forged_entry_cannot_manufacture_complete(incomplete_run):
     after = resolve_run_state(incomplete_run, depth="shallow").completion
     assert after == baseline, (
         "a forged cache changed the verdict; a positive verdict must never come "
-        "from a cache entry alone -- INV-CACHE"
+        "from a cache entry alone -- INV-VERDICT"
     )
 
 
 def test_a_stale_identity_never_matches(complete_run):
-    from phenotypic.sdk_._verification_cache import cached_verification
+    from phenotypic.sdk_._verification_cache import cached_states
 
     state = resolve_run_state(complete_run, depth="deep")
     work_id = next(iter(state.images))
-    assert cached_verification(complete_run, state.identity.digest(), work_id)
-    assert cached_verification(complete_run, "0" * 64, work_id) is None, (
+    assert cached_states(complete_run, state.identity.digest())[work_id]
+    assert cached_states(complete_run, "0" * 64) is None, (
         "an entry minted under a different identity was reused"
     )
 
@@ -600,44 +610,27 @@ def test_ctime_is_not_part_of_the_currency_check(complete_run):
     )
 
 
-def test_the_cache_is_bounded(complete_run):
-    """Audit §5, S22, S23: this codebase's three known unbounded module globals are
-    all findings. A fourth, added by the change that deletes the machinery which
-    made them necessary, would not survive review."""
-    from phenotypic.sdk_._verification_cache import (
-        CachedVerification,
-        _MAX_ENTRIES,
-        remember_verification,
-        verification_cache_size,
-    )
+def test_an_identity_change_replaces_the_output_entry_wholesale(complete_run):
+    """CAN-28. The bound comes from the FENCE, not from an eviction policy: only
+    entries under the current identity for the current output are usable, so a new
+    identity replaces the whole per-output map rather than accumulating alongside it.
 
-    for i in range(_MAX_ENTRIES + 500):
-        remember_verification(
-            complete_run,
-            "d" * 64,
-            CachedVerification(work_id=f"w{i}", verdict=False, stat_tuples={}),
-        )
-    assert verification_cache_size() <= _MAX_ENTRIES
+    Audit §5, S22 and S23 are three findings about unbounded module globals in this
+    codebase. This is bounded by 'images in the runs currently being asked about' --
+    tighter than the 200k-entry LRU an earlier draft proposed, and with no policy to
+    get wrong.
+    """
+    from phenotypic.sdk_._verification_cache import cached_states, tracked_output_count
 
+    resolve_run_state(complete_run, depth="deep")
+    first = _identity_digest(complete_run)
+    assert cached_states(complete_run, first) is not None
 
-def test_eviction_is_lru_and_never_changes_an_answer(complete_run):
-    """An evicted entry must produce a re-verification, not a different verdict."""
-    from phenotypic.sdk_._verification_cache import (
-        CachedVerification,
-        _MAX_ENTRIES,
-        remember_verification,
-    )
+    _edit_pipeline_json(complete_run)          # new identity
+    resolve_run_state(complete_run, depth="deep")
 
-    warm = resolve_run_state(complete_run, depth="deep")
-    for i in range(_MAX_ENTRIES + 10):
-        remember_verification(
-            complete_run,
-            "d" * 64,
-            CachedVerification(work_id=f"filler{i}", verdict=True, stat_tuples={}),
-        )
-    evicted = resolve_run_state(complete_run, depth="shallow")
-    assert evicted.completion == warm.completion
-    assert evicted.depth == "deep", "eviction must escalate, not silently reuse"
+    assert cached_states(complete_run, first) is None, "stale identity entries survived"
+    assert tracked_output_count() == 1, "the output accumulated a second entry"
 
 
 def test_clear_scoped_to_one_output_does_not_clear_another(tmp_path):
@@ -734,57 +727,59 @@ inside ONE long-lived process (the observer's 2 s tick, the viewer's 5-10 s poll
 in-memory cache serves all of them without adding a tracked artifact to a design whose
 purpose is removing them.
 
-INVARIANT (INV-CACHE) -- **the cache can only cause re-verification, never a wrong
-`complete`.** No function here returns a verdict to a caller that has not deep-verified.
+INVARIANT (INV-VERDICT) -- **nothing may improve a verdict except a successful deep
+verification.** No function here returns a verdict to a caller that has not deep-verified.
 ``entry_is_still_current`` answers one question: *may a previously deep-verified result
-stand?* The caller supplies the verdict from its own deep pass, and a ``True`` here
-merely licenses skipping that pass next time. A stale, evicted or forged entry therefore
-degrades to today's behaviour and never past it.
+stand?* The caller supplies the verdict from its own deep pass, and a ``True`` here merely
+licenses skipping that pass next time. A stale, replaced or forged entry therefore degrades
+to today's behaviour and never past it.
 
-``ctime_ns`` is deliberately absent from the stat tuple (audit S3): it moves on
-``chmod``, ownership change, hardlink and ``rsync -a``, all routine on a shared
-filesystem, and ``size`` + ``mtime_ns`` already covers every write the publication
-contract makes.
+``ctime_ns`` is deliberately absent from the stat tuple (audit S3): it moves on ``chmod``,
+ownership change, hardlink and ``rsync -a``, all routine on a shared filesystem, and
+``size`` + ``mtime_ns`` already covers every write the publication contract makes.
 
-**Bounded on purpose.** ``LocalRunner._instances``, ``_terminal_job_cache`` and
-``_LAST_DUMPED`` are three unbounded module globals this codebase already carries as
-audit findings (§5, S22, S23). This one evicts.
+**Bounded by the fence, not by a policy** (CAN-28). ``LocalRunner._instances``,
+``_terminal_job_cache`` and ``_LAST_DUMPED`` are three unbounded module globals this
+codebase already carries as audit findings (§5, S22, S23), so a fourth is not acceptable.
+But an LRU would be a *second* mechanism on top of one that already bounds this: entries
+are identity-fenced, so only those under the current identity for the current output can
+ever be used. Replacing each output's map wholesale on an identity change is therefore both
+tighter and simpler than evicting.
 """
 
 from __future__ import annotations
 
-from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
-#: One entry is ~3 stat tuples. 200k entries covers ~65k images -- an order of
-#: magnitude above the largest run in the audit (10,000) -- at a few tens of MB.
-_MAX_ENTRIES = 200_000
+from ._run_state import ImageState
 
-_CACHE: "OrderedDict[tuple[str, str, str], CachedVerification]" = OrderedDict()
+#: output_dir (resolved, as str) -> (identity_digest, {work_id: CachedVerification})
+_CACHE: dict[str, tuple[str, dict[str, "CachedVerification"]]] = {}
 
 
 @dataclass(frozen=True)
 class CachedVerification:
-    work_id: str
-    verdict: bool
+    #: The WHOLE ImageState (CAN-14). RunState.images needs `stages` per image, so
+    #: an entry carrying only a verdict forces shallow to re-read every record --
+    #: the ~10^4 marker-reads half of audit §4's cost, left in place.
+    state: ImageState
     stat_tuples: Mapping[str, tuple[int, int]]
 ```
 
 Four rules the implementation must obey, each enforced by one of the tests above:
 
-1. `cached_verification` returns `None` unless the `identity_digest` in the key matches
-   **exactly**. There is no partial trust: an identity change discards every entry for
-   that output.
-2. `entry_is_still_current` returns `False` for an empty `stat_tuples` map, a missing
-   file, an `OSError`, or any changed `(size, mtime_ns)`. It never raises.
-3. `remember_verification` evicts the least-recently-used key when the cache exceeds
-   `_MAX_ENTRIES`; `cached_verification` moves a hit to the end.
-4. `clear_verification_cache(output_dir=None)` clears **that output's** keys, or all of
+1. `cached_states` returns `None` unless the stored `identity_digest` matches **exactly**.
+   There is no partial trust: an identity change discards that output's whole map.
+2. `entry_is_still_current` returns `False` for an empty `stat_tuples` map, a missing file,
+   an `OSError`, or any changed `(size, mtime_ns)`. It never raises.
+3. `remember_states` **replaces** the output's entry wholesale under the new identity
+   digest. There is no eviction path to get wrong.
+4. `clear_verification_cache(output_dir=None)` clears **that output's** entry, or all of
    them when `output_dir` is `None`. P2 wires it to `clear_machine_state`.
 
-- [ ] **Step 5: Run the suite.** Expected: PASS (7 passed).
+- [ ] **Step 5: Run the suite.** Expected: PASS (6 passed).
 
 - [ ] **Step 6: Prove each test can fail (spec §14; project test-integrity rule)**
 
@@ -792,10 +787,10 @@ Reintroduce one at a time and confirm the named test fails:
 
 | Bug to reintroduce | Test that must fail |
 |---|---|
-| `cached_verification` ignores `identity_digest` | `test_a_stale_identity_never_matches` |
-| `resolve_run_state` returns the verdict from `entry.verdict` without re-stat | `test_a_forged_entry_cannot_manufacture_complete` |
+| `cached_states` ignores `identity_digest` | `test_a_stale_identity_never_matches` |
+| `resolve_run_state` returns the cached verdict without re-stat | `test_a_forged_entry_cannot_manufacture_complete` |
 | add `st_ctime_ns` to the stat tuple | `test_ctime_is_not_part_of_the_currency_check` |
-| drop the eviction branch from `remember_verification` | `test_the_cache_is_bounded` |
+| `remember_states` merges into the existing map instead of replacing it | `test_an_identity_change_replaces_the_output_entry_wholesale` |
 | `clear_verification_cache` ignores `output_dir` and clears everything | `test_clear_scoped_to_one_output_does_not_clear_another` |
 
 Record the five confirmations in the commit body. **A mutation not demonstrated is a
@@ -835,7 +830,7 @@ If S-5 said the tier is needed:
 ```bash
 git add src/phenotypic/sdk_/_verification_cache.py \
         tests/unit/sdk_/test_verification_cache.py tests/_output_layout.py
-git commit -m "feat(sdk): add the in-process verification cache and pin INV-CACHE
+git commit -m "feat(sdk): add the in-process verification cache and pin INV-VERDICT
 
 Spec §9.1, §14, as amended by D-B: audit S1 asked for a process-level cache and
 that is what this is. S-5 measured cold start at <N>s, so no on-disk tier ships.
@@ -938,7 +933,7 @@ def _read_state_config(output_dir: Path) -> dict[str, object] | None:
     """Return ``processing_state.json``'s ``config`` block, or ``None``.
 
     Plain JSON, no event-log replay -- see the module docstring and OPEN-QUESTIONS
-    Q4. Every failure returns ``None`` rather than raising (INV-DEGRADE).
+    Q4. Every failure returns ``None`` rather than raising (INV-VERDICT's degrade half).
     """
     from ._io_constants import resolve_processing_state_path
 
@@ -1077,7 +1072,7 @@ def test_a_store_built_against_older_metadata_is_an_advisory(complete_run):
 
 
 def test_an_empty_directory_is_incomplete_and_never_raises(tmp_path):
-    """INV-DEGRADE. An unmanaged directory is not an error -- the GUI points at
+    """INV-VERDICT, degrade half. An unmanaged directory is not an error -- the GUI points at
     arbitrary paths and must get an answer, not a traceback."""
     state = resolve_run_state(tmp_path, depth="deep")
     assert state.completion == "incomplete"
@@ -1098,7 +1093,7 @@ def resolve_run_state(output_dir: Path, *, depth: Depth = "deep") -> RunState:
     ``depth="shallow"`` re-stats the in-process cache's recorded tuples and falls
     through to ``deep`` for any image that is absent from the cache, moved, minted
     under a different identity, or unreadable. It **never** yields a positive verdict
-    from a cache entry alone -- INV-CACHE.
+    from a cache entry alone -- INV-VERDICT.
 
     Args:
         output_dir: Run output root. May be any directory, including one this
@@ -1108,7 +1103,7 @@ def resolve_run_state(output_dir: Path, *, depth: Depth = "deep") -> RunState:
 
     Returns:
         A :class:`RunState`. **Never raises** for an unreadable or absent tree --
-        every parse failure degrades toward ``incomplete`` (INV-DEGRADE).
+        every parse failure degrades toward ``incomplete`` (INV-VERDICT's degrade half).
     """
 ```
 
@@ -1301,7 +1296,7 @@ def test_shallow_with_a_cold_cache_equals_deep(complete_run):
 
 - [ ] **Step 3: Implement**
 
-For each accepted `work_id`: if `cached_verification(output_dir, identity.digest(),
+For each accepted `work_id`: if `cached_states(output_dir, identity.digest())` yields an entry for the
 work_id)` returns an entry **and** `entry_is_still_current(output_dir, entry)`, reuse that
 image's previous deep result. Otherwise mark the resolution escalated. If any image
 escalated, re-run the deep verification **for the escalated images only**, remember the

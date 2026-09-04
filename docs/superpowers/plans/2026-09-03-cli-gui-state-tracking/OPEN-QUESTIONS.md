@@ -17,6 +17,28 @@ docs. They are recorded here rather than folded silently into the plan because e
 | Q4 | `sdk_` cannot import `_cli` | Plan resolves: plain-JSON state read, INV-LAYER test | plan |
 | Q6 | Ten test files depend on `master_measurements_csv_path` | Sizing note for P4 | plan |
 
+### Round-1 rulings (2026-09-03) — permanent, not re-raisable
+
+| | Question | Decision | Taken by |
+|---|---|---|---|
+| **U-1** | How far back must `--mode migrate` reach? | **v0.17.3.** Verified to predate the marker schema (`379acee4`, 2026-08-17) and OME-Zarr, writing `version="2.0.0"` with no `success_markers_required` — so **the floor IS the pre-markers shape**. Below it, refuse by version string. | user |
+| **U-2** | §4.3's `complete` — one clause or two? | **Two.** The run-proof-subsumes-it argument rested on INV-IMMUTABLE, which CAN-3 proved false. Completion stays O(N) in per-image proofs, which is what makes the cache load-bearing. | user |
+| **U-3** | §7.3's master schema stamp | **Keep it, and name a reader.** `read_master_measurements()` raises on an unstamped or wrong-versioned master; §7.3 corrected to claim only in-repo readers. | user |
+| **U-4** | Is `publication_id` redundant? | **Yes — cut it.** Validated: nine sites, one branching consumer, zero for the GUI copy. Today's uuid is not redundant; §5.1's content-derived redefinition makes it a pure function of two values the binding check already compares. Run proof carries `source_set_digest`. Headline **14 → 5**. | user (after verification) |
+| **U-5** | Does `RunDiagnostics`'s demoted trio have consumers? | **No — drop it.** Every manifest-count reader is deleted by P6. | user (after verification) |
+
+**O-2 is CUT** (CAN-27): `KNOWN_STAGES` could not be built without either breaking
+INV-LAYER — the advisory is emitted from `sdk_`, which may not import `_cli` — or
+duplicating the frozenset. Shared `STAGE_*` constants **close** the typo class instead of
+reporting it, which is less code and is derivation over tracking.
+
+**O-1 is partially taken** (P2 Task 4): the `scheduler_epoch` collapse is narrowed to the
+pair the audit found to be one value passed twice. The rest stays deferred.
+
+**Q2's ladder is amended by U-2 and CAN-4:** rule 1 now carries both of §4.3's clauses
+**and** the full five-way comparison `current_aggregate_is_current` makes today, and rule 2
+requires the liveness authority to be *itself live* (CAN-24).
+
 ---
 
 ## D-A. Per-store metadata is written at promote time, not backfilled
@@ -101,14 +123,14 @@ double read. An in-memory cache serves all of them.
 
 On-disk buys exactly one thing an in-memory cache cannot: **cold-start reuse across
 processes** — a fresh GUI launch, the CLI deriving a resume worklist, each SLURM worker.
-It costs an identity fence on disk, a corruption surface, the INV-CACHE mutation suite,
+It costs an identity fence on disk, a corruption surface, the INV-VERDICT mutation suite,
 `clear_machine_state` coupling, and last-wins concurrent writes.
 
 **Decision:** implement in-process. Run **spike S-5** at implementation time to measure
 whether cold start actually matters at realistic `N`; only add the on-disk variant if it
 does.
 
-INV-CACHE and its mutation suite still apply to the in-process cache — the invariant is
+INV-VERDICT and its mutation suite still apply to the in-process cache — the invariant is
 about *what a cache may cause*, not about where it lives. The forged-file cases in the
 suite become forged-dict cases; the corrupt-JSON cases move to S-5's on-disk variant if
 one ships.
@@ -261,5 +283,5 @@ rest of the collapse is a follow-up.
 
 §6.1 makes `stages` open so the schema can grow additively. Nothing then validates a stage
 name, so `"stage_2"` reads as "stage 2 not done" and never errors. P3 Task 2 keeps the map
-open but adds a module-level `KNOWN_STAGES` frozenset and emits a `RunState.advisory` for
+open but shares `STAGE_*` constants between writer and reader, closing the typo class rather than reporting it. **Superseded by CAN-27.** The original wording proposed a `KNOWN_STAGES` frozenset and an advisory for
 an unrecognised key — surfacing the typo without closing the map.

@@ -24,7 +24,7 @@ mutation to certify. The pre-existing
 `refresh_success_markers_after_metadata_migration` (`_cli_completion.py:305`) is
 **untouched here** and stays scoped to `--mode migrate` in P7 — it serves one historical
 case and keeps `RuntimeError` for an artifact that moved without a covering receipt, which
-is INV-IMMUTABLE's exception and its only one.
+is INV-PROVEN's certified-transition exception.
 
 `stages` therefore carries no `backfilled` key. The map stays open, so adding one later is
 additive.
@@ -192,7 +192,7 @@ def test_recording_one_stage_leaves_the_others_untouched(tmp_path):
 
 
 def test_reading_a_corrupt_record_is_none_not_an_error(tmp_path):
-    """INV-DEGRADE."""
+    """INV-VERDICT, degrade half."""
     from phenotypic._cli._cli_image_record import read_image_record
     from phenotypic.sdk_ import image_record_path
 

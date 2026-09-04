@@ -1,30 +1,29 @@
 # Phase 0 — Spike gate
 
-**Depends on:** nothing. **Blocks:** P1 (via S-5), P5 (via S-2 and S-3).
+**Depends on:** nothing. **Blocks:** P5 only (via S-2 and S-3).
 
 **Spec:** §10, as amended by [D-A and D-B](OPEN-QUESTIONS.md).
 
-**This phase writes no production code.** It produces four measurements and a written
+**This phase writes no production code.** It produces **two** measurements and a written
 verdict for each.
 
 ### What changed from spec §10
 
 | Spike | Spec §10 | Here |
 |---|---|---|
-| **S-1** hardlink re-promote | Gates §6.3; a bad result cascades into §6.4 and §7.4 | **Cut.** D-A writes per-store metadata at promote time, so there is no re-promote to measure and no §6.3 to gate. |
+| **S-1** hardlink re-promote | Gates §6.3; a bad result cascades into §6.4 and §7.4 | **Cut** (D-A). Per-store metadata is written at promote time, so there is no re-promote to measure. *Round-1 note: the mechanism S-1 would have measured already ships — `_clone_file_without_pixel_rewrite`, `sdk_/_measurement_tables.py:233`. Its cost is unmeasured for code already running (CAN-3).* |
 | **S-2** shard sizing | Chunk-sizing formula; whether backfill shares a task | **Kept**, minus the backfill half — shard workers aggregate only. |
 | **S-3** merge cost | Whether `TASK_FINALIZE` holds the merge in memory | **Kept unchanged.** |
-| **S-4** backfill locality | Gates the §8 DAG | **Kept, reduced.** The question moves from "can a *post-hoc* worker project metadata locally?" to "does the *per-image* projection at promote time match what a global join would attribute?" — still worth asking, because duplicate-key fan-out and metadata-only rows are where a local projection quietly diverges. |
-| **S-5** cache cold-start | *(new)* | **Added by D-B.** Decides whether the verification cache needs an on-disk tier at all. |
+| **S-4** backfill locality | Gates the §8 DAG | **Cut** (CAN-25). A set-theoretic identity: `M ⋉ K_i` and `(M ⋉ K_all) ⋉ K_i` are equal for all `M`, `K` when `K_i ⊆ K_all`, which it always is. Its FAIL branch was unreachable. Its one real question moved to P4 Task 1. |
+| **S-5** cache cold-start | *(added by D-B)* | **Demoted** (CAN-26) to a measurement inside P1's phase gate. An on-disk tier is additive at any later point, and the spike measured an approximation of the shipped predicate rather than the predicate. |
 
-**No P0 result can now invalidate the design.** D-A removed the mechanism S-1 was gating.
-S-5 chooses between two implementations of one task; S-2 and S-3 choose parameters.
+**P0 gates P5 and nothing else.** It no longer blocks P1, so it may run **concurrently with
+P1–P4** rather than ahead of them. No P0 result can invalidate the design: S-2 and S-3
+choose parameters, not shapes.
 
 **Files:**
 - Create: `.../spikes/s2_shard_sizing.py`
 - Create: `.../spikes/s3_merge_cost.py`
-- Create: `.../spikes/s4_metadata_projection_locality.py`
-- Create: `.../spikes/s5_cache_cold_start.py`
 - Create: `.../spikes/RESULTS.md`
 - Create: `.../spikes/run_spikes.sbatch`
 
@@ -67,14 +66,24 @@ is present, and `df -T <path>` (must report `gpfs`).
 
 ---
 
-## S-5 — Cache cold start (gates P1's cache shape) — **runs first**
+## S-5 — MOVED to P1's phase gate (CAN-26)
 
 **Measures:** the wall-clock of one **cold** deep verification at realistic `N`, and how
 much a warm in-process cache saves on the second call. Decides whether the on-disk tier
 D-B deferred is needed.
 
-**Why this is the one that runs first:** it is the only P0 result that changes what P1
-builds, and P1 is the phase everything else depends on.
+**No longer a P0 gate, and no longer blocks P1.** D-B already decided in-process. An
+on-disk tier is a *cache*: it degrades to deep on any failure, `clear_machine_state`
+deletes it, it is never authoritative, and no tree migration is involved — so it can be
+added later, additively, at no penalty for having waited. Gating P1 on the measurement
+bought nothing that "add it if it turns out slow" does not.
+
+The spike also hand-rolled the marker-hashing loop rather than calling
+`valid_image_success`, so it measured an *approximation* of the shipped predicate. Once P1
+exists the real thing can be measured for free, against the code that will actually run.
+
+**Run it as a step in P1's phase gate**, using `resolve_run_state` itself. The script below
+is kept for reference; prefer the real predicate.
 
 - [ ] **Step 1: Write the spike**
 
@@ -195,7 +204,7 @@ Write exactly one of:
   only. No new file ships.** This is the expected outcome and the one D-B prefers.
 - **`S-5 ON-DISK TIER NEEDED`** — projected cold verification exceeds 30 s. P1 Task 3
   builds the in-process cache **plus** the `.phenotypic/verification_cache.json` tier from
-  spec §9.1, with the full INV-CACHE mutation suite including the corrupt-JSON cases.
+  spec §9.1, with the full INV-VERDICT mutation suite including the corrupt-JSON cases.
   Record the measured number that justifies the extra artifact **in the module docstring**,
   so a later reader can tell it was measured rather than assumed.
 
@@ -400,124 +409,29 @@ Extrapolate measured peak RSS to `N = 6000`. Write one of:
 
 ---
 
-## S-4 — Metadata projection locality (gates P4's promote-time write)
+## S-4 — CUT (CAN-25)
 
-**Measures, reduced by D-A:** that the metadata rows one image's store should carry —
-computed from that image's own measurements and `metadata.csv`, with no global frame —
-equal the rows a global join would attribute to it, under **duplicate-key fan-out**,
-**metadata-only rows**, and **partial keys**.
+**Removed. It is a set-theoretic identity and cannot fail.**
 
-Under D-A this is asked at promote time, where the worker already holds the image's
-measurements. That makes locality nearly structural — but "nearly" is why the spike still
-runs: duplicate-key fan-out and metadata-only rows are exactly where a local projection
-quietly diverges from a global one, and `prepare_embedded_measurement_table`
-(`_embedded_measurement_tables.py:42`) already warns about both.
+The spike computed local `M ⋉ K_i` against global `(M ⋉ K_all) ⋉ K_i`, where
+`K_i ⊆ K_all` because table *i* is one of the frames in the concat. Those are equal for
+every `M` and every `K`, unconditionally. All four variants (`clean`, `fanout`,
+`metadata_only`, `partial_keys`) perturbed `M` or the common-column set **identically on
+both sides**, and both results were `.sort(common)`-ed, so row order could not diverge
+either. `S-4 PASS` was guaranteed and the `S-4 FAIL` branch — "stop and report; D-A's
+promote-time write cannot be correct" — was unreachable.
 
-- [ ] **Step 9: Write `s4_metadata_projection_locality.py`**
+It would have cost a fixture tree, a Slurm submission and a review cycle to prove an
+algebraic identity, while gating P4 Task 1 on a verdict that could only come back green.
 
-```python
-"""S-4: is the per-image metadata projection local?
-
-Spec §8, §10, reduced by D-A. Asserts an EQUIVALENCE, not a duration: the metadata
-rows a local projection selects for one image must equal the rows a global join
-would attribute to that image, under fan-out, metadata-only rows, and partial keys.
-
-If this fails, P4's promote-time write is wrong and the metadata table has to be
-derived after the merge -- which under D-A means it cannot be written at promote
-time at all, and D-A has to be revisited with the user.
-
-Usage:
-    uv run python .../spikes/s4_metadata_projection_locality.py <output_dir> <metadata.csv>
-"""
-
-from __future__ import annotations
-
-import sys
-from pathlib import Path
-
-
-def _local_projection(table, metadata):
-    """What the promote-time writer can compute from one image alone."""
-    common = [c for c in metadata.columns if c in table.columns]
-    if not common:
-        return None
-    keys = table.select(common).unique()
-    return metadata.join(keys, on=common, how="semi").sort(common)
-
-
-def _global_attribution(all_tables, metadata, index):
-    """What a post-merge finalizer would attribute to image *index*."""
-    import polars as pl
-
-    table = all_tables[index]
-    common = [c for c in metadata.columns if c in table.columns]
-    if not common:
-        return None
-    merged = pl.concat(all_tables, how="diagonal_relaxed")
-    joined = metadata.join(merged.select(common).unique(), on=common, how="semi")
-    keys = table.select(common).unique()
-    return joined.join(keys, on=common, how="semi").sort(common)
-
-
-def main() -> int:
-    import polars as pl
-
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, results_dir
-
-    output_dir = Path(sys.argv[1]).resolve()
-    metadata_csv = Path(sys.argv[2]).resolve()
-
-    tables = [
-        pl.read_parquet(s / MEASUREMENT_TABLE_RELATIVE_PATH)
-        for s in sorted(results_dir(output_dir).glob("*/zarr/*.ome.zarr"))
-        if (s / MEASUREMENT_TABLE_RELATIVE_PATH).is_file()
-    ]
-    base = pl.read_csv(metadata_csv)
-    print(f"n_tables={len(tables)} metadata_rows={base.height}")
-
-    variants = {
-        "clean": base,
-        "fanout": pl.concat([base, base.head(1), base.head(1)]),
-        "metadata_only": pl.concat(
-            [
-                base,
-                base.head(1).with_columns(
-                    pl.lit("__ABSENT__").alias(base.columns[0])
-                ),
-            ]
-        ),
-        "partial_keys": base.drop(base.columns[-1]) if base.width > 1 else base,
-    }
-
-    failures = 0
-    for name, metadata in variants.items():
-        for i in range(min(len(tables), 25)):
-            local = _local_projection(tables[i], metadata)
-            glob = _global_attribution(tables, metadata, i)
-            if local is None and glob is None:
-                continue
-            if local is None or glob is None or not local.equals(glob):
-                failures += 1
-                print(f"MISMATCH variant={name} image={i}")
-                break
-        else:
-            print(f"variant={name}: local == global for every image checked")
-
-    print()
-    print("S-4 PASS" if failures == 0 else f"S-4 FAIL ({failures} variants)")
-    return 1 if failures else 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-```
-
-- [ ] **Step 10: Record the S-4 verdict**
-
-- **`S-4 PASS`** — P4 Task 5 writes `pht-metadata.parquet` at promote time as planned.
-- **`S-4 FAIL`** — **stop and report to the user.** A local projection that diverges from a
-  global one means D-A's promote-time write cannot be correct, and the decision needs
-  revisiting. Name the failing variant and one concrete diverging row.
+**Its one real question moved to P4 Task 1**, which already carries
+`test_no_metadata_table_when_the_join_was_not_requested`,
+`test_no_metadata_table_when_no_columns_are_in_common` and
+`test_duplicate_metadata_keys_preserve_fan_out`. The genuinely open behaviours live at
+finalization, not at projection: a metadata-only row must appear as a phantom in the
+mirror (§7.4 step 3) and in **no** store's metadata table, and a fan-out key matching two
+images appears in both stores without the mirror double-counting it. Neither needs GPFS,
+a 200-store fixture, or a P0 gate.
 
 ---
 

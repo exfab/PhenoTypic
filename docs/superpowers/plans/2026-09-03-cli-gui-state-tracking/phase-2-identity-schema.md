@@ -105,7 +105,7 @@ def test_restart_epoch_survives_clear_machine_state(tmp_path):
 
 
 def test_reading_a_corrupt_restart_epoch_is_zero_not_an_error(tmp_path):
-    """INV-DEGRADE. A restart must not be blocked by an unparseable counter."""
+    """INV-VERDICT, degrade half. A restart must not be blocked by an unparseable counter."""
     from phenotypic._cli._cli_identity import read_restart_epoch
 
     cache = tmp_path / ".phenotypic"
