@@ -102,6 +102,31 @@ def _controls_of(harness: Path) -> set[str]:
     return set()
 
 
+def _targets_of(harness: Path) -> list[Path]:
+    """Return every module the harness mutates.
+
+    Accepts ``TARGETS = (...)`` or a single ``TARGET``. A suite routinely spans
+    modules -- ``test_run_state.py`` proves claims about ``_run_state``,
+    ``_state_types`` AND ``_cli_completion`` -- and a harness restricted to one
+    of them cannot prove the tests about the others. Splitting into two
+    harnesses does not help: they would share a SUITE, so the coverage check
+    would run twice and fail the second time (measured by cluster 1.3).
+    """
+    tree = ast.parse(harness.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        names = {t.id for t in node.targets if isinstance(t, ast.Name)}
+        if not names & {"TARGET", "TARGETS"}:
+            continue
+        return [
+            Path(elt.value)
+            for elt in ast.walk(node.value)
+            if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
+        ]
+    raise SystemExit(f"{harness.name}: no TARGET or TARGETS constant found")
+
+
 def _target_of(harness: Path) -> Path:
     """Return the source file a harness mutates, from ``TARGET``."""
     tree = ast.parse(harness.read_text(encoding="utf-8"))
@@ -160,14 +185,19 @@ def main() -> int:
             failures += 1
             continue
         defined = _test_names(suite)
+        # A parametrized expected name is `test_x[case]`; the AST gives the
+        # bare `test_x`. Compare on the stem, keep the full id for failure
+        # matching in the runner (gap found by cluster 1.3 on day one).
         named = {
-            name for _l, _o, _n, expected in mutations for name in expected
+            name.split("[")[0]
+            for _l, _o, _n, expected in mutations
+            for name in expected
         }
 
-        target = _target_of(harness)
-        drifted = (
-            _broken_anchors(target, mutations) if target.is_file() else []
-        )
+        drifted = []
+        for target in _targets_of(harness):
+            if target.is_file():
+                drifted += _broken_anchors(target, mutations)
 
         print(f"\n{harness.name}  ->  {suite}")
         print(f"  mutations defined      : {len(mutations)}")
