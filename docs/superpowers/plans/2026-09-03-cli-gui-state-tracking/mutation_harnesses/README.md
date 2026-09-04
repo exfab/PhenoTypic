@@ -41,6 +41,41 @@ matching, so the harness prints `SKIPPED` for it. That reads as *not run*
 rather than *not proved*, and it is easy to skim past in a twelve-row report —
 at exactly the moment nobody is thinking about the harness.
 
+## Controls: declared, never inferred
+
+A **control** fails when the implementation becomes *too eager* —
+`test_a_clean_tree_carries_no_advisories` exists to catch an advisory firing
+spuriously. It is proved by the **absence** of a mutation making it fire, so no
+mutation will ever claim it, and demanding one forces a false choice: a
+permanently red gate, or contrived mutations written to satisfy this script
+rather than to catch a bug.
+
+The second is much worse. It degrades the signal for everyone afterwards, and
+the next reader inherits mutations whose only purpose was a green number.
+
+So a harness declares them:
+
+```python
+CONTROLS = (
+    "test_a_clean_tree_carries_no_advisories",
+    "test_a_matching_metadata_snapshot_raises_no_advisory",
+)
+```
+
+Declared controls are excluded from the coverage requirement and **printed on
+their own line**, not silently exempted — an undeclared exemption is exactly how
+a real gap hides behind a green gate, which is the thing this file exists to
+catch. And a name in `CONTROLS` that is not in the suite is an error, just as a
+typo in an expected-test list is, so the escape hatch cannot rot either.
+
+## Scope: the checker sees committed harnesses only
+
+It globs `mutation_harnesses/*.py`. A harness living in a scratchpad is invisible
+to it, so **"the checker is green" does not mean "every anchor in this change is
+validated"** — it means every anchor in every *committed* harness is. If you are
+mutating a target whose harness is not in this directory, that target is
+unwatched. Commit the harness.
+
 ## Two rules the P1 run produced
 
 **Do not edit a target while its harness runs.** A harness holds the pristine

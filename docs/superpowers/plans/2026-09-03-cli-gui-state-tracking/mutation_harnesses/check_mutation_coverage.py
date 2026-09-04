@@ -23,6 +23,26 @@ mutation_harnesses/check_mutation_coverage.py
 
 Exits non-zero when a ``MUTATIONS`` entry names a test that does not exist, or
 when a test no mutation claims exists.
+
+**Controls are the exception, and they are declared rather than inferred.** A
+control's job is to fail when the implementation becomes *too eager* -- it is
+proved by the *absence* of a mutation making it fire spuriously, so no mutation
+will ever claim it. Requiring one would force a false choice: a permanently red
+gate, or contrived mutations written to satisfy this script rather than to catch
+a bug. The second is worse, because it degrades the signal for everyone after.
+
+A harness declares them::
+
+    CONTROLS = (
+        "test_a_clean_tree_carries_no_advisories",
+        "test_a_matching_metadata_snapshot_raises_no_advisory",
+    )
+
+They are excluded from the coverage requirement and **printed on their own
+line**, not silently exempted -- an undeclared exemption is how a real gap hides
+behind a green gate, which is the failure this whole file exists to catch. A name
+in ``CONTROLS`` that is not in the suite is an error, exactly as a typo in a
+mutation's expected-test list is.
 """
 
 from __future__ import annotations
@@ -61,6 +81,25 @@ def _suite_of(harness: Path) -> Path:
         if any(getattr(t, "id", "") == "SUITE" for t in node.targets):
             return Path(ast.literal_eval(node.value))
     raise SystemExit(f"{harness.name}: no SUITE constant found")
+
+
+def _controls_of(harness: Path) -> set[str]:
+    """Return the harness's declared CONTROLS, or an empty set."""
+    tree = ast.parse(harness.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(
+            isinstance(t, ast.Name) and t.id == "CONTROLS"
+            for t in node.targets
+        ):
+            continue
+        return {
+            elt.value
+            for elt in ast.walk(node.value)
+            if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
+        }
+    return set()
 
 
 def _target_of(harness: Path) -> Path:
@@ -134,8 +173,14 @@ def main() -> int:
         print(f"  mutations defined      : {len(mutations)}")
         print(f"  suite tests defined    : {len(defined)}")
         print(f"  tests claimed by a mut : {len(named)}")
-        unknown = sorted(named - defined)
-        uncovered = sorted(defined - named)
+        controls = _controls_of(harness)
+        # A control is proved by the ABSENCE of a mutation making it fire, so
+        # it can never be claimed. Excluded from the requirement, printed
+        # anyway: a silent exemption is how a real gap hides behind a green
+        # gate.
+        unknown = sorted((named - defined) | (controls - defined))
+        uncovered = sorted(defined - named - controls)
+        print(f"  declared controls      : {sorted(controls)}")
         print(f"  unknown (typos)        : {unknown}")
         print(f"  NOT covered by any mut : {uncovered}")
         print(f"  drifted anchors        : {drifted}")

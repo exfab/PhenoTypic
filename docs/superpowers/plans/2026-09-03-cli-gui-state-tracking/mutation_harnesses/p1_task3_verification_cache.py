@@ -71,13 +71,27 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
         (
             "test_a_stale_identity_never_matches",
             "test_an_identity_change_replaces_the_output_entry_wholesale",
+            # End-to-end: with the fence ignored, a bumped
+            # scientific_config_digest no longer discards the stale entries,
+            # so a shallow pass reuses them and reports depth="shallow"
+            # instead of escalating. (P1 cluster 1.3 handover test.)
+            "test_an_identity_change_forces_reverification",
         ),
     ),
     (
         "an empty stat map counts as current (the all([]) inversion)",
         "    if not entry.stat_tuples:\n        return False\n    root = Path",
         "    root = Path",
-        ("test_a_forged_entry_never_licenses_reuse",),
+        (
+            "test_a_forged_entry_never_licenses_reuse",
+            # The same inversion, observed through the resolver: the forged
+            # entries carry stat_tuples={}, so making an empty map "current"
+            # licenses their verdict="verified" and turns an INCOMPLETE run
+            # complete. This is the end-to-end half spec §14 calls the
+            # highest-value test in the change, and the cache-side mutation
+            # above is what it depends on. (P1 cluster 1.3 handover test.)
+            "test_a_forged_entry_cannot_manufacture_complete",
+        ),
     ),
     (
         "ctime_ns replaces mtime_ns in the currency check",
@@ -105,7 +119,14 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
         "        return\n"
         "    _CACHE.pop(_cache_key(output_dir), None)",
         "    _CACHE.clear()",
-        ("test_clear_scoped_to_one_output_does_not_clear_another",),
+        (
+            "test_clear_scoped_to_one_output_does_not_clear_another",
+            # End-to-end: clearing output `a` also empties `b`, so a shallow
+            # pass over the untouched `b` escalates and reports depth="deep".
+            # (P1 cluster 1.3 handover test.)
+            "test_clear_scoped_to_one_output_does_not_clear_another"
+            "_end_to_end",
+        ),
     ),
     (
         "clear_verification_cache(None) is a no-op"
@@ -171,7 +192,26 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
         (
             "test_a_rewritten_artifact_is_not_current",
             "test_a_same_size_rewrite_is_caught_by_mtime",
+            # End-to-end: the tampered overlay changes both size and
+            # mtime_ns, so dropping the comparison keeps the warm entry
+            # "current", the resolver skips its deep pass, and a tampered run
+            # reports complete. (P1 cluster 1.3 handover test.)
+            "test_a_tampered_artifact_falls_through_even_with_a_warm_cache",
         ),
+    ),
+    (
+        "cached_states never returns a warm map -- the cache is written and"
+        " never read. THE SAME BUG HAS A SECOND FORM IN ANOTHER MODULE:"
+        " `_run_state._resolve_images` can stop consulting the cache without"
+        " this function changing at all, so no single harness catches both"
+        " and neither mutation is redundant with the other. This one is the"
+        " cache-side form; the resolver-side form is P1 cluster 1.3's M2."
+        " [inherently broad: every test that stores entries and then reads"
+        " them back goes red too, which is a property of deleting the read"
+        " path rather than a weakness in those tests]",
+        "    entry = _CACHE.get(_cache_key(output_dir))\n",
+        "    entry = None\n",
+        ("test_a_warm_cache_is_actually_used",),
     ),
 ]
 
