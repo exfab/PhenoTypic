@@ -912,3 +912,37 @@ def test_every_convert_verdict_is_dischargeable_by_one_migrate(
     assert requires_conversion(tree) is None, (
         f"{shape}: migrate ran successfully and the gate still refuses it"
     )
+
+
+def test_an_armed_gate_does_not_refuse_a_converted_tree(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """INV-DISCHARGEABLE's other half, at the CLI layer.
+
+    ``test_a_current_tree_is_not_refused_while_the_gate_is_unarmed`` proves the
+    gate is *inert*, which it is for a reason that expires in P3. It cannot
+    prove the gate is *correct*, because an unarmed gate refuses nothing
+    whatever the verdict.
+
+    The failure this catches is the one that strands a user: an ARMED gate
+    refusing a tree that needs no conversion. Every writing mode consults
+    ``_refuse_unmigrated_output`` before ``--restart`` is handled, so a false
+    ``CONVERT`` here is unescapable except by ``--overwrite``, which deletes
+    the outputs.
+
+    Arming by monkeypatch rather than waiting for P3 is what makes it testable
+    now -- the same device ``test_the_gui_reports_rather_than_refuses`` uses,
+    and for the same reason: the detection is already correct, only the
+    refusal waits.
+    """
+    from phenotypic.phenotypicCLI import _refuse_unmigrated_output
+
+    tree = _build_converted(tmp_path / "run")
+    monkeypatch.setattr(_schema_shape, "SCHEMA_GATE_ARMED", True)
+
+    assert requires_conversion(tree) is None, (
+        "a tree migrate already converted still classifies CONVERT"
+    )
+
+    for mode in ("full", "measure", "recompile", "process"):
+        _refuse_unmigrated_output(tree, mode=mode)  # must not raise
