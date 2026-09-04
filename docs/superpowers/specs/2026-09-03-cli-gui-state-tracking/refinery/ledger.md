@@ -523,3 +523,48 @@ different dataclass (CLI progress), untouched. Settles SIMP-R1-09.
   SIMP is the one declining. **Resolve in round 2** with evidence: does any code path read
   the config copy for anything other than the fence comparison?
 
+
+---
+
+## Round 1 — resolutions applied (provenance lock)
+
+Every row names what changed and where. A round-2 reviewer challenging one of these must
+flag `CONFLICT with <ID>`, not raise it fresh.
+
+| ID | Status | What changed |
+|---|---|---|
+| CAN-1 | resolved | P4 Task 3: step 3 is a **new composite** (left-join → anti-join-append phantoms → post ops), not a reuse. Docstring `:1023-1026` + `_cli/CLAUDE.md` added to the doc list. Test asserts both halves in one frame. |
+| CAN-2 | resolved | P4 Task 3: `_consistent_embedded_join_keys` retired from finalize; keys derived once from `metadata.csv` ∩ master columns. DF-2's assertion used **verbatim**, `height > 0` guard included. P5's test corrected. |
+| CAN-3 | resolved | README: INV-IMMUTABLE → **INV-PROVEN** with three obligations. P4 file list gains `replace_embedded_measurement_table`'s in-place branch and `replace_image_store_measurements`. Two new tests (root refresh; unjoined producer). D-A's advisory blind spot documented in P1 Task 5. |
+| CAN-4 | resolved | README + P1 Task 5: rule 1 = both §4.3 clauses (U-2) **and** all five comparisons, with a table of what breaks without each, five parametrized tests, and a mutation step. |
+| CAN-5 | resolved | P5 Task 4: `TASK_FINALIZE` refuses to publish unless it received exactly K shards **and** the merged source set equals `authorized_measurement_sources`. Epoch test rewritten to pass `shard_paths`. |
+| CAN-6 | resolved | P3 Task 1: the cited CAS precedent named as non-existent; three rules (publish merges, record/consume take `exclusive_path_lock`, consume idempotent), three tests, plus an audit of the three local orderings. |
+| CAN-7 | resolved | P2 Task 3 Step 4 (the migrator's inventory-derived generation + missing `restart_epoch`); P3 Step 3c (it is a second **producer**); **P7 Task 2b** — `_migrate_legacy_success_evidence` **deleted**, not folded in. |
+| CAN-8 | resolved | P6 **Task 0**, first in the phase: split `_cli_completion.py`, migrate ten CLI call sites, test that a second predicate cannot reappear, verify the double walk is gone by count. |
+| CAN-9 | resolved | Stamp moved to **P4 Task 3 Step 6**; P7 asserts a legacy master is **unstamped**. |
+| CAN-10 | resolved | P7 Task 4: row-collapse on the store's own `target.column` (dedup key must be **proved** safe) + dtype normalization; row-count and null-count assertions replace column-membership. |
+| CAN-11 | resolved | `requires_conversion` moved to **P1**; README phase table updated; P7 Task 1's commit note records the move and why. |
+| CAN-12 | resolved | P7 Task 5 Step 1b: legacy trees **renamed** to `.phenotypic/legacy-v2/`, `--revert` test, detection ignores it. Declared "retained for revert, read by nothing" — own heading in the register, never the tracked-state table. |
+| CAN-13 | resolved | P7 Step 1c (drain/`scancel` rule in doc, `--help` and the refusal message) + Task 2 Step 3 (merge-not-overwrite, with the test `test_conversion_is_idempotent` structurally cannot cover). |
+| CAN-14 | resolved | P1 Interfaces: `CachedVerification` carries the whole `ImageState`. |
+| CAN-15 | resolved | P2 Task 4 Step 2: rewritten against the event-log `generation=` fence, plus a second test that sets **both** preconditions the SLURM guard requires and passes a real artifact. |
+| CAN-16 | resolved | P3 Task 3: parametrized over the axes that branch — four store states × layer × `markers_required` × `expected_work_id` — with an instruction to reduce **by evidence**, never by sampling. |
+| CAN-17 | resolved | P6 Task 2: `core_readable` keeps its disjunction; mutation still requires `complete`. Both directions tested; the silent-skip hazard named. |
+| CAN-18 | resolved | P6 Task 1: badge is a function of `(completion, snapshot_is_current)`; the stat sweep replaces the 7-file hash. |
+| CAN-19 | resolved | P5 **Step 3, before implementation**: decide and record which job publishes; test asserts exactly one publisher. |
+| CAN-20 | resolved | P2 Task 3 Step 4: measure/process get a stated identity; D3 makes it the same value. Test parametrized over all three modes. |
+| CAN-21 | resolved | P2 Task 3 Step 3: mint once at the entry point and thread it; second-mint raises. |
+| CAN-22 | resolved | P3 Step 3b: `authorized_measurement_sources` moved onto records, with the empty-master failure mode named. |
+| CAN-23 | resolved | P3 Task 2: stage-2-only record test; confirm the existing non-empty-artifacts guard survives the rewrite. |
+| CAN-24 | resolved | Restated as a Q2-rule-2 correctness requirement in README, P1 Task 5 (verdict-matrix row) and P6 Task 5 (repair). |
+| CAN-25 | resolved | S-4 cut from P0; its real question moves to P4 Task 1. |
+| CAN-26 | resolved | S-5 demoted to a P1 phase-gate measurement; **P0 is off P1's critical path**. |
+| CAN-27 | resolved | `KNOWN_STAGES` cut; four shared `STAGE_*` constants close the typo class instead of reporting it. |
+| CAN-28 | resolved | P1: per-output wholesale replacement on identity change; no LRU, no `_MAX_ENTRIES`. |
+| CAN-29 | resolved | `_canonical_digest` hoisted in P1 Task 4; P6 Task 7 Step 3 removed. |
+| CAN-30 | resolved | INV-CACHE + INV-DEGRADE → **INV-VERDICT**, one property, two parameter families. |
+| CAN-31 | resolved | P6 Task 7 Step 3: three text-asserting tests deleted; INV-LAYER AST test explicitly kept; advisories to get closed codes. |
+| CAN-32 | resolved | P7: CSV deletion (Task 4 Step 0), `metadata.canonical.csv` (Task 3 Step 4), three shapes classified (Task 1 Step 3c), no-descriptor store handled (Task 4 Step 0b). |
+| CAN-33 | **partial** | m8 resolved (P2 Task 4 decides on evidence). m1–m7, m9 **still open** — small, and deferred to round 2 rather than silently dropped. |
+| CAN-34 | **partial** | DF-14 folded into CAN-7's minting-site enumeration. DF-13, DF-17, DF-26 **still open**. |
+| CONFLICT-1 | **open** | `restart_epoch`'s two homes. Unresolved by design — carries to round 2 with the evidence question. |

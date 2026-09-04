@@ -483,22 +483,50 @@ The first draft said *"Step 3 onward is `finalize_post_master_outputs`, unchange
 
 | Branch | Condition | Does | Loses |
 |---|---|---|---|
-| legacy | `metadata_join_keys is None` (`:1077`) | `join_metadata(working_df, metadata_csv, how="left")` (`:1081`) | **every metadata-only phantom** |
+| legacy | `metadata_join_keys is None` (`:1077`) | `join_metadata(working_df, metadata_csv, how="left")` (`:1081`) | **every measured row whose key is absent from metadata.** It *creates* phantoms; it drops orphan measurements. |
 | embedded | keys provided (`:1085`) | `_append_metadata_only_rows(...)` only | **every user-metadata value on every measured row** — and it *raises* `ValueError` at `:884-893` for any join key now absent from the master, deliberately re-raised at `:1092-1095` |
+
+> **Round-2 correction (flow-r2 C1).** An earlier version of this table said the legacy
+> branch "loses every metadata-only phantom". **That is backwards**, and the mistake is
+> instructive rather than cosmetic: it made the proposed fix name the operation that causes
+> the data loss.
+>
+> `join_metadata` puts **metadata on the left** and measurements on the right — its own
+> docstring (`_cli_output_manager.py:143-153`) states it: *"a left join is asymmetric by
+> design: it keeps metadata-unmatched rows but still drops **measurement**-unmatched rows,
+> because measurements are the right frame."* So `how="left"` is precisely the phantom
+> **producer**, and what it silently discards is a measured object whose key never appears
+> in `metadata.csv` — a real colony, proven, authorized, and gone from the mirror.
+>
+> The fix wording carried over from round 1, *"left-join metadata onto the master"*, names
+> that exact operation. Both reviewer and orchestrator adopted it without checking the frame
+> orientation.
 
 The embedded branch exists because of the premise at `:1023-1026`: *"Measured rows already
 carry their publication-time metadata from the embedded tables and are not joined again."*
-**P4 falsifies that premise.** §7.4 step 3 needs join **and** phantoms; no branch does both.
+**P4 falsifies that premise.** §7.4 step 3 needs join **and** phantoms, losing neither side;
+no existing branch does that.
 
-Specify step 3 as a third mode:
+Specify step 3 as a third mode, with the frame orientation stated because it is the whole
+of the defect:
 
-1. left-join metadata onto the master on the resolved keys,
-2. anti-join-append the phantoms with `QC_MetadataOnly = true`,
+1. **left-join the metadata onto the MASTER — master on the left, metadata on the right.**
+   Every authorized measured row survives, carrying nulls where its key has no metadata.
+   This is the opposite orientation to `join_metadata(how="left")`, so it is a **new call**,
+   not a `how=` change.
+2. **anti-join-append** the metadata rows that matched no measured object, flagged
+   `QC_MetadataOnly = true`.
 3. then post ops.
 
-Test both halves **in one frame** — a measured row with a non-null user column *and* a
-phantom row present. Update the docstring at `:1023-1026` and the `_cli/CLAUDE.md`
-master-vs-mirror rules; neither is in the first draft's doc list.
+**No authorized measured row may be dropped by step 3, for any reason.** It carries a
+content proof; the mirror is what the GUI reads and curates; and a colony that vanishes
+because a technician's spreadsheet lacks a row is a silent scientific error, not a join
+detail.
+
+Test **three** cases in one frame — a measured row *with* metadata, a measured row whose key
+is **absent** from metadata, and a metadata-only phantom. The middle one is the case both
+reviewers and the orchestrator missed. Update the docstring at `:1023-1026` and
+`_cli/CLAUDE.md`'s master-vs-mirror rules.
 
 ### Where the join keys come from (CAN-2)
 
@@ -553,6 +581,57 @@ def test_the_mirror_carries_both_joined_rows_and_phantoms(tmp_path):
     assert measured.height > 0 and phantoms.height == 1
     assert measured["Metadata_Strain"].null_count() == 0, "measured rows were not joined"
     assert "Z99" in phantoms["Metadata_Well"].to_list(), "phantoms were dropped"
+
+
+def test_a_measured_row_absent_from_metadata_survives_the_join(tmp_path):
+    """flow-r2 C1 -- the case the round-1 fix would have silently deleted.
+
+    `join_metadata(how="left")` puts metadata on the LEFT
+    (`_cli_output_manager.py:143-153`), so it keeps metadata-unmatched rows and
+    DROPS measurement-unmatched ones. An authorized, proven measured object whose
+    key never appears in metadata.csv would vanish from the mirror -- a real colony
+    disappearing because a spreadsheet lacks a row.
+
+    Step 3's join must be master-on-the-left, which is the opposite orientation and
+    therefore a different call, not a `how=` change.
+    """
+    import polars as pl
+
+    from phenotypic._cli._cli_finalize_run import finalize_run
+    from phenotypic.sdk_ import measurements_parquet_path
+
+    _publish_two_successful_images(tmp_path, metadata=True)
+    _add_an_object_whose_key_is_absent_from_metadata(tmp_path, image="b.tif", label=7)
+    finalize_run(tmp_path, dataset_names=["plate"], metadata_csv=_metadata_csv(tmp_path))
+
+    mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
+    measured = mirror.filter(pl.col("QC_MetadataOnly").fill_null(False).not_())
+    orphan = measured.filter(
+        (pl.col("Metadata_ImageFile") == "b.tif") & (pl.col("Object_Label") == 7)
+    )
+    assert orphan.height == 1, (
+        "a measured object with no metadata match was dropped from the mirror. "
+        "Step 3 joined with metadata as the left frame."
+    )
+    assert orphan["Metadata_Strain"].null_count() == 1, "it should survive with nulls"
+
+
+def test_the_master_row_count_is_a_lower_bound_on_the_mirror(tmp_path):
+    """The invariant behind C1, stated once so it cannot be lost again: the mirror
+    contains every master row, plus phantoms. Never fewer."""
+    import polars as pl
+
+    from phenotypic._cli._cli_finalize_run import finalize_run
+    from phenotypic.sdk_ import master_measurements_parquet_path, measurements_parquet_path
+
+    _publish_two_successful_images(tmp_path, metadata=True)
+    _add_an_object_whose_key_is_absent_from_metadata(tmp_path, image="b.tif", label=7)
+    finalize_run(tmp_path, dataset_names=["plate"], metadata_csv=_metadata_csv(tmp_path))
+
+    master = pl.read_parquet(master_measurements_parquet_path(tmp_path))
+    mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
+    measured = mirror.filter(pl.col("QC_MetadataOnly").fill_null(False).not_())
+    assert measured.height >= master.height
 
 
 def test_metadata_added_after_the_stores_still_joins_every_measured_row(tmp_path):
