@@ -403,31 +403,119 @@ Verified against source:
 
 So the pre-markers path already works end to end. What is required:
 
+> ### U-7 (round 3, user): migration logic lives **only** in `--mode migrate`
+>
+> An earlier draft of this task proposed leaving `_migrate_legacy_success_evidence` on the
+> `--mode full` resume path, because that path has the `ExecutionConfig` the identity needs.
+> **Overruled.** A legacy conversion that fires silently inside a normal run — with no flag,
+> no opt-in, and a one-line notice — is precisely the hidden state transition this change
+> exists to remove. It moves.
+>
+> **What that costs, stated plainly, because it is not free (MIG-18).** `work_id_for_image`
+> needs six inputs. On a v0.17.3 tree migrate can recover most but not all:
+>
+> | Input | Source in migrate |
+> |---|---|
+> | `dataset`, `relative_image_path`, `mode` | the tree |
+> | `image_type`, `nrows`, `ncols`, `bit_depth` | `processing_state.json:config` — present at v0.17.3 |
+> | source images (for `input_sha256`) | **`state.input_path`**, which v0.17.3 records — so migrate does **not** need `--input`, and root `CLAUDE.md`'s rule stands |
+> | pipeline | **`<output>/pipeline.json`**, persisted by `_persist_pipeline_to_output_dir` since before v0.17.3 (`_cli_output_manager.py:325-357,606`) |
+> | `save_overlays` | derivable — does `results/<ds>/overlays/` hold files |
+> | `include_dataset_column` | derivable — does the master carry `Metadata_Dataset` |
+> | **`detect_mode`, `drop_originals`, `overlay_alpha`** | **irrecoverable** — never written to disk at that vintage. **Omitted from the digest (U-8), not defaulted.** |
+> | pipeline *file* digest | ⚠️ the persisted copy is `pipeline.to_json()`, a re-serialization; `work_id` hashes the user's original file. **Same treatment**: when the original is gone, omit `pipeline_fingerprint` rather than substituting the re-serialized digest. Substituting produces a confidently wrong id; omitting produces an honestly weaker one. |
+>
+> ### U-8 (round 3, user): omit the unknown fields from the digest — do not default them
+>
+> An earlier draft proposed migrate flags for the three irrecoverable fields, defaulting
+> them with a loud warning. **Better answer, and it has precedent in this codebase.**
+>
+> `validate_resume_compatibility` (`_cli_state_management.py:339-349`) already guards exactly
+> these keys — `bit_depth, detect_mode, include_dataset_column, overlay_alpha,
+> drop_originals, save_overlays, process_format` — and its first act on each is:
+>
+> ```python
+> if key not in state.config:
+>     continue
+> ```
+>
+> **Absent already means "not asserted", not "default".** The convention exists; this
+> extends it to the digest instead of inventing a parallel mechanism.
+>
+> So: **migrate omits the unknown fields from `processing_configuration_digest`'s payload,
+> and writes `state.config` with those keys absent. A forward run reading that state omits
+> them too.** Both sides hash the same reduced payload, the digests match, the `work_id`s
+> match, and nothing reprocesses. No new flags on migrate, no defaults, no warning to
+> ignore — U-7's rule 1 is deleted.
+>
+> **Omit, never blank.** `""` and `None` are *values*: a forward run hashing
+> `detect_mode: ""` still disagrees with one hashing `detect_mode: "rgb"`. Omission makes
+> the canonical JSON structurally different and is what `not in state.config` already tests.
+> `_canonical_digest` sorts keys, so a payload built by omission is stable regardless of
+> insertion order.
+>
+> **The cost, stated once and not papered over:** a migrated tree's `work_id` no longer
+> fences on those three fields. Re-run it later with a different `detect_mode` and the id is
+> unchanged, so the tree is *not* reprocessed — the run silently continues under a different
+> detection mode. That is a real weakening. It is also **precisely** the weakening
+> `validate_resume_compatibility` has always accepted for an absent key, so it is an existing
+> convention applied consistently rather than a new hole. `resolve_run_state` emits one
+> advisory naming the unasserted fields, so the weakening is visible where the state is read.
+>
+> **This applies only to trees migrated from the pre-markers shape.** A forward run that
+> *has* the values always asserts them; there is no path by which a modern run acquires an
+> unasserted field.
+
 - [ ] **Step 1: Move `_migrate_legacy_success_evidence` into `_cli_migrate_state`**
 
 Spec §11.1 assigns "every `_legacy_*` helper moves **into** migrate" to P7, and P6's
 deletion ledger row 10 defers it here explicitly. **This is that helper**, and the
 destination is migrate — not deletion.
 
-Move, do not rewrite: `phenotypicCLI.py:560` (`_migrate_legacy_success_evidence`) and
-`:544` (`_requires_legacy_success_migration`) become part of `_cli_migrate_state`. Delete
-only the **dispatch** from the `--mode full` resume path (`:2375-2378`) and its user-facing
-echo (`:2380-2383`), because after P1's `requires_conversion` gate a legacy tree never
-reaches that code. The promotion itself now happens inside `--mode migrate`.
+`phenotypicCLI.py:560` (`_migrate_legacy_success_evidence`) and `:544`
+(`_requires_legacy_success_migration`) become part of `_cli_migrate_state`. **Delete the
+`--mode full` dispatch entirely** — `:2375-2378` and its user-facing echo at `:2380-2383`.
+Per **U-7**, no migration logic remains on a normal run path; after P1's
+`requires_conversion` gate, a legacy tree never reaches that code anyway.
 
-**Order matters and must be stated:** the promoter reads `ds_state.completed` and resolves
-each image's data artifact through `image_data_artifact`, which returns the **store** when
-one exists and the `.h5` otherwise. So it must run **after** the HDF→Zarr conversion, or it
-certifies files that are about to be replaced. That is the one real ordering constraint in
-this phase.
+**This is a rewrite, not a move**, and the plan should stop calling it one. The helper's
+signature is `(state, config: ExecutionConfig, datasets: Sequence[Dataset], output_dir)`,
+and migrate has neither `config` nor `datasets`. What moves is the *logic*: read
+`ds_state.completed`, derive each image's identity, seed `work_ids`. What must be **built**
+is the construction of its inputs from the tree, per the U-7 table above — `state.input_path`
+for the source images, `<output>/pipeline.json` for the pipeline, the config block for the
+four recoverable science fields, `results/<ds>/overlays/` and the master for the two
+derivable ones, and migrate flags for the three that are neither.
 
-**Reconcile the two producers.** The migrator also publishes records
-(`_cli_migrate_image.py:567`) using `_configured_work_id`, which on this shape yields the
-synthetic id. After the promoter has populated `state.config["work_ids"]` with
-content-derived ids, `_configured_work_id`'s lookup succeeds and the synthetic fallback
-stops firing. **Sequence them so the promoter runs first**, or the two producers disagree
-about the same image's identity — which is the defect this task exists to prevent, arriving
-from the other direction.
+**The ordering constraint an earlier draft stated is unsatisfiable, and the real seam is
+one step earlier (MIG-19).** That draft required the promoter to run *after* the HDF→Zarr
+conversion (so `image_data_artifact` resolves the store) **and** *before* the migrator's
+publisher (so `_configured_work_id` hits). Those are the **same call**:
+`migrate_image_task` (`_cli_migrate_image.py:434`) converts at `:463` and publishes at
+`:567`, in one per-image function, run per task — optionally under `joblib.Parallel` — by
+`_execute_migration_tasks` (`_cli_migrate.py:852-880`). There is no instant at which
+conversion is complete for all images and publication has not begun.
+
+**The seam that works:** run the promoter's **seeding half** before
+`_ensure_migration_processing_state` (`_cli_migrate.py:567`), which mints the synthetic ids
+at `:632` and writes them at `:662`/`:695` — but **only for stems not already present**
+(`:628-634`, compared through `source_image_stem`). Seeded content-derived ids therefore
+survive it, and `_configured_work_id` (`:125-140`, same `source_image_stem` comparison)
+then hits for every image.
+
+That puts the promoter *before* conversion, so its own `publish_image_success` half would
+certify `.h5` artifacts about to be replaced — **harmless**, because
+`image_completion_marker_path` is keyed by dataset/stem and `_valid_migration_marker`
+(`_cli_migrate_image.py:207`) forces a republish against the store.
+
+> **In migrate, the promoter's job is work-id seeding, not publication.** Split it
+> accordingly: seed `state.config["work_ids"]` before `_ensure_migration_processing_state`;
+> let `migrate_image_task` do the publishing it already does.
+>
+> Add an assertion that `_ensure_migration_processing_state` did **not** overwrite a seeded
+> id — a regression there is silent. And note in a comment that the promoter keys `work_ids`
+> by `image.name` while both readers compare via `source_image_stem`: that mismatch is *why*
+> the seam holds, and a future edit that "tidies" it breaks the seam.
 
 Three tests exercise the helper (`tests/unit/cli/test_cli_state_management.py:316`,
 `test_cli_completion_store.py:606`, `test_embedded_measurement_migration.py:312`) plus a
@@ -461,32 +549,90 @@ def test_a_pre_markers_tree_converts_end_to_end(tmp_path):
     )
 
 
-def test_migrated_records_carry_the_work_id_resume_re_derives(tmp_path):
-    """CAN-7's decisive assertion, and the one that caught the wrong resolution.
+def test_migrated_records_carry_the_work_id_a_FORWARD_RUN_re_derives(tmp_path):
+    """CAN-7's decisive assertion, corrected for MIG-18's failure mechanism.
 
-    v0.17.3 has no `work_ids` key at all, so `_configured_work_id` always falls
-    back to the SYNTHETIC sha256("migration:<ds>/<stem>"). Resume re-derives via
+    v0.17.3 has no `work_ids` key, so `_configured_work_id` always falls back to the
+    SYNTHETIC sha256("migration:<ds>/<stem>"). A forward run re-derives via
     `work_id_for_image` -- content-derived. If the record carries the synthetic id,
-    nothing matches and every image reprocesses, while every other assertion in
-    this file still passes.
+    nothing matches and every image reprocesses while every other assertion here
+    still passes.
 
-    Assert the two agree, rather than asserting a downstream symptom.
+    CRITICAL: `expected` is built the way a FORWARD RUN builds it -- from CLI flags
+    and the real pipeline file -- NOT from migrate's reconstruction. An earlier
+    version derived both sides from the same reconstruction, so it passed while the
+    defect was live for every user who set a non-default science flag. A test whose
+    two sides share the code under test proves nothing.
     """
     from phenotypic._cli._cli_failure_tracker import work_id_for_image
-    from phenotypic._cli._cli_image_record import read_image_record
+    from phenotypic.sdk_._image_record import read_image_record
+
+    tree = _build_v0_17_3_tree(tmp_path, detect_mode="rgb", overlay_alpha=0.7)
+    _invoke_cli(mode="migrate", output=tree,
+                detect_mode="rgb", overlay_alpha=0.7)      # U-7's flags
+
+    forward_config = _forward_config(                       # built from flags, not the tree
+        input_path=_source_tree(tree), pipeline=_original_pipeline(tree),
+        detect_mode="rgb", overlay_alpha=0.7,
+    )
+    for dataset, image in _images_of(tree):
+        expected, _ = work_id_for_image(forward_config, dataset, image)
+        record = read_image_record(tree, dataset, image.stem)
+        assert record["work_id"] == expected, (
+            f"{dataset}/{image.stem}: record carries {record['work_id'][:12]}…, "
+            f"a forward run will look for {expected[:12]}…"
+        )
+
+
+def test_an_unasserted_field_matches_whatever_the_forward_run_passes(tmp_path):
+    """U-8, and the whole point of omitting rather than defaulting.
+
+    The three irrecoverable fields are OMITTED from the digest, so a forward run
+    reading state.config -- which also lacks them -- omits them too. Both sides hash
+    the same reduced payload, whatever the user passes for those flags.
+
+    Defaulting would have matched only the user who happened to run with defaults.
+    """
+    from phenotypic._cli._cli_failure_tracker import work_id_for_image
+    from phenotypic.sdk_._image_record import read_image_record
+
+    tree = _build_v0_17_3_tree(tmp_path, detect_mode="rgb", overlay_alpha=0.7)
+    _invoke_cli(mode="migrate", output=tree)
+
+    # Two forward configs disagreeing on every unasserted field.
+    for detect_mode, alpha in (("rgb", 0.7), ("gray", 0.2)):
+        config = _forward_config(tree, detect_mode=detect_mode, overlay_alpha=alpha)
+        for dataset, image in _images_of(tree):
+            expected, _ = work_id_for_image(config, dataset, image)
+            assert read_image_record(tree, dataset, image.stem)["work_id"] == expected
+
+
+def test_omission_is_not_blanking(tmp_path):
+    """`""` and None are VALUES. A payload carrying detect_mode="" hashes
+    differently from one that has no detect_mode key at all, so blanking would
+    reproduce the mismatch it was meant to fix."""
+    from phenotypic._cli._cli_failure_tracker import (
+        processing_configuration_digest_from_values,
+    )
+
+    base = dict(image_type="GridImage", nrows=8, ncols=12, bit_depth=8,
+                process_only_layer=None, ext=".tif", process_format="tiff")
+    omitted = processing_configuration_digest_from_values(**base)          # unasserted
+    blanked = processing_configuration_digest_from_values(**base, detect_mode="")
+    assert omitted != blanked
+
+
+def test_the_weakening_is_surfaced_as_an_advisory(tmp_path):
+    """U-8's stated cost: a migrated tree's work_id no longer fences on those three
+    fields. That is the same weakening validate_resume_compatibility has always
+    accepted for an absent key -- but it must be VISIBLE where the state is read."""
+    from phenotypic.sdk_ import resolve_run_state
 
     tree = _build_v0_17_3_tree(tmp_path)
     _invoke_cli(mode="migrate", output=tree)
 
-    for dataset, image in _images_of(tree):
-        expected, _ = work_id_for_image(_config_for(tree), dataset, image)
-        record = read_image_record(tree, dataset, image.stem)
-        assert record["work_id"] == expected, (
-            f"{dataset}/{image.stem}: record carries {record['work_id'][:12]}…, "
-            f"resume will look for {expected[:12]}…  — the synthetic migration id "
-            "leaked into the record"
-        )
-        assert not record["work_id"].startswith(_synthetic_prefix(dataset, image.stem))
+    advisories = resolve_run_state(tree, depth="deep").advisories
+    assert any("detect_mode" in a and "overlay_alpha" in a for a in advisories)
 ```
 
 - [ ] **Step 3: Make Task 3's deletion conditional**

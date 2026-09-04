@@ -89,7 +89,25 @@ documented where users read it, not only here:
 | **Modify** `src/phenotypic/_cli/_cli_recompile_worker.py:764` | `_run_post_master_steps` becomes a `finalize_run` call. |
 | **Modify** `src/phenotypic/_cli/_cli_completion.py:868` | Aggregate proof's `required_outputs` drops `master_csv` (D8). |
 | **Delete** | `MASTER_MEASUREMENTS_CSV`, `master_measurements_csv_path()`, `BundleLayout.master_csv`, `load_master_measurements()` (D8). |
+| **Modify** `src/phenotypic/_cli/_cli_recompile_tables.py` (292 lines) | **Hard-`isinstance`-checks `PreparedEmbeddedMeasurementTable` at `:100`** — the exact type Task 1 replaces — raising `TypeError` on the new one. Reads the marker format by key. |
+| **Modify** `src/phenotypic/_cli/_cli_recompile_recovery.py` (838 lines) | Reads the marker format by key; part of the same 15-site set. |
 | **Test** `tests/unit/cli/test_finalize_run.py` *(new)* | INV-INPUTS, the six steps, the three entry points. |
+
+> **These two modules are a three-round blind spot, and the largest one found (gen-r3).**
+> 1,130 lines that read the marker format at ~15 sites and type-check the producer Task 1
+> inverts — appearing in **zero plan documents, zero ledger entries, and zero reviewer
+> reports across three rounds**. Recompile is one of the three entry points §7.4 routes
+> through `finalize_run` and P4 Task 4 parametrizes a byte-identical master over, so its
+> internals were in scope from the first draft; nobody opened them.
+>
+> `_cli_recompile_tables.py:100` fails **closed** — `TypeError("Recompile table preparation
+> returned an invalid payload")` — so this surfaces as a crash rather than corruption, which
+> is the good direction. But it means `--mode recompile` is broken from the moment Task 1
+> lands until this is fixed, and no test in the plan covers it.
+>
+> **Enumerate all ~15 marker-format reads across both files before editing either**, the
+> way P3 Step 3b now enumerates the staged-engine sites. `grep -n 'image_completion_marker_path\|marker\[' `
+> on both is the starting point, not the answer.
 | **Test** `tests/unit/cli/test_embedded_table_inversion.py` *(new)* | Intrinsic/user metadata boundary; curation re-keying. |
 
 ---
@@ -575,6 +593,62 @@ The first draft said *"Step 3 onward is `finalize_post_master_outputs`, unchange
 > round 2.** An earlier draft of this section proposed reversing the orientation so orphan
 > measurements survived; that would have changed a deliberate scientific decision on the
 > strength of a reviewer's framing. Reverted.
+
+### The surviving branch has never run on a forward tree (flow-r3 C1)
+
+`join_metadata` is the **legacy** branch — reached only when `metadata_join_keys is None`,
+which on a modern tree it never is. Deleting the embedded branch promotes a code path that
+has not executed on a forward run since embedded tables landed. Three behaviours it brings,
+none of them wrong in isolation and all of them changes:
+
+1. **It casts join keys to `String` unconditionally** (`:139-142`, "casts them to ``String``
+   for a safe join"). The mirror's join-key dtype changes from whatever the measurements
+   carried to `String`.
+2. **Row order follows the metadata frame** (its docstring says so), not the master's. The
+   mirror's row order changes.
+3. **Under a heterogeneous master** — `diagonal_relaxed` concat over stores with differing
+   columns — a key present in some stores and absent in others can drop measured rows the
+   per-image joins kept.
+
+None of this argues against the user's ruling; metadata stays the left frame. It argues that
+**"reuse the existing call" is not the no-op it reads as**, and each behaviour needs a
+pinned test rather than a discovery in production:
+
+```python
+def test_the_mirrors_join_key_dtype_and_row_order_are_pinned(tmp_path):
+    """flow-r3 C1. join_metadata is the legacy branch and has not run on a forward
+    tree since embedded tables landed. Promoting it changes dtype and row order --
+    both observable by the GUI and by any user script reading the mirror."""
+    import polars as pl
+
+    from phenotypic.sdk_ import measurements_parquet_path
+
+    _publish_two_successful_images(tmp_path, metadata=True, join_key_dtype=pl.Int64)
+    _finalize(tmp_path)
+
+    mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
+    assert mirror.schema["Metadata_Well"] == pl.String, (
+        "join_metadata casts join keys to String; if this changed, the GUI's "
+        "filters and every downstream script keyed on the old dtype changed with it"
+    )
+
+
+def test_a_heterogeneous_master_loses_no_measured_row(tmp_path):
+    """The dangerous third behaviour: a key present in some stores and absent in
+    others, concatenated diagonal_relaxed, then joined globally."""
+    import polars as pl
+
+    from phenotypic.sdk_ import master_measurements_parquet_path, measurements_parquet_path
+
+    _publish_image_with_columns(tmp_path, "a.tif", extra=["Grid_RowNum"])
+    _publish_image_with_columns(tmp_path, "b.tif", extra=[])      # ragged
+    _finalize(tmp_path)
+
+    master = pl.read_parquet(master_measurements_parquet_path(tmp_path))
+    mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
+    measured = mirror.filter(pl.col("QC_MetadataOnly").fill_null(False).not_())
+    assert set(measured["Metadata_ImageFile"]) == set(master["Metadata_ImageFile"])
+```
 
 ### So step 3 is one existing call, not a new composite
 
