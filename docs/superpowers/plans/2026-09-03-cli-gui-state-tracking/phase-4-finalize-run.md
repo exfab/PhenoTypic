@@ -475,58 +475,60 @@ already the right predicate, already marker-authorized, and **moved onto records
 3b**; if that move was skipped it returns `{}` and this step writes an empty master with no
 exception.
 
-### Step 3 is a NEW composite, not a reuse (CAN-1)
+### Step 3 keeps metadata on the left, and deletes the other branch (CAN-1)
 
 The first draft said *"Step 3 onward is `finalize_post_master_outputs`, unchanged."*
 **It cannot be.** That function has exactly two branches
 (`_cli_output_manager.py:1077-1086`), and after the inversion both lose something:
 
-| Branch | Condition | Does | Loses |
+| Branch | Condition | Does | After the inversion |
 |---|---|---|---|
-| legacy | `metadata_join_keys is None` (`:1077`) | `join_metadata(working_df, metadata_csv, how="left")` (`:1081`) | **every measured row whose key is absent from metadata.** It *creates* phantoms; it drops orphan measurements. |
-| embedded | keys provided (`:1085`) | `_append_metadata_only_rows(...)` only | **every user-metadata value on every measured row** — and it *raises* `ValueError` at `:884-893` for any join key now absent from the master, deliberately re-raised at `:1092-1095` |
+| legacy | `metadata_join_keys is None` (`:1077`) | `join_metadata(working_df, metadata_csv, how="left")` (`:1081`) | **Correct — and it is the only branch that is.** Metadata on the left: joins user metadata onto every matched measured row **and** keeps metadata-unmatched rows as `QC_MetadataOnly` phantoms. Both halves, one call. |
+| embedded | keys provided (`:1085`) | `_append_metadata_only_rows(...)` only | **Broken.** Its premise (`:1023-1026`) is *"Measured rows already carry their publication-time metadata from the embedded tables and are not joined again"* — which **P4 falsifies**. It appends phantoms and joins nothing, so every measured row's user metadata is null. It also raises `ValueError` at `:884-893` for any join key now absent from the master. |
 
-> **Round-2 correction (flow-r2 C1).** An earlier version of this table said the legacy
-> branch "loses every metadata-only phantom". **That is backwards**, and the mistake is
-> instructive rather than cosmetic: it made the proposed fix name the operation that causes
-> the data loss.
+> **The metadata-on-the-left orientation is deliberate and stays.** `join_metadata`'s
+> docstring (`_cli_output_manager.py:143-153`) is explicit: *"a left join is asymmetric by
+> design: it keeps metadata-unmatched rows but still drops measurement-unmatched rows"*, and
+> *"Absence of a colony is data: a strain that failed to grow, or that detection missed, is
+> exactly what the user needs to see."*
 >
-> `join_metadata` puts **metadata on the left** and measurements on the right — its own
-> docstring (`_cli_output_manager.py:143-153`) states it: *"a left join is asymmetric by
-> design: it keeps metadata-unmatched rows but still drops **measurement**-unmatched rows,
-> because measurements are the right frame."* So `how="left"` is precisely the phantom
-> **producer**, and what it silently discards is a measured object whose key never appears
-> in `metadata.csv` — a real colony, proven, authorized, and gone from the mirror.
->
-> The fix wording carried over from round 1, *"left-join metadata onto the master"*, names
-> that exact operation. Both reviewer and orchestrator adopted it without checking the frame
-> orientation.
+> A measured object whose key appears in no metadata row is an object outside the described
+> experiment. Dropping it is the intended semantics, not a data-loss bug — **user ruling,
+> round 2.** An earlier draft of this section proposed reversing the orientation so orphan
+> measurements survived; that would have changed a deliberate scientific decision on the
+> strength of a reviewer's framing. Reverted.
 
-The embedded branch exists because of the premise at `:1023-1026`: *"Measured rows already
-carry their publication-time metadata from the embedded tables and are not joined again."*
-**P4 falsifies that premise.** §7.4 step 3 needs join **and** phantoms, losing neither side;
-no existing branch does that.
+### So step 3 is one existing call, not a new composite
 
-Specify step 3 as a third mode, with the frame orientation stated because it is the whole
-of the defect:
+The inversion does not need a third mode. It needs the **embedded branch deleted**:
 
-1. **left-join the metadata onto the MASTER — master on the left, metadata on the right.**
-   Every authorized measured row survives, carrying nulls where its key has no metadata.
-   This is the opposite orientation to `join_metadata(how="left")`, so it is a **new call**,
-   not a `how=` change.
-2. **anti-join-append** the metadata rows that matched no measured object, flagged
-   `QC_MetadataOnly = true`.
-3. then post ops.
+```
+step 3  =  join_metadata(master_df, metadata_csv, how="left")   →  post ops
+```
 
-**No authorized measured row may be dropped by step 3, for any reason.** It carries a
-content proof; the mirror is what the GUI reads and curates; and a colony that vanishes
-because a technician's spreadsheet lacks a row is a silent scientific error, not a join
-detail.
+That single call already does everything §7.4 step 3 asks for, in the orientation the
+project intends:
 
-Test **three** cases in one frame — a measured row *with* metadata, a measured row whose key
-is **absent** from metadata, and a metadata-only phantom. The middle one is the case both
-reviewers and the orchestrator missed. Update the docstring at `:1023-1026` and
+- it **identifies the common columns itself** (`:139-142`), so it needs no recorded join
+  keys — which is also why **CAN-2's `_consistent_embedded_join_keys` retirement falls out
+  for free**: nothing downstream needs the stores' recorded keys, so their D-A-manufactured
+  inconsistency stops being reachable rather than needing to be tolerated;
+- it joins user metadata onto every matched measured row — the half the embedded branch lost
+  once P4 made its premise false;
+- it emits phantoms with `QC_MetadataOnly` — the half the embedded branch already had.
+
+**Delete the `metadata_join_keys` parameter and its branch** (`:1077-1086`), and with it
+`_consistent_embedded_join_keys`' two call sites (`:1435-1439`,
+`_cli_recompile_worker.py:785`). The `measurement_sources`-vs-`metadata_join_keys` split in
+`_run_post_master_steps` (`:777-787`) goes at the same time — §7.4 already predicted it
+would, "because the two callers arrive with differently-shaped inputs", and after this they
+arrive the same way.
+
+Update the docstring at `:1023-1026`, which states the now-false premise, and
 `_cli/CLAUDE.md`'s master-vs-mirror rules.
+
+Test both halves **in one frame** — a measured row carrying a non-null user column, and a
+phantom row present.
 
 ### Where the join keys come from (CAN-2)
 
@@ -583,17 +585,19 @@ def test_the_mirror_carries_both_joined_rows_and_phantoms(tmp_path):
     assert "Z99" in phantoms["Metadata_Well"].to_list(), "phantoms were dropped"
 
 
-def test_a_measured_row_absent_from_metadata_survives_the_join(tmp_path):
-    """flow-r2 C1 -- the case the round-1 fix would have silently deleted.
+def test_a_measured_row_absent_from_metadata_is_dropped_deliberately(tmp_path):
+    """The asymmetry is by design (user ruling, round 2), so PIN it rather than
+    leaving it as an accident of which frame is on the left.
 
-    `join_metadata(how="left")` puts metadata on the LEFT
-    (`_cli_output_manager.py:143-153`), so it keeps metadata-unmatched rows and
-    DROPS measurement-unmatched ones. An authorized, proven measured object whose
-    key never appears in metadata.csv would vanish from the mirror -- a real colony
-    disappearing because a spreadsheet lacks a row.
+    metadata.csv describes the experiment. A measured object whose key appears in
+    no metadata row is an object outside that description, and `join_metadata`'s
+    docstring states the intent: it keeps metadata-unmatched rows -- "a strain that
+    failed to grow, or that detection missed, is exactly what the user needs to
+    see" -- and drops measurement-unmatched ones.
 
-    Step 3's join must be master-on-the-left, which is the opposite orientation and
-    therefore a different call, not a `how=` change.
+    This test exists because an earlier draft proposed reversing the orientation.
+    Without it, a future reader sees only "left join" and cannot tell which way
+    round was intended.
     """
     import polars as pl
 
@@ -605,33 +609,38 @@ def test_a_measured_row_absent_from_metadata_survives_the_join(tmp_path):
     finalize_run(tmp_path, dataset_names=["plate"], metadata_csv=_metadata_csv(tmp_path))
 
     mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
-    measured = mirror.filter(pl.col("QC_MetadataOnly").fill_null(False).not_())
-    orphan = measured.filter(
+    orphan = mirror.filter(
         (pl.col("Metadata_ImageFile") == "b.tif") & (pl.col("Object_Label") == 7)
     )
-    assert orphan.height == 1, (
-        "a measured object with no metadata match was dropped from the mirror. "
-        "Step 3 joined with metadata as the left frame."
+    assert orphan.height == 0, (
+        "an object outside the described experiment reached the mirror; the join "
+        "orientation was reversed"
     )
-    assert orphan["Metadata_Strain"].null_count() == 1, "it should survive with nulls"
 
 
-def test_the_master_row_count_is_a_lower_bound_on_the_mirror(tmp_path):
-    """The invariant behind C1, stated once so it cannot be lost again: the mirror
-    contains every master row, plus phantoms. Never fewer."""
+def test_the_master_keeps_the_object_the_mirror_drops(tmp_path):
+    """Where the dropped object DOES survive, and why that is the right split.
+
+    §7.3: the master is the un-joined archival set -- intrinsic identity, every
+    authorized measured row. The mirror is the post-applied, metadata-joined display
+    frame. So an object outside the experiment is preserved in the master and absent
+    from the mirror, which is exactly the master/mirror distinction CLAUDE.md's
+    "feed analysis and dashboards from the mirror, not the master" rule rests on.
+    """
     import polars as pl
 
     from phenotypic._cli._cli_finalize_run import finalize_run
-    from phenotypic.sdk_ import master_measurements_parquet_path, measurements_parquet_path
+    from phenotypic.sdk_ import master_measurements_parquet_path
 
     _publish_two_successful_images(tmp_path, metadata=True)
     _add_an_object_whose_key_is_absent_from_metadata(tmp_path, image="b.tif", label=7)
     finalize_run(tmp_path, dataset_names=["plate"], metadata_csv=_metadata_csv(tmp_path))
 
     master = pl.read_parquet(master_measurements_parquet_path(tmp_path))
-    mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
-    measured = mirror.filter(pl.col("QC_MetadataOnly").fill_null(False).not_())
-    assert measured.height >= master.height
+    kept = master.filter(
+        (pl.col("Metadata_ImageFile") == "b.tif") & (pl.col("Object_Label") == 7)
+    )
+    assert kept.height == 1, "the master must retain every authorized measured row"
 
 
 def test_metadata_added_after_the_stores_still_joins_every_measured_row(tmp_path):
@@ -770,10 +779,12 @@ git add src/phenotypic/_cli/_cli_finalize_run.py src/phenotypic/sdk_/_master_io.
         tests/unit/cli/test_finalize_run.py
 git commit -m "feat(cli): finalize_run -- one aggregation and publication path
 
-Spec §7.4, §7.5, six steps (D-A cut the backfill). Step 3 is a NEW composite --
-join AND phantoms -- because neither existing branch does both (CAN-1). Join keys
-are derived once from metadata.csv, not from the stores' recorded keys, which D-A
-deliberately makes inconsistent (CAN-2). The master schema stamp is minted here so
+Spec §7.4, §7.5, six steps (D-A cut the backfill). Step 3 is join_metadata(how="left") --
+the one call that already does both halves in the orientation the project intends.
+The embedded branch is deleted: P4 falsified its premise that measured rows already
+carry their metadata (CAN-1). join_metadata identifies its own common columns, so
+the stores' recorded join keys -- which D-A deliberately makes inconsistent -- stop
+being read at all rather than needing to be tolerated (CAN-2). The master schema stamp is minted here so
 the stamp and the shape come from one code path (CAN-9), and read_master_measurements
 gives it the reader U-3 requires. source_set_digest is published into both proofs,
 replacing the cut publication_id (U-4).
