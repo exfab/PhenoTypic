@@ -11,6 +11,16 @@ and the machinery they used is deleted. This is the phase that pays for the prev
 deleting what it replaced has not finished — the failure mode this whole change addresses
 is nine sources that each closed a real hole and none of which was ever removed.
 
+> **The first draft of this phase migrated the GUI and forgot the CLI (CAN-8).** Spec §9's
+> caller table names two CLI depths — "CLI finalize, before publishing proofs → deep" and
+> "CLI resume, deriving the worklist → deep, cache-assisted" — and §9.2's entire headline
+> scenario (10 images added to 6,000) **is** the resume worklist. Migrating only the GUI
+> leaves the O(N)-hashing readers on every CLI path, so the double walk is never removed,
+> §11's last row ("split: readers → `sdk_/_run_state.py`") is not delivered, and **two
+> completion predicates ship permanently** — the exact drift hazard this phase cites when
+> deleting `_latest_event_states`. Task 0 fixes that, and it goes first because everything
+> else in the phase assumes the split has happened.
+
 ---
 
 ## Deletion ledger
@@ -33,6 +43,99 @@ Track these in the phase's final commit body. Spec §11.1 estimates ~1,400 lines
 Items 1–9 land here. **Item 10 is P7's** — spec §11.1 says legacy paths move *into*
 `--mode migrate`, and deleting them before migrate can read them would strand every
 existing tree.
+
+---
+
+## Task 0: Split `_cli_completion.py` and migrate the CLI's own readers (CAN-8)
+
+**Files:**
+- Modify: `src/phenotypic/_cli/_cli_completion.py` — readers out, writers stay
+- Modify: `src/phenotypic/phenotypicCLI.py:2390,2394,2423-2442,2872-2874,3721-3725,3735-3744`
+- Modify: `src/phenotypic/_cli/_cli_staged_resume.py:203-213`
+- Modify: `src/phenotypic/sdk_/_hdf_to_zarr.py:715`
+- Modify: `src/phenotypic/_cli/_dashboard/_manifest_builder.py:725`
+- Modify: `src/phenotypic/_cli/_cli_migrate.py:88-89`
+- Test: `tests/unit/cli/test_completion_split.py` *(new)*
+
+**This task goes first.** Every later task assumes `resolve_run_state` is the only
+completion predicate; while a second one survives on the CLI side, the phase's premise is
+false.
+
+- [ ] **Step 1: Write the test that keeps the split split**
+
+```python
+def test_only_one_completion_predicate_survives():
+    """CAN-8 / §11's last row. Two parsers of one question drift -- this phase
+    deletes _latest_event_states for exactly that reason, and would ship a new
+    instance of it on the CLI side."""
+    import subprocess
+
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[3] / "src"
+    hits = subprocess.run(
+        ["grep", "-rn",
+         "current_run_is_complete\\|current_success_counts\\|current_aggregate_is_current",
+         str(src)],
+        capture_output=True, text=True,
+    ).stdout.strip()
+    assert not hits, f"the old O(N)-hashing readers survive:\n{hits}"
+
+
+def test_the_resume_worklist_uses_the_cache_assisted_path():
+    """§9's caller table, row 2 -- and §9.2's headline scenario IS this call."""
+    import inspect
+
+    from phenotypic import phenotypicCLI
+
+    source = inspect.getsource(phenotypicCLI)
+    assert "resolve_run_state" in source
+```
+
+- [ ] **Step 2: Move the readers**
+
+Out of `_cli_completion.py`, into `sdk_/_run_state.py` (already built in P1):
+`current_success_inventory`, `_walk_current_success`, `current_success_counts`,
+`_current_success_work_ids`, `current_aggregate_is_current`, `current_run_is_complete`,
+`valid_aggregate_snapshot`, `valid_run_completion`, `valid_image_success`.
+
+Staying CLI-side because they **write**: `publish_image_success`,
+`publish_aggregate_snapshot`, `publish_run_completion_evidence`, `image_data_artifact`,
+`refresh_success_markers_after_metadata_migration`, `authorized_measurement_sources`
+(a reader, but of run-authorization for the writer path — keep it beside its caller and say
+so in a comment).
+
+**INV-LAYER still binds.** The moved readers must not reach back into `_cli`; that is why
+P1 Task 4 established the plain-JSON state read. If a mover needs
+`load_processing_state`, it has taken the wrong function.
+
+- [ ] **Step 3: Convert the ten CLI call sites**
+
+Each becomes one `resolve_run_state(output_dir, depth="deep")` — `deep` on the CLI, per
+§9's table, because the CLI publishes proofs and derives worklists and must not act on a
+stat-only answer. Re-grep before editing; these line numbers are from `c9d1fbfc`.
+
+- [ ] **Step 4: Confirm the double walk is gone**
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli -q
+```
+
+Then count: a single completion query must walk the images **once**. Instrument
+`valid_image_success` with a counter in a throwaway patch, run one `--mode full` resume
+over a 6-image fixture, and assert the count equals 6 rather than 12. That doubling is
+audit §4's finding, and it is the thing §9.2's number depends on.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A src/phenotypic tests/unit/cli/test_completion_split.py
+git commit -m "refactor: split _cli_completion.py -- readers to sdk_, writers stay
+
+Spec §11's last row, §9's two CLI depth rows. Ten CLI call sites moved onto
+resolve_run_state; the double walk (audit §4) is gone. A test now fails if a second
+completion predicate reappears."
+```
 
 ---
 
@@ -95,6 +198,34 @@ def test_no_badge_refresh_hashes_a_deliverable(fake_output_root, monkeypatch):
 `snapshot_refresh_status` takes `resolve_run_state(output_root.layout.output_root,
 depth="shallow")` and maps `completion` → `(label, color, disabled)`. Delete
 `_completion_evidence_status` entirely.
+
+**But `completion` alone cannot replace it (CAN-18).** The function answers **two**
+questions today (`_snapshot_status.py:17-63`): run activity/completion, *and* whether the
+**bound in-memory snapshot** still matches disk — "Current" versus "Changed on disk"
+(`:38-44`, `:55-62`). `completion` answers only the first. A re-finalize over an unchanged
+inventory rewrites `measurements.parquet` while `completion` stays `complete`, so a badge
+driven by `completion` alone reads **"Current" over a stale snapshot** — and Task 3 then
+deletes `refresh_state_is_current` and `consumed_state_fingerprint`, the two things that
+answered the second question.
+
+Keep both axes. The badge is a function of `(completion, snapshot_is_current)`:
+
+```python
+def test_a_refinalize_over_an_unchanged_inventory_shows_changed_on_disk(bound_output_root):
+    """CAN-18. completion stays `complete` across a re-finalize, because the
+    inventory did not change -- but the mirror the viewer is holding is now stale."""
+    _refinalize(bound_output_root.root)          # rewrites measurements.parquet
+    label, color, _ = snapshot_refresh_status(bound_output_root, refresh_supported=True)
+    assert color == "danger" and "Changed" in label
+```
+
+The parametrized badge test therefore takes both inputs, not just `completion`, and the
+`("complete", True, "success")` row asserts `snapshot_is_current` is also true.
+
+**What replaces the deleted fingerprint** is the verification cache's stat sweep over the
+deliverables the viewer actually consumed — the same `(size, mtime_ns)` tuples P1 already
+records, not a second full-content hash. That is the win: the question survives, the
+7-file SHA-256 per tick does not.
 
 **Fold in audit S2 while here** — it is the same function and the same tick. `OutputRoot`'s
 frozen `consumed_state_fingerprint` (`_output_root.py:882`) and `CurationLabels`'
@@ -171,19 +302,61 @@ def test_no_module_still_imports_the_deleted_classifier():
 - `_snapshot_status.py` — done in Task 1.
 - `OutputRoot.discover` (`_output_root.py:178`) — `resolve_run_state(depth="deep")`,
   **one** call replacing the current double read.
-- `OutputMutationGuard` — `resolve_run_state(depth="deep")`; the mutation gate becomes
-  `state.completion != "active"` rather than `report.is_read_only`.
 - The processing-inventory cache's `cache_reusable` (`report.state == "coherent"`) becomes
   `state.completion == "complete"`.
 
 Then `git rm src/phenotypic/gui/results_viewer/_output_consistency.py`.
 
-**`core_readable` needs care.** `OutputConsistencyReport.core_readable`
-(`_output_consistency.py:106`) is what the live-run test gate asks — a memory note in this
-project records `skipif` must ask `core_readable`, not `is_dir`. Its replacement is
-`state.completion in {"complete", "incomplete"}` **and** a valid aggregate proof. Grep for
-`core_readable` in `tests/` and migrate each site deliberately; a gate that silently starts
-returning `True` runs tests against a half-written tree.
+### Two predicates that are NOT `completion` in disguise (CAN-17)
+
+The first draft replaced both with one-line `completion` tests. Neither is equivalent, and
+**both errors fail open in the dangerous direction.**
+
+**`core_readable`** (`_output_consistency.py:109-114`) is
+`not marker_authority_required or aggregate_marker_valid`. Two cases the proposed
+`completion in {"complete","incomplete"} and a valid aggregate proof` gets wrong:
+
+- a **legacy** tree is core-readable today *with no aggregate proof at all* — the first
+  disjunct carries it;
+- an **`active`** output with a valid proof **is** core-readable, and `active` is excluded.
+
+This is the predicate the live-run test `skipif` asks. A false `False` **skips** tests
+rather than failing them, and a skip is invisible in a summary line — so this error hides
+itself. Keep the disjunction:
+
+```python
+def core_readable(state: RunState) -> bool:
+    """Whether the canonical aggregate bytes are authorized to read.
+
+    NOT `completion`. A legacy tree with no aggregate proof is readable, and so is
+    an ACTIVE run whose previous finalization published one. Both are excluded by a
+    naive completion test, and because this gates a `skipif`, the failure is a
+    silent skip rather than a red test (CAN-17).
+    """
+    return not state.marker_authority_required or state.aggregate_proof_valid
+```
+
+**`is_read_only`** is `state != "coherent"` (`:93-96`), so today `incomplete` prohibits
+mutation. The proposed `completion != "active"` would make **every `incomplete` output
+GUI-mutable** — a widening with no spec authority; §4.3 says only that `incomplete` is
+"safe to read, safe to resume", which is not "safe to write". Keep the current meaning:
+mutation requires `complete`.
+
+```python
+def test_an_incomplete_output_is_not_mutable(fake_output_root):
+    """CAN-17. `is_read_only` is `state != coherent` today. `completion != "active"`
+    would silently grant write access to every incomplete output."""
+    fake_output_root.run_state = _state(completion="incomplete")
+    with pytest.raises(RuntimeError):
+        OutputMutationGuard(fake_output_root).require_mutable()
+
+
+def test_an_active_run_with_a_valid_proof_is_still_core_readable(fake_output_root):
+    fake_output_root.run_state = _state(completion="active", aggregate_proof_valid=True)
+    assert core_readable(fake_output_root.run_state)
+```
+
+Grep `core_readable` in `tests/` and migrate each site deliberately.
 
 - [ ] **Step 4: Run the GUI suite**
 
@@ -320,11 +493,20 @@ deleted; one append-only log now has one parser."
 - Modify: `src/phenotypic/gui/shell/_runs_registry.py:591,1058,1306`
 - Test: `tests/unit/gui/shell/`
 
-**This task includes an explicit scope addition.** DEFERRED **D-2** (stale
-`gui_launch_owner.json` has no repair path) is folded in here, for two reasons stated in
-the README: this task rewrites `_assert_output_claimable_locked`, the exact predicate that
-causes the dead-end; and under the Q2 verdict ladder a stale owner record now masks
-`incomplete` as `active`. DEFERRED itself recommends P6.
+**This is not an optional fold-in — Q2 rule 2 requires it (CAN-24).**
+
+The first draft justified pulling DEFERRED D-2 in as "cheap and adjacent". Round 1 showed
+it is a **correctness requirement of the verdict ladder**. Spec §4.1 makes
+`gui_launch_owner.json` one of the three liveness authorities, and Q2 rule 2 reads it.
+Audit S7 **[verified]**: nothing in the codebase ever deletes or repairs that record, and
+`rehydrate_from_sandbox` downgrades it in memory only (`_runs_registry.py:773`,
+`persist=False`). So a SIGKILLed GUI pins `status: "running"` **forever**, and rule 2 is
+unsound as written — it reports `active` for a run nothing is working on.
+
+The ladder's obligation therefore lives in **P1 Task 5** (added there: a verdict-matrix row
+asserting a dead `pid` does not yield `active`). The **repair** lives here, where
+`_assert_output_claimable_locked` is rewritten. Both are required; neither substitutes for
+the other.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -496,12 +678,29 @@ Only these. Everything else in DEFERRED's churn table stays deferred:
   (S11) — these **are** polled by concurrently launched SLURM workers, including the
   unlocked write at `phenotypicCLI.py:3385`.
 
-- [ ] **Step 3: Collapse the three `_canonical_digest` copies**
+- [ ] **Step 3: Delete the three tests that assert on text, not behaviour (CAN-31)**
 
-P1 Task 4 left three, pinned by a test. Now that `_run_state.py` exists and `sdk_` is the
-shared layer, move it to `sdk_/_io_constants.py` (or a small `sdk_/_digests.py`) and have
-all three import it. Delete the agreement test — it exists only while there are copies to
-disagree.
+`_canonical_digest`'s collapse **moved to P1 Task 4** (CAN-29): hoisting a pure function
+into `sdk_` up front is less total work than adding a third copy plus a keeper test here and
+then deleting both. Nothing to do for it in this phase.
+
+Instead, delete three tests this plan proposed that cannot fail for the right reason:
+
+| Test | Why it goes |
+|---|---|
+| `test_run_state_exports_no_writer` (P1 T1) | asserts `__all__` name **prefixes**. A writer called `record_stage` or `persist_x` passes, and the prefix list is itself a tracked list needing sync with naming fashion. |
+| `test_no_module_still_imports_the_deleted_classifier` (P6 T2) | a CWD-relative `subprocess` grep. A deleted module with a live importer is an `ImportError` the suite already raises; the relative path makes this pass or fail on where pytest was invoked. |
+| `test_the_decision_tree_is_untouched` (P6 T6) | `"GRACE" in source`. Fails on a harmless rename, passes if you gut `_observe_record` and leave the word in a comment. Its goal — "make scope creep fail CI rather than fail review" — is a review concern, and this is the weakest possible enforcement of it. |
+
+**Keep the INV-LAYER AST test exactly as written.** It is structural, it can fail, and P1
+Task 1 Step 6 proves both the module-scope and lazy-in-function forms trip it. If a
+write-side structural guarantee is still wanted for `_run_state.py`, check the AST for
+`open(..., "w")`, `Path.write_*` and `os.replace` — a real check, where the prefix list was
+a spelling check.
+
+The two advisory tests (`any("migrate" in advisory)`, `any("metadata" in advisory)`)
+substring-match human prose, which makes advisory wording a de-facto API. Give advisories a
+small closed set of codes plus optional detail, and assert on the code.
 
 - [ ] **Step 4: Phase gate — the full suite**
 

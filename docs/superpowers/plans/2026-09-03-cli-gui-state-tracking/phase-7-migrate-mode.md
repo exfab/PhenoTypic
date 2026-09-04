@@ -27,12 +27,19 @@ stores are the stores it already had.
 | `image_complete/<ds>/<stem>.json` (v2 marker) | `images/<ds>/<stem>.json` record, `stages={"measured": …}` | 2 |
 | `stage2_done/<ds>/<stem>.json` | `stages.stage2` in the same record | 2 |
 | `stage3_complete/<ds>/<stem>.json` | `stages.stage3` in the same record | 2 |
-| `processing_generation: <uuid4>` | content-derived generation; `restart_epoch: 0` | 3 |
+| **pre-markers tree** (`success_markers_required` absent, `version="2.0.0"`) — **the v0.17.3 floor** | **nothing new to build.** The HDF→Zarr migrator already mints identity and publishes records for it. See Task 2b. | 2b |
+| `processing_generation: <uuid4>` **and** the migrator's inventory-derived one | content-derived generation; `restart_epoch: 0` | 3 |
 | `processing_state.datasets.{completed,failed,started}` | **deleted from the file** (§4.2) | 3 |
 | `slurm_generation` / `lifecycle_epoch` | `scheduler_epoch` | 3 |
-| joined embedded tables | **left alone** — see Task 4 | 4 |
-| `master_measurements.csv` | deleted; master is parquet-only (D8) | 4 |
+| joined embedded tables | **left alone**, projected at read — see Task 4 | 4 |
+| `master_measurements.csv` | deleted; master is parquet-only (D8) | **4, Step 0** |
+| `deliverables/metadata.canonical.csv` | **emitted** alongside the untouched snapshot | **3, Step 4** |
 | legacy `.h5` per-image files | unchanged — the existing OME-Zarr migration already owns this | — |
+| anything below **v0.17.3** | **refused** with a version string and a pointer | 1 |
+
+> **Two rows in the first draft's table had no implementing step (CAN-32):** the CSV
+> deletion was assigned to Task 4, which had no step for it, and Task 3 asserted
+> `metadata.canonical.csv` exists while no task built it. Both now name a step.
 
 **What migrate does NOT do:** re-mint `work_id` (D-C keeps the digest unchanged, so every
 existing `work_id` stays valid), rewrite `deliverables/metadata.csv` (project `CLAUDE.md`,
@@ -117,16 +124,63 @@ def requires_conversion(output_dir: Path) -> str | None:
 Wire it into `phenotypicCLI.py` for `full`, `measure`, `recompile` and `process`. **Not**
 for the GUI or any reader — spec §4.3 makes a half-migrated tree an advisory.
 
+- [ ] **Step 3b: Add the v0.17.3 floor as a third outcome (U-1)**
+
+`requires_conversion` currently has two outcomes — convert, or don't. **Migration has no
+lower bound at all**, which is an open-ended compatibility obligation nobody scoped. U-1
+bounds it: **v0.17.3**, verified to predate both the marker schema (`379acee4`, 2026-08-17)
+and OME-Zarr, writing `version="2.0.0"` with no `success_markers_required`.
+
+`state.version` is a real field (`_cli_state_management.py:205` is its only writer besides
+the legacy promoter), so the floor is detectable rather than inferred:
+
+```python
+def requires_conversion(output_dir: Path) -> ConversionVerdict | None:
+    """Return why *output_dir* needs `--mode migrate`, or ``None``.
+
+    Three outcomes, not two:
+      - ``None``                     -- already current
+      - ``ConversionVerdict.CONVERT`` -- convertible; the message names the evidence
+      - ``ConversionVerdict.BELOW_FLOOR`` -- older than v0.17.3, the supported floor
+        (U-1). Refuse with the version string found and a pointer, rather than
+        attempting a conversion whose inputs this build has never seen.
+    """
+```
+
+```python
+def test_a_tree_below_the_floor_is_refused_by_version_not_by_shape(tmp_path):
+    """U-1. Three lines of code replace an unbounded compatibility surface."""
+    _plant_legacy_state(tmp_path, version="1.0.0")
+    verdict = requires_conversion(tmp_path)
+    assert verdict is ConversionVerdict.BELOW_FLOOR
+    assert "0.17.3" in verdict.message and "1.0.0" in verdict.message
+```
+
+- [ ] **Step 3c: Classify the three shapes that had no stated behaviour (CAN-32)**
+
+Each gets a row in `requires_conversion`'s docstring and a test:
+
+| Shape | Correct classification | Why it is not obvious |
+|---|---|---|
+| **Bundle-only** — `deliverables/` with no `.phenotypic/` | `None` (nothing to convert) | `BundleLayout.detect` explicitly supports it (`_io_constants.py:2468-2482`), and it trips none of the four signals. Its master stays unstamped, which under P4's stamp-at-finalize is the **correct** pre-v2 signal. |
+| **`--mode process` tree** | `None` after P3 converts its records | Process **does** call `publish_image_success` (`_cli_process_single.py:789,943`), so signal 1 fires — but it has **no master at all**, so any master-touching step must no-op rather than raise. |
+| **Interrupted migrate** | `CONVERT`, and the re-run completes it | Already correct; keep the test that says so. |
+
 - [ ] **Step 4: Run and commit**
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli/test_schema_gate.py -v
 git add src/phenotypic/_cli/_cli_schema_gate.py src/phenotypic/phenotypicCLI.py \
         tests/unit/cli/test_schema_gate.py
-git commit -m "feat(cli): refuse an unconverted tree in every writing mode
+git commit -m "feat(cli): refuse an unconverted tree, and bound migration at v0.17.3
 
-D1. Detection is by presence of the old shape, not absence of the new -- an empty
-directory is not a legacy tree. Readers get an advisory, not a refusal (§4.3)."
+D1 + U-1. Detection is by presence of the old shape, not absence of the new -- an
+empty directory is not a legacy tree. A third outcome refuses anything below the
+floor by version string rather than attempting a conversion this build has never
+seen inputs for. Readers get an advisory, not a refusal (§4.3).
+
+NOTE: this task ships in P1, not P7 (CAN-11) -- the clean break lands in P3 and the
+gate must precede it, or a legacy tree silently produces an empty master."
 ```
 
 ---
@@ -214,7 +268,108 @@ def test_the_legacy_trees_are_removed_only_after_every_record_is_written(tmp_pat
 
 Enumerate the union of all three legacy trees, not just `image_complete/` — an image with
 a stage-2 token and no completion marker is a real interrupted state. Write every record
-first, then remove the three legacy trees. **Copy `artifacts` verbatim**; never re-derive.
+first, then **rename** the three legacy trees (Step 5). **Copy `artifacts` verbatim**;
+never re-derive.
+
+**Merge, do not overwrite (CAN-13).** When `images/<ds>/<stem>.json` already exists, union
+the `stages` maps and keep the later `completed_at` rather than replacing. The
+both-shapes-present case is real — see Step 6's coexistence window — and
+`test_conversion_is_idempotent` cannot catch it, because after the first pass the legacy
+trees are gone and the second call is a no-op.
+
+```python
+def test_conversion_merges_into_an_existing_record(tmp_path):
+    """CAN-13. An old-build worker writing image_complete/ after a partial migrate
+    must not clobber a newer record's stages."""
+    from phenotypic._cli._cli_migrate_state import convert_per_image_markers
+    from phenotypic._cli._cli_image_record import read_image_record, record_stage
+
+    record_stage(tmp_path, "plate", "a", "stage3", {"at": "new"})
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
+    convert_per_image_markers(tmp_path)
+
+    stages = read_image_record(tmp_path, "plate", "a")["stages"]
+    assert {"stage3", "measured"} <= set(stages), "the newer record's stage3 was lost"
+```
+
+---
+
+## Task 2b: The pre-markers shape needs no conversion arm (CAN-7, U-1)
+
+**This is the task the first draft was missing, and it turns out to be a deletion.**
+
+A v0.17.3 tree — the supported floor — has **no `image_complete/`, no `stage2_done/`, no
+`stage3_complete/`, and no OME-Zarr stores**. Task 2 enumerates three empty trees and
+converts nothing, while Task 3 deletes `datasets.{completed,failed,started}` — which for
+that shape is the *only* record of what finished. Migrate would report success over a tree
+with zero records, and the next `--mode full` would reprocess every image from source.
+
+**The correct framing (and the first reading of this was wrong):** the two conversions are
+**not** chained producer→consumer. The HDF→Zarr migrator is *itself* a producer of the
+record schema — it calls `publish_image_success` at `_cli_migrate.py:1413` and
+`_cli_migrate_image.py:567`. **They are alternative producers of one shape, and P3 revised
+only one of them.**
+
+Verified against source:
+
+- `_configured_work_id` (`_cli_migrate_image.py:125`) falls back to `_migration_work_id`
+  = `sha256("migration:<ds>/<stem>")` (`:120-122`) when the state carries no `work_ids`.
+- `_existing_marker_identity` (`:142`) supplies defaults when no marker exists.
+- `_migration_marker_artifacts` derives descriptors from **the store the migrator just
+  wrote** — which is not the laundering Task 2 forbids. Task 2's rule is *never re-derive
+  descriptors for an artifact migrate did not create*; certifying one it just created is
+  what a publisher does.
+
+So the pre-markers path already works end to end. What is required:
+
+- [ ] **Step 1: Delete `_migrate_legacy_success_evidence` and its gate**
+
+`phenotypicCLI.py:544` (`_requires_legacy_success_migration`), `:560`
+(`_migrate_legacy_success_evidence`), and the dispatch at `:2375-2378` plus its user-facing
+echo at `:2380-2383`. Spec §11.1 assigns "every `_legacy_*` helper moves **into** migrate"
+to P7; for this one the destination turns out to be *nothing*, because the migrator already
+covers it. Say that in the commit — a deleted helper with no replacement invites a later
+reader to restore it.
+
+Three tests exercise it (`tests/unit/cli/test_cli_state_management.py:316`,
+`test_cli_completion_store.py:606`, `test_embedded_measurement_migration.py:312`) plus a
+maintained pre-markers fixture (`tests/unit/sdk_/_migration_fixtures.py:440-447`). **Keep
+the fixture** — retarget it at the migrator path. Delete the three tests only after the
+Step 2 test passes against that fixture.
+
+- [ ] **Step 2: Prove it, with the real migrator**
+
+```python
+def test_a_pre_markers_tree_converts_end_to_end(tmp_path):
+    """CAN-7 / U-1. v0.17.3 is the floor and it predates markers AND stores, so
+    this is the shape that must work, not an edge case.
+
+    Built through the REAL HDF migrator. A hand-planted fixture cannot catch this
+    class of drift -- that is exactly how the gap survived the first draft.
+    """
+    from phenotypic.sdk_ import resolve_run_state
+
+    tree = _build_v0_17_3_tree(tmp_path)          # _migration_fixtures.py:440-447
+    assert _state_config(tree).get("success_markers_required") is None
+
+    _invoke_cli(mode="migrate", output=tree)
+
+    state = resolve_run_state(tree, depth="deep")
+    assert state.completion == "complete"
+    assert len(state.images) == _image_count(tree), "records were not produced"
+
+    reprocessed = _invoke_cli(mode="full", output=tree)
+    assert reprocessed.images_processed == 0, (
+        "a migrated pre-markers tree reprocessed from source -- the migrator's "
+        "records are not being accepted"
+    )
+```
+
+- [ ] **Step 3: Make Task 3's deletion conditional**
+
+Never delete `datasets.{completed,failed,started}` in the same pass that failed to consume
+them. Delete only after the tree has records for that dataset — cheap, and it converts a
+silent data loss into a loud refusal if a future shape slips through.
 
 - [ ] **Step 4: Run and commit**
 
@@ -314,14 +469,61 @@ the canonical view emitted alongside it."
 Existing trees have embedded tables that are **already metadata-joined** — the shape P4
 inverted. Two options, and the plan takes the cheaper one:
 
-**Decision: migrate leaves embedded tables alone and stamps the master.**
+**Decision: migrate leaves embedded tables alone; `finalize_run` projects them at read.**
+The master **stamp moved to P4** (CAN-9) — migrate leaves a legacy master *unstamped*,
+which is the honest pre-v2 signal, and `read_master_measurements` refuses it.
 
 Rewriting every store's embedded table would reintroduce exactly the post-proof store
-mutation D-A removed — the hardlink re-promote, the receipts, all of it — for trees that
-already have a correct master. Instead, `finalize_run`'s step 1 projects each embedded
-table onto its recorded `phenotypic.measurement_columns` before concatenating. That
-projection is free, it is the same boundary P4 uses, and the column list is already written
-into every existing store.
+mutation D-A removed, for trees that already have a correct master. Instead,
+`finalize_run`'s step 1 projects each embedded table onto its recorded
+`phenotypic.measurement_columns` before concatenating — the same boundary P4 uses, with the
+column list already in every existing store.
+
+### The projection is necessary but not sufficient (CAN-10)
+
+The first draft claimed projection makes *"a pre-inversion store aggregate to the same
+master a post-inversion one does."* **True for the column set; false for row count and
+dtype**, and its only test checked column *names*, which passes under both defects.
+
+**(a) Duplicate-key fan-out.** `prepare_embedded_measurement_table` right-joins with
+metadata as the **left** frame and `maintain_order="right"`
+(`_embedded_measurement_tables.py:88-93`), logging *"preserving duplicate-key fan-out"* at
+`:81-86` — deliberately. A legacy store whose metadata CSV has *k* rows per key holds each
+measurement row *k* times. Projection preserves that, and P4's global join then fans it out
+**again** → *k²* rows in the mirror. A P4-era store carries no fan-out at all; it moved to
+`finalize_run` step 3.
+
+**(b) Join-key dtype drift.** `_restore_join_key_dtypes` (`:22-39`) logs a warning and
+leaves a column as the string-safe matching type on failure (`:31-38`). So a legacy store
+can carry a join key as `str` where the baseline was `int64`; concatenating it with a fresh
+store either raises or silently upcasts, and after the global join the affected rows' user
+metadata is null.
+
+**Fix both in the projection**, since it is already the one place legacy shape is
+normalized:
+
+1. **Row-collapse on the store's own `target.column`** — the descriptor already names it
+   (`_measurement_tables.py:459-465`) — for stores whose recorded `join_status` is
+   `joined`. **Prove the dedup key safe**: two genuinely distinct objects must never
+   collapse. If it cannot be proved for some store shape, that shape gets an advisory and is
+   excluded, not silently deduped.
+2. **Normalize join-key dtypes at concat**, against the fresh-store baseline — or refuse the
+   store with an advisory. Never upcast silently.
+
+- [ ] **Step 0: Delete `master_measurements.csv` (CAN-32)**
+
+The conversion table assigned this here and the first draft had no step for it. Delete the
+file if present; `master_measurements_csv_path()` and `MASTER_MEASUREMENTS_CSV` are already
+gone in P4, so this is the on-disk half.
+
+- [ ] **Step 0b: Handle a store with no measurement descriptor (CAN-32)**
+
+`read_embedded_measurement_descriptor`'s docstring (`_measurement_tables.py:340-346`) says
+an absent descriptor is *"a normal state, not a fault: a `--mode process` run never
+measures, and a store written before embedded tables has none."* But
+`embedded_measurement_columns` (`:382`) raises `KeyError` on it, so the projection has a
+**reachable unhandled path**. Skip such a store and raise an advisory, per INV-VERDICT's
+degrade-toward-`incomplete` rule.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -361,19 +563,70 @@ def test_migrate_writes_no_byte_into_any_store(tmp_path):
     assert before == after
 
 
-def test_the_master_carries_a_schema_version_an_old_reader_fails_on(tmp_path):
-    """§7.3: 'anything filtering master on a user-metadata column would return EMPTY
-    rather than error. This is the one genuinely dangerous failure mode in §7, and
-    it is why the migrate step must tag the master with a schema version so an old
-    reader fails loudly.'"""
+def test_migrate_leaves_a_legacy_master_unstamped(tmp_path):
+    """CAN-9 / U-3. The first draft stamped the master during migrate while
+    explicitly NOT re-running finalization -- so the stamped file was still the
+    legacy metadata-joined master, and the stamp certified a shape it would not
+    have until the next finalize_run. Its own two tests contradicted each other.
+
+    P4 mints the stamp where finalize_run writes the master, so stamp and shape
+    come from one code path. Migrate leaves the legacy master unstamped, which
+    read_master_measurements correctly refuses as pre-v2.
+    """
     import pyarrow.parquet as pq
+    import pytest
 
     from phenotypic.sdk_ import master_measurements_parquet_path
+    from phenotypic.sdk_._master_io import read_master_measurements
 
     _build_legacy_tree(tmp_path)
     _invoke_cli(mode="migrate", output=tmp_path)
+
     schema = pq.read_schema(master_measurements_parquet_path(tmp_path))
-    assert schema.metadata[b"phenotypic.master_schema_version"] == b"2"
+    assert b"phenotypic.master_schema_version" not in (schema.metadata or {})
+    with pytest.raises(ValueError, match="migrate|schema"):
+        read_master_measurements(tmp_path)
+
+
+def test_a_legacy_fanout_store_and_a_fresh_store_produce_equal_masters(tmp_path):
+    """CAN-10. Projection fixes the column set; it does not undo the k-times row
+    duplication a legacy joined table carries, and P4's global join then squares
+    it. Assert ROW COUNTS, which is what the first draft's column-membership test
+    could not see."""
+    import polars as pl
+
+    from phenotypic.sdk_ import master_measurements_parquet_path, measurements_parquet_path
+
+    legacy = _build_legacy_tree_with_fanout(tmp_path / "legacy", rows_per_key=3)
+    fresh = _build_equivalent_fresh_tree(tmp_path / "fresh", rows_per_key=3)
+    _invoke_cli(mode="migrate", output=legacy)
+    _finalize(legacy)
+    _finalize(fresh)
+
+    for path_of in (master_measurements_parquet_path, measurements_parquet_path):
+        a = pl.read_parquet(path_of(legacy))
+        b = pl.read_parquet(path_of(fresh))
+        assert a.height == b.height, f"{path_of.__name__}: {a.height} != {b.height}"
+        assert a.equals(b)
+
+
+def test_a_legacy_store_with_a_drifted_join_key_dtype_does_not_null_its_metadata(tmp_path):
+    """CAN-10(b). _restore_join_key_dtypes leaves the string-safe type on failure
+    (_embedded_measurement_tables.py:31-38), so a legacy store can carry a key as
+    str where the baseline was int64. Silent upcasting at concat nulls the metadata
+    for exactly those rows after the global join."""
+    import polars as pl
+
+    from phenotypic.sdk_ import measurements_parquet_path
+
+    tree = _build_legacy_tree_with_string_join_key(tmp_path)
+    _invoke_cli(mode="migrate", output=tree)
+    _finalize(tree)
+
+    mirror = pl.read_parquet(measurements_parquet_path(tree))
+    measured = mirror.filter(pl.col("QC_MetadataOnly").fill_null(False).not_())
+    assert measured.height > 0
+    assert measured["Metadata_Strain"].null_count() == 0
 ```
 
 - [ ] **Step 2: Implement, run, commit**
@@ -438,6 +691,65 @@ def test_the_pre_existing_metadata_receipt_path_still_raises_on_uncertified_drif
     with pytest.raises(RuntimeError):
         refresh_success_markers_after_metadata_migration(tmp_path)
 ```
+
+- [ ] **Step 1b: Rename the legacy trees; do not delete them (CAN-12)**
+
+§15.1 requires *"the receipt/rollback discipline the existing metadata migration has, plus
+its own dry-run mode."* The first draft delivered the dry run and **resumability** — a
+different property. Resumability guarantees a re-run finishes; it says nothing about
+recovering the previous state. Task 2 removed the three legacy trees outright, with no copy
+and no receipt, where the existing metadata migration leaves receipts
+(`_cli_completion.py:340-350`).
+
+The consequence: after a successful migrate, a user who **reverts the code** — the ordinary
+first response to a regression in a change this size — has a tree the old build reads as
+entirely unprocessed. For 6,000 images and no backup that is a full reprocess, and nothing
+in the plan, the CLI help, or the `CLAUDE.md` bullet said migrate is one-way.
+
+**Rename `image_complete/`, `stage2_done/` and `stage3_complete/` to
+`.phenotypic/legacy-v2/`** — same filesystem, a directory rename, no byte copied — and have
+`requires_conversion` ignore that path. `migrate --revert` then costs a rename back.
+
+This puts a directory on disk that outlives migration, so be explicit about what it is:
+**retained for revert, read by nothing.** It is not tracked state — nothing derives from it,
+nothing must be kept in sync with it, and no verdict consults it. `_cli/CLAUDE.md`'s
+register (Task 6) lists it under its own heading, *not* in the tracked-state table, and
+says when it can be deleted.
+
+```python
+def test_migrate_is_revertible(tmp_path):
+    """CAN-12 / §15.1."""
+    tree = _build_legacy_tree(tmp_path)
+    before = _tree_fingerprint(tree)
+    _invoke_cli(mode="migrate", output=tree)
+    _invoke_cli(mode="migrate", output=tree, revert=True)
+    assert _tree_fingerprint(tree) == before
+
+
+def test_the_retained_legacy_tree_is_invisible_to_detection(tmp_path):
+    """It must not make an already-converted tree look unconverted."""
+    from phenotypic._cli._cli_schema_gate import requires_conversion
+
+    tree = _build_legacy_tree(tmp_path)
+    _invoke_cli(mode="migrate", output=tree)
+    assert (tree / ".phenotypic" / "legacy-v2").is_dir()
+    assert requires_conversion(tree) is None
+```
+
+- [ ] **Step 1c: State the coexistence rule (CAN-13)**
+
+Nothing in the spec or plan mentions it. A SLURM array launched from the **old build** holds
+the old schema for its entire lifetime — up to 30 d on `batch`/`intel`/`epyc` — and P2's
+`restart_epoch` fence cannot reach it, because an old-build worker never calls the new
+publisher at all: it writes the three legacy trees directly. So a tree migrated while such
+an array is live **re-acquires the old shape** and is then refused by every writing mode,
+including the array's own dependent finalizer.
+
+Put the operational rule in the phase doc, in `--mode migrate`'s `--help`, and **in the
+refusal message itself**: drain or `scancel` in-flight arrays before migrating. Step 3's
+merge-not-overwrite conversion is the second half — with the legacy trees renamed rather
+than deleted, a late old-build write lands in a directory nothing reads, which is the safer
+failure.
 
 - [ ] **Step 2: Implement, run.**
 
