@@ -491,12 +491,38 @@ class RunState:
     verified_at: datetime | None = None
 ```
 
-- [ ] **Step 4: Export from `sdk_/__init__.py`**
+- [ ] **Step 4: Export the FOUR DATACLASSES from `sdk_/__init__.py` — not the functions**
 
 Add to the import block and to `__all__`, in alphabetical position: `ImageState`,
-`RunDiagnostics`, `RunIdentity`, `RunState`, `assert_identity_current`,
-`clear_verification_cache`, `finalization_input_object`, `resolve_run_state`,
-`run_identity`.
+`RunDiagnostics`, `RunIdentity`, `RunState`. **Stop there.**
+
+> **The nine-name list this step used to carry breaks `import phenotypic` for the whole
+> repo (found during execution, P1-C1).** Five of the nine do not exist until later tasks —
+> `clear_verification_cache` is Task 3 Step 4; `run_identity`, `assert_identity_current` and
+> `finalization_input_object` are Task 4 Step 3; `resolve_run_state` is Task 5 Step 3. A
+> `from ._run_state import resolve_run_state` against a module that does not yet define it
+> is an `ImportError` at **package import time**, so following the old list literally left
+> the tree unimportable at the end of Task 2 — every test in the repo, not only this
+> phase's.
+>
+> **Each function is exported by the task that implements it.** That is what keeps the tree
+> green at every commit, which is the phase-gate contract and the property that makes a
+> bisect land on a phase boundary rather than mid-rewrite.
+>
+> `_run_state.py`'s `__all__` still lists all eight names verbatim from Task 1 Step 4, and
+> that is deliberate: `__all__` is a list of strings, nothing validates it at import, and
+> `test_run_state_exports_no_writer` reads it. The one consequence is that
+> `from phenotypic.sdk_._run_state import *` fails until Task 5 lands. Nothing in the repo
+> does that. Keeping `__all__` whole is worth more than removing a star-import hazard nobody
+> triggers.
+
+**Where `__init__.py` imports the dataclasses from: `._run_state`, not `._state_types`.**
+`_run_state.py` re-exports the four from the leaf module. One extra hop, and it buys the
+thing gen-r3 C5 did *not* intend to change: the spec's Interfaces block declares the surface
+as `# phenotypic.sdk_._run_state`, and moving the definitions into a leaf was a
+cycle-breaking mechanism, not an interface change. The re-export keeps that declaration true
+and leaves `_state_types` a private implementation detail that a later refactor can move
+again without touching a single consumer.
 
 - [ ] **Step 5: Run the test.** Expected: PASS.
 
