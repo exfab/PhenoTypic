@@ -18,18 +18,28 @@ reason.
 | File | What it does |
 |---|---|
 | `p1_task3_verification_cache.py` | P1 Task 3 Step 6 — twelve mutations over `sdk_/_verification_cache.py`, covering all fifteen INV-VERDICT tests. |
-| `check_mutation_coverage.py` | Read-only. Every harness's name-integrity and coverage gate, without the pytest runs behind them. |
+| `check_mutation_coverage.py` | Read-only, no pytest. Name integrity, coverage, and anchor drift for every harness here. |
 
-## Adding a test to a covered suite
+## Run `check_mutation_coverage.py` after touching either side
 
-Run `check_mutation_coverage.py`. If it names your test under
-**NOT covered by any mut**, add a mutation for it before you commit.
+It exits non-zero, so it works as a phase-gate step rather than a habit. Three
+things it catches, each of which is invisible from a green suite:
 
-This is not bookkeeping. An unproved test looks exactly like a proved one from
-the outside: it passes, it reads as a guard, and it is discovered to have been
-guarding nothing only when someone finally breaks the code it named and the
-suite stays green. A mutation suite decays one well-intentioned addition at a
-time, and this is the check that stops it.
+**A test no mutation claims.** An unproved test looks exactly like a proved one
+from the outside: it passes, it reads as a guard, and it is discovered to have
+been guarding nothing only when someone finally breaks the code it named and
+the suite stays green. A mutation suite decays one well-intentioned addition at
+a time.
+
+**A mutation naming a test that does not exist.** A typo reports `NOT PROVED`,
+which reads as a weak test — so the investigation starts at the test rather
+than at the harness. Same shape as `F822` in `__all__`: a name asserted against
+nothing.
+
+**A drifted anchor.** Refactor the target and a mutation's `old` text stops
+matching, so the harness prints `SKIPPED` for it. That reads as *not run*
+rather than *not proved*, and it is easy to skim past in a twelve-row report —
+at exactly the moment nobody is thinking about the harness.
 
 ## Two rules the P1 run produced
 

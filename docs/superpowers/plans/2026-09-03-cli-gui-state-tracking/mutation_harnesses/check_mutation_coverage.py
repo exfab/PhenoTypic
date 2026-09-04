@@ -75,9 +75,7 @@ def _target_of(harness: Path) -> Path:
     raise SystemExit(f"{harness.name}: no TARGET constant found")
 
 
-def _broken_anchors(
-    target: Path, mutations: list[tuple[str, str, str, tuple[str, ...]]]
-) -> list[str]:
+def _broken_anchors(target: Path, mutations: list[Mutation]) -> list[str]:
     """Return labels whose ``old`` text no longer matches the target once.
 
     A drifted anchor makes the harness print ``SKIPPED`` for that mutation,
@@ -123,10 +121,14 @@ def main() -> int:
             failures += 1
             continue
         defined = _test_names(suite)
-        named = {name for _l, _o, _n, expected in mutations for name in expected}
+        named = {
+            name for _l, _o, _n, expected in mutations for name in expected
+        }
 
         target = _target_of(harness)
-        drifted = _broken_anchors(target, mutations) if target.is_file() else []
+        drifted = (
+            _broken_anchors(target, mutations) if target.is_file() else []
+        )
 
         print(f"\n{harness.name}  ->  {suite}")
         print(f"  mutations defined      : {len(mutations)}")
