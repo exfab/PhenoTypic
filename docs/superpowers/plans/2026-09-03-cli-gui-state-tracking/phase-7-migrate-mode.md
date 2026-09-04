@@ -27,7 +27,7 @@ stores are the stores it already had.
 | `image_complete/<ds>/<stem>.json` (v2 marker) | `images/<ds>/<stem>.json` record, `stages={"measured": …}` | 2 |
 | `stage2_done/<ds>/<stem>.json` | `stages.stage2` in the same record | 2 |
 | `stage3_complete/<ds>/<stem>.json` | `stages.stage3` in the same record | 2 |
-| **pre-markers tree** (`success_markers_required` absent, `version="2.0.0"`) — **the v0.17.3 floor** | **nothing new to build.** The HDF→Zarr migrator already mints identity and publishes records for it. See Task 2b. | 2b |
+| **pre-markers tree** (`success_markers_required` absent, `version="2.0.0"`) — **the v0.17.3 floor** | `_migrate_legacy_success_evidence` **ported into migrate**, sequenced after the HDF→Zarr conversion and before the migrator's own publisher. It is the only producer of the *content-derived* `work_id` a later resume re-derives. See Task 2b. | 2b |
 | `processing_generation: <uuid4>` **and** the migrator's inventory-derived one | content-derived generation; `restart_epoch: 0` | 3 |
 | `processing_state.datasets.{completed,failed,started}` | **deleted from the file** (§4.2) | 3 |
 | `slurm_generation` / `lifecycle_epoch` | `scheduler_epoch` | 3 |
