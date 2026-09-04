@@ -1272,3 +1272,54 @@ def test_a_warm_shallow_pass_reports_the_same_advisories(complete_run):
     assert shallow.depth == "shallow"
     assert shallow.advisories == deep.advisories
     assert len(deep.advisories) == 2, deep.advisories
+
+
+def test_a_finished_lifecycle_record_is_not_a_live_authority(incomplete_run):
+    """Rule 2's negative control, and the one every liveness test was missing.
+
+    Every other test here drives `_live_authority` POSITIVELY -- an active
+    lifecycle, a running owner. That leaves the predicate itself unproved:
+    replace `lifecycle.get("active") is True` with `lifecycle is not None` and
+    every one of them still passes.
+
+    `active: False` is not hypothetical. It is what finalize and clear write
+    (`_cli_slurm_lifecycle.py:661,679`), so it is the state of every SLURM run
+    that has ENDED. Under that mutation a finished run with a failed image
+    reports `active` forever: rule 1 cannot fire (clause 1 fails), rule 2 now
+    does, and the failure is masked by a worker that is not there.
+    """
+    import json
+
+    from phenotypic.sdk_ import resolve_run_state, slurm_lifecycle_path
+
+    _mark_slurm_lifecycle_active(incomplete_run)
+    path = slurm_lifecycle_path(incomplete_run)
+    record = json.loads(path.read_text(encoding="utf-8"))
+    record["active"] = False
+    path.write_text(json.dumps(record), encoding="utf-8")
+
+    state = resolve_run_state(incomplete_run, depth="deep")
+    assert state.completion != "active", (
+        "a lifecycle record marked finished still reported live work"
+    )
+
+
+def test_a_terminal_owner_status_is_not_a_live_authority(incomplete_run):
+    """The same control for the other predicate.
+
+    `_OWNER_STATUSES_IN_FLIGHT` is `{"running", "submitting"}`; every test
+    writes `"running"`, so the membership test is unproved -- widen it to any
+    non-empty status and nothing goes red. A GUI that exited cleanly leaves a
+    terminal status behind, and believing it pins the verdict at `active`
+    exactly as the dead-pid case does, but without a pid to disbelieve.
+    """
+    import os
+
+    from phenotypic.sdk_ import resolve_run_state
+
+    _write_owner_record(incomplete_run, status="finished", pid=os.getpid())
+
+    state = resolve_run_state(incomplete_run, depth="deep")
+    assert state.completion != "active", (
+        "a terminal owner status still reported live work"
+    )
