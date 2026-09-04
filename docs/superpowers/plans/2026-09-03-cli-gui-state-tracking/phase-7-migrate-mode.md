@@ -158,14 +158,65 @@ def requires_conversion(output_dir: Path) -> ConversionVerdict | None:
     2. ``stage2_done/`` or ``stage3_complete/`` exists
     3. ``processing_state.json`` carries ``datasets.completed`` (deleted by §4.2)
     4. ``processing_state.json`` has ``work_ids`` and no ``restart_epoch``
-    5. ``processing_state.json`` has **no ``work_ids`` key at all** -- the
-       pre-markers shape, and the only signal that reliably identifies it
+    5. a **present, parseable, object-shaped** ``processing_state.json`` that carries
+       ``version`` (or ``datasets``) and has **no ``work_ids`` key** -- the
+       pre-markers shape
+
+    An **absent** state file returns ``None``, mirroring ``load_processing_state``'s
+    own ``return None`` (``_cli_state_management.py:111-112``). An **unparseable**
+    one gets a distinct verdict that names the file and does **not** point at
+    ``--mode migrate``, which cannot repair it.
 
     Reads the raw JSON directly. Never ``load_processing_state``, which writes via
     ``migrate_legacy_machine_state`` (``:109``) and raises on an absent version
     (``:167``) -- a gate must not mutate the tree it is deciding about.
     """
 ```
+
+> ### INV-DISCHARGEABLE — no verdict may be emitted that migrate cannot discharge
+>
+> **The missing invariant behind MIG-11 and MIG-20, stated once.**
+>
+> `_refuse_unmigrated_output` fires for `full`, `measure`, `recompile` and `process` at
+> `phenotypicCLI.py:1661-1662`, **before `--restart` is handled**. So a tree classified
+> `CONVERT` that migrate cannot actually convert is **refused by every writing mode
+> forever**, and the only escape is `--overwrite`, which deletes the outputs. A gate that
+> can strand a user's tree is worse than no gate.
+>
+> An earlier draft diagnosed exactly this for the pre-markers process tree (MIG-11) and then
+> wrote a signal — and a test — that reproduced it for three more shapes. Signal 5 as first
+> written fires on:
+> 1. a **fresh output directory** (no state file), which
+>    `test_a_fresh_output_directory_is_not_an_unconverted_tree` requires to be `None`;
+> 2. a **bundle-only tree**, which has no `processing_state.json` at all — and whose Step-3c
+>    row still says "trips none of the **four** signals", a stale count now that there are
+>    five;
+> 3. an **unreadable state file** — so a *modern* tree whose state is truncated classifies
+>    `CONVERT` and is permanently refused.
+>
+> **The test that closes this class, not just these instances:** for every shape the gate can
+> return `CONVERT` for, one successful `--mode migrate` must make `requires_conversion`
+> return `None`.
+>
+> ```python
+> @pytest.mark.parametrize("shape", _EVERY_CONVERTIBLE_SHAPE)
+> def test_every_convert_verdict_is_dischargeable_by_one_migrate(tmp_path, shape):
+>     """INV-DISCHARGEABLE. A CONVERT that migrate cannot discharge strands the tree
+>     behind a refusal in every writing mode, escapable only by --overwrite.
+>
+>     This is the test that closes MIG-11, MIG-20, and the next shape nobody
+>     enumerated -- which is why it is parametrized over the shape list rather than
+>     written per shape."""
+>     tree = _build(shape, tmp_path)
+>     assert requires_conversion(tree) is ConversionVerdict.CONVERT
+>     _invoke_cli(mode="migrate", output=tree)
+>     assert requires_conversion(tree) is None, (
+>         f"{shape}: migrate ran successfully and the gate still refuses the tree"
+>     )
+> ```
+>
+> `_EVERY_CONVERTIBLE_SHAPE` is the same list Step 3c classifies. **Adding a shape there
+> without adding it here is the bug this invariant exists to catch.**
 
 ```python
 def test_a_malformed_state_file_yields_a_verdict_not_an_exception(tmp_path):
@@ -199,7 +250,8 @@ Each gets a row in `requires_conversion`'s docstring and a test:
 
 | Shape | Correct classification | Why it is not obvious |
 |---|---|---|
-| **Bundle-only** — `deliverables/` with no `.phenotypic/` | `None` (nothing to convert) | `BundleLayout.detect` explicitly supports it (`_io_constants.py:2468-2482`), and it trips none of the four signals. Its master stays unstamped, which under P4's stamp-at-finalize is the **correct** pre-v2 signal. |
+| **Bundle-only** — `deliverables/` with no `.phenotypic/` | `None` (nothing to convert) | `BundleLayout.detect` explicitly supports it (`_io_constants.py:2468-2482`). It trips none of the **five** signals, because signal 5 requires a *present* state file — see INV-DISCHARGEABLE. Its master stays unstamped, which under P4's stamp-at-finalize is the **correct** pre-v2 signal. |
+| **Unreadable `processing_state.json`** | a distinct verdict, **not `CONVERT`** | Migrate cannot repair a truncated state file, so pointing at it would strand the tree (INV-DISCHARGEABLE). Name the file; do not name `--mode migrate`. |
 | **modern `--mode process` tree** | `None` after P3 converts its records | Process **does** call `publish_image_success` (`_cli_process_single.py:789,943`), so signal 1 fires — but it has **no master at all**, so any master-touching step must no-op rather than raise. |
 | **pre-markers `--mode process` tree** | **needs a process arm in migrate** — see below | `_cli_process_only.py` ships in v0.17.3, so this is *inside* the supported range. It has no `image_complete/`, so signal 1 does **not** fire; it trips signal 3 and classifies `CONVERT`. But migrate's discovery enumerates `.h5` and `results/<ds>/zarr/*.ome.zarr` (`_cli_migrate.py:611,1377`) — **a process-only run wrote neither.** Its outputs are process layers under the mirrored input tree. |
 
@@ -338,8 +390,8 @@ def test_conversion_merges_into_an_existing_record(tmp_path):
     """CAN-13. An old-build worker writing image_complete/ after a partial migrate
     must not clobber a newer record's stages."""
     from phenotypic._cli._cli_migrate_state import convert_per_image_markers
-    from phenotypic._cli._cli_image_record import read_image_record, record_stage
-
+    from phenotypic.sdk_._image_record import read_image_record
+from phenotypic._cli._cli_image_record import record_stage
     record_stage(tmp_path, "plate", "a", "stage3", {"at": "new"})
     _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
     convert_per_image_markers(tmp_path)
@@ -518,9 +570,25 @@ certify `.h5` artifacts about to be replaced — **harmless**, because
 > the seam holds, and a future edit that "tidies" it breaks the seam.
 
 Three tests exercise the helper (`tests/unit/cli/test_cli_state_management.py:316`,
-`test_cli_completion_store.py:606`, `test_embedded_measurement_migration.py:312`) plus a
-maintained pre-markers fixture (`tests/unit/sdk_/_migration_fixtures.py:440-447`). **Keep
-all four**; retarget the tests at the new call path rather than deleting them.
+`test_cli_completion_store.py:606`, `test_embedded_measurement_migration.py:312`). **Keep
+all three**; retarget them at the new call path rather than deleting them.
+
+> **A NEW fixture is required — the existing one is not the floor shape (MIG-15).**
+> `make_markerless` (`tests/unit/sdk_/_migration_fixtures.py:437-449`) calls
+> `strip_completion_evidence` on a **modern** `build_completed_run`: it sets
+> `success_markers_required = False` — **not absent** — and **retains content-derived
+> `work_ids`**. So Task 2b Step 2's `assert _state_config(tree).get(
+> "success_markers_required") is None` fails against it, and under U-6 it is not the
+> pre-markers shape at all, since signal 5 keys on *absent* `work_ids`.
+>
+> Worse, a test built on it exercises `_configured_work_id`'s **hit** path — the branch
+> where the lookup succeeds — which is precisely the blind spot MIG-10 found. It would
+> pass while the defect it was written for is live.
+>
+> The new fixture must produce: `version="2.0.0"`, **no `work_ids` key**, **no**
+> `success_markers_required` key, `datasets.<ds>.completed` populated, per-image `.h5`,
+> no store, no `image_complete/`. That is the v0.17.3 shape; nothing in `tests/` builds
+> it today.
 
 - [ ] **Step 2: Prove it, with the real migrator**
 
@@ -635,11 +703,26 @@ def test_the_weakening_is_surfaced_as_an_advisory(tmp_path):
     assert any("detect_mode" in a and "overlay_alpha" in a for a in advisories)
 ```
 
-- [ ] **Step 3: Make Task 3's deletion conditional**
+- [ ] **Step 3: Make Task 3's deletion conditional, and give `datasets.failed` a home**
 
 Never delete `datasets.{completed,failed,started}` in the same pass that failed to consume
 them. Delete only after the tree has records for that dataset — cheap, and it converts a
 silent data loss into a loud refusal if a future shape slips through.
+
+**`datasets.failed` has no destination, and the conditional deletion does not cover it
+(MIG-16).** Records are success-only, so conditioning on "records exist" discards the
+failure set the moment any image succeeds. §4.1 makes terminal failures one of the **three
+written authorities** precisely because *"a failure leaves no artifact"* — so deleting them
+un-migrated is deleting an authority.
+
+Convert them: each `datasets.<ds>.failed` entry becomes a `terminal_failures.jsonl` record
+via `append_terminal_failure` (`_cli_failure_tracker.py:353`), which is where §4.1 says that
+fact lives. A floor tree has no `failed_stage` or exception to record — write the migration
+as the stage and a message naming the tree's vintage, rather than inventing detail the tree
+does not contain.
+
+**Condition the deletion of `failed` on that conversion having run**, not on records
+existing.
 
 - [ ] **Step 4: Run and commit**
 
@@ -907,9 +990,12 @@ git commit -m "feat(cli): project legacy embedded tables instead of rewriting th
 
 D-A applied to migrate: not one byte is written into any store. finalize_run
 projects each table onto its own recorded measurement_columns, so a pre-inversion
-store aggregates identically. The master is stamped master_schema_version=2 so a
-reader that filters on a user-metadata column fails loudly instead of silently
-returning nothing (§7.3)."
+store aggregates identically, subject to the fan-out and dtype corrections in CAN-10.
+
+The master schema stamp is NOT minted here (CAN-9). finalize_run mints it where it
+writes the master, so stamp and shape come from one code path; migrate leaves a
+legacy master unstamped, which read_master_measurements correctly refuses as pre-v2
+(U-3)."
 ```
 
 ---
@@ -985,6 +1071,28 @@ This puts a directory on disk that outlives migration, so be explicit about what
 nothing must be kept in sync with it, and no verdict consults it. `_cli/CLAUDE.md`'s
 register (Task 6) lists it under its own heading, *not* in the tracked-state table, and
 says when it can be deleted.
+
+**Three things the rename needs that the first draft left undefined:**
+
+1. **`clear_machine_state` must preserve it (MIG-12).** That function rmtree's **every**
+   child of `.phenotypic/` except `TERMINAL_FAILURES_JSONL` (`sdk_/_io_constants.py:1105-1116`),
+   and `legacy-v2/` is such a child — so `--restart` would silently destroy the revert path.
+   **P2 Task 1 already solves this exact coupling for `restart_epoch.json`, with a test.**
+   Add `legacy-v2/` to the same `_PRESERVED_ON_RESTART` set and extend that test rather than
+   writing a second mechanism.
+
+2. **`--revert` must exist (MIG-13).** `test_migrate_is_revertible` invokes it; no flag, no
+   rename primitive and no collision rule were ever specified, so the phase gate cannot be
+   implemented as written. Define: `--mode migrate --revert` renames `.phenotypic/legacy-v2/`
+   back over the current trees, refusing if `images/` has records the legacy trees do not
+   cover.
+
+3. **A second migrate must not collide on a non-empty `legacy-v2/` (MIG-13).**
+   `os.replace` raises on a non-empty target directory and `shutil.move` **nests** inside it —
+   and Step 1c *expects* a late old-build worker to recreate `image_complete/`, which is
+   exactly how the second migrate arises. Follow `promote_store`'s existing move-aside
+   discipline (`sdk_/ngff_.py:1737-1790`): a uuid-suffixed trash path, then replace, then
+   reclaim. Do not invent a third rename protocol.
 
 ```python
 def test_migrate_is_revertible(tmp_path):

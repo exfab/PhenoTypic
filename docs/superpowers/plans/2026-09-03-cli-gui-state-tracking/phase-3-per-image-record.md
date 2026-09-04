@@ -19,10 +19,16 @@ separate directory trees.
 **`stage2_done/<ds>/<stem>.json` — narrowed out of the collapse (user ruling, round 3).**
 Spec §6.1 folds it into `stages.stage2`; it must not be.
 
-The token is not a *record*, it is a **consumable claim**: Stage 3 takes it by
-`unlink()`ing it. That operation is atomic on every filesystem and needs **no lock at
-all**. Folding it into the shared record replaces it with a **locked read-modify-write of a
-JSON file**, and three things compound in the environment this actually runs in:
+The token is not a *record*. It is a **consumable signal**: Stage 3 clears it by
+`unlink()`ing it — atomic on every filesystem, needing **no lock at all**. Folding it into
+the shared record replaces that with a **read-modify-write of a JSON file**, and three
+things compound in the environment this actually runs in:
+
+*(Precise about the mechanism, because an earlier draft of this section called the token a
+"claim" that Stage 3 "takes". It does not: `_cli_staged_slurm_worker.py:487-516` publishes,
+writes the stage-3 marker, and only **then** deletes the token. It signals "work available"
+and is cleared on completion — it never serialized anything. What actually keeps writers
+apart is disjoint work partitioning; see INV-ONEWRITER.)*
 
 1. **The lock is `flock`**, not POSIX record locking (`sdk_/_file_locking.py:101`,
    `fcntl.flock(handle.fileno(), LOCK_EX | LOCK_NB)`). On network filesystems `flock` is the
@@ -63,13 +69,19 @@ additive.
 
 | File | Responsibility |
 |---|---|
-| **Create** `src/phenotypic/sdk_/_image_record.py` | **Readers and shared vocabulary:** `read_image_record`, `RECORD_VERSION`, the four `STAGE_*` constants. ~70 lines. |
+| **Create** `src/phenotypic/sdk_/_image_record.py` | **Readers and shared vocabulary:** `read_image_record`, `RECORD_VERSION`, the four `STAGE_*` constants. Exported from `sdk_/__init__.py` so test snippets can use the package path. ~70 lines. |
 | **Create** `src/phenotypic/_cli/_cli_image_record.py` | **Writers only:** `publish_image_record`, `record_stage`, `consume_stage`. Imports the vocabulary from `sdk_`. ~180 lines. |
+| **Modify** `src/phenotypic/_cli/_cli_completion.py` | `publish_image_success` / `valid_image_success` delegate to the record — **and `authorized_measurement_sources` (`:768`), which nobody listed.** See below. |
+| **Modify** `src/phenotypic/_cli/_cli_migrate_image.py:567` | **The migrator is a second producer of this schema**, not a stage that runs before one (CAN-7). It calls `publish_image_success` directly. |
+| **Modify** `src/phenotypic/_cli/_cli_stage2_token.py` | **Only `_STAGE2_DIR` moves to `_io_constants`** (audit S9). `write_stage2_token` / `stage2_token_exists` / `delete_stage2_token` and the `stage2_raw` helpers are **unchanged** — U-9 keeps the token a file with an atomic unlink. |
+| **Modify** `src/phenotypic/_cli/_cli_staged_resume.py` | `stage3_completion_exists` / `write_stage3_completion_marker` / `remove_stage3_completion_marker` become `stages.stage3` operations. `classify_staged_image` reads one record **plus one token probe**, and **FLOW-40's raw-presence branch (`:279-283`) survives verbatim**. |
+| **Modify** `src/phenotypic/sdk_/_run_state.py` | The deep path reads the record instead of the legacy marker. |
+| **Delete** | `DIR_STAGE3_COMPLETE`'s path helper and the inline `"stage3_complete"` literal at `_cli_staged_resume.py:141`. **`DIR_STAGE2_DONE` is NOT deleted** — it moves. |
 
-> **The split is forced, and discovering it in P3 is much cheaper than in P6 (N-3).** P6
-> Task 0 moves `valid_image_success` into `sdk_/_run_state.py` (CAN-8), and after P3 that
-> function reads the record. INV-LAYER forbids `sdk_` importing `phenotypic._cli` at module
-> scope *or inside a function*, so `sdk_` would have to parse the record and know
+> **The reader/writer split is forced, and discovering it in P3 is much cheaper than in P6
+> (N-3).** P6 Task 0 moves `valid_image_success` into `sdk_/_run_state.py` (CAN-8), and after
+> P3 that function reads the record. INV-LAYER forbids `sdk_` importing `phenotypic._cli` at
+> module scope *or inside a function*, so `sdk_` would have to parse the record and know
 > `RECORD_VERSION` and `STAGE_MEASURED` without importing them. The only two outs are
 > duplicating the constants — which **CAN-27's own resolution rejects by name**, having just
 > replaced `KNOWN_STAGES` for exactly that reason — or re-implementing record parsing in
@@ -77,14 +89,13 @@ additive.
 >
 > Putting readers plus vocabulary in `sdk_` and writers in `_cli` satisfies **CAN-27** (one
 > spelling), **CAN-8** (one predicate) and **INV-LAYER** at once, and it is the same
-> read/write asymmetry spec §5.2 already declares for run state. One line in this table now,
-> versus an unresolvable conflict four phases later.
-| **Modify** `src/phenotypic/_cli/_cli_completion.py` | `publish_image_success` / `valid_image_success` delegate to the record — **and `authorized_measurement_sources` (`:768`), which nobody listed.** See below. |
-| **Modify** `src/phenotypic/_cli/_cli_migrate_image.py:567` | **The migrator is a second producer of this schema**, not a stage that runs before one (CAN-7). It calls `publish_image_success` directly. |
-| **Modify** `src/phenotypic/_cli/_cli_stage2_token.py` | `write_stage2_token` / `stage2_token_exists` / `delete_stage2_token` become `stages.stage2` operations. `stage2_raw` helpers unchanged. |
-| **Modify** `src/phenotypic/_cli/_cli_staged_resume.py` | `stage3_completion_exists` / `write_stage3_completion_marker` / `remove_stage3_completion_marker` become `stages.stage3` operations. `classify_staged_image` reads one record. |
-| **Modify** `src/phenotypic/sdk_/_run_state.py` | The deep path reads the record instead of the legacy marker. |
-| **Delete** | `DIR_STAGE2_DONE` / `DIR_STAGE3_COMPLETE` path helpers, the inline `"stage3_complete"` literal at `_cli_staged_resume.py:141`, and `_STAGE2_DIR` at `_cli_stage2_token.py:42`. |
+> read/write asymmetry spec §5.2 already declares for run state.
+>
+> **Every code snippet in this plan must import readers from `phenotypic.sdk_` and writers
+> from `phenotypic._cli` (gen-r3 C4).** An earlier revision changed this table and left
+> twelve snippets importing readers from `_cli` — an implementer resolving the resulting
+> `ImportError` by majority would put them back in `_cli`, re-creating the exact deadlock
+> this split prevents, and discovering it four phases later.
 | **Test** `tests/unit/cli/test_image_record.py` *(new)* | Record schema, stage independence, O-2 advisory. |
 | **Test** `tests/unit/cli/test_staged_resume_equivalence.py` *(new)* | The gate: resume decisions are unchanged. |
 
@@ -211,7 +222,8 @@ def consume_stage(
 def test_the_record_is_one_file_carrying_every_stage(tmp_path):
     """Spec §6.1: 'Is this image done?' becomes ONE JSON read instead of one read
     plus up to three is_file() probes across three directory trees."""
-    from phenotypic._cli._cli_image_record import publish_image_record, read_image_record
+    from phenotypic.sdk_._image_record import read_image_record
+from phenotypic._cli._cli_image_record import publish_image_record
     from phenotypic.sdk_ import image_record_path
 
     store = tmp_path / "results" / "plate" / "zarr" / "a.ome.zarr"
@@ -241,8 +253,8 @@ def test_the_record_is_one_file_carrying_every_stage(tmp_path):
 def test_stages_is_an_open_map(tmp_path):
     """§6.1: `stages` and `artifacts` are open maps -- that is what makes a future
     stage additive rather than a schema break."""
-    from phenotypic._cli._cli_image_record import publish_image_record, read_image_record
-
+    from phenotypic.sdk_._image_record import read_image_record
+from phenotypic._cli._cli_image_record import publish_image_record
     publish_image_record(
         tmp_path, work_id="w", dataset="plate", image_stem="a",
         relative_image_path="a.tif", mode="full",
@@ -267,8 +279,7 @@ def test_the_stage_names_come_from_one_shared_constant(tmp_path):
     advisory it replaces. The map stays OPEN -- a future stage is still additive.
     """
     from phenotypic._cli import _cli_stage2_token, _cli_staged_resume
-    from phenotypic._cli._cli_image_record import STAGE_MEASURED, STAGE_STAGE2, STAGE_STAGE3
-
+    from phenotypic.sdk_._image_record import STAGE_MEASURED, STAGE_STAGE2, STAGE_STAGE3
     assert _cli_stage2_token.STAGE_STAGE2 is STAGE_STAGE2
     assert _cli_staged_resume.STAGE_STAGE3 is STAGE_STAGE3
 
@@ -276,8 +287,8 @@ def test_the_stage_names_come_from_one_shared_constant(tmp_path):
 def test_recording_one_stage_leaves_the_others_untouched(tmp_path):
     """The three collapsed trees were independently writable and must stay so --
     Stage 2 and Stage 3 run in different jobs, on different nodes, minutes apart."""
-    from phenotypic._cli._cli_image_record import read_image_record, record_stage
-
+    from phenotypic.sdk_._image_record import read_image_record
+from phenotypic._cli._cli_image_record import record_stage
     record_stage(tmp_path, "plate", "a", "stage1", {"at": "t1"})
     record_stage(tmp_path, "plate", "a", "stage2", {"at": "t2"})
     record = read_image_record(tmp_path, "plate", "a")
@@ -286,7 +297,7 @@ def test_recording_one_stage_leaves_the_others_untouched(tmp_path):
 
 def test_reading_a_corrupt_record_is_none_not_an_error(tmp_path):
     """INV-VERDICT, degrade half."""
-    from phenotypic._cli._cli_image_record import read_image_record
+    from phenotypic.sdk_._image_record import read_image_record
     from phenotypic.sdk_ import image_record_path
 
     path = image_record_path(tmp_path, "plate", "a")
@@ -396,21 +407,48 @@ same audit.
    6,000 lock files on a 6,000-image array, `flock` contention on GPFS, and reliance on
    `flock`'s weaker cross-node semantics (`sdk_/_file_locking.py:101`) — all to defend a
    race the partitioning already prevents. If the invariant holds, the lock is pure cost.
-4. **Merging is identity-fenced, and `consume_stage` is idempotent.** Nothing may merge
-   forward a stage entry from a superseded `scheduler_epoch`: a stale `stage2` merged into a
-   fresh record makes `classify_staged_image` skip Stage 2 while the matching raw `.npy` is
-   gone. **Merge only entries whose recorded epoch matches the current one; otherwise
-   replace.** This is one rule covering two places — here, and CAN-13's merge-not-overwrite
-   conversion in P7, which merges an *old-build* legacy marker into a current record and had
-   no fence at all.
+4. **Merging is fenced on `work_id`, and `consume_stage` is idempotent.**
+
+   > **An earlier draft fenced on `scheduler_epoch`. That was unimplementable, and it
+   > invented a guard that already exists twice (flow-r3 C3).**
+   >
+   > Unimplementable because `scheduler_epoch` is a **record-level** field, beside
+   > `attempt_id` and `completed_at` and *outside* `stages` — so there is no per-entry epoch
+   > to compare, and the rule degenerates to "replace the whole map", which is a different
+   > and blunter behaviour. `record_stage`'s signature has no epoch parameter and is
+   > `sdk_`-free by design, so it cannot read one. And neither collapsed artifact carries an
+   > epoch today: the stage-3 marker's payload is `{version, dataset, image_name, stem,
+   > legacy_migration, completed_at}` (`_cli_staged_resume.py:168-178`).
+   >
+   > Unnecessary because the hazard it named — a stale `stage2` surviving into a fresh
+   > record while its raw `.npy` is gone — **is already guarded**:
+   > - `_cli_staged_resume.py:279-283` (**FLOW-40**) is an explicit raw-presence branch whose
+   >   comment at `:268-278` says it must *not* be folded into `stage2_done`, because doing
+   >   so flips a token-present/raw-missing image that has a parquet all the way to
+   >   `complete`;
+   > - a stale *raw* is caught by the store's `work_id` (`:229-239`) — a mismatch makes
+   >   `stage2_store_valid` False, returns `"stage1"`, and clears both token and raw.
+   >
+   > So the raw `.npy` is not a second condition to add. **It is the condition, it already
+   > exists, and it is what the fence was reaching for.**
+
+   Fence the merge on **`work_id`**: entries from a record whose `work_id` differs are not
+   merged forward. Keep `consume_stage` idempotent — Stage 3 already tolerates a token
+   another attempt consumed — and keep the CAN-13 cross-reference, because P7's
+   merge-not-overwrite conversion genuinely does need a `work_id` fence when folding an
+   old-build marker into a current record.
+
+   **Name FLOW-40 as load-bearing in Task 3 Step 3.** The collapse rewrites the function
+   containing it and deletes the module whose docstring explains the consumable-token
+   semantics. CAN-16's `s2_raw` axis covers the branch *behaviourally*, which is good; what
+   would be lost is the comment telling a future reader **why** it cannot be simplified.
 
 ```python
 def test_publishing_a_record_does_not_clobber_an_earlier_stage(tmp_path):
     """CAN-6. Three writers, one file. Today they are three files and this
     cannot happen; after the collapse it is the default unless publish merges."""
-    from phenotypic._cli._cli_image_record import (
-        publish_image_record, read_image_record, record_stage,
-    )
+    from phenotypic.sdk_._image_record import read_image_record
+from phenotypic._cli._cli_image_record import publish_image_record, record_stage
 
     record_stage(tmp_path, "plate", "a", "stage2", {"at": "t2"})
     publish_image_record(
@@ -436,8 +474,8 @@ def test_a_crash_mid_write_leaves_the_previous_record_intact(tmp_path):
     since work is partitioned per image. Testing an unreachable race would have
     justified a lock the design does not need. If you believe the race IS reachable,
     fix the partitioning; do not add a lock."""
-    from phenotypic._cli._cli_image_record import read_image_record, record_stage
-
+    from phenotypic.sdk_._image_record import read_image_record
+from phenotypic._cli._cli_image_record import record_stage
     record_stage(tmp_path, "plate", "a", "stage1", {"at": "t1"})
     before = read_image_record(tmp_path, "plate", "a")
     with _fail_during_write():
@@ -448,7 +486,6 @@ def test_a_crash_mid_write_leaves_the_previous_record_intact(tmp_path):
 
 def test_consuming_an_absent_stage_is_a_no_op(tmp_path):
     from phenotypic._cli._cli_image_record import consume_stage
-
     assert consume_stage(tmp_path, "plate", "a", "stage2") is False   # never raises
 ```
 
@@ -552,7 +589,6 @@ def test_a_stage2_only_record_is_not_a_success_proof(tmp_path):
     file. A record with no artifacts certifies nothing."""
     from phenotypic._cli._cli_completion import valid_image_success
     from phenotypic._cli._cli_image_record import record_stage
-
     record_stage(tmp_path, "plate", "a", "stage2", {"at": "t"})
     assert not valid_image_success(
         tmp_path, dataset="plate", image_stem="a", work_id="w"

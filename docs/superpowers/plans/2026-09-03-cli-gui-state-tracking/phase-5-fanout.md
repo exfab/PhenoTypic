@@ -279,6 +279,50 @@ obvious form of both is vacuous (flow-r2 C3):
    Record the planned source set when shards are planned, and require
    `merged == planned ∧ planned ⊆ authorized`.
 
+3. **`publish_aggregate_snapshot` must be GIVEN the merged source set, not derive it
+   (flow-r3 C2).** Without this, the relaxation in (2) reintroduces the very failure CAN-5
+   exists to prevent — *through the fix for it*.
+
+   The proof is derived live today:
+
+   ```
+   _cli_completion.py:905   source_work_ids = _current_success_work_ids(output_dir, work_ids)
+   :921                     "source_set_digest":  _canonical_digest(sorted(source_work_ids))
+   :922                     "source_image_count": len(source_work_ids)
+   ```
+
+   So in exactly the case (2) exists for — images succeeding between planning and merge —
+   the master holds `planned` while the proof asserts `authorized ⊋ planned`. **And no
+   reader can detect it**, because the reader compares proof-to-*live* using the same
+   predicate the writer used (`:736-745`). Proof-to-**master** is compared by nothing,
+   before or after this change; P1's restored five-way comparison does not help, because it
+   *is* that same comparison.
+
+   One parameter fixes it: `finalize_run` passes `planned`, and
+   `publish_aggregate_snapshot` uses it instead of re-deriving. P4 already edits this
+   function to publish `source_set_digest`, so the change lands in a file the phase opens.
+   Then `merged == planned` makes the proof **true of the master by construction**, and
+   images that succeeded after planning correctly read as *not current* until the next
+   finalize — which is the right answer, and what today's reader already does with a growing
+   success set.
+
+   ```python
+   def test_the_proof_describes_the_master_it_was_published_with(tmp_path):
+       """flow-r3 C2. The existing test covers only the REFUSE path -- the half that
+       already worked. This covers the accept path, where the relaxation lives."""
+       import polars as pl
+
+       planned = _plan_shards(tmp_path, n_images=6)
+       _succeed_two_more_images_after_planning(tmp_path)      # the rolling-input case
+       _finalize(tmp_path, shard_paths=planned)
+
+       proof = _aggregate_proof(tmp_path)
+       master = pl.read_parquet(_master(tmp_path))
+       assert proof["source_image_count"] == master["Metadata_ImageFile"].n_unique(), (
+           "the proof asserts a source set larger than the master it certifies"
+       )
+   ```
+
 **Why this is not belt-and-braces.** The finalizer is `afterany`, so it runs when a shard
 task dies. `publish_aggregate_snapshot` derives `source_set_digest` and `source_image_count`
 from `_current_success_work_ids` — **marker-derived, not merge-derived**
