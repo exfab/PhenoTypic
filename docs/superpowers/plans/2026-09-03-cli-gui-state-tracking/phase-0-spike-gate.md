@@ -194,7 +194,10 @@ srun -p short -c 4 --mem=16G -t 0:30:00 --pty bash
 uv run python .../spikes/s5_cache_cold_start.py /bigdata/exfab/anguy344/spike-fixture
 ```
 
-- [ ] **Step 3: Record the S-5 verdict**
+- [ ] **Step 3: Record the S-5 verdict — IN P1'S PHASE GATE, not here (CAN-26)**
+
+*The verdict lines below are the contract; only their location moved. Run the
+measurement against `resolve_run_state` itself, not the approximation above.*
 
 Write exactly one of:
 
@@ -437,7 +440,9 @@ a 200-store fixture, or a P0 gate.
 
 ## Running and recording
 
-- [ ] **Step 11: Run S-2, S-3 and S-4 as one Slurm job**
+- [ ] **Step 11: Run S-2 and S-3 as one Slurm job**
+
+*(S-4 is cut — CAN-25. S-5 moved to P1's phase gate — CAN-26. Neither is submitted here.)*
 
 `spikes/run_spikes.sbatch` — fill in and submit via the **`slurm-job`** skill. The
 constraints from the user's global `CLAUDE.md` that bind here:
@@ -455,15 +460,22 @@ constraints from the user's global `CLAUDE.md` that bind here:
 
 - [ ] **Step 12: Write `RESULTS.md`**
 
-For each of S-2…S-5: the fixture tree and its size, the raw numbers, the verdict line, and
-the decision that verdict licenses. Then report S-5 to the user before starting P1.
+For **S-2 and S-3 only**: the fixture tree and its size, the raw numbers, the verdict line,
+and the decision that verdict licenses. **Nothing here blocks P1** — P0 gates P5.
 
 - [ ] **Step 13: Commit**
 
 ```bash
 git add docs/superpowers/plans/2026-09-03-cli-gui-state-tracking/spikes/
-git commit -m "spike(state): measure cache cold start, shard sizing, merge cost, projection locality
+git commit -m "spike(state): measure shard sizing and merge cost
 
-Spec §10 as amended by D-A and D-B. S-1 (hardlink re-promote) is cut: D-A writes
-per-store metadata at promote time, so there is no re-promote to measure."
+Spec §10 as amended. Three of the spec's five spikes are gone:
+  S-1 cut (D-A) -- per-store metadata is written at promote time, so there is no
+    re-promote to measure. The mechanism it would have measured already ships
+    anyway (_measurement_tables.py:233)
+  S-4 cut (CAN-25) -- a set-theoretic identity whose FAIL branch was unreachable
+  S-5 moved to P1's phase gate (CAN-26) -- it measured an approximation of the
+    shipped predicate; once P1 exists the real one is free to measure
+
+P0 now gates P5 only and can run concurrently with P1-P4."
 ```

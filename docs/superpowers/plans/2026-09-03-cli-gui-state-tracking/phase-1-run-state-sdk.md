@@ -22,8 +22,24 @@ rule this phase implements.
 
 | File | Responsibility |
 |---|---|
-| **Create** `src/phenotypic/sdk_/_run_state.py` | The four public readers and the four state types. Imports nothing from `phenotypic._cli`. ~400 lines. |
-| **Create** `src/phenotypic/sdk_/_verification_cache.py` | The bounded, in-process, identity-fenced verification cache and its currency rule. Separate file because INV-VERDICT is tested against it directly and it must be trivially auditable. ~120 lines. |
+| **Create** `src/phenotypic/sdk_/_state_types.py` | **The four frozen dataclasses only** — `RunIdentity`, `ImageState`, `RunDiagnostics`, `RunState`. No logic, no I/O, no imports from either module below. ~90 lines. |
+| **Create** `src/phenotypic/sdk_/_run_state.py` | The four public readers. Imports the types from `_state_types`, the cache from `_verification_cache`, and nothing from `phenotypic._cli`. ~340 lines. |
+| **Create** `src/phenotypic/sdk_/_verification_cache.py` | The in-process, identity-fenced cache and its currency rule. Imports `ImageState` from `_state_types`. ~110 lines. |
+
+> **Three modules, not two — CAN-14's fix created an import cycle (gen-r3 C5).**
+> Caching whole `ImageState` objects means `_verification_cache` needs `ImageState`, while
+> `_run_state` needs `cached_states`/`remember_states`. Importing each from the other at
+> module scope is a cycle, and the obvious escapes are both bad: a deferred import inside a
+> function hides the dependency exactly where INV-LAYER's AST test is looking, and moving
+> the cache into `_run_state` loses the small auditable surface INV-VERDICT's mutation suite
+> targets.
+>
+> Hoisting the dataclasses into a leaf module resolves it and costs nothing — they are
+> frozen data with no behaviour. Dependency order is strictly
+> `_state_types` ← `_verification_cache` ← `_run_state`, with no edge back.
+>
+> **INV-LAYER binds all three**, so the AST test's `_MODULES` tuple covers `_state_types.py`
+> too.
 | **Modify** `src/phenotypic/sdk_/_io_constants.py` | Add `DIR_IMAGE_RECORDS` and `image_record_path()`. |
 | **Modify** `src/phenotypic/sdk_/__init__.py` | Export `RunIdentity`, `ImageState`, `RunState`, `RunDiagnostics`, `resolve_run_state`, `run_identity`, `assert_identity_current`, `clear_verification_cache`. **Not** `mint_run_identity` — that is a writer and lives CLI-side (P2). |
 | **Create** `tests/unit/sdk_/test_run_state.py` | Verdict matrix, depth behaviour, advisories, the degrade half of INV-VERDICT. |
@@ -331,7 +347,11 @@ def test_the_demoted_sources_live_only_under_diagnostics():
         "verified_at",
     }
     diag = {f.name for f in dataclasses.fields(RunDiagnostics)}
-    assert {"manifest_completed", "manifest_total", "event_log_present"} <= diag
+    assert diag == {"accepted", "verified", "failed"}, (
+        "U-5 dropped manifest_completed/manifest_total/event_log_present after "
+        "verifying zero consumers survive P6. Carrying demoted evidence into "
+        "RunState is what keeps it alive as a quasi-evidence surface."
+    )
 
 
 def test_image_state_stages_carry_no_backfilled_key():
@@ -440,9 +460,6 @@ class RunDiagnostics:
     accepted: int
     verified: int
     failed: int
-    manifest_completed: int | None = None
-    manifest_total: int | None = None
-    event_log_present: bool = False
 
 
 @dataclass(frozen=True)
@@ -763,7 +780,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
-from ._run_state import ImageState
+from ._state_types import ImageState   # NOT ._run_state -- see below
 
 #: output_dir (resolved, as str) -> (identity_digest, {work_id: CachedVerification})
 _CACHE: dict[str, tuple[str, dict[str, "CachedVerification"]]] = {}
@@ -814,12 +831,26 @@ uv run ruff check --fix src/phenotypic/sdk_/_verification_cache.py \
   tests/unit/sdk_/test_verification_cache.py
 ```
 
-- [ ] **Step 8: ONLY IF S-5 returned `ON-DISK TIER NEEDED`**
+- [ ] **Step 8: Measure cold start, then decide on the on-disk tier (CAN-26)**
 
-Skip this step entirely otherwise — and if you skip it, say so in the commit body so a
-later reader can tell the tier was *measured away*, not forgotten.
+S-5 moved here from P0, because it measured a hand-rolled *approximation* of the
+marker-hashing loop; now that `resolve_run_state` exists, measure **the real
+predicate**:
 
-If S-5 said the tier is needed:
+```bash
+# cold process, real tree on GPFS, N as large as available
+uv run python -c "
+import time; from pathlib import Path
+from phenotypic.sdk_ import resolve_run_state
+t=time.perf_counter(); s=resolve_run_state(Path('<tree>'), depth='deep')
+print(f'cold_deep={time.perf_counter()-t:.1f}s images={len(s.images)}')"
+```
+
+**Under 30 s projected at N=6000 → in-process only. No new file ships.** That is the
+expected outcome and the one D-B prefers; say so in the commit body, so a later reader
+can tell the tier was *measured away* rather than forgotten.
+
+Only if it exceeds 30 s:
 
 1. Add `VERIFICATION_CACHE_JSON` and `verification_cache_path()` to `_io_constants.py`,
    with a docstring naming the measured cold-start number that justifies them.
