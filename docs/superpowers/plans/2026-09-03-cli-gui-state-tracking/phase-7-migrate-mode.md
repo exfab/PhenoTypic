@@ -35,7 +35,7 @@ stores are the stores it already had.
 | `master_measurements.csv` | deleted; master is parquet-only (D8) | **4, Step 0** |
 | `deliverables/metadata.canonical.csv` | **emitted** alongside the untouched snapshot | **3, Step 4** |
 | legacy `.h5` per-image files | unchanged — the existing OME-Zarr migration already owns this | — |
-| anything below **v0.17.3** | **refused** with a version string and a pointer | 1 |
+| ~~anything below v0.17.3~~ | **No version floor (U-6).** `state.version` cannot express one; detection is by shape, and a pre-markers tree is supported however old. | 1 |
 
 > **Two rows in the first draft's table had no implementing step (CAN-32):** the CSV
 > deletion was assigned to Task 4, which had no step for it, and Task 3 asserted
@@ -100,46 +100,32 @@ def test_the_gui_reports_rather_than_refuses(tmp_path):
 
 - [ ] **Step 3: Implement**
 
-```python
-STATE_SCHEMA_VERSION = 3
-
-
-def requires_conversion(output_dir: Path) -> str | None:
-    """Return why *output_dir* needs `--mode migrate`, or ``None``.
-
-    Detection is by **presence of the old shape**, never by absence of the new one:
-    an empty directory and a half-written new run both lack ``images/``, and only one
-    of them is a legacy tree. The signals, in order of certainty:
-
-    1. ``.phenotypic/progress/image_complete/`` exists
-    2. ``.phenotypic/progress/stage2_done/`` or ``stage3_complete/`` exists
-    3. ``processing_state.json`` carries ``datasets.completed`` (deleted by §4.2)
-    4. ``processing_state.json`` has no ``restart_epoch`` **and** has ``work_ids``
-
-    Returns:
-        A message naming the specific evidence and the command, or ``None``.
-    """
-```
+`STATE_SCHEMA_VERSION = 3`, and the function's full contract — all five detection signals,
+the no-raise rule, and why it reads raw JSON — is written **once**, in Step 3b below. Build
+it from there.
 
 Wire it into `phenotypicCLI.py` for `full`, `measure`, `recompile` and `process`. **Not**
 for the GUI or any reader — spec §4.3 makes a half-migrated tree an advisory.
 
-- [ ] **Step 3b: Add the v0.17.3 floor as a third outcome (U-1)**
+- [ ] **Step 3b: Detect the pre-markers shape (U-1, as amended by U-6)**
 
-`requires_conversion` currently has two outcomes — convert, or don't. **Migration has no
-lower bound at all**, which is an open-ended compatibility obligation nobody scoped. U-1
-bounds it: **v0.17.3**, verified to predate both the marker schema (`379acee4`, 2026-08-17)
-and OME-Zarr, writing `version="2.0.0"` with no `success_markers_required`.
-
-> **`state.version` cannot express this floor (MIG-14) — see the gated question below.**
-> Verified: `version="2.0.0"` is the value at v0.17.3 **and** still the value immediately
-> before `379acee4` introduced `"3.0.0"`. It is a *state-schema* version, not a *package*
-> version, and the two are not in bijection. The earlier draft's test planted
-> `version="1.0.0"`, a value **no tree has ever carried**.
+> **U-6 (round 2, user).** U-1 named **v0.17.3** as the floor, on my assurance that
+> `state.version` could detect it. **That assurance was wrong** — `"2.0.0"` is the value at
+> v0.17.3 *and* immediately before `379acee4` introduced `"3.0.0"`, so it spans both sides.
+> It is a *state-schema* version, not a *package* version.
 >
-> What the on-disk state *can* express is the **pre-markers shape**: schema `2.0.0` with
-> **no `work_ids` key at all** — the concept did not exist at v0.17.3. That is a reliable
-> signal and it is what the code below uses.
+> **Ruling: key on the pre-markers shape, with no sub-floor.** Schema `2.0.0` with **no
+> `work_ids` key** — the concept did not exist at v0.17.3. This supports every pre-markers
+> tree, including ones older than v0.17.3, and that costs nothing: they are the **same
+> shape**, and the ported promoter (Task 2b) handles them identically. Root-level machine
+> state, from before `.phenotypic/` existed (2026-06-17, one day before the v0.17.3 tag), is
+> already converted by `migrate_legacy_machine_state`, which **ships today** — refusing it
+> would be removing support, not bounding scope.
+>
+> So there is **no `BELOW_FLOOR` verdict.** `requires_conversion` keeps two outcomes plus
+> honest failure on a tree it cannot classify. Delete that enum member and its test.
+
+`requires_conversion` therefore detects **shape**, never a version number:
 
 **`requires_conversion` reads the raw JSON itself and never calls `load_processing_state`
 (MIG-14b).** Two reasons, both disqualifying:
@@ -157,12 +143,27 @@ and OME-Zarr, writing `version="2.0.0"` with no `success_markers_required`.
 def requires_conversion(output_dir: Path) -> ConversionVerdict | None:
     """Return why *output_dir* needs `--mode migrate`, or ``None``.
 
-    Three outcomes, not two:
-      - ``None``                     -- already current
+    Two outcomes plus honest failure (U-6):
+      - ``None``                      -- already current
       - ``ConversionVerdict.CONVERT`` -- convertible; the message names the evidence
-      - ``ConversionVerdict.BELOW_FLOOR`` -- older than v0.17.3, the supported floor
-        (U-1). Refuse with the version string found and a pointer, rather than
-        attempting a conversion whose inputs this build has never seen.
+      - it never raises: absent, unparseable and malformed state all map to a
+        verdict, because a refusal gate that crashes on a malformed tree is worse
+        than the silent path it replaces (MIG-14b)
+
+    **There is no version floor.** U-1 named v0.17.3, but ``state.version`` cannot
+    express it -- ``"2.0.0"`` is the value both at v0.17.3 and immediately before
+    ``"3.0.0"`` was introduced. Detection is by SHAPE:
+
+    1. ``.phenotypic/progress/image_complete/`` exists
+    2. ``stage2_done/`` or ``stage3_complete/`` exists
+    3. ``processing_state.json`` carries ``datasets.completed`` (deleted by §4.2)
+    4. ``processing_state.json`` has ``work_ids`` and no ``restart_epoch``
+    5. ``processing_state.json`` has **no ``work_ids`` key at all** -- the
+       pre-markers shape, and the only signal that reliably identifies it
+
+    Reads the raw JSON directly. Never ``load_processing_state``, which writes via
+    ``migrate_legacy_machine_state`` (``:109``) and raises on an absent version
+    (``:167``) -- a gate must not mutate the tree it is deciding about.
     """
 ```
 
@@ -225,12 +226,14 @@ Each gets a row in `requires_conversion`'s docstring and a test:
 QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli/test_schema_gate.py -v
 git add src/phenotypic/_cli/_cli_schema_gate.py src/phenotypic/phenotypicCLI.py \
         tests/unit/cli/test_schema_gate.py
-git commit -m "feat(cli): refuse an unconverted tree, and bound migration at v0.17.3
+git commit -m "feat(cli): refuse an unconverted tree, detecting by shape not version
 
-D1 + U-1. Detection is by presence of the old shape, not absence of the new -- an
-empty directory is not a legacy tree. A third outcome refuses anything below the
-floor by version string rather than attempting a conversion this build has never
-seen inputs for. Readers get an advisory, not a refusal (§4.3).
+D1 + U-1 as amended by U-6. Detection is by presence of the old shape, not absence
+of the new -- an empty directory is not a legacy tree, and state.version cannot
+express a package-version floor ("2.0.0" spans both sides of v0.17.3). The
+pre-markers signal is an absent work_ids key. Reads raw JSON, never
+load_processing_state, which would write to the tree while deciding whether to
+refuse it. Readers get an advisory, not a refusal (§4.3).
 
 NOTE: this task ships in P1, not P7 (CAN-11) -- the clean break lands in P3 and the
 gate must precede it, or a legacy tree silently produces an empty master."

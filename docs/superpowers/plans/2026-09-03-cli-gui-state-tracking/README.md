@@ -57,11 +57,12 @@ Round 1 added five user rulings, equally binding:
 
 | | Ruling | Effect |
 |---|---|---|
-| **U-1** | Migration floor is **v0.17.3** | Verified to predate the marker schema, so the floor *is* the pre-markers shape. Below it: refuse with a version string and a pointer. |
+| **U-1** | Migration floor is **v0.17.3** | Verified to predate the marker schema, so the floor *is* the pre-markers shape. **Amended by U-6** — see below. |
 | **U-2** | §4.3 keeps **both** clauses of `complete` | Completion stays O(N) in per-image proofs, which is what makes the verification cache load-bearing. Restores the four comparisons CAN-4 found dropped. |
 | **U-3** | §7.3 keeps the master stamp, **and names a reader** | `read_master_measurements()` in `sdk_` raises on an unstamped or wrong-versioned master; §7.3 corrected to claim only what it delivers. |
 | **U-4** | `publication_id` is **cut** | Validated experimentally: one branching consumer, zero for the GUI copy. Run proof carries `source_set_digest`. Headline 14 → 5. |
 | **U-5** | `RunDiagnostics`'s demoted trio is **dropped** | Verified zero consumers survive P6. |
+| **U-6** | **No version floor.** Detect the pre-markers *shape* | My claim that `state.version` could detect v0.17.3 was wrong — `"2.0.0"` spans both sides of it. The reliable signal is schema `2.0.0` with **no `work_ids` key**. Supports every pre-markers tree regardless of age, at no extra cost: they are the same shape. No `BELOW_FLOOR` verdict. |
 
 **Branch:** `cli-gui-state-tracking` (worktree `.worktrees/cli-gui-state-tracking`).
 
@@ -270,7 +271,7 @@ by dependency, not by file.
 | **P4** | [phase-4-finalize-run.md](phase-4-finalize-run.md) | Embedded-table inversion, promote-time `pht-metadata.parquet`, `finalize_run`'s step 3 reduced to one existing call (CAN-1), `replace_image_store_measurements` brought into the inversion (CAN-3), `source_set_digest` + the master stamp | P3 | INV-INPUTS, INV-PROVEN |
 | **P5** | [phase-5-fanout.md](phase-5-fanout.md) | SLURM array + `--njobs` fan-out; **shard-completeness check** (CAN-5); reconcile with the existing dependent finalizer (CAN-19) | P4, P0 | partial-failure + rolling-input matrices |
 | **P6** | [phase-6-consumer-migration.md](phase-6-consumer-migration.md) | Consumer migration and the ~1,400-line deletion, **including the CLI half** (CAN-8); **`gui/CLAUDE.md` state register** | P1–P5 | full `tests/unit` + `tests/gui` suite on Slurm, **and `gui/CLAUDE.md` updated** |
-| **P7** | [phase-7-migrate-mode.md](phase-7-migrate-mode.md) | `--mode migrate` conversion, v0.17.3 floor, legacy-tree **rename** not delete (CAN-12); **`_cli/CLAUDE.md` tracked-state register** | P1–P6 | dry-run + revert test on a tree built by the **real** HDF migrator, **and `_cli/CLAUDE.md` updated** |
+| **P7** | [phase-7-migrate-mode.md](phase-7-migrate-mode.md) | `--mode migrate` conversion, shape-based detection (U-6), legacy-tree **rename** not delete (CAN-12); **`_cli/CLAUDE.md` tracked-state register** | P1–P6 | dry-run + revert test on a tree built by the **real** HDF migrator, **and `_cli/CLAUDE.md` updated** |
 
 **Phase gates are not optional.** After each phase: `uv run mypy src/phenotypic`,
 `uv run ruff check --fix` on the changed paths, the phase's own test selection, and a
