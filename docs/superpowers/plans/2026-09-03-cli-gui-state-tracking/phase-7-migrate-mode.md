@@ -483,6 +483,110 @@ INV-IMMUTABLE's one exception, still scoped to migrate."
 
 ---
 
+## Task 6: The tracked-state register, in `_cli/CLAUDE.md`
+
+**Files:**
+- Modify: `src/phenotypic/_cli/CLAUDE.md`
+
+**This lands last on purpose:** the CLI's state contract is not final until migrate exists,
+and a register written earlier would describe a shape no tree has. It is **not optional** —
+the whole change is a claim about which state is tracked and which is derived, and that
+claim has to live where the next reader looks.
+
+- [ ] **Step 1: Correct what the file already gets wrong**
+
+`_cli/CLAUDE.md:251-254` currently states, of the store fingerprint: *"the root is written
+**last** by the promote protocol and nothing writes into the store after publication, so a
+valid root implies a complete store."*
+
+**The second clause is false and was false before this change** (CAN-3):
+`replace_embedded_measurement_table` (`sdk_/_measurement_tables.py:242`) is reached on the
+`--mode measure` forward path, and its in-place branch (`:284-290`) rewrites the embedded
+table with **no root rewrite at all** — so a valid root does *not* imply unchanged
+contents. Rewrite the paragraph to INV-PROVEN's actual statement: an artifact carrying a
+content proof changes only where the proof changes with it, and here are the paths where
+that holds and the one where it did not until P4 repaired it.
+
+Also correct `## Per-image completion markers` (`:235`): `SUCCESS_MARKER_VERSION` is now
+`RECORD_VERSION`, the three marker trees are one record, and the `_migrate_legacy_success_evidence`
+paragraph (`:257-261`) describes a function P7 deletes.
+
+- [ ] **Step 2: Add the register — three tables, and the split IS the content**
+
+**(a) Tracked state — written down, and irreducibly so.** Exactly these, and the "why it
+cannot be derived" column is the load-bearing one:
+
+| # | State | File | Writer | Why it cannot be derived |
+|---|---|---|---|---|
+| 1 | Accepted inventory | `processing_state.json` → `config.work_ids` | `create_initial_state`, resume | A directory listing is a different question from "what did this run accept". |
+| 2 | Terminal failures | `.phenotypic/terminal_failures.jsonl` | `append_terminal_failure` | A failure leaves no artifact; absence of output is indistinguishable from not-yet-started. |
+| 3 | Liveness & ownership | `slurm_lifecycle.json`, `slurm_jobs.jsonl`, `gui_launch_owner.json` | CLI submitter / **GUI** | External-system and process facts; a crashed worker leaves no trace. |
+| 4 | `restart_epoch` | `.phenotypic/restart_epoch.json` | `bump_restart_epoch` | A content-derived generation cannot distinguish "deliberately fresh attempt" from "same config again". **Preserved by `clear_machine_state`** — a counter that resets on the operation it fences is not a fence. |
+
+**Four. If a fifth appears, that is a design regression** — say so in the file, and name
+the organising principle it violates: *move state that is tracked to state that is checked.*
+
+**(b) Content proofs — not tracked state.** Per-image record, aggregate proof, run proof
+are digest manifests over artifacts that already exist. Give the publication order and say
+it is never reordered: store root `zarr.json` last → per-image record after artifacts →
+aggregate proof after outputs → run proof after aggregate.
+
+**(c) Derived, and how.** One row per fact, naming the deriving function — this is the
+table that stops a future contributor writing a counter:
+
+| Fact | Derived from | By |
+|---|---|---|
+| "is this run done?" | 1 + 2 + 3 + the proofs | `resolve_run_state(output_dir, depth=...)` |
+| `processing_generation` | `sha256(pipeline_sha256 ‖ scientific_config_digest ‖ restart_epoch)` | `mint_run_identity` |
+| `work_id` | content: schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode | `work_id_for_image` |
+| `inventory_digest` / `source_set_digest` / `scientific_config_digest` / `finalization_input_digest` | `config` fields + the verified set | `run_identity`, `finalization_input_object` |
+| per-dataset completed/failed counts | the per-image records | `RunState.diagnostics` — **and nothing branches on them** |
+| the master | the marker-authorized embedded tables, and **nothing else** | `finalize_run` step 1 (INV-INPUTS) |
+
+State explicitly what was **deleted** and must not come back:
+`processing_state.datasets.{completed,failed,started}` (a cache of a cache — already
+re-aggregated from the event log on every load), `manifest.json` as evidence,
+`publication_id`, and the event log as a completion source.
+
+- [ ] **Step 3: Record the read/write asymmetry and the migration floor**
+
+Two rules a future contributor will otherwise breach:
+
+- **Readers live in `sdk_/_run_state.py`; writers stay in `phenotypic._cli`.** INV-LAYER's
+  AST test enforces it. Name the test so a reader can find out why their import failed.
+- **Migration floor is v0.17.3** (U-1). Below it, migrate refuses with a version string and
+  a pointer. Say that v0.17.3 predates both the marker schema and OME-Zarr, so the floor is
+  the pre-markers shape, and that the HDF→Zarr migrator is *itself* a producer of the record
+  schema (CAN-7) — not a stage that runs before one.
+
+- [ ] **Step 4: Update the two contract statements this change invalidates**
+
+`## Output layout & deliverables` (`:298`): master is parquet-only, un-joined, intrinsic
+identity only; the mirror carries the join and the phantoms; `finalize_run` is the single
+path for `full`/`measure`/`recompile`. Keep the existing "feed analysis and dashboards from
+the mirror, not the master" rule — it is now doing more work than before, and say why.
+
+`## Legacy-tree migration` (`:175`): the state-schema conversion, the v0.17.3 floor, the
+legacy-tree rename, and the revert path.
+
+- [ ] **Step 5: Verify every claim, then commit**
+
+Every path, function name and line reference gets a `grep` before the commit. Root
+`AGENTS.md` is a symlink to the project `CLAUDE.md`, so check whether anything you wrote
+duplicates a rule that belongs there instead.
+
+```bash
+git add src/phenotypic/_cli/CLAUDE.md
+git commit -m "docs(cli): record the tracked-state register and how everything else derives
+
+Four tracked states, each with why it cannot be derived; the content proofs that
+are not tracked state; and one row per derived fact naming the function that
+derives it. Corrects the pre-existing claim at :251-254 that nothing writes into a
+store after publication -- --mode measure's in-place branch always could."
+```
+
+---
+
 ## Closing the change
 
 - [ ] **Final: confirm the headline claims, with numbers**

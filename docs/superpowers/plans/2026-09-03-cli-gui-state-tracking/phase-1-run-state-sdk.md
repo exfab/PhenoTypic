@@ -64,7 +64,11 @@ class ImageState:
     dataset: str
     image_stem: str
     stages: Mapping[str, Mapping[str, object]]   # open map; §6.1 minus `backfilled` (D-A)
-    verified: bool
+    #: Spec §9 annotates `images` as "work_id -> stages + VERDICT". A bool plus an
+    #: unread `reason` string was not that. The verdict makes `RunDiagnostics`'s
+    #: accepted/verified/failed one-line derivations over `images` instead of
+    #: cached counts of a collection the caller already holds (SIMP-R1-09).
+    verdict: Literal["verified", "unverified", "failed"]
     reason: str | None
 
 @dataclass(frozen=True)
@@ -99,19 +103,30 @@ def finalization_input_object(output_dir: Path) -> dict[str, object]: ...
 
 @dataclass(frozen=True)
 class CachedVerification:
-    work_id: str
-    verdict: bool
+    #: The WHOLE ImageState, not just a verdict (CAN-14). RunState.images needs
+    #: `stages` per image, so an entry carrying only (work_id, verdict, stats)
+    #: forces shallow to re-read every record JSON -- the ~10^4 marker-reads half
+    #: of audit §4's cost, left in place. Caching the state is what makes §9.2's
+    #: claim true rather than half-true.
+    state: ImageState
     stat_tuples: Mapping[str, tuple[int, int]]   # relative path -> (size, mtime_ns)
 
-def cached_verification(
-    output_dir: Path, identity_digest: str, work_id: str
-) -> CachedVerification | None: ...
-def remember_verification(
-    output_dir: Path, identity_digest: str, entry: CachedVerification
+#: Per-output, identity-fenced, replaced WHOLESALE on identity change (CAN-28).
+#: No LRU, no _MAX_ENTRIES, no eviction policy: entries are already fenced, so the
+#: only usable ones are those under the current identity for the current output.
+#: Wholesale replacement is inherently bounded by "images in the runs currently
+#: being asked about" -- a TIGHTER bound than a 200k-entry LRU, and it follows
+#: from the fence instead of being a policy layered on top of it.
+def cached_states(
+    output_dir: Path, identity_digest: str
+) -> Mapping[str, CachedVerification] | None: ...
+def remember_states(
+    output_dir: Path, identity_digest: str,
+    entries: Mapping[str, CachedVerification],
 ) -> None: ...
 def entry_is_still_current(output_dir: Path, entry: CachedVerification) -> bool: ...
 def clear_verification_cache(output_dir: Path | None = None) -> None: ...
-def verification_cache_size() -> int: ...   # test-only introspection
+def tracked_output_count() -> int: ...   # test-only introspection
 ```
 
 **Consumes:** nothing from this plan. From the existing tree:
@@ -1104,24 +1119,114 @@ Body, in order — each step is one of the four verdicts and nothing else:
 2. Build `images` by walking `config["work_ids"]` — **the accepted-inventory authority**,
    never a directory listing. A `work_id` with no marker is an unverified `ImageState`,
    not an absent one; that is what makes "which images are missing?" answerable.
-3. `completion` by the Q2 ladder. Rule 1 asks two things and no more: is there a valid run
-   proof, and does its `inventory_digest` equal the current one.
+3. `completion` by the Q2 ladder. **Rule 1 asks both of §4.3's clauses and the full
+   five-way comparison** — see below.
 4. `advisories`, each derived and each non-gating:
    - `datasets_needing_migration()` — the existing shared predicate — for unconverted `.h5`
    - any store whose `phenotypic.metadata.snapshot_sha256` ≠ the run's current
-     `metadata_sha256` (D-A). One attribute read per store on the deep path, from a value
-     the store already carries.
-5. `diagnostics` from `manifest.json` and the event log's presence — read, recorded,
-   **never branched on**.
+     `metadata_sha256` (D-A). **Read the caveat in CAN-3 first**: `--mode measure`'s
+     in-place branch (`_measurement_tables.py:284-290`) rewrites the embedded table without
+     touching the root, so `snapshot_sha256` is not refreshed there. P4 Task 2 repairs that
+     branch; until it does, this advisory has a known blind spot and the docstring must say so.
+5. `diagnostics` — counts derived from `images` only. **`manifest_completed`,
+   `manifest_total` and `event_log_present` are dropped** (U-5): verified zero consumers
+   survive P6, and carrying demoted evidence into `RunState` is what keeps it alive as a
+   quasi-evidence surface.
+
+### Rule 1 in full — CAN-4 and U-2
+
+The one-line version ("is there a valid run proof, and does its `inventory_digest` match")
+was **wrong twice over**, and both errors were silent:
+
+- It dropped §4.3's **first clause** — "every accepted image has a valid proof". U-2 keeps
+  it. This is what makes completion O(N) in per-image proofs, and therefore what makes the
+  verification cache load-bearing rather than marginal.
+- It dropped **four of the five comparisons** `current_aggregate_is_current` makes today
+  (`_cli_completion.py:738-745`).
+
+Rule 1 is therefore:
+
+```python
+# Clause 1 -- every accepted image has a valid proof.
+if not all(image.verified for image in images.values()):
+    ...falls through to rule 2
+
+# Clause 2 -- a valid run proof covers the CURRENT inventory. Five comparisons,
+# not one. Every value is a literal `config` field, so this costs nothing under
+# INV-LAYER's plain-JSON constraint.
+proof = valid_run_proof(output_dir)                     # local reader, sdk_-side
+proof is not None
+and proof["inventory_digest"]           == _canonical_digest(config["work_ids"])
+and proof["finalization_input_digest"]  == _canonical_digest(finalization_input_object(...))
+and proof["scientific_config_digest"]   == config["pipeline_sha256"]
+and proof["source_set_digest"]          == _canonical_digest(sorted(verified_work_ids))
+and proof["source_image_count"]         == len(verified_work_ids)
+```
+
+**Why each one matters** — a reviewer who deletes any of these is reintroducing a
+documented defect:
+
+| Comparison | What breaks without it |
+|---|---|
+| `inventory_digest` | a new image under a rolling input never invalidates completion |
+| `finalization_input_digest` | **§7.4's late-metadata guarantee stops working.** It is real today *only* because of this comparison: a metadata edit leaves `work_ids` untouched, so nothing else notices |
+| `scientific_config_digest` | a pipeline edit leaves the run reading `complete` |
+| `source_set_digest` | the only check that the published master covers the succeeded set — **this is what makes CAN-5's partial shard set undetectable** |
+| `source_image_count` | a cheap arity cross-check on the same |
+
+`source_set_digest` now also lives in the **run** proof, not just the aggregate — that is
+U-4's replacement for the cut `publication_id`, and it is what lets the aggregate↔run
+binding be stated directly instead of through an opaque hash.
 
 - [ ] **Step 4: Run the tests.** Expected: PASS (13 passed).
 
-- [ ] **Step 5: Prove the precedence tests can fail**
+- [ ] **Step 5: Add the five comparison rows and the stale-owner row**
+
+Each is a one-line mutation of the `complete_run` fixture, and each must produce
+`incomplete`:
+
+```python
+@pytest.mark.parametrize(
+    "mutate,reason",
+    [
+        (_edit_metadata_csv,      "finalization_input_digest"),
+        (_edit_pipeline_json,     "scientific_config_digest"),
+        (_add_an_image,           "inventory_digest"),
+        (_succeed_one_more_image, "source_set_digest"),
+        (_drop_a_source_count,    "source_image_count"),
+    ],
+)
+def test_each_dropped_comparison_is_load_bearing(complete_run, mutate, reason):
+    """CAN-4. The one-line rule 1 kept only inventory_digest. Each of these
+    would have read `complete` under it."""
+    mutate(complete_run)
+    assert resolve_run_state(complete_run, depth="deep").completion == "incomplete", (
+        f"{reason} is not being compared; §7.4 and CAN-5 both depend on it"
+    )
+
+
+def test_a_dead_gui_owner_does_not_pin_the_verdict_at_active(complete_run):
+    """CAN-24. Nothing in the codebase repairs gui_launch_owner.json (audit S7,
+    verified), so a SIGKILLed GUI leaves status: "running" forever. Without a
+    liveness check on the authority itself, Q2 rule 2 is unsound and this output
+    reads `active` until someone edits JSON by hand.
+
+    The repair implementation lands in P6 Task 5, where
+    _assert_output_claimable_locked is rewritten. The LADDER's obligation is here,
+    because the ladder is built here.
+    """
+    _write_owner_record(complete_run, status="running", pid=_a_dead_pid())
+    assert resolve_run_state(complete_run, depth="deep").completion == "complete"
+```
+
+- [ ] **Step 6: Prove the precedence tests can fail**
 
 Swap ladder rules 1 and 2; confirm `test_a_live_worker_does_not_mask_a_valid_run_proof`
 fails. Swap 2 and 3; confirm `test_an_active_run_outranks_a_stale_terminal_failure` fails.
 Make the metadata advisory a gate (return `incomplete`); confirm
-`test_a_store_built_against_older_metadata_is_an_advisory` fails. Restore all three.
+`test_a_store_built_against_older_metadata_is_an_advisory` fails. **Delete each of the five
+comparisons in turn and confirm the matching parametrized case fails** — that is the check
+that stops rule 1 collapsing back to one line. Restore all of them.
 
 - [ ] **Step 6: Commit**
 

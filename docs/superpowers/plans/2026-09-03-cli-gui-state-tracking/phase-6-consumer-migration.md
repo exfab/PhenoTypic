@@ -517,6 +517,84 @@ something distant.
 Compare against the recorded baseline: four failures are known pre-existing, three of which
 fail only on compute nodes. **A fifth failure is this phase's**, not the baseline's.
 
+---
+
+## Task 8: Record what the GUI tracks, in `gui/CLAUDE.md`
+
+**Files:**
+- Modify: `src/phenotypic/gui/CLAUDE.md`
+
+**This task is not optional and is not a docs-polish afterthought.** The change deletes
+nine evidence sources and four classifiers from the GUI; a module guide that still
+describes them is worse than no guide, because the next reader will trust it. The
+distinction that matters and is nowhere written down today is **what the GUI *owns* versus
+what it merely *reads*** — and the change moves that line.
+
+- [ ] **Step 1: Add a "State the GUI tracks" section**
+
+Place it after `### Flask app.server.config keys` (`gui/CLAUDE.md:176`), which already
+enumerates the process-wide singletons. Three tables, and the split between them is the
+content:
+
+**(a) GUI-owned durable state — the GUI is the writer.**
+
+| Artifact | Path | Written by | Read back by | Notes |
+|---|---|---|---|---|
+| Launch ownership | `.phenotypic/gui_launch_owner.json` | `_persist_record_locked` (`shell/_runs_registry.py:1306`) | the CLI's freshness guard, and `resolve_run_state` rule 2 | **A §4.1 liveness authority.** Carries `pid` + `started_at`; P6 Task 5 added the liveness check that makes rule 2 sound. |
+| Curation labels | `deliverables/qc/curation_labels.parquet` | `_curation_labels.py` | the CLI re-emits from it | GUI is the primary writer; keyed on intrinsic identity, so §7's inversion does not touch it |
+| Custom categories | `deliverables/qc/custom_categories.json` | GUI only | GUI only | — |
+| Review state | `deliverables/qc/review_state.json` | GUI | GUI | **The CLI deletes it at finalize** (`_cli_output_manager.py:1238`) — a fresh run resets review progress |
+| Verified rows | `deliverables/verified.parquet` | GUI only | GUI only | finalize never writes it |
+| Error categories | `deliverables/errors/<category>.parquet` | **both** | both | dual-owned, documented |
+
+**(b) GUI-owned ephemeral state — dies with the process or the tab.** The 136 `dcc.Store`s
+(only 35 declare `storage_type`), the 14 `dcc.Interval`s, the `app.server.config`
+singletons already listed above, and the sandbox caches. State the rule the audit found
+and P6 did not change: **one bound output per process, shared by every browser tab.**
+
+**(c) State the GUI reads and must never write.** Everything under `.phenotypic/` except
+the owner record. Say it once, plainly, and name the one function that answers questions
+about it: `resolve_run_state(output_dir, depth=...)`.
+
+- [ ] **Step 2: Delete what is no longer true**
+
+Grep `gui/CLAUDE.md` for the deleted machinery and remove or rewrite each mention:
+
+```bash
+grep -n 'consistency\|coherent\|contradictory\|manifest\|_output_consistency\|snapshot_is_current\|refresh_state_is_current' src/phenotypic/gui/CLAUDE.md
+```
+
+The four-state vocabulary (`coherent`/`active`/`incomplete`/`contradictory`) is gone;
+`contradictory` no longer exists at all. Replace with the four verdicts and a pointer to
+`resolve_run_state`.
+
+- [ ] **Step 3: State the import rule that replaces the 25-symbol seam**
+
+Audit §7: the GUI imports 25 private `phenotypic._cli` symbols across 9 modules, and that
+is how the O(N)-hashing completion predicate ended up on a 2-second timer. After this
+change the rule is: **the GUI imports readers from `phenotypic.sdk_`, never from
+`phenotypic._cli`.** List the remaining legitimate `_cli` imports (the SLURM lifecycle
+helpers the observer needs, per DEFERRED D-1) so a reader can tell the survivors from a
+regression.
+
+- [ ] **Step 4: Verify every claim you just wrote**
+
+Each path and function name gets a `grep`. A module guide asserting a `file:line` that
+moved is the failure this whole change is about.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/phenotypic/gui/CLAUDE.md
+git commit -m "docs(gui): record what state the GUI owns, and what it only reads
+
+The change deletes nine evidence sources and four classifiers; the module guide
+still described them. Adds the owned/ephemeral/read-only split, which was nowhere
+written down, and the sdk_-not-_cli import rule that replaces the 25-symbol seam."
+```
+
+---
+
 - [ ] **Step 5: Commit with the deletion ledger**
 
 ```bash
