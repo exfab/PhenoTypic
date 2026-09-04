@@ -34,6 +34,19 @@ Track these in the phase's final commit body. Spec §11.1 estimates ~1,400 lines
 | 3 | `_local_completion_evidence_conflict`'s 8-branch tree | `_runs_registry.py:591` | 5 |
 | 4 | `_latest_event_states` | `_runs_registry.py:1172` | 4 |
 | 5 | `_read_status_from_manifest`, `_manifest_is_complete` | `_runs_registry.py`, `_slurm_observer.py` | 4, 6 |
+| 5b | `local_manifest_completion_problem` — **the third manifest consumer** (M6) | `_cli_gui_lifecycle.py:41-65`, gating `publish_run_completion_evidence` at `:130-135` | 4 |
+
+> **M6: `manifest.json` is still evidence after P6 unless this site is converted.**
+> `local_manifest_completion_problem` branches on `DashboardManifestKey.COMPLETED`, `FAILED`
+> and `TOTAL_IMAGES` (`completed != total`, `failed != 0`) and **gates run-proof
+> publication**. It is in neither `_output_consistency.py` nor `_slurm_observer.py`, so the
+> round-1 note claiming every manifest-count reader lives in those two files was wrong.
+>
+> This does **not** disturb U-5 — that ruling was about `RunState`-mediated consumers, and
+> this one is not — but it makes two plan claims false unless fixed: P7 Task 6's register
+> says *"`manifest.json` as evidence"* was deleted, and §4.2 demotes it. **Convert this
+> site**, or state in the register that the GUI-local publication path is the one surviving
+> manifest consumer, and why it is allowed to be.
 | 6 | `DashboardManifestKey.VERSION` — written as `3` at one site, read at **zero** | `_dashboard/_manifest_builder.py:766` | 7 |
 | 7 | `sdk_/monitor_slurm_jobs.py` — zero importers in `src/` or `tests/` | whole file (241 lines) | 7 |
 | 8 | `browse/_source_render.py`'s `browse_cache_base` / `cache_png_path` / `init_cache` / `wipe_cache` — zero production callers | `_source_render.py:35-38` | 7 |
@@ -107,7 +120,24 @@ so in a comment).
 
 **INV-LAYER still binds.** The moved readers must not reach back into `_cli`; that is why
 P1 Task 4 established the plain-JSON state read. If a mover needs
-`load_processing_state`, it has taken the wrong function.
+`load_processing_state`, it has taken the wrong function. The **record** reader they call is
+in `sdk_/_image_record.py`, which P3 puts there for exactly this reason (N-3).
+
+> **The move silently drops a relocation the readers depend on (M3).**
+> `load_processing_state` calls `migrate_legacy_machine_state(output_dir)` on **every** read
+> (`_cli_state_management.py:106`) — relocating `progress/`, `processing_state.json` and
+> `processing_events.log` from the output root into `.phenotypic/`
+> (`sdk_/_io_constants.py:1006-1052`). The readers being moved use the **non-resolving**
+> `progress_dir` (`:903-909`; see `_cli_completion.py:27,785` and
+> `image_completion_marker_path`), so on a **pre-relocation** tree they work today *only
+> because the state read relocated first.*
+>
+> Removing the trigger without replacing it makes those readers silently find nothing on
+> such a tree — an empty inventory, which is a *valid* result. Two options, and the second is
+> better: have the moved readers use the **resolving** path helpers, so relocation stops
+> being a precondition; or have P1's `requires_conversion` classify a pre-relocation tree as
+> `CONVERT` and let migrate own the move. Decide in this task, and state which — a read path
+> that depends on a write side effect is the thing this phase exists to remove.
 
 - [ ] **Step 3: Convert the ten CLI call sites**
 

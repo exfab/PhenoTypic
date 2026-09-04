@@ -63,6 +63,27 @@ documented where users read it, not only here:
 > measuring it is a follow-up, not a blocker for P4.
 | **Modify** `src/phenotypic/_cli/_cli_output_manager.py:1970-2001` | `replace_image_store_measurements` feeds the **joined** producer at `:1992-1995`. Bring it onto `prepare_image_tables`, or `--mode measure` silently un-inverts every image it touches. |
 | **Create** `src/phenotypic/sdk_/_master_io.py` | `read_master_measurements(output_dir)` — the reader U-3 requires, raising on an unstamped or wrong-versioned master. Route every in-repo master read through it. |
+| **Modify** `src/phenotypic/_cli/_embedded_measurement_tables.py:106-131` | `embedded_measurement_table_matches` is **reclaim authority**, not provenance (M1) — six migrator call sites (`_cli_migrate.py:1331,1337`; `_cli_migrate_image.py:278,314,777,796`). See below. |
+| **Modify** `src/phenotypic/sdk_/_measurement_tables.py:216-227` | `_valid_embedded_measurement_contract` **rejects `join_status == "not_requested"` with a non-empty digest** — but the inverted producer must record the snapshot digest on an *unjoined* table, or D-A's advisory has no per-store source. Revise in the same commit. |
+| **Modify** `src/phenotypic/_cli/_cli_recompile_slurm_scripts.py:186-202` | The **third** `_consistent_embedded_join_keys` call site (M2), at script-generation time, serialising `"metadata_join_keys"` into the finalizer task. Retiring the function from `finalize_run` alone leaves the abort firing **at submission**, before any worker runs. Delete the task-schema field in the same commit. |
+
+> **M1 — the shape change reaches the migrator, and in two opposite directions.**
+> `embedded_measurement_table_matches` builds its expected table from
+> `prepare_embedded_measurement_table(...)` **including `parquet_metadata()`** — join status,
+> join keys, snapshot digest, measurement columns — and asserts
+> `actual.equals(expected, check_metadata=True)`. Its docstring calls row count *"reclaim
+> authority rather than an incidental property"*, so this is a correctness gate, not a
+> convenience check.
+>
+> - **`_cli_migrate_image.py:278-288`** re-writes the store when `not exact`. A shape change
+>   makes `exact` False on **every pre-P4 store**, so P4 would create a **fourth**
+>   post-proof store-write path — which INV-PROVEN's own wording forbids ("Do not write a
+>   fourth"). Gate the comparison on the store's schema, so a pre-inversion store is
+>   compared against pre-inversion expectations.
+> - **`_cli_migrate.py:1329-1341`** and **`_cli_migrate_image.py:766-800`** under
+>   `--delete-sources`: a mismatch keeps the sources, which is the safe direction — but
+>   `--delete-sources` then becomes **permanently impossible** on any pre-P4 store. Say so
+>   in P7's docs rather than letting a user discover it.
 | **Create** `src/phenotypic/_cli/_cli_finalize_run.py` | `finalize_run(output_dir, …)` — the one path. ~260 lines. |
 | **Modify** `src/phenotypic/_cli/_cli_output_manager.py:1351` | `_aggregate_measurements_unlocked` delegates aggregation to `finalize_run`. |
 | **Modify** `src/phenotypic/_cli/_cli_recompile_worker.py:764` | `_run_post_master_steps` becomes a `finalize_run` call. |

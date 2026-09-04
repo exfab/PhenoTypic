@@ -137,6 +137,20 @@ fence.
 
 `bump_restart_epoch` writes through `atomic_write_json`.
 
+**The two homes are a fence, not a duplicated fact — and one rule keeps them that way
+(CONFLICT-1, resolved).** `.phenotypic/restart_epoch.json` is *the counter*;
+`processing_state.json:config.restart_epoch` is *the value this state was minted under*.
+They have deliberately different lifecycles — `clear_machine_state` preserves the file while
+deleting the state — and a design in which they **can** differ, where the difference is the
+signal, is precisely a fence.
+
+> **`read_restart_epoch` must never repair or backfill `config.restart_epoch`.** A state file
+> whose config epoch differs from the counter is a *fenced* state, and
+> `assert_identity_current`'s named-field `RuntimeError` is the only correct response. Code
+> that silently reconciles them is the one thing that would turn the second home into a real
+> cache — which is what the data-flow reviewer filed and the simplicity reviewer declined,
+> and this is the rule that decides between them.
+
 - [ ] **Step 4: Run the tests.** Expected: PASS.
 
 - [ ] **Step 5: Commit**

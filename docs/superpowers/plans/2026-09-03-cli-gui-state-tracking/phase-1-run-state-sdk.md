@@ -417,18 +417,24 @@ class ImageState:
     dataset: str
     image_stem: str
     stages: Mapping[str, Mapping[str, object]]
-    verified: bool
+    #: Spec §9 annotates `images` as "work_id -> stages + VERDICT". A bool plus an
+    #: unread `reason` was not that (SIMP-R1-09).
+    verdict: Literal["verified", "unverified", "failed"]
     reason: str | None = None
 
 
 @dataclass(frozen=True)
 class RunDiagnostics:
-    """Counts. **Nothing branches on these** (spec §4.2, §9).
+    """Counts derived from ``images``. **Nothing branches on these** (§4.2, §9).
 
-    Every field here was evidence once. ``manifest.json``'s counts and the event
-    log's replay are kept because they are useful when a run looks wrong, and
-    demoted because cross-checking derived counts against each other is what
-    produced ``contradictory`` -- a state the user could not act on.
+    One-line projections over ``ImageState.verdict``, not cached counts of a
+    collection the caller already holds.
+
+    ``manifest.json``'s counts and the event log's presence were in an earlier
+    draft of this dataclass and are **dropped** (U-5): verified zero consumers
+    survive P6, and carrying demoted evidence into ``RunState`` is what keeps it
+    alive as a quasi-evidence surface. The files remain on disk for a human
+    debugging a run.
     """
 
     accepted: int
@@ -548,7 +554,9 @@ def incomplete_run(tmp_path):
 
 
 def test_a_forged_entry_cannot_manufacture_complete(incomplete_run):
-    """The adversarial case: every entry claims verdict=True."""
+    """The adversarial case: every cached state claims verdict="verified"."""
+    import dataclasses
+
     from phenotypic.sdk_ import run_identity
     from phenotypic.sdk_._verification_cache import (
         CachedVerification,
@@ -559,12 +567,14 @@ def test_a_forged_entry_cannot_manufacture_complete(incomplete_run):
     assert baseline != "complete"
 
     identity = run_identity(incomplete_run)
-    for work_id in resolve_run_state(incomplete_run, depth="deep").images:
-        remember_verification(
-            incomplete_run,
-            identity.digest(),
-            CachedVerification(work_id=work_id, verdict=True, stat_tuples={}),
+    forged = {
+        work_id: CachedVerification(
+            state=dataclasses.replace(image, verdict="verified"),
+            stat_tuples={},
         )
+        for work_id, image in resolve_run_state(incomplete_run, depth="deep").images.items()
+    }
+    remember_states(incomplete_run, identity.digest(), forged)
 
     after = resolve_run_state(incomplete_run, depth="shallow").completion
     assert after == baseline, (

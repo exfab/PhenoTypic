@@ -278,16 +278,40 @@ other's writes. After the collapse they are one file with three writers.
 local paths (`_cli_staged_workers.py:551,560`; `_cli_staged_strategy.py:307,316`) need the
 same audit.
 
-**Three rules, each a test:**
+**Four rules, each a test:**
 
 1. **`publish_image_record` merges `stages`, never replaces the map.** Its `stages`
    parameter is a *contribution*, unioned with what is on disk.
-2. **`record_stage` and `consume_stage` re-read under an exclusive lock**, using the
-   `exclusive_path_lock` already in `sdk_/_file_locking.py` that
-   `aggregate_measurements` uses (`_cli_output_manager.py:1552`). Not a new mechanism — an
-   existing one applied where the collapse now needs it.
-3. **`consume_stage` is idempotent** — Stage 3 already tolerates a token another attempt
-   consumed.
+2. **Every writer takes the lock — including `publish_image_record` (flow-r2 C4).** Rule 1
+   makes publishing a read-modify-write, so exempting it reproduces the exact failure rule 1
+   exists to prevent, one function over:
+
+   ```
+   publish reads {stage2}
+                          record_stage("stage3") writes {stage2, stage3}   (holds the lock)
+   publish writes {stage2, measured}                                        (does not)
+   → stage3 lost
+   ```
+
+   With all three writers serialized, `consume_stage` and a concurrent `record_stage` on a
+   *different* key are then trivially safe — one file, serialized read-modify-write,
+   independent keys.
+3. **The lock is a SIBLING file, never the record itself.** `exclusive_path_lock` opens its
+   path `"a+b"` (`sdk_/_file_locking.py:41`), so anchoring on
+   `images/<ds>/<stem>.json` would **create a zero-byte record** for every image the lock
+   ever touches — which then reads as a *corrupt* record rather than an absent one. Every
+   such image would degrade toward `incomplete`: INV-VERDICT doing the right thing for
+   entirely the wrong reason, on the whole tree. Follow the precedent's shape exactly —
+   `aggregate_measurements` anchors on a sibling,
+   `phenotypic_cache_dir(output_dir) / ".aggregate_publication.lock"`
+   (`_cli_output_manager.py:1556-1558`).
+4. **Merging is identity-fenced, and `consume_stage` is idempotent.** Nothing may merge
+   forward a stage entry from a superseded `scheduler_epoch`: a stale `stage2` merged into a
+   fresh record makes `classify_staged_image` skip Stage 2 while the matching raw `.npy` is
+   gone. **Merge only entries whose recorded epoch matches the current one; otherwise
+   replace.** This is one rule covering two places — here, and CAN-13's merge-not-overwrite
+   conversion in P7, which merges an *old-build* legacy marker into a current record and had
+   no fence at all.
 
 ```python
 def test_publishing_a_record_does_not_clobber_an_earlier_stage(tmp_path):
@@ -332,11 +356,34 @@ def test_consuming_an_absent_stage_is_a_no_op(tmp_path):
     assert consume_stage(tmp_path, "plate", "a", "stage2") is False   # never raises
 ```
 
-- [ ] **Step 3b: Audit the three local publish→record orderings**
+- [ ] **Step 3b: Audit every stage-3 / stage-2-token mutation — there are ≥9, not 4**
 
-Read `_cli_staged_workers.py:551,560` and `_cli_staged_strategy.py:307,316` and confirm each
-either publishes before recording stage 3, or relies on the merge rule above. Record which,
-in a comment at each site. **"It works by ordering luck" is a finding, not a design.**
+The first draft named four sites. The real set (flow-r2 C4):
+
+| Site | What it does |
+|---|---|
+| `_cli_staged_slurm_worker.py:503` | stage-3 marker |
+| `_cli_staged_slurm_worker.py:514` | token consumption |
+| `_cli_staged_strategy.py:307,316` | stage-3 + token |
+| `_cli_staged_strategy.py:482` | **a fourth token consumption** |
+| `_cli_staged_workers.py:551,560` | stage-3 + token — **but see below** |
+| `_cli_staged_resume.py:363` | stage-3 marker, with a `legacy_migration=True` kwarg **`record_stage`'s signature has no place for** |
+| `_cli_staged_resume.py:392` | inside `clear_downstream_artifacts_for_stage1` |
+| `_cli_staged_resume.py:450` | — |
+
+**`_cli_staged_workers.py:551` is guarded by `if work_id is None:`.** So on the normal local
+staged path — `work_id` set — neither the stage-3 marker nor the token consumption happens
+there at all. Auditing its *ordering* answers a question about a branch that does not run.
+**Find where the token is consumed when `work_id` is not None**, and audit that instead.
+
+**`_cli_staged_resume.py:363`'s `legacy_migration=True` needs a decision, not a translation.**
+`record_stage(output_dir, dataset, stem, stage, payload)` has nowhere to put it. Either it
+belongs in the stage payload (a stage recorded by migration is a fact about that stage), or
+the call site is migrate-only and moves to P7 with the rest of the legacy paths. Decide and
+say which; do not silently drop the kwarg.
+
+Record at each site whether it publishes before recording, or relies on the merge rule.
+**"It works by ordering luck" is a finding, not a design.**
 
 - [ ] **Step 4: Run the tests.** Expected: PASS (5 passed).
 
