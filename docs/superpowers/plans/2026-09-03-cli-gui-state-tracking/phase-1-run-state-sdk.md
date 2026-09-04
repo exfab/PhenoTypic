@@ -1187,6 +1187,37 @@ the two CLI ones until P6 collapses them."
 > |---|---|
 > | `test_a_forged_entry_cannot_manufacture_complete` | `resolve_run_state` returns a verdict straight from the cache without re-verifying |
 > | `test_a_tampered_artifact_falls_through_even_with_a_warm_cache` | a warm entry suppresses the deep re-check |
+> | **`test_a_warm_cache_is_actually_used`** | **the cache is written and never read** |
+>
+> **That third one is not symmetry — it closes a hole the other two cannot see.** Every
+> INV-VERDICT test proves the cache cannot make an answer *better* than the truth. **None of
+> them would notice a cache that nothing ever reads.** Such a cache degrades perfectly,
+> passes the entire mutation suite, and ships audit S1's finding — the double walk, the
+> re-hash on every poll — completely unfixed. A suite that can only detect the cache being
+> too generous is a suite that cannot detect the cache being absent.
+>
+> Assert the observable consequence, not an internal counter: a second `resolve_run_state`
+> call at `depth="shallow"` over an unchanged tree must not re-hash. Count `valid_image_success`
+> invocations, or stat calls, or wall-clock against a deliberately slow artifact — whichever
+> the implementation makes honest, but it must fail if the read path is removed.
+
+> ### Three obligations `resolve_run_state` inherits from the cache — read before writing it
+>
+> Found while building Task 3, and cheaper to know now than to discover as red tests:
+>
+> 1. **`depth="deep"` must populate the cache** through `remember_states`, keyed on
+>    `run_identity(output_dir).digest()`.
+> 2. **`depth="shallow"` must fall back to a full deep pass** when the cache is cold or
+>    stale, and must report the depth it *actually performed* in `RunState.depth` — not the
+>    depth it was asked for.
+> 3. **A store is fenced by its root `zarr.json`, never by the store directory.**
+>    `entry_is_still_current` fails closed on anything that is not a regular file, because a
+>    directory's `mtime_ns` tracks only its own entries — rewriting
+>    `tables/measurements/table.parquet` inside a store leaves the store root's mtime
+>    untouched. That is spec §0's *"a valid root does not imply unchanged contents"* reached
+>    through the cache instead of through the root. **A resolver that records the store
+>    directory will silently never hit the cache** — a failure whose only symptom is lost
+>    performance, which is why it would survive indefinitely.
 >
 > Task 3's agent writes both and hands them over as a diff, so this task pastes rather than
 > reinvents. **Do not treat a handed-over test as pre-verified** — run its mutation here.
