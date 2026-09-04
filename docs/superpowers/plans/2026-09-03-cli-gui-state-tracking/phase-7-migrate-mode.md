@@ -48,6 +48,12 @@ spec D9/FLOW-4 — there is **no exception, including migrate**), or write into 
 
 ## Task 1: Detection and refusal
 
+> **`_invoke_cli` is defined in P1 Task 3b, not here** — see that task for the helper and,
+> more importantly, for the rule that goes with it: assert on `result.exit_code` and
+> `result.output`, never `pytest.raises(SystemExit, match=...)`. `str(SystemExit(2))` is
+> `"2"`, so a `match=` on the refusal message cannot fail for its own reason. **The three
+> tests in Step 1 below are written in the broken idiom and must be converted.**
+
 **Files:**
 - Create: `src/phenotypic/_cli/_cli_schema_gate.py`
 - Modify: `src/phenotypic/phenotypicCLI.py`

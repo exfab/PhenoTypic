@@ -985,6 +985,50 @@ def test_a_legacy_tree_is_refused_before_the_clean_break_can_empty_it(tmp_path):
         _invoke_cli(mode="full", output=tmp_path)
 ```
 
+> ### `_invoke_cli` — defined here, because it is used 27 times and defined nowhere
+>
+> A grep for `def _invoke_cli` across the whole plan and spec returns **nothing**, while the
+> name appears **27 times** (1 here, 26 in P7). The plan-writing rule against *"references
+> to types, functions, or methods not defined in any task"* was missed for this one. It is
+> defined by this task, in `tests/unit/cli/test_schema_gate.py`, and P7 imports it.
+>
+> **It wraps `CliRunner().invoke` and returns click's `Result`:**
+>
+> ```python
+> def _invoke_cli(mode, output, cli_inputs, *, dry_run=False) -> Result:
+>     pipeline, images = cli_inputs
+>     args = ["--mode", mode, "--output", str(output)]
+>     if mode in ("full", "measure", "process"):
+>         args += ["--pipeline", str(pipeline)]
+>     if mode in ("full", "process"):
+>         args += ["--input", str(images)]
+>     if mode == "process":
+>         args += ["--layer", "rgb"]
+>     if dry_run:
+>         args.append("--dry-run")
+>     return CliRunner().invoke(phenotypic_cli, args)
+> ```
+>
+> **Assert on `result.exit_code` and `result.output`. Never
+> `pytest.raises(SystemExit, match=...)`.** Two independent reasons, both measured on click
+> 8.3.1 rather than reasoned about:
+>
+> 1. **Through `CliRunner`, `pytest.raises` cannot fire.** A `SystemExit` *is* raised — click
+>    converts the `UsageError` into one — but `invoke` **catches** it and stores it on
+>    `result.exception`. (An earlier report said no `SystemExit` is raised at all; that was
+>    wrong about the mechanism and right about the outcome. If a call site ever invokes the
+>    command function *directly*, `SystemExit` does propagate and `pytest.raises` works
+>    there.)
+> 2. **`match=` fails regardless of which form is used.** `str(SystemExit(2))` is `"2"`, not
+>    the message. So a test written as `pytest.raises(SystemExit, match="--mode migrate")`
+>    cannot fail for its own reason even where the exception propagates — it is matching
+>    against an exit code.
+>
+> Reason 2 is the one to carry: an implementer who reads only *"it is fine when called
+> directly"* will still write a test that cannot fail for the reason it exists.
+>
+> **This affects P7 Task 1 Step 1 (three tests), P7 Tasks 3 and 5, and Step 2 below.**
+
 - [ ] **Step 3: Commit**
 
 The code and its commit message are P7 Task 1's; this task only moves *when* it is built.

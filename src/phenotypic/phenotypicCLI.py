@@ -399,7 +399,7 @@ def _has_prior_scientific_artifacts(output_dir: Path) -> bool:
 
 
 def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
-    """Refuse a tree whose per-image results are not all converted.
+    """Refuse a tree the forward path cannot read as it stands.
 
     Applied to **every mode that writes or reprocesses** -- ``full``,
     ``measure``, ``recompile``, ``process`` -- because after Phase 6 the
@@ -407,9 +407,16 @@ def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
     itself is exempt: it is the remedy, and guarding it with its own
     predicate makes the tree unmigratable (ledger MIG-19).
 
-    The predicate is shared with the viewer, so the two cannot disagree
-    about what "needs migrating" means. The severities differ, not the
-    definition: a writing mode refuses, while the viewer reports.
+    Two independent reasons, one call site so the severities cannot drift:
+
+    1. **Per-image format** -- a dataset still holds ``.h5`` results with no
+       valid store. The predicate is shared with the viewer, so the two cannot
+       disagree about what "needs migrating" means; only the severity differs,
+       a writing mode refusing where the viewer reports.
+    2. **Run-state schema** -- the tree predates the consolidated per-image
+       record and identity schema (spec D1, §11.1). See
+       :mod:`phenotypic._cli._cli_schema_gate`, which owns the detection and
+       stays inert until P3 arms it.
 
     Format conversion rewrites the entire results tree, so it is typed
     deliberately rather than triggered as a side effect of an unrelated run.
@@ -420,8 +427,10 @@ def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
 
     Raises:
         click.UsageError: At least one dataset holds an ``.h5`` result whose
-            store is absent or invalid.
+            store is absent or invalid, or the run-state schema is one this
+            build cannot read.
     """
+    from phenotypic._cli._cli_schema_gate import refuse_unconverted_schema
     from phenotypic.sdk_ import MIGRATION_REMEDY, datasets_needing_migration
 
     legacy = datasets_needing_migration(output_dir)
@@ -433,6 +442,7 @@ def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
             f"  python -m phenotypic {MIGRATION_REMEDY} "
             f"--output {output_dir}"
         )
+    refuse_unconverted_schema(output_dir, mode=mode)
 
 
 def _snapshot_metadata_csv(
