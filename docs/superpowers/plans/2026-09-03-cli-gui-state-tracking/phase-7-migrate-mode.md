@@ -468,6 +468,31 @@ would lose the newer record's stages. The rename-aside and revert path are Task 
 > **The orchestrator made this call from its own verification and reported it to the user as
 > a simplification.** It was neither. MIG-1's original direction — port the helper into
 > migrate — stands.
+>
+> ### Round 4 (U-10): the conclusion holds, the REASON changed — and the task got simpler
+>
+> **The verdict above is unchanged: port the promoter.** But read its argument again with
+> U-10 in hand and the load-bearing clause is gone. It said the helper must be ported
+> *because it mints the content-derived id resume re-derives*. Under U-10 **migrate mints no
+> matching id at all** — it marks the record `provenance: "migrated"` and
+> `valid_image_success` accepts it on artifact validity, with no `work_id` comparison. The
+> synthetic-vs-content-derived distinction the reversal turned on no longer decides anything.
+>
+> **So why is the helper still ported?** For the half the reversal did not emphasise, which
+> was always the real one — **MIG-1's**: on a pre-3.0.0 tree, `state.datasets.<ds>.completed`
+> is the *only* record of what finished. Migrate needs the helper to know **which images to
+> publish records for**. It is being ported for its enumeration, not its identity minting.
+>
+> **And this dissolves MIG-18.** That finding said porting was hard because migrate builds no
+> `ExecutionConfig`, and `work_id_for_image` needs one. Migrate no longer calls it. Drop the
+> identity-minting half of the port along with the reconstruction table's ⚠️ rows; keep the
+> `datasets.completed` walk and the `process_only_layer` arm at `phenotypicCLI.py:602-612`.
+> **The port gets smaller, not larger** — the first genuinely simplifying consequence in this
+> phase, and the one to check first if the task starts growing during implementation.
+>
+> **Task 2b's `images_processed == 0` assertion is now achievable**, and by a different
+> mechanism than the reversal assumed: not because the ids match, but because the marking
+> means no id is compared.
 
 **What the task actually is: move the promoter, do not delete it.**
 
@@ -504,59 +529,98 @@ So the pre-markers path already works end to end. What is required:
 > exists to remove. It moves.
 >
 > **What that costs, stated plainly, because it is not free (MIG-18).** `work_id_for_image`
-> needs six inputs. On a v0.17.3 tree migrate can recover most but not all:
+> hashes seven fields. On a v0.17.3 tree migrate can recover some, approximate others, and
+> cannot reproduce the rest at all — **which is why U-10 below stops trying**:
 >
-> | Input | Source in migrate |
+> | Field | Available to migrate on a v0.17.3 tree? |
 > |---|---|
-> | `dataset`, `relative_image_path`, `mode` | the tree |
-> | `image_type`, `nrows`, `ncols`, `bit_depth` | `processing_state.json:config` — present at v0.17.3 |
-> | source images (for `input_sha256`) | **`state.input_path`**, which v0.17.3 records — so migrate does **not** need `--input`, and root `CLAUDE.md`'s rule stands |
-> | pipeline | **`<output>/pipeline.json`**, persisted by `_persist_pipeline_to_output_dir` since before v0.17.3 (`_cli_output_manager.py:325-357,606`) |
-> | `save_overlays` | derivable — does `results/<ds>/overlays/` hold files |
-> | `include_dataset_column` | derivable — does the master carry `Metadata_Dataset` |
-> | **`detect_mode`, `drop_originals`, `overlay_alpha`** | **irrecoverable** — never written to disk at that vintage. **Omitted from the digest (U-8), not defaulted.** |
-> | pipeline *file* digest | ⚠️ the persisted copy is `pipeline.to_json()`, a re-serialization; `work_id` hashes the user's original file. **Same treatment**: when the original is gone, omit `pipeline_fingerprint` rather than substituting the re-serialized digest. Substituting produces a confidently wrong id; omitting produces an honestly weaker one. |
+> | `schema_version`, `dataset`, `relative_image_path`, `mode` | ✅ constant, or read off the tree |
+> | `input_sha256` | ⚠️ **only if the sources still exist.** `state.input_path` records where they *were* (so migrate needs no `--input`, and root `CLAUDE.md`'s rule stands), but the field is `file_sha256` of the original image and is **never persisted** — it is a hash input, not a stored value. Sources moved, archived or deleted make it unobtainable, and archived runs are exactly the ones being migrated. |
+> | `pipeline_fingerprint` | ⚠️ `<output>/pipeline.json` exists (`_persist_pipeline_to_output_dir`, `_cli_output_manager.py:325-357,606`) but is a `to_json()` **re-serialization**; `work_id` hashes the user's original file. Substituting the re-serialized digest produces a confidently wrong id. |
+> | `processing_configuration_digest` — `image_type`, `nrows`, `ncols`, `bit_depth`, `ext` | ✅ in `processing_state.json:config`, which holds **seven** keys at v0.17.3 (`n_jobs` and `slurm_args` are the other two and are correctly not digest inputs) |
+> | `processing_configuration_digest` — `save_overlays`, `include_dataset_column` | ⚠️ *derivable by inference* — does `results/<ds>/overlays/` hold files; does the master carry `Metadata_Dataset`. Inference, not record. |
+> | `processing_configuration_digest` — **`detect_mode`, `process_only_layer`, `process_format`, `overlay_alpha`, `drop_originals`** | ❌ **never written to disk at that vintage** |
 >
-> ### U-8 (round 3, user): omit the unknown fields from the digest — do not default them
+> **Read the bottom four rows together and the conclusion is forced.** Even granting every
+> ⚠️ its best case, five of the twelve digest fields are simply absent, and two of the seven
+> top-level fields depend on files outside the tree. There is no reconstruction here — only
+> degrees of fabrication. That is the finding U-8 was written before, and U-10 after.
 >
-> An earlier draft proposed migrate flags for the three irrecoverable fields, defaulting
-> them with a loud warning. **Better answer, and it has precedent in this codebase.**
+> ### U-8 WITHDRAWN, U-10 (round 4, user) replaces it
 >
-> `validate_resume_compatibility` (`_cli_state_management.py:339-349`) already guards exactly
-> these keys — `bit_depth, detect_mode, include_dataset_column, overlay_alpha,
-> drop_originals, save_overlays, process_format` — and its first act on each is:
+> **U-8 said:** migrate omits the unrecoverable fields from the digest, and a forward run
+> reading that state omits them too, so both hash the same reduced payload and the `work_id`s
+> match.
 >
-> ```python
-> if key not in state.config:
->     continue
-> ```
+> **There is no such forward run, and it cannot be added cheaply.** Three independent facts,
+> each verified in source:
 >
-> **Absent already means "not asserted", not "default".** The convention exists; this
-> extends it to the digest instead of inventing a parallel mechanism.
+> 1. `work_id_for_image` (`_cli_failure_tracker.py:329-350`) **recomputes** the identity from
+>    a live `ExecutionConfig` every call. It never reads `state.config`, so what migrate
+>    writes there cannot influence what a forward run looks for.
+> 2. `processing_configuration_digest_from_values` (`:200-214`) takes all twelve fields as
+>    **required** keyword parameters and writes them into the payload unconditionally. There
+>    is no "absent" to express.
+> 3. A **second** producer, `_worker_work_identity` (`_cli_process_single.py:122-171`),
+>    derives the same id from argv, and the two are cross-checked with a hard `RuntimeError`
+>    at `:723-729`. Both would need the same new notion of "unasserted".
 >
-> So: **migrate omits the unknown fields from `processing_configuration_digest`'s payload,
-> and writes `state.config` with those keys absent. A forward run reading that state omits
-> them too.** Both sides hash the same reduced payload, the digests match, the `work_id`s
-> match, and nothing reprocesses. No new flags on migrate, no defaults, no warning to
-> ignore — U-7's rule 1 is deleted.
+> And two of the seven `work_id` fields are irreproducible regardless of any of that:
+> `input_sha256` is `file_sha256` of the **original input image**, never persisted anywhere —
+> it is a hash *input*, not a stored field — and `pipeline_fingerprint` hashes the user's
+> original pipeline file, where the tree holds only a `to_json()` re-serialization.
 >
-> **Omit, never blank.** `""` and `None` are *values*: a forward run hashing
-> `detect_mode: ""` still disagrees with one hashing `detect_mode: "rgb"`. Omission makes
-> the canonical JSON structurally different and is what `not in state.config` already tests.
-> `_canonical_digest` sorts keys, so a payload built by omission is stable regardless of
-> insertion order.
+> Making U-8 work therefore means threading "not asserted" through both producers,
+> `ExecutionConfig` and the cross-check — an invasive change to the identity path — for the
+> benefit of trees that never had an identity fence at all.
 >
-> **The cost, stated once and not papered over:** a migrated tree's `work_id` no longer
-> fences on those three fields. Re-run it later with a different `detect_mode` and the id is
-> unchanged, so the tree is *not* reprocessed — the run silently continues under a different
-> detection mode. That is a real weakening. It is also **precisely** the weakening
-> `validate_resume_compatibility` has always accepted for an absent key, so it is an existing
-> convention applied consistently rather than a new hole. `resolve_run_state` emits one
-> advisory naming the unasserted fields, so the weakening is visible where the state is read.
+> ### U-10: mark the record; do not fabricate the identity
 >
-> **This applies only to trees migrated from the pre-markers shape.** A forward run that
-> *has* the values always asserts them; there is no path by which a modern run acquires an
-> unasserted field.
+> **Migrate publishes per-image records carrying `provenance: "migrated"`.** For a record so
+> marked:
+>
+> 1. **`valid_image_success` accepts it on artifact validity alone** — the artifacts exist
+>    and their content proofs verify — with **no `work_id` comparison**.
+> 2. **`resolve_run_state` emits one advisory** naming the affected images: the configuration
+>    fence is unavailable for them.
+> 3. **Every unmarked record is fenced exactly as before.** This is the half a careless
+>    implementation breaks; `test_an_unmarked_record_is_still_fenced_on_work_id` is what
+>    keeps it honest, because relaxing the comparison generally would strip the fence from
+>    every modern tree — a far larger hole than the one U-10 opens deliberately.
+>
+> **What migrate writes into `work_id` for such a record.** Not a synthetic id dressed up as
+> a real one. Either omit the key entirely, or carry the synthetic
+> `sha256("migration:<ds>/<stem>")` **beside** the marking, where its provenance is
+> unambiguous and no reader compares it. Decide in Task 2b and state which; what must not
+> happen is a value in `work_id` that a reader could mistake for a content-derived identity.
+>
+> **The cost, stated once:** those images lose the configuration fence. Re-run the tree later
+> under a different pipeline or `detect_mode` and it is **not** reprocessed.
+> `test_a_migrated_tree_is_not_reprocessed_under_ANY_forward_config` asserts exactly that,
+> including the case where reprocessing is arguably the better answer — the test documents
+> the cost rather than hiding it.
+>
+> **Why this is the right trade and not the cheap one:**
+>
+> - It **removes no guarantee**. `git show v0.17.3:.../_cli_state_management.py` has no
+>   `work_ids` key at all, and its config block holds seven entries of which five are digest
+>   inputs. The fence never existed on these trees. U-10 declines to fabricate one.
+> - It is **self-limiting**. Once an image is reprocessed by a modern run it acquires a real
+>   `work_id` and the marking is gone — `test_the_marking_does_not_survive_reprocessing` is
+>   the guard. The weakening cannot reach any image a v2 run has produced.
+> - It is **visible**. An advisory naming the unavailable fence beats a fabricated id that
+>   silently asserts a fence that is not there.
+>
+> **This applies only to trees migrated from the pre-markers shape.** A forward run always
+> asserts its own identity; there is no path by which a modern run acquires the marking.
+>
+> **And this is what discharges MIG-21.** The pre-markers `--mode process` tree classifies
+> `CONVERT`; before U-10, migrate converted nothing, so `_refuse_unmigrated_output`
+> (`phenotypicCLI.py:1661-1662`, which runs **before** `--restart` is handled) refused the
+> tree in every writing mode permanently — escapable only by `--overwrite`, which deletes the
+> outputs. `--mode process` handles that tree in place today, so it was a **regression, not a
+> gap**. With U-10 migrate emits marked records, `requires_conversion` returns `None`
+> afterwards, and INV-DISCHARGEABLE's parametrized test covers the shape.
 
 - [ ] **Step 1: Move `_migrate_legacy_success_evidence` into `_cli_migrate_state`**
 
@@ -657,90 +721,97 @@ def test_a_pre_markers_tree_converts_end_to_end(tmp_path):
     )
 
 
-def test_migrated_records_carry_the_work_id_a_FORWARD_RUN_re_derives(tmp_path):
-    """CAN-7's decisive assertion, corrected for MIG-18's failure mechanism.
+def test_a_migrated_record_is_accepted_without_a_work_id_comparison(tmp_path):
+    """U-10, and the assertion the whole ruling rests on.
 
-    v0.17.3 has no `work_ids` key, so `_configured_work_id` always falls back to the
-    SYNTHETIC sha256("migration:<ds>/<stem>"). A forward run re-derives via
-    `work_id_for_image` -- content-derived. If the record carries the synthetic id,
-    nothing matches and every image reprocesses while every other assertion here
-    still passes.
+    CAN-7's original form asserted that a migrated record carries the work_id a
+    FORWARD RUN re-derives. Round 4 disproved that this is achievable: work_id
+    hashes input_sha256 (file_sha256 of the ORIGINAL image, never persisted --
+    only fed into the digest) and pipeline_fingerprint (the user's original file,
+    where the tree holds only a to_json() re-serialization), and seven of the
+    twelve processing_configuration_digest fields were never recorded at v0.17.3.
 
-    CRITICAL: `expected` is built the way a FORWARD RUN builds it -- from CLI flags
-    and the real pipeline file -- NOT from migrate's reconstruction. An earlier
-    version derived both sides from the same reconstruction, so it passed while the
-    defect was live for every user who set a non-default science flag. A test whose
-    two sides share the code under test proves nothing.
+    So the record does NOT carry a matching work_id, and must not pretend to. It
+    carries provenance="migrated", and valid_image_success accepts it on artifact
+    validity alone.
     """
-    from phenotypic._cli._cli_failure_tracker import work_id_for_image
     from phenotypic.sdk_._image_record import read_image_record
-
-    tree = _build_v0_17_3_tree(tmp_path, detect_mode="rgb", overlay_alpha=0.7)
-    _invoke_cli(mode="migrate", output=tree,
-                detect_mode="rgb", overlay_alpha=0.7)      # U-7's flags
-
-    forward_config = _forward_config(                       # built from flags, not the tree
-        input_path=_source_tree(tree), pipeline=_original_pipeline(tree),
-        detect_mode="rgb", overlay_alpha=0.7,
-    )
-    for dataset, image in _images_of(tree):
-        expected, _ = work_id_for_image(forward_config, dataset, image)
-        record = read_image_record(tree, dataset, image.stem)
-        assert record["work_id"] == expected, (
-            f"{dataset}/{image.stem}: record carries {record['work_id'][:12]}…, "
-            f"a forward run will look for {expected[:12]}…"
-        )
-
-
-def test_an_unasserted_field_matches_whatever_the_forward_run_passes(tmp_path):
-    """U-8, and the whole point of omitting rather than defaulting.
-
-    The three irrecoverable fields are OMITTED from the digest, so a forward run
-    reading state.config -- which also lacks them -- omits them too. Both sides hash
-    the same reduced payload, whatever the user passes for those flags.
-
-    Defaulting would have matched only the user who happened to run with defaults.
-    """
-    from phenotypic._cli._cli_failure_tracker import work_id_for_image
-    from phenotypic.sdk_._image_record import read_image_record
+    from phenotypic.sdk_ import valid_image_success
 
     tree = _build_v0_17_3_tree(tmp_path, detect_mode="rgb", overlay_alpha=0.7)
     _invoke_cli(mode="migrate", output=tree)
 
-    # Two forward configs disagreeing on every unasserted field.
+    for dataset, image in _images_of(tree):
+        record = read_image_record(tree, dataset, image.stem)
+        assert record["provenance"] == "migrated"
+        assert valid_image_success(tree, dataset, image.stem) is True
+
+
+def test_a_migrated_tree_is_not_reprocessed_under_ANY_forward_config(tmp_path):
+    """The outcome CAN-7 exists to protect, now achieved by marking rather than by
+    a fabricated identity. Two forward configs disagreeing on every science flag
+    must BOTH reuse the migrated images -- because neither compares work_id.
+
+    This is also the honest statement of what U-10 costs: the second config SHOULD
+    arguably reprocess, and does not. That is the configuration fence being
+    unavailable, which is what the advisory says.
+    """
     for detect_mode, alpha in (("rgb", 0.7), ("gray", 0.2)):
-        config = _forward_config(tree, detect_mode=detect_mode, overlay_alpha=alpha)
-        for dataset, image in _images_of(tree):
-            expected, _ = work_id_for_image(config, dataset, image)
-            assert read_image_record(tree, dataset, image.stem)["work_id"] == expected
+        tree = _build_v0_17_3_tree(tmp_path / f"{detect_mode}", detect_mode="rgb",
+                                   overlay_alpha=0.7)
+        _invoke_cli(mode="migrate", output=tree)
+        reprocessed = _invoke_cli(mode="full", output=tree,
+                                  detect_mode=detect_mode, overlay_alpha=alpha)
+        assert reprocessed.images_processed == 0, (
+            "a migrated pre-markers tree reprocessed from source"
+        )
 
 
-def test_omission_is_not_blanking(tmp_path):
-    """`""` and None are VALUES. A payload carrying detect_mode="" hashes
-    differently from one that has no detect_mode key at all, so blanking would
-    reproduce the mismatch it was meant to fix."""
-    from phenotypic._cli._cli_failure_tracker import (
-        processing_configuration_digest_from_values,
-    )
-
-    base = dict(image_type="GridImage", nrows=8, ncols=12, bit_depth=8,
-                process_only_layer=None, ext=".tif", process_format="tiff")
-    omitted = processing_configuration_digest_from_values(**base)          # unasserted
-    blanked = processing_configuration_digest_from_values(**base, detect_mode="")
-    assert omitted != blanked
-
-
-def test_the_weakening_is_surfaced_as_an_advisory(tmp_path):
-    """U-8's stated cost: a migrated tree's work_id no longer fences on those three
-    fields. That is the same weakening validate_resume_compatibility has always
-    accepted for an absent key -- but it must be VISIBLE where the state is read."""
+def test_the_unavailable_fence_is_surfaced_as_an_advisory(tmp_path):
+    """U-10's cost must be VISIBLE where the state is read. An advisory that says
+    the fence is unavailable is the whole reason this is better than writing a
+    fabricated work_id, which would silently assert a fence that does not exist."""
     from phenotypic.sdk_ import resolve_run_state
 
     tree = _build_v0_17_3_tree(tmp_path)
     _invoke_cli(mode="migrate", output=tree)
 
     advisories = resolve_run_state(tree, depth="deep").advisories
-    assert any("detect_mode" in a and "overlay_alpha" in a for a in advisories)
+    assert any("migrated" in a and "configuration" in a for a in advisories)
+
+
+def test_the_marking_does_not_survive_reprocessing(tmp_path):
+    """U-10 is self-limiting, and this is the test that keeps it so. Once an image
+    IS reprocessed by a modern run it acquires a real work_id, and the weakened
+    fence must not persist. If this ever fails, the weakening has become permanent
+    and spreads to images a v2 run has touched -- which is a different ruling from
+    the one given."""
+    from phenotypic.sdk_._image_record import read_image_record
+
+    tree = _build_v0_17_3_tree(tmp_path)
+    _invoke_cli(mode="migrate", output=tree)
+    _invoke_cli(mode="full", output=tree, restart=True)     # forces real reprocessing
+
+    for dataset, image in _images_of(tree):
+        record = read_image_record(tree, dataset, image.stem)
+        assert record.get("provenance") != "migrated", (
+            "a reprocessed image kept the migrated marking; the unavailable fence "
+            "is now permanent for an image a modern run produced"
+        )
+
+
+def test_an_unmarked_record_is_still_fenced_on_work_id(tmp_path):
+    """The other half, and the one a careless implementation breaks: U-10 relaxes
+    the check ONLY for marked records. If valid_image_success stops comparing
+    work_id generally, every modern tree silently loses its configuration fence --
+    a far larger hole than the one U-10 opened deliberately."""
+    from phenotypic.sdk_ import valid_image_success
+
+    tree = _build_modern_tree(tmp_path)                      # real work_ids, no marking
+    dataset, image = next(iter(_images_of(tree)))
+    _corrupt_record_work_id(tree, dataset, image.stem)
+
+    assert valid_image_success(tree, dataset, image.stem) is False
 ```
 
 - [ ] **Step 3: Make Task 3's deletion conditional, and give `datasets.failed` a home**
@@ -1240,6 +1311,16 @@ that holds and the one where it did not until P4 repaired it.
 Also correct `## Per-image completion markers` (`:235`): `SUCCESS_MARKER_VERSION` is now
 `RECORD_VERSION`, the three marker trees are one record, and the `_migrate_legacy_success_evidence`
 paragraph (`:257-261`) describes a function P7 deletes.
+
+**And document `provenance` where the fence is described (U-10).** The register's job is to
+say which state is tracked and how it is derived; a field that changes *how a record is
+verified* and is absent from the guide is the exact failure this task exists to prevent.
+State three things: `"migrated"` is written only by `--mode migrate`; a record so marked is
+accepted on artifact validity with no `work_id` comparison; and **absent means `"forward"`**,
+so the strict reading is the default and a writer that forgets the field produces a fenced
+record rather than an accepted one. Say plainly that this is a deliberately weakened fence
+for trees that never had one, that it clears on reprocessing, and that `resolve_run_state`
+advises when it is in effect.
 
 **And the same false claim in source, not only in the guide (flow-r4 Min1).**
 `image_data_artifact`'s own docstring (`_cli_completion.py:132-135`) makes the claim CAN-3

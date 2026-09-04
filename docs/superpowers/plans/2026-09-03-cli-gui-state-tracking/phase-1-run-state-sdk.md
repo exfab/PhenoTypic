@@ -1273,6 +1273,19 @@ Body, in order — each step is one of the four verdicts and nothing else:
        not include. P4 Task 2 mirrors it into the root so this stays a plain `zarr.json` read.
      - Until P4 lands, `--mode measure`'s in-place branch can leave the root stale
        (`_measurement_tables.py:284-290`); the docstring says so.
+   - **any image whose record carries `provenance: "migrated"` (U-10)** — the configuration
+     fence is unavailable for it. One advisory naming the affected images, not one per
+     image.
+
+     > **This advisory is the visible half of U-10 and is not optional.** The ruling accepts
+     > a real weakening — a migrated image is verified on artifact validity alone, with no
+     > `work_id` comparison — on the grounds that it is **visible** rather than silent.
+     > Delete the advisory and the trade the user agreed to is no longer the trade being
+     > made: what remains is an invisible hole. Word it so a reader learns three things: the
+     > fence is unavailable, which images, and that reprocessing clears it.
+     >
+     > It is an **advisory, not a gate** — same as every other entry here. A migrated tree is
+     > usable; the point is that the user knows what it is.
 5. `diagnostics` — counts derived from `images` only. **`manifest_completed`,
    `manifest_total` and `event_log_present` are dropped** (U-5): verified zero consumers
    survive P6, and carrying demoted evidence into `RunState` is what keeps it alive as a
@@ -1419,7 +1432,11 @@ def test_a_dead_gui_owner_does_not_pin_the_verdict_at_active(complete_run):
 Swap ladder rules 1 and 2; confirm `test_a_live_worker_does_not_mask_a_valid_run_proof`
 fails. Swap 2 and 3; confirm `test_an_active_run_outranks_a_stale_terminal_failure` fails.
 Make the metadata advisory a gate (return `incomplete`); confirm
-`test_a_store_built_against_older_metadata_is_an_advisory` fails. **Delete each of the five
+`test_a_store_built_against_older_metadata_is_an_advisory` fails. Delete the
+`provenance: "migrated"` advisory entirely; confirm P7's
+`test_the_unavailable_fence_is_surfaced_as_an_advisory` fails — that one is the visible half
+of U-10, so a suite that stays green without it has stopped enforcing the ruling. **Delete
+each of the five
 comparisons in turn and confirm the matching parametrized case fails** — that is the check
 that stops rule 1 collapsing back to one line. Restore all of them.
 

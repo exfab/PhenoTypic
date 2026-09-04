@@ -28,7 +28,8 @@ sentence will be wrong about shipped code.
 | **U-4** | §5.1, §5.3 | **`publication_id` is cut.** Once §5.1 redefines it as `sha256(source_set_digest ‖ finalization_inputs)` it is a pure function of two values the binding check already compares. The run proof carries `source_set_digest` instead. **Six tokens → five.** |
 | **U-5** | §9 | `RunState.diagnostics` drops `manifest_completed`, `manifest_total`, `event_log_present` — verified zero consumers survive the consumer migration. |
 | **U-7** | §11.1 | **Migration logic lives only in `--mode migrate`.** The legacy promoter's `--mode full` dispatch is deleted. §11.1's "move into migrate" stands, but for this helper it is a **rewrite**, not a move — migrate builds no `ExecutionConfig`. |
-| **U-8** | §5.4, new | A pre-markers tree lacks `detect_mode`, `drop_originals` and `overlay_alpha`. Migrate **omits** them from the digest rather than defaulting them, and a forward run reading that state omits them too — the convention `validate_resume_compatibility` (`_cli_state_management.py:348-349`) already uses for an absent key. Omit, never blank: `""` is a value. |
+| **U-8** ⚠ | §5.4 | **WITHDRAWN in round 4 — the mechanism does not exist.** Migrate was to omit the unrecoverable digest fields and a forward run was to omit them too, so both hash the same reduced payload. No forward run does or can: `work_id_for_image` *recomputes* the id from `ExecutionConfig` and never reads `state.config`, and `processing_configuration_digest_from_values` writes all twelve fields unconditionally. Superseded by **U-10**. |
+| **U-10** | §5.4, §6.1, new | **Migrated records are marked, not fabricated.** Migrate publishes records carrying `provenance: "migrated"`; `valid_image_success` accepts such a record on **artifact validity alone** — no `work_id` comparison — and `resolve_run_state` emits an advisory that the configuration fence is unavailable for those images. Discharges MIG-21 and MIG-22 together. |
 | **U-9** | §6.1 | **`stage2_done/` stays a separate file.** §6.1 folds it into `stages.stage2`; it is a consumable signal cleared by an atomic `unlink`, and folding it in replaces that with a locked read-modify-write — per-image, across a 6,000-task array, on `flock` (`sdk_/_file_locking.py:101`), whose cross-node semantics are the weaker POSIX option. Only `image_complete/` and `stage3_complete/` collapse. |
 | **INV-ONEWRITER** | §6.1 | The collapsed record needs **no lock**. Disjoint work partitioning (one image → one task) plus stage sequencing give one writer per image, and **mode exclusivity** covers the two driver-side sweep writers that are not per-image at all; `atomic_write_json`'s temp-write + `os.replace` covers the crash case. |
 
@@ -63,6 +64,64 @@ same change.
 
 The invariant is restated as **INV-PROVEN**: *an artifact carrying a content proof changes
 only where the proof changes with it.*
+
+### ⚠ U-8 was withdrawn in round 4, and U-10 replaces it
+
+**U-8 asked a reasonable question and got a wrong answer from me.** The question — *"can't
+we leave the unknown fields blank, and let the remaining values still generate a hash?"* —
+is sound. A reduced payload does hash. What it does not do is **match**, and the reason is
+that no reader ever consults the id migrate writes:
+
+- `work_id_for_image` (`_cli_failure_tracker.py:329-350`) **recomputes** the identity from a
+  live `ExecutionConfig` on every call. It never reads `state.config`.
+- `processing_configuration_digest_from_values` (`:200-214`) takes all twelve fields as
+  **required** keyword parameters and writes them into the payload unconditionally.
+- A **second** producer, `_worker_work_identity` (`_cli_process_single.py:122-171`), derives
+  the same id from argv, and the two are cross-checked with a hard `RuntimeError`
+  (`:723-729`).
+
+So "a forward run reading that state omits them too" describes no code path that exists. It
+could be *made* to exist — by making "not asserted" a first-class value through both
+producers, `ExecutionConfig`, and the cross-check — but that is an invasive change to the
+identity path taken for the benefit of trees that never had an identity fence at all.
+
+Two of the seven `work_id` fields also cannot be honestly reproduced regardless:
+`input_sha256` is `file_sha256` of the **original input image** and is never persisted —
+only fed into the digest — and `pipeline_fingerprint` hashes the user's original pipeline
+file, where the output tree holds only a `to_json()` re-serialization.
+
+**U-10 (round 4, user): mark the record instead of fabricating the identity.**
+
+Migrate publishes per-image records carrying `provenance: "migrated"`. For such a record:
+
+1. `valid_image_success` accepts it on **artifact validity alone** — the artifacts exist and
+   their content proofs verify — with **no `work_id` comparison**.
+2. `resolve_run_state` emits one advisory naming the affected images: the configuration
+   fence is unavailable for them.
+3. Every other record is unchanged. A record without the marking is fenced exactly as
+   before.
+
+**What it costs:** those images lose the configuration fence, so a later run under a
+different pipeline reuses them rather than reprocessing.
+
+**Why that is the right trade, and not merely the cheapest one:**
+
+- It **removes no guarantee**. A v0.17.3 tree has zero `work_ids` — `git show
+  v0.17.3:.../_cli_state_management.py` has no such key, and its config block holds seven
+  entries of which five are digest inputs. The fence never existed there; U-10 declines to
+  fabricate one rather than deleting one.
+- It is **self-limiting**. The moment an image is reprocessed by a modern run it acquires a
+  real `work_id` and the marking is gone. The weakening cannot propagate to any image a v2
+  run has touched.
+- It is **visible**. An advisory that says the fence is unavailable is strictly better than
+  a fabricated id that silently asserts one.
+
+**This is what discharges INV-DISCHARGEABLE for the pre-markers `--mode process` tree
+(MIG-21).** That shape classifies `CONVERT`, and before U-10 migrate converted nothing —
+so `_refuse_unmigrated_output` (`phenotypicCLI.py:1661-1662`, which runs *before*
+`--restart`) refused it in every writing mode permanently, escapable only by `--overwrite`,
+which deletes the outputs. `--mode process` handles that tree in place today, so it was a
+regression, not a gap. With U-10 migrate emits marked records and the gate clears.
 
 ### What this cost, recorded once
 
@@ -246,9 +305,13 @@ migration.
 
 ### 5.4 `scientific_config_digest` — one definition, two uses
 
-> ⚠ **AMENDED (D-C, U-8): the field list below is WRONG.** `include_dataset_column`,
+> ⚠ **AMENDED (D-C, U-8, U-10): the field list below is WRONG.** `include_dataset_column`,
 > `overlay_alpha` and `save_overlays` ARE in `work_id` today
-> (`_cli_failure_tracker.py:236-243`). The argument survives; the list does not. See §0.
+> (`_cli_failure_tracker.py:236-243`). The argument survives; the list does not.
+>
+> **And the digest is not reconstructible for a migrated tree at all** — U-8 assumed it was,
+> and U-10 replaced it. A migrated record carries `provenance: "migrated"` and is accepted on
+> artifact validity rather than on a digest comparison. See §0.
 
 `scientific_config_digest` is **not a new digest**. It is the existing
 per-image scientific processing-configuration digest already folded into

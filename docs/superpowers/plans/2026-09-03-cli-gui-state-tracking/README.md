@@ -63,6 +63,8 @@ Round 1 added five user rulings, equally binding:
 | **U-4** | `publication_id` is **cut** | Validated experimentally: one branching consumer, zero for the GUI copy. Run proof carries `source_set_digest`. Headline 14 → 5. |
 | **U-5** | `RunDiagnostics`'s demoted trio is **dropped** | Verified zero consumers survive P6. |
 | **U-6** | **No version floor.** Detect the pre-markers *shape* | My claim that `state.version` could detect v0.17.3 was wrong — `"2.0.0"` spans both sides of it. The reliable signal is schema `2.0.0` with **no `work_ids` key**. Supports every pre-markers tree regardless of age, at no extra cost: they are the same shape. No `BELOW_FLOOR` verdict. |
+| **U-8** ⚠ | **Withdrawn** — blanking the unknown digest fields cannot work | The question was right and my answer was wrong. Nothing reads the id migrate writes: `work_id_for_image` recomputes from `ExecutionConfig`, the digest function takes all twelve fields as required kwargs, and a second producer cross-checks with a `RuntimeError`. `input_sha256` and `pipeline_fingerprint` are irreproducible from an output tree regardless. |
+| **U-10** | **Mark the record; do not fabricate the identity** | Migrate writes `provenance: "migrated"`; `valid_image_success` accepts it on artifact validity alone and `resolve_run_state` advises the fence is unavailable. Removes no guarantee — v0.17.3 has zero `work_ids` — is self-limiting, and is visible. Closes MIG-21 and MIG-22. |
 
 **Branch:** `cli-gui-state-tracking` (worktree `.worktrees/cli-gui-state-tracking`).
 

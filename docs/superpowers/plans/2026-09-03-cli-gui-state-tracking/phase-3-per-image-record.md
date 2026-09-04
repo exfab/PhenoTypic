@@ -69,7 +69,7 @@ additive.
 
 | File | Responsibility |
 |---|---|
-| **Create** `src/phenotypic/sdk_/_image_record.py` | **Readers and shared vocabulary:** `read_image_record`, `RECORD_VERSION`, the four `STAGE_*` constants, and the two `ARTIFACT_KIND_*` constants. Exported from `sdk_/__init__.py` so test snippets can use the package path. ~70 lines. |
+| **Create** `src/phenotypic/sdk_/_image_record.py` | **Readers and shared vocabulary:** `read_image_record`, `RECORD_VERSION`, the four `STAGE_*` constants, the two `ARTIFACT_KIND_*` constants, and the two `PROVENANCE_*` constants (U-10). Exported from `sdk_/__init__.py` so test snippets can use the package path. ~75 lines. |
 | **Create** `src/phenotypic/_cli/_cli_image_record.py` | **Writers only:** `publish_image_record`, `record_stage`, `consume_stage`. Imports the vocabulary from `sdk_`. ~180 lines. |
 | **Modify** `src/phenotypic/_cli/_cli_completion.py` | `publish_image_success` / `valid_image_success` delegate to the record — **and `authorized_measurement_sources` (`:768`), which nobody listed.** See below. |
 | **Modify** `src/phenotypic/_cli/_cli_migrate_image.py:567` | **The migrator is a second producer of this schema**, not a stage that runs before one (CAN-7). It calls `publish_image_success` directly. |
@@ -175,6 +175,14 @@ STAGE_MEASURED: Final[str] = "measured"
 #: one vocabulary over -- the same defect, in a different noun.
 ARTIFACT_KIND_STORE: Final[str] = "store"
 ARTIFACT_KIND_FILE: Final[str] = "file"
+
+#: The record's `provenance` values (U-10). Compared in sdk_ by
+#: valid_image_success and written in _cli by migrate, so the spelling lives here
+#: rather than in either one. ABSENT MEANS FORWARD -- the strict reading is the
+#: default, so a writer that forgets the field produces a fenced record, never an
+#: accepted-on-sight one.
+PROVENANCE_FORWARD: Final[str] = "forward"
+PROVENANCE_MIGRATED: Final[str] = "migrated"
 
 RECORD_VERSION: int = 1
 
@@ -318,13 +326,14 @@ def test_reading_a_corrupt_record_is_none_not_an_error(tmp_path):
 
 - [ ] **Step 3: Implement**
 
-The record, per §6.1 minus `backfilled`:
+The record, per §6.1 minus `backfilled`, plus `provenance` (U-10):
 
 ```json
 {
   "version": 1,
   "work_id": "…", "dataset": "…", "image_stem": "…",
   "relative_image_path": "…", "mode": "full|process|measure",
+  "provenance": "forward",
   "stages": {
     "stage1":   {"at": "…"},
     "stage2":   {"at": "…", "objmap_shape": [1024, 1024], "detector_seconds": 1.23},
@@ -340,6 +349,33 @@ The record, per §6.1 minus `backfilled`:
   "attempt_id": "…", "scheduler_epoch": "…", "completed_at": "…"
 }
 ```
+
+> **`provenance` — two values, and it changes how the record is VERIFIED (U-10).** This is
+> not a descriptive label; it is read by `valid_image_success`, so it belongs in the schema
+> with the identity fields rather than in a metadata bag.
+>
+> | Value | Written by | `valid_image_success` behaviour |
+> |---|---|---|
+> | `"forward"` | every normal run — full, process, measure, recompile | artifacts verify **and** `work_id` matches the recomputed identity |
+> | `"migrated"` | **only** `--mode migrate`, on a pre-markers tree | artifacts verify. **No `work_id` comparison** — see U-10 in P7 |
+>
+> Three rules, each a test in Task 1:
+>
+> 1. **Absent means `"forward"`.** A record written before this field existed, or by any
+>    writer that forgets it, must be fenced — the safe default is the strict one. Read it as
+>    `record.get("provenance", "forward")`, never a bare subscript.
+> 2. **`"migrated"` is write-once and non-propagating.** Only migrate may write it, and any
+>    forward run that rewrites the record replaces it with `"forward"`. That is what makes
+>    U-10 self-limiting rather than a permanent hole; P7's
+>    `test_the_marking_does_not_survive_reprocessing` is the guard.
+> 3. **The relaxation is per-record, never global.** A `valid_image_success` that stops
+>    comparing `work_id` for unmarked records strips the fence from every modern tree. P7's
+>    `test_an_unmarked_record_is_still_fenced_on_work_id` exists for exactly that mistake.
+>
+> `ARTIFACT_KIND_*` and the `STAGE_*` constants live in `sdk_/_image_record.py`; put
+> `PROVENANCE_FORWARD` / `PROVENANCE_MIGRATED` there too, for the same reason — the value is
+> compared in `sdk_` and written in `_cli`, so a spelling that lives in only one of them is
+> the duplication N-3 exists to close.
 
 ### The read-modify-write needs real lost-update protection (CAN-6)
 

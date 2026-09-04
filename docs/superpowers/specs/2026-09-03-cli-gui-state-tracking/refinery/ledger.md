@@ -584,7 +584,8 @@ Critical — were nowhere in it. Recorded now; the phase docs carry the reasonin
 | **metadata-left** | `join_metadata` keeps metadata as the **left** frame. The asymmetry is by design — *"absence of a colony is data"*. Orphan measured rows are deliberately absent from the mirror and present in the master. Shrank CAN-1 to a branch deletion and dissolved CAN-2. | P4 Task 3 |
 | **U-6** | **No version floor.** `state.version` cannot express one — `"2.0.0"` spans both sides of v0.17.3. Detect the pre-markers *shape*: schema `2.0.0` with no `work_ids`. `BELOW_FLOOR` deleted. | P7 Task 1 Step 3b |
 | **U-7** | **Migration logic lives only in `--mode migrate`.** The promoter's `--mode full` dispatch is deleted. | P7 Task 2b |
-| **U-8** | Omit unknown digest fields rather than defaulting them — the convention `validate_resume_compatibility:348-349` already uses. **DISPROVED in round 4 — see MIG-22.** | P7 Task 2b |
+| **U-8** ⚠ | Omit unknown digest fields rather than defaulting them. **WITHDRAWN — the mechanism does not exist (MIG-22).** Superseded by U-10. | P7 Task 2b |
+| **U-10** | **Mark the record; do not fabricate the identity.** Migrate writes `provenance: "migrated"`; `valid_image_success` accepts such a record on artifact validity alone, with no `work_id` comparison; `resolve_run_state` advises the configuration fence is unavailable. | P7 Task 2b, P3 record schema, P1 advisory 4 |
 | **U-9** | **`stage2_done/` stays a file.** A consumable signal cleared by an atomic `unlink`; folding it in replaces that with a read-modify-write, per-image, across a 6,000-task array, on `flock`. | P3 |
 
 ### Invariants added after round 1
@@ -600,8 +601,8 @@ Critical — were nowhere in it. Recorded now; the phase docs carry the reasonin
 
 | ID | Severity | Status |
 |---|---|---|
-| **MIG-22** | Critical | **U-8 is not implementable.** The digest fields are *required* keyword params written unconditionally into the payload; `work_id_for_image` recomputes from `ExecutionConfig` and never reads `state.config`; and a **second** producer, `_worker_work_identity` (`_cli_process_single.py:122-171`), computes from argv, cross-checked with a hard `RuntimeError`. **GATED TO USER.** |
-| **MIG-21** | Critical | Pre-markers `--mode process` tree still fails INV-DISCHARGEABLE. Same root as MIG-22. **GATED TO USER.** |
+| **MIG-22** | Critical | **settled-by-user (U-10).** U-8 was not implementable: the digest fields are *required* keyword params written unconditionally; `work_id_for_image` recomputes from `ExecutionConfig` and never reads `state.config`; a **second** producer `_worker_work_identity` (`_cli_process_single.py:122-171`) computes from argv, cross-checked with a hard `RuntimeError`; and `input_sha256` / `pipeline_fingerprint` are irreproducible from an output tree regardless. Resolved by marking the record rather than fabricating the identity. |
+| **MIG-21** | Critical | **settled-by-user (U-10).** Same root as MIG-22 — P7's stated fix ("port the promoter; both need the same identity material") rested on U-8's disproved premise. With U-10 migrate emits marked records for the pre-markers `--mode process` tree, so `requires_conversion` returns `None` afterwards and INV-DISCHARGEABLE holds. |
 | gen-r4 N-1/N-2 | Major | P6 Task 0's gate test greps all of `src/`; its file list misses `_cli_checkpoint_handler.py` (6 reads) and `_cli_recompile_worker.py` (4). **Open three rounds.** |
 | SIMP-R4-02 | Major | Step numbering: five round-2 findings unfixed, one new. P6 Task 7 and P7 Task 2 have no commit step. |
 | flow-r4 | — | ~~Report not received before the cap.~~ **Arrived after the cap and was applied in full.** See below — the coverage gap is closed, and it was the round's most productive report. |
@@ -640,3 +641,32 @@ found each per-image inside a partitioned worker, or inside an exclusive whole-t
 one addition: the two driver-side writers (`_migrate_legacy_success_evidence`,
 `refresh_success_markers_after_metadata_migration`) rest on **mode exclusivity**, not
 partitioning, and belong in the invariant's verify list.
+
+---
+
+## Exit — round 4 was the cap, and the loop is closed
+
+**Both Criticals are settled by user ruling; nothing blocking remains open.**
+
+| | |
+|---|---|
+| Converged? | **No — exited on the round cap (4), as the skill specifies.** |
+| Blocking open | **None.** MIG-21 and MIG-22 were the two, both settled by U-10. |
+| Non-blocking open | gen-r4 N-1/N-2 → fixed after the cap; SIMP-R4-02 → fixed; flow-r4's full report → applied after the cap. |
+| Coverage gaps | **None.** flow-r4 arrived late and was applied rather than written off. |
+
+**Two things this loop got wrong that the ledger should outlive.**
+
+1. **A fix written into a header, table or docstring but not into the body beside it** —
+   eight-plus occurrences across four rounds. Every one was caught by a reviewer, never by
+   self-review. The countermeasure that worked was mechanical: a script that greps for the
+   old claim across all nine documents, rather than a reading pass.
+2. **The orchestrator asserting a cost it had not measured.** The lock's "6,000 lock files,
+   `flock` contention on GPFS — pure cost" was false; the contended lock was already in the
+   path, with its own comment recording 60-90+ tasks and a raised timeout. flow-r4 checked
+   and the plan did not. *State no cost you did not just measure* applies to design
+   arguments, not only to test counts.
+
+**Handoff:** the plan is ready for `execute-plan-orchestration`. P0 (S-2, S-3) gates P5 only
+and may run concurrently with P1–P4.
+
