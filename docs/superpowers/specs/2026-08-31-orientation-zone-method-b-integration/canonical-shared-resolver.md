@@ -24,6 +24,10 @@ The zone names remain `CoreZone`, `DenseZone`, and `SparseZone`:
 This is an operational image-measurement definition. It does not assert that
 biological orientation is absent inside CoreZone.
 
+The evaluated Ganoderma detector input and its unresolved SAM2 proposal-selection
+limitation are recorded separately in
+[`ganoderma-detection-pipeline.md`](ganoderma-detection-pipeline.md).
+
 ## 2. Public contract
 
 Both public measurers declare these fields through one private base class:
