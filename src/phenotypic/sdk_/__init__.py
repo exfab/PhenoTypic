@@ -60,6 +60,7 @@ from ._io_constants import (
     DIR_CHUNKS,
     DIR_DELIVERABLES,
     DIR_IMAGE_COMPLETE,
+    DIR_IMAGE_RECORDS,
     DIR_LOGS,
     DIR_MEASUREMENTS,
     DIR_MEASUREMENTS_BY_FEATURE,
@@ -165,6 +166,7 @@ from ._io_constants import (
     generation_staging_path,
     gui_launch_owner_path,
     image_completion_marker_path,
+    image_record_path,
     has_config_suffix,
     job_metadata_path,
     load_image_from_store,
@@ -248,6 +250,12 @@ from ._io_constants import (
     zarr_store_path,
 )
 from ._pipeline_publication import pipeline_publication_lock
+from ._run_state import (
+    ImageState,
+    RunDiagnostics,
+    RunIdentity,
+    RunState,
+)
 from .funcs_ import is_binary_mask, timed_execution
 from .hdf_ import HDF
 from ._metadata_helpers import (
@@ -382,6 +390,15 @@ __all__ = [
     "read_phenotypic_attributes",
     "sweep_orphan_parts",
     "valid_staged_store",
+    # Run-state readers (spec §5.2). The four frozen types land in P1
+    # Task 2; run_identity, assert_identity_current,
+    # finalization_input_object, resolve_run_state and
+    # clear_verification_cache are each exported by the task that
+    # implements them, so the tree imports cleanly at every commit.
+    "ImageState",
+    "RunDiagnostics",
+    "RunIdentity",
+    "RunState",
     # Typing aliases (closed value sets)
     "InputLayer",
     "NormOut",
@@ -451,6 +468,7 @@ __all__ = [
     "DIR_DELIVERABLES",
     "DIR_ERRORS",
     "DIR_IMAGE_COMPLETE",
+    "DIR_IMAGE_RECORDS",
     "DIR_LOGS",
     "DIR_MEASUREMENTS",
     "DIR_MEASUREMENTS_BY_FEATURE",
@@ -519,6 +537,7 @@ __all__ = [
     "generation_staging_path",
     "gui_launch_owner_path",
     "image_completion_marker_path",
+    "image_record_path",
     "has_config_suffix",
     "job_metadata_path",
     "load_image_from_store",

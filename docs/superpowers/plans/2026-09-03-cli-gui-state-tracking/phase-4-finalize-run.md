@@ -36,11 +36,42 @@ documented where users read it, not only here:
 |---|---|
 | **Modify** `src/phenotypic/_cli/_embedded_measurement_tables.py:42` | `prepare_embedded_measurement_table` returns the **unjoined** baseline plus a separate metadata projection. |
 | **Modify** `src/phenotypic/sdk_/_measurement_tables.py` | Write both tables into the `.part`; extend the root `tables` block. **And repair `replace_embedded_measurement_table`'s in-place branch (`:284-290`)** — see below, the first draft's requirement was not sufficient (CAN-3, flow-r2 C5). |
+| **Modify** `src/phenotypic/sdk_/CLAUDE.md:132-136` | **The THIRD home of the claim §0 falsified, and no phase named it** (found during P1 execution). |
+| **Modify** `tests/unit/sdk_/test_ngff_promote.py:66` | `test_nothing_writes_into_a_promoted_store` — the name over-claims what the test proves. |
 | **Modify** `src/phenotypic/_cli/_cli_output_manager.py:1970-2001` | `replace_image_store_measurements` feeds the **joined** producer at `:1992-1995`. Bring it onto `prepare_image_tables`, or `--mode measure` silently un-inverts every image it touches. |
 | **Create** `src/phenotypic/sdk_/_master_io.py` | `read_master_measurements(output_dir)` — the reader U-3 requires, raising on an unstamped or wrong-versioned master. Route every in-repo master read through it. |
 | **Modify** `src/phenotypic/_cli/_embedded_measurement_tables.py:106-131` | `embedded_measurement_table_matches` is **reclaim authority**, not provenance (M1) — six migrator call sites (`_cli_migrate.py:1331,1337`; `_cli_migrate_image.py:278,314,777,796`). See below. |
 | **Modify** `src/phenotypic/sdk_/_measurement_tables.py:216-227` | `_valid_embedded_measurement_contract` **rejects `join_status == "not_requested"` with a non-empty digest** — but the inverted producer must record the snapshot digest on an *unjoined* table, or D-A's advisory has no per-store source. Revise in the same commit. |
 | **Modify** `src/phenotypic/_cli/_cli_recompile_slurm_scripts.py:186-202` | The **third** `_consistent_embedded_join_keys` call site (M2), at script-generation time, serialising `"metadata_join_keys"` into the finalizer task. Retiring the function from `finalize_run` alone leaves the abort firing **at submission**, before any worker runs. Delete the task-schema field in the same commit. |
+
+> **A third copy of the false claim survives this phase unless it is fixed here.**
+> The README's *"the change is not done until the two module guides say what is tracked"*
+> names `_cli/CLAUDE.md` (P7 Task 6) and `gui/CLAUDE.md` (P6 Task 8). There is a **third**,
+> in the module guide for the package that actually owns `promote_store`:
+>
+> `sdk_/CLAUDE.md:132-136` — *"**Nothing writes into a promoted store**, and the root
+> `zarr.json` is written **last** — the completion marker and the viewer's staleness scan
+> both key on that root alone, so violating either makes both report stale data as fresh
+> with nothing failing."*
+>
+> That is spec §6.2's ⚠ claim verbatim. After P7 Task 6 corrects `_cli/CLAUDE.md:251-254`,
+> this becomes the **surviving** copy — and the most authoritative-looking one, since it sits
+> beside the code it describes. Correct it in the same commit that repairs the branch, so the
+> guide and the behaviour change together.
+>
+> **And the guard it rests on does not cover what its name says.**
+> `tests/unit/sdk_/test_ngff_promote.py:66` `test_nothing_writes_into_a_promoted_store` proves
+> only that `promote_store` is a **rename rather than a merge-in-place** — it builds a part,
+> promotes, and asserts the directory and chunk inodes changed. It never exercises
+> `replace_embedded_measurement_table`'s in-place branch, which is the path that actually
+> writes into a promoted store today. Its docstring goes further and names the three
+> subsystems that "rest on" the invariant — the completion markers, the viewer's staleness
+> scan, and `valid_staged_store` — which are precisely the three §0 says are unprotected.
+>
+> **Rename it to what it proves** (`test_promote_store_replaces_rather_than_merges`) and move
+> the three-subsystem claim into the new test that covers the repaired branch. A test whose
+> name asserts more than its body is how a reader gets from *"there is a guard called that"*
+> to *"the invariant holds"* — which is the exact inference CAN-3 showed was false.
 
 > **The in-place branch cannot be fixed by "refresh the root with the table" alone (C5).**
 > `build_measurement_table_descriptor` (`:109-129`) returns exactly `{schema_version, type,

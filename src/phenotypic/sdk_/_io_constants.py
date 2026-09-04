@@ -662,6 +662,11 @@ DIR_RESULTS: Final[str] = "results"
 DIR_PROGRESS: Final[str] = "progress"
 DIR_IMAGE_COMPLETE: Final[str] = "image_complete"
 
+#: One record per image, replacing ``image_complete/`` and
+#: ``stage3_complete/`` (spec §6.1). ``stage2_raw/`` stays a separate tree: it is
+#: bulk replay data, not a record.
+DIR_IMAGE_RECORDS: Final[str] = "images"
+
 #: Per-dataset measurements subdirectory: ``<output>/results/<ds>/measurements/``.
 DIR_MEASUREMENTS: Final[str] = "measurements"
 
@@ -1954,6 +1959,13 @@ def image_completion_marker_path(
 ) -> Path:
     """Return the general marker path for one dataset image stem."""
     return progress_dir(output_dir) / DIR_IMAGE_COMPLETE / dataset / (
+        f"{image_stem}.json"
+    )
+
+
+def image_record_path(output_dir: Path, dataset: str, image_stem: str) -> Path:
+    """Return ``<output>/.phenotypic/progress/images/<ds>/<stem>.json``."""
+    return progress_dir(output_dir) / DIR_IMAGE_RECORDS / dataset / (
         f"{image_stem}.json"
     )
 
