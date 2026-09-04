@@ -25,7 +25,6 @@ stores are the stores it already had.
 | From | To | Task |
 |---|---|---|
 | `image_complete/<ds>/<stem>.json` (v2 marker) | `images/<ds>/<stem>.json` record, `stages={"measured": …}` | 2 |
-| `stage2_done/<ds>/<stem>.json` | `stages.stage2` in the same record | 2 |
 | `stage3_complete/<ds>/<stem>.json` | `stages.stage3` in the same record | 2 |
 | **pre-markers tree** (`success_markers_required` absent, `version="2.0.0"`) — **the v0.17.3 floor** | `_migrate_legacy_success_evidence` **ported into migrate**, sequenced after the HDF→Zarr conversion and before the migrator's own publisher. It is the only producer of the *content-derived* `work_id` a later resume re-derives. See Task 2b. | 2b |
 | `processing_generation: <uuid4>` **and** the migrator's inventory-derived one | content-derived generation; `restart_epoch: 0` | 3 |
@@ -155,7 +154,9 @@ def requires_conversion(output_dir: Path) -> ConversionVerdict | None:
     ``"3.0.0"`` was introduced. Detection is by SHAPE:
 
     1. ``.phenotypic/progress/image_complete/`` exists
-    2. ``stage2_done/`` or ``stage3_complete/`` exists
+    2. ``stage3_complete/`` exists. **NOT ``stage2_done/``** (U-9): that tree is
+       current, not legacy, so firing on it would classify every modern GPU run
+       CONVERT and strand it -- an INV-DISCHARGEABLE violation.
     3. ``processing_state.json`` carries ``datasets.completed`` (deleted by §4.2)
     4. ``processing_state.json`` has ``work_ids`` and no ``restart_epoch``
     5. a **present, parseable, object-shaped** ``processing_state.json`` that carries
@@ -308,7 +309,7 @@ def test_three_markers_become_one_record(tmp_path):
     from phenotypic.sdk_ import image_record_path
 
     _plant_legacy_markers(tmp_path, dataset="plate", stem="a",
-                          image_complete=True, stage2_done=True, stage3_complete=True)
+                          image_complete=True, stage3_complete=True)
     convert_per_image_markers(tmp_path)
 
     record = json.loads(image_record_path(tmp_path, "plate", "a").read_text())
@@ -342,14 +343,14 @@ def test_conversion_is_idempotent(tmp_path):
     assert image_record_path(tmp_path, "plate", "a").read_bytes() == first
 
 
-def test_a_stage2_token_with_no_image_complete_still_converts(tmp_path):
+def test_a_stage3_marker_with_no_image_complete_still_converts(tmp_path):
     """Stage 2 finished and Stage 3 never ran -- a real interrupted-run state, and
     the one a naive 'iterate image_complete/' conversion drops on the floor."""
     from phenotypic._cli._cli_migrate_state import convert_per_image_markers
     from phenotypic.sdk_ import image_record_path
 
     _plant_legacy_markers(tmp_path, dataset="plate", stem="a",
-                          image_complete=False, stage2_done=True)
+                          image_complete=False, stage3_complete=True)
     convert_per_image_markers(tmp_path)
     record = json.loads(image_record_path(tmp_path, "plate", "a").read_text())
     assert set(record["stages"]) == {"stage2"}
@@ -376,28 +377,67 @@ def test_the_legacy_trees_are_removed_only_after_every_record_is_written(tmp_pat
 
 Enumerate the union of all three legacy trees, not just `image_complete/` — an image with
 a stage-2 token and no completion marker is a real interrupted state. Write every record
-first, then **rename** the three legacy trees (Step 5). **Copy `artifacts` verbatim**;
-never re-derive.
+first, then **rename** the legacy trees aside — the rename primitive, its collision rule and
+the `--revert` path are **Task 5 Step 1b**, not this task's to invent. **Copy `artifacts`
+verbatim**; never re-derive.
 
 **Merge, do not overwrite (CAN-13).** When `images/<ds>/<stem>.json` already exists, union
 the `stages` maps and keep the later `completed_at` rather than replacing. The
-both-shapes-present case is real — see Step 6's coexistence window — and
-`test_conversion_is_idempotent` cannot catch it, because after the first pass the legacy
-trees are gone and the second call is a no-op.
+both-shapes-present case is real — **Task 5 Step 1c** is the coexistence window that
+produces it: an old-build SLURM array holds the old schema for its whole lifetime, up to
+30 d, and writes the legacy trees directly. `test_conversion_is_idempotent` cannot catch
+this, because after the first pass the legacy trees are renamed aside and the second call
+is a no-op.
 
 ```python
 def test_conversion_merges_into_an_existing_record(tmp_path):
     """CAN-13. An old-build worker writing image_complete/ after a partial migrate
     must not clobber a newer record's stages."""
+    from phenotypic._cli._cli_image_record import record_stage
     from phenotypic._cli._cli_migrate_state import convert_per_image_markers
     from phenotypic.sdk_._image_record import read_image_record
-from phenotypic._cli._cli_image_record import record_stage
+
     record_stage(tmp_path, "plate", "a", "stage3", {"at": "new"})
     _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
     convert_per_image_markers(tmp_path)
 
     stages = read_image_record(tmp_path, "plate", "a")["stages"]
     assert {"stage3", "measured"} <= set(stages), "the newer record's stage3 was lost"
+```
+
+- [ ] **Step 4: Run the tests.** Expected: PASS (6 passed).
+
+```bash
+uv run pytest tests/unit/cli/test_migrate_state.py -q
+```
+
+- [ ] **Step 5: Prove the two load-bearing assertions can fail**
+
+Both guard against a conversion that looks right and is not, so neither is worth having
+unless it has been seen red:
+
+| Test | Break it by | Must fail with |
+|---|---|---|
+| `test_artifact_descriptors_survive_conversion_byte_for_byte` | re-deriving descriptors from the store instead of copying them | a descriptor mismatch, not a `KeyError` |
+| `test_the_legacy_trees_are_removed_only_after_every_record_is_written` | moving the rename inside the per-image loop | marker `a` gone after the injected failure |
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A src/phenotypic/_cli tests/unit/cli/test_migrate_state.py
+git commit -m "feat(cli): convert the three per-image legacy trees into one record
+
+Spec §11.1. Enumerates the union of image_complete/, stage2_done/ and
+stage3_complete/ -- an image with a stage-2 token and no completion marker is a
+real interrupted state that an image_complete/-only walk drops.
+
+Descriptors are copied verbatim, never re-derived: re-deriving would certify
+whatever is on disk now, including a corrupted artifact, which turns migrate from
+a format change into a laundering step.
+
+Merge, do not overwrite (CAN-13). An old-build array holds the old schema for its
+whole lifetime and can write a legacy tree after a partial migrate; clobbering
+would lose the newer record's stages. The rename-aside and revert path are Task 5."
 ```
 
 ---
@@ -1062,7 +1102,7 @@ first response to a regression in a change this size — has a tree the old buil
 entirely unprocessed. For 6,000 images and no backup that is a full reprocess, and nothing
 in the plan, the CLI help, or the `CLAUDE.md` bullet said migrate is one-way.
 
-**Rename `image_complete/`, `stage2_done/` and `stage3_complete/` to
+**Rename `image_complete/` and `stage3_complete/` to
 `.phenotypic/legacy-v2/`** — same filesystem, a directory rename, no byte copied — and have
 `requires_conversion` ignore that path. `migrate --revert` then costs a rename back.
 

@@ -336,7 +336,7 @@ Two execution options:
 2. **Inline execution** — batch the tasks in-session with checkpoints, via
    `superpowers:executing-plans`.
 
-**P0 runs first either way.** S-5's verdict decides whether P1 Task 3 builds an in-process
-cache alone or an in-process cache with an on-disk tier (D-B), so P1 does not begin until
-S-5 has run. Unlike the spec's original S-1, no P0 result can now invalidate the design —
-D-A removed the mechanism S-1 was gating.
+**P0 does not gate P1, and may run concurrently with P1–P4.** S-4 was cut (CAN-25) and
+S-5 moved into P1's own phase gate (CAN-26), so P0 is S-2 and S-3, which gate **P5**
+only. No P0 result can invalidate the design — D-A removed the mechanism S-1 was
+gating, and S-2/S-3 choose parameters rather than shapes.

@@ -30,7 +30,7 @@ sentence will be wrong about shipped code.
 | **U-7** | §11.1 | **Migration logic lives only in `--mode migrate`.** The legacy promoter's `--mode full` dispatch is deleted. §11.1's "move into migrate" stands, but for this helper it is a **rewrite**, not a move — migrate builds no `ExecutionConfig`. |
 | **U-8** | §5.4, new | A pre-markers tree lacks `detect_mode`, `drop_originals` and `overlay_alpha`. Migrate **omits** them from the digest rather than defaulting them, and a forward run reading that state omits them too — the convention `validate_resume_compatibility` (`_cli_state_management.py:348-349`) already uses for an absent key. Omit, never blank: `""` is a value. |
 | **U-9** | §6.1 | **`stage2_done/` stays a separate file.** §6.1 folds it into `stages.stage2`; it is a consumable signal cleared by an atomic `unlink`, and folding it in replaces that with a locked read-modify-write — per-image, across a 6,000-task array, on `flock` (`sdk_/_file_locking.py:101`), whose cross-node semantics are the weaker POSIX option. Only `image_complete/` and `stage3_complete/` collapse. |
-| **INV-ONEWRITER** | §6.1 | The collapsed record needs **no lock**. Disjoint work partitioning (one image → one task) plus stage sequencing give one writer per image, and **mode exclusivity** covers the two driver-side sweep writers that are not per-image at all; `atomic_write_json`'s temp-write + `os.replace` covers the crash case. |
+| **INV-ONEWRITER** | §6.1 | The collapsed record needs **no lock**. Disjoint work partitioning (one image → one task) plus stage sequencing give one writer per image; `atomic_write_json`'s temp-write + `os.replace` covers the crash case. |
 
 ### ⚠ §6.2's central claim is false, and was false before this spec was written
 
@@ -42,21 +42,8 @@ sentence will be wrong about shipped code.
 (`_cli_output_manager.py:1970-2001`) → `replace_embedded_measurement_table`
 (`sdk_/_measurement_tables.py:242`), whose `_clone_file_without_pixel_rewrite` (`:233`) is
 `os.link` with a `shutil.copy2` fallback — **that is §6.3's hardlink re-promote, shipping
-today.**
-
-Its *in-place* branch (`:284-290`) is worse, and it is worth stating precisely, because the
-first phrasing of this amendment ("no `.part`") understated it. The **file** write is
-atomic: `_write_validated_parquet` (`:55-81`) goes through `atomic_write_with_writer`, with
-a re-read schema check before the rename. What the branch skips is the **store-level
-transaction** — no `new_part_path` copytree, and **no root `zarr.json` rewrite at all**. So
-`tables/measurements/table.parquet` acquires different bytes while the root the readers
-validate against is byte-identical to before.
-
-The failure that follows is therefore not a torn file. It is worse: a fully-formed,
-schema-valid store whose root certifies contents it no longer has. Root-last atomicity
-detects an *interrupted* write and is blind to a *completed* one, so **a valid root does not
-imply unchanged contents** — and every reader that treats the root as a content proof is
-reading a stale certificate.
+today.** Its *in-place* branch (`:284-290`) is worse: it rewrites the embedded table with no
+`.part` and **no root rewrite at all**, so a valid root does not imply unchanged contents.
 
 `src/phenotypic/_cli/CLAUDE.md:251-254` repeats the same false claim and is corrected in the
 same change.
@@ -333,9 +320,8 @@ three `is_file()` probes across three directory trees.
 ### 6.2 The store immutability constraint
 
 > ⚠ **AMENDED: the claim below is FALSE and was false before this spec.** `--mode measure`
-> already re-promotes proven stores. Its in-place branch writes the embedded table
-> atomically *as a file* but skips the store transaction and the root rewrite entirely, so
-> the root certifies contents that have since changed. Restated as INV-PROVEN. See §0.
+> already re-promotes proven stores, and its in-place branch skips the root rewrite
+> entirely. Restated as INV-PROVEN. See §0.
 
 The invariant is explicit in the code, not implied: `staged_store_matches_work_id`
 documents that `work_id` is "written at store-build time — never patched in

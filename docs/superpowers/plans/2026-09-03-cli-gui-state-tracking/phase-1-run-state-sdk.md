@@ -185,7 +185,16 @@ from pathlib import Path
 import phenotypic.sdk_._run_state as run_state
 import phenotypic.sdk_._verification_cache as verification_cache
 
-_MODULES = (Path(run_state.__file__), Path(verification_cache.__file__))
+import phenotypic.sdk_._state_types as state_types
+
+# All THREE modules, not two (gen-r3 C5): the dataclasses live in their own leaf
+module to break the _run_state <-> _verification_cache cycle, and INV-LAYER binds
+the leaf exactly as it binds the other two.
+_MODULES = (
+    Path(state_types.__file__),
+    Path(verification_cache.__file__),
+    Path(run_state.__file__),
+)
 
 
 def test_neither_module_ever_names_the_cli_package():
@@ -230,7 +239,7 @@ Expected: FAIL — `ModuleNotFoundError: No module named 'phenotypic.sdk_._run_s
 In `src/phenotypic/sdk_/_io_constants.py`, beside `DIR_IMAGE_COMPLETE` (line 663):
 
 ```python
-#: One record per image, replacing ``image_complete/``, ``stage2_done/`` and
+#: One record per image, replacing ``image_complete/`` and
 #: ``stage3_complete/`` (spec §6.1). ``stage2_raw/`` stays a separate tree: it is
 #: bulk replay data, not a record.
 DIR_IMAGE_RECORDS: Final[str] = "images"
@@ -248,7 +257,13 @@ def image_record_path(output_dir: Path, dataset: str, image_stem: str) -> Path:
 cache is in process and has no path. Add them only under Task 3 Step 8, and only if S-5
 said so.
 
-- [ ] **Step 4: Create both module stubs with their `__all__`**
+- [ ] **Step 4: Create all THREE module stubs with their `__all__`**
+
+`sdk_/_state_types.py` first — it is the leaf the other two import from, and it
+carries only frozen dataclasses (gen-r3 C5). Then `_verification_cache.py`, then
+`_run_state.py`. Dependency order is `_state_types ← _verification_cache ←
+_run_state`, with no edge back; creating them in that order makes a cycle
+impossible to introduce by accident.
 
 `src/phenotypic/sdk_/_run_state.py`:
 
@@ -315,7 +330,8 @@ in-function import forms were confirmed to trip it."
 ## Task 2: The state types
 
 **Files:**
-- Modify: `src/phenotypic/sdk_/_run_state.py`
+- Modify: `src/phenotypic/sdk_/_state_types.py` — **the dataclasses live here**, not in
+  `_run_state.py` (gen-r3 C5)
 - Test: `tests/unit/sdk_/test_run_state.py`
 
 Resolves [Q3](OPEN-QUESTIONS.md#q3-imagestate-is-used-but-never-defined).
@@ -363,7 +379,7 @@ def test_image_state_stages_carry_no_backfilled_key():
     state = ImageState(
         work_id="w", dataset="d", image_stem="s",
         stages={"measured": {"at": "2026-09-03T00:00:00Z"}},
-        verified=True, reason=None,
+        verdict="verified", reason=None,
     )
     assert "backfilled" not in state.stages
 ```
@@ -373,9 +389,9 @@ def test_image_state_stages_carry_no_backfilled_key():
 Run: `uv run pytest tests/unit/sdk_/test_run_state.py -v`
 Expected: FAIL — `ImportError: cannot import name 'RunState'`.
 
-- [ ] **Step 3: Add the dataclasses**
+- [ ] **Step 3: Add the dataclasses to `_state_types.py`**
 
-Append to `_run_state.py` (imports at module top: `hashlib`, `json`, `dataclass`,
+Not to `_run_state.py` (gen-r3 C5). Imports at module top: `hashlib`, `json`, `dataclass`,
 `datetime`, `Path`, `Literal`, `Mapping`):
 
 ```python
@@ -908,9 +924,8 @@ It has no dependency on the rest of P7: it only detects the old shape and errors
 **This is a CLI-side writer-adjacent module, so it does not live in `sdk_`** — but it is
 built in P1 because P1 is what precedes P3. That is the only reason it is here.
 
-The full specification — the four detection signals, the `BELOW_FLOOR` third outcome for
-U-1's v0.17.3 floor, the three shapes that classify without obvious behaviour, and every
-test — is written once in
+The full specification — the detection signals, the two outcomes, the shapes that classify
+without obvious behaviour, and every test — is written once in
 [phase-7-migrate-mode.md](phase-7-migrate-mode.md) Task 1. **Build it from there; do not
 restate it here.** A second copy of the signal list is exactly the duplication this change
 exists to remove, and CAN-4 is what happens when a fact gets a second home.
@@ -930,7 +945,24 @@ def test_a_legacy_tree_is_refused_before_the_clean_break_can_empty_it(tmp_path):
         _invoke_cli(mode="full", output=tmp_path)
 ```
 
-- [ ] **Step 3: Commit** — see P7 Task 1's commit message, which already records the move.
+- [ ] **Step 3: Commit**
+
+The code and its commit message are P7 Task 1's; this task only moves *when* it is built.
+Commit under that message rather than inventing a second one:
+
+```bash
+git add -A src/phenotypic/sdk_ tests/unit/sdk_
+git commit -m "feat(sdk): requires_conversion, built in P1 rather than P7 (CAN-11)
+
+Spec §11.1. Same code and tests as P7 Task 1 -- only the build order moves. P3's
+clean break turns an unconverted tree into an EMPTY master rather than an error,
+because {} from authorized_measurement_sources is a valid result and not a
+failure. The gate has to exist before the break, so it is built here."
+```
+
+**Do not restate U-6 here.** There is no `BELOW_FLOOR` outcome and no version floor —
+`requires_conversion` keys on the pre-markers *shape* (schema `2.0.0` with no `work_ids`).
+P7 Task 1 is the single home for that reasoning.
 
 ---
 
@@ -1379,7 +1411,7 @@ Make the metadata advisory a gate (return `incomplete`); confirm
 comparisons in turn and confirm the matching parametrized case fails** — that is the check
 that stops rule 1 collapsing back to one line. Restore all of them.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add src/phenotypic/sdk_/_run_state.py tests/unit/sdk_/test_run_state.py

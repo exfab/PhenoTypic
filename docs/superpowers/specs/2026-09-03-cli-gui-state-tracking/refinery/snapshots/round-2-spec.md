@@ -6,75 +6,6 @@
 
 ---
 
-## 0. Amendments — read before any section below
-
-**Status: approved 2026-09-03, then amended through three rounds of adversarial review.**
-Nine user rulings and three pre-review decisions supersede parts of what follows. **This
-section is authoritative where it conflicts with a later section**, and each row says where
-the reasoning lives.
-
-Two of these are **factual corrections** — the spec asserted something about the existing
-codebase that is not true — and they are marked ⚠ because a reader who acts on the original
-sentence will be wrong about shipped code.
-
-| # | Section | Amendment |
-|---|---|---|
-| **D-A** | §6.3, §6.4, §6.1, §7.4, §8, §15.4 | **Per-store metadata is written at promote time, not backfilled.** Cuts the hardlink re-promote, the certified-rewrite *generalisation*, `stages.backfilled`, `finalize_run`'s step 6, the backfill half of the fan-out, and residual risk 4. §7's inversion is kept in full. |
-| **D-B** | §9.1 | **The verification cache is in-process**, not `.phenotypic/verification_cache.json`. Audit S1 proposed process-level; §9.1 escalated it without cause. |
-| **D-C** ⚠ | §5.4 | **§5.4's field list is wrong.** It claims `include_dataset_column` is in neither `work_id` nor the generation "exactly as `work_id` does today". `processing_configuration_digest_from_values` (`_cli_failure_tracker.py:236-243`) puts it, `overlay_alpha` and `save_overlays` in `work_id`. §5.4's *argument* survives; its field list does not. `scientific_config_digest` **is** `processing_configuration_digest`, verbatim. |
-| **U-1/U-6** | §2, new | Migration floor is the **pre-markers shape** — schema `2.0.0` with no `work_ids` key. `state.version` cannot express a package-version floor: `"2.0.0"` is the value at v0.17.3 *and* immediately before `"3.0.0"`. No `BELOW_FLOOR` verdict. |
-| **U-2** | §4.3 | `complete` keeps **both** clauses. Rule 1 also carries the full five-way comparison `current_aggregate_is_current` (`_cli_completion.py:738-745`) makes — dropping `finalization_input_digest` alone breaks §7.4's late-metadata guarantee. |
-| **U-3** ⚠ | §7.3 | **"tag the master … so an old reader fails loudly" is false as stated.** `pd.read_parquet` / `pl.read_parquet` / `pq.read_table` ignore Parquet KV metadata and raise nothing; an *old* reader predates the key entirely. The stamp is kept **and given a reader** — `read_master_measurements()` in `sdk_` — so the claim narrows to: in-repo readers fail loudly, external ones are unaffected. |
-| **U-4** | §5.1, §5.3 | **`publication_id` is cut.** Once §5.1 redefines it as `sha256(source_set_digest ‖ finalization_inputs)` it is a pure function of two values the binding check already compares. The run proof carries `source_set_digest` instead. **Six tokens → five.** |
-| **U-5** | §9 | `RunState.diagnostics` drops `manifest_completed`, `manifest_total`, `event_log_present` — verified zero consumers survive the consumer migration. |
-| **U-7** | §11.1 | **Migration logic lives only in `--mode migrate`.** The legacy promoter's `--mode full` dispatch is deleted. §11.1's "move into migrate" stands, but for this helper it is a **rewrite**, not a move — migrate builds no `ExecutionConfig`. |
-| **U-8** | §5.4, new | A pre-markers tree lacks `detect_mode`, `drop_originals` and `overlay_alpha`. Migrate **omits** them from the digest rather than defaulting them, and a forward run reading that state omits them too — the convention `validate_resume_compatibility` (`_cli_state_management.py:348-349`) already uses for an absent key. Omit, never blank: `""` is a value. |
-| **U-9** | §6.1 | **`stage2_done/` stays a separate file.** §6.1 folds it into `stages.stage2`; it is a consumable signal cleared by an atomic `unlink`, and folding it in replaces that with a locked read-modify-write — per-image, across a 6,000-task array, on `flock` (`sdk_/_file_locking.py:101`), whose cross-node semantics are the weaker POSIX option. Only `image_complete/` and `stage3_complete/` collapse. |
-| **INV-ONEWRITER** | §6.1 | The collapsed record needs **no lock**. Disjoint work partitioning (one image → one task) plus stage sequencing give one writer per image, and **mode exclusivity** covers the two driver-side sweep writers that are not per-image at all; `atomic_write_json`'s temp-write + `os.replace` covers the crash case. |
-
-### ⚠ §6.2's central claim is false, and was false before this spec was written
-
-> §6.2: *"the root `zarr.json` is written **last** … and nothing writes into the store after
-> publication, so a valid root implies a complete store."*
-
-`--mode measure` already re-promotes proven stores:
-`_cli_process_single.py:439` → `replace_image_store_measurements`
-(`_cli_output_manager.py:1970-2001`) → `replace_embedded_measurement_table`
-(`sdk_/_measurement_tables.py:242`), whose `_clone_file_without_pixel_rewrite` (`:233`) is
-`os.link` with a `shutil.copy2` fallback — **that is §6.3's hardlink re-promote, shipping
-today.**
-
-Its *in-place* branch (`:284-290`) is worse, and it is worth stating precisely, because the
-first phrasing of this amendment ("no `.part`") understated it. The **file** write is
-atomic: `_write_validated_parquet` (`:55-81`) goes through `atomic_write_with_writer`, with
-a re-read schema check before the rename. What the branch skips is the **store-level
-transaction** — no `new_part_path` copytree, and **no root `zarr.json` rewrite at all**. So
-`tables/measurements/table.parquet` acquires different bytes while the root the readers
-validate against is byte-identical to before.
-
-The failure that follows is therefore not a torn file. It is worse: a fully-formed,
-schema-valid store whose root certifies contents it no longer has. Root-last atomicity
-detects an *interrupted* write and is blind to a *completed* one, so **a valid root does not
-imply unchanged contents** — and every reader that treats the root as a content proof is
-reading a stale certificate.
-
-`src/phenotypic/_cli/CLAUDE.md:251-254` repeats the same false claim and is corrected in the
-same change.
-
-The invariant is restated as **INV-PROVEN**: *an artifact carrying a content proof changes
-only where the proof changes with it.*
-
-### What this cost, recorded once
-
-Three rounds of review found **six** defects of one shape: a function reading a format this
-spec changes, in a file the plan never named — `authorized_measurement_sources`,
-`replace_embedded_measurement_table`, a third `_consistent_embedded_join_keys` site, four of
-seven proof publishers, ≥5 of ≥9 staged-engine sites, and 1,130 lines of recompile.
-A complete consumer map now lives in the plan's P3 (**136 reads across 20 modules**),
-regenerable by one `grep`. **Any future change to a stored format should start there.**
-
----
-
 ## 1. Purpose
 
 Three coupled problems, from the audit:
@@ -188,8 +119,6 @@ Half-migrated trees holding unconverted `.h5` files contribute a
 
 ### 5.1 The six tokens
 
-> **AMENDED (U-4): five tokens.** `publication_id` is cut — see §0.
-
 | Token | Kind | Derivation |
 |---|---|---|
 | `work_id` | content | unchanged: sha256 over schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode |
@@ -246,10 +175,6 @@ migration.
 
 ### 5.4 `scientific_config_digest` — one definition, two uses
 
-> ⚠ **AMENDED (D-C, U-8): the field list below is WRONG.** `include_dataset_column`,
-> `overlay_alpha` and `save_overlays` ARE in `work_id` today
-> (`_cli_failure_tracker.py:236-243`). The argument survives; the list does not. See §0.
-
 `scientific_config_digest` is **not a new digest**. It is the existing
 per-image scientific processing-configuration digest already folded into
 `work_id` (resume spec §5.4), reused verbatim for the generation. Defining it
@@ -294,9 +219,6 @@ its inputs can change additively.
 
 ### 6.1 One record
 
-> **AMENDED (D-A, U-9, INV-ONEWRITER).** No `stages.backfilled`. `stage2_done/` stays a
-> separate file — it is a consumable signal, not a record. No lock on the record. See §0.
-
 ```
 .phenotypic/progress/images/<dataset>/<stem>.json
 ```
@@ -332,11 +254,6 @@ three `is_file()` probes across three directory trees.
 
 ### 6.2 The store immutability constraint
 
-> ⚠ **AMENDED: the claim below is FALSE and was false before this spec.** `--mode measure`
-> already re-promotes proven stores. Its in-place branch writes the embedded table
-> atomically *as a file* but skips the store transaction and the root rewrite entirely, so
-> the root certifies contents that have since changed. Restated as INV-PROVEN. See §0.
-
 The invariant is explicit in the code, not implied: `staged_store_matches_work_id`
 documents that `work_id` is "written at store-build time — never patched in
 afterwards, because the root `zarr.json` is written last", and `promote_store`
@@ -350,9 +267,6 @@ assumption that a store's contents change only via a promote. **The backfill
 must therefore be a re-promote.**
 
 ### 6.3 Hardlink re-promote — SPIKE-GATED (S-1)
-
-> **CUT (D-A).** Per-store metadata is written at promote time, so there is no
-> re-promote to gate. Note also that this mechanism **already ships** — see §0.
 
 1. Build `<stem>.ome.zarr.<uuid>.part` by `os.link`-ing every existing chunk file
 2. Write `tables/metadata/pht-metadata.parquet`
@@ -369,9 +283,6 @@ shape: either a sibling file outside the store, or metadata carried in the root
 `zarr.json` rather than as a table.
 
 ### 6.4 Certified post-hoc rewrite
-
-> **GENERALISATION CUT (D-A).** The existing
-> `refresh_success_markers_after_metadata_migration` stays, scoped to `--mode migrate`.
 
 Generalise `refresh_success_markers_after_metadata_migration` from a
 metadata-migration special case into the single protocol for any legal
@@ -417,10 +328,6 @@ is written**. Absence is the honest signal; `stages.backfilled` still records
 the metadata digest so it is not retried.
 
 ### 7.3 Contract change
-
-> ⚠ **AMENDED (U-3): the schema stamp cannot make an *old* reader fail loudly.** Parquet
-> KV metadata is ignored by every ordinary reader. The stamp is kept and given a reader
-> in `sdk_`; the claim narrows to in-repo readers. See §0.
 
 > **Was:** `master_measurements.*` is the exact pre-post concatenation of
 > authorized embedded tables (already metadata-joined measured rows)
@@ -573,9 +480,6 @@ class RunState:
 | SLURM observer tick (2 s) | `shallow` |
 
 ### 9.1 The verification cache
-
-> **AMENDED (D-B): in-process, not on disk.** Audit S1 proposed process-level; this
-> section escalated it without cause. See §0.
 
 ```
 .phenotypic/verification_cache.json

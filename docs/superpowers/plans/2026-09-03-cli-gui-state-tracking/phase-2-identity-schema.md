@@ -432,9 +432,9 @@ def test_every_mode_mints_the_same_identity_for_the_same_config(tmp_path, mode):
     assert _minted_generation(tmp_path, mode) == _minted_generation(tmp_path, "full")
 ```
 
-- [ ] **Step 4: Run the tests.** Expected: PASS (5 passed).
+- [ ] **Step 6: Run the tests.** Expected: PASS (5 passed).
 
-- [ ] **Step 5: Regression — `--restart` still reuses surviving stores (D5)**
+- [ ] **Step 7: Regression — `--restart` still reuses surviving stores (D5)**
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli -k 'restart or resume' -q
@@ -445,7 +445,7 @@ stale-worker hazard **without** turning `--restart` into `--overwrite`. If any o
 tests now show a restart reprocessing images it previously reused, the epoch has leaked
 into `work_id` and the change is wrong.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add -A src/phenotypic/_cli tests/unit/cli/test_run_identity.py

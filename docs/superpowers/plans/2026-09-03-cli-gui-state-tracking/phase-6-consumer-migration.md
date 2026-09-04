@@ -63,12 +63,29 @@ existing tree.
 
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_completion.py` — readers out, writers stay
-- Modify: `src/phenotypic/phenotypicCLI.py:2390,2394,2423-2442,2872-2874,3721-3725,3735-3744`
-- Modify: `src/phenotypic/_cli/_cli_staged_resume.py:203-213`
-- Modify: `src/phenotypic/sdk_/_hdf_to_zarr.py:715`
-- Modify: `src/phenotypic/_cli/_dashboard/_manifest_builder.py:725`
-- Modify: `src/phenotypic/_cli/_cli_migrate.py:88-89`
+- Modify: `src/phenotypic/phenotypicCLI.py:2394,2428,2439,2874,3725`
+- Modify: `src/phenotypic/_cli/_cli_checkpoint_handler.py:291,348,401` **(gen-r4 N-1)**
+- Modify: `src/phenotypic/_cli/_cli_recompile_worker.py:643,653` **(gen-r4 N-2)**
+- Modify: `src/phenotypic/_cli/_cli_gui_lifecycle.py:90` **(gen-r4 N-1)**
+- Modify: `src/phenotypic/_cli/_dashboard/_manifest_builder.py:729`
+- Modify: `src/phenotypic/sdk_/_hdf_to_zarr.py:728`
+- Modify: `src/phenotypic/_cli/_cli_staged_resume.py:203-213` — `valid_image_success`, not the three above
+- Modify: `src/phenotypic/_cli/_cli_migrate.py:88-89` — likewise
 - Test: `tests/unit/cli/test_completion_split.py` *(new)*
+
+> **The file list was short by three files and the count was wrong (gen-r4 N-1/N-2, open
+> three rounds).** Measured on `c9d1fbfc`: the three predicate names have **13 invocations
+> across 6 files**, not ten across four. `_cli_checkpoint_handler.py` (3 — the in-array
+> `__PHENOTYPIC_CHECKPOINT__` dispatch), `_cli_recompile_worker.py` (2) and
+> `_cli_gui_lifecycle.py` (1) were named nowhere in this task. P4 and P5 touch two of those
+> files but for other reasons — P4 rewrites `_cli_recompile_worker.py:764` only, and P5's
+> publisher table marks `_cli_checkpoint_handler.py` **not** a publisher — so nothing else
+> in the plan removes these reads. Regenerate the list rather than trusting it:
+>
+> ```bash
+> grep -rn 'current_run_is_complete\|current_success_counts\|current_aggregate_is_current' \
+>   src/phenotypic --include=*.py | grep -v _cli_completion.py
+> ```
 
 **This task goes first.** Every later task assumes `resolve_run_state` is the only
 completion predicate; while a second one survives on the CLI side, the phase's premise is
@@ -85,14 +102,18 @@ def test_only_one_completion_predicate_survives():
 
     from pathlib import Path
 
-    src = Path(__file__).resolve().parents[3] / "src"
+    # Scoped to src/phenotypic/_cli + sdk_, NOT all of src/ (gen-r4 N-1). The GUI's three
+    # holders -- _runs_registry.py, _slurm_observer.py, and _output_consistency.py -- are
+    # migrated by Tasks 1-6 of this phase, so a whole-tree grep here is red by construction
+    # at the end of Task 0. The whole-tree assertion is Task 7's, where it can pass.
+    root = Path(__file__).resolve().parents[3] / "src" / "phenotypic"
     hits = subprocess.run(
         ["grep", "-rn",
          "current_run_is_complete\\|current_success_counts\\|current_aggregate_is_current",
-         str(src)],
+         str(root / "_cli"), str(root / "sdk_"), str(root / "phenotypicCLI.py")],
         capture_output=True, text=True,
     ).stdout.strip()
-    assert not hits, f"the old O(N)-hashing readers survive:\n{hits}"
+    assert not hits, f"the old O(N)-hashing readers survive CLI-side:\n{hits}"
 
 
 def test_the_resume_worklist_uses_the_cache_assisted_path():
@@ -139,11 +160,42 @@ in `sdk_/_image_record.py`, which P3 puts there for exactly this reason (N-3).
 > `CONVERT` and let migrate own the move. Decide in this task, and state which — a read path
 > that depends on a write side effect is the thing this phase exists to remove.
 
-- [ ] **Step 3: Convert the ten CLI call sites**
+- [ ] **Step 3: Convert the thirteen CLI call sites**
 
 Each becomes one `resolve_run_state(output_dir, depth="deep")` — `deep` on the CLI, per
 §9's table, because the CLI publishes proofs and derives worklists and must not act on a
 stat-only answer. Re-grep before editing; these line numbers are from `c9d1fbfc`.
+
+Three of the six files carry a call site the earlier draft of this task never named, and two
+of them are the ones a resume actually runs through — so convert by grep output, not by the
+list:
+
+| File | Invocations | What the call gates |
+|---|---|---|
+| `phenotypicCLI.py` | 5 | startup counts, aggregate currency, the two early-exit checks |
+| `_cli_checkpoint_handler.py` | 3 | the in-array `__PHENOTYPIC_CHECKPOINT__` dispatch (gen-r4 N-1) |
+| `_cli_recompile_worker.py` | 2 | whether recompile may skip re-derivation (gen-r4 N-2) |
+| `_cli_gui_lifecycle.py` | 1 | gates `publish_run_completion_evidence` — see item 5b above |
+| `_dashboard/_manifest_builder.py` | 1 | the manifest's completion field |
+| `sdk_/_hdf_to_zarr.py` | 1 | migration's own progress read |
+
+All thirteen are `deep`, including `_cli_checkpoint_handler.py`'s three. Check that
+conclusion rather than assuming it, because the file's name invites the opposite one: it is
+the `__PHENOTYPIC_CHECKPOINT__` handler, which sounds per-task and is not. The trigger is a
+**reserved entry in the array task list** (root `CLAUDE.md`, *SLURM array auxiliary work*) —
+one index, not one per image — and all three call sites sit on a publication path:
+`:291` decides whether an empty aggregate is a `RuntimeError` or a legitimate
+terminal-incomplete close; `:348` chooses between `deactivate_orchestration` and
+`mark_staged_complete`, then gates `publish_run_completion_evidence`; `:401` gates the
+completion marker itself. That is §9's first row — *CLI finalize, before publishing proofs →
+`deep`* — not its two `shallow` rows, both of which are read-only pollers. No `deep` read
+here is per-image, so no O(N²) arises.
+
+> **§9's table has no row for a worker process.** Its six rows are two CLI paths, two
+> binding/guard paths, and two pollers. If a *genuine* per-task reader turns up during this
+> task — one that runs once per array index — it has no assigned depth and this plan must
+> not invent one: raise it, because `deep` there is O(N) per task on the exact walk this
+> change exists to make cheap. None of the thirteen is such a reader.
 
 - [ ] **Step 4: Confirm the double walk is gone**
 
@@ -732,7 +784,61 @@ The two advisory tests (`any("migrate" in advisory)`, `any("metadata" in advisor
 substring-match human prose, which makes advisory wording a de-facto API. Give advisories a
 small closed set of codes plus optional detail, and assert on the code.
 
-- [ ] **Step 4: Phase gate — the full suite**
+- [ ] **Step 4: The whole-tree predicate assertion — and commit**
+
+Task 0's gate test was scoped to `_cli` + `sdk_` because the GUI's holders were still live
+at that point (gen-r4 N-1). Tasks 1–6 have now migrated them, so the unrestricted form can
+finally pass. Add it here, in the same file, beside the scoped one:
+
+```python
+def test_no_completion_predicate_survives_anywhere():
+    """The unrestricted form of test_only_one_completion_predicate_survives.
+    Scoped to _cli + sdk_ in Task 0 because gui/ had not been migrated yet; by the
+    end of this phase the whole tree must be clean."""
+    import subprocess
+
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[3] / "src"
+    hits = subprocess.run(
+        ["grep", "-rn",
+         "current_run_is_complete\\|current_success_counts\\|current_aggregate_is_current",
+         str(src)],
+        capture_output=True, text=True,
+    ).stdout.strip()
+    assert not hits, f"a completion predicate survives:\n{hits}"
+```
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli/test_completion_split.py -q
+git add -A src/phenotypic tests
+git commit -m "refactor: delete the nine-source completion machinery
+
+Spec §11.1, §11.2. Net -<N> lines.
+
+Deleted:
+  _output_consistency.py                        -617
+  RunRegistry three claimability predicates     -<n>
+  _local_completion_evidence_conflict tree      -<n>
+  _latest_event_states, _read_status_from_manifest, _manifest_is_complete  -<n>
+  sdk_/monitor_slurm_jobs.py (0 importers)      -241
+  browse/_source_render.py dead cache API       -<n>
+  eight zero-caller _io_constants resolvers     -<n>
+  DashboardManifestKey.VERSION (1 write, 0 reads) -<n>
+
+Folded in (§11.2): aggregate_publication_marker_path at the GUI site; 17 shadow
+filenames into _io_constants, including the two double-spelled across the CLI/GUI
+boundary; DIR_PROGRESS at phenotypicCLI.py:839,841; the four naive control-manifest
+writers made atomic.
+
+Three text-asserting tests removed (CAN-31). The completion-predicate gate is now
+unrestricted -- Task 0 could only scope it to _cli + sdk_ because gui/ had not been
+migrated yet.
+
+Every caller count was re-grepped before deletion, not taken from the audit."
+```
+
+- [ ] **Step 5: Phase gate — the full suite**
 
 ```bash
 uv run mypy src/phenotypic
@@ -820,32 +926,4 @@ git commit -m "docs(gui): record what state the GUI owns, and what it only reads
 The change deletes nine evidence sources and four classifiers; the module guide
 still described them. Adds the owned/ephemeral/read-only split, which was nowhere
 written down, and the sdk_-not-_cli import rule that replaces the 25-symbol seam."
-```
-
----
-
-- [ ] **Step 5: Commit with the deletion ledger**
-
-```bash
-git add -A
-git commit -m "refactor: delete the nine-source completion machinery
-
-Spec §11.1, §11.2. Net -<N> lines.
-
-Deleted:
-  _output_consistency.py                        -617
-  RunRegistry three claimability predicates     -<n>
-  _local_completion_evidence_conflict tree      -<n>
-  _latest_event_states, _read_status_from_manifest, _manifest_is_complete  -<n>
-  sdk_/monitor_slurm_jobs.py (0 importers)      -241
-  browse/_source_render.py dead cache API       -<n>
-  eight zero-caller _io_constants resolvers     -<n>
-  DashboardManifestKey.VERSION (1 write, 0 reads) -<n>
-
-Folded in (§11.2): aggregate_publication_marker_path at the GUI site; 17 shadow
-filenames into _io_constants, including the two double-spelled across the CLI/GUI
-boundary; DIR_PROGRESS at phenotypicCLI.py:839,841; the four naive control-manifest
-writers made atomic.
-
-Every caller count was re-grepped before deletion, not taken from the audit."
 ```

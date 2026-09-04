@@ -77,6 +77,8 @@ additive.
 | **Modify** `src/phenotypic/_cli/_cli_staged_resume.py` | `stage3_completion_exists` / `write_stage3_completion_marker` / `remove_stage3_completion_marker` become `stages.stage3` operations. `classify_staged_image` reads one record **plus one token probe**, and **FLOW-40's raw-presence branch (`:279-283`) survives verbatim**. |
 | **Modify** `src/phenotypic/sdk_/_run_state.py` | The deep path reads the record instead of the legacy marker. |
 | **Delete** | `DIR_STAGE3_COMPLETE`'s path helper and the inline `"stage3_complete"` literal at `_cli_staged_resume.py:141`. **`DIR_STAGE2_DONE` is NOT deleted** — it moves. |
+| **Test** `tests/unit/cli/test_image_record.py` *(new)* | Record schema, stage independence, shared `STAGE_*` constants. |
+| **Test** `tests/unit/cli/test_staged_resume_equivalence.py` *(new)* | The gate: resume decisions are unchanged. |
 
 > **The reader/writer split is forced, and discovering it in P3 is much cheaper than in P6
 > (N-3).** P6 Task 0 moves `valid_image_success` into `sdk_/_run_state.py` (CAN-8), and after
@@ -96,8 +98,6 @@ additive.
 > twelve snippets importing readers from `_cli` — an implementer resolving the resulting
 > `ImportError` by majority would put them back in `_cli`, re-creating the exact deadlock
 > this split prevents, and discovering it four phases later.
-| **Test** `tests/unit/cli/test_image_record.py` *(new)* | Record schema, stage independence, O-2 advisory. |
-| **Test** `tests/unit/cli/test_staged_resume_equivalence.py` *(new)* | The gate: resume decisions are unchanged. |
 
 **The staged engine's resume logic is the risk in this phase**, not the record format.
 `classify_staged_image` (`_cli_staged_resume.py:197`) decides, per image, whether to run
@@ -345,7 +345,7 @@ exactly as `publish_image_success` does today". Neither half holds:
 - `atomic_write_json` (`sdk_/_atomic_io.py:209-240`) is a temp-write plus `os.replace` with
   an optional pre-rename hook. **No CAS, no re-read, no version check.**
 
-And the collapse creates the hazard that absence of CAS makes real. Today `stage2_done/`,
+And the collapse creates the hazard that absence of CAS makes real. Today
 `stage3_complete/` and `image_complete/` are three files, so three writers cannot lose each
 other's writes. After the collapse they are one file with three writers.
 
@@ -385,12 +385,28 @@ same audit.
    available"* signal cleared on completion. It is still kept as a file (U-9), but for the
    plain reason that `unlink` is atomic and a locked JSON edit is not.
 
-   **What would overturn this**, and what to check before implementing: any path where two
-   processes can hold the same image. A requeued or preempted task racing its own
-   replacement is the candidate — SLURM `PreemptMode=REQUEUE` with `GraceTime=0` restarts
-   the *same job id* from line one, so it is not concurrent with itself, and a `--restart`
-   against a live array is what `restart_epoch` fences (P2). **Verify both, and if either
-   admits an overlap, add the lock on that path only** — not on all writers.
+   **A third mechanism covers the two writers that are not per-image at all (gen-r4).**
+   `_migrate_legacy_success_evidence` and `refresh_success_markers_after_metadata_migration`
+   sweep *every* image in one pass from the driver process. Partitioning says nothing about
+   them — there is nothing to partition. What protects them is **mode exclusivity**: both
+   run only under `--mode migrate` (U-7), which refuses to operate on a tree with a live
+   array and is itself the thing every other writing mode is fenced behind. State that as
+   the third mechanism rather than leaving it implicit, because it is the one whose
+   precondition can be *removed by a later edit* — the day a sweep writer is called from a
+   normal run, INV-ONEWRITER is false and nothing in the partitioning argument notices.
+
+   **What would overturn this**, and what to check before implementing — three paths, not
+   two:
+   - **A requeued or preempted task racing its own replacement.** SLURM
+     `PreemptMode=REQUEUE` with `GraceTime=0` restarts the *same job id* from line one, so
+     it is not concurrent with itself.
+   - **A `--restart` against a live array.** This is what `restart_epoch` fences (P2).
+   - **A driver-side sweep writer running while an array is live.** This is the coexistence
+     window of P7 Task 5 Step 1c, and the reason its rule — drain or `scancel` before
+     migrating — belongs in the refusal message and not only in the docs.
+
+   **Verify all three, and if any admits an overlap, add the lock on that path only** —
+   not on all writers.
 
    ```python
    def test_one_image_has_one_writer(tmp_path):
@@ -784,9 +800,8 @@ refactor makes both unreviewable.
 
 - [ ] **Step 3: Collapse the two trees**
 
-- `write_stage2_token` → `record_stage(..., "stage2", {...})`
-- `stage2_token_exists` → `"stage2" in (read_image_record(...) or {}).get("stages", {})`
-- `delete_stage2_token` → `consume_stage(..., "stage2")`
+- `write_stage2_token`, `stage2_token_exists`, `delete_stage2_token` — **unchanged**
+  (U-9). The token keeps its file and its atomic `unlink`; only `_STAGE2_DIR` moves.
 - `write_stage3_completion_marker` → `record_stage(..., "stage3", {...})`
 - `stage3_completion_exists` → the same membership test on `"stage3"`
 - `remove_stage3_completion_marker` → `consume_stage(..., "stage3")`
@@ -794,7 +809,8 @@ refactor makes both unreviewable.
 Keep the function names — the SLURM observer imports `stage3_completion_exists`
 (`_slurm_observer.py`), and renaming it is P6's job, not this task's.
 
-Delete `_STAGE2_DIR` (`_cli_stage2_token.py:42`), the inline `"stage3_complete"` literal
+**Move** `_STAGE2_DIR` (`_cli_stage2_token.py:42`) into `_io_constants` — do **not**
+delete it (U-9). Delete the inline `"stage3_complete"` literal
 (`_cli_staged_resume.py:141`), and their path helpers. `stage2_raw_path`,
 `write_stage2_raw`, `load_stage2_raw` and `delete_stage2_raw` are **unchanged**.
 
@@ -827,7 +843,7 @@ QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli tests/unit/sdk_ -q
 
 ```bash
 git add -A src/phenotypic/_cli tests/unit/cli
-git commit -m "refactor(cli): stage2_done/ and stage3_complete/ become stages entries
+git commit -m "refactor(cli): stage3_complete/ becomes a stages entry
 
 Spec §6.1. Three parallel <ds>/<stem> trees, spelled in three places, become one
 record. The sixteen-combination classify_staged_image table was captured from the

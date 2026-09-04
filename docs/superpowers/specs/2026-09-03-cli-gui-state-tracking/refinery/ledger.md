@@ -567,4 +567,55 @@ flag `CONFLICT with <ID>`, not raise it fresh.
 | CAN-32 | resolved | P7: CSV deletion (Task 4 Step 0), `metadata.canonical.csv` (Task 3 Step 4), three shapes classified (Task 1 Step 3c), no-descriptor store handled (Task 4 Step 0b). |
 | CAN-33 | **partial** | m8 resolved (P2 Task 4 decides on evidence). m1–m7, m9 **still open** — small, and deferred to round 2 rather than silently dropped. |
 | CAN-34 | **partial** | DF-14 folded into CAN-7's minting-site enumeration. DF-13, DF-17, DF-26 **still open**. |
-| CONFLICT-1 | **open** | `restart_epoch`'s two homes. Unresolved by design — carries to round 2 with the evidence question. |
+| CONFLICT-1 | resolved (round 2) | Closed **in SIMP's favour** on the evidence the ledger asked for: the only readers of `config.restart_epoch` are `run_identity` and `assert_identity_current`, and the cache keying is a *consequence* of the fence, not an independent consumer. The two homes have deliberately different lifecycles — `clear_machine_state` preserves the file and deletes the state. Added rule: `read_restart_epoch` must never repair or backfill the config copy. |
+
+---
+
+## Rounds 2–4 (SIMP-R4-03: this section was missing entirely)
+
+**The ledger stopped at round 1 while three more rounds ran.** The provenance lock the loop
+depends on covered one round of four, and U-6…U-9 — including U-9, the subject of round 4's
+Critical — were nowhere in it. Recorded now; the phase docs carry the reasoning inline.
+
+### User rulings, rounds 2–4 — permanent
+
+| | Ruling | Where |
+|---|---|---|
+| **metadata-left** | `join_metadata` keeps metadata as the **left** frame. The asymmetry is by design — *"absence of a colony is data"*. Orphan measured rows are deliberately absent from the mirror and present in the master. Shrank CAN-1 to a branch deletion and dissolved CAN-2. | P4 Task 3 |
+| **U-6** | **No version floor.** `state.version` cannot express one — `"2.0.0"` spans both sides of v0.17.3. Detect the pre-markers *shape*: schema `2.0.0` with no `work_ids`. `BELOW_FLOOR` deleted. | P7 Task 1 Step 3b |
+| **U-7** | **Migration logic lives only in `--mode migrate`.** The promoter's `--mode full` dispatch is deleted. | P7 Task 2b |
+| **U-8** | Omit unknown digest fields rather than defaulting them — the convention `validate_resume_compatibility:348-349` already uses. **DISPROVED in round 4 — see MIG-22.** | P7 Task 2b |
+| **U-9** | **`stage2_done/` stays a file.** A consumable signal cleared by an atomic `unlink`; folding it in replaces that with a read-modify-write, per-image, across a 6,000-task array, on `flock`. | P3 |
+
+### Invariants added after round 1
+
+| | Statement |
+|---|---|
+| **INV-PROVEN** | An artifact carrying a content proof changes only where the proof changes with it. Replaces INV-IMMUTABLE, which was **false**: `--mode measure` already re-promotes proven stores. |
+| **INV-VERDICT** | Nothing may improve a verdict except a successful deep verification. Merges the former INV-CACHE and INV-DEGRADE. |
+| **INV-ONEWRITER** | One writer per image's record, by disjoint partitioning plus stage sequencing. **Replaced the record lock entirely.** |
+| **INV-DISCHARGEABLE** | No verdict may be emitted that migrate cannot discharge. |
+
+### Round 4 — OPEN at the cap
+
+| ID | Severity | Status |
+|---|---|---|
+| **MIG-22** | Critical | **U-8 is not implementable.** The digest fields are *required* keyword params written unconditionally into the payload; `work_id_for_image` recomputes from `ExecutionConfig` and never reads `state.config`; and a **second** producer, `_worker_work_identity` (`_cli_process_single.py:122-171`), computes from argv, cross-checked with a hard `RuntimeError`. **GATED TO USER.** |
+| **MIG-21** | Critical | Pre-markers `--mode process` tree still fails INV-DISCHARGEABLE. Same root as MIG-22. **GATED TO USER.** |
+| gen-r4 N-1/N-2 | Major | P6 Task 0's gate test greps all of `src/`; its file list misses `_cli_checkpoint_handler.py` (6 reads) and `_cli_recompile_worker.py` (4). **Open three rounds.** |
+| SIMP-R4-02 | Major | Step numbering: five round-2 findings unfixed, one new. P6 Task 7 and P7 Task 2 have no commit step. |
+| flow-r4 | — | **Report not received before the cap. Coverage gap, recorded rather than assumed.** |
+
+### Round 4 — CLOSED
+
+gen-r4 C1/C2/C3/C4/C5, SIMP-R4-01, SIMP-R4-03 (this section), MIG-12/13/14a/15/16/17/19/20,
+flow-r3 C1/C2/C3/C4.
+
+**Withdrawn by their author:** SIMP-R2-03 (the table belongs where it is) and SIMP-R2-06
+(`ConversionVerdict` gained a genuinely branched-on second member).
+
+**Accepted after challenge — INV-ONEWRITER.** gen-r4 enumerated every marker-writer site and
+found each per-image inside a partitioned worker, or inside an exclusive whole-tree mode. Its
+one addition: the two driver-side writers (`_migrate_legacy_success_evidence`,
+`refresh_success_markers_after_metadata_migration`) rest on **mode exclusivity**, not
+partitioning, and belong in the invariant's verify list.

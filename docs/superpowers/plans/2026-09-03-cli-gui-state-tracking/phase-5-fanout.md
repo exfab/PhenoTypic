@@ -331,9 +331,9 @@ proof asserting the *full* success set, and with P1's rule 1 restored (CAN-4) th
 is only caught because `source_set_digest` is compared at all. Check it at the writer too:
 a proof that never should have been published is worse than one a reader rejects.
 
-- [ ] **Step 4: Run the tests.** Expected: PASS.
+- [ ] **Step 5: Run the tests.** Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add -A src/phenotypic/_cli tests/unit/cli

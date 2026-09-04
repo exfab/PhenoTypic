@@ -271,9 +271,11 @@ def test_duplicate_metadata_keys_preserve_fan_out(tmp_path):
 (`_embedded_measurement_tables.py:88-95`). `measurements` is the baseline; `metadata` is
 the semi-join of the metadata frame onto that image's distinct join keys.
 
-**S-4's verdict licenses this.** If S-4 returned `FAIL`, stop and report — a local
-projection that diverges from a global one means the promote-time write cannot be correct
-and D-A needs revisiting with the user.
+*(S-4 was cut — CAN-25 showed it computed `M ⋉ K_i` against `(M ⋉ K_all) ⋉ K_i` where
+`K_i ⊆ K_all`, a set-theoretic identity whose FAIL branch was unreachable. Its one real
+question — metadata-only rows appearing as phantoms in the mirror and in no store's metadata
+table, and a fan-out key matching two images not being double-counted — is covered by this
+task's own tests below, which is where it always belonged.)*
 
 Keep `prepare_embedded_measurement_table` as a thin wrapper for one release **only if** a
 caller outside this change needs it; grep first, and delete it if not.
