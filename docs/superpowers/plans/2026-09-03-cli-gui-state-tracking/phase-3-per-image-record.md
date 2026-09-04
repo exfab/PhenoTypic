@@ -35,8 +35,9 @@ additive.
 
 | File | Responsibility |
 |---|---|
-| **Create** `src/phenotypic/_cli/_cli_image_record.py` | `publish_image_record`, `read_image_record`, `record_stage`, `KNOWN_STAGES`. The single writer. ~220 lines. |
-| **Modify** `src/phenotypic/_cli/_cli_completion.py` | `publish_image_success` / `valid_image_success` delegate to the record. |
+| **Create** `src/phenotypic/_cli/_cli_image_record.py` | `publish_image_record`, `read_image_record`, `record_stage`, `consume_stage`, the four `STAGE_*` constants. The single writer. ~240 lines. |
+| **Modify** `src/phenotypic/_cli/_cli_completion.py` | `publish_image_success` / `valid_image_success` delegate to the record — **and `authorized_measurement_sources` (`:768`), which nobody listed.** See below. |
+| **Modify** `src/phenotypic/_cli/_cli_migrate_image.py:567` | **The migrator is a second producer of this schema**, not a stage that runs before one (CAN-7). It calls `publish_image_success` directly. |
 | **Modify** `src/phenotypic/_cli/_cli_stage2_token.py` | `write_stage2_token` / `stage2_token_exists` / `delete_stage2_token` become `stages.stage2` operations. `stage2_raw` helpers unchanged. |
 | **Modify** `src/phenotypic/_cli/_cli_staged_resume.py` | `stage3_completion_exists` / `write_stage3_completion_marker` / `remove_stage3_completion_marker` become `stages.stage3` operations. `classify_staged_image` reads one record. |
 | **Modify** `src/phenotypic/sdk_/_run_state.py` | The deep path reads the record instead of the legacy marker. |
@@ -58,9 +59,16 @@ must not change a single one of its decisions.
 ```python
 # phenotypic._cli._cli_image_record
 
-#: Stage names this build understands. `stages` stays an OPEN map (§6.1) -- an
-#: unknown key is surfaced as a RunState advisory (O-2), never rejected.
-KNOWN_STAGES: frozenset[str] = frozenset({"stage1", "stage2", "stage3", "measured"})
+#: The stage names, as shared constants imported by every writer and reader
+#: (CAN-27). `stages` stays an OPEN map (§6.1) -- a future stage is additive --
+#: but the names THIS build writes cannot be misspelled, because there is exactly
+#: one place they are spelled. This replaces O-2's KNOWN_STAGES + advisory, which
+#: could not be built without either breaking INV-LAYER (the advisory is emitted
+#: from sdk_, which may not import _cli) or duplicating the set.
+STAGE_STAGE1: Final[str] = "stage1"
+STAGE_STAGE2: Final[str] = "stage2"
+STAGE_STAGE3: Final[str] = "stage3"
+STAGE_MEASURED: Final[str] = "measured"
 
 RECORD_VERSION: int = 1
 
@@ -151,20 +159,25 @@ def test_stages_is_an_open_map(tmp_path):
     assert "some_future_stage" in read_image_record(tmp_path, "plate", "a")["stages"]
 
 
-def test_an_unknown_stage_becomes_an_advisory_not_a_failure(tmp_path):
-    """O-2: an open map with no name validation means a typo like `stage_2` reads
-    as 'stage 2 not done' and never errors. Surface it without closing the map."""
-    from phenotypic._cli._cli_image_record import publish_image_record
-    from phenotypic.sdk_ import resolve_run_state
+def test_the_stage_names_come_from_one_shared_constant(tmp_path):
+    """CAN-27, replacing O-2's advisory.
 
-    publish_image_record(
-        tmp_path, work_id="w", dataset="plate", image_stem="a",
-        relative_image_path="a.tif", mode="full",
-        stages={"stage_2": {"at": "t"}},      # note the typo
-        artifacts={}, attempt_id="x", scheduler_epoch="e",
-    )
-    state = resolve_run_state(tmp_path, depth="deep")
-    assert any("stage_2" in advisory for advisory in state.advisories)
+    O-2 proposed a KNOWN_STAGES frozenset in _cli_image_record.py feeding an
+    advisory emitted by resolve_run_state in sdk_ -- which INV-LAYER forbids from
+    importing _cli. Resolving that meant either duplicating the frozenset (a second
+    home for a fact, which the plan's own constraints reject) or breaking the
+    invariant P1 Task 1 spends a whole task pinning.
+
+    So CLOSE the typo class rather than reporting it: one module constant, used by
+    both the writer and the reader, so a misspelled stage cannot be constructed.
+    That is derivation over tracking, and it is strictly less code than the
+    advisory it replaces. The map stays OPEN -- a future stage is still additive.
+    """
+    from phenotypic._cli import _cli_stage2_token, _cli_staged_resume
+    from phenotypic._cli._cli_image_record import STAGE_MEASURED, STAGE_STAGE2, STAGE_STAGE3
+
+    assert _cli_stage2_token.STAGE_STAGE2 is STAGE_STAGE2
+    assert _cli_staged_resume.STAGE_STAGE3 is STAGE_STAGE3
 
 
 def test_recording_one_stage_leaves_the_others_untouched(tmp_path):
@@ -216,15 +229,89 @@ The record, per §6.1 minus `backfilled`:
 }
 ```
 
-`record_stage` is **read-modify-write under the existing `atomic_write_json` +
-`pre_replace` revalidation**, exactly as `publish_image_success` does today
-(`_cli_completion.py:163`). Two stages written concurrently for the same image is not a
-real case — the staged engine runs them in different jobs, serialized by the stage-2 token
-— but the read-modify-write must still not lose a key on a retry.
+### The read-modify-write needs real lost-update protection (CAN-6)
 
-`consume_stage` replaces `delete_stage2_token`'s unlink: it removes one key from `stages`
-and rewrites. **Consumption must be idempotent** — Stage 3 already tolerates a token that
-another attempt consumed.
+**The precedent the first draft cited does not exist.** It claimed `record_stage` is
+"read-modify-write under the existing `atomic_write_json` + `pre_replace` revalidation,
+exactly as `publish_image_success` does today". Neither half holds:
+
+- `publish_image_success` passes `pre_replace` **only** when
+  `expected_artifact_descriptors is not None` (`_cli_completion.py:243-249`), and that
+  callback re-validates **artifact descriptors** (`:204-224`). It never re-reads the marker.
+- `atomic_write_json` (`sdk_/_atomic_io.py:209-240`) is a temp-write plus `os.replace` with
+  an optional pre-rename hook. **No CAS, no re-read, no version check.**
+
+And the collapse creates the hazard that absence of CAS makes real. Today `stage2_done/`,
+`stage3_complete/` and `image_complete/` are three files, so three writers cannot lose each
+other's writes. After the collapse they are one file with three writers.
+
+`publish_image_success` writes a **complete** dict today (`_cli_completion.py:225-241`). If
+`publish_image_record` keeps doing that, it clobbers `stages.stage1`/`stage2` that
+`record_stage` wrote. In the SLURM Stage-3 worker the order happens to be
+`publish_image_success` → `write_stage3_completion_marker` → `delete_stage2_token`
+(`_cli_staged_slurm_worker.py:487-514`), so `stage3` survives **by ordering luck**; the
+local paths (`_cli_staged_workers.py:551,560`; `_cli_staged_strategy.py:307,316`) need the
+same audit.
+
+**Three rules, each a test:**
+
+1. **`publish_image_record` merges `stages`, never replaces the map.** Its `stages`
+   parameter is a *contribution*, unioned with what is on disk.
+2. **`record_stage` and `consume_stage` re-read under an exclusive lock**, using the
+   `exclusive_path_lock` already in `sdk_/_file_locking.py` that
+   `aggregate_measurements` uses (`_cli_output_manager.py:1552`). Not a new mechanism — an
+   existing one applied where the collapse now needs it.
+3. **`consume_stage` is idempotent** — Stage 3 already tolerates a token another attempt
+   consumed.
+
+```python
+def test_publishing_a_record_does_not_clobber_an_earlier_stage(tmp_path):
+    """CAN-6. Three writers, one file. Today they are three files and this
+    cannot happen; after the collapse it is the default unless publish merges."""
+    from phenotypic._cli._cli_image_record import (
+        publish_image_record, read_image_record, record_stage,
+    )
+
+    record_stage(tmp_path, "plate", "a", "stage2", {"at": "t2"})
+    publish_image_record(
+        tmp_path, work_id="w", dataset="plate", image_stem="a",
+        relative_image_path="a.tif", mode="full",
+        stages={"measured": {"at": "t4"}},
+        artifacts={}, attempt_id="x", scheduler_epoch="e",
+    )
+    stages = read_image_record(tmp_path, "plate", "a")["stages"]
+    assert set(stages) == {"stage2", "measured"}, (
+        "publish replaced the stages map instead of merging into it; "
+        "stage2 was lost"
+    )
+
+
+def test_concurrent_stage_writes_do_not_lose_each_other(tmp_path):
+    """The lost-update case the collapse creates. Two threads, two stages, one
+    file. Without the lock one write wins and the other vanishes silently."""
+    import concurrent.futures as cf
+
+    from phenotypic._cli._cli_image_record import read_image_record, record_stage
+
+    with cf.ThreadPoolExecutor(max_workers=2) as pool:
+        list(pool.map(
+            lambda s: record_stage(tmp_path, "plate", "a", s, {"at": s}),
+            ["stage1", "stage2"],
+        ))
+    assert set(read_image_record(tmp_path, "plate", "a")["stages"]) == {"stage1", "stage2"}
+
+
+def test_consuming_an_absent_stage_is_a_no_op(tmp_path):
+    from phenotypic._cli._cli_image_record import consume_stage
+
+    assert consume_stage(tmp_path, "plate", "a", "stage2") is False   # never raises
+```
+
+- [ ] **Step 3b: Audit the three local publish→record orderings**
+
+Read `_cli_staged_workers.py:551,560` and `_cli_staged_strategy.py:307,316` and confirm each
+either publishes before recording stage 3, or relies on the merge rule above. Record which,
+in a comment at each site. **"It works by ordering luck" is a finding, not a design.**
 
 - [ ] **Step 4: Run the tests.** Expected: PASS (5 passed).
 
@@ -286,6 +373,60 @@ passes. **D1 is a clean break: no dual write.** A tree with `image_complete/` an
 `valid_image_success` reads the record. Its `SUCCESS_MARKER_VERSION` check becomes
 `RECORD_VERSION`.
 
+**And it must reject a stage-2-only record (CAN-23).** After the collapse, a Stage-2 GPU
+worker creates `images/<ds>/<stem>.json` carrying `stages.stage2` and **no artifacts**.
+Today the two facts live in two trees, so mistaking a stage-2 token for a success proof is
+impossible; after the collapse it is one missing check away.
+
+```python
+def test_a_stage2_only_record_is_not_a_success_proof(tmp_path):
+    """CAN-23. The collapse merges a Stage-2 token and a success proof into one
+    file. A record with no artifacts certifies nothing."""
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic._cli._cli_image_record import record_stage
+
+    record_stage(tmp_path, "plate", "a", "stage2", {"at": "t"})
+    assert not valid_image_success(
+        tmp_path, dataset="plate", image_stem="a", work_id="w"
+    )
+```
+
+The existing "artifacts must be a non-empty dict" guard (`_cli_completion.py:274-276`)
+already does this — **confirm it survives the rewrite** rather than assuming it does, and
+keep the test as the thing that says so.
+
+- [ ] **Step 3b: Move `authorized_measurement_sources` with the markers (CAN-22)**
+
+`_cli_completion.py:786` globs `progress_dir/DIR_IMAGE_COMPLETE/*/*.json` and `:838` reads
+`image_completion_marker_path`. P3's first draft listed only the two publishers under
+`_cli_completion.py`, so this function would keep reading a tree P3 deletes.
+
+**The failure mode is silent and severe.** It returns `{}` — which is a *valid* schema-3
+result meaning "no successful measurements yet", not an error — and P4's `finalize_run`
+step 1 then writes an **empty master with no exception raised**. A successful-looking run
+that discarded every measurement.
+
+```python
+def test_authorized_sources_reads_records_not_the_deleted_tree(tmp_path):
+    """CAN-22 / GEN-G02. An empty mapping is a VALID result here, so a missed
+    migration produces an empty master rather than a traceback."""
+    from phenotypic._cli._cli_completion import authorized_measurement_sources
+
+    _publish_two_successful_images(tmp_path)
+    sources = authorized_measurement_sources(tmp_path)
+    assert sources, "authorized_measurement_sources is still reading image_complete/"
+    assert len(sources) == 2
+```
+
+- [ ] **Step 3c: Revise the migrator's publisher (CAN-7)**
+
+`_cli_migrate_image.py:567` calls `publish_image_success` directly, so the HDF→Zarr migrator
+is an **alternative producer of the same record schema** — not a stage that runs before one.
+After P3 it emits records too. Verify that, rather than assuming it: build a fixture through
+the **real** migrator and assert the record it writes validates under `valid_image_success`.
+A hand-planted fixture cannot catch this class of drift, which is exactly how it survived
+the first draft.
+
 Update `sdk_/_run_state.py`'s deep path to read the record and populate `ImageState.stages`
 from it — **and delete the P1 comment saying the single-key `stages` is temporary.**
 
@@ -339,7 +480,36 @@ import itertools
 
 import pytest
 
-_COMBOS = list(itertools.product([False, True], repeat=4))  # store, s2tok, s2raw, s3
+# CAN-16: the first draft used product([False,True], repeat=4) -- store, s2_token,
+# s2_raw, s3_done -- which covers <=16 of >=192 reachable cells and collapses four
+# distinct store predicates into one boolean. classify_staged_image's real
+# signature is keyword-only (_cli_staged_resume.py:197-206):
+#
+#     (output_dir, dataset, image, input_root, process_only_layer,
+#      markers_required, expected_work_id)
+#
+# and it branches on:
+#   - expected_work_id is None  -> selects between staged_store_matches_work_id /
+#     _staged_store_has_work_id and valid_stage1_store / valid_staged_store (:227-232)
+#   - markers_required                                              (:258-265)
+#   - process_only_layer in {None, "objmap", <other>}     (:222-226, :242-256)
+#   - the in-store measurement table                       (:250-256, :258)
+#
+# For the task this plan itself calls "the risky task", a gate that misses 90% of
+# the space does not gate. Parametrize the axes that actually branch.
+_STORE_STATES = ["absent", "stage1_only", "matching_work_id", "mismatched_work_id"]
+_LAYERS = [None, "objmap", "rgb"]
+
+_COMBOS = [
+    (store, s2_token, s2_raw, s3_done, layer, markers_required, expect_work_id)
+    for store in _STORE_STATES
+    for s2_token in (False, True)
+    for s2_raw in (False, True)
+    for s3_done in (False, True)
+    for layer in _LAYERS
+    for markers_required in (False, True)
+    for expect_work_id in (False, True)
+]
 
 #: Captured from the PRE-CHANGE behaviour in Step 2, as a literal table. Do not
 #: derive these by reasoning about what the classifier should do -- the point is to
@@ -347,22 +517,45 @@ _COMBOS = list(itertools.product([False, True], repeat=4))  # store, s2tok, s2ra
 _EXPECTED: dict[tuple[bool, bool, bool, bool], str] = {}   # filled in Step 2
 
 
-@pytest.mark.parametrize("store,s2_token,s2_raw,s3_done", _COMBOS)
+@pytest.mark.parametrize(
+    "store,s2_token,s2_raw,s3_done,layer,markers_required,expect_work_id", _COMBOS
+)
 def test_classification_is_unchanged_by_the_collapse(
-    tmp_path, store, s2_token, s2_raw, s3_done
+    tmp_path, store, s2_token, s2_raw, s3_done, layer, markers_required, expect_work_id
 ):
     from phenotypic._cli._cli_staged_resume import classify_staged_image
 
-    item = _plant(tmp_path, store=store, s2_token=s2_token, s2_raw=s2_raw, s3_done=s3_done)
+    item = _plant(
+        tmp_path, store=store, s2_token=s2_token, s2_raw=s2_raw, s3_done=s3_done,
+        layer=layer,
+    )
     actual = classify_staged_image(
         tmp_path,
         dataset=item.dataset,
-        image_stem=item.image_stem,
-        work_id=item.work_id,
-        image_path=item.image_path,
+        image=item.image,
+        input_root=item.input_root,
+        process_only_layer=layer,
+        markers_required=markers_required,
+        expected_work_id=item.work_id if expect_work_id else None,
     )
-    assert actual == _EXPECTED[(store, s2_token, s2_raw, s3_done)]
+    key = (store, s2_token, s2_raw, s3_done, layer, markers_required, expect_work_id)
+    assert actual == _EXPECTED[key]
 ```
+
+**Confirm the real signature before writing `_plant`:**
+
+```bash
+sed -n '197,270p' src/phenotypic/_cli/_cli_staged_resume.py
+```
+
+Use whatever the function actually takes. `_plant` builds each store state — `absent`,
+`stage1_only`, `matching_work_id`, `mismatched_work_id` — and returns a record carrying the
+call's arguments.
+
+**If the full product is unreasonably large in wall-clock**, drop axes by *evidence*, not by
+convenience: read the branch conditions, find the axes that provably cannot interact, and
+write the reduction down as a comment naming the lines that justify it. **Do not silently
+sample.**
 
 **Confirm `classify_staged_image`'s real signature before writing `_plant`:**
 

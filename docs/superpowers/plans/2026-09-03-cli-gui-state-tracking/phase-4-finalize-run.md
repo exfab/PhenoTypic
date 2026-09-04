@@ -35,7 +35,9 @@ documented where users read it, not only here:
 | File | Responsibility |
 |---|---|
 | **Modify** `src/phenotypic/_cli/_embedded_measurement_tables.py:42` | `prepare_embedded_measurement_table` returns the **unjoined** baseline plus a separate metadata projection. |
-| **Modify** `src/phenotypic/sdk_/_measurement_tables.py` | Write both tables into the `.part`; extend the root `tables` block. |
+| **Modify** `src/phenotypic/sdk_/_measurement_tables.py` | Write both tables into the `.part`; extend the root `tables` block. **And repair `replace_embedded_measurement_table`'s in-place branch (`:284-290`)** so the root refreshes with the table (CAN-3). |
+| **Modify** `src/phenotypic/_cli/_cli_output_manager.py:1970-2001` | `replace_image_store_measurements` feeds the **joined** producer at `:1992-1995`. Bring it onto `prepare_image_tables`, or `--mode measure` silently un-inverts every image it touches. |
+| **Create** `src/phenotypic/sdk_/_master_io.py` | `read_master_measurements(output_dir)` — the reader U-3 requires, raising on an unstamped or wrong-versioned master. Route every in-repo master read through it. |
 | **Create** `src/phenotypic/_cli/_cli_finalize_run.py` | `finalize_run(output_dir, …)` — the one path. ~260 lines. |
 | **Modify** `src/phenotypic/_cli/_cli_output_manager.py:1351` | `_aggregate_measurements_unlocked` delegates aggregation to `finalize_run`. |
 | **Modify** `src/phenotypic/_cli/_cli_recompile_worker.py:764` | `_run_post_master_steps` becomes a `finalize_run` call. |
@@ -228,22 +230,69 @@ def test_the_store_records_the_metadata_snapshot_it_was_built_against(tmp_path):
     assert root["attributes"]["phenotypic"]["metadata"]["snapshot_sha256"]
 
 
-def test_nothing_writes_into_a_store_after_its_record_is_published(tmp_path):
-    """INV-IMMUTABLE, as a property test rather than a convention.
+def test_finalize_run_writes_no_byte_into_a_proven_store(tmp_path):
+    """INV-PROVEN, first obligation: no NEW path writes into a promoted store.
 
     Publish a record, snapshot every mtime under the store, run finalize_run, and
-    assert not one file moved. This is the test that would have caught the backfill
-    if it had shipped."""
+    assert not one file moved. This is the test that would have caught the
+    backfill if it had shipped."""
     from phenotypic._cli._cli_finalize_run import finalize_run
 
     store = _publish_a_successful_image(tmp_path, dataset="plate", stem="a")
     before = {p: p.stat().st_mtime_ns for p in sorted(store.rglob("*")) if p.is_file()}
     finalize_run(tmp_path, dataset_names=["plate"])
     after = {p: p.stat().st_mtime_ns for p in sorted(store.rglob("*")) if p.is_file()}
-    assert before == after, (
-        "finalize_run mutated a store that already carries a content proof; "
-        "INV-IMMUTABLE forbids it and D-A removed the only mechanism that did"
+    assert before == after, "finalize_run mutated a store that carries a content proof"
+
+
+def test_measure_mode_refreshes_the_table_and_the_root_together(tmp_path):
+    """INV-PROVEN, second obligation -- and the reason the invariant is stated the
+    way it is (CAN-3).
+
+    The stronger claim ("nothing ever writes into a proven store") is FALSE and was
+    false before this change. --mode measure re-measures from stores and calls
+    replace_embedded_measurement_table (sdk_/_measurement_tables.py:242), whose
+    IN-PLACE branch (:284-290) fires when the descriptor is unchanged: it rewrites
+    tables/measurements/table.parquet directly in the promoted store, with no
+    .part, no copytree, and NO ROOT REWRITE.
+
+    Two things break as a result, and both are silent:
+      1. the record's store digest still matches, so the proof certifies content
+         that changed underneath it;
+      2. `snapshot_sha256` lives in the root, so D-A's divergence advisory reads a
+         value this branch never refreshes -- it reports stale metadata as current.
+    """
+    from phenotypic.sdk_ import STORE_ROOT_JSON
+
+    store = _publish_a_successful_image(tmp_path, dataset="plate", stem="a", metadata=True)
+    root_before = (store / STORE_ROOT_JSON).read_bytes()
+
+    _run_measure_mode(tmp_path, metadata=_edited_metadata_csv(tmp_path))
+
+    root_after = (store / STORE_ROOT_JSON).read_bytes()
+    assert root_after != root_before, (
+        "the embedded table was rewritten without refreshing the root, so the "
+        "per-image proof still certifies the old digest and snapshot_sha256 is "
+        "stale -- INV-PROVEN's second obligation"
     )
+    assert _snapshot_sha256(store) == _sha256_of(_edited_metadata_csv(tmp_path))
+
+
+def test_measure_mode_writes_the_metadata_table_not_a_joined_one(tmp_path):
+    """INV-PROVEN, second obligation, other half.
+
+    replace_image_store_measurements feeds prepare_embedded_measurement_table --
+    the JOINED producer -- at _cli_output_manager.py:1992-1995. P4 Task 1 replaced
+    that producer with prepare_image_tables everywhere else. If this call site is
+    missed, --mode measure on an inverted tree writes joined tables and no
+    pht-metadata.parquet, silently un-inverting every image it touches.
+    """
+    store = _publish_a_successful_image(tmp_path, dataset="plate", stem="a", metadata=True)
+    _run_measure_mode(tmp_path, metadata=_metadata_csv(tmp_path))
+
+    measurements = _read_embedded_measurements(store)
+    assert "Metadata_Strain" not in measurements.columns
+    assert (store / "tables" / "metadata" / "pht-metadata.parquet").is_file()
 ```
 
 - [ ] **Step 2: Run to verify failure.**
@@ -421,16 +470,129 @@ def finalize_run(output_dir, *, dataset_names, pipeline=None, metadata_csv=None,
     """
 ```
 
-Step 1 calls the existing `authorized_measurement_sources`
-(`_cli_completion.py:768`) — already the right predicate, already marker-authorized. Step 3
-onward is `finalize_post_master_outputs`, unchanged.
+Step 1 calls the existing `authorized_measurement_sources` (`_cli_completion.py:768`) —
+already the right predicate, already marker-authorized, and **moved onto records by P3 Step
+3b**; if that move was skipped it returns `{}` and this step writes an empty master with no
+exception.
+
+### Step 3 is a NEW composite, not a reuse (CAN-1)
+
+The first draft said *"Step 3 onward is `finalize_post_master_outputs`, unchanged."*
+**It cannot be.** That function has exactly two branches
+(`_cli_output_manager.py:1077-1086`), and after the inversion both lose something:
+
+| Branch | Condition | Does | Loses |
+|---|---|---|---|
+| legacy | `metadata_join_keys is None` (`:1077`) | `join_metadata(working_df, metadata_csv, how="left")` (`:1081`) | **every metadata-only phantom** |
+| embedded | keys provided (`:1085`) | `_append_metadata_only_rows(...)` only | **every user-metadata value on every measured row** — and it *raises* `ValueError` at `:884-893` for any join key now absent from the master, deliberately re-raised at `:1092-1095` |
+
+The embedded branch exists because of the premise at `:1023-1026`: *"Measured rows already
+carry their publication-time metadata from the embedded tables and are not joined again."*
+**P4 falsifies that premise.** §7.4 step 3 needs join **and** phantoms; no branch does both.
+
+Specify step 3 as a third mode:
+
+1. left-join metadata onto the master on the resolved keys,
+2. anti-join-append the phantoms with `QC_MetadataOnly = true`,
+3. then post ops.
+
+Test both halves **in one frame** — a measured row with a non-null user column *and* a
+phantom row present. Update the docstring at `:1023-1026` and the `_cli/CLAUDE.md`
+master-vs-mirror rules; neither is in the first draft's doc list.
+
+### Where the join keys come from (CAN-2)
+
+`_consistent_embedded_join_keys` (`_cli_output_manager.py:914-966`) collects
+`(metadata_snapshot_sha256, join_keys)` from every authorized embedded table and raises
+`ValueError("Embedded measurement tables have mixed metadata digests or join keys")` at
+`:962-965`. It is called unconditionally on the marker-authorized path (`:1435-1439`).
+
+**D-A deliberately manufactures the state that trips it.** Stores keep the snapshot they
+were built against, so any run that gains images after a `metadata.csv` edit has two
+generations on disk, and the next aggregation aborts — while D-A's contract says divergence
+is an advisory and *"an advisory is never a gate"*. This is a gate, in the finalizer, on the
+normal rolling-input path.
+
+**Retire it from the finalize path.** Derive the join keys once, from `metadata.csv` ∩
+master columns; the stores' recorded keys become **provenance only**. That is what the
+inversion implies: once the join is global, a per-store record of how *that store* was
+joined is history, not input.
+
+**The late-metadata case is the dangerous one, because it looks like it works.** A run with
+no metadata records `join_status="not_requested"`, digest `""`, keys `()`
+(`_embedded_measurement_tables.py:55-62`). Add `metadata.csv` and re-run: the recorded keys
+are `()` — which is **not `None`** — so finalize takes the append-phantoms branch with an
+empty key tuple and **joins no measured row at all**. Every measured row's user metadata is
+null; the phantoms carry the column, so a membership assertion passes.
 
 This **deletes recompile's separate master-merge** and collapses the `measurement_sources`
 vs `metadata_join_keys` branch in `_run_post_master_steps`
 (`_cli_recompile_worker.py:777-787`), which exists only because the two callers arrive with
 differently-shaped inputs. After this task they arrive the same way.
 
-- [ ] **Step 4: Run the tests.** Expected: PASS (5 passed).
+- [ ] **Step 3b: Add the two tests that catch CAN-1 and CAN-2**
+
+```python
+def test_the_mirror_carries_both_joined_rows_and_phantoms(tmp_path):
+    """CAN-1. Neither existing branch does both halves: one joins and drops every
+    phantom, the other appends phantoms and joins nothing. Assert them in ONE
+    frame, because each half passes a test that only looks at the other."""
+    import polars as pl
+
+    from phenotypic._cli._cli_finalize_run import finalize_run
+    from phenotypic.sdk_ import measurements_parquet_path
+
+    _publish_two_successful_images(tmp_path, metadata=True)
+    _add_a_metadata_only_row(tmp_path, well="Z99")
+    finalize_run(tmp_path, dataset_names=["plate"], metadata_csv=_metadata_csv(tmp_path))
+
+    mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
+    measured = mirror.filter(pl.col("QC_MetadataOnly").fill_null(False).not_())
+    phantoms = mirror.filter(pl.col("QC_MetadataOnly").fill_null(False))
+
+    assert measured.height > 0 and phantoms.height == 1
+    assert measured["Metadata_Strain"].null_count() == 0, "measured rows were not joined"
+    assert "Z99" in phantoms["Metadata_Well"].to_list(), "phantoms were dropped"
+
+
+def test_metadata_added_after_the_stores_still_joins_every_measured_row(tmp_path):
+    """CAN-2, with DF-2's assertion verbatim.
+
+    The `measured.height > 0` guard matters: without it the assertion is vacuously
+    true on an all-phantom frame, which is the failure mode the first draft's
+    version already had.
+    """
+    import polars as pl
+
+    from phenotypic._cli._cli_finalize_run import finalize_run
+    from phenotypic.sdk_ import measurements_parquet_path
+
+    _publish_two_successful_images(tmp_path, metadata=False)   # keys recorded as ()
+    _add_metadata_csv(tmp_path)
+    finalize_run(tmp_path, dataset_names=["plate"], metadata_csv=_metadata_csv(tmp_path))
+
+    mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
+    measured = mirror.filter(pl.col("QC_MetadataOnly").fill_null(False).not_())
+    assert measured.height > 0, "fixture produced no measured rows to check"
+    assert "Metadata_Strain" in measured.columns
+    assert measured["Metadata_Strain"].null_count() == 0, (
+        "user metadata reached the mirror only as metadata-only phantoms; every "
+        "measured row is null. The join keys were () rather than None, so "
+        "finalize took the append-phantoms branch and joined nothing."
+    )
+
+
+def test_stores_with_mixed_metadata_snapshots_do_not_abort_finalization(tmp_path):
+    """CAN-2. D-A manufactures this state on the normal rolling-input path; the
+    kept code raises on it."""
+    _publish_two_successful_images(tmp_path, metadata=True)
+    _edit_metadata_csv(tmp_path)
+    _publish_one_more_image(tmp_path, metadata=True)    # different snapshot digest
+    finalize_run(tmp_path, dataset_names=["plate"], metadata_csv=_metadata_csv(tmp_path))
+    # must not raise; divergence is an advisory, per D-A
+```
+
+- [ ] **Step 4: Run the tests.** Expected: PASS (8 passed).
 
 - [ ] **Step 5: Prove INV-INPUTS can fail**
 
@@ -440,15 +602,105 @@ Add a `_dataset_aggregated.parquet` fast path to step 1 — the shape
 `test_finalize_run_ignores_every_stale_intermediate` fails, then remove it. **That fast
 path is exactly the bug INV-INPUTS forbids, and it is in the current code.**
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Mint the master's schema stamp HERE, and give it a reader**
+
+Two round-1 findings meet at this step.
+
+**CAN-9 — the stamp belongs where the shape is produced.** The first draft stamped
+`phenotypic.master_schema_version = "2"` during `--mode migrate`, which explicitly does
+*not* re-run finalization — so the stamped file was still the legacy metadata-joined
+master, and the stamp certified a shape the file would not have until the next
+`finalize_run`. Its own two tests contradicted each other. Minting it here means the stamp
+and the shape come out of one code path and cannot disagree; P7 then leaves a legacy master
+**unstamped**, which correctly identifies it as pre-v2.
+
+**U-3 — a stamp with no reader is the pattern P6 deletes.** §7.3 justifies it as making "an
+old reader fail loudly", which a Parquet KV key cannot do: `pd.read_parquet`,
+`pl.read_parquet` and `pq.read_table().to_pandas()` ignore KV metadata and raise nothing.
+Meanwhile P6 deletes `DashboardManifestKey.VERSION` *as a finding* for being written at one
+site and read at zero. Shipping a new instance of that pattern while deleting the old one
+is indefensible.
+
+```python
+# phenotypic.sdk_._master_io
+
+MASTER_SCHEMA_VERSION: Final[int] = 2
+
+def read_master_measurements(output_dir: Path) -> "pl.DataFrame":
+    """Read the master, refusing one written under a different schema.
+
+    §7.3 calls a silent empty result "the one genuinely dangerous failure mode in
+    §7": after the inversion, code filtering the master on a user-metadata column
+    gets nothing back rather than an error. The stamp is what turns that into a
+    loud failure -- **for readers that check it**, which is every reader inside
+    this repository and none outside it. §7.3 is corrected to claim exactly that
+    (U-3); do not restate the stronger claim.
+
+    Raises:
+        ValueError: the master carries no schema stamp (pre-v2, needs
+            ``--mode migrate``) or an unrecognized one.
+    """
+```
+
+Route every in-repo master read through it — `grep -rn 'master_measurements_parquet_path'
+src/` and convert each call site.
+
+```python
+def test_an_unstamped_master_is_refused_loudly(tmp_path):
+    """U-3. A pre-v2 master read by post-v2 code must raise, not return a frame
+    whose user-metadata columns silently vanished."""
+    import pytest
+
+    from phenotypic.sdk_._master_io import read_master_measurements
+
+    _write_legacy_joined_master(tmp_path)          # no stamp
+    with pytest.raises(ValueError, match="migrate"):
+        read_master_measurements(tmp_path)
+
+
+def test_the_stamp_and_the_shape_are_minted_together(tmp_path):
+    """CAN-9. There is no window in which a stamped master has the wrong shape."""
+    import pyarrow.parquet as pq
+
+    from phenotypic._cli._cli_finalize_run import finalize_run
+    from phenotypic.sdk_ import master_measurements_parquet_path
+
+    _publish_two_successful_images(tmp_path, metadata=True)
+    finalize_run(tmp_path, dataset_names=["plate"], metadata_csv=_metadata_csv(tmp_path))
+
+    path = master_measurements_parquet_path(tmp_path)
+    assert pq.read_schema(path).metadata[b"phenotypic.master_schema_version"] == b"2"
+    assert "Metadata_Strain" not in pq.read_schema(path).names
+```
+
+- [ ] **Step 7: Publish `source_set_digest` in the run proof (U-4)**
+
+`publication_id` is cut. It was `sha256(source_set_digest ‖ finalization_inputs)` — a pure
+function of two values the binding check already compares — so the aggregate↔run binding is
+stated **directly** instead of through an opaque hash. `finalize_run` step 6 publishes
+`source_set_digest` and `source_image_count` into **both** proofs, and P1's rule 1 compares
+them (CAN-4).
+
+`source_set_digest` had no home in any phase before this step — it appeared only in the
+README's digest table and two prose mentions in P5. This is that home.
+
+- [ ] **Step 8: Commit**
 
 ```bash
-git add src/phenotypic/_cli/_cli_finalize_run.py tests/unit/cli/test_finalize_run.py
+git add src/phenotypic/_cli/_cli_finalize_run.py src/phenotypic/sdk_/_master_io.py \
+        tests/unit/cli/test_finalize_run.py
 git commit -m "feat(cli): finalize_run -- one aggregation and publication path
 
-Spec §7.4, §7.5, six steps (D-A cut the backfill). INV-INPUTS was confirmed to fail
-when the _dataset_aggregated.parquet fast path the current aggregator documents is
-reintroduced."
+Spec §7.4, §7.5, six steps (D-A cut the backfill). Step 3 is a NEW composite --
+join AND phantoms -- because neither existing branch does both (CAN-1). Join keys
+are derived once from metadata.csv, not from the stores' recorded keys, which D-A
+deliberately makes inconsistent (CAN-2). The master schema stamp is minted here so
+the stamp and the shape come from one code path (CAN-9), and read_master_measurements
+gives it the reader U-3 requires. source_set_digest is published into both proofs,
+replacing the cut publication_id (U-4).
+
+INV-INPUTS was confirmed to fail when the _dataset_aggregated.parquet fast path the
+current aggregator documents is reintroduced."
 ```
 
 ---

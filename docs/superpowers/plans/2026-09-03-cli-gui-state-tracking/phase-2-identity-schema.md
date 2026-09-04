@@ -25,11 +25,19 @@ a SLURM worker starting cold fence itself correctly against a run it has never s
 |---|---|
 | **Modify** `src/phenotypic/_cli/_cli_identity.py` *(new)* | `mint_run_identity(config, *, restart)`, `read_restart_epoch`, `bump_restart_epoch`. **CLI-side, because they write.** ~110 lines. |
 | **Modify** `src/phenotypic/_cli/_cli_state_management.py:237` | `processing_generation` becomes content-derived; `restart_epoch` enters `config`. |
+| **Modify** `src/phenotypic/_cli/_cli_migrate.py:660-705` | **The third minting site (CAN-7).** See Task 3 Step 4 — this one is already wrong today. |
+| **Modify** `src/phenotypic/phenotypicCLI.py:2640,2716` | **The fourth (CAN-20):** measure mode skips state creation and sets `processing_generation = uuid4().hex` on its own branch. |
 | **Modify** `src/phenotypic/sdk_/_io_constants.py:1081` | `clear_machine_state` **preserves** `restart_epoch.json`. |
 | **Modify** `src/phenotypic/_cli/_cli_slurm_lifecycle.py:78` | `slurm_generation` → `scheduler_epoch`, one writer. |
 | **Modify** `src/phenotypic/_cli/_cli_completion.py:163` | `publish_image_success` takes `scheduler_epoch`, not `lifecycle_epoch`. |
-| **Modify** `docs/superpowers/specs/2026-09-03-cli-gui-state-tracking/design.md` §5.3–§5.4 | Correct the field list per D-C; add §5.3's redundancy footnote. |
-| **Test** `tests/unit/cli/test_run_identity.py` *(new)* | Determinism, restart fencing, stale-worker. |
+| **Modify** `docs/superpowers/specs/2026-09-03-cli-gui-state-tracking/design.md` §5.3–§5.4 | Correct the field list per D-C; add §5.3's redundancy footnote; **record U-4 cutting `publication_id`**. |
+| **Test** `tests/unit/cli/test_run_identity.py` *(new)* | Determinism, restart fencing, mint-once, stale-worker. |
+
+> **"Every resume path uses the same mint" was written as one line and turned out to name
+> four writers.** `create_initial_state` (`_cli_state_management.py:237`), the resume path,
+> the HDF migrator (`_cli_migrate.py:686`), and measure mode (`phenotypicCLI.py:2716`).
+> Round 1 found the last two; both are already minting generations this design forbids.
+> Enumerate them here so the fifth is a diff a reviewer can see.
 
 ---
 
@@ -327,7 +335,88 @@ def mint_run_identity(config: "ExecutionConfig", *, restart: bool) -> RunIdentit
 
 Then change `_cli_state_management.py:237` from `"processing_generation": uuid4().hex` to
 the minted value, and add `"restart_epoch": identity.restart_epoch` to the same config
-block. Both `create_initial_state` and every resume path must use the same mint.
+block.
+
+**Mint exactly once per invocation, then thread the value (CAN-21).** `mint_run_identity`
+bumps and persists `restart_epoch`, so it is a *writer*, and calling it twice in one run
+gives that run two generations and burns an epoch. `ExecutionConfig.output_dir` is
+`Optional[Path]` (`_cli_types.py:99`), so `RunIdentity` cannot re-read the epoch to make
+the call idempotent. The rule is therefore structural: **the CLI entry point mints once and
+passes the `RunIdentity` down.** Nothing below the entry point calls `mint_run_identity`.
+
+```python
+def test_minting_twice_in_one_invocation_is_a_programming_error(tmp_path, execution_config):
+    """CAN-21. Two mints = two generations for one run, and a burned epoch. There
+    is no output root on the config to make this idempotent, so the guard is a
+    loud failure rather than a silent second bump."""
+    import pytest
+
+    from phenotypic._cli._cli_identity import mint_run_identity
+
+    mint_run_identity(execution_config, restart=True)
+    with pytest.raises(RuntimeError, match="already minted"):
+        mint_run_identity(execution_config, restart=True)
+```
+
+- [ ] **Step 4: Fix the third and fourth minting sites — both already wrong**
+
+**`_cli_migrate.py:684-705` (CAN-7)** sets
+
+```python
+processing_generation = hashlib.sha256(f"migration\n{inventory_payload}".encode()).hexdigest()
+```
+
+where `inventory_payload` (`:678-682`) is the full `dataset/stem:work_id` listing. **That is
+the inventory folded into the generation — exactly what D7 forbids — and it is in the tree
+today.** Every migrated tree therefore behaves the way D7 exists to prevent: each new image
+under a rolling input changes the generation, resetting live progress and fencing in-flight
+workers. Left unfixed, P5's rolling-input matrix fails on any migrated tree and the failure
+looks like a bug in P5 rather than an unrevised writer.
+
+It also writes `work_ids` (`:695`) with **no `restart_epoch`** — which is precisely P1's
+`requires_conversion` signal 4 (CAN-11 moved that gate to P1), so a freshly HDF-migrated
+tree would be refused by the very next `--mode full`.
+
+Bring it to the v3 schema: content-derived generation, `restart_epoch: 0`, no
+`datasets.{completed,failed,started}`.
+
+**`phenotypicCLI.py:2640,2716` (CAN-20)** skips state creation in measure mode — *"skipped
+in measure mode, which never mutates processing state"* — then sets
+`config.processing_generation = uuid4().hex` at `:2716`. But §7.4 routes measure through
+`finalize_run` and P4 Task 4 parametrizes a byte-identical master over
+`["full","measure","recompile"]`. Decide and state: **what identity does a measure
+invocation run under, and may it publish proofs?** The answer that keeps §7.4 coherent is
+that measure mints the same content-derived identity as `full` — the pipeline and
+per-image config are unchanged, so the generation is *the same value*, which is exactly
+what D3's "same inputs → same token" is for. `--mode process` needs the same statement
+(DF-16).
+
+- [ ] **Step 5: Write the tests for both**
+
+```python
+def test_a_migrated_trees_generation_is_unchanged_by_an_image_arrival(tmp_path):
+    """CAN-7 / D7. _cli_migrate.py:686 folds the inventory into the generation."""
+    output = _run_hdf_migration(tmp_path)
+    before = _state_config(output)["processing_generation"]
+    _add_image_and_remigrate(output)
+    assert _state_config(output)["processing_generation"] == before
+
+
+def test_a_freshly_migrated_tree_is_not_refused_by_the_next_full_run(tmp_path):
+    """CAN-7 + CAN-11. The migrator wrote work_ids with no restart_epoch, which is
+    the gate's own signal 4. Build the fixture with the REAL migrator -- a
+    hand-planted tree cannot catch this class of drift."""
+    from phenotypic._cli._cli_schema_gate import requires_conversion
+
+    output = _run_hdf_migration(tmp_path)
+    assert requires_conversion(output) is None
+
+
+@pytest.mark.parametrize("mode", ["full", "measure", "process"])
+def test_every_mode_mints_the_same_identity_for_the_same_config(tmp_path, mode):
+    """CAN-20 / DF-16. D3: same inputs -> same token."""
+    assert _minted_generation(tmp_path, mode) == _minted_generation(tmp_path, "full")
+```
 
 - [ ] **Step 4: Run the tests.** Expected: PASS (5 passed).
 
@@ -385,35 +474,68 @@ Expected: the two compared values originate from the same source. **If they do n
 and report** — the collapse's justification is that finding, and a wrong finding makes this
 task a behaviour change rather than a rename.
 
-- [ ] **Step 2: Write the failing stale-worker test**
+- [ ] **Step 2: Write the failing stale-worker test — against the fence that exists**
+
+**CAN-15: the first draft of this test targeted a mechanism that is not there.**
+`publish_image_success` raises "stale SLURM lifecycle" only when `SLURM_JOB_ID` is set
+**and** `slurm_lifecycle.json` exists, and it compares the **lifecycle** generation
+(`_cli_completion.py:181-188`) — not `processing_generation`. The draft passed neither
+precondition (bare `tmp_path`, no env, `artifacts={}`), so it would have written a marker
+and not raised, while also passing a `processing_generation` in as `scheduler_epoch` and
+conflating two of the five tokens.
+
+Spec §14's actual requirement is *"a worker holding the pre-restart generation must not
+have its **events counted**"* — and that fence is the `generation=` argument to
+`aggregate_state_from_events` (`_cli_update_state.py:266`, reached from
+`_cli_state_management.py:112-125`). **No phase currently touches it.** Test both halves:
 
 ```python
-def test_a_worker_holding_the_pre_restart_generation_is_fenced(tmp_path, execution_config):
-    """Spec §14's stale-worker test. A worker that started before a --restart holds
-    the old generation; its events must not be counted and its publications must be
-    refused."""
+def test_a_stale_workers_events_are_not_counted(tmp_path, execution_config):
+    """Spec §14's stale-worker test, against the real fence.
+
+    The event log is generation-fenced at aggregate_state_from_events. A worker
+    that started before a --restart appends events tagged with the pre-restart
+    generation; the post-restart state must not count them.
+    """
+    from phenotypic._cli._cli_identity import mint_run_identity
+    from phenotypic._cli._cli_state_management import load_processing_state
+
+    stale = mint_run_identity(execution_config, restart=False)
+    _append_event(tmp_path, generation=stale.processing_generation, image="a.tif",
+                  state="completed")
+    fresh = mint_run_identity(execution_config, restart=True)
+    assert fresh.processing_generation != stale.processing_generation
+
+    state = load_processing_state(tmp_path)
+    assert "a.tif" not in state.datasets["plate"].completed, (
+        "an event tagged with the pre-restart generation was counted; the "
+        "restart_epoch fence D4 exists for is not reaching the event log"
+    )
+
+
+def test_a_stale_slurm_worker_cannot_publish(tmp_path, execution_config, monkeypatch):
+    """The OTHER half, and the one the first draft meant to test. Both
+    preconditions must be set up or the guard is simply not reached."""
     import pytest
 
     from phenotypic._cli._cli_completion import publish_image_success
-    from phenotypic._cli._cli_identity import mint_run_identity
 
-    stale = mint_run_identity(execution_config, restart=False)
-    fresh = mint_run_identity(execution_config, restart=True)
-    assert stale.processing_generation != fresh.processing_generation
+    monkeypatch.setenv("SLURM_JOB_ID", "12345")
+    _write_slurm_lifecycle(tmp_path, generation="current-epoch", active=True)
 
-    with pytest.raises(RuntimeError, match="stale"):
+    with pytest.raises(RuntimeError, match="stale SLURM lifecycle"):
         publish_image_success(
             tmp_path,
-            work_id="w",
-            dataset="plate",
-            relative_image_path="a.tif",
-            image_stem="a",
-            mode="full",
-            attempt_id="attempt",
-            scheduler_epoch=stale.processing_generation,
-            artifacts={},
+            work_id="w", dataset="plate", relative_image_path="a.tif",
+            image_stem="a", mode="full", attempt_id="attempt",
+            scheduler_epoch="a-superseded-epoch",     # != the lifecycle generation
+            artifacts={"store": _a_promoted_store(tmp_path)},
         )
 ```
+
+Note the second test passes a real artifact: `publish_image_success` resolves every
+artifact `strict=True`, so `artifacts={}` exercises a different path than the one under
+test.
 
 - [ ] **Step 3: Run to verify failure.**
 
@@ -425,7 +547,23 @@ fields written under the collapsed name but never compared — spec §5.1 alread
 per-image `attempt_id` as "written, never branched on", so this is that rule applied
 consistently rather than a new exception.
 
-Delete `_assert_worker_generation`'s `slurm_generation != attempt_id` check (spec §11.1).
+**On `_assert_worker_generation`: Step 1's confirmation actually decides this, and the
+first draft pre-committed to the deletion before asking (CAN-33 m8).** The audit reads it
+as "one value passed twice, then asserted equal", but the function's own docstring
+(`_cli_recompile_worker.py:104-108`) says both values are *"supplied **independently** by
+the scheduler script"* — they are equal only because
+`_cli_recompile_slurm_scripts.py:292-293` passes `attempt_id` twice. So the check is a live
+guard against a hand-edited script or a directly invoked worker, and deleting it removes
+that guard.
+
+Resolve it on the evidence from Step 1:
+
+- If the two values provably originate from one source **and nothing can invoke the worker
+  with them differing**, delete the check and say so in the commit.
+- Otherwise **keep it**, and record in `_cli/CLAUDE.md` (P7 Task 6) that it guards
+  direct/hand-edited invocation rather than a scheduler-supplied disagreement. Spec §11.1
+  lists it under deletions; a kept guard with a documented reason is a spec deviation worth
+  one line, not a silent retention.
 
 - [ ] **Step 5: Run the test and the SLURM lifecycle regression**
 

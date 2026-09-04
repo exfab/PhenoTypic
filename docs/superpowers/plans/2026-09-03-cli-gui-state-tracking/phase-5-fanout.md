@@ -202,7 +202,37 @@ def test_the_finalize_entry_lives_inside_the_array_task_list(tmp_path):
 
 - [ ] **Step 2: Run to verify failure.**
 
-- [ ] **Step 3: Implement**
+- [ ] **Step 3: Reconcile with the existing dependent finalizer FIRST (CAN-19)**
+
+`_cli_slurm_array_scripts.py:51-52` documents that *"terminal work is submitted as a
+separate dependent lifecycle job"*, and `_cli/CLAUDE.md` makes that job **"the sole
+publisher of aggregated outputs and the completion marker"**. P5 adds a reserved finalize
+index *inside* the array. The first draft never said whether the existing dependent job is
+removed, kept, or made a no-op.
+
+**Two publishers of the aggregate and run proofs is precisely the failure mode this change
+exists to remove.** Decide and write it down before implementing:
+
+- If `TASK_FINALIZE` publishes, the dependent job must stop publishing — and its remaining
+  role (if any) stated.
+- If the dependent job keeps publishing, `TASK_FINALIZE` is a merge step only, and the
+  in-array entry's name should say so.
+
+Whichever, `_cli/CLAUDE.md`'s "sole publisher" sentence is updated in the same commit — P7
+Task 6 Step 4 owns the final wording, but a sentence that becomes false in P5 must not
+survive P5.
+
+```python
+def test_exactly_one_job_publishes_the_run_proof(tmp_path, fake_sbatch):
+    """CAN-19. Two publishers of the same proof is the cardinality problem this
+    whole change exists to remove; adding one back inside the fan-out would be a
+    self-inflicted instance of it."""
+    _run_fanout(tmp_path, n_images=500)
+    publishers = _sites_that_called(tmp_path, "publish_run_completion_evidence")
+    assert len(publishers) == 1, f"run proof published by {publishers}"
+```
+
+- [ ] **Step 4: Implement**
 
 Reuse recompile's task-type vocabulary verbatim — `TASK_MEASUREMENTS`, `TASK_FINALIZE`
 (`_cli_recompile_slurm_scripts.py:51-53`) — rather than minting new names. Two vocabularies
@@ -213,7 +243,21 @@ The shard worker body is one pass over its images: read
 `measurement_shards/<scheduler_epoch>/shard_i.parquet`. Nothing else — no store write, no
 metadata projection (D-A), no global frame.
 
-`TASK_FINALIZE` calls `finalize_run(..., shard_paths=[...])`.
+`TASK_FINALIZE` calls `finalize_run(..., shard_paths=[...])` — **and refuses to publish
+unless the shard set is complete (CAN-5).** Two checks, because either alone is
+insufficient:
+
+1. it received **exactly K** shard files, and
+2. the merged rows' source set equals `authorized_measurement_sources(output_dir)` — the
+   same predicate step 1 uses.
+
+**Why this is not belt-and-braces.** The finalizer is `afterany`, so it runs when a shard
+task dies. `publish_aggregate_snapshot` derives `source_set_digest` and `source_image_count`
+from `_current_success_work_ids` — **marker-derived, not merge-derived**
+(`_cli_completion.py:904-916`). So a master missing four shards' worth of images receives a
+proof asserting the *full* success set, and with P1's rule 1 restored (CAN-4) the mismatch
+is only caught because `source_set_digest` is compared at all. Check it at the writer too:
+a proof that never should have been published is worse than one a reader rejects.
 
 - [ ] **Step 4: Run the tests.** Expected: PASS.
 
@@ -313,22 +357,48 @@ def test_a_run_killed_mid_finalization_resumes_only_the_missing_phase(
 def test_a_prior_epochs_shards_are_never_merged(tmp_path):
     """§7.5: shards are per-invocation scratch, namespaced by scheduler_epoch. A
     prior run's shards being merged is the stale-cache hazard §7.5 exists to
-    forbid, arriving through the fan-out instead of through the aggregator."""
+    forbid, arriving through the fan-out instead of through the aggregator.
+
+    CAN-5: the first draft of this test called finalize_run with NO shard_paths --
+    the local concat path, which never looks at a shard directory at all. It proved
+    nothing about the only path where a prior epoch's shards could be merged. Pass
+    the current epoch's shards explicitly, with the stale directory present.
+    """
     import polars as pl
 
     from phenotypic._cli._cli_finalize_run import finalize_run
     from phenotypic.sdk_ import master_measurements_parquet_path, measurement_shard_dir
 
     _publish_two_successful_images(tmp_path)
+
     stale = measurement_shard_dir(tmp_path, "old-epoch")
     stale.mkdir(parents=True)
     pl.DataFrame({"Metadata_ImageFile": ["GHOST.tif"]}).write_parquet(
         stale / "shard_0000.parquet"
     )
+    current = _write_current_epoch_shards(tmp_path, epoch="new-epoch")
 
-    finalize_run(tmp_path, dataset_names=["plate"])
+    finalize_run(tmp_path, dataset_names=["plate"], shard_paths=current)
     master = pl.read_parquet(master_measurements_parquet_path(tmp_path))
     assert "GHOST.tif" not in master["Metadata_ImageFile"].to_list()
+
+
+def test_a_missing_shard_refuses_to_publish_rather_than_certifying_a_short_master(tmp_path):
+    """CAN-5. The finalizer is `afterany`, so it runs when a shard task dies, and
+    publish_aggregate_snapshot derives source_set_digest from the MARKERS
+    (_cli_completion.py:904-916), not from what was actually merged. Without this
+    check a master missing four shards receives a proof asserting the full success
+    set."""
+    import pytest
+
+    from phenotypic._cli._cli_finalize_run import finalize_run
+
+    _publish_six_successful_images(tmp_path)
+    partial = _write_current_epoch_shards(tmp_path, epoch="e", drop_shards=[2])
+
+    with pytest.raises(RuntimeError, match="shard"):
+        finalize_run(tmp_path, dataset_names=["plate"], shard_paths=partial)
+    assert not _run_proof_exists(tmp_path), "a proof was published over a short master"
 ```
 
 - [ ] **Step 2: Run to verify failure, then implement until green.**
@@ -449,7 +519,14 @@ def test_metadata_arriving_later_re_runs_finalize_and_nothing_else(tmp_path):
     _run_again(output)
 
     mirror = pl.read_parquet(measurements_parquet_path(output))
-    assert "Metadata_Strain" in mirror.columns
+    measured = mirror.filter(pl.col("QC_MetadataOnly").fill_null(False).not_())
+    assert measured.height > 0, "fixture produced no measured rows to check"
+    assert measured["Metadata_Strain"].null_count() == 0, (
+        "CAN-2: user metadata reached the mirror only as metadata-only phantoms. "
+        "The first draft asserted `'Metadata_Strain' in mirror.columns`, which the "
+        "phantom rows satisfy while every measured row is null -- the test passed "
+        "on broken data."
+    )
     assert _store_mtimes(output) == store_mtimes, "a metadata edit rewrote a store"
     assert any("metadata" in a for a in resolve_run_state(output, depth="deep").advisories)
 ```
