@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-import importlib
+import sys
+import subprocess
+import os
+import json
 
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -28,11 +31,81 @@ def test_register_adds_template_to_plotly_registry() -> None:
     assert PHENOTYPIC_TEMPLATE_NAME in pio.templates
 
 
-def test_import_auto_registers_template() -> None:
-    """Importing the theme module is enough to register the template."""
-    module = importlib.import_module("phenotypic.sdk_.viz.figures._theme")
-    importlib.reload(module)
-    assert PHENOTYPIC_TEMPLATE_NAME in pio.templates
+def test_importing_the_theme_does_not_touch_plotly() -> None:
+    """Importing the theme must NOT register the template — or import plotly.
+
+    This replaces ``test_import_auto_registers_template``, which asserted the
+    opposite. That contract was deliberately dropped: registering at import
+    called into plotly from module scope, putting the whole library on the
+    ``import phenotypic`` startup path for every run, most of which draw no
+    figure. ``apply_theme`` registers on demand instead, which
+    ``test_apply_theme_registers_on_demand`` below pins.
+
+    The old test was also passing for the wrong reason. ``pio.templates`` is
+    process-global and ``importlib.reload`` cannot un-register an entry, so it
+    only passed because ``test_register_adds_template_to_plotly_registry`` ran
+    first in the same process — in isolation it failed. A subprocess is the only
+    honest way to ask this question.
+    """
+    script = (
+        "import json, sys\n"
+        "import phenotypic.sdk_.viz.figures._theme  # noqa: F401\n"
+        "print(json.dumps({'plotly_loaded': 'plotly' in sys.modules}))\n"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, check=True
+    )
+    assert json.loads(completed.stdout.strip().splitlines()[-1])["plotly_loaded"] is False
+
+
+def test_apply_theme_registers_on_demand() -> None:
+    """The template must appear the first time a figure is themed, in a fresh process."""
+    script = (
+        "import json, sys\n"
+        "from phenotypic.sdk_.viz.figures import apply_theme\n"
+        "import plotly.graph_objects as go, plotly.io as pio\n"
+        "before = 'phenotypic' in pio.templates\n"
+        "apply_theme(go.Figure())\n"
+        "print(json.dumps({'before': before, 'after': 'phenotypic' in pio.templates}))\n"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, check=True
+    )
+    result = json.loads(completed.stdout.strip().splitlines()[-1])
+    assert result["before"] is False, "the template was registered before apply_theme ran"
+    assert result["after"] is True, "apply_theme did not register the template"
+
+
+def test_docs_build_renderer_is_configured_when_a_figure_is_themed() -> None:
+    """Under PHENOTYPIC_DOCS_BUILD, theming a figure must set the nbsphinx renderer.
+
+    This used to be an import side effect of the dash accessor, which sat on the
+    ``import phenotypic`` path, so every figure in a docs build got
+    ``notebook_connected`` whether or not anything called ``.dash()``. Deferring
+    plotly removed that side effect and silently broke notebooks that render a
+    figure as a terminal expression — ``assess_image_quality.ipynb`` contains no
+    ``.dash()`` call, and its figures would have emitted a JSON MIME bundle that
+    nbsphinx drops, vanishing from the built docs with nothing failing.
+    """
+    script = (
+        "import json\n"
+        "from phenotypic.sdk_.viz.figures import apply_theme\n"
+        "import plotly.graph_objects as go, plotly.io as pio\n"
+        "apply_theme(go.Figure())\n"
+        "print(json.dumps({'renderer': pio.renderers.default}))\n"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, "PHENOTYPIC_DOCS_BUILD": "1"},
+    )
+    renderer = json.loads(completed.stdout.strip().splitlines()[-1])["renderer"]
+    assert renderer == "notebook_connected", (
+        f"docs build would render figures with {renderer!r}; nbsphinx drops that "
+        "bundle and the figures disappear from the built site"
+    )
 
 
 def test_apply_theme_sets_combined_template() -> None:

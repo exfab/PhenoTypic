@@ -27,6 +27,9 @@ from any layer (CLI, GUI, notebooks, tests).
 
 from __future__ import annotations
 
+import os
+from functools import lru_cache
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
@@ -52,6 +55,7 @@ __all__ = [
     "FAILED_FILL",
     "FONT_FAMILY",
     "FONT_FAMILY_MONO",
+    "configure_docs_renderer",
     "register_phenotypic_template",
     "apply_theme",
 ]
@@ -201,6 +205,32 @@ def register_phenotypic_template() -> None:
     pio.templates[PHENOTYPIC_TEMPLATE_NAME] = template
 
 
+@lru_cache(maxsize=1)
+def configure_docs_renderer() -> None:
+    """Point plotly at a renderer nbsphinx can capture, when building docs.
+
+    nbsphinx captures cell outputs from the kernel's HTML mimetype, but plotly's
+    default ``plotly_mimetype+notebook`` renderer emits a JSON MIME bundle that
+    nbsphinx drops. ``notebook_connected`` swaps that for an HTML+CDN-script
+    bundle so figures survive into the static site.
+
+    This used to run as an import side effect of the dash accessor, which sat on
+    the ``import phenotypic`` path — so every figure in a docs build got the
+    right renderer, whether or not anything called ``.dash()``. Deferring plotly
+    removed that, and quietly broke notebooks that render a figure as a terminal
+    expression (``docs/source/how_to/notebooks/assess_image_quality.ipynb``
+    contains no ``.dash()`` call at all). Calling it from every figure-producing
+    path restores the guarantee without putting plotly back on the startup path.
+
+    Cached, so the environment lookup and the ``plotly.io`` import happen once.
+    """
+    if not os.environ.get("PHENOTYPIC_DOCS_BUILD"):
+        return
+    import plotly.io as pio
+
+    pio.renderers.default = "notebook_connected"
+
+
 def apply_theme(fig: go.Figure) -> go.Figure:
     """Apply the PhenoTypic theme to ``fig`` in place and return it.
 
@@ -233,6 +263,7 @@ def apply_theme(fig: go.Figure) -> go.Figure:
     """
     import plotly.io as pio
 
+    configure_docs_renderer()
     if PHENOTYPIC_TEMPLATE_NAME not in pio.templates:
         register_phenotypic_template()
     fig.layout.template = f"plotly+{PHENOTYPIC_TEMPLATE_NAME}"

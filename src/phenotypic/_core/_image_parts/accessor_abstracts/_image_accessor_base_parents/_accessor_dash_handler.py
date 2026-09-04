@@ -6,8 +6,6 @@ functions formerly in ``phenotypic.sdk_._plotly_helpers``.
 from __future__ import annotations
 
 import importlib.util
-import os
-from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -32,23 +30,15 @@ if TYPE_CHECKING:
     import plotly.graph_objects as go
 
 
-@lru_cache(maxsize=1)
 def _configure_plotly_renderer() -> None:
-    """Point plotly at a renderer nbsphinx can capture, once, on first use.
+    """Delegate to the theme layer's single implementation.
 
-    nbsphinx captures cell outputs from the kernel's HTML mimetype, but
-    plotly's default ``plotly_mimetype+notebook`` renderer emits a JSON MIME
-    bundle that nbsphinx drops. ``notebook_connected`` swaps that for an
-    HTML+CDN-script bundle so ``dash()`` figures survive into the static site.
-
-    Called from the figure builders rather than at import, so a run that never
-    draws a figure never imports ``plotly.io``.
+    ``_plotly_imshow`` builds a ``go.Figure`` directly and never calls
+    ``apply_theme``, so the dash path needs its own call.
     """
-    if not os.environ.get("PHENOTYPIC_DOCS_BUILD"):
-        return
-    import plotly.io as pio
+    from phenotypic.sdk_.viz.figures._theme import configure_docs_renderer
 
-    pio.renderers.default = "notebook_connected"
+    configure_docs_renderer()
 
 # Mapping from matplotlib colormap names to plotly colorscale names
 _MPL_TO_PLOTLY = {
@@ -144,10 +134,15 @@ class AccessorDashHandler(AccessorMplHandler):
         Returns:
             A ``plotly.graph_objects.Figure`` with zoom-friendly defaults.
         """
-        import plotly.express as px
-        _configure_plotly_renderer()
-
+        # The availability guard runs FIRST: it exists to turn a missing plotly
+        # into the curated "install phenotypic[gui]" message, and an import
+        # placed above it would raise plotly's own ImportError instead, making
+        # the guard dead code on this path.
         AccessorDashHandler._require_plotly()
+
+        import plotly.express as px
+
+        _configure_plotly_renderer()
 
         if arr.ndim == 3:
             fig = px.imshow(arr, binary_string=True)
