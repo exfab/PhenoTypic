@@ -29,6 +29,7 @@ sentence will be wrong about shipped code.
 | **U-5** | §9 | `RunState.diagnostics` drops `manifest_completed`, `manifest_total`, `event_log_present` — verified zero consumers survive the consumer migration. |
 | **U-7** | §11.1 | **Migration logic lives only in `--mode migrate`.** The legacy promoter's `--mode full` dispatch is deleted. §11.1's "move into migrate" stands, but for this helper it is a **rewrite**, not a move — migrate builds no `ExecutionConfig`. |
 | **U-8** ⚠ | §5.4 | **WITHDRAWN in round 4 — the mechanism does not exist.** Migrate was to omit the unrecoverable digest fields and a forward run was to omit them too, so both hash the same reduced payload. No forward run does or can: `work_id_for_image` *recomputes* the id from `ExecutionConfig` and never reads `state.config`, and `processing_configuration_digest_from_values` writes all twelve fields unconditionally. Superseded by **U-10**. |
+| **U-11** | §9.1, §9.2 | **The on-disk tier SHIPS, and the GUI stops blocking on verification.** D-B's in-process-only ruling is reversed on measured evidence: a cold deep pass is 1403 s at N=6,657 while the stat sweep is ~37 s. Separately, `OutputRoot.discover` moves off the startup path — the viewer opens immediately and verification runs behind it. |
 | **U-10** | §5.4, §6.1, new | **Migrated records are marked, not fabricated.** Migrate publishes records carrying `provenance: "migrated"`; `valid_image_success` accepts such a record on **artifact validity alone** — no `work_id` comparison — and `resolve_run_state` emits an advisory that the configuration fence is unavailable for those images. Discharges MIG-21 and MIG-22 together. |
 | **U-9** | §6.1 | **`stage2_done/` stays a separate file.** §6.1 folds it into `stages.stage2`; it is a consumable signal cleared by an atomic `unlink`, and folding it in replaces that with a locked read-modify-write — per-image, across a 6,000-task array, on `flock` (`sdk_/_file_locking.py:101`), whose cross-node semantics are the weaker POSIX option. Only `image_complete/` and `stage3_complete/` collapse. |
 | **INV-ONEWRITER** | §6.1 | The collapsed record needs **no lock**. Disjoint work partitioning (one image → one task) plus stage sequencing give one writer per image, and **mode exclusivity** covers the two driver-side sweep writers that are not per-image at all; `atomic_write_json`'s temp-write + `os.replace` covers the crash case. |
@@ -122,6 +123,59 @@ so `_refuse_unmigrated_output` (`phenotypicCLI.py:1661-1662`, which runs *before
 `--restart`) refused it in every writing mode permanently, escapable only by `--overwrite`,
 which deletes the outputs. `--mode process` handles that tree in place today, so it was a
 regression, not a gap. With U-10 migrate emits marked records and the gate clears.
+
+### ⚠ U-11 reverses D-B, and adds a requirement D-B never considered
+
+**D-B ruled the verification cache in-process only.** That ruling was made before anyone
+had measured the thing it was about. Measured on a fresh compute node, cold GPFS client
+cache, disjoint halves so neither lane warms the other:
+
+| Cold start at N=6,657 | Seconds | Per file |
+|---|---|---|
+| Today — hash every artifact (73.6 GB) | **1403** | — |
+| Drop the overlay from the proof | ~256 | 19.4 ms `open+read` |
+| **Stat sweep — what the on-disk tier costs** | **~37** | 1.9 ms `stat` |
+
+The cost is **per-file latency, not bytes**: a cold `open+read` is ~10× a cold `stat`, so
+replacing reads with stats beats removing 99.4% of the bytes by roughly 7×.
+
+**The tier ships. Two things must be stated where the code lives, not only here.**
+
+1. **It is a tenth artifact in a change that removes nine.** That is a real cost and the
+   register in P7 Task 6 lists it — under *cache*, never under tracked state. Nothing may
+   branch on it, and no verdict may be derived from it.
+2. **It weakens the sentence §9.1's safety argument rests on.** *"An entry only lets a
+   previously deep-verified result stand"* means, in process, *by this process, minutes
+   ago*. On disk it means **by some process** — possibly an older build with different
+   verification rules, possibly one still mid-write, possibly another user. The degradation
+   story still holds (any doubt falls through to `deep`), but the guarantee is materially
+   different and must say so in `_verification_cache.py`'s module docstring rather than
+   inheriting wording written for the in-process case.
+
+### And the GUI no longer blocks on verification
+
+**New requirement, and it changes what the tier is for.** `OutputRoot.discover` is a
+`deep`, binding call on the viewer's startup path, so today a cold tree hangs the GUI for as
+long as verification takes. It moves to a background thread: **the viewer opens immediately
+and populates as verification lands.**
+
+The scaffolding is already half-built — `discover` takes `cancellation`
+(`OutputDiscoveryCancellation`, documented thread-safe and cooperative) and
+`progress_callback` (phase updates). What is synchronous is the *call site*,
+`results_viewer/__main__.py:94`.
+
+**The safety property this must not break.** The whole change exists to stop unverified
+state being read as verified. A viewer that renders before verification completes is
+displaying exactly that, so **the pre-verification state must be visibly distinct** — not a
+spinner that resolves into indistinguishable content. It shows what it has, says that
+verification is in flight, and says so in a way a user cannot mistake for a finished answer.
+
+**Note the interaction, once.** With the GUI non-blocking, the tier's value is no longer
+*"a user waits 23 minutes"* — it is *"background verification finishes in 37 s rather than
+23 minutes"*. Still worth having: less shared-filesystem I/O, and a trustworthy view much
+sooner. But the urgency that justified reversing D-B is reduced by the second decision, and
+a later reader should know both were taken together rather than reading the tier as
+load-bearing for interactivity.
 
 ### What this cost, recorded once
 

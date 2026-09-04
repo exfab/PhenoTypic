@@ -247,6 +247,85 @@ completion predicate reappears."
 
 ---
 
+> ## ⚠ Before Tasks 1 and 6: the poll cadence spec §9 assigns is not achievable
+>
+> **User ruling (2026-09-04): the pollers gate on a cheap sentinel and call
+> `resolve_run_state` only when it moves.**
+>
+> Spec §9 assigns the GUI snapshot poll (5–10 s) and the SLURM observer tick (2 s) to
+> `depth="shallow"`. Measured on a real 6,657-image tree on GPFS, **shallow has a ~150 s
+> floor** — about 20,000 `stat` calls at a measured **7.63 ms each**. The 2 s tick is 75×
+> short of what one poll costs.
+>
+> **This is not a regression this change introduces.** Today those pollers call the full
+> predicate and pay the ~1403 s path; the change makes it ~9× cheaper and still not cheap
+> enough. The cadence was already unachievable — the change only makes it visible.
+>
+> **And the floor is irreducible for a correct answer.** The currency check must `stat` every
+> artifact to detect change; that *is* the cost, and no cache removes it. An on-disk cache
+> tier does not help here — it saves the hashing, not the stat-ing.
+>
+> ### The mechanism: gate on what the writers already maintain
+>
+> Run-level files already exist whose mtime moves whenever anything happens, so **no new
+> tracked artifact is required** — which matters in a change whose thesis is removing them:
+>
+> ```
+> .phenotypic/processing_events.log        appended on every image completion
+> .phenotypic/processing_state.json        rewritten on every save_processing_state
+> .phenotypic/aggregate_publication.json   rewritten on publication
+> ```
+>
+> A poller stats **two files (~15 ms)** and calls `resolve_run_state` only when one has
+> moved. Cadence preserved for the common case, which is *nothing changed*.
+>
+> ### Two things this must not become
+>
+> **A sentinel that moves constantly is not a gate.** During an active run the event log is
+> appended continuously, so the sentinel fires on every tick and the poller is back to paying
+> ~150 s at 2 s intervals — worse than today, because it now also stats the sentinel. **The
+> full verification needs its own minimum interval behind the sentinel**, independent of the
+> tick. State that interval explicitly rather than leaving it implicit in a debounce.
+>
+> **A sentinel is evidence that something changed, never evidence of what.** It gates the
+> call; it does not answer the question. Nothing may branch on the sentinel's value, and no
+> verdict may be derived from it — that would make it a tenth evidence source, which is what
+> this change exists to eliminate. It is a *trigger*, and the register in P7 Task 6 should say
+> so under its own heading rather than in the tracked-state table.
+
+> ## ⚠ Task 0b: the viewer starts before verification finishes (U-11)
+>
+> **User ruling: `OutputRoot.discover` comes off the startup path.** It is a `deep`, binding
+> call made synchronously at `results_viewer/__main__.py:94`, so today a cold tree hangs the
+> GUI for as long as verification takes — measured at **1403 s** on a 6,657-image tree, and
+> ~37 s once P2's on-disk tier lands. Neither is a startup budget.
+>
+> **Most of the scaffolding exists.** `discover` already accepts `cancellation`
+> (`OutputDiscoveryCancellation`, documented thread-safe and cooperative) and
+> `progress_callback` (phase updates). What is synchronous is the **call site**, not the
+> function. That is the smallest version of this change: run it on a thread, feed the
+> existing callback into the view, and let the viewer open first.
+>
+> ### The safety property this must not break
+>
+> **This whole change exists to stop unverified state being read as verified.** A viewer
+> that renders before verification completes is doing exactly that, so the pre-verification
+> state must be **visibly distinct** — not a spinner that resolves into content a user cannot
+> tell apart from a verified answer afterwards.
+>
+> Concretely: show what is on disk, say verification is in flight, and make the transition
+> observable. **A test must pin that the in-flight state is distinguishable**, or the first
+> refactor that "simplifies the loading state" reintroduces exactly the confusion the nine
+> evidence sources caused.
+>
+> ### And it composes with the sentinel
+>
+> The poll gating decided above and this are the same idea at two timescales: **do not pay
+> for a verdict until something has changed, and never block on paying for one.** Together
+> they mean a cold GUI opens immediately, verifies behind the view, and thereafter only
+> re-verifies when a sentinel moves. Build them in that order — async discover first, since
+> the sentinel is pointless while startup still blocks.
+
 ## Task 1: `_snapshot_status.py` — 101 lines to ~30
 
 **Files:**

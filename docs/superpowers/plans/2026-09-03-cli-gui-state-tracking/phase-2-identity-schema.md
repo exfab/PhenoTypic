@@ -71,6 +71,59 @@ def scientific_config_digest(config: "ExecutionConfig") -> str:
 
 ---
 
+> ## Task 0: the on-disk verification tier (U-11 — reverses D-B)
+>
+> **P1 deliberately shipped no `VERIFICATION_CACHE_JSON`**, because Step 8's threshold was
+> stated in images while the cost is in marker-bound bytes. The measurement it was waiting
+> for now exists, taken cold on a fresh node with disjoint halves:
+>
+> | Cold start, N=6,657 | Seconds | Per file |
+> |---|---|---|
+> | hash every artifact (73.6 GB) | **1403** | — |
+> | drop the overlay from the proof | ~256 | 19.4 ms `open+read` |
+> | **stat sweep — the tier** | **~37** | 1.9 ms `stat` |
+>
+> Cost is **per-file latency, not bytes**. A cold `open+read` is ~10× a cold `stat`, so
+> replacing reads with stats beats removing 99.4% of the bytes by ~7×.
+>
+> ### What to build
+>
+> `.phenotypic/verification_cache.json` — spec §9.1, persisting exactly what
+> `_verification_cache.py` already holds in memory: per `work_id`, the `ImageState` and the
+> `(size, mtime_ns)` tuple of every deep-verified artifact, plus the `RunIdentity` it was
+> verified under. Add `VERIFICATION_CACHE_JSON` and `verification_cache_path()` to
+> `sdk_/_io_constants.py`, beside `DIR_IMAGE_RECORDS`.
+>
+> **The in-process cache is unchanged and stays the first tier.** This is a second tier
+> behind it, read on a cold start and written after a deep pass.
+>
+> ### Two things that must be stated in the module docstring, not only here
+>
+> **1. It is a tenth artifact in a change that removes nine.** P7 Task 6's register lists it
+> under *cache*, never under tracked state. **Nothing branches on it and no verdict is
+> derived from it** — that is what keeps it a cache rather than a tenth evidence source.
+>
+> **2. It weakens the sentence §9.1's safety argument rests on.** *"An entry only lets a
+> previously deep-verified result stand"* means, in process, *by this process, minutes ago*.
+> On disk it means **by some process** — possibly an older build with different verification
+> rules, possibly one mid-write, possibly another user. The degradation story survives (any
+> doubt falls through to `deep`) but the guarantee is materially different, and inheriting
+> wording written for the in-process case would misrepresent it.
+>
+> ### The six corruption cases are the gate
+>
+> Spec §9.1 lists what must fall through to `deep`: entry absent · stat tuple moved ·
+> recorded identity ≠ current · file missing · unreadable · unparseable. **Each needs a test
+> and each needs a mutation**, because every one of them is a path where a wrong `complete`
+> could be manufactured from a file an attacker or a stale build wrote.
+>
+> Add `clear_machine_state` deletion to the same `_PRESERVED_ON_RESTART` test Task 1 already
+> touches — the cache must **not** be preserved, unlike `restart_epoch.json`.
+>
+> **Best-effort, never an error.** On a read-only output, or if the write fails, `shallow`
+> degrades silently to `deep`. A tree the user cannot write must not become a tree the user
+> cannot read.
+
 ## Task 1: `restart_epoch` — the one tracked counter
 
 > ### ⚠ This task inherits rule 2's identity fence, which P1 could not build
