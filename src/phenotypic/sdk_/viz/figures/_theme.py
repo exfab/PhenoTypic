@@ -27,8 +27,14 @@ from any layer (CLI, GUI, notebooks, tests).
 
 from __future__ import annotations
 
-import plotly.graph_objects as go
-import plotly.io as pio
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    import plotly.graph_objects as go
+
+# plotly is imported inside the functions that build figures. A module-scope
+# import put it on the `import phenotypic` startup path for every CLI and
+# tune run, none of which render a figure.
 
 __all__ = [
     "PHENOTYPIC_TEMPLATE_NAME",
@@ -162,6 +168,9 @@ def register_phenotypic_template() -> None:
         >>> "phenotypic" in pio.templates
         True
     """
+    import plotly.graph_objects as go
+    import plotly.io as pio
+
     # Numeric data renders in mono (axis ticks, hover, colorbar, annotations);
     # titles, axis titles, and legend series names render in the body font
     # (DESIGN.md "02 -- Typography" / "06 -- Chart Styling Rules").
@@ -222,12 +231,20 @@ def apply_theme(fig: go.Figure) -> go.Figure:
         >>> len(themed.data)
         1
     """
+    import plotly.io as pio
+
     if PHENOTYPIC_TEMPLATE_NAME not in pio.templates:
         register_phenotypic_template()
     fig.layout.template = f"plotly+{PHENOTYPIC_TEMPLATE_NAME}"
     return fig
 
 
-# Register the template once at import time so importing this module is
-# sufficient to make the "phenotypic" template available.
-register_phenotypic_template()
+# The template is NOT registered at import. Doing so called into plotly from
+# module scope, which put the whole library on the `import phenotypic` startup
+# path — this module is reached from `sdk_.viz.figures.__init__` on every entry
+# point, and most of them never draw a figure.
+#
+# Nothing is lost: `apply_theme` registers on demand if the template is absent,
+# and every consumer goes through it (the `@figure` decorator applies the theme
+# to every figure it wraps). Verified by grep: no caller reads
+# `pio.templates["phenotypic"]` directly.

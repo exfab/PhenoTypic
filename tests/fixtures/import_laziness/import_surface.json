@@ -573,7 +573,6 @@
         "bm4d",
         "charset_normalizer",
         "cloudpickle",
-        "cv2",
         "cycler",
         "cython_runtime",
         "dateutil",
@@ -588,14 +587,11 @@
         "matplotlib",
         "mmh3",
         "mpl_toolkits",
-        "narwhals",
         "numpy",
         "numpydoc",
         "packaging",
         "pandas",
         "platformdirs",
-        "plotly",
-        "polars",
         "pooch",
         "psutil",
         "pyarrow",
@@ -615,7 +611,7 @@
         "typing_extensions",
         "typing_inspection"
       ],
-      "total_modules": 2709
+      "total_modules": 2354
     },
     "phenotypic.phenotypicCLI": {
       "forbidden_in_final": [],
@@ -1098,7 +1094,6 @@
         "charset_normalizer",
         "click",
         "cloudpickle",
-        "cv2",
         "cycler",
         "cython_runtime",
         "dateutil",
@@ -1113,13 +1108,11 @@
         "matplotlib",
         "mmh3",
         "mpl_toolkits",
-        "narwhals",
         "numpy",
         "numpydoc",
         "packaging",
         "pandas",
         "platformdirs",
-        "plotly",
         "polars",
         "pooch",
         "psutil",
@@ -1141,7 +1134,7 @@
         "typing_inspection",
         "yaml"
       ],
-      "total_modules": 2777
+      "total_modules": 2599
     }
   },
   "exports": {

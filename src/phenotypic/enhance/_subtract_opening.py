@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, TYPE_CHECKING
 
-import cv2
+# `cv2` is imported inside the methods that use it. A module-scope import
+# would load OpenCV on `import phenotypic` for every entry point, though only
+# a run reaching this operation needs it.
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -73,6 +75,8 @@ class SubtractOpening(BackgroundSubtraction, FootprintMixin):
     n_iter: Annotated[int, TuneSpec(1, 3)] = 1
 
     def _operate(self, image: Image) -> Image:
+        import cv2
+
         image.detect_mat[:] = cv2.morphologyEx(
                 src=image.detect_mat[:],
                 op=cv2.MORPH_TOPHAT,

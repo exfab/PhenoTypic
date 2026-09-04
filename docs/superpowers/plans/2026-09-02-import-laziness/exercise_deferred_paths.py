@@ -33,8 +33,20 @@ Exits non-zero on any failure.
 import sys
 import numpy as np
 
-assert "colour" not in sys.modules and "h5py" not in sys.modules and "numba" not in sys.modules
-assert "colour" not in sys.modules, "colour leaked at import"
+DEFERRED = ("colour", "cv2", "h5py", "numba", "plotly", "polars")
+
+# Nothing may be loaded before the package is imported, or the check below
+# would be measuring the environment rather than the package.
+assert not [m for m in DEFERRED if m in sys.modules], "a deferred library was preloaded"
+
+# `import phenotypic` is the subject of this file, not an unused import. Ruff's
+# F401 autofix deleted this line once, which quietly removed the premise: the
+# assertions below still passed, because the first `from phenotypic...` further
+# down imports the package anyway. The noqa is load-bearing.
+import phenotypic  # noqa: F401
+
+leaked = [m for m in DEFERRED if m in sys.modules]
+assert not leaked, f"{leaked} leaked into `import phenotypic`"
 
 ok = []
 
@@ -111,5 +123,45 @@ assert "h5py" in sys.modules, "sdk_.HDF should load h5py on access"
 assert HDF.__name__ == "HDF"
 ok.append("sdk_.HDF via __getattr__ (h5py loaded on demand)")
 
+# --- cv2 (stage 2) ----------------------------------------------------------
+assert "cv2" not in sys.modules, "cv2 leaked"
+from phenotypic.enhance import SubtractOpening
+from phenotypic.data import load_synth_yeast_plate
+
+image = load_synth_yeast_plate()
+SubtractOpening().apply(image, inplace=True)
+assert "cv2" in sys.modules, "SubtractOpening should have loaded cv2 on demand"
+ok.append("enhance.SubtractOpening._operate (cv2 loaded on demand)")
+
+# --- polars (stage 2) -------------------------------------------------------
+# The sys.modules guard must recognise a real polars frame, and must not
+# mistake a pandas one for it.
+import pandas as pd
+from phenotypic.util import split_measurements
+
+columns = {"Metadata_Dataset": ["d"], "Metadata_ImageFile": ["a.png"],
+           "ObjectLabel": [1], "Shape_Circularity": [0.9]}
+from_pandas = split_measurements(pd.DataFrame(columns))
+import polars as pl
+from_polars = split_measurements(pl.DataFrame(columns))
+assert set(from_pandas) == set(from_polars), "backends disagree on split keys"
+for key in from_pandas:
+    assert list(from_pandas[key].columns) == list(from_polars[key].columns)
+ok.append("util.split_measurements over both pandas and polars frames")
+
+# --- plotly (stage 2) -------------------------------------------------------
+# No absence check here: earlier sections deliberately import modules allowed to
+# pull plotly in (`_color_correction_report` imports it at module scope and is
+# off both eager paths). The absence claim is made once, above.
+from phenotypic.sdk_.viz.figures import apply_theme
+
+import plotly.graph_objects as go
+import plotly.io as pio
+
+figure = apply_theme(go.Figure(go.Scatter(x=[1, 2], y=[3, 4])))
+assert "phenotypic" in pio.templates, "apply_theme did not register the template"
+assert figure.layout.template is not None
+ok.append("viz.apply_theme registers the template on demand (not at import)")
+
 print("\n".join(f"  ok  {line}" for line in ok))
-print(f"\n{len(ok)}/8 deferred paths exercised successfully")
+print(f"\n{len(ok)}/11 deferred paths exercised successfully")

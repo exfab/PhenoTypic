@@ -9,10 +9,12 @@ flags plates whose occupancy falls below threshold.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar
+from typing import Any, ClassVar, TYPE_CHECKING
 
 import pandas as pd
-import plotly.graph_objects as go
+# plotly is imported inside the functions that build figures. A module-scope
+# import put it on the `import phenotypic` startup path for every CLI and
+# tune run, none of which render a figure.
 from pydantic import field_validator
 
 from phenotypic.analysis.abc_._set_analyzer import (
@@ -22,6 +24,9 @@ from phenotypic.analysis.abc_._set_analyzer import (
 from phenotypic.analysis.qc._expected_vs_detected import ExpectedVsDetectedCount
 from phenotypic.schema import GRID, QUALITY_OCCUPANCY
 from phenotypic.sdk_ import ColumnRef
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    import plotly.graph_objects as go
 
 
 class GridOccupancy(ExpectedVsDetectedCount):
@@ -256,6 +261,8 @@ class GridOccupancy(ExpectedVsDetectedCount):
         Raises:
             RuntimeError: If :meth:`analyze` has not been called yet.
         """
+        import plotly.graph_objects as go
+
         del subject, for_save
         df = self._latest_measurements
         if df.empty:
@@ -300,4 +307,5 @@ class GridOccupancy(ExpectedVsDetectedCount):
 
     def report(self, subject: Any = None, **kwargs: Any) -> go.Figure:
         """Return the complete grid-occupancy report."""
+
         return self.inspect(subject, **kwargs)

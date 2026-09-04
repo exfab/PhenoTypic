@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-import cv2
+# `cv2` is imported inside the methods that use it. A module-scope import
+# would load OpenCV on `import phenotypic` for every entry point, though only
+# a run reaching this operation needs it.
 import numpy as np
 from pydantic import Field
 
@@ -149,6 +151,8 @@ class FlattenIllumination(BackgroundSubtraction):
         ksize = int(6 * sigma + 1)
         if ksize % 2 == 0:
             ksize += 1
+
+        import cv2
 
         low_pass = cv2.GaussianBlur(
             log_image, (ksize, ksize), sigmaX=sigma, sigmaY=sigma,

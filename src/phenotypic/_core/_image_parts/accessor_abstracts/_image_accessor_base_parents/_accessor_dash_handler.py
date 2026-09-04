@@ -5,34 +5,50 @@ functions formerly in ``phenotypic.sdk_._plotly_helpers``.
 """
 from __future__ import annotations
 
+import importlib.util
+import os
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from ._accessor_mpl_handler import AccessorMplHandler
 
-try:
-    import plotly.express as px
-    import plotly.graph_objects as go
-
-    PLOTLY_AVAILABLE = True
-
-    import os as _os
-
-    if _os.environ.get("PHENOTYPIC_DOCS_BUILD"):
-        # nbsphinx captures cell outputs from the kernel's HTML mimetype, but
-        # Plotly's default ``plotly_mimetype+notebook`` renderer emits a JSON
-        # MIME bundle that nbsphinx drops. ``notebook_connected`` swaps that for
-        # an HTML+CDN-script bundle so dash() figures survive into the static
-        # site.
-        import plotly.io as _pio
-
-        _pio.renderers.default = "notebook_connected"
-except ImportError:  # pragma: no cover
-    PLOTLY_AVAILABLE = False
+#: Whether plotly can be imported, decided WITHOUT importing it.
+#:
+#: This was a ``try: import plotly ... except ImportError`` probe, which meant
+#: every entry point paid for plotly just to learn it was installed — and being
+#: nested in a ``try`` it was invisible to a scanner that walks only top-level
+#: statements. ``find_spec`` answers the same question by consulting the import
+#: machinery, the idiom already used for ``GUI_AVAILABLE`` in ``gui/__init__``
+#: and the NN availability flags in ``detect/nn/__init__``.
+#:
+#: It stays a module-level bool: three other modules read it, and
+#: ``tests/unit/core/test_plotly_fallback.py`` patches it to False to exercise
+#: the no-plotly path.
+PLOTLY_AVAILABLE = importlib.util.find_spec("plotly") is not None
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
+
+
+@lru_cache(maxsize=1)
+def _configure_plotly_renderer() -> None:
+    """Point plotly at a renderer nbsphinx can capture, once, on first use.
+
+    nbsphinx captures cell outputs from the kernel's HTML mimetype, but
+    plotly's default ``plotly_mimetype+notebook`` renderer emits a JSON MIME
+    bundle that nbsphinx drops. ``notebook_connected`` swaps that for an
+    HTML+CDN-script bundle so ``dash()`` figures survive into the static site.
+
+    Called from the figure builders rather than at import, so a run that never
+    draws a figure never imports ``plotly.io``.
+    """
+    if not os.environ.get("PHENOTYPIC_DOCS_BUILD"):
+        return
+    import plotly.io as pio
+
+    pio.renderers.default = "notebook_connected"
 
 # Mapping from matplotlib colormap names to plotly colorscale names
 _MPL_TO_PLOTLY = {
@@ -128,6 +144,9 @@ class AccessorDashHandler(AccessorMplHandler):
         Returns:
             A ``plotly.graph_objects.Figure`` with zoom-friendly defaults.
         """
+        import plotly.express as px
+        _configure_plotly_renderer()
+
         AccessorDashHandler._require_plotly()
 
         if arr.ndim == 3:

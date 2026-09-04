@@ -11,16 +11,21 @@ flag from any row.
 from __future__ import annotations
 
 from math import sqrt
-from typing import Any, ClassVar
+from typing import Any, ClassVar, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
+# plotly is imported inside the functions that build figures. A module-scope
+# import put it on the `import phenotypic` startup path for every CLI and
+# tune run, none of which render a figure.
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
 from phenotypic.abc_.plotting import PlotQc
 from phenotypic.schema import CULTURE, QUALITY_SE
 from phenotypic.sdk_ import ColumnRef
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    import plotly.graph_objects as go
 
 _TIME = str(CULTURE.TIME)
 
@@ -241,6 +246,8 @@ class ReplicateAgreement(QualityCheck, PlotQc):
         Raises:
             RuntimeError: If :meth:`analyze` has not been called yet.
         """
+        import plotly.graph_objects as go
+
         del subject, for_save
         df = self._latest_measurements
         if df.empty:
@@ -341,4 +348,5 @@ class ReplicateAgreement(QualityCheck, PlotQc):
 
     def report(self, subject: Any = None, **kwargs: Any) -> go.Figure:
         """Return the complete replicate-agreement report."""
+
         return self.inspect(subject, **kwargs)

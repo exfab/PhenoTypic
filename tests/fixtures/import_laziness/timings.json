@@ -50,5 +50,31 @@
         "importtime_self_seconds": 2.556
       }
     }
+  },
+  {
+    "label": "stage-2-cv2-polars-plotly",
+    "recorded_at_utc": "2026-09-04T19:36:47.102802+00:00",
+    "node": "r34",
+    "commit": "261a01b5",
+    "measurements": {
+      "import phenotypic": {
+        "wall_seconds": [
+          2.744,
+          2.599,
+          2.268
+        ],
+        "wall_seconds_min": 2.268,
+        "importtime_self_seconds": 2.191
+      },
+      "python -m phenotypic --help": {
+        "wall_seconds": [
+          2.544,
+          2.674,
+          2.495
+        ],
+        "wall_seconds_min": 2.495,
+        "importtime_self_seconds": 2.238
+      }
+    }
   }
 ]

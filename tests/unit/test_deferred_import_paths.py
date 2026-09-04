@@ -48,7 +48,7 @@ def test_every_deferred_path_still_runs_in_a_fresh_interpreter():
         f"exercise script failed (exit {completed.returncode}):\n"
         f"{completed.stdout}\n{completed.stderr}"
     )
-    assert "8/8 deferred paths exercised successfully" in completed.stdout
+    assert "11/11 deferred paths exercised successfully" in completed.stdout
 
 
 @pytest.mark.parametrize(

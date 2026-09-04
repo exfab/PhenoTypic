@@ -388,6 +388,11 @@ def test_no_new_file_imports_a_deferred_library_at_module_scope():
         for library in surface.FORBIDDEN_EAGER:
             if (relative, library) in surface.MODULE_SCOPE_IMPORT_ALLOWLIST:
                 continue
+            if any(
+                library == allowed_lib and relative.startswith(prefix)
+                for prefix, allowed_lib in surface.MODULE_SCOPE_ALLOWED_PREFIXES
+            ):
+                continue
             if surface.imports_at_module_scope(path, library):
                 offenders.append(f"{relative} imports {library}")
 

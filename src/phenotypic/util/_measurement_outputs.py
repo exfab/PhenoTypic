@@ -4,17 +4,39 @@ from __future__ import annotations
 
 import inspect
 import re
+import sys
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Iterable, Iterator, TypeAlias, TypeGuard
+from typing import TYPE_CHECKING, Iterable, Iterator, TypeAlias, TypeGuard
 
 import pandas as pd
-import polars as pl
 
 from phenotypic.schema import MeasurementInfo
 
+# polars is imported for type-checking only. `phenotypic/__init__` imports
+# `util`, which imports this module, so a module-scope `import polars` put it on
+# every entry point's startup path — for two isinstance checks and one
+# `.select()`. `from __future__ import annotations` does not help here: the
+# alias below is a runtime assignment, not an annotation, so it has to move too.
+if TYPE_CHECKING:
+    import polars as pl
 
-MeasurementFrame: TypeAlias = pd.DataFrame | pl.DataFrame
+    MeasurementFrame: TypeAlias = pd.DataFrame | pl.DataFrame
+else:  # pragma: no cover - the alias is only consulted by a type checker
+    MeasurementFrame: TypeAlias = "pd.DataFrame | pl.DataFrame"
+
+
+def _is_polars_frame(df: object) -> bool:
+    """Whether *df* is a polars DataFrame, without importing polars to find out.
+
+    If polars was never imported, no object in this process can be one of its
+    DataFrames — so the question is answerable from `sys.modules` alone. That
+    keeps the check honest (a real polars frame is still recognised, because
+    creating one necessarily imported polars) while leaving the library off the
+    startup path for every run that never sees one.
+    """
+    polars = sys.modules.get("polars")
+    return polars is not None and isinstance(df, polars.DataFrame)
 
 
 @dataclass(frozen=True)
@@ -87,7 +109,7 @@ def _columns(df: MeasurementFrame) -> list[str]:
     """Return DataFrame columns as strings after validating the frame type."""
     if isinstance(df, pd.DataFrame):
         return [str(column) for column in df.columns]
-    if isinstance(df, pl.DataFrame):
+    if _is_polars_frame(df):
         return [str(column) for column in df.columns]
     raise TypeError(
         "split_measurements() and generate_output_key() require a pandas "
@@ -99,7 +121,7 @@ def _select_columns(df: MeasurementFrame, columns: list[str]) -> MeasurementFram
     """Select *columns* while preserving the input DataFrame implementation."""
     if isinstance(df, pd.DataFrame):
         return df.loc[:, columns].copy()
-    if isinstance(df, pl.DataFrame):
+    if _is_polars_frame(df):
         return df.select(columns)
     raise TypeError(
         "split_measurements() requires a pandas or polars DataFrame, "

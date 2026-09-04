@@ -8,7 +8,9 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
-import cv2
+# `cv2` is imported inside the methods that use it. A module-scope import
+# would load OpenCV on `import phenotypic` for every entry point, though only
+# a run reaching this operation needs it.
 
 from ..abc_ import ObjectRefiner
 from ..sdk_.typing_ import TuneSpec
@@ -112,6 +114,8 @@ class ExtractColonyCore(ObjectRefiner):
         if radius <= 0:
             return None
         k = 2 * radius + 1
+        import cv2
+
         return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
 
     @staticmethod
@@ -226,6 +230,8 @@ class ExtractColonyCore(ObjectRefiner):
               and can cause 5–10% edge erosion/dilation; quantified impact depends on
               kernel size.
         """
+        import cv2
+
         mask = label_map == label
         area = int(mask.sum())
 
