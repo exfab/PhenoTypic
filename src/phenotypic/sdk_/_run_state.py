@@ -22,6 +22,7 @@ objects without this module and that one importing each other.
 from __future__ import annotations
 
 from ._state_types import ImageState, RunDiagnostics, RunIdentity, RunState
+from ._verification_cache import clear_verification_cache
 
 #: Grows one name at a time, in the task that defines it. ``run_identity``,
 #: ``assert_identity_current``, ``finalization_input_object`` and
@@ -30,9 +31,17 @@ from ._state_types import ImageState, RunDiagnostics, RunIdentity, RunState
 #: default ``F`` rule set this repo runs -- so each arrives with its own
 #: implementation. Keeping the two in step is also what keeps every commit
 #: importable, which is the phase-gate contract.
+#:
+#: ``clear_verification_cache`` is re-exported rather than defined here for the
+#: same reason the four types are: spec §5.2 declares the public surface as
+#: ``phenotypic.sdk_._run_state``, and the module split below it is a
+#: cycle-breaking mechanism, not an interface change. It clears in-process
+#: memory and touches no file, so it is not the kind of writer INV-LAYER keeps
+#: out of this module.
 __all__ = [
     "ImageState",
     "RunDiagnostics",
     "RunIdentity",
     "RunState",
+    "clear_verification_cache",
 ]

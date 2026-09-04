@@ -255,6 +255,7 @@ from ._run_state import (
     RunDiagnostics,
     RunIdentity,
     RunState,
+    clear_verification_cache,
 )
 from .funcs_ import is_binary_mask, timed_execution
 from .hdf_ import HDF
@@ -391,14 +392,15 @@ __all__ = [
     "sweep_orphan_parts",
     "valid_staged_store",
     # Run-state readers (spec §5.2). The four frozen types land in P1
-    # Task 2; run_identity, assert_identity_current,
-    # finalization_input_object, resolve_run_state and
-    # clear_verification_cache are each exported by the task that
-    # implements them, so the tree imports cleanly at every commit.
+    # Task 2 and clear_verification_cache in Task 3; run_identity,
+    # assert_identity_current, finalization_input_object and
+    # resolve_run_state are each exported by the task that implements
+    # them, so the tree imports cleanly at every commit.
     "ImageState",
     "RunDiagnostics",
     "RunIdentity",
     "RunState",
+    "clear_verification_cache",
     # Typing aliases (closed value sets)
     "InputLayer",
     "NormOut",
