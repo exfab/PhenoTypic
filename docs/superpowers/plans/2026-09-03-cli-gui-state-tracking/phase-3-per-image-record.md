@@ -350,29 +350,52 @@ same audit.
 
 1. **`publish_image_record` merges `stages`, never replaces the map.** Its `stages`
    parameter is a *contribution*, unioned with what is on disk.
-2. **Every writer takes the lock — including `publish_image_record` (flow-r2 C4).** Rule 1
-   makes publishing a read-modify-write, so exempting it reproduces the exact failure rule 1
-   exists to prevent, one function over:
+2. **NO LOCK — establish the single-writer invariant instead (user ruling, round 3).**
 
-   ```
-   publish reads {stage2}
-                          record_stage("stage3") writes {stage2, stage3}   (holds the lock)
-   publish writes {stage2, measured}                                        (does not)
-   → stage3 lost
+   An earlier draft put an `exclusive_path_lock` on every record writer, on the strength of
+   a reviewer-supplied lost-update sequence. **The sequence was never shown to be
+   reachable.** Before adding a lock, prove the race exists:
+
+   **INV-ONEWRITER — at most one process writes a given image's record at a time.** Two
+   independent mechanisms enforce it, and neither is the token:
+   - **Disjoint work partitioning.** Each SLURM array task owns a disjoint image list;
+     locally the process pool partitions the same way. One image → one task → one writer.
+   - **Stage sequencing.** For a given image, stage 2 cannot start before stage 1's store
+     exists, and stage 3 replays stage 2's `.npy`. The stages never overlap *for one image*.
+     Concurrency is **across** images, and each image has its own file.
+
+   So `publish_image_record` and `record_stage` do read-merge-`atomic_write_json`, with **no
+   lock**. `atomic_write_json` is temp-write + `os.replace`, which is atomic — so a crash
+   mid-write leaves the old record intact, which is the property that actually matters here.
+
+   **Correcting the token's role, because the first draft got it wrong.** It is *not* a
+   mutex and does not serialize anything. `_cli_staged_slurm_worker.py:487-516` publishes,
+   writes the stage-3 marker, and only **then** deletes the token — it is a *"work
+   available"* signal cleared on completion. It is still kept as a file (U-9), but for the
+   plain reason that `unlink` is atomic and a locked JSON edit is not.
+
+   **What would overturn this**, and what to check before implementing: any path where two
+   processes can hold the same image. A requeued or preempted task racing its own
+   replacement is the candidate — SLURM `PreemptMode=REQUEUE` with `GraceTime=0` restarts
+   the *same job id* from line one, so it is not concurrent with itself, and a `--restart`
+   against a live array is what `restart_epoch` fences (P2). **Verify both, and if either
+   admits an overlap, add the lock on that path only** — not on all writers.
+
+   ```python
+   def test_one_image_has_one_writer(tmp_path):
+       """INV-ONEWRITER. The partitioning, not a lock, is what makes the merge safe.
+       If this ever fails, the fix is the partitioning -- a lock would only hide it."""
+       from phenotypic._cli._cli_staged_slurm import build_shard_assignments
+
+       shards = build_shard_assignments(_six_images(tmp_path), k=3)
+       owners = [img for shard in shards for img in shard]
+       assert len(owners) == len(set(owners)), "an image appears in two shards"
    ```
 
-   With all three writers serialized, `consume_stage` and a concurrent `record_stage` on a
-   *different* key are then trivially safe — one file, serialized read-modify-write,
-   independent keys.
-3. **The lock is a SIBLING file, never the record itself.** `exclusive_path_lock` opens its
-   path `"a+b"` (`sdk_/_file_locking.py:41`), so anchoring on
-   `images/<ds>/<stem>.json` would **create a zero-byte record** for every image the lock
-   ever touches — which then reads as a *corrupt* record rather than an absent one. Every
-   such image would degrade toward `incomplete`: INV-VERDICT doing the right thing for
-   entirely the wrong reason, on the whole tree. Follow the precedent's shape exactly —
-   `aggregate_measurements` anchors on a sibling,
-   `phenotypic_cache_dir(output_dir) / ".aggregate_publication.lock"`
-   (`_cli_output_manager.py:1556-1558`).
+   **Cost of getting this wrong in the other direction:** a lock on every record write is
+   6,000 lock files on a 6,000-image array, `flock` contention on GPFS, and reliance on
+   `flock`'s weaker cross-node semantics (`sdk_/_file_locking.py:101`) — all to defend a
+   race the partitioning already prevents. If the invariant holds, the lock is pure cost.
 4. **Merging is identity-fenced, and `consume_stage` is idempotent.** Nothing may merge
    forward a stage entry from a superseded `scheduler_epoch`: a stale `stage2` merged into a
    fresh record makes `classify_staged_image` skip Stage 2 while the matching raw `.npy` is
@@ -403,19 +426,24 @@ def test_publishing_a_record_does_not_clobber_an_earlier_stage(tmp_path):
     )
 
 
-def test_concurrent_stage_writes_do_not_lose_each_other(tmp_path):
-    """The lost-update case the collapse creates. Two threads, two stages, one
-    file. Without the lock one write wins and the other vanishes silently."""
-    import concurrent.futures as cf
+def test_a_crash_mid_write_leaves_the_previous_record_intact(tmp_path):
+    """What atomic_write_json buys WITHOUT a lock, and the property that actually
+    matters here: temp-write + os.replace, so an interrupted write leaves the old
+    record whole rather than a truncated one.
 
+    Note this is NOT the lost-update test an earlier draft had. That test spawned
+    two threads writing one record -- a scenario INV-ONEWRITER says cannot occur,
+    since work is partitioned per image. Testing an unreachable race would have
+    justified a lock the design does not need. If you believe the race IS reachable,
+    fix the partitioning; do not add a lock."""
     from phenotypic._cli._cli_image_record import read_image_record, record_stage
 
-    with cf.ThreadPoolExecutor(max_workers=2) as pool:
-        list(pool.map(
-            lambda s: record_stage(tmp_path, "plate", "a", s, {"at": s}),
-            ["stage1", "stage2"],
-        ))
-    assert set(read_image_record(tmp_path, "plate", "a")["stages"]) == {"stage1", "stage2"}
+    record_stage(tmp_path, "plate", "a", "stage1", {"at": "t1"})
+    before = read_image_record(tmp_path, "plate", "a")
+    with _fail_during_write():
+        with pytest.raises(OSError):
+            record_stage(tmp_path, "plate", "a", "stage2", {"at": "t2"})
+    assert read_image_record(tmp_path, "plate", "a") == before
 
 
 def test_consuming_an_absent_stage_is_a_no_op(tmp_path):
