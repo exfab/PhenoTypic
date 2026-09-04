@@ -126,12 +126,38 @@ def test_the_resume_worklist_uses_the_cache_assisted_path():
     assert "resolve_run_state" in source
 ```
 
-- [ ] **Step 2: Move the readers**
+- [ ] **Step 2: Move six readers — and DELETE three (flow-r4 M4)**
 
-Out of `_cli_completion.py`, into `sdk_/_run_state.py` (already built in P1):
-`current_success_inventory`, `_walk_current_success`, `current_success_counts`,
-`_current_success_work_ids`, `current_aggregate_is_current`, `current_run_is_complete`,
+> **This step and Step 1's test contradicted each other for three rounds.** Step 1 asserts
+> the three predicate names appear nowhere; this step listed those same three among the
+> symbols it *moves into* `sdk_/_run_state.py`. A moved symbol still greps. One of the two
+> had to be wrong, and it is this one — settled by P1's own contract rather than by
+> weakening the test:
+>
+> `sdk_/__init__.py` exports `resolve_run_state`, `run_identity`,
+> `assert_identity_current` and `clear_verification_cache` (P1 Task 1's table). The
+> `current_*` trio is **not** in that list and was never meant to be a second public
+> predicate — the whole phase premise is that there is one. They are not moved. They are
+> **subsumed**, because `RunState` already carries what each returned:
+>
+> | Deleted | Replaced by |
+> |---|---|
+> | `current_run_is_complete(d)` | `resolve_run_state(d).completion == "complete"` |
+> | `current_success_counts(d)` | `resolve_run_state(d).diagnostics` — `accepted`/`verified`/`failed` |
+> | `current_aggregate_is_current(d)` | the aggregate proof's own deep-verification result, surfaced in the verdict and its advisories |
+>
+> With that, Step 1's scoped grep and Task 7's unrestricted one are both satisfiable, and
+> the test's message ("the old O(N)-hashing readers survive") means what it says.
+
+**Moved** out of `_cli_completion.py`, into `sdk_/_run_state.py` (already built in P1) —
+these are the internals of the deep walk, not predicates, and they become private there:
+`current_success_inventory`, `_walk_current_success`, `_current_success_work_ids`,
 `valid_aggregate_snapshot`, `valid_run_completion`, `valid_image_success`.
+
+**Deleted** outright, per the table above: `current_success_counts`,
+`current_aggregate_is_current`, `current_run_is_complete`. Step 3 converts every call site,
+so nothing is left calling them; if a call site turns out to have no `RunState` equivalent,
+**stop** — that is a gap in P1's contract, not a licence to keep the function.
 
 Staying CLI-side because they **write**: `publish_image_success`,
 `publish_aggregate_snapshot`, `publish_run_completion_evidence`, `image_data_artifact`,

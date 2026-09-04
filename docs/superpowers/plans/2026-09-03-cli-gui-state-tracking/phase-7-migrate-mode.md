@@ -1241,6 +1241,12 @@ Also correct `## Per-image completion markers` (`:235`): `SUCCESS_MARKER_VERSION
 `RECORD_VERSION`, the three marker trees are one record, and the `_migrate_legacy_success_evidence`
 paragraph (`:257-261`) describes a function P7 deletes.
 
+**And the same false claim in source, not only in the guide (flow-r4 Min1).**
+`image_data_artifact`'s own docstring (`_cli_completion.py:132-135`) makes the claim CAN-3
+disproved — the one the paragraph above corrects. A module guide fixed while the docstring
+beside the function still asserts the opposite leaves the more authoritative copy wrong:
+readers trust the code. Correct both in this step.
+
 - [ ] **Step 2: Add the register — three tables, and the split IS the content**
 
 **(a) Tracked state — written down, and irreducibly so.** Exactly these, and the "why it

@@ -648,7 +648,7 @@ None of this argues against the user's ruling; metadata stays the left frame. It
 pinned test rather than a discovery in production:
 
 ```python
-def test_the_mirrors_join_key_dtype_and_row_order_are_pinned(tmp_path):
+def test_the_mirrors_join_key_dtype_is_pinned(tmp_path):
     """flow-r3 C1. join_metadata is the legacy branch and has not run on a forward
     tree since embedded tables landed. Promoting it changes dtype and row order --
     both observable by the GUI and by any user script reading the mirror."""
@@ -664,11 +664,28 @@ def test_the_mirrors_join_key_dtype_and_row_order_are_pinned(tmp_path):
         "join_metadata casts join keys to String; if this changed, the GUI's "
         "filters and every downstream script keyed on the old dtype changed with it"
     )
+    # flow-r4: the name said "and row order" while asserting dtype only. Renamed
+    # rather than padded -- behaviour 2 states row order in prose, and a test that
+    # claims to pin something it does not is worse than one that claims less. If
+    # row order is worth pinning, assert it here and restore the name.
 
 
 def test_a_heterogeneous_master_loses_no_measured_row(tmp_path):
     """The dangerous third behaviour: a key present in some stores and absent in
-    others, concatenated diagonal_relaxed, then joined globally."""
+    others, concatenated diagonal_relaxed, then joined globally.
+
+    EXPECT THIS TO FAIL under the specified implementation, and do not "fix" it by
+    weakening the assertion (flow-r4 C1). Metadata is the left frame (user ruling),
+    the join is global and one-shot, and null keys anti-match -- so the ragged
+    image's rows are dropped. That is the forcing function this test exists to be:
+    the remedy is a DESIGN DECISION about ragged join keys, taken with the user,
+    not a fixture bug. `prepare_metadata_join_keys` intersects the two normalized
+    frames' columns (`_metadata_join.py:166-171`) with both sides cast to
+    `pl.String` (`:187-192`), so any column in both frames -- Grid_RowNum included --
+    is a join key, which is what makes the fixture realistic rather than contrived.
+    `diagonal_relaxed`'s per-frame null fill makes the loss all-or-nothing per
+    image, which is why image-set granularity is the right granularity here.
+    """
     import polars as pl
 
     from phenotypic.sdk_ import master_measurements_parquet_path, measurements_parquet_path
@@ -811,10 +828,16 @@ generations on disk, and the next aggregation aborts — while D-A's contract sa
 is an advisory and *"an advisory is never a gate"*. This is a gate, in the finalizer, on the
 normal rolling-input path.
 
-**Retire it from the finalize path.** Derive the join keys once, from `metadata.csv` ∩
-master columns; the stores' recorded keys become **provenance only**. That is what the
-inversion implies: once the join is global, a per-store record of how *that store* was
-joined is history, not input.
+**Retire it from the finalize path.** The stores' recorded keys become **provenance
+only**. That is what the inversion implies: once the join is global, a per-store record of
+how *that store* was joined is history, not input.
+
+> **The "derive the keys from `metadata.csv` ∩ master columns" clause is struck (flow-r4
+> Mod2).** It is the raw-intersection formulation, and it contradicts the resolved section
+> ~100 lines above, which specifies step 3 as one `join_metadata` call that derives its own
+> keys. `join_metadata` has no `keys` parameter, so the sentence could not be acted on even
+> by someone who tried — but it would be read, and it is exactly the kind of leftover that
+> sends an implementer to build a parameter that should not exist.
 
 **The late-metadata case is the dangerous one, because it looks like it works.** A run with
 no metadata records `join_status="not_requested"`, digest `""`, keys `()`

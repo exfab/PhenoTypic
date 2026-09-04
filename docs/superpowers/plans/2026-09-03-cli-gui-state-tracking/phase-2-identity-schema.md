@@ -520,8 +520,16 @@ def test_a_stale_workers_events_are_not_counted(tmp_path, execution_config):
     fresh = mint_run_identity(execution_config, restart=True)
     assert fresh.processing_generation != stale.processing_generation
 
-    state = load_processing_state(tmp_path)
-    assert "a.tif" not in state.datasets["plate"].completed, (
+    # flow-r4 Mod6: NOT state.datasets["plate"].completed -- P3 deletes that field and
+    # P7's register forbids returning it. The assertion is right about the fence and was
+    # wrong about where to read it. resolve_run_state is the reader; a pre-restart event
+    # must leave no verified image behind.
+    from phenotypic.sdk_ import resolve_run_state
+
+    run_state = resolve_run_state(tmp_path, depth="deep")
+    assert not [
+        image for image in run_state.images.values() if image.verdict == "verified"
+    ], (
         "an event tagged with the pre-restart generation was counted; the "
         "restart_epoch fence D4 exists for is not reaching the event log"
     )

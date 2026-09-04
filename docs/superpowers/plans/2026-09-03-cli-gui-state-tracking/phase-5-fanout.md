@@ -301,10 +301,30 @@ obvious form of both is vacuous (flow-r2 C3):
    One parameter fixes it: `finalize_run` passes `planned`, and
    `publish_aggregate_snapshot` uses it instead of re-deriving. P4 already edits this
    function to publish `source_set_digest`, so the change lands in a file the phase opens.
+
+   > **The parameter is REQUIRED, not optional-with-a-live-derive-fallback (flow-r4).**
+   > The default is what decides whether C2 is actually closed, because there are three
+   > call sites in shipped code and only one of them is `finalize_run`:
+   >
+   > ```
+   > _cli_output_manager.py:1540   publish_aggregate_snapshot(output_dir, commit_guard=...)
+   > _cli_recompile_worker.py:652  publish_aggregate_snapshot(output_dir)
+   > sdk_/_hdf_to_zarr.py:732      publish_aggregate_snapshot(output_dir, commit_guard=...)
+   > ```
+   >
+   > This phase's own seven-site table marks `sdk_/_hdf_to_zarr.py:732` as **not** routing
+   > through `finalize_run`. An optional parameter leaves that site on today's live-derive
+   > behaviour and C2 survives there, unmodified and unnoticed. Making it required puts the
+   > type checker on the job of finding all three — which is the only mechanism here that
+   > cannot be forgotten.
    Then `merged == planned` makes the proof **true of the master by construction**, and
    images that succeeded after planning correctly read as *not current* until the next
    finalize — which is the right answer, and what today's reader already does with a growing
    success set.
+
+   **Say what "the next finalize" means, because on SLURM there isn't one.** The finalizer
+   is terminal: by the time a user sees *not current*, the job is gone. The next finalize is
+   the user re-running the same command. Put that in the advisory text, not only here.
 
    ```python
    def test_the_proof_describes_the_master_it_was_published_with(tmp_path):
@@ -318,7 +338,11 @@ obvious form of both is vacuous (flow-r2 C3):
 
        proof = _aggregate_proof(tmp_path)
        master = pl.read_parquet(_master(tmp_path))
-       assert proof["source_image_count"] == master["Metadata_ImageFile"].n_unique(), (
+       # Two datasets can carry the same filename, so ImageFile alone undercounts
+       # and the assertion passes on a master it should reject (flow-r4).
+       assert proof["source_image_count"] == master.select(
+           ["Metadata_Dataset", "Metadata_ImageFile"]
+       ).n_unique(), (
            "the proof asserts a source set larger than the master it certifies"
        )
    ```
@@ -472,6 +496,14 @@ def test_a_missing_shard_refuses_to_publish_rather_than_certifying_a_short_maste
         finalize_run(tmp_path, dataset_names=["plate"], shard_paths=partial)
     assert not _run_proof_exists(tmp_path), "a proof was published over a short master"
 ```
+
+**Say what a user does after this fires (flow-r4).** A dead shard task gives `RuntimeError`
+→ no proof → no completion marker, and the documented recovery — re-run the same command —
+plans a fresh epoch's shards. `measurement_shard_dir` is epoch-namespaced, so the stale
+shards are not in the way and this is not a deadlock. But the finalizer is **terminal**: the
+user sees a traceback containing the word "shard" from a job that has already exited, with
+no cue that re-running is the answer. Put that cue in the error message itself, not only
+here.
 
 - [ ] **Step 2: Run to verify failure, then implement until green.**
 

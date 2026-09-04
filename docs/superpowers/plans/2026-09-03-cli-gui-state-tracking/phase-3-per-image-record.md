@@ -69,7 +69,7 @@ additive.
 
 | File | Responsibility |
 |---|---|
-| **Create** `src/phenotypic/sdk_/_image_record.py` | **Readers and shared vocabulary:** `read_image_record`, `RECORD_VERSION`, the four `STAGE_*` constants. Exported from `sdk_/__init__.py` so test snippets can use the package path. ~70 lines. |
+| **Create** `src/phenotypic/sdk_/_image_record.py` | **Readers and shared vocabulary:** `read_image_record`, `RECORD_VERSION`, the four `STAGE_*` constants, and the two `ARTIFACT_KIND_*` constants. Exported from `sdk_/__init__.py` so test snippets can use the package path. ~70 lines. |
 | **Create** `src/phenotypic/_cli/_cli_image_record.py` | **Writers only:** `publish_image_record`, `record_stage`, `consume_stage`. Imports the vocabulary from `sdk_`. ~180 lines. |
 | **Modify** `src/phenotypic/_cli/_cli_completion.py` | `publish_image_success` / `valid_image_success` delegate to the record — **and `authorized_measurement_sources` (`:768`), which nobody listed.** See below. |
 | **Modify** `src/phenotypic/_cli/_cli_migrate_image.py:567` | **The migrator is a second producer of this schema**, not a stage that runs before one (CAN-7). It calls `publish_image_success` directly. |
@@ -167,6 +167,14 @@ STAGE_STAGE1: Final[str] = "stage1"
 STAGE_STAGE2: Final[str] = "stage2"
 STAGE_STAGE3: Final[str] = "stage3"
 STAGE_MEASURED: Final[str] = "measured"
+
+#: The `artifacts` block's kind vocabulary (flow-r4, N-3 scope). The record's
+#: artifacts are `{"kind": "store"|"file", ...}` and the sdk_-side reader compares
+#: those kinds, so they belong here with the stage names rather than being spelled
+#: at each comparison. Omitting them reopens the duplication N-3 exists to close,
+#: one vocabulary over -- the same defect, in a different noun.
+ARTIFACT_KIND_STORE: Final[str] = "store"
+ARTIFACT_KIND_FILE: Final[str] = "file"
 
 RECORD_VERSION: int = 1
 
@@ -372,8 +380,22 @@ same audit.
    - **Disjoint work partitioning.** Each SLURM array task owns a disjoint image list;
      locally the process pool partitions the same way. One image → one task → one writer.
    - **Stage sequencing.** For a given image, stage 2 cannot start before stage 1's store
-     exists, and stage 3 replays stage 2's `.npy`. The stages never overlap *for one image*.
-     Concurrency is **across** images, and each image has its own file.
+     exists, and stage 3 replays stage 2's `.npy`. Concurrency is **across** images, and
+     each image has its own file.
+
+     > **This one is weaker than it reads, and must not be cited as the proof (flow-r4).**
+     > "The stages never overlap for one image" is a claim about *logical* ordering, not
+     > about process concurrency — two processes can both believe they own stage 3 of image
+     > X. What actually stops them is `active_job_id` + `scheduler_job_is_active`
+     > (`_cli_staged_controller.py:314-322`) and `active_ledger_job_ids`
+     > (`phenotypicCLI.py:2016`), both listed below. Cite those and the invariant is
+     > checkable; cite sequencing alone and it is unfalsifiable.
+     >
+     > Also not what separates them: **the recovery controller runs under the *same* epoch
+     > as its predecessor** (`_cli_staged_controller.py:279,289` return unless
+     > `state["epoch"] == epoch`), so `assert_active_epoch` does not fence a recovery
+     > controller from its predecessor's still-running workers. `active_job_id` does all the
+     > work, and it appears in no other plan document.
 
    So `publish_image_record` and `record_stage` do read-merge-`atomic_write_json`, with **no
    lock**. `atomic_write_json` is temp-write + `os.replace`, which is atomic — so a crash
@@ -399,8 +421,19 @@ same audit.
    two:
    - **A requeued or preempted task racing its own replacement.** SLURM
      `PreemptMode=REQUEUE` with `GraceTime=0` restarts the *same job id* from line one, so
-     it is not concurrent with itself.
-   - **A `--restart` against a live array.** This is what `restart_epoch` fences (P2).
+     it is not concurrent with itself — **and, independently, the controller refuses to
+     submit while the previous stage job is alive**: `_cli_staged_controller.py:314-322`
+     reads `active_job_id` and returns early unless `scheduler_job_is_active(...)` is
+     `False`. Note `is not False` — a *failed* scheduler query returns `None` and also
+     blocks, so it fails safe. **That fail-safe is now load-bearing:** an optimization that
+     treats an unknown scheduler state as inactive breaks INV-ONEWRITER silently.
+   - **A `--restart` against a live array.** Refused outright in the CLI **before**
+     `clear_machine_state`: `phenotypicCLI.py:2016-2023` exits non-zero when
+     `active_ledger_job_ids` is non-empty, and the `restart` branch is at `:2123`.
+     `initialize_slurm_lifecycle` (`_cli_slurm_lifecycle.py:104-111`) raises on a conflicting
+     generation as well. **Residual, pre-existing and not opened by this change:** the guard
+     short-circuits to `active_jobs = []` when `lifecycle["active"] is False`, so a
+     deactivated-but-still-draining array is uncovered.
    - **A driver-side sweep writer running while an array is live.** This is the coexistence
      window of P7 Task 5 Step 1c, and the reason its rule — drain or `scancel` before
      migrating — belongs in the refusal message and not only in the docs.
@@ -419,10 +452,39 @@ same audit.
        assert len(owners) == len(set(owners)), "an image appears in two shards"
    ```
 
-   **Cost of getting this wrong in the other direction:** a lock on every record write is
-   6,000 lock files on a 6,000-image array, `flock` contention on GPFS, and reliance on
-   `flock`'s weaker cross-node semantics (`sdk_/_file_locking.py:101`) — all to defend a
-   race the partitioning already prevents. If the invariant holds, the lock is pure cost.
+   > **The cost argument that used to sit here was false, and is struck (flow-r4).** It
+   > claimed a per-image lock would mean "6,000 lock files, `flock` contention on GPFS, and
+   > `flock`'s weaker cross-node semantics — pure cost". Every one of those record writes
+   > **already** passes through a run-level singleton `flock` on GPFS:
+   > `_cli_staged_slurm_worker.py:115-126` builds the `commit_guard` from
+   > `generation_publication_guard`, which is
+   > `exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=300.0)`
+   > (`_cli_slurm_lifecycle.py:204`). That function's own comment records the measured
+   > contention — *"up to the account's concurrency cap, observed 60-90+ ... serializes
+   > through this single lock"*, with the timeout raised from 60s to 300s because of it.
+   >
+   > A per-image sibling lock would be **strictly less contended than the lock already in
+   > the path**. So the lock was never expensive, and the decision to drop it rests on
+   > reachability alone — which is where it belongs, and where it holds. Leaving the false
+   > price in the plan would mean the next person to find a reachable race weighs it against
+   > a cost that was never real.
+
+   **What it would actually cost, if a race is ever demonstrated: zero new files.**
+   `commit_guard` currently wraps **only** the `os.replace` — `sdk_/_atomic_io.py:87` enters
+   `publication_commit(commit_guard)` immediately before `pre_replace` and the rename, never
+   around the read. So the fix is not a new per-image lock; it is **moving the read inside
+   the existing `commit_guard`** in `publish_image_record` / `record_stage`. That guard is
+   already threaded through every staged call site, and `record_stage`'s specified signature
+   already accepts it. Locally (`commit_guard is None`) the partitioning argument stands
+   unaided. Name this before implementing, so a demonstrated race produces a three-line
+   change rather than a new mechanism.
+
+   **INV-ONEWRITER is a requirement this change CREATES, not a property it inherits.** Say
+   so plainly, because it is what makes the verification worth doing. Today the markers are
+   separate files: a duplicate writer writes its own content to its own file, and the worst
+   case is a redundant identical write. After the collapse it is one file under a
+   read-modify-write over disjoint keys, and that same duplicate writer **drops a key**. The
+   change converts a benign duplicate into a silently lost stage.
 4. **Merging is fenced on `work_id`, and `consume_stage` is idempotent.**
 
    > **An earlier draft fenced on `scheduler_epoch`. That was unimplementable, and it
@@ -734,7 +796,11 @@ _COMBOS = [
 #: Captured from the PRE-CHANGE behaviour in Step 2, as a literal table. Do not
 #: derive these by reasoning about what the classifier should do -- the point is to
 #: freeze what it DOES, so the collapse is provably behaviour-preserving.
-_EXPECTED: dict[tuple[bool, bool, bool, bool], str] = {}   # filled in Step 2
+#: The key is the full seven-axis tuple, matching _COMBOS. An earlier draft typed it
+#: as four bools, left over from the product(repeat=4) CAN-16 replaced.
+_EXPECTED: dict[
+    tuple[str, bool, bool, bool, str | None, bool, bool], str
+] = {}   # filled in Step 2
 
 
 @pytest.mark.parametrize(
@@ -790,15 +856,31 @@ record carrying the arguments the call needs.
 - [ ] **Step 2: Populate `_EXPECTED` from the CURRENT code, before changing it**
 
 Run the parametrized test against unmodified `main` with `_EXPECTED` empty, capture each
-actual classification, and write those sixteen values into `_EXPECTED` **as a literal
-table**. Then re-run: all sixteen pass. That table is now the contract.
+actual classification, and write those values into `_EXPECTED` **as a literal table**. Then
+re-run: all of them pass. That table is now the contract.
+
+**The count is 384, not sixteen (flow-r4).** `_COMBOS` is a seven-axis product —
+4 stores × 2 × 2 × 2 × 3 layers × 2 × 2 — since CAN-16 replaced the original four-boolean
+`product(repeat=4)`. Four places in this task still said "sixteen", including Step 4's gate
+criterion, which is the one that matters: a hard gate whose success condition names the wrong
+number cannot be checked. If you take the evidence-based axis reduction the note below
+licenses, **write the reduced number here once it is decided** — not before.
 
 Do **not** derive `_EXPECTED` by reasoning about what the classifier should do. The point is
 to freeze what it *does*, so the collapse is provably behaviour-preserving. If one of the
-sixteen looks wrong, record it in a comment and leave it — fixing a resume bug inside a
-refactor makes both unreviewable.
+one of them looks wrong, record it in a comment and leave it — fixing a resume bug inside
+a refactor makes both unreviewable.
 
 - [ ] **Step 3: Collapse the two trees**
+
+> **FLOW-40 is load-bearing here, and this is the step that rewrites the function it lives
+> in (rule 4 at `:457`, carried out).** `_cli_staged_resume.py:279-283` is an explicit
+> **raw-presence** branch: it consults the retained Stage-2 `.npy` directly, not the record
+> and not the token. The collapse rewrites `classify_staged_image` around it, so it is the
+> branch most likely to be "simplified" into a record lookup by someone who has just been
+> told the record is the single authority. **It survives verbatim.** The raw array and the
+> record answer different questions — the record says a stage was *reported*, the raw array
+> says the data to replay is *still there* — and a Stage-3 replay needs the second.
 
 - `write_stage2_token`, `stage2_token_exists`, `delete_stage2_token` — **unchanged**
   (U-9). The token keeps its file and its atomic `unlink`; only `_STAGE2_DIR` moves.
@@ -817,7 +899,8 @@ delete it (U-9). Delete the inline `"stage3_complete"` literal
 - [ ] **Step 4: Re-run the equivalence gate**
 
 Run: `uv run pytest tests/unit/cli/test_staged_resume_equivalence.py -v`
-Expected: all sixteen PASS, against the table captured in Step 2.
+Expected: all 384 PASS, against the table captured in Step 2 — or the reduced count, if
+Step 2's evidence-based reduction was taken and recorded.
 
 **If any combination changes, stop.** The collapse has altered a resume decision, and that
 is the failure this task exists to prevent.
@@ -845,8 +928,13 @@ QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli tests/unit/sdk_ -q
 git add -A src/phenotypic/_cli tests/unit/cli
 git commit -m "refactor(cli): stage3_complete/ becomes a stages entry
 
-Spec §6.1. Three parallel <ds>/<stem> trees, spelled in three places, become one
-record. The sixteen-combination classify_staged_image table was captured from the
+Spec §6.1. Two of the three parallel <ds>/<stem> trees become one record --
+stage2_done/ keeps its file and its atomic unlink (U-9), and only _STAGE2_DIR
+moves. An earlier draft of this message said three; collapsing the token was the
+thing the user overruled.
+
+Two trees, spelled in three places, become one
+record. The 384-combination classify_staged_image table was captured from the
 pre-change behaviour and is unchanged after -- the resume decisions are the risk
 here, not the format."
 ```

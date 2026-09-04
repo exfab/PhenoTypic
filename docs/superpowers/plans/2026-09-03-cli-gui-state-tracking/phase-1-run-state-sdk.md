@@ -1244,9 +1244,19 @@ Body, in order — each step is one of the four verdicts and nothing else:
 
 1. `identity = run_identity(output_dir)`; on `None`, return an `incomplete` `RunState`
    with advisory `"no processing state"` and empty `images`.
-2. Build `images` by walking `config["work_ids"]` — **the accepted-inventory authority**,
-   never a directory listing. A `work_id` with no marker is an unverified `ImageState`,
-   not an absent one; that is what makes "which images are missing?" answerable.
+2. Build `images` by walking `config.get("work_ids", {})` — **the accepted-inventory
+   authority**, never a directory listing. A `work_id` with no marker is an unverified
+   `ImageState`, not an absent one; that is what makes "which images are missing?"
+   answerable.
+
+   > **Every `config` read in this function uses `.get`, never a subscript (flow-r4 N-4).**
+   > The docstring says *"Never raises"*, and `config["work_ids"]` breaks that promise on
+   > the one tree it most matters for: **U-6's detection signal is the absence of the
+   > `work_ids` key**, so a pre-markers tree raises `KeyError` from inside the function
+   > whose job is to classify it. `resolve_run_state` must return `incomplete` with an
+   > advisory there, so that `requires_conversion` can do its work — a traceback is not a
+   > verdict. The same applies to `pipeline_sha256`: a missing key means the comparison is
+   > **unsatisfiable**, hence `False`, never an exception.
 3. `completion` by the Q2 ladder. **Rule 1 asks both of §4.3's clauses and the full
    five-way comparison** — see below.
 4. `advisories`, each derived and each non-gating:
@@ -1298,8 +1308,10 @@ if config.get("process_only_layer"):
     return (
         all(image.verdict == "verified" for image in images.values())
         and proof is not None
-        and proof["inventory_digest"]          == _canonical_digest(config["work_ids"])
-        and proof["scientific_config_digest"]  == config["pipeline_sha256"]
+        and proof["inventory_digest"]          == _canonical_digest(
+            config.get("work_ids", {})
+        )
+        and proof["scientific_config_digest"]  == config.get("pipeline_sha256")
         and proof["finalization_input_digest"] == _canonical_digest(
             {"process_only_layer": config["process_only_layer"]}
         )
@@ -1318,9 +1330,9 @@ if not all(image.verdict == "verified" for image in images.values()):
 # INV-LAYER's plain-JSON constraint.
 proof = valid_run_proof(output_dir)                     # local reader, sdk_-side
 proof is not None
-and proof["inventory_digest"]           == _canonical_digest(config["work_ids"])
+and proof["inventory_digest"]           == _canonical_digest(config.get("work_ids", {}))
 and proof["finalization_input_digest"]  == _canonical_digest(finalization_input_object(...))
-and proof["scientific_config_digest"]   == config["pipeline_sha256"]
+and proof["scientific_config_digest"]   == config.get("pipeline_sha256")
 and proof["source_set_digest"]          == _canonical_digest(sorted(verified_work_ids))
 and proof["source_image_count"]         == len(verified_work_ids)
 ```

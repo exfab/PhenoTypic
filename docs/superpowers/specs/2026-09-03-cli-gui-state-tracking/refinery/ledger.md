@@ -604,7 +604,28 @@ Critical — were nowhere in it. Recorded now; the phase docs carry the reasonin
 | **MIG-21** | Critical | Pre-markers `--mode process` tree still fails INV-DISCHARGEABLE. Same root as MIG-22. **GATED TO USER.** |
 | gen-r4 N-1/N-2 | Major | P6 Task 0's gate test greps all of `src/`; its file list misses `_cli_checkpoint_handler.py` (6 reads) and `_cli_recompile_worker.py` (4). **Open three rounds.** |
 | SIMP-R4-02 | Major | Step numbering: five round-2 findings unfixed, one new. P6 Task 7 and P7 Task 2 have no commit step. |
-| flow-r4 | — | **Report not received before the cap. Coverage gap, recorded rather than assumed.** |
+| flow-r4 | — | ~~Report not received before the cap.~~ **Arrived after the cap and was applied in full.** See below — the coverage gap is closed, and it was the round's most productive report. |
+
+### flow-r4 — late, and it moved the most
+
+Its verdict was **REVISE** on one Critical and one Major, both of which had survived every
+earlier round. Every citation it made was checked against source before being accepted;
+all of them held.
+
+| ID | Outcome |
+|---|---|
+| **C5** [Critical] | **Already fixed** — SIMP-R4-01 landed the token bullets while flow-r4 was reading. Crossed messages. Its three *residuals* were real and are now fixed: `_COMBOS` is a seven-axis product of **384**, not the "sixteen" four places still claimed (including Step 4's own gate criterion); `_EXPECTED`'s key was still typed as the pre-CAN-16 4-tuple; FLOW-40 was still unnamed in Step 3, which rule 4 at `:457` had instructed twice; and the commit message still said three trees. |
+| **M4** [Major, 3rd round] | **Landed on this session's own fix, and was right.** My N-1/N-2 scoping put the grep over `_cli` + `sdk_` — and `sdk_` is precisely where Step 2 said it *moved* the three names. Still red, for a new reason. Settled from P1's contract rather than by weakening the test: `sdk_/__init__.py` exports four readers and the `current_*` trio is not among them, so they are **deleted and subsumed** (`.completion`, `.diagnostics`, the aggregate proof's own verification), not moved. Six internals move and go private. |
+| **INV-ONEWRITER** | **Challenged and survived** — no reachable lost-update sequence. But three of its four stated supports were wrong or unverifiable, and are replaced by the guards that actually hold: `active_job_id` + `scheduler_job_is_active` (`_cli_staged_controller.py:314-322`, where `is not False` makes a *failed* scheduler query block — now load-bearing) and the pre-`clear_machine_state` refusal at `phenotypicCLI.py:2016-2023`. |
+| **The cost argument** | **Struck as factually false, verified before accepting.** The plan claimed a per-image lock meant "6,000 lock files, `flock` contention on GPFS — pure cost". Every record write **already** passes a run-level singleton `flock`, whose own comment records 60-90+ tasks contending and a timeout raised 60s → 300s because of it (`_cli_slurm_lifecycle.py:197-204`). A per-image lock would be **strictly cheaper than what is already there.** The removal stands on reachability alone. |
+| Mod2, Mod6, N-3, N-4, Min1, Min3 | Fixed. **N-4 is sharper than reported:** `config["work_ids"]` sits in a function documented *"Never raises"*, and U-6's detection signal **is** the absence of that key — so it raised `KeyError` on precisely the pre-markers tree it exists to classify. |
+| C1, C2 | Resolved, with three residuals fixed: a test name claiming to pin row order while asserting dtype; a deliberately-red test with no stated remedy (it now says so, and says the remedy is a design decision, not a fixture bug); and C2's parameter, now **required** — optional would have left `sdk_/_hdf_to_zarr.py:732` on live-derive behaviour, unmodified and unnoticed. |
+
+**The lesson this report carries, for the ledger rather than the plan.** A reviewer's
+report arriving after a cap is still evidence; the cap bounds *looping*, not listening. Had
+it been marked a coverage gap and closed, the phase would have shipped with a completeness
+gate that could not pass and a false cost argument standing where a future engineer would
+weigh a real race against it.
 
 ### Round 4 — CLOSED
 
