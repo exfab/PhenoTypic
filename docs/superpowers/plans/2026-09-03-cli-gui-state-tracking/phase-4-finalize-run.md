@@ -105,9 +105,40 @@ documented where users read it, not only here:
 > is the good direction. But it means `--mode recompile` is broken from the moment Task 1
 > lands until this is fixed, and no test in the plan covers it.
 >
-> **Enumerate all ~15 marker-format reads across both files before editing either**, the
-> way P3 Step 3b now enumerates the staged-engine sites. `grep -n 'image_completion_marker_path\|marker\[' `
-> on both is the starting point, not the answer.
+> **Measured: 33 marker-format reads across the two files**, not the ~15 first estimated.
+> Enumerate them before editing either, the way P3 Step 3b now enumerates the staged-engine
+> sites.
+
+### What recompile actually needs from a marker, and why the collapsed form is *simpler*
+
+Recompile uses markers for exactly two things:
+
+1. **An identity round-trip after rewriting a table.** `_republish_table_marker`
+   (`_cli_recompile_tables.py:58-82`) reads seven fields — `work_id`, `dataset`,
+   `relative_image_path`, `image_stem`, `mode`, `attempt_id`, `lifecycle_epoch` — and hands
+   every one straight back to `publish_image_success` with freshly-resolved artifacts. It
+   must re-publish because rewriting the embedded table invalidates the marker's artifact
+   digests. **The read-back exists only because today's publisher replaces the whole
+   marker**, so recompile has to supply every field or lose it.
+2. **Discovery fallback.** `_standalone_marker_sources` (`:135`) globs `image_complete/`
+   for "valid embedded authority when no processing state is present".
+
+The record is a **superset** of (1)'s seven fields, so a port would be mechanical. But
+**P3's merge rule removes the need for the round trip entirely** — `publish_image_record`
+merges rather than replaces (CAN-6), so recompile publishes the **new `artifacts` only** and
+the merge preserves identity and `stages` untouched.
+
+| Site | Change |
+|---|---|
+| `_republish_table_marker` (`:58-82`) | **Delete the seven-field read-back.** Publish updated `artifacts`; the merge preserves the rest. `_marker_artifacts` (`:39-56`) and its hand-rolled `relative_to` path validation go with it — the publisher already resolves artifacts under the output root. ~40 lines → one call. |
+| `_standalone_marker_sources` (`:135-150`) | Glob `DIR_IMAGE_RECORDS` instead of `DIR_IMAGE_COMPLETE`; the per-entry field reads (`dataset`, `image_stem`, `work_id`, `artifacts.measurements`) are unchanged. |
+| `:100` | `isinstance(prepared, PreparedEmbeddedMeasurementTable)` → `PreparedImageTables`. **This is the crash**: it fails closed with `TypeError("Recompile table preparation returned an invalid payload")`, so `--mode recompile` breaks on the first run after Task 1 lands. |
+| `_cli_recompile_recovery.py:38,782` | `SUCCESS_MARKER_VERSION` → `RECORD_VERSION`. |
+| `_cli_recompile_recovery.py:52,387,477,637,709` | `image_completion_marker_path` → `image_record_path`. |
+
+**Test that `--mode recompile` still round-trips**, since nothing in the plan covered it
+before: recompile a two-image tree and assert each record's identity fields and `stages` are
+byte-identical to before, with only `artifacts` digests changed.
 | **Test** `tests/unit/cli/test_embedded_table_inversion.py` *(new)* | Intrinsic/user metadata boundary; curation re-keying. |
 
 ---
