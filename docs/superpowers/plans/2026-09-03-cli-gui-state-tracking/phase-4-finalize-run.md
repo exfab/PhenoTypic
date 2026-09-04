@@ -470,6 +470,15 @@ def finalize_run(output_dir, *, dataset_names, pipeline=None, metadata_csv=None,
     """
 ```
 
+> **Before rewriting anything in `finalize_post_master_outputs`, inventory what it already
+> does.** Its docstring (`_cli_output_manager.py:1023-1050`) numbers **five** steps: the
+> metadata handling this task changes, `_apply_post_to_master`, `_seed_measurements`, the
+> per-feature splits, and the pipeline/analysis/QC block — plus the
+> `order_measurement_columns` call at `:1104-1106` that is not in that numbered list at all.
+> A rewrite that names only the step under discussion drops the others silently. That is not
+> hypothetical: the column-ordering call was missing from this task until a reader asked
+> whether it still existed.
+
 Step 1 calls the existing `authorized_measurement_sources` (`_cli_completion.py:768`) —
 already the right predicate, already marker-authorized, and **moved onto records by P3 Step
 3b**; if that move was skipped it returns `{}` and this step writes an empty master with no
@@ -529,6 +538,89 @@ Update the docstring at `:1023-1026`, which states the now-false premise, and
 
 Test both halves **in one frame** — a measured row carrying a non-null user column, and a
 phantom row present.
+
+### Keep the column ordering — `join_metadata` returns metadata-first
+
+`join_metadata`'s own docstring: *"Returns: DataFrame with metadata columns first, then
+measurement columns … Row order follows the metadata frame."* What restores the canonical
+frame shape is **`order_measurement_columns`** (`sdk_/_metadata_helpers.py:111`), applied at
+`_cli_output_manager.py:1104-1106`:
+
+```python
+post_df = post_df.select(order_measurement_columns(post_df.columns))
+```
+
+**That call is inside the function this task rewrites and must survive.** An earlier draft
+of this task specified step 3 without mentioning it at all, which is how a rewrite silently
+drops a sibling step: `finalize_post_master_outputs` does five numbered things
+(`:1023-1050`), and enumerating only the one under discussion is not a rewrite plan.
+
+Canonical order is `[front metadata] → [measurements] → [IMAGE metadata] → [info block]`.
+Verified against the real function on the two frames this change produces:
+
+| Frame | Ordered columns |
+|---|---|
+| master (intrinsic only) | `Metadata_Dataset`, `Metadata_ImageFile`, `Shape_Circularity`, `Object_Label`, `Bbox_X` |
+| mirror (joined) | `Metadata_Strain`, `Metadata_ImageFile`, `Shape_Circularity`, `QC_MetadataOnly`, `Object_Label`, `Bbox_X` |
+
+Three things that follow, none of them obvious:
+
+1. **The intrinsic identity columns are front-block, not trailing.** `Metadata_ImageFile`
+   has `metadata_owner_for_header(...) is None` and `Metadata_Dataset` is `EXPERIMENT`-owned
+   — **neither is `IMAGE`-owned**, so they lead the frame rather than trailing the
+   measurements. §7.1's "intrinsic identity stays" therefore leaves the master's shape
+   recognisable: identity, measurements, info block.
+2. **The master is not ordered by this call**, because it is written before it. It inherits
+   its order from the embedded tables, which the pipeline already orders through the same
+   function (`_image_pipeline_core.py:1258,1275-1291`). Removing user metadata does not
+   disturb the survivors' relative order — unknown-owner tags sort alphabetically at the end
+   of the front block, so deleting some leaves the rest in place. **Assert that rather than
+   assuming it.**
+3. **`QC_MetadataOnly` sorts into the measurements block**, since it is not a metadata
+   header, not the object label, and not `Bbox_`/`Grid_`. That is existing behaviour, it is
+   **out of scope**, and it is recorded here only so a reviewer seeing it in the ordered
+   mirror does not read it as a regression this change introduced.
+
+```python
+def test_the_mirror_keeps_canonical_column_order_after_the_join(tmp_path):
+    """join_metadata returns metadata-first; order_measurement_columns restores the
+    canonical shape. The call lives inside the function this phase rewrites."""
+    import polars as pl
+
+    from phenotypic.sdk_ import measurements_parquet_path, order_measurement_columns
+
+    _publish_two_successful_images(tmp_path, metadata=True)
+    _finalize(tmp_path)
+
+    cols = pl.read_parquet(measurements_parquet_path(tmp_path)).columns
+    assert cols == order_measurement_columns(cols), (
+        "the mirror is not canonically ordered -- the order_measurement_columns "
+        "call at _cli_output_manager.py:1106 was dropped in the rewrite"
+    )
+
+
+def test_the_master_inherits_canonical_order_from_the_embedded_tables(tmp_path):
+    """The master is written BEFORE the ordering call, so it depends on its inputs
+    already being ordered. The inversion removes columns from those inputs; assert
+    that does not disturb the rest."""
+    import polars as pl
+
+    from phenotypic.sdk_ import master_measurements_parquet_path, order_measurement_columns
+
+    _publish_two_successful_images(tmp_path, metadata=True)
+    _finalize(tmp_path)
+
+    cols = pl.read_parquet(master_measurements_parquet_path(tmp_path)).columns
+    assert cols == order_measurement_columns(cols)
+    assert cols[:2] == ["Metadata_Dataset", "Metadata_ImageFile"], (
+        "intrinsic identity should lead the master -- neither column is IMAGE-owned, "
+        "so both belong to the front block"
+    )
+```
+
+**And `pht-metadata.parquet` gets the same treatment** (Task 2): order its columns with the
+same function, so a third-party reader joining the two tables sees one convention rather
+than two.
 
 ### Where the join keys come from (CAN-2)
 
