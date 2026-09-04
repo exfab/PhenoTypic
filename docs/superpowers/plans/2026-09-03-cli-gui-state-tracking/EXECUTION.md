@@ -148,9 +148,53 @@ Constraints that make it worth running:
   separate instances. Regenerate the consumer greps; do not trust the plan's file lists.
 - Analysis only. Never edits.
 
+### Every test run past a single file goes through the sharded array
+
+**Standing instruction (user, 2026-09-04): cluster any large suite and run it massively in
+parallel on SLURM.** Not only the final regression — every phase gate, and any run whose
+numbers get quoted as a baseline.
+
+Harness: [`run_suite.sbatch`](run_suite.sbatch) + [`collect_results.py`](collect_results.py).
+
+```bash
+# whole suite
+sbatch run_suite.sbatch
+# one phase's scope, same harness
+SCOPE="tests/unit/sdk_ tests/unit/cli" sbatch run_suite.sbatch
+# then, always:
+uv run python collect_results.py <results_dir> --baseline <baseline_dir>
+```
+
+48 shards, at most 32 resident. **Sizing is against the account cap, not the node** —
+`iwheeldonlab` is 384 CPU / 1 TB shared across every running job, and exceeding an *account*
+cap does not fail at submit: it queues with `Reason=AssocGrpCpuLimit`, which `--test-only`
+does not catch. 32 × 8 CPU = 256 leaves deliberate headroom so a concurrent spike does not
+queue behind the gate.
+
+Measured limits, not assumed (2026-09-04): `MaxArraySize = 2500`, `MaxJobCount = 50000`,
+`MaxSubmitJobs = 5000`. **`MaxSubmitJobs` is an association limit and does not appear in
+`scontrol show config` at all** — it comes from `sacctmgr show assoc`. The phase docs' formula
+`min(MaxArraySize, MaxSubmitJobs)` therefore reduces to `MaxArraySize` here, and a script that
+reads it from `scontrol` gets an empty string, which in arithmetic becomes zero.
+
+**Do not buy shards by starving them.** CPUs-per-task stays at 8. This suite has a documented
+population of load-sensitive flakes — a 1 s subprocess import, a 20 s multiprocessing join, a
+0.5 s patched read deadline — that pass alone and fail contended. Narrowing each shard
+manufactures more of them, and they cost more to triage than the wall-clock saved.
+
+**Compare names, never counts.** That is what `collect_results.py` is for: the aggregate count
+moves with node load and with how shards happened to pack, while the failing *set* does not.
+Four failures are known pre-existing, three of which fail only on compute nodes; the standing
+list is in the `phenotypic-regression-baseline` memory. A regression is a name that is failing
+here and passing at baseline — and even then, **run it alone before believing it.**
+
+Traps the harness already closes, each of which produces a *wrong answer* rather than a slow
+one: missing `QT_QPA_PLATFORM=offscreen` aborts the interpreter partway with no summary;
+`-n auto` reads the node's cores rather than the allocation's; the repo's default `addopts`
+streams uncaptured output and can triple runtime when stdout is on shared storage; `-x`
+truncates a run that then gets recorded as a baseline; and leaking `SLURM_ARRAY_TASK_ID` into
+tests that mock scheduler state makes them read the *gate's* identity instead of their own.
+
 ### End of run
-One `code-simplifier` pass (quality only, no behaviour change), apply fixes, then the
-regression suite for affected areas as a Slurm job (**`run-phenotypic-test`** +
-**`slurm-job`** skills; `QT_QPA_PLATFORM=offscreen`, explicit worker count, ~65 min).
-Compare against the recorded baseline: **four failures are known pre-existing, three of
-which fail only on compute nodes.** A fifth is this change's.
+One `code-simplifier` pass (quality only, no behaviour change), apply fixes, then the full
+suite through the same harness and `collect_results.py --baseline`.

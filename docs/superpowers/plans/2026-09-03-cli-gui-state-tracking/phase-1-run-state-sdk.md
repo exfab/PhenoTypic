@@ -188,8 +188,8 @@ import phenotypic.sdk_._verification_cache as verification_cache
 import phenotypic.sdk_._state_types as state_types
 
 # All THREE modules, not two (gen-r3 C5): the dataclasses live in their own leaf
-module to break the _run_state <-> _verification_cache cycle, and INV-LAYER binds
-the leaf exactly as it binds the other two.
+# module to break the _run_state <-> _verification_cache cycle, and INV-LAYER binds
+# the leaf exactly as it binds the other two.
 _MODULES = (
     Path(state_types.__file__),
     Path(verification_cache.__file__),
