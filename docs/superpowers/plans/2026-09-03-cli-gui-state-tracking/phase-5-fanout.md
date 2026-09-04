@@ -211,12 +211,30 @@ index *inside* the array. The first draft never said whether the existing depend
 removed, kept, or made a no-op.
 
 **Two publishers of the aggregate and run proofs is precisely the failure mode this change
-exists to remove.** Decide and write it down before implementing:
+exists to remove.** Decide and write it down before implementing.
 
-- If `TASK_FINALIZE` publishes, the dependent job must stop publishing — and its remaining
-  role (if any) stated.
-- If the dependent job keeps publishing, `TASK_FINALIZE` is a merge step only, and the
-  in-array entry's name should say so.
+**The decision is over seven sites, not two (flow-r2 C3).** An earlier draft framed this as
+`TASK_FINALIZE` versus the dependent lifecycle job. The real set:
+
+| Site | Routes through `finalize_run` after P4? |
+|---|---|
+| `_cli_output_manager.py:1540` (`aggregate_measurements`) | yes |
+| `_cli_recompile_worker.py:652,654` | yes |
+| `phenotypicCLI.py:2395`, `:3726` | **no** |
+| `_cli_checkpoint_handler.py:354,442` | **no** |
+| `_cli_gui_lifecycle.py:132` | **no** |
+| `_cli_migrate.py:1220` | **no** |
+| `sdk_/_hdf_to_zarr.py:732` (aggregate) | **no** |
+
+`_cli_checkpoint_handler.py` is the in-array `__PHENOTYPIC_CHECKPOINT__` dispatch — **the
+SLURM fan-out path itself** — and it gates publication on `current_run_is_complete`
+(`:341,348`), which is **marker-derived**: exactly the derivation CAN-5 identifies as the
+problem. So the shard-completeness check, as first written, does not reach the path most
+able to publish over a short master.
+
+Enumerate all seven, decide for each whether it publishes or delegates, and record the
+decision. The test's shape (`_sites_that_called(...)`) was right; the decision it guards was
+scoped too narrowly.
 
 Whichever, `_cli/CLAUDE.md`'s "sole publisher" sentence is updated in the same commit — P7
 Task 6 Step 4 owns the final wording, but a sentence that becomes false in P5 must not
@@ -244,12 +262,22 @@ The shard worker body is one pass over its images: read
 metadata projection (D-A), no global frame.
 
 `TASK_FINALIZE` calls `finalize_run(..., shard_paths=[...])` — **and refuses to publish
-unless the shard set is complete (CAN-5).** Two checks, because either alone is
-insufficient:
+unless the shard set is complete (CAN-5).** Two checks, each stated carefully, because the
+obvious form of both is vacuous (flow-r2 C3):
 
-1. it received **exactly K** shard files, and
-2. the merged rows' source set equals `authorized_measurement_sources(output_dir)` — the
-   same predicate step 1 uses.
+1. **It received exactly K shard files, where K is *carried*, not counted.** If
+   `TASK_FINALIZE` globs `measurement_shards/<epoch>/` to build `shard_paths`, then
+   `len(shard_paths)` is the number of files that happen to exist and "exactly K" compares
+   the list against itself. **K comes from the task payload**, written at planning time. The
+   precedent already exists in this codebase: `"expected_non_finalizer_tasks": len(tasks)`
+   in the recompile finalizer task (`_cli_recompile_slurm_scripts.py`). Reuse that key's
+   shape rather than inventing one.
+2. **The merged source set equals the set planned at shard time** — not
+   `authorized_measurement_sources(output_dir)` evaluated now. Under a rolling input, more
+   images can succeed between shard planning and the merge, so `merged ⊊ authorized` with
+   nothing wrong; asserting equality against a live predicate would fail correct runs.
+   Record the planned source set when shards are planned, and require
+   `merged == planned ∧ planned ⊆ authorized`.
 
 **Why this is not belt-and-braces.** The finalizer is `afterany`, so it runs when a shard
 task dies. `publish_aggregate_snapshot` derives `source_set_digest` and `source_image_count`

@@ -131,8 +131,27 @@ lower bound at all**, which is an open-ended compatibility obligation nobody sco
 bounds it: **v0.17.3**, verified to predate both the marker schema (`379acee4`, 2026-08-17)
 and OME-Zarr, writing `version="2.0.0"` with no `success_markers_required`.
 
-`state.version` is a real field (`_cli_state_management.py:205` is its only writer besides
-the legacy promoter), so the floor is detectable rather than inferred:
+> **`state.version` cannot express this floor (MIG-14) — see the gated question below.**
+> Verified: `version="2.0.0"` is the value at v0.17.3 **and** still the value immediately
+> before `379acee4` introduced `"3.0.0"`. It is a *state-schema* version, not a *package*
+> version, and the two are not in bijection. The earlier draft's test planted
+> `version="1.0.0"`, a value **no tree has ever carried**.
+>
+> What the on-disk state *can* express is the **pre-markers shape**: schema `2.0.0` with
+> **no `work_ids` key at all** — the concept did not exist at v0.17.3. That is a reliable
+> signal and it is what the code below uses.
+
+**`requires_conversion` reads the raw JSON itself and never calls `load_processing_state`
+(MIG-14b).** Two reasons, both disqualifying:
+
+- `load_processing_state` calls `migrate_legacy_machine_state(output_dir)` at `:109` — **a
+  write**. A refusal gate that mutates the tree before refusing it is worse than the silent
+  path it replaces.
+- It reads `state_dict[ProcessingStateKey.VERSION]` unguarded (`:167`), so an absent version
+  raises `KeyError`, and `json.loads` at `:115` raises on a truncated file. **A gate that
+  crashes on a malformed tree is worse than no gate.** Map absent, unparseable and malformed
+  to explicit verdicts, never to an exception — INV-VERDICT's degrade half applies to the
+  gate as much as to the reader.
 
 ```python
 def requires_conversion(output_dir: Path) -> ConversionVerdict | None:
@@ -148,12 +167,29 @@ def requires_conversion(output_dir: Path) -> ConversionVerdict | None:
 ```
 
 ```python
-def test_a_tree_below_the_floor_is_refused_by_version_not_by_shape(tmp_path):
-    """U-1. Three lines of code replace an unbounded compatibility surface."""
-    _plant_legacy_state(tmp_path, version="1.0.0")
-    verdict = requires_conversion(tmp_path)
-    assert verdict is ConversionVerdict.BELOW_FLOOR
-    assert "0.17.3" in verdict.message and "1.0.0" in verdict.message
+def test_a_malformed_state_file_yields_a_verdict_not_an_exception(tmp_path):
+    """MIG-14b. A refusal gate that raises on a malformed tree is worse than the
+    silent path it replaces, and one that mutates the tree while deciding is worse
+    still -- which is why this reads raw JSON rather than load_processing_state."""
+    import pytest
+
+    for payload in ("{truncated", "null", "[]", '{"config": {}}'):
+        _write_raw_state(tmp_path, payload)
+        verdict = requires_conversion(tmp_path)       # must not raise
+        assert verdict is not None
+        assert not _tree_was_mutated(tmp_path), (
+            "requires_conversion wrote to the tree while deciding whether to "
+            "refuse it -- load_processing_state's migrate_legacy_machine_state "
+            "side effect leaked in"
+        )
+
+
+def test_the_pre_markers_shape_is_detected_by_absent_work_ids(tmp_path):
+    """MIG-14a. state.version cannot separate the floor: "2.0.0" is the value both
+    at v0.17.3 and immediately before the marker commit. The reliable signal is the
+    absent `work_ids` key -- the concept did not exist at v0.17.3."""
+    _plant_legacy_state(tmp_path, version="2.0.0", work_ids=None)
+    assert requires_conversion(tmp_path) is ConversionVerdict.CONVERT
 ```
 
 - [ ] **Step 3c: Classify the three shapes that had no stated behaviour (CAN-32)**
@@ -163,7 +199,24 @@ Each gets a row in `requires_conversion`'s docstring and a test:
 | Shape | Correct classification | Why it is not obvious |
 |---|---|---|
 | **Bundle-only** — `deliverables/` with no `.phenotypic/` | `None` (nothing to convert) | `BundleLayout.detect` explicitly supports it (`_io_constants.py:2468-2482`), and it trips none of the four signals. Its master stays unstamped, which under P4's stamp-at-finalize is the **correct** pre-v2 signal. |
-| **`--mode process` tree** | `None` after P3 converts its records | Process **does** call `publish_image_success` (`_cli_process_single.py:789,943`), so signal 1 fires — but it has **no master at all**, so any master-touching step must no-op rather than raise. |
+| **modern `--mode process` tree** | `None` after P3 converts its records | Process **does** call `publish_image_success` (`_cli_process_single.py:789,943`), so signal 1 fires — but it has **no master at all**, so any master-touching step must no-op rather than raise. |
+| **pre-markers `--mode process` tree** | **needs a process arm in migrate** — see below | `_cli_process_only.py` ships in v0.17.3, so this is *inside* the supported range. It has no `image_complete/`, so signal 1 does **not** fire; it trips signal 3 and classifies `CONVERT`. But migrate's discovery enumerates `.h5` and `results/<ds>/zarr/*.ome.zarr` (`_cli_migrate.py:611,1377`) — **a process-only run wrote neither.** Its outputs are process layers under the mirrored input tree. |
+
+> **MIG-11: the pre-markers process tree is a hard regression as first written, and it is
+> the same failure as CAN-7 in a shape the resolution did not enumerate.** Classified
+> `CONVERT`, converted to nothing, so Task 2b Step 3's conditional deletion correctly
+> declines to delete `datasets.*` — and the tree is then **refused forever**, since the next
+> run re-classifies `CONVERT` and converts nothing again. Today `--mode process` converts it
+> in place.
+>
+> The ported helper already has the arm: `phenotypicCLI.py:602-612` branches on
+> `config.process_only_layer is not None` and publishes a `process_output` artifact resolved
+> through `process_only_output_path`. **Porting it (Task 2b) is what fixes this too** — the
+> two resolve together, because both need the same identity material. Do not add a second
+> process arm to the migrator; route through the ported helper.
+>
+> Add a test that a pre-markers process tree converts and the next `--mode process` run
+> processes zero images.
 | **Interrupted migrate** | `CONVERT`, and the re-run completes it | Already correct; keep the test that says so. |
 
 - [ ] **Step 4: Run and commit**
