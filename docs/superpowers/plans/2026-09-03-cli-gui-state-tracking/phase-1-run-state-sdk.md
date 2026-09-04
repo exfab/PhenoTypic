@@ -937,7 +937,7 @@ fail:
   identity ignored          -> test_a_stale_identity_never_matches
   verdict straight from cache -> test_a_forged_entry_cannot_manufacture_complete
   ctime in the stat tuple   -> test_ctime_is_not_part_of_the_currency_check
-  eviction removed          -> test_the_cache_is_bounded
+  eviction removed          -> test_an_identity_change_replaces_the_output_entry_wholesale
   clear() unscoped          -> test_clear_scoped_to_one_output_does_not_clear_another"
 ```
 
@@ -1171,6 +1171,37 @@ the two CLI ones until P6 collapses them."
 ---
 
 ## Task 5: `resolve_run_state` — the deep path
+
+> ### Task 5 inherits two tests from Task 3 — this is a deliverable, not a courtesy
+>
+> **Found during execution: Task 3's headline mutation cannot be proved inside Task 3.**
+> Its suite is written against `resolve_run_state` and `run_identity`, which do not exist
+> until Tasks 5 and 4. Four of Task 3's five mutations are provable at the cache surface
+> alone; the fifth — *a forged cache entry cannot manufacture `complete`* — is irreducibly
+> an integration test, because the invariant is about what the cache may **cause in the
+> resolver**, and the resolver is what would contain the bug.
+>
+> So these two move here, and **Task 5 is not done until they are green and mutation-proved**:
+>
+> | Test | The mutation it must catch |
+> |---|---|
+> | `test_a_forged_entry_cannot_manufacture_complete` | `resolve_run_state` returns a verdict straight from the cache without re-verifying |
+> | `test_a_tampered_artifact_falls_through_even_with_a_warm_cache` | a warm entry suppresses the deep re-check |
+>
+> Task 3's agent writes both and hands them over as a diff, so this task pastes rather than
+> reinvents. **Do not treat a handed-over test as pre-verified** — run its mutation here.
+>
+> **Why this is written down rather than left to a message between agents:** "assigned to a
+> later task" is precisely how this plan lost things four times in review. If the tests are
+> absent when the phase gate runs, the spec-adherence reviewer's category B (*planned, not
+> done*) is what catches it — but the plan has to say they were planned for that to work.
+
+> ### Fixtures come from Task 3 — do not write your own
+>
+> `build_complete_run` and `build_incomplete_run` live in `tests/_output_layout.py` and are
+> **built by Task 3 Step 2**. Tasks 4, 5 and 6 consume them as the `complete_run` /
+> `incomplete_run` fixtures. A second pair under different names in the same file is a merge
+> conflict and two subtly different notions of "complete".
 
 **Files:**
 - Modify: `src/phenotypic/sdk_/_run_state.py`
