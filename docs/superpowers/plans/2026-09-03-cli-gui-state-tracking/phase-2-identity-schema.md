@@ -73,6 +73,53 @@ def scientific_config_digest(config: "ExecutionConfig") -> str:
 
 ## Task 1: `restart_epoch` — the one tracked counter
 
+> ### ⚠ This task inherits rule 2's identity fence, which P1 could not build
+>
+> **Found by P1's spec-adherence gate. Unassigned before this note, and therefore lost.**
+>
+> Q2's rule 2 has two halves: *"a liveness authority reports work in flight **for the
+> current identity**, and that authority is itself live"* (`README.md:113-114`). P1 shipped
+> the second — `_run_state.py:746-762` probes the GUI owner's pid, which is CAN-24. **It did
+> not ship the first.** `_live_authority` (`_run_state.py:709`) takes only `output_dir` and
+> never compares the authority's generation against `identity.scheduler_epoch` or
+> `identity.restart_epoch`.
+>
+> **That was correct at P1 and stops being correct here.** Today `identity.scheduler_epoch`
+> is read from `slurm_lifecycle.json` and `_live_authority` reads `active` from *the same
+> file*, so the two cannot disagree by construction — the fence would be a comparison of a
+> value with itself. Once **this task** writes `restart_epoch`, a lifecycle record can
+> predate the current identity, and the halves come apart.
+>
+> **The failure it admits:** a `--restart` mints a new epoch; a worker from the previous
+> epoch is still draining and its lifecycle record still says `active`. Rule 2 fires,
+> `resolve_run_state` returns `active`, and the run looks alive on the strength of a worker
+> the restart already abandoned. That is a **stale authority outranking a valid verdict** —
+> the same shape as rule 2-over-3, which P1 has a test for, in the one direction P1 could
+> not construct.
+>
+> Build it in this task, not later: this is the task that creates the condition.
+>
+> ```python
+> def test_a_pre_restart_authority_does_not_report_the_run_active(tmp_path):
+>     """Rule 2's first half. Vacuous before restart_epoch existed -- the
+>     authority and the identity were read from one file -- and reachable the
+>     moment this task writes it."""
+>     from phenotypic.sdk_ import resolve_run_state
+>
+>     root = _build_incomplete_run(tmp_path)
+>     _mark_slurm_lifecycle_active(root, epoch=0)   # a worker from before
+>     _bump_restart_epoch(root, to=1)               # the restart this task adds
+>
+>     state = resolve_run_state(root, depth="deep")
+>     assert state.completion != "active", (
+>         "a lifecycle record from a superseded epoch reported the run alive"
+>     )
+> ```
+>
+> `_live_authority` needs the identity passed in, so its signature changes. P6 Task 0's
+> call-site conversion is the only external caller and it passes `output_dir` alone today —
+> check it before changing the signature rather than after.
+
 **Files:**
 - Create: `src/phenotypic/_cli/_cli_identity.py`
 - Modify: `src/phenotypic/sdk_/_io_constants.py`
