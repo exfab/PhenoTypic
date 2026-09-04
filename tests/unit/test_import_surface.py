@@ -231,12 +231,19 @@ def test_legacy_migration_output_is_unchanged(layout):
 def test_the_lazily_built_colourspace_is_one_shared_object():
     """``sRGB_D50`` must be the same object on every access, as it was eagerly.
 
-    This is not a caching nicety. ``rgb_to_xyz`` assigns
-    ``sRGB_D50.whitepoint = ...`` and then passes ``sRGB_D50.whitepoint`` into
-    the conversion, so a ``__getattr__`` that built a fresh colourspace per
-    access would silently change what every D50 conversion in the library
-    computes -- while every existing test still passed, because each call would
-    mutate and read its own private copy and look self-consistent.
+    This pins a documented behavioural contract, not a numeric one. Callers
+    mutate the returned object in place (``rgb_to_xyz`` assigns
+    ``.whitepoint``), and the eager module-level constant they were written
+    against was shared process-wide; anything reading that attribute outside the
+    mutating call sees the last writer's value, and that stays true only while
+    every access yields one object.
+
+    Be precise about what this is *not*: rebuilding per access does not change
+    what ``rgb_to_xyz`` returns. Measured, not assumed -- simulating a
+    per-access rebuild moves the output by exactly 0.0, because the function
+    imports the colourspace once per call and then mutates and reads it inside
+    that same call, so two objects never straddle the mutation. An earlier
+    version of this docstring claimed otherwise.
     """
     from phenotypic.sdk_ import colourspace
 
@@ -398,24 +405,32 @@ def test_no_new_file_imports_a_deferred_library_at_module_scope():
 
 
 def test_rgb_to_xyz_matches_the_pre_refactor_numbers():
-    """Pin the numbers, not just the object identity.
-
-    ``sRGB_D50`` is a shared mutable global: ``rgb_to_xyz`` assigns
-    ``.whitepoint`` and reads it back two lines later. The identity test proves
-    every caller sees one object, but a colourspace rebuilt per access would
-    still return finite arrays of the right shape — every existing colour test
-    is phenotypic-against-phenotypic, so all of them stay green while every
-    ``image.color.Lab[:]`` value shifts.
+    """Pin the conversion output against the source as it was before deferral.
 
     The golden was captured by running the *pre-refactor* source out of the
-    pinned baseline worktree, so it is an outside witness rather than a
-    photograph of current behaviour.
+    pinned base worktree, so it is an outside witness rather than a photograph
+    of current behaviour. It catches a real change to what the conversion
+    computes -- a wrong whitepoint, a dropped cctf, a transposed matrix.
 
-    Each combination is computed twice: the in-place whitepoint assignment must
-    be idempotent, which is precisely what a per-thread or per-access cache
-    would break.
+    **Compared at a tolerance, not bit-exactly.** A sha256 of the raw float64
+    bytes was tried first and failed in CI: the goldens were captured on an
+    AMD EPYC 7713 and shard 17 ran on an Intel Xeon Gold 5220R, whose BLAS
+    kernels differ in the last ulp. Measured across all four combinations, the
+    worst cross-node relative difference is 3.4e-16, against a float64 epsilon
+    of 2.2e-16 -- roughly 1.5 ulp. ``rtol`` below is ~3000x that noise floor and
+    still far tighter than any real algorithm change.
+
+    **What this does NOT guard, measured rather than assumed.** It does not
+    detect ``sRGB_D50`` being rebuilt per access. That was the stated reason for
+    adding it; the claim was wrong. ``rgb_to_xyz`` imports the colourspace once
+    per call, then mutates ``.whitepoint`` and reads it back inside that same
+    call, so two different objects can never straddle the mutation -- simulating
+    a per-access rebuild (and a non-default observer) changes the output by
+    exactly 0.0. The ``lru_cache`` governs object identity and allocation, not
+    these numbers, and
+    :func:`test_the_lazily_built_colourspace_is_one_shared_object` is what pins
+    the sharing contract.
     """
-    import hashlib
     import json
 
     import numpy as np
@@ -425,25 +440,31 @@ def test_rgb_to_xyz_matches_the_pre_refactor_numbers():
     )
     from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
 
-    expected = json.loads(
+    golden = json.loads(
         (surface.GOLDEN_DIR / "rgb_to_xyz.json").read_text(encoding="utf-8")
     )
-    rgb = np.linspace(0.0, 1.0, 4 * 5 * 3, dtype=np.float64).reshape(4, 5, 3)
+    shape = tuple(golden["shape"])
+    rgb = np.linspace(0.0, 1.0, int(np.prod(shape)), dtype=np.float64).reshape(shape)
     observer = "CIE 1931 2 Degree Standard Observer"
 
+    # Twice per combination: the in-place whitepoint assignment must leave the
+    # shared colourspace in a state the next call reproduces exactly.
     for _ in range(2):
         for gamma in (GAMMA_ENCODINGS.SRGB, GAMMA_ENCODINGS.LINEAR):
             for illuminant in ("D50", "D65"):
-                out = np.ascontiguousarray(
+                key = f"{gamma.name}:{illuminant}"
+                out = np.asarray(
                     rgb_to_xyz(
                         rgb, gamma=gamma, illuminant=illuminant, observer=observer
                     )
+                ).ravel()
+                np.testing.assert_allclose(
+                    out,
+                    np.array(golden["values"][key]),
+                    rtol=1e-12,
+                    atol=1e-15,
+                    err_msg=f"{key} no longer matches the pre-refactor conversion",
                 )
-                key = f"{gamma.name}:{illuminant}"
-                assert (
-                    hashlib.sha256(out.tobytes()).hexdigest()
-                    == expected[key]["sha256"]
-                ), f"{key} no longer matches the pre-refactor conversion"
 
 
 def test_the_colour_plotting_stub_swaps_itself_out_on_a_real_attribute():
