@@ -84,14 +84,20 @@ STATE_SCHEMA_VERSION: Final[int] = 3
 #: ``.phenotypic/`` until P7 Tasks 2, 2b and 3. An advisory that is always on
 #: is worse than none: it teaches people to ignore the one that will matter.
 #:
-#: **Patching note.** ``_cli_schema_gate`` re-exports this as its own
-#: module-level binding and ``refuse_unconverted_schema`` reads *that*, so a
-#: test arming the refusal patches ``_cli_schema_gate``. ``_run_state`` reads
-#: this module's attribute, so a test arming the advisory patches
-#: ``_schema_shape``. The two are one value in production -- the re-export is
-#: taken at import and ``test_the_arming_flag_has_one_source`` pins it -- and
-#: the asymmetry exists only under monkeypatch. Patch the module whose
-#: consumer you are testing.
+#: **Patching note. There is exactly one binding: this one.** Both consumers
+#: read it through this module -- ``_run_state`` for the advisory,
+#: ``refuse_unconverted_schema`` for the refusal -- so **every test arming
+#: either one patches ``_schema_shape``**, never ``_cli_schema_gate``.
+#:
+#: An earlier draft kept a re-export on ``_cli_schema_gate`` and this note
+#: described how to patch each side separately. That was rejected: a
+#: re-exported copy reads correctly while being **inert under monkeypatch**, so
+#: a test patching the name on the module it is testing would change nothing,
+#: and the flag is the last place anyone looks.
+#: ``test_the_arming_flag_has_one_source`` asserts no ``Assign``, ``AnnAssign``
+#: or ``ImportFrom`` in ``_cli_schema_gate`` binds the name, and that
+#: ``hasattr`` is ``False`` -- so following the old note now fails a test
+#: rather than silently doing nothing.
 #:
 #: The name predates the second consumer and is now slightly narrow; renaming
 #: it would churn cluster 1.4's suite mid-phase, so P3 Task 2 -- where someone

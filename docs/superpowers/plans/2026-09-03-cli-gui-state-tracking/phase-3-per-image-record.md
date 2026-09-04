@@ -650,7 +650,12 @@ RunState advisory rather than silently reading as not-done (O-2)."
 
 > ### This task must ARM the schema gate, in the same commit
 >
-> **`_cli_schema_gate.SCHEMA_GATE_ARMED` is `False` when it ships from P1, deliberately.**
+> **`_schema_shape.SCHEMA_GATE_ARMED` is `False` when it ships from P1, deliberately.**
+>
+> *(The flag lives in `sdk_/_schema_shape.py`, not `_cli_schema_gate`. P1 moved the detection
+> there so `resolve_run_state` could emit §4.3's reader advisory without importing `_cli`,
+> and deliberately left **no re-export** — a re-exported copy would read correctly while
+> being inert under monkeypatch. **Arm it here, and arm it there.**)*
 > At P1 the "legacy" shape and the *current* shape are the same shape — the forward path
 > still writes `image_complete/` and `datasets.<ds>.completed`, and does not yet write
 > `restart_epoch` — so three of the five signals fire on a tree the build just wrote.
@@ -689,7 +694,7 @@ RunState advisory rather than silently reading as not-done (O-2)."
 >
 > 1. Spec §4.2: `processing_state.datasets.{completed,failed,started}` — **"Deleted from the
 >    file."**
-> 2. The gate's **signal 3** (`_cli_schema_gate.py:216-224`) returns `CONVERT` when any
+> 2. The gate's **signal 3** (`sdk_/_schema_shape.py:246`, moved there in P1) returns `CONVERT` when any
 >    dataset entry carries `"completed"`.
 > 3. `save_processing_state` (`_cli_state_management.py:79-85`) writes `COMPLETED`, `FAILED`,
 >    `ERRORS` and `INITIAL_IMAGES` for every dataset, **unconditionally, on every save.**
