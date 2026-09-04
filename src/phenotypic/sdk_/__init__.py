@@ -98,9 +98,15 @@ from ._io_constants import (
     PROCESSING_EVENTS_LOG,
     PROCESSING_REPORT_HTML,
     PROCESSING_STATE_JSON,
+    AGGREGATE_PROOF_VERSION,
+    ARTIFACT_KIND_FILE,
+    ARTIFACT_KIND_STORE,
     RUN_COMPLETION_JSON,
     RUN_LOG_DIRNAME,
     RUN_MARKER_JSON,
+    RUN_PROOF_VERSION,
+    SLURM_LIFECYCLE_JSON,
+    SUCCESS_MARKER_VERSION,
     QC_DUCKDB,
     QC_REVIEW_STATE_JSON,
     README_MD,
@@ -165,6 +171,7 @@ from ._io_constants import (
     generalization_path,
     generation_staging_path,
     gui_launch_owner_path,
+    slurm_lifecycle_path,
     image_completion_marker_path,
     image_record_path,
     has_config_suffix,
@@ -255,7 +262,11 @@ from ._run_state import (
     RunDiagnostics,
     RunIdentity,
     RunState,
+    assert_identity_current,
     clear_verification_cache,
+    finalization_input_object,
+    resolve_run_state,
+    run_identity,
 )
 from .funcs_ import is_binary_mask, timed_execution
 from .hdf_ import HDF
@@ -392,15 +403,18 @@ __all__ = [
     "sweep_orphan_parts",
     "valid_staged_store",
     # Run-state readers (spec §5.2). The four frozen types land in P1
-    # Task 2 and clear_verification_cache in Task 3; run_identity,
-    # assert_identity_current, finalization_input_object and
-    # resolve_run_state are each exported by the task that implements
-    # them, so the tree imports cleanly at every commit.
+    # Task 2, clear_verification_cache in Task 3, the identity readers in
+    # Task 4 and resolve_run_state in Task 5 -- each exported by the task
+    # that implements it, so the tree imports cleanly at every commit.
     "ImageState",
     "RunDiagnostics",
     "RunIdentity",
     "RunState",
+    "assert_identity_current",
     "clear_verification_cache",
+    "finalization_input_object",
+    "resolve_run_state",
+    "run_identity",
     # Typing aliases (closed value sets)
     "InputLayer",
     "NormOut",
@@ -448,9 +462,15 @@ __all__ = [
     "PROCESSING_EVENTS_LOG",
     "PROCESSING_REPORT_HTML",
     "PROCESSING_STATE_JSON",
+    "AGGREGATE_PROOF_VERSION",
+    "ARTIFACT_KIND_FILE",
+    "ARTIFACT_KIND_STORE",
     "RUN_COMPLETION_JSON",
     "RUN_LOG_DIRNAME",
     "RUN_MARKER_JSON",
+    "RUN_PROOF_VERSION",
+    "SLURM_LIFECYCLE_JSON",
+    "SUCCESS_MARKER_VERSION",
     "QC_DUCKDB",
     "QC_REVIEW_STATE_JSON",
     "README_MD",
@@ -538,6 +558,7 @@ __all__ = [
     "generalization_path",
     "generation_staging_path",
     "gui_launch_owner_path",
+    "slurm_lifecycle_path",
     "image_completion_marker_path",
     "image_record_path",
     "has_config_suffix",

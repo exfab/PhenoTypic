@@ -889,6 +889,66 @@ uv run ruff check --fix src/phenotypic/sdk_/_verification_cache.py \
 
 - [ ] **Step 8: Measure cold start, then decide on the on-disk tier (CAN-26)**
 
+> ### ⚠ The threshold is stated in the wrong units, so it does not name a decidable condition
+>
+> **"Under 30 s projected at N=6000" cannot be evaluated**, because cold-deep cost is not a
+> function of image count. It is a function of **marker-bound bytes**, and on a real tree it
+> is dominated by one artifact class the image count says nothing about.
+>
+> Measured on the 6,657-image Maresca tree — each image binds three artifacts:
+>
+> | Artifact | Size | Share of the pass |
+> |---|---|---|
+> | overlay PNG | ~11 MB | **~73 GB — 99%** |
+> | embedded measurements table | ~66 KB | ~440 MB |
+> | store root `zarr.json` | ~2 KB | ~13 MB |
+>
+> Two runs with **identical `N`** differ by orders of magnitude depending on overlay
+> resolution — and `--mode process` writes no overlays at all, so its cold pass is ~1% of a
+> full run's at the same image count. `N` is the wrong independent variable.
+>
+> **This is the defect CAN-26 was reaching for and did not finish.** It correctly identified
+> that S-5 measured an *approximation* of the shipped predicate, and moved the measurement
+> here to fix that — but left the threshold expressed in the approximation's own units. The
+> measurement was corrected; the condition it feeds was not.
+>
+> **Restate the question in bytes before asking it:** *"a cold deep pass hashes ~74 GB on a
+> 6,657-image tree, and the in-process cache reduces steady state to a stat sweep — should a
+> fresh process pay that once?"* That is decidable. *"Is it under 30 s at N=6000"* is not.
+>
+> **P1 ships no `VERIFICATION_CACHE_JSON`** — not because the number came in under
+> threshold (it does not; ~74 GB is structurally above 30 s at any plausible bandwidth) but
+> because the decision as posed cannot be made correctly from this measurement, and P1's gate
+> is not where a new tracked artifact should enter a design whose thesis is removing them.
+> D-B removed it deliberately; re-adding it on a threshold stated in the wrong units is
+> weaker ground than D-B stood on.
+
+> ### If the tier ever does ship, it changes an invariant — say so out loud
+>
+> The plan specifies the six corruption cases. It does not name the thing D-B's reasoning
+> actually turned on:
+>
+> **An in-process entry can only have been written by a deep pass in this process. An
+> on-disk entry cannot.**
+>
+> INV-VERDICT's argument is that *an entry only licenses skipping a pass the caller already
+> performed*. On disk, "the caller" becomes **some** process — possibly an older build,
+> possibly mid-write, possibly another user. That is a real weakening of the invariant, it is
+> defensible, and it must be stated in the module docstring rather than inherited silently
+> from wording written for the in-process case.
+
+> ### Flagged for P4, not P1: the dominant cost is a *derived display artifact*
+>
+> ~99% of the cold pass is re-hashing overlay PNGs — a rendering, not a measurement. The
+> overlay is marker-bound today, so **a completion verdict is gated on 73 GB of PNG**.
+>
+> Whether a display artifact belongs in a content proof at all is a real question, and
+> answering it would cut the cold pass by ~99% **with no new tracked file** — a better
+> outcome than the on-disk tier, reached by removing something rather than adding something.
+>
+> **It is not P1's to decide**: it changes what the proofs certify, which is P4's subject.
+> Recorded here so P4 meets it with the measurement already in hand.
+
 S-5 moved here from P0, because it measured a hand-rolled *approximation* of the
 marker-hashing loop; now that `resolve_run_state` exists, measure **the real
 predicate**:
@@ -1495,6 +1555,84 @@ and proof["scientific_config_digest"]   == config.get("pipeline_sha256")
 and proof["source_set_digest"]          == _canonical_digest(sorted(verified_work_ids))
 and proof["source_image_count"]         == len(verified_work_ids)
 ```
+
+> ### ⚠ Rule 1 is written against a proof shape that does not exist yet (found by executing)
+>
+> **Taken literally, rule 1 can never fire, so `resolve_run_state` can never return
+> `complete` on any tree the real publishers built.** That contradicts this phase's own
+> claim to work on today's trees — the property that makes P1 independently landable.
+>
+> `publish_run_completion_evidence` (`_cli_completion.py:979-996`) writes exactly seven
+> fields:
+>
+> ```
+> schema_version · generation · execution_epoch · mode · status ·
+> finalizer_succeeded · completed_at
+> ```
+>
+> **None of the five rule 1 compares.** Three separate mismatches:
+>
+> | Rule 1 reads | Reality |
+> |---|---|
+> | `proof["source_set_digest"]` | not in the run proof — it is in the **aggregate** proof, bound by `publication_id`. U-4 moves it in P4. |
+> | `proof["source_image_count"]` | same |
+> | `proof["finalization_input_digest"]` | the publisher digests the three values **without** `schema_version`; §5.5's object carries it, so the two cannot match |
+>
+> **The reader accepts both shapes and says where each half is dropped.** That is not a
+> workaround — §5.5's own rule is that version skew is *"handled by the reader"*:
+>
+> - `_source_set_binding` reads the run proof when it carries the fields (post-U-4) and
+>   otherwise follows `publication_id` to the aggregate proof.
+> - `_accepted_finalization_digests` accepts the versioned and unversioned spellings.
+>
+> **Both must carry a comment naming P4 as the point where the legacy half goes**, or the
+> compatibility outlives the reason for it — which is how a temporary shim becomes permanent
+> and then becomes load-bearing.
+
+> ### ⚠ The verdict matrix contradicts a test twelve lines below it
+>
+> `pytest.param(_mark_slurm_lifecycle_active, "active", id="live-worker")` is applied to
+> `complete_run`, and `test_a_live_worker_does_not_mask_a_valid_run_proof(complete_run)`
+> asserts `complete` for the **identical mutation on the identical fixture**. Both cannot
+> hold. The matrix row is the wrong one: split it into
+> `test_a_live_worker_over_an_unfinished_run_reads_active(incomplete_run)`.
+>
+> Three more matrix rows in the same block cannot fire as written, and each fails silently
+> rather than loudly — they pass, proving nothing:
+>
+> - **`terminal-failure` on a complete run.** Rule 3 requires records *"with no superseding
+>   success proof"*, so a row beside a valid marker is superseded and the verdict stays
+>   `complete`. Worse, `append_terminal_failure` **refuses to write at all** while
+>   `valid_image_success` is true, so the mutation writes nothing.
+> - **`_edit_metadata_csv` changes no digest** — the same class as `_edit_pipeline_json`,
+>   which cluster 1.2 already found. The finalization inputs read `config.metadata_sha256`
+>   from `processing_state.json`, a literal field, not a re-derivation from the CSV. Use
+>   `bump_metadata_snapshot_digest`.
+> - **`test_a_dead_gui_owner_does_not_pin_the_verdict_at_active` cannot fail.** On
+>   `complete_run`, rule 1 answers before rule 2 is consulted, so the assertion holds whether
+>   or not CAN-24's liveness check exists. Needs the `incomplete_run` form **and** a positive
+>   control, or "always answer not-alive" passes too.
+
+> ### ⚠ The five comparison cases do not isolate their comparisons
+>
+> Step 6 asks for a proof that each of rule 1's five comparisons is load-bearing, but every
+> parametrized case moves several at once: `_add_an_image` shifts `inventory_digest`,
+> `source_set_digest` **and** `source_image_count` together *and* breaks clause 1, so
+> deleting any one comparison leaves three others catching it and the case stays green.
+>
+> That is not a flaw in the chosen cases — **every realistic tree change has this shape**,
+> because inventory is upstream of everything else. So the proof needs two families:
+> **proof-field falsification** (each case caught by exactly one comparison — that is the
+> can-fail proof) and **realistic tree changes** (the behaviour a user sees). Clause 1 needs
+> its own case, since it is unobservable unless the aggregate proof is re-pointed at the
+> reduced success set — which is what a *partial* publication looks like.
+
+> ### `_run_process_mode` is defined nowhere
+>
+> Task 5 Step 5 calls `_run_process_mode(tmp_path, layer="objmap")`; a grep across the plan
+> and spec finds no definition. **Same class as the `_invoke_cli` gap** — 27 uses, zero
+> definitions. Implement it as `build_complete_run(tmp_path, process_only_layer=...)` driving
+> the real publishers rather than shelling out to the CLI.
 
 **Why each one matters** — a reviewer who deletes any of these is reintroducing a
 documented defect:

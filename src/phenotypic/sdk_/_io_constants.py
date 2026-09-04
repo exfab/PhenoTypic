@@ -580,6 +580,12 @@ GUI_RECORD_GENERATION_ENV_VAR: Final[str] = (
     "PHENOTYPIC_GUI_RECORD_GENERATION"
 )
 
+#: Mutable active-generation fence for a SLURM launch. One of spec §4.1's
+#: three written authorities (liveness and ownership), so the run-state
+#: reader needs the name and INV-LAYER forbids it importing the CLI module
+#: that used to be the name's only home.
+SLURM_LIFECYCLE_JSON: Final[str] = "slurm_lifecycle.json"
+
 #: Generation- and mode-bearing terminal publication marker.
 RUN_COMPLETION_JSON: Final[str] = "run_completion.json"
 
@@ -666,6 +672,30 @@ DIR_IMAGE_COMPLETE: Final[str] = "image_complete"
 #: ``stage3_complete/`` (spec §6.1). ``stage2_raw/`` stays a separate tree: it is
 #: bulk replay data, not a record.
 DIR_IMAGE_RECORDS: Final[str] = "images"
+
+#: Per-image success-marker schema version. Bumped to 2 when artifact
+#: descriptors gained ``kind``: a v1 marker describes the per-image ``.h5``,
+#: which ``--mode migrate`` keeps by default, so a v1 marker would *validate*
+#: against that file while the store it should describe went entirely
+#: unverified (ledger FLOW-23).
+#:
+#: It lives here rather than in ``_cli_completion`` -- which re-exports it,
+#: so every existing importer is unchanged -- because the run-state reader
+#: must check the same number and INV-LAYER forbids that module importing the
+#: writer. Two copies of a version number that gate a *completion* verdict is
+#: the one duplication that can silently manufacture a false ``complete``.
+SUCCESS_MARKER_VERSION: Final[int] = 2
+
+#: Artifact descriptor kinds. ``"file"`` is the default for a descriptor
+#: written before the ``kind`` tag existed; a ``"store"`` descriptor carries
+#: no ``size`` and digests the store's root ``zarr.json`` instead.
+ARTIFACT_KIND_FILE: Final[str] = "file"
+ARTIFACT_KIND_STORE: Final[str] = "store"
+
+#: Marker-last proof schema versions, read by the run-state resolver and
+#: written by ``_cli_completion``'s two publishers.
+AGGREGATE_PROOF_VERSION: Final[int] = 1
+RUN_PROOF_VERSION: Final[int] = 2
 
 #: Per-dataset measurements subdirectory: ``<output>/results/<ds>/measurements/``.
 DIR_MEASUREMENTS: Final[str] = "measurements"
@@ -1942,6 +1972,16 @@ def job_metadata_path(output_dir: Path) -> Path:
 def gui_launch_owner_path(output_dir: Path) -> Path:
     """Return the canonical GUI launch-generation owner record path."""
     return progress_dir(output_dir) / GUI_LAUNCH_OWNER_JSON
+
+
+def slurm_lifecycle_path(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/progress/slurm_lifecycle.json``.
+
+    The mutable active-generation fence. ``_cli_slurm_lifecycle`` owns every
+    *write*; this helper exists because the run-state reader must be able to
+    ask who is in flight without importing a writer (INV-LAYER).
+    """
+    return progress_dir(output_dir) / SLURM_LIFECYCLE_JSON
 
 
 def run_completion_marker_path(output_dir: Path) -> Path:

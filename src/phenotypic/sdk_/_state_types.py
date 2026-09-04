@@ -28,6 +28,13 @@ from typing import Literal
 Completion = Literal["complete", "incomplete", "failed", "active"]
 Depth = Literal["shallow", "deep"]
 
+#: One image's verdict. Named rather than spelled inline on
+#: :class:`ImageState` so that :mod:`phenotypic.sdk_._run_state` can annotate
+#: the value it computes with the same type the field declares, instead of
+#: repeating the three strings in a second place -- which is the duplication
+#: this whole change is about, at its smallest scale.
+Verdict = Literal["verified", "unverified", "failed"]
+
 
 @dataclass(frozen=True)
 class RunIdentity:
@@ -96,7 +103,7 @@ class ImageState:
     stages: Mapping[str, Mapping[str, object]]
     #: Spec §9 annotates ``images`` as "work_id -> stages + VERDICT". A bool
     #: plus an unread ``reason`` was not that (SIMP-R1-09).
-    verdict: Literal["verified", "unverified", "failed"]
+    verdict: Verdict
     reason: str | None = None
 
 

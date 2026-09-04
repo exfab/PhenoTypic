@@ -23,6 +23,7 @@ from phenotypic.sdk_ import (
     atomic_write_json,
     job_metadata_path,
     progress_dir,
+    slurm_lifecycle_path,
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic.sdk_.slurm import sbatch_submission_environment
@@ -30,7 +31,6 @@ from phenotypic.sdk_.slurm import sbatch_submission_environment
 from ._cli_file_locking import atomic_append, atomic_read
 
 SCHEMA_VERSION = 2
-_STATE_FILENAME = "slurm_lifecycle.json"
 _LEDGER_FILENAME = "slurm_jobs.jsonl"
 _LEGACY_STAGED_LEDGER_FILENAME = "staged_jobs.jsonl"
 _LOCK_FILENAME = ".slurm_submit_cancel.lock"
@@ -79,8 +79,13 @@ def new_slurm_generation() -> str:
 
 
 def lifecycle_state_path(output_dir: Path) -> Path:
-    """Return the mutable active-generation fence path."""
-    return progress_dir(output_dir) / _STATE_FILENAME
+    """Return the mutable active-generation fence path.
+
+    The filename lives in ``sdk_/_io_constants`` because the run-state
+    reader must resolve it too, and INV-LAYER forbids that module importing
+    this one. This function stays the name every writer here calls.
+    """
+    return slurm_lifecycle_path(output_dir)
 
 
 def lifecycle_ledger_path(output_dir: Path) -> Path:

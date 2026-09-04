@@ -30,6 +30,7 @@ import pytest
 from click.testing import CliRunner, Result
 
 from phenotypic._cli import _cli_schema_gate
+from phenotypic.sdk_ import _schema_shape
 from phenotypic._cli._cli_schema_gate import (
     STATE_SCHEMA_VERSION,
     ConversionVerdict,
@@ -546,18 +547,28 @@ def test_the_gate_never_reaches_the_writing_state_reader() -> None:
     ``load_processing_state`` writes and raises; a future edit that reaches for
     it would pass the mutation tests above on any tree that happens to be
     already relocated. Names in docstrings are not references, so this walks
-    the AST rather than the text -- both functions are *discussed* in this
-    module and neither may be *called* by it.
+    the AST rather than the text -- both functions are *discussed* in these
+    modules and neither may be *called* by either.
+
+    **Both modules, because the detection moved.** The predicate now lives in
+    ``sdk_/_schema_shape`` so that ``resolve_run_state`` can emit §4.3's
+    reader advisory from it; walking only ``_cli_schema_gate`` would leave
+    this guarantee pointing at the eighty lines that stayed behind while the
+    two hundred it was written for went unwatched. A guard has to follow the
+    code it guards.
     """
-    tree = ast.parse(inspect.getsource(_cli_schema_gate))
+    from phenotypic.sdk_ import _schema_shape
+
     referenced: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Name):
-            referenced.add(node.id)
-        elif isinstance(node, ast.Attribute):
-            referenced.add(node.attr)
-        elif isinstance(node, (ast.Import, ast.ImportFrom)):
-            referenced.update(alias.name for alias in node.names)
+    for module in (_cli_schema_gate, _schema_shape):
+        tree = ast.parse(inspect.getsource(module))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name):
+                referenced.add(node.id)
+            elif isinstance(node, ast.Attribute):
+                referenced.add(node.attr)
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                referenced.update(alias.name for alias in node.names)
 
     assert "load_processing_state" not in referenced
     assert "migrate_legacy_machine_state" not in referenced
@@ -648,7 +659,7 @@ def test_every_writing_mode_refuses_an_unconverted_tree(
     shape and the current shape are the same shape. Arming here is what proves
     the wiring, the message and the mode coverage before P3 flips the constant.
     """
-    monkeypatch.setattr(_cli_schema_gate, "SCHEMA_GATE_ARMED", True)
+    monkeypatch.setattr(_schema_shape, "SCHEMA_GATE_ARMED", True)
     tree = _build_markers_era(tmp_path / "run")
 
     result = _invoke(mode, tree, cli_inputs)
@@ -671,7 +682,7 @@ def test_a_legacy_tree_is_refused_before_the_clean_break_can_empty_it(
     rather than an error -- because ``{}`` from
     ``authorized_measurement_sources`` is a VALID result, not a failure.
     """
-    monkeypatch.setattr(_cli_schema_gate, "SCHEMA_GATE_ARMED", True)
+    monkeypatch.setattr(_schema_shape, "SCHEMA_GATE_ARMED", True)
     tree = _build_pre_markers(tmp_path / "run")
 
     result = _invoke("full", tree, cli_inputs)
@@ -703,7 +714,7 @@ def test_migrate_mode_is_never_refused_by_the_gate(
     Dry-run, because the exemption is an argument-validation fact and a real
     conversion is P7's to exercise.
     """
-    monkeypatch.setattr(_cli_schema_gate, "SCHEMA_GATE_ARMED", True)
+    monkeypatch.setattr(_schema_shape, "SCHEMA_GATE_ARMED", True)
     tree = _build_markers_era(tmp_path / "run")
 
     result = _invoke("migrate", tree, cli_inputs, dry_run=True)
@@ -769,33 +780,107 @@ def test_the_gate_is_armed_exactly_when_the_forward_path_stops_writing_markers(
         tree, "plate", "a"
     ).is_file()
 
-    assert writes_legacy_marker is not _cli_schema_gate.SCHEMA_GATE_ARMED, (
+    assert writes_legacy_marker is not _schema_shape.SCHEMA_GATE_ARMED, (
         "publish_image_success and SCHEMA_GATE_ARMED disagree: arm the gate "
         "in the same commit that moves the publisher onto the consolidated "
         "record (P3 Task 2), or a legacy tree publishes an empty master"
     )
 
 
-def test_the_gui_reports_rather_than_refuses(tmp_path: Path) -> None:
-    """§4.3: a half-migrated tree is an ADVISORY, not a gate.
+def test_the_gui_reports_rather_than_refuses(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§4.3: an unconverted tree is an ADVISORY, not a gate.
 
     The GUI is a reader; refusing to display a legacy tree would be a
-    regression from today, where it displays one. Skips until
-    ``resolve_run_state`` exists (P1 Task 6) -- it is that function's contract,
-    asserted from here because this is where the refusal/advisory split is
-    decided.
+    regression from today, where it displays one. This is
+    ``resolve_run_state``'s contract, asserted from here because this is where
+    the refusal/advisory split is decided.
+
+    **Both halves, because the advisory is gated on the same flag the refusal
+    is.** They are two surfacings of one detection, so *"detection is correct
+    now; only the surfacing waits"* governs both. It has to: at P1
+    ``requires_conversion`` returns ``CONVERT`` for every tree the current
+    build writes -- ``publish_image_success`` always creates
+    ``image_complete/`` and ``save_processing_state`` always writes
+    ``datasets.<ds>.completed`` -- so an ungated advisory would banner
+    "run ``--mode migrate``" on every GUI output until P3, advising a
+    conversion that does not convert ``.phenotypic/`` until P7.
+
+    The disarmed assertion is deliberately one call and one condition. An
+    earlier draft wrote ``advisories == () or not any(...)``, which passes two
+    ways: a future change that empties ``advisories`` entirely would satisfy
+    the first branch and the test would stop noticing.
     """
-    try:
-        from phenotypic.sdk_ import (  # type: ignore[attr-defined]
-            resolve_run_state,
-        )
-    except ImportError:  # pragma: no cover - clears when P1 Task 6 lands
-        pytest.skip("resolve_run_state lands in P1 Task 6")
+    from phenotypic.sdk_ import _schema_shape, resolve_run_state
 
     tree = _build_markers_era(tmp_path / "run")
-    state = resolve_run_state(tree, depth="deep")
 
-    assert any("migrate" in advisory for advisory in state.advisories)
+    disarmed = resolve_run_state(tree, depth="deep")
+    assert not any("migrate" in a for a in disarmed.advisories)
+
+    monkeypatch.setattr(_schema_shape, "SCHEMA_GATE_ARMED", True)
+    armed = resolve_run_state(tree, depth="deep")
+
+    assert any("migrate" in advisory for advisory in armed.advisories)
+    assert armed.completion in {
+        "complete",
+        "incomplete",
+        "failed",
+        "active",
+    }, "the reader must return a verdict, never refuse"
+
+
+def test_the_arming_flag_has_one_source() -> None:
+    """One flag, one home, one patch point.
+
+    Both consumers -- ``refuse_unconverted_schema`` here and
+    ``resolve_run_state`` in ``sdk_`` -- read
+    ``_schema_shape.SCHEMA_GATE_ARMED`` through the module, so P3 arms both
+    with a single edit and a test arms both with a single patch.
+
+    **Structural, not an identity comparison.** ``_cli_schema_gate.X is
+    _schema_shape.X`` passes the instant someone writes
+    ``SCHEMA_GATE_ARMED = False`` beside the import, because both are
+    ``False`` today -- it would go green on exactly the divergence it exists
+    to catch, and stay green until P3 flips one of them. What has to be
+    pinned is that this module **never binds the name at all**: a copy here
+    would read correctly while being inert under ``monkeypatch``, which is
+    the trap that costs an afternoon because the flag is the last place
+    anyone looks.
+
+    Same guard shape, and same reason, as
+    ``test_the_marker_schema_constants_have_exactly_one_home``.
+    """
+    source = Path(inspect.getfile(_cli_schema_gate)).read_text(
+        encoding="utf-8"
+    )
+    tree = ast.parse(source)
+
+    bound: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            bound |= {
+                target.id
+                for target in node.targets
+                if isinstance(target, ast.Name)
+            }
+        elif isinstance(node, ast.AnnAssign) and isinstance(
+            node.target, ast.Name
+        ):
+            bound.add(node.target.id)
+        elif isinstance(node, ast.ImportFrom):
+            bound |= {alias.asname or alias.name for alias in node.names}
+
+    assert "SCHEMA_GATE_ARMED" not in bound, (
+        "_cli_schema_gate binds SCHEMA_GATE_ARMED again. A copy here reads "
+        "correctly and is INERT under monkeypatch, so a test patching this "
+        "module changes nothing -- read _schema_shape.SCHEMA_GATE_ARMED "
+        "through the module instead."
+    )
+    assert not hasattr(_cli_schema_gate, "SCHEMA_GATE_ARMED"), (
+        "the name is reachable on _cli_schema_gate, so someone will patch it"
+    )
 
 
 @pytest.mark.skip(

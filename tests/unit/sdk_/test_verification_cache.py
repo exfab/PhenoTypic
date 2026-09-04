@@ -15,14 +15,14 @@ dict. The invariant is about what a cache may CAUSE, not where it lives, so it
 binds identically. If S-5 had added an on-disk tier, Task 3 Step 8 would add
 the JSON-corruption cases; it did not, so there are none.
 
-**Scope, stated so nobody mistakes it for the whole invariant.** These tests
-bind the cache's own surface. The end-to-end half -- "a forged cache cannot
-make ``resolve_run_state`` say ``complete``" -- needs ``resolve_run_state``,
-which is P1 Task 5, and lands with it. What is provable here is the mechanism
-that end-to-end test depends on: an entry only ever *licenses* a re-use, the
-licence is refused for every corruption below, and a refused licence means a
-deep pass. See ``test_a_forged_entry_never_licenses_reuse``, which is the
-cache-level form of the adversarial case.
+**Two halves, and both are here.** Everything above the "INV-VERDICT, end to
+end" banner binds the cache's own surface: an entry only ever *licenses* a
+re-use, the licence is refused for every corruption, and a refused licence
+means a deep pass (``test_a_forged_entry_never_licenses_reuse`` is the
+cache-level form of the adversarial case). Everything below the banner binds
+what the cache may CAUSE in ``resolve_run_state``, which is where the bug
+would live -- including ``test_a_warm_cache_is_actually_used``, the one test
+that fails if the cache is written and never read.
 """
 
 from __future__ import annotations
@@ -32,7 +32,11 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.sdk_ import ImageState, clear_verification_cache
+from phenotypic.sdk_ import (
+    ImageState,
+    clear_verification_cache,
+    resolve_run_state,
+)
 from phenotypic.sdk_._verification_cache import (
     CachedVerification,
     cached_states,
@@ -454,3 +458,173 @@ def test_clearing_every_output_leaves_nothing_tracked(tmp_path):
 
     assert tracked_output_count() == 0
     assert cached_states(tmp_path / "a", DIGEST_A) is None
+
+
+# ---------------------------------------------------------------------------
+# INV-VERDICT, end to end. Handed over from P1 Task 3 (cluster 1.2) because
+# these need `resolve_run_state`, which Task 5 introduces. The THREE tests
+# above the recommendations divider are REQUIRED Task 5 deliverables; the two
+# below it are recommendations. A handed-over test is not a pre-verified one:
+# the mutation beside each was run here and confirmed red before they were
+# called done.
+#
+# Three obligations they place on `resolve_run_state`, worth reading BEFORE
+# writing it rather than discovering as red tests:
+#
+#   1. `depth="deep"` must populate the cache through `remember_states`,
+#      keyed on `run_identity(output_dir).digest()`.
+#   2. `depth="shallow"` must fall back to a full deep pass when the cache is
+#      cold or stale, and must report the depth it ACTUALLY performed in
+#      `RunState.depth`.
+#   3. A store must be fenced by its root `zarr.json`, never by the store
+#      directory -- `entry_is_still_current` fails closed on a directory (see
+#      `test_a_store_directory_is_never_current`), so a resolver that records
+#      the store dir in `stat_tuples` will silently never hit the cache.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def complete_run(tmp_path):
+    from tests._output_layout import build_complete_run
+
+    return build_complete_run(tmp_path)
+
+
+@pytest.fixture
+def incomplete_run(tmp_path):
+    from tests._output_layout import build_incomplete_run
+
+    return build_incomplete_run(tmp_path)
+
+
+def test_a_forged_entry_cannot_manufacture_complete(incomplete_run):
+    """The adversarial case: every cached state claims verdict="verified".
+
+    Spec §14 calls this the highest-value test in the change, and it is the
+    only INV-VERDICT case that cannot be posed against the cache alone: the
+    invariant is about what a cache may CAUSE in the resolver, and the
+    resolver is what would contain the bug.
+
+    Mutation that must break it: make `resolve_run_state` return the cached
+    verdict without re-checking currency.
+    """
+    import dataclasses
+
+    from phenotypic.sdk_ import run_identity
+
+    deep = resolve_run_state(incomplete_run, depth="deep")
+    baseline = deep.completion
+    assert baseline != "complete"
+
+    identity = run_identity(incomplete_run)
+    assert identity is not None
+    forged = {
+        work_id: CachedVerification(
+            state=dataclasses.replace(image, verdict="verified"),
+            stat_tuples={},
+        )
+        for work_id, image in deep.images.items()
+    }
+    remember_states(incomplete_run, identity.digest(), forged)
+
+    after = resolve_run_state(incomplete_run, depth="shallow").completion
+    assert after == baseline, (
+        "a forged cache changed the verdict; a positive verdict must never "
+        "come from a cache entry alone -- INV-VERDICT"
+    )
+
+
+def test_a_tampered_artifact_falls_through_even_with_a_warm_cache(
+    complete_run,
+):
+    """The stat tuple is the currency check; content still decides.
+
+    The overlay is marker-bound, so appending to it changes both its size and
+    its sha256: the cache must miss, and the deep pass behind the miss must
+    then reject the marker. A cache that re-used the warm entry would report
+    a tampered run as complete.
+
+    Mutation that must break it: have the shallow path trust a cached entry
+    without calling `entry_is_still_current`.
+    """
+    warm = resolve_run_state(complete_run, depth="deep")
+    assert warm.completion == "complete"
+
+    overlay = next(complete_run.rglob("overlays/**/*.png"), None)
+    assert overlay is not None, "the fixture stopped writing an overlay"
+    overlay.write_bytes(overlay.read_bytes() + b"tamper")
+
+    after = resolve_run_state(complete_run, depth="shallow")
+    assert after.completion != "complete"
+
+
+def test_a_warm_cache_is_actually_used(complete_run):
+    """The other half of INV-VERDICT's ledger.
+
+    Every other test in this file proves the cache cannot make an answer
+    BETTER than the truth. None of them would notice a cache that nothing
+    ever reads -- which degrades perfectly, ships audit S1 unfixed, and
+    passes the entire INV-VERDICT suite. This is the test that notices.
+    """
+    from phenotypic.sdk_ import run_identity
+
+    first = resolve_run_state(complete_run, depth="deep")
+    assert first.depth == "deep"
+    identity = run_identity(complete_run)
+    assert identity is not None
+    assert cached_states(complete_run, identity.digest())
+
+    second = resolve_run_state(complete_run, depth="shallow")
+    assert second.depth == "shallow", "the warm cache was not consulted"
+    assert second.completion == first.completion
+
+
+# --- The two below are recommendations, not required deliverables. ---
+
+
+def test_clear_scoped_to_one_output_does_not_clear_another_end_to_end(
+    tmp_path,
+):
+    """Scoped clear observed through the resolver rather than the cache: a
+    cleared output re-verifies deeply, an untouched one stays shallow.
+
+    This is the plan's original Task 3 Step 1 version of the scoped-clear
+    test. The cache-level one above pins the same rule without needing a
+    resolver, so this one is additive rather than a replacement.
+    """
+    from tests._output_layout import build_complete_run
+
+    a = build_complete_run(tmp_path / "a")
+    b = build_complete_run(tmp_path / "b")
+    resolve_run_state(a, depth="deep")
+    resolve_run_state(b, depth="deep")
+
+    clear_verification_cache(a)
+
+    assert resolve_run_state(a, depth="shallow").depth == "deep"
+    assert resolve_run_state(b, depth="shallow").depth == "shallow"
+
+
+def test_an_identity_change_forces_reverification(complete_run):
+    """CAN-28 end to end, and the CORRECTED form of the plan's
+    `_edit_pipeline_json` case.
+
+    `run_identity` composes every token from `processing_state.json`'s
+    `config` block; nothing reads `deliverables/pipeline.json`, so editing
+    that file changes no identity token and the original test would have
+    asserted that a stale identity's entries were dropped after nothing
+    changed. `bump_scientific_config_digest` rewrites
+    `config.pipeline_sha256`, which IS `scientific_config_digest`.
+    """
+    from phenotypic.sdk_ import run_identity
+    from tests._output_layout import bump_scientific_config_digest
+
+    resolve_run_state(complete_run, depth="deep")
+    stale = run_identity(complete_run)
+    assert stale is not None
+
+    bump_scientific_config_digest(complete_run)
+
+    assert resolve_run_state(complete_run, depth="shallow").depth == "deep"
+    assert cached_states(complete_run, stale.digest()) is None
+    assert tracked_output_count() == 1

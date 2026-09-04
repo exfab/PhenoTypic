@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
 from phenotypic.sdk_ import (
@@ -253,6 +254,7 @@ def write_processing_state(
     work_ids: dict[str, dict[str, str]],
     pipeline_sha256: str = "a" * 64,
     metadata_sha256: str = "b" * 64,
+    process_only_layer: str | None = None,
 ) -> Path:
     """Write ``processing_state.json`` through the production writer.
 
@@ -268,6 +270,11 @@ def write_processing_state(
             inventory, which is one of spec §4.1's three written authorities.
         pipeline_sha256: The scientific-config digest to record.
         metadata_sha256: The metadata snapshot digest to record.
+        process_only_layer: The exported layer for a ``--mode process``
+            run. A process run publishes **no aggregate proof**, so three of
+            rule 1's five comparisons are inapplicable for it rather than
+            merely different, and its ``finalization_input_digest`` digests
+            this value instead of the join inputs. ``None`` is a full run.
 
     Returns:
         The written state file's path.
@@ -298,7 +305,7 @@ def write_processing_state(
             "metadata_sha256": metadata_sha256,
             "include_dataset_column": True,
             "no_qc": False,
-            "process_only_layer": None,
+            "process_only_layer": process_only_layer,
         },
     )
     return save_processing_state(state, root)
@@ -330,7 +337,46 @@ def bump_scientific_config_digest(
     return digest
 
 
-def build_complete_run(tmp_path: Path) -> Path:
+def _publish_one_image(
+    output: Path, *, stem: str, mode: str, with_overlay: bool = True
+) -> None:
+    """Promote one image's artifacts and publish its success marker.
+
+    Marker-last, artifacts first -- the publication contract's own order.
+    Factored out so ``build_complete_run`` and :func:`extend_complete_run`
+    cannot drift into publishing two different shapes of image.
+    """
+    from phenotypic._cli._cli_completion import publish_image_success
+
+    work_id = f"work-{stem}"
+    store = _promote_minimal_store(
+        output, dataset=FIXTURE_DATASET, stem=stem, work_id=work_id
+    )
+    artifacts = {"store": store}
+    if with_overlay:
+        artifacts["overlay"] = _write_overlay(
+            output, dataset=FIXTURE_DATASET, stem=stem
+        )
+    publish_image_success(
+        output,
+        work_id=work_id,
+        dataset=FIXTURE_DATASET,
+        relative_image_path=f"{stem}.tif",
+        image_stem=stem,
+        mode=mode,
+        attempt_id=f"attempt-{stem}",
+        # `scheduler_epoch` from P2 Task 4 onward.
+        lifecycle_epoch="local",
+        artifacts=artifacts,
+    )
+
+
+def build_complete_run(
+    tmp_path: Path,
+    *,
+    stems: Sequence[str] = FIXTURE_STEMS,
+    process_only_layer: str | None = None,
+) -> Path:
     """Return an output tree whose deep verdict is ``complete``.
 
     Deliberately minimal: two images in one dataset, each with a promoted
@@ -351,50 +397,116 @@ def build_complete_run(tmp_path: Path) -> Path:
 
     Args:
         tmp_path: A directory to build under. ``<tmp_path>/run`` is created.
+        stems: The image stems to publish. Parameterized so a test can ask
+            what happens to a cost *as the image count grows* -- the only
+            honest way to assert that the shallow path does not re-hash
+            per-image artifacts, since a fixed bound on one tree size cannot
+            distinguish "constant" from "small".
+        process_only_layer: When set, build a ``--mode process`` tree
+            instead: overlays, master, mirror and the aggregate proof are all
+            absent, because a process run publishes none of them.
 
     Returns:
         The run output root.
     """
     from phenotypic._cli._cli_completion import (
         publish_aggregate_snapshot,
-        publish_image_success,
         publish_run_completion_evidence,
     )
 
     output = tmp_path / "run"
     output.mkdir(parents=True, exist_ok=True)
     work_ids = {
-        FIXTURE_DATASET: {
-            f"{stem}.tif": f"work-{stem}" for stem in FIXTURE_STEMS
-        }
+        FIXTURE_DATASET: {f"{stem}.tif": f"work-{stem}" for stem in stems}
     }
+    mode = "process" if process_only_layer else "full"
 
-    for stem in FIXTURE_STEMS:
-        work_id = f"work-{stem}"
-        store = _promote_minimal_store(
-            output, dataset=FIXTURE_DATASET, stem=stem, work_id=work_id
-        )
-        overlay = _write_overlay(output, dataset=FIXTURE_DATASET, stem=stem)
-        publish_image_success(
+    for stem in stems:
+        _publish_one_image(
             output,
-            work_id=work_id,
-            dataset=FIXTURE_DATASET,
-            relative_image_path=f"{stem}.tif",
-            image_stem=stem,
-            mode="full",
-            attempt_id=f"attempt-{stem}",
-            # `scheduler_epoch` from P2 Task 4 onward.
-            lifecycle_epoch="local",
-            artifacts={"store": store, "overlay": overlay},
+            stem=stem,
+            mode=mode,
+            with_overlay=process_only_layer is None,
         )
 
-    write_processing_state(output, work_ids=work_ids)
-    frame = _fixture_measurements_frame(work_ids)
-    write_master(output, frame)
-    write_measurements_mirror(output, frame)
-    publish_aggregate_snapshot(output)
+    write_processing_state(
+        output, work_ids=work_ids, process_only_layer=process_only_layer
+    )
+    if process_only_layer is None:
+        frame = _fixture_measurements_frame(work_ids)
+        write_master(output, frame)
+        write_measurements_mirror(output, frame)
+        publish_aggregate_snapshot(output)
     publish_run_completion_evidence(output, execution_epoch="local")
     return output
+
+
+def extend_complete_run(root: Path, *, stem: str) -> Path:
+    """Add one more fully published image to a complete run, and re-prove it.
+
+    The rolling-input case: a new image arrives, is processed, and the run is
+    re-published over the larger inventory. Everything downstream of the
+    inventory moves with it -- ``work_ids``, the master, the mirror, the
+    aggregate proof and the run proof -- because a fixture that moved only
+    some of them would build a tree no run produces and would prove the wrong
+    thing about which comparison noticed.
+
+    Args:
+        root: An output root previously built by :func:`build_complete_run`.
+        stem: The stem to add. Must not already be present.
+
+    Returns:
+        ``root``, for chaining.
+    """
+    from phenotypic._cli._cli_completion import (
+        publish_aggregate_snapshot,
+        publish_run_completion_evidence,
+    )
+    from phenotypic.sdk_ import resolve_processing_state_path
+
+    payload = json.loads(
+        resolve_processing_state_path(root).read_text(encoding="utf-8")
+    )
+    work_ids = payload["config"]["work_ids"]
+    assert f"{stem}.tif" not in work_ids[FIXTURE_DATASET], stem
+
+    _publish_one_image(root, stem=stem, mode="full")
+    work_ids[FIXTURE_DATASET][f"{stem}.tif"] = f"work-{stem}"
+    write_processing_state(root, work_ids=work_ids)
+    frame = _fixture_measurements_frame(work_ids)
+    write_master(root, frame)
+    write_measurements_mirror(root, frame)
+    publish_aggregate_snapshot(root)
+    publish_run_completion_evidence(root, execution_epoch="local")
+    return root
+
+
+def bump_metadata_snapshot_digest(
+    root: Path, *, digest: str = "d" * 64
+) -> str:
+    """Change the run's finalization inputs by rewriting the metadata digest.
+
+    The counterpart to :func:`bump_scientific_config_digest`, and it exists
+    for the same reason: the run identity and the proofs are composed from
+    ``processing_state.json``'s ``config`` block, so **editing
+    ``deliverables/metadata.csv`` changes nothing**. ``config.metadata_sha256``
+    is the value the finalization-input digest is built from, and rewriting
+    it is what a metadata change looks like to every reader.
+
+    Args:
+        root: Run output root.
+        digest: The replacement metadata snapshot digest.
+
+    Returns:
+        The digest written.
+    """
+    from phenotypic.sdk_ import resolve_processing_state_path
+
+    path = resolve_processing_state_path(root)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["config"]["metadata_sha256"] = digest
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return digest
 
 
 def build_incomplete_run(tmp_path: Path) -> Path:

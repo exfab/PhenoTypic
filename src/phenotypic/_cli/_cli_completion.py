@@ -12,9 +12,14 @@ from typing import Mapping
 from uuid import uuid4
 
 from phenotypic.sdk_ import (
+    AGGREGATE_PROOF_VERSION,
+    ARTIFACT_KIND_FILE,
+    ARTIFACT_KIND_STORE,
     CommitGuard,
     DIR_IMAGE_COMPLETE,
+    RUN_PROOF_VERSION,
     STORE_ROOT_JSON,
+    SUCCESS_MARKER_VERSION,
     aggregate_publication_marker_path,
     atomic_write_json,
     file_fingerprint,
@@ -29,14 +34,15 @@ from phenotypic.sdk_ import (
     source_image_stem,
     validated_published_metadata_migration_targets,
 )
+from phenotypic.sdk_._digests import canonical_digest
 
-#: Bumped to 2 when artifact descriptors gained ``kind``. A v1 marker
-#: describes the per-image ``.h5``, and ``--mode migrate`` defaults to
-#: ``keep_source=True`` -- so that file is still present at its recorded size
-#: and sha256, and a v1 marker would *validate* against it while the store it
-#: should describe went entirely unverified. The bump protects against a false
-#: ``complete``, not against over-reprocessing (ledger FLOW-23).
-SUCCESS_MARKER_VERSION = 2
+# ``SUCCESS_MARKER_VERSION``, ``ARTIFACT_KIND_FILE``/``ARTIFACT_KIND_STORE``
+# and the two proof versions are imported above from ``sdk_/_io_constants``
+# and re-exported here, so every module that imports them from this one is
+# unchanged. They moved because the run-state reader must check the same
+# numbers and INV-LAYER forbids it importing this module: two copies of a
+# version that gates a *completion* verdict is the one duplication that can
+# silently manufacture a false ``complete``.
 
 # ``STORE_ROOT_JSON`` (imported above) is the root metadata document an
 # OME-Zarr store is fingerprinted by. ``promote_store`` writes it **last**, so
@@ -45,11 +51,6 @@ SUCCESS_MARKER_VERSION = 2
 # would be a constant function of the path -- ``paths_fingerprint`` emits one
 # sentinel byte for a directory and does not recurse -- and would certify a
 # store whose contents changed.
-
-#: Artifact descriptor kinds. ``"file"`` is the default for a descriptor
-#: written before the ``kind`` tag existed.
-ARTIFACT_KIND_FILE = "file"
-ARTIFACT_KIND_STORE = "store"
 
 
 def _sha256(path: Path) -> str:
@@ -725,7 +726,7 @@ def current_aggregate_is_current(output_dir: Path) -> bool | None:
     if aggregate is None:
         return False
     work_ids = state.config.get("work_ids", {})
-    expected_finalization = _canonical_digest(
+    expected_finalization = canonical_digest(
         {
             "metadata_sha256": state.config.get("metadata_sha256"),
             "include_dataset_column": state.config.get(
@@ -736,12 +737,12 @@ def current_aggregate_is_current(output_dir: Path) -> bool | None:
     )
     successful_work_ids = _current_success_work_ids(output_dir, work_ids)
     return (
-        aggregate.get("inventory_digest") == _canonical_digest(work_ids)
+        aggregate.get("inventory_digest") == canonical_digest(work_ids)
         and aggregate.get("finalization_input_digest") == expected_finalization
         and aggregate.get("scientific_config_digest")
         == state.config.get("pipeline_sha256")
         and aggregate.get("source_set_digest")
-        == _canonical_digest(successful_work_ids)
+        == canonical_digest(successful_work_ids)
         and aggregate.get("source_image_count") == len(successful_work_ids)
     )
 
@@ -858,13 +859,6 @@ def authorized_measurement_sources(
     return sources
 
 
-def _canonical_digest(value: object) -> str:
-    encoded = json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
-
-
 def publish_aggregate_snapshot(
     output_dir: Path,
     *,
@@ -904,11 +898,11 @@ def publish_aggregate_snapshot(
     work_ids = state.config.get("work_ids", {})
     source_work_ids = _current_success_work_ids(output_dir, work_ids)
     marker = {
-        "version": 1,
+        "version": AGGREGATE_PROOF_VERSION,
         "publication_id": uuid4().hex,
         "processing_generation": state.config.get("processing_generation"),
-        "inventory_digest": _canonical_digest(work_ids),
-        "finalization_input_digest": _canonical_digest(
+        "inventory_digest": canonical_digest(work_ids),
+        "finalization_input_digest": canonical_digest(
             {
                 "metadata_sha256": state.config.get("metadata_sha256"),
                 "include_dataset_column": state.config.get(
@@ -918,7 +912,7 @@ def publish_aggregate_snapshot(
             }
         ),
         "scientific_config_digest": state.config.get("pipeline_sha256"),
-        "source_set_digest": _canonical_digest(sorted(source_work_ids)),
+        "source_set_digest": canonical_digest(sorted(source_work_ids)),
         "source_image_count": len(source_work_ids),
         "required_outputs": descriptors,
         "published_at": datetime.now(timezone.utc).isoformat(
@@ -935,7 +929,10 @@ def valid_aggregate_snapshot(output_dir: Path) -> dict[str, object] | None:
     path = aggregate_publication_marker_path(output_dir)
     try:
         marker = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(marker, dict) or marker.get("version") != 1:
+        if (
+            not isinstance(marker, dict)
+            or marker.get("version") != AGGREGATE_PROOF_VERSION
+        ):
             return None
         outputs = marker.get("required_outputs")
         if not isinstance(outputs, dict) or not outputs:
@@ -1010,13 +1007,13 @@ def publish_run_completion_evidence(
     )
     work_ids = state.config.get("work_ids", {})
     payload = {
-        "version": 2,
+        "version": RUN_PROOF_VERSION,
         "processing_generation": state.config.get("processing_generation"),
-        "inventory_digest": _canonical_digest(work_ids),
+        "inventory_digest": canonical_digest(work_ids),
         "finalization_input_digest": (
             aggregate.get("finalization_input_digest")
             if aggregate is not None
-            else _canonical_digest(
+            else canonical_digest(
                 {"process_only_layer": state.config.get("process_only_layer")}
             )
         ),
@@ -1080,18 +1077,18 @@ def valid_run_completion(output_dir: Path) -> dict[str, object] | None:
     ):
         return marker if marker.get("finalizer_succeeded") is True else None
     if (
-        marker.get("version") != 2
+        marker.get("version") != RUN_PROOF_VERSION
         or current_run_is_complete(output_dir) is not True
     ):
         return None
     work_ids = state.config.get("work_ids", {})
     expected: dict[str, object] = {
-        "inventory_digest": _canonical_digest(work_ids),
+        "inventory_digest": canonical_digest(work_ids),
         "scientific_config_digest": state.config.get("pipeline_sha256"),
     }
     if state.config.get("process_only_layer"):
         expected["publication_id"] = None
-        expected["finalization_input_digest"] = _canonical_digest(
+        expected["finalization_input_digest"] = canonical_digest(
             {"process_only_layer": state.config.get("process_only_layer")}
         )
     else:

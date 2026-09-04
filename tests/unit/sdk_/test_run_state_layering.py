@@ -17,15 +17,25 @@ import ast
 from pathlib import Path
 
 import phenotypic.sdk_._run_state as run_state
+import phenotypic.sdk_._schema_shape as schema_shape
 import phenotypic.sdk_._state_types as state_types
 import phenotypic.sdk_._verification_cache as verification_cache
 
-# All THREE modules, not two (gen-r3 C5): the dataclasses live in their own
-# leaf module to break the _run_state <-> _verification_cache cycle, and
+# All FOUR modules. Three of them are the cycle-breaking split (gen-r3 C5):
+# the dataclasses live in their own leaf so _verification_cache can cache
+# whole ImageState objects without it and _run_state importing each other, and
 # INV-LAYER binds the leaf exactly as it binds the other two.
+#
+# _schema_shape is the fourth, added when the pre-consolidation detection moved
+# out of _cli/_cli_schema_gate so that resolve_run_state could emit spec
+# §4.3's reader advisory from the same predicate the CLI refuses with.
+# _run_state imports it, so a phenotypic._cli import there would be a
+# TRANSITIVE INV-LAYER violation this walk would otherwise miss. The guarantee
+# has to follow the code, or it silently stops covering it.
 _MODULES = (
     Path(state_types.__file__),
     Path(verification_cache.__file__),
+    Path(schema_shape.__file__),
     Path(run_state.__file__),
 )
 
