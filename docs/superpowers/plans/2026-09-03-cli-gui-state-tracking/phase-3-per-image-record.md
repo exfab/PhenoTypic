@@ -648,6 +648,37 @@ RunState advisory rather than silently reading as not-done (O-2)."
 
 ## Task 2: Migrate `publish_image_success` and `valid_image_success` onto the record
 
+> ### This task must ARM the schema gate, in the same commit
+>
+> **`_cli_schema_gate.SCHEMA_GATE_ARMED` is `False` when it ships from P1, deliberately.**
+> At P1 the "legacy" shape and the *current* shape are the same shape — the forward path
+> still writes `image_complete/` and `datasets.<ds>.completed`, and does not yet write
+> `restart_epoch` — so three of the five signals fire on a tree the build just wrote.
+> Verified empirically at P1, not assumed:
+>
+> ```
+> verdict on a tree THIS BUILD just wrote: ConversionVerdict.CONVERT
+> ```
+>
+> An armed gate at P1 would refuse every resume of every mode, and P1 would not leave a
+> working tree — failing the rule that each phase ends at a commit passing its own gate.
+>
+> **This task is what makes the legacy shape actually legacy**, so this task arms it. Set
+> `SCHEMA_GATE_ARMED = True` in the same commit that moves the publisher off
+> `image_complete/`.
+>
+> **The ordering is not left to memory.**
+> `test_the_gate_is_armed_exactly_when_the_forward_path_stops_writing_markers`
+> (`tests/unit/cli/test_schema_gate.py`) calls the **real** `publish_image_success` and
+> asserts `marker_written is not SCHEMA_GATE_ARMED`. So it fails if the publisher moves
+> without arming, **and** fails if anyone arms it early. Both windows are closed by one
+> assertion tied to observable behaviour rather than to a note.
+>
+> Between P1 and this task the protection is: gate present, unarmed, and CAN-11's hazard —
+> a legacy tree silently producing an **empty master with no exception**, because `{}` from
+> `authorized_measurement_sources` is a *valid* result — does not arise, since the publisher
+> has not moved yet. The moment it moves, the gate must arm. That is the whole window.
+
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_completion.py:163`, `:255`
 - Modify: `src/phenotypic/sdk_/_run_state.py`
