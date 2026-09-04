@@ -6,15 +6,43 @@
 [D-A](OPEN-QUESTIONS.md#d-a-per-store-metadata-is-written-at-promote-time-not-backfilled)
 and [O-2](OPEN-QUESTIONS.md#o-2-stages-is-an-open-map-with-no-name-validation).
 
-**Goal:** `image_complete/`, `stage2_done/` and `stage3_complete/` — three parallel
-`<ds>/<stem>.*` trees answering three sub-questions about the same image, spelled in three
-different places — become one record at
+**Goal:** `image_complete/` and `stage3_complete/` — two parallel `<ds>/<stem>.json` trees
+answering two sub-questions about the same image — become one record at
 `.phenotypic/progress/images/<dataset>/<stem>.json` with an open `stages` map. "Is this
-image done?" becomes one JSON read instead of one read plus up to three `is_file()` probes
-across three directory trees.
+image done?" becomes one JSON read instead of one read plus `is_file()` probes across
+separate directory trees.
 
-`stage2_raw/<ds>/<stem>.npy` **stays a separate file**. It is bulk replay data, not a
-record, and the staged engine's Stage-3 replay reads it as an array.
+### Two things stay separate files, for different reasons
+
+`stage2_raw/<ds>/<stem>.npy` — bulk replay data, not a record. Spec §6.1 already says so.
+
+**`stage2_done/<ds>/<stem>.json` — narrowed out of the collapse (user ruling, round 3).**
+Spec §6.1 folds it into `stages.stage2`; it must not be.
+
+The token is not a *record*, it is a **consumable claim**: Stage 3 takes it by
+`unlink()`ing it. That operation is atomic on every filesystem and needs **no lock at
+all**. Folding it into the shared record replaces it with a **locked read-modify-write of a
+JSON file**, and three things compound in the environment this actually runs in:
+
+1. **The lock is `flock`**, not POSIX record locking (`sdk_/_file_locking.py:101`,
+   `fcntl.flock(handle.fileno(), LOCK_EX | LOCK_NB)`). On network filesystems `flock` is the
+   weaker of the two options — `F_SETLK` record locks are the ones with defined cross-node
+   semantics. GPFS does support `flock` cluster-wide, so this works; it is nonetheless the
+   fragile choice where an atomic `unlink` was the robust one.
+2. **The cited precedent does not transfer.** `.aggregate_publication.lock`
+   (`_cli_output_manager.py:1556`) is a **run-level singleton** — one writer, negligible
+   contention, and a missed lock costs a duplicate publish. The collapse would apply the same
+   primitive **per image across a 6,000-task SLURM array** (flow-r3 C4).
+3. **It trades down.** An operation needing no lock becomes one needing a *distributed*
+   lock, to achieve exactly what the unlink already achieved.
+
+So `write_stage2_token`, `stage2_token_exists` and `delete_stage2_token` keep their file and
+their unlink. `_STAGE2_DIR` moves into `_io_constants` beside its siblings (audit S9's real
+ask) rather than being deleted.
+
+**What this costs:** "is this image done?" is one record read **plus one `is_file()` probe**
+for the Stage-2 claim, not a single read. That is the honest price of keeping an atomic
+claim atomic, and it is still two probes fewer than today's four.
 
 ### What D-A cuts from this phase
 
@@ -64,6 +92,46 @@ additive.
 `classify_staged_image` (`_cli_staged_resume.py:197`) decides, per image, whether to run
 stage 1, 2 or 3, from four independent filesystem probes. Collapsing those into one read
 must not change a single one of its decisions.
+
+---
+
+## Every consumer of the marker surface, and what each maps to
+
+**Measured, not estimated: 136 reads across 20 modules.** This table is the phase's
+completeness check — six separate round-1/2/3 findings were all "a reader in a file the plan
+never named", so the file list is the artifact most likely to be wrong.
+
+| Module | Reads | Maps to |
+|---|---|---|
+| `_cli_completion.py` | 11 | record reader/writer (Tasks 1–2) |
+| `_cli_stage2_token.py` | 12 | **unchanged** — the token stays a file |
+| `_cli_staged_resume.py` | 30 | `stages.stage3`; `classify_staged_image` reads one record + one token probe |
+| `_cli_staged_strategy.py` | 10 | `record_stage` / token unlink |
+| `_cli_staged_workers.py` | 9 | same |
+| `_cli_staged_slurm_worker.py` | 8 | same |
+| `_cli_recompile_recovery.py` | 8 | `RECORD_VERSION`, `image_record_path` (P4) |
+| `_cli_recompile_tables.py` | 4 | read-back deleted; merge preserves identity (P4) |
+| `_cli_recompile_slurm_scripts.py` | 4 | `SUCCESS_MARKER_VERSION` → `RECORD_VERSION` |
+| `phenotypicCLI.py` | 11 | gate + the promoter's move to migrate (P7) |
+| `_hdf_to_zarr.py` | 6 | record reader — **`sdk_` → `sdk_` after N-3's split** |
+| `_cli_migrate.py`, `_cli_migrate_image.py` | 4 | migrate's own publisher (P7) |
+| `_slurm_observer.py` | 2 | `stages.stage3` (P6 Task 6) |
+| `_io_constants.py`, `sdk_/__init__.py` | 7 | constants + path helpers |
+| **`_cli_migrate_manifest.py`** | **3** | **was named in no plan doc** — P7 |
+| **`_cli_staged_controller.py`** | **3** | **was named in no plan doc** — `stage3_completion_exists` at `:86` |
+| **`_cli_staged_orchestration.py`** | **2** | **was named in no plan doc** — `stage3_completion_exists` at `:277` |
+
+The last three are cross-**process** readers in both environments and cross-**node** readers
+under SLURM: the controller and orchestrator ask "did Stage 3 finish for this image?" about
+work running in another job entirely. That is precisely why the marker exists and cannot be
+replaced by in-memory state — and precisely why all three needed naming.
+
+**Regenerate this table before implementing**, and treat a module appearing in the grep but
+not the table as a blocking finding:
+
+```bash
+grep -rln 'image_completion_marker_path\|DIR_IMAGE_COMPLETE\|SUCCESS_MARKER_VERSION\|stage2_token\|stage3_completion\|stage2_done\|stage3_complete' src/
+```
 
 ---
 
