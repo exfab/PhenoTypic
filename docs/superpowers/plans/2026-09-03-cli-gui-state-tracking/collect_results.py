@@ -42,6 +42,26 @@ def _load(results_dir: pathlib.Path) -> tuple[dict[str, str], dict[str, int]]:
     if not shards:
         raise SystemExit(f"no shard_*.xml under {results_dir}")
 
+    # A shard that has not finished yet leaves no XML, and its tests then
+    # simply do not appear -- so a partial run reports FEWER failures than a
+    # complete one and reads as an improvement. Nothing else here notices,
+    # because every check operates on the shards that ARE present.
+    #
+    # Caught by running it against a 48-shard array while 4 were still
+    # RUNNING: 44 shards, 9,967 tests, "REGRESSIONS (0)". The diff was against
+    # an 11,106-test baseline and the 1,139 missing tests were silent.
+    present = {int(s.stem.split("_")[1]) for s in shards}
+    gaps = sorted(set(range(max(present) + 1)) - present)
+    if gaps:
+        raise SystemExit(
+            f"INCOMPLETE: shards {gaps} are missing from {results_dir}.\n"
+            f"Found {len(present)} of {max(present) + 1} expected.\n"
+            "A missing shard's tests are absent, not passing -- so this run\n"
+            "would under-report failures and a regression in a missing shard\n"
+            "would read as 'no regressions'. Wait for the array to finish\n"
+            "(`squeue -j <id>`), then re-run."
+        )
+
     for shard in shards:
         totals["shards"] += 1
         try:
