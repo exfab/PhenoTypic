@@ -25,6 +25,11 @@ rule this phase implements.
 | **Create** `src/phenotypic/sdk_/_state_types.py` | **The four frozen dataclasses only** — `RunIdentity`, `ImageState`, `RunDiagnostics`, `RunState`. No logic, no I/O, no imports from either module below. ~90 lines. |
 | **Create** `src/phenotypic/sdk_/_run_state.py` | The four public readers. Imports the types from `_state_types`, the cache from `_verification_cache`, and nothing from `phenotypic._cli`. ~340 lines. |
 | **Create** `src/phenotypic/sdk_/_verification_cache.py` | The in-process, identity-fenced cache and its currency rule. Imports `ImageState` from `_state_types`. ~110 lines. |
+| **Modify** `src/phenotypic/sdk_/_io_constants.py` | Add `DIR_IMAGE_RECORDS` and `image_record_path()`. |
+| **Modify** `src/phenotypic/sdk_/__init__.py` | Export `RunIdentity`, `ImageState`, `RunState`, `RunDiagnostics`, `resolve_run_state`, `run_identity`, `assert_identity_current`, `clear_verification_cache`. **Not** `mint_run_identity` — that is a writer and lives CLI-side (P2). |
+| **Create** `tests/unit/sdk_/test_run_state.py` | Verdict matrix, depth behaviour, advisories, the degrade half of INV-VERDICT. |
+| **Create** `tests/unit/sdk_/test_verification_cache.py` | INV-VERDICT mutation suite. **The highest-value test in the change** (spec §14). |
+| **Create** `tests/unit/sdk_/test_run_state_layering.py` | INV-LAYER. |
 
 > **Three modules, not two — CAN-14's fix created an import cycle (gen-r3 C5).**
 > Caching whole `ImageState` objects means `_verification_cache` needs `ImageState`, while
@@ -40,11 +45,6 @@ rule this phase implements.
 >
 > **INV-LAYER binds all three**, so the AST test's `_MODULES` tuple covers `_state_types.py`
 > too.
-| **Modify** `src/phenotypic/sdk_/_io_constants.py` | Add `DIR_IMAGE_RECORDS` and `image_record_path()`. |
-| **Modify** `src/phenotypic/sdk_/__init__.py` | Export `RunIdentity`, `ImageState`, `RunState`, `RunDiagnostics`, `resolve_run_state`, `run_identity`, `assert_identity_current`, `clear_verification_cache`. **Not** `mint_run_identity` — that is a writer and lives CLI-side (P2). |
-| **Create** `tests/unit/sdk_/test_run_state.py` | Verdict matrix, depth behaviour, advisories, the degrade half of INV-VERDICT. |
-| **Create** `tests/unit/sdk_/test_verification_cache.py` | INV-VERDICT mutation suite. **The highest-value test in the change** (spec §14). |
-| **Create** `tests/unit/sdk_/test_run_state_layering.py` | INV-LAYER. |
 
 **Why two modules and not one:** the cache is the only part of this phase that can produce
 a *wrong* answer rather than a slow one. Keeping it in its own file with its own test

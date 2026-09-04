@@ -35,6 +35,11 @@ Track these in the phase's final commit body. Spec §11.1 estimates ~1,400 lines
 | 4 | `_latest_event_states` | `_runs_registry.py:1172` | 4 |
 | 5 | `_read_status_from_manifest`, `_manifest_is_complete` | `_runs_registry.py`, `_slurm_observer.py` | 4, 6 |
 | 5b | `local_manifest_completion_problem` — **the third manifest consumer** (M6) | `_cli_gui_lifecycle.py:41-65`, gating `publish_run_completion_evidence` at `:130-135` | 4 |
+| 6 | `DashboardManifestKey.VERSION` — written as `3` at one site, read at **zero** | `_dashboard/_manifest_builder.py:766` | 7 |
+| 7 | `sdk_/monitor_slurm_jobs.py` — zero importers in `src/` or `tests/` | whole file (241 lines) | 7 |
+| 8 | `browse/_source_render.py`'s `browse_cache_base` / `cache_png_path` / `init_cache` / `wipe_cache` — zero production callers | `_source_render.py:35-38` | 7 |
+| 9 | Eight zero-caller resolvers in `_io_constants` | `_io_constants.py:2107` | 7 |
+| 10 | Every `_legacy_*` helper and `resolve_*` fallback on the hot path | across `_cli` | P7 (they **move into** migrate, not away) |
 
 > **M6: `manifest.json` is still evidence after P6 unless this site is converted.**
 > `local_manifest_completion_problem` branches on `DashboardManifestKey.COMPLETED`, `FAILED`
@@ -47,11 +52,6 @@ Track these in the phase's final commit body. Spec §11.1 estimates ~1,400 lines
 > says *"`manifest.json` as evidence"* was deleted, and §4.2 demotes it. **Convert this
 > site**, or state in the register that the GUI-local publication path is the one surviving
 > manifest consumer, and why it is allowed to be.
-| 6 | `DashboardManifestKey.VERSION` — written as `3` at one site, read at **zero** | `_dashboard/_manifest_builder.py:766` | 7 |
-| 7 | `sdk_/monitor_slurm_jobs.py` — zero importers in `src/` or `tests/` | whole file (241 lines) | 7 |
-| 8 | `browse/_source_render.py`'s `browse_cache_base` / `cache_png_path` / `init_cache` / `wipe_cache` — zero production callers | `_source_render.py:35-38` | 7 |
-| 9 | Eight zero-caller resolvers in `_io_constants` | `_io_constants.py:2107` | 7 |
-| 10 | Every `_legacy_*` helper and `resolve_*` fallback on the hot path | across `_cli` | P7 (they **move into** migrate, not away) |
 
 Items 1–9 land here. **Item 10 is P7's** — spec §11.1 says legacy paths move *into*
 `--mode migrate`, and deleting them before migrate can read them would strand every

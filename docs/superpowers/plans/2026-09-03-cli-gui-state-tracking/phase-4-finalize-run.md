@@ -36,6 +36,11 @@ documented where users read it, not only here:
 |---|---|
 | **Modify** `src/phenotypic/_cli/_embedded_measurement_tables.py:42` | `prepare_embedded_measurement_table` returns the **unjoined** baseline plus a separate metadata projection. |
 | **Modify** `src/phenotypic/sdk_/_measurement_tables.py` | Write both tables into the `.part`; extend the root `tables` block. **And repair `replace_embedded_measurement_table`'s in-place branch (`:284-290`)** — see below, the first draft's requirement was not sufficient (CAN-3, flow-r2 C5). |
+| **Modify** `src/phenotypic/_cli/_cli_output_manager.py:1970-2001` | `replace_image_store_measurements` feeds the **joined** producer at `:1992-1995`. Bring it onto `prepare_image_tables`, or `--mode measure` silently un-inverts every image it touches. |
+| **Create** `src/phenotypic/sdk_/_master_io.py` | `read_master_measurements(output_dir)` — the reader U-3 requires, raising on an unstamped or wrong-versioned master. Route every in-repo master read through it. |
+| **Modify** `src/phenotypic/_cli/_embedded_measurement_tables.py:106-131` | `embedded_measurement_table_matches` is **reclaim authority**, not provenance (M1) — six migrator call sites (`_cli_migrate.py:1331,1337`; `_cli_migrate_image.py:278,314,777,796`). See below. |
+| **Modify** `src/phenotypic/sdk_/_measurement_tables.py:216-227` | `_valid_embedded_measurement_contract` **rejects `join_status == "not_requested"` with a non-empty digest** — but the inverted producer must record the snapshot digest on an *unjoined* table, or D-A's advisory has no per-store source. Revise in the same commit. |
+| **Modify** `src/phenotypic/_cli/_cli_recompile_slurm_scripts.py:186-202` | The **third** `_consistent_embedded_join_keys` call site (M2), at script-generation time, serialising `"metadata_join_keys"` into the finalizer task. Retiring the function from `finalize_run` alone leaves the abort firing **at submission**, before any worker runs. Delete the task-schema field in the same commit. |
 
 > **The in-place branch cannot be fixed by "refresh the root with the table" alone (C5).**
 > `build_measurement_table_descriptor` (`:109-129`) returns exactly `{schema_version, type,
@@ -61,11 +66,6 @@ documented where users read it, not only here:
 > already ships. So the cost is now *larger* than when S-1 was dropped and is still
 > unmeasured. If `--mode measure` on a large tree becomes slow, this is the reason, and
 > measuring it is a follow-up, not a blocker for P4.
-| **Modify** `src/phenotypic/_cli/_cli_output_manager.py:1970-2001` | `replace_image_store_measurements` feeds the **joined** producer at `:1992-1995`. Bring it onto `prepare_image_tables`, or `--mode measure` silently un-inverts every image it touches. |
-| **Create** `src/phenotypic/sdk_/_master_io.py` | `read_master_measurements(output_dir)` — the reader U-3 requires, raising on an unstamped or wrong-versioned master. Route every in-repo master read through it. |
-| **Modify** `src/phenotypic/_cli/_embedded_measurement_tables.py:106-131` | `embedded_measurement_table_matches` is **reclaim authority**, not provenance (M1) — six migrator call sites (`_cli_migrate.py:1331,1337`; `_cli_migrate_image.py:278,314,777,796`). See below. |
-| **Modify** `src/phenotypic/sdk_/_measurement_tables.py:216-227` | `_valid_embedded_measurement_contract` **rejects `join_status == "not_requested"` with a non-empty digest** — but the inverted producer must record the snapshot digest on an *unjoined* table, or D-A's advisory has no per-store source. Revise in the same commit. |
-| **Modify** `src/phenotypic/_cli/_cli_recompile_slurm_scripts.py:186-202` | The **third** `_consistent_embedded_join_keys` call site (M2), at script-generation time, serialising `"metadata_join_keys"` into the finalizer task. Retiring the function from `finalize_run` alone leaves the abort firing **at submission**, before any worker runs. Delete the task-schema field in the same commit. |
 
 > **M1 — the shape change reaches the migrator, and in two opposite directions.**
 > `embedded_measurement_table_matches` builds its expected table from
@@ -135,11 +135,11 @@ the merge preserves identity and `stages` untouched.
 | `:100` | `isinstance(prepared, PreparedEmbeddedMeasurementTable)` → `PreparedImageTables`. **This is the crash**: it fails closed with `TypeError("Recompile table preparation returned an invalid payload")`, so `--mode recompile` breaks on the first run after Task 1 lands. |
 | `_cli_recompile_recovery.py:38,782` | `SUCCESS_MARKER_VERSION` → `RECORD_VERSION`. |
 | `_cli_recompile_recovery.py:52,387,477,637,709` | `image_completion_marker_path` → `image_record_path`. |
+| **Test** `tests/unit/cli/test_embedded_table_inversion.py` *(new)* | Intrinsic/user metadata boundary; curation re-keying. |
 
 **Test that `--mode recompile` still round-trips**, since nothing in the plan covered it
 before: recompile a two-image tree and assert each record's identity fields and `stages` are
 byte-identical to before, with only `artifacts` digests changed.
-| **Test** `tests/unit/cli/test_embedded_table_inversion.py` *(new)* | Intrinsic/user metadata boundary; curation re-keying. |
 
 ---
 

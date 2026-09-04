@@ -255,6 +255,7 @@ Each gets a row in `requires_conversion`'s docstring and a test:
 | **Unreadable `processing_state.json`** | a distinct verdict, **not `CONVERT`** | Migrate cannot repair a truncated state file, so pointing at it would strand the tree (INV-DISCHARGEABLE). Name the file; do not name `--mode migrate`. |
 | **modern `--mode process` tree** | `None` after P3 converts its records | Process **does** call `publish_image_success` (`_cli_process_single.py:789,943`), so signal 1 fires — but it has **no master at all**, so any master-touching step must no-op rather than raise. |
 | **pre-markers `--mode process` tree** | **needs a process arm in migrate** — see below | `_cli_process_only.py` ships in v0.17.3, so this is *inside* the supported range. It has no `image_complete/`, so signal 1 does **not** fire; it trips signal 3 and classifies `CONVERT`. But migrate's discovery enumerates `.h5` and `results/<ds>/zarr/*.ome.zarr` (`_cli_migrate.py:611,1377`) — **a process-only run wrote neither.** Its outputs are process layers under the mirrored input tree. |
+| **Interrupted migrate** | `CONVERT`, and the re-run completes it | Already correct; keep the test that says so. |
 
 > **MIG-11: the pre-markers process tree is a hard regression as first written, and it is
 > the same failure as CAN-7 in a shape the resolution did not enumerate.** Classified
@@ -271,7 +272,6 @@ Each gets a row in `requires_conversion`'s docstring and a test:
 >
 > Add a test that a pre-markers process tree converts and the next `--mode process` run
 > processes zero images.
-| **Interrupted migrate** | `CONVERT`, and the re-run completes it | Already correct; keep the test that says so. |
 
 - [ ] **Step 4: Run and commit**
 
@@ -1252,6 +1252,14 @@ cannot be derived" column is the load-bearing one:
 | 2 | Terminal failures | `.phenotypic/terminal_failures.jsonl` | `append_terminal_failure` | A failure leaves no artifact; absence of output is indistinguishable from not-yet-started. |
 | 3 | Liveness & ownership | `slurm_lifecycle.json`, `slurm_jobs.jsonl`, `gui_launch_owner.json` | CLI submitter / **GUI** | External-system and process facts; a crashed worker leaves no trace. |
 | 4 | `restart_epoch` | `.phenotypic/restart_epoch.json` | `bump_restart_epoch` | A content-derived generation cannot distinguish "deliberately fresh attempt" from "same config again". **Preserved by `clear_machine_state`** — a counter that resets on the operation it fences is not a fence. |
+| Fact | Derived from | By |
+|---|---|---|
+| "is this run done?" | 1 + 2 + 3 + the proofs | `resolve_run_state(output_dir, depth=...)` |
+| `processing_generation` | `sha256(pipeline_sha256 ‖ scientific_config_digest ‖ restart_epoch)` | `mint_run_identity` |
+| `work_id` | content: schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode | `work_id_for_image` |
+| `inventory_digest` / `source_set_digest` / `scientific_config_digest` / `finalization_input_digest` | `config` fields + the verified set | `run_identity`, `finalization_input_object` |
+| per-dataset completed/failed counts | the per-image records | `RunState.diagnostics` — **and nothing branches on them** |
+| the master | the marker-authorized embedded tables, and **nothing else** | `finalize_run` step 1 (INV-INPUTS) |
 
 **Four. If a fifth appears, that is a design regression** — say so in the file, and name
 the organising principle it violates: *move state that is tracked to state that is checked.*
@@ -1263,15 +1271,6 @@ aggregate proof after outputs → run proof after aggregate.
 
 **(c) Derived, and how.** One row per fact, naming the deriving function — this is the
 table that stops a future contributor writing a counter:
-
-| Fact | Derived from | By |
-|---|---|---|
-| "is this run done?" | 1 + 2 + 3 + the proofs | `resolve_run_state(output_dir, depth=...)` |
-| `processing_generation` | `sha256(pipeline_sha256 ‖ scientific_config_digest ‖ restart_epoch)` | `mint_run_identity` |
-| `work_id` | content: schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode | `work_id_for_image` |
-| `inventory_digest` / `source_set_digest` / `scientific_config_digest` / `finalization_input_digest` | `config` fields + the verified set | `run_identity`, `finalization_input_object` |
-| per-dataset completed/failed counts | the per-image records | `RunState.diagnostics` — **and nothing branches on them** |
-| the master | the marker-authorized embedded tables, and **nothing else** | `finalize_run` step 1 (INV-INPUTS) |
 
 State explicitly what was **deleted** and must not come back:
 `processing_state.datasets.{completed,failed,started}` (a cache of a cache — already
