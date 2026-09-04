@@ -679,6 +679,68 @@ RunState advisory rather than silently reading as not-done (O-2)."
 > `authorized_measurement_sources` is a *valid* result — does not arise, since the publisher
 > has not moved yet. The moment it moves, the gate must arm. That is the whole window.
 
+> ### And this task must stop `save_processing_state` WRITING the demoted sets
+>
+> **Without this, signal 3 is permanently un-dischargeable and the change ships an infinite
+> refusal loop.** Found during P1 execution; four review rounds missed it, and it is
+> invisible today only because the gate is unarmed.
+>
+> The chain, every link verified in source:
+>
+> 1. Spec §4.2: `processing_state.datasets.{completed,failed,started}` — **"Deleted from the
+>    file."**
+> 2. The gate's **signal 3** (`_cli_schema_gate.py:216-224`) returns `CONVERT` when any
+>    dataset entry carries `"completed"`.
+> 3. `save_processing_state` (`_cli_state_management.py:79-85`) writes `COMPLETED`, `FAILED`,
+>    `ERRORS` and `INITIAL_IMAGES` for every dataset, **unconditionally, on every save.**
+> 4. **No task in this plan changes that writer.** A grep for
+>    `save_processing_state|DatasetState|ProcessingStateKey` across all eight phase docs
+>    returns exactly one hit — an unrelated prose citation in P7 Task 1 about reading
+>    `VERSION`.
+>
+> So P7 Task 3 deletes the fields from an existing file, the next forward run's
+> `save_processing_state` puts them straight back, and signal 3 fires again. The steady state
+> after P7 is **migrate → run → refused → migrate → run → refused**, escapable only by
+> `--overwrite`, which deletes the outputs. That is INV-DISCHARGEABLE violated permanently
+> rather than for one shape.
+>
+> **Do not fix it by dropping signal 3.** That leaves the file carrying the demoted evidence
+> §4.2 exists to remove, which is the whole point of the section.
+>
+> **The fix is writer-side, and it is safe — checked, not assumed.** Stop writing the four
+> keys in `save_processing_state`. Nothing needs them on disk:
+>
+> - `load_processing_state` **re-aggregates from the event log on every load**
+>   (`_cli_state_management.py:122-135` → `aggregate_state_from_events`), which is why §4.2
+>   calls the stored copy *"a cache of a cache"*.
+> - The reader **already tolerates their absence**: `:159` is
+>   `ds_dict.get(ProcessingStateKey.COMPLETED, [])` — a `.get` with a default, not a
+>   subscript. So an older build reading a newer file degrades to the event log rather than
+>   raising.
+>
+> It belongs in **this task** rather than a later one, because this is the commit that arms
+> the gate. Publisher moves, writer stops emitting demoted evidence, gate arms — one
+> transition, one commit. Splitting them opens exactly the window the arming test exists to
+> close.
+>
+> ```python
+> def test_a_forward_run_does_not_reintroduce_the_demoted_dataset_sets(tmp_path):
+>     """The infinite-refusal defect. P7 Task 3 deletes these from the file; if
+>     save_processing_state re-adds them, signal 3 fires on the very next run and
+>     the tree is refused by every writing mode, forever."""
+>     import json
+>     from phenotypic._cli._cli_schema_gate import requires_conversion
+>
+>     root = _run_one_forward_pass(tmp_path)
+>     state = json.loads(_state_path(root).read_text())
+>     for entry in state["datasets"].values():
+>         assert "completed" not in entry, "the demoted sets came back"
+>     assert requires_conversion(root) is None, (
+>         "a tree this build just wrote classifies CONVERT -- migrate cannot "
+>         "discharge it, so every writing mode refuses it permanently"
+>     )
+> ```
+
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_completion.py:163`, `:255`
 - Modify: `src/phenotypic/sdk_/_run_state.py`
