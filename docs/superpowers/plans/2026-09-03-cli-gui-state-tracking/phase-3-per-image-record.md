@@ -35,7 +35,22 @@ additive.
 
 | File | Responsibility |
 |---|---|
-| **Create** `src/phenotypic/_cli/_cli_image_record.py` | `publish_image_record`, `read_image_record`, `record_stage`, `consume_stage`, the four `STAGE_*` constants. The single writer. ~240 lines. |
+| **Create** `src/phenotypic/sdk_/_image_record.py` | **Readers and shared vocabulary:** `read_image_record`, `RECORD_VERSION`, the four `STAGE_*` constants. ~70 lines. |
+| **Create** `src/phenotypic/_cli/_cli_image_record.py` | **Writers only:** `publish_image_record`, `record_stage`, `consume_stage`. Imports the vocabulary from `sdk_`. ~180 lines. |
+
+> **The split is forced, and discovering it in P3 is much cheaper than in P6 (N-3).** P6
+> Task 0 moves `valid_image_success` into `sdk_/_run_state.py` (CAN-8), and after P3 that
+> function reads the record. INV-LAYER forbids `sdk_` importing `phenotypic._cli` at module
+> scope *or inside a function*, so `sdk_` would have to parse the record and know
+> `RECORD_VERSION` and `STAGE_MEASURED` without importing them. The only two outs are
+> duplicating the constants — which **CAN-27's own resolution rejects by name**, having just
+> replaced `KNOWN_STAGES` for exactly that reason — or re-implementing record parsing in
+> `sdk_`, which creates the second reader of the record schema that CAN-8 exists to prevent.
+>
+> Putting readers plus vocabulary in `sdk_` and writers in `_cli` satisfies **CAN-27** (one
+> spelling), **CAN-8** (one predicate) and **INV-LAYER** at once, and it is the same
+> read/write asymmetry spec §5.2 already declares for run state. One line in this table now,
+> versus an unresolvable conflict four phases later.
 | **Modify** `src/phenotypic/_cli/_cli_completion.py` | `publish_image_success` / `valid_image_success` delegate to the record — **and `authorized_measurement_sources` (`:768`), which nobody listed.** See below. |
 | **Modify** `src/phenotypic/_cli/_cli_migrate_image.py:567` | **The migrator is a second producer of this schema**, not a stage that runs before one (CAN-7). It calls `publish_image_success` directly. |
 | **Modify** `src/phenotypic/_cli/_cli_stage2_token.py` | `write_stage2_token` / `stage2_token_exists` / `delete_stage2_token` become `stages.stage2` operations. `stage2_raw` helpers unchanged. |
@@ -57,7 +72,11 @@ must not change a single one of its decisions.
 **Produces:**
 
 ```python
-# phenotypic._cli._cli_image_record
+# phenotypic.sdk_._image_record   -- READERS and shared vocabulary (N-3)
+#
+# Here, not in _cli, because P6 Task 0 moves valid_image_success into
+# sdk_/_run_state.py and INV-LAYER forbids it importing _cli. Same read/write
+# asymmetry spec §5.2 declares for run state.
 
 #: The stage names, as shared constants imported by every writer and reader
 #: (CAN-27). `stages` stays an OPEN map (§6.1) -- a future stage is additive --
@@ -71,6 +90,16 @@ STAGE_STAGE3: Final[str] = "stage3"
 STAGE_MEASURED: Final[str] = "measured"
 
 RECORD_VERSION: int = 1
+
+def read_image_record(
+    output_dir: Path, dataset: str, image_stem: str
+) -> dict[str, object] | None: ...
+```
+
+```python
+# phenotypic._cli._cli_image_record   -- WRITERS only
+#
+# from phenotypic.sdk_._image_record import RECORD_VERSION, STAGE_MEASURED, ...
 
 def publish_image_record(
     output_dir: Path,
@@ -86,10 +115,6 @@ def publish_image_record(
     scheduler_epoch: str,
     commit_guard: "CommitGuard | None" = None,
 ) -> Path: ...
-
-def read_image_record(
-    output_dir: Path, dataset: str, image_stem: str
-) -> dict[str, object] | None: ...
 
 def record_stage(
     output_dir: Path, dataset: str, image_stem: str, stage: str,

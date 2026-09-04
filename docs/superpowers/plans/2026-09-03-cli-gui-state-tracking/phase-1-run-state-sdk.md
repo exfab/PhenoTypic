@@ -1178,11 +1178,18 @@ Body, in order — each step is one of the four verdicts and nothing else:
    five-way comparison** — see below.
 4. `advisories`, each derived and each non-gating:
    - `datasets_needing_migration()` — the existing shared predicate — for unconverted `.h5`
-   - any store whose `phenotypic.metadata.snapshot_sha256` ≠ the run's current
-     `metadata_sha256` (D-A). **Read the caveat in CAN-3 first**: `--mode measure`'s
-     in-place branch (`_measurement_tables.py:284-290`) rewrites the embedded table without
-     touching the root, so `snapshot_sha256` is not refreshed there. P4 Task 2 repairs that
-     branch; until it does, this advisory has a known blind spot and the docstring must say so.
+   - any store whose root `attributes.phenotypic.metadata_table.snapshot_sha256` ≠ the run's
+     current `metadata_sha256` (D-A). **Two corrections from round 2, both load-bearing:**
+     - **The key is `metadata_table`, not `metadata`.** `phenotypic.metadata` is already
+       taken by `{protected, public, imported}` image-metadata sections
+       (`sdk_/ngff_.py:569-580`). P4 Task 2 adds the new key.
+     - **It must be read from the root, not the Parquet.** Today the digest lives only as
+       Arrow schema metadata on `table.parquet` (`ngff_.py:95`). Reading it there would mean
+       opening a **Parquet footer per store** from `sdk_` on the deep path — not "one
+       attribute read from a value the store already carries", and a cost §9.2's numbers do
+       not include. P4 Task 2 mirrors it into the root so this stays a plain `zarr.json` read.
+     - Until P4 lands, `--mode measure`'s in-place branch can leave the root stale
+       (`_measurement_tables.py:284-290`); the docstring says so.
 5. `diagnostics` — counts derived from `images` only. **`manifest_completed`,
    `manifest_total` and `event_log_present` are dropped** (U-5): verified zero consumers
    survive P6, and carrying demoted evidence into `RunState` is what keeps it alive as a
@@ -1201,9 +1208,36 @@ was **wrong twice over**, and both errors were silent:
 
 Rule 1 is therefore:
 
+**`--mode process` takes a different rule 1, and the code already says so.** A process run
+publishes **no aggregate proof at all**, so its run proof carries no `source_set_digest` and
+no `source_image_count`, and its `finalization_input_digest` is a digest of
+`{"process_only_layer": …}` rather than of `{metadata_sha256, include_dataset_column,
+no_qc}`. Three of the five comparisons below are therefore inapplicable, not merely
+different. `_cli_completion.py` carries **five** carve-outs for exactly this — `:722`,
+`:763`, `:1008`, `:1020`, `:1092` — and a flat conjunction that ignores them makes every
+process tree read `incomplete` forever (N-4).
+
+```python
+config = _read_state_config(output_dir) or {}
+if config.get("process_only_layer"):
+    # Clause 1 unchanged: every accepted image still needs a valid proof.
+    # Clause 2 compares only what a process run actually publishes.
+    return (
+        all(image.verdict == "verified" for image in images.values())
+        and proof is not None
+        and proof["inventory_digest"]          == _canonical_digest(config["work_ids"])
+        and proof["scientific_config_digest"]  == config["pipeline_sha256"]
+        and proof["finalization_input_digest"] == _canonical_digest(
+            {"process_only_layer": config["process_only_layer"]}
+        )
+    )
+```
+
+The full-run form:
+
 ```python
 # Clause 1 -- every accepted image has a valid proof.
-if not all(image.verified for image in images.values()):
+if not all(image.verdict == "verified" for image in images.values()):
     ...falls through to rule 2
 
 # Clause 2 -- a valid run proof covers the CURRENT inventory. Five comparisons,
@@ -1258,6 +1292,27 @@ def test_each_dropped_comparison_is_load_bearing(complete_run, mutate, reason):
     assert resolve_run_state(complete_run, depth="deep").completion == "incomplete", (
         f"{reason} is not being compared; §7.4 and CAN-5 both depend on it"
     )
+
+
+def test_a_process_run_reads_complete(tmp_path):
+    """N-4. A process run publishes no aggregate proof, so three of rule 1's five
+    comparisons are inapplicable -- not merely different. The flat conjunction
+    CAN-4's fix introduced made every process tree read `incomplete` forever.
+
+    _cli_completion.py carries five carve-outs for this (:722, :763, :1008, :1020,
+    :1092). Rule 1 needs the same shape, and process mode is in scope elsewhere in
+    this change -- CAN-20 parametrizes identity over it, CAN-32 classifies it for
+    requires_conversion -- so it cannot be waved off as out of scope.
+    """
+    output = _run_process_mode(tmp_path, layer="objmap")
+    assert resolve_run_state(output, depth="deep").completion == "complete"
+
+
+def test_a_process_run_still_detects_a_pipeline_edit(tmp_path):
+    """The carve-out narrows the comparison set; it does not disable it."""
+    output = _run_process_mode(tmp_path, layer="objmap")
+    _edit_pipeline_json(output)
+    assert resolve_run_state(output, depth="deep").completion == "incomplete"
 
 
 def test_a_dead_gui_owner_does_not_pin_the_verdict_at_active(complete_run):

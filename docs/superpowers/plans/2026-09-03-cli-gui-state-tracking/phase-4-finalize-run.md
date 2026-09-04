@@ -35,7 +35,32 @@ documented where users read it, not only here:
 | File | Responsibility |
 |---|---|
 | **Modify** `src/phenotypic/_cli/_embedded_measurement_tables.py:42` | `prepare_embedded_measurement_table` returns the **unjoined** baseline plus a separate metadata projection. |
-| **Modify** `src/phenotypic/sdk_/_measurement_tables.py` | Write both tables into the `.part`; extend the root `tables` block. **And repair `replace_embedded_measurement_table`'s in-place branch (`:284-290`)** so the root refreshes with the table (CAN-3). |
+| **Modify** `src/phenotypic/sdk_/_measurement_tables.py` | Write both tables into the `.part`; extend the root `tables` block. **And repair `replace_embedded_measurement_table`'s in-place branch (`:284-290`)** — see below, the first draft's requirement was not sufficient (CAN-3, flow-r2 C5). |
+
+> **The in-place branch cannot be fixed by "refresh the root with the table" alone (C5).**
+> `build_measurement_table_descriptor` (`:109-129`) returns exactly `{schema_version, type,
+> format, path, measurement_columns, target}` — **no digest, no join keys, no join status** —
+> and `measurement_columns` is the *pre-join baseline* tuple. So a metadata edit that changes
+> values but not the measurement schema leaves `current == descriptor` **true**, the in-place
+> branch fires, and the Parquet is rewritten inside a promoted store with no `.part` and no
+> root rewrite.
+>
+> **After P4's inversion this gets worse, not better:** the descriptor becomes a pure
+> function of the measurement schema and the objmap target, so *every* metadata-driven
+> re-measure takes that branch.
+>
+> Two changes, both required:
+> 1. **Put `metadata_snapshot_sha256` into the descriptor**, so `current == descriptor`
+>    becomes a real test of "has anything the store certifies changed" rather than of
+>    "did the column list change".
+> 2. **Refresh the root whenever the payload changes**, not only on a descriptor change.
+>
+> **State the cost honestly.** (2) means the copytree/hardlink re-promote runs on **every**
+> `--mode measure`, not just on a descriptor change. That is precisely spike S-1's cost —
+> which D-A cut, on grounds the ledger already records as false (CAN-3): the mechanism
+> already ships. So the cost is now *larger* than when S-1 was dropped and is still
+> unmeasured. If `--mode measure` on a large tree becomes slow, this is the reason, and
+> measuring it is a follow-up, not a blocker for P4.
 | **Modify** `src/phenotypic/_cli/_cli_output_manager.py:1970-2001` | `replace_image_store_measurements` feeds the **joined** producer at `:1992-1995`. Bring it onto `prepare_image_tables`, or `--mode measure` silently un-inverts every image it touches. |
 | **Create** `src/phenotypic/sdk_/_master_io.py` | `read_master_measurements(output_dir)` — the reader U-3 requires, raising on an unstamped or wrong-versioned master. Route every in-repo master read through it. |
 | **Create** `src/phenotypic/_cli/_cli_finalize_run.py` | `finalize_run(output_dir, …)` — the one path. ~260 lines. |
@@ -301,9 +326,32 @@ def test_measure_mode_writes_the_metadata_table_not_a_joined_one(tmp_path):
 
 Extend the `.part` writer to emit `tables/metadata/pht-metadata.parquet` when
 `prepared.metadata is not None`, before `OME/zarr.json` and the root. Extend the root's
-`attributes.phenotypic.tables` with a `metadata` descriptor, and add
-`attributes.phenotypic.metadata = {"snapshot_sha256": …, "join_keys": [...],
-"join_kind": …}`.
+`attributes.phenotypic.tables` with a `metadata` descriptor.
+
+**The snapshot digest goes in a NEW root key, and the name matters (flow-r2 C5).** An
+earlier draft said to add `attributes.phenotypic.metadata = {"snapshot_sha256": …}`. That
+key is **already taken**: `PhenotypicAttr.METADATA` holds `{protected, public, imported}`
+image-metadata sections (`sdk_/ngff_.py:569-580`), carrying things like bit depth
+(`:1130-1138`). Writing a snapshot digest there would collide with per-image metadata.
+
+Use `attributes.phenotypic.metadata_table`:
+
+```json
+"metadata_table": {"snapshot_sha256": "…", "join_keys": [...], "join_kind": "…"}
+```
+
+**And putting it in the root is the point, not a detail.** Today
+`METADATA_SNAPSHOT_SHA256 = "phenotypic.metadata.snapshot_sha256"` (`ngff_.py:95`) is
+**Arrow schema metadata on the Parquet**, one of `EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS`.
+D-A's divergence advisory reads it from `sdk_` on the deep path, and P1 Task 5 describes that
+as "one attribute read per store … from a value the store already carries". Read from the
+Parquet it is not an attribute read — it is **opening a Parquet footer per store**, a
+different cost and a new dependency on the INV-LAYER plain-JSON path, and §9.2's numbers do
+not include it.
+
+Mirroring it into the root at promote time costs one JSON field, keeps the advisory a plain
+`zarr.json` read, and keeps the Parquet copy as the authority the Parquet itself carries.
+**Write both; never derive one from the other at read time.**
 
 The Parquet KV keys ride along unchanged (§7.2): `phenotypic.join.keys`,
 `phenotypic.join.kind`, `phenotypic.metadata.snapshot_sha256`. The join is self-describing
