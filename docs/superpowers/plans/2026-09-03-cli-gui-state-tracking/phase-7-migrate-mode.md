@@ -1,6 +1,6 @@
 # Phase 7 — `--mode migrate` conversion, and refusal everywhere else
 
-**Depends on:** P1–P6. **Blocks:** nothing.
+**Depends on:** P1–P6. *(Task 1's `requires_conversion` is BUILT IN P1 — see CAN-11. It is specified here in full and referenced from there.)* **Blocks:** nothing.
 
 **Spec:** D1 (clean break), §11.1 (legacy paths move *into* migrate), §15.1 (residual risk).
 
@@ -294,9 +294,34 @@ def test_conversion_merges_into_an_existing_record(tmp_path):
 
 ---
 
-## Task 2b: The pre-markers shape needs no conversion arm (CAN-7, U-1)
+## Task 2b: Port the legacy promoter into migrate (CAN-7, U-1)
 
-**This is the task the first draft was missing, and it turns out to be a deletion.**
+> ### Reversed in round 2 — read this before anything else
+>
+> **An earlier version of this task deleted `_migrate_legacy_success_evidence`**, on the
+> reasoning that the HDF→Zarr migrator already mints identity and publishes records, so the
+> pre-markers path worked end to end without it. **That was wrong**, and the migration
+> specialist's `CONFLICT with CAN-7` was upheld on evidence:
+>
+> - `git show v0.17.3:src/phenotypic/_cli/_cli_state_management.py | grep -c work_ids`
+>   returns **0**. The floor tree has no `work_ids` key at all — the concept did not exist.
+> - So `_configured_work_id` (`_cli_migrate_image.py:125`) **always** falls through to
+>   `_migration_work_id` = `sha256("migration:<ds>/<stem>")` — a **synthetic** id.
+> - `_migrate_legacy_success_evidence` mints via `work_id_for_image(config, dataset.name,
+>   image)` (`phenotypicCLI.py:590-592`) — the **content-derived** id, computed by the same
+>   function a later resume uses.
+>
+> Two producers, two different id schemes, and **only the one I proposed deleting mints the
+> id resume re-derives.** Delete it and a migrated pre-markers tree gets synthetic ids that
+> never match, so the next `--mode full` reprocesses every image — the exact outcome
+> CAN-7 exists to prevent. Task 2b's own `images_processed == 0` assertion was unachievable
+> as written; that it was unachievable is what makes it a good assertion.
+>
+> **The orchestrator made this call from its own verification and reported it to the user as
+> a simplification.** It was neither. MIG-1's original direction — port the helper into
+> migrate — stands.
+
+**What the task actually is: move the promoter, do not delete it.**
 
 A v0.17.3 tree — the supported floor — has **no `image_complete/`, no `stage2_done/`, no
 `stage3_complete/`, and no OME-Zarr stores**. Task 2 enumerates three empty trees and
@@ -322,20 +347,36 @@ Verified against source:
 
 So the pre-markers path already works end to end. What is required:
 
-- [ ] **Step 1: Delete `_migrate_legacy_success_evidence` and its gate**
+- [ ] **Step 1: Move `_migrate_legacy_success_evidence` into `_cli_migrate_state`**
 
-`phenotypicCLI.py:544` (`_requires_legacy_success_migration`), `:560`
-(`_migrate_legacy_success_evidence`), and the dispatch at `:2375-2378` plus its user-facing
-echo at `:2380-2383`. Spec §11.1 assigns "every `_legacy_*` helper moves **into** migrate"
-to P7; for this one the destination turns out to be *nothing*, because the migrator already
-covers it. Say that in the commit — a deleted helper with no replacement invites a later
-reader to restore it.
+Spec §11.1 assigns "every `_legacy_*` helper moves **into** migrate" to P7, and P6's
+deletion ledger row 10 defers it here explicitly. **This is that helper**, and the
+destination is migrate — not deletion.
 
-Three tests exercise it (`tests/unit/cli/test_cli_state_management.py:316`,
+Move, do not rewrite: `phenotypicCLI.py:560` (`_migrate_legacy_success_evidence`) and
+`:544` (`_requires_legacy_success_migration`) become part of `_cli_migrate_state`. Delete
+only the **dispatch** from the `--mode full` resume path (`:2375-2378`) and its user-facing
+echo (`:2380-2383`), because after P1's `requires_conversion` gate a legacy tree never
+reaches that code. The promotion itself now happens inside `--mode migrate`.
+
+**Order matters and must be stated:** the promoter reads `ds_state.completed` and resolves
+each image's data artifact through `image_data_artifact`, which returns the **store** when
+one exists and the `.h5` otherwise. So it must run **after** the HDF→Zarr conversion, or it
+certifies files that are about to be replaced. That is the one real ordering constraint in
+this phase.
+
+**Reconcile the two producers.** The migrator also publishes records
+(`_cli_migrate_image.py:567`) using `_configured_work_id`, which on this shape yields the
+synthetic id. After the promoter has populated `state.config["work_ids"]` with
+content-derived ids, `_configured_work_id`'s lookup succeeds and the synthetic fallback
+stops firing. **Sequence them so the promoter runs first**, or the two producers disagree
+about the same image's identity — which is the defect this task exists to prevent, arriving
+from the other direction.
+
+Three tests exercise the helper (`tests/unit/cli/test_cli_state_management.py:316`,
 `test_cli_completion_store.py:606`, `test_embedded_measurement_migration.py:312`) plus a
 maintained pre-markers fixture (`tests/unit/sdk_/_migration_fixtures.py:440-447`). **Keep
-the fixture** — retarget it at the migrator path. Delete the three tests only after the
-Step 2 test passes against that fixture.
+all four**; retarget the tests at the new call path rather than deleting them.
 
 - [ ] **Step 2: Prove it, with the real migrator**
 
@@ -360,9 +401,36 @@ def test_a_pre_markers_tree_converts_end_to_end(tmp_path):
 
     reprocessed = _invoke_cli(mode="full", output=tree)
     assert reprocessed.images_processed == 0, (
-        "a migrated pre-markers tree reprocessed from source -- the migrator's "
-        "records are not being accepted"
+        "a migrated pre-markers tree reprocessed from source"
     )
+
+
+def test_migrated_records_carry_the_work_id_resume_re_derives(tmp_path):
+    """CAN-7's decisive assertion, and the one that caught the wrong resolution.
+
+    v0.17.3 has no `work_ids` key at all, so `_configured_work_id` always falls
+    back to the SYNTHETIC sha256("migration:<ds>/<stem>"). Resume re-derives via
+    `work_id_for_image` -- content-derived. If the record carries the synthetic id,
+    nothing matches and every image reprocesses, while every other assertion in
+    this file still passes.
+
+    Assert the two agree, rather than asserting a downstream symptom.
+    """
+    from phenotypic._cli._cli_failure_tracker import work_id_for_image
+    from phenotypic._cli._cli_image_record import read_image_record
+
+    tree = _build_v0_17_3_tree(tmp_path)
+    _invoke_cli(mode="migrate", output=tree)
+
+    for dataset, image in _images_of(tree):
+        expected, _ = work_id_for_image(_config_for(tree), dataset, image)
+        record = read_image_record(tree, dataset, image.stem)
+        assert record["work_id"] == expected, (
+            f"{dataset}/{image.stem}: record carries {record['work_id'][:12]}…, "
+            f"resume will look for {expected[:12]}…  — the synthetic migration id "
+            "leaked into the record"
+        )
+        assert not record["work_id"].startswith(_synthetic_prefix(dataset, image.stem))
 ```
 
 - [ ] **Step 3: Make Task 3's deletion conditional**

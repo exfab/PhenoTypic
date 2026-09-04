@@ -846,6 +846,53 @@ fail:
 
 ---
 
+## Task 3b: `requires_conversion` — the schema gate (CAN-11)
+
+**Files:**
+- Create: `src/phenotypic/_cli/_cli_schema_gate.py`
+- Modify: `src/phenotypic/phenotypicCLI.py`
+- Test: `tests/unit/cli/test_schema_gate.py` *(new)*
+
+**Moved here from P7 Task 1, and the move is the point.** P3 Task 2 is an explicit clean
+break — `publish_image_success` writes the new record and `valid_image_success` reads it —
+while the gate that refuses a legacy tree originally did not land until **four phases
+later**. In between, on a legacy tree, `valid_image_success` returns `False` for every
+image, `authorized_measurement_sources` returns `{}` — a *valid* schema-3 result meaning
+"nothing succeeded yet" — and P4's `finalize_run` writes an **empty master with no
+exception raised**. A successful-looking run that silently discarded every measurement.
+P4 Step 5, P5 and P6 all specify runs against real trees, so this is not a bisect concern.
+
+It has no dependency on the rest of P7: it only detects the old shape and errors.
+
+**This is a CLI-side writer-adjacent module, so it does not live in `sdk_`** — but it is
+built in P1 because P1 is what precedes P3. That is the only reason it is here.
+
+The full specification — the four detection signals, the `BELOW_FLOOR` third outcome for
+U-1's v0.17.3 floor, the three shapes that classify without obvious behaviour, and every
+test — is written once in
+[phase-7-migrate-mode.md](phase-7-migrate-mode.md) Task 1. **Build it from there; do not
+restate it here.** A second copy of the signal list is exactly the duplication this change
+exists to remove, and CAN-4 is what happens when a fact gets a second home.
+
+- [ ] **Step 1: Build P7 Task 1 now, in full, including Steps 3b and 3c.**
+- [ ] **Step 2: Confirm the ordering it protects.**
+
+```python
+def test_a_legacy_tree_is_refused_before_the_clean_break_can_empty_it(tmp_path):
+    """CAN-11. Without the gate, P3's clean break turns a legacy tree into an
+    empty master rather than an error -- because `{}` from
+    authorized_measurement_sources is a VALID result, not a failure."""
+    import pytest
+
+    _build_legacy_tree(tmp_path)
+    with pytest.raises(SystemExit, match="--mode migrate"):
+        _invoke_cli(mode="full", output=tmp_path)
+```
+
+- [ ] **Step 3: Commit** — see P7 Task 1's commit message, which already records the move.
+
+---
+
 ## Task 4: `run_identity` and `assert_identity_current`
 
 **Files:**
@@ -962,25 +1009,38 @@ def finalization_input_object(output_dir: Path) -> dict[str, object]:
 `assert_identity_current` compares field by field and raises
 `RuntimeError(f"{field} changed: expected {a!r}, found {b!r}")` on the **first** mismatch.
 
-**`_canonical_digest` currently lives in two places** — `_cli_completion.py:861` and
-`_cli_failure_tracker.py`. INV-LAYER forbids importing either. Add a private third copy in
-`_run_state.py` with a comment naming the other two, plus:
+### Hoist `_canonical_digest` — do not add a third copy (CAN-29)
+
+It currently lives in two places, `_cli_completion.py:861` and `_cli_failure_tracker.py`,
+and INV-LAYER forbids `_run_state.py` importing either.
+
+An earlier draft added a **third** private copy here, pinned the three against each other
+with a keeper test, and had P6 collapse them and delete the test again. **Hoist it once
+instead:** move it to `sdk_/_digests.py` and have both CLI sites import it. That is less
+total work than add-three-then-collapse, it deletes the keeper test and P6's step, and it
+removes two copies rather than adding one.
+
+It does not breach P1's "moves no consumers" rule. That rule is about *state* consumers —
+the reason P1's correctness can be established in isolation. A pure function with no I/O
+cannot change a verdict.
 
 ```python
-def test_canonical_digest_agrees_across_modules():
-    """Three copies is two too many; P6 Task 7 collapses them into one sdk_ helper.
-    Until then, this is what stops them drifting -- a digest that disagrees with
-    itself would invalidate every proof written by the other half of the code."""
-    from phenotypic._cli._cli_completion import _canonical_digest as cli_completion
-    from phenotypic._cli._cli_failure_tracker import _canonical_digest as cli_failure
-    from phenotypic.sdk_._run_state import _canonical_digest as sdk
+def test_the_hoisted_digest_matches_what_both_cli_sites_produced(tmp_path):
+    """One-shot proof of the hoist. Delete this test in the same commit -- it
+    exists only while there are copies that could disagree, and after the hoist
+    there are none.
+
+    ensure_ascii=False matters (DF-19): the existing two use it, and a digest that
+    disagrees with itself on a non-ASCII dataset name would invalidate every proof
+    written by the other half of the code.
+    """
+    from phenotypic.sdk_._digests import canonical_digest
 
     probe = {"b": [1, 2, {"c": None}], "a": "é"}
-    assert sdk(probe) == cli_completion(probe) == cli_failure(probe)
+    assert canonical_digest(probe) == (
+        "the value both CLI copies produced for this probe, recorded here at hoist time"
+    )
 ```
-
-That test lives in `tests/unit/sdk_/test_run_state.py`, **not** in the layering test file —
-it deliberately imports `_cli`, which is fine for a test and forbidden for the module.
 
 - [ ] **Step 4: Run the tests.** Expected: PASS.
 
