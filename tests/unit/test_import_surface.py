@@ -553,6 +553,13 @@ def test_public_util_annotations_still_resolve_at_runtime():
     ``NameError: name 'pl' is not defined`` — where the pre-refactor source
     returned the resolved union. Sphinx autodoc resolves annotations at runtime,
     so this would have surfaced as a docs-build failure, not a test failure.
+
+    Deliberately in-process rather than in a subprocess. The concern would be
+    that another test importing polars could rescue this one, making it the same
+    order-dependent false green as the theme test — but checked, and it cannot:
+    ``get_type_hints`` resolves names in the *defining module's* globals, and
+    ``pl`` is never bound there at runtime, so the failure is unconditional. The
+    broken alias raises with polars already imported.
     """
     import typing
 
