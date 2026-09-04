@@ -162,7 +162,7 @@ metadata is backfilled into each store so a consumer can join in memory.
 ### 2.1 In scope
 
 - Consolidated completion contract: 9 sources → 3 authorities
-- Consolidated identity schema: 14 tokens → 6, three of them content-derived
+- Consolidated identity schema: 14 tokens → **5, two of them content-derived** (amended by U-4; §0 is authoritative — `publication_id` is cut)
 - Per-image marker collapse: `image_complete` / `stage2_done` / `stage3_complete`
   → one record with a `stages` object
 - Certified post-hoc store rewrite protocol (generalised from the existing

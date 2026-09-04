@@ -6,7 +6,7 @@
 
 **Goal:** Replace nine cross-checked evidence sources for "is this run done?" with three
 written authorities and one `resolve_run_state()` reader; collapse fourteen identity
-tokens to six, three of them content-derived; make the completion predicate `O(N)` in
+tokens to **five, two of them content-derived**; make the completion predicate `O(N)` in
 `stat()` instead of `O(N)` in full-file SHA-256; and invert the measurement/metadata
 layout so embedded per-image tables carry measurements only and the metadata join moves
 to one shared `finalize_run`.

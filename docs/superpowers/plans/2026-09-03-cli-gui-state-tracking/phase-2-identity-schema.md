@@ -1,4 +1,4 @@
-# Phase 2 — Identity schema: fourteen tokens to six
+# Phase 2 — Identity schema: fourteen tokens to five
 
 **Depends on:** P1. **Blocks:** P3–P7.
 

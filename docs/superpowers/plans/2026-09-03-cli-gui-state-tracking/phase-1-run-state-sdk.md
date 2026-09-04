@@ -257,7 +257,12 @@ def image_record_path(output_dir: Path, dataset: str, image_stem: str) -> Path:
 cache is in process and has no path. Add them only under Task 3 Step 8, and only if S-5
 said so.
 
-- [ ] **Step 4: Create all THREE module stubs with their `__all__`**
+- [ ] **Step 4: Create all THREE module stubs — `__all__` carries only what exists**
+
+> **`_run_state.py`'s `__all__` starts with the four dataclass names, not eight.** The four
+> function names are added by the tasks that define them (Task 3 Step 4, Task 4 Step 3, Task
+> 5 Step 3). Listing a name `_run_state.py` does not yet define is `F822` under ruff's
+> default `F` set — four real errors, measured at the end of Task 2, not a hypothetical.
 
 `sdk_/_state_types.py` first — it is the leaf the other two import from, and it
 carries only frozen dataclasses (gen-r3 C5). Then `_verification_cache.py`, then
@@ -401,9 +406,9 @@ Depth = Literal["shallow", "deep"]
 
 @dataclass(frozen=True)
 class RunIdentity:
-    """The six-token identity of one run configuration (spec §5.1).
+    """The identity of one run configuration (see the note below on counts) (spec §5.1).
 
-    Three tokens are content-derived, so resume and fencing are emergent rather
+    Two tokens are content-derived (`work_id`, `processing_generation`) -- anything still saying THREE predates U-4, so resume and fencing are emergent rather
     than bookkeeping: two invocations with the same inputs mint the same identity
     without either having read the other's state.
     """
@@ -509,12 +514,21 @@ Add to the import block and to `__all__`, in alphabetical position: `ImageState`
 > green at every commit, which is the phase-gate contract and the property that makes a
 > bisect land on a phase boundary rather than mid-rewrite.
 >
-> `_run_state.py`'s `__all__` still lists all eight names verbatim from Task 1 Step 4, and
-> that is deliberate: `__all__` is a list of strings, nothing validates it at import, and
-> `test_run_state_exports_no_writer` reads it. The one consequence is that
-> `from phenotypic.sdk_._run_state import *` fails until Task 5 lands. Nothing in the repo
-> does that. Keeping `__all__` whole is worth more than removing a star-import hazard nobody
-> triggers.
+> **`__all__` grows incrementally too, and for a harder reason than the exports.** An earlier
+> version of this note said keeping all eight names was harmless because nothing validates
+> `__all__` at import. **Import is not the only validator: `F822` (*undefined name in
+> `__all__`*) is in ruff's default `F` set, which is the group this repo actually enables.**
+> Measured, not predicted — the four function names produced four `F822` errors against
+> `_run_state.py` at the end of Task 2.
+>
+> So each task adds its name to `__all__` and to `sdk_/__init__.py` **together**, in the task
+> that defines it.
+>
+> The one argument for keeping `__all__` whole was that `test_run_state_exports_no_writer`
+> reads it. That argument does not survive inspection: **P6 Task 7 Step 3 deletes that test**
+> (CAN-31 — it asserts on `__all__` name *prefixes*, so a writer named `record_stage` passes
+> it). Contorting the module to satisfy a test the plan already schedules for deletion is the
+> wrong way round.
 
 **Where `__init__.py` imports the dataclasses from: `._run_state`, not `._state_types`.**
 `_run_state.py` re-exports the four from the leaf module. One extra hop, and it buys the
