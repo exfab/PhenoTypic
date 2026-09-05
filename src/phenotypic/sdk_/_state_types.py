@@ -18,12 +18,12 @@ is where spec §5.2 declares the public surface. Import them from there, or from
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
+
+from ._digests import canonical_digest
 
 Completion = Literal["complete", "incomplete", "failed", "active"]
 Depth = Literal["shallow", "deep"]
@@ -34,6 +34,27 @@ Depth = Literal["shallow", "deep"]
 #: repeating the three strings in a second place -- which is the duplication
 #: this whole change is about, at its smallest scale.
 Verdict = Literal["verified", "unverified", "failed"]
+
+
+#: The tokens :meth:`RunIdentity.digest` folds in, in the order
+#: :func:`~phenotypic.sdk_._run_state.assert_identity_current` reports them.
+#:
+#: **One home** (F6). ``_run_state`` imports this rather than restating it:
+#: comparing exactly these is what makes "the identity is current" mean the
+#: same thing as "the cache entry may stand", and two lists that can disagree
+#: cannot both be that.
+#:
+#: ``scheduler_epoch`` and ``owner_generation`` are deliberately absent -- a
+#: caller holding an identity from before a job was submitted has a stale
+#: scheduler epoch and an unchanged configuration, which is not a reason to
+#: hard-error.
+IDENTITY_DIGEST_FIELDS: tuple[str, ...] = (
+    "processing_generation",
+    "restart_epoch",
+    "inventory_digest",
+    "scientific_config_digest",
+    "finalization_input_digest",
+)
 
 
 @dataclass(frozen=True)
@@ -68,19 +89,25 @@ class RunIdentity:
         liveness facts, not configuration, and folding them in would discard
         the verification cache every time a job is submitted against unchanged
         work.
+
+        **Derived from** :data:`IDENTITY_DIGEST_FIELDS`, not from a second
+        hand-written list (F6). The set was enumerated twice -- here and in
+        ``_run_state``'s comparison -- with nothing keeping them in step, so a
+        sixth field added to one would have silently not been fenced by the
+        other.
+
+        **Uses** :func:`~phenotypic.sdk_._digests.canonical_digest` **rather
+        than a local ``json.dumps``** (F5). The hand-rolled copy matched on
+        ``sort_keys`` and ``separators`` and differed on ``ensure_ascii``,
+        which is the one flag ``_digests`` calls load-bearing: every proof on
+        disk was written with ``ensure_ascii=False``. A dataset directory
+        containing a non-ASCII character -- ``plaque-café/`` -- was enough to
+        make this digest disagree with the canonical spelling of the same
+        value.
         """
-        payload = {
-            "processing_generation": self.processing_generation,
-            "restart_epoch": self.restart_epoch,
-            "inventory_digest": self.inventory_digest,
-            "scientific_config_digest": self.scientific_config_digest,
-            "finalization_input_digest": self.finalization_input_digest,
-        }
-        return hashlib.sha256(
-            json.dumps(
-                payload, sort_keys=True, separators=(",", ":")
-            ).encode("utf-8")
-        ).hexdigest()
+        return canonical_digest(
+            {field: getattr(self, field) for field in IDENTITY_DIGEST_FIELDS}
+        )
 
 
 @dataclass(frozen=True)

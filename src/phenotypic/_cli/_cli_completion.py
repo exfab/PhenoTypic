@@ -35,6 +35,10 @@ from phenotypic.sdk_ import (
     validated_published_metadata_migration_targets,
 )
 from phenotypic.sdk_._digests import canonical_digest
+from phenotypic.sdk_._run_state import (
+    fenced_artifact_path,
+    marker_rejection,
+)
 
 # ``SUCCESS_MARKER_VERSION``, ``ARTIFACT_KIND_FILE``/``ARTIFACT_KIND_STORE``
 # and the two proof versions are imported above from ``sdk_/_io_constants``
@@ -260,43 +264,38 @@ def valid_image_success(
     image_stem: str,
     work_id: str,
 ) -> bool:
-    """Return whether the marker and every declared artifact match disk."""
+    """Return whether the marker and every declared artifact match disk.
+
+    A ``bool`` over the shared readers, deliberately: the predicate is
+    ``marker_rejection`` and the artifact walk is ``fenced_artifact_path``,
+    both from ``sdk_._run_state``, so this and ``resolve_run_state`` cannot
+    return opposite verdicts for the same image. Keeping the signature keeps
+    this function's ~20 callers untouched.
+
+    What changed in behaviour, and only this: a marker carrying
+    ``provenance: "migrated"`` is now accepted on artifact validity alone.
+    That is U-10's ruling -- a pre-markers tree never had a ``work_id`` to
+    compare against -- and until this landed, the unconditional comparison
+    here rejected every migrated image while the sdk reader accepted it.
+    """
     marker_path = image_completion_marker_path(output_dir, dataset, image_stem)
     try:
         marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        if not isinstance(marker, dict):
+            return False
         if (
-            marker.get("version") != SUCCESS_MARKER_VERSION
-            or marker.get("work_id") != work_id
-            or marker.get("dataset") != dataset
-            or marker.get("image_stem") != image_stem
+            marker_rejection(
+                marker,
+                work_id=work_id,
+                dataset=dataset,
+                image_stem=image_stem,
+            )
+            is not None
         ):
             return False
-        artifacts = marker.get("artifacts")
-        if not isinstance(artifacts, dict) or not artifacts:
-            return False
         output_root = output_dir.resolve()
-        for descriptor in artifacts.values():
-            if not isinstance(descriptor, dict):
-                return False
-            relative = descriptor.get("path")
-            if not isinstance(relative, str):
-                return False
-            artifact = (output_root / relative).resolve()
-            artifact.relative_to(output_root)
-            kind = descriptor.get("kind", ARTIFACT_KIND_FILE)
-            if kind == ARTIFACT_KIND_STORE:
-                if not _store_artifact_matches(artifact, descriptor):
-                    return False
-            elif kind == ARTIFACT_KIND_FILE:
-                if (
-                    not artifact.is_file()
-                    or artifact.stat().st_size != descriptor.get("size")
-                    or _sha256(artifact) != descriptor.get("sha256")
-                ):
-                    return False
-            else:
-                # Fail closed: an unrecognized kind is a marker this build
-                # cannot certify, never a file descriptor by default.
+        for descriptor in marker["artifacts"].values():
+            if fenced_artifact_path(output_root, descriptor) is None:
                 return False
     except (OSError, ValueError, json.JSONDecodeError, AttributeError):
         return False

@@ -61,6 +61,7 @@ from ._io_constants import (
     zarr_store_path,
 )
 from ._state_types import (
+    IDENTITY_DIGEST_FIELDS,
     Completion,
     Depth,
     ImageState,
@@ -97,11 +98,18 @@ __all__ = [
     "RunDiagnostics",
     "RunIdentity",
     "RunState",
+    "accepted_finalization_digests",
     "assert_identity_current",
     "clear_verification_cache",
+    "fenced_artifact_path",
+    "finalization_input_digest",
     "finalization_input_object",
+    "marker_rejection",
     "resolve_run_state",
     "run_identity",
+    "run_proof",
+    "run_proof_is_current",
+    "staged_image_is_complete",
 ]
 
 #: Spec §5.5's object schema. A new finalization input is a bump handled by
@@ -172,6 +180,31 @@ def _finalization_inputs(config: Mapping[str, object]) -> dict[str, object]:
         "include_dataset_column": config.get("include_dataset_column"),
         "no_qc": config.get("no_qc", False),
     }
+
+
+def finalization_input_digest(config: Mapping[str, object]) -> str:
+    """Return the digest a **newly written** proof must carry.
+
+    One spelling, always the versioned one. This is the publishers' half of a
+    deliberate pair: publishers call this, validators call
+    :func:`accepted_finalization_digests`. Keeping only this one would reject
+    every proof already on disk; keeping only the tolerant one would let a
+    publisher emit a spelling no validator was ever told about.
+
+    Splitting them is also what makes P4's bump a one-line change here rather
+    than a coordinated edit across two modules that nothing pins together --
+    the failure mode gate finding F4 describes, where
+    ``current_aggregate_is_current`` computes the unversioned spelling *only*
+    and every completion surface in the product returns "not complete" on the
+    day the publishers move.
+
+    Args:
+        config: An already-read ``processing_state.json`` ``config`` block.
+
+    Returns:
+        The canonical digest of the versioned finalization-input object.
+    """
+    return canonical_digest(_finalization_inputs(config))
 
 
 def finalization_input_object(output_dir: Path) -> dict[str, object]:
@@ -281,21 +314,6 @@ def _identity_from(
     )
 
 
-#: The tokens :meth:`RunIdentity.digest` folds in, in the order
-#: :func:`assert_identity_current` reports them. Comparing exactly these is
-#: what makes "the identity is current" mean the same thing as "the cache
-#: entry may stand": a caller holding an identity from before a job was
-#: submitted has a stale ``scheduler_epoch`` and an unchanged configuration,
-#: and that is not a reason to hard-error.
-_IDENTITY_DIGEST_FIELDS = (
-    "processing_generation",
-    "restart_epoch",
-    "inventory_digest",
-    "scientific_config_digest",
-    "finalization_input_digest",
-)
-
-
 def assert_identity_current(output_dir: Path, identity: RunIdentity) -> None:
     """Raise unless ``identity`` still describes ``output_dir``'s state.
 
@@ -306,7 +324,7 @@ def assert_identity_current(output_dir: Path, identity: RunIdentity) -> None:
     argument is that content-derived identity is better.
 
     Only the five tokens :meth:`RunIdentity.digest` folds in are compared --
-    see :data:`_IDENTITY_DIGEST_FIELDS`.
+    see :data:`IDENTITY_DIGEST_FIELDS`.
 
     Args:
         output_dir: Run output root.
@@ -323,7 +341,7 @@ def assert_identity_current(output_dir: Path, identity: RunIdentity) -> None:
             f"Run identity is unavailable: no readable processing state in "
             f"{output_dir}"
         )
-    for field in _IDENTITY_DIGEST_FIELDS:
+    for field in IDENTITY_DIGEST_FIELDS:
         expected = getattr(identity, field)
         found = getattr(current, field)
         if expected != found:
@@ -418,7 +436,7 @@ def _digest_file(path: Path) -> str | None:
     return digest.hexdigest()
 
 
-def _fenced_artifact_path(
+def fenced_artifact_path(
     output_root: Path, descriptor: Mapping[str, object]
 ) -> str | None:
     """Verify one marker-bound artifact and return the path that fences it.
@@ -477,7 +495,7 @@ def _fenced_artifact_path(
     return None
 
 
-def _marker_rejection(
+def marker_rejection(
     marker: Mapping[str, object],
     *,
     work_id: str,
@@ -489,6 +507,20 @@ def _marker_rejection(
     A sentence, not a bool, because the sentence lands in
     ``ImageState.reason`` and is what makes "which images are missing, and
     why?" answerable without re-running anything.
+
+    **The single implementation of per-image record validity**, and the
+    ``provenance: "migrated"`` branch below is why it had to become one.
+    ``_cli_completion.valid_image_success`` compared ``work_id``
+    unconditionally, so on U-10's migrated marker the two readers returned
+    opposite verdicts -- ``resolve_run_state`` reporting ``complete`` while
+    every CLI resume path reprocessed the same images, undoing a migration
+    while the GUI insisted it was done. That is not a hole in either reader:
+    the migrated branch is a *ruling*, because a pre-markers tree never had a
+    ``work_id`` to match against, and the unconditional comparison rejects
+    every migrated image by construction.
+
+    ``valid_image_success`` now reads this and keeps its ``bool`` signature,
+    so its ~20 callers are untouched and there is one answer rather than two.
     """
     if marker.get("version") != SUCCESS_MARKER_VERSION:
         return (
@@ -506,6 +538,64 @@ def _marker_rejection(
     if not isinstance(artifacts, dict) or not artifacts:
         return "marker declares no artifacts"
     return None
+
+
+def staged_image_is_complete(
+    output_dir: Path,
+    dataset: str,
+    image_stem: str,
+    *,
+    markers_required: bool,
+    resume: bool,
+) -> bool:
+    """Return whether a staged image needs no further stage.
+
+    The completeness signal that exists **only** when Stage-3 markers are
+    switched off. With ``staged_stage3_markers=False`` there is no Stage-3
+    marker by construction, so the measurement table is the entire evidence
+    base -- which is why the two sides of the SLURM loop reading *different
+    files* for it (gate finding F12) stranded finished images rather than
+    merely wasting a stat.
+
+    **THE table is the embedded one**, inside the store at
+    ``tables/measurements/table.parquet``. The legacy
+    ``results/<ds>/measurements/<stem>.parquet`` that the recovery controller
+    stats is migration input: ``_cli/CLAUDE.md`` says forward, staged Stage 3
+    and measure runs never write it, so that disjunct is dead on every run it
+    guards -- a guard that cannot fire on its own subject, not a variant to
+    be reconciled.
+
+    Both flags are **required keywords with no default**, because neither has
+    a value that is safe to assume. ``markers_required=True`` means "the
+    marker is the signal, not this file", so this returns ``False`` and the
+    image is routed back through a stage -- the conservative answer.
+    ``resume`` is a parameter rather than a normalized-away conjunct because
+    the staged classifier is called on paths where resuming is not a
+    meaningful notion.
+
+    F12's *second* half -- the same config key read with two different
+    defaults at three sites -- is **not** settled here, and no caller has
+    been migrated onto this function yet. Reading
+    ``stage3_markers_required`` with a default at all is the defect; which
+    default is the wrong argument to have. See the P2 gate notes.
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        image_stem: Source image stem.
+        markers_required: Whether Stage-3 markers are in force for this run.
+        resume: Whether this invocation may adopt prior work.
+
+    Returns:
+        ``True`` only when markers are off, this is a resume, and the store
+        carries an embedded measurement table.
+    """
+    from .ngff_ import MEASUREMENT_TABLE_RELATIVE_PATH
+
+    if markers_required or not resume:
+        return False
+    store = zarr_store_path(output_dir, dataset, image_stem)
+    return (store / MEASUREMENT_TABLE_RELATIVE_PATH).is_file()
 
 
 def _store_metadata_snapshot(
@@ -574,7 +664,7 @@ def _verify_image(
     reason: str | None = "no readable success marker"
     if marker is not None:
         provenance = _optional_str(marker.get("provenance"))
-        reason = _marker_rejection(
+        reason = marker_rejection(
             marker, work_id=work_id, dataset=dataset, image_stem=image_stem
         )
         marker_tuple = _stat_tuple(marker_path)
@@ -586,7 +676,7 @@ def _verify_image(
         artifacts = marker.get("artifacts")
         if reason is None and isinstance(artifacts, dict):
             for name, descriptor in artifacts.items():
-                fenced = _fenced_artifact_path(output_root, descriptor)
+                fenced = fenced_artifact_path(output_root, descriptor)
                 if fenced is None:
                     reason = (
                         f"declared artifact {name!r} no longer matches disk"
@@ -822,8 +912,24 @@ def _process_is_alive(pid: int) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _valid_run_proof(output_dir: Path) -> dict[str, object] | None:
-    """Return the run proof when it is structurally valid, else ``None``."""
+def run_proof(output_dir: Path) -> dict[str, object] | None:
+    """Return the run proof when it is structurally valid, else ``None``.
+
+    **Structural validity only** -- ``version``, ``status``,
+    ``finalizer_succeeded``. Whether the proof still *covers* the run's
+    current inputs is a separate question with a separate function
+    (:func:`run_proof_is_current`), and the split is deliberate: forcing a
+    caller that only asks "is this file a run proof at all?" to load
+    processing state is what pushed four readers into open-coding this
+    predicate, and every one of those four dropped the ``version`` check on
+    the way.
+
+    Dropping it is not merely lax. ``RUN_PROOF_VERSION`` is 2 and version-1
+    proofs exist on trees written by an earlier release, so a reader that
+    skips the comparison certifies a proof this build cannot interpret --
+    against ``_cli/CLAUDE.md``'s stated policy that "a version mismatch
+    invalidates rather than migrates".
+    """
     marker = _read_json_object(run_completion_marker_path(output_dir))
     if marker is None:
         return None
@@ -834,6 +940,74 @@ def _valid_run_proof(output_dir: Path) -> dict[str, object] | None:
     if marker.get("finalizer_succeeded") is not True:
         return None
     return marker
+
+
+def run_proof_is_current(output_dir: Path) -> bool:
+    """Return whether the run proof's bindings still match the run's inputs.
+
+    The other half of :func:`run_proof`, and the four comparisons
+    ``_cli_completion.valid_run_completion`` makes once it has the marker:
+    ``inventory_digest``, ``scientific_config_digest``,
+    ``finalization_input_digest`` and ``publication_id``.
+
+    **Not** the per-image walk. ``valid_run_completion`` also requires
+    ``current_run_is_complete``, and that is a separate conjunct kept at the
+    caller on purpose: it is O(N) in images, this is O(1), and a GUI surface
+    polling every five seconds wants to ask the cheap question.
+
+    Two details of the non-process arm are deliberate rather than incidental:
+
+    * ``finalization_input_digest`` is compared against **the aggregate
+      proof's** value, not against :func:`accepted_finalization_digests`.
+      This binds the two proofs to each other, which is a strictly stronger
+      claim than each agreeing with config, and it is why F4's
+      versioned/unversioned tolerance question does not arise on this path.
+    * the aggregate is read through :func:`_valid_aggregate_proof` rather
+      than the CLI's ``valid_aggregate_snapshot``. They are equivalent for
+      today's four deliverable files; the sdk one additionally dispatches on
+      ``kind``, so it stays correct if an aggregate output ever becomes a
+      store (gate finding F9).
+
+    ``success_markers_required`` is not consulted. Whether the bindings are
+    *required* is the caller's policy -- ``valid_run_completion`` waives them
+    for legacy state -- and folding that waiver in here would make a
+    verdict-improving default out of a function whose whole job is to ask one
+    question honestly.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        ``True`` only when a structurally valid proof's four bindings all
+        match. Every unreadable or absent input returns ``False``, which is
+        INV-VERDICT's degrade half: missing evidence makes a run look less
+        finished, never more.
+    """
+    proof = run_proof(output_dir)
+    if proof is None:
+        return False
+    config = _read_state_config(output_dir)
+    if config is None:
+        return False
+    if proof.get("inventory_digest") != canonical_digest(
+        config.get("work_ids", {})
+    ):
+        return False
+    if proof.get("scientific_config_digest") != config.get("pipeline_sha256"):
+        return False
+    process_layer = config.get("process_only_layer")
+    if process_layer:
+        return proof.get("publication_id") is None and proof.get(
+            "finalization_input_digest"
+        ) == canonical_digest({"process_only_layer": process_layer})
+    aggregate = _valid_aggregate_proof(output_dir)
+    if aggregate is None:
+        return False
+    return proof.get("publication_id") == aggregate.get(
+        "publication_id"
+    ) and proof.get("finalization_input_digest") == aggregate.get(
+        "finalization_input_digest"
+    )
 
 
 def _valid_aggregate_proof(output_dir: Path) -> dict[str, object] | None:
@@ -856,12 +1030,12 @@ def _valid_aggregate_proof(output_dir: Path) -> dict[str, object] | None:
     except OSError:
         return None
     for descriptor in outputs.values():
-        if _fenced_artifact_path(output_root, descriptor) is None:
+        if fenced_artifact_path(output_root, descriptor) is None:
             return None
     return marker
 
 
-def _accepted_finalization_digests(
+def accepted_finalization_digests(
     config: Mapping[str, object],
 ) -> frozenset[str]:
     """Return every spelling of the finalization-input digest a proof may use.
@@ -930,7 +1104,7 @@ def _run_proof_covers_current_inventory(
         return False
     if not all(image.verdict == "verified" for image in images.values()):
         return False
-    proof = _valid_run_proof(output_dir)
+    proof = run_proof(output_dir)
     if proof is None:
         return False
     if str(proof.get("inventory_digest") or "") != identity.inventory_digest:
@@ -949,7 +1123,7 @@ def _run_proof_covers_current_inventory(
 
     if (
         str(proof.get("finalization_input_digest") or "")
-        not in _accepted_finalization_digests(config)
+        not in accepted_finalization_digests(config)
     ):
         return False
 

@@ -184,6 +184,82 @@ def test_the_proof_side_digest_is_a_different_value_entirely():
     )
 
 
+# --------------------------------------------- the identity digest (F5, F6)
+
+
+def test_the_identity_digest_matches_the_canonical_spelling():
+    """F5: `RunIdentity.digest()` must agree with `canonical_digest`.
+
+    The hand-rolled copy matched on `sort_keys` and `separators` and differed
+    on **`ensure_ascii`** -- the one flag `_digests` calls load-bearing,
+    because every proof on disk was written with `ensure_ascii=False`.
+
+    A non-ASCII **dataset directory** is the whole trigger, and it is not
+    exotic: `plaque-café/` is a plausible name in this domain. With
+    `ensure_ascii=True` the character is escaped before hashing, so the two
+    spellings of one value digest differently and the verification cache
+    cold-starts once, silently, on exactly the runs whose paths contain one.
+    """
+    from phenotypic.sdk_ import RunIdentity
+    from phenotypic.sdk_._digests import canonical_digest
+    from phenotypic.sdk_._state_types import IDENTITY_DIGEST_FIELDS
+
+    identity = RunIdentity(
+        processing_generation="gen",
+        restart_epoch=0,
+        scheduler_epoch=None,
+        owner_generation=None,
+        inventory_digest="plaque-café",
+        scientific_config_digest="pipe",
+        finalization_input_digest="final",
+    )
+
+    assert identity.digest() == canonical_digest(
+        {f: getattr(identity, f) for f in IDENTITY_DIGEST_FIELDS}
+    )
+
+
+def test_the_fenced_field_set_has_exactly_one_home():
+    """F6: the set was enumerated twice, with nothing keeping them in step.
+
+    `_run_state` compared one list and `digest()` folded another. A sixth
+    field added to either would have been fenced by one and ignored by the
+    other -- and since the two lists were textually identical, a reader had
+    no way to tell they were separate.
+
+    Derived rather than asserted equal, per the standard
+    `test_the_marker_schema_constants_have_exactly_one_home` already sets:
+    an equality test keeps two definitions and checks them, which is one
+    definition too many.
+    """
+    import phenotypic.sdk_._run_state as run_state
+    from phenotypic.sdk_._state_types import IDENTITY_DIGEST_FIELDS
+
+    assert run_state.IDENTITY_DIGEST_FIELDS is IDENTITY_DIGEST_FIELDS
+
+
+def test_the_minted_inventory_digest_is_empty_and_that_is_the_contract(
+    tmp_path, make_exec_config
+):
+    """F2: the minter does not carry a field only the reader can compute.
+
+    `inventory_digest` is `canonical_digest(work_ids)` -- a pure function of
+    `processing_state.json`, which does not exist at mint time. Four sites
+    compute it that way and agree; the minter derived it from
+    `image_manifest_digest` instead, so a minted identity could never equal a
+    read one. Inert only because no caller compared them yet.
+
+    Empty is the established spelling for "not asserted here"
+    (`_run_state.py:384` uses it for the unidentified case), and
+    `assert_identity_current` skips empty tokens.
+    """
+    from phenotypic._cli._cli_identity import mint_run_identity
+
+    config, _ = _config_for(tmp_path, make_exec_config)
+
+    assert mint_run_identity(config, restart=False).inventory_digest == ""
+
+
 # ------------------------------------- the content-derived generation (D3/D7)
 
 

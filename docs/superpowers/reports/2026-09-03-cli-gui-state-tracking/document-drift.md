@@ -365,10 +365,196 @@ Found in the same hour, while running the precondition check the entry above pre
    and itself: **the wait condition was self-satisfying and could never clear.** They were
    killed by PID (never `pkill -f` — it reaches Slurm jobs on shared nodes).
 
-The two are the same bug pointing opposite ways — one could only ever say *absent*, the other
+### The instance that settles the rule's scope: an unrelated tool, arriving unprompted
+
+**2026-09-05, while the `p2_task0` freeze was mid-run.** An automated background security
+review — configured by neither the orchestrator nor the agent, running on its own schedule
+— read `src/phenotypic/sdk_/_verification_cache.py` and filed a **HIGH** finding:
+
+```
+[HIGH] [Authorization / Cache Poisoning]
+-    if document.get(_IDENTITY_KEY) != identity_digest:
+-        return None
+Suggested fix: Restore the identity binding check before trusting the persisted document
+```
+
+That is mutation #1 of the harness that was running at that moment, verbatim
+(`mutation_harnesses/p2_task0_disk_verification_cache.py:75-84`): the same `old` string,
+a deliberately empty `new`, and two named tests that must fail while it is absent. **The
+scanner reconstructed the harness's `old` string and offered it as a remediation.**
+
+The finding was accurate about the bytes on disk and false about the shipped code. The
+freeze's own report, minutes later, recorded that mutation as
+`PROVED | exactly ['test_a_cache_from_another_identity_is_refused', 'test_a_stale_identity_falls_through_to_deep']`,
+and the tree restored byte-identical across all 1609 files.
+
+**Why this instance settles the scope.** The other three were ours — a harness we ran and
+two `pgrep` patterns the orchestrator wrote — so each was consistent with the milder reading
+that *our* checks were sloppy. This one is independent, competently implemented, correct
+about what it observed, and arrived without being asked. It still drew a false conclusion,
+for precisely the reason the orchestrator drew one from the ABORT: **it had no way to know
+the tree was held.**
+
+So the variable was never the observer's quality or independence. *Any* observer of a tree
+under mutation reports the mutation. The precondition belongs to the act of sampling, not to
+the sampler.
+
+**The operational rule it produces**, which the earlier instances did not: when a tool you
+do not control reports a defect, establish that the tree was still **when the tool looked**,
+not when you read it. Here the correct response was to change nothing — editing a file a
+running harness owns is the documented way to corrupt a mutation run, and the "fix" was
+already scheduled to be applied by the harness itself, seconds later.
+
+#### The finding outlives the freeze, and it does not know it was taken during one
+
+**The half the orchestrator missed.** Entry 21 is *this* register. The HIGH finding lives in
+the **scanner's** system, timestamped inside the freeze window, and nothing attached to it
+records that a mutation run was in flight. It reads perfectly: right category, right
+severity, right remediation, against a file that genuinely does handle authorization.
+
+A future reader opens `_verification_cache.py`, finds the identity check present, and reaches
+one of two wrong conclusions — that a HIGH security bug was silently fixed with no commit
+trail, or that **the scanner is broken**. The second is the expensive one: a tool that was
+working correctly gets discredited by an artifact of our process, and its next real finding
+carries less weight.
+
+**So a false positive caused by our own procedure has to be annotated where it lives, or in
+a trail a reader of it will reach.** The commit message is that trail here, which is why the
+increment's message names the finding, its timestamp, and the mutation it matched.
+
+#### The discriminator, written down BEFORE the next freeze ran
+
+Registered before `p2_task1` produced any data, because once *"the scanner is confused by
+the freeze"* becomes the standing explanation, a **real** finding arriving in the same window
+inherits that dismissal for free.
+
+The test is mechanical: **does the removed line appear as a mutation's `old` string in the
+harness file?**
+
+| Outcome | Reading |
+|---|---|
+| finding matches a mutation `old`→`new` verbatim | the rule holds, and predicted rather than noticed |
+| no finding at all | **uninformative** — the scanner runs on its own schedule and may not have sampled. Must not be read as support |
+| finding matches nothing in the harness | **a real defect**, surfaced by an independent reviewer, to be triaged as such and never dismissed as freeze noise |
+
+#### Why this class exists at all: the observation surface exceeds the coordination surface
+
+The sharpest statement of the rule, and it is the agent's. FREEZE START is announced to the
+agent. **Nothing announces it to a background scanner, a CI hook, an IDE diagnostic, a
+file-watcher, or a future session reading a report timestamped inside the window.**
+Everything inside the conversation is coordinated; everything outside it observes a tree
+that is lying, and faithfully files what it sees.
+
+That also names **the more dangerous direction, which we did not hit.** We caught a false
+positive because the orchestrator knew a freeze was running. The symmetric case is an
+observer sampling a *restored* interval between two mutations, reporting **clean**, and
+someone later treating that as evidence the file is sound — a false negative with nobody
+holding the context that would flag it. A freeze spends most of its wall-clock in the
+restored state, so that interval is the *likelier* one to sample. We got the benign half.
+
+The two `pgrep` failures are the same bug pointing opposite ways — one could only ever say *absent*, the other
 only ever *present* — and both were written **as** the safeguard against this class. That is
 the entry: a check is not evidence because of what it is for. Ask of every green result what
 it would have looked like had it failed, and ask it of the checks themselves.
+
+---
+
+### Entry 22 — F811 CANNOT report the dangerous half of a name collision
+
+**Measured, not reasoned.** While fixing F3, the P2 agent added a second
+`_mark_migrated` to `tests/unit/sdk_/test_run_state.py`, which already had one at line
+458 with three callers. Python binds the later definition, so three existing tests began
+passing two arguments to a one-argument function — among them
+`test_a_migrated_record_is_accepted_on_artifact_validity_alone`, the U-10 test whose
+helper was the one shadowed.
+
+**`ruff` reported the type annotation and stepped over the collision.** F821 fired on an
+undefined `Path`; F811 (`redefined-while-unused`) did not fire at all. Had the new
+function been written `def _mark_migrated(root):` — matching all four of its siblings,
+none of which annotate — **ruff would have passed clean**, and the first signal would
+have been three `TypeError`s.
+
+**Why F811 stayed silent, confirmed with a two-line probe rather than left as an
+argument about semantics:**
+
+```python
+# probe_unused.py -- original never called
+def helper(a, b): ...
+def helper(a): ...
+                          -> F811 Redefinition of unused `helper` from line 1
+
+# probe_after_use.py -- original called before the redefinition
+def helper(a, b): ...
+X = helper(1, 2)
+def helper(a): ...
+                          -> All checks passed!
+```
+
+The rule flags a binding rebound **without having been read since it was bound**. The
+original was called at lines 1013 and 1031, *before* the redefinition at 1085, so by the
+time the rebinding happened the name had been read twice and the rule correctly said
+nothing.
+
+**So the coverage gap is in the rule, not the configuration.** Verified separately:
+`[tool.ruff]` in `pyproject.toml` carries only `line-length` and `extend-exclude` — no
+`[tool.ruff.lint]`, no `select`, no `per-file-ignores`, no `ruff.toml` — so ruff runs its
+defaults `["E4", "E7", "E9", "F"]` and F811 is enabled.
+
+**The consequence generalizes past this file.** F811 catches the *easy* version of the
+bug — a duplicate nobody calls yet — and structurally cannot catch the *dangerous*
+version, a duplicate that hijacks live callers. In a long test module the dangerous
+version is the **normal** case, because helpers are defined near their first use, so any
+later duplicate is a redefinition-after-use. The next collision of this kind will also be
+silent.
+
+**Detection that does work**, and costs one command:
+
+```bash
+grep '^def ' <file> | sort | uniq -d      # empty = no top-level collisions
+```
+
+**Fixed by deletion, not by renaming.** The 458 helper sets exactly the two fields U-10
+specifies, which is exactly what the new one set; the new one was a strictly worse copy
+with a different sentinel and a stem baked in. What replaced it is a one-argument adapter
+whose whole body calls the original — the parametrization needs a one-arg callable, and
+the original takes a stem because its three other callers each pick a different image.
+Renaming would have left two functions writing the same two fields: **a duplicate reader
+added inside the fix for duplicate readers.**
+
+### Entry 22b — a claim true of one document, offered as a claim about a key
+
+The check-reuse report dismissed a two-homes risk on `stage3_markers_required` with:
+*"`_cli_staged_slurm.py:412` writes the key, so the default is inert for documents that
+build writes."*
+
+`:412` does write it, on every submission. **But there are two documents, and it writes
+the key to both of them from different lines:**
+
+| Reader | Document | Written where |
+|---|---|---|
+| `_cli_staged_controller.py:68` (default `True`) | controller **config** | `_cli_staged_slurm.py:412` ✓ |
+| `_cli_staged_orchestration.py:271` (default `False`) | **orchestration state** | `_cli_staged_slurm.py:617-626`, *not* by `initialize_orchestration` |
+| `_cli_checkpoint_handler.py:260` (default `False`) | **orchestration state** | same |
+
+So the claim is **true of the controller config and generalized to the key.** The precise
+defect is not that it is false — it is that a reader can verify `:412` writes the key,
+find that it does, and conclude the risk is dismissed, without ever being told **which
+file that write lands in**, which is the fact the conclusion depends on. It named a line,
+not a document, so the count could not be checked against the thing it was a count of.
+
+Same family as the unfalsifiable count in entry 10, and the same family as the report's
+own F2 — a value with more than one home — appearing in the sentence that dismisses it.
+
+**Ruled:** the reverted default-flip stands. The deciding evidence is a *pair* of tests,
+not the one that breaks: `test_staged_controller.py:555` leaves the key unset and expects
+the parquet branch, while `:581` sets it to `True` explicitly for the marker branch. One
+failing test is consistent with the test being wrong; two tests demonstrating both halves
+of a convention are not. The real fix — an explicit parameter on
+`initialize_orchestration`, one writer and no reader defaults — belongs to the phase that
+owns the staged SLURM engine, with the coverage to land it. The window is real and
+currently harmless: one production caller, nothing reads the key in the interval, and a
+crash before `submit_with_intent` means no work was submitted to misjudge. It is latent,
+not live — a second caller of `initialize_orchestration` would activate it silently.
 
 ---
 
@@ -385,8 +571,8 @@ acts on it.
    holding a future state in mind — the author is describing the system they are reasoning
    about rather than the one on disk. It comes true one task later, which is the most
    forgiving version and still the same error.
-2. **A claim about what a check does** (10, 12, 13, 21). The most dangerous, because it
-   converts a green gate into false assurance. Ask of every one: *what would this have looked
+2. **A claim about what a check does** (10, 12, 13, 21, 22). The most dangerous, because
+   it converts a green gate into false assurance. Ask of every one: *what would this have looked
    like if it had failed?* Entry 21 extends it past the gates to the **operator's own
    tooling**: a `pgrep` that could only say *absent* and a wait-loop that could only say
    *present*, both written as the safeguard against this exact class. **A tool's output is a

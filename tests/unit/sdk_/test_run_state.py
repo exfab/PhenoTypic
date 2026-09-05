@@ -1082,6 +1082,37 @@ def _tamper_one_store_root(root):
     )
 
 
+def _mark_one_image_migrated(root):
+    """Apply U-10's migrated shape to the first image, for the tamper list.
+
+    A one-argument **adapter** over `_mark_migrated`, not a second
+    implementation of it: the parametrization below hands a tamper only the
+    run root, while `_mark_migrated` takes a stem because its three other
+    callers each choose a different image.
+
+    **The one input on which the two readers provably differed**, and the one
+    the parametrization excluded. U-10 rules that a migrated record is
+    accepted on artifact validity alone -- a pre-markers tree never had a
+    `work_id` to match -- so `marker_rejection` skips the comparison when
+    `provenance == "migrated"`, while `valid_image_success` used to compare
+    `work_id` unconditionally with no provenance branch.
+
+    Added and run *before* the fix, and it failed: sdk said `verified`, the
+    CLI validator said `False`. That ordering is the point. A test whose
+    whole purpose is "the two agree, image by image" was green over four
+    tamperings -- untouched, marker-gone, overlay-rewritten,
+    store-root-rewritten -- every one of them an input where the two readers
+    were never in question. It could not have gone red for the reason its
+    own name gives.
+
+    It passes now because `valid_image_success` reads `marker_rejection`
+    rather than restating it, so there is one implementation to agree with.
+    """
+    from tests._output_layout import FIXTURE_STEMS
+
+    _mark_migrated(root, FIXTURE_STEMS[0])
+
+
 @pytest.mark.parametrize(
     "tamper",
     [
@@ -1089,17 +1120,27 @@ def _tamper_one_store_root(root):
         pytest.param(_remove_one_image_marker, id="marker-gone"),
         pytest.param(_tamper_one_overlay, id="overlay-rewritten"),
         pytest.param(_tamper_one_store_root, id="store-root-rewritten"),
+        pytest.param(_mark_one_image_migrated, id="migrated-provenance"),
     ],
 )
 def test_the_sdk_reader_agrees_with_the_cli_validator(complete_run, tamper):
-    """INV-LAYER forces `_run_state` to re-derive what `valid_image_success`
-    decides, because it may not import the CLI half. That is a second home
-    for a format, and this is what keeps the two honest until P6 Task 7
-    deletes the CLI copy: the same tree, the same tamperings, image by image.
+    """The same tree, the same tamperings, image by image.
+
+    INV-LAYER once forced `_run_state` to re-derive what `valid_image_success`
+    decides, because it may not import the CLI half. It no longer does: the
+    predicate is `marker_rejection` and the artifact walk is
+    `fenced_artifact_path`, both exported from `sdk_/_run_state` and both read
+    by the CLI function, which is the direction INV-LAYER permits.
+
+    So this test's remit has changed and is worth stating. It no longer keeps
+    two implementations honest -- there is one. It pins that the CLI half
+    still routes through it, and that the `bool` it returns still tracks the
+    sdk verdict image by image. The regression it now catches is someone
+    re-inlining a clause here for speed or convenience.
 
     The shared constants (`SUCCESS_MARKER_VERSION`, the artifact kinds, the
-    two proof versions) now live in `sdk_/_io_constants` and are imported by
-    both, so a version bump cannot desynchronize them. This covers the logic.
+    two proof versions) live in `sdk_/_io_constants` and are imported by both,
+    so a version bump cannot desynchronize them either.
     """
     from phenotypic._cli._cli_completion import valid_image_success
     from phenotypic.sdk_ import resolve_run_state
@@ -1418,4 +1459,280 @@ def test_a_post_u4_run_proof_binds_without_the_aggregate(complete_run):
     assert state.completion == "complete", (
         "a run proof carrying its own source-set binding did not satisfy "
         "rule 1 -- the post-U-4 branch is broken and P4 would ship it"
+    )
+
+
+# ---------------------------------------------------------------------------
+# The shared state-check helpers (P2 gate, `p2-check-reuse.md`)
+#
+# Destinations, not migrations: P6 Task 7 moves the ~20 call sites. What these
+# pin is that each helper keeps the implementation the gate report named as
+# the correct one -- "whichever was easiest to call" being the failure mode a
+# consolidation invites.
+# ---------------------------------------------------------------------------
+
+
+def test_run_proof_refuses_a_version_it_cannot_interpret(complete_run):
+    """The strictness four open-coded readers dropped.
+
+    `RUN_PROOF_VERSION` is 2 and version-1 proofs exist on trees written by
+    an earlier release, so this is reachable today rather than on a schedule.
+    `_cli/CLAUDE.md` states the policy as "a version mismatch invalidates
+    rather than migrates"; a reader that skips the check certifies a proof
+    this build cannot interpret.
+    """
+    from phenotypic.sdk_ import run_completion_marker_path
+    from phenotypic.sdk_._run_state import run_proof
+
+    assert run_proof(complete_run) is not None
+
+    path = run_completion_marker_path(complete_run)
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    proof["version"] = 1
+    path.write_text(json.dumps(proof), encoding="utf-8")
+
+    assert run_proof(complete_run) is None, (
+        "run_proof accepted a version-1 proof -- it has picked up the "
+        "laxness of the readers it exists to replace"
+    )
+
+
+def test_run_proof_is_current_is_the_bindings_half_not_the_image_walk(
+    complete_run,
+):
+    """The split is the point: structure is O(1), coverage is O(N).
+
+    Deleting every per-image marker leaves the proof's four bindings intact,
+    so this must still answer True. If it started walking images it would
+    return False here -- and it would stop being the cheap question a GUI
+    surface polls, which is what pushed callers into open-coding to begin
+    with.
+    """
+    from phenotypic.sdk_ import image_completion_marker_path
+    from phenotypic.sdk_._run_state import run_proof_is_current
+    from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
+
+    assert run_proof_is_current(complete_run) is True
+
+    for stem in FIXTURE_STEMS:
+        image_completion_marker_path(
+            complete_run, FIXTURE_DATASET, stem
+        ).unlink()
+
+    assert run_proof_is_current(complete_run) is True, (
+        "run_proof_is_current consulted per-image markers -- it has "
+        "absorbed current_run_is_complete, which valid_run_completion keeps "
+        "as a separate conjunct"
+    )
+
+
+def test_run_proof_is_current_notices_a_moved_inventory(complete_run):
+    """A new image under a rolling input must invalidate the binding."""
+    from phenotypic.sdk_._run_state import run_proof_is_current
+    from tests._output_layout import FIXTURE_DATASET
+
+    assert run_proof_is_current(complete_run) is True
+
+    state_path, document = _read_state(complete_run)
+    document["config"]["work_ids"][FIXTURE_DATASET]["c.tif"] = "work-c"
+    state_path.write_text(json.dumps(document), encoding="utf-8")
+
+    assert run_proof_is_current(complete_run) is False, (
+        "the accepted inventory moved and the run proof still read current"
+    )
+
+
+def test_the_publishers_digest_is_one_of_the_validators_accepted_ones(
+    complete_run,
+):
+    """F4's pair, and why it is a pair rather than a choice.
+
+    `finalization_input_digest` is what a NEW proof carries -- versioned, one
+    spelling. `accepted_finalization_digests` is every spelling a proof
+    already on disk may legitimately carry. Today's publisher writes the
+    unversioned one, so the two are deliberately *not* equal: keeping only
+    the strict one rejects every existing tree, keeping only the tolerant one
+    lets a publisher emit a spelling no validator was told about.
+    """
+    from phenotypic.sdk_ import aggregate_publication_marker_path
+    from phenotypic.sdk_._run_state import (
+        accepted_finalization_digests,
+        finalization_input_digest,
+    )
+
+    _, document = _read_state(complete_run)
+    config = document["config"]
+
+    accepted = accepted_finalization_digests(config)
+    fresh = finalization_input_digest(config)
+    assert fresh in accepted
+
+    published = json.loads(
+        aggregate_publication_marker_path(complete_run).read_text(
+            encoding="utf-8"
+        )
+    )["finalization_input_digest"]
+    assert published in accepted, (
+        "the validator would reject the digest today's publisher writes"
+    )
+    assert published != fresh, (
+        "the publisher already writes the versioned spelling -- P4 has "
+        "landed, so the unversioned member of the accepted set is now dead "
+        "and should be dropped rather than left as a tolerance nothing needs"
+    )
+
+
+def test_a_moved_finalization_input_moves_both_spellings(complete_run):
+    """The tolerance weakens nothing, which is why it is safe to keep.
+
+    Both spellings are functions of exactly the same three values, so a
+    change to any of them moves the whole accepted set. Accepting two
+    spellings is not accepting two answers.
+    """
+    from phenotypic.sdk_._run_state import accepted_finalization_digests
+
+    _, document = _read_state(complete_run)
+    config = dict(document["config"])
+    before = accepted_finalization_digests(config)
+
+    config["metadata_sha256"] = "d" * 64
+    after = accepted_finalization_digests(config)
+
+    assert before.isdisjoint(after), (
+        "a moved metadata snapshot left a spelling the validator still "
+        "accepts -- §7.4's late-metadata guarantee is broken"
+    )
+
+
+def test_fenced_artifact_path_dispatches_on_kind(complete_run):
+    """F8/F9: the copy that knows about stores is the one that survives.
+
+    `valid_aggregate_snapshot` applies the file predicate unconditionally, so
+    a store descriptor would be read as a file and rejected. This helper
+    returns the store's root `zarr.json` -- the path to stat next time, not a
+    bool -- because a directory's mtime tracks only its own entries.
+    """
+    from phenotypic.sdk_ import STORE_ROOT_JSON, image_completion_marker_path
+    from phenotypic.sdk_._run_state import fenced_artifact_path
+    from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
+
+    marker = json.loads(
+        image_completion_marker_path(
+            complete_run, FIXTURE_DATASET, FIXTURE_STEMS[0]
+        ).read_text(encoding="utf-8")
+    )
+    root = complete_run.resolve()
+    fenced = {
+        fenced_artifact_path(root, descriptor)
+        for descriptor in marker["artifacts"].values()
+    }
+    assert None not in fenced, "a published marker failed its own fence"
+    assert any(path.endswith(f"/{STORE_ROOT_JSON}") for path in fenced), (
+        "no store descriptor fenced on its root zarr.json -- the kind "
+        "dispatch is gone and stores are being fenced as directories"
+    )
+    assert (
+        fenced_artifact_path(root, {"path": "x", "kind": "something-new"})
+        is None
+    ), "an unrecognized kind must fail closed, not default to file"
+
+
+def test_staged_completeness_reads_the_embedded_table_not_the_legacy_one(
+    complete_run,
+):
+    """F12: the two sides of the SLURM loop stat different files.
+
+    The recovery controller stats
+    `results/<ds>/measurements/<stem>.parquet`, which `_cli/CLAUDE.md`
+    records as legacy migration input that forward staged runs never write.
+    That guard is dead on every run it guards, so a finished image is
+    reclassified retryable, excluded from the worker's candidates, and
+    terminalized after two wasted array rounds.
+
+    Creating the legacy file must not make this answer True.
+    """
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        dataset_measurements_dir,
+        zarr_store_path,
+    )
+    from phenotypic.sdk_._run_state import staged_image_is_complete
+    from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
+
+    stem = FIXTURE_STEMS[0]
+    embedded = (
+        zarr_store_path(complete_run, FIXTURE_DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+    assert embedded.is_file(), "fixture no longer embeds a measurement table"
+    assert (
+        staged_image_is_complete(
+            complete_run,
+            FIXTURE_DATASET,
+            stem,
+            markers_required=False,
+            resume=True,
+        )
+        is True
+    )
+
+    embedded.unlink()
+    legacy = dataset_measurements_dir(complete_run, FIXTURE_DATASET)
+    legacy.mkdir(parents=True, exist_ok=True)
+    (legacy / f"{stem}.parquet").write_bytes(b"")
+
+    assert (
+        staged_image_is_complete(
+            complete_run,
+            FIXTURE_DATASET,
+            stem,
+            markers_required=False,
+            resume=True,
+        )
+        is False
+    ), (
+        "the legacy per-image parquet satisfied the staged completeness "
+        "guard -- the controller's pre-OME-Zarr path has been kept"
+    )
+
+
+def test_staged_completeness_defers_to_the_marker_when_markers_are_on(
+    complete_run,
+):
+    """`markers_required=True` means "the marker is the signal, not this".
+
+    Returning True here would let a file stat certify an image the Stage-3
+    marker has not, which is the unsafe direction: the conservative answer
+    routes a doubtful image back through a stage.
+    """
+    from phenotypic.sdk_._run_state import staged_image_is_complete
+    from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
+
+    for markers_required, resume in ((True, True), (False, False)):
+        assert (
+            staged_image_is_complete(
+                complete_run,
+                FIXTURE_DATASET,
+                FIXTURE_STEMS[0],
+                markers_required=markers_required,
+                resume=resume,
+            )
+            is False
+        ), f"markers_required={markers_required}, resume={resume}"
+
+
+def test_the_dead_second_worklist_definition_is_gone():
+    """F11: deletion, not relocation.
+
+    `_cli_update_state.get_remaining_images` derived the remaining set from
+    `datasets.{completed,failed}` -- fields spec §4.2 removes from the state
+    file -- and had no callers. Once those fields are gone it would answer
+    "everything remains" for every run, so relocating it into a shared module
+    would have laundered dead code as current.
+    """
+    from phenotypic._cli import _cli_update_state
+
+    assert not hasattr(_cli_update_state, "get_remaining_images"), (
+        "the dead worklist definition is back; the live one is "
+        "_cli_state_management.get_remaining_images_for_datasets"
     )

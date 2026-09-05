@@ -55,11 +55,54 @@ TARGETS = (
     "src/phenotypic/_cli/_cli_migrate.py",
     "src/phenotypic/_cli/_cli_state_management.py",
     "src/phenotypic/_cli/_cli_update_state.py",
+    "src/phenotypic/sdk_/_state_types.py",
 )
 SUITE = "tests/unit/cli/test_run_identity.py"
 
 # (label, old, new, tests that MUST fail)
 MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
+    (
+        "F5 REGRESSES: the identity digest goes back to a hand-rolled"
+        " json.dumps with ensure_ascii=True. Matches canonical_digest on"
+        " sort_keys and separators and differs on the one flag _digests calls"
+        " load-bearing, so a non-ASCII dataset path digests differently from"
+        " the canonical spelling of the same value and the cache cold-starts"
+        " once, silently, only on those runs.",
+        "        return canonical_digest(\n"
+        "            {field: getattr(self, field) for field in "
+        "IDENTITY_DIGEST_FIELDS}\n"
+        "        )\n",
+        "        import hashlib as _h\n"
+        "        import json as _j\n\n"
+        "        return _h.sha256(\n"
+        "            _j.dumps(\n"
+        "                {f: getattr(self, f) for f in "
+        "IDENTITY_DIGEST_FIELDS},\n"
+        "                sort_keys=True,\n"
+        "                separators=(\",\", \":\"),\n"
+        "            ).encode(\"utf-8\")\n"
+        "        ).hexdigest()\n",
+        ("test_the_identity_digest_matches_the_canonical_spelling",),
+    ),
+    (
+        "F6 REGRESSES: _run_state restates the fenced-field set instead of"
+        " importing it, so the two can drift and a sixth field would be"
+        " fenced by one and ignored by the other",
+        "    IDENTITY_DIGEST_FIELDS,\n",
+        "",
+        ("test_the_fenced_field_set_has_exactly_one_home",),
+    ),
+    (
+        "F2 REGRESSES: the minter carries an inventory_digest again, computed"
+        " its own way. A minted identity can then never equal a read one --"
+        " 100% mismatch for the first caller that compares them.",
+        '        inventory_digest="",\n',
+        '        inventory_digest="not-the-readers-value",\n',
+        (
+            "test_the_minted_inventory_digest_is_empty_and_that_is_the"
+            "_contract",
+        ),
+    ),
     (
         "per_image_config_digest becomes a WRAPPER instead of an alias --"
         " equal today, and one edit away from not being, with nothing failing"

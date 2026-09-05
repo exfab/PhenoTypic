@@ -145,26 +145,6 @@ def _metadata_digest_for(config: "ExecutionConfig") -> str | None:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def _inventory_digest_for(config: "ExecutionConfig") -> str:
-    """Return the digest of the input scope this invocation accepted.
-
-    Mirrors ``_cli_state_management._image_manifest_digest_for``, and is
-    **deliberately not imported from it**: ``_cli_slurm_lifecycle`` imports
-    this module, so a module-level import of ``_cli_state_management`` here
-    would close a cycle the moment ``create_initial_state`` takes a
-    ``RunIdentity``. The scanner helper it defers to is the shared definition;
-    only the two-line attribute lookup is restated.
-    """
-    digest = getattr(config, "image_manifest_digest", None)
-    if digest is None:
-        manifest = getattr(config, "image_manifest", None)
-        if manifest is not None:
-            from ._cli_directory_scanner import image_manifest_digest
-
-            digest = image_manifest_digest(manifest)
-    return canonical_digest(digest)
-
-
 def derive_processing_generation(
     *,
     pipeline_sha256: str | None,
@@ -312,7 +292,24 @@ def mint_run_identity(
         # Liveness, not configuration -- see the Returns note.
         scheduler_epoch=None,
         owner_generation=None,
-        inventory_digest=_inventory_digest_for(config),
+        # F2: **empty at mint, and populated by the reader.** Not a
+        # placeholder -- the field is `canonical_digest(work_ids)`, a pure
+        # function of `processing_state.json`, and the minter runs BEFORE
+        # that state exists (`work_ids` is not populated until the main
+        # state block, several hundred lines below the mint).
+        #
+        # Four sites compute it the reader's way and agree -- the reader
+        # (`_run_state.py:276`) and the three proof writers
+        # (`_cli_completion.py:904,1012,1086`). Only the minter disagreed,
+        # deriving it from `image_manifest_digest` instead, so the minted
+        # identity could never equal a read one: a 100% mismatch for the
+        # first caller to compare them.
+        #
+        # The reader owns this field. `assert_identity_current` skips empty
+        # tokens, and `_run_state.py:384` already sets it empty for the
+        # unidentified case, so the empty string is the established
+        # spelling for "not asserted here" rather than a new convention.
+        inventory_digest="",
         # The PROOF-side token (A), which is `pipeline_sha256` verbatim. NOT
         # `per_image_config_digest` -- see this module's A/B block. Writing B
         # here would make every proof this run publishes disagree with every

@@ -24,7 +24,7 @@ from collections.abc import Collection, Mapping
 
 import click
 from pathlib import Path
-from typing import Dict, Set
+from typing import Dict
 from datetime import datetime
 from dataclasses import dataclass
 
@@ -479,22 +479,14 @@ def aggregate_stage_state_from_events(
         ) from e
 
 
-def get_remaining_images(
-    all_images: Set[str],
-    dataset_state: DatasetState
-) -> Set[str]:
-    """
-    Get set of images that still need processing.
-    
-    Args:
-        all_images: Set of all image filenames in dataset
-        dataset_state: Current state of dataset processing
-        
-    Returns:
-        Set of image filenames that haven't been processed
-    """
-    processed = dataset_state.completed | dataset_state.failed
-    return all_images - processed
+# `get_remaining_images` was deleted here (gate finding F11), not relocated.
+# It derived the remaining-image set from `dataset_state.completed | .failed`
+# -- fields spec §4.2 removes from `processing_state.json` -- and a grep for
+# its name returned only its own definition. Once those fields are gone it
+# would have answered "everything remains" for every run, so moving it into a
+# shared module would have laundered dead code as current. The live worklist
+# is `_cli_state_management.get_remaining_images_for_datasets`, which reads
+# markers through `valid_image_success`. Do not reinstate this.
 
 
 # CLI interface for use by SLURM jobs

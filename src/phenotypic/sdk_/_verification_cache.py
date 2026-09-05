@@ -70,6 +70,21 @@ moves on ``chmod``, ownership change, hardlink and ``rsync -a``, all routine on
 a shared filesystem, and ``size`` + ``mtime_ns`` already covers every write the
 publication contract makes.
 
+**And ``(size, mtime_ns)`` is sufficient, not merely convenient.** The
+theoretical hole is a same-size rewrite landing inside one ``mtime_ns``
+tick. Its precondition does not occur here: no path rewrites a tracked
+artifact *within* a pass, and the run output's filesystem resolves finely
+enough to separate consecutive writes anyway -- GPFS measured at ~81 us,
+with 0 of 200 back-to-back same-size writes sharing an ``mtime_ns``.
+
+The condition under which that stops being true is worth naming, because
+it is an environment change rather than a code change: **an output tree on
+a coarser filesystem.** Node-local scratch measured ~1 ms and 181 of 200
+collisions. Run output may never live there -- it is per-job and invisible
+to other nodes (see the scratch rule) -- so the measured case is the one
+that ships. If that ever changes, this pair needs a content check, not a
+third stat field.
+
 **CONTRACT FOR CALLERS: fence a store by its root ``zarr.json``, never by the
 store directory.** ``stat_tuples`` names **regular files only**;
 :func:`entry_is_still_current` fails closed on anything else, so a caller that
