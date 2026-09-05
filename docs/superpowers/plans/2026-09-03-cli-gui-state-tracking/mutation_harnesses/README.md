@@ -138,6 +138,46 @@ mutation and making them fail for a reason other than what they assert.
 ``record.pop(..., None)`` is the shape that matches the subject, *a record with
 no epoch*.
 
+## The two gates have OPPOSITE blind spots, and that is the design
+
+`check_mutation_coverage.py` and a harness's own precondition check ask the same
+question — *"do the tests these mutations name exist?"* — and get different
+answers, because they collect test names differently. Do not make them agree.
+
+| | Collects names by | Blind to |
+|---|---|---|
+| `check_mutation_coverage.py` | AST, then **strips** `[...]` to the stem (`:214`) | a **bogus or missing parametrize ID** — every case of a parametrized test looks like the stem |
+| a harness's `_suite_test_names()` | must use **pytest `--collect-only`** | nothing at this level; only pytest knows the real IDs |
+
+**The worked case, and it is why this section exists.** P2 Task 3 increment 1 was
+the first harness to claim a *parametrized* case. `COVERAGE_OK=True` — the
+checker stripped the brackets, saw the stem, and was satisfied. The harness then
+**aborted before running a single mutation**, naming three tests as missing that
+pytest collects verbatim, because its own precondition was AST-based and AST
+`FunctionDef` names carry no parametrize IDs.
+
+Both behaved as designed. The checker cannot see param IDs *by construction* —
+that is the price of staying pytest-free, which is what makes it cheap enough to
+run on every edit. The harness can, because it is already paying for pytest.
+
+**So the division of labour:**
+
+- **The checker** answers *"is every test claimed, and does every claimed stem
+  exist?"* — fast, no subprocess, run it constantly.
+- **The harness precondition** answers *"does every claimed ID exist exactly as
+  pytest will report it?"* — and it is the **only** thing that can. It must
+  collect with `pytest --collect-only -q`, never by AST.
+
+A harness whose precondition uses AST will reject every legitimate parametrized
+expectation, and one that skips the check entirely will report `NOT PROVED`
+against a test that never ran. Neither failure is visible from a green suite.
+
+**This closes a limitation stated elsewhere in this file with no remedy.** The
+`publication_id` note above says `COVERAGE_OK` cannot catch a missing
+`pytest.param`, which is true. The answer is not to make the checker smarter —
+it is that the harness's precondition is the backstop, and it fires the moment a
+mutation names a param that does not exist.
+
 ## Controls: declared, never inferred
 
 A **control** fails when the implementation becomes *too eager* —
