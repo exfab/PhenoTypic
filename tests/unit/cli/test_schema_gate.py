@@ -29,7 +29,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner, Result
 
-from phenotypic._cli import _cli_schema_gate
+from phenotypic._cli import _cli_migrate, _cli_schema_gate
 from phenotypic.sdk_ import _schema_shape
 from phenotypic._cli._cli_schema_gate import (
     STATE_SCHEMA_VERSION,
@@ -799,12 +799,41 @@ def test_migrate_mode_is_never_refused_by_the_gate(
 
     Dry-run, because the exemption is an argument-validation fact and a real
     conversion is P7's to exercise.
+
+    **Asserts that migrate's body was REACHED, not that a string is absent**
+    (test-review finding 7). The original checked only ``"cannot read this
+    output" not in result.output``, which cannot tell "the gate let us
+    through" apart from "the command died before the gate ran" -- and the
+    second is not hypothetical: this invocation exits **1** with
+    ``ValueError: no PhenoTypic OME-Zarr stores found for provenance
+    migration``, because the fixture tree has no stores. The negative
+    assertion passed against a run that failed for an entirely unrelated
+    reason, which is exactly the false green it was meant to exclude.
+
+    Spying on ``run_migrate`` is the positive form, and it is deliberately
+    not a message match: the gate refuses by raising **before**
+    ``handle_migrate_mode`` is reached (`phenotypicCLI.py:1671`), so
+    ``run_migrate`` being called at all is proof the exemption held. That
+    stays true when the downstream error text changes, and it is the fact
+    MIG-19 is actually about.
     """
     monkeypatch.setattr(_schema_shape, "SCHEMA_GATE_ARMED", True)
     tree = _build_markers_era(tmp_path / "run")
 
+    reached: list[Path] = []
+
+    def _spy(output_dir: Path, *args: object, **kwargs: object) -> object:
+        reached.append(output_dir)
+        raise SystemExit(0)
+
+    monkeypatch.setattr(_cli_migrate, "run_migrate", _spy)
+
     result = _invoke("migrate", tree, cli_inputs, dry_run=True)
 
+    assert reached, (
+        "migrate never reached run_migrate, so this proves nothing about the "
+        f"gate -- exit={result.exit_code}, output={result.output[:200]!r}"
+    )
     assert "cannot read this output" not in result.output
 
 
