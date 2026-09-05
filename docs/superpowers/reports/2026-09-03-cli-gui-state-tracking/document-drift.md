@@ -309,6 +309,69 @@ which it would stop being true: output on a filesystem with coarser granularity.
 
 ---
 
+### Entry 21 — A TOOL'S OUTPUT IS A SAMPLE TOO. 2026-09-05.
+
+**The sixth instance of the session's recurring error, and the first where the sampler was a
+tool rather than a person** — which is why it is worth its own entry rather than a line in
+entry 20's tally.
+
+A mutation harness ABORTed with a drifted-anchor error naming three anchors in
+`_verification_cache.py`. The orchestrator concluded the anchors had genuinely moved, and
+said so in writing: *"real drift — confirmed by the harness's own ABORT, not by my
+sampling."* The P2 agent accepted it and queued a re-anchor as the one edit owed before
+anything else.
+
+**The ABORT was a sample.** A harness reads the tree when it starts, and it inherits exactly
+the precondition its operator has: it is meaningful only if nothing else holds the tree. That
+run started while a second harness — chained into the same shell — was mid-mutation on
+`_verification_cache.py`, the only target the two shared for those anchors. It read a
+mutated file and correctly refused to proceed.
+
+**The refusal was right; the conclusion drawn from it was not.** Checked afterwards on a
+still tree, with the harness's own ownership rule (an anchor must match *exactly once in
+exactly one target* — stricter than summing `count(old)` across targets):
+
+| | |
+|---|---|
+| `p2_task0_disk_verification_cache.py` | 3 targets, 21 mutations — precondition **passes** |
+| `p2_task1_restart_epoch.py` | 9 targets, 35 mutations — precondition **passes** |
+| the three named anchors | present, **exactly once each**, all in `_verification_cache.py` |
+
+Mechanically it could not have been the suspected cause either: the F10 paragraph went into
+the **module docstring**; the three anchors are inside `persist_states`, several hundred
+lines below.
+
+**Why this instance is the instructive one.** *"The tool said so, not me"* feels like
+independent evidence and is not. A log written during a collision describes the collision.
+The rule the session had already adopted — check the precondition before hashing or running
+`git status` — was **too narrow**: it must also run before *reading a tool's output*.
+
+**What it would have cost.** A wrong re-anchor is invisible. The harness would still pass,
+against anchors that no longer name the code they were written for — a green gate pinned to
+the wrong lines, which is entry 10's shape reached by a different road. It was caught only
+because the agent verified the precondition instead of trusting a confirmed-looking abort,
+after being told by the orchestrator that the drift was real.
+
+### The same defect in the tooling built to detect it
+
+Found in the same hour, while running the precondition check the entry above prescribes.
+
+1. **`pgrep -af "a\|b"`** — `\|` is BRE alternation, but `pgrep` uses ERE, where it is a
+   **literal pipe**. The pattern matched nothing, ever, so the check returned *"no harness
+   running"* unconditionally. Four conclusions were drawn from it, including suspicion of a
+   subagent's work.
+2. **Four `until ! pgrep -f <script>; do sleep 5; done` wait-loops, alive 5–7 hours.** Each
+   loop's own command line contains the string it greps for, so `pgrep` matched its siblings
+   and itself: **the wait condition was self-satisfying and could never clear.** They were
+   killed by PID (never `pkill -f` — it reaches Slurm jobs on shared nodes).
+
+The two are the same bug pointing opposite ways — one could only ever say *absent*, the other
+only ever *present* — and both were written **as** the safeguard against this class. That is
+the entry: a check is not evidence because of what it is for. Ask of every green result what
+it would have looked like had it failed, and ask it of the checks themselves.
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
@@ -322,9 +385,13 @@ acts on it.
    holding a future state in mind — the author is describing the system they are reasoning
    about rather than the one on disk. It comes true one task later, which is the most
    forgiving version and still the same error.
-2. **A claim about what a check does** (10, 12, 13). The most dangerous, because it converts
-   a green gate into false assurance. Ask of every one: *what would this have looked like if
-   it had failed?*
+2. **A claim about what a check does** (10, 12, 13, 21). The most dangerous, because it
+   converts a green gate into false assurance. Ask of every one: *what would this have looked
+   like if it had failed?* Entry 21 extends it past the gates to the **operator's own
+   tooling**: a `pgrep` that could only say *absent* and a wait-loop that could only say
+   *present*, both written as the safeguard against this exact class. **A tool's output is a
+   sample, and needs the same precondition its operator does** — including before you read
+   its log.
 
 **The mitigation that actually worked**, and it is not "be careful": **prefer a pointer to a
 real symbol over a restatement.** A pointer to a symbol that exists is the one form of these

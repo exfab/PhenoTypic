@@ -447,6 +447,48 @@ the moment everyone is focused on the defect being fixed rather than on the coun
 3. Does it add a *second home* for a value that already exists? → that is the defect this
    change removes, not a fix. Reject it without asking.
 
+### Never sample a tree another agent may be holding — including a tool's output
+
+**Earned six times in this phase, the last of which was the instructive one.** Before you
+hash a file, run `git status`, diff against a snapshot, **or read a harness log**, establish
+that nothing else is writing:
+
+```bash
+pgrep -af 'p2_task[01]_' | grep -v 'grep -v' || echo NONE
+```
+
+Only then sample. Two failure directions, both observed here in one hour:
+
+| | |
+|---|---|
+| `pgrep -af "a\|b"` | `\|` is BRE alternation; `pgrep` uses **ERE**, so it is a literal pipe. The check matched nothing, ever — it could only return *absent*. Four conclusions were drawn from it, including suspicion of a subagent's work. |
+| `until ! pgrep -f <script>; do sleep 5; done` | The loop's own command line contains the string it greps for, so it matches its siblings **and itself**. The wait condition is self-satisfying; four of these ran 5–7 hours. It could only return *present*. |
+
+Both were written **as** the safeguard against this class. So the discipline is not "use the
+check" — it is **ask of the check what a failing result would have looked like**, and confirm
+it can produce one. Kill stragglers by **PID**; never `pkill -f`, which reaches Slurm jobs on
+shared nodes.
+
+**A tool's output is a sample too.** A mutation harness that ABORTs with a drifted-anchor
+error reads the tree *when it starts*, and inherits exactly this precondition. One such ABORT
+in this phase was correct — it had read a file another chained harness was mid-mutation on —
+and the conclusion drawn from it ("the anchors really moved") was wrong. *"The harness said
+so, not me"* feels like independent evidence and is not.
+
+**Why it matters more than a wasted round trip:** the queued fix was a re-anchor, and **a
+wrong re-anchor is invisible**. The harness still passes, against anchors that no longer name
+the code they were written for. A green gate pinned to the wrong lines is the exact thing
+these harnesses exist to prevent.
+
+**Two rules that follow, both cheap:**
+
+- **Never chain two mutation harnesses in one shell.** That is what produced the collision. A
+  kill or a timeout on the first also takes the queued second, and the second reads whatever
+  the first left behind.
+- **Verify an anchor with the harness's own ownership rule**, not a weaker proxy. The harness
+  requires each anchor to match *exactly once in exactly one target*; summing `count(old)`
+  across targets passes cases the harness rejects.
+
 ### Every test run past a single file goes through the sharded array
 
 **Standing instruction (user, 2026-09-04): cluster any large suite and run it massively in
