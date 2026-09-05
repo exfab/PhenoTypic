@@ -64,6 +64,7 @@ existing tree.
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_completion.py` — readers out, writers stay
 - Modify: `src/phenotypic/phenotypicCLI.py:2394,2428,2439,2874,3725`
+  — ⚠ **do not reason from the comment at `:2418-2421`; P2 Task 3 deleted it.** See below.
 - Modify: `src/phenotypic/_cli/_cli_checkpoint_handler.py:291,348,401` **(gen-r4 N-1)**
 - Modify: `src/phenotypic/_cli/_cli_recompile_worker.py:643,653` **(gen-r4 N-2)**
 - Modify: `src/phenotypic/_cli/_cli_gui_lifecycle.py:90` **(gen-r4 N-1)**
@@ -72,6 +73,37 @@ existing tree.
 - Modify: `src/phenotypic/_cli/_cli_staged_resume.py:203-213` — `valid_image_success`, not the three above
 - Modify: `src/phenotypic/_cli/_cli_migrate.py:88-89` — likewise
 - Test: `tests/unit/cli/test_completion_split.py` *(new)*
+
+> ### ⚠ A deleted comment in the middle of your call sites
+>
+> Your `:2394` and `:2428` sites sandwich `phenotypicCLI.py:2422`, which **P2 Task 3
+> rewrites** — and the four lines above it were a justification that Task 3 makes false:
+>
+> > *"Every compatible invocation owns a fresh machine-state epoch, including a no-work
+> > reconciliation. This fences workers left by a killed local attempt and prevents
+> > historical started events from remaining active forever."*
+>
+> That was true of a `uuid4()` generation. It is **not** true of a content-derived one —
+> D3's whole point is that the generation is a function of content, so it is deliberately
+> *not* fresh per invocation. And the fencing the comment claims as its purpose is now
+> `restart_epoch`'s job, built in P2 Task 1.
+>
+> **Why this is a note and not a code conflict.** The statements do not overlap: your sites
+> are reader imports migrating to `resolve_run_state`; `:2422` is a minting expression.
+> Neither rewrites the other, and nothing you do to those imports changes what `:2422`
+> should be. Your line numbers will shift, but they need re-verifying regardless.
+>
+> **The hazard is reasoning, not merging.** Someone migrating readers around this block
+> while the stale comment is still present would conclude — reasonably, from the comment —
+> that a fresh epoch per invocation is intended, and might preserve or reintroduce it.
+>
+> **The conclusion it hides, which the plan never states:** a resume mints the **same**
+> generation and does **not** bump the restart epoch. A resume is not a restart; only
+> `--restart` is. If a resume bumped, every resume would fence its own in-flight workers —
+> the precise failure D5 exists to prevent, and the opposite of what a resume is for.
+>
+> P2 Task 3 rewrites the comment, so if it has landed there is nothing here to avoid. This
+> note exists for the case where someone reads this task first.
 
 > **The file list was short by three files and the count was wrong (gen-r4 N-1/N-2, open
 > three rounds).** Measured on `c9d1fbfc`: the three predicate names have **13 invocations
