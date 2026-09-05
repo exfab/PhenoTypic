@@ -225,11 +225,35 @@ def run_recompile_task(
 def _assert_worker_generation(
     output_dir: Path, slurm_generation: str, attempt_id: str
 ) -> None:
-    """Validate independently supplied worker ownership arguments."""
+    """Validate worker ownership arguments.
+
+    **The two arguments are one value, so there is no equality check.** The
+    docstrings on the call path say they are "supplied independently by the
+    scheduler script", and at the level of this function that is true -- they
+    arrive as two CLI options. It is false of every supplier:
+
+    ``_cli_recompile_slurm_scripts.py:292-293`` passes ``slurm_generation=
+    attempt_id, attempt_id=attempt_id``; ``phenotypicCLI.py:3464`` does the
+    same; and the manifest writer sets ``task["slurm_generation"] =
+    attempt_id`` at four sites. Every path puts one variable into both
+    parameters.
+
+    So ``if slurm_generation != attempt_id: raise`` was **unreachable** --
+    a value compared with itself, routed through two options. It read as a
+    safety check and enforced nothing, which is worse than no check: a
+    reader could reasonably conclude the two were independently verified.
+
+    **Do not reinstate it.** If a future change makes the two genuinely
+    distinct, the fix is to give them separate meanings and fence each on its
+    own, not to re-add an equality assertion that would then be enforcing an
+    invariant nobody stated. Audit §11.1; confirmed against the tree in P2
+    Task 4 before removal.
+
+    What remains is real: both values must be present, and the generation
+    must still be the active lifecycle fence.
+    """
     if not slurm_generation or not attempt_id:
         raise ValueError("SLURM generation and attempt id are required")
-    if slurm_generation != attempt_id:
-        raise ValueError("SLURM generation and attempt id must match")
     assert_generation_active(output_dir, slurm_generation)
 
 
