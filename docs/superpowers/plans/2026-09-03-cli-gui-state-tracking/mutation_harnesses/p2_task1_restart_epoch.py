@@ -52,6 +52,7 @@ TARGETS = (
     "src/phenotypic/sdk_/_run_state.py",
     "src/phenotypic/sdk_/_io_constants.py",
     "src/phenotypic/_cli/_cli_failure_tracker.py",
+    "src/phenotypic/_cli/_cli_migrate.py",
 )
 SUITE = "tests/unit/cli/test_run_identity.py"
 
@@ -68,6 +69,87 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
         "def per_image_config_digest(config):\n"
         "    return processing_configuration_digest(config)\n",
         ("test_per_image_config_digest_is_the_work_id_digest_itself",),
+    ),
+    (
+        "the generation goes back to being a uuid4 -- D3 gone entirely, and"
+        " every site this task converted regresses at once"
+        " [inherently broad: when the generation stops being a function of its"
+        " inputs, every test about those inputs fails; that is a property of"
+        " deleting determinism, not a weakness in those tests]",
+        "    return canonical_digest(\n"
+        "        {\n"
+        '            "pipeline_sha256": pipeline_sha256 or "",\n'
+        '            "per_image_config_digest": per_image_config or "",\n'
+        '            "restart_epoch": restart_epoch,\n'
+        "        }\n"
+        "    )\n",
+        "    from uuid import uuid4\n\n    return uuid4().hex\n",
+        ("test_the_same_components_mint_the_same_generation",),
+    ),
+    (
+        "the generation ignores per_image_config -- a pipeline-only fence,"
+        " so a detect_mode or bit_depth change mints the same generation and"
+        " a worker holding it is not fenced",
+        '            "per_image_config_digest": per_image_config or "",\n',
+        '            "per_image_config_digest": "",\n',
+        (
+            "test_every_component_moves_the_generation"
+            "[per_image_config-cfg-2]",
+        ),
+    ),
+    (
+        "the generation ignores restart_epoch -- D4's whole purpose gone, so"
+        " a deliberately fresh attempt is indistinguishable from the run it"
+        " replaces and the pre-restart workers pass the fence",
+        '            "restart_epoch": restart_epoch,\n        }\n    )\n',
+        '            "restart_epoch": 0,\n        }\n    )\n',
+        ("test_every_component_moves_the_generation[restart_epoch-1]",),
+    ),
+    (
+        "the generation ignores pipeline_sha256 -- an edited pipeline mints"
+        " the same generation",
+        '            "pipeline_sha256": pipeline_sha256 or "",\n',
+        '            "pipeline_sha256": "",\n',
+        (
+            "test_every_component_moves_the_generation"
+            "[pipeline_sha256-pipe-2]",
+        ),
+    ),
+    (
+        "None and empty string stop being the same input, so a pipeline-less"
+        " run mints a different generation depending on which spelling of"
+        " nothing its caller happened to pass",
+        '            "pipeline_sha256": pipeline_sha256 or "",\n'
+        '            "per_image_config_digest": per_image_config or "",\n',
+        '            "pipeline_sha256": pipeline_sha256,\n'
+        '            "per_image_config_digest": per_image_config,\n',
+        ("test_an_absent_component_is_the_empty_one",),
+    ),
+    (
+        "the MIGRATOR folds the inventory back into the generation -- CAN-7,"
+        " restoring the D7 violation that shipped in dd18d9c7 and made every"
+        " image arrival under a rolling input look like a config change",
+        '            "processing_generation": '
+        "derive_processing_generation(\n"
+        "                pipeline_sha256=_file_sha256(pipeline_path),\n"
+        "                per_image_config=None,\n"
+        "                restart_epoch=0,\n"
+        "            ),\n",
+        '            "processing_generation": '
+        "derive_processing_generation(\n"
+        "                pipeline_sha256=_file_sha256(pipeline_path),\n"
+        "                per_image_config=repr(sorted(work_ids.items())),\n"
+        "                restart_epoch=0,\n"
+        "            ),\n",
+        ("test_a_migrated_trees_generation_ignores_its_inventory",),
+    ),
+    (
+        "the migrator stops recording restart_epoch -- P1's"
+        " requires_conversion signal 4 is its ABSENCE, so a freshly migrated"
+        " tree is refused by the very next --mode full",
+        '            "restart_epoch": 0,\n            "pipeline_sha256":',
+        '            "pipeline_sha256":',
+        ("test_a_migrated_tree_records_a_restart_epoch",),
     ),
     (
         "the per-image digest grows a pipeline component, so it becomes"
@@ -227,15 +309,63 @@ def _sha256(path: Path) -> str:
 
 
 def _suite_test_names() -> set[str]:
-    import ast
+    """Return every id pytest collects, **including parametrized cases**.
 
-    tree = ast.parse(Path(SUITE).read_text(encoding="utf-8"))
-    return {
-        node.name
-        for node in tree.body
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and node.name.startswith("test_")
-    }
+    **Collected from pytest, not by AST, and that is the whole point.** An
+    ``ast.FunctionDef`` carries only the bare function name, so
+    ``test_x[a-b]`` is invisible to it: every bracketed expectation read as a
+    typo and the harness aborted before running a single mutation, naming
+    three tests that pytest collects verbatim. This is the first harness to
+    claim a parametrized case, which is why it had never fired.
+
+    Note that ``check_mutation_coverage.py`` has the **opposite** blind spot
+    on purpose -- it strips ``[...]`` to the stem so it can stay fast and
+    pytest-free, which is exactly why it reported ``COVERAGE_OK=True`` on the
+    state that aborted here. Neither gate is individually complete and making
+    them agree would remove the backstop: only pytest knows the ids, and only
+    the checker can run without it.
+
+    Two output shapes are accepted because pytest's differs by version and by
+    ``addopts``: ``path::test_x[a-b]`` and ``<Function test_x[a-b]>``. A parse
+    that matched neither would yield an empty set, which would make **every**
+    expectation "unknown" and abort with precisely the misleading message
+    this function was rewritten to stop producing -- so an empty result is
+    raised as itself instead.
+    """
+    proc = subprocess.run(
+        [
+            "uv",
+            "run",
+            "pytest",
+            SUITE,
+            "--collect-only",
+            "-q",
+            "--no-header",
+        ],
+        capture_output=True,
+        text=True,
+        env={**_ENV},
+    )
+    names: set[str] = set()
+    for line in proc.stdout.splitlines():
+        stripped = line.strip()
+        if "::" in stripped:
+            candidate = stripped.rsplit("::", 1)[1]
+        elif stripped.startswith("<Function "):
+            candidate = stripped[len("<Function ") :].rstrip(">")
+        else:
+            continue
+        if candidate.startswith("test_"):
+            names.add(candidate)
+    if not names:
+        raise SystemExit(
+            "ABORT: pytest --collect-only produced no recognizable test ids "
+            "for "
+            f"{SUITE}. The parse matched neither `path::name` nor "
+            "`<Function name>`; fix the parse rather than the expectations. "
+            f"First lines were:\n{chr(10).join(proc.stdout.splitlines()[:5])}"
+        )
+    return names
 
 
 def _failed_tests() -> set[str]:

@@ -83,6 +83,7 @@ from ._cli_migrate_manifest import (
     valid_migration_reclaim_seal,
     write_migration_manifest,
 )
+from ._cli_identity import derive_processing_generation
 from ._cli_completion import (
     publish_run_completion_evidence,
     valid_aggregate_snapshot,
@@ -674,11 +675,6 @@ def _ensure_migration_processing_state(
         (path for path in provenance_candidates if path.is_file()),
         output_dir / "pipeline.pht-pipe",
     )
-    inventory_payload = "\n".join(
-        f"{dataset}/{stem}:{work_id}"
-        for dataset, images in sorted(work_ids.items())
-        for stem, work_id in sorted(images.items())
-    )
     now = datetime.now(timezone.utc)
     metadata_snapshot = metadata_csv_deliverable_path(output_dir)
     state = ProcessingState(
@@ -693,9 +689,29 @@ def _ensure_migration_processing_state(
         config={
             "success_markers_required": True,
             "work_ids": work_ids,
-            "processing_generation": hashlib.sha256(
-                f"migration\n{inventory_payload}".encode()
-            ).hexdigest(),
+            # D7: the generation fences CONFIGURATION, never scope. This site
+            # folded the full `dataset/stem:work_id` inventory into the hash
+            # from `dd18d9c7` (2026-08-26) -- eight days before D7 was
+            # written -- so every migrated tree behaved the way D7 exists to
+            # prevent: each new image under a rolling input changed the
+            # generation, resetting live progress and fencing in-flight
+            # workers. A PRE-EXISTING defect, not a regression introduced by
+            # the change that names it.
+            #
+            # `per_image_config` is None because a converted tree never
+            # recorded one and migrate builds no `ExecutionConfig` (U-7).
+            # U-10's rule applies: mark what cannot be recovered rather than
+            # fabricate it. The per-image fence for these images comes from
+            # `provenance: "migrated"`, not from a manufactured digest.
+            "processing_generation": derive_processing_generation(
+                pipeline_sha256=_file_sha256(pipeline_path),
+                per_image_config=None,
+                restart_epoch=0,
+            ),
+            # P1's `requires_conversion` signal 4 is the ABSENCE of this key.
+            # A freshly migrated tree without it is refused by the very next
+            # `--mode full`, which is the gate firing on its own migrator.
+            "restart_epoch": 0,
             "pipeline_sha256": _file_sha256(pipeline_path),
             "metadata_sha256": _file_sha256(metadata_snapshot),
             "include_dataset_column": True,

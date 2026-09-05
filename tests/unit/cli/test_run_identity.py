@@ -76,6 +76,30 @@ def _set_config_restart_epoch(output_dir: Path, epoch: int) -> None:
     path.write_text(json.dumps(document), encoding="utf-8")
 
 
+def _state_config(output_dir: Path) -> dict:
+    return json.loads(
+        resolve_processing_state_path(output_dir).read_text(encoding="utf-8")
+    )["config"]
+
+
+def _seed_converted_stores(output_dir: Path, *stems: str) -> None:
+    """Seed the shape `_ensure_migration_processing_state` synthesizes from.
+
+    **Stores, and deliberately NO processing state.** That function returns
+    early when state already exists (`existing is not None`), so seeding state
+    would skip the generation block entirely and the test would assert
+    nothing. It builds `work_ids` by scanning
+    `results/<ds>/zarr/*.ome.zarr/zarr.json`, which is the only thing it
+    checks for, so an empty JSON file per store is a sufficient stand-in.
+    """
+    for stem in stems:
+        store = (
+            output_dir / "results" / "plate" / "zarr" / f"{stem}.ome.zarr"
+        )
+        store.mkdir(parents=True, exist_ok=True)
+        (store / "zarr.json").write_text("{}", encoding="utf-8")
+
+
 def _publish_lifecycle(output_dir: Path, *, generation: str) -> dict:
     from phenotypic._cli._cli_slurm_lifecycle import (
         initialize_slurm_lifecycle,
@@ -157,6 +181,122 @@ def test_the_proof_side_digest_is_a_different_value_entirely():
         "of answering the proof-side digest's question and the two will be "
         "merged by the next reader who notices"
     )
+
+
+# ------------------------------------- the content-derived generation (D3/D7)
+
+
+def test_the_same_components_mint_the_same_generation():
+    """D3: same inputs -> same token.
+
+    This is what makes resume and fencing **emergent** rather than
+    bookkeeping. Two invocations with the same configuration mint the same
+    generation without either having read the other's state -- which is
+    exactly what lets a SLURM worker starting cold fence itself correctly
+    against a run it has never seen. A `uuid4()` cannot do that, and every
+    site this replaces used one.
+    """
+    from phenotypic._cli._cli_identity import derive_processing_generation
+
+    kwargs = dict(
+        pipeline_sha256="pipe-1", per_image_config="cfg-1", restart_epoch=0
+    )
+
+    assert derive_processing_generation(
+        **kwargs
+    ) == derive_processing_generation(**kwargs)
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("pipeline_sha256", "pipe-2"),
+        ("per_image_config", "cfg-2"),
+        ("restart_epoch", 1),
+    ],
+)
+def test_every_component_moves_the_generation(field, value):
+    """Each of the three is load-bearing, checked one at a time.
+
+    A component folded in but never actually reaching the digest is invisible
+    from a same-inputs-same-token test, which passes just as well when the
+    function ignores two of its three arguments.
+
+    Short stand-ins rather than 64-char digests: the function does not parse
+    its inputs, so a realistic-looking digest would buy nothing and makes the
+    parametrized test ids unreadable.
+    """
+    from phenotypic._cli._cli_identity import derive_processing_generation
+
+    base = dict(
+        pipeline_sha256="pipe-1", per_image_config="cfg-1", restart_epoch=0
+    )
+    moved = {**base, field: value}
+
+    assert derive_processing_generation(
+        **base
+    ) != derive_processing_generation(**moved)
+
+
+def test_an_absent_component_is_the_empty_one():
+    """`None` and `""` are the same input, so a pipeline-less run still mints
+    a stable generation rather than a different one each time the caller
+    happens to pass a different spelling of "nothing"."""
+    from phenotypic._cli._cli_identity import derive_processing_generation
+
+    assert derive_processing_generation(
+        pipeline_sha256=None, per_image_config=None, restart_epoch=0
+    ) == derive_processing_generation(
+        pipeline_sha256="", per_image_config="", restart_epoch=0
+    )
+
+
+def test_a_migrated_trees_generation_ignores_its_inventory(tmp_path):
+    """D7, at the site that violated it — CAN-7.
+
+    `_ensure_migration_processing_state` folded the full
+    `dataset/stem:work_id` listing into the generation from `dd18d9c7`
+    (2026-08-26), **eight days before D7 was written**. Every migrated tree
+    therefore behaved the way D7 exists to prevent: each new image under a
+    rolling input changed the generation, resetting live progress and fencing
+    in-flight workers.
+
+    This is a **pre-existing defect**, not a regression introduced by the
+    change that names it. Left unfixed it would surface in P5's rolling-input
+    matrix and look like a bug in P5 rather than an unrevised writer.
+    """
+    from phenotypic._cli._cli_migrate import (
+        _ensure_migration_processing_state,
+    )
+
+    def _generation_for(root: Path, *stems: str) -> str:
+        _seed_converted_stores(root, *stems)
+        _ensure_migration_processing_state(root)
+        return _state_config(root)["processing_generation"]
+
+    one = _generation_for(tmp_path / "one", "a")
+    two = _generation_for(tmp_path / "two", "a", "b")
+
+    assert one == two, (
+        "an image arrival changed a migrated tree's generation; D7 keeps "
+        "inventory out of the generation precisely so it cannot"
+    )
+
+
+def test_a_migrated_tree_records_a_restart_epoch(tmp_path):
+    """CAN-7 + CAN-11. The migrator wrote `work_ids` with **no**
+    `restart_epoch`, which is P1's `requires_conversion` signal 4 — so a
+    freshly migrated tree was refused by the very next `--mode full`. The gate
+    firing on its own migrator's output."""
+    from phenotypic._cli._cli_migrate import (
+        _ensure_migration_processing_state,
+    )
+
+    root = tmp_path / "run"
+    _seed_converted_stores(root, "a")
+    _ensure_migration_processing_state(root)
+
+    assert _state_config(root)["restart_epoch"] == 0
 
 
 # ------------------------------------------------------------- the counter

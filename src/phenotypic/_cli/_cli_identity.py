@@ -31,11 +31,13 @@ import json
 from pathlib import Path
 
 from ..sdk_._atomic_io import atomic_write_json
+from ..sdk_._digests import canonical_digest
 from ..sdk_._io_constants import phenotypic_cache_dir, restart_epoch_path
 from ._cli_failure_tracker import processing_configuration_digest
 
 __all__ = [
     "bump_restart_epoch",
+    "derive_processing_generation",
     "per_image_config_digest",
     "read_restart_epoch",
 ]
@@ -83,6 +85,62 @@ per_image_config_digest = processing_configuration_digest
 #: The document key. Spelled once: a reader and a writer disagreeing about it
 #: would reset the fence to 0 on every read, silently.
 _EPOCH_KEY = "restart_epoch"
+
+
+def derive_processing_generation(
+    *,
+    pipeline_sha256: str | None,
+    per_image_config: str | None,
+    restart_epoch: int,
+) -> str:
+    """Return the content-derived ``processing_generation`` (spec §5.1, D3).
+
+    **Same inputs, same token.** That is the whole of D3: two invocations with
+    the same configuration mint the same generation without either having read
+    the other's state, which is what lets a SLURM worker starting cold fence
+    itself correctly against a run it has never seen. A ``uuid4()`` cannot do
+    that, and every site this replaces used one.
+
+    **``inventory_digest`` is deliberately NOT a component (D7).** Generation
+    fences *configuration*; ``inventory_digest`` fences *scope*, and they
+    change on different schedules. Folding them together makes every arrival
+    under a rolling input look like a configuration change -- resetting live
+    progress and fencing in-flight workers, which on a 6,000-image rolling
+    dataset is a daily occurrence rather than an edge case.
+
+    Digested as a **mapping** rather than concatenated, so the components are
+    self-describing and a fourth can be added without silently colliding with
+    a different three-component run.
+
+    Args:
+        pipeline_sha256: The pipeline file's digest, or ``None`` when the run
+            has no pipeline file. ``None`` and ``""`` are the same input --
+            see the note below.
+        per_image_config: :func:`per_image_config_digest`'s value, or ``None``
+            for a caller that has no ``ExecutionConfig`` to derive one from.
+            ``--mode migrate`` is that caller: a converted tree never recorded
+            the per-image configuration, and U-10's rule is to mark what
+            cannot be recovered rather than fabricate it.
+        restart_epoch: The run's restart epoch.
+
+    Returns:
+        The 64-character generation digest.
+
+    Note:
+        Absent components are normalized to ``""`` rather than omitted, so a
+        run with no pipeline file still mints a stable generation determined
+        by the remaining components. That is defensible -- there is genuinely
+        no pipeline to fence against -- but it does mean two pipeline-less
+        runs with identical per-image config share a generation, which is
+        exactly what D3 says should happen.
+    """
+    return canonical_digest(
+        {
+            "pipeline_sha256": pipeline_sha256 or "",
+            "per_image_config_digest": per_image_config or "",
+            "restart_epoch": restart_epoch,
+        }
+    )
 
 
 def read_restart_epoch(output_dir: Path) -> int:
