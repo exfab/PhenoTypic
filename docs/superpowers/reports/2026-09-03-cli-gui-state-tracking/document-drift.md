@@ -1,6 +1,6 @@
 # Document drift found during execution
 
-**Scope:** every case, found while executing this change, where a document asserted
+**Scope:** every case, found while executing this change, where a document or a test asserted
 something the tree did not support. Written during execution rather than after, because the
 list is only cheap to keep while the evidence is in hand.
 
@@ -44,10 +44,39 @@ about each.
 | 11 | **design.md §0, D-C** | The amendment correcting §5.4's field list states flatly that three fields are in `work_id`. The code branches: present for full/measure, **absent for process**. Right for two modes of three, with a drifted citation | **wrong while correcting** | `b2e7a4b9` |
 | 12 | harness `README.md` | *"the coverage checker would have caught the missing `pytest.param`"* — it strips parametrized names to their stem (`:185`, `:214`) and structurally cannot | never true | `29965f56` |
 | 13 | harness `README.md` | *"the run structurally could not have found"* the upward-degrade hole — it would have, one freeze cycle later; the structural claim belongs to `COVERAGE_OK`, not the run | never true | `d2f5f3ab` |
+| 14 | design.md §5.3 vs §5.4 | **`scientific_config_digest` names two different values.** §5.3's table asks *"did the **pipeline** change?"* — the pipeline file's bytes, which is what the proofs write (`_cli_completion.py:914,1020,1087`). §5.4 calls it *"the per-image digest already folded into `work_id`"* — a payload containing no pipeline bytes. Adjacent sections, one name, two values | never true | user-ruled; renamed |
+| 15 | `test_run_state_layering.py` | INV-LAYER's walk checked `module.startswith(("phenotypic._cli", "._cli"))`. `ast` strips a relative import's dots into `level`, so **`"._cli"` could never match anything** — and `from .._cli import x`, the natural relative violation from `sdk_`, passed. Four holes, not the two the review named | never true | `45af0a81` |
+| 16 | `test_run_state.py` | `test_image_state_stages_carry_no_backfilled_key` asserted a property of a literal the test wrote three lines earlier; no source change could redden it. And forbidding a key in a deliberately **open** map argued against the design it claimed to protect | never true | `74d75f3c` |
 
-Two of the thirteen (12, 13) are the orchestrator's own, and both are claims about **what a
+Two of the sixteen (12, 13) are the orchestrator's own, and both are claims about **what a
 check verifies** — written into the file whose stated job is being trustworthy about exactly
 that. Both were caught by the agent whose work they described.
+
+### Entry 14 is the most expensive of the set, and it nearly shipped
+
+One name, two values, in **adjacent sections of the spec** — and the code has always matched
+§5.3. Task 2 then shipped an alias binding that name to §5.4's value, so the collision
+reached the tree.
+
+**Why it survived four review rounds:** both readings are individually correct. §5.3
+describes what the proofs write; §5.4 describes what the generation folds in. D-C ruled on
+§5.4 and was right *about §5.4*. Nothing was false in isolation — the defect only exists
+across the two sections, which is exactly the shape a section-scoped reviewer cannot see.
+
+**The trap it set.** A later reader meeting one name for two values assumes a bug, and the
+obvious repair is to make the proofs use the other value. That **rewrites the digest in every
+aggregate and run proof on disk**, so every existing complete run reads `incomplete` until
+re-finalized — a silent migration wearing the costume of a rename, apparently endorsed by an
+approved amendment.
+
+**Resolved by renaming the value that has no on-disk representation**, on the reasoning that
+only one of the two *can* be renamed safely. Taken now rather than deferred because the new
+name was one commit old with one call site; P3–P7 build on it, after which the cost of the
+rename rises steeply and every intervening reader has to be told about the collision.
+
+**The rule this yields:** when a name is introduced that already means something elsewhere in
+the same system, the cheap moment to fix it is the commit that introduced it. Deferring
+converts a naming problem into a migration problem.
 
 ---
 
