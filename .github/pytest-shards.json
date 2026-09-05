@@ -14,26 +14,44 @@
     ]
   },
   {
-    "name": "image-processing",
+    "name": "detection",
+    "playwright": false,
+    "paths": [
+      "tests/unit/detect/"
+    ]
+  },
+  {
+    "name": "preprocessing-grid",
     "playwright": false,
     "paths": [
       "tests/unit/correction/",
-      "tests/unit/detect/",
       "tests/unit/enhance/",
-      "tests/unit/grid/",
+      "tests/unit/grid/"
+    ]
+  },
+  {
+    "name": "measurement-refinement",
+    "playwright": false,
+    "paths": [
       "tests/unit/measure/",
       "tests/unit/refine/"
     ]
   },
   {
-    "name": "analysis-viz",
+    "name": "analysis-qc",
     "playwright": false,
     "paths": [
       "tests/unit/analysis/",
+      "tests/unit/qc/"
+    ]
+  },
+  {
+    "name": "plots-post-viz",
+    "playwright": false,
+    "paths": [
       "tests/unit/plotting/",
       "tests/unit/post/",
       "tests/unit/prefab/",
-      "tests/unit/qc/",
       "tests/unit/util/",
       "tests/unit/viz/"
     ]

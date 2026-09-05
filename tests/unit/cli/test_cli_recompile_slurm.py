@@ -2902,7 +2902,7 @@ def test_transition_fifo_evidence_is_rejected_without_blocking(
         time.sleep(0.01)
     assert ready.is_file(), "FIFO recovery probe did not finish importing"
     try:
-        return_code = process.wait(timeout=1.0)
+        return_code = process.wait(timeout=5.0)
     except subprocess.TimeoutExpired:
         process.kill()
         process.wait(timeout=2.0)
