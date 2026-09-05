@@ -81,21 +81,50 @@ def test_the_demoted_sources_live_only_under_diagnostics():
     )
 
 
-def test_image_state_stages_carry_no_backfilled_key():
-    """D-A: per-store metadata is written at promote time, so there is no
-    backfill stage. `stages` stays an open map, so re-adding one later is
-    additive -- but nothing in this phase may write or read that key."""
+def test_image_state_stages_is_an_open_map():
+    """Spec 6.1: `stages` takes a key nothing has heard of, unvalidated.
+
+    This is the property D-A's "no backfill stage" note *depends* on -- that
+    re-adding a stage later is additive rather than a schema break -- and it is
+    the one worth pinning, because it is the one a well-meaning change would
+    remove. Adding validation to close the map (an enum, a `__post_init__`
+    check, a `Literal`) is a natural-looking tightening that would turn every
+    future stage into a breaking change, and nothing else here would notice.
+
+    **This replaces a test that could not fail** (test-review finding 6). The
+    original constructed an `ImageState` with a literal `stages` dict and
+    asserted `"backfilled" not in state.stages` -- a claim about a literal the
+    test itself wrote three lines earlier. `ImageState` is a frozen dataclass
+    with no `__post_init__` (`_state_types.py:86-107`), so no change to
+    `_run_state.py` could ever have made it red.
+
+    **And forbidding that key was the wrong assertion anyway**, in two ways.
+    D-A's constraint is phase-scoped -- *nothing in THIS phase writes or reads
+    it* -- which is design intent for review to enforce, not an invariant. And
+    a test that forbids one key in a map whose whole point is being open argues
+    against the design it claims to protect. The producer today emits only
+    `{measured: ...}` or `{}` (`_run_state.py:621,634`); P3 adds
+    `stage1`/`stage2`/`stage3`, and a closed-set assertion would have to be
+    edited for each -- which is exactly the schema break the open map exists to
+    avoid.
+
+    D-A's decision keeps its home in `_state_types.py`'s docstring, which is
+    where a reader deciding whether to add a stage will actually look.
+    """
     from phenotypic.sdk_ import ImageState
 
     state = ImageState(
         work_id="w",
         dataset="d",
         image_stem="s",
-        stages={"measured": {"at": "2026-09-03T00:00:00Z"}},
+        stages={"a-stage-invented-by-this-test": {"at": "2026-09-03T00:00:00Z"}},
         verdict="verified",
         reason=None,
     )
-    assert "backfilled" not in state.stages
+
+    assert state.stages["a-stage-invented-by-this-test"] == {
+        "at": "2026-09-03T00:00:00Z"
+    }
 
 
 # ------------------------------------------------------------ Task 4: identity
