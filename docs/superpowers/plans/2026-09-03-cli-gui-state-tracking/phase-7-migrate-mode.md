@@ -1198,14 +1198,15 @@ says when it can be deleted.
    Add `legacy-v2/` to the same `_PRESERVED_ON_RESTART` set and extend that test rather than
    writing a second mechanism.
 
-   **Check the membership rule before adding, and check what is already in the set.** By the
-   time this task runs, that frozenset has been grown at least once and is the only thing
-   standing between `--restart` and every artifact under `.phenotypic/`. The rule (stated at
-   its definition, per P2 Task 1) is: a name belongs there only when carrying it across a
-   restart is *safer* than losing it. `legacy-v2/` qualifies — a restart is not a revert.
-   **`verification_cache.json` does not**, and its exclusion is enforced only by
-   `test_clear_machine_state_deletes_the_persisted_cache`, which lives in a different suite
-   and will not be in front of you when you edit this set.
+   **Read `_PRESERVED_ON_RESTART`'s docstring before adding to it.** That docstring is the
+   single home of the membership rule (P2 Task 1); this task does not restate it. Applying
+   it: `legacy-v2/` qualifies — a restart is not a revert.
+
+   The one thing not derivable from the set or its docstring, and therefore the only thing
+   worth saying here: **`verification_cache.json`'s exclusion is enforced by
+   `test_clear_machine_state_deletes_the_persisted_cache` in
+   `tests/unit/sdk_/test_verification_cache_disk.py`** — a different suite from anything this
+   task runs, so a wrong addition here goes red somewhere you are not looking.
 
 2. **`--revert` must exist (MIG-13).** `test_migrate_is_revertible` invokes it; no flag, no
    rename primitive and no collision rule were ever specified, so the phase gate cannot be

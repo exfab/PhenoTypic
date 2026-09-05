@@ -291,12 +291,50 @@ fence.
 >
 > **The case that rule is written for already exists.** `verification_cache.json` (Task 0)
 > is deleted on restart, correctly — but *passively*, because it falls into the sweep's
-> everything-else branch rather than because anything says so. Its exclusion is enforced
-> only by `test_clear_machine_state_deletes_the_persisted_cache`, which lives in the Task 0
-> suite and will not be on screen when someone adds the fourth name to this set. **Name the
-> cache in the docstring as the worked example of what the rule excludes.** That is the
-> cheapest place to put the knowledge, and the only one a future editor of this line is
-> guaranteed to read.
+> everything-else branch rather than because anything says so. **Name the cache in the
+> docstring as the worked example of what the rule excludes**, and name
+> `test_clear_machine_state_deletes_the_persisted_cache` as what enforces it — that test
+> lives in the Task 0 suite and will not be on screen when someone adds the fourth name here.
+>
+> ### One home, three pointers — do the consolidation IN this task
+>
+> Once this step lands, the rule would otherwise be stated in **four** places:
+>
+> | # | Where | After this task |
+> |---|---|---|
+> | 1 | `_io_constants.py:676-685`, the `VERIFICATION_CACHE_JSON` comment | **pointer** — "deleted by `clear_machine_state`; see `_PRESERVED_ON_RESTART` for why it is not preserved" |
+> | 2 | `_verification_cache.py` module docstring, the lifecycle paragraph | **pointer** — keep the lifecycle sentence, drop the reasoning |
+> | 3 | `_PRESERVED_ON_RESTART`'s docstring | **the home.** Full rule, worked example, enforcing test |
+> | 4 | P7's legacy-tree rename grow site | **pointer** — cite the rule; add only what is not derivable from it, namely *which* test enforces the cache's exclusion and where it lives |
+>
+> Four copies that agree today is a slow leak, not an emergency — but this change's own
+> organising principle is *move state that is tracked to state that is checked*, and D-C
+> settled the identical question for `scientific_config_digest` by making "one definition"
+> literally true rather than aspirationally true. The set's docstring is where an editor
+> adding a name actually looks, so the rule belongs there and the other three point at it.
+>
+> **Do it here, not as a follow-up.** Until this task runs there is no `_PRESERVED_ON_RESTART`
+> symbol to point at, and a pointer to a name that does not exist is precisely the defect
+> that produced this note. The moment the symbol exists is the moment the other three can
+> reference it, and that moment is this task.
+>
+> ### One of those copies is currently FALSE — fix it in the same edit
+>
+> `_io_constants.py:683-685` reads:
+>
+> > *"It lives inside `.phenotypic/` so `clear_machine_state` removes it with everything else
+> > there — deliberately, and unlike `restart_epoch.json`, **which that function preserves**."*
+>
+> `clear_machine_state` preserves `TERMINAL_FAILURES_JSONL` and nothing else
+> (`_io_constants.py:1173-1175`). `restart_epoch.json` is not preserved, is not referenced,
+> and does not exist — **this task creates it.** So a comment shipped in `29965f56` asserts
+> behaviour the tree does not have, in the same file, eight lines from the loop that would
+> have to implement it.
+>
+> It is a forward reference that happens to come true one task later, which is the most
+> forgiving version of this error and still the same error: nothing failed, nothing could
+> have failed, and it was found by reading. Rewriting it as a pointer (row 1 above) removes
+> the claim along with the duplication.
 
 `bump_restart_epoch` writes through `atomic_write_json`.
 
