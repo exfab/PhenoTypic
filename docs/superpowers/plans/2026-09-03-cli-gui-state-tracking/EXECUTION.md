@@ -206,9 +206,41 @@ four categories, each finding citing `file:line` in **both** the plan/spec and t
 |---|---|---|
 | **A** | Specified, not implemented | Every spec requirement this phase claims — is there code for it? |
 | **B** | Planned, not done | Every task step and every named test — did it land? An unchecked box with no code is this. |
-| **C** | Implemented, but differs | Does the code do what the spec says, or something adjacent? Names, signatures, and **ordering** count. |
-| **D** | Implemented, never specified | Scope creep, and the mechanism by which a plan grows a fourth authority nobody agreed to. |
+| **C** | Implemented, but differs | Does the code do what the spec says, or something adjacent? Names, signatures, and **ordering** count. **See *Disposition of C and D* below — drift needs an experiment, not a rationale.** |
+| **D** | Implemented, never specified | Scope creep, and the mechanism by which a plan grows a fourth authority nobody agreed to. Same disposition rule as C. |
 | **E** | **Implemented as a placeholder** | Is there a *body*, or only a name? See below — this is the category A cannot catch. |
+
+#### Disposition of C and D — when drift is allowed at all
+
+**Standing rule (user, 2026-09-05): spec drift is acceptable ONLY where we
+experimentally validated the alternative and recorded the decision.** Not where it
+seemed cleaner, not where the implementer had a good reason, not where it turned out
+fine. **Evidence, then a ruling, then an amendment** — in that order, and all three.
+
+So a C or D finding is not automatically "revert it". It is automatically **a question
+the gate must force**, and there are exactly three answers:
+
+| The deviation has… | Disposition |
+|---|---|
+| an experiment **and** a recorded ruling **and** the spec amended | **Legitimate.** Not drift any more — the spec says what the code does. Nothing to do. |
+| an experiment and a ruling, but the **spec still says the old thing** | **Finding.** The code is right and the document is now wrong, which is this change's most-repeated defect. Amend the spec; do not touch the code. |
+| a rationale but **no experiment** | **Finding, and the disposition is the user's.** Surface it. Neither the reviewer nor the orchestrator may ratify a deviation after the fact by finding the reasoning persuasive. |
+
+**Why "it turned out fine" is not a disposition.** An implementer who deviates has
+already concluded their way is better — that is why they did it. Accepting the
+deviation because the argument is good means the gate ratifies exactly the judgement it
+exists to check, and a reviewer who does this has reviewed nothing. The experiment is
+what makes the difference between a decision and a preference.
+
+**The bar is met, and it looks like this.** U-11 reversed an approved ruling (D-B,
+in-process cache only) — on a **measurement**: 1403 s versus 37 s, cold, on a fresh
+node with disjoint halves. Ruling recorded in §0, spec amended, on-disk tier shipped.
+That is drift done correctly, and the shape to compare against.
+
+**Consequence for the reviewer's report:** every C and D finding must state which row
+above it falls in, and cite the experiment and the ruling by identifier when it claims
+the first or second. *"This deviation is fine because X"* is not a disposition — it is
+the third row wearing the first row's clothes.
 
 #### Category E — the placeholder sweep, and why A does not cover it
 
