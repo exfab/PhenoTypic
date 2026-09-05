@@ -117,8 +117,45 @@ def scientific_config_digest(config: "ExecutionConfig") -> str:
 > and each needs a mutation**, because every one of them is a path where a wrong `complete`
 > could be manufactured from a file an attacker or a stale build wrote.
 >
-> Add `clear_machine_state` deletion to the same `_PRESERVED_ON_RESTART` test Task 1 already
-> touches — the cache must **not** be preserved, unlike `restart_epoch.json`.
+> ### The cache must NOT survive `--restart`, and that is currently passive
+>
+> **Corrected after Task 0 shipped.** An earlier draft of this line said *"add
+> `clear_machine_state` deletion to the same `_PRESERVED_ON_RESTART` test Task 1 already
+> touches."* Two things were wrong with it: `_PRESERVED_ON_RESTART` **does not exist** —
+> `grep -rn "_PRESERVED_ON_RESTART" src/ tests/` returns nothing, it is code Task 1 has yet
+> to write — and Task 0 runs **before** Task 1, so there was no test to extend.
+>
+> **What actually shipped, and why it is right by accident.** `clear_machine_state`
+> (`sdk_/_io_constants.py:1171-1180`) iterates `.phenotypic/`'s children and skips exactly
+> one literal name:
+>
+> ```python
+>     for child in cache.iterdir():
+>         if child.name == TERMINAL_FAILURES_JSONL:
+>             continue
+> ```
+>
+> The verification cache falls into the *everything else* branch, so **Task 0 wrote no
+> deletion code**. The correct behaviour is inherited, and the only thing recording that it
+> is *intended* is `test_clear_machine_state_deletes_the_persisted_cache` — in the Task 0
+> suite, nowhere near the constant it constrains. Mutation 20 proves it can fail.
+>
+> ### The obligation this puts on Task 1
+>
+> Task 1 introduces `_PRESERVED_ON_RESTART = frozenset({TERMINAL_FAILURES_JSONL,
+> RESTART_EPOCH_JSON})`, converting a literal comparison into a **set that later phases are
+> explicitly invited to grow** — P7's legacy-tree rename says *"add `legacy-v2/` to the same
+> `_PRESERVED_ON_RESTART` set."* A set with an open invitation and no membership rule is how
+> the cache ends up in it.
+>
+> **So state the rule where the set is defined, not only here:** a name belongs in
+> `_PRESERVED_ON_RESTART` only when carrying it across a restart is *safer* than losing it.
+> `terminal_failures.jsonl` qualifies (an append-only journal; losing it loses history).
+> `restart_epoch.json` qualifies (a counter that resets on the operation it fences is not a
+> fence). `legacy-v2/` qualifies (it is the revert path, and a restart is not a revert).
+> **The verification cache fails it by construction** — it is a record of verdicts reached
+> *before* the fence, and a restart exists precisely to invalidate those. Losing it costs one
+> deep pass; keeping it costs correctness.
 >
 > **Best-effort, never an error.** On a read-only output, or if the write fails, `shallow`
 > degrades silently to `deep`. A tree the user cannot write must not become a tree the user
@@ -234,6 +271,32 @@ Update `clear_machine_state`'s docstring: it currently says it preserves "the ap
 `terminal_failures.jsonl` journal"; it now preserves that **and** the restart epoch, and
 the docstring must say why — a counter that resets on the operation it fences is not a
 fence.
+
+> ### State the membership rule beside the frozenset, in the same commit
+>
+> This step converts a literal `child.name == TERMINAL_FAILURES_JSONL` into a **set that
+> later phases are told to grow** — P7's legacy-tree rename says *"add `legacy-v2/` to the
+> same `_PRESERVED_ON_RESTART` set"*, and it will not be the last. From here on, this
+> frozenset is the only thing standing between `--restart` and every artifact under
+> `.phenotypic/`, and adding a name to it is a one-line change that looks like bookkeeping.
+>
+> So the docstring gives the set a **membership rule**, not just a list:
+>
+> > A name belongs here only when carrying it across a restart is **safer than losing it**.
+> > `terminal_failures.jsonl` qualifies — append-only history, and losing it loses the
+> > record of why images failed. `restart_epoch.json` qualifies — a counter that resets on
+> > the operation it fences is not a fence. Anything that records a **verdict reached before
+> > the fence** does *not* qualify, however expensive it was to compute: a restart exists to
+> > invalidate exactly those.
+>
+> **The case that rule is written for already exists.** `verification_cache.json` (Task 0)
+> is deleted on restart, correctly — but *passively*, because it falls into the sweep's
+> everything-else branch rather than because anything says so. Its exclusion is enforced
+> only by `test_clear_machine_state_deletes_the_persisted_cache`, which lives in the Task 0
+> suite and will not be on screen when someone adds the fourth name to this set. **Name the
+> cache in the docstring as the worked example of what the rule excludes.** That is the
+> cheapest place to put the knowledge, and the only one a future editor of this line is
+> guaranteed to read.
 
 `bump_restart_epoch` writes through `atomic_write_json`.
 
