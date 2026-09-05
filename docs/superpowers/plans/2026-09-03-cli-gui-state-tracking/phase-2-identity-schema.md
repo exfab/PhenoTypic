@@ -7,7 +7,7 @@
 and [O-1](OPEN-QUESTIONS.md#o-1-scheduler_epoch-may-be-five-names-collapsing-to-one-owner-not-five-tokens-to-one).
 
 **Goal:** `processing_generation` stops being a `uuid4().hex` and becomes
-`sha256(pipeline_sha256 ‖ scientific_config_digest ‖ restart_epoch)`; `restart_epoch`
+`sha256(pipeline_sha256 ‖ per_image_config_digest ‖ restart_epoch)`; `restart_epoch`
 becomes the one tracked counter the design admits to adding; `slurm_generation` and
 `lifecycle_epoch` collapse into `scheduler_epoch` where a single writer already owns the
 lifetime.

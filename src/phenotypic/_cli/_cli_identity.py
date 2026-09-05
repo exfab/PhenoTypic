@@ -36,21 +36,49 @@ from ._cli_failure_tracker import processing_configuration_digest
 
 __all__ = [
     "bump_restart_epoch",
+    "per_image_config_digest",
     "read_restart_epoch",
-    "scientific_config_digest",
 ]
 
-# D-C: the spec calls this `scientific_config_digest`; the code has called it
+# D-C: §5.4 calls this the "scientific config digest"; the code has called it
 # `processing_configuration_digest` since `work_id` was introduced. **Aliased,
 # not wrapped.** §5.4's whole argument is that the generation and `work_id`
 # must never disagree about what counts as scientific configuration, and
 # identity is the only form of agreement that cannot drift -- a wrapper is
 # equal today and is one edit away from not being.
 #
-# What the two names share is therefore total: same object, same payload, same
-# branch structure. See §5.4 for what that payload actually contains, which is
-# not what §5.4 said before this task.
-scientific_config_digest = processing_configuration_digest
+# ---------------------------------------------------------------------------
+# NAMED `per_image_config_digest`, NOT `scientific_config_digest`, AND THAT
+# MATTERS MORE THAN IT LOOKS.
+#
+# `scientific_config_digest` was already taken, by a DIFFERENT value. Two
+# digests, two questions, and conflating them is a silent data migration:
+#
+#   A. The PROOF-side token. `state.config["pipeline_sha256"]`, which is
+#      `sha256(<pipeline JSON bytes>)` (`_cli_staged_resume.py:78`). It is
+#      written into every aggregate and run proof under the key
+#      `"scientific_config_digest"` (`_cli_completion.py:914,1020,1087`) and
+#      read back as `RunIdentity.scientific_config_digest`
+#      (`_run_state.py:277`). It answers **"did the pipeline change?"**, which
+#      is what spec §5.3's table says.
+#
+#   B. This one. The per-image configuration digest folded into `work_id` --
+#      `image_type`, `nrows`, `ncols`, `bit_depth`, `detect_mode`,
+#      `drop_originals`, plus a mode-conditional group. **It contains no
+#      pipeline bytes at all.** It answers "would this image have to be
+#      reprocessed?", which is what spec §5.4 describes.
+#
+# A cannot answer B's question and B cannot answer A's. The generation folds
+# in BOTH -- `sha256(pipeline_sha256 || per_image_config_digest ||
+# restart_epoch)` -- which is only meaningful because they differ.
+#
+# **Do not "unify" them.** The tempting repair is to point the proofs at B.
+# That rewrites the value in every aggregate and run proof already on disk, so
+# every previously complete run reads `incomplete` until it is re-finalized --
+# a migration wearing a rename's clothes. A has an on-disk representation and
+# B does not, which is precisely why B is the one that got renamed here.
+# ---------------------------------------------------------------------------
+per_image_config_digest = processing_configuration_digest
 
 #: The document key. Spelled once: a reader and a writer disagreeing about it
 #: would reset the fence to 0 on every read, silently.

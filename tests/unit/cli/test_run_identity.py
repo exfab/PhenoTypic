@@ -112,7 +112,7 @@ def _claim_as_live_gui(output_dir: Path) -> None:
 # -------------------------------------------------- the digest, D-C / §5.4
 
 
-def test_scientific_config_digest_is_the_work_id_digest_itself():
+def test_per_image_config_digest_is_the_work_id_digest_itself():
     """D-C / §5.4: "not a new digest ... reused verbatim".
 
     §5.4's argument is that if the generation and `work_id` could disagree
@@ -126,9 +126,37 @@ def test_scientific_config_digest_is_the_work_id_digest_itself():
     from phenotypic._cli._cli_failure_tracker import (
         processing_configuration_digest,
     )
-    from phenotypic._cli._cli_identity import scientific_config_digest
+    from phenotypic._cli._cli_identity import per_image_config_digest
 
-    assert scientific_config_digest is processing_configuration_digest
+    assert per_image_config_digest is processing_configuration_digest
+
+
+def test_the_proof_side_digest_is_a_different_value_entirely():
+    """The rename's reason, pinned so nobody re-merges the two.
+
+    `scientific_config_digest` is already taken, by the pipeline FILE's
+    digest: the proofs write `state.config["pipeline_sha256"]` under that key
+    and `RunIdentity` reads it back. `per_image_config_digest` contains no
+    pipeline bytes, so the two cannot be substituted for one another.
+
+    The failure this guards is a migration wearing a rename's clothes.
+    "Unifying" them by pointing the proofs at the per-image digest rewrites
+    the value in every aggregate and run proof on disk, and every previously
+    complete run reads `incomplete` until it is re-finalized.
+    """
+    from phenotypic._cli._cli_failure_tracker import (
+        processing_configuration_digest_from_values,
+    )
+
+    payload_fields = (
+        processing_configuration_digest_from_values.__code__.co_varnames
+    )
+
+    assert "pipeline_sha256" not in payload_fields, (
+        "the per-image digest grew a pipeline component; it is now capable "
+        "of answering the proof-side digest's question and the two will be "
+        "merged by the next reader who notices"
+    )
 
 
 # ------------------------------------------------------------- the counter

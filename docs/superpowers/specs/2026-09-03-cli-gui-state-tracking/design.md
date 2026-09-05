@@ -381,7 +381,23 @@ later change to what the join depends on is additive rather than a second
 migration.
 
 
-### 5.4 `scientific_config_digest` — one definition, two uses
+### 5.4 `per_image_config_digest` — one definition, two uses
+
+> ⚠ **RENAMED (user ruling, P2 Task 3): this section's digest is
+> `per_image_config_digest`, not `scientific_config_digest`.** That name was
+> already taken by a **different value** — `state.config["pipeline_sha256"]`,
+> the pipeline *file's* bytes, which is what §5.3's table means by *"did the
+> pipeline change?"* and what the proofs write
+> (`_cli_completion.py:914,1020,1087`). This section's digest contains **no
+> pipeline bytes**; it is the per-image configuration folded into `work_id`.
+> Adjacent sections, one name, two values — drift register entry 14.
+>
+> The generation folds in **both**, which is the only reason the formula is
+> meaningful. **Do not unify them:** pointing the proofs at this digest
+> rewrites the value in every aggregate and run proof on disk, so every
+> previously complete run reads `incomplete` until re-finalized. This is the
+> half that was renamed precisely because it has no on-disk representation to
+> invalidate.
 
 > ⚠ **AMENDED (D-C, U-8, U-10), and the correction LANDED in P2 Task 2.** The field
 > list below is now read off the code rather than asserted; the paragraph that claimed
@@ -398,7 +414,7 @@ migration.
 > and U-10 replaced it. A migrated record carries `provenance: "migrated"` and is accepted on
 > artifact validity rather than on a digest comparison. See §0.
 
-`scientific_config_digest` is **not a new digest**. It is the existing
+`per_image_config_digest` is **not a new digest**. It is the existing
 per-image scientific processing-configuration digest already folded into
 `work_id` (resume spec §5.4), reused verbatim for the generation. Defining it
 once is the point: if the generation and `work_id` could disagree about what

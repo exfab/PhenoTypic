@@ -51,22 +51,35 @@ TARGETS = (
     "src/phenotypic/_cli/_cli_slurm_lifecycle.py",
     "src/phenotypic/sdk_/_run_state.py",
     "src/phenotypic/sdk_/_io_constants.py",
+    "src/phenotypic/_cli/_cli_failure_tracker.py",
 )
 SUITE = "tests/unit/cli/test_run_identity.py"
 
 # (label, old, new, tests that MUST fail)
 MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
     (
-        "scientific_config_digest becomes a WRAPPER instead of an alias --"
+        "per_image_config_digest becomes a WRAPPER instead of an alias --"
         " equal today, and one edit away from not being, with nothing failing"
         " at the moment it stops. D-C's whole point is that the generation and"
         " work_id cannot be allowed to drift apart about what counts as"
         " scientific configuration, and identity is the only agreement that"
         " cannot.",
-        "scientific_config_digest = processing_configuration_digest\n",
-        "def scientific_config_digest(config):\n"
+        "per_image_config_digest = processing_configuration_digest\n",
+        "def per_image_config_digest(config):\n"
         "    return processing_configuration_digest(config)\n",
-        ("test_scientific_config_digest_is_the_work_id_digest_itself",),
+        ("test_per_image_config_digest_is_the_work_id_digest_itself",),
+    ),
+    (
+        "the per-image digest grows a pipeline component, so it becomes"
+        " capable of answering the PROOF-side digest's question too -- which"
+        " is the state in which the next reader notices one name for two"
+        " values and 'unifies' them, rewriting the digest in every proof on"
+        " disk. Drift register entry 14.",
+        "    drop_originals: bool = False,\n) -> str:",
+        "    drop_originals: bool = False,\n"
+        '    pipeline_sha256: str = "",\n'
+        ") -> str:",
+        ("test_the_proof_side_digest_is_a_different_value_entirely",),
     ),
     (
         "the restart epoch is dropped from the preserve set -- a restart"
