@@ -1081,3 +1081,167 @@ def test_a_live_gui_owner_still_reports_active_across_a_restart(
         "a live GUI owner was fenced by the restart epoch; the owner record "
         "is a process claim and is bounded by the pid probe, not the counter"
     )
+
+
+# ---------------------------------------------------------------------------
+# The three tests the plan specified and P2 did not land (gate SPEC-B1/B2/B4)
+# ---------------------------------------------------------------------------
+
+
+def test_a_new_image_does_NOT_mint_a_new_generation(tmp_path, minted):
+    """D7: ``inventory_digest`` is deliberately OUT of the generation digest.
+
+    Generation fences **configuration**; the inventory digest fences **scope**.
+    Conflating them would make every new image under a rolling input look like
+    a configuration change -- resetting live progress and fencing in-flight
+    workers, which is the failure a 6,000-image rolling dataset produces
+    daily.
+
+    **The plan's second assertion has been superseded and is not written
+    here.** `phase-2-identity-schema.md:515-528` asked for
+    ``after.inventory_digest != before.inventory_digest`` on the *minted*
+    identity. Gate finding `REUSE-F2` ruled option (a): the minter no longer
+    carries the field at all -- it returns ``""``, documented as
+    reader-populated, because the value is derived from state that does not
+    exist at mint time. Written literally, that line would now compare ``""``
+    with ``""`` and fail against correct code.
+
+    So scope is proved where it now lives: at the **reader**, through
+    :func:`run_identity`, which is also the only way to assert it without
+    restating ``canonical_digest(work_ids)`` in the test -- the defect
+    `IMPL-F4` was filed for.
+    """
+    from tests._output_layout import FIXTURE_DATASET, write_processing_state
+
+    from phenotypic.sdk_ import run_identity
+
+    config_a, before = minted()
+    root = config_a.output_dir
+
+    write_processing_state(
+        root, work_ids={FIXTURE_DATASET: {"a.tif": "work-a"}}
+    )
+    inventory_before = run_identity(root).inventory_digest
+
+    _config_b, after = minted()
+    write_processing_state(
+        root,
+        work_ids={FIXTURE_DATASET: {"a.tif": "work-a", "b.tif": "work-b"}},
+    )
+    inventory_after = run_identity(root).inventory_digest
+
+    assert after.processing_generation == before.processing_generation, (
+        "a new image moved the processing generation -- D7 is broken and "
+        "every rolling-input run now resets its own live progress"
+    )
+    assert inventory_after != inventory_before, (
+        "the accepted inventory grew and the reader's inventory_digest did "
+        "not move, so nothing can notice a change of scope"
+    )
+
+
+def test_a_metadata_edit_does_NOT_mint_a_new_generation(
+    tmp_path, make_exec_config
+):
+    """§5.4/§7.4: a metadata edit moves ``finalization_input_digest`` only.
+
+    The next invocation therefore re-runs ``finalize_run`` without touching a
+    single image's measurement. If the edit moved the *generation* instead,
+    every image would be reprocessed for a change that cannot affect a pixel;
+    if it moved **neither**, §7.4's late-metadata guarantee would silently
+    stop working, because a metadata edit leaves ``work_ids`` untouched and
+    nothing else would notice.
+
+    This asserts the four-key **object** ``mint_run_identity`` builds, which
+    `test_the_two_metadata_digests_agree` does not: that test pins
+    ``_metadata_digest_for`` against the CLI's own copier and stops at the
+    helper. Nothing before this detected a wrong
+    ``FINALIZATION_INPUT_SCHEMA_VERSION``, a dropped ``no_qc``, or a key
+    spelled differently from ``_run_state._finalization_inputs``' -- the
+    reader every later comparison goes through.
+
+    Two configs, not one: ``mint_run_identity`` sets a once-only flag on the
+    config object (CAN-21), so minting twice from one config raises for a
+    reason unrelated to this test.
+    """
+    from phenotypic._cli._cli_identity import mint_run_identity
+
+    root = tmp_path / "run"
+    phenotypic_cache_dir(root).mkdir(parents=True)
+    pipeline = tmp_path / "pipeline.json"
+    pipeline.write_text("{}", encoding="utf-8")
+    metadata = tmp_path / "metadata.csv"
+    metadata.write_text(
+        "Metadata_Well,Metadata_Strain\nA1,wt\n", encoding="utf-8"
+    )
+
+    def _config():
+        return make_exec_config(
+            pipeline_json=pipeline,
+            input_path=tmp_path / "input",
+            output_dir=root,
+            metadata_csv=metadata,
+        )
+
+    before = mint_run_identity(_config(), restart=False)
+    metadata.write_text(
+        "Metadata_Well,Metadata_Strain\nA1,new\n", encoding="utf-8"
+    )
+    after = mint_run_identity(_config(), restart=False)
+
+    assert after.processing_generation == before.processing_generation, (
+        "a metadata edit moved the processing generation -- every image "
+        "would be reprocessed for a change that cannot affect a pixel"
+    )
+    assert (
+        after.finalization_input_digest != before.finalization_input_digest
+    ), (
+        "a metadata edit left finalization_input_digest unchanged, so "
+        "§7.4's late-metadata guarantee cannot fire on a real edit"
+    )
+
+
+def test_a_stale_slurm_worker_cannot_publish(tmp_path, monkeypatch):
+    """The publication half of the stale-worker fence, previously untested.
+
+    ``publish_image_success`` refuses when ``SLURM_JOB_ID`` is set and the
+    lifecycle record's generation is not the one this worker holds. Until
+    this test, `grep -rn "stale SLURM lifecycle"` returned exactly one line
+    in the whole tree -- the ``raise`` itself -- so the guard that stops a
+    superseded worker from certifying an image was enforced by nothing.
+
+    **Both preconditions must be set up or the guard is not reached**, which
+    is why the first draft of this test (CAN-15) proved nothing: without
+    ``SLURM_JOB_ID`` the whole block is skipped and the publish succeeds for
+    an unrelated reason.
+
+    **The artifact is a real promoted store**, per the plan's note.
+    ``publish_image_success`` resolves every artifact ``strict=True``, so a
+    stub path would raise ``FileNotFoundError`` before the assertion could
+    distinguish a working fence from a broken one -- and would keep this test
+    green if the fence were deleted.
+    """
+    from tests._output_layout import _promote_minimal_store
+
+    from phenotypic._cli._cli_completion import publish_image_success
+
+    root = tmp_path / "run"
+    phenotypic_cache_dir(root).mkdir(parents=True)
+    store = _promote_minimal_store(
+        root, dataset="plate", stem="a", work_id="w"
+    )
+    _publish_lifecycle(root, generation="current-epoch")
+    monkeypatch.setenv("SLURM_JOB_ID", "12345")
+
+    with pytest.raises(RuntimeError, match="stale SLURM lifecycle"):
+        publish_image_success(
+            root,
+            work_id="w",
+            dataset="plate",
+            relative_image_path="a.tif",
+            image_stem="a",
+            mode="full",
+            attempt_id="attempt",
+            lifecycle_epoch="a-superseded-epoch",
+            artifacts={"store": store},
+        )

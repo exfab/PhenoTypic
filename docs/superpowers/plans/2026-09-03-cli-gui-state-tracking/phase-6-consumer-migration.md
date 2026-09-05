@@ -78,10 +78,20 @@ existing tree.
 
 > ### ⚠ Line numbers in this file have drifted twice — regenerate, do not trust
 >
-> **P2 Task 4 renamed `scheduler_epoch` on `publish_image_success`** (`_cli_completion.py`,
-> a writer). Your work here is the **reader** migration — different halves, no
-> contradiction, and no ordering constraint. But the rename shifts line numbers under
-> every citation this task makes into that file.
+> **CORRECTED after the P2 gate: P2 Task 4 renamed nothing.** This callout used to
+> say *"P2 Task 4 renamed `scheduler_epoch` on `publish_image_success`"* and used
+> that as the reason line numbers had moved. §5.1's collapse was **withdrawn**
+> (`design.md:323-345`, user-ruled) — `publish_image_success` still takes
+> `lifecycle_epoch`, and there is no rename to shift anything.
+>
+> The false premise sat inside the callout telling you not to trust `file:line`,
+> so a reader who obeyed it and regenerated would find no rename and be left
+> deciding which half of a paragraph about trustworthiness to believe.
+>
+> **The warning still holds; only its reason changed.** Lines in
+> `_cli_completion.py` moved for other work — P2 Task 3 shifted
+> `phenotypicCLI.py`, and the P2 gate's six fixes plus the shared-helper
+> increment rewrote `valid_image_success` outright.
 >
 > That is the second drift: this task's own file list was already short by three files and
 > wrong about the invocation count (gen-r4 N-1/N-2, open three rounds), and P2 Task 3

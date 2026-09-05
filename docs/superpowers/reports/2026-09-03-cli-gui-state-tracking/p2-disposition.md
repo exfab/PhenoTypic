@@ -192,6 +192,58 @@ fixed.
 
 ---
 
+## Raised during closure, owned by P4/P5
+
+Not a gate finding — found while triaging the `scheduler_epoch` sites at P2
+close, and recorded here because a finding that lives only in a message is gone
+when the phase is.
+
+| # | Finding | Disposition | Owner |
+|---|---|---|---|
+| **CLOSE-1** | `measurement_shards/` is namespaced by `scheduler_epoch`, which is `None` on every local run, so consecutive local runs share one namespace and a prior run's shards merge into this run's master | **RULED — user, at P2 close.** Empty `measurement_shards/` at fan-out start; no new token. Written into `phase-4-finalize-run.md` (docstring amended + callout) and `phase-5-fanout.md` (the build instruction, with the ordering caveat) | P4 / P5 |
+
+**The defect.** `_run_state._scheduler_epoch()` returns `None` when there is no
+`slurm_lifecycle.json`, which is every local run, and `phase-5` declares a local
+process-pool driver. `phase-4:620` stated the guarantee as *"namespaced by
+`scheduler_epoch` so a prior run's shards can never be merged"* — false on the
+local path, silently, against the INV-INPUTS the same docstring invokes two
+lines earlier.
+
+**The ruling and the two rejections.** Clear-at-start was chosen. A
+per-invocation shard id was rejected for taking the state-artifact budget from
+four to five — a design regression under P7 Task 6's register, and a reversal of
+D3. Falling back to `processing_generation` was rejected because **it does not
+deliver the guarantee**: content-derived means two consecutive identical local
+runs mint the same generation and collide anyway, so it narrows the window
+instead of closing it — worse than either alternative, because it looks like a
+fix. Clearing also turned out *strictly stronger* than namespacing, which
+accumulates every prior run's shards on disk forever.
+
+**The caveat, which is the difference between a fix and data loss.** On SLURM
+the clear happens at fan-out **start, before any worker writes** — never at merge
+time, or the finalizer deletes the shards it is about to merge. Local and SLURM
+clear at the same logical point: when fan-out begins, not when the finalizer
+runs.
+
+**Verified / not verified**, kept separate deliberately:
+
+- **Verified** — the `None` return branch (`_run_state.py:233-249`), the
+  `str | None` type, and that `phase-5`'s file table declares a local driver.
+- **Not verified** — what P5's local driver actually passes. The plan names the
+  parameter and not the caller, so it may already intend a different value
+  locally. The defect stands either way, because a namespacing guarantee whose
+  key is `None` on half its paths must say what it uses there; but the caller is
+  what P5 has to confirm first.
+
+**Why it was missed for a whole triage pass.** I checked whether
+`scheduler_epoch` was a *live name* — it is — and stopped. The harder question
+was what the *value* is, and a live name with a `None` half is not a live value.
+Only a live value supports a namespacing guarantee. This is the same shape as
+the under-counted citations recorded above, one level down: a property was
+confirmed on the axis it was easiest to check.
+
+---
+
 ## Provenance
 
 Dispositions were established from the working tree at `4b7ddeba` and from

@@ -600,6 +600,105 @@ falsifiable by the next reader in one keystroke; a line number is not.
 
 ---
 
+### Entry 24 — A PLAN STEP SUPERSEDED BY A LATER RULING, still written as an instruction
+
+**A new kind, and the most dangerous one in the register, because a plan is not read — it is
+followed.**
+
+`phase-2-identity-schema.md:515-528` specifies the body of `SPEC-B1`'s missing test:
+
+```python
+assert after.inventory_digest != before.inventory_digest   # on the MINTED identity
+```
+
+Written literally today, that compares `""` with `""` and **fails against correct code**.
+`REUSE-F2` was ruled option (a) — `inventory_digest` is reader-owned, the minter no longer
+carries the field, and `_inventory_digest_for` was deleted. The plan step was correct when
+written and was superseded by a decision taken afterwards. **Nothing propagated the ruling
+back into the plan.**
+
+**Why this is worse than a stale docstring.** Every other entry here misleads a *reader*,
+who can check. This one instructs an *implementer*, who has been told to make it pass. The
+failure mode is not confusion — it is an implementer meeting a red assertion they were
+directed to write, against code that is right, and concluding the **code** is wrong. The
+plan supplies both the false expectation and the authority to act on it.
+
+The near-miss was avoided only because the implementer stopped to ask why a documented
+assertion compared a field the ruling had deleted, rather than treating the plan as
+authoritative. **A literal execution of the plan would have produced either a failing test
+or a reverted fix.**
+
+**Where the proof went instead.** Scope change is now proved at the reader, through
+`run_identity()`, which is also where `REUSE-F2` put the value's only producer. That has a
+second benefit the plan's version lacked: it does not restate `canonical_digest(work_ids)`
+in the test, which is exactly the duplication `IMPL-F4` was filed for. **The superseded step
+would have re-introduced a defect the same gate was fixing.**
+
+**The mechanical gap.** A ruling that changes a design updates the spec and the code, and
+`EXECUTION.md` requires a drift-register row. Nothing requires re-reading the *plan tasks
+not yet executed* to see which the ruling invalidated. The plan is downstream of every
+ruling and is treated as upstream of every task.
+
+**The rule:** when a ruling changes a value's ownership, lifetime, or existence, grep the
+unexecuted plan for that value's name before closing the ruling. Here that is one command —
+`grep -rn inventory_digest docs/superpowers/plans/…` — and it would have found `:515-528`
+the day `REUSE-F2` was decided.
+
+*(The reviewer's note that this assertion "would have caught E-1" is true and now moot: E-1
+was fixed by deleting the value the assertion would have checked.)*
+
+#### The harder half: a ruling that changes NOTHING in the code propagates furthest
+
+**Searching for the rest of the damage found a set nineteen times larger, from the ruling
+nobody thought of as a ruling.**
+
+`REUSE-F2` was *enacted* — a field was emptied, a function deleted — and it cost exactly one
+plan casualty (`:515-528`), because an enacted change leaves a symbol to grep for.
+
+§5.1's five-token collapse was **withdrawn**. Nothing in the code changed. And it left
+**nineteen** stale plan sites across seven unexecuted documents, counted independently by
+both the agent and the orchestrator:
+
+| File | sites | |
+|---|---|---|
+| `phase-3-per-image-record.md` | **8** | the next phase to execute |
+| `phase-5-fanout.md` | 5 | |
+| `README.md` | 2 | |
+| `phase-4`, `phase-6`, `phase-7`, `EXECUTION` | 1 each | |
+
+*(The 13 in `phase-2` and 6 in `design.md` are not casualties — those documents record the
+withdrawal, so the token appears legitimately.)*
+
+**`phase-6-consumer-migration.md:81` is entry 24's shape in its purest form:**
+
+> *"P2 Task 4 renamed `scheduler_epoch` on `publish_image_success` … the rename shifts line
+> numbers under every citation this task makes into that file."*
+
+A false premise stated as accomplished fact, used to justify a warning about line drift —
+**inside the callout telling the reader not to trust `file:line`.** An implementer
+regenerating those greps finds no rename and must decide which half of the paragraph to
+believe.
+
+**Why the withdrawal propagated further than the enactment.** A ruling recorded as *"do
+nothing"* does not feel like a change, so nobody greps for what assumed it. But every plan
+step written before it was written *expecting* it — and those steps are now instructions to
+build a thing that was cancelled. **The absence of a code diff is exactly what makes the
+plan diff invisible.**
+
+**So the rule from entry 24 is too narrow as first written.** It is not *"when a ruling
+changes a value's ownership, lifetime, or existence, grep the unexecuted plan."* It is:
+
+> **Every ruling gets the grep — especially the ones that change nothing.** A withdrawal
+> leaves no symbol to search for in the code, so the plan is the *only* place its
+> consequences are written down, and the only place they can rot.
+
+*(A third family surfaced in the same sweep: `SPEC-C2`'s rename was applied to two files of
+three. The fix script listed three and sliced `edits[:2]`, and the third entry's anchor had
+`old == new` — two independent reasons to miss it, under a list that reads as covering all
+three. One residual site was also line-wrapped, so the obvious grep did not match it.)*
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
@@ -621,7 +720,11 @@ acts on it.
    sample, and needs the same precondition its operator does** — including before you read
    its log.
 
-3. **A dismissal citing one site of several** (23). The hardest to catch, because the
+3. **A plan step superseded by a ruling** (24). The only kind that instructs rather than
+   informs, so its victim is an implementer who has been told to make it pass — against code
+   that is correct. Rulings propagate to the spec and the code; nothing re-reads the
+   *unexecuted plan tasks* they invalidate.
+4. **A dismissal citing one site of several** (23). The hardest to catch, because the
    reader's natural check — follow the citation — *cannot fail*. Refuting it needs the
    enumeration the citation appeared to have done. Tell: the claim quantifies (*only*, *the
    one*, a bare count) while the evidence exemplifies (a line number).

@@ -34,7 +34,7 @@ from typing import TYPE_CHECKING
 from ..sdk_._atomic_io import atomic_write_json
 from ..sdk_._digests import canonical_digest
 from ..sdk_._io_constants import phenotypic_cache_dir, restart_epoch_path
-from ..sdk_._run_state import FINALIZATION_INPUT_SCHEMA_VERSION
+from ..sdk_._run_state import finalization_input_digest
 from ..sdk_._state_types import RunIdentity
 from ._cli_failure_tracker import processing_configuration_digest
 
@@ -272,8 +272,15 @@ def mint_run_identity(
         if restart
         else read_restart_epoch(output_dir)
     )
-    # Lazy: this module is imported BY `_cli_slurm_lifecycle`, so it stays
-    # import-light at module scope to keep that edge acyclic.
+    # Lazy for ACYCLICITY, not for weight (gate IMPL-F12). The two were
+    # conflated here, and only one of them holds: this module is imported by
+    # `_cli_slurm_lifecycle`, and `_cli_staged_resume` reaches back into the
+    # CLI, so a module-scope import risks closing that loop. **Weight is not
+    # the reason** -- line 37 imports `..sdk_._run_state` at module scope and
+    # pulls in the whole reader stack, so an import-light claim would be
+    # false of this module as written.
+    #
+    # If you make this eager, check the cycle, not the cost.
     from ._cli_staged_resume import pipeline_content_digest
 
     pipeline_sha256 = (
@@ -315,9 +322,20 @@ def mint_run_identity(
         # here would make every proof this run publishes disagree with every
         # proof already on disk.
         scientific_config_digest=pipeline_sha256 or "",
-        finalization_input_digest=canonical_digest(
+        # ONE producer of this digest, and the mint is not it (gate
+        # IMPL-F13). `finalization_input_digest` owns the shape -- the key
+        # names, `schema_version`, and the digest itself -- and this call
+        # supplies only the three VALUES, which is the half the mint alone
+        # can compute: `metadata_sha256` is not in the state at mint time.
+        #
+        # An adapter rather than a widened signature. The helper reads a
+        # `processing_state.json` config block and the mint holds an
+        # `ExecutionConfig`, so the alternative was teaching the canonical
+        # producer to duck-type two shapes -- which puts the branch in the
+        # one place that must not have one. Three keys here, versus a shape
+        # test in every future caller.
+        finalization_input_digest=finalization_input_digest(
             {
-                "schema_version": FINALIZATION_INPUT_SCHEMA_VERSION,
                 "metadata_sha256": _metadata_digest_for(config),
                 "include_dataset_column": config.include_dataset_column,
                 "no_qc": config.no_qc,

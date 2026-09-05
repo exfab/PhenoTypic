@@ -35,8 +35,12 @@ INV-LAYER — the advisory is emitted from `sdk_`, which may not import `_cli` �
 duplicating the frozenset. Shared `STAGE_*` constants **close** the typo class instead of
 reporting it, which is less code and is derivation over tracking.
 
-**O-1 is partially taken** (P2 Task 4): the `scheduler_epoch` collapse is narrowed to the
-pair the audit found to be one value passed twice. The rest stays deferred.
+**O-1 is NOT taken at all** (P2 Task 4, user-ruled). An earlier version of this line said
+it was "partially taken", narrowed to the pair the audit found to be one value passed
+twice. **The collapse is achievable zero times** — see §5.1's amendment
+(`design.md:323-345`) for the writer-by-writer table, and O-1 below for the corrected
+disposition. What Task 4 shipped is a *deletion*: the pair was not two tokens to collapse
+but one value compared with itself.
 
 **Q2's ladder is amended by U-2 and CAN-4:** rule 1 now carries both of §4.3's clauses
 **and** the full five-way comparison `current_aggregate_is_current` makes today, and rule 2
@@ -273,6 +277,19 @@ Neither of these changes what P0–P7 build. Both are recorded so they are visib
 strategy) at four different times with four different lifetimes. Collapsing the *names*
 without collapsing the *writers* gives one value with four owners, which is a coupling
 increase dressed as a cardinality reduction.
+
+> **RESOLVED, and the answer is zero** (P2 Task 4, user-ruled). The paragraph below is
+> the *question as posed*; it proposed collapsing "only where a single writer already
+> owns the lifetime". Checked writer by writer, **no token qualifies** —
+> `design.md:323-345` has the table. The deciding distinction: *ownership* says who may
+> change a value, *persistence* says who else can still read its name, and a token can
+> have exactly one writer and still be a public on-disk format. All five are.
+>
+> `slurm_generation` and `lifecycle_epoch` really are one value passed twice, but that
+> made the check a **dead comparison to delete**, not two tokens to merge — deleting it
+> changed no name, no key and no behaviour. The read-both-keys shim alternative was
+> rejected separately: dual-key support is *more* state to keep in sync, in a change
+> whose purpose is reducing it.
 
 P2 Task 4 therefore collapses them **only where a single writer already owns the
 lifetime** — `slurm_generation` and `lifecycle_epoch` are the same value passed twice today

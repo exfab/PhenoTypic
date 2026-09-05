@@ -56,6 +56,10 @@ TARGETS = (
     "src/phenotypic/_cli/_cli_state_management.py",
     "src/phenotypic/_cli/_cli_update_state.py",
     "src/phenotypic/sdk_/_state_types.py",
+    # Added with SPEC-B4's mutation: the stale-lifecycle publication fence
+    # lives here, and until that test landed `grep -rn "stale SLURM
+    # lifecycle"` returned exactly one line in the tree -- the raise itself.
+    "src/phenotypic/_cli/_cli_completion.py",
 )
 SUITE = "tests/unit/cli/test_run_identity.py"
 
@@ -540,6 +544,38 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
         "identity.restart_epoch\n"
         "        ):\n",
         ("test_a_live_gui_owner_still_reports_active_across_a_restart",),
+    ),
+    # --- the three tests the plan specified and P2 did not land -----------
+    (
+        "SPEC-B1: the READER stops deriving inventory_digest from work_ids,"
+        " so a new image under a rolling input no longer moves the accepted"
+        " scope. The generation is untouched -- which is the point: D7's"
+        " separation survives, and the half that notices SCOPE goes dead"
+        " silently, since nothing else reports that an image was added.",
+        "        inventory_digest=canonical_digest("
+        'config.get("work_ids", {})),\n',
+        "        inventory_digest=canonical_digest({}),\n",
+        ("test_a_new_image_does_NOT_mint_a_new_generation",),
+    ),
+    (
+        "SPEC-B2: metadata_sha256 drops out of the minted finalization"
+        " inputs, so a metadata edit stops moving"
+        " finalization_input_digest. Nothing raises; §7.4's late-metadata"
+        " guarantee simply never fires again, and a run whose metadata"
+        " changed is never re-finalized.",
+        '                "metadata_sha256": _metadata_digest_for(config),\n',
+        "",
+        ("test_a_metadata_edit_does_NOT_mint_a_new_generation",),
+    ),
+    (
+        "SPEC-B4: the stale-lifecycle fence stops fencing on the"
+        " generation and checks only that the record is active, so a"
+        " superseded worker from a previous generation may publish an image"
+        " marker over a live run's output.",
+        '            lifecycle.get("generation") != lifecycle_epoch\n'
+        '            or lifecycle.get("active") is not True\n',
+        '            lifecycle.get("active") is not True\n',
+        ("test_a_stale_slurm_worker_cannot_publish",),
     ),
 ]
 

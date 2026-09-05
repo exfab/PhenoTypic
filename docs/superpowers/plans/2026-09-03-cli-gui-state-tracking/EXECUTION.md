@@ -71,7 +71,7 @@ Shape tags: **K**eystone (novel interdependent logic) · **S**eam (one risky wir
 | **1.3** | The readers | P1 T4, T5, T6 | K | Opus/high | All three write `_run_state.py` + `test_run_state.py`. Cannot be split without two agents on one file. |
 | **1.4** | `requires_conversion` | P1 T3b | S | Opus/high | Disjoint files (`_cli_schema_gate.py`). **This is the guard that stops P3's clean break turning a legacy tree into an empty master** — isolated so its gate is its own. |
 | **2.1** | Identity minting | P2 T1, T2, T3 | K | Opus/high | Share `_cli_identity.py` + `test_run_identity.py`. |
-| **2.2** | `scheduler_epoch` collapse | P2 T4 | S | Opus/high | Collapses a token "only where one writer owns the lifetime" — the risk is deciding *where*. |
+| **2.2** | `scheduler_epoch` collapse — **WITHDRAWN, see below** | P2 T4 | S | Opus/high | Collapsed a token "only where one writer owns the lifetime" — the risk was deciding *where*, and the answer turned out to be **nowhere**. All five tokens are non-collapsible: §5.1's amendment (`design.md:323-345`, user-ruled) has the writer-by-writer table. Task 4 shipped a dead-comparison deletion instead. |
 | **3.1** | Record writer/reader | P3 T1 | K | Opus/high | The record schema, `provenance` (U-10), and the shared vocabulary constants. |
 | **3.2** | Publishers onto the record | P3 T2 | K | Opus/high | Four files including `_run_state.py` and `_cli_completion.py`; carries U-10's `valid_image_success` split. |
 | **3.3** | Stage 2/3 collapse | P3 T3 | S | Opus/high | The plan's own "risky task": rewrites `classify_staged_image` behind a 384-combination equivalence gate, with FLOW-40 surviving verbatim. |
@@ -482,9 +482,59 @@ these harnesses exist to prevent.
 
 **Two rules that follow, both cheap:**
 
-- **Never chain two mutation harnesses in one shell.** That is what produced the collision. A
-  kill or a timeout on the first also takes the queued second, and the second reads whatever
-  the first left behind.
+- **Never run two mutation harnesses CONCURRENTLY when their target sets intersect** — by
+  any means, not merely chained in one shell. `p2_task0` and `p2_task1` both list
+  `sdk_/_run_state.py` and `sdk_/_io_constants.py`. Each holds a pristine copy in memory and
+  restores after every mutation, so two live runs produce: one harness **restoring over the
+  other's mutation** (its test then passes, reporting `NOT PROVED` — which reads as a *weak
+  test* rather than a clobbered one), a final restore writing the wrong baseline, and each
+  suite failing on the other's edit. **Every one of those failure modes prints a plausible
+  report.** Check the target lists before starting a second harness, not just whether one is
+  running.
+- **Never chain two mutation harnesses in one shell.** The narrower rule that produced the
+  original collision. A kill or a timeout on the first also takes the queued second, and the
+  second reads whatever the first left behind.
+- **A dirty file that is not a target of the running harness is still probably a mutation.**
+  Check for a live harness and look at the diff's *shape* — a single line is a mutation —
+  before reporting a stray edit. Two commands, and it is entry 21's rule applied to yourself
+  rather than noticed in someone else.
+
+### An urgent report must carry its own falsifier
+
+**Earned from a correct escalation with a lossy shape.** An agent reported *"STOP, both
+harnesses are running concurrently"* when what it actually held was a **disjunction**:
+*either they overlap, **or** the other harness exited between my two checks.* It sent one
+branch.
+
+Both branches were in hand. One sentence naming the discriminator — *"if the other run
+already printed its verdict and its `restored … OK` lines, it was done and this is a
+crossing"* — would have let the recipient resolve it **while reading**, instead of
+re-deriving the whole question under time pressure.
+
+**The escalation itself was right**, on cost asymmetry: a false alarm costs one message, a
+missed overlap costs two invalidated freeze runs that still print green. So the rule is not
+*be more certain before escalating* — it is:
+
+> **Escalate on the cost asymmetry, and send the whole disjunction.** State what would make
+> you wrong, and how the recipient can check it in one command.
+
+### An independent check that adopts the classification is not independent
+
+**The subtlest of the three, and it is the orchestrator's.** An agent reported 19 stale
+sites across 7 files. The orchestrator "verified independently" — grepped, got **47 hits
+across 11 files**, confirmed the 19, and accepted the agent's judgment that the other 28
+were legitimate. Three of those were false, in the two files the agent had never grepped.
+
+The check re-derived the **arithmetic** and inherited the **classification**, and the
+classification was the half that was wrong.
+
+**These have different fixes, which is why the distinction matters.** A narrow grep is fixed
+by widening it. **Accepting the frame is not** — you can widen the search forever and still
+inherit the judgment about what the results mean. When verifying someone's count, the count
+is the easy half: re-derive the *scoping rule* first, then apply it yourself to everything
+the search returned, including what they excluded.
+
+
 - **Verify an anchor with the harness's own ownership rule**, not a weaker proxy. The harness
   requires each anchor to match *exactly once in exactly one target*; summing `count(old)`
   across targets passes cases the harness rejects.

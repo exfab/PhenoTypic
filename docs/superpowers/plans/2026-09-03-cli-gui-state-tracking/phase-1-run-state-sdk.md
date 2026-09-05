@@ -763,7 +763,8 @@ def build_complete_run(tmp_path: Path) -> Path:
             image_stem=stem,
             mode="full",
             attempt_id=f"attempt-{stem}",
-            lifecycle_epoch="local",       # `scheduler_epoch` from P2 Task 4 onward
+            lifecycle_epoch="local",       # stays `lifecycle_epoch`: P2 Task 4's
+                                           # rename was WITHDRAWN, not deferred
             artifacts={"store": store, "overlay": overlay},
         )
     _write_processing_state(output, work_ids={"plate": {"a.tif": "work-a", "b.tif": "work-b"}})

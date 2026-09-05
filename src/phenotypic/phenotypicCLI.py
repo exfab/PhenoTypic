@@ -2457,6 +2457,24 @@ def phenotypic_cli(
             # minting uuids after every other site became
             # content-derived, leaving the invariant almost true with
             # nothing saying which site broke it.
+            #
+            # The old comment gave a SECOND justification -- "prevents
+            # historical started events from remaining active forever"
+            # -- and this replaced only the first. Saying so, because
+            # silence would read as an oversight (gate IMPL-F9).
+            #
+            # It is ACCEPTED, not answered. With a stable generation a
+            # resume does count prior `started` events, pinned by
+            # `test_a_resume_counts_events_from_its_own_generation`.
+            # The residue is display-only: `in_progress`
+            # (`_cli_types.py:50`) feeds the dashboard manifest builder
+            # and nothing else -- no verdict, no worklist, no fence.
+            # A killed image's `started` event also self-heals, since
+            # the image is in neither `completed` nor `failed` and is
+            # therefore reprocessed. So the cost is a stale `active`
+            # count in the dashboard for the window between a kill and
+            # its retry finishing, and that is a price worth paying for
+            # a generation that means one thing.
             resume_state.config["processing_generation"] = (
                 identity.processing_generation
             )

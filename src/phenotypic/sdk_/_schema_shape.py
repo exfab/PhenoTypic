@@ -70,12 +70,20 @@ STATE_SCHEMA_VERSION: Final[int] = 3
 #: ``test_the_gate_is_armed_exactly_when_the_forward_path_stops_writing_the``
 #: ``_legacy_marker``, which fails the moment those two disagree.
 #:
-#: It is ``False`` today because at P1 the legacy shape and the **current**
-#: shape are the same shape: the forward path still writes
-#: ``image_complete/``, still writes ``datasets.<ds>.completed``, and does not
-#: yet write ``restart_epoch``, so three of the five signals below fire on a
+#: It is ``False`` today because the legacy shape and the **current** shape
+#: still overlap: the forward path writes ``image_complete/`` and writes
+#: ``datasets.<ds>.completed``, so **two** of the five signals below fire on a
 #: tree the running build has just written. **Detection is correct now; only
 #: the surfacing waits.**
+#:
+#: It said *three* until P2, and P2 is what made that false: signal 4 is the
+#: **absence** of ``restart_epoch``, and ``create_initial_state`` now writes it
+#: (``_cli_state_management.py:261``). The count is not decoration -- it is the
+#: claim that decides whether arming this flag would refuse trees the current
+#: build wrote, so a stale one is a wrong answer to the only question a reader
+#: opens this docstring to ask (gate IMPL-F6 / SPEC-C3, found independently by
+#: two reviewers). Signal 3 (``datasets.<ds>.completed``) is §4.2's to remove
+#: in P3+, and the count drops to one when it does.
 #:
 #: It gates **both** consumers, because both are surfacings of one detection:
 #: an armed gate would refuse every resume of every mode, and an armed

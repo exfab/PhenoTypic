@@ -207,7 +207,7 @@ def publish_image_record(
     stages: Mapping[str, Mapping[str, object]],
     artifacts: Mapping[str, Path],
     attempt_id: str,
-    scheduler_epoch: str,
+    lifecycle_epoch: str,
     commit_guard: "CommitGuard | None" = None,
 ) -> Path: ...
 
@@ -222,7 +222,27 @@ def consume_stage(
 ```
 
 **Consumes:** `phenotypic.sdk_.image_record_path` (P1),
-`phenotypic._cli._cli_identity.scheduler_epoch` plumbing (P2).
+`phenotypic._cli._cli_identity`'s minted identity (P2).
+
+> ### ⚠ CORRECTED after the P2 gate — there is no `scheduler_epoch` plumbing
+>
+> This task used to name `scheduler_epoch` as a parameter of the record writer,
+> in three examples, and as a record key — and to say it consumed
+> `_cli_identity.scheduler_epoch` plumbing "(P2)". **§5.1's five-token collapse
+> was WITHDRAWN, not deferred** (`design.md:323-345`, user-ruled): the CLI
+> writers still take **`lifecycle_epoch`**, and `publish_image_success` writes
+> that name into every image marker. Written as it stood, this task instructed
+> an implementer to pass a keyword that does not exist.
+>
+> **`scheduler_epoch` is still a real name — on the reader side only.**
+> `RunIdentity.scheduler_epoch` (`sdk_/_state_types.py:79`) and
+> `_run_state._scheduler_epoch()` are live, and P4/P5 legitimately namespace
+> `measurement_shards/<scheduler_epoch>/` by that value. The withdrawal killed
+> the *rename of the writers*, not the reader's field. Do not "fix" those.
+>
+> This record's field is `lifecycle_epoch` because the value it carries already
+> has exactly one on-disk name, and giving a new artifact a second one is the
+> collapse the withdrawal rejected, arriving from the other direction.
 
 ---
 
@@ -257,7 +277,7 @@ from phenotypic._cli._cli_image_record import publish_image_record
             "measured": {"at": "2026-09-03T00:00:03Z"},
         },
         artifacts={"store": store},
-        attempt_id="attempt", scheduler_epoch="epoch",
+        attempt_id="attempt", lifecycle_epoch="epoch",
     )
 
     assert image_record_path(tmp_path, "plate", "a").is_file()
@@ -275,7 +295,7 @@ from phenotypic._cli._cli_image_record import publish_image_record
         tmp_path, work_id="w", dataset="plate", image_stem="a",
         relative_image_path="a.tif", mode="full",
         stages={"stage1": {"at": "t"}, "some_future_stage": {"at": "t"}},
-        artifacts={}, attempt_id="x", scheduler_epoch="e",
+        artifacts={}, attempt_id="x", lifecycle_epoch="e",
     )
     assert "some_future_stage" in read_image_record(tmp_path, "plate", "a")["stages"]
 
@@ -346,7 +366,7 @@ The record, per §6.1 minus `backfilled`, plus `provenance` (U-10):
     "metadata":     {"kind": "file",  "path": "…", "size": 234,   "sha256": "…"},
     "overlay":      {"kind": "file",  "path": "…", "size": 67890, "sha256": "…"}
   },
-  "attempt_id": "…", "scheduler_epoch": "…", "completed_at": "…"
+  "attempt_id": "…", "lifecycle_epoch": "…", "completed_at": "…"
 }
 ```
 
@@ -523,10 +543,12 @@ same audit.
    change converts a benign duplicate into a silently lost stage.
 4. **Merging is fenced on `work_id`, and `consume_stage` is idempotent.**
 
-   > **An earlier draft fenced on `scheduler_epoch`. That was unimplementable, and it
+   > **An earlier draft fenced on the record's epoch field (then spelled
+   > `scheduler_epoch`, now `lifecycle_epoch` — see the correction above).
+   > That was unimplementable, and it
    > invented a guard that already exists twice (flow-r3 C3).**
    >
-   > Unimplementable because `scheduler_epoch` is a **record-level** field, beside
+   > Unimplementable because `lifecycle_epoch` is a **record-level** field, beside
    > `attempt_id` and `completed_at` and *outside* `stages` — so there is no per-entry epoch
    > to compare, and the rule degenerates to "replace the whole map", which is a different
    > and blunter behaviour. `record_stage`'s signature has no epoch parameter and is
@@ -569,7 +591,7 @@ from phenotypic._cli._cli_image_record import publish_image_record, record_stage
         tmp_path, work_id="w", dataset="plate", image_stem="a",
         relative_image_path="a.tif", mode="full",
         stages={"measured": {"at": "t4"}},
-        artifacts={}, attempt_id="x", scheduler_epoch="e",
+        artifacts={}, attempt_id="x", lifecycle_epoch="e",
     )
     stages = read_image_record(tmp_path, "plate", "a")["stages"]
     assert set(stages) == {"stage2", "measured"}, (

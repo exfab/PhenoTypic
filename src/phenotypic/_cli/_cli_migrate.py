@@ -708,9 +708,15 @@ def _ensure_migration_processing_state(
                 per_image_config=None,
                 restart_epoch=0,
             ),
-            # P1's `requires_conversion` signal 4 is the ABSENCE of this key.
-            # A freshly migrated tree without it is refused by the very next
-            # `--mode full`, which is the gate firing on its own migrator.
+            # P1's `requires_conversion` signal 4 is the ABSENCE of this key,
+            # and writing it closes signal 4 -- ONLY signal 4 (gate SPEC-B3).
+            # A migrated tree still carries `datasets.<ds>.completed`, which
+            # is signal 3 and fires first, so this does NOT yet make a fresh
+            # migration survive the next `--mode full`. Removing the derived
+            # sets is §4.2's job in P3+, for the forward writer and the
+            # migrator together; until then `requires_conversion` still
+            # returns CONVERT here, and `SCHEMA_GATE_ARMED` being False is
+            # the only reason nothing surfaces.
             "restart_epoch": 0,
             "pipeline_sha256": _file_sha256(pipeline_path),
             "metadata_sha256": _file_sha256(metadata_snapshot),

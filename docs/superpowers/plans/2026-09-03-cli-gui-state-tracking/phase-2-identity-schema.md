@@ -512,20 +512,52 @@ def test_a_restart_mints_a_new_generation_for_identical_config(tmp_path, executi
     assert after.processing_generation != before.processing_generation
 
 
-def test_a_new_image_does_NOT_mint_a_new_generation(tmp_path, execution_config):
+> ### ⚠ CORRECTED after the P2 gate — the original assertion could not pass
+>
+> This step used to end `assert after.inventory_digest != before.inventory_digest`
+> on the **minted** identity. Gate finding `REUSE-F2` then ruled option (a):
+> `mint_run_identity` returns `inventory_digest=""`, documented as
+> reader-populated, because the value is derived from `state.config["work_ids"]`
+> and the mint runs before that exists. Written literally the old line compares
+> `""` with `""` and **fails against correct code**.
+>
+> It is corrected rather than deleted because the *property* is still worth
+> pinning — a new image must not move the generation. What moved is where scope
+> is observable: at the reader, through `run_identity()`. That also stops the
+> test restating `canonical_digest(work_ids)`, which is the duplication gate
+> finding `IMPL-F4` was filed to remove.
+>
+> **Recorded because of the direction the correction runs.** Most drift misleads
+> a reader, who can check. This misled an *implementer*, who had been told to
+> make it pass — so the failure mode was not confusion but meeting a red
+> assertion you were instructed to write, against code that is right. Landed
+> form: `tests/unit/cli/test_run_identity.py`.
+
+def test_a_new_image_does_NOT_mint_a_new_generation(tmp_path, minted):
     """D7: inventory_digest is deliberately OUT of the generation digest.
 
     Generation fences configuration; inventory_digest fences scope. Conflating them
     would make every new image under a rolling input look like a configuration
     change -- resetting live progress and fencing in-flight workers, which is the
     exact failure mode a 6,000-image rolling dataset produces daily."""
-    from phenotypic._cli._cli_identity import mint_run_identity
+    from tests._output_layout import FIXTURE_DATASET, write_processing_state
 
-    before = mint_run_identity(execution_config, restart=False)
-    _add_image_to_input(execution_config)
-    after = mint_run_identity(execution_config, restart=False)
+    from phenotypic.sdk_ import run_identity
+
+    config_a, before = minted()
+    root = config_a.output_dir
+
+    write_processing_state(root, work_ids={FIXTURE_DATASET: {"a.tif": "work-a"}})
+    inventory_before = run_identity(root).inventory_digest
+
+    _config_b, after = minted()
+    write_processing_state(
+        root, work_ids={FIXTURE_DATASET: {"a.tif": "work-a", "b.tif": "work-b"}}
+    )
+    inventory_after = run_identity(root).inventory_digest
+
     assert after.processing_generation == before.processing_generation
-    assert after.inventory_digest != before.inventory_digest
+    assert inventory_after != inventory_before
 
 
 def test_a_metadata_edit_does_NOT_mint_a_new_generation(tmp_path, execution_config):
@@ -551,7 +583,7 @@ def test_a_metadata_edit_does_NOT_mint_a_new_generation(tmp_path, execution_conf
 def mint_run_identity(config: "ExecutionConfig", *, restart: bool) -> RunIdentity:
     """Mint the identity of a new or resumed invocation (spec §5.1, §5.4).
 
-    ``processing_generation`` is ``sha256(pipeline_sha256 || scientific_config_digest
+    ``processing_generation`` is ``sha256(pipeline_sha256 || per_image_config_digest
     || restart_epoch)``. **Writer** -- it can bump the restart epoch, which is why it
     lives in ``phenotypic._cli`` and not beside the readers in ``sdk_/_run_state.py``.
 
@@ -613,8 +645,28 @@ It also writes `work_ids` (`:695`) with **no `restart_epoch`** — which is prec
 `requires_conversion` signal 4 (CAN-11 moved that gate to P1), so a freshly HDF-migrated
 tree would be refused by the very next `--mode full`.
 
-Bring it to the v3 schema: content-derived generation, `restart_epoch: 0`, no
-`datasets.{completed,failed,started}`.
+Bring it to the v3 schema: content-derived generation and `restart_epoch: 0`.
+
+> **Corrected after the P2 gate (SPEC-B3).** This step originally also said *"no
+> `datasets.{completed,failed,started}`"*, and **that half is P3's, not P2's.**
+> `save_processing_state` writes `completed`/`failed` unconditionally for every
+> dataset, so removing them for the migrator alone was never possible without
+> doing it for the forward writer too — which is §4.2's job.
+>
+> The consequence is that a freshly migrated tree still carries
+> `datasets.<ds>.completed` and so still trips `requires_conversion` on **signal
+> 3**, before it ever reaches signal 4. P2 closes signal 4 and only signal 4.
+>
+> So `test_a_freshly_migrated_tree_is_not_refused_by_the_next_full_run` —
+> asserting `requires_conversion(output) is None` — **belongs to P7 Task 5**,
+> beside the INV-DISCHARGEABLE migrate half that `test_schema_gate.py` already
+> defers there with a correctly-formed skip. Written against P2 it would fail,
+> and fail *correctly*.
+>
+> This was a phase-ordering conflict in the plan rather than an implementer's
+> omission, which is exactly why it needed saying here: a P7 agent reading the
+> original sentence would believe the migrator already emits a signal-3-clean
+> state.
 
 **`phenotypicCLI.py:2640,2716` (CAN-20)** skips state creation in measure mode — *"skipped
 in measure mode, which never mutates processing state"* — then sets
@@ -687,7 +739,7 @@ into `work_id` and the change is wrong.
 git add -A src/phenotypic/_cli tests/unit/cli/test_run_identity.py
 git commit -m "feat(cli): processing_generation becomes content-derived
 
-Spec §5.1, §5.4, D3, D4, D7. sha256(pipeline || scientific_config || restart_epoch).
+Spec §5.1, §5.4, D3, D4, D7. sha256(pipeline || per_image_config || restart_epoch).
 inventory_digest stays out (D7) so a rolling input's arrivals do not read as a
 config change. --restart still reuses surviving stores (D5)."
 ```

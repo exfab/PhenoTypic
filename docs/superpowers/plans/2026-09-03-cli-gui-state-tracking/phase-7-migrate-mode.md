@@ -29,7 +29,7 @@ stores are the stores it already had.
 | **pre-markers tree** (`success_markers_required` absent, `version="2.0.0"`) — **the v0.17.3 floor** | `_migrate_legacy_success_evidence` **ported into migrate**, sequenced after the HDF→Zarr conversion and before the migrator's own publisher. It is the only producer of the *content-derived* `work_id` a later resume re-derives. See Task 2b. | 2b |
 | `processing_generation: <uuid4>` **and** the migrator's inventory-derived one | content-derived generation; `restart_epoch: 0` | 3 |
 | `processing_state.datasets.{completed,failed,started}` | **deleted from the file** (§4.2) | 3 |
-| `slurm_generation` / `lifecycle_epoch` | `scheduler_epoch` | 3 |
+| ~~`slurm_generation` / `lifecycle_epoch`~~ → ~~`scheduler_epoch`~~ | **ROW WITHDRAWN.** Migrate neither. §5.1's collapse was withdrawn (`design.md:323-345`, user-ruled) — both are on-disk keys with live readers, and rewriting them here would be the collapse as a *tree migration*, which is strictly worse than the rename that was already rejected. | — |
 | joined embedded tables | **left alone**, projected at read — see Task 4 | 4 |
 | `master_measurements.csv` | deleted; master is parquet-only (D8) | **4, Step 0** |
 | `deliverables/metadata.canonical.csv` | **emitted** alongside the untouched snapshot | **3, Step 4** |

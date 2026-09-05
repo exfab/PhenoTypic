@@ -617,9 +617,49 @@ def finalize_run(output_dir, *, dataset_names, pipeline=None, metadata_csv=None,
     ``shard_paths`` is P5's fan-out hook: when supplied, step 2 merges those instead
     of reading the tables directly. It does not weaken INV-INPUTS, because the shards
     were themselves produced from authorized embedded tables **in this invocation**,
-    namespaced by ``scheduler_epoch`` so a prior run's shards can never be merged.
+    and ``measurement_shards/`` is emptied when fan-out begins, so a prior run's
+    shards can never be merged.
     """
 ```
+
+> ### ⚠ CORRECTED at P2 close (user-ruled): the guarantee is CLEARING, not namespacing
+>
+> This docstring used to end *"namespaced by `scheduler_epoch` so a prior run's
+> shards can never be merged."* **That guarantee did not hold on the local path.**
+>
+> `_run_state._scheduler_epoch()` returns **`None`** whenever there is no
+> `slurm_lifecycle.json` — every local run — and P5 gives itself a local
+> process-pool driver. So the namespace key is `None` for every local
+> invocation, consecutive local runs share one directory, and a prior run's
+> shards merge into this one's master. Silently, and against the INV-INPUTS this
+> very paragraph invokes two lines earlier.
+>
+> **The ruling: empty `measurement_shards/` when fan-out begins.** Three options
+> went to the user; this one was chosen, and the two rejections are the
+> instructive part:
+>
+> - **A per-invocation shard id was rejected** — it would take the state-artifact
+>   budget from four to five, which P7 Task 6's register calls a design
+>   regression, and it reverses D3's whole direction.
+> - **Falling back to `processing_generation` was rejected because it does not
+>   deliver the guarantee.** It is content-derived, so two consecutive identical
+>   local runs mint the *same* generation and collide anyway. It narrows the
+>   window instead of closing it — **worse than either alternative, because it
+>   looks like a fix.**
+>
+> Clearing is also *strictly stronger* than namespacing, which was not obvious
+> going in: namespacing leaves every prior run's shards on disk forever,
+> accumulating. Emptying closes the hole and stops the accretion.
+>
+> **`scheduler_epoch` in the path is no longer load-bearing for correctness — and
+> do not remove it as part of this.** Whether the directory stays namespaced is
+> P5's call; the guarantee no longer depends on it either way. The name itself is
+> still correct: §5.1's collapse withdrew the rename of the CLI *writers*, never
+> the reader's `RunIdentity.scheduler_epoch` (`sdk_/_state_types.py:79`).
+>
+> **The caveat that makes this a fix rather than a data-loss bug** is in
+> `phase-5-fanout.md`, where the clearing is implemented: it happens at fan-out
+> **start, before any worker writes** — never at merge time.
 
 > **Before rewriting anything in `finalize_post_master_outputs`, inventory what it already
 > does.** Its docstring (`_cli_output_manager.py:1023-1050`) numbers **five** steps: the

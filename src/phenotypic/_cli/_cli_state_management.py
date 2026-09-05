@@ -255,9 +255,16 @@ def create_initial_state(
             # against a run it has never read.
             "processing_generation": identity.processing_generation,
             # P1's `requires_conversion` signal 4 is the ABSENCE of this key,
-            # so until this line existed the schema gate fired on every tree
-            # the current build wrote -- the gate armed against its own
-            # writer. A bisect between P1 and here lands in that window.
+            # so until this line existed the gate fired on signal 4 for every
+            # tree the current build wrote. A bisect between P1 and here
+            # lands in that window.
+            #
+            # It closes signal 4 and ONLY signal 4 (gate SPEC-B3). Signals 1
+            # and 3 still fire on a forward tree, because this writer emits
+            # `image_complete/` and `datasets.<ds>.completed`; retiring those
+            # is §4.2's work in P3+. The earlier wording here claimed the
+            # gate no longer fires at all, which overstated one line into a
+            # whole-gate guarantee.
             "restart_epoch": identity.restart_epoch,
         }
     )

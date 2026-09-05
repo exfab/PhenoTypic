@@ -232,11 +232,22 @@ def _assert_worker_generation(
     scheduler script", and at the level of this function that is true -- they
     arrive as two CLI options. It is false of every supplier:
 
-    ``_cli_recompile_slurm_scripts.py:292-293`` passes ``slurm_generation=
-    attempt_id, attempt_id=attempt_id``; ``phenotypicCLI.py:3464`` does the
-    same; and the manifest writer sets ``task["slurm_generation"] =
-    attempt_id`` at four sites. Every path puts one variable into both
-    parameters.
+    There are **two** suppliers, and both are in
+    ``_cli_recompile_slurm_scripts``. ``_write_recompile_chunk_scripts``
+    passes ``slurm_generation=attempt_id, attempt_id=attempt_id`` into the
+    script-body builder, which renders ``--slurm-generation`` and
+    ``--attempt-id`` from those two parameters; and the manifest writer sets
+    ``task["slurm_generation"] = attempt_id`` at four sites. Every path puts
+    one variable into both options.
+
+    **``phenotypicCLI.py`` is not a supplier**, and an earlier version of this
+    docstring said it was. The line it cited calls
+    ``_wait_for_recompile_finalizer_status(..., slurm_generation=attempt_id)``,
+    which takes no ``attempt_id`` parameter and never reaches this function --
+    whose only caller is ``run_recompile_task``, invoked only by the generated
+    sbatch script. Cited by symbol here, not by line: the bad citation had
+    also drifted by nine lines, so a reader following it landed on neither the
+    right function nor the right place (gate IMPL-F7).
 
     So ``if slurm_generation != attempt_id: raise`` was **unreachable** --
     a value compared with itself, routed through two options. It read as a
@@ -251,6 +262,12 @@ def _assert_worker_generation(
 
     What remains is real: both values must be present, and the generation
     must still be the active lifecycle fence.
+
+    **Still unpinned, and named so it is not mistaken for covered:** nothing
+    tests that every supplier passes one value into both options. The removal
+    was correct for today's two suppliers, but a third passing two distinct
+    values would be accepted silently. That is the other half of gate
+    IMPL-F7, and it is a test this phase did not write.
     """
     if not slurm_generation or not attempt_id:
         raise ValueError("SLURM generation and attempt id are required")

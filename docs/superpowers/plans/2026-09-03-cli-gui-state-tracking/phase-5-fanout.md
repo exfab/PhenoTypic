@@ -45,9 +45,83 @@ proof. There is no aggregated-not-backfilled state, because there is no backfill
 | **Create** `src/phenotypic/_cli/_cli_finalize_fanout.py` | Shard-count sizing, shard worker body, local process-pool driver. ~200 lines. |
 | **Modify** `src/phenotypic/_cli/_cli_finalize_run.py` | Accept `shard_paths`; merge instead of concat when supplied. |
 | **Modify** `src/phenotypic/_cli/_cli_slurm_array_scripts.py:30` | Add the finalize trigger beside `_CHECKPOINT_SENTINEL` and `_MANIFEST_SENTINEL`. |
-| **Modify** `src/phenotypic/sdk_/_io_constants.py` | `measurement_shard_dir(output_dir, scheduler_epoch)`. |
+| **Modify** `src/phenotypic/sdk_/_io_constants.py` | `measurement_shard_dir(output_dir, scheduler_epoch)`. **The name is deliberate — see the note below.** |
 | **Test** `tests/unit/cli/test_finalize_fanout.py` *(new)* | Sizing, epoch namespacing, partial-failure matrix. |
 | **Test** `tests/unit/cli/test_array_auxiliary_routing.py` *(new)* | **The rule from `_cli/CLAUDE.md`: no standalone parallel job.** |
+
+> ### ⚠ `scheduler_epoch` here is CORRECT — do not "fix" it to `lifecycle_epoch`
+>
+> §5.1's five-token collapse was **withdrawn** (`design.md:323-345`, user-ruled),
+> and the P2 gate found nineteen plan sites still assuming it happened. Five are
+> in this file, and **they are the ones that are right.**
+>
+> The withdrawal killed the rename of the CLI *writers* — `publish_image_success`
+> still takes `lifecycle_epoch`. It did **not** touch the reader:
+> `RunIdentity.scheduler_epoch` (`sdk_/_state_types.py:79`) and
+> `_run_state._scheduler_epoch()` are live names for the value this task
+> namespaces shards by, and reading it from the identity is exactly how a shard
+> path should be derived.
+>
+> So this is a **new use of a live reader-side name**, not a survivor of the
+> collapse. A future sweep that renames these to `lifecycle_epoch` would break a
+> path and be reverting a correct decision. Same for
+> `phase-4-finalize-run.md`'s `shard_paths` docstring.
+>
+> **But the name being right did not make the design right — see the next
+> callout.** Checking that `scheduler_epoch` is live, and stopping there, is what
+> let the real defect through: a live name with a `None` half is not a live
+> *value*, and only a live value supports a namespacing guarantee.
+
+> ### ⚠ REQUIRED (user-ruled at P2 close): empty `measurement_shards/` when fan-out begins
+>
+> **The namespacing guarantee does not hold locally, so the fan-out must clear
+> the directory instead.**
+>
+> `_run_state._scheduler_epoch()` returns **`None`** when there is no
+> `slurm_lifecycle.json` — which is **every local run**, and this task's file
+> table gives itself a *local process-pool driver*. The shard namespace is
+> therefore `None` for every local invocation: consecutive local runs share one
+> directory, and `phase-4`'s finalizer merges a prior run's shards into this
+> run's master. Silently, and in violation of INV-INPUTS.
+>
+> #### What to build
+>
+> **Empty `measurement_shards/` at fan-out start — on both paths, at the same
+> logical point.** No per-invocation token: that would take the state-artifact
+> budget from four to five, which P7 Task 6's register calls a design
+> regression.
+>
+> > **⚠ THE ORDERING IS THE WHOLE FIX. On SLURM, clear at fan-out START, before
+> > any worker writes — NEVER at merge time.** A finalizer that clears before
+> > merging deletes the shards it is about to merge, which converts a
+> > correctness fix into data loss. "Fan-out begins" is the moment the driver
+> > starts, not the moment the finalizer runs, and local and SLURM must use the
+> > same logical point.
+>
+> #### Why not the two alternatives
+>
+> - **`processing_generation` does not deliver the guarantee.** It is
+>   content-derived, so two consecutive *identical* local runs mint the **same**
+>   generation and collide exactly as before. It narrows the window rather than
+>   closing it — the worst of the three, because it looks like a fix.
+> - **Clearing is strictly stronger than namespacing**, which was not obvious
+>   going in: namespacing leaves every prior run's shards on disk forever,
+>   accumulating. Emptying closes the hole *and* stops the accretion.
+>
+> #### Scope
+>
+> `scheduler_epoch` stays in the path. It is no longer load-bearing for
+> correctness, and whether the directory remains namespaced is this phase's
+> call — but do not remove it as part of this change.
+>
+> #### What is still unverified, and it is yours to resolve
+>
+> **What the local driver actually passes is not established.** The file table
+> names the parameter (`measurement_shard_dir(output_dir, scheduler_epoch)`) and
+> not the caller, so this plan may already intend a different value locally. The
+> defect stands either way — a namespacing guarantee whose key is `None` on half
+> its paths has to say what it uses there — but confirm the caller before
+> assuming the `None` reaches it.
 
 ---
 
