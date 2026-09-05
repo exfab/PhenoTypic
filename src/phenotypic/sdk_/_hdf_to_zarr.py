@@ -145,6 +145,8 @@ class MigrationReport:
         overlays_created: Missing overlay PNGs rendered this invocation.
         overlays_skipped: Overlay PNGs preserved because they already existed.
         overlay_failures: ``(overlay, reason)`` per rendering failure.
+        provenance_upgraded: Store roots upgraded from provenance v1 to v2.
+        provenance_failures: ``(store, reason)`` per provenance upgrade failure.
         publication_failures: ``(target, reason)`` per marker, aggregate, or
             terminal-completion publication failure.
     """
@@ -160,6 +162,8 @@ class MigrationReport:
     overlays_created: int = 0
     overlays_skipped: int = 0
     overlay_failures: tuple[tuple[Path, str], ...] = ()
+    provenance_upgraded: int = 0
+    provenance_failures: tuple[tuple[Path, str], ...] = ()
     publication_failures: tuple[tuple[Path, str], ...] = ()
 
     @property
@@ -170,6 +174,7 @@ class MigrationReport:
             and not self.header_failures
             and not self.table_failures
             and not self.overlay_failures
+            and not self.provenance_failures
             and not self.publication_failures
         )
 

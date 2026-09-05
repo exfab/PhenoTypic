@@ -49,6 +49,15 @@ def test_the_mode_help_states_both_passes() -> None:
     assert "two passes" in help_text or "two-pass" in help_text, help_text
 
 
+def test_migrate_help_names_provenance_only_targets() -> None:
+    """Migration help must distinguish full runs from provenance-only targets."""
+    result = CliRunner().invoke(phenotypic_cli, ["--help"])
+
+    assert result.exit_code == 0
+    assert "direct OME-Zarr store" in result.output
+    assert "process-output tree" in result.output
+
+
 def test_migration_help_names_all_reclaimed_sources_and_durability_rejection() -> None:
     """Destructive and inapplicable option help must match migration behavior."""
     from phenotypic.phenotypicCLI import phenotypic_cli as command
@@ -397,6 +406,7 @@ def test_direct_slurm_dry_run_submits_from_external_control_root(
 
     output = tmp_path / "run"
     output.mkdir()
+    (output / "results").mkdir()
     science = output / "retained.bin"
     science.write_bytes(b"immutable science")
     plan = _migration_plan(tmp_path, "attempt-1")
@@ -440,6 +450,7 @@ def test_direct_waited_slurm_dry_run_reads_external_typed_terminal(
     output = tmp_path / "run"
     output.mkdir()
     science = output / "retained.bin"
+    (output / "results").mkdir()
     science.write_bytes(b"immutable science")
     plan = _migration_plan(tmp_path, "attempt-1")
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
@@ -959,6 +970,30 @@ def test_terminal_authority_rejects_malformed_typed_fields(
     assert _read_migration_terminal_status(path, generation="attempt-1") is None
 
 
+def test_terminal_authority_reads_legacy_v1_report_without_provenance_fields(
+    tmp_path: Path,
+) -> None:
+    """Persisted pre-provenance terminal evidence remains valid authority."""
+    import json
+
+    from phenotypic._cli._cli_migrate import _read_migration_terminal_status
+
+    status = _terminal_status_payload(generation="attempt-1")
+    status["schema_version"] = 1
+    report = status["report"]
+    assert isinstance(report, dict)
+    report.pop("provenance_upgraded")
+    report.pop("provenance_failures")
+    path = tmp_path / "terminal_status.json"
+    path.write_text(json.dumps(status), encoding="utf-8")
+
+    loaded = _read_migration_terminal_status(path, generation="attempt-1")
+
+    assert loaded is not None
+    assert loaded["report"]["provenance_upgraded"] == 0
+    assert loaded["report"]["provenance_failures"] == []
+
+
 def test_succeeded_terminal_rejects_any_failure_rows(tmp_path: Path) -> None:
     """A success authority cannot carry contradictory failed-work evidence."""
     import json
@@ -1326,6 +1361,7 @@ def test_initialization_only_normalizes_active_lifecycle_conflicts(
 
     from phenotypic._cli import _cli_migrate as migrate
 
+    (tmp_path / "results").mkdir()
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
     monkeypatch.setattr(
         migrate,
@@ -1432,6 +1468,7 @@ def test_planner_only_normalizes_expected_errors(
 
     from phenotypic._cli import _cli_migrate as migrate
 
+    (tmp_path / "results").mkdir()
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
     monkeypatch.setattr(
         migrate,
@@ -1460,6 +1497,7 @@ def test_submitter_only_normalizes_expected_errors(
 
     from phenotypic._cli import _cli_migrate as migrate
 
+    (tmp_path / "results").mkdir()
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
     monkeypatch.setattr(
         migrate,
@@ -1522,6 +1560,7 @@ def _terminal_status_payload(*, generation: str, failed: bool = False) -> dict[s
             "tables_skipped": 5,
             "overlays_created": 6,
             "overlays_skipped": 7,
+            "provenance_upgraded": 8,
             "failed": (
                 [{"path": "/source.h5", "reason": "conversion failed"}]
                 if failed
@@ -1530,6 +1569,7 @@ def _terminal_status_payload(*, generation: str, failed: bool = False) -> dict[s
             "header_failures": [],
             "table_failures": [],
             "overlay_failures": [],
+            "provenance_failures": [],
             "publication_failures": [],
         },
         "completed_at": "2026-08-29T12:34:56.789+00:00",
@@ -1549,7 +1589,12 @@ def _migration_report_from_payload(payload: object):
         tables_skipped=payload["tables_skipped"],
         overlays_created=payload["overlays_created"],
         overlays_skipped=payload["overlays_skipped"],
+        provenance_upgraded=payload["provenance_upgraded"],
         failed=tuple((Path(item["path"]), item["reason"]) for item in payload["failed"]),
+        provenance_failures=tuple(
+            (Path(item["path"]), item["reason"])
+            for item in payload["provenance_failures"]
+        ),
     )
 
 

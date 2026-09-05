@@ -1101,11 +1101,13 @@ def test_successful_nondry_finalizer_reads_canonical_seal_and_terminalizes(
     seal_path.write_text(
         json.dumps(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "generation": plan.generation,
                 "manifest_digest": config.inventory_digest,
                 "ordered_status_digest": "ordered",
                 "metadata_terminal_digest": authority.terminal_receipt_digest,
+                "provenance_upgraded": 0,
+                "provenance_failures": [],
                 "clean": True,
                 "failures": [],
             }

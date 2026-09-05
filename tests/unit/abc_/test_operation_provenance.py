@@ -10,7 +10,10 @@ import pytest
 import phenotypic
 from phenotypic import Image, ImagePipeline
 from phenotypic.abc_ import ImageCorrector, ImageEnhancer
-from phenotypic._core._provenance import provenance_success_sink
+from phenotypic._core._provenance import (
+    continuing_provenance_application,
+    provenance_success_sink,
+)
 from phenotypic.enhance import BlurGauss
 from phenotypic.settings import validation
 
@@ -67,6 +70,17 @@ class _DiscardedNestedCorrector(ImageCorrector):
 
     def _operate(self, image: Image) -> Image:
         nested = BlurGauss(sigma=0.75).apply(image, inplace=False)
+        image.detect_mat[:] = nested.detect_mat[:]
+        return image
+
+
+class _NestedPipelineCorrector(ImageCorrector):
+    """Invoke a pipeline inside an outer direct operation."""
+
+    def _operate(self, image: Image) -> Image:
+        nested = ImagePipeline(
+            ops={"nested-blur": BlurGauss(sigma=0.75)}
+        ).apply(image, inplace=False, reset=False)
         image.detect_mat[:] = nested.detect_mat[:]
         return image
 
@@ -146,25 +160,27 @@ def test_image_copy_inherits_existing_provenance_without_sharing_it() -> None:
 
 def test_replacement_operation_carries_prior_journal_and_retained_original() -> None:
     source = BlurGauss(sigma=1.0).apply(_plate())
-    source._metadata.provenance_journal.update(
-        {
-            "status": "in_progress",
-            "pipeline": {
-                "source_path": "/resolved/pipeline.json",
-                "sha256": "a" * 64,
-            },
-            "retry_base_length": 1,
-        }
-    )
+    source_journal = source._metadata.provenance_journal
+    application = source_journal["applications"][-1]
+    source_journal["status"] = "in_progress"
+    application["status"] = "in_progress"
+    application["pipeline"] = {
+        "source_path": "pipeline.json",
+        "sha256": "a" * 64,
+    }
+    application["retry_base_length"] = 1
     source._retain_original()
     retained = source._original.copy()
 
-    result = _ReplacementCorrector().apply(source)
+    with continuing_provenance_application(source):
+        result = _ReplacementCorrector().apply(source)
 
     journal = result._metadata.provenance_journal
     assert journal["status"] == "in_progress"
-    assert journal["pipeline"]["source_path"] == "/resolved/pipeline.json"
-    assert journal["retry_base_length"] == 1
+    assert len(journal["applications"]) == 1
+    current = journal["applications"][-1]
+    assert current["pipeline"]["source_path"] == "pipeline.json"
+    assert current["retry_base_length"] == 1
     assert [entry["operation_name"] for entry in result.provenance] == [
         "BlurGauss",
         "_ReplacementCorrector",
@@ -200,6 +216,22 @@ def test_nested_pipeline_uses_configured_dictionary_keys_as_step_path() -> None:
     ]
 
 
+def test_direct_operation_owns_nested_pipeline_application() -> None:
+    result = _NestedPipelineCorrector().apply(_plate())
+
+    journal = result._metadata.provenance_journal
+    assert len(journal["applications"]) == 1
+    assert journal["status"] == "complete"
+    assert [entry["operation_name"] for entry in result.provenance] == [
+        "BlurGauss",
+        "_NestedPipelineCorrector",
+    ]
+    assert [entry["pipeline_step_path"] for entry in result.provenance] == [
+        ["nested-blur"],
+        None,
+    ]
+
+
 def test_failed_operate_appends_nothing() -> None:
     image = _plate()
 
@@ -207,6 +239,10 @@ def test_failed_operate_appends_nothing() -> None:
         _FailingCorrector().apply(image, inplace=True)
 
     assert image.provenance == ()
+    applications = image._metadata.provenance_journal["applications"]
+    assert len(applications) == 1
+    assert applications[0]["kind"] == "programmatic"
+    assert applications[0]["status"] == "failed"
 
 
 def test_integrity_failure_appends_nothing() -> None:

@@ -147,10 +147,21 @@ Two flags govern storage behaviour:
   survives it.
 
 `--mode migrate`
-: Converts a legacy `.h5` output tree **in place**. There is no copy mode.
-  Add `--dry-run` to report what would be converted without writing, and
-  `--delete-sources` to remove each `.h5` once its store has been verified to
-  read back faithfully. Running it twice converts nothing the second time.
+: Accepts a full legacy run, a direct OME-Zarr store, or a process-output tree.
+  Full runs convert legacy `.h5` images **in place** and recertify markers;
+  direct stores and process trees perform only an explicit root-provenance
+  upgrade. Add `--dry-run` to validate without scientific writes, `--njobs N`
+  for local parallel root checks, or repeated `--slurm key=value` options for
+  the native migration dispatcher. `--delete-sources` applies only to full-run
+  HDF conversion and is refused for provenance-only targets. Running migration
+  twice changes nothing the second time. See
+  [Migrate legacy results and provenance](migrate_ome_zarr.md).
+
+Schema-v2 provenance is an ordered application history. A process store used
+as normal CLI input retains its process application and appends a distinct full
+application, including both pipeline identities. Only a migrated `legacy`
+application may have a null `phenotypic_version`, and only when the historical
+version is unavailable; readers must preserve that null.
 
 ## Invariants, if you are writing code against a store
 

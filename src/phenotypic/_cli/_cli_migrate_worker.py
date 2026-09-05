@@ -36,6 +36,7 @@ from ._cli_migrate_manifest import (
     _read_manifest,
     migration_image_seal_path,
     migration_reclaim_seal_path,
+    publish_migration_provenance_status,
     publish_migration_reclaim_status,
     publish_migration_task_status,
     read_migration_task,
@@ -44,6 +45,7 @@ from ._cli_migrate_manifest import (
     validate_migration_generation,
     valid_migration_image_seal,
 )
+from ._cli_migrate_provenance import upgrade_store_provenance
 from ._cli_slurm_lifecycle import (
     assert_generation_active,
     generation_publication_guard,
@@ -433,6 +435,8 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
         )
         return 0
     task = None
+    provenance_started = False
+    provenance_result = None
     try:
         task = read_migration_task(
             config.manifest_path,
@@ -440,6 +444,26 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
             expected_scientific_output=config.scientific_output,
             expected_control_root=config.control_root,
         )
+        if (task.store_path / "zarr.json").is_file():
+            provenance_started = True
+            provenance_result = upgrade_store_provenance(
+                task.store_path,
+                dry_run=config.dry_run,
+                commit_guard=_commit_guard(config),
+            )
+            if not config.dry_run:
+                assert authority is not None
+                provenance_result = publish_migration_provenance_status(
+                    config.control_root,
+                    manifest_path=config.manifest_path,
+                    expected_scientific_output=config.scientific_output,
+                    generation=config.generation,
+                    metadata_terminal_digest=authority.terminal_receipt_digest,
+                    index=index,
+                    result=provenance_result,
+                    commit_guard=_commit_guard(config),
+                )
+            provenance_started = False
         result = migrate_image_task(
             config.output_dir,
             task,
@@ -461,6 +485,7 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
                 generation=config.generation,
                 metadata_terminal_digest=authority.terminal_receipt_digest,
                 result=result,
+                provenance_result=provenance_result,
                 commit_guard=_commit_guard(config),
             )
         _publish_worker_status(
@@ -468,17 +493,49 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
             "image",
             index=index,
             status="complete",
-            extra={"result": asdict(result)},
+            extra={
+                "result": asdict(result),
+                "provenance": (
+                    None
+                    if provenance_result is None
+                    else {
+                        "store_path": str(provenance_result.store_path),
+                        "schema_before": provenance_result.schema_before,
+                        "upgraded": provenance_result.upgraded,
+                    }
+                ),
+            },
         )
         return 0
     except Exception as exc:  # noqa: BLE001 - isolate each array index
+        reason = f"{type(exc).__name__}: {exc}"
+        if (
+            provenance_started
+            and task is not None
+            and authority is not None
+            and not config.dry_run
+        ):
+            try:
+                publish_migration_provenance_status(
+                    config.control_root,
+                    manifest_path=config.manifest_path,
+                    expected_scientific_output=config.scientific_output,
+                    generation=config.generation,
+                    metadata_terminal_digest=authority.terminal_receipt_digest,
+                    index=index,
+                    result=None,
+                    reason=reason,
+                    commit_guard=_commit_guard(config),
+                )
+            except Exception:  # noqa: BLE001 - preserve earlier authority if any
+                pass
         _publish_worker_status(
             config,
             "image",
             index=index,
             status="failed",
-            failure_category="image",
-            reason=f"{type(exc).__name__}: {exc}",
+            failure_category="provenance" if provenance_started else "image",
+            reason=reason,
             extra={
                 "target": (
                     str(task.hdf_path or task.store_path)
@@ -499,11 +556,18 @@ def _seal_from_path(path: Path) -> MigrationImageSeal | None:
     expected = {
         "schema_version", "generation", "manifest_digest",
         "ordered_status_digest", "metadata_terminal_digest", "clean", "failures",
+        "provenance_upgraded", "provenance_failures",
     }
+    provenance_upgraded = (
+        raw.get("provenance_upgraded") if isinstance(raw, Mapping) else None
+    )
+    provenance_failures = (
+        raw.get("provenance_failures") if isinstance(raw, Mapping) else None
+    )
     if (
         not isinstance(raw, Mapping)
         or set(raw) != expected
-        or raw.get("schema_version") != 1
+        or raw.get("schema_version") != 2
         or not all(
             isinstance(raw.get(field), str)
             for field in (
@@ -514,6 +578,18 @@ def _seal_from_path(path: Path) -> MigrationImageSeal | None:
         or not isinstance(raw.get("clean"), bool)
         or not isinstance(raw.get("failures"), list)
         or not all(isinstance(value, str) for value in raw["failures"])
+        or not isinstance(provenance_upgraded, int)
+        or isinstance(provenance_upgraded, bool)
+        or provenance_upgraded < 0
+        or not isinstance(provenance_failures, list)
+        or not all(
+            isinstance(value, Mapping)
+            and set(value) == {"store_path", "reason"}
+            and isinstance(value.get("store_path"), str)
+            and isinstance(value.get("reason"), str)
+            and value["reason"]
+            for value in provenance_failures
+        )
     ):
         return None
     try:
@@ -525,6 +601,11 @@ def _seal_from_path(path: Path) -> MigrationImageSeal | None:
             clean=raw["clean"],
             failures=tuple(raw["failures"]),
             seal_path=path,
+            provenance_upgraded=provenance_upgraded,
+            provenance_failures=tuple(
+                (Path(value["store_path"]), value["reason"])
+                for value in provenance_failures
+            ),
         )
     except (KeyError, TypeError):
         return None
@@ -767,18 +848,50 @@ def _image_report(config: _WorkerConfig) -> tuple[MigrationReport, tuple[tuple[P
     )
     results: list[MigrationImageResult] = []
     failures: list[tuple[Path, str]] = []
+    provenance_upgraded = 0
+    provenance_failures: list[tuple[Path, str]] = []
     for task in tasks:
         status = _read_worker_status(config, "image", task.index)
         if status is None or status.get("status") != "complete":
-            failures.append(
-                (
-                    task.hdf_path or task.store_path,
-                    "image status is missing"
-                    if status is None
-                    else str(status.get("reason") or "image did not complete"),
-                )
+            reason = (
+                "image status is missing"
+                if status is None
+                else str(status.get("reason") or "image did not complete")
             )
+            target = task.hdf_path or task.store_path
+            if (
+                getattr(config, "dry_run", False)
+                and status is not None
+                and status.get("failure_category") == "provenance"
+            ):
+                provenance_failures.append((task.store_path, reason))
+            else:
+                failures.append((target, reason))
             continue
+        provenance = status.get("provenance")
+        if getattr(config, "dry_run", False) and provenance is not None:
+            valid_provenance = (
+                isinstance(provenance, Mapping)
+                and set(provenance)
+                == {"store_path", "schema_before", "upgraded"}
+                and provenance.get("store_path") == str(task.store_path)
+                and isinstance(provenance.get("upgraded"), bool)
+                and (
+                    provenance.get("schema_before") is None
+                    or (
+                        isinstance(provenance.get("schema_before"), int)
+                        and not isinstance(provenance.get("schema_before"), bool)
+                    )
+                )
+                and provenance["upgraded"]
+                == (provenance.get("schema_before") == 1)
+            )
+            if not valid_provenance:
+                provenance_failures.append(
+                    (task.store_path, "provenance result evidence is invalid")
+                )
+            else:
+                provenance_upgraded += int(provenance["upgraded"])
         raw = status.get("result")
         expected_result_fields = {
             "index", "dataset", "stem", "work_id", "converted",
@@ -815,7 +928,12 @@ def _image_report(config: _WorkerConfig) -> tuple[MigrationReport, tuple[tuple[P
                 skipped=raw["skipped"],
             )
         )
-    return _report_from_image_results(tasks, results), tuple(failures)
+    report = replace(
+        _report_from_image_results(tasks, results),
+        provenance_upgraded=provenance_upgraded,
+        provenance_failures=tuple(provenance_failures),
+    )
+    return report, tuple(failures)
 
 
 def _placeholder_image_seal(config: _WorkerConfig, reason: str) -> MigrationImageSeal:
@@ -930,6 +1048,17 @@ def _run_finalizer_worker(config: _WorkerConfig) -> int:
     image_seal = _seal_from_path(image_seal_path) or _placeholder_image_seal(
         config, "image seal is missing"
     )
+    if valid_migration_image_seal(
+        config.control_root,
+        image_seal,
+        manifest_path=config.manifest_path,
+        expected_scientific_output=config.scientific_output,
+    ):
+        report = replace(
+            report,
+            provenance_upgraded=image_seal.provenance_upgraded,
+            provenance_failures=image_seal.provenance_failures,
+        )
     reclaim_seal = (
         _reclaim_seal_from_path(
             migration_reclaim_seal_path(config.control_root, config.generation)

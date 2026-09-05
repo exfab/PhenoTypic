@@ -1527,6 +1527,8 @@ def test_inspect_remeasures_when_explicit_image_changes():
     assert op._cache_signature == op.model_dump_json()
     assert '"long_range_lag":32.0' in op._cache_signature
     assert len(figure.data) > 0
+    assert not figure.layout.annotations
+    assert figure.layout.margin.b is None
 
 
 def test_report_builds_composed_figure():

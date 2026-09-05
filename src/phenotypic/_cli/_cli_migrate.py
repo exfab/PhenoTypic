@@ -60,6 +60,12 @@ from ._cli_migrate_image import (
     migrate_image_task,
     reclaim_image_sources,
 )
+from ._cli_migrate_provenance import (
+    ProvenanceMigrationTarget,
+    classify_provenance_migration_target,
+    execute_provenance_migration,
+    provenance_migration_lifecycle_root,
+)
 from ._cli_migrate_manifest import (
     MigrationImageSeal,
     MigrationImageTask,
@@ -97,6 +103,7 @@ from ._cli_slurm_lifecycle import (
 from ._cli_migrate_slurm import (
     MigrationSlurmPlan,
     generate_migration_slurm_plan,
+    generate_provenance_migration_slurm_plan,
     submit_migration_slurm_plan,
 )
 from ._embedded_measurement_tables import embedded_measurement_table_matches
@@ -148,6 +155,7 @@ _MIGRATION_FAILURE_CATEGORIES = frozenset(
         "metadata",
         "image",
         "image_seal",
+        "provenance",
         "reclaim_noop",
         "reclaim",
         "aggregate",
@@ -181,6 +189,7 @@ def _migration_report_payload(report: MigrationReport) -> dict[str, object]:
         "header_failures",
         "table_failures",
         "overlay_failures",
+        "provenance_failures",
         "publication_failures",
     )
     payload: dict[str, object] = {
@@ -191,6 +200,7 @@ def _migration_report_payload(report: MigrationReport) -> dict[str, object]:
         "tables_skipped": report.tables_skipped,
         "overlays_created": report.overlays_created,
         "overlays_skipped": report.overlays_skipped,
+        "provenance_upgraded": report.provenance_upgraded,
     }
     for field in failure_fields:
         payload[field] = [
@@ -228,7 +238,7 @@ def publish_migration_terminal_status(
     atomic_write_json(
         path,
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "generation": generation,
             "status": "succeeded" if succeeded else "failed",
             "failure_category": failure_category,
@@ -1100,6 +1110,10 @@ def finalize_migration_attempt(
                     final_report, metadata_pass.authority.status_path, reason
                 )
 
+    if failure_category is None and final_report.provenance_failures:
+        failure_category = "provenance"
+        reason = final_report.provenance_failures[0][1]
+
     if failure_category is None and image_failures:
         failure_category = "image"
         reason = image_failures[0][1]
@@ -1482,6 +1496,70 @@ def run_migrate(
 ) -> MigrationReport:
     """Run migration while holding shared-filesystem attempt ownership."""
     output_dir = Path(output_dir)
+    target = classify_provenance_migration_target(output_dir)
+    if target.kind != "full_run":
+        if delete_sources:
+            raise MigrateModeError(
+                "--delete-sources is not accepted for provenance-only migration"
+            )
+        lifecycle_root = provenance_migration_lifecycle_root(target)
+        if dry_run:
+            active = load_slurm_lifecycle(lifecycle_root)
+            if active is not None and active.get("active") is True:
+                raise MigrateModeError(
+                    "provenance migration target already has an active "
+                    f"generation {active.get('generation')!r}"
+                )
+        if dry_run:
+            results, failures = execute_provenance_migration(
+                target, n_jobs=njobs, dry_run=True
+            )
+        else:
+            lifecycle_root = provenance_migration_lifecycle_root(target)
+            control_root = phenotypic_cache_dir(lifecycle_root)
+            with _migration_attempt_lease(lifecycle_root):
+                active = load_slurm_lifecycle(lifecycle_root)
+                if active is not None and active.get("active") is True:
+                    raise MigrateModeError(
+                        "provenance migration target already has an active "
+                        f"generation {active.get('generation')!r}"
+                    )
+                generation = new_slurm_generation()
+                initialize_slurm_lifecycle(
+                    lifecycle_root,
+                    generation=generation,
+                    mode="migrate",
+                    owner_kind="local",
+                    control_root=control_root,
+                )
+
+                def provenance_commit_guard():
+                    return generation_publication_guard(
+                        lifecycle_root, generation
+                    )
+
+                try:
+                    results, failures = execute_provenance_migration(
+                        target,
+                        n_jobs=njobs,
+                        dry_run=False,
+                        commit_guard=provenance_commit_guard,
+                    )
+                except Exception as exc:
+                    mark_generation_failed(
+                        lifecycle_root, generation, str(exc)
+                    )
+                    raise
+                if failures:
+                    mark_generation_failed(
+                        lifecycle_root, generation, failures[0][1]
+                    )
+                else:
+                    deactivate_generation(lifecycle_root, generation)
+        return MigrationReport(
+            provenance_upgraded=sum(result.upgraded for result in results),
+            provenance_failures=failures,
+        )
     if dry_run:
         return _run_migrate_owned(
             output_dir,
@@ -1526,11 +1604,27 @@ def _run_migrate_owned(
     """
     output_dir = Path(output_dir)
     tasks = tuple(discover_migration_tasks(output_dir))
+    provenance_target = ProvenanceMigrationTarget(
+        "full_run",
+        output_dir.resolve(),
+        tuple(
+            sorted(
+                {
+                    task.store_path
+                    for task in tasks
+                    if (task.store_path / "zarr.json").is_file()
+                }
+            )
+        ),
+    )
     metadata_snapshot = metadata_csv_deliverable_path(output_dir)
     metadata_csv = metadata_snapshot if metadata_snapshot.is_file() else None
 
     if dry_run:
         metadata_pass = run_metadata_pass(output_dir, dry_run=True)
+        provenance_results, dry_provenance_failures = execute_provenance_migration(
+            provenance_target, n_jobs=njobs, dry_run=True
+        )
         dry_results, dry_stage_failures = _execute_migration_tasks(
             output_dir,
             tasks=tasks,
@@ -1547,6 +1641,10 @@ def _run_migrate_owned(
             report,
             headers_migrated=metadata_pass.headers_migrated,
             header_failures=metadata_pass.failures,
+            provenance_upgraded=sum(
+                result.upgraded for result in provenance_results
+            ),
+            provenance_failures=dry_provenance_failures,
         )
 
     reconcile_interrupted_migration_attempt(output_dir, _lease_held=True)
@@ -1646,59 +1744,67 @@ def _run_migrate_owned(
     results: tuple[MigrationImageResult, ...] = ()
     stage_failures: tuple[MigrationImageStageFailure, ...] = ()
     image_failures: tuple[tuple[Path, str], ...] = ()
+    provenance_results = ()
+    provenance_failures: tuple[tuple[Path, str], ...] = ()
     if not metadata_pass.failures and metadata_pass.authority is not None:
-        try:
-            _ensure_migration_processing_state(
-                output_dir,
-                tasks=tasks,
-                commit_guard=commit_guard,
-            )
-        except Exception as exc:  # noqa: BLE001 - terminalize image setup
-            image_failures = (
-                (
+        provenance_results, provenance_failures = execute_provenance_migration(
+            provenance_target,
+            n_jobs=njobs,
+            dry_run=False,
+            commit_guard=commit_guard,
+        )
+        if not provenance_failures:
+            try:
+                _ensure_migration_processing_state(
                     output_dir,
-                    f"image state preparation failed: {type(exc).__name__}: {exc}",
-                ),
-            )
-        else:
-            results, stage_failures = _execute_migration_tasks(
-                output_dir,
-                tasks=tasks,
-                metadata_csv=metadata_csv,
-                overlay_alpha=overlay_alpha,
-                dry_run=False,
-                njobs=njobs,
-                commit_guard=commit_guard,
-            )
-            status_failures = [
-                (failure.target, failure.reason) for failure in stage_failures
-            ]
-            for result in results:
-                try:
-                    publish_migration_task_status(
-                        phenotypic_cache_dir(output_dir),
-                        manifest_path=manifest_path,
-                        expected_scientific_output=scientific_output,
-                        generation=generation,
-                        metadata_terminal_digest=(
-                            metadata_pass.authority.terminal_receipt_digest
-                        ),
-                        result=result,
-                        commit_guard=commit_guard,
-                    )
-                except Exception as exc:  # noqa: BLE001 - isolate status failure
-                    status_failures.append(
-                        (
-                            migration_task_status_path(
-                                phenotypic_cache_dir(output_dir),
-                                generation,
-                                result.index,
+                    tasks=tasks,
+                    commit_guard=commit_guard,
+                )
+            except Exception as exc:  # noqa: BLE001 - terminalize image setup
+                image_failures = (
+                    (
+                        output_dir,
+                        f"image state preparation failed: {type(exc).__name__}: {exc}",
+                    ),
+                )
+            else:
+                results, stage_failures = _execute_migration_tasks(
+                    output_dir,
+                    tasks=tasks,
+                    metadata_csv=metadata_csv,
+                    overlay_alpha=overlay_alpha,
+                    dry_run=False,
+                    njobs=njobs,
+                    commit_guard=commit_guard,
+                )
+                status_failures = [
+                    (failure.target, failure.reason) for failure in stage_failures
+                ]
+                for result in results:
+                    try:
+                        publish_migration_task_status(
+                            phenotypic_cache_dir(output_dir),
+                            manifest_path=manifest_path,
+                            expected_scientific_output=scientific_output,
+                            generation=generation,
+                            metadata_terminal_digest=(
+                                metadata_pass.authority.terminal_receipt_digest
                             ),
-                            f"status publication failed: {type(exc).__name__}: {exc}",
+                            result=result,
+                            commit_guard=commit_guard,
                         )
-                    )
-            image_failures = tuple(status_failures)
-
+                    except Exception as exc:  # noqa: BLE001 - isolate status failure
+                        status_failures.append(
+                            (
+                                migration_task_status_path(
+                                    phenotypic_cache_dir(output_dir),
+                                    generation,
+                                    result.index,
+                                ),
+                                f"status publication failed: {type(exc).__name__}: {exc}",
+                            )
+                        )
+                image_failures = tuple(status_failures)
     metadata_digest = (
         metadata_pass.authority.terminal_receipt_digest
         if metadata_pass.authority is not None
@@ -1800,7 +1906,13 @@ def _run_migrate_owned(
                 )
             )
 
-    report = _report_from_image_results(tasks, results, stage_failures)
+    report = replace(
+        _report_from_image_results(tasks, results, stage_failures),
+        provenance_upgraded=sum(
+            result.upgraded for result in provenance_results
+        ),
+        provenance_failures=provenance_failures,
+    )
     return finalize_migration_attempt(
         output_dir,
         manifest_path=manifest_path,
@@ -1847,6 +1959,10 @@ def echo_migration_summary(
         f"{'would render' if dry_run else 'rendered'} "
         f"{report.overlays_created}, preserved {report.overlays_skipped}"
     )
+    click.echo(
+        "  Pass 5 (provenance schema v1 -> v2): "
+        f"{verb} {report.provenance_upgraded} store root(s)"
+    )
     view = canonical_metadata_view_path(output_dir)
     if view.is_file():
         click.echo(f"  Canonical metadata view: {view}")
@@ -1858,6 +1974,8 @@ def echo_migration_summary(
         click.echo(f"  Pass 3 FAILED {source}: {reason}", err=True)
     for overlay, reason in report.overlay_failures:
         click.echo(f"  Pass 4 FAILED {overlay}: {reason}", err=True)
+    for store, reason in report.provenance_failures:
+        click.echo(f"  Pass 5 FAILED {store}: {reason}", err=True)
     for target, reason in report.publication_failures:
         click.echo(f"  Publication FAILED {target}: {reason}", err=True)
 
@@ -1916,19 +2034,23 @@ def _read_migration_terminal_status(
     }
     if not isinstance(raw, dict) or set(raw) != required:
         return None
+    schema_version = raw["schema_version"]
     if (
-        not isinstance(raw["schema_version"], int)
-        or isinstance(raw["schema_version"], bool)
-        or raw["schema_version"] != 1
+        not isinstance(schema_version, int)
+        or isinstance(schema_version, bool)
+        or schema_version not in {1, 2}
         or raw["generation"] != generation
         or raw["status"] not in {"succeeded", "failed"}
-        or not _valid_migration_terminal_report(raw["report"])
         or not _valid_terminal_timestamp(raw["completed_at"])
     ):
         return None
+    report = _normalized_migration_terminal_report(
+        raw["report"], schema_version=schema_version
+    )
+    if report is None:
+        return None
+    raw["report"] = report
     if raw["status"] == "succeeded":
-        report = raw["report"]
-        assert isinstance(report, Mapping)
         if (
             raw["failure_category"] is not None
             or raw["reason"] is not None
@@ -1939,6 +2061,7 @@ def _read_migration_terminal_status(
                     "header_failures",
                     "table_failures",
                     "overlay_failures",
+                    "provenance_failures",
                     "publication_failures",
                 )
             )
@@ -1955,6 +2078,30 @@ def _read_migration_terminal_status(
     return raw
 
 
+def _normalized_migration_terminal_report(
+    value: object, *, schema_version: int
+) -> dict[str, Any] | None:
+    """Normalize legacy terminal reports without inventing science."""
+    if not isinstance(value, Mapping):
+        return None
+    normalized = dict(value)
+    legacy_count_fields = {
+        "converted", "skipped", "headers_migrated", "tables_migrated",
+        "tables_skipped", "overlays_created", "overlays_skipped",
+    }
+    legacy_failure_fields = {
+        "failed", "header_failures", "table_failures", "overlay_failures",
+        "publication_failures",
+    }
+    legacy_fields = legacy_count_fields | legacy_failure_fields
+    if schema_version == 1 and set(normalized) == legacy_fields:
+        normalized["provenance_upgraded"] = 0
+        normalized["provenance_failures"] = []
+    if not _valid_migration_terminal_report(normalized):
+        return None
+    return normalized
+
+
 def _valid_migration_terminal_report(value: object) -> bool:
     """Return whether a terminal report has the exact migration summary shape."""
     if not isinstance(value, Mapping):
@@ -1967,12 +2114,14 @@ def _valid_migration_terminal_report(value: object) -> bool:
         "tables_skipped",
         "overlays_created",
         "overlays_skipped",
+        "provenance_upgraded",
     }
     failure_fields = {
         "failed",
         "header_failures",
         "table_failures",
         "overlay_failures",
+        "provenance_failures",
         "publication_failures",
     }
     if set(value) != count_fields | failure_fields:
@@ -2114,11 +2263,16 @@ def _echo_migration_terminal_summary(
         "  Pass 4 (store -> overlay PNG): "
         f"rendered {report['overlays_created']}, preserved {report['overlays_skipped']}"
     )
+    click.echo(
+        "  Pass 5 (provenance schema v1 -> v2): "
+        f"migrated {report['provenance_upgraded']} store root(s)"
+    )
     for field, label in (
         ("header_failures", "Pass 1"),
         ("failed", "Pass 2"),
         ("table_failures", "Pass 3"),
         ("overlay_failures", "Pass 4"),
+        ("provenance_failures", "Pass 5"),
         ("publication_failures", "Publication"),
     ):
         failures = report[field]
@@ -2180,16 +2334,42 @@ def handle_migrate_mode(
         echo_migration_summary(output_dir, report, dry_run=dry_run)
         return 0 if report.ok else 1
 
+    try:
+        target = classify_provenance_migration_target(Path(output_dir))
+    except ValueError as exc:
+        raise click.ClickException(
+            f"Could not classify migration target: {exc}"
+        ) from exc
+    provenance_only = target.kind != "full_run"
+    if provenance_only and delete_sources:
+        raise click.ClickException(
+            "--delete-sources is not supported for direct-store or "
+            "process-tree provenance migration"
+        )
+    lifecycle_owner = (
+        provenance_migration_lifecycle_root(target)
+        if provenance_only
+        else target.root
+    )
+    if dry_run and provenance_only:
+        active = load_slurm_lifecycle(lifecycle_owner)
+        if active is not None and active.get("active") is True:
+            raise click.ClickException(
+                "Could not initialize SLURM migration attempt: Output "
+                "already has an active SLURM generation "
+                f"{active.get('generation')!r}"
+            )
+
     generation = new_slurm_generation()
     try:
         with ExitStack() as attempt_lease:
             if not dry_run:
                 attempt_lease.enter_context(
-                    _migration_attempt_lease(Path(output_dir))
+                    _migration_attempt_lease(lifecycle_owner)
                 )
                 try:
                     reconcile_interrupted_migration_attempt(
-                        output_dir, _lease_held=True
+                        lifecycle_owner, _lease_held=True
                     )
                 except (
                     RuntimeError,
@@ -2200,7 +2380,7 @@ def handle_migrate_mode(
                         "Could not reconcile prior SLURM migration attempt: "
                         f"{exc}"
                     ) from exc
-                active = load_slurm_lifecycle(output_dir)
+                active = load_slurm_lifecycle(lifecycle_owner)
                 if active is not None and active.get("active") is True:
                     raise click.ClickException(
                         "Could not initialize SLURM migration attempt: Output "
@@ -2208,19 +2388,29 @@ def handle_migrate_mode(
                         f"{active.get('generation')!r}"
                     )
             try:
-                plan = generate_migration_slurm_plan(
-                    output_dir,
-                    slurm_args=dict(slurm_args),
-                    overlay_alpha=overlay_alpha,
-                    delete_sources=delete_sources,
-                    dry_run=dry_run,
-                    generation=generation,
-                )
+                if provenance_only:
+                    plan = generate_provenance_migration_slurm_plan(
+                        target,
+                        slurm_args=dict(slurm_args),
+                        dry_run=dry_run,
+                        generation=generation,
+                    )
+                else:
+                    plan = generate_migration_slurm_plan(
+                        target.root,
+                        slurm_args=dict(slurm_args),
+                        overlay_alpha=overlay_alpha,
+                        delete_sources=delete_sources,
+                        dry_run=dry_run,
+                        generation=generation,
+                    )
             except (OSError, ValueError) as exc:
                 raise click.ClickException(
                     f"Could not plan SLURM migration attempt: {exc}"
                 ) from exc
-            lifecycle_root = plan.control_root if dry_run else Path(output_dir)
+            lifecycle_root = plan.lifecycle_root or (
+                plan.control_root if dry_run else lifecycle_owner
+            )
             if dry_run:
                 attempt_lease.enter_context(
                     _migration_attempt_lease(lifecycle_root)
