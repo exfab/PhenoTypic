@@ -785,6 +785,11 @@ def test_clause_one_is_load_bearing(complete_run):
             "source_image_count",
             id="source_image_count",
         ),
+        pytest.param(
+            _falsify_run_proof("publication_id", "deadbeef"),
+            "publication_id",
+            id="publication_id",
+        ),
     ],
 )
 def test_each_of_rule_ones_comparisons_is_load_bearing(
