@@ -109,6 +109,28 @@ def _claim_as_live_gui(output_dir: Path) -> None:
     )
 
 
+# -------------------------------------------------- the digest, D-C / §5.4
+
+
+def test_scientific_config_digest_is_the_work_id_digest_itself():
+    """D-C / §5.4: "not a new digest ... reused verbatim".
+
+    §5.4's argument is that if the generation and `work_id` could disagree
+    about what counts as scientific configuration, a change could invalidate
+    per-image proofs without minting a new generation, or the reverse.
+    Identity is the strongest form of agreement available, so this is an `is`
+    check rather than an equality one: an equal-but-separate function is equal
+    today and one edit away from not being, and nothing would fail at the
+    moment it stopped.
+    """
+    from phenotypic._cli._cli_failure_tracker import (
+        processing_configuration_digest,
+    )
+    from phenotypic._cli._cli_identity import scientific_config_digest
+
+    assert scientific_config_digest is processing_configuration_digest
+
+
 # ------------------------------------------------------------- the counter
 
 

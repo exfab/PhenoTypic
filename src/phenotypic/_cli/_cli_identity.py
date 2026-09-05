@@ -32,11 +32,25 @@ from pathlib import Path
 
 from ..sdk_._atomic_io import atomic_write_json
 from ..sdk_._io_constants import phenotypic_cache_dir, restart_epoch_path
+from ._cli_failure_tracker import processing_configuration_digest
 
 __all__ = [
     "bump_restart_epoch",
     "read_restart_epoch",
+    "scientific_config_digest",
 ]
+
+# D-C: the spec calls this `scientific_config_digest`; the code has called it
+# `processing_configuration_digest` since `work_id` was introduced. **Aliased,
+# not wrapped.** §5.4's whole argument is that the generation and `work_id`
+# must never disagree about what counts as scientific configuration, and
+# identity is the only form of agreement that cannot drift -- a wrapper is
+# equal today and is one edit away from not being.
+#
+# What the two names share is therefore total: same object, same payload, same
+# branch structure. See §5.4 for what that payload actually contains, which is
+# not what §5.4 said before this task.
+scientific_config_digest = processing_configuration_digest
 
 #: The document key. Spelled once: a reader and a writer disagreeing about it
 #: would reset the fence to 0 on every read, silently.

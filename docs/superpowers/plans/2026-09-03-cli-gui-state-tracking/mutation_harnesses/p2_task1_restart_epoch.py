@@ -57,6 +57,18 @@ SUITE = "tests/unit/cli/test_run_identity.py"
 # (label, old, new, tests that MUST fail)
 MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
     (
+        "scientific_config_digest becomes a WRAPPER instead of an alias --"
+        " equal today, and one edit away from not being, with nothing failing"
+        " at the moment it stops. D-C's whole point is that the generation and"
+        " work_id cannot be allowed to drift apart about what counts as"
+        " scientific configuration, and identity is the only agreement that"
+        " cannot.",
+        "scientific_config_digest = processing_configuration_digest\n",
+        "def scientific_config_digest(config):\n"
+        "    return processing_configuration_digest(config)\n",
+        ("test_scientific_config_digest_is_the_work_id_digest_itself",),
+    ),
+    (
         "the restart epoch is dropped from the preserve set -- a restart"
         " resets the counter that fences it, which is not a fence",
         "    {TERMINAL_FAILURES_JSONL, RESTART_EPOCH_JSON}\n",

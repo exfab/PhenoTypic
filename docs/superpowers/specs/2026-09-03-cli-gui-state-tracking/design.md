@@ -383,9 +383,16 @@ migration.
 
 ### 5.4 `scientific_config_digest` — one definition, two uses
 
-> ⚠ **AMENDED (D-C, U-8, U-10): the field list below is WRONG.** `include_dataset_column`,
-> `overlay_alpha` and `save_overlays` ARE in `work_id` today
-> (`_cli_failure_tracker.py:236-243`). The argument survives; the list does not.
+> ⚠ **AMENDED (D-C, U-8, U-10), and the correction LANDED in P2 Task 2.** The field
+> list below is now read off the code rather than asserted; the paragraph that claimed
+> `include_dataset_column`, `overlay_alpha` and `save_overlays` are excluded has been
+> replaced. They ARE in `work_id`, for full and measure runs
+> (`_cli_failure_tracker.py:228-233`). The argument survived; the list did not.
+>
+> D-C's own citation drifted and its claim was **flat where the code is branched** —
+> the three fields are in the payload only when `process_only_layer is None`. Recorded
+> here rather than silently corrected: the plan won this argument twice, once against
+> the spec and once against the amendment that was already correcting it.
 >
 > **And the digest is not reconstructible for a migrated tree at all** — U-8 assumed it was,
 > and U-10 replaced it. A migrated record carries `provenance: "migrated"` and is accepted on
@@ -398,18 +405,43 @@ once is the point: if the generation and `work_id` could disagree about what
 counts as "scientific configuration", a change could invalidate per-image
 proofs without minting a new generation, or vice versa.
 
-Concretely it covers the fields `validate_resume_compatibility` already guards
-as scientifically load-bearing — `image_type`, `bit_depth`, `detect_mode`,
-`nrows`/`ncols` for `GridImage`, `process_only_layer`, `process_format`,
-`drop_originals` — and **excludes** backend resources, worker counts,
-checkpoint settings, metadata, study and QC settings, and aggregate-only
-finalization inputs, exactly as `work_id` does today.
+**The actual payload (corrected in P2 Task 2, read off
+`processing_configuration_digest_from_values`,
+`_cli_failure_tracker.py:191-235`).** It is **branched, not flat** — a detail
+the D-C amendment in §0 does not capture, and the reason the earlier flat list
+could be wrong in both directions at once:
 
-Fields that are finalization inputs rather than per-image configuration
-(`metadata_sha256`, `include_dataset_column`, `no_qc`) belong to
-`finalization_input_digest` and appear in **neither** `work_id` nor the
-generation. That separation is what lets a metadata edit trigger a
-`finalize_run` without invalidating a single image's proof (§7.4).
+| Group | Fields | When |
+|---|---|---|
+| Base | `image_type`, `nrows`, `ncols`, `bit_depth`, `detect_mode`, `drop_originals` | always |
+| Process | `process_only_layer`, `ext`, `process_format` | **only** when `process_only_layer is not None` |
+| Full/measure | `include_dataset_column`, `overlay_alpha`, `save_overlays` | **only** when `process_only_layer is None` |
+
+The two conditional groups are **mutually exclusive** — never both, never
+neither. `process_format` sits beside `ext` rather than in the base payload on
+purpose: a full or measure run has no process format, and folding it into the
+base would change every existing run's digest and cold-start every
+continuation in flight.
+
+It **excludes** backend resources, worker counts, checkpoint settings, study
+settings, `metadata_sha256` and `no_qc` — exactly as `work_id` does, because
+it *is* `work_id`'s digest.
+
+> **The branch structure is U-12's rule applied inside a single digest.**
+> `include_dataset_column` is present for a full run and absent for a process
+> run, and that is correct in both cases by the same test U-12 states: *can
+> this field change the answer to what this digest asks?* For a full run it
+> can — the flag alters per-image processing config, so a result computed
+> under the other setting must not be reused. For a process run it cannot: a
+> process run publishes no master, so there is no join for the flag to move.
+>
+> The previous text asserted the opposite — that `include_dataset_column`
+> belongs to `finalization_input_digest` and appears in **neither** `work_id`
+> nor the generation. It is in both, for full runs, and U-12 rules that this
+> overlap is **required** rather than tolerated. What survives unchanged is
+> the §7.4 guarantee the old paragraph was reaching for: `metadata_sha256` and
+> `no_qc` really are finalization-only, so a **metadata** edit still triggers
+> `finalize_run` without invalidating a single image's proof.
 
 ### 5.5 `finalization_input_digest` as a versioned object
 
